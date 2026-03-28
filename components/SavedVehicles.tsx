@@ -10,6 +10,7 @@ export interface Vehicle {
   id:               string;
   name:             string;
   gallons:          number;
+  vin?:             string;
   year?:            string;
   make?:            string;
   model?:           string;
@@ -85,8 +86,41 @@ function LockIcon({ className }: { className?: string }) {
 
 // ── Vehicle Info Modal ────────────────────────────────────────────────────
 
-function VehicleInfoModal({ vehicle, onClose }: { vehicle: Vehicle; onClose: () => void }) {
-  const specs = vehicle.vehicleSpecs;
+function VehicleInfoModal({ vehicle, onClose, onSpecsUpdated }: {
+  vehicle: Vehicle;
+  onClose: () => void;
+  onSpecsUpdated?: (specs: VehicleSpecs) => void;
+}) {
+  const [specs,        setSpecs]        = useState<VehicleSpecs | undefined>(vehicle.vehicleSpecs);
+  const [fetchingSpec, setFetchingSpec] = useState(false);
+  const [fetchError,   setFetchError]   = useState('');
+
+  async function handleFetchSpecs() {
+    if (!vehicle.vin) return;
+    setFetchingSpec(true);
+    setFetchError('');
+    try {
+      const res  = await fetch(`/api/vin?vin=${vehicle.vin}`);
+      const data = await res.json() as { specs?: VehicleSpecs; error?: string };
+      if (!res.ok || data.error) { setFetchError(data.error ?? 'Lookup failed.'); return; }
+      if (!data.specs) { setFetchError('No specs returned.'); return; }
+
+      // Persist to the server
+      const patch = await fetch(`/api/vehicles?id=${vehicle.id}`, {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ vehicleSpecs: data.specs }),
+      });
+      if (!patch.ok) { setFetchError('Saved locally but could not persist.'); }
+
+      setSpecs(data.specs);
+      onSpecsUpdated?.(data.specs);
+    } catch {
+      setFetchError('Network error — check your connection.');
+    } finally {
+      setFetchingSpec(false);
+    }
+  }
 
   function Row({ label, value }: { label: string; value?: string | number | boolean | null }) {
     if (value === undefined || value === null || value === '') return null;
@@ -135,10 +169,32 @@ function VehicleInfoModal({ vehicle, onClose }: { vehicle: Vehicle; onClose: () 
         {/* Scrollable body */}
         <div className="overflow-y-auto flex-1 px-4 py-4">
           {!specs ? (
-            <div className="text-center py-8 space-y-2">
+            <div className="text-center py-8 space-y-3">
               <p className="text-3xl">🔍</p>
-              <p className="text-sm text-slate-500">No detailed specs available.</p>
-              <p className="text-xs text-slate-400">Specs are captured when a vehicle is added via VIN lookup.</p>
+              <p className="text-sm text-slate-500">No detailed specs on file.</p>
+              {vehicle.vin ? (
+                <>
+                  <p className="text-xs text-slate-400">
+                    VIN on file — tap below to fetch specs from NHTSA.
+                  </p>
+                  {fetchError && (
+                    <p className="text-xs text-red-500">{fetchError}</p>
+                  )}
+                  <button
+                    onClick={handleFetchSpecs}
+                    disabled={fetchingSpec}
+                    className="mx-auto px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-white text-xs font-black transition-colors"
+                  >
+                    {fetchingSpec ? 'Fetching…' : '🔄 Fetch Specs Now'}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <p className="text-xs text-slate-400 leading-relaxed">
+                    Delete this vehicle and re-add it using the VIN tab to capture full specs.
+                  </p>
+                </>
+              )}
             </div>
           ) : (
             <>
@@ -275,7 +331,7 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
   }
 
   async function handleSave(vehicle: {
-    name: string; gallons: number; year: string; make: string;
+    name: string; gallons: number; vin?: string; year: string; make: string;
     model: string; trim: string; fuelType: string; epaId: string;
     currentOdometer?: number; vehicleSpecs?: VehicleSpecs;
   }) {
@@ -534,7 +590,17 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
       {/* ── Achievements ── */}
       <BadgeShelf refreshKey={calcKey} />
 
-      {infoVehicle && <VehicleInfoModal vehicle={infoVehicle} onClose={() => setInfoVehicle(null)} />}
+      {infoVehicle && (
+        <VehicleInfoModal
+          vehicle={infoVehicle}
+          onClose={() => setInfoVehicle(null)}
+          onSpecsUpdated={(specs) => {
+            // Merge new specs into the displayed vehicle and the vehicles list
+            setInfoVehicle((v) => v ? { ...v, vehicleSpecs: specs } : v);
+            load(); // re-fetch garage list so specs persist after close
+          }}
+        />
+      )}
     </div>
   );
 }

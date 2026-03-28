@@ -576,6 +576,7 @@ function VinTab({ onSave, onCancel, saving, saveError }: Omit<VehiclePickerProps
     onSave({
       name:     nickname.trim(),
       gallons:  parseFloat(tankSize),
+      vin:      result.vin,
       year:     result.year,
       make:     result.make,
       model:    result.model,

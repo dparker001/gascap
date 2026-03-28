@@ -27,6 +27,7 @@ export async function POST(req: Request) {
   const body = await req.json() as {
     name?:             string;
     gallons?:          number;
+    vin?:              string;
     year?:             string;
     make?:             string;
     model?:            string;
@@ -53,6 +54,7 @@ export async function POST(req: Request) {
   }
 
   const vehicle = addVehicle(userId, body.name!, body.gallons!, {
+    vin:             body.vin?.trim().toUpperCase() || undefined,
     year:            body.year,
     make:            body.make,
     model:           body.model,
@@ -89,7 +91,7 @@ export async function PATCH(req: Request) {
   const id = searchParams.get('id');
   if (!id) return NextResponse.json({ error: 'Missing vehicle id.' }, { status: 400 });
 
-  const body = await req.json() as { name?: string; gallons?: number; currentOdometer?: number };
+  const body = await req.json() as { name?: string; gallons?: number; currentOdometer?: number; vehicleSpecs?: VehicleSpecs };
   if (body.gallons !== undefined && body.gallons <= 0) {
     return NextResponse.json({ error: 'Invalid tank size.' }, { status: 400 });
   }

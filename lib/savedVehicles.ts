@@ -11,6 +11,8 @@ export interface SavedVehicle {
   userId:           string;
   name:             string;    // custom nickname or auto "2022 Toyota Camry"
   gallons:          number;    // tank capacity (confirmed by user)
+  // Raw VIN — stored so specs can be re-fetched later
+  vin?:             string;
   // Rich vehicle data from EPA fueleconomy.gov
   year?:            string;
   make?:            string;
@@ -50,6 +52,7 @@ export function addVehicle(
   name: string,
   gallons: number,
   extra?: {
+    vin?:             string;
     year?:            string;
     make?:            string;
     model?:           string;
@@ -82,7 +85,7 @@ export function deleteVehicle(userId: string, vehicleId: string): void {
 export function updateVehicle(
   userId: string,
   vehicleId: string,
-  updates: { name?: string; gallons?: number; currentOdometer?: number },
+  updates: { name?: string; gallons?: number; currentOdometer?: number; vehicleSpecs?: VehicleSpecs },
 ): SavedVehicle | undefined {
   const all = read();
   const idx = all.findIndex((v) => v.userId === userId && v.id === vehicleId);
@@ -90,6 +93,7 @@ export function updateVehicle(
   if (updates.name             !== undefined) all[idx].name             = updates.name;
   if (updates.gallons          !== undefined) all[idx].gallons          = updates.gallons;
   if (updates.currentOdometer  !== undefined) all[idx].currentOdometer  = updates.currentOdometer;
+  if (updates.vehicleSpecs     !== undefined) all[idx].vehicleSpecs     = updates.vehicleSpecs;
   write(all);
   return all[idx];
 }
