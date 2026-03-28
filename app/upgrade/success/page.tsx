@@ -1,0 +1,66 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
+
+export default function UpgradeSuccessPage() {
+  const params    = useSearchParams();
+  const sessionId = params.get('session_id');
+  const [ready, setReady] = useState(false);
+
+  // Small delay so webhook has time to fire before we reload session
+  useEffect(() => {
+    const t = setTimeout(() => setReady(true), 2000);
+    return () => clearTimeout(t);
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-[#eef1f7] flex flex-col items-center justify-center px-4">
+      <div className="bg-white rounded-3xl shadow-card p-8 max-w-sm w-full text-center space-y-4">
+
+        {/* Animated checkmark */}
+        <div className="w-20 h-20 rounded-full bg-amber-100 flex items-center justify-center mx-auto">
+          <svg className="w-10 h-10 text-amber-500" viewBox="0 0 24 24"
+               fill="none" stroke="currentColor" strokeWidth="2.5"
+               strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+        </div>
+
+        <h1 className="text-2xl font-black text-navy-700">You&apos;re Pro! 🎉</h1>
+
+        <p className="text-slate-500 text-sm leading-relaxed">
+          Welcome to <span className="font-bold text-amber-600">GasCap™ Pro</span>.
+          Your account has been upgraded — manual vehicle entry, up to 5 saved vehicles,
+          and all Pro features are now unlocked.
+        </p>
+
+        {sessionId && (
+          <p className="text-[11px] text-slate-300 font-mono break-all">
+            Ref: {sessionId.slice(-12)}
+          </p>
+        )}
+
+        {ready ? (
+          <Link
+            href="/"
+            className="block w-full py-3.5 rounded-2xl bg-amber-500 text-white font-black
+                       text-base hover:bg-amber-400 transition-colors text-center"
+          >
+            Go to Calculator →
+          </Link>
+        ) : (
+          <div className="flex items-center justify-center gap-2 text-sm text-slate-400">
+            <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" strokeWidth="2" aria-hidden="true">
+              <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" strokeOpacity=".25"/>
+              <path d="M21 12a9 9 0 00-9-9" />
+            </svg>
+            Activating your account…
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

@@ -1,0 +1,141 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Base ──────────────────────────────────────────────────────────── */
+:root {
+  --brand-navy:  #1e3a5f;
+  --brand-amber: #f59e0b;
+  --bg-page:     #eef1f7;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  background-color: var(--bg-page);
+  color: #1e293b;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Component classes ─────────────────────────────────────────────── */
+@layer components {
+
+  /* ── Primary navy (secondary actions, nav) */
+  .btn-primary {
+    @apply w-full py-4 px-6 rounded-2xl font-semibold text-base text-white
+           bg-navy-700 hover:bg-navy-800 active:scale-[0.98]
+           transition-all duration-150
+           focus:outline-none focus:ring-2 focus:ring-navy-400 focus:ring-offset-2
+           disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+
+  /* ── Amber CTA — the main Calculate button */
+  .btn-amber {
+    @apply w-full py-4 px-6 rounded-2xl font-bold text-lg text-white
+           bg-amber-500 hover:bg-amber-400 active:bg-amber-600 active:scale-[0.98]
+           shadow-amber transition-all duration-150
+           focus:outline-none focus:ring-2 focus:ring-amber-300 focus:ring-offset-2
+           disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+
+  /* ── Ghost / secondary */
+  .btn-secondary {
+    @apply w-full py-3.5 px-6 rounded-2xl font-medium text-sm text-navy-700
+           border border-slate-200 bg-white hover:bg-slate-50 active:bg-slate-100
+           transition-all duration-150
+           focus:outline-none focus:ring-2 focus:ring-navy-300 focus:ring-offset-2;
+  }
+
+  /* ── Preset pill (target level / budget shortcut) */
+  .btn-preset {
+    @apply flex-1 py-3 px-2 rounded-xl font-semibold text-sm
+           border-2 transition-all duration-150
+           focus:outline-none focus:ring-2 focus:ring-amber-300 focus:ring-offset-1;
+  }
+  .btn-preset-inactive {
+    @apply btn-preset border-slate-200 text-slate-500 bg-white
+           hover:border-amber-300 hover:text-amber-600;
+  }
+  .btn-preset-active {
+    @apply btn-preset border-amber-500 text-amber-700 bg-amber-50;
+  }
+
+  /* ── Mode toggle (% / gallons) */
+  .btn-mode {
+    @apply flex-1 py-2.5 px-3 rounded-xl text-sm font-semibold border-2
+           transition-all duration-150
+           focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300;
+  }
+  .btn-mode-inactive {
+    @apply btn-mode border-slate-200 bg-white text-slate-500 hover:border-amber-300;
+  }
+  .btn-mode-active {
+    @apply btn-mode border-amber-500 bg-amber-50 text-amber-700;
+  }
+
+  /* ── Input field */
+  .input-field {
+    @apply w-full px-4 py-3.5 rounded-xl border border-slate-200 bg-white
+           text-base text-slate-800 placeholder-slate-400
+           focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-amber-400
+           transition-all duration-150;
+  }
+  .input-field-error {
+    @apply input-field border-red-400 focus:ring-red-400 focus:border-red-400;
+  }
+
+  /* ── Section card */
+  .card {
+    @apply bg-white rounded-2xl shadow-card p-5;
+  }
+  .card-bordered {
+    @apply card border border-slate-100;
+  }
+
+  /* ── Field label */
+  .field-label {
+    @apply block text-sm font-semibold text-slate-700 mb-2;
+  }
+  .field-hint {
+    @apply text-xs text-slate-400 mt-1.5;
+  }
+
+  /* ── Section heading */
+  .section-eyebrow {
+    @apply text-xs font-bold uppercase tracking-widest text-slate-400 mb-3;
+  }
+}
+
+/* ── Shadows ─────────────────────────────────────────────────────────── */
+@layer utilities {
+  .shadow-card  { box-shadow: 0 2px 14px 0 rgba(30,58,95,0.07); }
+  .shadow-amber { box-shadow: 0 4px 16px 0 rgba(245,158,11,0.35); }
+  .shadow-lift  { box-shadow: 0 8px 28px 0 rgba(30,58,95,0.13); }
+}
+
+/* ── Number inputs: hide spin arrows ───────────────────────────────── */
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+input[type='number'] { -moz-appearance: textfield; }
+
+/* ── Animations ─────────────────────────────────────────────────────── */
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes pulseOnce {
+  0%, 100% { transform: scale(1); }
+  50%       { transform: scale(1.03); }
+}
+
+.animate-result  { animation: fadeSlideUp 0.32s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.animate-fade-in { animation: fadeIn 0.2s ease both; }
+.animate-pulse-once { animation: pulseOnce 0.5s ease; }
+
+/* ── Gauge fill bar (result cards) ─────────────────────────────────── */
+.gauge-fill { transition: width 0.7s cubic-bezier(0.4, 0, 0.2, 1); }

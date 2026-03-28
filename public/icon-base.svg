@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Navy background -->
+  <rect width="512" height="512" rx="112" fill="#1e3a5f"/>
+  <!-- Amber gas pump icon, centered -->
+  <g transform="translate(128, 96)">
+    <!-- Pump body -->
+    <rect x="0" y="0" width="154" height="224" rx="18" fill="#f59e0b"/>
+    <!-- Screen window on body -->
+    <rect x="22" y="44" width="110" height="72" rx="10" fill="#1e3a5f" opacity="0.7"/>
+    <!-- Screen highlight text area -->
+    <rect x="34" y="56" width="86" height="48" rx="6" fill="white" opacity="0.15"/>
+    <!-- Nozzle arm -->
+    <path d="M154 52 L210 52 Q246 52 246 88 L246 164 Q246 196 220 196"
+          fill="none" stroke="#f59e0b" stroke-width="22" stroke-linecap="round"/>
+    <!-- Nozzle head -->
+    <circle cx="218" cy="200" r="18" fill="#f59e0b"/>
+    <!-- Bottom base -->
+    <rect x="0" y="270" width="154" height="50" rx="10" fill="#f59e0b"/>
+  </g>
+  <!-- White Gas Cap wordmark -->
+  <text x="256" y="440" font-family="Arial, sans-serif" font-weight="900" font-size="52"
+        fill="white" text-anchor="middle" letter-spacing="-1">Gas Cap™</text>
+</svg>

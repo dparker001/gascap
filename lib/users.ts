@@ -1,0 +1,318 @@
+/**
+ * Simple JSON-file user store.
+ * For production: replace read/write calls with Prisma / Supabase / PlanetScale.
+ */
+import fs   from 'fs';
+import path from 'path';
+import bcrypt from 'bcryptjs';
+import { findNewBadges, type UserStats } from './badges';
+import { getVehiclesForUser } from './savedVehicles';
+
+export interface StoredUser {
+  id:              string;
+  email:           string;
+  name:            string;
+  passwordHash:    string;
+  plan:            'free' | 'pro' | 'fleet';
+  createdAt:       string;
+  // Stripe billing (optional — only set after upgrade)
+  stripeCustomerId?:     string;
+  stripeSubscriptionId?: string;
+  // Activity tracking (all optional so existing records stay valid)
+  calcCount?:       number;
+  budgetCalcCount?: number;
+  locationLookups?: number;
+  activeDays?:      string[];  // 'YYYY-MM-DD' strings of distinct days used
+  streak?:          number;
+  badges?:          string[];  // earned badge IDs
+  // Referral system
+  referralCode?:          string;   // unique short code e.g. "DAVID-X4K9"
+  referredBy?:            string;   // referral code of the person who referred them
+  referralCount?:         number;   // how many users signed up & verified with this code (capped at 10)
+  referralProMonthsEarned?: number; // months of Pro earned via referrals (1 per referral, max 10)
+  referralRewardCredited?:  boolean; // true once this user's signup has been credited to their referrer
+  // Email verification
+  emailVerified?:      boolean;   // undefined / false = not verified, true = verified
+  emailVerifyToken?:   string;    // random token sent in email
+  emailVerifyExpires?: string;    // ISO timestamp, expires 24h after generation
+}
+
+export type ActivityEvent = 'calc' | 'budget_calc' | 'location_lookup' | 'visit';
+
+const DATA_FILE = path.join(process.cwd(), 'data', 'users.json');
+
+// ── Persistence helpers ────────────────────────────────────────────────
+
+function read(): StoredUser[] {
+  try {
+    if (!fs.existsSync(DATA_FILE)) return [];
+    return JSON.parse(fs.readFileSync(DATA_FILE, 'utf-8')) as StoredUser[];
+  } catch {
+    return [];
+  }
+}
+
+function write(users: StoredUser[]) {
+  const dir = path.dirname(DATA_FILE);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(DATA_FILE, JSON.stringify(users, null, 2));
+}
+
+// ── Public API ─────────────────────────────────────────────────────────
+
+export function findByEmail(email: string): StoredUser | undefined {
+  return read().find((u) => u.email.toLowerCase() === email.toLowerCase());
+}
+
+export function findById(id: string): StoredUser | undefined {
+  return read().find((u) => u.id === id);
+}
+
+export async function createUser(
+  name: string,
+  email: string,
+  password: string,
+): Promise<StoredUser> {
+  const existing = findByEmail(email);
+  if (existing) throw new Error('An account with that email already exists.');
+
+  const passwordHash = await bcrypt.hash(password, 12);
+  const user: StoredUser = {
+    id:        crypto.randomUUID(),
+    email:     email.toLowerCase().trim(),
+    name:      name.trim(),
+    passwordHash,
+    plan:      'free',
+    createdAt: new Date().toISOString(),
+  };
+  const users = read();
+  users.push(user);
+  write(users);
+  return user;
+}
+
+export async function verifyPassword(
+  plain: string,
+  hash: string,
+): Promise<boolean> {
+  return bcrypt.compare(plain, hash);
+}
+
+// ── Plan management ────────────────────────────────────────────────────────
+
+export function setUserPlan(
+  userId: string,
+  plan: 'free' | 'pro' | 'fleet',
+  stripe?: { customerId?: string; subscriptionId?: string },
+): void {
+  const users = read();
+  const idx   = users.findIndex((u) => u.id === userId);
+  if (idx === -1) return;
+  users[idx].plan = plan;
+  if (stripe?.customerId)     users[idx].stripeCustomerId     = stripe.customerId;
+  if (stripe?.subscriptionId) users[idx].stripeSubscriptionId = stripe.subscriptionId;
+  write(users);
+}
+
+export function findByStripeCustomer(customerId: string): StoredUser | undefined {
+  return read().find((u) => u.stripeCustomerId === customerId);
+}
+
+// ── Activity + badge tracking ──────────────────────────────────────────────
+
+function todayStr(): string {
+  return new Date().toISOString().slice(0, 10); // 'YYYY-MM-DD'
+}
+
+function calcStreak(activeDays: string[]): number {
+  if (activeDays.length === 0) return 0;
+  const sorted = [...activeDays].sort().reverse(); // newest first
+  const today  = todayStr();
+  // Streak must include today or yesterday to be alive
+  if (sorted[0] !== today) {
+    const yesterday = new Date(Date.now() - 86400_000).toISOString().slice(0, 10);
+    if (sorted[0] !== yesterday) return 1; // streak broken, reset to 1
+  }
+  let streak = 1;
+  for (let i = 1; i < sorted.length; i++) {
+    const prev = new Date(sorted[i - 1]);
+    const curr = new Date(sorted[i]);
+    const diff = Math.round((prev.getTime() - curr.getTime()) / 86400_000);
+    if (diff === 1) streak++;
+    else break;
+  }
+  return streak;
+}
+
+export interface ActivityResult {
+  newBadges: string[];
+  badges:    string[];
+  streak:    number;
+}
+
+export function recordActivity(userId: string, event: ActivityEvent): ActivityResult {
+  const users = read();
+  const idx   = users.findIndex((u) => u.id === userId);
+  if (idx === -1) return { newBadges: [], badges: [], streak: 0 };
+
+  const user = users[idx];
+  const today      = todayStr();
+  const activeDays = user.activeDays ?? [];
+  const alreadyEarned = user.badges ?? [];
+
+  // Increment counters
+  if (event === 'calc')             user.calcCount       = (user.calcCount       ?? 0) + 1;
+  if (event === 'budget_calc')      user.budgetCalcCount = (user.budgetCalcCount ?? 0) + 1;
+  if (event === 'location_lookup')  user.locationLookups = (user.locationLookups ?? 0) + 1;
+
+  // Record today as active (deduplicated)
+  if (!activeDays.includes(today)) activeDays.push(today);
+  user.activeDays = activeDays;
+
+  // Recompute streak
+  user.streak = calcStreak(activeDays);
+
+  // Evaluate badges
+  const vehicleCount = getVehiclesForUser(userId).length;
+  const stats: UserStats = {
+    calcCount:       user.calcCount       ?? 0,
+    budgetCalcCount: user.budgetCalcCount ?? 0,
+    locationLookups: user.locationLookups ?? 0,
+    streak:          user.streak,
+    vehicleCount,
+    daysActive:      activeDays.length,
+  };
+
+  const newBadges = findNewBadges(stats, alreadyEarned);
+  user.badges = [...alreadyEarned, ...newBadges];
+
+  users[idx] = user;
+  write(users);
+
+  return { newBadges, badges: user.badges, streak: user.streak };
+}
+
+// ── Referral system ────────────────────────────────────────────────────────
+
+export function generateReferralCode(): string {
+  // 8 uppercase alphanumeric chars, no ambiguous chars (0,O,I,1)
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  return Array.from({ length: 8 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+}
+
+export function ensureReferralCode(userId: string): string {
+  const users = read();
+  const idx   = users.findIndex((u) => u.id === userId);
+  if (idx === -1) return '';
+
+  const user = users[idx];
+
+  // If the code already contains a dash it has the name-prefix format — keep it
+  if (user.referralCode?.includes('-')) return user.referralCode;
+
+  // Build a personalised slug: FIRSTNAME-XXXX (e.g. DAVID-X4K9)
+  const firstName = user.name.split(' ')[0].toUpperCase().replace(/[^A-Z]/g, '').slice(0, 10) || 'USER';
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code: string;
+  do {
+    const suffix = Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+    code = `${firstName}-${suffix}`;
+  } while (users.some((u) => u.referralCode === code));
+
+  users[idx].referralCode = code;
+  write(users);
+  return code;
+}
+
+export function findByReferralCode(code: string): StoredUser | undefined {
+  return read().find((u) => u.referralCode?.toUpperCase() === code.toUpperCase());
+}
+
+const MAX_REFERRAL_REWARDS = 10;
+
+export function recordReferral(referrerId: string): void {
+  const users = read();
+  const idx   = users.findIndex((u) => u.id === referrerId);
+  if (idx === -1) return;
+  const current = users[idx].referralCount ?? 0;
+  if (current >= MAX_REFERRAL_REWARDS) return; // cap reached — no more credits
+  users[idx].referralCount           = current + 1;
+  users[idx].referralProMonthsEarned = (users[idx].referralProMonthsEarned ?? 0) + 1;
+  write(users);
+}
+
+export function setReferredBy(userId: string, referralCode: string): void {
+  const users = read();
+  const idx   = users.findIndex((u) => u.id === userId);
+  if (idx === -1) return;
+  users[idx].referredBy = referralCode;
+  write(users);
+}
+
+/**
+ * Called when a referred user verifies their email.
+ * Credits the referrer (once only, capped at MAX_REFERRAL_REWARDS).
+ * Returns true if credit was issued.
+ */
+export function creditVerifiedReferral(userId: string): boolean {
+  const users = read();
+  const idx   = users.findIndex((u) => u.id === userId);
+  if (idx === -1) return false;
+
+  const user = users[idx];
+  // Already credited, no referral code, or own referral — bail
+  if (user.referralRewardCredited) return false;
+  if (!user.referredBy) return false;
+
+  const referrer    = users.find((u) => u.referralCode?.toUpperCase() === user.referredBy?.toUpperCase());
+  if (!referrer)    return false;
+  if (referrer.id === userId) return false;
+
+  const referrerIdx = users.findIndex((u) => u.id === referrer.id);
+  const current     = users[referrerIdx].referralCount ?? 0;
+
+  // Mark referred user as credited regardless (prevents retry spam)
+  users[idx].referralRewardCredited = true;
+
+  if (current < MAX_REFERRAL_REWARDS) {
+    users[referrerIdx].referralCount           = current + 1;
+    users[referrerIdx].referralProMonthsEarned = (users[referrerIdx].referralProMonthsEarned ?? 0) + 1;
+  }
+
+  write(users);
+  return current < MAX_REFERRAL_REWARDS;
+}
+
+// ── Email verification ─────────────────────────────────────────────────────
+
+export function createEmailVerifyToken(userId: string): string {
+  const users = read();
+  const idx   = users.findIndex((u) => u.id === userId);
+  if (idx === -1) return '';
+  const token   = crypto.randomUUID().replace(/-/g, '');   // 32-char hex token
+  const expires = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+  users[idx].emailVerifyToken   = token;
+  users[idx].emailVerifyExpires = expires;
+  users[idx].emailVerified      = false;
+  write(users);
+  return token;
+}
+
+export function verifyEmailToken(token: string): { ok: boolean; userId?: string; error?: string } {
+  const users = read();
+  const idx   = users.findIndex((u) => u.emailVerifyToken === token);
+  if (idx === -1) return { ok: false, error: 'Invalid or already used verification link.' };
+  const user = users[idx];
+  if (user.emailVerifyExpires && new Date(user.emailVerifyExpires) < new Date()) {
+    return { ok: false, error: 'Verification link has expired. Please request a new one.' };
+  }
+  users[idx].emailVerified      = true;
+  users[idx].emailVerifyToken   = undefined;
+  users[idx].emailVerifyExpires = undefined;
+  write(users);
+  return { ok: true, userId: user.id };
+}
+
+export function resendVerificationToken(userId: string): string {
+  return createEmailVerifyToken(userId);
+}

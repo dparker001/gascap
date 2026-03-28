@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Background circle -->
+  <rect width="32" height="32" rx="8" fill="#1e3a5f"/>
+  <!-- Gas pump icon -->
+  <g stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <!-- Pump body -->
+    <rect x="7" y="10" width="10" height="14" rx="1"/>
+    <!-- Nozzle arm -->
+    <path d="M17 12 L21 12 Q23 12 23 14 L23 18 Q23 20 21 20 L20 20"/>
+    <!-- Window on body -->
+    <rect x="9" y="13" width="6" height="4" rx="0.5"/>
+  </g>
+  <!-- Amber dot accent -->
+  <circle cx="23" cy="10" r="3" fill="#f59e0b"/>
+</svg>
