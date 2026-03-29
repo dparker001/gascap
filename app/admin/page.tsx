@@ -19,6 +19,25 @@ const PLAN_COLORS = {
   fleet: 'bg-blue-100 text-blue-700',
 };
 
+const SESSION_KEY = 'gascap_admin_session';
+const SESSION_TTL = 15 * 60 * 1000; // 15 minutes
+
+function saveSession(pw: string) {
+  sessionStorage.setItem(SESSION_KEY, JSON.stringify({ pw, ts: Date.now() }));
+}
+function clearSession() {
+  sessionStorage.removeItem(SESSION_KEY);
+}
+function loadSession(): string | null {
+  try {
+    const raw = sessionStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    const { pw, ts } = JSON.parse(raw) as { pw: string; ts: number };
+    if (Date.now() - ts > SESSION_TTL) { clearSession(); return null; }
+    return pw;
+  } catch { return null; }
+}
+
 export default function AdminPage() {
   const [password,  setPassword]  = useState('');
   const [authed,    setAuthed]    = useState(false);
@@ -27,51 +46,68 @@ export default function AdminPage() {
   const [loading,   setLoading]   = useState(false);
   const [search,    setSearch]    = useState('');
   const [msg,       setMsg]       = useState('');
+  const [savedPw,   setSavedPw]   = useState('');
 
   const load = useCallback(async (pw: string) => {
     setLoading(true);
     const res  = await fetch('/api/admin/users', { headers: { 'x-admin-password': pw } });
     setLoading(false);
-    if (res.status === 401) { setAuthErr('Wrong password.'); return; }
+    if (res.status === 401) { setAuthErr('Wrong password.'); clearSession(); return; }
     const data = await res.json() as { users: AdminUser[] };
     setUsers(data.users);
+    setSavedPw(pw);
+    saveSession(pw);
     setAuthed(true);
     setAuthErr('');
   }, []);
+
+  // Auto-login from sessionStorage on mount
+  useEffect(() => {
+    const pw = loadSession();
+    if (pw) load(pw);
+  }, [load]);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     await load(password);
   }
 
+  function handleLogout() {
+    clearSession();
+    setAuthed(false);
+    setSavedPw('');
+    setPassword('');
+    setUsers([]);
+  }
+
   async function handleDelete(user: AdminUser) {
     if (!confirm(`Delete ${user.name} (${user.email})? This cannot be undone.`)) return;
     await fetch(`/api/admin/users?id=${user.id}`, {
       method: 'DELETE',
-      headers: { 'x-admin-password': password },
+      headers: { 'x-admin-password': savedPw },
     });
     setMsg(`Deleted ${user.email}`);
-    await load(password);
+    await load(savedPw);
   }
 
   async function handlePlan(user: AdminUser, plan: string) {
     await fetch(`/api/admin/users?id=${user.id}`, {
       method:  'PATCH',
-      headers: { 'x-admin-password': password, 'Content-Type': 'application/json' },
+      headers: { 'x-admin-password': savedPw, 'Content-Type': 'application/json' },
       body:    JSON.stringify({ plan }),
     });
     setMsg(`Updated ${user.email} → ${plan}`);
-    await load(password);
+    await load(savedPw);
   }
 
   async function handleVerify(user: AdminUser) {
     await fetch(`/api/admin/users?id=${user.id}`, {
       method:  'PATCH',
-      headers: { 'x-admin-password': password, 'Content-Type': 'application/json' },
+      headers: { 'x-admin-password': savedPw, 'Content-Type': 'application/json' },
       body:    JSON.stringify({ emailVerified: true }),
     });
     setMsg(`Verified ${user.email}`);
-    await load(password);
+    await load(savedPw);
   }
 
   const filtered = users.filter((u) =>
@@ -126,7 +162,7 @@ export default function AdminPage() {
             <p className="text-xl font-black text-navy-700">GasCap™ Admin</p>
             <p className="text-xs text-slate-400">User management</p>
           </div>
-          <button onClick={() => setAuthed(false)} className="text-xs text-slate-400 hover:text-slate-600">
+          <button onClick={handleLogout} className="text-xs text-slate-400 hover:text-red-500 transition-colors">
             Sign out
           </button>
         </div>
