@@ -3,9 +3,13 @@ import { createUser, findByEmail, findByReferralCode, setReferredBy, createEmail
 import { sendMail, verificationEmailHtml } from '@/lib/email';
 
 function getBaseUrl(req: Request): string {
-  if (process.env.NEXTAUTH_URL) return process.env.NEXTAUTH_URL.replace(/\/$/, '');
-  const host  = req.headers.get('x-forwarded-host') ?? req.headers.get('host');
-  const proto = req.headers.get('x-forwarded-proto') ?? 'https';
+  const nextAuthUrl    = process.env.NEXTAUTH_URL;
+  const forwardedHost  = req.headers.get('x-forwarded-host');
+  const host           = req.headers.get('host');
+  const proto          = req.headers.get('x-forwarded-proto') ?? 'https';
+  console.log('[GasCap] getBaseUrl — NEXTAUTH_URL:', nextAuthUrl, '| x-forwarded-host:', forwardedHost, '| host:', host);
+  if (nextAuthUrl) return nextAuthUrl.replace(/\/$/, '');
+  if (forwardedHost) return `${proto}://${forwardedHost}`;
   if (host) return `${proto}://${host}`;
   return 'https://www.gascap.app';
 }
