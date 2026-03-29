@@ -38,7 +38,7 @@ export async function GET(req: Request) {
     creditVerifiedReferral(result.userId);
   }
 
-  return NextResponse.redirect(`${baseUrl}/?verified=success`);
+  return NextResponse.redirect(`${baseUrl}/signin?verified=success`);
 }
 
 export async function POST(req: Request) {

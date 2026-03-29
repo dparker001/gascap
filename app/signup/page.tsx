@@ -15,14 +15,23 @@ function SignUpForm() {
   const [password, setPassword] = useState('');
   const [error, setError]       = useState('');
   const [loading, setLoading]   = useState(false);
+  const [pwFocused, setPwFocused] = useState(false);
+
+  const pwChecks = {
+    length:    password.length >= 8,
+    uppercase: /[A-Z]/.test(password),
+    number:    /[0-9]/.test(password),
+    special:   /[^A-Za-z0-9]/.test(password),
+  };
+  const pwValid = Object.values(pwChecks).every(Boolean);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError('');
 
     // Client-side quick checks
-    if (!name.trim())   return setError('Please enter your name.');
-    if (password.length < 8) return setError('Password must be at least 8 characters.');
+    if (!name.trim()) return setError('Please enter your name.');
+    if (!pwValid)     return setError('Please meet all password requirements.');
 
     setLoading(true);
 
@@ -116,16 +125,34 @@ function SignUpForm() {
             </div>
 
             <div>
-              <label className="field-label" htmlFor="password">
-                Password
-                <span className="font-normal text-slate-400 ml-1">(8+ characters)</span>
-              </label>
+              <label className="field-label" htmlFor="password">Password</label>
               <input
                 id="password" type="password" autoComplete="new-password"
                 className="input-field" placeholder="••••••••"
-                value={password} onChange={(e) => setPassword(e.target.value)}
-                required minLength={8}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                onFocus={() => setPwFocused(true)}
+                required
               />
+              {/* Real-time requirements checklist */}
+              {(pwFocused || password.length > 0) && (
+                <ul className="mt-2 space-y-1">
+                  {[
+                    { key: 'length',    label: '8 or more characters' },
+                    { key: 'uppercase', label: 'One uppercase letter (A–Z)' },
+                    { key: 'number',    label: 'One number (0–9)' },
+                    { key: 'special',   label: 'One special character (!@#$…)' },
+                  ].map(({ key, label }) => {
+                    const met = pwChecks[key as keyof typeof pwChecks];
+                    return (
+                      <li key={key} className={`flex items-center gap-1.5 text-xs font-medium transition-colors ${met ? 'text-green-600' : 'text-slate-400'}`}>
+                        <span className="text-base leading-none">{met ? '✓' : '○'}</span>
+                        {label}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
             </div>
 
             {error && (

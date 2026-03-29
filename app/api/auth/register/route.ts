@@ -22,9 +22,11 @@ export async function POST(req: Request) {
 
     if (!name?.trim())   return NextResponse.json({ error: 'Name is required.' },            { status: 400 });
     if (!email?.trim())  return NextResponse.json({ error: 'Email is required.' },           { status: 400 });
-    if (!password)       return NextResponse.json({ error: 'Password is required.' },        { status: 400 });
-    if (password.length < 8)
-                         return NextResponse.json({ error: 'Password must be at least 8 characters.' }, { status: 400 });
+    if (!password) return NextResponse.json({ error: 'Password is required.' }, { status: 400 });
+    if (password.length < 8)         return NextResponse.json({ error: 'Password must be at least 8 characters.' },        { status: 400 });
+    if (!/[A-Z]/.test(password))     return NextResponse.json({ error: 'Password must contain an uppercase letter.' },     { status: 400 });
+    if (!/[0-9]/.test(password))     return NextResponse.json({ error: 'Password must contain a number.' },                { status: 400 });
+    if (!/[^A-Za-z0-9]/.test(password)) return NextResponse.json({ error: 'Password must contain a special character.' }, { status: 400 });
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email))
