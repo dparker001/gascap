@@ -1,9 +1,6 @@
 /**
- * Email utility — uses SMTP via Nodemailer if configured,
+ * Email utility — uses Resend if RESEND_API_KEY is set,
  * otherwise logs to console (dev/preview mode).
- *
- * Required env vars for real sending:
- *   SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM
  */
 
 interface MailOptions {
@@ -14,9 +11,10 @@ interface MailOptions {
 }
 
 export async function sendMail(opts: MailOptions): Promise<void> {
-  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM } = process.env;
+  const apiKey = process.env.RESEND_API_KEY;
+  const from   = process.env.RESEND_FROM ?? 'GasCap™ <onboarding@resend.dev>';
 
-  if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) {
+  if (!apiKey) {
     // Dev fallback — log to console
     console.log('\n──────────────────────────────────────');
     console.log('[GasCap Email] DEV MODE — would send:');
@@ -27,27 +25,25 @@ export async function sendMail(opts: MailOptions): Promise<void> {
     return;
   }
 
-  try {
-    // Dynamic import so the module is only loaded server-side when needed
-    const nodemailer = await import('nodemailer');
-    const transporter = nodemailer.default.createTransport({
-      host:   SMTP_HOST,
-      port:   parseInt(SMTP_PORT ?? '587', 10),
-      secure: parseInt(SMTP_PORT ?? '587', 10) === 465,
-      auth:   { user: SMTP_USER, pass: SMTP_PASS },
-    });
-
-    await transporter.sendMail({
-      from:    SMTP_FROM ?? `"GasCap™" <${SMTP_USER}>`,
-      to:      opts.to,
+  const res = await fetch('https://api.resend.com/emails', {
+    method:  'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type':  'application/json',
+    },
+    body: JSON.stringify({
+      from,
+      to:      [opts.to],
       subject: opts.subject,
       html:    opts.html,
       text:    opts.text,
-    });
-  } catch (importErr) {
-    // nodemailer not installed or SMTP error — log and re-throw
-    console.error('[GasCap Email] Could not send email:', importErr);
-    throw importErr;
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    console.error('[GasCap Email] Resend error:', err);
+    throw new Error(`Email send failed: ${err}`);
   }
 }
 
