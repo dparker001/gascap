@@ -1,16 +1,14 @@
-import { withAuth } from 'next-auth/middleware';
+import { getToken } from 'next-auth/jwt';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-// Pages that don't require email verification
-const PUBLIC_PATHS = [
+// Paths that never require verification
+const BYPASS = [
   '/signin',
   '/signup',
   '/verify-email',
-  '/api/auth',
-  '/api/auth/register',
-  '/api/auth/verify-email',
-  '/_next',
+  '/api/',
+  '/_next/',
   '/favicon',
   '/icon',
   '/apple',
@@ -18,46 +16,31 @@ const PUBLIC_PATHS = [
   '/sw.js',
   '/workbox',
   '/worker',
+  '/public',
 ];
 
-function isPublic(pathname: string) {
-  return PUBLIC_PATHS.some((p) => pathname.startsWith(p));
+export async function middleware(req: NextRequest) {
+  const { pathname } = req.nextUrl;
+
+  // Always allow bypass paths
+  if (BYPASS.some((p) => pathname.startsWith(p))) return NextResponse.next();
+
+  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+
+  // Not signed in — allow through (signin page handles unauthenticated users)
+  if (!token) return NextResponse.next();
+
+  // Signed in but email not verified — redirect to verify page
+  if (!token.emailVerified) {
+    const url = req.nextUrl.clone();
+    url.pathname = '/verify-email';
+    url.search   = '';
+    return NextResponse.redirect(url);
+  }
+
+  return NextResponse.next();
 }
 
-export default withAuth(
-  function middleware(req: NextRequest & { nextauth?: { token?: Record<string, unknown> } }) {
-    const { pathname } = req.nextUrl;
-    const token = req.nextauth?.token as {
-      emailVerified?: boolean;
-      email?: string;
-    } | null;
-
-    // Not signed in — let NextAuth handle it
-    if (!token) return NextResponse.next();
-
-    // Signed in but not verified — redirect to verify-email page
-    if (!token.emailVerified && !isPublic(pathname)) {
-      const url = req.nextUrl.clone();
-      url.pathname = '/verify-email';
-      url.search = '';
-      return NextResponse.redirect(url);
-    }
-
-    return NextResponse.next();
-  },
-  {
-    callbacks: {
-      // Run middleware for all routes (authorized: true lets the middleware function decide)
-      authorized: () => true,
-    },
-  },
-);
-
 export const config = {
-  matcher: [
-    /*
-     * Match all paths except static files and images
-     */
-    '/((?!_next/static|_next/image|public|favicon.ico).*)',
-  ],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 };
