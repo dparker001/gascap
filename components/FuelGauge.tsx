@@ -189,16 +189,16 @@ export default function FuelGauge({ percent, onChange, tankCapacity }: FuelGauge
           const ta  = pctToAngle(t * 100);
           const cos = Math.cos(toRad(ta));
           const sin = Math.sin(toRad(ta));
-          const i1x = CX + (R - 11) * cos; const i1y = CY + (R - 11) * sin;
-          const o1x = CX + (R + 11) * cos; const o1y = CY + (R + 11) * sin;
+          const i1x = CX + (R - 15) * cos; const i1y = CY + (R - 15) * sin;
+          const o1x = CX + (R + 15) * cos; const o1y = CY + (R + 15) * sin;
           const filled = t <= p;
           return (
             <line
               key={t}
               x1={i1x.toFixed(2)} y1={i1y.toFixed(2)}
               x2={o1x.toFixed(2)} y2={o1y.toFixed(2)}
-              stroke={filled ? color : '#cbd5e1'}
-              strokeWidth="2.5"
+              stroke={filled ? color : '#94a3b8'}
+              strokeWidth="4"
               strokeLinecap="round"
               style={{ transition: 'stroke 0.3s' }}
             />
@@ -209,13 +209,10 @@ export default function FuelGauge({ percent, onChange, tankCapacity }: FuelGauge
         <text x="14" y="115" fontSize="14" fontWeight="800" fill="#ef4444" textAnchor="middle">E</text>
         <text x="266" y="115" fontSize="14" fontWeight="800" fill="#22c55e" textAnchor="middle">F</text>
 
-        {/* ── ¼ · ½ · ¾ labels — all positioned ABOVE the arc track ── */}
-        {/* ¼ at 232.5° — upper-left of arc */}
-        <text x="52" y="31" fontSize="9" fontWeight="700" fill="#94a3b8" textAnchor="middle">¼</text>
-        {/* ½ at 270° — top-center, moved above track outer edge (y≈10) */}
-        <text x="140" y="-6" fontSize="9" fontWeight="700" fill="#94a3b8" textAnchor="middle">½</text>
-        {/* ¾ at 307.5° — upper-right of arc */}
-        <text x="228" y="31" fontSize="9" fontWeight="700" fill="#94a3b8" textAnchor="middle">¾</text>
+        {/* ── ¼ · ½ · ¾ labels — positioned outside the arc track ── */}
+        <text x="42" y="34" fontSize="13" fontWeight="800" fill="#64748b" textAnchor="middle">¼</text>
+        <text x="140" y="-8" fontSize="13" fontWeight="800" fill="#64748b" textAnchor="middle">½</text>
+        <text x="238" y="34" fontSize="13" fontWeight="800" fill="#64748b" textAnchor="middle">¾</text>
 
         {/* ── Needle ─────────────────────────────────────────────── */}
         <line
@@ -269,15 +266,6 @@ export default function FuelGauge({ percent, onChange, tankCapacity }: FuelGauge
         >
           {Math.round(clampedPct)}%
         </text>
-        {gallons && (
-          <text
-            x={CX} y={CY - 7} fontSize="11" fill="#64748b"
-            stroke="white" strokeWidth="3" paintOrder="stroke"
-            textAnchor="middle"
-          >
-            ≈ {gallons} gal
-          </text>
-        )}
       </svg>
 
       {/* ── Accessible hidden range input ──────────────────────────── */}
@@ -293,6 +281,16 @@ export default function FuelGauge({ percent, onChange, tankCapacity }: FuelGauge
           className="sr-only"
         />
       </label>
+
+      {/* ── Gallons readout — below SVG, color matches level ──────── */}
+      {gallons && (
+        <p
+          className="text-center text-sm font-bold -mt-1 mb-0.5 transition-colors duration-300"
+          style={{ color }}
+        >
+          ≈ {gallons} gal
+        </p>
+      )}
 
       {/* ── Drag hint ──────────────────────────────────────────────── */}
       <p

@@ -118,6 +118,13 @@ export default function Home() {
         >
           Design your own VNetCard →
         </a>
+
+        {/* Legal links */}
+        <div className="flex items-center justify-center gap-4 pt-1">
+          <a href="/terms"   className="text-[11px] text-slate-300 hover:text-amber-500 transition-colors">Terms of Service</a>
+          <span className="text-slate-200">·</span>
+          <a href="/privacy" className="text-[11px] text-slate-300 hover:text-amber-500 transition-colors">Privacy Policy</a>
+        </div>
       </footer>
     </main>
   );
