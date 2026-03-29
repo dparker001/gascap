@@ -34,7 +34,7 @@ export async function POST(req: Request) {
     // Send verification email (non-blocking — don't fail registration if email fails)
     try {
       const token     = createEmailVerifyToken(user.id);
-      const baseUrl   = process.env.NEXTAUTH_URL ?? 'http://localhost:3000';
+      const baseUrl   = process.env.NEXTAUTH_URL?.replace(/\/$/, '') ?? new URL(req.url).origin;
       const verifyUrl = `${baseUrl}/verify-email?token=${token}`;
       await sendMail({
         to:      user.email,

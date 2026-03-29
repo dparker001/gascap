@@ -5,7 +5,7 @@ import { authOptions }      from '@/lib/auth';
 import { findById, createEmailVerifyToken } from '@/lib/users';
 import { sendMail, verificationEmailHtml }  from '@/lib/email';
 
-export async function POST() {
+export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
@@ -15,7 +15,7 @@ export async function POST() {
   if (user.emailVerified) return NextResponse.json({ error: 'Already verified.' }, { status: 400 });
 
   const token     = createEmailVerifyToken(user.id);
-  const baseUrl   = process.env.NEXTAUTH_URL ?? 'http://localhost:3000';
+  const baseUrl   = process.env.NEXTAUTH_URL?.replace(/\/$/, '') ?? new URL(req.url).origin;
   const verifyUrl = `${baseUrl}/verify-email?token=${token}`;
 
   await sendMail({
