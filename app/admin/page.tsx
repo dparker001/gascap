@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 interface AdminUser {
   id:               string;
@@ -47,6 +47,10 @@ export default function AdminPage() {
   const [search,    setSearch]    = useState('');
   const [msg,       setMsg]       = useState('');
   const [savedPw,   setSavedPw]   = useState('');
+  const [pushMsg,   setPushMsg]   = useState('');
+  const [pushLoading, setPushLoading] = useState<'all' | 'user' | null>(null);
+  const [pushEmail, setPushEmail] = useState('');
+  const [subCount,  setSubCount]  = useState<number | null>(null);
 
   const load = useCallback(async (pw: string) => {
     setLoading(true);
@@ -108,6 +112,34 @@ export default function AdminPage() {
     });
     setMsg(`Verified ${user.email}`);
     await load(savedPw);
+  }
+
+  async function handlePushAll() {
+    setPushLoading('all');
+    setPushMsg('');
+    try {
+      const res  = await fetch('/api/push/digest?all=1', { headers: { 'x-admin-password': savedPw } });
+      const data = await res.json() as { sent?: number; skipped?: number; error?: string };
+      if (data.error) { setPushMsg(`❌ ${data.error}`); }
+      else { setPushMsg(`✅ Sent to ${data.sent ?? 0} subscriber(s). ${data.skipped ?? 0} skipped/expired.`); }
+    } catch { setPushMsg('❌ Network error.'); }
+    finally { setPushLoading(null); }
+  }
+
+  async function handlePushUser() {
+    if (!pushEmail.trim()) return;
+    const user = users.find((u) => u.email.toLowerCase() === pushEmail.trim().toLowerCase());
+    if (!user) { setPushMsg('❌ User not found.'); return; }
+    setPushLoading('user');
+    setPushMsg('');
+    try {
+      const res  = await fetch(`/api/push/digest?userId=${user.id}`, { headers: { 'x-admin-password': savedPw } });
+      const data = await res.json() as { sent?: number; error?: string };
+      if (data.error) { setPushMsg(`❌ ${data.error}`); }
+      else if ((data.sent ?? 0) === 0) { setPushMsg(`⚠️ ${user.email} has no active push subscription.`); }
+      else { setPushMsg(`✅ Digest sent to ${user.email}.`); }
+    } catch { setPushMsg('❌ Network error.'); }
+    finally { setPushLoading(null); }
   }
 
   const filtered = users.filter((u) =>
@@ -190,6 +222,65 @@ export default function AdminPage() {
             <button onClick={() => setMsg('')} className="text-green-400 hover:text-green-600">×</button>
           </div>
         )}
+
+        {/* Push Notifications */}
+        <div className="bg-white rounded-2xl shadow-sm p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-black text-navy-700">🔔 Push Notifications</p>
+              <p className="text-xs text-slate-400 mt-0.5">Send weekly fuel digest to subscribers</p>
+            </div>
+          </div>
+
+          {pushMsg && (
+            <div className={`rounded-xl px-4 py-2 text-sm flex justify-between ${
+              pushMsg.startsWith('✅') ? 'bg-green-50 border border-green-200 text-green-700'
+              : pushMsg.startsWith('⚠️') ? 'bg-amber-50 border border-amber-200 text-amber-700'
+              : 'bg-red-50 border border-red-200 text-red-600'
+            }`}>
+              <span>{pushMsg}</span>
+              <button onClick={() => setPushMsg('')} className="ml-2 opacity-50 hover:opacity-100">×</button>
+            </div>
+          )}
+
+          <div className="flex flex-col sm:flex-row gap-3">
+            {/* Send to all */}
+            <button
+              onClick={handlePushAll}
+              disabled={pushLoading !== null}
+              className="flex-1 py-2.5 px-4 rounded-xl bg-navy-700 hover:bg-navy-600 text-white
+                         text-sm font-bold transition-colors disabled:opacity-50"
+            >
+              {pushLoading === 'all' ? 'Sending…' : '📣 Send digest to all subscribers'}
+            </button>
+          </div>
+
+          {/* Send to specific user */}
+          <div className="flex gap-2">
+            <input
+              type="email"
+              placeholder="user@email.com"
+              value={pushEmail}
+              onChange={(e) => setPushEmail(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handlePushUser()}
+              className="flex-1 border border-slate-200 rounded-xl px-3 py-2 text-sm
+                         focus:outline-none focus:ring-2 focus:ring-amber-400 bg-slate-50"
+            />
+            <button
+              onClick={handlePushUser}
+              disabled={pushLoading !== null || !pushEmail.trim()}
+              className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-white
+                         text-sm font-bold transition-colors disabled:opacity-50 whitespace-nowrap"
+            >
+              {pushLoading === 'user' ? '…' : 'Send to user'}
+            </button>
+          </div>
+
+          <p className="text-[10px] text-slate-400 leading-relaxed">
+            <strong>Note:</strong> Users must have opted in to push notifications from the Share tab in the app.
+            Sending to a user with no active subscription will return a warning.
+          </p>
+        </div>
 
         {/* Search */}
         <input

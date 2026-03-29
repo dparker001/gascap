@@ -14,6 +14,7 @@ import VehicleComparison       from './VehicleComparison';
 import MaintenanceReminders    from './MaintenanceReminders';
 import ReferralCard  from './ReferralCard';
 import ReviewWidget  from './ReviewWidget';
+import PushNotificationToggle from './PushNotificationToggle';
 
 // ── Tab definitions ──────────────────────────────────────────────────────────
 
@@ -166,7 +167,12 @@ export default function ToolsPanel() {
 
       {/* Referral / Share */}
       <div role="tabpanel" id="tabpanel-share" hidden={effectiveTab !== 'share'}>
-        {effectiveTab === 'share' && session && <ReferralCard />}
+        {effectiveTab === 'share' && session && (
+          <div className="space-y-3">
+            <ReferralCard />
+            <PushNotificationToggle />
+          </div>
+        )}
         {effectiveTab === 'share' && !session && <SignInPrompt feature="referral program" />}
       </div>
 
@@ -210,12 +216,7 @@ function UpgradePrompt({ feature }: { feature: string }) {
         charts, maintenance tracking, and more.
       </p>
       <a
-        href="#pricing"
-        onClick={(e) => {
-          e.preventDefault();
-          document.querySelector('[aria-labelledby="pricing-heading"]')
-            ?.scrollIntoView({ behavior: 'smooth' });
-        }}
+        href="/upgrade"
         className="inline-block mt-1 px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-white text-sm font-black rounded-2xl transition-colors"
       >
         Upgrade to Pro →

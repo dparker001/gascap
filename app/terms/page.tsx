@@ -1,26 +1,15 @@
 import Link from 'next/link';
+import StaticPageHeader from '@/components/StaticPageHeader';
 
 export const metadata = { title: 'Terms of Service — GasCap™' };
+
+const YEAR = new Date().getFullYear();
 
 export default function TermsPage() {
   return (
     <div className="min-h-screen bg-[#eef1f7]">
-      <div className="bg-navy-700 px-5 py-4">
-        <Link href="/" className="flex items-center gap-2.5 w-fit">
-          <div className="w-8 h-8 rounded-xl bg-amber-500 flex items-center justify-center">
-            <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"
-                 strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
-              <rect x="2" y="6" width="11" height="16" rx="1.5" />
-              <rect x="4" y="9" width="7" height="4" rx="0.75" />
-              <path d="M13 8 L18 8 Q21 8 21 11 L21 16 Q21 18 19 18" />
-              <circle cx="18.5" cy="18.5" r="1.5" />
-            </svg>
-          </div>
-          <span className="text-white font-black text-lg">
-            GasCap<sup className="text-amber-400 text-xs ml-0.5">™</sup>
-          </span>
-        </Link>
-      </div>
+
+      <StaticPageHeader active="terms" />
 
       <div className="max-w-2xl mx-auto px-5 py-10 pb-20">
         <h1 className="text-3xl font-black text-navy-700 mb-2">Terms of Service</h1>
@@ -73,9 +62,12 @@ export default function TermsPage() {
           </section>
         </div>
 
-        <div className="mt-10 pt-6 border-t border-slate-200 flex gap-4 text-xs text-slate-400">
-          <Link href="/privacy" className="hover:text-amber-600">Privacy Policy</Link>
-          <Link href="/"        className="hover:text-amber-600">← Back to GasCap™</Link>
+        <div className="mt-10 pt-6 border-t border-slate-200 flex items-center justify-between gap-4 text-xs text-slate-400">
+          <span>© {YEAR} GasCap™ — All rights reserved.</span>
+          <div className="flex gap-4">
+            <Link href="/privacy" className="hover:text-amber-600">Privacy Policy</Link>
+            <Link href="/help"    className="hover:text-amber-600">Help</Link>
+          </div>
         </div>
       </div>
     </div>

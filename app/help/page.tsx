@@ -1,6 +1,9 @@
 import Link from 'next/link';
+import StaticPageHeader from '@/components/StaticPageHeader';
 
 export const metadata = { title: 'Help & Support — GasCap™' };
+
+const YEAR = new Date().getFullYear();
 
 // ── Data ──────────────────────────────────────────────────────────────────
 
@@ -145,18 +148,6 @@ const SECTIONS = [
 
 // ── Sub-components ─────────────────────────────────────────────────────────
 
-function GasPumpIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"
-         strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4" aria-hidden="true">
-      <rect x="2" y="6" width="11" height="16" rx="1.5" />
-      <rect x="4" y="9" width="7" height="4" rx="0.75" />
-      <path d="M13 8 L18 8 Q21 8 21 11 L21 16 Q21 18 19 18" />
-      <circle cx="18.5" cy="18.5" r="1.5" />
-    </svg>
-  );
-}
-
 function FaqItem({ q, a }: { q: string; a: string }) {
   return (
     <div className="border-b border-slate-100 last:border-0 py-4">
@@ -172,17 +163,7 @@ export default function HelpPage() {
   return (
     <div className="min-h-screen bg-[#eef1f7]">
 
-      {/* Brand bar */}
-      <div className="bg-navy-700 px-5 py-4">
-        <Link href="/" className="flex items-center gap-2.5 w-fit">
-          <div className="w-8 h-8 rounded-xl bg-amber-500 flex items-center justify-center">
-            <GasPumpIcon />
-          </div>
-          <span className="text-white font-black text-lg">
-            GasCap<sup className="text-amber-400 text-xs ml-0.5">™</sup>
-          </span>
-        </Link>
-      </div>
+      <StaticPageHeader active="help" />
 
       <div className="max-w-2xl mx-auto px-5 py-10 pb-20">
 
@@ -247,13 +228,9 @@ export default function HelpPage() {
           </p>
         </div>
 
-        {/* Footer links */}
+        {/* Footer */}
         <p className="text-center text-xs text-slate-400 mt-8">
-          <Link href="/" className="hover:text-slate-600 underline">← Back to calculator</Link>
-          {' · '}
-          <Link href="/terms" className="hover:text-slate-600 underline">Terms</Link>
-          {' · '}
-          <Link href="/privacy" className="hover:text-slate-600 underline">Privacy</Link>
+          © {YEAR} GasCap™ — All rights reserved.
         </p>
       </div>
     </div>

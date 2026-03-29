@@ -89,6 +89,7 @@ export default function Home() {
           GasCap<sup className="text-amber-500 text-[10px] font-bold">™</sup>
         </p>
         <p className="text-xs text-slate-400">Gas Capacity — Know before you go.</p>
+        <p className="text-[10px] text-slate-300">© {new Date().getFullYear()} GasCap™ — All rights reserved.</p>
 
         {/* VNetCard lead magnet */}
         <a
