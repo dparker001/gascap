@@ -3,13 +3,41 @@ import AuthProvider from '@/components/AuthProvider';
 import FeedbackButton from '@/components/FeedbackButton';
 import './globals.css';
 
+const APP_URL = process.env.NEXTAUTH_URL ?? 'https://www.gascap.app';
+
 export const metadata: Metadata = {
   title: 'GasCap™ — Know Before You Go',
   description:
-    'GasCap helps drivers quickly calculate how much fuel they need and what it will cost.',
+    'Calculate exactly how much fuel you need and what it will cost — before you pull up to the pump. Free gas calculator, live local prices, and MPG tracking.',
+  metadataBase: new URL(APP_URL),
   manifest: '/manifest.json',
   icons: { icon: '/favicon.svg', apple: '/apple-touch-icon.png' },
   appleWebApp: { capable: true, statusBarStyle: 'default', title: 'GasCap' },
+
+  // ── Open Graph (iMessage, WhatsApp, Facebook, LinkedIn) ──────────────────
+  openGraph: {
+    type:        'website',
+    url:         APP_URL,
+    siteName:    'GasCap™',
+    title:       'GasCap™ — Know Before You Go',
+    description: 'Calculate exactly how much fuel you need and what it will cost — before you pull up to the pump. Free, works offline, no account needed.',
+    images: [
+      {
+        url:    '/og-image.png',
+        width:  1200,
+        height: 630,
+        alt:    'GasCap™ — Know Before You Go',
+      },
+    ],
+  },
+
+  // ── Twitter / X card ─────────────────────────────────────────────────────
+  twitter: {
+    card:        'summary_large_image',
+    title:       'GasCap™ — Know Before You Go',
+    description: 'Calculate exactly how much fuel you need before you pull up to the pump. Free gas calculator + live local prices.',
+    images:      ['/og-image.png'],
+  },
 };
 
 export const viewport: Viewport = {
