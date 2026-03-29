@@ -7,14 +7,23 @@ import { getFillups }         from '@/lib/fillups';
 import { getBudgetGoal }      from '@/lib/budgetGoals';
 import webpush                from 'web-push';
 
-webpush.setVapidDetails(
-  process.env.VAPID_SUBJECT ?? 'mailto:hello@gascap.app',
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
-  process.env.VAPID_PRIVATE_KEY!,
-);
+function initVapid() {
+  const pub  = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+  const priv = process.env.VAPID_PRIVATE_KEY;
+  if (!pub || !priv) return false;
+  webpush.setVapidDetails(
+    process.env.VAPID_SUBJECT ?? 'mailto:hello@gascap.app',
+    pub,
+    priv,
+  );
+  return true;
+}
 
 /** POST /api/push/digest?all=1  — send digest to current user (or all if admin query param set) */
 export async function POST(req: Request) {
+  if (!initVapid()) {
+    return NextResponse.json({ error: 'Push not configured.' }, { status: 503 });
+  }
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
