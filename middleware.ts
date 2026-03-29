@@ -7,6 +7,7 @@ const BYPASS = [
   '/signin',
   '/signup',
   '/verify-email',
+  '/admin',
   '/api/',
   '/_next/',
   '/favicon',
