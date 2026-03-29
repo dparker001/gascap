@@ -11,27 +11,34 @@ import { authOptions }      from '@/lib/auth';
 import { findById, verifyEmailToken, createEmailVerifyToken, creditVerifiedReferral } from '@/lib/users';
 import { sendMail, verificationEmailHtml } from '@/lib/email';
 
+function getBaseUrl(req: Request): string {
+  if (process.env.NEXTAUTH_URL) return process.env.NEXTAUTH_URL.replace(/\/$/, '');
+  const host  = req.headers.get('x-forwarded-host') ?? req.headers.get('host');
+  const proto = req.headers.get('x-forwarded-proto') ?? 'https';
+  if (host) return `${proto}://${host}`;
+  return 'https://www.gascap.app';
+}
+
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
-  const token = searchParams.get('token') ?? '';
+  const token   = searchParams.get('token') ?? '';
+  const baseUrl = getBaseUrl(req);
 
   if (!token) {
-    return NextResponse.redirect(new URL('/?verified=invalid', req.url));
+    return NextResponse.redirect(`${baseUrl}/?verified=invalid`);
   }
 
   const result = verifyEmailToken(token);
   if (!result.ok) {
-    // Redirect to page with error message encoded
     const msg = encodeURIComponent(result.error ?? 'Verification failed.');
-    return NextResponse.redirect(new URL(`/?verified=error&msg=${msg}`, req.url));
+    return NextResponse.redirect(`${baseUrl}/?verified=error&msg=${msg}`);
   }
 
-  // Credit the referrer now that the new user has verified their email
   if (result.userId) {
     creditVerifiedReferral(result.userId);
   }
 
-  return NextResponse.redirect(new URL('/?verified=success', req.url));
+  return NextResponse.redirect(`${baseUrl}/?verified=success`);
 }
 
 export async function POST(req: Request) {
@@ -47,7 +54,7 @@ export async function POST(req: Request) {
 
   try {
     const token     = createEmailVerifyToken(userId);
-    const baseUrl   = process.env.NEXTAUTH_URL ?? 'http://localhost:3000';
+    const baseUrl   = getBaseUrl(req);
     const verifyUrl = `${baseUrl}/verify-email?token=${token}`;
     await sendMail({
       to:      user.email,
