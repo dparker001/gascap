@@ -5,12 +5,12 @@
  */
 import { NextResponse }     from 'next/server';
 import { getServerSession } from 'next-auth';
+import type { Session }     from 'next-auth';
 import { authOptions }      from '@/lib/auth';
 import { updateReminder, deleteReminder } from '@/lib/maintenance';
 
-function userId(session: Awaited<ReturnType<typeof getServerSession>>) {
-  const u = session?.user as { id?: string; email?: string } | undefined;
-  return u?.id ?? u?.email ?? null;
+function userId(session: Session | null) {
+  return session?.user?.id ?? session?.user?.email ?? null;
 }
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {

@@ -11,8 +11,7 @@ import type Stripe                          from 'stripe';
 import { stripe }                           from '@/lib/stripe';
 import { setUserPlan, findByStripeCustomer, findById } from '@/lib/users';
 
-// Next.js must NOT parse the body — Stripe needs the raw bytes to verify signature
-export const config = { api: { bodyParser: false } };
+// Next.js App Router reads the raw body via req.text() — no body-parser config needed
 
 export async function POST(req: Request) {
   if (!stripe) {
@@ -61,7 +60,7 @@ export async function POST(req: Request) {
 
     // Invoice paid → ensure plan stays active (handles renewals)
     case 'invoice.payment_succeeded': {
-      const invoice    = event.data.object as Stripe.Invoice;
+      const invoice    = event.data.object as Stripe.Invoice & { subscription?: string | Stripe.Subscription | null };
       const customerId = typeof invoice.customer === 'string' ? invoice.customer : null;
       if (!customerId) break;
 

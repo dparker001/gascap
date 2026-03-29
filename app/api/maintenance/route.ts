@@ -5,6 +5,7 @@
  */
 import { NextResponse }     from 'next/server';
 import { getServerSession } from 'next-auth';
+import type { Session }     from 'next-auth';
 import { authOptions }      from '@/lib/auth';
 import {
   getReminders,
@@ -14,9 +15,8 @@ import {
 } from '@/lib/maintenance';
 import { getFillups } from '@/lib/fillups';
 
-function userId(session: Awaited<ReturnType<typeof getServerSession>>) {
-  const u = session?.user as { id?: string; email?: string } | undefined;
-  return u?.id ?? u?.email ?? null;
+function userId(session: Session | null) {
+  return session?.user?.id ?? session?.user?.email ?? null;
 }
 
 /** Latest odometer across all fillups for a given vehicle */

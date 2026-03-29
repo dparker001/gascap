@@ -1,11 +1,12 @@
 import { NextResponse }   from 'next/server';
 import { getServerSession } from 'next-auth';
+import type { Session }  from 'next-auth';
 import { authOptions }    from '@/lib/auth';
 import { getBudgetGoal, setBudgetGoal, deleteBudgetGoal } from '@/lib/budgetGoals';
 import { getFillups }     from '@/lib/fillups';
 
-function userId(session: Awaited<ReturnType<typeof getServerSession>>): string {
-  return (session?.user as { id?: string })?.id ?? session?.user?.email ?? '';
+function userId(session: Session | null): string {
+  return session?.user?.id ?? session?.user?.email ?? '';
 }
 
 /** GET — returns current goal + this month's spending */

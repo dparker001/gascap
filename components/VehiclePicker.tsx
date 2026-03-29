@@ -32,6 +32,7 @@ interface VehiclePickerProps {
   onSave:   (vehicle: {
     name:             string;
     gallons:          number;
+    vin?:             string;
     year:             string;
     make:             string;
     model:            string;

@@ -6,6 +6,7 @@
  */
 import { NextResponse }     from 'next/server';
 import { getServerSession } from 'next-auth';
+import type { Session }     from 'next-auth';
 import { authOptions }      from '@/lib/auth';
 import {
   getFillups,
@@ -17,8 +18,8 @@ import {
   type Fillup,
 } from '@/lib/fillups';
 
-function userId(session: Awaited<ReturnType<typeof getServerSession>>) {
-  return (session?.user as { id?: string })?.id ?? session?.user?.email ?? '';
+function userId(session: Session | null) {
+  return session?.user?.id ?? session?.user?.email ?? '';
 }
 
 export async function GET(req: Request) {
