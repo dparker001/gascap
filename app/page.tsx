@@ -84,7 +84,7 @@ export default function Home() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-slate-100 bg-white py-8 px-4 text-center space-y-3">
+      <footer className="border-t border-slate-100 bg-white py-8 pb-24 px-4 text-center space-y-3">
         <p className="font-black text-slate-700">
           GasCap<sup className="text-amber-500 text-[10px] font-bold">™</sup>
         </p>
