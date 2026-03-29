@@ -8,6 +8,11 @@ const withPWA = require('next-pwa')({
 });
 
 /** @type {import('next').NextConfig} */
-const nextConfig = {};
+const nextConfig = {
+  // Railway injects PORT; tell Next.js to bind to it
+  env: {
+    PORT: process.env.PORT ?? '3000',
+  },
+};
 
 module.exports = withPWA(nextConfig);
