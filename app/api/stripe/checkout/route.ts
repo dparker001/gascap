@@ -8,6 +8,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions }     from '@/lib/auth';
 import { findById }        from '@/lib/users';
 import { stripe, PRICES }  from '@/lib/stripe';
+import { getBaseUrl }      from '@/lib/getBaseUrl';
 
 export async function POST(req: Request) {
   if (!stripe) {
@@ -49,10 +50,7 @@ export async function POST(req: Request) {
     );
   }
 
-  // Use the incoming request's host so mobile devices (on local network) get
-  // redirected back to the same host they came from, not a hardcoded localhost.
-  const reqUrl  = new URL(req.url);
-  const origin  = `${reqUrl.protocol}//${reqUrl.host}`;
+  const origin = getBaseUrl(req);
 
   const checkoutSession = await stripe.checkout.sessions.create({
     mode:                 'subscription',

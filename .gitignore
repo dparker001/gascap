@@ -37,9 +37,9 @@ next-env.d.ts
 *.bak
 *.backup
 
-# Stripe CLI binary
+# Stripe CLI binary (be specific — don't block app/api/stripe/)
 stripe-cli
-stripe
+stripe/stripe
 
 # Claude AI assistant files
 .claude/
