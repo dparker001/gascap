@@ -2,6 +2,14 @@ import { NextResponse } from 'next/server';
 import { createUser, findByEmail, findByReferralCode, setReferredBy, createEmailVerifyToken } from '@/lib/users';
 import { sendMail, verificationEmailHtml } from '@/lib/email';
 
+function getBaseUrl(req: Request): string {
+  if (process.env.NEXTAUTH_URL) return process.env.NEXTAUTH_URL.replace(/\/$/, '');
+  const host  = req.headers.get('x-forwarded-host') ?? req.headers.get('host');
+  const proto = req.headers.get('x-forwarded-proto') ?? 'https';
+  if (host) return `${proto}://${host}`;
+  return 'https://www.gascap.app';
+}
+
 export async function POST(req: Request) {
   try {
     const { name, email, password, referralCode } = await req.json() as {
@@ -33,8 +41,8 @@ export async function POST(req: Request) {
 
     // Send verification email (non-blocking — don't fail registration if email fails)
     try {
-      const token     = createEmailVerifyToken(user.id);
-      const baseUrl   = process.env.NEXTAUTH_URL?.replace(/\/$/, '') ?? new URL(req.url).origin;
+      const token   = createEmailVerifyToken(user.id);
+      const baseUrl = getBaseUrl(req);
       const verifyUrl = `${baseUrl}/verify-email?token=${token}`;
       await sendMail({
         to:      user.email,
