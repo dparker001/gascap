@@ -69,7 +69,7 @@ export default function Home() {
             <span className="text-lg">⭐</span>
             <div className="text-left">
               <p className="text-sm font-black text-slate-700">Plans &amp; Pricing</p>
-              <p className="text-[10px] text-slate-400">Free · Pro $4.99/mo · Fleet $14.99/mo</p>
+              <p className="text-[10px] text-slate-400">Free · Pro $4.99/mo · Fleet $19.99/mo</p>
             </div>
           </div>
           <svg
