@@ -72,6 +72,37 @@ export async function sendMail(opts: MailOptions): Promise<void> {
   console.log('──────────────────────────────────────\n');
 }
 
+export function passwordResetEmailHtml(name: string, resetUrl: string): string {
+  return `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#eef1f7;font-family:system-ui,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#eef1f7;padding:40px 16px;">
+    <tr><td align="center">
+      <table width="100%" style="max-width:480px;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,.08);">
+        <tr><td style="background:#1e2d4a;padding:24px 32px;">
+          <span style="color:#fff;font-size:20px;font-weight:900;">GasCap<sup style="color:#f59e0b;font-size:11px;">™</sup></span>
+        </td></tr>
+        <tr><td style="padding:32px;">
+          <p style="margin:0 0 8px;font-size:22px;font-weight:900;color:#1e2d4a;">Reset your password</p>
+          <p style="margin:0 0 24px;font-size:15px;color:#475569;">Hi ${name}, click the button below to set a new password for your GasCap account.</p>
+          <a href="${resetUrl}" style="display:inline-block;background:#f59e0b;color:#fff;font-weight:900;font-size:15px;padding:14px 32px;border-radius:12px;text-decoration:none;">
+            🔑 Reset Password
+          </a>
+          <p style="margin:24px 0 0;font-size:12px;color:#94a3b8;">This link expires in 1 hour. If you didn't request a password reset, you can safely ignore this email — your password won't change.</p>
+          <p style="margin:12px 0 0;font-size:11px;color:#cbd5e1;word-break:break-all;">Or copy this link: ${resetUrl}</p>
+        </td></tr>
+        <tr><td style="background:#f8fafc;padding:16px 32px;border-top:1px solid #e2e8f0;">
+          <p style="margin:0;font-size:11px;color:#94a3b8;">GasCap™ · Know before you go · <a href="https://gascap.app" style="color:#f59e0b;">gascap.app</a></p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`.trim();
+}
+
 export function verificationEmailHtml(name: string, verifyUrl: string): string {
   return `
 <!DOCTYPE html>

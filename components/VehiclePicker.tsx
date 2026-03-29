@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { VehicleSpecs } from '@/lib/vehicleSpecs';
 
 interface MenuItem { text: string; value: string }
@@ -519,6 +519,28 @@ function VinTab({ onSave, onCancel, saving, saveError }: Omit<VehiclePickerProps
   const [odometer,     setOdometer]     = useState('');
   const [epaLoading,   setEpaLoading]   = useState(false);
   const [vehicleSpecs, setVehicleSpecs] = useState<VehicleSpecs | null>(null);
+  const [scanning,     setScanning]     = useState(false);
+  const [scanError,    setScanError]    = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  async function handleVinScan(file: File) {
+    setScanning(true);
+    setScanError('');
+    try {
+      const fd = new FormData();
+      fd.append('image', file);
+      const res  = await fetch('/api/vin/scan', { method: 'POST', body: fd });
+      const data = await res.json() as { vin?: string | null; error?: string };
+      if (!res.ok || data.error) { setScanError(data.error ?? 'Could not read VIN from image.'); return; }
+      if (!data.vin) { setScanError('No VIN detected — try a clearer photo of the VIN plate.'); return; }
+      setVin(data.vin);
+      setScanError('');
+    } catch {
+      setScanError('Network error — try again.');
+    } finally {
+      setScanning(false);
+    }
+  }
 
   // Validate VIN characters as user types
   const vinClean  = vin.trim().toUpperCase();
@@ -605,11 +627,36 @@ function VinTab({ onSave, onCancel, saving, saveError }: Omit<VehiclePickerProps
         Your VIN is on your dashboard (driver's side), door jamb sticker, or registration.
       </p>
 
+      {/* Hidden file input for VIN photo */}
+      <input
+        type="file" accept="image/*" capture="environment"
+        ref={fileInputRef} className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) handleVinScan(f);
+          e.target.value = '';
+        }}
+      />
+
       {/* VIN input */}
       <div>
-        <label className="block text-xs font-semibold text-slate-500 mb-1">
-          Vehicle Identification Number (VIN)
-        </label>
+        <div className="flex items-center justify-between mb-1">
+          <label className="block text-xs font-semibold text-slate-500">
+            Vehicle Identification Number (VIN)
+          </label>
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={scanning}
+            className="flex items-center gap-1 text-[11px] font-bold text-amber-700 bg-amber-50
+                       border border-amber-200 rounded-lg px-2 py-1 hover:bg-amber-100
+                       disabled:opacity-50 transition-colors"
+          >
+            <span>{scanning ? '🔄' : '📷'}</span>
+            <span>{scanning ? 'Scanning…' : 'Scan VIN'}</span>
+          </button>
+        </div>
+        {scanError && <p className="text-[11px] text-red-500 mb-1 font-medium">{scanError}</p>}
         <div className="relative">
           <input
             type="text"

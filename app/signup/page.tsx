@@ -185,6 +185,13 @@ function SignUpForm() {
               ← Continue without an account
             </Link>
           </p>
+
+          <p className="text-center text-[11px] text-slate-400 mt-4 leading-relaxed">
+            By signing up you agree to our{' '}
+            <Link href="/terms"   className="hover:text-amber-600 underline">Terms of Service</Link>
+            {' '}and{' '}
+            <Link href="/privacy" className="hover:text-amber-600 underline">Privacy Policy</Link>.
+          </p>
         </div>
       </div>
     </div>

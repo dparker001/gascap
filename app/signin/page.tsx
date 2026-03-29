@@ -81,7 +81,12 @@ function SignInForm() {
             </div>
 
             <div>
-              <label className="field-label" htmlFor="password">Password</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="field-label !mb-0" htmlFor="password">Password</label>
+                <Link href="/forgot-password" className="text-xs text-amber-600 hover:underline font-semibold">
+                  Forgot password?
+                </Link>
+              </div>
               <input
                 id="password" type="password" autoComplete="current-password"
                 className="input-field" placeholder="••••••••"

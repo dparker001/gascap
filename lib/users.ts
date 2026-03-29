@@ -35,6 +35,9 @@ export interface StoredUser {
   emailVerified?:      boolean;   // undefined / false = not verified, true = verified
   emailVerifyToken?:   string;    // random token sent in email
   emailVerifyExpires?: string;    // ISO timestamp, expires 24h after generation
+  // Password reset
+  passwordResetToken?:   string;  // random token sent in reset email
+  passwordResetExpires?: string;  // ISO timestamp, expires 1h after generation
 }
 
 export type ActivityEvent = 'calc' | 'budget_calc' | 'location_lookup' | 'visit';
@@ -315,4 +318,36 @@ export function verifyEmailToken(token: string): { ok: boolean; userId?: string;
 
 export function resendVerificationToken(userId: string): string {
   return createEmailVerifyToken(userId);
+}
+
+// ── Password reset ─────────────────────────────────────────────────────────
+
+export function createPasswordResetToken(email: string): { token: string; user: StoredUser } | null {
+  const users = read();
+  const idx   = users.findIndex((u) => u.email.toLowerCase() === email.toLowerCase());
+  if (idx === -1) return null;
+  const token   = crypto.randomUUID().replace(/-/g, '');
+  const expires = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hour
+  users[idx].passwordResetToken   = token;
+  users[idx].passwordResetExpires = expires;
+  write(users);
+  return { token, user: users[idx] };
+}
+
+export async function consumePasswordResetToken(
+  token: string,
+  newPassword: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const users = read();
+  const idx   = users.findIndex((u) => u.passwordResetToken === token);
+  if (idx === -1) return { ok: false, error: 'Invalid or expired reset link.' };
+  const user = users[idx];
+  if (user.passwordResetExpires && new Date(user.passwordResetExpires) < new Date()) {
+    return { ok: false, error: 'Reset link has expired. Please request a new one.' };
+  }
+  users[idx].passwordHash          = await bcrypt.hash(newPassword, 12);
+  users[idx].passwordResetToken    = undefined;
+  users[idx].passwordResetExpires  = undefined;
+  write(users);
+  return { ok: true };
 }
