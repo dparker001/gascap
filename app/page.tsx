@@ -111,15 +111,6 @@ export default function Home() {
         <p className="text-[10px] text-slate-300">
           Share your digital business card with anyone, anywhere.
         </p>
-        <a
-          href="https://vnetcard.com/design"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-block text-[11px] font-bold text-amber-500 hover:text-amber-400 transition-colors underline underline-offset-2"
-        >
-          Design your own VNetCard →
-        </a>
-
         {/* Legal links */}
         <div className="flex items-center justify-center gap-4 pt-1">
           <a href="/help"    className="text-[11px] text-slate-300 hover:text-amber-500 transition-colors">Help &amp; Support</a>
