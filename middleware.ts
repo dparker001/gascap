@@ -12,6 +12,7 @@ const BYPASS = [
   '/reset-password',
   '/terms',
   '/privacy',
+  '/help',
   '/api/',
   '/_next/',
   '/favicon',

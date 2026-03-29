@@ -254,6 +254,8 @@ export default function UpgradePage() {
         <p className="text-center text-xs text-slate-400 mt-6">
           <Link href="/" className="hover:text-slate-600 underline">← Back to calculator</Link>
           {' · '}
+          <Link href="/help" className="hover:text-slate-600 underline">Help</Link>
+          {' · '}
           <Link href="/terms" className="hover:text-slate-600 underline">Terms</Link>
           {' · '}
           <Link href="/privacy" className="hover:text-slate-600 underline">Privacy</Link>
