@@ -1,6 +1,9 @@
 /**
- * Email utility — uses Resend if RESEND_API_KEY is set,
- * otherwise logs to console (dev/preview mode).
+ * Email utility — tries Resend first, falls back to SMTP (Gmail),
+ * otherwise logs to console (dev mode).
+ *
+ * Resend env vars: RESEND_API_KEY, RESEND_FROM
+ * SMTP env vars:   SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM
  */
 
 interface MailOptions {
@@ -11,40 +14,62 @@ interface MailOptions {
 }
 
 export async function sendMail(opts: MailOptions): Promise<void> {
-  const apiKey = process.env.RESEND_API_KEY;
-  const from   = process.env.RESEND_FROM ?? 'GasCap™ <onboarding@resend.dev>';
+  const resendKey  = process.env.RESEND_API_KEY;
+  const smtpHost   = process.env.SMTP_HOST;
+  const smtpUser   = process.env.SMTP_USER;
+  const smtpPass   = process.env.SMTP_PASS;
 
-  if (!apiKey) {
-    // Dev fallback — log to console
-    console.log('\n──────────────────────────────────────');
-    console.log('[GasCap Email] DEV MODE — would send:');
-    console.log(`  To:      ${opts.to}`);
-    console.log(`  Subject: ${opts.subject}`);
-    console.log(`  Text:    ${opts.text ?? '(html only)'}`);
-    console.log('──────────────────────────────────────\n');
-    return;
-  }
-
-  const res = await fetch('https://api.resend.com/emails', {
-    method:  'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type':  'application/json',
-    },
-    body: JSON.stringify({
-      from,
-      to:      [opts.to],
+  // ── Option 1: SMTP (Gmail) ─────────────────────────────────────────────
+  if (smtpHost && smtpUser && smtpPass) {
+    const nodemailer = await import('nodemailer');
+    const transporter = nodemailer.default.createTransport({
+      host:   smtpHost,
+      port:   parseInt(process.env.SMTP_PORT ?? '587', 10),
+      secure: parseInt(process.env.SMTP_PORT ?? '587', 10) === 465,
+      auth:   { user: smtpUser, pass: smtpPass },
+    });
+    await transporter.sendMail({
+      from:    process.env.SMTP_FROM ?? `"GasCap™" <${smtpUser}>`,
+      to:      opts.to,
       subject: opts.subject,
       html:    opts.html,
       text:    opts.text,
-    }),
-  });
-
-  if (!res.ok) {
-    const err = await res.text();
-    console.error('[GasCap Email] Resend error:', err);
-    throw new Error(`Email send failed: ${err}`);
+    });
+    return;
   }
+
+  // ── Option 2: Resend API ───────────────────────────────────────────────
+  if (resendKey) {
+    const from = process.env.RESEND_FROM ?? 'GasCap™ <onboarding@resend.dev>';
+    const res  = await fetch('https://api.resend.com/emails', {
+      method:  'POST',
+      headers: {
+        'Authorization': `Bearer ${resendKey}`,
+        'Content-Type':  'application/json',
+      },
+      body: JSON.stringify({
+        from,
+        to:      [opts.to],
+        subject: opts.subject,
+        html:    opts.html,
+        text:    opts.text,
+      }),
+    });
+    if (!res.ok) {
+      const err = await res.text();
+      console.error('[GasCap Email] Resend error:', err);
+      throw new Error(`Email send failed: ${err}`);
+    }
+    return;
+  }
+
+  // ── Option 3: Dev fallback ─────────────────────────────────────────────
+  console.log('\n──────────────────────────────────────');
+  console.log('[GasCap Email] DEV MODE — would send:');
+  console.log(`  To:      ${opts.to}`);
+  console.log(`  Subject: ${opts.subject}`);
+  console.log(`  Text:    ${opts.text ?? '(html only)'}`);
+  console.log('──────────────────────────────────────\n');
 }
 
 export function verificationEmailHtml(name: string, verifyUrl: string): string {
