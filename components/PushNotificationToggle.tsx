@@ -22,7 +22,24 @@ export default function PushNotificationToggle() {
     }).catch(() => {});
   }, []);
 
-  if (!session || perm === 'unsupported') return null;
+  if (!session) return null;
+
+  // Browser / device doesn't support push — show install-as-PWA hint
+  if (perm === 'unsupported') {
+    return (
+      <div className="flex items-start gap-2.5 bg-slate-50 rounded-xl px-3 py-2.5 border border-slate-200">
+        <span className="text-base mt-0.5">🔔</span>
+        <div>
+          <p className="text-xs font-semibold text-slate-600">Weekly Digest notifications</p>
+          <p className="text-[10px] text-slate-400 mt-0.5 leading-relaxed">
+            Install GasCap on your home screen to enable push notifications.{' '}
+            <span className="font-medium">iPhone:</span> Share → Add to Home Screen.{' '}
+            <span className="font-medium">Android:</span> Menu → Install App.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? '';
 
