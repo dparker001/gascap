@@ -10,6 +10,7 @@ import { NextResponse }                     from 'next/server';
 import type Stripe                          from 'stripe';
 import { stripe }                           from '@/lib/stripe';
 import { setUserPlan, findByStripeCustomer, findById } from '@/lib/users';
+import { updateGhlContactPlan }            from '@/lib/ghl';
 
 // Next.js App Router reads the raw body via req.text() — no body-parser config needed
 
@@ -53,6 +54,13 @@ export async function POST(req: Request) {
         customerId:     customerId     ?? undefined,
         subscriptionId: subscriptionId ?? undefined,
       });
+
+      // Sync plan change to GHL CRM
+      const upgradedUser = findById(userId);
+      if (upgradedUser) {
+        updateGhlContactPlan(upgradedUser.email, tier)
+          .catch((err) => console.error('[GHL] plan sync failed:', err));
+      }
 
       console.info(`[GasCap webhook] Upgraded user ${userId} to ${tier}`);
       break;
@@ -101,6 +109,8 @@ export async function POST(req: Request) {
       const user = findByStripeCustomer(customerId);
       if (user) {
         setUserPlan(user.id, 'free');
+        updateGhlContactPlan(user.email, 'free')
+          .catch((err) => console.error('[GHL] plan revert sync failed:', err));
         console.info(`[GasCap webhook] Reverted user ${user.id} to Free (${event.type})`);
       }
       break;

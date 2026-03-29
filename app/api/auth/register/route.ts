@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createUser, findByEmail, findByReferralCode, setReferredBy, createEmailVerifyToken } from '@/lib/users';
 import { sendMail, verificationEmailHtml } from '@/lib/email';
+import { upsertGhlContact } from '@/lib/ghl';
 
 function getBaseUrl(req: Request): string {
   const nextAuthUrl    = process.env.NEXTAUTH_URL;
@@ -60,6 +61,15 @@ export async function POST(req: Request) {
       console.error('[GasCap] Failed to send verification email:', emailErr);
       // Don't fail registration — user can still sign in and request another
     }
+
+    // Sync to GHL CRM (non-blocking — don't fail registration if GHL is down)
+    upsertGhlContact({
+      name:    user.name,
+      email:   user.email,
+      plan:    'free',
+      isBeta:  false,
+      source:  'GasCap Signup',
+    }).catch((err) => console.error('[GHL] signup sync failed:', err));
 
     return NextResponse.json({ id: user.id, email: user.email, name: user.name }, { status: 201 });
   } catch (err) {
