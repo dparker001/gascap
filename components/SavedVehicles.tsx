@@ -556,8 +556,7 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
 
           {/* Upgrade prompt for free users at limit */}
           {plan === 'free' && atLimit && (
-            <a
-              href="/upgrade"
+            <a href="/upgrade"
               className="mt-3 flex items-start gap-2 bg-amber-50 border border-amber-200
                          rounded-xl px-3 py-2.5 hover:bg-amber-100 transition-colors group"
             >
@@ -570,6 +569,35 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
                   $4.99/mo · Manual entry · Auto spec lookup →
                 </p>
               </div>
+            </a>
+          )}
+
+          {/* Fleet upgrade wall for Pro users at 5-vehicle limit */}
+          {plan === 'pro' && atLimit && (
+            <a href="/upgrade#fleet"
+              className="mt-3 flex items-start gap-2 bg-blue-50 border border-blue-200
+                         rounded-xl px-3 py-2.5 hover:bg-blue-100 transition-colors group"
+            >
+              <LockIcon className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-xs font-semibold text-blue-800 group-hover:text-blue-900">
+                  Upgrade to Fleet — unlimited vehicles
+                </p>
+                <p className="text-[11px] text-blue-600 mt-0.5">
+                  $19.99/mo · Unlimited vehicles · Up to 10 drivers →
+                </p>
+              </div>
+            </a>
+          )}
+
+          {/* "1 slot remaining" nudge for Pro users at 4/5 vehicles */}
+          {plan === 'pro' && !atLimit && vehicles.length === limit - 1 && (
+            <a href="/upgrade#fleet"
+              className="mt-2 flex items-center gap-1.5 text-[11px] text-blue-500
+                         hover:text-blue-700 transition-colors"
+            >
+              <span>⚠️</span>
+              <span>1 vehicle slot remaining — <span className="font-bold underline">upgrade to Fleet for unlimited</span></span>
             </a>
           )}
 
