@@ -10,6 +10,7 @@ import path from 'path';
 import type { StoredUser } from '@/lib/users';
 import { grantBetaTrial, revokeBetaTrial } from '@/lib/users';
 import { upsertGhlContact, removeGhlTags } from '@/lib/ghl';
+import { getAllSubs } from '@/lib/pushSubscriptions';
 
 const DATA_FILE = path.join(process.cwd(), 'data', 'users.json');
 
@@ -35,6 +36,8 @@ function auth(req: Request): boolean {
 
 export async function GET(req: Request) {
   if (!auth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const subs       = getAllSubs();
+  const subscribedUserIds = new Set(subs.map((s) => s.userId));
   const users = read().map((u) => ({
     id:               u.id,
     name:             u.name,
@@ -46,6 +49,7 @@ export async function GET(req: Request) {
     stripeCustomerId: u.stripeCustomerId ?? null,
     isBetaTester:     u.isBetaTester    ?? false,
     betaProExpiry:    u.betaProExpiry   ?? null,
+    pushSubscribed:   subscribedUserIds.has(u.id),
   }));
   return NextResponse.json({ users, total: users.length });
 }

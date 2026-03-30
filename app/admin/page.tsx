@@ -23,6 +23,7 @@ interface AdminUser {
   stripeCustomerId: string | null;
   isBetaTester?:    boolean;
   betaProExpiry?:   string | null;
+  pushSubscribed?:  boolean;
 }
 
 const PLAN_COLORS = {
@@ -241,11 +242,12 @@ export default function AdminPage() {
   );
 
   const stats = {
-    total: users.length,
-    free:  users.filter((u) => u.plan === 'free').length,
-    pro:   users.filter((u) => u.plan === 'pro').length,
-    fleet: users.filter((u) => u.plan === 'fleet').length,
+    total:      users.length,
+    free:       users.filter((u) => u.plan === 'free').length,
+    pro:        users.filter((u) => u.plan === 'pro').length,
+    fleet:      users.filter((u) => u.plan === 'fleet').length,
     unverified: users.filter((u) => !u.emailVerified).length,
+    push:       users.filter((u) => u.pushSubscribed).length,
   };
 
   if (!authed) {
@@ -293,13 +295,14 @@ export default function AdminPage() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+        <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
           {[
-            { label: 'Total Users', value: stats.total, color: 'text-navy-700' },
-            { label: 'Free',        value: stats.free,  color: 'text-slate-600' },
-            { label: 'Pro',         value: stats.pro,   color: 'text-amber-600' },
-            { label: 'Fleet',       value: stats.fleet, color: 'text-blue-600' },
+            { label: 'Total Users', value: stats.total,      color: 'text-navy-700' },
+            { label: 'Free',        value: stats.free,       color: 'text-slate-600' },
+            { label: 'Pro',         value: stats.pro,        color: 'text-amber-600' },
+            { label: 'Fleet',       value: stats.fleet,      color: 'text-blue-600' },
             { label: 'Unverified',  value: stats.unverified, color: 'text-red-500' },
+            { label: '🔔 Push',     value: stats.push,       color: 'text-blue-600' },
           ].map((s) => (
             <div key={s.label} className="bg-white rounded-xl p-3 text-center shadow-sm">
               <p className={`text-2xl font-black ${s.color}`}>{s.value}</p>
@@ -534,6 +537,11 @@ export default function AdminPage() {
                       {!u.emailVerified && (
                         <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-red-100 text-red-600">
                           UNVERIFIED
+                        </span>
+                      )}
+                      {u.pushSubscribed && (
+                        <span title="Push notifications enabled" className="text-[10px] font-black px-2 py-0.5 rounded-full bg-blue-100 text-blue-600">
+                          🔔 PUSH
                         </span>
                       )}
                     </div>
