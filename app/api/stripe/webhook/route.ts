@@ -11,6 +11,13 @@ import type Stripe                          from 'stripe';
 import { stripe }                           from '@/lib/stripe';
 import { setUserPlan, findByStripeCustomer, findById } from '@/lib/users';
 import { updateGhlContactPlan }            from '@/lib/ghl';
+import { sendMail }                        from '@/lib/email';
+
+/** Fire-and-forget admin notification */
+function sendAdminMail(opts: { subject: string; html: string; text: string }) {
+  sendMail({ to: 'hello@gascap.app', ...opts })
+    .catch((e) => console.error('[GasCap] Admin notify failed:', e));
+}
 
 // Next.js App Router reads the raw body via req.text() — no body-parser config needed
 
@@ -55,11 +62,23 @@ export async function POST(req: Request) {
         subscriptionId: subscriptionId ?? undefined,
       });
 
-      // Sync plan change to GHL CRM
+      // Sync plan change to GHL CRM + notify admin
       const upgradedUser = findById(userId);
       if (upgradedUser) {
         updateGhlContactPlan(upgradedUser.email, tier)
           .catch((err) => console.error('[GHL] plan sync failed:', err));
+
+        const tierLabel = tier === 'fleet' ? 'Fleet ($19.99/mo)' : 'Pro ($4.99/mo)';
+        sendAdminMail({
+          subject: `⬆️ GasCap™ upgrade: ${upgradedUser.name} → ${tier.toUpperCase()}`,
+          html: `<div style="font-family:system-ui,sans-serif;max-width:480px;">
+            <p style="font-size:22px;margin:0 0 8px;">⬆️ Plan upgrade</p>
+            <p style="font-size:15px;color:#334155;margin:0 0 4px;"><strong>${upgradedUser.name}</strong> upgraded to <strong>${tierLabel}</strong></p>
+            <p style="font-size:14px;color:#64748b;margin:0 0 16px;">${upgradedUser.email}</p>
+            <p style="font-size:12px;color:#94a3b8;">${new Date().toLocaleString('en-US',{timeZone:'America/New_York'})} ET</p>
+          </div>`,
+          text: `GasCap upgrade: ${upgradedUser.name} <${upgradedUser.email}> → ${tierLabel}`,
+        });
       }
 
       console.info(`[GasCap webhook] Upgraded user ${userId} to ${tier}`);
@@ -111,6 +130,18 @@ export async function POST(req: Request) {
         setUserPlan(user.id, 'free');
         updateGhlContactPlan(user.email, 'free')
           .catch((err) => console.error('[GHL] plan revert sync failed:', err));
+
+        sendAdminMail({
+          subject: `📉 GasCap™ cancellation: ${user.name} → Free`,
+          html: `<div style="font-family:system-ui,sans-serif;max-width:480px;">
+            <p style="font-size:22px;margin:0 0 8px;">📉 Subscription ended</p>
+            <p style="font-size:15px;color:#334155;margin:0 0 4px;"><strong>${user.name}</strong> reverted to Free</p>
+            <p style="font-size:14px;color:#64748b;margin:0 0 16px;">${user.email}</p>
+            <p style="font-size:12px;color:#94a3b8;">Event: ${event.type} · ${new Date().toLocaleString('en-US',{timeZone:'America/New_York'})} ET</p>
+          </div>`,
+          text: `GasCap cancellation: ${user.name} <${user.email}> reverted to Free (${event.type})`,
+        });
+
         console.info(`[GasCap webhook] Reverted user ${user.id} to Free (${event.type})`);
       }
       break;

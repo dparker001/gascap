@@ -62,6 +62,19 @@ export async function POST(req: Request) {
       // Don't fail registration — user can still sign in and request another
     }
 
+    // Notify admin of new signup (non-blocking)
+    sendMail({
+      to:      'hello@gascap.app',
+      subject: `🎉 New GasCap™ signup: ${user.name}`,
+      html: `<div style="font-family:system-ui,sans-serif;max-width:480px;">
+        <p style="font-size:22px;margin:0 0 8px;">🎉 New signup</p>
+        <p style="font-size:15px;color:#334155;margin:0 0 4px;"><strong>${user.name}</strong></p>
+        <p style="font-size:14px;color:#64748b;margin:0 0 16px;">${user.email}</p>
+        <p style="font-size:12px;color:#94a3b8;">Signed up ${new Date().toLocaleString('en-US',{timeZone:'America/New_York'})} ET · Plan: Free</p>
+      </div>`,
+      text: `New GasCap signup: ${user.name} <${user.email}> — Free plan`,
+    }).catch((e) => console.error('[GasCap] Admin signup notify failed:', e));
+
     // Sync to GHL CRM (non-blocking — don't fail registration if GHL is down)
     upsertGhlContact({
       name:    user.name,
