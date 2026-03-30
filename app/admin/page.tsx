@@ -59,10 +59,14 @@ export default function AdminPage() {
   const [search,    setSearch]    = useState('');
   const [msg,       setMsg]       = useState('');
   const [savedPw,   setSavedPw]   = useState('');
-  const [pushMsg,   setPushMsg]   = useState('');
-  const [pushLoading, setPushLoading] = useState<'all' | 'user' | null>(null);
-  const [pushEmail, setPushEmail] = useState('');
-  const [subCount,  setSubCount]  = useState<number | null>(null);
+  const [pushMsg,        setPushMsg]        = useState('');
+  const [pushLoading,    setPushLoading]    = useState<'all' | 'user' | 'broadcast' | null>(null);
+  const [pushEmail,      setPushEmail]      = useState('');
+  const [subCount,       setSubCount]       = useState<number | null>(null);
+  const [bcastTitle,     setBcastTitle]     = useState('');
+  const [bcastBody,      setBcastBody]      = useState('');
+  const [bcastUrl,       setBcastUrl]       = useState('');
+  const [bcastMsg,       setBcastMsg]       = useState('');
   const [feedback,  setFeedback]  = useState<FeedbackItem[]>([]);
   const [fbOpen,    setFbOpen]    = useState(false);
 
@@ -198,6 +202,39 @@ export default function AdminPage() {
     setFeedback((prev) => prev.filter((f) => f.id !== id));
   }
 
+  async function loadSubCount() {
+    const res = await fetch('/api/push/broadcast', { headers: { 'x-admin-password': savedPw } });
+    if (res.ok) {
+      const data = await res.json() as { count: number };
+      setSubCount(data.count);
+    }
+  }
+
+  async function handleBroadcast() {
+    if (!bcastTitle.trim() || !bcastBody.trim()) {
+      setBcastMsg('❌ Title and message are required.');
+      return;
+    }
+    setPushLoading('broadcast');
+    setBcastMsg('');
+    try {
+      const res  = await fetch('/api/push/broadcast', {
+        method:  'POST',
+        headers: { 'x-admin-password': savedPw, 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ title: bcastTitle, body: bcastBody, url: bcastUrl || '/' }),
+      });
+      const data = await res.json() as { sent?: number; skipped?: number; error?: string };
+      if (data.error) { setBcastMsg(`❌ ${data.error}`); }
+      else {
+        setBcastMsg(`✅ Sent to ${data.sent ?? 0} subscriber(s). ${data.skipped ?? 0} skipped.`);
+        setBcastTitle('');
+        setBcastBody('');
+        setBcastUrl('');
+      }
+    } catch { setBcastMsg('❌ Network error.'); }
+    finally { setPushLoading(null); }
+  }
+
   const filtered = users.filter((u) =>
     u.name.toLowerCase().includes(search.toLowerCase()) ||
     u.email.toLowerCase().includes(search.toLowerCase()),
@@ -284,8 +321,17 @@ export default function AdminPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-black text-navy-700">🔔 Push Notifications</p>
-              <p className="text-xs text-slate-400 mt-0.5">Send weekly fuel digest to subscribers</p>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Send to subscribers
+                {subCount !== null && <span className="ml-1 font-bold text-amber-600">· {subCount} subscribed</span>}
+              </p>
             </div>
+            <button
+              onClick={loadSubCount}
+              className="text-xs text-slate-400 hover:text-amber-600 transition-colors"
+            >
+              Refresh count
+            </button>
           </div>
 
           {pushMsg && (
@@ -336,6 +382,56 @@ export default function AdminPage() {
             <strong>Note:</strong> Users must have opted in to push notifications from the Share tab in the app.
             Sending to a user with no active subscription will return a warning.
           </p>
+
+          {/* Custom Broadcast */}
+          <div className="border-t border-slate-100 pt-4 space-y-3">
+            <p className="text-xs font-black text-slate-600 uppercase tracking-wider">📣 Custom Broadcast</p>
+
+            {bcastMsg && (
+              <div className={`rounded-xl px-4 py-2 text-sm flex justify-between ${
+                bcastMsg.startsWith('✅') ? 'bg-green-50 border border-green-200 text-green-700'
+                : 'bg-red-50 border border-red-200 text-red-600'
+              }`}>
+                <span>{bcastMsg}</span>
+                <button onClick={() => setBcastMsg('')} className="ml-2 opacity-50 hover:opacity-100">×</button>
+              </div>
+            )}
+
+            <input
+              type="text"
+              placeholder="Notification title (e.g. ⛽ Gas prices just dropped!)"
+              value={bcastTitle}
+              onChange={(e) => setBcastTitle(e.target.value)}
+              maxLength={80}
+              className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm
+                         focus:outline-none focus:ring-2 focus:ring-amber-400 bg-slate-50"
+            />
+            <textarea
+              placeholder="Message body (e.g. Prices near you are down 12¢ — good time to fill up!)"
+              value={bcastBody}
+              onChange={(e) => setBcastBody(e.target.value)}
+              maxLength={200}
+              rows={3}
+              className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm
+                         focus:outline-none focus:ring-2 focus:ring-amber-400 bg-slate-50 resize-none"
+            />
+            <input
+              type="text"
+              placeholder="Link URL (optional — defaults to homepage)"
+              value={bcastUrl}
+              onChange={(e) => setBcastUrl(e.target.value)}
+              className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm
+                         focus:outline-none focus:ring-2 focus:ring-amber-400 bg-slate-50"
+            />
+            <button
+              onClick={handleBroadcast}
+              disabled={pushLoading !== null || !bcastTitle.trim() || !bcastBody.trim()}
+              className="w-full py-2.5 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-white
+                         text-sm font-black transition-colors disabled:opacity-50"
+            >
+              {pushLoading === 'broadcast' ? 'Sending…' : '🚀 Send to all subscribers'}
+            </button>
+          </div>
         </div>
 
         {/* Feedback Inbox */}
