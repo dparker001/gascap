@@ -41,6 +41,9 @@ next-env.d.ts
 stripe-cli
 stripe/stripe
 
+# next-pwa generated worker files (regenerated on every build)
+public/worker-*.js
+
 # Claude AI assistant files
 .claude/
 memory/

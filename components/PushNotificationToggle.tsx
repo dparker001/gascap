@@ -7,9 +7,10 @@ type PermState = 'default' | 'granted' | 'denied' | 'unsupported';
 
 export default function PushNotificationToggle() {
   const { data: session } = useSession();
-  const [perm,    setPerm]    = useState<PermState>('unsupported');
-  const [subbed,  setSubbed]  = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [perm,     setPerm]    = useState<PermState>('unsupported');
+  const [subbed,   setSubbed]  = useState(false);
+  const [loading,  setLoading] = useState(false);
+  const [subError, setSubError] = useState('');
 
   useEffect(() => {
     if (typeof window === 'undefined' || !('Notification' in window) || !('serviceWorker' in navigator)) return;
@@ -52,7 +53,13 @@ export default function PushNotificationToggle() {
 
   async function handleEnable() {
     setLoading(true);
+    setSubError('');
     try {
+      if (!vapidKey) {
+        setSubError('Push notifications are not configured yet. Try again soon.');
+        return;
+      }
+
       const permission = await Notification.requestPermission();
       setPerm(permission as PermState);
       if (permission !== 'granted') return;
@@ -63,14 +70,29 @@ export default function PushNotificationToggle() {
         applicationServerKey: urlBase64ToUint8Array(vapidKey).buffer as ArrayBuffer,
       });
 
-      await fetch('/api/push/subscribe', {
+      const res = await fetch('/api/push/subscribe', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify(sub.toJSON()),
       });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(data.error ?? `Server error ${res.status}`);
+      }
+
       setSubbed(true);
     } catch (err) {
       console.error('Push subscribe error:', err);
+      const msg = err instanceof Error ? err.message : String(err);
+      // DOMException from pushManager.subscribe → likely VAPID or SW issue
+      setSubError(
+        msg.toLowerCase().includes('network') || msg.toLowerCase().includes('fetch')
+          ? 'Network error — check your connection and try again.'
+          : msg.toLowerCase().includes('key') || msg.toLowerCase().includes('ecdsa')
+          ? 'Push setup error. Please try reinstalling the app to your home screen.'
+          : 'Could not enable notifications. Please try again.',
+      );
     } finally {
       setLoading(false);
     }
@@ -103,30 +125,35 @@ export default function PushNotificationToggle() {
   }
 
   return (
-    <div className="flex items-center justify-between bg-slate-50 rounded-xl px-3 py-3 border border-slate-200">
-      <div className="flex items-start gap-2.5">
-        <span className="text-lg">{subbed ? '🔔' : '🔕'}</span>
-        <div>
-          <p className="text-sm font-bold text-slate-700">Weekly Digest</p>
-          <p className="text-[10px] text-slate-400 mt-0.5">
-            {subbed
-              ? 'You\'ll get a weekly summary of your fuel spending.'
-              : 'Get a weekly summary of fuel spending & MPG.'}
-          </p>
+    <div>
+      <div className="flex items-center justify-between bg-slate-50 rounded-xl px-3 py-3 border border-slate-200">
+        <div className="flex items-start gap-2.5">
+          <span className="text-lg">{subbed ? '🔔' : '🔕'}</span>
+          <div>
+            <p className="text-sm font-bold text-slate-700">Weekly Digest</p>
+            <p className="text-[10px] text-slate-400 mt-0.5">
+              {subbed
+                ? 'You\'ll get a weekly summary of your fuel spending.'
+                : 'Get a weekly summary of fuel spending & MPG.'}
+            </p>
+          </div>
         </div>
+        <button
+          onClick={subbed ? handleDisable : handleEnable}
+          disabled={loading}
+          className={[
+            'ml-3 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors disabled:opacity-50',
+            subbed
+              ? 'bg-slate-200 text-slate-600 hover:bg-red-100 hover:text-red-600'
+              : 'bg-amber-500 text-white hover:bg-amber-400',
+          ].join(' ')}
+        >
+          {loading ? '…' : subbed ? 'Turn off' : 'Enable'}
+        </button>
       </div>
-      <button
-        onClick={subbed ? handleDisable : handleEnable}
-        disabled={loading}
-        className={[
-          'ml-3 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors disabled:opacity-50',
-          subbed
-            ? 'bg-slate-200 text-slate-600 hover:bg-red-100 hover:text-red-600'
-            : 'bg-amber-500 text-white hover:bg-amber-400',
-        ].join(' ')}
-      >
-        {loading ? '…' : subbed ? 'Turn off' : 'Enable'}
-      </button>
+      {subError && (
+        <p className="text-[10px] text-red-500 mt-1.5 px-1 leading-relaxed">{subError}</p>
+      )}
     </div>
   );
 }

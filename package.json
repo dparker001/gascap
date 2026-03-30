@@ -25,6 +25,7 @@
     "pdfkit": "^0.18.0",
     "react": "^18",
     "react-dom": "^18",
+    "resend": "^6.9.4",
     "stripe": "^21.0.1",
     "web-push": "^3.6.7"
   },
