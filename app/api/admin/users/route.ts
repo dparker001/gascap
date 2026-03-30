@@ -1,13 +1,14 @@
 /**
  * Admin API — protected by ADMIN_PASSWORD env var
- * GET    /api/admin/users         — list all users
- * DELETE /api/admin/users?id=xxx  — delete a user
- * PATCH  /api/admin/users?id=xxx  — update user plan or emailVerified
+ * GET    /api/admin/users              — list all users
+ * DELETE /api/admin/users?id=xxx       — delete a user
+ * PATCH  /api/admin/users?id=xxx       — update plan, emailVerified, or betaProExpiry
  */
 import { NextResponse } from 'next/server';
 import fs   from 'fs';
 import path from 'path';
 import type { StoredUser } from '@/lib/users';
+import { grantBetaTrial, revokeBetaTrial } from '@/lib/users';
 
 const DATA_FILE = path.join(process.cwd(), 'data', 'users.json');
 
@@ -34,14 +35,16 @@ function auth(req: Request): boolean {
 export async function GET(req: Request) {
   if (!auth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const users = read().map((u) => ({
-    id:            u.id,
-    name:          u.name,
-    email:         u.email,
-    plan:          u.plan,
-    emailVerified: u.emailVerified ?? false,
-    createdAt:     u.createdAt,
-    referralCount: u.referralCount ?? 0,
+    id:               u.id,
+    name:             u.name,
+    email:            u.email,
+    plan:             u.plan,
+    emailVerified:    u.emailVerified ?? false,
+    createdAt:        u.createdAt,
+    referralCount:    u.referralCount ?? 0,
     stripeCustomerId: u.stripeCustomerId ?? null,
+    isBetaTester:     u.isBetaTester    ?? false,
+    betaProExpiry:    u.betaProExpiry   ?? null,
   }));
   return NextResponse.json({ users, total: users.length });
 }
@@ -59,10 +62,24 @@ export async function PATCH(req: Request) {
   if (!auth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const id = new URL(req.url).searchParams.get('id');
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
-  const body = await req.json() as { plan?: string; emailVerified?: boolean };
+  const body = await req.json() as {
+    plan?: string; emailVerified?: boolean;
+    grantBetaTrial?: number;  // days (default 30)
+    revokeBetaTrial?: boolean;
+  };
   const rows = read();
   const idx  = rows.findIndex((u) => u.id === id);
   if (idx === -1) return NextResponse.json({ error: 'User not found' }, { status: 404 });
+
+  if (body.grantBetaTrial !== undefined) {
+    grantBetaTrial(id, body.grantBetaTrial || 30);
+    return NextResponse.json({ ok: true });
+  }
+  if (body.revokeBetaTrial) {
+    revokeBetaTrial(id);
+    return NextResponse.json({ ok: true });
+  }
+
   if (body.plan          !== undefined) rows[idx].plan          = body.plan as StoredUser['plan'];
   if (body.emailVerified !== undefined) rows[idx].emailVerified = body.emailVerified;
   write(rows);

@@ -31,6 +31,9 @@ export interface StoredUser {
   referralCount?:         number;   // how many users signed up & verified with this code (capped at 10)
   referralProMonthsEarned?: number; // months of Pro earned via referrals (1 per referral, max 10)
   referralRewardCredited?:  boolean; // true once this user's signup has been credited to their referrer
+  // Beta trial
+  isBetaTester?:   boolean;  // marked as a beta tester by admin
+  betaProExpiry?:  string;   // ISO date — when the beta Pro trial ends; null/undefined = no trial
   // Email verification
   emailVerified?:      boolean;   // undefined / false = not verified, true = verified
   emailVerifyToken?:   string;    // random token sent in email
@@ -119,6 +122,48 @@ export function setUserPlan(
 
 export function findByStripeCustomer(customerId: string): StoredUser | undefined {
   return read().find((u) => u.stripeCustomerId === customerId);
+}
+
+// ── Beta trial management ─────────────────────────────────────────────────
+
+/** Grant a beta Pro trial for `days` days (default 30). Sets plan to Pro + expiry. */
+export function grantBetaTrial(userId: string, days = 30): StoredUser | null {
+  const users = read();
+  const idx   = users.findIndex((u) => u.id === userId);
+  if (idx === -1) return null;
+  const expiry = new Date();
+  expiry.setDate(expiry.getDate() + days);
+  users[idx].plan          = 'pro';
+  users[idx].isBetaTester  = true;
+  users[idx].betaProExpiry = expiry.toISOString();
+  write(users);
+  return users[idx];
+}
+
+/** Revoke a beta trial early (e.g. manual admin action). */
+export function revokeBetaTrial(userId: string): void {
+  const users = read();
+  const idx   = users.findIndex((u) => u.id === userId);
+  if (idx === -1) return;
+  users[idx].plan          = 'free';
+  users[idx].betaProExpiry = undefined;
+  write(users);
+}
+
+/** Return all users whose betaProExpiry has passed and plan is still 'pro' from trial. */
+export function getExpiredBetaUsers(): StoredUser[] {
+  const now = new Date();
+  return read().filter(
+    (u) => u.isBetaTester && u.betaProExpiry && new Date(u.betaProExpiry) < now && u.plan === 'pro',
+  );
+}
+
+/** Return all active beta testers (pro, not yet expired). */
+export function getActiveBetaUsers(): StoredUser[] {
+  const now = new Date();
+  return read().filter(
+    (u) => u.isBetaTester && u.betaProExpiry && new Date(u.betaProExpiry) >= now && u.plan === 'pro',
+  );
 }
 
 // ── Activity + badge tracking ──────────────────────────────────────────────

@@ -21,6 +21,8 @@ interface AdminUser {
   createdAt:        string;
   referralCount:    number;
   stripeCustomerId: string | null;
+  isBetaTester?:    boolean;
+  betaProExpiry?:   string | null;
 }
 
 const PLAN_COLORS = {
@@ -159,6 +161,27 @@ export default function AdminPage() {
       else { setPushMsg(`✅ Digest sent to ${user.email}.`); }
     } catch { setPushMsg('❌ Network error.'); }
     finally { setPushLoading(null); }
+  }
+
+  async function handleBetaGrant(user: AdminUser) {
+    await fetch(`/api/admin/users?id=${user.id}`, {
+      method:  'PATCH',
+      headers: { 'x-admin-password': savedPw, 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ grantBetaTrial: 30 }),
+    });
+    setMsg(`✅ 30-day Pro trial granted to ${user.email}`);
+    await load(savedPw);
+  }
+
+  async function handleBetaRevoke(user: AdminUser) {
+    if (!confirm(`Revoke beta trial for ${user.name}? They will revert to Free.`)) return;
+    await fetch(`/api/admin/users?id=${user.id}`, {
+      method:  'PATCH',
+      headers: { 'x-admin-password': savedPw, 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ revokeBetaTrial: true }),
+    });
+    setMsg(`Revoked beta trial for ${user.email}`);
+    await load(savedPw);
   }
 
   async function handleFbRead(id: string) {
@@ -447,6 +470,31 @@ export default function AdminPage() {
                       >
                         ✓ Verify
                       </button>
+                    )}
+
+                    {/* Beta trial button */}
+                    {!u.isBetaTester ? (
+                      <button
+                        onClick={() => handleBetaGrant(u)}
+                        className="text-xs px-2 py-1 rounded-lg bg-purple-100 text-purple-700 hover:bg-purple-200 font-semibold transition-colors whitespace-nowrap"
+                      >
+                        🧪 Beta Trial
+                      </button>
+                    ) : (
+                      <span className="text-[10px] px-2 py-1 rounded-lg bg-purple-50 text-purple-600 font-semibold border border-purple-200 whitespace-nowrap">
+                        🧪 {u.betaProExpiry
+                          ? (() => {
+                              const days = Math.ceil((new Date(u.betaProExpiry).getTime() - Date.now()) / 86400_000);
+                              return days > 0 ? `${days}d left` : 'Expired';
+                            })()
+                          : 'Beta'}
+                        {' '}
+                        <button
+                          onClick={() => handleBetaRevoke(u)}
+                          className="text-purple-400 hover:text-red-500 ml-0.5"
+                          title="Revoke trial"
+                        >×</button>
+                      </span>
                     )}
 
                     {/* Delete button */}
