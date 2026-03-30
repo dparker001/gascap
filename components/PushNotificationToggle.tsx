@@ -31,9 +31,9 @@ export default function PushNotificationToggle() {
       <div className="flex items-start gap-2.5 bg-slate-50 rounded-xl px-3 py-2.5 border border-slate-200">
         <span className="text-base mt-0.5">🔔</span>
         <div>
-          <p className="text-xs font-semibold text-slate-600">Weekly Digest notifications</p>
+          <p className="text-xs font-semibold text-slate-600">Push notifications</p>
           <p className="text-[10px] text-slate-400 mt-0.5 leading-relaxed">
-            Install GasCap on your home screen to enable push notifications.{' '}
+            Install GasCap on your home screen to enable push notifications (gas price alerts, weekly digest &amp; more).{' '}
             <span className="font-medium">iPhone:</span> Share → Add to Home Screen.{' '}
             <span className="font-medium">Android:</span> Menu → Install App.
           </p>
@@ -111,7 +111,7 @@ export default function PushNotificationToggle() {
         <span className="text-base mt-0.5">🔕</span>
         <div>
           <p className="text-xs font-semibold text-slate-600">Push notifications blocked</p>
-          <p className="text-[10px] text-slate-400 mt-0.5">Enable them in your browser settings to receive weekly digests.</p>
+          <p className="text-[10px] text-slate-400 mt-0.5">Enable them in your browser or device settings to receive gas price alerts and updates.</p>
         </div>
       </div>
     );
@@ -123,11 +123,11 @@ export default function PushNotificationToggle() {
         <div className="flex items-start gap-2.5">
           <span className="text-lg">{subbed ? '🔔' : '🔕'}</span>
           <div>
-            <p className="text-sm font-bold text-slate-700">Weekly Digest</p>
+            <p className="text-sm font-bold text-slate-700">Push Notifications</p>
             <p className="text-[10px] text-slate-400 mt-0.5">
               {subbed
-                ? 'You\'ll get a weekly summary of your fuel spending.'
-                : 'Get a weekly summary of fuel spending & MPG.'}
+                ? 'Enabled — you\'ll receive gas price alerts, weekly digests & updates.'
+                : 'Enable gas price alerts, weekly digests & app updates.'}
             </p>
           </div>
         </div>
