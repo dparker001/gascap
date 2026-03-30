@@ -67,6 +67,7 @@ export default function AdminPage() {
   const [bcastTitle,     setBcastTitle]     = useState('');
   const [bcastBody,      setBcastBody]      = useState('');
   const [bcastUrl,       setBcastUrl]       = useState('');
+  const [bcastEmail,     setBcastEmail]     = useState('');
   const [bcastMsg,       setBcastMsg]       = useState('');
   const [feedback,  setFeedback]  = useState<FeedbackItem[]>([]);
   const [fbOpen,    setFbOpen]    = useState(false);
@@ -222,7 +223,7 @@ export default function AdminPage() {
       const res  = await fetch('/api/push/broadcast', {
         method:  'POST',
         headers: { 'x-admin-password': savedPw, 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ title: bcastTitle, body: bcastBody, url: bcastUrl || '/' }),
+        body:    JSON.stringify({ title: bcastTitle, body: bcastBody, url: bcastUrl || '/', ...(bcastEmail.trim() ? { email: bcastEmail.trim() } : {}) }),
       });
       const data = await res.json() as { sent?: number; skipped?: number; error?: string };
       if (data.error) { setBcastMsg(`❌ ${data.error}`); }
@@ -231,6 +232,7 @@ export default function AdminPage() {
         setBcastTitle('');
         setBcastBody('');
         setBcastUrl('');
+        setBcastEmail('');
       }
     } catch { setBcastMsg('❌ Network error.'); }
     finally { setPushLoading(null); }
@@ -426,13 +428,37 @@ export default function AdminPage() {
               className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm
                          focus:outline-none focus:ring-2 focus:ring-amber-400 bg-slate-50"
             />
+            <div className="flex items-center gap-2">
+              <div className="flex-1 relative">
+                <input
+                  type="email"
+                  placeholder="Send to one user (email) — leave blank for all"
+                  value={bcastEmail}
+                  onChange={(e) => setBcastEmail(e.target.value)}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm
+                             focus:outline-none focus:ring-2 focus:ring-amber-400 bg-slate-50"
+                />
+              </div>
+              {bcastEmail.trim() && (
+                <button
+                  onClick={() => setBcastEmail('')}
+                  className="text-xs text-slate-400 hover:text-red-500 transition-colors whitespace-nowrap"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
             <button
               onClick={handleBroadcast}
               disabled={pushLoading !== null || !bcastTitle.trim() || !bcastBody.trim()}
               className="w-full py-2.5 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-white
                          text-sm font-black transition-colors disabled:opacity-50"
             >
-              {pushLoading === 'broadcast' ? 'Sending…' : '🚀 Send to all subscribers'}
+              {pushLoading === 'broadcast'
+                ? 'Sending…'
+                : bcastEmail.trim()
+                  ? `🔔 Send to ${bcastEmail}`
+                  : '🚀 Send to all subscribers'}
             </button>
           </div>
         </div>

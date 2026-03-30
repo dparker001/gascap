@@ -1,6 +1,7 @@
-import { NextResponse } from 'next/server';
-import { getAllSubs }   from '@/lib/pushSubscriptions';
-import webpush          from 'web-push';
+import { NextResponse }       from 'next/server';
+import { getAllSubs, getSubs } from '@/lib/pushSubscriptions';
+import { findByEmail }         from '@/lib/users';
+import webpush                 from 'web-push';
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? '';
 
@@ -31,16 +32,27 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Push not configured — check VAPID env vars.' }, { status: 503 });
   }
 
-  const { title, body, url } = await req.json() as {
-    title?: string; body?: string; url?: string;
+  const { title, body, url, email: targetEmail } = await req.json() as {
+    title?: string; body?: string; url?: string; email?: string;
   };
 
   if (!title?.trim()) return NextResponse.json({ error: 'Title is required.' }, { status: 400 });
   if (!body?.trim())  return NextResponse.json({ error: 'Message body is required.' }, { status: 400 });
 
-  const subs = getAllSubs();
-  if (subs.length === 0) {
-    return NextResponse.json({ sent: 0, skipped: 0, message: 'No subscribers found.' });
+  // Individual or broadcast
+  let subs;
+  if (targetEmail?.trim()) {
+    const user = findByEmail(targetEmail.trim());
+    if (!user) return NextResponse.json({ error: `No user found with email: ${targetEmail}` }, { status: 404 });
+    subs = getSubs(user.id);
+    if (subs.length === 0) {
+      return NextResponse.json({ sent: 0, skipped: 0, message: `${targetEmail} has no active push subscription.` });
+    }
+  } else {
+    subs = getAllSubs();
+    if (subs.length === 0) {
+      return NextResponse.json({ sent: 0, skipped: 0, message: 'No subscribers found.' });
+    }
   }
 
   const payload = JSON.stringify({
