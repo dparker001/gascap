@@ -53,13 +53,14 @@ export async function POST(req: Request) {
   const origin = getBaseUrl(req);
 
   const checkoutSession = await stripe.checkout.sessions.create({
-    mode:                 'subscription',
-    payment_method_types: ['card'],
-    line_items:           [{ price: priceId, quantity: 1 }],
-    customer_email:       user.stripeCustomerId ? undefined : user.email,
-    customer:             user.stripeCustomerId ?? undefined,
-    success_url:          `${origin}/upgrade/success?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url:           `${origin}/upgrade`,
+    mode:                    'subscription',
+    payment_method_types:    ['card'],
+    allow_promotion_codes:   true,
+    line_items:              [{ price: priceId, quantity: 1 }],
+    customer_email:          user.stripeCustomerId ? undefined : user.email,
+    customer:                user.stripeCustomerId ?? undefined,
+    success_url:             `${origin}/upgrade/success?session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url:              `${origin}/upgrade`,
     metadata: {
       userId,
       userEmail: user.email,

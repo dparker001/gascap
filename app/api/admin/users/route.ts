@@ -9,6 +9,7 @@ import fs   from 'fs';
 import path from 'path';
 import type { StoredUser } from '@/lib/users';
 import { grantBetaTrial, revokeBetaTrial } from '@/lib/users';
+import { upsertGhlContact, removeGhlTags } from '@/lib/ghl';
 
 const DATA_FILE = path.join(process.cwd(), 'data', 'users.json');
 
@@ -73,10 +74,18 @@ export async function PATCH(req: Request) {
 
   if (body.grantBetaTrial !== undefined) {
     grantBetaTrial(id, body.grantBetaTrial || 30);
+    const user = rows[idx];
+    upsertGhlContact({ name: user.name, email: user.email, plan: 'pro', isBeta: true, source: 'GasCap Beta Grant' })
+      .catch((e) => console.error('[GHL] beta grant sync failed:', e));
     return NextResponse.json({ ok: true });
   }
   if (body.revokeBetaTrial) {
     revokeBetaTrial(id);
+    const user = rows[idx];
+    upsertGhlContact({ name: user.name, email: user.email, plan: 'free', source: 'GasCap Beta Revoked' })
+      .catch((e) => console.error('[GHL] beta revoke sync failed:', e));
+    removeGhlTags(user.email, ['gascap-beta-tester'])
+      .catch((e) => console.error('[GHL] beta tag remove failed:', e));
     return NextResponse.json({ ok: true });
   }
 

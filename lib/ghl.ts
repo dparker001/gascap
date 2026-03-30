@@ -101,6 +101,35 @@ export async function upsertGhlContact(input: GhlContactInput): Promise<boolean>
   }
 }
 
+// ── Tag removal ──────────────────────────────────────────────────────────
+
+/**
+ * Remove specific tags from a contact (looked up by email).
+ */
+export async function removeGhlTags(email: string, tagsToRemove: string[]): Promise<boolean> {
+  if (!isConfigured()) return false;
+  try {
+    const searchRes = await fetch(
+      `${GHL_BASE}/contacts/search/duplicate?locationId=${GHL_LOCATION_ID}&email=${encodeURIComponent(email)}`,
+      { headers: ghlHeaders() },
+    );
+    if (!searchRes.ok) return false;
+    const searchData = await searchRes.json() as { contact?: { id?: string } };
+    const contactId  = searchData.contact?.id;
+    if (!contactId) return false;
+
+    const res = await fetch(`${GHL_BASE}/contacts/${contactId}`, {
+      method:  'PUT',
+      headers: ghlHeaders(),
+      body:    JSON.stringify({ removeTag: tagsToRemove }),
+    });
+    return res.ok;
+  } catch (err) {
+    console.error('[GHL] removeGhlTags error:', err);
+    return false;
+  }
+}
+
 // ── Plan tag update ───────────────────────────────────────────────────────
 
 /**

@@ -7,7 +7,7 @@
  */
 import { NextResponse }           from 'next/server';
 import { getExpiredBetaUsers, setUserPlan } from '@/lib/users';
-import { updateGhlContactPlan }   from '@/lib/ghl';
+import { updateGhlContactPlan, removeGhlTags } from '@/lib/ghl';
 import { sendMail }               from '@/lib/email';
 
 function auth(req: Request): boolean {
@@ -29,9 +29,11 @@ export async function POST(req: Request) {
     // 1. Revert to free
     setUserPlan(user.id, 'free');
 
-    // 2. Sync GHL tag
+    // 2. Sync GHL — revert plan tag + remove beta-tester tag
     updateGhlContactPlan(user.email, 'free')
       .catch((e) => console.error('[GHL] beta revert sync failed:', e));
+    removeGhlTags(user.email, ['gascap-beta-tester'])
+      .catch((e) => console.error('[GHL] beta tag remove failed:', e));
 
     // 3. Email the user — upgrade prompt
     const daysUsed = user.betaProExpiry
