@@ -40,9 +40,10 @@ function isConfigured(): boolean {
 export interface GhlContactInput {
   name:         string;
   email:        string;
-  plan:         'free' | 'pro' | 'fleet';
+  plan?:        'free' | 'pro' | 'fleet';
   isBeta?:      boolean;
   source?:      string;
+  phone?:       string;
 }
 
 /**
@@ -63,20 +64,19 @@ export async function upsertGhlContact(input: GhlContactInput): Promise<boolean>
 
     const tags = [
       'gascap',
-      PLAN_TAGS[input.plan] ?? 'gascap-free',
+      ...(input.plan ? [PLAN_TAGS[input.plan] ?? 'gascap-free'] : []),
       ...(input.isBeta ? ['gascap-beta-tester'] : []),
     ];
 
-    const body = {
+    const body: Record<string, unknown> = {
       locationId: GHL_LOCATION_ID,
       firstName,
       lastName,
       email:      input.email,
       tags,
       source:     input.source ?? 'GasCap App',
-      customFields: [
-        { key: 'gascap_plan', field_value: input.plan },
-      ],
+      ...(input.plan ? { customFields: [{ key: 'gascap_plan', field_value: input.plan }] } : {}),
+      ...(input.phone ? { phone: input.phone } : {}),
     };
 
     // Try upsert endpoint first (creates or updates by email)

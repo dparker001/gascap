@@ -27,7 +27,9 @@ export default function SettingsPage() {
   const { data: session, status } = useSession();
   const [avatarColor,  setAvatarColor]  = useState('bg-amber-500');
   const [displayName,  setDisplayName]  = useState('');
+  const [phone,        setPhone]        = useState('');
   const [saved,        setSaved]        = useState(false);
+  const [saving,       setSaving]       = useState(false);
   const [portalLoading,setPortalLoading]= useState(false);
 
   if (status === 'loading') {
@@ -64,9 +66,19 @@ export default function SettingsPage() {
     }
   }
 
-  function handleSave() {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+  async function handleSave() {
+    setSaving(true);
+    try {
+      await fetch('/api/user/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ displayName, phone }),
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -128,11 +140,29 @@ export default function SettingsPage() {
             </div>
           </div>
 
+          {/* Phone (optional) */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-500 mb-1.5">
+              Phone <span className="text-slate-300 font-normal">(optional)</span>
+            </label>
+            <input
+              type="tel"
+              className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800
+                         focus:outline-none focus:ring-2 focus:ring-amber-400"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="+1 (555) 000-0000"
+              maxLength={20}
+            />
+            <p className="text-[11px] text-slate-400 mt-1">Used for SMS alerts when available.</p>
+          </div>
+
           <button
             onClick={handleSave}
-            className="w-full py-3 rounded-2xl bg-amber-500 hover:bg-amber-400 text-white font-bold text-sm transition-colors"
+            disabled={saving}
+            className="w-full py-3 rounded-2xl bg-amber-500 hover:bg-amber-400 text-white font-bold text-sm transition-colors disabled:opacity-60"
           >
-            {saved ? '✓ Saved!' : 'Save Changes'}
+            {saved ? '✓ Saved!' : saving ? 'Saving…' : 'Save Changes'}
           </button>
         </div>
 

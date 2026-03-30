@@ -41,6 +41,9 @@ export interface StoredUser {
   // Password reset
   passwordResetToken?:   string;  // random token sent in reset email
   passwordResetExpires?: string;  // ISO timestamp, expires 1h after generation
+  // Profile
+  phone?:  string;   // optional phone number
+  displayName?: string; // optional display name override
 }
 
 export type ActivityEvent = 'calc' | 'budget_calc' | 'location_lookup' | 'visit';
@@ -329,6 +332,21 @@ export function creditVerifiedReferral(userId: string): boolean {
 
   write(users);
   return current < MAX_REFERRAL_REWARDS;
+}
+
+// ── Profile update ─────────────────────────────────────────────────────────
+
+export function updateUserProfile(
+  userId: string,
+  fields: { displayName?: string; phone?: string },
+): StoredUser | null {
+  const users = read();
+  const idx   = users.findIndex((u) => u.id === userId);
+  if (idx === -1) return null;
+  if (fields.displayName !== undefined) users[idx].displayName = fields.displayName.trim();
+  if (fields.phone       !== undefined) users[idx].phone       = fields.phone.trim();
+  write(users);
+  return users[idx];
 }
 
 // ── Email verification ─────────────────────────────────────────────────────
