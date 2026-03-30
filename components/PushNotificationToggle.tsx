@@ -85,14 +85,7 @@ export default function PushNotificationToggle() {
     } catch (err) {
       console.error('Push subscribe error:', err);
       const msg = err instanceof Error ? err.message : String(err);
-      // DOMException from pushManager.subscribe → likely VAPID or SW issue
-      setSubError(
-        msg.toLowerCase().includes('network') || msg.toLowerCase().includes('fetch')
-          ? 'Network error — check your connection and try again.'
-          : msg.toLowerCase().includes('key') || msg.toLowerCase().includes('ecdsa')
-          ? 'Push setup error. Please try reinstalling the app to your home screen.'
-          : 'Could not enable notifications. Please try again.',
-      );
+      setSubError(`Could not enable notifications: ${msg}`);
     } finally {
       setLoading(false);
     }

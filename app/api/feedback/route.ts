@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { sendMail } from '@/lib/email';
+import { saveFeedback } from '@/lib/feedback';
 
 export async function POST(req: Request) {
   const { message, page, email } = await req.json() as {
@@ -17,6 +18,13 @@ export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
   const from    = session?.user?.email ?? email ?? 'Anonymous';
   const name    = session?.user?.name  ?? 'Beta Tester';
+
+  // Always save to local store (available in admin panel regardless of email config)
+  try {
+    saveFeedback({ name, email: from, message: message.trim(), page: page ?? 'unknown' });
+  } catch (storeErr) {
+    console.error('[GasCap] Failed to save feedback to store:', storeErr);
+  }
 
   try {
     await sendMail({

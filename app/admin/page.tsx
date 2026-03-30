@@ -1,6 +1,16 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+
+interface FeedbackItem {
+  id:        string;
+  name:      string;
+  email:     string;
+  message:   string;
+  page:      string;
+  createdAt: string;
+  read:      boolean;
+}
 
 interface AdminUser {
   id:               string;
@@ -51,14 +61,23 @@ export default function AdminPage() {
   const [pushLoading, setPushLoading] = useState<'all' | 'user' | null>(null);
   const [pushEmail, setPushEmail] = useState('');
   const [subCount,  setSubCount]  = useState<number | null>(null);
+  const [feedback,  setFeedback]  = useState<FeedbackItem[]>([]);
+  const [fbOpen,    setFbOpen]    = useState(false);
 
   const load = useCallback(async (pw: string) => {
     setLoading(true);
-    const res  = await fetch('/api/admin/users', { headers: { 'x-admin-password': pw } });
+    const [usersRes, fbRes] = await Promise.all([
+      fetch('/api/admin/users',    { headers: { 'x-admin-password': pw } }),
+      fetch('/api/admin/feedback', { headers: { 'x-admin-password': pw } }),
+    ]);
     setLoading(false);
-    if (res.status === 401) { setAuthErr('Wrong password.'); clearSession(); return; }
-    const data = await res.json() as { users: AdminUser[] };
-    setUsers(data.users);
+    if (usersRes.status === 401) { setAuthErr('Wrong password.'); clearSession(); return; }
+    const usersData = await usersRes.json() as { users: AdminUser[] };
+    setUsers(usersData.users);
+    if (fbRes.ok) {
+      const fbData = await fbRes.json() as { feedback: FeedbackItem[] };
+      setFeedback(fbData.feedback);
+    }
     setSavedPw(pw);
     saveSession(pw);
     setAuthed(true);
@@ -140,6 +159,20 @@ export default function AdminPage() {
       else { setPushMsg(`✅ Digest sent to ${user.email}.`); }
     } catch { setPushMsg('❌ Network error.'); }
     finally { setPushLoading(null); }
+  }
+
+  async function handleFbRead(id: string) {
+    await fetch(`/api/admin/feedback?id=${id}`, {
+      method: 'PATCH', headers: { 'x-admin-password': savedPw },
+    });
+    setFeedback((prev) => prev.map((f) => f.id === id ? { ...f, read: true } : f));
+  }
+
+  async function handleFbDelete(id: string) {
+    await fetch(`/api/admin/feedback?id=${id}`, {
+      method: 'DELETE', headers: { 'x-admin-password': savedPw },
+    });
+    setFeedback((prev) => prev.filter((f) => f.id !== id));
   }
 
   const filtered = users.filter((u) =>
@@ -280,6 +313,77 @@ export default function AdminPage() {
             <strong>Note:</strong> Users must have opted in to push notifications from the Share tab in the app.
             Sending to a user with no active subscription will return a warning.
           </p>
+        </div>
+
+        {/* Feedback Inbox */}
+        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+          <button
+            onClick={() => setFbOpen((v) => !v)}
+            className="w-full flex items-center justify-between px-5 py-4 hover:bg-slate-50 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-base">💬</span>
+              <div className="text-left">
+                <p className="text-sm font-black text-navy-700">Feedback Inbox</p>
+                <p className="text-xs text-slate-400">
+                  {feedback.length} message{feedback.length !== 1 ? 's' : ''}
+                  {feedback.filter((f) => !f.read).length > 0 && (
+                    <span className="ml-1.5 bg-red-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full">
+                      {feedback.filter((f) => !f.read).length} new
+                    </span>
+                  )}
+                </p>
+              </div>
+            </div>
+            <svg className={`w-4 h-4 text-slate-400 transition-transform ${fbOpen ? 'rotate-180' : ''}`}
+                 viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M4 6l4 4 4-4"/>
+            </svg>
+          </button>
+
+          {fbOpen && (
+            <div className="border-t border-slate-100 divide-y divide-slate-50">
+              {feedback.length === 0 ? (
+                <p className="px-5 py-6 text-sm text-slate-400 text-center">No feedback yet.</p>
+              ) : (
+                feedback.map((f) => (
+                  <div key={f.id} className={`px-5 py-4 ${f.read ? 'bg-white' : 'bg-amber-50'}`}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                          {!f.read && (
+                            <span className="text-[10px] font-black bg-red-500 text-white px-1.5 py-0.5 rounded-full">NEW</span>
+                          )}
+                          <p className="text-xs font-bold text-slate-700">{f.name}</p>
+                          <p className="text-xs text-slate-400">{f.email}</p>
+                          <p className="text-[10px] text-slate-300">
+                            {new Date(f.createdAt).toLocaleDateString()} · {f.page}
+                          </p>
+                        </div>
+                        <p className="text-sm text-slate-600 whitespace-pre-wrap leading-relaxed">{f.message}</p>
+                      </div>
+                      <div className="flex flex-col gap-1.5 flex-shrink-0">
+                        {!f.read && (
+                          <button
+                            onClick={() => handleFbRead(f.id)}
+                            className="text-[11px] px-2 py-1 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 font-semibold transition-colors"
+                          >
+                            Mark read
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleFbDelete(f.id)}
+                          className="text-[11px] px-2 py-1 rounded-lg bg-red-100 text-red-600 hover:bg-red-200 font-semibold transition-colors"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
         </div>
 
         {/* Search */}
