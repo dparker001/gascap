@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createUser, findByEmail, findByReferralCode, setReferredBy, createEmailVerifyToken } from '@/lib/users';
+import { createUser, findByEmail, findByReferralCode, setReferredBy, createEmailVerifyToken, grantBetaTrial } from '@/lib/users';
 import { sendMail, verificationEmailHtml } from '@/lib/email';
 import { upsertGhlContact } from '@/lib/ghl';
 
@@ -17,8 +17,8 @@ function getBaseUrl(req: Request): string {
 
 export async function POST(req: Request) {
   try {
-    const { name, email, password, referralCode } = await req.json() as {
-      name?: string; email?: string; password?: string; referralCode?: string;
+    const { name, email, password, referralCode, isBeta } = await req.json() as {
+      name?: string; email?: string; password?: string; referralCode?: string; isBeta?: boolean;
     };
 
     if (!name?.trim())   return NextResponse.json({ error: 'Name is required.' },            { status: 400 });
@@ -37,6 +37,16 @@ export async function POST(req: Request) {
                          return NextResponse.json({ error: 'An account with that email already exists.' }, { status: 409 });
 
     const user = await createUser(name, email, password);
+
+    // Auto-grant 30-day Pro trial for beta invitees
+    if (isBeta) {
+      try {
+        grantBetaTrial(user.id, 30);
+      } catch (betaErr) {
+        console.error('[GasCap] Beta trial grant failed:', betaErr);
+        // Non-fatal — user still registered, admin can grant manually
+      }
+    }
 
     // Store referral code on the new user — credit fires after email verification
     if (referralCode?.trim()) {
@@ -79,9 +89,9 @@ export async function POST(req: Request) {
     upsertGhlContact({
       name:    user.name,
       email:   user.email,
-      plan:    'free',
-      isBeta:  false,
-      source:  'GasCap Signup',
+      plan:    isBeta ? 'pro' : 'free',
+      isBeta:  !!isBeta,
+      source:  isBeta ? 'GasCap Beta Signup' : 'GasCap Signup',
     }).catch((err) => console.error('[GHL] signup sync failed:', err));
 
     return NextResponse.json({ id: user.id, email: user.email, name: user.name }, { status: 201 });
