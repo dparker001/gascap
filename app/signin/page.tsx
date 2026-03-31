@@ -10,10 +10,11 @@ function SignInForm() {
   const searchParams = useSearchParams();
   const verified     = searchParams.get('verified') === 'success';
 
-  const [email, setEmail]       = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError]       = useState('');
-  const [loading, setLoading]   = useState(false);
+  const [email,       setEmail]       = useState('');
+  const [password,    setPassword]    = useState('');
+  const [showPw,      setShowPw]      = useState(false);
+  const [error,       setError]       = useState('');
+  const [loading,     setLoading]     = useState(false);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -87,12 +88,27 @@ function SignInForm() {
                   Forgot password?
                 </Link>
               </div>
-              <input
-                id="password" type="password" autoComplete="current-password"
-                className="input-field" placeholder="••••••••"
-                value={password} onChange={(e) => setPassword(e.target.value)}
-                required
-              />
+              <div className="relative">
+                <input
+                  id="password"
+                  type={showPw ? 'text' : 'password'}
+                  autoComplete="current-password"
+                  className="input-field pr-11"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPw((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400
+                             hover:text-slate-600 transition-colors p-0.5"
+                  aria-label={showPw ? 'Hide password' : 'Show password'}
+                >
+                  <EyeIcon open={showPw} />
+                </button>
+              </div>
             </div>
 
             {error && (
@@ -144,6 +160,26 @@ function GasPumpIcon() {
       <rect x="4" y="9" width="7" height="4" rx="0.75" />
       <path d="M13 8 L18 8 Q21 8 21 11 L21 16 Q21 18 19 18" />
       <circle cx="18.5" cy="18.5" r="1.5" />
+    </svg>
+  );
+}
+
+function EyeIcon({ open }: { open: boolean }) {
+  return open ? (
+    // Eye-off: eye with a slash — "currently visible, click to hide"
+    <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor"
+         strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94" />
+      <path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19" />
+      <path d="M14.12 14.12A3 3 0 119.88 9.88" />
+      <line x1="3" y1="3" x2="21" y2="21" />
+    </svg>
+  ) : (
+    // Eye-open: "currently hidden, click to reveal"
+    <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor"
+         strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+      <circle cx="12" cy="12" r="3" />
     </svg>
   );
 }
