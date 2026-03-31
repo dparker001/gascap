@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSession }   from 'next-auth/react';
 import AdSenseBanner    from '@/components/AdSenseBanner';
 import Header                    from '@/components/Header';
@@ -14,6 +14,11 @@ export default function Home() {
   const { data: session } = useSession();
   const userPlan = (session?.user as { plan?: string })?.plan ?? 'free';
   const isGuest  = !session;
+
+  // Scroll to top when session loads (prevents AI Advisor from pulling page down)
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }, [session]);
 
   return (
     <main className="min-h-screen flex flex-col bg-slate-50">

@@ -64,9 +64,11 @@ export default function AiAdvisor({ embedded = false }: { embedded?: boolean }) 
     if (isOpen) loadVehicles();
   }, [isOpen, loadVehicles]);
 
-  // Scroll to latest message
+  // Scroll to latest message — only when messages actually exist (not on initial render)
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messages.length > 0) {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
   }, [messages]);
 
   async function sendMessage(question: string) {
