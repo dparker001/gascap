@@ -508,7 +508,7 @@ export default function AdminPage() {
                           )}
                           <p className="text-xs font-bold text-slate-700">{f.name}</p>
                           <p className="text-xs text-slate-400">{f.email}</p>
-                          <p className="text-[10px] text-slate-300">
+                          <p className="text-[10px] text-slate-500">
                             {new Date(f.createdAt).toLocaleDateString()} · {f.page}
                           </p>
                         </div>
@@ -576,7 +576,7 @@ export default function AdminPage() {
                       )}
                     </div>
                     <p className="text-xs text-slate-400 truncate">{u.email}</p>
-                    <p className="text-[10px] text-slate-300">
+                    <p className="text-[10px] text-slate-500">
                       Joined {new Date(u.createdAt).toLocaleDateString()} ·{' '}
                       {u.referralCount} referral{u.referralCount !== 1 ? 's' : ''}
                       {u.stripeCustomerId && ' · Stripe ✓'}
@@ -662,7 +662,7 @@ export default function AdminPage() {
           )}
         </div>
 
-        <p className="text-[10px] text-slate-300 text-center pb-4">
+        <p className="text-[10px] text-slate-500 text-center pb-4">
           GasCap™ Admin · {users.length} total users
         </p>
       </div>

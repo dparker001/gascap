@@ -229,7 +229,7 @@ export default function Home() {
           GasCap<sup className="text-amber-500 text-[10px] font-bold">™</sup>
         </p>
         <p className="text-xs text-slate-400">Gas Capacity — Know before you go.</p>
-        <p className="text-[10px] text-slate-300">© {new Date().getFullYear()} GasCap™ — All rights reserved.</p>
+        <p className="text-[10px] text-slate-500">© {new Date().getFullYear()} GasCap™ — All rights reserved.</p>
 
         {/* VNetCard lead magnet */}
         <a
@@ -248,16 +248,16 @@ export default function Home() {
             <path d="M2 6h8M6 2l4 4-4 4"/>
           </svg>
         </a>
-        <p className="text-[10px] text-slate-300">
+        <p className="text-[10px] text-slate-500">
           Share your digital business card with anyone, anywhere.
         </p>
         {/* Legal links */}
         <div className="flex items-center justify-center gap-4 pt-1">
-          <a href="/help"    className="text-[11px] text-slate-300 hover:text-amber-500 transition-colors">Help &amp; Support</a>
-          <span className="text-slate-200">·</span>
-          <a href="/terms"   className="text-[11px] text-slate-300 hover:text-amber-500 transition-colors">Terms of Service</a>
-          <span className="text-slate-200">·</span>
-          <a href="/privacy" className="text-[11px] text-slate-300 hover:text-amber-500 transition-colors">Privacy Policy</a>
+          <a href="/help"    className="text-[11px] text-slate-500 hover:text-amber-500 transition-colors">Help &amp; Support</a>
+          <span className="text-slate-400">·</span>
+          <a href="/terms"   className="text-[11px] text-slate-500 hover:text-amber-500 transition-colors">Terms of Service</a>
+          <span className="text-slate-400">·</span>
+          <a href="/privacy" className="text-[11px] text-slate-500 hover:text-amber-500 transition-colors">Privacy Policy</a>
         </div>
       </footer>
     </main>
