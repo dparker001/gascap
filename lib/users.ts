@@ -77,6 +77,10 @@ function write(users: StoredUser[]) {
 
 // ── Public API ─────────────────────────────────────────────────────────
 
+export function getAllUsers(): StoredUser[] {
+  return read();
+}
+
 export function findByEmail(email: string): StoredUser | undefined {
   return read().find((u) => u.email.toLowerCase() === email.toLowerCase());
 }

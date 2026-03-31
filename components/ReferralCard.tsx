@@ -3,6 +3,14 @@
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 
+interface ReferredUser {
+  name:     string;
+  email:    string;
+  joinedAt: string;
+  verified: boolean;
+  credited: boolean;
+}
+
 interface ReferralData {
   code:             string;
   referralUrl:      string;
@@ -20,6 +28,7 @@ interface ReferralData {
   nextExpiryDate:   string | null;
   userPlan:         string;
   isPaid:           boolean;
+  referredUsers:    ReferredUser[];
 }
 
 export default function ReferralCard() {
@@ -289,6 +298,36 @@ export default function ReferralCard() {
                 <span>🎉</span>
                 You've maxed out your referral rewards!
               </div>
+            )}
+
+            {/* Referred users list */}
+            {data.referredUsers.length > 0 && (
+              <details className="group">
+                <summary className="text-[11px] font-bold text-amber-600 cursor-pointer list-none flex items-center gap-1.5 hover:text-amber-500 transition-colors">
+                  <span className="text-base">👥</span>
+                  {data.referredUsers.length} friend{data.referredUsers.length !== 1 ? 's' : ''} referred — tap to view
+                </summary>
+                <div className="mt-2 space-y-1.5">
+                  {data.referredUsers.map((r) => (
+                    <div key={r.email} className="flex items-center justify-between bg-slate-50 rounded-xl px-3 py-2">
+                      <div>
+                        <p className="text-xs font-semibold text-slate-700">{r.name}</p>
+                        <p className="text-[10px] text-slate-400">{new Date(r.joinedAt).toLocaleDateString()}</p>
+                      </div>
+                      <div className="flex gap-1.5">
+                        {r.verified ? (
+                          <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-green-100 text-green-600">✓ Verified</span>
+                        ) : (
+                          <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-slate-100 text-slate-400">Pending</span>
+                        )}
+                        {r.credited && (
+                          <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-600">+1 mo</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </details>
             )}
 
             {/* Footer */}

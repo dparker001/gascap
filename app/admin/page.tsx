@@ -20,6 +20,10 @@ interface AdminUser {
   emailVerified:    boolean;
   createdAt:        string;
   referralCount:    number;
+  referralCode:     string | null;
+  referredBy:       string | null;
+  referredByName:   string | null;
+  referredUsers:    { name: string; email: string; joinedAt: string }[];
   stripeCustomerId: string | null;
   isBetaTester?:    boolean;
   betaProExpiry?:   string | null;
@@ -574,9 +578,26 @@ export default function AdminPage() {
                     <p className="text-xs text-slate-400 truncate">{u.email}</p>
                     <p className="text-[10px] text-slate-300">
                       Joined {new Date(u.createdAt).toLocaleDateString()} ·{' '}
-                      {u.referralCount} referrals
+                      {u.referralCount} referral{u.referralCount !== 1 ? 's' : ''}
                       {u.stripeCustomerId && ' · Stripe ✓'}
+                      {u.referredByName && (
+                        <span className="text-green-400"> · Referred by {u.referredByName}</span>
+                      )}
                     </p>
+                    {u.referredUsers.length > 0 && (
+                      <details className="mt-1">
+                        <summary className="text-[10px] text-amber-500 cursor-pointer font-semibold">
+                          👥 {u.referredUsers.length} user{u.referredUsers.length !== 1 ? 's' : ''} referred — click to view
+                        </summary>
+                        <div className="mt-1 space-y-0.5 pl-2 border-l-2 border-amber-200">
+                          {u.referredUsers.map((r) => (
+                            <p key={r.email} className="text-[10px] text-slate-400">
+                              {r.name} · {r.email} · {new Date(r.joinedAt).toLocaleDateString()}
+                            </p>
+                          ))}
+                        </div>
+                      </details>
+                    )}
                   </div>
 
                   {/* Actions */}

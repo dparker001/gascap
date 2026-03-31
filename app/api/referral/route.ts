@@ -7,7 +7,7 @@
 import { NextResponse }     from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions }      from '@/lib/auth';
-import { ensureReferralCode, findById, getActiveCredits, getRedeemableMonths } from '@/lib/users';
+import { ensureReferralCode, findById, getActiveCredits, getRedeemableMonths, getAllUsers } from '@/lib/users';
 
 const MAX_REFERRAL_REWARDS = 10;
 const MAX_REDEEM_AT_ONCE   = 3;
@@ -37,6 +37,20 @@ export async function GET() {
   const isBeta = user?.isBetaTester ?? false;
   const betaReferralUrl = isBeta ? `${baseUrl}/signup?ref=${code}&beta=1` : null;
 
+  // Get list of users this person referred
+  const allUsers    = getAllUsers();
+  const referredUsers = code
+    ? allUsers
+        .filter((u) => u.referredBy?.toUpperCase() === code.toUpperCase())
+        .map((u) => ({
+          name:      u.name,
+          email:     u.email,
+          joinedAt:  u.createdAt,
+          verified:  u.emailVerified ?? false,
+          credited:  u.referralRewardCredited ?? false,
+        }))
+    : [];
+
   return NextResponse.json({
     code,
     referralUrl,
@@ -54,5 +68,6 @@ export async function GET() {
     nextExpiryDate,                    // ISO string of soonest-expiring credit
     userPlan:         plan,
     isPaid,
+    referredUsers,                 // list of users this person referred
   });
 }

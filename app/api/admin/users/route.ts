@@ -36,21 +36,42 @@ function auth(req: Request): boolean {
 
 export async function GET(req: Request) {
   if (!auth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  const subs       = getAllSubs();
+  const subs              = getAllSubs();
   const subscribedUserIds = new Set(subs.map((s) => s.userId));
-  const users = read().map((u) => ({
-    id:               u.id,
-    name:             u.name,
-    email:            u.email,
-    plan:             u.plan,
-    emailVerified:    u.emailVerified ?? false,
-    createdAt:        u.createdAt,
-    referralCount:    u.referralCount ?? 0,
-    stripeCustomerId: u.stripeCustomerId ?? null,
-    isBetaTester:     u.isBetaTester    ?? false,
-    betaProExpiry:    u.betaProExpiry   ?? null,
-    pushSubscribed:   subscribedUserIds.has(u.id),
-  }));
+  const allUsers          = read();
+
+  // Build a map of referralCode → user name for quick lookup
+  const codeToName = new Map<string, string>();
+  for (const u of allUsers) {
+    if (u.referralCode) codeToName.set(u.referralCode.toUpperCase(), u.name);
+  }
+
+  const users = allUsers.map((u) => {
+    // Find users this person referred
+    const referredUsers = u.referralCode
+      ? allUsers
+          .filter((r) => r.referredBy?.toUpperCase() === u.referralCode?.toUpperCase())
+          .map((r) => ({ name: r.name, email: r.email, joinedAt: r.createdAt }))
+      : [];
+
+    return {
+      id:               u.id,
+      name:             u.name,
+      email:            u.email,
+      plan:             u.plan,
+      emailVerified:    u.emailVerified ?? false,
+      createdAt:        u.createdAt,
+      referralCount:    u.referralCount ?? 0,
+      referralCode:     u.referralCode  ?? null,
+      referredBy:       u.referredBy    ?? null,
+      referredByName:   u.referredBy ? (codeToName.get(u.referredBy.toUpperCase()) ?? u.referredBy) : null,
+      referredUsers,                         // list of users this person referred
+      stripeCustomerId: u.stripeCustomerId ?? null,
+      isBetaTester:     u.isBetaTester    ?? false,
+      betaProExpiry:    u.betaProExpiry   ?? null,
+      pushSubscribed:   subscribedUserIds.has(u.id),
+    };
+  });
   return NextResponse.json({ users, total: users.length });
 }
 
