@@ -20,7 +20,7 @@ function LandingFeatures() {
       <div className="flex items-center gap-2 mb-4 px-1">
         <span className="text-base">🚀</span>
         <h2 className="text-sm font-black text-slate-700 uppercase tracking-wider">
-          Why GasCap?
+          Why GasCap™?
         </h2>
         <div className="flex-1 h-px bg-slate-200" />
       </div>

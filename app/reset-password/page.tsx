@@ -71,7 +71,7 @@ function ResetPasswordForm() {
   return (
     <>
       <h1 className="text-2xl font-black text-navy-700 mb-1">Set new password</h1>
-      <p className="text-slate-500 text-sm mb-6">Choose a strong password for your GasCap account.</p>
+      <p className="text-slate-500 text-sm mb-6">Choose a strong password for your GasCap™ account.</p>
 
       <form onSubmit={handleSubmit} noValidate className="space-y-4">
         <div>

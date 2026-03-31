@@ -33,7 +33,7 @@ export default function PushNotificationToggle() {
         <div>
           <p className="text-xs font-semibold text-slate-600">Push notifications</p>
           <p className="text-[10px] text-slate-400 mt-0.5 leading-relaxed">
-            Install GasCap on your home screen to enable push notifications (gas price alerts, weekly digest &amp; more).{' '}
+            Install GasCap™ on your home screen to enable push notifications (gas price alerts, weekly digest &amp; more).{' '}
             <span className="font-medium">iPhone:</span> Share → Add to Home Screen.{' '}
             <span className="font-medium">Android:</span> Menu → Install App.
           </p>

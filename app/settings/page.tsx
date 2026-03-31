@@ -239,8 +239,8 @@ export default function SettingsPage() {
             <>
               <p className="text-sm text-slate-500">
                 {plan === 'pro'
-                  ? 'GasCap Pro — up to 5 vehicles, manual entry, spec lookup & more.'
-                  : 'GasCap Fleet — unlimited vehicles, multi-driver, fleet reporting & more.'}
+                  ? 'GasCap™ Pro — up to 3 vehicles, manual entry, spec lookup & more.'
+                  : 'GasCap™ Fleet — unlimited vehicles, multi-driver, fleet reporting & more.'}
               </p>
               <button
                 onClick={openPortal}

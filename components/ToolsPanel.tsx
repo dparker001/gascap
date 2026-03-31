@@ -256,7 +256,7 @@ function UpgradePrompt({ feature }: { feature: string }) {
       <p className="text-sm font-black text-slate-700">Pro Feature</p>
       <p className="text-xs text-slate-500 leading-relaxed max-w-[260px] mx-auto">
         <span className="font-semibold text-amber-700">{feature}</span> is available on the{' '}
-        <span className="font-semibold">GasCap Pro</span> plan. Upgrade to unlock AI insights,
+        <span className="font-semibold">GasCap™ Pro</span> plan. Upgrade to unlock AI insights,
         charts, maintenance tracking, and more.
       </p>
       <a

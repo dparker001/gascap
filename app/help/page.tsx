@@ -13,7 +13,7 @@ const SECTIONS = [
     title: '🚀 Getting Started',
     items: [
       {
-        q: 'Do I need an account to use GasCap?',
+        q: 'Do I need an account to use GasCap™?',
         a: 'No — the fuel calculators work right away without signing up. Creating a free account lets you save vehicles, track fill-ups, and access your history across devices.',
       },
       {

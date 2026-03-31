@@ -137,7 +137,7 @@ export default function AiAdvisor({ embedded = false }: { embedded?: boolean }) 
               <span className="text-base">🤖</span>
             </div>
             <div className="text-left">
-              <p className="text-sm font-black text-white">GasCap AI Advisor</p>
+              <p className="text-sm font-black text-white">GasCap™ AI Advisor</p>
               <p className="text-[10px] text-white/50">Ask anything about fuel, MPG, or your spending</p>
             </div>
           </div>

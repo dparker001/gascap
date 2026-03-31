@@ -90,7 +90,7 @@ export default function ReferralCard() {
       try {
         await navigator.share({
           title: 'GasCap™ — Know before you go',
-          text:  'Track your fuel spending & MPG with GasCap. Use my link to sign up:',
+          text:  'Track your fuel spending & MPG with GasCap™. Use my link to sign up:',
           url:   data.referralUrl,
         });
       } catch { /* user cancelled */ }

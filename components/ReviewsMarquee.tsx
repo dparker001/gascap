@@ -93,12 +93,12 @@ export default function ReviewsMarquee() {
         <h2 className="text-xl font-black text-navy-700 leading-tight">
           What drivers are saying
         </h2>
-        <p className="text-sm text-slate-400 mt-1">Real reviews from GasCap users</p>
+        <p className="text-sm text-slate-400 mt-1">Real reviews from GasCap™ users</p>
       </div>
 
-      {/* Single scrolling row */}
-      <div className="marquee-root select-none">
-        <div className="overflow-hidden">
+      {/* Single scrolling row — clipped to content width */}
+      <div className="max-w-lg mx-auto px-4">
+        <div className="marquee-root select-none overflow-hidden rounded-2xl">
           <MarqueeRow reviews={padded} />
         </div>
       </div>

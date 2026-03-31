@@ -868,7 +868,7 @@ export default function VehiclePicker({ plan, onSave, onCancel, saving, saveErro
           <p className="text-sm font-bold text-amber-800">Pro Feature</p>
           <p className="text-xs text-amber-700 leading-relaxed">
             Manual vehicle entry with automatic spec lookup is available on the{' '}
-            <span className="font-semibold">GasCap Pro</span> plan.
+            <span className="font-semibold">GasCap™ Pro</span> plan.
             Use the Search tab to find your vehicle from the EPA database.
           </p>
           <button
