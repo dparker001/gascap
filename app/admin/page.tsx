@@ -28,6 +28,7 @@ interface AdminUser {
   isBetaTester?:    boolean;
   betaProExpiry?:   string | null;
   pushSubscribed?:  boolean;
+  isTestAccount?:   boolean;
 }
 
 const PLAN_COLORS = {
@@ -191,6 +192,18 @@ export default function AdminPage() {
       body:    JSON.stringify({ revokeBetaTrial: true }),
     });
     setMsg(`Revoked beta trial for ${user.email}`);
+    await load(savedPw);
+  }
+
+  async function handleTestAccount(user: AdminUser, enable: boolean) {
+    await fetch(`/api/admin/users?id=${user.id}`, {
+      method:  'PATCH',
+      headers: { 'x-admin-password': savedPw, 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ isTestAccount: enable }),
+    });
+    setMsg(enable
+      ? `🧪 ${user.email} marked as test account — unlimited vehicles, no plan limits`
+      : `Removed test account flag from ${user.email}`);
     await load(savedPw);
   }
 
@@ -574,6 +587,11 @@ export default function AdminPage() {
                           🔔 PUSH
                         </span>
                       )}
+                      {u.isTestAccount && (
+                        <span title="Test account — no plan limits" className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
+                          🧪 TEST
+                        </span>
+                      )}
                     </div>
                     <p className="text-xs text-slate-400 truncate">{u.email}</p>
                     <p className="text-[10px] text-slate-500">
@@ -646,6 +664,25 @@ export default function AdminPage() {
                           title="Revoke trial"
                         >×</button>
                       </span>
+                    )}
+
+                    {/* Test account toggle */}
+                    {!u.isTestAccount ? (
+                      <button
+                        onClick={() => handleTestAccount(u, true)}
+                        className="text-xs px-2 py-1 rounded-lg bg-emerald-100 text-emerald-700 hover:bg-emerald-200 font-semibold transition-colors whitespace-nowrap"
+                        title="Bypass all plan limits for this account"
+                      >
+                        🧪 Test
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleTestAccount(u, false)}
+                        className="text-xs px-2 py-1 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 font-semibold transition-colors whitespace-nowrap"
+                        title="Remove test account exemption"
+                      >
+                        🧪 Remove
+                      </button>
                     )}
 
                     {/* Delete button */}

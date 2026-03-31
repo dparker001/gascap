@@ -48,6 +48,8 @@ export interface StoredUser {
   // Gas price alerts (Pro+)
   priceAlertThreshold?:   number;  // $/gal — alert when national avg drops below this
   lastPriceAlertSentAt?:  string;  // ISO — last time we sent/showed an alert (24h debounce)
+  // Internal / testing
+  isTestAccount?: boolean;  // bypasses all plan limits — for internal testing only
 }
 
 export interface ReferralCredit {

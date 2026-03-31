@@ -47,7 +47,8 @@ export async function POST(req: Request) {
   const limit = PLAN_LIMITS[plan];
   const existing = getVehiclesForUser(userId);
 
-  if (existing.length >= limit) {
+  // Test accounts are exempt from all vehicle limits
+  if (!user?.isTestAccount && existing.length >= limit) {
     const msg = plan === 'free'
       ? 'Free accounts can save 1 vehicle. Upgrade to Pro to save up to 3.'
       : `Vehicle limit reached (${limit}). Upgrade to Fleet for unlimited vehicles.`;

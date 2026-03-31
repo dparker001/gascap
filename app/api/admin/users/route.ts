@@ -2,7 +2,7 @@
  * Admin API — protected by ADMIN_PASSWORD env var
  * GET    /api/admin/users              — list all users
  * DELETE /api/admin/users?id=xxx       — delete a user
- * PATCH  /api/admin/users?id=xxx       — update plan, emailVerified, or betaProExpiry
+ * PATCH  /api/admin/users?id=xxx       — update plan, emailVerified, betaProExpiry, or isTestAccount
  */
 import { NextResponse } from 'next/server';
 import fs   from 'fs';
@@ -70,6 +70,7 @@ export async function GET(req: Request) {
       isBetaTester:     u.isBetaTester    ?? false,
       betaProExpiry:    u.betaProExpiry   ?? null,
       pushSubscribed:   subscribedUserIds.has(u.id),
+      isTestAccount:    u.isTestAccount   ?? false,
     };
   });
   return NextResponse.json({ users, total: users.length });
@@ -92,6 +93,7 @@ export async function PATCH(req: Request) {
     plan?: string; emailVerified?: boolean;
     grantBetaTrial?: number;  // days (default 30)
     revokeBetaTrial?: boolean;
+    isTestAccount?: boolean;
   };
   const rows = read();
   const idx  = rows.findIndex((u) => u.id === id);
@@ -116,6 +118,7 @@ export async function PATCH(req: Request) {
 
   if (body.plan          !== undefined) rows[idx].plan          = body.plan as StoredUser['plan'];
   if (body.emailVerified !== undefined) rows[idx].emailVerified = body.emailVerified;
+  if (body.isTestAccount !== undefined) rows[idx].isTestAccount = body.isTestAccount;
   write(rows);
   return NextResponse.json({ ok: true });
 }
