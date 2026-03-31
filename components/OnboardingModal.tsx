@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { createPortal }        from 'react-dom';
 
 const ONBOARDING_KEY = 'gascap_onboarded';
 
@@ -211,17 +212,19 @@ const STEPS: Step[] = [
 // ── Modal ─────────────────────────────────────────────────────────────────────
 
 export default function OnboardingModal() {
-  const [show, setShow] = useState(false);
-  const [step, setStep] = useState(0);
+  const [show,    setShow]    = useState(false);
+  const [step,    setStep]    = useState(0);
+  const [mounted, setMounted] = useState(false);  // true only in the browser
 
   useEffect(() => {
+    setMounted(true);  // mark as client-rendered
     try {
       if (!localStorage.getItem(ONBOARDING_KEY)) {
-        const t = setTimeout(() => setShow(true), 600);
+        const t = setTimeout(() => setShow(true), 700);
         return () => clearTimeout(t);
       }
     } catch {
-      // localStorage blocked — skip onboarding silently
+      // localStorage blocked (private mode, etc.) — skip silently
     }
   }, []);
 
@@ -238,15 +241,18 @@ export default function OnboardingModal() {
     }
   }
 
-  if (!show) return null;
+  // Nothing to render until the browser confirms localStorage is clear
+  if (!mounted || !show) return null;
 
-  const s = STEPS[step];
+  const s      = STEPS[step];
   const isLast = step === STEPS.length - 1;
 
-  return (
+  // ── Portal — renders directly under <body> so no ancestor stacking
+  //    context (transforms, overflow, etc.) can trap position:fixed.
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-4 pb-6 sm:pb-0"
-      style={{ backgroundColor: 'rgba(10,20,40,0.80)', backdropFilter: 'blur(4px)' }}
+      className="fixed inset-0 flex items-center justify-center px-4"
+      style={{ zIndex: 9999, backgroundColor: 'rgba(10,20,40,0.82)', backdropFilter: 'blur(6px)' }}
       onClick={dismiss}
     >
       <div
@@ -340,6 +346,7 @@ export default function OnboardingModal() {
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
