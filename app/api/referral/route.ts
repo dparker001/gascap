@@ -34,9 +34,14 @@ export async function GET() {
     ? activeCredits.sort((a, b) => new Date(a.expiresAt).getTime() - new Date(b.expiresAt).getTime())[0].expiresAt
     : null;
 
+  const isBeta = user?.isBetaTester ?? false;
+  const betaReferralUrl = isBeta ? `${baseUrl}/signup?ref=${code}&beta=1` : null;
+
   return NextResponse.json({
     code,
     referralUrl,
+    betaReferralUrl,               // only set for beta testers
+    isBeta,
     referralCount:    user?.referralCount ?? 0,
     proMonthsEarned:  monthsEarned,
     referredBy:       user?.referredBy    ?? null,

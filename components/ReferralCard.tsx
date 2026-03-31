@@ -6,6 +6,8 @@ import { useSession } from 'next-auth/react';
 interface ReferralData {
   code:             string;
   referralUrl:      string;
+  betaReferralUrl:  string | null;
+  isBeta:           boolean;
   referralCount:    number;
   proMonthsEarned:  number;
   referredBy:       string | null;
@@ -22,9 +24,10 @@ interface ReferralData {
 
 export default function ReferralCard() {
   const { data: session } = useSession();
-  const [data,    setData]    = useState<ReferralData | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [copied,  setCopied]  = useState(false);
+  const [data,         setData]        = useState<ReferralData | null>(null);
+  const [loading,      setLoading]     = useState(false);
+  const [copied,       setCopied]      = useState(false);
+  const [copiedBeta,   setCopiedBeta]  = useState(false);
 
   useEffect(() => {
     if (!session) return;
@@ -51,6 +54,24 @@ export default function ReferralCard() {
       document.body.removeChild(el);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+    }
+  }
+
+  async function handleCopyBeta() {
+    if (!data?.betaReferralUrl) return;
+    try {
+      await navigator.clipboard.writeText(data.betaReferralUrl);
+      setCopiedBeta(true);
+      setTimeout(() => setCopiedBeta(false), 2000);
+    } catch {
+      const el = document.createElement('input');
+      el.value = data.betaReferralUrl;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand('copy');
+      document.body.removeChild(el);
+      setCopiedBeta(true);
+      setTimeout(() => setCopiedBeta(false), 2000);
     }
   }
 
@@ -220,6 +241,37 @@ export default function ReferralCard() {
                 </button>
               </div>
             </div>
+
+            {/* Beta invite link — only for beta testers */}
+            {data.isBeta && data.betaReferralUrl && (
+              <div className="border border-amber-200 rounded-xl p-3 space-y-2 bg-amber-50">
+                <div className="flex items-center gap-2">
+                  <span className="text-base">🧪</span>
+                  <div>
+                    <p className="text-xs font-black text-amber-800">Beta Invite Link</p>
+                    <p className="text-[10px] text-amber-700 leading-relaxed">
+                      Share this link to give friends a 30-day Pro trial + credit you for the referral.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-1.5">
+                  <div className="flex-1 bg-white border border-amber-200 rounded-xl px-3 py-2 overflow-hidden">
+                    <p className="text-[11px] font-mono text-slate-600 truncate">{data.betaReferralUrl}</p>
+                  </div>
+                  <button
+                    onClick={handleCopyBeta}
+                    className={[
+                      'flex-shrink-0 px-3 py-2 rounded-xl text-xs font-bold transition-all',
+                      copiedBeta
+                        ? 'bg-green-500 text-white'
+                        : 'bg-amber-500 text-white hover:bg-amber-400',
+                    ].join(' ')}
+                  >
+                    {copiedBeta ? '✓ Copied!' : '📋 Copy'}
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Share button */}
             {!data.reachedCap && (
