@@ -1,9 +1,21 @@
 'use client';
 
 import { useSession, signOut } from 'next-auth/react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import PushNotificationToggle from '@/components/PushNotificationToggle';
+
+interface ReferralSummary {
+  code:            string;
+  referralUrl:     string;
+  betaReferralUrl: string | null;
+  isBeta:          boolean;
+  referralCount:   number;
+  activeCredits:   number;
+  redeemableMonths:number;
+  isPaid:          boolean;
+  nextExpiryDate:  string | null;
+}
 
 const AVATAR_COLORS = [
   { bg: 'bg-amber-500',  label: 'Amber'  },
@@ -25,12 +37,23 @@ function Avatar({ name, color }: { name: string; color: string }) {
 
 export default function SettingsPage() {
   const { data: session, status } = useSession();
-  const [avatarColor,  setAvatarColor]  = useState('bg-amber-500');
-  const [displayName,  setDisplayName]  = useState('');
-  const [phone,        setPhone]        = useState('');
-  const [saved,        setSaved]        = useState(false);
-  const [saving,       setSaving]       = useState(false);
-  const [portalLoading,setPortalLoading]= useState(false);
+  const [avatarColor,    setAvatarColor]    = useState('bg-amber-500');
+  const [displayName,    setDisplayName]    = useState('');
+  const [phone,          setPhone]          = useState('');
+  const [saved,          setSaved]          = useState(false);
+  const [saving,         setSaving]         = useState(false);
+  const [portalLoading,  setPortalLoading]  = useState(false);
+  const [referral,       setReferral]       = useState<ReferralSummary | null>(null);
+  const [copiedRef,      setCopiedRef]      = useState(false);
+  const [copiedBeta,     setCopiedBeta]     = useState(false);
+
+  useEffect(() => {
+    if (!session) return;
+    fetch('/api/referral')
+      .then((r) => r.json())
+      .then((d: ReferralSummary) => setReferral(d))
+      .catch(() => {});
+  }, [session]);
 
   if (status === 'loading') {
     return <div className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -64,6 +87,21 @@ export default function SettingsPage() {
     } finally {
       setPortalLoading(false);
     }
+  }
+
+  async function copyToClipboard(text: string, setter: (v: boolean) => void) {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      const el = document.createElement('input');
+      el.value = text;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand('copy');
+      document.body.removeChild(el);
+    }
+    setter(true);
+    setTimeout(() => setter(false), 2000);
   }
 
   async function handleSave() {
@@ -209,6 +247,88 @@ export default function SettingsPage() {
             </>
           )}
         </div>
+
+        {/* Referral summary */}
+        {referral && (
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400">Refer &amp; Earn</h2>
+              <Link href="/?tab=referral" className="text-[11px] text-amber-500 font-bold hover:underline">
+                Full details →
+              </Link>
+            </div>
+
+            {/* Stats */}
+            <div className="flex gap-3">
+              <div className="flex-1 bg-slate-50 rounded-xl px-3 py-2 text-center">
+                <p className="text-lg font-black text-slate-700">{referral.referralCount}</p>
+                <p className="text-[10px] text-slate-400">Friends Joined</p>
+              </div>
+              <div className={`flex-1 rounded-xl px-3 py-2 text-center ${referral.activeCredits > 0 ? 'bg-amber-50' : 'bg-slate-50'}`}>
+                <p className={`text-lg font-black ${referral.activeCredits > 0 ? 'text-amber-600' : 'text-slate-400'}`}>
+                  {referral.activeCredits}
+                </p>
+                <p className="text-[10px] text-slate-400">Credits Banked</p>
+              </div>
+            </div>
+
+            {/* Credit status */}
+            {referral.activeCredits > 0 && (
+              <p className={`text-[11px] font-semibold px-3 py-2 rounded-xl ${
+                referral.isPaid
+                  ? 'bg-green-50 text-green-700'
+                  : 'bg-amber-50 text-amber-700'
+              }`}>
+                {referral.isPaid
+                  ? `✅ ${referral.redeemableMonths} month${referral.redeemableMonths !== 1 ? 's' : ''} ready to redeem on next billing cycle`
+                  : `⏳ ${referral.activeCredits} month${referral.activeCredits !== 1 ? 's' : ''} banked — upgrade to Pro to redeem`}
+                {referral.nextExpiryDate && (
+                  <span className="block text-[10px] text-slate-400 mt-0.5">
+                    Earliest expiry: {new Date(referral.nextExpiryDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  </span>
+                )}
+              </p>
+            )}
+
+            {/* Referral link */}
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">Your referral link</p>
+              <div className="flex gap-1.5">
+                <div className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 overflow-hidden">
+                  <p className="text-[11px] font-mono text-slate-500 truncate">{referral.referralUrl}</p>
+                </div>
+                <button
+                  onClick={() => copyToClipboard(referral.referralUrl, setCopiedRef)}
+                  className={`flex-shrink-0 px-3 py-2 rounded-xl text-xs font-bold transition-all ${
+                    copiedRef ? 'bg-green-500 text-white' : 'bg-slate-200 text-slate-600 hover:bg-amber-100 hover:text-amber-700'
+                  }`}
+                >
+                  {copiedRef ? '✓' : '📋'}
+                </button>
+              </div>
+            </div>
+
+            {/* Beta invite link — only for beta testers */}
+            {referral.isBeta && referral.betaReferralUrl && (
+              <div>
+                <p className="text-[10px] font-bold text-amber-500 uppercase tracking-wide mb-1">🧪 Beta invite link</p>
+                <div className="flex gap-1.5">
+                  <div className="flex-1 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 overflow-hidden">
+                    <p className="text-[11px] font-mono text-slate-500 truncate">{referral.betaReferralUrl}</p>
+                  </div>
+                  <button
+                    onClick={() => copyToClipboard(referral.betaReferralUrl!, setCopiedBeta)}
+                    className={`flex-shrink-0 px-3 py-2 rounded-xl text-xs font-bold transition-all ${
+                      copiedBeta ? 'bg-green-500 text-white' : 'bg-amber-500 text-white hover:bg-amber-400'
+                    }`}
+                  >
+                    {copiedBeta ? '✓' : '📋'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* App preferences */}
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-4">
