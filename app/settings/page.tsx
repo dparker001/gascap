@@ -37,7 +37,13 @@ function Avatar({ name, color }: { name: string; color: string }) {
 
 export default function SettingsPage() {
   const { data: session, status } = useSession();
+  const AVATAR_COLOR_KEY = 'gascap_avatar_color';
   const [avatarColor,    setAvatarColor]    = useState('bg-amber-500');
+
+  useEffect(() => {
+    const saved = localStorage.getItem(AVATAR_COLOR_KEY);
+    if (saved) setAvatarColor(saved);
+  }, []);
   const [displayName,    setDisplayName]    = useState('');
   const [phone,          setPhone]          = useState('');
   const [saved,          setSaved]          = useState(false);
@@ -146,7 +152,7 @@ export default function SettingsPage() {
               {AVATAR_COLORS.map((c) => (
                 <button
                   key={c.bg}
-                  onClick={() => setAvatarColor(c.bg)}
+                  onClick={() => { setAvatarColor(c.bg); localStorage.setItem(AVATAR_COLOR_KEY, c.bg); }}
                   className={`w-7 h-7 rounded-full ${c.bg} transition-all ${
                     avatarColor === c.bg ? 'ring-2 ring-offset-2 ring-slate-400 scale-110' : 'opacity-70 hover:opacity-100'
                   }`}

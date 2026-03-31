@@ -2,10 +2,13 @@
 
 import { useSession, signOut } from 'next-auth/react';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+
+const AVATAR_COLOR_KEY = 'gascap_avatar_color';
+const DEFAULT_COLOR    = 'bg-amber-500';
 
 /** Initials avatar from a display name */
-function Avatar({ name }: { name: string }) {
+function Avatar({ name, color }: { name: string; color: string }) {
   const initials = name
     .split(' ')
     .map((w) => w[0])
@@ -14,7 +17,7 @@ function Avatar({ name }: { name: string }) {
     .toUpperCase();
 
   return (
-    <div className="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center flex-shrink-0">
+    <div className={`w-8 h-8 rounded-full ${color} flex items-center justify-center flex-shrink-0`}>
       <span className="text-white text-xs font-black">{initials}</span>
     </div>
   );
@@ -22,7 +25,20 @@ function Avatar({ name }: { name: string }) {
 
 export default function AuthButton() {
   const { data: session, status } = useSession();
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [menuOpen,     setMenuOpen]     = useState(false);
+  const [avatarColor,  setAvatarColor]  = useState(DEFAULT_COLOR);
+
+  useEffect(() => {
+    const saved = localStorage.getItem(AVATAR_COLOR_KEY);
+    if (saved) setAvatarColor(saved);
+
+    // Listen for color changes saved from Settings page
+    const handler = (e: StorageEvent) => {
+      if (e.key === AVATAR_COLOR_KEY && e.newValue) setAvatarColor(e.newValue);
+    };
+    window.addEventListener('storage', handler);
+    return () => window.removeEventListener('storage', handler);
+  }, []);
 
   if (status === 'loading') {
     return <div className="w-20 h-8 rounded-xl bg-white/20 animate-pulse" />;
@@ -68,7 +84,7 @@ export default function AuthButton() {
         aria-expanded={menuOpen}
         aria-label="User menu"
       >
-        <Avatar name={name} />
+        <Avatar name={name} color={avatarColor} />
         <div className="hidden sm:flex items-center gap-1.5">
           <span className="text-white text-xs font-semibold max-w-[90px] truncate">
             {name}
