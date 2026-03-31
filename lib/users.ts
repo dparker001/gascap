@@ -45,6 +45,9 @@ export interface StoredUser {
   // Profile
   phone?:  string;   // optional phone number
   displayName?: string; // optional display name override
+  // Gas price alerts (Pro+)
+  priceAlertThreshold?:   number;  // $/gal — alert when national avg drops below this
+  lastPriceAlertSentAt?:  string;  // ISO — last time we sent/showed an alert (24h debounce)
 }
 
 export interface ReferralCredit {

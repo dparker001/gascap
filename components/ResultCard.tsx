@@ -1,10 +1,59 @@
 'use client';
 
 import { useSession } from 'next-auth/react';
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import TankGauge from './TankGauge';
 import FillupLogger from './FillupLogger';
 import type { TargetFillResult, BudgetResult } from '@/lib/calculations';
+
+// ── Shareable card helper ──────────────────────────────────────────────────────
+
+function ShareButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleShare = useCallback(async () => {
+    const shareData = {
+      title: 'GasCap™ — My Fill Calculation',
+      text,
+      url: 'https://gascap.app',
+    };
+    try {
+      if (navigator.share && navigator.canShare?.(shareData)) {
+        await navigator.share(shareData);
+      } else {
+        await navigator.clipboard.writeText(`${text}\n\nhttps://gascap.app`);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2500);
+      }
+    } catch {
+      // User cancelled or clipboard failed — silently ignore
+    }
+  }, [text]);
+
+  return (
+    <button
+      onClick={handleShare}
+      className="mt-2 w-full py-2.5 rounded-2xl border border-slate-200 bg-white
+                 hover:border-amber-300 hover:bg-amber-50 text-slate-500 hover:text-amber-700
+                 text-xs font-bold transition-colors flex items-center justify-center gap-2"
+    >
+      {copied ? (
+        <>
+          <span>✓</span> Copied to clipboard!
+        </>
+      ) : (
+        <>
+          <svg viewBox="0 0 20 20" className="w-3.5 h-3.5" fill="none" stroke="currentColor"
+               strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M13 4h3a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V6a2 2 0 012-2h3"/>
+            <path d="M7 2h6v4H7z"/>
+          </svg>
+          Share this calculation
+        </>
+      )}
+    </button>
+  );
+}
 
 // ── Target Fill Result ─────────────────────────────────────────────────
 
@@ -106,6 +155,15 @@ export function TargetResultCard({ result, vehicleName, vehicleId, vehicleOdomet
       )}
       {/* logKey drives external refresh if a parent listens; suppress unused warning */}
       {logKey > 0 && null}
+
+      {/* ── Share this calculation ── */}
+      <ShareButton
+        text={
+          noFuelNeeded
+            ? `My tank is already at ${currentPercent}% — no fuel needed! 🎉 Calculated with GasCap™`
+            : `I need ${gallonsNeeded.toFixed(2)} gal to fill up to ${targetPercent}% — that's $${estimatedCost.toFixed(2)} at the pump. Calculated with GasCap™`
+        }
+      />
     </div>
   );
 }
@@ -211,6 +269,15 @@ export function BudgetResultCard({ result, pricePerGallon, vehicleName, vehicleI
       )}
       {/* logKey drives external refresh if a parent listens; suppress unused warning */}
       {logKey > 0 && null}
+
+      {/* ── Share this calculation ── */}
+      <ShareButton
+        text={
+          wouldOverfill
+            ? `With $${actualCost.toFixed(2)} I can fill my tank to 100% (${resultingGallons.toFixed(2)} gal). Calculated with GasCap™`
+            : `With $${actualCost.toFixed(2)} I can buy ${gallonsAffordable.toFixed(2)} gal — that puts my tank at ${resultingPercent.toFixed(0)}%. Calculated with GasCap™`
+        }
+      />
     </div>
   );
 }

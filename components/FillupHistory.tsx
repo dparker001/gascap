@@ -28,6 +28,32 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
   const [exporting,   setExporting]   = useState(false);
   const [exportError, setExportError] = useState('');
 
+  // ── Derived stats ──────────────────────────────────────────────────────────
+
+  function calcAnnualProjection(
+    fillups: Fillup[],
+    totalSpent: number,
+  ): number | null {
+    if (fillups.length < 3) return null;
+    const dates = fillups.map((f) => new Date(f.date + 'T12:00:00').getTime());
+    const oldest = Math.min(...dates);
+    const newest = Math.max(...dates);
+    const daySpan = (newest - oldest) / 86400_000;
+    if (daySpan < 7) return null; // need at least a week of data
+    return (totalSpent / daySpan) * 365;
+  }
+
+  function calcCostPerMile(fillups: Fillup[], totalSpent: number): number | null {
+    const withOdo = fillups.filter((f) => f.odometerReading != null);
+    if (withOdo.length < 2) return null;
+    const sorted  = [...withOdo].sort((a, b) => a.odometerReading! - b.odometerReading!);
+    const minOdo  = sorted[0].odometerReading!;
+    const maxOdo  = sorted[sorted.length - 1].odometerReading!;
+    const miles   = maxOdo - minOdo;
+    if (miles < 1) return null;
+    return totalSpent / miles;
+  }
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -168,16 +194,54 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
       {open && (
         <div className="mt-2 space-y-3">
           {/* Stats bar */}
-          {stats && stats.count > 0 && (
-            <div className="grid grid-cols-3 gap-2">
-              <StatPill label="Total spent" value={`$${stats.totalSpent.toFixed(2)}`} color="text-amber-600" />
-              <StatPill label="Gallons"     value={`${stats.totalGallons} gal`}        color="text-navy-700" />
-              <StatPill label="Avg MPG"
-                value={stats.avgMpg ? `${stats.avgMpg} mpg` : '—'}
-                color={stats.avgMpg ? 'text-green-600' : 'text-slate-400'}
-              />
-            </div>
-          )}
+          {stats && stats.count > 0 && (() => {
+            const annualProjection = calcAnnualProjection(fillups, stats.totalSpent);
+            const costPerMile      = calcCostPerMile(fillups, stats.totalSpent);
+            return (
+              <>
+                <div className="grid grid-cols-3 gap-2">
+                  <StatPill label="Total spent" value={`$${stats.totalSpent.toFixed(2)}`} color="text-amber-600" />
+                  <StatPill label="Gallons"     value={`${stats.totalGallons} gal`}        color="text-navy-700" />
+                  <StatPill label="Avg MPG"
+                    value={stats.avgMpg ? `${stats.avgMpg} mpg` : '—'}
+                    color={stats.avgMpg ? 'text-green-600' : 'text-slate-400'}
+                  />
+                </div>
+
+                {/* Annual projection — shown once we have 3+ fillups */}
+                {annualProjection !== null && (
+                  <div className="bg-navy-700 rounded-xl px-4 py-3 flex items-center gap-3">
+                    <span className="text-xl flex-shrink-0" aria-hidden="true">📅</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] font-bold text-white/50 uppercase tracking-wide">Annual Fuel Cost Projection</p>
+                      <p className="text-xl font-black text-amber-400 leading-tight">
+                        ${annualProjection.toFixed(0)}
+                        <span className="text-xs font-semibold text-white/40 ml-1">/year</span>
+                      </p>
+                      <p className="text-[10px] text-white/40 mt-0.5">Based on your last {stats.count} fillups</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Cost per mile — shown when odometer data available */}
+                {costPerMile !== null && (
+                  <div className="bg-white rounded-xl border border-slate-100 px-4 py-3 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5">
+                      <span className="text-base" aria-hidden="true">🛣️</span>
+                      <div>
+                        <p className="text-xs font-bold text-slate-700">Cost per mile</p>
+                        <p className="text-[10px] text-slate-400">Based on odometer readings</p>
+                      </div>
+                    </div>
+                    <p className="text-lg font-black text-navy-700 flex-shrink-0">
+                      ${costPerMile.toFixed(3)}
+                      <span className="text-[10px] font-semibold text-slate-400 ml-0.5">/mi</span>
+                    </p>
+                  </div>
+                )}
+              </>
+            );
+          })()}
 
           {stats && stats.count === 3 && userPlan === 'free' && (
             <UpgradeNudge

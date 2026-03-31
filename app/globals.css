@@ -7,15 +7,27 @@
   --brand-navy:  #1e3a5f;
   --brand-amber: #f59e0b;
   --bg-page:     #eef1f7;
+  --text-base:   #1e293b;
+  --card-bg:     #ffffff;
+  --card-border: #f1f5f9;
+}
+
+/* ── Dark mode overrides ────────────────────────────────────────────── */
+html.dark {
+  --bg-page:     #0f1f34;
+  --text-base:   #e2e8f0;
+  --card-bg:     #1a2d47;
+  --card-border: #253d5a;
 }
 
 html { scroll-behavior: smooth; }
 
 body {
   background-color: var(--bg-page);
-  color: #1e293b;
+  color: var(--text-base);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 /* ── Component classes ─────────────────────────────────────────────── */

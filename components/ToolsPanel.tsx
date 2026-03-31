@@ -12,13 +12,14 @@ import NationalGasPriceChart  from './NationalGasPriceChart';
 import VehicleSpendingBreakdown from './VehicleSpendingBreakdown';
 import VehicleComparison       from './VehicleComparison';
 import MaintenanceReminders    from './MaintenanceReminders';
-import ReferralCard  from './ReferralCard';
-import ReviewWidget  from './ReviewWidget';
+import ReferralCard       from './ReferralCard';
+import ReviewWidget       from './ReviewWidget';
 import PushNotificationToggle from './PushNotificationToggle';
+import StationComparison  from './StationComparison';
 
 // ── Tab definitions ──────────────────────────────────────────────────────────
 
-type TabId = 'ai' | 'trip' | 'log' | 'charts' | 'service' | 'share' | 'review';
+type TabId = 'ai' | 'trip' | 'compare' | 'log' | 'charts' | 'service' | 'share' | 'review';
 
 interface Tab {
   id:            TabId;
@@ -31,6 +32,7 @@ interface Tab {
 const TABS: Tab[] = [
   { id: 'ai',      emoji: '🤖', label: 'AI',      authRequired: false, planRequired: 'pro'  },
   { id: 'trip',    emoji: '🗺️', label: 'Trip',    authRequired: false, planRequired: undefined },
+  { id: 'compare', emoji: '🏪', label: 'Compare', authRequired: false, planRequired: undefined },
   { id: 'log',     emoji: '⛽', label: 'Log',     authRequired: true,  planRequired: undefined },
   { id: 'charts',  emoji: '📊', label: 'Charts',  authRequired: true,  planRequired: 'pro'  },
   { id: 'service', emoji: '🔧', label: 'Service', authRequired: true,  planRequired: 'pro'  },
@@ -174,6 +176,11 @@ export default function ToolsPanel() {
             <TripCostEstimator embedded />
           </div>
         )}
+      </div>
+
+      {/* Station Comparison */}
+      <div role="tabpanel" id="tabpanel-compare" hidden={effectiveTab !== 'compare'}>
+        {effectiveTab === 'compare' && <StationComparison embedded />}
       </div>
 
       {/* Fillup Log + Budget */}

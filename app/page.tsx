@@ -9,6 +9,8 @@ import ToolsPanel                from '@/components/ToolsPanel';
 import PricingSection            from '@/components/PricingSection';
 import EmailVerificationBanner   from '@/components/EmailVerificationBanner';
 import ReviewsMarquee            from '@/components/ReviewsMarquee';
+import OnboardingModal           from '@/components/OnboardingModal';
+import GasPriceAlertBanner       from '@/components/GasPriceAlertBanner';
 
 // ── Guest landing — features + social proof shown to non-signed-in visitors ──
 
@@ -143,8 +145,14 @@ export default function Home() {
 
   return (
     <main className="min-h-screen flex flex-col bg-slate-50">
+      {/* Onboarding — shown once to new visitors via localStorage */}
+      {isGuest && <OnboardingModal />}
+
       {/* Email verification prompt — shown when signed in but unverified */}
       <EmailVerificationBanner />
+
+      {/* Gas price drop alert — Pro users who set a threshold */}
+      <GasPriceAlertBanner />
 
       {/* Hero / Brand Header */}
       <Header />

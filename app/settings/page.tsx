@@ -4,6 +4,7 @@ import { useSession, signOut } from 'next-auth/react';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import PushNotificationToggle from '@/components/PushNotificationToggle';
+import { toggleDarkMode, isDarkMode } from '@/components/DarkModeProvider';
 
 interface ReferralSummary {
   code:            string;
@@ -43,6 +44,7 @@ export default function SettingsPage() {
   useEffect(() => {
     const saved = localStorage.getItem(AVATAR_COLOR_KEY);
     if (saved) setAvatarColor(saved);
+    setDarkMode(isDarkMode());
   }, []);
   const [displayName,    setDisplayName]    = useState('');
   const [phone,          setPhone]          = useState('');
@@ -50,14 +52,24 @@ export default function SettingsPage() {
   const [saving,         setSaving]         = useState(false);
   const [portalLoading,  setPortalLoading]  = useState(false);
   const [referral,       setReferral]       = useState<ReferralSummary | null>(null);
-  const [copiedRef,      setCopiedRef]      = useState(false);
-  const [copiedBeta,     setCopiedBeta]     = useState(false);
+  const [copiedRef,        setCopiedRef]        = useState(false);
+  const [copiedBeta,       setCopiedBeta]       = useState(false);
+  const [darkMode,         setDarkMode]         = useState(false);
+  const [alertThreshold,   setAlertThreshold]   = useState('');
+  const [alertSaved,       setAlertSaved]       = useState(false);
+  const [alertSaving,      setAlertSaving]      = useState(false);
 
   useEffect(() => {
     if (!session) return;
     fetch('/api/referral')
       .then((r) => r.json())
       .then((d: ReferralSummary) => setReferral(d))
+      .catch(() => {});
+    fetch('/api/user/price-alert')
+      .then((r) => r.json())
+      .then((d: { threshold?: number | null }) => {
+        if (d.threshold) setAlertThreshold(String(d.threshold));
+      })
       .catch(() => {});
   }, [session]);
 
@@ -122,6 +134,27 @@ export default function SettingsPage() {
       setTimeout(() => setSaved(false), 2000);
     } finally {
       setSaving(false);
+    }
+  }
+
+  function handleDarkModeToggle() {
+    const next = toggleDarkMode();
+    setDarkMode(next);
+  }
+
+  async function handleSaveAlert() {
+    setAlertSaving(true);
+    try {
+      const threshold = alertThreshold ? parseFloat(alertThreshold) : null;
+      await fetch('/api/user/price-alert', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ threshold }),
+      });
+      setAlertSaved(true);
+      setTimeout(() => setAlertSaved(false), 2000);
+    } finally {
+      setAlertSaving(false);
     }
   }
 
@@ -354,7 +387,90 @@ export default function SettingsPage() {
               </div>
               <span className="text-xs font-bold text-green-600 bg-green-50 px-2 py-1 rounded-lg">On</span>
             </div>
+
+            {/* Dark mode toggle */}
+            <div className="flex items-center justify-between pt-1 border-t border-slate-100">
+              <div>
+                <p className="text-sm font-semibold text-slate-700">Dark mode</p>
+                <p className="text-xs text-slate-400">Easy on the eyes at night</p>
+              </div>
+              <button
+                onClick={handleDarkModeToggle}
+                className={`relative w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-1 ${
+                  darkMode ? 'bg-amber-500' : 'bg-slate-200'
+                }`}
+                role="switch"
+                aria-checked={darkMode}
+                aria-label="Toggle dark mode"
+              >
+                <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                  darkMode ? 'translate-x-5' : 'translate-x-0'
+                }`} />
+              </button>
+            </div>
           </div>
+        </div>
+
+        {/* Gas price alert — Pro only */}
+        <div className={`bg-white rounded-2xl border shadow-sm p-5 space-y-4 ${
+          plan === 'pro' || plan === 'fleet' ? 'border-slate-100' : 'border-slate-100 opacity-80'
+        }`}>
+          <div className="flex items-center justify-between">
+            <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400">
+              Gas Price Alert
+            </h2>
+            {plan === 'free' && (
+              <span className="text-[9px] font-black bg-amber-400 text-white px-2 py-0.5 rounded-full">PRO</span>
+            )}
+          </div>
+
+          {plan === 'free' ? (
+            <div className="space-y-2">
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Get notified in-app when the national average gas price drops below your target threshold.
+              </p>
+              <Link
+                href="/upgrade"
+                className="inline-block text-xs font-bold text-amber-600 hover:text-amber-700 transition-colors"
+              >
+                Upgrade to Pro to unlock →
+              </Link>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Show an alert when the national average drops below this price.
+                Leave blank to disable.
+              </p>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400">$</span>
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    value={alertThreshold}
+                    onChange={(e) => setAlertThreshold(e.target.value)}
+                    placeholder="e.g. 3.50"
+                    className="w-full pl-7 pr-4 py-2.5 border border-slate-200 rounded-xl text-sm
+                               focus:outline-none focus:ring-2 focus:ring-amber-400 text-slate-800"
+                  />
+                </div>
+                <button
+                  onClick={handleSaveAlert}
+                  disabled={alertSaving}
+                  className="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-50
+                             text-white font-bold text-xs rounded-xl transition-colors"
+                >
+                  {alertSaved ? '✓ Saved' : alertSaving ? '…' : 'Save'}
+                </button>
+              </div>
+              {alertThreshold && (
+                <p className="text-[11px] text-slate-400">
+                  Alert active at <span className="font-bold text-slate-600">${parseFloat(alertThreshold).toFixed(2)}/gal</span>
+                </p>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Notifications */}
