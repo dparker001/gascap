@@ -1,14 +1,16 @@
 /**
  * GET /api/referral — get the signed-in user's referral code and stats
  * Returns: { code, referralUrl, referralCount, proMonthsEarned, referredBy,
- *            maxReferrals, reachedCap, redeemableMonths, userPlan }
+ *            maxReferrals, reachedCap, canRefer, redeemableMonths, activeCredits,
+ *            nextExpiryDate, userPlan }
  */
 import { NextResponse }     from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions }      from '@/lib/auth';
-import { ensureReferralCode, findById } from '@/lib/users';
+import { ensureReferralCode, findById, getActiveCredits, getRedeemableMonths } from '@/lib/users';
 
 const MAX_REFERRAL_REWARDS = 10;
+const MAX_REDEEM_AT_ONCE   = 3;
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -18,24 +20,34 @@ export async function GET() {
   const code   = ensureReferralCode(userId);
   const user   = findById(userId);
 
-  const baseUrl      = process.env.NEXTAUTH_URL ?? 'https://gascap.app';
+  const baseUrl      = process.env.NEXTAUTH_URL ?? 'https://www.gascap.app';
   const referralUrl  = `${baseUrl}/signup?ref=${code}`;
   const plan         = user?.plan ?? 'free';
   const isPaid       = plan === 'pro' || plan === 'fleet';
   const monthsEarned = user?.referralProMonthsEarned ?? 0;
 
+  const activeCredits    = user ? getActiveCredits(user) : [];
+  const redeemableMonths = user ? getRedeemableMonths(user) : 0;
+
+  // Next expiry date — earliest expiring active credit
+  const nextExpiryDate = activeCredits.length > 0
+    ? activeCredits.sort((a, b) => new Date(a.expiresAt).getTime() - new Date(b.expiresAt).getTime())[0].expiresAt
+    : null;
+
   return NextResponse.json({
     code,
     referralUrl,
-    referralCount:    user?.referralCount          ?? 0,
+    referralCount:    user?.referralCount ?? 0,
     proMonthsEarned:  monthsEarned,
-    referredBy:       user?.referredBy             ?? null,
+    referredBy:       user?.referredBy    ?? null,
     maxReferrals:     MAX_REFERRAL_REWARDS,
+    maxRedeemAtOnce:  MAX_REDEEM_AT_ONCE,
     reachedCap:       (user?.referralCount ?? 0) >= MAX_REFERRAL_REWARDS,
-    // Only Pro / Fleet subscribers can share a referral link
-    canRefer:         isPaid,
-    // Months are only redeemable against a paid subscription
-    redeemableMonths: isPaid ? monthsEarned : 0,
+    canRefer:         true,            // all plans can refer
+    activeCredits:    activeCredits.length,
+    redeemableMonths,                  // capped at MAX_REDEEM_AT_ONCE, only if on Pro/Fleet
+    nextExpiryDate,                    // ISO string of soonest-expiring credit
     userPlan:         plan,
+    isPaid,
   });
 }

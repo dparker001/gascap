@@ -31,6 +31,7 @@ export interface StoredUser {
   referralCount?:         number;   // how many users signed up & verified with this code (capped at 10)
   referralProMonthsEarned?: number; // months of Pro earned via referrals (1 per referral, max 10)
   referralRewardCredited?:  boolean; // true once this user's signup has been credited to their referrer
+  referralCredits?:         ReferralCredit[]; // individual credits with expiry tracking
   // Beta trial
   isBetaTester?:   boolean;  // marked as a beta tester by admin
   betaProExpiry?:  string;   // ISO date — when the beta Pro trial ends; null/undefined = no trial
@@ -44,6 +45,13 @@ export interface StoredUser {
   // Profile
   phone?:  string;   // optional phone number
   displayName?: string; // optional display name override
+}
+
+export interface ReferralCredit {
+  id:        string;   // UUID
+  earnedAt:  string;   // ISO date earned
+  expiresAt: string;   // ISO date — 6 months after earnedAt
+  redeemedAt?: string; // ISO date if redeemed
 }
 
 export type ActivityEvent = 'calc' | 'budget_calc' | 'location_lookup' | 'visit';
@@ -279,17 +287,69 @@ export function findByReferralCode(code: string): StoredUser | undefined {
   return read().find((u) => u.referralCode?.toUpperCase() === code.toUpperCase());
 }
 
-const MAX_REFERRAL_REWARDS = 10;
+const MAX_REFERRAL_REWARDS  = 10;  // max lifetime credits
+const MAX_REDEEM_AT_ONCE    = 3;   // max months redeemable at one time
+const CREDIT_EXPIRY_MONTHS  = 6;   // credits expire 6 months after earning
+
+/** Return only non-expired, non-redeemed credits for a user */
+export function getActiveCredits(user: StoredUser): ReferralCredit[] {
+  const now = new Date();
+  return (user.referralCredits ?? []).filter(
+    (c) => !c.redeemedAt && new Date(c.expiresAt) > now,
+  );
+}
+
+/** Return how many months a user can redeem right now (capped at MAX_REDEEM_AT_ONCE) */
+export function getRedeemableMonths(user: StoredUser): number {
+  return Math.min(getActiveCredits(user).length, MAX_REDEEM_AT_ONCE);
+}
 
 export function recordReferral(referrerId: string): void {
   const users = read();
   const idx   = users.findIndex((u) => u.id === referrerId);
   if (idx === -1) return;
   const current = users[idx].referralCount ?? 0;
-  if (current >= MAX_REFERRAL_REWARDS) return; // cap reached — no more credits
+  if (current >= MAX_REFERRAL_REWARDS) return; // lifetime cap reached
+
+  const now      = new Date();
+  const expiry   = new Date(now);
+  expiry.setMonth(expiry.getMonth() + CREDIT_EXPIRY_MONTHS);
+
+  const credit: ReferralCredit = {
+    id:        crypto.randomUUID(),
+    earnedAt:  now.toISOString(),
+    expiresAt: expiry.toISOString(),
+  };
+
   users[idx].referralCount           = current + 1;
   users[idx].referralProMonthsEarned = (users[idx].referralProMonthsEarned ?? 0) + 1;
+  users[idx].referralCredits         = [...(users[idx].referralCredits ?? []), credit];
   write(users);
+}
+
+/**
+ * Redeem up to MAX_REDEEM_AT_ONCE active credits for a Pro user.
+ * Returns the number of months redeemed, or 0 if not on Pro/Fleet.
+ */
+export function redeemReferralCredits(userId: string): number {
+  const users = read();
+  const idx   = users.findIndex((u) => u.id === userId);
+  if (idx === -1) return 0;
+
+  const user = users[idx];
+  // Only redeem on Pro or Fleet
+  if (user.plan !== 'pro' && user.plan !== 'fleet') return 0;
+
+  const active    = getActiveCredits(user);
+  const toRedeem  = active.slice(0, MAX_REDEEM_AT_ONCE);
+  if (toRedeem.length === 0) return 0;
+
+  const now = new Date().toISOString();
+  users[idx].referralCredits = (user.referralCredits ?? []).map((c) =>
+    toRedeem.find((r) => r.id === c.id) ? { ...c, redeemedAt: now } : c,
+  );
+  write(users);
+  return toRedeem.length;
 }
 
 export function setReferredBy(userId: string, referralCode: string): void {
@@ -324,14 +384,15 @@ export function creditVerifiedReferral(userId: string): boolean {
 
   // Mark referred user as credited regardless (prevents retry spam)
   users[idx].referralRewardCredited = true;
+  write(users);
 
+  // Use recordReferral to properly create credit with expiry
   if (current < MAX_REFERRAL_REWARDS) {
-    users[referrerIdx].referralCount           = current + 1;
-    users[referrerIdx].referralProMonthsEarned = (users[referrerIdx].referralProMonthsEarned ?? 0) + 1;
+    recordReferral(referrer.id);
+    return true;
   }
 
-  write(users);
-  return current < MAX_REFERRAL_REWARDS;
+  return false;
 }
 
 // ── Profile update ─────────────────────────────────────────────────────────

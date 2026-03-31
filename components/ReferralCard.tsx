@@ -10,10 +10,14 @@ interface ReferralData {
   proMonthsEarned:  number;
   referredBy:       string | null;
   maxReferrals:     number;
+  maxRedeemAtOnce:  number;
   reachedCap:       boolean;
   canRefer:         boolean;
+  activeCredits:    number;
   redeemableMonths: number;
+  nextExpiryDate:   string | null;
   userPlan:         string;
+  isPaid:           boolean;
 }
 
 export default function ReferralCard() {
@@ -39,7 +43,6 @@ export default function ReferralCard() {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // Fallback: select text in a temp input
       const el = document.createElement('input');
       el.value = data.referralUrl;
       document.body.appendChild(el);
@@ -68,9 +71,6 @@ export default function ReferralCard() {
 
   if (!session) return null;
 
-  const isPaid   = data ? (data.userPlan === 'pro' || data.userPlan === 'fleet') : false;
-  const canRefer = data?.canRefer ?? false;
-
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
       {/* Header */}
@@ -80,7 +80,7 @@ export default function ReferralCard() {
           <div>
             <p className="text-sm font-black text-white">Refer &amp; Earn</p>
             <p className="text-[10px] text-amber-100">
-              1 free Pro month per friend who verifies &amp; joins · up to 10
+              1 free Pro month per friend · up to 10 · redeem up to 3 at a time
             </p>
           </div>
         </div>
@@ -94,29 +94,7 @@ export default function ReferralCard() {
           </div>
         )}
 
-        {/* ── Free-user upgrade wall ── */}
-        {data && !canRefer && (
-          <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-4 text-center space-y-2">
-            <p className="text-2xl">🔒</p>
-            <p className="text-sm font-black text-amber-800">Pro feature</p>
-            <p className="text-xs text-amber-700 leading-relaxed">
-              Upgrade to <strong>Pro</strong> or <strong>Fleet</strong> to unlock your referral link and earn free months for every friend who joins.
-            </p>
-            <a
-              href="/pricing"
-              className="inline-block mt-1 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-white text-xs font-black transition-colors"
-            >
-              Upgrade to Pro →
-            </a>
-            {data.referredBy && (
-              <p className="text-[10px] text-green-600 font-semibold pt-1">
-                ✓ You were referred by code <span className="font-mono">{data.referredBy}</span>
-              </p>
-            )}
-          </div>
-        )}
-
-        {data && canRefer && (
+        {data && (
           <>
             {/* Stats row */}
             <div className="flex gap-3">
@@ -126,19 +104,19 @@ export default function ReferralCard() {
               </div>
               <div className={[
                 'flex-1 rounded-xl px-3 py-2.5 text-center',
-                data.proMonthsEarned > 0 ? 'bg-amber-50' : 'bg-slate-50',
+                data.activeCredits > 0 ? 'bg-amber-50' : 'bg-slate-50',
               ].join(' ')}>
                 <p className={[
                   'text-lg font-black',
-                  data.proMonthsEarned > 0 ? 'text-amber-600' : 'text-slate-400',
+                  data.activeCredits > 0 ? 'text-amber-600' : 'text-slate-400',
                 ].join(' ')}>
-                  {data.proMonthsEarned}
+                  {data.activeCredits}
                 </p>
-                <p className="text-[10px] text-slate-400 font-semibold">Pro Months Earned</p>
+                <p className="text-[10px] text-slate-400 font-semibold">Credits Available</p>
               </div>
             </div>
 
-            {/* Progress bar toward 10-referral cap */}
+            {/* Progress bar */}
             <div>
               <div className="flex items-center justify-between mb-1">
                 <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">
@@ -162,39 +140,61 @@ export default function ReferralCard() {
               </div>
               {!data.reachedCap && (
                 <p className="text-[10px] text-slate-400 mt-1">
-                  {data.maxReferrals - data.referralCount} more friend{data.maxReferrals - data.referralCount !== 1 ? 's' : ''} for a free year of Pro
+                  {data.maxReferrals - data.referralCount} more to earn a free month each
                 </p>
               )}
             </div>
 
-            {/* Credit status — plan-aware */}
-            {data.proMonthsEarned > 0 && (
+            {/* Credit status */}
+            {data.activeCredits > 0 && (
               <div className={[
                 'rounded-xl px-3 py-2.5 flex items-start gap-2.5',
-                isPaid ? 'bg-green-50 border border-green-200' : 'bg-amber-50 border border-amber-200',
+                data.isPaid ? 'bg-green-50 border border-green-200' : 'bg-amber-50 border border-amber-200',
               ].join(' ')}>
-                <span className="text-base flex-shrink-0">{isPaid ? '✅' : '⏳'}</span>
-                <div>
-                  {isPaid ? (
+                <span className="text-base flex-shrink-0">{data.isPaid ? '✅' : '⏳'}</span>
+                <div className="space-y-0.5">
+                  {data.isPaid ? (
                     <>
                       <p className="text-xs font-black text-green-800">
-                        {data.proMonthsEarned} month{data.proMonthsEarned !== 1 ? 's' : ''} of Pro credits active
+                        {data.redeemableMonths} month{data.redeemableMonths !== 1 ? 's' : ''} ready to redeem
+                        {data.activeCredits > data.maxRedeemAtOnce && ` (${data.activeCredits} total, max ${data.maxRedeemAtOnce} at once)`}
                       </p>
-                      <p className="text-[10px] text-green-700 mt-0.5 leading-relaxed">
-                        Your credits will be applied to your next billing cycle. Contact support to apply immediately.
+                      <p className="text-[10px] text-green-700 leading-relaxed">
+                        Credits apply to your next billing cycle. Contact us at hello@gascap.app to apply immediately.
                       </p>
                     </>
                   ) : (
                     <>
                       <p className="text-xs font-black text-amber-800">
-                        {data.proMonthsEarned} month{data.proMonthsEarned !== 1 ? 's' : ''} of Pro credits pending
+                        {data.activeCredits} month{data.activeCredits !== 1 ? 's' : ''} banked — upgrade to redeem
                       </p>
-                      <p className="text-[10px] text-amber-700 mt-0.5 leading-relaxed">
-                        Credits apply automatically when you upgrade to Pro or Fleet. Your friends are saving you money!
+                      <p className="text-[10px] text-amber-700 leading-relaxed">
+                        Credits apply automatically when you upgrade to Pro or Fleet. Up to {data.maxRedeemAtOnce} months redeemable at once.
                       </p>
                     </>
                   )}
+                  {data.nextExpiryDate && (
+                    <p className="text-[10px] text-slate-400 mt-1">
+                      ⚠️ Earliest credit expires {new Date(data.nextExpiryDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </p>
+                  )}
                 </div>
+              </div>
+            )}
+
+            {/* Free user upgrade nudge — only if no credits yet */}
+            {!data.isPaid && data.activeCredits === 0 && (
+              <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5 text-center space-y-1">
+                <p className="text-xs font-black text-slate-700">Credits accumulate on any plan</p>
+                <p className="text-[10px] text-slate-500 leading-relaxed">
+                  Refer friends now — your free months bank up and unlock automatically when you upgrade to Pro.
+                </p>
+                <a
+                  href="/upgrade"
+                  className="inline-block mt-1 px-4 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-white text-xs font-black transition-colors"
+                >
+                  Upgrade to Pro →
+                </a>
               </div>
             )}
 
@@ -221,7 +221,7 @@ export default function ReferralCard() {
               </div>
             </div>
 
-            {/* Share button — hidden if cap reached */}
+            {/* Share button */}
             {!data.reachedCap && (
               <button
                 onClick={handleShare}
@@ -239,12 +239,9 @@ export default function ReferralCard() {
               </div>
             )}
 
-            {/* Footer tip */}
+            {/* Footer */}
             <p className="text-[10px] text-slate-400 text-center leading-relaxed">
-              Reward triggers when your friend verifies their email.
-              {isPaid
-                ? ' Credits offset your next billing cycle.'
-                : ' Credits are saved and apply when you upgrade.'}
+              Reward triggers when your friend verifies their email. Credits expire 6 months after earning.
             </p>
 
             {data.referredBy && (
