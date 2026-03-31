@@ -4,7 +4,7 @@ import { useSession, signOut } from 'next-auth/react';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import PushNotificationToggle from '@/components/PushNotificationToggle';
-import { toggleDarkMode, isDarkMode } from '@/components/DarkModeProvider';
+import { setThemePreference, getThemePreference, isDarkMode, type ThemePreference } from '@/components/DarkModeProvider';
 
 interface ReferralSummary {
   code:            string;
@@ -45,6 +45,7 @@ export default function SettingsPage() {
     const saved = localStorage.getItem(AVATAR_COLOR_KEY);
     if (saved) setAvatarColor(saved);
     setDarkMode(isDarkMode());
+    setThemePref(getThemePreference());
   }, []);
   const [displayName,    setDisplayName]    = useState('');
   const [phone,          setPhone]          = useState('');
@@ -54,7 +55,8 @@ export default function SettingsPage() {
   const [referral,       setReferral]       = useState<ReferralSummary | null>(null);
   const [copiedRef,        setCopiedRef]        = useState(false);
   const [copiedBeta,       setCopiedBeta]       = useState(false);
-  const [darkMode,         setDarkMode]         = useState(false);
+  const [darkMode,         setDarkMode]         = useState(false);   // rendered state
+  const [themePref,        setThemePref]        = useState<ThemePreference>('auto');
   const [alertThreshold,   setAlertThreshold]   = useState('');
   const [alertSaved,       setAlertSaved]       = useState(false);
   const [alertSaving,      setAlertSaving]      = useState(false);
@@ -137,9 +139,10 @@ export default function SettingsPage() {
     }
   }
 
-  function handleDarkModeToggle() {
-    const next = toggleDarkMode();
-    setDarkMode(next);
+  function handleThemeChange(pref: ThemePreference) {
+    setThemePreference(pref);
+    setThemePref(pref);
+    setDarkMode(isDarkMode());
   }
 
   async function handleSaveAlert() {
@@ -388,25 +391,41 @@ export default function SettingsPage() {
               <span className="text-xs font-bold text-green-600 bg-green-50 px-2 py-1 rounded-lg">On</span>
             </div>
 
-            {/* Dark mode toggle */}
-            <div className="flex items-center justify-between pt-1 border-t border-slate-100">
+            {/* Dark mode — 3-way: Auto / Light / Dark */}
+            <div className="pt-1 border-t border-slate-100 space-y-2">
               <div>
-                <p className="text-sm font-semibold text-slate-700">Dark mode</p>
-                <p className="text-xs text-slate-400">Easy on the eyes at night</p>
+                <p className="text-sm font-semibold text-slate-700">
+                  Appearance
+                  {darkMode && <span className="ml-2 text-[10px] font-bold text-navy-700 bg-navy-50 px-1.5 py-0.5 rounded-full">🌙 Dark</span>}
+                  {!darkMode && <span className="ml-2 text-[10px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-full">☀️ Light</span>}
+                </p>
+                <p className="text-xs text-slate-400">
+                  {themePref === 'auto'
+                    ? 'Auto — follows your device (sunrise/sunset)'
+                    : themePref === 'dark'
+                      ? 'Always dark'
+                      : 'Always light'}
+                </p>
               </div>
-              <button
-                onClick={handleDarkModeToggle}
-                className={`relative w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-1 ${
-                  darkMode ? 'bg-amber-500' : 'bg-slate-200'
-                }`}
-                role="switch"
-                aria-checked={darkMode}
-                aria-label="Toggle dark mode"
-              >
-                <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${
-                  darkMode ? 'translate-x-5' : 'translate-x-0'
-                }`} />
-              </button>
+              <div className="flex rounded-xl overflow-hidden border border-slate-200">
+                {(['auto', 'light', 'dark'] as ThemePreference[]).map((pref) => {
+                  const labels: Record<ThemePreference, string> = { auto: '🌓 Auto', light: '☀️ Light', dark: '🌙 Dark' };
+                  const isActive = themePref === pref;
+                  return (
+                    <button
+                      key={pref}
+                      onClick={() => handleThemeChange(pref)}
+                      className={`flex-1 py-2 text-xs font-bold transition-colors ${
+                        isActive
+                          ? 'bg-navy-700 text-white'
+                          : 'bg-white text-slate-500 hover:bg-slate-50'
+                      }`}
+                    >
+                      {labels[pref]}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>
