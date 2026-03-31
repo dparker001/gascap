@@ -532,7 +532,7 @@ function VinTab({ onSave, onCancel, saving, saveError }: Omit<VehiclePickerProps
       const res  = await fetch('/api/vin/scan', { method: 'POST', body: fd });
       const data = await res.json() as { vin?: string | null; error?: string };
       if (!res.ok || data.error) { setScanError(data.error ?? 'Could not read VIN from image.'); return; }
-      if (!data.vin) { setScanError('No VIN detected — try a clearer photo of the VIN plate.'); return; }
+      if (!data.vin) { setScanError('No VIN found — zoom in so the "VIN" label is clearly visible, or try the dashboard plate instead.'); return; }
       setVin(data.vin);
       setScanError('');
     } catch {
@@ -651,6 +651,7 @@ function VinTab({ onSave, onCancel, saving, saveError }: Omit<VehiclePickerProps
             className="flex items-center gap-1 text-[11px] font-bold text-amber-700 bg-amber-50
                        border border-amber-200 rounded-lg px-2 py-1 hover:bg-amber-100
                        disabled:opacity-50 transition-colors"
+            title="Best results: scan the dashboard VIN plate (bottom of windshield, driver side)"
           >
             <span>{scanning ? '🔄' : '📷'}</span>
             <span>{scanning ? 'Scanning…' : 'Scan VIN'}</span>
@@ -697,17 +698,25 @@ function VinTab({ onSave, onCancel, saving, saveError }: Omit<VehiclePickerProps
       </div>
 
       {/* Where to find your VIN */}
-      <div className="bg-slate-50 rounded-xl px-3 py-2.5 border border-slate-100 space-y-1">
+      <div className="bg-slate-50 rounded-xl px-3 py-2.5 border border-slate-100 space-y-2">
         <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Where to find your VIN</p>
         <div className="grid grid-cols-2 gap-x-3 gap-y-0.5">
           {[
-            '📋 Vehicle registration',
             '🚗 Dashboard (driver side)',
+            '📋 Vehicle registration',
             '🚪 Driver door jamb sticker',
             '🏦 Insurance card',
           ].map((s) => (
             <p key={s} className="text-[10px] text-slate-500">{s}</p>
           ))}
+        </div>
+        {/* Camera scan tip */}
+        <div className="flex items-start gap-1.5 pt-1 border-t border-slate-200">
+          <span className="text-[10px] mt-0.5">📷</span>
+          <p className="text-[10px] text-slate-500 leading-relaxed">
+            <span className="font-semibold text-slate-600">Best for scanning:</span> the dashboard plate (bottom of windshield).
+            Door jamb stickers work too — zoom in so the <span className="font-semibold">"VIN"</span> label is clearly visible in frame.
+          </p>
         </div>
       </div>
 

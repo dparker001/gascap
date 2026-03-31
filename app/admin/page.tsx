@@ -679,9 +679,9 @@ export default function AdminPage() {
                       <button
                         onClick={() => handleTestAccount(u, false)}
                         className="text-xs px-2 py-1 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 font-semibold transition-colors whitespace-nowrap"
-                        title="Remove test account exemption"
+                        title="Remove test account exemption — restore normal plan limits"
                       >
-                        🧪 Remove
+                        🧪 → Live
                       </button>
                     )}
 

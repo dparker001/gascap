@@ -51,15 +51,18 @@ export async function POST(req: Request) {
           },
           {
             type: 'text',
-            text: `Extract the Vehicle Identification Number (VIN) from this image. The VIN is exactly 17 characters, using letters A-H, J-N, P-Z and digits 0-9 (letters I, O, Q are never used).
+            text: `Extract the Vehicle Identification Number (VIN) from this image.
 
-Return ONLY a JSON object with this exact format:
-{"vin": "<17-char VIN>"}
+RULES:
+- A VIN is exactly 17 characters using letters A-H, J-N, P-Z and digits 0-9. Letters I, O, and Q are NEVER in a VIN.
+- Door jamb stickers contain many numbers (GVWR, GAWR, tire pressures, axle codes, etc.). ONLY use the sequence that is explicitly labeled "VIN" or "V.I.N." on the sticker — never guess from unlabeled numbers.
+- Dashboard VIN plates typically show just one 17-character sequence — use that.
+- VINs commonly start with a 3-character World Manufacturer Identifier such as 1HG, 2T1, JTD, WBA, KM8, 5NP, 1FT, 3VW, etc.
+- If a "VIN" label is present, extract ONLY that labeled sequence. Ignore all other numbers on the label.
+- If the image is blurry, the VIN label is not visible, or you cannot confidently read all 17 characters, return null — do not guess.
 
-If you cannot find or confidently read a VIN, return:
-{"vin": null}
-
-Return ONLY the JSON. No explanation, no markdown.`,
+Return ONLY a JSON object, no markdown, no explanation:
+{"vin": "<17-char VIN or null>"}`,
           },
         ],
       }],
