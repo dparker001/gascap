@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useSession } from 'next-auth/react';
 import FuelGauge      from './FuelGauge';
 import TankPresets    from './TankPresets';
 import SavedVehicles  from './SavedVehicles';
@@ -56,14 +57,47 @@ interface Props {
 // ── Component ──────────────────────────────────────────────────────────
 
 export default function BudgetForm({ activeTab, setActiveTab }: Props) {
+  const { data: session }   = useSession();
+  const isPro      = ['pro', 'fleet'].includes((session?.user as { plan?: string })?.plan ?? '');
+  const isLoggedIn = !!session;
+
   const [form, setForm]     = useLocalStorage<FormState>('gc_budget_v2', DEFAULTS);
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [result, setResult] = useState<BudgetResult | null>(null);
-  const [calculated, setCalculated] = useState(false);
+  const [calculated, setCalculated]   = useState(false);
+  const [showLiveNudge, setShowLiveNudge] = useState(false);
 
+  // Standard patch — clears result (free/guest behaviour)
   function patch(p: Partial<FormState>) {
     setForm((prev) => ({ ...prev, ...p }));
-    if (calculated) { setResult(null); setCalculated(false); }
+    if (calculated) {
+      setResult(null);
+      setCalculated(false);
+      if (isLoggedIn && !isPro) setShowLiveNudge(true);
+    }
+  }
+
+  // Live recalc — Pro only. Merges update and immediately recalculates.
+  function liveRecalc(p: Partial<FormState>) {
+    if (!isPro || !calculated) { patch(p); return; }
+
+    const merged = { ...form, ...p };
+    setForm(merged);
+
+    const input = {
+      tankCapacity:       Number(merged.tankCapacity),
+      fuelInputMode:      merged.fuelMode,
+      currentFuelPercent: merged.fuelMode === 'percent' ? Number(merged.currentFuel) : undefined,
+      currentFuelGallons: merged.fuelMode === 'gallons' ? Number(merged.currentFuel) : undefined,
+      pricePerGallon:     Number(merged.pricePerGallon),
+      budget:             Number(merged.budget),
+    };
+
+    const errs = validateBudget(input);
+    if (Object.keys(errs).length === 0) {
+      setResult(calcBudget(input));
+      setErrors({});
+    }
   }
 
   const gaugePercent = form.fuelMode === 'percent'
@@ -86,6 +120,7 @@ export default function BudgetForm({ activeTab, setActiveTab }: Props) {
 
     setResult(calcBudget(input));
     setCalculated(true);
+    setShowLiveNudge(false);
     setTimeout(() => {
       document.getElementById('bgt-result')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }, 80);
@@ -96,9 +131,11 @@ export default function BudgetForm({ activeTab, setActiveTab }: Props) {
     setErrors({});
     setResult(null);
     setCalculated(false);
+    setShowLiveNudge(false);
   }
 
   const tankNum = Number(form.tankCapacity) || undefined;
+  const isLive  = isPro && calculated;
 
   return (
     <div className="pb-2">
@@ -131,7 +168,15 @@ export default function BudgetForm({ activeTab, setActiveTab }: Props) {
       <StepLabel n={2} title="Set fuel level" />
       <div className="card">
         <div className="flex items-center justify-between mb-3">
-          <p className="field-label mb-0">Current Fuel Level</p>
+          <div className="flex items-center gap-2">
+            <p className="field-label mb-0">Current Fuel Level</p>
+            {/* ⚡ Live badge — Pro only, shown once calculated */}
+            {isLive && (
+              <span className="text-[9px] font-black bg-amber-500 text-white px-1.5 py-0.5 rounded-full leading-none">
+                ⚡ LIVE
+              </span>
+            )}
+          </div>
           <div className="flex gap-1.5">
             <ModeBtn label="%" active={form.fuelMode === 'percent'}
               onClick={() => patch({ fuelMode: 'percent', currentFuel: '25' })} />
@@ -143,7 +188,7 @@ export default function BudgetForm({ activeTab, setActiveTab }: Props) {
         {form.fuelMode === 'percent' ? (
           <FuelGauge
             percent={gaugePercent}
-            onChange={(pct) => patch({ currentFuel: String(pct) })}
+            onChange={(pct) => liveRecalc({ currentFuel: String(pct) })}
             tankCapacity={tankNum}
           />
         ) : (
@@ -155,12 +200,22 @@ export default function BudgetForm({ activeTab, setActiveTab }: Props) {
               value={form.currentFuel}
               min="0" step="0.1"
               onChange={(e) => patch({ currentFuel: e.target.value })}
+              onBlur={(e)  => liveRecalc({ currentFuel: e.target.value })}
               aria-label="Current fuel in gallons"
             />
             <Unit>gal</Unit>
           </div>
         )}
         {errors.currentFuel && <FieldError msg={errors.currentFuel} />}
+
+        {/* Free user upgrade nudge */}
+        {showLiveNudge && !isPro && isLoggedIn && (
+          <a href="/upgrade"
+             className="mt-3 flex items-center gap-1.5 text-[11px] font-semibold text-amber-600 hover:text-amber-500 transition-colors">
+            <span className="text-xs bg-amber-100 rounded-full px-1.5 py-0.5">⚡</span>
+            Live recalculation is a Pro feature — Upgrade to Pro
+          </a>
+        )}
       </div>
 
       {/* ══════════════════════════════════════════════════════════════
@@ -207,7 +262,7 @@ export default function BudgetForm({ activeTab, setActiveTab }: Props) {
             return (
               <button
                 key={amt}
-                onClick={() => patch({ budget: str })}
+                onClick={() => liveRecalc({ budget: str })}
                 aria-pressed={form.budget === str}
                 className={[
                   'flex-shrink-0 px-4 py-2.5 rounded-xl text-sm font-bold border-2 transition-all',
@@ -231,6 +286,7 @@ export default function BudgetForm({ activeTab, setActiveTab }: Props) {
             value={form.budget}
             min="0.01" step="0.01"
             onChange={(e) => patch({ budget: e.target.value })}
+            onBlur={(e)  => liveRecalc({ budget: e.target.value })}
             aria-label="Budget in dollars"
           />
         </div>
@@ -269,11 +325,12 @@ export default function BudgetForm({ activeTab, setActiveTab }: Props) {
             value={form.pricePerGallon}
             min="0.01" step="0.01"
             onChange={(e) => patch({ pricePerGallon: e.target.value })}
+            onBlur={(e)  => liveRecalc({ pricePerGallon: e.target.value })}
             aria-label="Gas price per gallon"
           />
         </div>
         {errors.pricePerGallon && <FieldError msg={errors.pricePerGallon} />}
-        <GasPriceLookup onApply={(p) => patch({ pricePerGallon: p })} />
+        <GasPriceLookup onApply={(p) => liveRecalc({ pricePerGallon: p })} />
       </div>
 
       <button className="btn-amber" onClick={handleCalculate}>Calculate ⚡</button>

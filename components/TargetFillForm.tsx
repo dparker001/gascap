@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useSession } from 'next-auth/react';
 import FuelGauge     from './FuelGauge';
 import TankPresets   from './TankPresets';
 import SavedVehicles from './SavedVehicles';
@@ -63,15 +64,53 @@ interface Props {
 // ── Component ──────────────────────────────────────────────────────────
 
 export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
-  const [form, setForm]   = useLocalStorage<FormState>('gc_target_v2', DEFAULTS);
-  const [errors, setErrors]     = useState<ValidationErrors>({});
-  const [result, setResult]     = useState<TargetFillResult | null>(null);
-  const [calculated, setCalculated] = useState(false);
-  const [calcKey, setCalcKey]   = useState(0);
+  const { data: session }   = useSession();
+  const isPro      = ['pro', 'fleet'].includes((session?.user as { plan?: string })?.plan ?? '');
+  const isLoggedIn = !!session;
 
+  const [form, setForm]   = useLocalStorage<FormState>('gc_target_v2', DEFAULTS);
+  const [errors, setErrors]         = useState<ValidationErrors>({});
+  const [result, setResult]         = useState<TargetFillResult | null>(null);
+  const [calculated, setCalculated] = useState(false);
+  const [calcKey, setCalcKey]       = useState(0);
+  const [showLiveNudge, setShowLiveNudge] = useState(false);
+
+  // Standard patch — clears result (free/guest behaviour)
   function patch(p: Partial<FormState>) {
     setForm((prev) => ({ ...prev, ...p }));
-    if (calculated) { setResult(null); setCalculated(false); }
+    if (calculated) {
+      setResult(null);
+      setCalculated(false);
+      // Show upgrade nudge for logged-in free users
+      if (isLoggedIn && !isPro) setShowLiveNudge(true);
+    }
+  }
+
+  // Live recalc — Pro only. Merges update and immediately recalculates.
+  function liveRecalc(p: Partial<FormState>) {
+    if (!isPro || !calculated) { patch(p); return; }
+
+    const merged = { ...form, ...p };
+    setForm(merged);
+
+    const targetPercent = merged.targetPreset !== null
+      ? merged.targetPreset
+      : Number(merged.customTarget);
+
+    const input = {
+      tankCapacity:       Number(merged.tankCapacity),
+      fuelInputMode:      merged.fuelMode,
+      currentFuelPercent: merged.fuelMode === 'percent' ? Number(merged.currentFuel) : undefined,
+      currentFuelGallons: merged.fuelMode === 'gallons' ? Number(merged.currentFuel) : undefined,
+      targetPercent,
+      pricePerGallon:     Number(merged.pricePerGallon),
+    };
+
+    const errs = validateTargetFill(input);
+    if (Object.keys(errs).length === 0) {
+      setResult(calcTargetFill(input));
+      setErrors({});
+    }
   }
 
   const gaugePercent = form.fuelMode === 'percent'
@@ -98,6 +137,7 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
 
     setResult(calcTargetFill(input));
     setCalculated(true);
+    setShowLiveNudge(false);
     setCalcKey((k) => k + 1);
     fetch('/api/activity', {
       method:  'POST',
@@ -114,10 +154,12 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
     setErrors({});
     setResult(null);
     setCalculated(false);
+    setShowLiveNudge(false);
   }
 
   const isCustom = form.targetPreset === null;
   const tankNum  = Number(form.tankCapacity) || undefined;
+  const isLive   = isPro && calculated;
 
   return (
     <div className="pb-2">
@@ -151,7 +193,15 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
       <StepLabel n={2} title="Set fuel level" />
       <div className="card">
         <div className="flex items-center justify-between mb-3">
-          <p className="field-label mb-0">Current Fuel Level</p>
+          <div className="flex items-center gap-2">
+            <p className="field-label mb-0">Current Fuel Level</p>
+            {/* ⚡ Live badge — Pro only, shown once calculated */}
+            {isLive && (
+              <span className="text-[9px] font-black bg-amber-500 text-white px-1.5 py-0.5 rounded-full leading-none">
+                ⚡ LIVE
+              </span>
+            )}
+          </div>
           <div className="flex gap-1.5">
             <ModeBtn label="%" active={form.fuelMode === 'percent'}
               onClick={() => patch({ fuelMode: 'percent', currentFuel: '25' })} />
@@ -163,7 +213,7 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
         {form.fuelMode === 'percent' ? (
           <FuelGauge
             percent={gaugePercent}
-            onChange={(pct) => patch({ currentFuel: String(pct) })}
+            onChange={(pct) => liveRecalc({ currentFuel: String(pct) })}
             tankCapacity={tankNum}
           />
         ) : (
@@ -175,12 +225,22 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
               value={form.currentFuel}
               min="0" step="0.1"
               onChange={(e) => patch({ currentFuel: e.target.value })}
+              onBlur={(e)  => liveRecalc({ currentFuel: e.target.value })}
               aria-label="Current fuel in gallons"
             />
             <Unit>gal</Unit>
           </div>
         )}
         {errors.currentFuel && <FieldError msg={errors.currentFuel} />}
+
+        {/* Free user upgrade nudge */}
+        {showLiveNudge && !isPro && isLoggedIn && (
+          <a href="/upgrade"
+             className="mt-3 flex items-center gap-1.5 text-[11px] font-semibold text-amber-600 hover:text-amber-500 transition-colors">
+            <span className="text-xs bg-amber-100 rounded-full px-1.5 py-0.5">⚡</span>
+            Live recalculation is a Pro feature — Upgrade to Pro
+          </a>
+        )}
       </div>
 
       {/* ══════════════════════════════════════════════════════════════
@@ -226,7 +286,7 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
             <button
               key={p.value}
               className={form.targetPreset === p.value ? 'btn-preset-active' : 'btn-preset-inactive'}
-              onClick={() => patch({ targetPreset: p.value, customTarget: '' })}
+              onClick={() => liveRecalc({ targetPreset: p.value, customTarget: '' })}
               aria-pressed={form.targetPreset === p.value}
             >
               {p.label}
@@ -251,6 +311,7 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
               min="1" max="100" step="1"
               autoFocus
               onChange={(e) => patch({ customTarget: e.target.value })}
+              onBlur={(e)  => liveRecalc({ customTarget: e.target.value })}
               aria-label="Custom target fill percentage"
             />
             <Unit>%</Unit>
@@ -291,11 +352,12 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
             value={form.pricePerGallon}
             min="0.01" step="0.01"
             onChange={(e) => patch({ pricePerGallon: e.target.value })}
+            onBlur={(e)  => liveRecalc({ pricePerGallon: e.target.value })}
             aria-label="Gas price per gallon"
           />
         </div>
         {errors.pricePerGallon && <FieldError msg={errors.pricePerGallon} />}
-        <GasPriceLookup onApply={(p) => patch({ pricePerGallon: p })} />
+        <GasPriceLookup onApply={(p) => liveRecalc({ pricePerGallon: p })} />
       </div>
 
       <button className="btn-amber" onClick={handleCalculate}>Calculate ⚡</button>
