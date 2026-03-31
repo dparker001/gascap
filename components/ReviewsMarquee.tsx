@@ -47,12 +47,11 @@ function ReviewCard({ review }: { review: Review }) {
 
 // ── Marquee row ───────────────────────────────────────────────────────────
 
-function MarqueeRow({ reviews, direction }: { reviews: Review[]; direction: 'left' | 'right' }) {
+function MarqueeRow({ reviews }: { reviews: Review[] }) {
   // Duplicate for seamless loop
   const doubled = [...reviews, ...reviews];
   return (
-    <div className={`flex ${direction === 'left' ? 'marquee-track-left' : 'marquee-track-right'}`}
-         style={{ width: 'max-content' }}>
+    <div className="flex marquee-track-left" style={{ width: 'max-content' }}>
       {doubled.map((r, i) => (
         <ReviewCard key={`${r.id}-${i}`} review={r} />
       ))}
@@ -76,16 +75,10 @@ export default function ReviewsMarquee() {
       .catch(() => setLoaded(true));
   }, []);
 
-  // Need at least 2 reviews to make two rows
-  if (!loaded || reviews.length < 2) return null;
+  if (!loaded || reviews.length < 1) return null;
 
-  // Split reviews across two rows, interleaved for variety
-  const row1 = reviews.filter((_, i) => i % 2 === 0);
-  const row2 = reviews.filter((_, i) => i % 2 === 1);
-
-  // Ensure both rows have enough cards to fill the marquee (min 3 per row)
-  const pad = (arr: Review[]) =>
-    arr.length < 3 ? [...arr, ...arr, ...arr].slice(0, Math.max(arr.length * 2, 4)) : arr;
+  // Pad to at least 4 cards so the loop looks full on wide screens
+  const padded = reviews.length < 4 ? [...reviews, ...reviews] : reviews;
 
   const avgRating = (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1);
 
@@ -103,16 +96,11 @@ export default function ReviewsMarquee() {
         <p className="text-sm text-slate-400 mt-1">Real reviews from GasCap users</p>
       </div>
 
-      {/* Marquee — two rows, opposite directions */}
-      <div className="marquee-root space-y-3 select-none" aria-hidden="true">
+      {/* Single scrolling row */}
+      <div className="marquee-root select-none">
         <div className="overflow-hidden">
-          <MarqueeRow reviews={pad(row1)} direction="left" />
+          <MarqueeRow reviews={padded} />
         </div>
-        {row2.length > 0 && (
-          <div className="overflow-hidden">
-            <MarqueeRow reviews={pad(row2)} direction="right" />
-          </div>
-        )}
       </div>
     </section>
   );
