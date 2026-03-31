@@ -18,7 +18,7 @@ const FREE_FEATURES = [
 ];
 
 const PRO_FEATURES = [
-  'Up to 5 saved vehicles',
+  'Up to 3 saved vehicles',
   'VIN photo scan — auto-decode vehicle',
   'Manual entry + auto spec lookup',
   'Fill-up history & MPG tracking',
@@ -30,13 +30,14 @@ const PRO_FEATURES = [
 
 const FLEET_FEATURES = [
   'Unlimited vehicles',
-  'Up to 10 drivers',
+  'Household & multi-vehicle use',
   'Fleet-wide fuel dashboard',
-  'Per-vehicle & per-driver reporting',
+  'Per-vehicle spending breakdown',
   'Annual tax report (PDF)',
   'Bulk vehicle import',
-  'Driver management & assignments',
+  'CSV export for accounting',
   'All Pro features included',
+  'Multi-driver sub-accounts (coming soon)',
   'Dedicated fleet support',
 ];
 
@@ -162,7 +163,7 @@ export default function UpgradePage() {
                   Most Popular
                 </span>
                 <h2 className="text-xl font-black text-navy-700">Pro</h2>
-                <p className="text-xs text-slate-400 mt-0.5">For individual drivers</p>
+                <p className="text-xs text-slate-400 mt-0.5">For individuals &amp; couples</p>
               </div>
               <div className="text-right">
                 <p className="text-2xl font-black text-navy-700">{proPrice}</p>
@@ -191,10 +192,10 @@ export default function UpgradePage() {
               <div>
                 <span className="inline-block bg-blue-100 text-blue-700 text-[10px] font-black
                                  px-2 py-0.5 rounded-full uppercase tracking-wider mb-1">
-                  For Business
+                  Household &amp; Business
                 </span>
                 <h2 className="text-xl font-black text-navy-700">Fleet</h2>
-                <p className="text-xs text-slate-400 mt-0.5">6+ vehicles · up to 10 drivers</p>
+                <p className="text-xs text-slate-400 mt-0.5">Unlimited vehicles · household or business</p>
               </div>
               <div className="text-right">
                 <p className="text-2xl font-black text-navy-700">{fleetPrice}</p>
@@ -245,9 +246,9 @@ export default function UpgradePage() {
         <div className="mt-6 bg-slate-50 border border-slate-200 rounded-2xl p-4">
           <p className="text-xs font-bold text-slate-600 mb-1">🔒 Plan limits enforced automatically</p>
           <p className="text-xs text-slate-500 leading-relaxed">
-            Free accounts are limited to 1 vehicle. Pro accounts are limited to 5 vehicles.
+            Free accounts are limited to 1 vehicle. Pro accounts are limited to 3 vehicles — perfect for individuals and couples.
             When you reach your limit, you'll be prompted to upgrade — no surprises.
-            Fleet is designed for businesses managing 6 or more vehicles.
+            Fleet is designed for households and businesses that need more than 3 vehicles.
           </p>
         </div>
 

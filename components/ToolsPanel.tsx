@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import AiAdvisor             from './AiAdvisor';
 import TripCostEstimator     from './TripCostEstimator';
@@ -43,6 +43,9 @@ const TABS: Tab[] = [
 export default function ToolsPanel() {
   const { data: session } = useSession();
   const [activeTab, setActiveTab] = useState<TabId>('ai');
+  const scrollRef   = useRef<HTMLDivElement>(null);
+  const [fadeLeft,  setFadeLeft]  = useState(false);
+  const [fadeRight, setFadeRight] = useState(false);
 
   const userPlan = (session?.user as { plan?: string })?.plan ?? 'free';
   const isPro    = userPlan === 'pro' || userPlan === 'fleet';
@@ -52,6 +55,24 @@ export default function ToolsPanel() {
     TABS.find((t) => t.id === activeTab)?.authRequired && !session
       ? 'ai'
       : activeTab;
+
+  // Check scroll position to show/hide fade indicators
+  const checkScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setFadeLeft(el.scrollLeft > 8);
+    setFadeRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 8);
+  }, []);
+
+  useEffect(() => {
+    checkScroll();
+    const el = scrollRef.current;
+    if (!el) return;
+    el.addEventListener('scroll', checkScroll, { passive: true });
+    const ro = new ResizeObserver(checkScroll);
+    ro.observe(el);
+    return () => { el.removeEventListener('scroll', checkScroll); ro.disconnect(); };
+  }, [checkScroll]);
 
   return (
     <div className="mt-4">
@@ -65,7 +86,29 @@ export default function ToolsPanel() {
       </div>
 
       {/* ── Tab bar — horizontally scrollable on small screens ──────────── */}
-      <div className="overflow-x-auto -mx-0.5 px-0.5 pb-0.5 mb-4">
+      <div className="relative mb-4">
+        {/* Left fade — shows when scrolled right */}
+        {fadeLeft && (
+          <div
+            className="pointer-events-none absolute left-0 top-0 bottom-0.5 w-8 z-10 rounded-l-2xl"
+            style={{ background: 'linear-gradient(to right, #f1f5f9 0%, transparent 100%)' }}
+            aria-hidden="true"
+          />
+        )}
+        {/* Right fade + chevron — shows when more tabs are off-screen */}
+        {fadeRight && (
+          <div
+            className="pointer-events-none absolute right-0 top-0 bottom-0.5 w-10 z-10 rounded-r-2xl flex items-center justify-end pr-1.5"
+            style={{ background: 'linear-gradient(to left, #f1f5f9 60%, transparent 100%)' }}
+            aria-hidden="true"
+          >
+            <svg className="w-3.5 h-3.5 text-slate-400" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+            </svg>
+          </div>
+        )}
+
+      <div ref={scrollRef} className="overflow-x-auto -mx-0.5 px-0.5 pb-0.5 [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: 'none' }}>
         <div
           className="flex gap-1.5 bg-slate-100 rounded-2xl p-1.5"
           style={{ minWidth: 'max-content' }}
@@ -112,7 +155,8 @@ export default function ToolsPanel() {
             );
           })}
         </div>
-      </div>
+      </div>{/* end overflow-x-auto */}
+      </div>{/* end relative wrapper */}
 
       {/* ── Tab panels ──────────────────────────────────────────────────── */}
 

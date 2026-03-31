@@ -1,0 +1,1482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#4F7EFF">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>vNetCard™ Studio</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="assets/icons/icon-192.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="assets/icons/icon-192.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="assets/icons/icon-512.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/styles/global.css">
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     APP LAYOUT
+     ═══════════════════════════════════════════════════════════════════════════ -->
+<div class="app-layout">
+
+  <!-- ─── MOBILE HAMBURGER ──────────────────────────────────────────────────── -->
+  <button id="sidebar-toggle" class="sidebar-toggle" aria-label="Toggle menu">&#9776;</button>
+
+  <!-- ─── SIDEBAR ───────────────────────────────────────────────────────────── -->
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-logo">
+      <div class="sidebar-logo-icon">vNC</div>
+      <div class="sidebar-logo-text">vNetCard™ Studio</div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <a href="#dashboard" class="nav-item active" data-nav="dashboard">
+        <span class="nav-icon">&#x1F4CA;</span>
+        <span class="nav-label">Dashboard</span>
+      </a>
+      <a href="#intake" class="nav-item" data-nav="intake">
+        <span class="nav-icon">&#x2795;</span>
+        <span class="nav-label">New Card</span>
+      </a>
+      <a href="#settings" class="nav-item" data-nav="settings">
+        <span class="nav-icon">&#x2699;&#xFE0F;</span>
+        <span class="nav-label">Settings</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      Powered by vNetCard™
+    </div>
+  </aside>
+
+  <!-- ─── MAIN CONTENT ──────────────────────────────────────────────────────── -->
+  <main class="main-content">
+
+    <!-- ═════════════════════════════════════════════════════════════════════════
+         VIEW: DASHBOARD
+         ═════════════════════════════════════════════════════════════════════════ -->
+    <section data-view="dashboard">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Client Cards</h1>
+          <p class="page-subtitle">Manage mock-ups and build sheets</p>
+        </div>
+        <a href="#intake" class="btn btn-primary btn-glow">+ New Card</a>
+      </div>
+
+      <div class="stats-bar">
+        <div class="stat-item">
+          <div class="stat-accent"></div>
+          <div class="stat-value" id="stat-total">0</div>
+          <div class="stat-label">Total Cards</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-accent stat-accent-warning"></div>
+          <div class="stat-value" id="stat-drafts">0</div>
+          <div class="stat-label">Drafts</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-accent stat-accent-success"></div>
+          <div class="stat-value" id="stat-completed">0</div>
+          <div class="stat-label">Completed</div>
+        </div>
+      </div>
+
+      <div class="studio-split">
+        <!-- Left: Card List -->
+        <div class="studio-split-list">
+          <div class="search-filter-bar">
+            <div class="search-input-wrapper">
+              <svg class="search-icon" width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M7.25 12.5C10.1495 12.5 12.5 10.1495 12.5 7.25C12.5 4.35051 10.1495 2 7.25 2C4.35051 2 2 4.35051 2 7.25C2 10.1495 4.35051 12.5 7.25 12.5Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 14L11 11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <input type="text" id="card-search" class="search-input" placeholder="Search cards...">
+            </div>
+          </div>
+          <div id="card-grid" class="card-grid"></div>
+          <div id="empty-state" class="empty-state" style="display:none;">
+            <div class="empty-state-icon">&#x1F4C7;</div>
+            <h3>No cards yet</h3>
+            <p>Create your first mock-up.</p>
+            <a href="#intake" class="btn btn-primary">+ New Card</a>
+          </div>
+        </div>
+
+        <!-- Right: Live Preview -->
+        <div class="studio-split-preview" id="dashboard-preview-panel">
+          <div class="preview-panel-placeholder" id="preview-placeholder">
+            <div class="placeholder-icon">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="2" width="14" height="20" rx="3"/><line x1="12" y1="18" x2="12" y2="18.01" stroke-width="2"/></svg>
+            </div>
+            <h3>Select a card to preview</h3>
+            <p>Click any card from the list to see a live preview here</p>
+          </div>
+
+          <div class="preview-panel-active" id="preview-active" style="display:none;">
+            <div class="preview-panel-header">
+              <div>
+                <h3 class="preview-panel-title" id="dash-preview-name">Card Preview</h3>
+                <span class="preview-panel-badge" id="dash-preview-badge">Draft</span>
+              </div>
+              <div class="device-selector">
+                <button type="button" class="device-btn active" data-device="iphone" data-target="dash">iPhone</button>
+                <button type="button" class="device-btn" data-device="android" data-target="dash">Android</button>
+                <button type="button" class="device-btn" data-device="raw" data-target="dash">Raw</button>
+              </div>
+            </div>
+
+            <div class="preview-panel-frame">
+              <div class="iphone-frame" id="dash-device-frame">
+                <iframe id="dash-preview-iframe" title="Card Preview" sandbox="allow-scripts allow-same-origin"></iframe>
+              </div>
+            </div>
+
+            <div class="preview-panel-quickedit">
+              <h4 class="preview-section-label">Quick Edit</h4>
+              <div class="preview-color-editors">
+                <div class="form-group">
+                  <label for="dash-primary-color">Primary</label>
+                  <input type="color" id="dash-primary-color" value="#1A2C5B">
+                </div>
+                <div class="form-group">
+                  <label for="dash-accent-color">Accent</label>
+                  <input type="color" id="dash-accent-color" value="#F47C20">
+                </div>
+              </div>
+            </div>
+
+            <div class="preview-panel-actions">
+              <button type="button" class="btn btn-primary btn-block btn-glow" id="dash-btn-download">Download HTML</button>
+              <div class="preview-panel-actions-row">
+                <button type="button" class="btn btn-secondary btn-block" id="dash-btn-buildsheet">Build Sheet</button>
+                <button type="button" class="btn btn-secondary btn-block" id="dash-btn-edit">Edit Intake</button>
+              </div>
+              <button type="button" class="btn btn-ghost btn-block" id="dash-btn-fullpreview">Open Full Preview</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═════════════════════════════════════════════════════════════════════════
+         VIEW: INTAKE (Multi-Step Wizard)
+         ═════════════════════════════════════════════════════════════════════════ -->
+    <section data-view="intake" style="display:none;">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title" id="intake-title">New Card</h1>
+        </div>
+        <button type="button" class="btn btn-secondary" data-action="save-draft">Save Draft</button>
+      </div>
+
+      <!-- Progress Bar -->
+      <div class="wizard-progress">
+        <div class="progress-track">
+          <div class="progress-fill" id="intake-progress-bar" role="progressbar" aria-valuenow="14" aria-valuemin="0" aria-valuemax="100" style="width:14%"></div>
+        </div>
+        <div class="progress-label" id="intake-progress-label">Step 1 of 7</div>
+        <div class="step-indicators">
+          <button type="button" class="step-indicator active" data-step="1"><span class="step-num">1</span><span class="step-name">Basics</span></button>
+          <button type="button" class="step-indicator" data-step="2"><span class="step-num">2</span><span class="step-name">Brand</span></button>
+          <button type="button" class="step-indicator" data-step="3"><span class="step-num">3</span><span class="step-name">Actions</span></button>
+          <button type="button" class="step-indicator" data-step="4"><span class="step-num">4</span><span class="step-name">Features</span></button>
+          <button type="button" class="step-indicator" data-step="5"><span class="step-num">5</span><span class="step-name">Media</span></button>
+          <button type="button" class="step-indicator" data-step="6"><span class="step-num">6</span><span class="step-name">Details</span></button>
+          <button type="button" class="step-indicator" data-step="7"><span class="step-num">7</span><span class="step-name">Review</span></button>
+        </div>
+      </div>
+
+      <!-- Intake Form -->
+      <form id="intake-form" autocomplete="off" novalidate>
+
+        <!-- ── STEP 1: CLIENT BASICS ─────────────────────────────────────────── -->
+        <div class="step-panel" data-step="1">
+          <h2 class="step-title">Client Basics</h2>
+          <p class="step-description">Enter the client's core contact information.</p>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="field-businessName">Business Name <span class="required">*</span></label>
+              <input type="text" id="field-businessName" name="businessName" required placeholder="e.g. Pro-Tech HVAC">
+            </div>
+            <div class="form-group">
+              <label for="field-contactName">Contact Name <span class="required">*</span></label>
+              <input type="text" id="field-contactName" name="contactName" required placeholder="e.g. Jeff Miller">
+            </div>
+            <div class="form-group">
+              <label for="field-title">Title / Role</label>
+              <input type="text" id="field-title" name="title" placeholder="e.g. Owner, CEO">
+            </div>
+            <div class="form-group">
+              <label for="field-phone">Phone <span class="required">*</span></label>
+              <input type="tel" id="field-phone" name="phone" required placeholder="(407) 555-1234">
+            </div>
+            <div class="form-group">
+              <label for="field-email">Email <span class="required">*</span></label>
+              <input type="email" id="field-email" name="email" required placeholder="jeff@example.com">
+            </div>
+            <div class="form-group">
+              <label for="field-website">Website URL</label>
+              <input type="url" id="field-website" name="website" placeholder="https://example.com">
+            </div>
+            <div class="form-group">
+              <label for="field-industry">Industry <span class="required">*</span></label>
+              <select id="field-industry" name="industry" required>
+                <option value="">Select an industry...</option>
+                <option value="HVAC">HVAC</option>
+                <option value="Plumbing">Plumbing</option>
+                <option value="Electrical">Electrical</option>
+                <option value="HVAC + Plumbing + Electrical">HVAC + Plumbing + Electrical</option>
+                <option value="Real Estate">Real Estate</option>
+                <option value="Insurance">Insurance</option>
+                <option value="Salon/Beauty">Salon/Beauty</option>
+                <option value="Fitness">Fitness</option>
+                <option value="Law/Legal">Law/Legal</option>
+                <option value="Financial">Financial</option>
+                <option value="Medical/Health">Medical/Health</option>
+                <option value="Roofing">Roofing</option>
+                <option value="Landscaping">Landscaping</option>
+                <option value="Cleaning">Cleaning</option>
+                <option value="Automotive">Automotive</option>
+                <option value="Restaurant">Restaurant</option>
+                <option value="Retail">Retail</option>
+                <option value="Coaching/Consulting">Coaching/Consulting</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="field-address">Service Area</label>
+              <input type="text" id="field-address" name="address" placeholder="e.g. Central Florida, Orlando Metro">
+            </div>
+          </div>
+
+          <div class="step-nav">
+            <div></div>
+            <button type="button" class="btn btn-primary" data-action="next-step">Next &rarr;</button>
+          </div>
+        </div>
+
+        <!-- ── STEP 2: BRAND & STYLE ─────────────────────────────────────────── -->
+        <div class="step-panel" data-step="2" style="display:none;">
+          <h2 class="step-title">Brand &amp; Style</h2>
+          <p class="step-description">Define the visual identity for this card.</p>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="field-primaryColor">Primary Color</label>
+              <div class="color-picker-row">
+                <input type="color" id="field-primaryColor" name="primaryColor" value="#1A2C5B">
+                <input type="text" id="field-primaryColorText" name="primaryColorText" value="#1A2C5B" placeholder="#1A2C5B" maxlength="7" class="color-text-input">
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="field-accentColor">Accent Color</label>
+              <div class="color-picker-row">
+                <input type="color" id="field-accentColor" name="accentColor" value="#F47C20">
+                <input type="text" id="field-accentColorText" name="accentColorText" value="#F47C20" placeholder="#F47C20" maxlength="7" class="color-text-input">
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="field-secondaryColor">Secondary Color</label>
+              <div class="color-picker-row">
+                <input type="color" id="field-secondaryColor" name="secondaryColor" value="#10b981">
+                <input type="text" id="field-secondaryColorText" name="secondaryColorText" value="#10b981" placeholder="#10b981" maxlength="7" class="color-text-input">
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="field-logo">Logo URL</label>
+              <div class="input-with-action">
+                <input type="url" id="field-logo" name="logo" placeholder="https://example.com/logo.png">
+                <button type="button" class="btn btn-sm btn-ghost" data-action="test-link" data-target="logo">Test Link</button>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="field-coverPhoto">Profile Photo URL</label>
+              <div class="input-with-action">
+                <input type="url" id="field-coverPhoto" name="coverPhoto" placeholder="https://example.com/photo.jpg">
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="field-heroImage">Hero/Background Image URL</label>
+              <div class="input-with-action">
+                <input type="url" id="field-heroImage" name="heroImage" placeholder="https://example.com/hero.jpg">
+              </div>
+            </div>
+            <div class="form-group form-group-full">
+              <label>Card Style</label>
+              <div class="radio-group">
+                <label class="radio-card">
+                  <input type="radio" name="cardStyle" value="Professional/Corporate" checked>
+                  <span class="radio-card-label">Professional / Corporate</span>
+                </label>
+                <label class="radio-card">
+                  <input type="radio" name="cardStyle" value="Friendly/Approachable">
+                  <span class="radio-card-label">Friendly / Approachable</span>
+                </label>
+                <label class="radio-card">
+                  <input type="radio" name="cardStyle" value="Bold/Modern">
+                  <span class="radio-card-label">Bold / Modern</span>
+                </label>
+                <label class="radio-card">
+                  <input type="radio" name="cardStyle" value="Minimal/Clean">
+                  <span class="radio-card-label">Minimal / Clean</span>
+                </label>
+              </div>
+            </div>
+          </div>
+          <p class="helper-note">If no logo or photo is provided, the client's initials will be used as a fallback.</p>
+
+          <div class="step-nav">
+            <button type="button" class="btn btn-ghost" data-action="prev-step">&larr; Back</button>
+            <button type="button" class="btn btn-primary" data-action="next-step">Next &rarr;</button>
+          </div>
+        </div>
+
+        <!-- ── STEP 3: CONTACT ACTIONS ───────────────────────────────────────── -->
+        <div class="step-panel" data-step="3" style="display:none;">
+          <h2 class="step-title">Contact Actions</h2>
+          <p class="step-description">Configure the action buttons visitors will see on the card.</p>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="field-callLabel">Call Button Label</label>
+              <input type="text" id="field-callLabel" name="callLabel" value="Call" placeholder="Call">
+            </div>
+            <div class="form-group">
+              <label for="field-callPhone">Call Phone</label>
+              <input type="tel" id="field-callPhone" name="callPhone" placeholder="Pre-filled from Step 1">
+            </div>
+            <div class="form-group">
+              <label for="field-textLabel">Text Button Label</label>
+              <input type="text" id="field-textLabel" name="textLabel" value="Text" placeholder="Text">
+            </div>
+            <div class="form-group">
+              <label for="field-textPhone">Text Phone</label>
+              <input type="tel" id="field-textPhone" name="textPhone" placeholder="Pre-filled from Step 1">
+            </div>
+            <div class="form-group">
+              <label for="field-emailLabel">Email Button Label</label>
+              <input type="text" id="field-emailLabel" name="emailLabel" value="Email" placeholder="Email">
+            </div>
+            <div class="form-group">
+              <label for="field-emailAddress">Email Address</label>
+              <input type="email" id="field-emailAddress" name="emailAddress" placeholder="Pre-filled from Step 1">
+            </div>
+          </div>
+
+          <div class="form-group form-group-full" style="margin-top:16px;">
+            <label class="toggle-label">
+              <input type="checkbox" name="enableQuickAction" id="field-enableQuickAction">
+              <span>Enable Quick Action Button</span>
+            </label>
+          </div>
+
+          <div id="quick-action-fields" style="display:none;">
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="field-quickActionLabel">Quick Action Label</label>
+                <input type="text" id="field-quickActionLabel" name="quickActionLabel" placeholder="e.g. Book Now, Get Quote">
+              </div>
+              <div class="form-group">
+                <label for="field-quickActionUrl">Quick Action URL</label>
+                <input type="url" id="field-quickActionUrl" name="quickActionUrl" placeholder="https://calendly.com/...">
+              </div>
+              <div class="form-group">
+                <label for="field-quickActionType">Quick Action Type</label>
+                <select id="field-quickActionType" name="quickActionType">
+                  <option value="link">External Link</option>
+                  <option value="booking">Booking/Calendar</option>
+                  <option value="form">Lead Form</option>
+                  <option value="payment">Payment</option>
+                </select>
+              </div>
+            </div>
+            <p class="helper-note">Examples: Book Now (Calendly link), Get a Quote (lead form), Pay Invoice (Stripe link), Leave a Review (Google Review link).</p>
+          </div>
+
+          <div class="step-nav">
+            <button type="button" class="btn btn-ghost" data-action="prev-step">&larr; Back</button>
+            <button type="button" class="btn btn-primary" data-action="next-step">Next &rarr;</button>
+          </div>
+        </div>
+
+        <!-- ── STEP 4: FEATURES & CUSTOM TABS ───────────────────────────────── -->
+        <div class="step-panel" data-step="4" style="display:none;">
+          <h2 class="step-title">Features &amp; Custom Tabs</h2>
+          <p class="step-description">Choose the card's primary goal and feature set.</p>
+
+          <div class="form-group form-group-full">
+            <label>Main CTA Goal</label>
+            <div class="radio-group">
+              <label class="radio-card">
+                <input type="radio" name="ctaGoal" value="Book Calls" checked>
+                <span class="radio-card-label">Book Calls</span>
+              </label>
+              <label class="radio-card">
+                <input type="radio" name="ctaGoal" value="Capture Leads">
+                <span class="radio-card-label">Capture Leads</span>
+              </label>
+              <label class="radio-card">
+                <input type="radio" name="ctaGoal" value="Drive Traffic">
+                <span class="radio-card-label">Drive Traffic</span>
+              </label>
+              <label class="radio-card">
+                <input type="radio" name="ctaGoal" value="Get Reviews">
+                <span class="radio-card-label">Get Reviews</span>
+              </label>
+              <label class="radio-card">
+                <input type="radio" name="ctaGoal" value="Sell Products">
+                <span class="radio-card-label">Sell Products</span>
+              </label>
+              <label class="radio-card">
+                <input type="radio" name="ctaGoal" value="Showcase Portfolio">
+                <span class="radio-card-label">Showcase Portfolio</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="form-group form-group-full">
+            <label>Desired Features</label>
+            <div class="checkbox-grid">
+              <label class="checkbox-item"><input type="checkbox" name="features" value="gallery"> Gallery</label>
+              <label class="checkbox-item"><input type="checkbox" name="features" value="reviews"> Reviews</label>
+              <label class="checkbox-item"><input type="checkbox" name="features" value="booking"> Booking / Scheduler</label>
+              <label class="checkbox-item"><input type="checkbox" name="features" value="team"> Team Section</label>
+              <label class="checkbox-item"><input type="checkbox" name="features" value="faqs"> FAQs</label>
+              <label class="checkbox-item"><input type="checkbox" name="features" value="lead-form"> Lead Capture Form</label>
+              <label class="checkbox-item"><input type="checkbox" name="features" value="testimonials"> Testimonials</label>
+              <label class="checkbox-item"><input type="checkbox" name="features" value="services"> Services List</label>
+              <label class="checkbox-item"><input type="checkbox" name="features" value="promotions"> Promotions / Offers</label>
+              <label class="checkbox-item"><input type="checkbox" name="features" value="about"> About Us</label>
+              <label class="checkbox-item"><input type="checkbox" name="features" value="blog"> Blog / News</label>
+              <label class="checkbox-item"><input type="checkbox" name="features" value="menu"> Menu / Pricing</label>
+            </div>
+          </div>
+
+          <div class="form-group form-group-full">
+            <label>Tab Preference</label>
+            <div class="radio-group">
+              <label class="radio-card">
+                <input type="radio" name="tabPreference" value="auto" checked>
+                <span class="radio-card-label">Auto-generate</span>
+              </label>
+              <label class="radio-card">
+                <input type="radio" name="tabPreference" value="custom">
+                <span class="radio-card-label">Custom</span>
+              </label>
+            </div>
+          </div>
+
+          <div id="custom-tab-builder" style="display:none;">
+            <div class="builder-header">
+              <h3>Custom Tabs</h3>
+              <button type="button" class="btn btn-sm btn-secondary" id="add-custom-tab-btn">+ Add Tab</button>
+            </div>
+            <div id="custom-tabs-container"></div>
+          </div>
+
+          <div class="step-nav">
+            <button type="button" class="btn btn-ghost" data-action="prev-step">&larr; Back</button>
+            <button type="button" class="btn btn-primary" data-action="next-step">Next &rarr;</button>
+          </div>
+        </div>
+
+        <!-- ── STEP 5: MEDIA & SOCIAL ───────────────────────────────────────── -->
+        <div class="step-panel" data-step="5" style="display:none;">
+          <h2 class="step-title">Media &amp; Social</h2>
+          <p class="step-description">Add media content and social links to the card.</p>
+
+          <div class="form-group form-group-full">
+            <label>Optional Media Type</label>
+            <div class="radio-group">
+              <label class="radio-card">
+                <input type="radio" name="mediaType" value="none" checked>
+                <span class="radio-card-label">None</span>
+              </label>
+              <label class="radio-card">
+                <input type="radio" name="mediaType" value="video">
+                <span class="radio-card-label">Featured Video</span>
+              </label>
+              <label class="radio-card">
+                <input type="radio" name="mediaType" value="gallery">
+                <span class="radio-card-label">Photo Gallery</span>
+              </label>
+              <label class="radio-card">
+                <input type="radio" name="mediaType" value="reviews">
+                <span class="radio-card-label">Review Carousel</span>
+              </label>
+              <label class="radio-card">
+                <input type="radio" name="mediaType" value="ai-recommend">
+                <span class="radio-card-label">Let AI Recommend</span>
+              </label>
+            </div>
+          </div>
+
+          <div id="video-url-panel" style="display:none;">
+            <div class="form-group">
+              <label for="field-videoUrl">Video URL</label>
+              <input type="url" id="field-videoUrl" name="videoUrl" placeholder="https://youtube.com/watch?v=...">
+            </div>
+          </div>
+
+          <div id="gallery-builder" class="form-group form-group-full">
+            <div class="builder-header">
+              <h3>Photo Gallery</h3>
+              <button type="button" class="btn btn-sm btn-secondary" id="add-gallery-btn">+ Add Image</button>
+            </div>
+            <div id="gallery-container"></div>
+          </div>
+
+          <div class="form-group form-group-full" style="margin-top:16px;">
+            <label class="toggle-label">
+              <input type="checkbox" name="welcomeAudio" id="field-welcomeAudio">
+              <span>Welcome Audio</span>
+            </label>
+          </div>
+
+          <div id="welcome-script-panel" style="display:none;">
+            <div class="form-group form-group-full">
+              <label for="field-welcomeScript">Audio Script</label>
+              <textarea id="field-welcomeScript" name="welcomeScript" rows="4" maxlength="300" placeholder="Hey, thanks for connecting with [Business]! I'm [Name], and..."></textarea>
+              <div class="char-counter">0 / 300</div>
+            </div>
+          </div>
+
+          <h3 class="section-divider">Social Links</h3>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="field-social-facebook">Facebook</label>
+              <input type="url" id="field-social-facebook" name="social_facebook" placeholder="https://facebook.com/...">
+            </div>
+            <div class="form-group">
+              <label for="field-social-instagram">Instagram</label>
+              <input type="url" id="field-social-instagram" name="social_instagram" placeholder="https://instagram.com/...">
+            </div>
+            <div class="form-group">
+              <label for="field-social-google">Google Business</label>
+              <input type="url" id="field-social-google" name="social_google" placeholder="https://g.page/...">
+            </div>
+            <div class="form-group">
+              <label for="field-social-youtube">YouTube</label>
+              <input type="url" id="field-social-youtube" name="social_youtube" placeholder="https://youtube.com/@...">
+            </div>
+            <div class="form-group">
+              <label for="field-social-linkedin">LinkedIn</label>
+              <input type="url" id="field-social-linkedin" name="social_linkedin" placeholder="https://linkedin.com/in/...">
+            </div>
+            <div class="form-group">
+              <label for="field-social-tiktok">TikTok</label>
+              <input type="url" id="field-social-tiktok" name="social_tiktok" placeholder="https://tiktok.com/@...">
+            </div>
+            <div class="form-group">
+              <label for="field-social-twitter">X / Twitter</label>
+              <input type="url" id="field-social-twitter" name="social_twitter" placeholder="https://x.com/...">
+            </div>
+            <div class="form-group">
+              <label for="field-social-yelp">Yelp</label>
+              <input type="url" id="field-social-yelp" name="social_yelp" placeholder="https://yelp.com/biz/...">
+            </div>
+          </div>
+
+          <div class="step-nav">
+            <button type="button" class="btn btn-ghost" data-action="prev-step">&larr; Back</button>
+            <button type="button" class="btn btn-primary" data-action="next-step">Next &rarr;</button>
+          </div>
+        </div>
+
+        <!-- ── STEP 6: ADDITIONAL DETAILS ────────────────────────────────────── -->
+        <div class="step-panel" data-step="6" style="display:none;">
+          <h2 class="step-title">Additional Details</h2>
+          <p class="step-description">Add testimonials, services, team members, and other details.</p>
+
+          <div class="form-group form-group-full">
+            <label for="field-tagline">Tagline</label>
+            <input type="text" id="field-tagline" name="tagline" placeholder="e.g. Your Trusted Local HVAC Experts">
+          </div>
+
+          <div class="form-group form-group-full">
+            <label for="field-description">Business Description</label>
+            <textarea id="field-description" name="description" rows="3" placeholder="Brief description of the business..."></textarea>
+          </div>
+
+          <div class="form-group form-group-full">
+            <label for="field-hours">Business Hours</label>
+            <input type="text" id="field-hours" name="hours" placeholder="e.g. Mon-Fri 8am-6pm, Sat 9am-2pm">
+          </div>
+
+          <div class="form-group form-group-full">
+            <label>Trust Badges</label>
+            <div class="checkbox-grid">
+              <label class="checkbox-item"><input type="checkbox" name="trustPills[]" value="Licensed & Insured"> Licensed &amp; Insured</label>
+              <label class="checkbox-item"><input type="checkbox" name="trustPills[]" value="Free Estimates"> Free Estimates</label>
+              <label class="checkbox-item"><input type="checkbox" name="trustPills[]" value="24/7 Emergency"> 24/7 Emergency</label>
+              <label class="checkbox-item"><input type="checkbox" name="trustPills[]" value="Veteran Owned"> Veteran Owned</label>
+              <label class="checkbox-item"><input type="checkbox" name="trustPills[]" value="Family Owned"> Family Owned</label>
+              <label class="checkbox-item"><input type="checkbox" name="trustPills[]" value="Satisfaction Guaranteed"> Satisfaction Guaranteed</label>
+              <label class="checkbox-item"><input type="checkbox" name="trustPills[]" value="BBB Accredited"> BBB Accredited</label>
+              <label class="checkbox-item"><input type="checkbox" name="trustPills[]" value="5-Star Rated"> 5-Star Rated</label>
+            </div>
+            <div class="form-group" style="margin-top:8px;">
+              <input type="text" name="customTrustPill" placeholder="Custom trust badge...">
+            </div>
+          </div>
+
+          <div class="form-group form-group-full">
+            <label>Services</label>
+            <div class="checkbox-grid">
+              <label class="checkbox-item"><input type="checkbox" name="services[]" value="AC Repair"> AC Repair</label>
+              <label class="checkbox-item"><input type="checkbox" name="services[]" value="Heating"> Heating</label>
+              <label class="checkbox-item"><input type="checkbox" name="services[]" value="Plumbing"> Plumbing</label>
+              <label class="checkbox-item"><input type="checkbox" name="services[]" value="Electrical"> Electrical</label>
+              <label class="checkbox-item"><input type="checkbox" name="services[]" value="Duct Cleaning"> Duct Cleaning</label>
+              <label class="checkbox-item"><input type="checkbox" name="services[]" value="Maintenance Plans"> Maintenance Plans</label>
+            </div>
+            <div class="form-group" style="margin-top:8px;">
+              <input type="text" name="customService" placeholder="Custom service...">
+            </div>
+          </div>
+
+          <!-- FAQ Builder -->
+          <div class="form-group form-group-full">
+            <div class="builder-header">
+              <h3>FAQs</h3>
+              <button type="button" class="btn btn-sm btn-secondary" id="add-faq-btn">+ Add FAQ</button>
+            </div>
+            <div id="faq-container"></div>
+          </div>
+
+          <!-- Team Members Builder -->
+          <div class="form-group form-group-full">
+            <div class="builder-header">
+              <h3>Team Members</h3>
+              <button type="button" class="btn btn-sm btn-secondary" id="add-team-btn">+ Add Member</button>
+            </div>
+            <div id="team-container"></div>
+          </div>
+
+          <h3 class="section-divider">Footer &amp; CTA</h3>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="field-ctaLabel">CTA Button Label</label>
+              <input type="text" id="field-ctaLabel" name="ctaLabel" placeholder="e.g. Book Now, Get Quote">
+            </div>
+            <div class="form-group">
+              <label for="field-ctaUrl">CTA Button URL</label>
+              <input type="url" id="field-ctaUrl" name="ctaUrl" placeholder="https://calendly.com/...">
+            </div>
+            <div class="form-group">
+              <label for="field-footerLicense">Footer License Number</label>
+              <input type="text" id="field-footerLicense" name="footerLicense" placeholder="e.g. CAC1234567">
+            </div>
+            <div class="form-group">
+              <label for="field-footerTagline">Footer Tagline</label>
+              <input type="text" id="field-footerTagline" name="footerTagline" value="Licensed & Insured" placeholder="Licensed & Insured">
+            </div>
+          </div>
+
+          <div class="form-group form-group-full">
+            <label for="field-internalNotes">Internal Notes</label>
+            <textarea id="field-internalNotes" name="internalNotes" rows="3" placeholder="Private notes for the VE build team..."></textarea>
+          </div>
+
+          <div class="form-group form-group-full">
+            <label>Card Status</label>
+            <div class="radio-group">
+              <label class="radio-card">
+                <input type="radio" name="status" value="draft" checked>
+                <span class="radio-card-label">Draft</span>
+              </label>
+              <label class="radio-card">
+                <input type="radio" name="status" value="review">
+                <span class="radio-card-label">Ready for Review</span>
+              </label>
+              <label class="radio-card">
+                <input type="radio" name="status" value="approved">
+                <span class="radio-card-label">Approved</span>
+              </label>
+              <label class="radio-card">
+                <input type="radio" name="status" value="live">
+                <span class="radio-card-label">Live</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="step-nav">
+            <button type="button" class="btn btn-ghost" data-action="prev-step">&larr; Back</button>
+            <button type="button" class="btn btn-primary" data-action="next-step">Next &rarr;</button>
+          </div>
+        </div>
+
+        <!-- ── STEP 7: REVIEW & GENERATE ─────────────────────────────────────── -->
+        <div class="step-panel" data-step="7" style="display:none;">
+          <h2 class="step-title">Review &amp; Generate</h2>
+          <p class="step-description">Review your card details and generate the mock-up.</p>
+
+          <div id="completeness-score" class="completeness-display"></div>
+          <div id="review-summary" class="review-summary"></div>
+          <div id="missing-items" class="missing-items"></div>
+
+          <div class="review-actions">
+            <button type="button" class="btn btn-primary btn-lg" data-action="generate-mockup">Generate Mock-Up</button>
+            <button type="button" class="btn btn-secondary" data-action="save-draft">Save as Draft</button>
+          </div>
+
+          <div class="step-nav">
+            <button type="button" class="btn btn-ghost" data-action="prev-step">&larr; Back</button>
+            <div></div>
+          </div>
+        </div>
+
+      </form>
+    </section>
+
+    <!-- ═════════════════════════════════════════════════════════════════════════
+         VIEW: PREVIEW
+         ═════════════════════════════════════════════════════════════════════════ -->
+    <section data-view="preview" style="display:none;">
+      <div class="preview-layout">
+
+        <!-- Left Panel: Controls -->
+        <div class="preview-controls">
+          <h2 class="preview-card-title" id="preview-business-name">Card Preview</h2>
+          <div class="preview-status-badge" id="preview-status-badge">Draft</div>
+
+          <h3 class="preview-section-label">Quick Edit</h3>
+          <div class="form-grid preview-color-editors">
+            <div class="form-group">
+              <label for="preview-primary-color">Primary</label>
+              <input type="color" id="preview-primary-color" value="#1A2C5B">
+            </div>
+            <div class="form-group">
+              <label for="preview-accent-color">Accent</label>
+              <input type="color" id="preview-accent-color" value="#F47C20">
+            </div>
+          </div>
+
+          <h3 class="preview-section-label">Actions</h3>
+          <div class="preview-action-buttons">
+            <button type="button" class="btn btn-primary btn-block" id="btn-download-html">Download HTML</button>
+            <button type="button" class="btn btn-secondary btn-block" id="btn-build-sheet">Build Sheet</button>
+            <button type="button" class="btn btn-secondary btn-block" id="btn-edit-intake">Edit Intake</button>
+            <button type="button" class="btn btn-ghost btn-block" id="btn-copy-link">Copy Card Link</button>
+            <button type="button" class="btn btn-ghost btn-block" id="btn-print-preview">Print Preview</button>
+          </div>
+
+          <h3 class="preview-section-label">Sections Active</h3>
+          <div class="section-toggles">
+            <label class="toggle-label"><input type="checkbox" data-section="hero" checked> Hero / Header</label>
+            <label class="toggle-label"><input type="checkbox" data-section="contact-actions" checked> Contact Actions</label>
+            <label class="toggle-label"><input type="checkbox" data-section="utility" checked> Utility Buttons</label>
+            <label class="toggle-label"><input type="checkbox" data-section="welcome-audio" checked> Welcome Audio</label>
+            <label class="toggle-label"><input type="checkbox" data-section="optional-media" checked> Optional Media</label>
+            <label class="toggle-label"><input type="checkbox" data-section="custom-tabs" checked> Custom Tabs</label>
+            <label class="toggle-label"><input type="checkbox" data-section="social" checked> Social Media</label>
+            <label class="toggle-label"><input type="checkbox" data-section="footer" checked> Footer</label>
+          </div>
+        </div>
+
+        <!-- Right Panel: Phone Frame Preview -->
+        <div class="preview-frame-container">
+          <div class="device-selector">
+            <button type="button" class="device-btn active" data-device="iphone">iPhone</button>
+            <button type="button" class="device-btn" data-device="android">Android</button>
+            <button type="button" class="device-btn" data-device="raw">Raw</button>
+          </div>
+
+          <div class="iphone-frame" id="device-frame">
+            <iframe id="card-preview-iframe" title="Card Preview" sandbox="allow-scripts allow-same-origin"></iframe>
+          </div>
+
+          <a href="#" id="preview-open-tab" class="preview-open-link" target="_blank" rel="noopener">Open in New Tab</a>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ═════════════════════════════════════════════════════════════════════════
+         VIEW: BUILD SHEET
+         ═════════════════════════════════════════════════════════════════════════ -->
+    <section data-view="buildsheet" style="display:none;">
+      <div class="buildsheet-toolbar">
+        <button type="button" class="btn btn-secondary" id="bs-print">Print</button>
+        <button type="button" class="btn btn-secondary" id="bs-export-pdf">Export PDF</button>
+        <button type="button" class="btn btn-secondary" id="bs-copy-text">Copy as Text</button>
+        <button type="button" class="btn btn-ghost" id="bs-back-preview">Back to Preview</button>
+      </div>
+      <div id="buildsheet-content" class="buildsheet-content"></div>
+    </section>
+
+    <!-- ═════════════════════════════════════════════════════════════════════════
+         VIEW: SETTINGS
+         ═════════════════════════════════════════════════════════════════════════ -->
+    <section data-view="settings" style="display:none;">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Settings</h1>
+          <p class="page-subtitle">App preferences and data management</p>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <h3>Data Management</h3>
+        <div class="settings-actions">
+          <button type="button" class="btn btn-danger" id="btn-reset-data">Reset All Data</button>
+          <button type="button" class="btn btn-secondary" id="btn-clear-cache">Clear Cache</button>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <h3>About</h3>
+        <div class="settings-info">
+          <p><strong>vNetCard™ Studio</strong></p>
+          <p>Version 1.0.0</p>
+          <p>Digital business card mock-up generator for Virtual Executives.</p>
+          <p class="settings-muted">Built by the vNetCard team.</p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     TOAST CONTAINER
+     ═══════════════════════════════════════════════════════════════════════════ -->
+<div id="toast-container"></div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     SCRIPTS
+     ═══════════════════════════════════════════════════════════════════════════ -->
+<script src="js/db.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/generator.js"></script>
+<script src="js/intake.js"></script>
+<script src="js/buildsheet.js"></script>
+<script src="js/app.js"></script>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     DASHBOARD MODULE
+     ═══════════════════════════════════════════════════════════════════════════ */
+
+  var Dashboard = {};
+
+  var _allCards = [];
+  var _selectedCard = null;
+
+  Dashboard.init = async function () {
+    try {
+      _allCards = await DB.getAllCards();
+    } catch (err) {
+      console.error('[Dashboard] Failed to load cards:', err);
+      _allCards = [];
+    }
+
+    updateStats();
+    renderGrid(_allCards);
+    bindSearch();
+    bindDashPreviewControls();
+
+    // Auto-select first card if available
+    if (_allCards.length > 0 && !_selectedCard) {
+      Dashboard.selectCard(_allCards[0].id);
+    }
+  };
+
+  Dashboard.selectCard = async function (id) {
+    var numId = isNaN(Number(id)) ? id : Number(id);
+    try {
+      _selectedCard = await DB.getCard(numId);
+    } catch (err) {
+      console.error('[Dashboard] Failed to load card:', err);
+      return;
+    }
+    if (!_selectedCard) return;
+
+    // Highlight selected tile
+    var tiles = document.querySelectorAll('.card-tile');
+    for (var i = 0; i < tiles.length; i++) {
+      var tileId = tiles[i].getAttribute('data-card-id');
+      if (String(tileId) === String(numId)) {
+        tiles[i].classList.add('selected');
+      } else {
+        tiles[i].classList.remove('selected');
+      }
+    }
+
+    // Show preview panel
+    var placeholder = document.getElementById('preview-placeholder');
+    var active = document.getElementById('preview-active');
+    if (placeholder) placeholder.style.display = 'none';
+    if (active) active.style.display = '';
+
+    // Update header
+    var nameEl = document.getElementById('dash-preview-name');
+    var badgeEl = document.getElementById('dash-preview-badge');
+    if (nameEl) nameEl.textContent = _selectedCard.businessName || _selectedCard.name || 'Card Preview';
+    if (badgeEl) {
+      var status = (_selectedCard.status || 'draft');
+      badgeEl.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+      badgeEl.className = 'preview-panel-badge ' + getStatusClass(status);
+    }
+
+    // Update color pickers
+    var pc = document.getElementById('dash-primary-color');
+    var ac = document.getElementById('dash-accent-color');
+    if (pc) pc.value = _selectedCard.primaryColor || '#1A2C5B';
+    if (ac) ac.value = _selectedCard.accentColor || '#F47C20';
+
+    // Render card
+    renderDashPreview();
+  };
+
+  function renderDashPreview() {
+    var iframe = document.getElementById('dash-preview-iframe');
+    if (!iframe || !_selectedCard) return;
+    if (typeof Generator !== 'undefined' && Generator.renderCardPreview) {
+      Generator.renderCardPreview(_selectedCard, iframe);
+    }
+  }
+
+  function bindDashPreviewControls() {
+    // Color pickers
+    var pc = document.getElementById('dash-primary-color');
+    var ac = document.getElementById('dash-accent-color');
+    if (pc) {
+      pc.oninput = function () {
+        if (_selectedCard) { _selectedCard.primaryColor = pc.value; renderDashPreview(); }
+      };
+    }
+    if (ac) {
+      ac.oninput = function () {
+        if (_selectedCard) { _selectedCard.accentColor = ac.value; renderDashPreview(); }
+      };
+    }
+
+    // Download HTML
+    var dlBtn = document.getElementById('dash-btn-download');
+    if (dlBtn) {
+      dlBtn.onclick = function () {
+        if (_selectedCard && typeof Generator !== 'undefined' && Generator.exportCardHTML) {
+          Generator.exportCardHTML(_selectedCard);
+        }
+      };
+    }
+
+    // Build Sheet
+    var bsBtn = document.getElementById('dash-btn-buildsheet');
+    if (bsBtn) {
+      bsBtn.onclick = function () {
+        if (_selectedCard) window.location.hash = '#buildsheet?id=' + _selectedCard.id;
+      };
+    }
+
+    // Edit
+    var editBtn = document.getElementById('dash-btn-edit');
+    if (editBtn) {
+      editBtn.onclick = function () {
+        if (_selectedCard) window.location.hash = '#intake?id=' + _selectedCard.id;
+      };
+    }
+
+    // Full preview
+    var fullBtn = document.getElementById('dash-btn-fullpreview');
+    if (fullBtn) {
+      fullBtn.onclick = function () {
+        if (_selectedCard) window.location.hash = '#preview?id=' + _selectedCard.id;
+      };
+    }
+
+    // Device selector for dashboard
+    var deviceBtns = document.querySelectorAll('.device-btn[data-target="dash"]');
+    for (var j = 0; j < deviceBtns.length; j++) {
+      (function (btn) {
+        btn.onclick = function () {
+          for (var k = 0; k < deviceBtns.length; k++) deviceBtns[k].classList.remove('active');
+          btn.classList.add('active');
+          var device = btn.getAttribute('data-device');
+          var frame = document.getElementById('dash-device-frame');
+          if (!frame) return;
+          frame.className = '';
+          if (device === 'iphone') frame.className = 'iphone-frame';
+          else if (device === 'android') frame.className = 'android-frame';
+          else frame.className = 'raw-frame';
+        };
+      })(deviceBtns[j]);
+    }
+  }
+
+  function updateStats() {
+    var total = _allCards.length;
+    var drafts = 0;
+    var completed = 0;
+
+    for (var i = 0; i < _allCards.length; i++) {
+      var s = (_allCards[i].status || '').toLowerCase();
+      if (s === 'draft' || s === '') drafts++;
+      if (s === 'completed' || s === 'live' || s === 'approved') completed++;
+    }
+
+    var elTotal = document.getElementById('stat-total');
+    var elDrafts = document.getElementById('stat-drafts');
+    var elCompleted = document.getElementById('stat-completed');
+
+    if (elTotal) elTotal.textContent = total;
+    if (elDrafts) elDrafts.textContent = drafts;
+    if (elCompleted) elCompleted.textContent = completed;
+  }
+
+  function getIndustryIcon(industry) {
+    var map = {
+      'HVAC': '\u2744\uFE0F',
+      'Plumbing': '\uD83D\uDEB0',
+      'Electrical': '\u26A1',
+      'HVAC + Plumbing + Electrical': '\uD83D\uDD27',
+      'Real Estate': '\uD83C\uDFE0',
+      'Insurance': '\uD83D\uDEE1\uFE0F',
+      'Salon/Beauty': '\uD83D\uDC87',
+      'Fitness': '\uD83C\uDFCB\uFE0F',
+      'Law/Legal': '\u2696\uFE0F',
+      'Financial': '\uD83D\uDCB0',
+      'Medical/Health': '\uD83C\uDFE5',
+      'Roofing': '\uD83C\uDFDA\uFE0F',
+      'Landscaping': '\uD83C\uDF3F',
+      'Cleaning': '\u2728',
+      'Automotive': '\uD83D\uDE97',
+      'Restaurant': '\uD83C\uDF7D\uFE0F',
+      'Retail': '\uD83D\uDED2',
+      'Coaching/Consulting': '\uD83C\uDFAF',
+      'Other': '\uD83D\uDCBC'
+    };
+    return map[industry] || '\uD83D\uDCBC';
+  }
+
+  function getStatusClass(status) {
+    var s = (status || 'draft').toLowerCase();
+    if (s === 'live' || s === 'approved' || s === 'completed') return 'status-live';
+    if (s === 'review') return 'status-review';
+    return 'status-draft';
+  }
+
+  function getStatusLabel(status) {
+    var s = (status || 'draft').toLowerCase();
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+
+  function formatDate(iso) {
+    if (!iso) return '';
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+
+  function renderGrid(cards) {
+    var grid = document.getElementById('card-grid');
+    var empty = document.getElementById('empty-state');
+    if (!grid) return;
+
+    if (!cards || cards.length === 0) {
+      grid.innerHTML = '';
+      if (empty) empty.style.display = '';
+      return;
+    }
+
+    if (empty) empty.style.display = 'none';
+
+    var html = '';
+    for (var i = 0; i < cards.length; i++) {
+      var c = cards[i];
+      var icon = getIndustryIcon(c.industry);
+      var statusClass = getStatusClass(c.status);
+      var statusLabel = getStatusLabel(c.status);
+      var modified = formatDate(c.updatedAt || c.createdAt);
+      var bizName = (c.businessName || c.name || 'Untitled Card');
+      var contactName = c.contactName || '';
+      var phone = c.phone || '';
+      var industry = c.industry || 'Other';
+      var selectedClass = (_selectedCard && String(_selectedCard.id) === String(c.id)) ? ' selected' : '';
+
+      html += '<div class="card-tile' + selectedClass + '" data-card-id="' + c.id + '">';
+      html += '<div class="card-tile-header">';
+      html += '<span class="card-tile-icon">' + icon + '</span>';
+      html += '<span class="card-tile-status ' + statusClass + '">' + statusLabel + '</span>';
+      html += '</div>';
+      html += '<h3 class="card-tile-name">' + escHtml(bizName) + '</h3>';
+      html += '<p class="card-tile-contact">' + escHtml(contactName) + '</p>';
+      html += '<p class="card-tile-phone">' + escHtml(phone) + '</p>';
+      html += '<div class="card-tile-meta">';
+      html += '<span class="card-tile-industry">' + escHtml(industry) + '</span>';
+      html += '<span class="card-tile-date">' + modified + '</span>';
+      html += '</div>';
+      html += '<div class="card-tile-actions">';
+      html += '<button type="button" class="btn btn-sm btn-primary" data-action="select" data-id="' + c.id + '">Preview</button>';
+      html += '<button type="button" class="btn btn-sm btn-ghost" data-action="edit" data-id="' + c.id + '">Edit</button>';
+      html += '<button type="button" class="btn btn-sm btn-ghost" data-action="duplicate" data-id="' + c.id + '">Duplicate</button>';
+      html += '<button type="button" class="btn btn-sm btn-danger-ghost" data-action="delete" data-id="' + c.id + '">Delete</button>';
+      html += '</div>';
+      html += '</div>';
+    }
+
+    grid.innerHTML = html;
+    bindCardActions();
+  }
+
+  function escHtml(str) {
+    if (!str) return '';
+    var d = document.createElement('div');
+    d.appendChild(document.createTextNode(String(str)));
+    return d.innerHTML;
+  }
+
+  function bindCardActions() {
+    var grid = document.getElementById('card-grid');
+    if (!grid) return;
+
+    grid.addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-action]');
+      if (!btn) {
+        // Click on the tile itself to select
+        var tile = e.target.closest('.card-tile');
+        if (tile) {
+          var tileId = tile.getAttribute('data-card-id');
+          if (tileId) Dashboard.selectCard(tileId);
+        }
+        return;
+      }
+
+      var action = btn.getAttribute('data-action');
+      var id = btn.getAttribute('data-id');
+      if (!id) return;
+
+      var numId = isNaN(Number(id)) ? id : Number(id);
+
+      switch (action) {
+        case 'select':
+          Dashboard.selectCard(numId);
+          break;
+        case 'edit':
+          window.location.hash = '#intake?id=' + numId;
+          break;
+        case 'duplicate':
+          duplicateCard(numId);
+          break;
+        case 'delete':
+          deleteCard(numId);
+          break;
+      }
+    });
+  }
+
+  async function deleteCard(id) {
+    if (!confirm('Are you sure you want to delete this card? This cannot be undone.')) return;
+
+    try {
+      await DB.deleteCard(id);
+      _allCards = await DB.getAllCards();
+      if (_selectedCard && String(_selectedCard.id) === String(id)) {
+        _selectedCard = null;
+        var placeholder = document.getElementById('preview-placeholder');
+        var active = document.getElementById('preview-active');
+        if (placeholder) placeholder.style.display = '';
+        if (active) active.style.display = 'none';
+      }
+      updateStats();
+      renderGrid(_allCards);
+      if (_allCards.length > 0 && !_selectedCard) {
+        Dashboard.selectCard(_allCards[0].id);
+      }
+      if (window.App && window.App.showToast) window.App.showToast('Card deleted');
+    } catch (err) {
+      console.error('[Dashboard] Delete failed:', err);
+    }
+  }
+
+  async function duplicateCard(id) {
+    try {
+      var original = await DB.getCard(id);
+      if (!original) return;
+
+      var copy = Object.assign({}, original);
+      delete copy.id;
+      copy.businessName = (copy.businessName || copy.name || 'Card') + ' (Copy)';
+      copy.name = copy.businessName;
+      copy.status = 'draft';
+      copy.createdAt = new Date().toISOString();
+      copy.updatedAt = new Date().toISOString();
+
+      await DB.saveCard(copy);
+      _allCards = await DB.getAllCards();
+      updateStats();
+      renderGrid(_allCards);
+      if (window.App && window.App.showToast) window.App.showToast('Card duplicated');
+    } catch (err) {
+      console.error('[Dashboard] Duplicate failed:', err);
+    }
+  }
+
+  function bindSearch() {
+    var searchInput = document.getElementById('card-search');
+    if (!searchInput) return;
+
+    searchInput.addEventListener('input', function () {
+      var query = searchInput.value.trim().toLowerCase();
+      if (!query) {
+        renderGrid(_allCards);
+        return;
+      }
+
+      var filtered = _allCards.filter(function (c) {
+        var haystack = [
+          c.businessName || c.name || '',
+          c.contactName || '',
+          c.phone || '',
+          c.industry || '',
+          c.status || ''
+        ].join(' ').toLowerCase();
+        return haystack.indexOf(query) !== -1;
+      });
+
+      renderGrid(filtered);
+    });
+  }
+
+  window.Dashboard = Dashboard;
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     PREVIEW MODULE
+     ═══════════════════════════════════════════════════════════════════════════ */
+
+  var Preview = {};
+
+  var _previewCard = null;
+  var _sectionOverrides = {};
+
+  Preview.init = async function () {
+    var cardId = window.AppState ? window.AppState.currentCardId : null;
+    if (!cardId) {
+      window.location.hash = '#dashboard';
+      return;
+    }
+
+    try {
+      _previewCard = await DB.getCard(cardId);
+    } catch (err) {
+      console.error('[Preview] Failed to load card:', err);
+      _previewCard = null;
+    }
+
+    if (!_previewCard) {
+      window.location.hash = '#dashboard';
+      return;
+    }
+
+    _sectionOverrides = {};
+
+    renderPreviewUI();
+    renderCardToIframe();
+    bindPreviewControls();
+  };
+
+  function renderPreviewUI() {
+    var nameEl = document.getElementById('preview-business-name');
+    var badgeEl = document.getElementById('preview-status-badge');
+    var primaryEl = document.getElementById('preview-primary-color');
+    var accentEl = document.getElementById('preview-accent-color');
+
+    if (nameEl) nameEl.textContent = _previewCard.businessName || _previewCard.name || 'Card Preview';
+    if (badgeEl) {
+      var status = (_previewCard.status || 'draft');
+      badgeEl.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+      badgeEl.className = 'preview-status-badge ' + getStatusClass(status);
+    }
+    if (primaryEl) primaryEl.value = _previewCard.primaryColor || '#1A2C5B';
+    if (accentEl) accentEl.value = _previewCard.accentColor || '#F47C20';
+  }
+
+  function renderCardToIframe() {
+    var iframe = document.getElementById('card-preview-iframe');
+    if (!iframe || !_previewCard) return;
+
+    var cardData = Object.assign({}, _previewCard, _sectionOverrides);
+
+    if (typeof Generator !== 'undefined' && Generator.renderCardPreview) {
+      Generator.renderCardPreview(cardData, iframe);
+    }
+  }
+
+  function bindPreviewControls() {
+    // Download HTML
+    var dlBtn = document.getElementById('btn-download-html');
+    if (dlBtn) {
+      dlBtn.onclick = function () {
+        if (typeof Generator !== 'undefined' && Generator.exportCardHTML) {
+          Generator.exportCardHTML(_previewCard);
+        }
+      };
+    }
+
+    // Build Sheet
+    var bsBtn = document.getElementById('btn-build-sheet');
+    if (bsBtn) {
+      bsBtn.onclick = function () {
+        window.location.hash = '#buildsheet?id=' + _previewCard.id;
+      };
+    }
+
+    // Edit Intake
+    var editBtn = document.getElementById('btn-edit-intake');
+    if (editBtn) {
+      editBtn.onclick = function () {
+        window.location.hash = '#intake?id=' + _previewCard.id;
+      };
+    }
+
+    // Copy Card Link
+    var copyBtn = document.getElementById('btn-copy-link');
+    if (copyBtn) {
+      copyBtn.onclick = function () {
+        var link = window.location.origin + window.location.pathname + '#preview?id=' + _previewCard.id;
+        navigator.clipboard.writeText(link).then(function () {
+          if (window.App && window.App.showToast) window.App.showToast('Link copied!');
+        }).catch(function () {
+          if (window.App && window.App.showToast) window.App.showToast('Copy failed');
+        });
+      };
+    }
+
+    // Print Preview
+    var printBtn = document.getElementById('btn-print-preview');
+    if (printBtn) {
+      printBtn.onclick = function () {
+        var iframe = document.getElementById('card-preview-iframe');
+        if (iframe && iframe.contentWindow) {
+          iframe.contentWindow.print();
+        }
+      };
+    }
+
+    // Color quick-edit: primary
+    var primaryPicker = document.getElementById('preview-primary-color');
+    if (primaryPicker) {
+      primaryPicker.oninput = function () {
+        _previewCard.primaryColor = primaryPicker.value;
+        renderCardToIframe();
+      };
+    }
+
+    // Color quick-edit: accent
+    var accentPicker = document.getElementById('preview-accent-color');
+    if (accentPicker) {
+      accentPicker.oninput = function () {
+        _previewCard.accentColor = accentPicker.value;
+        renderCardToIframe();
+      };
+    }
+
+    // Section toggles
+    var toggles = document.querySelectorAll('.section-toggles input[data-section]');
+    for (var i = 0; i < toggles.length; i++) {
+      (function (toggle) {
+        toggle.onchange = function () {
+          _sectionOverrides['hide_' + toggle.getAttribute('data-section')] = !toggle.checked;
+          renderCardToIframe();
+        };
+      })(toggles[i]);
+    }
+
+    // Device selector
+    var deviceBtns = document.querySelectorAll('.device-btn');
+    for (var j = 0; j < deviceBtns.length; j++) {
+      (function (btn) {
+        btn.onclick = function () {
+          for (var k = 0; k < deviceBtns.length; k++) {
+            deviceBtns[k].classList.remove('active');
+          }
+          btn.classList.add('active');
+
+          var device = btn.getAttribute('data-device');
+          var frame = document.getElementById('device-frame');
+          if (!frame) return;
+
+          frame.className = '';
+          if (device === 'iphone') {
+            frame.className = 'iphone-frame';
+          } else if (device === 'android') {
+            frame.className = 'android-frame';
+          } else {
+            frame.className = 'raw-frame';
+          }
+        };
+      })(deviceBtns[j]);
+    }
+
+    // Open in new tab
+    var openTabLink = document.getElementById('preview-open-tab');
+    if (openTabLink) {
+      openTabLink.onclick = function (e) {
+        e.preventDefault();
+        if (typeof Generator !== 'undefined' && Generator.generateCardHTML) {
+          var html = Generator.generateCardHTML(_previewCard);
+          var blob = new Blob([html], { type: 'text/html' });
+          var url = URL.createObjectURL(blob);
+          window.open(url, '_blank');
+        }
+      };
+    }
+  }
+
+  window.Preview = Preview;
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     SETTINGS HANDLERS
+     ═══════════════════════════════════════════════════════════════════════════ */
+
+  document.addEventListener('DOMContentLoaded', function () {
+    var resetBtn = document.getElementById('btn-reset-data');
+    if (resetBtn) {
+      resetBtn.addEventListener('click', async function () {
+        if (!confirm('This will permanently delete ALL cards and data. Are you sure?')) return;
+        if (!confirm('This action is irreversible. Type OK to confirm.')) return;
+
+        try {
+          var cards = await DB.getAllCards();
+          for (var i = 0; i < cards.length; i++) {
+            await DB.deleteCard(cards[i].id);
+          }
+          if (window.App && window.App.showToast) window.App.showToast('All data reset');
+          window.location.hash = '#dashboard';
+          if (window.Dashboard && window.Dashboard.init) window.Dashboard.init();
+        } catch (err) {
+          console.error('[Settings] Reset failed:', err);
+        }
+      });
+    }
+
+    var cacheBtn = document.getElementById('btn-clear-cache');
+    if (cacheBtn) {
+      cacheBtn.addEventListener('click', function () {
+        if ('caches' in window) {
+          caches.keys().then(function (names) {
+            for (var i = 0; i < names.length; i++) {
+              caches.delete(names[i]);
+            }
+            if (window.App && window.App.showToast) window.App.showToast('Cache cleared');
+          });
+        } else {
+          if (window.App && window.App.showToast) window.App.showToast('Cache API not available');
+        }
+      });
+    }
+  });
+})();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>vNetCard&trade; VE Build Sheet</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+  :root {
+    --bs-primary: #1A2C5B;
+    --bs-accent: #F47C20;
+    --bs-text: #1E293B;
+    --bs-text-light: #64748B;
+    --bs-border: #D1D5DB;
+    --bs-bg-light: #F9FAFB;
+    --bs-success: #059669;
+    --bs-warning: #D97706;
+    --bs-danger: #DC2626;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    color: var(--bs-text);
+    background: #FFFFFF;
+    line-height: 1.5;
+    font-size: 13px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page {
+    max-width: 850px;
+    margin: 0 auto;
+    padding: 40px 48px;
+  }
+
+  /* Header */
+  .bs-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding-bottom: 24px;
+    border-bottom: 3px solid var(--bs-primary);
+    margin-bottom: 32px;
+  }
+
+  .bs-header-brand h1 {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--bs-primary);
+    margin-bottom: 2px;
+  }
+
+  .bs-header-brand h1 span { color: var(--bs-accent); }
+
+  .bs-header-brand p {
+    font-size: 12px;
+    color: var(--bs-text-light);
+  }
+
+  .bs-header-meta {
+    text-align: right;
+    font-size: 12px;
+    color: var(--bs-text-light);
+    line-height: 1.8;
+  }
+
+  .bs-header-meta strong {
+    color: var(--bs-text);
+    font-weight: 600;
+  }
+
+  .bs-id {
+    display: inline-block;
+    background: var(--bs-primary);
+    color: #FFFFFF;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 4px;
+    letter-spacing: 0.5px;
+  }
+
+  /* Section titles */
+  .section {
+    margin-bottom: 28px;
+    page-break-inside: avoid;
+  }
+
+  .section-heading {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--bs-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--bs-accent);
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .section-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--bs-primary);
+    color: #FFFFFF;
+    font-size: 12px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  /* Tables */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  table th {
+    background: var(--bs-bg-light);
+    font-weight: 600;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--bs-text-light);
+    text-align: left;
+    padding: 10px 14px;
+    border: 1px solid var(--bs-border);
+  }
+
+  table td {
+    padding: 10px 14px;
+    border: 1px solid var(--bs-border);
+    vertical-align: top;
+  }
+
+  table td.label {
+    font-weight: 600;
+    color: var(--bs-text);
+    background: var(--bs-bg-light);
+    width: 180px;
+    white-space: nowrap;
+  }
+
+  /* Status badges */
+  .badge {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 12px;
+  }
+
+  .badge-pending { background: #FEF3C7; color: var(--bs-warning); }
+  .badge-complete { background: #D1FAE5; color: var(--bs-success); }
+  .badge-blocked { background: #FEE2E2; color: var(--bs-danger); }
+  .badge-in-progress { background: #DBEAFE; color: #2563EB; }
+
+  /* Checklist */
+  .checklist {
+    list-style: none;
+    padding: 0;
+    columns: 2;
+    column-gap: 24px;
+  }
+
+  .checklist li {
+    padding: 7px 0 7px 28px;
+    position: relative;
+    break-inside: avoid;
+    font-size: 13px;
+    border-bottom: 1px solid #F3F4F6;
+  }
+
+  .checklist li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 9px;
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--bs-border);
+    border-radius: 3px;
+  }
+
+  .checklist li.checked::before {
+    background: var(--bs-success);
+    border-color: var(--bs-success);
+  }
+
+  .checklist li.checked::after {
+    content: '';
+    position: absolute;
+    left: 3px;
+    top: 12px;
+    width: 10px;
+    height: 6px;
+    border-left: 2px solid #FFFFFF;
+    border-bottom: 2px solid #FFFFFF;
+    transform: rotate(-45deg);
+  }
+
+  /* Notes area */
+  .notes-box {
+    background: var(--bs-bg-light);
+    border: 1px solid var(--bs-border);
+    border-radius: 6px;
+    padding: 16px;
+    min-height: 80px;
+    font-size: 13px;
+    color: var(--bs-text-light);
+    line-height: 1.8;
+  }
+
+  /* Build status tracker */
+  .status-tracker {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin-bottom: 16px;
+  }
+
+  .status-step {
+    flex: 1;
+    text-align: center;
+    position: relative;
+  }
+
+  .status-dot {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--bs-border);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    color: #FFFFFF;
+    margin-bottom: 6px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .status-step.done .status-dot { background: var(--bs-success); }
+  .status-step.active .status-dot { background: var(--bs-accent); box-shadow: 0 0 0 4px rgba(244,124,32,0.2); }
+
+  .status-step-label {
+    display: block;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    color: var(--bs-text-light);
+  }
+
+  .status-step.done .status-step-label { color: var(--bs-success); }
+  .status-step.active .status-step-label { color: var(--bs-accent); }
+
+  .status-line {
+    flex: 0 0 auto;
+    width: 40px;
+    height: 3px;
+    background: var(--bs-border);
+    margin-bottom: 20px;
+  }
+
+  .status-line.done { background: var(--bs-success); }
+
+  /* Signature area */
+  .signature-row {
+    display: flex;
+    gap: 32px;
+    margin-top: 20px;
+    padding-top: 16px;
+  }
+
+  .signature-block {
+    flex: 1;
+    border-top: 2px solid var(--bs-border);
+    padding-top: 8px;
+  }
+
+  .signature-block p {
+    font-size: 11px;
+    color: var(--bs-text-light);
+  }
+
+  .signature-block .sig-line {
+    height: 40px;
+  }
+
+  /* Footer */
+  .bs-footer {
+    margin-top: 40px;
+    padding-top: 16px;
+    border-top: 1px solid var(--bs-border);
+    text-align: center;
+    font-size: 11px;
+    color: var(--bs-text-light);
+  }
+
+  .bs-footer span { color: var(--bs-accent); font-weight: 600; }
+
+  /* Print styles */
+  @media print {
+    body { background: #FFFFFF; }
+    .page { padding: 20px 24px; max-width: 100%; }
+    .section { page-break-inside: avoid; }
+    .bs-header { border-bottom-width: 2px; }
+    .badge { border: 1px solid currentColor; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <!-- HEADER -->
+  <header class="bs-header">
+    <div class="bs-header-brand">
+      <h1>vNetCard<span>&trade;</span> VE Build Sheet</h1>
+      <p>Virtual Experience Card &mdash; Build Specification Document</p>
+    </div>
+    <div class="bs-header-meta">
+      <span class="bs-id">VNC-2026-0042</span><br>
+      <strong>Created:</strong> March 15, 2026<br>
+      <strong>Due Date:</strong> March 28, 2026<br>
+      <strong>Assigned To:</strong> Studio Team
+    </div>
+  </header>
+
+  <!-- SECTION 1: CLIENT OVERVIEW -->
+  <div class="section">
+    <h2 class="section-heading"><span class="section-number">1</span> Client Overview</h2>
+    <table>
+      <tr><td class="label">Client Name</td><td>Acme Business Co.</td></tr>
+      <tr><td class="label">Contact Person</td><td>Jordan Mitchell, Senior Consultant</td></tr>
+      <tr><td class="label">Email</td><td>jordan@acmebiz.com</td></tr>
+      <tr><td class="label">Phone</td><td>(555) 555-1234</td></tr>
+      <tr><td class="label">Website</td><td>https://acmebiz.com</td></tr>
+      <tr><td class="label">Industry</td><td>Business Consulting</td></tr>
+      <tr><td class="label">Package</td><td>vNetCard Pro &mdash; Full VE Build</td></tr>
+      <tr><td class="label">Card URL</td><td>https://vnetcard.com/acmebiz</td></tr>
+      <tr><td class="label">Special Instructions</td><td>Client prefers warm, professional tone. Needs card ready before April trade show.</td></tr>
+    </table>
+  </div>
+
+  <!-- SECTION 2: CARD SECTION SPECS -->
+  <div class="section">
+    <h2 class="section-heading"><span class="section-number">2</span> Card Section Specs</h2>
+    <table>
+      <tr>
+        <th style="width:40px;">#</th>
+        <th>Section</th>
+        <th>Enabled</th>
+        <th>Status</th>
+        <th>Notes</th>
+      </tr>
+      <tr>
+        <td>1</td>
+        <td>Hero</td>
+        <td>Yes</td>
+        <td><span class="badge badge-complete">Complete</span></td>
+        <td>Logo provided as SVG; headline and tagline confirmed</td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>Contact Actions</td>
+        <td>Yes</td>
+        <td><span class="badge badge-complete">Complete</span></td>
+        <td>Call, Email, Text, Map &mdash; all links verified</td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td>Utility Grid</td>
+        <td>Yes</td>
+        <td><span class="badge badge-in-progress">In Progress</span></td>
+        <td>6 tiles: Book Appt, Menu, Reviews, Specials, Pay Now, Website</td>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td>Welcome Audio</td>
+        <td>Yes</td>
+        <td><span class="badge badge-pending">Pending</span></td>
+        <td>Awaiting audio file from client (MP3, max 60s)</td>
+      </tr>
+      <tr>
+        <td>5</td>
+        <td>Media Gallery</td>
+        <td>Yes</td>
+        <td><span class="badge badge-in-progress">In Progress</span></td>
+        <td>3 photos received; awaiting captions approval</td>
+      </tr>
+      <tr>
+        <td>6</td>
+        <td>Tabs</td>
+        <td>Yes</td>
+        <td><span class="badge badge-complete">Complete</span></td>
+        <td>About, Services, Hours, FAQ &mdash; all copy finalized</td>
+      </tr>
+      <tr>
+        <td>7</td>
+        <td>Social Links</td>
+        <td>Yes</td>
+        <td><span class="badge badge-complete">Complete</span></td>
+        <td>Facebook, Instagram, LinkedIn, X, YouTube</td>
+      </tr>
+      <tr>
+        <td>8</td>
+        <td>Footer</td>
+        <td>Yes</td>
+        <td><span class="badge badge-complete">Complete</span></td>
+        <td>Save Contact vCard included; address verified</td>
+      </tr>
+      <tr>
+        <td>9</td>
+        <td>Powered By</td>
+        <td>Yes</td>
+        <td><span class="badge badge-complete">Complete</span></td>
+        <td>Standard vNetCard branding</td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- SECTION 3: ASSET CHECKLIST -->
+  <div class="section">
+    <h2 class="section-heading"><span class="section-number">3</span> Asset Checklist</h2>
+    <ul class="checklist">
+      <li class="checked">Company logo (SVG or PNG, min 512px)</li>
+      <li class="checked">Hero background image (1200x800)</li>
+      <li class="checked">Profile photo / headshot</li>
+      <li>Welcome audio recording (MP3)</li>
+      <li class="checked">Gallery photo 1 + caption</li>
+      <li class="checked">Gallery photo 2 + caption</li>
+      <li class="checked">Gallery photo 3 + caption</li>
+      <li class="checked">About Us copy (150-300 words)</li>
+      <li class="checked">Services list (3-8 items)</li>
+      <li class="checked">Business hours</li>
+      <li class="checked">FAQ content (3-6 Q&amp;A pairs)</li>
+      <li class="checked">Social media URLs</li>
+      <li class="checked">Contact info (phone, email, address)</li>
+      <li>vCard file (.vcf) generated</li>
+      <li class="checked">Custom domain / URL slug confirmed</li>
+      <li>Final client sign-off</li>
+    </ul>
+  </div>
+
+  <!-- SECTION 4: CUSTOM TABS SPEC -->
+  <div class="section">
+    <h2 class="section-heading"><span class="section-number">4</span> Custom Tabs Spec</h2>
+    <table>
+      <tr>
+        <th>Tab Name</th>
+        <th>Content Type</th>
+        <th>Word Count</th>
+        <th>Status</th>
+      </tr>
+      <tr>
+        <td>About</td>
+        <td>Paragraph text</td>
+        <td>~180 words</td>
+        <td><span class="badge badge-complete">Complete</span></td>
+      </tr>
+      <tr>
+        <td>Services</td>
+        <td>Bulleted list</td>
+        <td>5 items</td>
+        <td><span class="badge badge-complete">Complete</span></td>
+      </tr>
+      <tr>
+        <td>Hours</td>
+        <td>Table (day/time)</td>
+        <td>7 rows</td>
+        <td><span class="badge badge-complete">Complete</span></td>
+      </tr>
+      <tr>
+        <td>FAQ</td>
+        <td>Accordion (Q&amp;A)</td>
+        <td>3 pairs</td>
+        <td><span class="badge badge-complete">Complete</span></td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- SECTION 5: BRANDING SPEC -->
+  <div class="section">
+    <h2 class="section-heading"><span class="section-number">5</span> Branding Spec</h2>
+    <table>
+      <tr><td class="label">Primary Color</td><td><span style="display:inline-block;width:16px;height:16px;background:#1A2C5B;border-radius:3px;vertical-align:middle;margin-right:8px;"></span>#1A2C5B (Navy Blue)</td></tr>
+      <tr><td class="label">Accent Color</td><td><span style="display:inline-block;width:16px;height:16px;background:#F47C20;border-radius:3px;vertical-align:middle;margin-right:8px;"></span>#F47C20 (Orange)</td></tr>
+      <tr><td class="label">Heading Font</td><td>Playfair Display, Bold</td></tr>
+      <tr><td class="label">Body Font</td><td>Inter, Regular / Medium</td></tr>
+      <tr><td class="label">Logo Format</td><td>SVG (primary), PNG fallback (512x512)</td></tr>
+      <tr><td class="label">Card Style</td><td>Rounded corners (14px), soft shadows, light background</td></tr>
+      <tr><td class="label">Tone / Voice</td><td>Professional, warm, approachable</td></tr>
+    </table>
+  </div>
+
+  <!-- SECTION 6: AUTOMATION NOTES -->
+  <div class="section">
+    <h2 class="section-heading"><span class="section-number">6</span> Automation Notes</h2>
+    <table>
+      <tr>
+        <th>Feature</th>
+        <th>Enabled</th>
+        <th>Configuration</th>
+      </tr>
+      <tr>
+        <td>Save Contact (vCard)</td>
+        <td>Yes</td>
+        <td>Auto-generate .vcf with name, phone, email, address, website, photo</td>
+      </tr>
+      <tr>
+        <td>Click-to-Call Tracking</td>
+        <td>Yes</td>
+        <td>GA4 event: vnetcard_call_click</td>
+      </tr>
+      <tr>
+        <td>Form Submission</td>
+        <td>No</td>
+        <td>&mdash;</td>
+      </tr>
+      <tr>
+        <td>Booking Integration</td>
+        <td>Yes</td>
+        <td>External link to Calendly (opens in new tab)</td>
+      </tr>
+      <tr>
+        <td>Payment Link</td>
+        <td>Yes</td>
+        <td>Stripe payment link for invoice payments</td>
+      </tr>
+      <tr>
+        <td>Analytics Pixel</td>
+        <td>Yes</td>
+        <td>GA4 Measurement ID: G-XXXXXXXXXX</td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- SECTION 7: BUILD STATUS -->
+  <div class="section">
+    <h2 class="section-heading"><span class="section-number">7</span> Build Status</h2>
+
+    <div class="status-tracker">
+      <div class="status-step done">
+        <div class="status-dot">&#10003;</div>
+        <span class="status-step-label">Intake</span>
+      </div>
+      <div class="status-line done"></div>
+      <div class="status-step done">
+        <div class="status-dot">&#10003;</div>
+        <span class="status-step-label">Assets</span>
+      </div>
+      <div class="status-line done"></div>
+      <div class="status-step active">
+        <div class="status-dot">3</div>
+        <span class="status-step-label">Build</span>
+      </div>
+      <div class="status-line"></div>
+      <div class="status-step">
+        <div class="status-dot">4</div>
+        <span class="status-step-label">QA</span>
+      </div>
+      <div class="status-line"></div>
+      <div class="status-step">
+        <div class="status-dot">5</div>
+        <span class="status-step-label">Approval</span>
+      </div>
+      <div class="status-line"></div>
+      <div class="status-step">
+        <div class="status-dot">6</div>
+        <span class="status-step-label">Live</span>
+      </div>
+    </div>
+
+    <table>
+      <tr>
+        <th>Milestone</th>
+        <th>Date</th>
+        <th>Status</th>
+        <th>Owner</th>
+      </tr>
+      <tr>
+        <td>Client intake form received</td>
+        <td>Mar 15, 2026</td>
+        <td><span class="badge badge-complete">Complete</span></td>
+        <td>Sales</td>
+      </tr>
+      <tr>
+        <td>Assets collected</td>
+        <td>Mar 18, 2026</td>
+        <td><span class="badge badge-complete">Complete</span></td>
+        <td>Onboarding</td>
+      </tr>
+      <tr>
+        <td>Card build</td>
+        <td>Mar 22, 2026</td>
+        <td><span class="badge badge-in-progress">In Progress</span></td>
+        <td>Studio</td>
+      </tr>
+      <tr>
+        <td>QA review</td>
+        <td>Mar 25, 2026</td>
+        <td><span class="badge badge-pending">Pending</span></td>
+        <td>QA</td>
+      </tr>
+      <tr>
+        <td>Client approval</td>
+        <td>Mar 27, 2026</td>
+        <td><span class="badge badge-pending">Pending</span></td>
+        <td>Client</td>
+      </tr>
+      <tr>
+        <td>Go live</td>
+        <td>Mar 28, 2026</td>
+        <td><span class="badge badge-pending">Pending</span></td>
+        <td>Studio</td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- SECTION 8: INTERNAL NOTES -->
+  <div class="section">
+    <h2 class="section-heading"><span class="section-number">8</span> Internal Notes</h2>
+    <div class="notes-box">
+      <strong>Mar 15:</strong> Intake complete. Client is exhibiting at NatCon 2026 (April 2-4) and needs the card live by March 28 at the latest. Priority build.<br><br>
+      <strong>Mar 18:</strong> All assets received except welcome audio. Client recording this week. Proceeding with build using placeholder.<br><br>
+      <strong>Mar 22:</strong> Build started. Hero section, contact actions, tabs, social, and footer complete. Waiting on audio file and caption approvals for gallery before finalizing.
+    </div>
+
+    <div class="signature-row">
+      <div class="signature-block">
+        <div class="sig-line"></div>
+        <p><strong>Builder Signature</strong></p>
+        <p>Date: _______________</p>
+      </div>
+      <div class="signature-block">
+        <div class="sig-line"></div>
+        <p><strong>QA Reviewer</strong></p>
+        <p>Date: _______________</p>
+      </div>
+      <div class="signature-block">
+        <div class="sig-line"></div>
+        <p><strong>Client Approval</strong></p>
+        <p>Date: _______________</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <footer class="bs-footer">
+    <p>vNetCard<span>&trade;</span> VE Build Sheet &bull; Confidential &bull; Generated March 22, 2026</p>
+    <p style="margin-top:4px;">vNetCard Studio &mdash; Virtual Experience Card Platform</p>
+  </footer>
+
+</div>
+
+</body>
+</html>

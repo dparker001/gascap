@@ -5,7 +5,8 @@ import { findById } from '@/lib/users';
 import { getVehiclesForUser, addVehicle, deleteVehicle } from '@/lib/savedVehicles';
 import type { VehicleSpecs } from '@/lib/vehicleSpecs';
 
-const PLAN_LIMITS = { free: 1, pro: 5, fleet: 9999 };
+// Pro limit changed from 5 → 3 for new users (existing users keep their vehicles, just can't add beyond their current count)
+const PLAN_LIMITS = { free: 1, pro: 3, fleet: 9999 };
 
 // GET /api/vehicles — list saved vehicles for the signed-in user
 export async function GET() {
@@ -48,8 +49,8 @@ export async function POST(req: Request) {
 
   if (existing.length >= limit) {
     const msg = plan === 'free'
-      ? 'Free accounts can save 1 vehicle. Upgrade to Pro to save up to 5.'
-      : 'Vehicle limit reached (5).';
+      ? 'Free accounts can save 1 vehicle. Upgrade to Pro to save up to 3.'
+      : `Vehicle limit reached (${limit}). Upgrade to Fleet for unlimited vehicles.`;
     return NextResponse.json({ error: msg, limitReached: true, plan }, { status: 403 });
   }
 

@@ -24,7 +24,7 @@ const FREE_FEATURES = [
 
 const PRO_FEATURES = [
   { text: 'Everything in Free',                       highlight: false },
-  { text: 'Up to 5 saved vehicles',                   highlight: true  },
+  { text: 'Up to 3 saved vehicles',                   highlight: true  },
   { text: 'Manual entry + auto spec lookup',          highlight: true  },
   { text: 'Engine type & tank size auto-detected',    highlight: false },
   { text: 'MPG trending chart',                       highlight: true  },
@@ -37,12 +37,12 @@ const PRO_FEATURES = [
 const FLEET_FEATURES = [
   { text: 'Everything in Pro',                        highlight: false },
   { text: 'Unlimited vehicles',                       highlight: true  },
-  { text: 'Up to 10 drivers per fleet',               highlight: true  },
+  { text: 'Household & multi-vehicle use',            highlight: true  },
   { text: 'Shared fleet garage',                      highlight: true  },
   { text: 'Fleet cost dashboard',                     highlight: true  },
   { text: 'Per-vehicle spending breakdown',           highlight: false },
   { text: 'CSV export for accounting',                highlight: true  },
-  { text: 'Trip cost estimator',                      highlight: false },
+  { text: 'Multi-driver sub-accounts (coming soon)', highlight: false },
   { text: 'Dedicated support',                        highlight: false },
 ];
 
@@ -295,7 +295,7 @@ export default function PricingSection() {
         {/* Pro */}
         <PlanCard
           name="Pro"
-          badge="Individual"
+          badge="Individuals & Couples"
           badgeColor="bg-amber-100 text-amber-700"
           price={proPrice}
           subline={proSubline}
@@ -315,7 +315,7 @@ export default function PricingSection() {
         {/* Fleet */}
         <PlanCard
           name="Fleet"
-          badge="Business"
+          badge="Household & Business"
           badgeColor="bg-blue-100 text-blue-700"
           price={fleetPrice}
           subline={fleetSubline}

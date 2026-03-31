@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>vNetCard&trade; - Business Name</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@700&display=swap');
+
+  :root {
+    --card-primary: #1A2C5B;
+    --card-accent: #F47C20;
+    --card-bg: #F8F9FC;
+    --card-surface: #FFFFFF;
+    --card-text: #1E293B;
+    --card-text-light: #64748B;
+    --card-border: #E2E8F0;
+    --card-radius: 14px;
+    --card-shadow: 0 2px 12px rgba(26,44,91,0.08);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #E5E7EB;
+    display: flex;
+    justify-content: center;
+    padding: 0;
+    margin: 0;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .card-wrapper {
+    width: 100%;
+    max-width: 430px;
+    background: var(--card-bg);
+    min-height: 100vh;
+    position: relative;
+  }
+
+  /* ===== SECTION 1: HERO ===== */
+  .hero {
+    position: relative;
+    background: linear-gradient(135deg, var(--card-primary) 0%, #0F1D3D 100%);
+    padding: 48px 24px 72px;
+    text-align: center;
+    overflow: hidden;
+  }
+
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -30%;
+    width: 300px;
+    height: 300px;
+    background: radial-gradient(circle, rgba(244,124,32,0.15) 0%, transparent 70%);
+    border-radius: 50%;
+  }
+
+  .hero-logo {
+    width: 96px;
+    height: 96px;
+    border-radius: 50%;
+    border: 3px solid rgba(255,255,255,0.2);
+    background: var(--card-surface);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 16px;
+    font-size: 36px;
+    font-weight: 700;
+    color: var(--card-primary);
+    position: relative;
+    z-index: 1;
+  }
+
+  .hero h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 26px;
+    color: #FFFFFF;
+    margin-bottom: 6px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .hero .tagline {
+    font-size: 14px;
+    color: rgba(255,255,255,0.7);
+    font-weight: 400;
+    position: relative;
+    z-index: 1;
+  }
+
+  .hero .person-name {
+    font-size: 16px;
+    color: var(--card-accent);
+    font-weight: 600;
+    margin-top: 12px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .hero .person-title {
+    font-size: 13px;
+    color: rgba(255,255,255,0.6);
+    margin-top: 2px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ===== SECTION 2: CONTACT ACTIONS ===== */
+  .contact-actions {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+    margin: -32px 20px 0;
+    background: var(--card-surface);
+    border-radius: var(--card-radius);
+    box-shadow: var(--card-shadow);
+    overflow: hidden;
+    position: relative;
+    z-index: 2;
+  }
+
+  .contact-action {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 18px 8px 14px;
+    text-decoration: none;
+    color: var(--card-primary);
+    transition: background 0.2s;
+    border-right: 1px solid var(--card-border);
+  }
+
+  .contact-action:last-child { border-right: none; }
+  .contact-action:active { background: #F1F5F9; }
+
+  .contact-action-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--card-primary), #2A3F73);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 6px;
+  }
+
+  .contact-action-icon svg {
+    width: 20px;
+    height: 20px;
+    fill: none;
+    stroke: #FFFFFF;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .contact-action span {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--card-text-light);
+  }
+
+  /* ===== SECTION 3: UTILITY GRID ===== */
+  .utility-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    padding: 24px 20px;
+  }
+
+  .utility-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px 12px;
+    background: var(--card-surface);
+    border-radius: var(--card-radius);
+    box-shadow: var(--card-shadow);
+    text-decoration: none;
+    color: var(--card-text);
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+
+  .utility-item:active {
+    transform: scale(0.97);
+    box-shadow: 0 1px 6px rgba(26,44,91,0.12);
+  }
+
+  .utility-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: var(--card-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 8px;
+    font-size: 22px;
+  }
+
+  .utility-item span {
+    font-size: 12px;
+    font-weight: 500;
+    text-align: center;
+    line-height: 1.3;
+  }
+
+  /* ===== SECTION 4: WELCOME AUDIO ===== */
+  .welcome-audio {
+    margin: 0 20px 20px;
+    background: var(--card-surface);
+    border-radius: var(--card-radius);
+    box-shadow: var(--card-shadow);
+    padding: 20px;
+  }
+
+  .welcome-audio-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+
+  .welcome-audio-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--card-accent), #E06510);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .welcome-audio-info h3 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--card-text);
+  }
+
+  .welcome-audio-info p {
+    font-size: 12px;
+    color: var(--card-text-light);
+  }
+
+  .audio-player {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--card-bg);
+    border-radius: 10px;
+    padding: 12px 16px;
+  }
+
+  .audio-play-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--card-primary);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .audio-play-btn svg {
+    width: 16px;
+    height: 16px;
+    fill: #FFFFFF;
+    margin-left: 2px;
+  }
+
+  .audio-waveform {
+    flex: 1;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+  }
+
+  .audio-bar {
+    width: 3px;
+    border-radius: 2px;
+    background: var(--card-primary);
+    opacity: 0.3;
+  }
+
+  .audio-bar.active { opacity: 1; }
+
+  .audio-time {
+    font-size: 12px;
+    color: var(--card-text-light);
+    font-variant-numeric: tabular-nums;
+    flex-shrink: 0;
+  }
+
+  /* ===== SECTION 5: MEDIA ===== */
+  .media-section {
+    margin: 0 20px 20px;
+  }
+
+  .section-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--card-text);
+    margin-bottom: 14px;
+    padding-left: 2px;
+  }
+
+  .media-carousel {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+  }
+
+  .media-carousel::-webkit-scrollbar { display: none; }
+
+  .media-card {
+    flex: 0 0 280px;
+    scroll-snap-align: start;
+    border-radius: var(--card-radius);
+    overflow: hidden;
+    background: var(--card-surface);
+    box-shadow: var(--card-shadow);
+  }
+
+  .media-card-img {
+    width: 100%;
+    height: 160px;
+    background: linear-gradient(135deg, #CBD5E1 0%, #94A3B8 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #FFFFFF;
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  .media-card-body {
+    padding: 14px 16px;
+  }
+
+  .media-card-body h4 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--card-text);
+    margin-bottom: 4px;
+  }
+
+  .media-card-body p {
+    font-size: 12px;
+    color: var(--card-text-light);
+    line-height: 1.5;
+  }
+
+  /* ===== SECTION 6: TABS ===== */
+  .tabs-section {
+    margin: 0 20px 20px;
+    background: var(--card-surface);
+    border-radius: var(--card-radius);
+    box-shadow: var(--card-shadow);
+    overflow: hidden;
+  }
+
+  .tabs-nav {
+    display: flex;
+    border-bottom: 2px solid var(--card-border);
+  }
+
+  .tab-btn {
+    flex: 1;
+    padding: 14px 8px;
+    background: none;
+    border: none;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--card-text-light);
+    cursor: pointer;
+    position: relative;
+    transition: color 0.2s;
+  }
+
+  .tab-btn.active {
+    color: var(--card-primary);
+    font-weight: 600;
+  }
+
+  .tab-btn.active::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--card-accent);
+  }
+
+  .tab-panel {
+    display: none;
+    padding: 20px;
+  }
+
+  .tab-panel.active { display: block; }
+
+  .tab-panel h3 {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--card-text);
+    margin-bottom: 10px;
+  }
+
+  .tab-panel p, .tab-panel li {
+    font-size: 13px;
+    color: var(--card-text-light);
+    line-height: 1.7;
+  }
+
+  .tab-panel ul {
+    list-style: none;
+    padding: 0;
+  }
+
+  .tab-panel li {
+    padding: 6px 0;
+    padding-left: 20px;
+    position: relative;
+  }
+
+  .tab-panel li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 14px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--card-accent);
+  }
+
+  /* FAQ Accordion */
+  .faq-item {
+    border-bottom: 1px solid var(--card-border);
+  }
+
+  .faq-item:last-child { border-bottom: none; }
+
+  .faq-question {
+    width: 100%;
+    background: none;
+    border: none;
+    padding: 14px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--card-text);
+    cursor: pointer;
+    text-align: left;
+  }
+
+  .faq-chevron {
+    width: 20px;
+    height: 20px;
+    transition: transform 0.3s;
+    flex-shrink: 0;
+    margin-left: 12px;
+  }
+
+  .faq-item.open .faq-chevron { transform: rotate(180deg); }
+
+  .faq-answer {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+  }
+
+  .faq-answer-inner {
+    padding: 0 0 14px;
+    font-size: 13px;
+    color: var(--card-text-light);
+    line-height: 1.7;
+  }
+
+  .faq-item.open .faq-answer { max-height: 200px; }
+
+  /* Hours table */
+  .hours-table {
+    width: 100%;
+    font-size: 13px;
+  }
+
+  .hours-table tr { border-bottom: 1px solid var(--card-border); }
+  .hours-table tr:last-child { border-bottom: none; }
+
+  .hours-table td {
+    padding: 8px 0;
+    color: var(--card-text-light);
+  }
+
+  .hours-table td:first-child {
+    font-weight: 500;
+    color: var(--card-text);
+  }
+
+  .hours-table td:last-child { text-align: right; }
+
+  .hours-today {
+    background: rgba(244,124,32,0.08);
+    border-radius: 6px;
+  }
+
+  .hours-today td { padding: 8px 6px; color: var(--card-accent) !important; font-weight: 600 !important; }
+
+  /* ===== SECTION 7: SOCIAL ===== */
+  .social-section {
+    padding: 0 20px 20px;
+  }
+
+  .social-grid {
+    display: flex;
+    justify-content: center;
+    gap: 14px;
+  }
+
+  .social-link {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    background: var(--card-surface);
+    box-shadow: var(--card-shadow);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+
+  .social-link:active {
+    transform: scale(0.93);
+  }
+
+  .social-link svg {
+    width: 22px;
+    height: 22px;
+    fill: var(--card-primary);
+  }
+
+  /* ===== SECTION 8: FOOTER ===== */
+  .card-footer {
+    background: var(--card-primary);
+    padding: 28px 24px;
+    text-align: center;
+  }
+
+  .card-footer p {
+    font-size: 12px;
+    color: rgba(255,255,255,0.5);
+    line-height: 1.6;
+  }
+
+  .card-footer a {
+    color: var(--card-accent);
+    text-decoration: none;
+  }
+
+  .save-contact-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+    padding: 12px 28px;
+    background: var(--card-accent);
+    color: #FFFFFF;
+    border: none;
+    border-radius: 50px;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+
+  .save-contact-btn:active { opacity: 0.85; }
+
+  .save-contact-btn svg {
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: #FFFFFF;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  /* ===== SECTION 9: POWERED BY ===== */
+  .powered-by {
+    padding: 16px 24px 24px;
+    text-align: center;
+    background: var(--card-bg);
+  }
+
+  .powered-by a {
+    font-size: 11px;
+    color: var(--card-text-light);
+    text-decoration: none;
+    font-weight: 500;
+    letter-spacing: 0.3px;
+  }
+
+  .powered-by a span {
+    color: var(--card-accent);
+    font-weight: 700;
+  }
+</style>
+</head>
+<body>
+
+<div class="card-wrapper">
+
+  <!-- SECTION 1: HERO -->
+  <section class="hero">
+    <div class="hero-logo">AB</div>
+    <h1>Acme Business Co.</h1>
+    <p class="tagline">Premium Solutions Since 2010</p>
+    <p class="person-name">Jordan Mitchell</p>
+    <p class="person-title">Senior Consultant</p>
+  </section>
+
+  <!-- SECTION 2: CONTACT ACTIONS -->
+  <div class="contact-actions">
+    <a href="tel:+15555551234" class="contact-action">
+      <div class="contact-action-icon">
+        <svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.362 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+      </div>
+      <span>Call</span>
+    </a>
+    <a href="mailto:jordan@acmebiz.com" class="contact-action">
+      <div class="contact-action-icon">
+        <svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 6L2 7"/></svg>
+      </div>
+      <span>Email</span>
+    </a>
+    <a href="sms:+15555551234" class="contact-action">
+      <div class="contact-action-icon">
+        <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+      </div>
+      <span>Text</span>
+    </a>
+    <a href="https://maps.google.com" class="contact-action" target="_blank">
+      <div class="contact-action-icon">
+        <svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+      </div>
+      <span>Map</span>
+    </a>
+  </div>
+
+  <!-- SECTION 3: UTILITY GRID -->
+  <div class="utility-grid">
+    <a href="#" class="utility-item">
+      <div class="utility-icon">&#128197;</div>
+      <span>Book Appt</span>
+    </a>
+    <a href="#" class="utility-item">
+      <div class="utility-icon">&#128196;</div>
+      <span>Our Menu</span>
+    </a>
+    <a href="#" class="utility-item">
+      <div class="utility-icon">&#11088;</div>
+      <span>Reviews</span>
+    </a>
+    <a href="#" class="utility-item">
+      <div class="utility-icon">&#127381;</div>
+      <span>Specials</span>
+    </a>
+    <a href="#" class="utility-item">
+      <div class="utility-icon">&#128176;</div>
+      <span>Pay Now</span>
+    </a>
+    <a href="#" class="utility-item">
+      <div class="utility-icon">&#128279;</div>
+      <span>Website</span>
+    </a>
+  </div>
+
+  <!-- SECTION 4: WELCOME AUDIO -->
+  <div class="welcome-audio">
+    <div class="welcome-audio-header">
+      <div class="welcome-audio-avatar">JM</div>
+      <div class="welcome-audio-info">
+        <h3>Welcome Message</h3>
+        <p>A quick hello from Jordan</p>
+      </div>
+    </div>
+    <div class="audio-player">
+      <button class="audio-play-btn" aria-label="Play welcome message">
+        <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
+      </button>
+      <div class="audio-waveform" id="waveform"></div>
+      <span class="audio-time">0:32</span>
+    </div>
+  </div>
+
+  <!-- SECTION 5: MEDIA -->
+  <div class="media-section">
+    <h2 class="section-title">Gallery</h2>
+    <div class="media-carousel">
+      <div class="media-card">
+        <div class="media-card-img">Photo 1</div>
+        <div class="media-card-body">
+          <h4>Our Office</h4>
+          <p>Modern workspace designed for collaboration and creativity.</p>
+        </div>
+      </div>
+      <div class="media-card">
+        <div class="media-card-img">Photo 2</div>
+        <div class="media-card-body">
+          <h4>Team Event</h4>
+          <p>Annual company retreat bringing the whole team together.</p>
+        </div>
+      </div>
+      <div class="media-card">
+        <div class="media-card-img">Photo 3</div>
+        <div class="media-card-body">
+          <h4>Client Work</h4>
+          <p>Featured project delivered ahead of schedule.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 6: TABS -->
+  <div class="tabs-section">
+    <div class="tabs-nav">
+      <button class="tab-btn active" data-tab="about">About</button>
+      <button class="tab-btn" data-tab="services">Services</button>
+      <button class="tab-btn" data-tab="hours">Hours</button>
+      <button class="tab-btn" data-tab="faq">FAQ</button>
+    </div>
+
+    <div class="tab-panel active" id="tab-about">
+      <h3>About Acme Business Co.</h3>
+      <p>We are a full-service consulting firm dedicated to helping businesses grow and thrive. With over a decade of experience, our team provides strategic guidance, operational improvements, and innovative solutions tailored to your unique challenges.</p>
+    </div>
+
+    <div class="tab-panel" id="tab-services">
+      <h3>Our Services</h3>
+      <ul>
+        <li>Strategic Business Consulting</li>
+        <li>Digital Transformation</li>
+        <li>Brand Development &amp; Marketing</li>
+        <li>Financial Planning &amp; Analysis</li>
+        <li>Team Training &amp; Workshops</li>
+      </ul>
+    </div>
+
+    <div class="tab-panel" id="tab-hours">
+      <h3>Business Hours</h3>
+      <table class="hours-table">
+        <tr><td>Monday</td><td>9:00 AM - 6:00 PM</td></tr>
+        <tr><td>Tuesday</td><td>9:00 AM - 6:00 PM</td></tr>
+        <tr><td>Wednesday</td><td>9:00 AM - 6:00 PM</td></tr>
+        <tr><td>Thursday</td><td>9:00 AM - 6:00 PM</td></tr>
+        <tr><td>Friday</td><td>9:00 AM - 5:00 PM</td></tr>
+        <tr><td>Saturday</td><td>10:00 AM - 2:00 PM</td></tr>
+        <tr><td>Sunday</td><td>Closed</td></tr>
+      </table>
+    </div>
+
+    <div class="tab-panel" id="tab-faq">
+      <h3>Frequently Asked</h3>
+      <div class="faq-item">
+        <button class="faq-question">
+          What areas do you serve?
+          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-inner">We serve clients nationwide with a focus on the greater metropolitan area. Remote consultations are available for all services.</div>
+        </div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-question">
+          How do I get started?
+          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-inner">Simply book a free discovery call through our scheduling link above. We will discuss your goals and outline a tailored plan for your business.</div>
+        </div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-question">
+          What are your rates?
+          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-inner">Our pricing varies based on the scope and duration of the engagement. We offer flexible packages starting at competitive rates. Contact us for a custom quote.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 7: SOCIAL -->
+  <div class="social-section">
+    <h2 class="section-title" style="text-align:center;">Connect With Us</h2>
+    <div class="social-grid">
+      <a href="#" class="social-link" aria-label="Facebook">
+        <svg viewBox="0 0 24 24"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/></svg>
+      </a>
+      <a href="#" class="social-link" aria-label="Instagram">
+        <svg viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="17.5" cy="6.5" r="1.5"/></svg>
+      </a>
+      <a href="#" class="social-link" aria-label="LinkedIn">
+        <svg viewBox="0 0 24 24"><path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-4 0v7h-4v-7a6 6 0 016-6zM2 9h4v12H2zM4 6a2 2 0 100-4 2 2 0 000 4z"/></svg>
+      </a>
+      <a href="#" class="social-link" aria-label="X / Twitter">
+        <svg viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+      </a>
+      <a href="#" class="social-link" aria-label="YouTube">
+        <svg viewBox="0 0 24 24"><path d="M22.54 6.42a2.78 2.78 0 00-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 00-1.94 2A29 29 0 001 11.75a29 29 0 00.46 5.33A2.78 2.78 0 003.4 19.1c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 001.94-2 29 29 0 00.46-5.25 29 29 0 00-.46-5.43z"/><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02" fill="#fff"/></svg>
+      </a>
+    </div>
+  </div>
+
+  <!-- SECTION 8: FOOTER -->
+  <footer class="card-footer">
+    <button class="save-contact-btn">
+      <svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+      Save Contact
+    </button>
+    <p>Acme Business Co. &bull; (555) 555-1234</p>
+    <p>123 Main Street, Suite 200, Anytown, ST 10001</p>
+    <p style="margin-top:8px;"><a href="mailto:jordan@acmebiz.com">jordan@acmebiz.com</a> &bull; <a href="https://acmebiz.com">acmebiz.com</a></p>
+  </footer>
+
+  <!-- SECTION 9: POWERED BY -->
+  <div class="powered-by">
+    <a href="https://vnetcard.com">Powered by <span>vNetCard&trade;</span></a>
+  </div>
+
+</div>
+
+<script>
+(function() {
+  // Tab switching
+  var tabBtns = document.querySelectorAll('.tab-btn');
+  var tabPanels = document.querySelectorAll('.tab-panel');
+  var tabNames = ['about','services','hours','faq'];
+
+  tabBtns.forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var target = btn.getAttribute('data-tab');
+      tabBtns.forEach(function(b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      tabPanels.forEach(function(panel, i) {
+        panel.classList.toggle('active', tabNames[i] === target);
+      });
+    });
+  });
+
+  // FAQ accordion
+  document.querySelectorAll('.faq-question').forEach(function(q) {
+    q.addEventListener('click', function() {
+      var item = q.closest('.faq-item');
+      var wasOpen = item.classList.contains('open');
+      document.querySelectorAll('.faq-item').forEach(function(fi) { fi.classList.remove('open'); });
+      if (!wasOpen) item.classList.add('open');
+    });
+  });
+
+  // Generate waveform bars
+  var waveform = document.getElementById('waveform');
+  if (waveform) {
+    var heights = [12,18,24,16,28,20,14,26,18,22,30,16,24,20,12,28,18,14,26,22,16,20,28,14,24,18,12,22,26,20];
+    heights.forEach(function(h, i) {
+      var bar = document.createElement('div');
+      bar.className = 'audio-bar' + (i < 8 ? ' active' : '');
+      bar.style.height = h + 'px';
+      waveform.appendChild(bar);
+    });
+  }
+
+  // Highlight today's hours
+  var dayIndex = new Date().getDay();
+  var rows = document.querySelectorAll('.hours-table tr');
+  var dayMap = [6,0,1,2,3,4,5]; // Sun=6, Mon=0, ...
+  if (rows[dayMap[dayIndex]]) {
+    rows[dayMap[dayIndex]].classList.add('hours-today');
+  }
+})();
+</script>
+
+</body>
+</html>
