@@ -13,6 +13,15 @@ const nextConfig = {
   env: {
     PORT: process.env.PORT ?? '3000',
   },
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'api.qrserver.com',
+        pathname: '/v1/create-qr-code/**',
+      },
+    ],
+  },
 };
 
 module.exports = withPWA(nextConfig);

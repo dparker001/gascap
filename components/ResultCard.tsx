@@ -1,7 +1,7 @@
 'use client';
 
 import { useSession } from 'next-auth/react';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import TankGauge from './TankGauge';
 import FillupLogger from './FillupLogger';
 import type { TargetFillResult, BudgetResult } from '@/lib/calculations';
@@ -9,49 +9,105 @@ import type { TargetFillResult, BudgetResult } from '@/lib/calculations';
 // ── Shareable card helper ──────────────────────────────────────────────────────
 
 function ShareButton({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false);
+  const { data: session } = useSession();
+  const [copied,  setCopied]  = useState(false);
+  const [showQR,  setShowQR]  = useState(false);
+  const [refUrl,  setRefUrl]  = useState('https://gascap.app');
+  const fetched = useRef(false);
+
+  // Fetch the user's personal referral URL once — appended to all shares
+  useEffect(() => {
+    if (!session || fetched.current) return;
+    fetched.current = true;
+    fetch('/api/referral')
+      .then((r) => r.json())
+      .then((d: { referralUrl?: string }) => { if (d.referralUrl) setRefUrl(d.referralUrl); })
+      .catch(() => {});
+  }, [session]);
 
   const handleShare = useCallback(async () => {
     const shareData = {
       title: 'GasCap™ — My Fill Calculation',
       text,
-      url: 'https://gascap.app',
+      url: refUrl,
     };
     try {
       if (navigator.share && navigator.canShare?.(shareData)) {
         await navigator.share(shareData);
       } else {
-        await navigator.clipboard.writeText(`${text}\n\nhttps://gascap.app`);
+        await navigator.clipboard.writeText(`${text}\n\n${refUrl}`);
         setCopied(true);
         setTimeout(() => setCopied(false), 2500);
       }
     } catch {
       // User cancelled or clipboard failed — silently ignore
     }
-  }, [text]);
+  }, [text, refUrl]);
+
+  const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=4&color=0f1f34&bgcolor=ffffff&data=${encodeURIComponent(refUrl)}`;
 
   return (
-    <button
-      onClick={handleShare}
-      className="mt-2 w-full py-2.5 rounded-2xl border border-slate-200 bg-white
-                 hover:border-amber-300 hover:bg-amber-50 text-slate-500 hover:text-amber-700
-                 text-xs font-bold transition-colors flex items-center justify-center gap-2"
-    >
-      {copied ? (
-        <>
-          <span>✓</span> Copied to clipboard!
-        </>
-      ) : (
-        <>
-          <svg viewBox="0 0 20 20" className="w-3.5 h-3.5" fill="none" stroke="currentColor"
-               strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M13 4h3a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V6a2 2 0 012-2h3"/>
-            <path d="M7 2h6v4H7z"/>
-          </svg>
-          Share this calculation
-        </>
+    <div className="mt-2 space-y-2">
+      {/* Share row — share button + QR toggle */}
+      <div className="flex gap-2">
+        <button
+          onClick={handleShare}
+          className="flex-1 py-2.5 rounded-2xl border border-slate-200 bg-white
+                     hover:border-amber-300 hover:bg-amber-50 text-slate-500 hover:text-amber-700
+                     text-xs font-bold transition-colors flex items-center justify-center gap-2"
+        >
+          {copied ? (
+            <><span>✓</span> Copied!</>
+          ) : (
+            <>
+              <svg viewBox="0 0 20 20" className="w-3.5 h-3.5" fill="none" stroke="currentColor"
+                   strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M13 4h3a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V6a2 2 0 012-2h3"/>
+                <path d="M7 2h6v4H7z"/>
+              </svg>
+              Share this calculation
+            </>
+          )}
+        </button>
+
+        {/* QR toggle button */}
+        <button
+          onClick={() => setShowQR((v) => !v)}
+          title={showQR ? 'Hide QR code' : 'Show QR code'}
+          className={`px-3 py-2.5 rounded-2xl border text-sm font-bold transition-colors ${
+            showQR
+              ? 'border-amber-400 bg-amber-50 text-amber-700'
+              : 'border-slate-200 bg-white text-slate-500 hover:border-amber-300 hover:bg-amber-50 hover:text-amber-700'
+          }`}
+          aria-label={showQR ? 'Hide QR code' : 'Show QR code'}
+        >
+          📱
+        </button>
+      </div>
+
+      {/* QR panel — expands below */}
+      {showQR && (
+        <div className="flex flex-col items-center gap-2 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-4 animate-fade-in">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Share via QR</p>
+          <div className="bg-white p-2.5 rounded-xl shadow-sm border border-slate-100">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={qrSrc} alt="Share QR code" width={180} height={180} className="w-44 h-44 rounded-lg" />
+          </div>
+          <p className="text-[10px] text-slate-400 text-center leading-relaxed max-w-[200px]">
+            Scan to open GasCap™{session ? ' — your referral link is embedded' : ''}
+          </p>
+          <a
+            href={`https://api.qrserver.com/v1/create-qr-code/?size=600x600&margin=20&color=0f1f34&bgcolor=ffffff&data=${encodeURIComponent(refUrl)}`}
+            download="gascap-share-qr.png"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[11px] font-bold text-amber-600 hover:text-amber-500 transition-colors"
+          >
+            ⬇ Download QR
+          </a>
+        </div>
       )}
-    </button>
+    </div>
   );
 }
 

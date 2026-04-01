@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 
 interface FillupLoggerProps {
@@ -35,7 +35,22 @@ export default function FillupLogger({ prefill, onSaved, onCancel }: FillupLogge
   const [forceConfirm, setForceConfirm] = useState(false);
   const [scanning,     setScanning]     = useState(false);
   const [scanError,    setScanError]    = useState('');
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef        = useRef<HTMLInputElement>(null);
+  const galleryInputRef     = useRef<HTMLInputElement>(null);
+
+  // Fetch live plan from server — session JWT can be stale after an upgrade
+  const [livePlan, setLivePlan] = useState<string | null>(null);
+  useEffect(() => {
+    if (!session) return;
+    fetch('/api/vehicles')
+      .then((r) => r.json())
+      .then((d: { plan?: string }) => { if (d.plan) setLivePlan(d.plan); })
+      .catch(() => {});
+  }, [session]);
+
+  const plan      = livePlan ?? session?.user?.plan ?? 'free';
+  const isPro     = plan === 'pro' || plan === 'fleet';
+  const planBadge = plan === 'fleet' ? 'FLEET' : 'PRO';
 
   const totalCost = (parseFloat(gallons) * parseFloat(price)) || 0;
 
@@ -57,7 +72,7 @@ export default function FillupLogger({ prefill, onSaved, onCancel }: FillupLogge
       };
       if (!res.ok) {
         if (res.status === 403 && data.upgrade) {
-          setScanError('Receipt scanning requires Pro. Upgrade to unlock.');
+          setScanError(`Receipt scanning requires Pro${plan === 'free' ? ' — upgrade to unlock' : ''}.`);
         } else {
           setScanError(data.error ?? 'Scan failed.');
         }
@@ -138,7 +153,7 @@ export default function FillupLogger({ prefill, onSaved, onCancel }: FillupLogge
         </div>
       </div>
 
-      {/* Hidden file input for receipt scanning */}
+      {/* Hidden file inputs — camera and gallery */}
       <input
         type="file"
         accept="image/*"
@@ -151,10 +166,21 @@ export default function FillupLogger({ prefill, onSaved, onCancel }: FillupLogge
           e.target.value = '';
         }}
       />
+      <input
+        type="file"
+        accept="image/*"
+        ref={galleryInputRef}
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) handleScan(f);
+          e.target.value = '';
+        }}
+      />
 
       {/* Scan receipt section */}
       <div className="space-y-1.5">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
@@ -164,32 +190,45 @@ export default function FillupLogger({ prefill, onSaved, onCancel }: FillupLogge
             <span>{scanning ? '🔄' : '📷'}</span>
             <span>{scanning ? 'Scanning…' : 'Scan Receipt'}</span>
           </button>
-          <span className="text-[10px] text-amber-600 font-bold bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">PRO</span>
-          <span className="text-[10px] text-slate-400 ml-auto">or fill in manually below</span>
+          <button
+            type="button"
+            onClick={() => galleryInputRef.current?.click()}
+            disabled={saving || scanning}
+            className="flex items-center gap-1.5 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-xl px-3 py-2 hover:border-amber-300 hover:text-amber-700 transition-colors disabled:opacity-50"
+          >
+            <span>🖼️</span>
+            <span>Upload from Photos</span>
+          </button>
+          <span className={`text-[10px] font-bold border rounded-full px-2 py-0.5 ${isPro ? 'text-blue-600 bg-blue-50 border-blue-200' : 'text-amber-600 bg-amber-50 border-amber-200'}`}>
+            {planBadge}
+          </span>
         </div>
+        <p className="text-[10px] text-slate-400">or fill in manually below</p>
         {scanError && <p className="text-[11px] text-red-500 font-medium">{scanError}</p>}
       </div>
 
       <div className="border-t border-amber-100" />
 
-      {/* Date + Gallons row */}
-      <div className="grid grid-cols-2 gap-2">
+      {/* Date row — full width to avoid iOS date-input overflow */}
+      <div>
+        <label className="field-label">Date</label>
+        <input
+          type="date"
+          className="input-field text-base"
+          value={date}
+          max={today}
+          onChange={(e) => setDate(e.target.value)}
+        />
+      </div>
+
+      {/* Gallons + Price row */}
+      <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="field-label">Date</label>
-          <input
-            type="date"
-            className="input-field text-sm"
-            value={date}
-            max={today}
-            onChange={(e) => setDate(e.target.value)}
-          />
-        </div>
-        <div>
-          <label className="field-label">Gallons pumped</label>
+          <label className="field-label">Gallons</label>
           <div className="relative">
             <input
               type="number" inputMode="decimal"
-              className="input-field text-sm pr-10"
+              className="input-field text-sm pr-9"
               value={gallons}
               min="0.1" step="0.1"
               onChange={(e) => setGallons(e.target.value)}
@@ -197,12 +236,8 @@ export default function FillupLogger({ prefill, onSaved, onCancel }: FillupLogge
             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">gal</span>
           </div>
         </div>
-      </div>
-
-      {/* Price + Odometer row */}
-      <div className="grid grid-cols-2 gap-2">
         <div>
-          <label className="field-label">Price / gallon</label>
+          <label className="field-label">Price / gal</label>
           <div className="relative">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-semibold pointer-events-none text-sm">$</span>
             <input
@@ -214,21 +249,24 @@ export default function FillupLogger({ prefill, onSaved, onCancel }: FillupLogge
             />
           </div>
         </div>
-        <div>
-          <label className="field-label">Odometer <span className="text-[10px] font-bold text-green-600 bg-green-50 rounded px-1 py-0.5">MPG tracking</span></label>
-          <div className="relative">
-            <input
-              type="number" inputMode="numeric"
-              className="input-field text-sm pr-10"
-              placeholder="e.g. 42500"
-              value={odometer}
-              min="0" step="1"
-              onChange={(e) => setOdometer(e.target.value)}
-            />
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">mi</span>
-          </div>
+      </div>
+
+      {/* Odometer row — full width */}
+      <div>
+        <label className="field-label">Odometer <span className="text-[10px] font-bold text-green-600 bg-green-50 rounded px-1 py-0.5">MPG tracking</span></label>
+        <div className="relative">
+          <input
+            type="number" inputMode="numeric"
+            className="input-field text-sm pr-10"
+            placeholder="e.g. 42500"
+            value={odometer}
+            min="0" step="1"
+            onChange={(e) => setOdometer(e.target.value)}
+          />
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">mi</span>
         </div>
       </div>
+
 
       {/* Notes */}
       <div>

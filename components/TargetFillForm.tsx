@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import FuelGauge     from './FuelGauge';
 import TankPresets   from './TankPresets';
@@ -74,6 +74,10 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
   const [calculated, setCalculated] = useState(false);
   const [calcKey, setCalcKey]       = useState(0);
   const [showLiveNudge, setShowLiveNudge] = useState(false);
+  const [gaugeScanning, setGaugeScanning] = useState(false);
+  const [gaugeScanMsg,  setGaugeScanMsg]  = useState('');
+  const gaugeCamRef     = useRef<HTMLInputElement>(null);
+  const gaugeGalleryRef = useRef<HTMLInputElement>(null);
 
   // Standard patch — clears result (free/guest behaviour)
   function patch(p: Partial<FormState>) {
@@ -116,6 +120,28 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
   const gaugePercent = form.fuelMode === 'percent'
     ? (isNaN(Number(form.currentFuel)) ? 0 : Number(form.currentFuel))
     : 0;
+
+  async function handleGaugeScan(file: File) {
+    setGaugeScanning(true);
+    setGaugeScanMsg('');
+    try {
+      const fd = new FormData();
+      fd.append('image', file);
+      const res  = await fetch('/api/gauge/scan', { method: 'POST', body: fd });
+      const data = await res.json() as { percent?: number | null; error?: string };
+      if (!res.ok) { setGaugeScanMsg(data.error ?? 'Scan failed — try again.'); return; }
+      if (data.percent === null || data.percent === undefined) {
+        setGaugeScanMsg('Couldn\'t read the gauge — try a clearer photo of just the fuel gauge.');
+        return;
+      }
+      liveRecalc({ currentFuel: String(data.percent), fuelMode: 'percent' });
+      setGaugeScanMsg(`✓ Detected ~${data.percent}% — drag the gauge to fine-tune.`);
+    } catch {
+      setGaugeScanMsg('Network error — try again.');
+    } finally {
+      setGaugeScanning(false);
+    }
+  }
 
   function handleCalculate() {
     const targetPercent = form.targetPreset !== null
@@ -211,11 +237,55 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
         </div>
 
         {form.fuelMode === 'percent' ? (
-          <FuelGauge
-            percent={gaugePercent}
-            onChange={(pct) => liveRecalc({ currentFuel: String(pct) })}
-            tankCapacity={tankNum}
-          />
+          <>
+            <FuelGauge
+              percent={gaugePercent}
+              onChange={(pct) => liveRecalc({ currentFuel: String(pct) })}
+              tankCapacity={tankNum}
+            />
+
+            {/* ── Gauge scan inputs (hidden) ── */}
+            <input type="file" accept="image/*" capture="environment"
+              ref={gaugeCamRef} className="hidden"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) handleGaugeScan(f); e.target.value = ''; }}
+            />
+            <input type="file" accept="image/*"
+              ref={gaugeGalleryRef} className="hidden"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) handleGaugeScan(f); e.target.value = ''; }}
+            />
+
+            {/* ── Scan gauge buttons ── */}
+            <div className="mt-2 space-y-1.5">
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => { setGaugeScanMsg(''); gaugeCamRef.current?.click(); }}
+                  disabled={gaugeScanning}
+                  className="flex items-center gap-1.5 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-xl px-3 py-2 hover:border-amber-300 hover:text-amber-700 transition-colors disabled:opacity-50"
+                >
+                  <span>{gaugeScanning ? '🔄' : '📷'}</span>
+                  <span>{gaugeScanning ? 'Reading gauge…' : 'Scan Gauge'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setGaugeScanMsg(''); gaugeGalleryRef.current?.click(); }}
+                  disabled={gaugeScanning}
+                  className="flex items-center gap-1.5 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-xl px-3 py-2 hover:border-amber-300 hover:text-amber-700 transition-colors disabled:opacity-50"
+                >
+                  <span>🖼️</span>
+                  <span>Upload Photo</span>
+                </button>
+              </div>
+              {gaugeScanMsg && (
+                <p className={`text-[11px] font-medium leading-snug ${gaugeScanMsg.startsWith('✓') ? 'text-green-600' : 'text-red-500'}`}>
+                  {gaugeScanMsg}
+                </p>
+              )}
+              <p className="text-[10px] text-slate-400 leading-relaxed">
+                📸 Point your camera at the fuel gauge on your dashboard — AI will read the needle and set your level automatically.
+              </p>
+            </div>
+          </>
         ) : (
           <div className="relative">
             <input
