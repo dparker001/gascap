@@ -62,9 +62,10 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
     }
   }, []);
 
+  // Load stats eagerly so the header shows correct count before panel is opened
   useEffect(() => {
-    if (session && open) load();
-  }, [session, open, load, refreshKey]);
+    if (session) load();
+  }, [session, load, refreshKey]);
 
   // Auto-open when refreshKey changes (new fillup logged)
   useEffect(() => {
@@ -133,7 +134,8 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
                 {stats.count} fillup{stats.count !== 1 ? 's' : ''} · ${stats.totalSpent.toFixed(2)} total spent
               </p>
             )}
-            {(!stats || stats.count === 0) && (
+            {/* Only show "none" after data has loaded and count is truly 0 */}
+            {stats && stats.count === 0 && (
               <p className="text-[10px] text-slate-400">No fillups logged yet</p>
             )}
           </div>
