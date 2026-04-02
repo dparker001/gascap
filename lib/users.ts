@@ -404,17 +404,6 @@ export function creditVerifiedReferral(userId: string): boolean {
   return false;
 }
 
-// ── Price alert tracking ───────────────────────────────────────────────────
-
-/** Stamp the current time as the last price alert sent for 24h debounce. */
-export function setLastPriceAlertSent(userId: string): void {
-  const users = read();
-  const idx   = users.findIndex((u) => u.id === userId);
-  if (idx === -1) return;
-  users[idx].lastPriceAlertSentAt = new Date().toISOString();
-  write(users);
-}
-
 // ── Profile update ─────────────────────────────────────────────────────────
 
 export function updateUserProfile(

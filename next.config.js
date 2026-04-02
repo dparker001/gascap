@@ -9,10 +9,6 @@ const withPWA = require('next-pwa')({
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Enable instrumentation.ts for node-cron scheduled tasks
-  experimental: {
-    instrumentationHook: true,
-  },
   // Railway injects PORT; tell Next.js to bind to it
   env: {
     PORT: process.env.PORT ?? '3000',
