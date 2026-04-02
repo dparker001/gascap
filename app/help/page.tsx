@@ -43,12 +43,20 @@ const SECTIONS = [
         a: 'By Budget works in reverse: enter how much money you want to spend and it tells you how many gallons you\'ll get and what fuel level to expect. Great for topping off on a tight budget.',
       },
       {
+        q: 'What is Rental Car Return Mode?',
+        a: 'Rental Car Return Mode is a special calculator mode designed for rental vehicle drop-offs. Tap the "🚗 Rental Car Return Mode" toggle at the top of the calculator to activate it. Your saved garage is hidden and replaced with rental car class presets (Economy, Midsize, SUV, etc.). You can also enter the rental company\'s per-gallon rate to see a side-by-side comparison of what it costs you at the pump vs. what the rental company would charge if you returned it empty — showing exactly how much you save.',
+      },
+      {
+        q: 'Can I scan my fuel gauge to set the current level?',
+        a: 'Yes. On the "Set fuel level" step, tap "Scan Gauge" to use your camera or "Upload Photo" to use an image from your gallery. AI reads the needle position on your dashboard gauge — including vertical, horizontal, and arc-style gauges — and sets the fuel level automatically. You can always drag the gauge to fine-tune the result.',
+      },
+      {
         q: 'How does the live gas price lookup work?',
         a: 'Tap "Use Local Price" and allow location access. GasCap uses your location to look up the current average gas price in your state from the U.S. Energy Information Administration (EIA). It\'s an average — actual pump prices may vary.',
       },
       {
         q: 'Can I use GasCap without internet?',
-        a: 'Yes. Once installed as a PWA, the calculators work fully offline. Gas price lookup and VIN scan require an internet connection.',
+        a: 'Yes. Once installed as a PWA, the calculators work fully offline. Gas price lookup, gauge scan, and VIN scan require an internet connection.',
       },
     ],
   },
@@ -66,7 +74,7 @@ const SECTIONS = [
       },
       {
         q: 'Can I export my fill-up history?',
-        a: 'An end-of-year fuel report (PDF) for tax purposes is on our roadmap and coming soon to all plans. Stay tuned.',
+        a: 'Yes. Open the "Fillup History" panel and tap "Export CSV" to download a spreadsheet of all your fill-ups, or tap "Print / PDF" to open a printable report you can save as a PDF. Both options are available to Pro and Fleet users.',
       },
     ],
   },
@@ -136,7 +144,7 @@ const SECTIONS = [
       },
       {
         q: 'The app isn\'t updating after I upgraded my plan.',
-        a: 'Sign out and sign back in to refresh your session. If the issue persists, clear your browser cache or reinstall the PWA.',
+        a: 'Sign out and sign back in to refresh your session. On the installed PWA, you can also pull down from the top of the screen to refresh. If the issue persists, clear your browser cache or reinstall the PWA.',
       },
       {
         q: 'I\'m having a different issue not listed here.',

@@ -46,7 +46,7 @@ export default function PrivacyPage() {
               <li><strong>U.S. Energy Information Administration (EIA)</strong> — gas price data. No personal data is shared.</li>
               <li><strong>NHTSA / fueleconomy.gov</strong> — vehicle data lookups. No personal data is shared.</li>
               <li><strong>Resend</strong> — transactional email delivery.</li>
-              <li><strong>Anthropic Claude</strong> — AI-powered fuel advisor, receipt and VIN scanning (Pro feature). Data is processed and not stored beyond the duration of the request.</li>
+              <li><strong>Anthropic Claude</strong> — AI-powered fuel advisor, receipt scanning, VIN scanning, and fuel gauge scanning (Pro feature). Images and text are processed transiently and not stored beyond the duration of the request.</li>
               <li><strong>GoHighLevel (GHL)</strong> — CRM and marketing automation. Your name, email, phone (if provided), and plan status may be synced to GHL to manage communications. No payment data is shared.</li>
             </ul>
           </section>
