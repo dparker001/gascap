@@ -20,21 +20,24 @@ const GREEN  = '#16a34a';
 
 async function checkAccess() {
   const session = await getServerSession(authOptions);
-  if (!session?.user) return { ok: false, status: 401, user: null };
-  const userId = (session.user as { id?: string }).id ?? session.user.email ?? '';
+  if (!session?.user) return { ok: false, status: 401, user: null, userId: '' };
+  // Mirror exactly the same userId derivation used in /api/fillups/route.ts
+  const userId = session.user.id ?? session.user.email ?? '';
   const user   = findById(userId);
-  if (!user || user.plan === 'free') return { ok: false, status: 403, user };
-  return { ok: true, status: 200, user: user! };
+  if (!user || user.plan === 'free') return { ok: false, status: 403, user, userId };
+  return { ok: true, status: 200, user: user!, userId };
 }
 
-// HEAD — lightweight plan check used by the client before triggering a download
+// HEAD — lightweight pre-flight check: plan access + data existence
 export async function HEAD() {
-  const { ok, status } = await checkAccess();
-  return new NextResponse(null, { status: ok ? 200 : status });
+  const { ok, status, userId } = await checkAccess();
+  if (!ok) return new NextResponse(null, { status });
+  const count = getFillups(userId).length;
+  return new NextResponse(null, { status: count > 0 ? 200 : 404 });
 }
 
 export async function GET(req: Request) {
-  const { ok, status, user } = await checkAccess();
+  const { ok, status, user, userId } = await checkAccess();
   if (!ok || !user) {
     if (status === 401) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     return NextResponse.json(
@@ -48,12 +51,16 @@ export async function GET(req: Request) {
   const fromDate = searchParams.get('from') ?? undefined;
   const toDate   = searchParams.get('to')   ?? undefined;
 
-  // Fetch data
-  let fillups = getFillups(user.id);
+  // Fetch data — use the same userId key that was stored when fillups were saved
+  let fillups = getFillups(userId);
   if (fromDate) fillups = fillups.filter((f) => f.date >= fromDate);
   if (toDate)   fillups = fillups.filter((f) => f.date <= toDate);
   // Sort oldest-first for the table
   const sorted = [...fillups].sort((a, b) => a.date.localeCompare(b.date));
+
+  if (fillups.length === 0) {
+    return NextResponse.json({ error: 'No fillups found to export.' }, { status: 404 });
+  }
 
   const mpgMap = computeMpg(fillups);
   const stats  = getFillupStats(fillups, mpgMap);

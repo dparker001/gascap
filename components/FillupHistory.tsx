@@ -105,21 +105,24 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
     setExporting(true);
     setExportError('');
     try {
-      // HEAD check first so we get a clean error without triggering a download
+      // Pre-flight check — catches plan and data errors without triggering navigation
       const check = await fetch('/api/fillups/export', { method: 'HEAD' }).catch(() => null);
       if (check?.status === 403) {
         setExportError('Upgrade to Pro to export PDF');
         setTimeout(() => setExportError(''), 4000);
         return;
       }
-      // Navigate directly — the browser handles the file download from the
-      // Content-Disposition: attachment header. This works on iOS Safari where
-      // programmatic blob + a.click() is blocked.
+      if (check?.status === 404) {
+        setExportError('No fillups to export yet');
+        setTimeout(() => setExportError(''), 4000);
+        return;
+      }
+      // Navigate directly — the browser handles the Content-Disposition: attachment
+      // header as a file download. This works on iOS Safari where blob + a.click() is blocked.
       window.location.href = '/api/fillups/export';
     } catch {
       setExportError('Export failed — try again');
     } finally {
-      // Give the browser a moment to start the download before clearing state
       setTimeout(() => setExporting(false), 2000);
     }
   }
