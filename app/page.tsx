@@ -223,6 +223,17 @@ export default function Home() {
         </>
       )}
 
+      {/* Visual separator between Tools panel and Pricing — logged-in only */}
+      {!isGuest && (
+        <div className="max-w-lg mx-auto w-full px-4 pb-2">
+          <div className="flex items-center gap-3">
+            <div className="flex-1 h-px bg-slate-200" />
+            <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">More</span>
+            <div className="flex-1 h-px bg-slate-200" />
+          </div>
+        </div>
+      )}
+
       {/* Pricing — collapsible for logged-in, auto-expanded for guests */}
       <section className="px-4 pb-12 max-w-2xl mx-auto w-full">
         <button
