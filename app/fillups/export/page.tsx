@@ -79,6 +79,20 @@ export default function FillupExportPage() {
 
       <div className="max-w-3xl mx-auto px-6 py-8">
 
+        {/* Back nav — hidden when printing */}
+        <div className="no-print mb-4">
+          <a
+            href="/"
+            className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-amber-600 transition-colors"
+          >
+            <svg viewBox="0 0 16 16" className="w-4 h-4" fill="none" stroke="currentColor"
+                 strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+              <path d="M10 12L6 8l4-4" />
+            </svg>
+            Back to app
+          </a>
+        </div>
+
         {/* Header */}
         <div className="flex items-start justify-between mb-8 pb-4 border-b-2 border-slate-900">
           <div>

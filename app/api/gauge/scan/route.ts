@@ -53,27 +53,33 @@ export async function POST(req: Request) {
             type: 'text',
             text: `You are reading a vehicle fuel gauge from a photo taken by a driver.
 
-WHAT TO LOOK FOR:
-- An analog arc-shaped gauge with a needle pointing between E (empty) and F (full)
-- A digital bar-graph or segmented display showing fuel level
-- A digital percentage or fraction display (e.g. "1/2", "3/4", "87%")
-- The gauge may be on a dashboard, instrument cluster, or a standalone fuel gauge face
+GAUGE TYPES — look for ANY of these:
+
+Analog needle gauges (most common):
+- VERTICAL sweep: needle moves up (Full/F at top) and down (Empty/E at bottom) — common on right side of instrument cluster. E is at the BOTTOM, F is at the TOP.
+- HORIZONTAL sweep: needle moves left/right along a curved or straight arc — E on the left, F on the right (or sometimes reversed).
+- SEMICIRCULAR arc: needle sweeps in a half-circle — E on one end, F on the other.
+- The needle pivot point and the E/F labels are the key reference points regardless of orientation.
+
+Digital displays:
+- Bar graph or segmented bars showing fuel level
+- Fraction display (e.g. "1/4", "1/2", "3/4", "FULL")
+- Percentage display (e.g. "87%", "45%")
+- Icon with fill level indicator
 
 HOW TO INTERPRET:
-- E or Empty = 0%
-- 1/4 tank = 25%
-- 1/2 tank = 50%
-- 3/4 tank = 75%
-- F or Full = 100%
-- For analog needles: estimate the needle's position as a percentage of the arc from E to F
-- For digital segments: count lit segments vs total segments
-- Round to the nearest 5% (e.g. 25, 30, 50, 75)
+- Locate the E (Empty) and F (Full) labels or endpoints first
+- For vertical gauges: measure how far the needle is from E (bottom) toward F (top) as a percentage of the total travel distance
+- For horizontal/arc gauges: measure needle position as percentage from E end to F end
+- For digital bars: count lit/filled segments ÷ total segments × 100
+- E or Empty = 0%, ¼ tank = 25%, ½ tank = 50%, ¾ tank = 75%, F or Full = 100%
+- Round to the nearest 5%
 
 WHEN TO RETURN NULL:
-- The image does not show a fuel gauge at all
-- The gauge is too blurry or obscured to read
-- You cannot confidently determine the fuel level
-- The image shows something other than a vehicle fuel gauge
+- No fuel gauge visible in the image
+- Gauge is too blurry, dark, or obscured to read
+- Cannot confidently locate the needle or E/F endpoints
+- Image shows something other than a vehicle fuel gauge
 
 Return ONLY a JSON object, no markdown, no explanation:
 {"percent": <integer 0–100 or null>}`,

@@ -502,7 +502,24 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
         <GasPriceLookup onApply={(p) => liveRecalc({ pricePerGallon: p })} />
       </div>
 
-      <button className="btn-amber" onClick={handleCalculate}>Calculate ⚡</button>
+      {/* Rental mode active reminder — shown just above the calculate button */}
+      {rentalMode && (
+        <div className="flex items-center gap-2 bg-blue-700 rounded-xl px-3 py-2 mb-2">
+          <span className="text-base flex-shrink-0" aria-hidden="true">🚗</span>
+          <p className="text-xs font-black text-white flex-1">Rental Car Return Mode Active</p>
+          <button
+            type="button"
+            onClick={() => setRentalMode(false)}
+            className="text-blue-200 hover:text-white text-[11px] font-bold underline whitespace-nowrap transition-colors"
+          >
+            Exit
+          </button>
+        </div>
+      )}
+
+      <button className="btn-amber" onClick={handleCalculate}>
+        {rentalMode ? 'Calculate Rental Cost ⚡' : 'Calculate ⚡'}
+      </button>
       <button className="btn-secondary" onClick={handleReset}>Clear all</button>
 
       <div id="tf-result">
