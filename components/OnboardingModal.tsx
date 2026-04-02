@@ -201,7 +201,7 @@ const STEPS: Step[] = [
   },
   {
     title:    'You\'re Ready to Go!',
-    body:     'The calculator is completely free — no account needed. Sign up free to save vehicles, log fillups, and track your MPG over time.',
+    body:     'The calculator is completely free — no account needed. Sign up free to save vehicles, log fill-ups, and track your MPG over time.',
     cta:      'Start Calculating — it\'s free',
     skipLabel:'Close Intro',
     bg:       'linear-gradient(135deg, #0f1f34 0%, #1e3a5f 60%, #2c5491 100%)',

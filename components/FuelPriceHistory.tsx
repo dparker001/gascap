@@ -132,8 +132,8 @@ export default function FuelPriceHistory() {
           <div className="text-left">
             <p className="text-sm font-black text-slate-700">Price History</p>
             {avgPrice != null
-              ? <p className="text-[10px] text-slate-400">Avg ${avgPrice}/gal · {points.length} fillup{points.length !== 1 ? 's' : ''}</p>
-              : <p className="text-[10px] text-slate-400">Log fillups to track price trends</p>
+              ? <p className="text-[10px] text-slate-400">Avg ${avgPrice}/gal · {points.length} fill-up{points.length !== 1 ? 's' : ''}</p>
+              : <p className="text-[10px] text-slate-400">Log fill-ups to track price trends</p>
             }
           </div>
         </div>
@@ -163,7 +163,7 @@ export default function FuelPriceHistory() {
               <p className="text-3xl mb-2">💲</p>
               <p className="text-sm font-bold text-slate-600">Not enough data yet</p>
               <p className="text-xs text-slate-400 mt-1 leading-relaxed max-w-[220px] mx-auto">
-                Log at least 2 fillups to see your personal gas price trend.
+                Log at least 2 fill-ups to see your personal gas price trend.
               </p>
             </div>
           )}
@@ -315,7 +315,7 @@ export default function FuelPriceHistory() {
               )}
 
               <p className="text-[9px] text-slate-300 text-center mt-1">
-                Hover over a point to see details · Based on your logged fillup prices
+                Hover over a point to see details · Based on your logged fill-up prices
               </p>
             </>
           )}

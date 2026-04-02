@@ -191,7 +191,7 @@ export default function ToolsPanel() {
             <FillupHistory />
           </div>
         )}
-        {effectiveTab === 'log' && !session && <SignInPrompt feature="fillup log" />}
+        {effectiveTab === 'log' && !session && <SignInPrompt feature="fill-up log" />}
       </div>
 
       {/* Charts */}
@@ -248,7 +248,7 @@ function SignInPrompt({ feature }: { feature: string }) {
       <p className="text-2xl">🔒</p>
       <p className="text-sm font-bold text-slate-700">Sign in to access your {feature}</p>
       <p className="text-xs text-slate-400 leading-relaxed max-w-[240px] mx-auto">
-        Create a free account to log fillups, track MPG, set budgets, and see your spending charts.
+        Create a free account to log fill-ups, track MPG, set budgets, and see your spending charts.
       </p>
     </div>
   );

@@ -246,7 +246,7 @@ export function TargetResultCard({ result, vehicleName, vehicleId, vehicleOdomet
                      hover:border-amber-300 text-slate-500 text-sm font-semibold transition-colors
                      flex items-center justify-center gap-2"
         >
-          <span>⛽</span> Sign in to log this fillup →
+          <span>⛽</span> Sign in to log this fill-up →
         </a>
       )}
       {session && !showLogger && (
@@ -256,7 +256,7 @@ export function TargetResultCard({ result, vehicleName, vehicleId, vehicleOdomet
                      hover:bg-amber-100 text-amber-700 text-sm font-bold transition-colors
                      flex items-center justify-center gap-2 shadow-sm"
         >
-          <span>⛽</span> Log This Fillup
+          <span>⛽</span> Log This Fill-Up
         </button>
       )}
       {showLogger && (
@@ -360,7 +360,7 @@ export function BudgetResultCard({ result, pricePerGallon, vehicleName, vehicleI
                      hover:border-amber-300 text-slate-500 text-sm font-semibold transition-colors
                      flex items-center justify-center gap-2"
         >
-          <span>⛽</span> Sign in to log this fillup →
+          <span>⛽</span> Sign in to log this fill-up →
         </a>
       )}
       {session && !showLogger && (
@@ -370,7 +370,7 @@ export function BudgetResultCard({ result, pricePerGallon, vehicleName, vehicleI
                      hover:bg-amber-100 text-amber-700 text-sm font-bold transition-colors
                      flex items-center justify-center gap-2 shadow-sm"
         >
-          <span>⛽</span> Log This Fillup
+          <span>⛽</span> Log This Fill-Up
         </button>
       )}
       {showLogger && (

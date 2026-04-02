@@ -74,7 +74,7 @@ const SECTIONS = [
       },
       {
         q: 'Can I export my fill-up history?',
-        a: 'Yes. Open the "Fillup History" panel and tap "Export CSV" to download a spreadsheet of all your fill-ups, or tap "Print / PDF" to open a printable report you can save as a PDF. Both options are available to Pro and Fleet users.',
+        a: 'Yes. Open the "Fill-Up History" panel and tap "Export CSV" to download a spreadsheet of all your fill-ups, or tap "Print / PDF" to open a printable report you can save as a PDF. Both options are available to Pro and Fleet users.',
       },
     ],
   },

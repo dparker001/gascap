@@ -25,7 +25,7 @@ const SEED_REVIEWS: Review[] = [
   {
     id: 'seed-001', userId: 'seed-user-001', userName: 'Marcus T.',
     rating: 5,
-    text: "Finally stopped guessing at the pump. Pulled up knowing exactly what I needed — saved $12 on my last fillup just by not over-filling. The live gas price lookup is a game changer.",
+    text: "Finally stopped guessing at the pump. Pulled up knowing exactly what I needed — saved $12 on my last fill-up just by not over-filling. The live gas price lookup is a game changer.",
     vehicleName: '2021 Ford F-150', plan: 'pro',
     createdAt: '2026-03-20T14:32:00.000Z', updatedAt: '2026-03-20T14:32:00.000Z',
   },
@@ -60,7 +60,7 @@ const SEED_REVIEWS: Review[] = [
   {
     id: 'seed-006', userId: 'seed-user-006', userName: 'Aisha B.',
     rating: 5,
-    text: "Shared this with my whole family. My teenage daughter uses it before every fillup now. The AI advisor answered her question about gas grades and she saved money immediately. Love this app.",
+    text: "Shared this with my whole family. My teenage daughter uses it before every fill-up now. The AI advisor answered her question about gas grades and she saved money immediately. Love this app.",
     vehicleName: '2018 Nissan Altima', plan: 'free',
     createdAt: '2026-03-27T13:10:00.000Z', updatedAt: '2026-03-27T13:10:00.000Z',
   },

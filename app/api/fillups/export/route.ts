@@ -59,7 +59,7 @@ export async function GET(req: Request) {
   const sorted = [...fillups].sort((a, b) => a.date.localeCompare(b.date));
 
   if (fillups.length === 0) {
-    return NextResponse.json({ error: 'No fillups found to export.' }, { status: 404 });
+    return NextResponse.json({ error: 'No fill-ups found to export.' }, { status: 404 });
   }
 
   const mpgMap = computeMpg(fillups);
@@ -117,7 +117,7 @@ export async function GET(req: Request) {
     const statBoxW = (contentW - 9) / 4;  // 4 boxes with 3px gaps
     const statBoxH = 56;
     const statItems = [
-      { label: 'Total Fillups',    value: String(stats.count) },
+      { label: 'Total Fill-Ups',   value: String(stats.count) },
       { label: 'Total Spent',      value: `$${stats.totalSpent.toFixed(2)}` },
       { label: 'Total Gallons',    value: `${stats.totalGallons.toFixed(1)} gal` },
       { label: 'Average MPG',      value: stats.avgMpg ? `${stats.avgMpg.toFixed(1)}` : 'N/A' },
@@ -140,7 +140,7 @@ export async function GET(req: Request) {
       y += 18;
 
       const colW = [contentW * 0.35, contentW * 0.13, contentW * 0.14, contentW * 0.14, contentW * 0.12, contentW * 0.12];
-      const headers = ['Vehicle', 'Fillups', 'Total Spent', 'Avg $/Gal', 'Total Gal', 'Avg MPG'];
+      const headers = ['Vehicle', 'Fill-Ups', 'Total Spent', 'Avg $/Gal', 'Total Gal', 'Avg MPG'];
 
       // Header row
       doc.rect(margin, y, contentW, 18).fill('#1e2d4a');
@@ -178,7 +178,7 @@ export async function GET(req: Request) {
     // Check if we need a new page
     if (y > pageH - 200) { doc.addPage(); y = margin; }
 
-    doc.fillColor(NAVY).font('Helvetica-Bold').fontSize(13).text('Fillup Log', margin, y);
+    doc.fillColor(NAVY).font('Helvetica-Bold').fontSize(13).text('Fill-Up Log', margin, y);
     if (fromDate || toDate) {
       doc.fillColor(SLATE).font('Helvetica').fontSize(9)
          .text(`${fromDate ?? 'All time'} → ${toDate ?? 'today'}`, margin + 80, y + 2);

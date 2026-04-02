@@ -181,7 +181,7 @@ export default function AiAdvisor({ embedded = false }: { embedded?: boolean }) 
                     <p className="text-sm font-bold text-slate-700">Hi! I&apos;m your GasCap AI Advisor.</p>
                     <p className="text-xs text-slate-400 mt-1">
                       {session
-                        ? "I can see your vehicle and fillup data. Ask me anything!"
+                        ? "I can see your vehicle and fill-up data. Ask me anything!"
                         : "Ask me about fuel efficiency, cost savings, or trip planning."}
                     </p>
                   </div>

@@ -61,9 +61,60 @@
     return (phone || '').replace(/\D/g, '');
   }
 
+  // ---------------------------------------------------------------------------
+  // Dynamic color system — uses cardData.primaryColor & accentColor
+  // with sensible defaults matching the vNetCard™ brand
+  // ---------------------------------------------------------------------------
+
+  function resolveColors(d) {
+    var primary = d.primaryColor || '#1A2C5B';   // dark navy default
+    var accent  = d.accentColor  || '#C5A028';   // gold default
+    // Compute a lighter variant of the accent for gradients
+    var accentLight = d.accentColorLight || lightenHex(accent, 40);
+    // Compute a darker variant of primary for footers
+    var primaryDark = darkenHex(primary, 30);
+    return {
+      primary: primary,           // Main brand color (backgrounds, text on light)
+      primaryDark: primaryDark,   // Footer gradient end
+      accent: accent,             // Accent / highlight (tabs, hero bg, titles)
+      accentLight: accentLight,   // Lighter accent for gradients
+      actionGreen: '#22C55E',     // Call/Text/Email buttons (always green)
+      white: '#FFFFFF',
+      lightGray: '#F9FAFB',
+      linkArrow: '#F47C20'        // Orange arrow for link-out tabs
+    };
+  }
+
+  // Hex color manipulation helpers
+  function lightenHex(hex, amount) {
+    hex = hex.replace('#', '');
+    var r = Math.min(255, parseInt(hex.substring(0,2), 16) + amount);
+    var g = Math.min(255, parseInt(hex.substring(2,4), 16) + amount);
+    var b = Math.min(255, parseInt(hex.substring(4,6), 16) + amount);
+    return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+  }
+
+  function darkenHex(hex, amount) {
+    hex = hex.replace('#', '');
+    var r = Math.max(0, parseInt(hex.substring(0,2), 16) - amount);
+    var g = Math.max(0, parseInt(hex.substring(2,4), 16) - amount);
+    var b = Math.max(0, parseInt(hex.substring(4,6), 16) - amount);
+    return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+  }
+
+  // Determine if a color is "light" or "dark" for contrast text
+  function isLightColor(hex) {
+    hex = hex.replace('#', '');
+    var r = parseInt(hex.substring(0,2), 16);
+    var g = parseInt(hex.substring(2,4), 16);
+    var b = parseInt(hex.substring(4,6), 16);
+    var luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    return luminance > 0.55;
+  }
+
   // Brand logo helper - renders the stylized vNetCard(tm) logo
   function vnetcardLogo(size) {
-    var fs = size === 'large' ? '28px' : size === 'medium' ? '18px' : '13px';
+    var fs = size === 'large' ? '34px' : size === 'medium' ? '18px' : '13px';
     return '<span style="font-family:Poppins,sans-serif;font-size:' + fs + ';font-weight:700;letter-spacing:-0.5px;">'
       + '<span style="color:#22C55E;">v</span>'
       + '<span style="color:#FFFFFF;">Net</span>'
@@ -83,69 +134,87 @@
   // SECTION BUILDERS
   // ---------------------------------------------------------------------------
 
-  // SECTION 1: Powered By Header Bar
-  function buildPoweredByHeader() {
-    return '<div style="background:#1A2C5B;padding:8px 16px;display:flex;align-items:center;justify-content:space-between;">'
-      + '<div style="display:flex;align-items:center;gap:6px;">'
+  // Reusable separator line between card sections
+  function sectionDivider(c) {
+    return '<div style="height:3px;background:linear-gradient(90deg,' + c.accent + ',' + c.accentLight + ',' + c.accent + ');"></div>';
+  }
+
+  // SECTION 1: Powered By Header Bar (with optional logo)
+  function buildPoweredByHeader(d, c) {
+    var logoHTML = '';
+    var logoSrc = d.logoUrl || d.logo || '';
+    if (logoSrc) {
+      logoHTML = '<img src="' + esc(logoSrc) + '" alt="' + esc(d.businessName || 'Logo') + '" style="'
+        + 'height:28px;width:auto;max-width:80px;object-fit:contain;border-radius:4px;'
+        + '">';
+    }
+
+    return '<div style="background:' + c.primary + ';padding:8px 16px;display:flex;align-items:center;justify-content:space-between;">'
+      + '<div style="display:flex;align-items:center;gap:8px;">'
       + '<span style="font-size:10px;color:rgba(255,255,255,0.6);font-family:Inter,sans-serif;">Powered by</span>'
       + vnetcardLogo('small')
       + '</div>'
+      + '<div style="display:flex;align-items:center;gap:8px;">'
+      + (logoHTML ? logoHTML : '')
       + '<span style="font-size:9px;color:rgba(255,255,255,0.5);font-family:Inter,sans-serif;font-style:italic;">Connect Digitally</span>'
+      + '</div>'
       + '</div>';
   }
 
   // SECTION 2: Hero / Banner
-  function buildHeroBanner(d) {
+  function buildHeroBanner(d, c) {
     var profileHTML = '';
-    if (d.profilePhotoUrl || d.profilePhoto) {
-      var src = d.profilePhotoUrl || d.profilePhoto;
+    if (d.profilePhotoUrl || d.profilePhoto || d.coverPhoto) {
+      var src = d.profilePhotoUrl || d.profilePhoto || d.coverPhoto;
       profileHTML = '<img src="' + esc(src) + '" alt="' + esc(d.contactName || d.businessName) + '" style="'
-        + 'width:160px;height:200px;object-fit:cover;object-position:top center;'
-        + 'border-radius:12px 12px 0 0;filter:drop-shadow(0 4px 12px rgba(0,0,0,0.3));'
+        + 'width:180px;height:220px;object-fit:cover;object-position:top center;'
+        + 'border-radius:14px 14px 0 0;filter:drop-shadow(0 8px 20px rgba(0,0,0,0.35));'
+        + 'position:relative;z-index:2;margin-bottom:-40px;'
         + '">';
     } else {
       // Professional placeholder silhouette
-      profileHTML = '<div style="width:160px;height:200px;border-radius:12px 12px 0 0;background:rgba(26,44,91,0.2);display:flex;align-items:center;justify-content:center;">'
-        + '<svg width="80" height="100" viewBox="0 0 80 100" fill="none">'
+      profileHTML = '<div style="width:180px;height:220px;border-radius:14px 14px 0 0;background:rgba(26,44,91,0.2);display:flex;align-items:center;justify-content:center;position:relative;z-index:2;margin-bottom:-40px;">'
+        + '<svg width="90" height="110" viewBox="0 0 80 100" fill="none">'
         + '<circle cx="40" cy="28" r="20" fill="rgba(26,44,91,0.3)"/>'
         + '<ellipse cx="40" cy="85" rx="32" ry="25" fill="rgba(26,44,91,0.3)"/>'
         + '</svg>'
         + '</div>';
     }
 
-    return '<div style="background:linear-gradient(135deg,#C5A028 0%,#E8D44D 50%,#C5A028 100%);padding:28px 20px 0;display:flex;align-items:flex-end;gap:12px;position:relative;overflow:hidden;">'
-      + '<div style="flex:1;padding-bottom:28px;">'
-      + '<p style="font-family:Poppins,sans-serif;font-size:22px;font-weight:800;font-style:italic;color:#1A2C5B;line-height:1.2;margin-bottom:10px;">'
+    return '<div style="background:linear-gradient(135deg,' + darkenHex(c.accent, 10) + ' 0%,' + c.accent + ' 20%,' + c.accentLight + ' 50%,' + c.accent + ' 80%,' + darkenHex(c.accent, 10) + ' 100%);padding:32px 20px 0;display:flex;align-items:flex-end;gap:16px;position:relative;overflow:visible;">'
+      + '<div style="position:absolute;top:0;left:0;right:0;bottom:0;background:linear-gradient(180deg,rgba(255,255,255,0.15) 0%,rgba(0,0,0,0.05) 100%);pointer-events:none;"></div>'
+      + '<div style="flex:1;padding-bottom:32px;position:relative;z-index:1;">'
+      + '<p style="font-family:Poppins,sans-serif;font-size:26px;font-weight:800;font-style:italic;color:' + c.primary + ';line-height:1.15;margin-bottom:12px;text-shadow:0 1px 2px rgba(255,255,255,0.3);">'
       + 'Don\'t Waste A<br>First Impression!</p>'
-      + '<p style="font-family:Inter,sans-serif;font-size:12px;font-weight:500;color:#1A2C5B;line-height:1.4;">'
+      + '<p style="font-family:Inter,sans-serif;font-size:13px;font-weight:600;color:' + c.primary + ';line-height:1.5;opacity:0.85;">'
       + 'Turn Your Business Networking<br>Into Meaningful Interactions!</p>'
       + '</div>'
-      + '<div style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;">'
+      + '<div style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;position:relative;z-index:2;">'
       + profileHTML
       + '</div>'
       + '</div>';
   }
 
   // SECTION 3: Name / Contact Info Card
-  function buildNameCard(d) {
+  function buildNameCard(d, c) {
     var name = d.contactName || d.businessName || 'Your Name';
     var title = d.title || d.contactTitle || '';
     var specialty = d.specialty || d.tagline || '';
     var phone = d.phone || '';
     var email = d.email || '';
 
-    return '<div style="background:#1A2C5B;padding:32px 24px 36px;position:relative;text-align:center;">'
-      + '<h1 style="font-family:Poppins,sans-serif;font-size:32px;font-weight:700;color:#FFFFFF;margin:0 0 8px;line-height:1.15;">'
+    return '<div style="background:' + c.primary + ';padding:48px 24px 40px;position:relative;text-align:center;">'
+      + '<h1 style="font-family:Poppins,sans-serif;font-size:36px;font-weight:700;color:#FFFFFF;margin:0 0 10px;line-height:1.1;letter-spacing:-0.5px;">'
       + esc(name) + '</h1>'
-      + (title ? '<p style="font-family:Inter,sans-serif;font-size:16px;color:#C5A028;font-weight:600;margin:0 0 4px;">' + esc(title) + '</p>' : '')
-      + (specialty && specialty !== title ? '<p style="font-family:Inter,sans-serif;font-size:14px;color:#E8D44D;font-weight:500;margin:0 0 12px;">' + esc(specialty) + '</p>' : '<div style="margin-bottom:12px;"></div>')
-      + (phone ? '<p style="font-family:Inter,sans-serif;font-size:15px;color:#FFFFFF;margin:0 0 4px;">' + esc(phone) + '</p>' : '')
+      + (title ? '<p style="font-family:Inter,sans-serif;font-size:17px;color:' + c.accent + ';font-weight:700;margin:0 0 6px;letter-spacing:0.3px;">' + esc(title) + '</p>' : '')
+      + (specialty && specialty !== title ? '<p style="font-family:Inter,sans-serif;font-size:15px;color:' + c.accentLight + ';font-weight:600;margin:0 0 16px;letter-spacing:0.2px;">' + esc(specialty) + '</p>' : '<div style="margin-bottom:16px;"></div>')
+      + (phone ? '<p style="font-family:Inter,sans-serif;font-size:15px;color:#FFFFFF;margin:0 0 5px;">' + esc(phone) + '</p>' : '')
       + (email ? '<p style="font-family:Inter,sans-serif;font-size:15px;color:#FFFFFF;margin:0;">' + esc(email) + '</p>' : '')
       + '</div>';
   }
 
   // SECTION 4: Contact Action Buttons
-  function buildContactActions(d) {
+  function buildContactActions(d, c) {
     var phone = phoneDigits(d.phone);
     var email = d.email || '';
 
@@ -154,8 +223,8 @@
     var emailSVG = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>';
 
     var btnStyle = 'flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;text-decoration:none;';
-    var iconStyle = 'width:48px;height:48px;border-radius:50%;background:#22C55E;display:flex;align-items:center;justify-content:center;';
-    var labelStyle = 'font-family:Inter,sans-serif;font-size:13px;font-weight:700;color:#1A2C5B;';
+    var iconStyle = 'width:52px;height:52px;border-radius:50%;background:' + c.actionGreen + ';display:flex;align-items:center;justify-content:center;box-shadow:0 3px 10px rgba(34,197,94,0.35);';
+    var labelStyle = 'font-family:Inter,sans-serif;font-size:13px;font-weight:700;color:' + c.primary + ';';
 
     var btns = '';
     btns += '<a href="tel:' + esc(phone) + '" style="' + btnStyle + '">'
@@ -183,9 +252,9 @@
   }
 
   // SECTION 5: Utility Buttons (2x2 Grid)
-  function buildUtilityButtons() {
+  function buildUtilityButtons(c) {
     var btnStyle = 'flex:1;padding:14px 8px;border:2px solid #D1D5DB;border-radius:10px;background:#FFFFFF;'
-      + 'font-family:Inter,sans-serif;font-size:13px;font-weight:600;color:#1A2C5B;text-align:center;cursor:pointer;'
+      + 'font-family:Inter,sans-serif;font-size:13px;font-weight:600;color:' + c.primary + ';text-align:center;cursor:pointer;'
       + 'transition:background 0.2s,border-color 0.2s;';
 
     return '<div style="background:#F9FAFB;padding:12px 20px 20px;">'
@@ -199,7 +268,7 @@
   }
 
   // SECTION 6: Audio Player
-  function buildAudioPlayer(d) {
+  function buildAudioPlayer(d, c) {
     var hasAudio = d.welcomeAudioEnabled && d.welcomeAudioScript;
     var scriptHTML = '';
     if (hasAudio) {
@@ -210,7 +279,7 @@
     var audioSrc = d.welcomeAudioUrl || '';
 
     return '<div style="background:#FFFFFF;padding:20px 20px 24px;">'
-      + '<h3 style="font-family:Poppins,sans-serif;font-size:16px;font-weight:600;color:#1A2C5B;margin:0 0 12px;">Welcome Message</h3>'
+      + '<h3 style="font-family:Poppins,sans-serif;font-size:16px;font-weight:600;color:' + c.primary + ';margin:0 0 12px;">Welcome Message</h3>'
       + scriptHTML
       + '<audio controls style="width:100%;height:40px;border-radius:8px;"'
       + (audioSrc ? ' src="' + esc(audioSrc) + '"' : '') + '>'
@@ -220,7 +289,7 @@
   }
 
   // SECTION 7: Social Media Embed (Instagram focus)
-  function buildSocialEmbed(d) {
+  function buildSocialEmbed(d, c) {
     var social = d.socialLinks || {};
     var bizName = d.businessName || 'Our Business';
     var instaUrl = social.instagram || '';
@@ -237,7 +306,7 @@
       }
 
       return '<div style="background:#F9FAFB;padding:20px;">'
-        + '<h3 style="font-family:Poppins,sans-serif;font-size:16px;font-weight:600;color:#1A2C5B;margin:0 0 14px;text-align:center;">'
+        + '<h3 style="font-family:Poppins,sans-serif;font-size:16px;font-weight:600;color:' + c.primary + ';margin:0 0 14px;text-align:center;">'
         + 'Follow ' + esc(bizName) + ' on InstaGram</h3>'
         + '<div style="background:#fff;border:1px solid #DBDBDB;border-radius:12px;overflow:hidden;">'
         // Profile header
@@ -268,13 +337,14 @@
 
     // No Instagram - generic placeholder
     return '<div style="background:#F9FAFB;padding:20px;text-align:center;">'
-      + '<h3 style="font-family:Poppins,sans-serif;font-size:16px;font-weight:600;color:#1A2C5B;margin:0 0 10px;">Connect With Us On Social Media</h3>'
+      + '<h3 style="font-family:Poppins,sans-serif;font-size:16px;font-weight:600;color:' + c.primary + ';margin:0 0 10px;">Connect With Us On Social Media</h3>'
       + '<p style="font-family:Inter,sans-serif;font-size:13px;color:#888;margin:0;">Social media profiles coming soon.</p>'
       + '</div>';
   }
 
   // SECTION 8: Accordion Sections
-  function buildAccordion(d) {
+  function buildAccordion(d, c) {
+    var accTextColor = isLightColor(c.accent) ? c.primary : '#FFFFFF';
     var bizName = d.businessName || 'Our Business';
     var social = d.socialLinks || {};
     var items = [];
@@ -296,7 +366,7 @@
           + '<iframe src="https://www.youtube.com/embed/' + esc(ytMatch[1]) + '" style="position:absolute;top:0;left:0;width:100%;height:100%;border:none;" allowfullscreen></iframe>'
           + '</div>';
       } else {
-        videoContent = '<a href="' + esc(d.videoUrl) + '" target="_blank" style="display:block;padding:16px;background:#F0F2F5;border-radius:8px;text-align:center;text-decoration:none;color:#1A2C5B;font-family:Inter,sans-serif;font-weight:600;">Watch Video</a>';
+        videoContent = '<a href="' + esc(d.videoUrl) + '" target="_blank" style="display:block;padding:16px;background:#F0F2F5;border-radius:8px;text-align:center;text-decoration:none;color:' + c.primary + ';font-family:Inter,sans-serif;font-weight:600;">Watch Video</a>';
       }
     } else {
       videoContent = '<p style="font-family:Inter,sans-serif;font-size:14px;color:#888;text-align:center;padding:20px 0;">Explainer video coming soon.</p>';
@@ -311,7 +381,7 @@
         aboutContent += '<p style="margin:0 0 12px;">' + esc(d.aboutText) + '</p>';
       }
       if (d.serviceCategories && d.serviceCategories.length) {
-        aboutContent += '<p style="font-weight:600;color:#1A2C5B;margin:0 0 8px;">Our Services:</p><ul style="margin:0;padding-left:20px;">';
+        aboutContent += '<p style="font-weight:600;color:' + c.primary + ';margin:0 0 8px;">Our Services:</p><ul style="margin:0;padding-left:20px;">';
         for (var si = 0; si < d.serviceCategories.length; si++) {
           aboutContent += '<li style="margin-bottom:4px;">' + esc(d.serviceCategories[si]) + '</li>';
         }
@@ -360,7 +430,7 @@
     // Get Started Now
     items.push({ label: 'Get Started Now', type: 'expand', content:
       '<div style="text-align:center;padding:8px 0;">'
-      + '<a href="' + esc(d.bookingUrl || '#') + '" target="_blank" style="display:inline-block;padding:14px 32px;background:#22C55E;color:#fff;font-family:Poppins,sans-serif;font-size:15px;font-weight:600;border-radius:8px;text-decoration:none;">Book Now</a>'
+      + '<a href="' + esc(d.bookingUrl || '#') + '" target="_blank" style="display:inline-block;padding:14px 32px;background:' + c.actionGreen + ';color:#fff;font-family:Poppins,sans-serif;font-size:15px;font-weight:600;border-radius:8px;text-decoration:none;">Book Now</a>'
       + '</div>'
     });
 
@@ -371,9 +441,9 @@
     items.push({ label: 'Got Questions? Contact Us', type: 'expand', content:
       '<div style="font-family:Inter,sans-serif;font-size:14px;color:#444;line-height:1.7;">'
       + '<p style="margin:0 0 12px;">We\'d love to hear from you! Reach out anytime:</p>'
-      + (d.phone ? '<p style="margin:0 0 6px;"><strong>Phone:</strong> <a href="tel:' + esc(phoneDigits(d.phone)) + '" style="color:#1A2C5B;text-decoration:none;">' + esc(d.phone) + '</a></p>' : '')
-      + (d.email ? '<p style="margin:0 0 6px;"><strong>Email:</strong> <a href="mailto:' + esc(d.email) + '" style="color:#1A2C5B;text-decoration:none;">' + esc(d.email) + '</a></p>' : '')
-      + (d.website ? '<p style="margin:0;"><strong>Web:</strong> <a href="' + esc(d.website) + '" target="_blank" style="color:#1A2C5B;text-decoration:none;">' + esc(d.website.replace(/^https?:\/\//, '')) + '</a></p>' : '')
+      + (d.phone ? '<p style="margin:0 0 6px;"><strong>Phone:</strong> <a href="tel:' + esc(phoneDigits(d.phone)) + '" style="color:' + c.primary + ';text-decoration:none;">' + esc(d.phone) + '</a></p>' : '')
+      + (d.email ? '<p style="margin:0 0 6px;"><strong>Email:</strong> <a href="mailto:' + esc(d.email) + '" style="color:' + c.primary + ';text-decoration:none;">' + esc(d.email) + '</a></p>' : '')
+      + (d.website ? '<p style="margin:0;"><strong>Web:</strong> <a href="' + esc(d.website) + '" target="_blank" style="color:' + c.primary + ';text-decoration:none;">' + esc(d.website.replace(/^https?:\/\//, '')) + '</a></p>' : '')
       + '</div>'
     });
 
@@ -381,7 +451,7 @@
     items.push({ label: 'Chat 24/7 With Our AI Assistant', type: 'expand', content:
       '<div style="text-align:center;padding:12px 0;">'
       + '<p style="font-family:Inter,sans-serif;font-size:14px;color:#555;margin:0 0 12px;">Get instant answers to your questions with our AI-powered assistant.</p>'
-      + '<a href="' + esc(d.aiChatUrl || '#') + '" style="display:inline-block;padding:12px 28px;background:#1A2C5B;color:#fff;font-family:Poppins,sans-serif;font-size:14px;font-weight:600;border-radius:8px;text-decoration:none;">Start Chat</a>'
+      + '<a href="' + esc(d.aiChatUrl || '#') + '" style="display:inline-block;padding:12px 28px;background:' + c.primary + ';color:#fff;font-family:Poppins,sans-serif;font-size:14px;font-weight:600;border-radius:8px;text-decoration:none;">Start Chat</a>'
       + '</div>'
     });
 
@@ -389,7 +459,7 @@
     items.push({ label: 'Become A vNetCard\u2122 Affiliate', type: 'expand', content:
       '<div style="font-family:Inter,sans-serif;font-size:14px;color:#444;line-height:1.7;">'
       + '<p style="margin:0 0 10px;">Join our affiliate program and earn while you share!</p>'
-      + '<a href="' + esc(d.affiliateUrl || '#') + '" target="_blank" style="display:inline-block;padding:12px 28px;background:#C5A028;color:#fff;font-family:Poppins,sans-serif;font-size:14px;font-weight:600;border-radius:8px;text-decoration:none;">Learn More</a>'
+      + '<a href="' + esc(d.affiliateUrl || '#') + '" target="_blank" style="display:inline-block;padding:12px 28px;background:' + c.accent + ';color:#fff;font-family:Poppins,sans-serif;font-size:14px;font-weight:600;border-radius:8px;text-decoration:none;">Learn More</a>'
       + '</div>'
     });
 
@@ -400,7 +470,7 @@
     items.push({ label: 'Business Growth Resources', type: 'expand', content:
       '<div style="font-family:Inter,sans-serif;font-size:14px;color:#444;line-height:1.7;">'
       + '<p style="margin:0 0 10px;">Access our curated collection of business growth tools, tips, and strategies.</p>'
-      + '<a href="' + esc(d.resourcesUrl || '#') + '" target="_blank" style="display:inline-block;padding:12px 28px;background:#1A2C5B;color:#fff;font-family:Poppins,sans-serif;font-size:14px;font-weight:600;border-radius:8px;text-decoration:none;">View Resources</a>'
+      + '<a href="' + esc(d.resourcesUrl || '#') + '" target="_blank" style="display:inline-block;padding:12px 28px;background:' + c.primary + ';color:#fff;font-family:Poppins,sans-serif;font-size:14px;font-weight:600;border-radius:8px;text-decoration:none;">View Resources</a>'
       + '</div>'
     });
 
@@ -429,7 +499,7 @@
     items.push({ label: 'Leave A Review', type: 'expand', content:
       '<div style="text-align:center;padding:8px 0;">'
       + '<p style="font-family:Inter,sans-serif;font-size:14px;color:#555;margin:0 0 12px;">Your feedback helps us grow! We\'d love to hear about your experience.</p>'
-      + '<a href="' + esc(d.reviewUrl || social.google || '#') + '" target="_blank" style="display:inline-block;padding:12px 28px;background:#C5A028;color:#fff;font-family:Poppins,sans-serif;font-size:14px;font-weight:600;border-radius:8px;text-decoration:none;">Leave A Review</a>'
+      + '<a href="' + esc(d.reviewUrl || social.google || '#') + '" target="_blank" style="display:inline-block;padding:12px 28px;background:' + c.accent + ';color:#fff;font-family:Poppins,sans-serif;font-size:14px;font-weight:600;border-radius:8px;text-decoration:none;">Leave A Review</a>'
       + '</div>'
     });
 
@@ -439,19 +509,21 @@
     for (var i = 0; i < items.length; i++) {
       var item = items[i];
       if (item.type === 'link') {
-        // Link-out button with orange arrow
+        // Link-out button with orange arrow - accent gradient
         html += '<a href="' + esc(item.url) + '" target="_blank" style="display:flex;align-items:center;justify-content:space-between;'
-          + 'background:#1A2C5B;border-radius:10px;padding:15px 18px;margin-bottom:10px;text-decoration:none;cursor:pointer;">'
-          + '<span style="font-family:Inter,sans-serif;font-size:14px;font-weight:600;color:#FFFFFF;">' + item.label + '</span>'
+          + 'background:linear-gradient(135deg,' + c.accent + ' 0%,' + c.accentLight + ' 50%,' + c.accent + ' 100%);border-radius:10px;padding:15px 18px;margin-bottom:10px;text-decoration:none;cursor:pointer;'
+          + 'box-shadow:0 2px 6px rgba(197,160,40,0.3);">'
+          + '<span style="font-family:Inter,sans-serif;font-size:14px;font-weight:700;color:' + accTextColor + ';">' + item.label + '</span>'
           + '<span style="font-size:18px;color:#F47C20;font-weight:700;">\u2192</span>'
           + '</a>';
       } else {
-        // Expandable accordion item
+        // Expandable accordion item - accent gradient
         html += '<div class="vc-acc-item" style="margin-bottom:10px;">'
           + '<button class="vc-acc-trigger" onclick="toggleAccordion(this)" style="display:flex;align-items:center;justify-content:space-between;width:100%;'
-          + 'background:#1A2C5B;border:none;border-radius:10px;padding:15px 18px;cursor:pointer;">'
-          + '<span style="font-family:Inter,sans-serif;font-size:14px;font-weight:600;color:#FFFFFF;text-align:left;">' + item.label + '</span>'
-          + '<span class="vc-acc-icon" style="font-size:20px;color:#FFFFFF;font-weight:300;transition:transform 0.3s;line-height:1;">+</span>'
+          + 'background:linear-gradient(135deg,' + c.accent + ' 0%,' + c.accentLight + ' 50%,' + c.accent + ' 100%);border:none;border-radius:10px;padding:15px 18px;cursor:pointer;'
+          + 'box-shadow:0 2px 6px rgba(197,160,40,0.3);">'
+          + '<span style="font-family:Inter,sans-serif;font-size:14px;font-weight:700;color:' + accTextColor + ';text-align:left;">' + item.label + '</span>'
+          + '<span class="vc-acc-icon" style="font-size:20px;color:' + accTextColor + ';font-weight:400;transition:transform 0.3s;line-height:1;">+</span>'
           + '</button>'
           + '<div class="vc-acc-panel" style="max-height:0;overflow:hidden;transition:max-height 0.4s ease;border-radius:0 0 10px 10px;">'
           + '<div style="padding:16px 18px;background:#FFFFFF;border:1px solid #E5E7EB;border-top:none;border-radius:0 0 10px 10px;">'
@@ -467,7 +539,7 @@
   }
 
   // SECTION 9: Social Connect Icons
-  function buildSocialConnect(d) {
+  function buildSocialConnect(d, c) {
     var social = d.socialLinks || {};
 
     var platforms = [
@@ -489,7 +561,7 @@
       for (var i = 0; i < platforms.length; i++) {
         var p = platforms[i];
         if (social[p.key]) {
-          iconsHTML += '<a href="' + esc(social[p.key]) + '" target="_blank" style="width:48px;height:48px;border-radius:50%;background:' + p.bg + ';display:inline-flex;align-items:center;justify-content:center;text-decoration:none;transition:transform 0.2s;">'
+          iconsHTML += '<a href="' + esc(social[p.key]) + '" target="_blank" style="width:52px;height:52px;border-radius:50%;background:' + p.bg + ';display:inline-flex;align-items:center;justify-content:center;text-decoration:none;transition:transform 0.2s;box-shadow:0 2px 8px rgba(0,0,0,0.15);">'
             + p.icon + '</a>';
         }
       }
@@ -502,14 +574,14 @@
       }
     }
 
-    return '<div style="background:#FFFFFF;padding:24px 20px;text-align:center;">'
-      + '<h3 style="font-family:Poppins,sans-serif;font-size:18px;font-weight:700;color:#1A2C5B;margin:0 0 16px;">Let\'s Connect On Social</h3>'
-      + '<div style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap;">' + iconsHTML + '</div>'
+    return '<div style="background:#FFFFFF;padding:28px 20px 32px;text-align:center;">'
+      + '<h3 style="font-family:Poppins,sans-serif;font-size:19px;font-weight:700;color:' + c.primary + ';margin:0 0 20px;">Let\'s Connect On Social</h3>'
+      + '<div style="display:flex;justify-content:center;gap:14px;flex-wrap:wrap;">' + iconsHTML + '</div>'
       + '</div>';
   }
 
   // SECTION 10: Footer
-  function buildFooter(d) {
+  function buildFooter(d, c) {
     var bizName = d.businessName || 'vNetCard\u2122 LLC';
     var city = d.city || d.serviceArea || '';
     var state = d.state || '';
@@ -518,11 +590,25 @@
     var website = d.website || '';
     var year = new Date().getFullYear();
 
-    return '<div style="background:linear-gradient(180deg,#1A2C5B 0%,#0F1B3D 100%);padding:36px 24px 20px;text-align:center;">'
+    // Business logo at top of footer
+    var footerLogoHTML = '';
+    var logoSrc = d.logoUrl || d.logo || '';
+    if (logoSrc) {
+      footerLogoHTML = '<div style="margin-bottom:20px;">'
+        + '<img src="' + esc(logoSrc) + '" alt="' + esc(bizName) + '" style="'
+        + 'max-height:60px;max-width:180px;width:auto;object-fit:contain;'
+        + 'filter:brightness(0) invert(1) opacity(0.85);'
+        + '">'
+        + '</div>';
+    }
+
+    return '<div style="background:linear-gradient(180deg,' + c.primary + ' 0%,' + c.primaryDark + ' 100%);padding:44px 24px 28px;text-align:center;">'
+      // Business logo at top of footer
+      + footerLogoHTML
       // Large vNetCard logo
-      + '<div style="margin-bottom:10px;">' + vnetcardLogo('large') + '</div>'
-      + '<p style="font-family:Inter,sans-serif;font-size:14px;color:rgba(255,255,255,0.7);font-style:italic;margin:0 0 20px;">Connect. Share. Grow.</p>'
-      + '<div style="width:40px;height:1px;background:rgba(255,255,255,0.2);margin:0 auto 20px;"></div>'
+      + '<div style="margin-bottom:14px;">' + vnetcardLogo('large') + '</div>'
+      + '<p style="font-family:Inter,sans-serif;font-size:15px;color:rgba(255,255,255,0.7);font-style:italic;margin:0 0 24px;letter-spacing:0.5px;">Connect. Share. Grow.</p>'
+      + '<div style="width:50px;height:1px;background:rgba(255,255,255,0.25);margin:0 auto 24px;"></div>'
       + '<p style="font-family:Poppins,sans-serif;font-size:15px;font-weight:600;color:#FFFFFF;margin:0 0 4px;">' + esc(bizName) + '</p>'
       + (location ? '<p style="font-family:Inter,sans-serif;font-size:13px;color:rgba(255,255,255,0.6);margin:0 0 4px;">' + esc(location) + '</p>' : '')
       + (phone ? '<p style="font-family:Inter,sans-serif;font-size:13px;color:rgba(255,255,255,0.6);margin:0 0 4px;">' + esc(phone) + '</p>' : '')
@@ -544,10 +630,10 @@
   // CSS
   // ---------------------------------------------------------------------------
 
-  function buildCSS() {
+  function buildCSS(c) {
     return '@import url("https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,400;0,500;0,600;0,700;0,800;1,700;1,800&family=Inter:wght@400;500;600;700&display=swap");'
       + '*{margin:0;padding:0;box-sizing:border-box;}'
-      + 'html,body{width:100%;min-height:100vh;background:linear-gradient(180deg,#C5A028 0%,#1A2C5B 40%,#0F1B3D 100%);font-family:"Inter",sans-serif;color:#333;-webkit-text-size-adjust:100%;}'
+      + 'html,body{width:100%;min-height:100vh;background:linear-gradient(180deg,' + darkenHex(c.accent, 10) + ' 0%,' + c.accent + ' 8%,' + c.primary + ' 30%,' + c.primaryDark + ' 60%,#080E1F 100%);font-family:"Inter",sans-serif;color:#333;-webkit-text-size-adjust:100%;}'
       + '.vc-card{max-width:430px;margin:0 auto;overflow:hidden;border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,0.3);}'
       + 'button:focus{outline:none;}'
       + 'a:hover{opacity:0.9;}';
@@ -586,6 +672,7 @@
 
   Generator.generateCardHTML = function (cardData) {
     var d = cardData || {};
+    var c = resolveColors(d);
 
     var html = '<!DOCTYPE html>'
       + '<html lang="en">'
@@ -593,20 +680,27 @@
       + '<meta charset="UTF-8">'
       + '<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">'
       + '<title>' + esc(d.businessName || 'vNetCard') + ' - Digital Business Card</title>'
-      + '<style>' + buildCSS() + '</style>'
+      + '<style>' + buildCSS(c) + '</style>'
       + '</head>'
       + '<body>'
       + '<div class="vc-card">'
-      + buildPoweredByHeader()
-      + buildHeroBanner(d)
-      + buildNameCard(d)
-      + buildContactActions(d)
-      + buildUtilityButtons()
-      + buildAudioPlayer(d)
-      + buildSocialEmbed(d)
-      + buildAccordion(d)
-      + buildSocialConnect(d)
-      + buildFooter(d)
+      + buildPoweredByHeader(d, c)
+      + buildHeroBanner(d, c)
+      + buildNameCard(d, c)
+      + sectionDivider(c)
+      + buildContactActions(d, c)
+      + sectionDivider(c)
+      + buildUtilityButtons(c)
+      + sectionDivider(c)
+      + buildAudioPlayer(d, c)
+      + sectionDivider(c)
+      + buildSocialEmbed(d, c)
+      + sectionDivider(c)
+      + buildAccordion(d, c)
+      + sectionDivider(c)
+      + buildSocialConnect(d, c)
+      + sectionDivider(c)
+      + buildFooter(d, c)
       + '</div>'
       + '<script>' + buildInlineJS() + '<\/script>'
       + '</body>'

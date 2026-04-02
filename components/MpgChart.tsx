@@ -168,16 +168,16 @@ export default function MpgChart() {
                   <>
                     <p className="text-sm font-bold text-slate-600">Add odometer readings</p>
                     <p className="text-xs text-slate-400 mt-1 leading-relaxed max-w-[240px] mx-auto">
-                      You have <strong>{fillupCount} fillup{fillupCount !== 1 ? 's' : ''}</strong> logged,
+                      You have <strong>{fillupCount} fill-up{fillupCount !== 1 ? 's' : ''}</strong> logged,
                       but none include an odometer reading.
-                      Enter the mileage when logging a fillup to unlock MPG tracking.
+                      Enter the mileage when logging a fill-up to unlock MPG tracking.
                     </p>
                   </>
                 ) : needsMoreOdo ? (
                   <>
-                    <p className="text-sm font-bold text-slate-600">One more fillup needed</p>
+                    <p className="text-sm font-bold text-slate-600">One more fill-up needed</p>
                     <p className="text-xs text-slate-400 mt-1 leading-relaxed max-w-[240px] mx-auto">
-                      You have 1 fillup with an odometer reading — log <strong>one more</strong> with
+                      You have 1 fill-up with an odometer reading — log <strong>one more</strong> with
                       a mileage reading and your MPG trend will appear here.
                     </p>
                   </>
@@ -185,7 +185,7 @@ export default function MpgChart() {
                   <>
                     <p className="text-sm font-bold text-slate-600">No MPG data yet</p>
                     <p className="text-xs text-slate-400 mt-1 leading-relaxed max-w-[220px] mx-auto">
-                      Log at least 2 fillups with odometer readings to start tracking fuel efficiency.
+                      Log at least 2 fill-ups with odometer readings to start tracking fuel efficiency.
                     </p>
                   </>
                 )}
@@ -339,7 +339,7 @@ export default function MpgChart() {
               </div>
 
               <p className="text-[9px] text-slate-300 text-center mt-2">
-                Hover over a point to see details · Add odometer readings at each fillup to keep this chart growing
+                Hover over a point to see details · Add odometer readings at each fill-up to keep this chart growing
               </p>
             </>
           )}

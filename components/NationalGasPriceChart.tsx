@@ -341,7 +341,7 @@ export default function NationalGasPriceChart() {
                 {isPro && myPtsSvg.length > 0 && (
                   <div className="flex items-center gap-1">
                     <div className="w-2.5 h-2.5 bg-amber-400 rounded-full border border-white" />
-                    <span>Your fillups</span>
+                    <span>Your fill-ups</span>
                   </div>
                 )}
               </div>
@@ -352,7 +352,7 @@ export default function NationalGasPriceChart() {
                   <span className="text-base">⭐</span>
                   <div className="flex-1">
                     <p className="text-xs font-black text-amber-800">See how your prices compare</p>
-                    <p className="text-[10px] text-amber-700">Upgrade to Pro to overlay your fillup prices on this chart.</p>
+                    <p className="text-[10px] text-amber-700">Upgrade to Pro to overlay your fill-up prices on this chart.</p>
                   </div>
                   <Link href="/#pricing" className="text-[10px] font-black text-amber-600 hover:text-amber-500 whitespace-nowrap">
                     Upgrade →

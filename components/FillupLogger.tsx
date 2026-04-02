@@ -90,7 +90,7 @@ export default function FillupLogger({ prefill, onSaved, onCancel }: FillupLogge
   }
 
   async function handleSave(force = false) {
-    if (!session) { setError('Sign in to log fillups.'); return; }
+    if (!session) { setError('Sign in to log fill-ups.'); return; }
     if (!gallons || parseFloat(gallons) <= 0) { setError('Enter valid gallons.'); return; }
     if (!price   || parseFloat(price)   <= 0) { setError('Enter valid price.'); return; }
 
@@ -143,7 +143,7 @@ export default function FillupLogger({ prefill, onSaved, onCancel }: FillupLogge
         <div className="flex items-center gap-2">
           <span className="text-lg">⛽</span>
           <div>
-            <p className="text-sm font-black text-slate-800">Log This Fillup</p>
+            <p className="text-sm font-black text-slate-800">Log This Fill-Up</p>
             <p className="text-[10px] text-slate-500">{prefill.vehicleName}</p>
           </div>
         </div>
@@ -283,7 +283,7 @@ export default function FillupLogger({ prefill, onSaved, onCancel }: FillupLogge
 
       {/* Odometer tip */}
       <p className="text-[10px] text-slate-400 leading-relaxed">
-        💡 Add your odometer reading each fillup to unlock <span className="font-semibold text-amber-600">MPG tracking</span>.
+        💡 Add your odometer reading each fill-up to unlock <span className="font-semibold text-amber-600">MPG tracking</span>.
       </p>
 
       {warnings.length > 0 && (
@@ -316,7 +316,7 @@ export default function FillupLogger({ prefill, onSaved, onCancel }: FillupLogge
           disabled={saving}
           className="flex-1 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-white text-sm font-bold disabled:opacity-50 transition-colors"
         >
-          {saving ? 'Saving…' : forceConfirm ? 'Save Anyway ✓' : 'Save Fillup ✓'}
+          {saving ? 'Saving…' : forceConfirm ? 'Save Anyway ✓' : 'Save Fill-Up ✓'}
         </button>
       </div>
     </div>

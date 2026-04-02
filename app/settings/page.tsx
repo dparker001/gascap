@@ -576,7 +576,7 @@ export default function SettingsPage() {
             <h2 className="text-sm font-black text-slate-700 uppercase tracking-widest">Notifications</h2>
             <PushNotificationToggle />
             <p className="text-[10px] text-slate-400 leading-relaxed">
-              Weekly digests are sent every Sunday and include your monthly spending, MPG trend, and fillup count.
+              Weekly digests are sent every Sunday and include your monthly spending, MPG trend, and fill-up count.
             </p>
           </div>
 

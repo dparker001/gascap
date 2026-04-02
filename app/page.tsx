@@ -50,7 +50,7 @@ function LandingFeatures() {
           <span className="text-2xl">📊</span>
           <h3 className="text-sm font-black text-navy-700 mt-2 leading-tight">MPG & spend tracking</h3>
           <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-            Log every fillup. See your MPG trend, monthly spend, and vehicle efficiency over time.
+            Log every fill-up. See your MPG trend, monthly spend, and vehicle efficiency over time.
           </p>
         </div>
 

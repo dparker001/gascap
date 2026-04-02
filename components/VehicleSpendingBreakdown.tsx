@@ -132,7 +132,7 @@ export default function VehicleSpendingBreakdown() {
               ? <p className="text-[10px] text-slate-400">Loading…</p>
               : hasData
                 ? <p className="text-[10px] text-slate-400">{vehicleStats.length} vehicle{vehicleStats.length !== 1 ? 's' : ''} · ${data?.stats.totalSpent.toFixed(2)} total</p>
-                : <p className="text-[10px] text-slate-400">Log fillups to see breakdown</p>
+                : <p className="text-[10px] text-slate-400">Log fill-ups to see breakdown</p>
             }
           </div>
         </div>
@@ -162,8 +162,8 @@ export default function VehicleSpendingBreakdown() {
           {!loading && !hasData && (
             <div className="text-center py-6">
               <p className="text-3xl mb-2">⛽</p>
-              <p className="text-sm font-bold text-slate-600">No fillups logged yet</p>
-              <p className="text-xs text-slate-400 mt-1">Log your first fillup to see per-vehicle spending.</p>
+              <p className="text-sm font-bold text-slate-600">No fill-ups logged yet</p>
+              <p className="text-xs text-slate-400 mt-1">Log your first fill-up to see per-vehicle spending.</p>
             </div>
           )}
 
@@ -241,7 +241,7 @@ function VehicleBar({ stat, color, rank }: { stat: VehicleStat; color: string; r
 
       {/* Stat chips */}
       <div className="flex flex-wrap gap-x-3 gap-y-0.5">
-        <StatChip label="fillups" value={String(stat.fillupCount)} />
+        <StatChip label="fill-ups" value={String(stat.fillupCount)} />
         <StatChip label="gal" value={String(stat.totalGallons)} />
         <StatChip label="avg $/gal" value={`$${stat.avgPrice.toFixed(2)}`} />
         {stat.avgMpg != null && (

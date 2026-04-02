@@ -128,15 +128,15 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
         <div className="flex items-center gap-2.5">
           <span className="text-lg">📋</span>
           <div className="text-left">
-            <p className="text-sm font-black text-slate-700">Fillup History</p>
+            <p className="text-sm font-black text-slate-700">Fill-Up History</p>
             {stats && stats.count > 0 && (
               <p className="text-[10px] text-slate-400">
-                {stats.count} fillup{stats.count !== 1 ? 's' : ''} · ${stats.totalSpent.toFixed(2)} total spent
+                {stats.count} fill-up{stats.count !== 1 ? 's' : ''} · ${stats.totalSpent.toFixed(2)} total spent
               </p>
             )}
             {/* Only show "none" after data has loaded and count is truly 0 */}
             {stats && stats.count === 0 && (
-              <p className="text-[10px] text-slate-400">No fillups logged yet</p>
+              <p className="text-[10px] text-slate-400">No fill-ups logged yet</p>
             )}
           </div>
         </div>
@@ -178,7 +178,7 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
                         ${annualProjection.toFixed(0)}
                         <span className="text-xs font-semibold text-white/40 ml-1">/year</span>
                       </p>
-                      <p className="text-[10px] text-white/40 mt-0.5">Based on your last {stats.count} fillups</p>
+                      <p className="text-[10px] text-white/40 mt-0.5">Based on your last {stats.count} fill-ups</p>
                     </div>
                   </div>
                 )}
@@ -219,8 +219,8 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
           {!loading && fillups.length === 0 && (
             <div className="text-center py-6 bg-white rounded-2xl border border-slate-100">
               <p className="text-2xl mb-2">⛽</p>
-              <p className="text-sm font-semibold text-slate-500">No fillups logged yet</p>
-              <p className="text-xs text-slate-400 mt-1">After calculating, tap "Log This Fillup" to start tracking.</p>
+              <p className="text-sm font-semibold text-slate-500">No fill-ups logged yet</p>
+              <p className="text-xs text-slate-400 mt-1">After calculating, tap "Log This Fill-Up" to start tracking.</p>
             </div>
           )}
 
@@ -310,7 +310,7 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
                 </a>
               </div>
               <p className="text-center text-[10px] text-slate-300 pb-2">
-                {fillups.length} fillup{fillups.length !== 1 ? 's' : ''} logged
+                {fillups.length} fill-up{fillups.length !== 1 ? 's' : ''} logged
                 {stats?.avgMpg ? ` · Avg ${stats.avgMpg} MPG` : ' · Add odometer readings to track MPG'}
               </p>
             </>

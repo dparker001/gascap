@@ -48,7 +48,7 @@ export default function FillupExportPage() {
 
   if (loading) return (
     <div className="flex items-center justify-center min-h-screen">
-      <p className="text-slate-500">Loading fillup history…</p>
+      <p className="text-slate-500">Loading fill-up history…</p>
     </div>
   );
 
@@ -97,7 +97,7 @@ export default function FillupExportPage() {
         <div className="flex items-start justify-between mb-8 pb-4 border-b-2 border-slate-900">
           <div>
             <h1 className="text-2xl font-black text-slate-900">
-              GasCap™ <span className="text-amber-500">Fillup Report</span>
+              GasCap™ <span className="text-amber-500">Fill-Up Report</span>
             </h1>
             <p className="text-sm text-slate-500 mt-1">Generated {now}</p>
           </div>
@@ -113,7 +113,7 @@ export default function FillupExportPage() {
         {stats && (
           <div className="grid grid-cols-4 gap-4 mb-8">
             {[
-              { label: 'Total Fillups', value: String(stats.count) },
+              { label: 'Total Fill-Ups', value: String(stats.count) },
               { label: 'Total Spent',   value: `$${stats.totalSpent.toFixed(2)}` },
               { label: 'Total Gallons', value: `${stats.totalGallons} gal` },
               { label: 'Avg MPG',       value: stats.avgMpg ? `${stats.avgMpg} mpg` : '—' },
@@ -128,7 +128,7 @@ export default function FillupExportPage() {
 
         {/* Fillup table */}
         {fillups.length === 0 ? (
-          <p className="text-center text-slate-400 py-12">No fillups logged yet.</p>
+          <p className="text-center text-slate-400 py-12">No fill-ups logged yet.</p>
         ) : (
           <table className="w-full border-collapse text-sm">
             <thead>

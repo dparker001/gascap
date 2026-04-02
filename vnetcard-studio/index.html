@@ -178,12 +178,12 @@
         </div>
         <div class="progress-label" id="intake-progress-label">Step 1 of 7</div>
         <div class="step-indicators">
-          <button type="button" class="step-indicator active" data-step="1"><span class="step-num">1</span><span class="step-name">Basics</span></button>
-          <button type="button" class="step-indicator" data-step="2"><span class="step-num">2</span><span class="step-name">Brand</span></button>
-          <button type="button" class="step-indicator" data-step="3"><span class="step-num">3</span><span class="step-name">Actions</span></button>
-          <button type="button" class="step-indicator" data-step="4"><span class="step-num">4</span><span class="step-name">Features</span></button>
-          <button type="button" class="step-indicator" data-step="5"><span class="step-num">5</span><span class="step-name">Media</span></button>
-          <button type="button" class="step-indicator" data-step="6"><span class="step-num">6</span><span class="step-name">Details</span></button>
+          <button type="button" class="step-indicator active" data-step="1"><span class="step-num">1</span><span class="step-name">Contact</span></button>
+          <button type="button" class="step-indicator" data-step="2"><span class="step-num">2</span><span class="step-name">Company</span></button>
+          <button type="button" class="step-indicator" data-step="3"><span class="step-num">3</span><span class="step-name">Media</span></button>
+          <button type="button" class="step-indicator" data-step="4"><span class="step-num">4</span><span class="step-name">Social</span></button>
+          <button type="button" class="step-indicator" data-step="5"><span class="step-num">5</span><span class="step-name">Colors</span></button>
+          <button type="button" class="step-indicator" data-step="6"><span class="step-num">6</span><span class="step-name">Content</span></button>
           <button type="button" class="step-indicator" data-step="7"><span class="step-num">7</span><span class="step-name">Review</span></button>
         </div>
       </div>
@@ -191,40 +191,76 @@
       <!-- Intake Form -->
       <form id="intake-form" autocomplete="off" novalidate>
 
-        <!-- ── STEP 1: CLIENT BASICS ─────────────────────────────────────────── -->
+        <!-- STEP 1: CONTACT DETAILS -->
         <div class="step-panel" data-step="1">
-          <h2 class="step-title">Client Basics</h2>
-          <p class="step-description">Enter the client's core contact information.</p>
+          <h2 class="step-title">Contact Details</h2>
+          <p class="step-description">Submit the contact information details for the vNetCard™ profile.</p>
+
+          <div class="form-grid form-grid-3">
+            <div class="form-group">
+              <label for="field-firstName">First Name <span class="required">*</span></label>
+              <input type="text" id="field-firstName" name="firstName" required placeholder="e.g. Jeff">
+            </div>
+            <div class="form-group">
+              <label for="field-middleInitial">M.I.</label>
+              <input type="text" id="field-middleInitial" name="middleInitial" maxlength="2" placeholder="e.g. A">
+            </div>
+            <div class="form-group">
+              <label for="field-lastName">Last Name <span class="required">*</span></label>
+              <input type="text" id="field-lastName" name="lastName" required placeholder="e.g. Miller">
+            </div>
+          </div>
 
           <div class="form-grid">
             <div class="form-group">
-              <label for="field-businessName">Business Name <span class="required">*</span></label>
-              <input type="text" id="field-businessName" name="businessName" required placeholder="e.g. Pro-Tech HVAC">
-            </div>
-            <div class="form-group">
-              <label for="field-contactName">Contact Name <span class="required">*</span></label>
-              <input type="text" id="field-contactName" name="contactName" required placeholder="e.g. Jeff Miller">
-            </div>
-            <div class="form-group">
-              <label for="field-title">Title / Role</label>
-              <input type="text" id="field-title" name="title" placeholder="e.g. Owner, CEO">
-            </div>
-            <div class="form-group">
-              <label for="field-phone">Phone <span class="required">*</span></label>
+              <label for="field-phone">Mobile Phone # <span class="required">*</span></label>
               <input type="tel" id="field-phone" name="phone" required placeholder="(407) 555-1234">
             </div>
             <div class="form-group">
-              <label for="field-email">Email <span class="required">*</span></label>
+              <label for="field-email">Email Address <span class="required">*</span></label>
               <input type="email" id="field-email" name="email" required placeholder="jeff@example.com">
             </div>
+          </div>
+
+          <div class="form-grid">
             <div class="form-group">
-              <label for="field-website">Website URL</label>
-              <input type="url" id="field-website" name="website" placeholder="https://example.com">
+              <label for="field-title">Title / Position Name <span class="required">*</span></label>
+              <input type="text" id="field-title" name="title" required placeholder="e.g. Owner, CEO">
             </div>
             <div class="form-group">
-              <label for="field-industry">Industry <span class="required">*</span></label>
+              <label for="field-businessName">Business Name <span class="required">*</span></label>
+              <input type="text" id="field-businessName" name="businessName" required placeholder="e.g. Pro-Tech">
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="field-timezone">Your Time Zone</label>
+              <select id="field-timezone" name="timezone">
+                <option value="">Select</option>
+                <option value="ET">Eastern Time (ET)</option>
+                <option value="CT">Central Time (CT)</option>
+                <option value="MT">Mountain Time (MT)</option>
+                <option value="PT">Pacific Time (PT)</option>
+                <option value="AKT">Alaska Time (AKT)</option>
+                <option value="HT">Hawaii Time (HT)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="field-industryLicense">Industry License #</label>
+              <input type="text" id="field-industryLicense" name="industryLicense" placeholder="e.g. CAC1234567">
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="field-website">Website Address (Put N/A if none) <span class="required">*</span></label>
+              <input type="url" id="field-website" name="website" required placeholder="https://example.com">
+            </div>
+            <div class="form-group">
+              <label for="field-industry">Industry Type <span class="required">*</span></label>
               <select id="field-industry" name="industry" required>
-                <option value="">Select an industry...</option>
+                <option value="">Select</option>
                 <option value="HVAC">HVAC</option>
                 <option value="Plumbing">Plumbing</option>
                 <option value="Electrical">Electrical</option>
@@ -246,9 +282,29 @@
                 <option value="Other">Other</option>
               </select>
             </div>
+          </div>
+
+          <div class="form-group form-group-full">
+            <label for="field-address">Business Mailing Address <span class="required">*</span></label>
+            <div class="address-lookup-wrapper">
+              <input type="text" id="field-address" name="address" required placeholder="Start typing an address..." autocomplete="street-address">
+              <div id="address-suggestions" class="address-suggestions" style="display:none;"></div>
+            </div>
+            <p class="helper-note">Start typing to search. Address fields below will auto-fill.</p>
+          </div>
+
+          <div class="form-grid form-grid-3">
             <div class="form-group">
-              <label for="field-address">Service Area</label>
-              <input type="text" id="field-address" name="address" placeholder="e.g. Central Florida, Orlando Metro">
+              <label for="field-city">City <span class="required">*</span></label>
+              <input type="text" id="field-city" name="city" required placeholder="Orlando">
+            </div>
+            <div class="form-group">
+              <label for="field-state">State <span class="required">*</span></label>
+              <input type="text" id="field-state" name="state" required placeholder="FL" maxlength="2">
+            </div>
+            <div class="form-group">
+              <label for="field-zip">Zip Code <span class="required">*</span></label>
+              <input type="text" id="field-zip" name="zip" required placeholder="32801" maxlength="10">
             </div>
           </div>
 
@@ -258,75 +314,52 @@
           </div>
         </div>
 
-        <!-- ── STEP 2: BRAND & STYLE ─────────────────────────────────────────── -->
+        <!-- STEP 2: COMPANY INFO -->
         <div class="step-panel" data-step="2" style="display:none;">
-          <h2 class="step-title">Brand &amp; Style</h2>
-          <p class="step-description">Define the visual identity for this card.</p>
+          <h2 class="step-title">Company Information</h2>
+          <p class="step-description">Tell us about the business so we can build the card content.</p>
 
-          <div class="form-grid">
-            <div class="form-group">
-              <label for="field-primaryColor">Primary Color</label>
-              <div class="color-picker-row">
-                <input type="color" id="field-primaryColor" name="primaryColor" value="#1A2C5B">
-                <input type="text" id="field-primaryColorText" name="primaryColorText" value="#1A2C5B" placeholder="#1A2C5B" maxlength="7" class="color-text-input">
-              </div>
-            </div>
-            <div class="form-group">
-              <label for="field-accentColor">Accent Color</label>
-              <div class="color-picker-row">
-                <input type="color" id="field-accentColor" name="accentColor" value="#F47C20">
-                <input type="text" id="field-accentColorText" name="accentColorText" value="#F47C20" placeholder="#F47C20" maxlength="7" class="color-text-input">
-              </div>
-            </div>
-            <div class="form-group">
-              <label for="field-secondaryColor">Secondary Color</label>
-              <div class="color-picker-row">
-                <input type="color" id="field-secondaryColor" name="secondaryColor" value="#10b981">
-                <input type="text" id="field-secondaryColorText" name="secondaryColorText" value="#10b981" placeholder="#10b981" maxlength="7" class="color-text-input">
-              </div>
-            </div>
-            <div class="form-group">
-              <label for="field-logo">Logo URL</label>
-              <div class="input-with-action">
-                <input type="url" id="field-logo" name="logo" placeholder="https://example.com/logo.png">
-                <button type="button" class="btn btn-sm btn-ghost" data-action="test-link" data-target="logo">Test Link</button>
-              </div>
-            </div>
-            <div class="form-group">
-              <label for="field-coverPhoto">Profile Photo URL</label>
-              <div class="input-with-action">
-                <input type="url" id="field-coverPhoto" name="coverPhoto" placeholder="https://example.com/photo.jpg">
-              </div>
-            </div>
-            <div class="form-group">
-              <label for="field-heroImage">Hero/Background Image URL</label>
-              <div class="input-with-action">
-                <input type="url" id="field-heroImage" name="heroImage" placeholder="https://example.com/hero.jpg">
-              </div>
-            </div>
-            <div class="form-group form-group-full">
-              <label>Card Style</label>
-              <div class="radio-group">
-                <label class="radio-card">
-                  <input type="radio" name="cardStyle" value="Professional/Corporate" checked>
-                  <span class="radio-card-label">Professional / Corporate</span>
-                </label>
-                <label class="radio-card">
-                  <input type="radio" name="cardStyle" value="Friendly/Approachable">
-                  <span class="radio-card-label">Friendly / Approachable</span>
-                </label>
-                <label class="radio-card">
-                  <input type="radio" name="cardStyle" value="Bold/Modern">
-                  <span class="radio-card-label">Bold / Modern</span>
-                </label>
-                <label class="radio-card">
-                  <input type="radio" name="cardStyle" value="Minimal/Clean">
-                  <span class="radio-card-label">Minimal / Clean</span>
-                </label>
-              </div>
-            </div>
+          <div class="info-callout" id="step2-website-callout" style="display:none;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;margin-top:2px;"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+            <span>We can review your website and generate content for the fields below. Click <strong>"Generate for me"</strong> to auto-fill each section.</span>
           </div>
-          <p class="helper-note">If no logo or photo is provided, the client's initials will be used as a fallback.</p>
+
+          <div class="form-group form-group-full">
+            <div class="label-with-action">
+              <label for="field-aboutCompany">About Company <span class="required">*</span></label>
+              <button type="button" class="btn-generate" id="btn-generate-about" title="Generate from website">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                Generate for me
+              </button>
+            </div>
+            <p class="helper-note">Provide a concise overview of the company's business description, and if available, share the mission or vision statement.</p>
+            <textarea id="field-aboutCompany" name="aboutCompany" rows="5" required placeholder="We are a full-service HVAC company serving Central Florida since 2005..."></textarea>
+            <div class="generate-status" id="generate-status-about" style="display:none;"></div>
+          </div>
+
+          <div class="form-group form-group-full">
+            <div class="label-with-action">
+              <label for="field-servicesOffered">Services Offered <span class="required">*</span></label>
+              <button type="button" class="btn-generate" id="btn-generate-services" title="Generate from website">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                Generate for me
+              </button>
+            </div>
+            <p class="helper-note">Provide a short summary outlining the array of services, solutions or products available.</p>
+            <textarea id="field-servicesOffered" name="servicesOffered" rows="4" required placeholder="AC Repair, AC Installation, Heating Repair, Plumbing Services, Electrical Services..."></textarea>
+            <div class="generate-status" id="generate-status-services" style="display:none;"></div>
+          </div>
+
+          <div class="form-group form-group-full">
+            <label for="field-shortBio">Short Bio</label>
+            <p class="helper-note">Write a brief description introducing yourself, highlighting key aspects such as your background, skills, and experiences.</p>
+            <textarea id="field-shortBio" name="shortBio" rows="4" placeholder="I'm Jeff Miller, owner and CEO of Pro-Tech. With over 20 years of experience..."></textarea>
+          </div>
+
+          <div class="form-group form-group-full">
+            <label for="field-specialty">Specialty / Tagline</label>
+            <input type="text" id="field-specialty" name="specialty" placeholder="e.g. HVAC · Plumbing · Electrical Specialist">
+          </div>
 
           <div class="step-nav">
             <button type="button" class="btn btn-ghost" data-action="prev-step">&larr; Back</button>
@@ -334,217 +367,148 @@
           </div>
         </div>
 
-        <!-- ── STEP 3: CONTACT ACTIONS ───────────────────────────────────────── -->
+        <!-- STEP 3: MEDIA & UPLOADS -->
         <div class="step-panel" data-step="3" style="display:none;">
-          <h2 class="step-title">Contact Actions</h2>
-          <p class="step-description">Configure the action buttons visitors will see on the card.</p>
+          <h2 class="step-title">Media &amp; Uploads</h2>
+          <p class="step-description">Upload your profile photo, business logo, and any additional files for your vNetCard™.</p>
 
           <div class="form-grid">
             <div class="form-group">
-              <label for="field-callLabel">Call Button Label</label>
-              <input type="text" id="field-callLabel" name="callLabel" value="Call" placeholder="Call">
+              <label for="field-coverPhoto">Upload Your Profile Picture <span class="required">*</span></label>
+              <p class="helper-note">Upload the profile picture that you would like to use on your vNetCard™.</p>
+              <div class="file-upload-zone" id="zone-coverPhoto" data-target="field-coverPhoto">
+                <div class="file-upload-content" id="upload-preview-coverPhoto">
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                  <span>Click to upload or drag &amp; drop</span>
+                  <span class="file-upload-hint">PNG, JPG, or WEBP (max 5MB)</span>
+                </div>
+                <input type="file" id="field-coverPhoto" name="coverPhoto" accept="image/*" class="file-input-hidden">
+              </div>
             </div>
             <div class="form-group">
-              <label for="field-callPhone">Call Phone</label>
-              <input type="tel" id="field-callPhone" name="callPhone" placeholder="Pre-filled from Step 1">
-            </div>
-            <div class="form-group">
-              <label for="field-textLabel">Text Button Label</label>
-              <input type="text" id="field-textLabel" name="textLabel" value="Text" placeholder="Text">
-            </div>
-            <div class="form-group">
-              <label for="field-textPhone">Text Phone</label>
-              <input type="tel" id="field-textPhone" name="textPhone" placeholder="Pre-filled from Step 1">
-            </div>
-            <div class="form-group">
-              <label for="field-emailLabel">Email Button Label</label>
-              <input type="text" id="field-emailLabel" name="emailLabel" value="Email" placeholder="Email">
-            </div>
-            <div class="form-group">
-              <label for="field-emailAddress">Email Address</label>
-              <input type="email" id="field-emailAddress" name="emailAddress" placeholder="Pre-filled from Step 1">
+              <label for="field-logo">Upload Your Logo</label>
+              <p class="helper-note">Upload the business logo that you would like to use on your vNetCard™.</p>
+              <div class="file-upload-zone" id="zone-logo" data-target="field-logo">
+                <div class="file-upload-content" id="upload-preview-logo">
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                  <span>Click to upload or drag &amp; drop</span>
+                  <span class="file-upload-hint">PNG, JPG, SVG, or WEBP (max 5MB)</span>
+                </div>
+                <input type="file" id="field-logo" name="logo" accept="image/*" class="file-input-hidden">
+              </div>
             </div>
           </div>
 
-          <div class="form-group form-group-full" style="margin-top:16px;">
+          <h3 class="section-divider">Welcome Audio Message</h3>
+          <div class="info-callout">
+            <strong>A standard welcome audio file is included with every vNetCard™.</strong> If you would like a customized welcome message, please provide a script below. The auto-play welcome message should be <strong>less than one minute</strong> in length (preferred).
+          </div>
+
+          <div class="form-group form-group-full">
             <label class="toggle-label">
-              <input type="checkbox" name="enableQuickAction" id="field-enableQuickAction">
-              <span>Enable Quick Action Button</span>
-            </label>
-          </div>
-
-          <div id="quick-action-fields" style="display:none;">
-            <div class="form-grid">
-              <div class="form-group">
-                <label for="field-quickActionLabel">Quick Action Label</label>
-                <input type="text" id="field-quickActionLabel" name="quickActionLabel" placeholder="e.g. Book Now, Get Quote">
-              </div>
-              <div class="form-group">
-                <label for="field-quickActionUrl">Quick Action URL</label>
-                <input type="url" id="field-quickActionUrl" name="quickActionUrl" placeholder="https://calendly.com/...">
-              </div>
-              <div class="form-group">
-                <label for="field-quickActionType">Quick Action Type</label>
-                <select id="field-quickActionType" name="quickActionType">
-                  <option value="link">External Link</option>
-                  <option value="booking">Booking/Calendar</option>
-                  <option value="form">Lead Form</option>
-                  <option value="payment">Payment</option>
-                </select>
-              </div>
-            </div>
-            <p class="helper-note">Examples: Book Now (Calendly link), Get a Quote (lead form), Pay Invoice (Stripe link), Leave a Review (Google Review link).</p>
-          </div>
-
-          <div class="step-nav">
-            <button type="button" class="btn btn-ghost" data-action="prev-step">&larr; Back</button>
-            <button type="button" class="btn btn-primary" data-action="next-step">Next &rarr;</button>
-          </div>
-        </div>
-
-        <!-- ── STEP 4: FEATURES & CUSTOM TABS ───────────────────────────────── -->
-        <div class="step-panel" data-step="4" style="display:none;">
-          <h2 class="step-title">Features &amp; Custom Tabs</h2>
-          <p class="step-description">Choose the card's primary goal and feature set.</p>
-
-          <div class="form-group form-group-full">
-            <label>Main CTA Goal</label>
-            <div class="radio-group">
-              <label class="radio-card">
-                <input type="radio" name="ctaGoal" value="Book Calls" checked>
-                <span class="radio-card-label">Book Calls</span>
-              </label>
-              <label class="radio-card">
-                <input type="radio" name="ctaGoal" value="Capture Leads">
-                <span class="radio-card-label">Capture Leads</span>
-              </label>
-              <label class="radio-card">
-                <input type="radio" name="ctaGoal" value="Drive Traffic">
-                <span class="radio-card-label">Drive Traffic</span>
-              </label>
-              <label class="radio-card">
-                <input type="radio" name="ctaGoal" value="Get Reviews">
-                <span class="radio-card-label">Get Reviews</span>
-              </label>
-              <label class="radio-card">
-                <input type="radio" name="ctaGoal" value="Sell Products">
-                <span class="radio-card-label">Sell Products</span>
-              </label>
-              <label class="radio-card">
-                <input type="radio" name="ctaGoal" value="Showcase Portfolio">
-                <span class="radio-card-label">Showcase Portfolio</span>
-              </label>
-            </div>
-          </div>
-
-          <div class="form-group form-group-full">
-            <label>Desired Features</label>
-            <div class="checkbox-grid">
-              <label class="checkbox-item"><input type="checkbox" name="features" value="gallery"> Gallery</label>
-              <label class="checkbox-item"><input type="checkbox" name="features" value="reviews"> Reviews</label>
-              <label class="checkbox-item"><input type="checkbox" name="features" value="booking"> Booking / Scheduler</label>
-              <label class="checkbox-item"><input type="checkbox" name="features" value="team"> Team Section</label>
-              <label class="checkbox-item"><input type="checkbox" name="features" value="faqs"> FAQs</label>
-              <label class="checkbox-item"><input type="checkbox" name="features" value="lead-form"> Lead Capture Form</label>
-              <label class="checkbox-item"><input type="checkbox" name="features" value="testimonials"> Testimonials</label>
-              <label class="checkbox-item"><input type="checkbox" name="features" value="services"> Services List</label>
-              <label class="checkbox-item"><input type="checkbox" name="features" value="promotions"> Promotions / Offers</label>
-              <label class="checkbox-item"><input type="checkbox" name="features" value="about"> About Us</label>
-              <label class="checkbox-item"><input type="checkbox" name="features" value="blog"> Blog / News</label>
-              <label class="checkbox-item"><input type="checkbox" name="features" value="menu"> Menu / Pricing</label>
-            </div>
-          </div>
-
-          <div class="form-group form-group-full">
-            <label>Tab Preference</label>
-            <div class="radio-group">
-              <label class="radio-card">
-                <input type="radio" name="tabPreference" value="auto" checked>
-                <span class="radio-card-label">Auto-generate</span>
-              </label>
-              <label class="radio-card">
-                <input type="radio" name="tabPreference" value="custom">
-                <span class="radio-card-label">Custom</span>
-              </label>
-            </div>
-          </div>
-
-          <div id="custom-tab-builder" style="display:none;">
-            <div class="builder-header">
-              <h3>Custom Tabs</h3>
-              <button type="button" class="btn btn-sm btn-secondary" id="add-custom-tab-btn">+ Add Tab</button>
-            </div>
-            <div id="custom-tabs-container"></div>
-          </div>
-
-          <div class="step-nav">
-            <button type="button" class="btn btn-ghost" data-action="prev-step">&larr; Back</button>
-            <button type="button" class="btn btn-primary" data-action="next-step">Next &rarr;</button>
-          </div>
-        </div>
-
-        <!-- ── STEP 5: MEDIA & SOCIAL ───────────────────────────────────────── -->
-        <div class="step-panel" data-step="5" style="display:none;">
-          <h2 class="step-title">Media &amp; Social</h2>
-          <p class="step-description">Add media content and social links to the card.</p>
-
-          <div class="form-group form-group-full">
-            <label>Optional Media Type</label>
-            <div class="radio-group">
-              <label class="radio-card">
-                <input type="radio" name="mediaType" value="none" checked>
-                <span class="radio-card-label">None</span>
-              </label>
-              <label class="radio-card">
-                <input type="radio" name="mediaType" value="video">
-                <span class="radio-card-label">Featured Video</span>
-              </label>
-              <label class="radio-card">
-                <input type="radio" name="mediaType" value="gallery">
-                <span class="radio-card-label">Photo Gallery</span>
-              </label>
-              <label class="radio-card">
-                <input type="radio" name="mediaType" value="reviews">
-                <span class="radio-card-label">Review Carousel</span>
-              </label>
-              <label class="radio-card">
-                <input type="radio" name="mediaType" value="ai-recommend">
-                <span class="radio-card-label">Let AI Recommend</span>
-              </label>
-            </div>
-          </div>
-
-          <div id="video-url-panel" style="display:none;">
-            <div class="form-group">
-              <label for="field-videoUrl">Video URL</label>
-              <input type="url" id="field-videoUrl" name="videoUrl" placeholder="https://youtube.com/watch?v=...">
-            </div>
-          </div>
-
-          <div id="gallery-builder" class="form-group form-group-full">
-            <div class="builder-header">
-              <h3>Photo Gallery</h3>
-              <button type="button" class="btn btn-sm btn-secondary" id="add-gallery-btn">+ Add Image</button>
-            </div>
-            <div id="gallery-container"></div>
-          </div>
-
-          <div class="form-group form-group-full" style="margin-top:16px;">
-            <label class="toggle-label">
-              <input type="checkbox" name="welcomeAudio" id="field-welcomeAudio">
-              <span>Welcome Audio</span>
+              <input type="checkbox" name="customWelcomeAudio" id="field-customWelcomeAudio">
+              <span>I'd like a custom welcome audio message</span>
             </label>
           </div>
 
           <div id="welcome-script-panel" style="display:none;">
             <div class="form-group form-group-full">
-              <label for="field-welcomeScript">Audio Script</label>
-              <textarea id="field-welcomeScript" name="welcomeScript" rows="4" maxlength="300" placeholder="Hey, thanks for connecting with [Business]! I'm [Name], and..."></textarea>
-              <div class="char-counter">0 / 300</div>
+              <label for="field-welcomeScript">Welcome Message Script (under 1 minute)</label>
+              <p class="helper-note">Write the script you'd like recorded for your welcome audio. Keep it warm, concise, and under 60 seconds when spoken.</p>
+              <textarea id="field-welcomeScript" name="welcomeScript" rows="4" maxlength="500" placeholder="Hey, thanks for connecting with [Business Name]! I'm [Your Name], [Title]. We specialize in [services] right here in [City/Area]. Tap Book Now to schedule your appointment today!"></textarea>
+              <div class="char-counter" id="welcome-char-counter">0 / 500</div>
             </div>
           </div>
 
-          <h3 class="section-divider">Social Links</h3>
+          <h3 class="section-divider">Elevator Pitch (Optional)</h3>
+          <div class="info-callout">
+            Upload a short elevator pitch video or audio clip that introduces you and your business. If you need help, provide a script below and our team can assist.
+          </div>
+
+          <div class="form-group form-group-full">
+            <label for="field-elevatorPitch">Upload Elevator Pitch</label>
+            <div class="file-upload-zone" id="zone-elevatorPitch" data-target="field-elevatorPitch">
+              <div class="file-upload-content" id="upload-preview-elevatorPitch">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+                <span>Click to upload video or audio file</span>
+                <span class="file-upload-hint">MP4, MOV, MP3, or WAV (max 25MB)</span>
+              </div>
+              <input type="file" id="field-elevatorPitch" name="elevatorPitch" accept="video/*,audio/*" class="file-input-hidden">
+            </div>
+          </div>
+
+          <div class="form-group form-group-full">
+            <label class="toggle-label">
+              <input type="checkbox" name="needPitchScript" id="field-needPitchScript">
+              <span>I need help with my elevator pitch script</span>
+            </label>
+          </div>
+
+          <div id="pitch-script-panel" style="display:none;">
+            <div class="form-group form-group-full">
+              <label for="field-pitchScript">Elevator Pitch Script (30-60 seconds)</label>
+              <p class="helper-note">Write or paste your elevator pitch below. This should be a quick, compelling introduction to you and your business.</p>
+              <textarea id="field-pitchScript" name="pitchScript" rows="5" maxlength="600" placeholder="Hi, I'm [Name] with [Business Name]. For [X years], we've been helping [target customers] with [core services]. What sets us apart is [unique value]. Whether you need [service 1], [service 2], or [service 3], we're here to help. Give us a call or tap Book Now to get started!"></textarea>
+              <div class="char-counter" id="pitch-char-counter">0 / 600</div>
+            </div>
+          </div>
+
+          <h3 class="section-divider">Upload Misc. Files (Optional)</h3>
+          <p class="helper-note">Upload any additional files, images, or documents for your card.</p>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Upload File #1</label>
+              <div class="file-upload-zone file-upload-zone-sm" id="zone-miscFile1" data-target="field-miscFile1">
+                <div class="file-upload-content" id="upload-preview-miscFile1">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                  <span>Upload</span>
+                </div>
+                <input type="file" id="field-miscFile1" name="miscFile1" class="file-input-hidden">
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Upload File #2</label>
+              <div class="file-upload-zone file-upload-zone-sm" id="zone-miscFile2" data-target="field-miscFile2">
+                <div class="file-upload-content" id="upload-preview-miscFile2">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                  <span>Upload</span>
+                </div>
+                <input type="file" id="field-miscFile2" name="miscFile2" class="file-input-hidden">
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Upload File #3</label>
+              <div class="file-upload-zone file-upload-zone-sm" id="zone-miscFile3" data-target="field-miscFile3">
+                <div class="file-upload-content" id="upload-preview-miscFile3">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                  <span>Upload</span>
+                </div>
+                <input type="file" id="field-miscFile3" name="miscFile3" class="file-input-hidden">
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Upload File #4</label>
+              <div class="file-upload-zone file-upload-zone-sm" id="zone-miscFile4" data-target="field-miscFile4">
+                <div class="file-upload-content" id="upload-preview-miscFile4">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                  <span>Upload</span>
+                </div>
+                <input type="file" id="field-miscFile4" name="miscFile4" class="file-input-hidden">
+              </div>
+            </div>
+          </div>
+
+          <div class="step-nav">
+            <button type="button" class="btn btn-ghost" data-action="prev-step">&larr; Back</button>
+            <button type="button" class="btn btn-primary" data-action="next-step">Next &rarr;</button>
+          </div>
+        </div>
+
+        <!-- STEP 4: SOCIAL MEDIA LINKS -->
+        <div class="step-panel" data-step="4" style="display:none;">
+          <h2 class="step-title">Social Media Links</h2>
+          <p class="step-description">Submit any social media links to display on the vNetCard™.</p>
 
           <div class="form-grid">
             <div class="form-group">
@@ -556,28 +520,28 @@
               <input type="url" id="field-social-instagram" name="social_instagram" placeholder="https://instagram.com/...">
             </div>
             <div class="form-group">
-              <label for="field-social-google">Google Business</label>
-              <input type="url" id="field-social-google" name="social_google" placeholder="https://g.page/...">
-            </div>
-            <div class="form-group">
-              <label for="field-social-youtube">YouTube</label>
-              <input type="url" id="field-social-youtube" name="social_youtube" placeholder="https://youtube.com/@...">
-            </div>
-            <div class="form-group">
               <label for="field-social-linkedin">LinkedIn</label>
               <input type="url" id="field-social-linkedin" name="social_linkedin" placeholder="https://linkedin.com/in/...">
+            </div>
+            <div class="form-group">
+              <label for="field-social-thread">Thread</label>
+              <input type="url" id="field-social-thread" name="social_thread" placeholder="https://threads.net/@...">
             </div>
             <div class="form-group">
               <label for="field-social-tiktok">TikTok</label>
               <input type="url" id="field-social-tiktok" name="social_tiktok" placeholder="https://tiktok.com/@...">
             </div>
             <div class="form-group">
-              <label for="field-social-twitter">X / Twitter</label>
-              <input type="url" id="field-social-twitter" name="social_twitter" placeholder="https://x.com/...">
+              <label for="field-social-youtube">YouTube</label>
+              <input type="url" id="field-social-youtube" name="social_youtube" placeholder="https://youtube.com/@...">
             </div>
             <div class="form-group">
-              <label for="field-social-yelp">Yelp</label>
-              <input type="url" id="field-social-yelp" name="social_yelp" placeholder="https://yelp.com/biz/...">
+              <label for="field-social-snapchat">Snapchat</label>
+              <input type="url" id="field-social-snapchat" name="social_snapchat" placeholder="https://snapchat.com/add/...">
+            </div>
+            <div class="form-group">
+              <label for="field-social-twitter">Twitter / X</label>
+              <input type="url" id="field-social-twitter" name="social_twitter" placeholder="https://x.com/...">
             </div>
           </div>
 
@@ -587,121 +551,103 @@
           </div>
         </div>
 
-        <!-- ── STEP 6: ADDITIONAL DETAILS ────────────────────────────────────── -->
-        <div class="step-panel" data-step="6" style="display:none;">
-          <h2 class="step-title">Additional Details</h2>
-          <p class="step-description">Add testimonials, services, team members, and other details.</p>
-
-          <div class="form-group form-group-full">
-            <label for="field-tagline">Tagline</label>
-            <input type="text" id="field-tagline" name="tagline" placeholder="e.g. Your Trusted Local HVAC Experts">
-          </div>
-
-          <div class="form-group form-group-full">
-            <label for="field-description">Business Description</label>
-            <textarea id="field-description" name="description" rows="3" placeholder="Brief description of the business..."></textarea>
-          </div>
-
-          <div class="form-group form-group-full">
-            <label for="field-hours">Business Hours</label>
-            <input type="text" id="field-hours" name="hours" placeholder="e.g. Mon-Fri 8am-6pm, Sat 9am-2pm">
-          </div>
-
-          <div class="form-group form-group-full">
-            <label>Trust Badges</label>
-            <div class="checkbox-grid">
-              <label class="checkbox-item"><input type="checkbox" name="trustPills[]" value="Licensed & Insured"> Licensed &amp; Insured</label>
-              <label class="checkbox-item"><input type="checkbox" name="trustPills[]" value="Free Estimates"> Free Estimates</label>
-              <label class="checkbox-item"><input type="checkbox" name="trustPills[]" value="24/7 Emergency"> 24/7 Emergency</label>
-              <label class="checkbox-item"><input type="checkbox" name="trustPills[]" value="Veteran Owned"> Veteran Owned</label>
-              <label class="checkbox-item"><input type="checkbox" name="trustPills[]" value="Family Owned"> Family Owned</label>
-              <label class="checkbox-item"><input type="checkbox" name="trustPills[]" value="Satisfaction Guaranteed"> Satisfaction Guaranteed</label>
-              <label class="checkbox-item"><input type="checkbox" name="trustPills[]" value="BBB Accredited"> BBB Accredited</label>
-              <label class="checkbox-item"><input type="checkbox" name="trustPills[]" value="5-Star Rated"> 5-Star Rated</label>
-            </div>
-            <div class="form-group" style="margin-top:8px;">
-              <input type="text" name="customTrustPill" placeholder="Custom trust badge...">
-            </div>
-          </div>
-
-          <div class="form-group form-group-full">
-            <label>Services</label>
-            <div class="checkbox-grid">
-              <label class="checkbox-item"><input type="checkbox" name="services[]" value="AC Repair"> AC Repair</label>
-              <label class="checkbox-item"><input type="checkbox" name="services[]" value="Heating"> Heating</label>
-              <label class="checkbox-item"><input type="checkbox" name="services[]" value="Plumbing"> Plumbing</label>
-              <label class="checkbox-item"><input type="checkbox" name="services[]" value="Electrical"> Electrical</label>
-              <label class="checkbox-item"><input type="checkbox" name="services[]" value="Duct Cleaning"> Duct Cleaning</label>
-              <label class="checkbox-item"><input type="checkbox" name="services[]" value="Maintenance Plans"> Maintenance Plans</label>
-            </div>
-            <div class="form-group" style="margin-top:8px;">
-              <input type="text" name="customService" placeholder="Custom service...">
-            </div>
-          </div>
-
-          <!-- FAQ Builder -->
-          <div class="form-group form-group-full">
-            <div class="builder-header">
-              <h3>FAQs</h3>
-              <button type="button" class="btn btn-sm btn-secondary" id="add-faq-btn">+ Add FAQ</button>
-            </div>
-            <div id="faq-container"></div>
-          </div>
-
-          <!-- Team Members Builder -->
-          <div class="form-group form-group-full">
-            <div class="builder-header">
-              <h3>Team Members</h3>
-              <button type="button" class="btn btn-sm btn-secondary" id="add-team-btn">+ Add Member</button>
-            </div>
-            <div id="team-container"></div>
-          </div>
-
-          <h3 class="section-divider">Footer &amp; CTA</h3>
+        <!-- STEP 5: COLOR THEMES & STYLE -->
+        <div class="step-panel" data-step="5" style="display:none;">
+          <h2 class="step-title">Color Themes</h2>
+          <p class="step-description">Click/Tap the color bar to select your Primary and Accent colors.</p>
 
           <div class="form-grid">
             <div class="form-group">
-              <label for="field-ctaLabel">CTA Button Label</label>
-              <input type="text" id="field-ctaLabel" name="ctaLabel" placeholder="e.g. Book Now, Get Quote">
+              <label>Primary Color <span class="required">*</span></label>
+              <div class="color-picker-row">
+                <input type="color" id="field-primaryColor" name="primaryColor" value="#1A2C5B">
+                <div class="form-group" style="margin-bottom:0;">
+                  <label for="field-primaryColorText" class="text-xs">HEX Code</label>
+                  <input type="text" id="field-primaryColorText" name="primaryColorText" value="#1A2C5B" placeholder="#1A2C5B" maxlength="7" class="color-text-input">
+                </div>
+              </div>
             </div>
             <div class="form-group">
-              <label for="field-ctaUrl">CTA Button URL</label>
-              <input type="url" id="field-ctaUrl" name="ctaUrl" placeholder="https://calendly.com/...">
-            </div>
-            <div class="form-group">
-              <label for="field-footerLicense">Footer License Number</label>
-              <input type="text" id="field-footerLicense" name="footerLicense" placeholder="e.g. CAC1234567">
-            </div>
-            <div class="form-group">
-              <label for="field-footerTagline">Footer Tagline</label>
-              <input type="text" id="field-footerTagline" name="footerTagline" value="Licensed & Insured" placeholder="Licensed & Insured">
+              <label>Accent Color <span class="required">*</span></label>
+              <div class="color-picker-row">
+                <input type="color" id="field-accentColor" name="accentColor" value="#F47C20">
+                <div class="form-group" style="margin-bottom:0;">
+                  <label for="field-accentColorText" class="text-xs">HEX Code</label>
+                  <input type="text" id="field-accentColorText" name="accentColorText" value="#F47C20" placeholder="#F47C20" maxlength="7" class="color-text-input">
+                </div>
+              </div>
             </div>
           </div>
 
-          <div class="form-group form-group-full">
-            <label for="field-internalNotes">Internal Notes</label>
-            <textarea id="field-internalNotes" name="internalNotes" rows="3" placeholder="Private notes for the VE build team..."></textarea>
-          </div>
-
-          <div class="form-group form-group-full">
-            <label>Card Status</label>
+          <div class="form-group form-group-full" style="margin-top:16px;">
+            <label>Card Style</label>
             <div class="radio-group">
               <label class="radio-card">
-                <input type="radio" name="status" value="draft" checked>
-                <span class="radio-card-label">Draft</span>
+                <input type="radio" name="cardStyle" value="Professional/Corporate" checked>
+                <span class="radio-card-label">Professional / Corporate</span>
               </label>
               <label class="radio-card">
-                <input type="radio" name="status" value="review">
-                <span class="radio-card-label">Ready for Review</span>
+                <input type="radio" name="cardStyle" value="Friendly/Approachable">
+                <span class="radio-card-label">Friendly / Approachable</span>
               </label>
               <label class="radio-card">
-                <input type="radio" name="status" value="approved">
-                <span class="radio-card-label">Approved</span>
+                <input type="radio" name="cardStyle" value="Bold/Modern">
+                <span class="radio-card-label">Bold / Modern</span>
               </label>
               <label class="radio-card">
-                <input type="radio" name="status" value="live">
-                <span class="radio-card-label">Live</span>
+                <input type="radio" name="cardStyle" value="Minimal/Clean">
+                <span class="radio-card-label">Minimal / Clean</span>
               </label>
+            </div>
+          </div>
+
+          <h3 class="section-divider">Comments / Special Instructions</h3>
+          <div class="form-group form-group-full">
+            <label for="field-internalNotes">Submit any comments, instructions, or information below.</label>
+            <textarea id="field-internalNotes" name="internalNotes" rows="4" placeholder="Any special requests or notes for the build team..."></textarea>
+          </div>
+
+          <div class="step-nav">
+            <button type="button" class="btn btn-ghost" data-action="prev-step">&larr; Back</button>
+            <button type="button" class="btn btn-primary" data-action="next-step">Next &rarr;</button>
+          </div>
+        </div>
+
+        <!-- STEP 6: CONTENT GENERATION -->
+        <div class="step-panel" data-step="6" style="display:none;">
+          <h2 class="step-title">Content Generation</h2>
+          <p class="step-description">We'll auto-generate your card's accordion tab content from your website and company info.</p>
+
+          <div class="content-gen-panel">
+            <div class="content-gen-source">
+              <h3>Website Content Scraper</h3>
+              <p class="helper-note">We'll fetch your website to extract content for your card tabs. The URL below was provided in Step 1.</p>
+              <div class="scrape-row">
+                <input type="url" id="scrape-url" class="scrape-url-input" placeholder="https://example.com" readonly>
+                <button type="button" class="btn btn-primary btn-glow" id="btn-scrape-website">
+                  <span id="scrape-btn-text">Scrape Website</span>
+                  <span id="scrape-spinner" style="display:none;" class="spinner"></span>
+                </button>
+              </div>
+              <div id="scrape-status" class="scrape-status" style="display:none;"></div>
+            </div>
+
+            <div id="scraped-content-preview" class="scraped-preview" style="display:none;">
+              <h4>Scraped Content Preview</h4>
+              <div id="scraped-content-body" class="scraped-body"></div>
+            </div>
+
+            <div class="content-gen-divider">
+              <span>Generated Accordion Tabs</span>
+            </div>
+
+            <div id="generated-tabs-container" class="generated-tabs">
+              <p class="helper-note">Click "Generate Content" to auto-create accordion tabs based on your website and company information.</p>
+            </div>
+
+            <div class="content-gen-actions">
+              <button type="button" class="btn btn-primary btn-glow" id="btn-generate-content">Generate Content</button>
+              <button type="button" class="btn btn-secondary" id="btn-add-custom-tab" style="display:none;">+ Add Custom Tab</button>
             </div>
           </div>
 
@@ -711,7 +657,7 @@
           </div>
         </div>
 
-        <!-- ── STEP 7: REVIEW & GENERATE ─────────────────────────────────────── -->
+        <!-- STEP 7: REVIEW & GENERATE -->
         <div class="step-panel" data-step="7" style="display:none;">
           <h2 class="step-title">Review &amp; Generate</h2>
           <p class="step-description">Review your card details and generate the mock-up.</p>
@@ -721,7 +667,7 @@
           <div id="missing-items" class="missing-items"></div>
 
           <div class="review-actions">
-            <button type="button" class="btn btn-primary btn-lg" data-action="generate-mockup">Generate Mock-Up</button>
+            <button type="button" class="btn btn-primary btn-lg btn-glow" data-action="generate-mockup">Generate Mock-Up</button>
             <button type="button" class="btn btn-secondary" data-action="save-draft">Save as Draft</button>
           </div>
 
@@ -854,6 +800,7 @@
 <script src="js/db.js"></script>
 <script src="js/utils.js"></script>
 <script src="js/generator.js"></script>
+<script src="js/scraper.js"></script>
 <script src="js/intake.js"></script>
 <script src="js/buildsheet.js"></script>
 <script src="js/app.js"></script>

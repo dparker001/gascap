@@ -150,7 +150,7 @@ function ConfirmBlock({
           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">mi</span>
         </div>
         <p className="text-[10px] text-slate-400 mt-1 leading-snug">
-          Enter your current mileage so MPG tracking starts accurately from your first fillup.
+          Enter your current mileage so MPG tracking starts accurately from your first fill-up.
         </p>
       </div>
 

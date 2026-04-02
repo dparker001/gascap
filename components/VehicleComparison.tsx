@@ -143,7 +143,7 @@ export default function VehicleComparison() {
                 ? <p className="text-[10px] text-slate-400">{profiles.length} vehicles · side-by-side stats</p>
                 : hasData
                   ? <p className="text-[10px] text-slate-400">{profiles[0].name} · add a 2nd vehicle to compare</p>
-                  : <p className="text-[10px] text-slate-400">Log fillups to see vehicle stats</p>
+                  : <p className="text-[10px] text-slate-400">Log fill-ups to see vehicle stats</p>
             }
           </div>
         </div>
@@ -166,8 +166,8 @@ export default function VehicleComparison() {
           {!loading && !hasData && (
             <div className="text-center py-6">
               <p className="text-3xl mb-2">🚗</p>
-              <p className="text-sm font-bold text-slate-600">No fillups logged yet</p>
-              <p className="text-xs text-slate-400 mt-1">Log fillups for at least one vehicle to see comparison data.</p>
+              <p className="text-sm font-bold text-slate-600">No fill-ups logged yet</p>
+              <p className="text-xs text-slate-400 mt-1">Log fill-ups for at least one vehicle to see comparison data.</p>
             </div>
           )}
 
@@ -176,7 +176,7 @@ export default function VehicleComparison() {
               <p className="text-3xl mb-2">➕</p>
               <p className="text-sm font-bold text-slate-600">Only one vehicle tracked</p>
               <p className="text-xs text-slate-400 mt-1 leading-relaxed max-w-[220px] mx-auto">
-                Log fillups for a second vehicle to unlock side-by-side comparison.
+                Log fill-ups for a second vehicle to unlock side-by-side comparison.
               </p>
               {/* Show single vehicle stats anyway */}
               <div className="mt-4">
@@ -262,7 +262,7 @@ function WinnerRow({ profiles }: { profiles: VehicleProfile[] }) {
   const badges = [
     bestMpg  && { emoji: '🏆', label: 'Best MPG',       vehicle: bestMpg.name,   value: `${bestMpg.avgMpg} mpg`        },
     cheapCpm && { emoji: '💰', label: 'Cheapest/Mile',  vehicle: cheapCpm.name,  value: `$${cheapCpm.costPerMile!.toFixed(3)}/mi` },
-    mostFill && { emoji: '⛽', label: 'Most Active',    vehicle: mostFill.name,  value: `${mostFill.fillupCount} fillups` },
+    mostFill && { emoji: '⛽', label: 'Most Active',    vehicle: mostFill.name,  value: `${mostFill.fillupCount} fill-ups` },
   ].filter(Boolean) as { emoji: string; label: string; vehicle: string; value: string }[];
 
   if (badges.length === 0) return null;
@@ -303,7 +303,7 @@ function VehicleCard({ profile: p, color, rank }: { profile: VehicleProfile; col
       {/* Stats */}
       <div className="space-y-1.5">
         <StatRow label="Total spent"  value={`$${p.totalSpent.toFixed(2)}`}  bold />
-        <StatRow label="Fillups"      value={String(p.fillupCount)} />
+        <StatRow label="Fill-Ups"     value={String(p.fillupCount)} />
         <StatRow label="Total gal"    value={`${p.totalGallons} gal`} />
         <StatRow label="Avg $/gal"    value={`$${p.avgPrice.toFixed(2)}`} />
         {p.avgMpg != null && (
@@ -347,7 +347,7 @@ function SingleVehicleCard({ profile: p, color }: { profile: VehicleProfile; col
       {[
         { label: 'Total Spent',   value: `$${p.totalSpent.toFixed(2)}` },
         { label: 'Total Gallons', value: `${p.totalGallons} gal` },
-        { label: 'Fillups',       value: String(p.fillupCount) },
+        { label: 'Fill-Ups',      value: String(p.fillupCount) },
         { label: 'Avg $/gal',     value: `$${p.avgPrice.toFixed(2)}` },
         p.avgMpg != null && { label: 'Avg MPG',   value: `${p.avgMpg} mpg` },
         p.costPerMile != null && { label: 'Cost/mile', value: `$${p.costPerMile.toFixed(3)}/mi` },
