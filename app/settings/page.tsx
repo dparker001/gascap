@@ -61,9 +61,14 @@ export default function SettingsPage() {
   const [alertThreshold,   setAlertThreshold]   = useState('');
   const [alertSaved,       setAlertSaved]       = useState(false);
   const [alertSaving,      setAlertSaving]      = useState(false);
+  const [livePlan,         setLivePlan]         = useState<string | null>(null);
 
   useEffect(() => {
     if (!session) return;
+    fetch('/api/vehicles')
+      .then((r) => r.json())
+      .then((d: { plan?: string }) => { if (d.plan) setLivePlan(d.plan); })
+      .catch(() => {});
     fetch('/api/referral')
       .then((r) => r.json())
       .then((d: ReferralSummary) => setReferral(d))
@@ -90,7 +95,7 @@ export default function SettingsPage() {
   }
 
   const name = displayName || session.user?.name || 'User';
-  const plan = (session.user as { plan?: string })?.plan ?? 'free';
+  const plan = livePlan ?? session.user?.plan ?? 'free';
 
   const planConfig = {
     free:  { label: 'Free',  bg: 'bg-slate-100',   text: 'text-slate-600', border: 'border-slate-200' },

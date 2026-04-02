@@ -1,6 +1,7 @@
 'use client';
 
 import { useSession } from 'next-auth/react';
+import { useEffect, useState } from 'react';
 
 /**
  * Displays a contextual pill in the header:
@@ -8,15 +9,29 @@ import { useSession } from 'next-auth/react';
  *  - Free plan   → "Free plan · Works offline"
  *  - Pro plan    → "⭐ GasCap Pro"  (amber)
  *  - Fleet plan  → "🚛 GasCap Fleet" (blue)
+ *
+ * Uses a live server fetch so the badge is always accurate even when
+ * the session JWT is stale (e.g. after a plan upgrade in the installed PWA).
  */
 export default function PlanBadge() {
   const { data: session, status } = useSession();
+  const [livePlan, setLivePlan] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!session) return;
+    fetch('/api/vehicles')
+      .then((r) => r.json())
+      .then((d: { plan?: string }) => { if (d.plan) setLivePlan(d.plan); })
+      .catch(() => {});
+  }, [session]);
 
   if (status === 'loading') {
     return <div className="mt-4 h-7 w-52 rounded-full bg-white/10 animate-pulse" />;
   }
 
-  const plan = (session?.user as { plan?: string })?.plan ?? null;
+  // Live plan takes priority over JWT plan — always reflects current billing state
+  const jwtPlan = session?.user?.plan ?? null;
+  const plan    = livePlan ?? jwtPlan;
 
   /* ── Pro ── */
   if (plan === 'pro') {
