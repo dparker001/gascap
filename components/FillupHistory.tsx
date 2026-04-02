@@ -1,7 +1,7 @@
 'use client';
 
 import { useSession } from 'next-auth/react';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import type { Fillup } from '@/lib/fillups';
 import UpgradeNudge from './UpgradeNudge';
 
@@ -85,30 +85,42 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
   const fillups  = data?.fillups ?? [];
   const stats    = data?.stats;
   const mpgMap   = data?.mpgMap ?? {};
-  const userPlan = (session?.user as { plan?: string })?.plan ?? 'free';
+
+  // Live plan fetch — session JWT can be stale after an upgrade
+  const [livePlan, setLivePlan] = useState<string | null>(null);
+  const planFetched = useRef(false);
+  useEffect(() => {
+    if (!session || planFetched.current) return;
+    planFetched.current = true;
+    fetch('/api/vehicles')
+      .then((r) => r.json())
+      .then((d: { plan?: string }) => { if (d.plan) setLivePlan(d.plan); })
+      .catch(() => {});
+  }, [session]);
+  const userPlan  = livePlan ?? session?.user?.plan ?? 'free';
+  const isPaid    = userPlan === 'pro' || userPlan === 'fleet';
+  const planBadge = userPlan === 'fleet' ? 'FLEET' : 'PRO';
 
   async function handleExport() {
     setExporting(true);
     setExportError('');
     try {
-      const res = await fetch('/api/fillups/export');
-      if (res.status === 403) {
-        setExportError('Pro required');
-        setTimeout(() => setExportError(''), 3000);
+      // HEAD check first so we get a clean error without triggering a download
+      const check = await fetch('/api/fillups/export', { method: 'HEAD' }).catch(() => null);
+      if (check?.status === 403) {
+        setExportError('Upgrade to Pro to export PDF');
+        setTimeout(() => setExportError(''), 4000);
         return;
       }
-      if (!res.ok) { setExportError('Export failed'); return; }
-      const blob = await res.blob();
-      const url  = URL.createObjectURL(blob);
-      const a    = document.createElement('a');
-      a.href     = url;
-      a.download = `gascap-fuel-report-${new Date().toISOString().split('T')[0]}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
+      // Navigate directly — the browser handles the file download from the
+      // Content-Disposition: attachment header. This works on iOS Safari where
+      // programmatic blob + a.click() is blocked.
+      window.location.href = '/api/fillups/export';
     } catch {
-      setExportError('Network error');
+      setExportError('Export failed — try again');
     } finally {
-      setExporting(false);
+      // Give the browser a moment to start the download before clearing state
+      setTimeout(() => setExporting(false), 2000);
     }
   }
 
@@ -175,7 +187,7 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
             >
               <span>{exporting ? '⏳' : '📄'}</span>
               <span>{exporting ? 'Exporting…' : 'PDF'}</span>
-              <span className="text-[8px] bg-amber-400 text-white px-1 rounded-full leading-none">PRO</span>
+              <span className={`text-[8px] px-1 rounded-full leading-none text-white ${isPaid ? 'bg-blue-500' : 'bg-amber-400'}`}>{planBadge}</span>
             </button>
           )}
           {exportError && (

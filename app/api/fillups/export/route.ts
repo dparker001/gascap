@@ -18,13 +18,25 @@ const LIGHT  = '#f8fafc';
 const WHITE  = '#ffffff';
 const GREEN  = '#16a34a';
 
-export async function GET(req: Request) {
+async function checkAccess() {
   const session = await getServerSession(authOptions);
-  if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
+  if (!session?.user) return { ok: false, status: 401, user: null };
   const userId = (session.user as { id?: string }).id ?? session.user.email ?? '';
   const user   = findById(userId);
-  if (!user || user.plan === 'free') {
+  if (!user || user.plan === 'free') return { ok: false, status: 403, user };
+  return { ok: true, status: 200, user: user! };
+}
+
+// HEAD — lightweight plan check used by the client before triggering a download
+export async function HEAD() {
+  const { ok, status } = await checkAccess();
+  return new NextResponse(null, { status: ok ? 200 : status });
+}
+
+export async function GET(req: Request) {
+  const { ok, status, user } = await checkAccess();
+  if (!ok || !user) {
+    if (status === 401) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     return NextResponse.json(
       { error: 'PDF export is a Pro feature. Upgrade to download your fuel report.', upgrade: true },
       { status: 403 },
@@ -37,7 +49,7 @@ export async function GET(req: Request) {
   const toDate   = searchParams.get('to')   ?? undefined;
 
   // Fetch data
-  let fillups = getFillups(userId);
+  let fillups = getFillups(user.id);
   if (fromDate) fillups = fillups.filter((f) => f.date >= fromDate);
   if (toDate)   fillups = fillups.filter((f) => f.date <= toDate);
   // Sort oldest-first for the table
