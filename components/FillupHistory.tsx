@@ -1,7 +1,7 @@
 'use client';
 
 import { useSession } from 'next-auth/react';
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import type { Fillup } from '@/lib/fillups';
 import UpgradeNudge from './UpgradeNudge';
 
@@ -22,11 +22,9 @@ interface FillupHistoryProps {
 
 export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
   const { data: session, status } = useSession();
-  const [data,        setData]        = useState<HistoryResponse | null>(null);
-  const [loading,     setLoading]     = useState(false);
-  const [open,        setOpen]        = useState(false);
-  const [exporting,   setExporting]   = useState(false);
-  const [exportError, setExportError] = useState('');
+  const [data,    setData]    = useState<HistoryResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [open,    setOpen]    = useState(false);
 
   // ── Derived stats ──────────────────────────────────────────────────────────
 
@@ -85,47 +83,7 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
   const fillups  = data?.fillups ?? [];
   const stats    = data?.stats;
   const mpgMap   = data?.mpgMap ?? {};
-
-  // Live plan fetch — session JWT can be stale after an upgrade
-  const [livePlan, setLivePlan] = useState<string | null>(null);
-  const planFetched = useRef(false);
-  useEffect(() => {
-    if (!session || planFetched.current) return;
-    planFetched.current = true;
-    fetch('/api/vehicles')
-      .then((r) => r.json())
-      .then((d: { plan?: string }) => { if (d.plan) setLivePlan(d.plan); })
-      .catch(() => {});
-  }, [session]);
-  const userPlan  = livePlan ?? session?.user?.plan ?? 'free';
-  const isPaid    = userPlan === 'pro' || userPlan === 'fleet';
-  const planBadge = userPlan === 'fleet' ? 'FLEET' : 'PRO';
-
-  async function handleExport() {
-    setExporting(true);
-    setExportError('');
-    try {
-      // Pre-flight check — catches plan and data errors without triggering navigation
-      const check = await fetch('/api/fillups/export', { method: 'HEAD' }).catch(() => null);
-      if (check?.status === 403) {
-        setExportError('Upgrade to Pro to export PDF');
-        setTimeout(() => setExportError(''), 4000);
-        return;
-      }
-      if (check?.status === 404) {
-        setExportError('No fillups to export yet');
-        setTimeout(() => setExportError(''), 4000);
-        return;
-      }
-      // Navigate directly — the browser handles the Content-Disposition: attachment
-      // header as a file download. This works on iOS Safari where blob + a.click() is blocked.
-      window.location.href = '/api/fillups/export';
-    } catch {
-      setExportError('Export failed — try again');
-    } finally {
-      setTimeout(() => setExporting(false), 2000);
-    }
-  }
+  const userPlan = session?.user?.plan ?? 'free';
 
   async function handleDelete(id: string) {
     await fetch(`/api/fillups?id=${id}`, { method: 'DELETE' });
@@ -181,21 +139,6 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {session && (
-            <button
-              onClick={(e) => { e.stopPropagation(); handleExport(); }}
-              disabled={exporting}
-              className="flex items-center gap-1 text-[10px] font-bold text-slate-500 hover:text-amber-600 transition-colors disabled:opacity-50"
-              title="Download PDF report"
-            >
-              <span>{exporting ? '⏳' : '📄'}</span>
-              <span>{exporting ? 'Exporting…' : 'PDF'}</span>
-              <span className={`text-[8px] px-1 rounded-full leading-none text-white ${isPaid ? 'bg-blue-500' : 'bg-amber-400'}`}>{planBadge}</span>
-            </button>
-          )}
-          {exportError && (
-            <span className="text-[10px] text-red-500 font-medium">{exportError}</span>
-          )}
           <svg
             className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
             viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
