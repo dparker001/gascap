@@ -281,7 +281,7 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
           <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-xl px-3 py-2.5 mt-1">
             <span className="text-base flex-shrink-0" aria-hidden="true">🚪</span>
             <p className="text-[11px] text-blue-600 leading-snug">
-              <span className="font-black">Garage closed</span> — your saved vehicles aren't used for rental calculations.
+              <span className="font-black">Garage door closed</span> — your saved vehicles aren't used for rental calculations.
               Pick a rental class from the dropdown above.
             </p>
           </div>
@@ -528,7 +528,7 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
       )}
 
       <button className="btn-amber" onClick={handleCalculate}>
-        {rentalMode ? 'Calculate Rental Cost ⚡' : 'Calculate ⚡'}
+        {rentalMode ? 'Calculate Rental Fuel Cost ⚡' : 'Calculate ⚡'}
       </button>
       <button className="btn-secondary" onClick={handleReset}>Clear all</button>
 
