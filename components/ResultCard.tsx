@@ -119,9 +119,11 @@ interface TargetResultCardProps {
   vehicleId?: string;
   vehicleOdometer?: number;
   fuelLevelBefore?: number;
+  rentalRate?: number;   // rental company's per-gallon rate — enables savings comparison
+  isRental?: boolean;    // true when rental mode is on, even if no rate entered
 }
 
-export function TargetResultCard({ result, vehicleName, vehicleId, vehicleOdometer, fuelLevelBefore }: TargetResultCardProps) {
+export function TargetResultCard({ result, vehicleName, vehicleId, vehicleOdometer, fuelLevelBefore, rentalRate, isRental }: TargetResultCardProps) {
   const {
     gallonsNeeded, estimatedCost,
     currentPercent, targetPercent, targetGallons, summary,
@@ -167,6 +169,68 @@ export function TargetResultCard({ result, vehicleName, vehicleId, vehicleOdomet
         <SecondaryStat label="Target level" value={`${targetPercent}%`} />
         <SecondaryStat label="Tank after fill" value={`${targetGallons.toFixed(2)} gal`} />
       </div>
+
+      {/* ── Rental savings comparison ── */}
+      {rentalRate && rentalRate > 0 && gallonsNeeded > 0 && (() => {
+        const rentalCost = Math.round(gallonsNeeded * rentalRate * 100) / 100;
+        const savings    = Math.round((rentalCost - estimatedCost) * 100) / 100;
+        return (
+          <div className="bg-blue-700 rounded-2xl px-4 py-4 space-y-3">
+            {/* Header */}
+            <div className="flex items-center gap-2">
+              <span className="text-lg" aria-hidden="true">🚗</span>
+              <p className="text-xs font-black text-white/80 uppercase tracking-wide">Rental Return — Cost Comparison</p>
+            </div>
+
+            {/* Two columns: pump vs rental co */}
+            <div className="grid grid-cols-2 gap-2">
+              <div className="bg-white/10 rounded-xl px-3 py-2.5 text-center">
+                <p className="text-[9px] font-bold uppercase tracking-widest text-white/50 mb-1">⛽ At the pump</p>
+                <p className="text-2xl font-black text-amber-300 leading-none">${estimatedCost.toFixed(2)}</p>
+                <p className="text-[10px] text-white/40 mt-0.5">${pricePerGallon.toFixed(2)}/gal</p>
+              </div>
+              <div className="bg-white/10 rounded-xl px-3 py-2.5 text-center">
+                <p className="text-[9px] font-bold uppercase tracking-widest text-white/50 mb-1">🏢 Rental co. fills it</p>
+                <p className="text-2xl font-black text-red-300 leading-none">${rentalCost.toFixed(2)}</p>
+                <p className="text-[10px] text-white/40 mt-0.5">${rentalRate.toFixed(2)}/gal</p>
+              </div>
+            </div>
+
+            {/* Savings callout */}
+            {savings > 0 ? (
+              <div className="bg-emerald-500/20 border border-emerald-400/30 rounded-xl px-3 py-2.5 flex items-center gap-2.5">
+                <span className="text-lg flex-shrink-0" aria-hidden="true">💰</span>
+                <div>
+                  <p className="text-xs font-black text-emerald-300 leading-none">
+                    You save ${savings.toFixed(2)} by filling up yourself!
+                  </p>
+                  <p className="text-[10px] text-white/40 mt-0.5">
+                    That's {Math.round((savings / rentalCost) * 100)}% less than the rental company's rate.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-white/10 rounded-xl px-3 py-2 text-center">
+                <p className="text-[11px] text-white/60">Pump price is competitive with the rental rate.</p>
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
+      {/* Rental mode — no rate entered, still show gentle callout */}
+      {isRental && !rentalRate && gallonsNeeded > 0 && (
+        <div className="bg-blue-50 border border-blue-200 rounded-2xl px-4 py-3 flex items-start gap-2.5">
+          <span className="text-base flex-shrink-0 mt-0.5" aria-hidden="true">🚗</span>
+          <div>
+            <p className="text-xs font-black text-blue-800 leading-none">Rental Car Drop-Off</p>
+            <p className="text-[11px] text-blue-600 mt-1 leading-snug">
+              You need <strong>{gallonsNeeded.toFixed(2)} gal</strong> — costs <strong>${estimatedCost.toFixed(2)}</strong> at the pump.
+              Add the rental company's rate above to see exactly how much you save vs. letting them fill it.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* ── Visual tank gauge ── */}
       <div className="card-bordered">

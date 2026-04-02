@@ -76,6 +76,8 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
   const [showLiveNudge, setShowLiveNudge] = useState(false);
   const [gaugeScanning, setGaugeScanning] = useState(false);
   const [gaugeScanMsg,  setGaugeScanMsg]  = useState('');
+  const [rentalMode,    setRentalMode]    = useState(false);
+  const [rentalRate,    setRentalRate]    = useState('');
   const gaugeCamRef     = useRef<HTMLInputElement>(null);
   const gaugeGalleryRef = useRef<HTMLInputElement>(null);
 
@@ -195,6 +197,75 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
         How to use
       </p>
 
+      {/* ── Rental car mode toggle ───────────────────────────────── */}
+      <button
+        type="button"
+        onClick={() => {
+          const next = !rentalMode;
+          setRentalMode(next);
+          // Auto-set target to Full when entering rental mode
+          if (next) liveRecalc({ targetPreset: 100, customTarget: '' });
+        }}
+        className={[
+          'w-full flex items-center gap-3 rounded-2xl px-4 py-3 mb-3 border-2 transition-all',
+          rentalMode
+            ? 'bg-blue-50 border-blue-400 text-blue-800'
+            : 'bg-white border-slate-200 hover:border-blue-300 text-slate-600',
+        ].join(' ')}
+        aria-pressed={rentalMode}
+      >
+        <span className="text-xl flex-shrink-0" aria-hidden="true">🚗</span>
+        <div className="flex-1 text-left">
+          <p className={`text-sm font-black leading-none ${rentalMode ? 'text-blue-800' : 'text-slate-700'}`}>
+            Rental Car Return?
+          </p>
+          <p className={`text-[10px] mt-0.5 leading-snug ${rentalMode ? 'text-blue-600' : 'text-slate-400'}`}>
+            {rentalMode
+              ? 'Rental mode ON — compare pump cost vs. rental company rate'
+              : 'Tap to calculate refill cost before dropping off a rental'}
+          </p>
+        </div>
+        <div className={[
+          'w-9 h-5 rounded-full flex-shrink-0 relative transition-colors',
+          rentalMode ? 'bg-blue-500' : 'bg-slate-200',
+        ].join(' ')}>
+          <div className={[
+            'absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform',
+            rentalMode ? 'translate-x-4' : 'translate-x-0.5',
+          ].join(' ')} />
+        </div>
+      </button>
+
+      {/* Rental rate input — only when rental mode is on */}
+      {rentalMode && (
+        <div className="bg-blue-50 border border-blue-200 rounded-2xl px-4 py-3 mb-3 space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="text-base" aria-hidden="true">🏢</span>
+            <p className="text-xs font-black text-blue-800">Rental Company's Gas Rate</p>
+            <span className="text-[10px] text-blue-500 font-medium">(optional)</span>
+          </div>
+          <p className="text-[11px] text-blue-600 leading-snug">
+            If you return the car empty the rental company charges their rate — often $8–12/gal.
+            Enter it to see exactly how much you save by filling up yourself.
+          </p>
+          <div className="relative">
+            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-blue-400 font-bold text-sm pointer-events-none">$</span>
+            <input
+              type="number"
+              inputMode="decimal"
+              className="input-field pl-7 border-blue-200 bg-white text-sm"
+              placeholder="e.g. 9.99"
+              value={rentalRate}
+              min="0.01"
+              step="0.01"
+              onChange={(e) => setRentalRate(e.target.value)}
+              aria-label="Rental company gas rate per gallon"
+            />
+            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-slate-400 pointer-events-none">/gal</span>
+          </div>
+        </div>
+      )}
+
       {/* ══════════════════════════════════════════════════════════════
           STEP 1 — Pick a vehicle
       ══════════════════════════════════════════════════════════════ */}
@@ -203,6 +274,7 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
         <TankPresets
           value={form.tankCapacity}
           onChange={(v) => patch({ tankCapacity: v })}
+          rentalMode={rentalMode}
         />
         {errors.tankCapacity && <FieldError msg={errors.tankCapacity} />}
         <SavedVehicles
@@ -443,6 +515,8 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
             fuelLevelBefore={
               form.fuelMode === 'percent' ? Number(form.currentFuel) : undefined
             }
+            isRental={rentalMode}
+            rentalRate={rentalMode && rentalRate ? Number(rentalRate) : undefined}
           />
         )}
       </div>

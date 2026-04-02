@@ -64,6 +64,23 @@ function LandingFeatures() {
 
       </div>
 
+      {/* Rental car callout — full-width feature card */}
+      <div className="mt-3 bg-blue-700 rounded-2xl p-4 shadow-card flex items-start gap-3.5">
+        <span className="text-3xl flex-shrink-0 mt-0.5" aria-hidden="true">🚗</span>
+        <div>
+          <h3 className="text-sm font-black text-white leading-tight">
+            Renting a car? Never overpay at drop-off.
+          </h3>
+          <p className="text-xs text-blue-200 mt-1 leading-relaxed">
+            Rental companies charge up to $12/gal if you return empty.
+            GasCap™ tells you exactly how many gallons you need — and how much you save by filling up yourself.
+          </p>
+          <p className="text-[10px] text-blue-300/70 mt-2 font-semibold">
+            Tap "🚗 Rental Car Return?" in the calculator to get started.
+          </p>
+        </div>
+      </div>
+
       {/* Trust badges row */}
       <div className="flex items-center justify-center gap-4 mt-5 flex-wrap">
         {[
