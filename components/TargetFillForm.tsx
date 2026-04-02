@@ -217,11 +217,11 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
         <span className="text-xl flex-shrink-0" aria-hidden="true">🚗</span>
         <div className="flex-1 text-left">
           <p className={`text-sm font-black leading-none ${rentalMode ? 'text-blue-800' : 'text-slate-700'}`}>
-            Rental Car Return?
+            Rental Car Return Mode
           </p>
           <p className={`text-[10px] mt-0.5 leading-snug ${rentalMode ? 'text-blue-600' : 'text-slate-400'}`}>
             {rentalMode
-              ? 'Rental mode ON — compare pump cost vs. rental company rate'
+              ? 'Active — compare pump cost vs. rental company rate'
               : 'Tap to calculate refill cost before dropping off a rental'}
           </p>
         </div>
@@ -277,12 +277,22 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
           rentalMode={rentalMode}
         />
         {errors.tankCapacity && <FieldError msg={errors.tankCapacity} />}
-        <SavedVehicles
-          currentGallons={form.tankCapacity}
-          onSelect={(g, v) => patch({ tankCapacity: g, vehicleName: v?.name ?? '', vehicleId: v?.id ?? '', vehicleOdometer: v?.currentOdometer })}
-          selectedVehicleId={form.vehicleId}
-          calcKey={calcKey}
-        />
+        {rentalMode ? (
+          <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-xl px-3 py-2.5 mt-1">
+            <span className="text-base flex-shrink-0" aria-hidden="true">🚪</span>
+            <p className="text-[11px] text-blue-600 leading-snug">
+              <span className="font-black">Garage closed</span> — your saved vehicles aren't used for rental calculations.
+              Pick a rental class from the dropdown above.
+            </p>
+          </div>
+        ) : (
+          <SavedVehicles
+            currentGallons={form.tankCapacity}
+            onSelect={(g, v) => patch({ tankCapacity: g, vehicleName: v?.name ?? '', vehicleId: v?.id ?? '', vehicleOdometer: v?.currentOdometer })}
+            selectedVehicleId={form.vehicleId}
+            calcKey={calcKey}
+          />
+        )}
       </div>
 
       {/* ══════════════════════════════════════════════════════════════
