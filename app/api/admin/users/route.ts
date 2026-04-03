@@ -11,6 +11,7 @@ import type { StoredUser } from '@/lib/users';
 import { grantBetaTrial, revokeBetaTrial } from '@/lib/users';
 import { upsertGhlContact, removeGhlTags } from '@/lib/ghl';
 import { getAllSubs } from '@/lib/pushSubscriptions';
+import { getFillups } from '@/lib/fillups';
 
 const DATA_FILE = path.join(process.cwd(), 'data', 'users.json');
 
@@ -54,6 +55,12 @@ export async function GET(req: Request) {
           .map((r) => ({ name: r.name, email: r.email, joinedAt: r.createdAt }))
       : [];
 
+    const fillups   = getFillups(u.id);
+    const fillupCount = fillups.length;
+    const lastFillup  = fillups.length > 0
+      ? fillups.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0].date
+      : null;
+
     return {
       id:               u.id,
       name:             u.name,
@@ -65,12 +72,20 @@ export async function GET(req: Request) {
       referralCode:     u.referralCode  ?? null,
       referredBy:       u.referredBy    ?? null,
       referredByName:   u.referredBy ? (codeToName.get(u.referredBy.toUpperCase()) ?? u.referredBy) : null,
-      referredUsers,                         // list of users this person referred
+      referredUsers,
       stripeCustomerId: u.stripeCustomerId ?? null,
       isBetaTester:     u.isBetaTester    ?? false,
       betaProExpiry:    u.betaProExpiry   ?? null,
       pushSubscribed:   subscribedUserIds.has(u.id),
       isTestAccount:    u.isTestAccount   ?? false,
+      // Activity metrics
+      loginCount:       u.loginCount    ?? 0,
+      lastLoginAt:      u.lastLoginAt   ?? null,
+      calcCount:        u.calcCount     ?? 0,
+      activeDays:       (u.activeDays   ?? []).length,
+      streak:           u.streak        ?? 0,
+      fillupCount,
+      lastFillup,
     };
   });
   return NextResponse.json({ users, total: users.length });

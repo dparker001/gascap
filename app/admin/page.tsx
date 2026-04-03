@@ -29,6 +29,14 @@ interface AdminUser {
   betaProExpiry?:   string | null;
   pushSubscribed?:  boolean;
   isTestAccount?:   boolean;
+  // Activity metrics
+  loginCount:       number;
+  lastLoginAt:      string | null;
+  calcCount:        number;
+  activeDays:       number;
+  streak:           number;
+  fillupCount:      number;
+  lastFillup:       string | null;
 }
 
 const PLAN_COLORS = {
@@ -260,6 +268,7 @@ export default function AdminPage() {
     u.email.toLowerCase().includes(search.toLowerCase()),
   );
 
+  const today = new Date().toLocaleDateString();
   const stats = {
     total:      users.length,
     free:       users.filter((u) => u.plan === 'free').length,
@@ -267,6 +276,8 @@ export default function AdminPage() {
     fleet:      users.filter((u) => u.plan === 'fleet').length,
     unverified: users.filter((u) => !u.emailVerified).length,
     push:       users.filter((u) => u.pushSubscribed).length,
+    activeToday: users.filter((u) => u.lastLoginAt && new Date(u.lastLoginAt).toLocaleDateString() === today).length,
+    totalFillups: users.reduce((s, u) => s + u.fillupCount, 0),
   };
 
   if (!authed) {
@@ -314,14 +325,16 @@ export default function AdminPage() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+        <div className="grid grid-cols-4 sm:grid-cols-8 gap-3">
           {[
-            { label: 'Total Users', value: stats.total,      color: 'text-navy-700' },
-            { label: 'Free',        value: stats.free,       color: 'text-slate-600' },
-            { label: 'Pro',         value: stats.pro,        color: 'text-amber-600' },
-            { label: 'Fleet',       value: stats.fleet,      color: 'text-blue-600' },
-            { label: 'Unverified',  value: stats.unverified, color: 'text-red-500' },
-            { label: '🔔 Push',     value: stats.push,       color: 'text-blue-600' },
+            { label: 'Total Users',   value: stats.total,        color: 'text-navy-700' },
+            { label: 'Free',          value: stats.free,         color: 'text-slate-600' },
+            { label: 'Pro',           value: stats.pro,          color: 'text-amber-600' },
+            { label: 'Fleet',         value: stats.fleet,        color: 'text-blue-600' },
+            { label: 'Unverified',    value: stats.unverified,   color: 'text-red-500' },
+            { label: '🔔 Push',       value: stats.push,         color: 'text-blue-600' },
+            { label: '🟢 Today',      value: stats.activeToday,  color: 'text-green-600' },
+            { label: '⛽ Fill-Ups',   value: stats.totalFillups, color: 'text-amber-700' },
           ].map((s) => (
             <div key={s.label} className="bg-white rounded-xl p-3 text-center shadow-sm">
               <p className={`text-2xl font-black ${s.color}`}>{s.value}</p>
@@ -602,6 +615,32 @@ export default function AdminPage() {
                         <span className="text-green-400"> · Referred by {u.referredByName}</span>
                       )}
                     </p>
+                    {/* Activity metrics */}
+                    <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
+                      <span className="text-[10px] text-slate-400">
+                        🔑 <span className="font-semibold text-slate-600">{u.loginCount}</span> login{u.loginCount !== 1 ? 's' : ''}
+                        {u.lastLoginAt && (
+                          <span className="text-slate-300"> · last {new Date(u.lastLoginAt).toLocaleDateString()}</span>
+                        )}
+                      </span>
+                      <span className="text-[10px] text-slate-400">
+                        🧮 <span className="font-semibold text-slate-600">{u.calcCount}</span> calc{u.calcCount !== 1 ? 's' : ''}
+                      </span>
+                      <span className="text-[10px] text-slate-400">
+                        ⛽ <span className="font-semibold text-slate-600">{u.fillupCount}</span> fill-up{u.fillupCount !== 1 ? 's' : ''}
+                        {u.lastFillup && (
+                          <span className="text-slate-300"> · last {new Date(u.lastFillup + 'T12:00:00').toLocaleDateString()}</span>
+                        )}
+                      </span>
+                      <span className="text-[10px] text-slate-400">
+                        📅 <span className="font-semibold text-slate-600">{u.activeDays}</span> active day{u.activeDays !== 1 ? 's' : ''}
+                      </span>
+                      {u.streak > 0 && (
+                        <span className="text-[10px] text-amber-500 font-semibold">
+                          🔥 {u.streak}-wk streak
+                        </span>
+                      )}
+                    </div>
                     {u.referredUsers.length > 0 && (
                       <details className="mt-1">
                         <summary className="text-[10px] text-amber-500 cursor-pointer font-semibold">

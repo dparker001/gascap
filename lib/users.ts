@@ -48,6 +48,9 @@ export interface StoredUser {
   // Gas price alerts (Pro+)
   priceAlertThreshold?:   number;  // $/gal — alert when national avg drops below this
   lastPriceAlertSentAt?:  string;  // ISO — last time we sent/showed an alert (24h debounce)
+  // Login tracking
+  loginCount?:    number;  // total sign-ins
+  lastLoginAt?:   string;  // ISO timestamp of most recent sign-in
   // Fill-up reminders
   fillupReminderDays?:        number;  // 0=off, 7=weekly, 14=biweekly
   lastFillupReminderSentAt?:  string;  // ISO — debounce so we don't spam
@@ -420,6 +423,15 @@ export function updateUserProfile(
   if (fields.phone       !== undefined) users[idx].phone       = fields.phone.trim();
   write(users);
   return users[idx];
+}
+
+export function recordLogin(userId: string): void {
+  const users = read();
+  const idx   = users.findIndex((u) => u.id === userId);
+  if (idx === -1) return;
+  users[idx].loginCount  = (users[idx].loginCount ?? 0) + 1;
+  users[idx].lastLoginAt = new Date().toISOString();
+  write(users);
 }
 
 export function setFillupReminderDays(userId: string, days: number): void {
