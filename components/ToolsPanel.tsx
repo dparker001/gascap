@@ -18,6 +18,9 @@ import PushNotificationToggle from './PushNotificationToggle';
 import StationComparison      from './StationComparison';
 import MonthlyReportCard      from './MonthlyReportCard';
 import SavingsDashboard       from './SavingsDashboard';
+import WorstFillup            from './WorstFillup';
+import GasPricePrediction     from './GasPricePrediction';
+import ReferralLeaderboard    from './ReferralLeaderboard';
 
 // ── Tab definitions ──────────────────────────────────────────────────────────
 
@@ -218,6 +221,8 @@ export default function ToolsPanel() {
           <div className="space-y-3">
             <MonthlyReportCard />
             <SavingsDashboard />
+            <WorstFillup />
+            <GasPricePrediction />
           </div>
         )}
         {effectiveTab === 'stats' && !session && <SignInPrompt feature="stats" />}
@@ -234,6 +239,7 @@ export default function ToolsPanel() {
       <div role="tabpanel" id="tabpanel-share" hidden={effectiveTab !== 'share'}>
         {effectiveTab === 'share' && session && (
           <div className="space-y-3">
+            <ReferralLeaderboard />
             <ReferralCard />
             <PushNotificationToggle />
           </div>
