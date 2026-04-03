@@ -54,7 +54,7 @@ export default function FeedbackButton() {
         aria-label="Send feedback"
       >
         <span>💬</span>
-        <span>Feedback</span>
+        <span>Share Feedback</span>
       </button>
 
       {/* Modal backdrop */}
