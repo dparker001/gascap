@@ -31,7 +31,7 @@ function computeStats(fillups: Fillup[]): WrappedStats | null {
   if (fillups.length === 0) return null;
 
   // Use most recent year with data
-  const years = [...new Set(fillups.map(f => Number(f.date.slice(0, 4))))].sort((a, b) => b - a);
+  const years = Array.from(new Set(fillups.map(f => Number(f.date.slice(0, 4))))).sort((a, b) => b - a);
   const year  = years[0];
   const yFills = fillups.filter(f => f.date.startsWith(String(year)));
   if (yFills.length === 0) return null;

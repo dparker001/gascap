@@ -88,7 +88,7 @@ const SECTIONS = [
       },
       {
         q: 'What does Pro add?',
-        a: 'Pro ($4.99/mo or $49/yr) adds up to 5 saved vehicles, VIN photo scan, fill-up history & MPG tracking, receipt photo scan, and referral rewards.',
+        a: 'Pro ($4.99/mo or $49/yr) adds up to 3 saved vehicles, VIN photo scan, fill-up history & MPG tracking, pump receipt photo scan, fuel savings dashboard, streak counter, monthly report card, gas price trend predictions, vehicle health alerts, fill-up reminders, Annual Wrapped, and referral rewards.',
       },
       {
         q: 'What is Fleet and who is it for?',
@@ -96,7 +96,7 @@ const SECTIONS = [
       },
       {
         q: 'How do I upgrade my plan?',
-        a: 'Tap "Plans & Pricing" on the home screen or visit gascap.app/upgrade. You\'ll be taken to a secure Stripe checkout page.',
+        a: 'You can upgrade directly from Settings — tap your profile icon or visit the Settings tab, then tap "Upgrade to Pro" or "Upgrade to Fleet." You can also visit gascap.app/upgrade. You\'ll be taken to a secure Stripe checkout page.',
       },
       {
         q: 'How do I cancel my subscription?',
@@ -131,6 +131,48 @@ const SECTIONS = [
     ],
   },
   {
+    id: 'stats',
+    title: '📈 Stats & Insights (Pro)',
+    items: [
+      {
+        q: 'What is the Stats tab?',
+        a: 'The Stats tab (📈) in the Tools panel is your personal fuel intelligence hub. It includes your Streak Counter, Savings Dashboard, Monthly Report Card, Worst Fill-Up Hall of Fame, Gas Price Trend Predictions, and Vehicle Health Alerts — all powered by your fill-up history.',
+      },
+      {
+        q: 'How does the Streak Counter work?',
+        a: 'Your streak counts how many consecutive days you\'ve opened GasCap. The counter resets if you miss a day. Your current streak is shown on the main screen when you\'re signed in.',
+      },
+      {
+        q: 'What is the Savings Dashboard?',
+        a: 'The Savings Dashboard shows your total fuel spending, total gallons filled, average price per gallon, and estimated savings compared to the national average price. It updates automatically as you log fill-ups.',
+      },
+      {
+        q: 'What is the Monthly Report Card?',
+        a: 'The Monthly Report Card compares this month\'s fill-ups, gallons, spending, and average gas price to last month — with color-coded arrows showing whether each metric improved or worsened.',
+      },
+      {
+        q: 'What is the Worst Fill-Up Hall of Fame?',
+        a: 'The Hall of Fame highlights your most expensive single fill-up ("Worst Day 😬") alongside your best deal — the fill-up with the lowest price per gallon ("Best Deal 🎉"). You\'ll need at least 2 fill-ups logged to see this feature.',
+      },
+      {
+        q: 'How do gas price trend predictions work?',
+        a: 'GasCap compares the average price you\'ve paid in your last two fill-ups vs. the two before that. If prices are trending up, down, or staying flat, you\'ll see a trend indicator with a sparkline chart. You\'ll need at least 4 fill-ups logged to see predictions.',
+      },
+      {
+        q: 'What are Vehicle Health Alerts?',
+        a: 'Vehicle Health Alerts monitor your MPG over time. If your recent fuel efficiency drops more than 10% below your historical average for that vehicle, you\'ll see an alert card suggesting you check your tire pressure, air filter, or other common causes of declining MPG.',
+      },
+      {
+        q: 'What is Annual Wrapped?',
+        a: 'Annual Wrapped (🎁) is a year-in-review summary of your fuel activity — total fill-ups, gallons, money spent, average price, best and worst months, top vehicle, and estimated miles driven. Tap the gift icon in the header to see your Wrapped. You can also share a summary to social media or copy it to your clipboard.',
+      },
+      {
+        q: 'How do Fill-Up Reminders work?',
+        a: 'Fill-Up Reminders send you a push notification if you haven\'t logged a fill-up in a while. You can set reminders to weekly (every 7 days) or bi-weekly (every 14 days) from the Share tab in the Tools panel. Push notifications must be enabled for reminders to work.',
+      },
+    ],
+  },
+  {
     id: 'troubleshooting',
     title: '🔧 Troubleshooting',
     items: [
@@ -148,7 +190,7 @@ const SECTIONS = [
       },
       {
         q: 'I\'m having a different issue not listed here.',
-        a: 'Use the Feedback button (bottom-right corner of the app) to describe what\'s happening, or email us at hello@gascap.app. We typically respond within 1 business day.',
+        a: 'Use the "Share Feedback" button (bottom-right corner of the app) to describe what\'s happening, or email us at hello@gascap.app. We typically respond within 1 business day.',
       },
     ],
   },
@@ -231,7 +273,7 @@ export default function HelpPage() {
           </a>
           <p className="text-white/40 text-xs mt-4">
             You can also use the{' '}
-            <span className="text-amber-400 font-semibold">💬 Feedback</span>{' '}
+            <span className="text-amber-400 font-semibold">💬 Share Feedback</span>{' '}
             button inside the app.
           </p>
         </div>

@@ -13,12 +13,19 @@ export default function PrivacyPage() {
 
       <div className="max-w-2xl mx-auto px-5 py-10 pb-20">
         <h1 className="text-3xl font-black text-navy-700 mb-2">Privacy Policy</h1>
-        <p className="text-sm text-slate-400 mb-8">Last updated: March 31, 2026</p>
+        <p className="text-sm text-slate-400 mb-8">Last updated: April 3, 2026</p>
 
         <div className="space-y-8 text-slate-700 text-sm leading-relaxed">
           <section>
             <h2 className="text-lg font-black text-navy-700 mb-2">1. Information We Collect</h2>
-            <p>We collect information you provide when creating an account (name, email, password, and optionally phone number) and when using the Service (vehicle information, fill-up logs, calculation history). We also collect basic usage data to improve the Service.</p>
+            <p>We collect information you provide when creating an account (name, email, password, and optionally phone number) and when using the Service (vehicle information, fill-up logs, calculation history). We also collect basic activity data to improve the Service, including:</p>
+            <ul className="list-disc pl-5 space-y-1 mt-2">
+              <li>Login count and last login timestamp</li>
+              <li>Number of calculations performed</li>
+              <li>Active usage days and current streak</li>
+              <li>Fill-up log count and most recent fill-up date</li>
+            </ul>
+            <p className="mt-2">This activity data is used to display personalized stats within the app (e.g., streak counter, savings dashboard) and to help us understand how the Service is being used.</p>
           </section>
 
           <section>
@@ -53,12 +60,23 @@ export default function PrivacyPage() {
 
           <section>
             <h2 className="text-lg font-black text-navy-700 mb-2">5. Push Notifications</h2>
-            <p>If you enable push notifications, we store a push subscription token associated with your account. This token is used solely to deliver notifications to your device. You may revoke this permission at any time from your device settings or within the app under Settings.</p>
+            <p>If you enable push notifications, we store a push subscription token associated with your account. This token is used solely to deliver notifications to your device. Notification types may include:</p>
+            <ul className="list-disc pl-5 space-y-1 mt-2">
+              <li>Gas price alerts and weekly digests</li>
+              <li>Fill-up reminders (if configured — weekly or bi-weekly)</li>
+              <li>Service updates and announcements</li>
+            </ul>
+            <p className="mt-2">You may revoke push notification permission at any time from your device settings or from within the app under Settings → Share tab. Disabling push notifications will also disable fill-up reminders.</p>
           </section>
 
           <section>
-            <h2 className="text-lg font-black text-navy-700 mb-2">6. Referral Program</h2>
-            <p>When you participate in the referral program, your referral code is associated with your account. We track which users signed up using your code in order to credit your account with referral rewards. No sensitive personal data is shared with referred users.</p>
+            <h2 className="text-lg font-black text-navy-700 mb-2">6. Referral Program &amp; Leaderboard</h2>
+            <p>When you participate in the referral program, your referral code is associated with your account. We track which users signed up using your code in order to credit your account with referral rewards. Your referral count and milestone badges may be displayed within the app. No sensitive personal data is shared with referred users.</p>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-black text-navy-700 mb-2">6a. Annual Wrapped</h2>
+            <p>The Annual Wrapped feature compiles your fill-up history and activity data from the current calendar year into a personal summary (total spend, gallons, fill-up count, best/worst months, top vehicle, and estimated miles). This summary is computed entirely from your own stored data and is displayed only to you. If you choose to share your Wrapped summary, the text is copied to your clipboard — no data is automatically posted or transmitted to any third party.</p>
           </section>
 
           <section>

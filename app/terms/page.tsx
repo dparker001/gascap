@@ -13,7 +13,7 @@ export default function TermsPage() {
 
       <div className="max-w-2xl mx-auto px-5 py-10 pb-20">
         <h1 className="text-3xl font-black text-navy-700 mb-2">Terms of Service</h1>
-        <p className="text-sm text-slate-400 mb-8">Last updated: March 31, 2026</p>
+        <p className="text-sm text-slate-400 mb-8">Last updated: April 3, 2026</p>
 
         <div className="space-y-8 text-slate-700 text-sm leading-relaxed">
           <section>
@@ -23,7 +23,13 @@ export default function TermsPage() {
 
           <section>
             <h2 className="text-lg font-black text-navy-700 mb-2">2. Description of Service</h2>
-            <p>GasCap™ is a fuel cost calculator and vehicle management tool that helps you estimate fuel costs, track fill-ups, and manage vehicle information. The Service includes free and paid subscription tiers.</p>
+            <p>GasCap™ is a fuel cost calculator and vehicle management tool that helps you estimate fuel costs, track fill-ups, and manage vehicle information. The Service includes free and paid subscription tiers with the following features:</p>
+            <ul className="list-disc pl-5 space-y-1 mt-2">
+              <li><strong>Free:</strong> 1 saved vehicle, fuel calculators (Target Fill &amp; By Budget), EPA vehicle database, live gas price lookup, offline use, badge achievements.</li>
+              <li><strong>Pro ($4.99/mo or $49/yr):</strong> Up to 3 saved vehicles, VIN photo scan, fill-up history &amp; MPG tracking, pump receipt scan, fuel savings dashboard, streak counter, monthly report card, gas price predictions, vehicle health alerts, fill-up reminders, Annual Wrapped, and referral rewards.</li>
+              <li><strong>Fleet ($19.99/mo or $199/yr):</strong> Unlimited vehicles, up to 10 drivers, fleet-wide fuel dashboard, per-vehicle and per-driver reporting, bulk vehicle import, and driver management.</li>
+            </ul>
+            <p className="mt-2">Feature availability may change over time. We will notify users of significant changes via email or in-app notice.</p>
           </section>
 
           <section>
@@ -33,7 +39,7 @@ export default function TermsPage() {
 
           <section>
             <h2 className="text-lg font-black text-navy-700 mb-2">4. Paid Subscriptions</h2>
-            <p>Pro and Fleet plan subscriptions are billed monthly through Stripe. You may cancel at any time; your access continues until the end of the current billing period. We reserve the right to change pricing with 30 days' notice.</p>
+            <p>Pro and Fleet plan subscriptions are billed monthly or annually through Stripe. You may cancel at any time; your access continues until the end of the current billing period. You can upgrade your plan directly from the Settings page within the app or by visiting gascap.app/upgrade. We reserve the right to change pricing with 30 days' notice.</p>
           </section>
 
           <section>
@@ -57,8 +63,13 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-black text-navy-700 mb-2">7. Push Notifications</h2>
-            <p>If you enable push notifications, GasCap™ may send you service-related alerts, gas price updates, weekly digests, and promotional messages. You may disable push notifications at any time from your device or account Settings.</p>
+            <h2 className="text-lg font-black text-navy-700 mb-2">7. Push Notifications &amp; Fill-Up Reminders</h2>
+            <p>If you enable push notifications, GasCap™ may send you service-related alerts, gas price updates, weekly digests, fill-up reminders, and promotional messages.</p>
+            <ul className="list-disc pl-5 space-y-1 mt-2">
+              <li><strong>Fill-Up Reminders:</strong> Pro and Fleet users may configure automatic push reminders to log fill-ups on a weekly (7-day) or bi-weekly (14-day) schedule. Reminders are sent only if you haven't logged a fill-up within the selected interval.</li>
+              <li>Reminders require push notifications to be enabled on your device and within the app.</li>
+              <li>You may disable fill-up reminders or all push notifications at any time from the Share tab in the Tools panel or from your device settings.</li>
+            </ul>
           </section>
 
           <section>
