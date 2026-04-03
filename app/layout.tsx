@@ -3,6 +3,7 @@ import AuthProvider     from '@/components/AuthProvider';
 import FeedbackButton   from '@/components/FeedbackButton';
 import DarkModeProvider from '@/components/DarkModeProvider';
 import PullToRefresh    from '@/components/PullToRefresh';
+import ErrorBoundary    from '@/components/ErrorBoundary';
 import './globals.css';
 
 const APP_URL = process.env.NEXTAUTH_URL ?? 'https://www.gascap.app';
@@ -56,9 +57,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Apply dark class before first paint to avoid flash */}
         <DarkModeProvider />
         <AuthProvider>
-          <PullToRefresh />
-          {children}
-          <FeedbackButton />
+          <ErrorBoundary>
+            <PullToRefresh />
+            {children}
+            <FeedbackButton />
+          </ErrorBoundary>
         </AuthProvider>
       </body>
     </html>
