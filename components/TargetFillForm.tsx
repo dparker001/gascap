@@ -338,34 +338,46 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
 
             {/* ── Scan gauge buttons ── */}
             <div className="mt-2 space-y-1.5">
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => { setGaugeScanMsg(''); gaugeCamRef.current?.click(); }}
-                  disabled={gaugeScanning}
-                  className="flex items-center gap-1.5 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-xl px-3 py-2 hover:border-amber-300 hover:text-amber-700 transition-colors disabled:opacity-50"
-                >
-                  <span>{gaugeScanning ? '🔄' : '📷'}</span>
-                  <span>{gaugeScanning ? 'Reading gauge…' : 'Scan Gauge'}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setGaugeScanMsg(''); gaugeGalleryRef.current?.click(); }}
-                  disabled={gaugeScanning}
-                  className="flex items-center gap-1.5 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-xl px-3 py-2 hover:border-amber-300 hover:text-amber-700 transition-colors disabled:opacity-50"
-                >
-                  <span>🖼️</span>
-                  <span>Upload Photo</span>
-                </button>
-              </div>
-              {gaugeScanMsg && (
-                <p className={`text-[11px] font-medium leading-snug ${gaugeScanMsg.startsWith('✓') ? 'text-green-600' : 'text-red-500'}`}>
-                  {gaugeScanMsg}
-                </p>
+              {isLoggedIn ? (
+                <>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => { setGaugeScanMsg(''); gaugeCamRef.current?.click(); }}
+                      disabled={gaugeScanning}
+                      className="flex items-center gap-1.5 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-xl px-3 py-2 hover:border-amber-300 hover:text-amber-700 transition-colors disabled:opacity-50"
+                    >
+                      <span>{gaugeScanning ? '🔄' : '📷'}</span>
+                      <span>{gaugeScanning ? 'Reading gauge…' : 'Scan Gauge'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setGaugeScanMsg(''); gaugeGalleryRef.current?.click(); }}
+                      disabled={gaugeScanning}
+                      className="flex items-center gap-1.5 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-xl px-3 py-2 hover:border-amber-300 hover:text-amber-700 transition-colors disabled:opacity-50"
+                    >
+                      <span>🖼️</span>
+                      <span>Upload Photo</span>
+                    </button>
+                  </div>
+                  {gaugeScanMsg && (
+                    <p className={`text-[11px] font-medium leading-snug ${gaugeScanMsg.startsWith('✓') ? 'text-green-600' : 'text-red-500'}`}>
+                      {gaugeScanMsg}
+                    </p>
+                  )}
+                  <p className="text-[10px] text-slate-400 leading-relaxed">
+                    📸 Point your camera at the fuel gauge on your dashboard — AI will read the needle and set your level automatically.
+                  </p>
+                </>
+              ) : (
+                <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+                  <span className="text-amber-500 text-sm">📷</span>
+                  <p className="text-[11px] text-amber-700 leading-snug">
+                    <a href="/signin" className="font-bold underline underline-offset-2">Sign in</a>
+                    {' '}to use AI gauge scan and auto-detect your fuel level from a photo.
+                  </p>
+                </div>
               )}
-              <p className="text-[10px] text-slate-400 leading-relaxed">
-                📸 Point your camera at the fuel gauge on your dashboard — AI will read the needle and set your level automatically.
-              </p>
             </div>
           </>
         ) : (
