@@ -125,41 +125,59 @@ function SchemaMarkup() {
 
 function GuestHero() {
   return (
-    <section className="px-4 pt-2 pb-5 max-w-lg mx-auto w-full text-center">
-      {/* Eyebrow badge */}
-      <div className="inline-flex items-center gap-2 bg-amber-50 border border-amber-200
-                      rounded-full px-3 py-1 mb-4">
-        <span className="text-amber-500 text-xs">⭐</span>
-        <span className="text-amber-700 text-[11px] font-bold">Free · No app store · Works offline</span>
-      </div>
+    <section className="relative w-full overflow-hidden">
+      {/* ── Background video ──────────────────────────────────────────────── */}
+      <video
+        autoPlay
+        muted
+        loop
+        playsInline
+        aria-hidden="true"
+        className="absolute inset-0 w-full h-full object-cover"
+      >
+        <source src="/videos/hero-bg.mp4" type="video/mp4" />
+      </video>
 
-      {/* Headline */}
-      <h1 className="text-3xl font-black text-slate-800 dark:text-slate-100 leading-tight mb-3">
-        Know exactly how much gas you need —{' '}
-        <span className="text-amber-500">before you pull up.</span>
-      </h1>
+      {/* ── Semi-transparent overlay so text stays readable ───────────────── */}
+      <div className="absolute inset-0 bg-slate-900/65" />
 
-      {/* Subheadline */}
-      <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-5 max-w-sm mx-auto">
-        GasCap calculates your exact fill-up cost using live local gas prices.
-        No more guessing, no more overpaying — especially on rental car returns.
-      </p>
+      {/* ── Hero content ─────────────────────────────────────────────────── */}
+      <div className="relative z-10 px-4 pt-10 pb-10 max-w-lg mx-auto w-full text-center">
+        {/* Eyebrow badge */}
+        <div className="inline-flex items-center gap-2 bg-amber-400/20 border border-amber-400/40
+                        rounded-full px-3 py-1 mb-4 backdrop-blur-sm">
+          <span className="text-amber-400 text-xs">⭐</span>
+          <span className="text-amber-300 text-[11px] font-bold">Free · No app store · Works offline</span>
+        </div>
 
-      {/* Trust pills */}
-      <div className="flex items-center justify-center gap-3 flex-wrap mb-2">
-        {[
-          { icon: '⛽', label: 'Live local prices' },
-          { icon: '🚗', label: 'Rental car mode' },
-          { icon: '📊', label: 'MPG tracking' },
-          { icon: '🤖', label: 'AI advisor' },
-        ].map(({ icon, label }) => (
-          <span key={label}
-            className="inline-flex items-center gap-1.5 bg-white dark:bg-slate-800
-                       border border-slate-200 dark:border-slate-700
-                       rounded-full px-3 py-1 text-[11px] font-semibold text-slate-600 dark:text-slate-300">
-            <span>{icon}</span>{label}
-          </span>
-        ))}
+        {/* Headline */}
+        <h1 className="text-3xl font-black text-white leading-tight mb-3 drop-shadow-lg">
+          Know exactly how much gas you need —{' '}
+          <span className="text-amber-400">before you pull up.</span>
+        </h1>
+
+        {/* Subheadline */}
+        <p className="text-sm text-slate-300 leading-relaxed mb-5 max-w-sm mx-auto drop-shadow">
+          GasCap calculates your exact fill-up cost using live local gas prices.
+          No more guessing, no more overpaying — especially on rental car returns.
+        </p>
+
+        {/* Trust pills */}
+        <div className="flex items-center justify-center gap-3 flex-wrap mb-2">
+          {[
+            { icon: '⛽', label: 'Live local prices' },
+            { icon: '🚗', label: 'Rental car mode' },
+            { icon: '📊', label: 'MPG tracking' },
+            { icon: '🤖', label: 'AI advisor' },
+          ].map(({ icon, label }) => (
+            <span key={label}
+              className="inline-flex items-center gap-1.5 bg-white/10 backdrop-blur-sm
+                         border border-white/20
+                         rounded-full px-3 py-1 text-[11px] font-semibold text-white/90">
+              <span>{icon}</span>{label}
+            </span>
+          ))}
+        </div>
       </div>
     </section>
   );
