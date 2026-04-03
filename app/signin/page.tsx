@@ -62,9 +62,9 @@ function SignInForm() {
             <div className="mb-5 bg-green-50 border border-green-200 rounded-2xl px-4 py-3 flex items-start gap-3">
               <span className="text-lg flex-shrink-0">✅</span>
               <div>
-                <p className="text-sm font-black text-green-800">Email verified!</p>
+                <p className="text-sm font-black text-green-800">Email verified — you&apos;re all set!</p>
                 <p className="text-xs text-green-700 leading-relaxed mt-0.5">
-                  Your account is active. Sign in below to get started.
+                  Your account is active. Sign in below to go to the calculator.
                 </p>
               </div>
             </div>

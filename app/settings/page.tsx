@@ -257,7 +257,9 @@ export default function SettingsPage() {
               placeholder="+1 (555) 000-0000"
               maxLength={20}
             />
-            <p className="text-[11px] text-slate-400 mt-1">Used for SMS alerts when available.</p>
+            <p className="text-[11px] text-slate-400 mt-1">
+              📱 Add your number to receive gas price alerts by text. Standard messaging rates may apply.
+            </p>
           </div>
 
           <button
