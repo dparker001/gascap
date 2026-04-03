@@ -1,5 +1,6 @@
 // GasCap™ hero header
 'use client';
+import Link        from 'next/link';
 import AuthButton  from './AuthButton';
 import PlanBadge   from './PlanBadge';
 import TipsTicker  from './TipsTicker';
@@ -83,7 +84,18 @@ export default function Header() {
             </div>
           </div>
 
-          <AuthButton />
+          <div className="flex items-center gap-2">
+            <Link
+              href="/wrapped"
+              className="flex items-center gap-1 bg-white/10 hover:bg-white/20
+                         transition-colors rounded-xl px-2.5 py-1.5"
+              title="Your Annual Wrapped"
+            >
+              <span className="text-sm" aria-hidden="true">🎁</span>
+              <span className="text-[10px] font-black text-white/80 hidden sm:inline">Wrapped</span>
+            </Link>
+            <AuthButton />
+          </div>
         </div>
 
         {/* ── Divider ── */}

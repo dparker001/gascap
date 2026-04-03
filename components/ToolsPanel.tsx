@@ -21,6 +21,8 @@ import SavingsDashboard       from './SavingsDashboard';
 import WorstFillup            from './WorstFillup';
 import GasPricePrediction     from './GasPricePrediction';
 import ReferralLeaderboard    from './ReferralLeaderboard';
+import VehicleHealthAlert     from './VehicleHealthAlert';
+import FillupReminderToggle   from './FillupReminderToggle';
 
 // ── Tab definitions ──────────────────────────────────────────────────────────
 
@@ -219,6 +221,7 @@ export default function ToolsPanel() {
       <div role="tabpanel" id="tabpanel-stats" hidden={effectiveTab !== 'stats'}>
         {effectiveTab === 'stats' && session && (
           <div className="space-y-3">
+            <VehicleHealthAlert />
             <MonthlyReportCard />
             <SavingsDashboard />
             <WorstFillup />
@@ -242,6 +245,7 @@ export default function ToolsPanel() {
             <ReferralLeaderboard />
             <ReferralCard />
             <PushNotificationToggle />
+            <FillupReminderToggle />
           </div>
         )}
         {effectiveTab === 'share' && !session && <SignInPrompt feature="referral program" />}
