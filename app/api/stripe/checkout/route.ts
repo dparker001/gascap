@@ -59,7 +59,7 @@ export async function POST(req: Request) {
     line_items:              [{ price: priceId, quantity: 1 }],
     customer_email:          user.stripeCustomerId ? undefined : user.email,
     customer:                user.stripeCustomerId ?? undefined,
-    success_url:             `${origin}/upgrade/success?session_id={CHECKOUT_SESSION_ID}`,
+    success_url:             `${origin}/upgrade/success?session_id={CHECKOUT_SESSION_ID}&tier=${tier}`,
     cancel_url:              `${origin}/upgrade`,
     metadata: {
       userId,

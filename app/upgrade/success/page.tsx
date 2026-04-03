@@ -1,12 +1,13 @@
 'use client';
 
 import { Suspense, useEffect, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
-import Link from 'next/link';
+import { useSearchParams, useRouter } from 'next/navigation';
 
 function SuccessContent() {
   const params    = useSearchParams();
+  const router    = useRouter();
   const sessionId = params.get('session_id');
+  const tier      = params.get('tier') === 'fleet' ? 'fleet' : 'pro';
   const [ready, setReady] = useState(false);
 
   // Small delay so webhook has time to fire before we reload session
@@ -14,6 +15,13 @@ function SuccessContent() {
     const t = setTimeout(() => setReady(true), 2000);
     return () => clearTimeout(t);
   }, []);
+
+  const isFleet   = tier === 'fleet';
+  const planLabel = isFleet ? 'GasCap™ Fleet' : 'GasCap™ Pro';
+  const headline  = isFleet ? "You're Fleet! 🎉" : "You're Pro! 🎉";
+  const perks     = isFleet
+    ? 'Unlimited vehicles, multi-driver access, fleet cost dashboard, and all Fleet features are now unlocked.'
+    : 'Manual vehicle entry, up to 3 saved vehicles, MPG tracking, AI advisor, and all Pro features are now unlocked.';
 
   return (
     <div className="bg-white rounded-3xl shadow-card p-8 max-w-sm w-full text-center space-y-4">
@@ -27,12 +35,11 @@ function SuccessContent() {
         </svg>
       </div>
 
-      <h1 className="text-2xl font-black text-navy-700">You&apos;re Pro! 🎉</h1>
+      <h1 className="text-2xl font-black text-navy-700">{headline}</h1>
 
       <p className="text-slate-500 text-sm leading-relaxed">
-        Welcome to <span className="font-bold text-amber-600">GasCap™ Pro</span>.
-        Your account has been upgraded — manual vehicle entry, up to 5 saved vehicles,
-        and all Pro features are now unlocked.
+        Welcome to <span className="font-bold text-amber-600">{planLabel}</span>.
+        Your account has been upgraded — {perks}
       </p>
 
       {sessionId && (
@@ -42,13 +49,13 @@ function SuccessContent() {
       )}
 
       {ready ? (
-        <Link
-          href="/"
+        <button
+          onClick={() => router.push('/')}
           className="block w-full py-3.5 rounded-2xl bg-amber-500 text-white font-black
                      text-base hover:bg-amber-400 transition-colors text-center"
         >
           Go to Calculator →
-        </Link>
+        </button>
       ) : (
         <div className="flex items-center justify-center gap-2 text-sm text-slate-400">
           <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none"
