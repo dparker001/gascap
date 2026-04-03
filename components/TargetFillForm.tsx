@@ -129,7 +129,7 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
     try {
       const fd = new FormData();
       fd.append('image', file);
-      const res  = await fetch('/api/gauge/scan', { method: 'POST', body: fd });
+      const res  = await fetch('/api/gauge/scan', { method: 'POST', body: fd, credentials: 'include' });
       const data = await res.json() as { percent?: number | null; error?: string };
       if (!res.ok) { setGaugeScanMsg(data.error ?? 'Scan failed — try again.'); return; }
       if (data.percent === null || data.percent === undefined) {

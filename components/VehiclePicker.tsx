@@ -529,7 +529,7 @@ function VinTab({ onSave, onCancel, saving, saveError }: Omit<VehiclePickerProps
     try {
       const fd = new FormData();
       fd.append('image', file);
-      const res  = await fetch('/api/vin/scan', { method: 'POST', body: fd });
+      const res  = await fetch('/api/vin/scan', { method: 'POST', body: fd, credentials: 'include' });
       const data = await res.json() as { vin?: string | null; error?: string };
       if (!res.ok || data.error) { setScanError(data.error ?? 'Could not read VIN from image.'); return; }
       if (!data.vin) { setScanError('No VIN found — zoom in so the "VIN" label is clearly visible, or try the dashboard plate instead.'); return; }
