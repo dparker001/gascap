@@ -11,6 +11,7 @@ import EmailVerificationBanner from '@/components/EmailVerificationBanner';
 import ReviewsMarquee          from '@/components/ReviewsMarquee';
 import OnboardingModal         from '@/components/OnboardingModal';
 import GasPriceAlertBanner     from '@/components/GasPriceAlertBanner';
+import StreakCounter           from '@/components/StreakCounter';
 
 // ── JSON-LD Schema Markup ────────────────────────────────────────────────────
 
@@ -539,6 +540,9 @@ export default function Home() {
 
       {/* ── Guest hero — SEO headline above the calculator ────────────── */}
       {isGuest && <GuestHero />}
+
+      {/* Streak counter — logged-in users only */}
+      {session && <StreakCounter />}
 
       {/* Calculator */}
       <section className="flex-1 px-4 pt-5 pb-4 max-w-lg mx-auto w-full">

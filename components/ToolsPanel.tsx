@@ -12,14 +12,16 @@ import NationalGasPriceChart  from './NationalGasPriceChart';
 import VehicleSpendingBreakdown from './VehicleSpendingBreakdown';
 import VehicleComparison       from './VehicleComparison';
 import MaintenanceReminders    from './MaintenanceReminders';
-import ReferralCard       from './ReferralCard';
-import ReviewWidget       from './ReviewWidget';
+import ReferralCard           from './ReferralCard';
+import ReviewWidget           from './ReviewWidget';
 import PushNotificationToggle from './PushNotificationToggle';
-import StationComparison  from './StationComparison';
+import StationComparison      from './StationComparison';
+import MonthlyReportCard      from './MonthlyReportCard';
+import SavingsDashboard       from './SavingsDashboard';
 
 // ── Tab definitions ──────────────────────────────────────────────────────────
 
-type TabId = 'ai' | 'trip' | 'compare' | 'log' | 'charts' | 'service' | 'share' | 'review';
+type TabId = 'ai' | 'trip' | 'compare' | 'log' | 'charts' | 'stats' | 'service' | 'share' | 'review';
 
 interface Tab {
   id:            TabId;
@@ -35,6 +37,7 @@ const TABS: Tab[] = [
   { id: 'compare', emoji: '🏪', label: 'Compare', authRequired: false, planRequired: undefined },
   { id: 'log',     emoji: '⛽', label: 'Log',     authRequired: true,  planRequired: undefined },
   { id: 'charts',  emoji: '📊', label: 'Charts',  authRequired: true,  planRequired: 'pro'  },
+  { id: 'stats',   emoji: '📈', label: 'Stats',   authRequired: true,  planRequired: undefined },
   { id: 'service', emoji: '🔧', label: 'Service', authRequired: true,  planRequired: 'pro'  },
   { id: 'share',   emoji: '🔗', label: 'Share',   authRequired: true,  planRequired: undefined },
   { id: 'review',  emoji: '⭐', label: 'Review',  authRequired: true,  planRequired: undefined },
@@ -207,6 +210,17 @@ export default function ToolsPanel() {
         )}
         {effectiveTab === 'charts' && session && !isPro && <UpgradePrompt feature="Fuel Charts & Analytics" />}
         {effectiveTab === 'charts' && !session && <SignInPrompt feature="charts" />}
+      </div>
+
+      {/* Stats */}
+      <div role="tabpanel" id="tabpanel-stats" hidden={effectiveTab !== 'stats'}>
+        {effectiveTab === 'stats' && session && (
+          <div className="space-y-3">
+            <MonthlyReportCard />
+            <SavingsDashboard />
+          </div>
+        )}
+        {effectiveTab === 'stats' && !session && <SignInPrompt feature="stats" />}
       </div>
 
       {/* Maintenance / Service */}
