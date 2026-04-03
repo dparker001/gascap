@@ -115,6 +115,23 @@ export default function SettingsPage() {
     }
   }
 
+  async function handleUpgrade(tier: 'pro' | 'fleet') {
+    setPortalLoading(true);
+    try {
+      const res  = await fetch('/api/stripe/checkout', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ tier, billing: 'monthly' }),
+        credentials: 'include',
+      });
+      const data = await res.json() as { url?: string; error?: string };
+      if (data.url) window.location.href = data.url;
+      else alert(data.error ?? 'Could not open checkout.');
+    } finally {
+      setPortalLoading(false);
+    }
+  }
+
   async function copyToClipboard(text: string, setter: (v: boolean) => void) {
     try {
       await navigator.clipboard.writeText(text);
@@ -264,25 +281,58 @@ export default function SettingsPage() {
           {plan === 'free' && (
             <>
               <p className="text-sm text-slate-500">
-                You're on the free plan — 1 vehicle slot, basic calculator.
+                You&apos;re on the free plan — 1 vehicle slot, basic calculator.
               </p>
-              <Link
-                href="/upgrade"
+              <button
+                onClick={() => handleUpgrade('pro')}
+                disabled={portalLoading}
                 className="flex items-center justify-between w-full py-3 px-4 rounded-2xl
-                           bg-amber-500 hover:bg-amber-400 text-white font-bold text-sm transition-colors"
+                           bg-amber-500 hover:bg-amber-400 text-white font-bold text-sm transition-colors disabled:opacity-50"
               >
-                <span>Upgrade to Pro</span>
+                <span>⭐ Upgrade to Pro</span>
                 <span>$4.99/mo →</span>
-              </Link>
+              </button>
+              <button
+                onClick={() => handleUpgrade('fleet')}
+                disabled={portalLoading}
+                className="flex items-center justify-between w-full py-3 px-4 rounded-2xl
+                           bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm transition-colors disabled:opacity-50"
+              >
+                <span>🚛 Upgrade to Fleet</span>
+                <span>$19.99/mo →</span>
+              </button>
             </>
           )}
 
-          {(plan === 'pro' || plan === 'fleet') && (
+          {plan === 'pro' && (
             <>
               <p className="text-sm text-slate-500">
-                {plan === 'pro'
-                  ? 'GasCap™ Pro — up to 3 vehicles, manual entry, spec lookup & more.'
-                  : 'GasCap™ Fleet — unlimited vehicles, multi-driver, fleet reporting & more.'}
+                GasCap™ Pro — up to 3 vehicles, manual entry, spec lookup &amp; more.
+              </p>
+              <button
+                onClick={() => handleUpgrade('fleet')}
+                disabled={portalLoading}
+                className="flex items-center justify-between w-full py-3 px-4 rounded-2xl
+                           bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm transition-colors disabled:opacity-50"
+              >
+                <span>🚛 Upgrade to Fleet</span>
+                <span>$19.99/mo →</span>
+              </button>
+              <button
+                onClick={openPortal}
+                disabled={portalLoading}
+                className="w-full py-3 rounded-2xl border-2 border-slate-200 text-sm font-bold
+                           text-slate-600 hover:border-slate-300 hover:bg-slate-50 transition-colors disabled:opacity-50"
+              >
+                {portalLoading ? 'Opening…' : 'Manage Billing & Subscription →'}
+              </button>
+            </>
+          )}
+
+          {plan === 'fleet' && (
+            <>
+              <p className="text-sm text-slate-500">
+                GasCap™ Fleet — unlimited vehicles, multi-driver, fleet reporting &amp; more.
               </p>
               <button
                 onClick={openPortal}
