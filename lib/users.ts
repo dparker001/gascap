@@ -54,6 +54,9 @@ export interface StoredUser {
   // Fill-up reminders
   fillupReminderDays?:        number;  // 0=off, 7=weekly, 14=biweekly
   lastFillupReminderSentAt?:  string;  // ISO — debounce so we don't spam
+  // Streak rewards
+  streakMilestonesHit?: number[];    // list of milestone day-counts already awarded (e.g. [30, 90])
+  streakCredits?: StreakCredit[];     // free Pro months earned from streak milestones
   // Internal / testing
   isTestAccount?: boolean;  // bypasses all plan limits — for internal testing only
 }
@@ -64,6 +67,22 @@ export interface ReferralCredit {
   expiresAt: string;   // ISO date — 6 months after earnedAt
   redeemedAt?: string; // ISO date if redeemed
 }
+
+export interface StreakCredit {
+  id:          string;   // UUID
+  milestone:   number;   // streak day milestone (30, 90, 180, 365)
+  earnedAt:    string;   // ISO date earned
+  expiresAt:   string;   // ISO date — 12 months after earnedAt
+  redeemedAt?: string;   // ISO date if redeemed
+}
+
+// Streak milestones that award free Pro month credits
+export const STREAK_MILESTONES: { days: number; months: number }[] = [
+  { days: 30,  months: 1 },
+  { days: 90,  months: 1 },
+  { days: 180, months: 1 },
+  { days: 365, months: 1 },
+];
 
 export type ActivityEvent = 'calc' | 'budget_calc' | 'location_lookup' | 'visit';
 
@@ -218,10 +237,36 @@ function calcStreak(activeDays: string[]): number {
   return streak;
 }
 
+/** Award streak milestone credits for any newly-crossed milestones. Mutates user in-place. */
+function awardStreakMilestones(user: StoredUser, streak: number): number[] {
+  const hit      = user.streakMilestonesHit ?? [];
+  const newlyHit = STREAK_MILESTONES
+    .filter((m) => streak >= m.days && !hit.includes(m.days))
+    .map((m) => m.days);
+
+  if (newlyHit.length === 0) return [];
+
+  const now    = new Date();
+  const expiry = new Date(now);
+  expiry.setFullYear(expiry.getFullYear() + 1); // credits expire in 12 months
+
+  const newCredits: StreakCredit[] = newlyHit.map((days) => ({
+    id:        crypto.randomUUID(),
+    milestone: days,
+    earnedAt:  now.toISOString(),
+    expiresAt: expiry.toISOString(),
+  }));
+
+  user.streakMilestonesHit = [...hit, ...newlyHit];
+  user.streakCredits       = [...(user.streakCredits ?? []), ...newCredits];
+  return newlyHit;
+}
+
 export interface ActivityResult {
-  newBadges: string[];
-  badges:    string[];
-  streak:    number;
+  newBadges:       string[];
+  badges:          string[];
+  streak:          number;
+  newMilestonesHit: number[];
 }
 
 export function recordActivity(userId: string, event: ActivityEvent): ActivityResult {
@@ -260,10 +305,13 @@ export function recordActivity(userId: string, event: ActivityEvent): ActivityRe
   const newBadges = findNewBadges(stats, alreadyEarned);
   user.badges = [...alreadyEarned, ...newBadges];
 
+  // Check and award streak milestone credits
+  const newMilestonesHit = awardStreakMilestones(user, user.streak);
+
   users[idx] = user;
   write(users);
 
-  return { newBadges, badges: user.badges, streak: user.streak };
+  return { newBadges, badges: user.badges, streak: user.streak, newMilestonesHit };
 }
 
 // ── Referral system ────────────────────────────────────────────────────────

@@ -5,7 +5,7 @@
 import { NextResponse }    from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions }     from '@/lib/auth';
-import { findById, recordActivity, type ActivityEvent } from '@/lib/users';
+import { findById, recordActivity, STREAK_MILESTONES, type ActivityEvent } from '@/lib/users';
 import { BADGES, evaluateEarned } from '@/lib/badges';
 import { getVehiclesForUser }     from '@/lib/savedVehicles';
 
@@ -20,6 +20,12 @@ export async function GET() {
 
   const vehicleCount = getVehiclesForUser(userId).length;
   const earned = user.badges ?? [];
+  const now    = new Date();
+
+  // Active (non-expired, non-redeemed) streak credits
+  const activeStreakCredits = (user.streakCredits ?? []).filter(
+    (c) => !c.redeemedAt && new Date(c.expiresAt) > now,
+  );
 
   return NextResponse.json({
     badges:  earned,
@@ -33,6 +39,10 @@ export async function GET() {
     },
     // Full catalogue with earned flag, so the client can render all badges
     catalogue: BADGES.map((b) => ({ ...b, earned: earned.includes(b.id) })),
+    // Streak reward data
+    streakMilestonesHit: user.streakMilestonesHit ?? [],
+    streakCredits:       activeStreakCredits,
+    streakMilestones:    STREAK_MILESTONES,
   });
 }
 
@@ -58,8 +68,9 @@ export async function POST(req: Request) {
   const newBadgeDefs = result.newBadges.map((id) => BADGES.find((b) => b.id === id)).filter(Boolean);
 
   return NextResponse.json({
-    newBadges: newBadgeDefs,
-    badges:    result.badges,
-    streak:    result.streak,
+    newBadges:        newBadgeDefs,
+    badges:           result.badges,
+    streak:           result.streak,
+    newMilestonesHit: result.newMilestonesHit,
   });
 }

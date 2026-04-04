@@ -23,6 +23,7 @@ import GasPricePrediction     from './GasPricePrediction';
 import ReferralLeaderboard    from './ReferralLeaderboard';
 import VehicleHealthAlert     from './VehicleHealthAlert';
 import FillupReminderToggle   from './FillupReminderToggle';
+import StreakRewards          from './StreakRewards';
 
 // ── Tab definitions ──────────────────────────────────────────────────────────
 
@@ -242,6 +243,7 @@ export default function ToolsPanel() {
       <div role="tabpanel" id="tabpanel-share" hidden={effectiveTab !== 'share'}>
         {effectiveTab === 'share' && session && (
           <div className="space-y-3">
+            <StreakRewards />
             <ReferralLeaderboard />
             <ReferralCard />
             <PushNotificationToggle />
