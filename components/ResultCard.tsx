@@ -144,13 +144,13 @@ export function TargetResultCard({ result, vehicleName, vehicleId, vehicleOdomet
       {/* ── Hero stat row ── */}
       <div className="grid grid-cols-2 gap-3">
         <HeroStat
-          label="Gallons to add"
+          label="Est. gallons to add"
           value={gallonsNeeded.toFixed(2)}
           unit="gal"
           accent={noFuelNeeded ? 'green' : 'amber'}
         />
         <HeroStat
-          label="Estimated cost"
+          label="Est. cost"
           value={`$${estimatedCost.toFixed(2)}`}
           accent={noFuelNeeded ? 'green' : 'navy'}
         />
@@ -276,6 +276,11 @@ export function TargetResultCard({ result, vehicleName, vehicleId, vehicleOdomet
       {/* logKey drives external refresh if a parent listens; suppress unused warning */}
       {logKey > 0 && null}
 
+      {/* ── Disclaimer ── */}
+      <p className="text-[10px] text-slate-400 text-center leading-relaxed">
+        * Estimates based on your saved tank size and current fuel level. Actual pump totals may vary slightly.
+      </p>
+
       {/* ── Share this calculation ── */}
       <ShareButton
         text={
@@ -328,8 +333,8 @@ export function BudgetResultCard({ result, pricePerGallon, vehicleName, vehicleI
 
       {/* ── Hero stat row ── */}
       <div className="grid grid-cols-2 gap-3">
-        <HeroStat label="Gallons you can buy" value={gallonsAffordable.toFixed(2)} unit="gal" accent="amber" />
-        <HeroStat label="Actual pump cost" value={`$${actualCost.toFixed(2)}`} accent="navy" />
+        <HeroStat label="Est. gallons to buy" value={gallonsAffordable.toFixed(2)} unit="gal" accent="amber" />
+        <HeroStat label="Est. pump cost" value={`$${actualCost.toFixed(2)}`} accent="navy" />
       </div>
 
       {/* ── Summary card ── */}
@@ -389,6 +394,11 @@ export function BudgetResultCard({ result, pricePerGallon, vehicleName, vehicleI
       )}
       {/* logKey drives external refresh if a parent listens; suppress unused warning */}
       {logKey > 0 && null}
+
+      {/* ── Disclaimer ── */}
+      <p className="text-[10px] text-slate-400 text-center leading-relaxed">
+        * Estimates based on your saved tank size and current fuel level. Actual pump totals may vary slightly.
+      </p>
 
       {/* ── Share this calculation ── */}
       <ShareButton
