@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { useSession } from 'next-auth/react';
 import AiAdvisor             from './AiAdvisor';
 import TripCostEstimator     from './TripCostEstimator';
@@ -56,9 +56,6 @@ const TABS: Tab[] = [
 export default function ToolsPanel() {
   const { data: session } = useSession();
   const [activeTab, setActiveTab] = useState<TabId>('ai');
-  const scrollRef   = useRef<HTMLDivElement>(null);
-  const [fadeLeft,  setFadeLeft]  = useState(false);
-  const [fadeRight, setFadeRight] = useState(false);
 
   const userPlan = (session?.user as { plan?: string })?.plan ?? 'free';
   const isPro    = userPlan === 'pro' || userPlan === 'fleet';
@@ -68,24 +65,6 @@ export default function ToolsPanel() {
     TABS.find((t) => t.id === activeTab)?.authRequired && !session
       ? 'ai'
       : activeTab;
-
-  // Check scroll position to show/hide fade indicators
-  const checkScroll = useCallback(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    setFadeLeft(el.scrollLeft > 8);
-    setFadeRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 8);
-  }, []);
-
-  useEffect(() => {
-    checkScroll();
-    const el = scrollRef.current;
-    if (!el) return;
-    el.addEventListener('scroll', checkScroll, { passive: true });
-    const ro = new ResizeObserver(checkScroll);
-    ro.observe(el);
-    return () => { el.removeEventListener('scroll', checkScroll); ro.disconnect(); };
-  }, [checkScroll]);
 
   return (
     <div className="mt-4">
@@ -98,39 +77,15 @@ export default function ToolsPanel() {
         <div className="flex-1 h-px bg-slate-200" />
       </div>
 
-      {/* ── Tab bar — horizontally scrollable on small screens ──────────── */}
-      <div className="relative mb-4">
-        {/* Left fade — shows when scrolled right */}
-        {fadeLeft && (
-          <div
-            className="pointer-events-none absolute left-0 top-0 bottom-0.5 w-8 z-10 rounded-l-2xl"
-            style={{ background: 'linear-gradient(to right, #f1f5f9 0%, transparent 100%)' }}
-            aria-hidden="true"
-          />
-        )}
-        {/* Right fade + chevron — shows when more tabs are off-screen */}
-        {fadeRight && (
-          <div
-            className="pointer-events-none absolute right-0 top-0 bottom-0.5 w-10 z-10 rounded-r-2xl flex items-center justify-end pr-1.5"
-            style={{ background: 'linear-gradient(to left, #f1f5f9 60%, transparent 100%)' }}
-            aria-hidden="true"
-          >
-            <svg className="w-3.5 h-3.5 text-slate-400" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-            </svg>
-          </div>
-        )}
-
-      <div ref={scrollRef} className="overflow-x-auto -mx-0.5 px-0.5 pb-0.5 [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: 'none' }}>
+      {/* ── Tab grid — 2 rows × 5 columns, all tabs always visible ─────── */}
+      <div className="mb-4">
         <div
-          className="flex gap-1.5 bg-slate-100 rounded-2xl p-1.5"
-          style={{ minWidth: 'max-content' }}
+          className="grid grid-cols-5 gap-1 bg-slate-100 rounded-2xl p-1.5"
           role="tablist"
         >
           {TABS.map((tab) => {
-            const isActive         = effectiveTab === tab.id;
-            const requiresUpgrade  = !!tab.planRequired && !isPro && !!session;
-            const isDisabled       = tab.authRequired && !session;
+            const isActive        = effectiveTab === tab.id;
+            const isDisabled      = tab.authRequired && !session;
 
             return (
               <button
@@ -141,25 +96,23 @@ export default function ToolsPanel() {
                 disabled={isDisabled}
                 onClick={() => setActiveTab(tab.id)}
                 className={[
-                  'flex flex-col items-center gap-0.5 py-2.5 px-4 rounded-xl',
-                  'text-[11px] font-bold transition-all duration-200 select-none',
+                  'flex flex-col items-center gap-0.5 py-2 px-0.5 rounded-xl w-full',
+                  'text-[9px] font-bold transition-all duration-200 select-none',
                   'focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400',
                   isActive
                     ? 'bg-white shadow-sm text-amber-600'
                     : isDisabled
                       ? 'text-slate-300 cursor-not-allowed'
-                      : requiresUpgrade
-                        ? 'text-slate-500 hover:text-slate-700 hover:bg-white/60'
-                        : 'text-slate-500 hover:text-slate-700 hover:bg-white/60',
+                      : 'text-slate-500 hover:text-slate-700 hover:bg-white/60',
                 ].join(' ')}
                 title={isDisabled ? 'Sign in to access this feature' : undefined}
               >
-                <span className={`text-base leading-none transition-transform duration-200 ${isActive ? 'scale-110' : ''}`}>
+                <span className={`text-[15px] leading-none transition-transform duration-200 ${isActive ? 'scale-110' : ''}`}>
                   {tab.emoji}
                 </span>
                 <span className="leading-none mt-0.5 whitespace-nowrap">{tab.label}</span>
                 {tab.planRequired && !isPro && (
-                  <span className="text-[8px] bg-amber-400 text-white px-1 rounded-full leading-none">PRO</span>
+                  <span className="text-[7px] bg-amber-400 text-white px-1 rounded-full leading-none mt-0.5">PRO</span>
                 )}
                 {isActive && (
                   <span className="w-1 h-1 rounded-full bg-amber-500 mt-0.5" aria-hidden="true" />
@@ -168,8 +121,7 @@ export default function ToolsPanel() {
             );
           })}
         </div>
-      </div>{/* end overflow-x-auto */}
-      </div>{/* end relative wrapper */}
+      </div>
 
       {/* ── Tab panels ──────────────────────────────────────────────────── */}
 
