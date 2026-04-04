@@ -34,33 +34,6 @@ interface SavedVehiclesProps {
   calcKey?:          number;
 }
 
-// ── Manage Billing button (Pro users) ────────────────────────────────────
-
-function ManageBillingButton() {
-  const [loading, setLoading] = useState(false);
-
-  async function openPortal() {
-    setLoading(true);
-    try {
-      const res  = await fetch('/api/stripe/portal', { method: 'POST' });
-      const data = await res.json() as { url?: string; error?: string };
-      if (data.url) window.location.href = data.url;
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  return (
-    <button
-      onClick={openPortal}
-      disabled={loading}
-      className="mt-2 text-[11px] text-slate-400 hover:text-slate-600 transition-colors disabled:opacity-50"
-    >
-      {loading ? 'Opening portal…' : 'Manage billing →'}
-    </button>
-  );
-}
-
 // ── Icons ────────────────────────────────────────────────────────────────
 
 function CarIcon({ className }: { className?: string }) {
@@ -601,15 +574,20 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
             </a>
           )}
 
-          {/* Manage billing for Pro / Fleet users */}
-          {(plan === 'pro' || plan === 'fleet') && (
-            <ManageBillingButton />
-          )}
-
           {/* Slot count hint for free users not at limit */}
           {plan === 'free' && !atLimit && vehicles.length === 0 && (
             <p className="text-[11px] text-slate-400 text-center mt-1">
               Free plan · 1 vehicle slot
+            </p>
+          )}
+
+          {/* Billing shortcut for paid users */}
+          {(plan === 'pro' || plan === 'fleet') && (
+            <p className="text-[11px] text-slate-400 text-center mt-1">
+              Manage billing &amp; subscription in{' '}
+              <a href="/settings" className="font-semibold text-amber-600 hover:underline">
+                Settings
+              </a>
             </p>
           )}
         </>
