@@ -72,6 +72,12 @@ export default function AdminPage() {
   const [loading,   setLoading]   = useState(false);
   const [search,    setSearch]    = useState('');
   const [msg,       setMsg]       = useState('');
+  // ── Filters & sort ────────────────────────────────────────────────────
+  const [filterPlan,     setFilterPlan]     = useState<'all'|'free'|'pro'|'fleet'>('all');
+  const [filterStatus,   setFilterStatus]   = useState<'all'|'verified'|'unverified'>('all');
+  const [filterActivity, setFilterActivity] = useState<'all'|'today'|'has-fillups'|'no-logins'|'has-streak'>('all');
+  const [filterStripe,   setFilterStripe]   = useState<'all'|'stripe'|'no-stripe'>('all');
+  const [sortBy,         setSortBy]         = useState<'joined-desc'|'joined-asc'|'logins'|'calcs'|'fillups'|'streak'>('joined-desc');
   const [savedPw,   setSavedPw]   = useState('');
   const [pushMsg,        setPushMsg]        = useState('');
   const [pushLoading,    setPushLoading]    = useState<'all' | 'user' | 'broadcast' | null>(null);
@@ -263,12 +269,35 @@ export default function AdminPage() {
     finally { setPushLoading(null); }
   }
 
-  const filtered = users.filter((u) =>
-    u.name.toLowerCase().includes(search.toLowerCase()) ||
-    u.email.toLowerCase().includes(search.toLowerCase()),
-  );
-
   const today = new Date().toLocaleDateString();
+
+  const filtered = users
+    .filter((u) => {
+      const q = search.toLowerCase();
+      if (q && !u.name.toLowerCase().includes(q) && !u.email.toLowerCase().includes(q)) return false;
+      if (filterPlan !== 'all' && u.plan !== filterPlan) return false;
+      if (filterStatus === 'verified'   && !u.emailVerified) return false;
+      if (filterStatus === 'unverified' && u.emailVerified)  return false;
+      if (filterStripe === 'stripe'    && !u.stripeCustomerId) return false;
+      if (filterStripe === 'no-stripe' && u.stripeCustomerId)  return false;
+      if (filterActivity === 'today') {
+        if (!u.lastLoginAt || new Date(u.lastLoginAt).toLocaleDateString() !== today) return false;
+      }
+      if (filterActivity === 'has-fillups' && u.fillupCount === 0) return false;
+      if (filterActivity === 'no-logins'   && u.loginCount  > 0)   return false;
+      if (filterActivity === 'has-streak'  && u.streak      === 0)  return false;
+      return true;
+    })
+    .sort((a, b) => {
+      switch (sortBy) {
+        case 'joined-asc':  return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        case 'logins':      return b.loginCount  - a.loginCount;
+        case 'calcs':       return b.calcCount   - a.calcCount;
+        case 'fillups':     return b.fillupCount - a.fillupCount;
+        case 'streak':      return b.streak      - a.streak;
+        default:            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }
+    });
   const stats = {
     total:      users.length,
     free:       users.filter((u) => u.plan === 'free').length,
@@ -564,14 +593,133 @@ export default function AdminPage() {
           )}
         </div>
 
-        {/* Search */}
-        <input
-          type="text"
-          placeholder="Search by name or email…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white"
-        />
+        {/* Search + Filters */}
+        <div className="bg-white rounded-2xl shadow-sm p-4 space-y-3">
+
+          {/* Search */}
+          <input
+            type="text"
+            placeholder="Search by name or email…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+          />
+
+          {/* Plan filter */}
+          <div className="space-y-1">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Plan</p>
+            <div className="flex flex-wrap gap-1.5">
+              {(['all','free','pro','fleet'] as const).map((p) => (
+                <button key={p} onClick={() => setFilterPlan(p)}
+                  className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${
+                    filterPlan === p
+                      ? 'bg-navy-700 text-white'
+                      : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                  }`}>
+                  {p === 'all' ? `All (${users.length})` : p === 'free' ? `Free (${stats.free})` : p === 'pro' ? `Pro (${stats.pro})` : `Fleet (${stats.fleet})`}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Status filter */}
+          <div className="space-y-1">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Email Status</p>
+            <div className="flex flex-wrap gap-1.5">
+              {([
+                { val: 'all',        label: 'All' },
+                { val: 'verified',   label: '✓ Verified' },
+                { val: 'unverified', label: '⚠ Unverified' },
+              ] as const).map(({ val, label }) => (
+                <button key={val} onClick={() => setFilterStatus(val)}
+                  className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${
+                    filterStatus === val
+                      ? 'bg-navy-700 text-white'
+                      : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                  }`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Activity filter */}
+          <div className="space-y-1">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Activity</p>
+            <div className="flex flex-wrap gap-1.5">
+              {([
+                { val: 'all',         label: 'All' },
+                { val: 'today',       label: '🟢 Active Today' },
+                { val: 'has-fillups', label: '⛽ Has Fill-Ups' },
+                { val: 'no-logins',   label: '😴 Never Logged In' },
+                { val: 'has-streak',  label: '🔥 Has Streak' },
+              ] as const).map(({ val, label }) => (
+                <button key={val} onClick={() => setFilterActivity(val)}
+                  className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${
+                    filterActivity === val
+                      ? 'bg-navy-700 text-white'
+                      : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                  }`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Stripe filter */}
+          <div className="space-y-1">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Billing</p>
+            <div className="flex flex-wrap gap-1.5">
+              {([
+                { val: 'all',       label: 'All' },
+                { val: 'stripe',    label: '💳 Has Stripe' },
+                { val: 'no-stripe', label: 'No Stripe' },
+              ] as const).map(({ val, label }) => (
+                <button key={val} onClick={() => setFilterStripe(val)}
+                  className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${
+                    filterStripe === val
+                      ? 'bg-navy-700 text-white'
+                      : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                  }`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Sort + result count row */}
+          <div className="flex items-center justify-between gap-3 pt-1 border-t border-slate-100">
+            <p className="text-[11px] text-slate-400 font-semibold">
+              {filtered.length} user{filtered.length !== 1 ? 's' : ''}
+              {filtered.length !== users.length && ` of ${users.length}`}
+            </p>
+            <div className="flex items-center gap-2">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide whitespace-nowrap">Sort by</label>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+                className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white text-slate-600 focus:outline-none focus:ring-2 focus:ring-amber-400"
+              >
+                <option value="joined-desc">Newest first</option>
+                <option value="joined-asc">Oldest first</option>
+                <option value="logins">Most logins</option>
+                <option value="calcs">Most calcs</option>
+                <option value="fillups">Most fill-ups</option>
+                <option value="streak">Longest streak</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Clear filters */}
+          {(filterPlan !== 'all' || filterStatus !== 'all' || filterActivity !== 'all' || filterStripe !== 'all' || search) && (
+            <button
+              onClick={() => { setFilterPlan('all'); setFilterStatus('all'); setFilterActivity('all'); setFilterStripe('all'); setSearch(''); }}
+              className="text-[11px] font-bold text-amber-600 hover:text-amber-500 transition-colors"
+            >
+              × Clear all filters
+            </button>
+          )}
+        </div>
 
         {/* User table */}
         <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
