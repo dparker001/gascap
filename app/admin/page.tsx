@@ -637,7 +637,7 @@ export default function AdminPage() {
                       </span>
                       {u.streak > 0 && (
                         <span className="text-[10px] text-amber-500 font-semibold">
-                          🔥 {u.streak}-wk streak
+                          🔥 {u.streak}-day streak
                         </span>
                       )}
                     </div>
