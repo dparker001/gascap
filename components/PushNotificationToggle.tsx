@@ -48,7 +48,11 @@ export default function PushNotificationToggle() {
     const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
     const base64  = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
     const raw     = window.atob(base64);
-    return Uint8Array.from(Array.from(raw).map((c) => c.charCodeAt(0)));
+    // Use new Uint8Array(length) so the buffer type is ArrayBuffer (not
+    // ArrayBufferLike), which is required by pushManager.subscribe in TS5.
+    const arr = new Uint8Array(raw.length);
+    for (let i = 0; i < arr.length; i++) arr[i] = raw.charCodeAt(i);
+    return arr;
   }
 
   async function handleEnable() {
