@@ -13,7 +13,7 @@ export default function PrivacyPage() {
 
       <div className="max-w-2xl mx-auto px-5 py-10 pb-20">
         <h1 className="text-3xl font-black text-navy-700 mb-2">Privacy Policy</h1>
-        <p className="text-sm text-slate-400 mb-8">Last updated: April 3, 2026</p>
+        <p className="text-sm text-slate-400 mb-8">Last updated: April 3, 2026 (rev. 2)</p>
 
         <div className="space-y-8 text-slate-700 text-sm leading-relaxed">
           <section>
@@ -77,6 +77,22 @@ export default function PrivacyPage() {
           <section>
             <h2 className="text-lg font-black text-navy-700 mb-2">6a. Annual Wrapped</h2>
             <p>The Annual Wrapped feature compiles your fill-up history and activity data from the current calendar year into a personal summary (total spend, gallons, fill-up count, best/worst months, top vehicle, and estimated miles). This summary is computed entirely from your own stored data and is displayed only to you. If you choose to share your Wrapped summary, the text is copied to your clipboard — no data is automatically posted or transmitted to any third party.</p>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-black text-navy-700 mb-2">6b. Gas Price Prophet Game</h2>
+            <p>The Gas Price Prophet feature records your weekly gas price predictions and game scores. Specifically:</p>
+            <ul className="list-disc pl-5 space-y-1 mt-2">
+              <li>Your prediction choice (up/down/flat), the national average price at submission time, and your score are stored on our servers.</li>
+              <li>Your display name and score appear on the in-app leaderboard, which is visible to all signed-in users.</li>
+              <li>No location data is used for the Prophet game — it uses the U.S. national average price from the EIA.</li>
+              <li>Prediction history is retained for the duration of your account.</li>
+            </ul>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-black text-navy-700 mb-2">6c. Streak Reward Credits</h2>
+            <p>When you earn a streak milestone reward (free Pro month credit), the milestone, date earned, and expiry date are stored with your account. These credits are used solely to apply billing discounts upon request and are never shared with third parties.</p>
           </section>
 
           <section>

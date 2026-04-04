@@ -73,6 +73,30 @@ export default function TermsPage() {
           </section>
 
           <section>
+            <h2 className="text-lg font-black text-navy-700 mb-2">7a. Gas Price Prophet Game</h2>
+            <p>GasCap™ offers an in-app weekly prediction game ("Gas Price Prophet") where users predict whether the U.S. national average gas price will increase, decrease, or remain flat week-over-week. The following terms apply:</p>
+            <ul className="list-disc pl-5 space-y-1 mt-2">
+              <li>One prediction per user per week. Predictions are locked upon submission and cannot be changed.</li>
+              <li>Predictions are resolved each Monday using the U.S. Energy Information Administration (EIA) national weekly average regular unleaded price. GasCap™ is not responsible for delays or inaccuracies in EIA data.</li>
+              <li>Points are awarded for correct predictions only. Scores are for entertainment and engagement purposes; they have no monetary value and are non-transferable.</li>
+              <li>GasCap™ reserves the right to modify scoring rules, reset leaderboards, or discontinue the game at any time.</li>
+              <li>Attempting to manipulate scores, create multiple accounts, or otherwise exploit the game will result in account suspension.</li>
+            </ul>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-black text-navy-700 mb-2">7b. Streak Reward Credits</h2>
+            <p>Users who maintain consecutive daily usage streaks may earn free Pro month credits at the following milestones: 30, 90, 180, and 365 consecutive days. The following terms apply:</p>
+            <ul className="list-disc pl-5 space-y-1 mt-2">
+              <li>Each milestone may only be earned once per user account.</li>
+              <li>Streak credits are valid for 12 months from the date earned and expire if not redeemed.</li>
+              <li>Breaking the streak resets the day counter, but previously earned credits are retained.</li>
+              <li>Credits have no cash value, are non-transferable, and may only be redeemed toward an active paid subscription.</li>
+              <li>GasCap™ reserves the right to modify or discontinue the streak rewards program at any time with reasonable notice.</li>
+            </ul>
+          </section>
+
+          <section>
             <h2 className="text-lg font-black text-navy-700 mb-2">8. Acceptable Use</h2>
             <p>You agree not to misuse the Service, including but not limited to: attempting to gain unauthorized access, distributing malware, scraping data, or using the Service for any unlawful purpose.</p>
           </section>

@@ -24,10 +24,11 @@ import ReferralLeaderboard    from './ReferralLeaderboard';
 import VehicleHealthAlert     from './VehicleHealthAlert';
 import FillupReminderToggle   from './FillupReminderToggle';
 import StreakRewards          from './StreakRewards';
+import GasPriceProphet       from './GasPriceProphet';
 
 // ── Tab definitions ──────────────────────────────────────────────────────────
 
-type TabId = 'ai' | 'trip' | 'compare' | 'log' | 'charts' | 'stats' | 'service' | 'share' | 'review';
+type TabId = 'ai' | 'trip' | 'compare' | 'log' | 'charts' | 'stats' | 'service' | 'share' | 'review' | 'prophet';
 
 interface Tab {
   id:            TabId;
@@ -47,6 +48,7 @@ const TABS: Tab[] = [
   { id: 'service', emoji: '🔧', label: 'Service', authRequired: true,  planRequired: 'pro'  },
   { id: 'share',   emoji: '🔗', label: 'Share',   authRequired: true,  planRequired: undefined },
   { id: 'review',  emoji: '⭐', label: 'Review',  authRequired: true,  planRequired: undefined },
+  { id: 'prophet', emoji: '🔮', label: 'Prophet', authRequired: false, planRequired: undefined },
 ];
 
 // ── Component ────────────────────────────────────────────────────────────────
@@ -261,6 +263,11 @@ export default function ToolsPanel() {
           </div>
         )}
         {effectiveTab === 'review' && !session && <SignInPrompt feature="reviews" />}
+      </div>
+
+      {/* Gas Price Prophet */}
+      <div role="tabpanel" id="tabpanel-prophet" hidden={effectiveTab !== 'prophet'}>
+        {effectiveTab === 'prophet' && <GasPriceProphet />}
       </div>
     </div>
   );
