@@ -37,6 +37,7 @@ export default function ReferralCard() {
   const [loading,      setLoading]     = useState(false);
   const [copied,       setCopied]      = useState(false);
   const [copiedBeta,   setCopiedBeta]  = useState(false);
+  const [showQR,       setShowQR]      = useState(false);
 
   useEffect(() => {
     if (!session) return;
@@ -249,6 +250,43 @@ export default function ReferralCard() {
                   {copied ? '✓ Copied!' : '📋 Copy'}
                 </button>
               </div>
+            </div>
+
+            {/* QR code toggle */}
+            <div>
+              <button
+                onClick={() => setShowQR((v) => !v)}
+                className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500 hover:text-amber-600 transition-colors"
+              >
+                <span>📷</span>
+                <span>{showQR ? 'Hide QR Code' : 'Show QR Code'}</span>
+                <svg viewBox="0 0 16 16" className={`w-3 h-3 transition-transform ${showQR ? 'rotate-180' : ''}`} fill="currentColor" aria-hidden="true">
+                  <path d="M8 10.5L2.5 5h11L8 10.5z" />
+                </svg>
+              </button>
+
+              {showQR && (
+                <div className="mt-2 bg-slate-50 border border-slate-200 rounded-2xl p-4 flex flex-col items-center gap-3">
+                  {/* QR image via api.qrserver.com — no key required */}
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=4&color=0f1f34&bgcolor=ffffff&data=${encodeURIComponent(data.referralUrl)}`}
+                    alt="Referral QR code"
+                    width={160}
+                    height={160}
+                    className="rounded-xl border border-slate-200"
+                  />
+                  <p className="text-[10px] text-slate-400 text-center leading-relaxed">
+                    Have a friend scan this code to sign up with your referral link
+                  </p>
+                  <a
+                    href={`https://api.qrserver.com/v1/create-qr-code/?size=600x600&margin=20&color=0f1f34&bgcolor=ffffff&data=${encodeURIComponent(data.referralUrl)}`}
+                    download="gascap-referral-qr.png"
+                    className="text-[11px] font-bold text-amber-600 hover:text-amber-500 transition-colors"
+                  >
+                    ⬇ Download QR Image
+                  </a>
+                </div>
+              )}
             </div>
 
             {/* Beta invite link — only for beta testers */}
