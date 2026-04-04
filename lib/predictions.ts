@@ -192,9 +192,9 @@ export function getLeaderboard(limit = 10): ProphetStats[] {
   const all = readAll();
 
   // Gather all userIds with resolved predictions
-  const userIds = [...new Set(
+  const userIds = Array.from(new Set(
     all.filter((p) => p.outcome && p.outcome !== 'pending').map((p) => p.userId),
-  )];
+  ));
 
   const board: ProphetStats[] = userIds.map((uid) => {
     const resolved  = all.filter((p) => p.userId === uid && p.outcome && p.outcome !== 'pending');
