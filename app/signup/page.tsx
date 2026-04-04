@@ -9,7 +9,6 @@ function SignUpForm() {
   const router       = useRouter();
   const searchParams = useSearchParams();
   const refCode      = searchParams.get('ref') ?? '';
-  const isBetaInvite = searchParams.get('beta') === '1';
 
   const [name,      setName]      = useState('');
   const [email,     setEmail]     = useState('');
@@ -41,7 +40,7 @@ function SignUpForm() {
     const res = await fetch('/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email, password, ...(refCode ? { referralCode: refCode } : {}), ...(isBetaInvite ? { isBeta: true } : {}) }),
+      body: JSON.stringify({ name, email, password, ...(refCode ? { referralCode: refCode } : {}) }),
     });
 
     if (!res.ok) {
@@ -90,20 +89,6 @@ function SignUpForm() {
           <p className="text-slate-500 text-sm mb-5">
             Free forever. Save your vehicles and calculation history.
           </p>
-
-          {/* Beta invite banner */}
-          {isBetaInvite && (
-            <div className="mb-5 bg-amber-50 border border-amber-300 rounded-2xl px-4 py-3 flex items-start gap-3">
-              <span className="text-lg flex-shrink-0">🧪</span>
-              <div>
-                <p className="text-sm font-black text-amber-800">Beta Tester Invite</p>
-                <p className="text-xs text-amber-700 leading-relaxed mt-0.5">
-                  You've been invited to the GasCap™ beta. Create your account below and your
-                  <strong> 30-day Pro trial</strong> activates automatically — no credit card needed.
-                </p>
-              </div>
-            </div>
-          )}
 
           {/* Referral banner */}
           {refCode && (

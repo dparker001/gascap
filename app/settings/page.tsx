@@ -9,8 +9,6 @@ import { setThemePreference, getThemePreference, isDarkMode, type ThemePreferenc
 interface ReferralSummary {
   code:            string;
   referralUrl:     string;
-  betaReferralUrl: string | null;
-  isBeta:          boolean;
   referralCount:   number;
   activeCredits:   number;
   redeemableMonths:number;
@@ -54,7 +52,6 @@ export default function SettingsPage() {
   const [portalLoading,  setPortalLoading]  = useState(false);
   const [referral,       setReferral]       = useState<ReferralSummary | null>(null);
   const [copiedRef,        setCopiedRef]        = useState(false);
-  const [copiedBeta,       setCopiedBeta]       = useState(false);
   const [showQR,           setShowQR]           = useState(false);
   const [darkMode,         setDarkMode]         = useState(false);   // rendered state
   const [themePref,        setThemePref]        = useState<ThemePreference>('auto');
@@ -481,25 +478,6 @@ export default function SettingsPage() {
               )}
             </div>
 
-            {/* Beta invite link — only for beta testers */}
-            {referral.isBeta && referral.betaReferralUrl && (
-              <div>
-                <p className="text-[10px] font-bold text-amber-500 uppercase tracking-wide mb-1">🧪 Beta invite link</p>
-                <div className="flex gap-1.5">
-                  <div className="flex-1 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 overflow-hidden">
-                    <p className="text-[11px] font-mono text-slate-500 truncate">{referral.betaReferralUrl}</p>
-                  </div>
-                  <button
-                    onClick={() => copyToClipboard(referral.betaReferralUrl!, setCopiedBeta)}
-                    className={`flex-shrink-0 px-3 py-2 rounded-xl text-xs font-bold transition-all ${
-                      copiedBeta ? 'bg-green-500 text-white' : 'bg-amber-500 text-white hover:bg-amber-400'
-                    }`}
-                  >
-                    {copiedBeta ? '✓' : '📋'}
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
         )}
 

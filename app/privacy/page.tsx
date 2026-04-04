@@ -35,7 +35,7 @@ export default function PrivacyPage() {
               <li>To send account-related emails (verification, password reset, receipts)</li>
               <li>To send push notifications if you have opted in (gas price alerts, weekly digests, service updates)</li>
               <li>To process payments through Stripe</li>
-              <li>To administer the referral and beta programs</li>
+              <li>To administer the referral program</li>
               <li>To sync your contact information with our CRM (GoHighLevel) for marketing communications — you may opt out at any time</li>
               <li>To improve features and fix issues</li>
             </ul>

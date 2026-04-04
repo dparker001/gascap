@@ -58,11 +58,6 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-black text-navy-700 mb-2">6. Beta Program</h2>
-            <p>GasCap™ may offer beta access to select users. Beta participants receive a complimentary Pro trial for the duration specified at enrollment. Beta trials are non-transferable, have no cash value, and may be revoked at GasCap™'s discretion. Features available during beta testing may change or be removed prior to general release.</p>
-          </section>
-
-          <section>
             <h2 className="text-lg font-black text-navy-700 mb-2">7. Push Notifications &amp; Fill-Up Reminders</h2>
             <p>If you enable push notifications, GasCap™ may send you service-related alerts, gas price updates, weekly digests, fill-up reminders, and promotional messages.</p>
             <ul className="list-disc pl-5 space-y-1 mt-2">
