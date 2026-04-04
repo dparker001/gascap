@@ -6,7 +6,7 @@ import { NextResponse }    from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions }     from '@/lib/auth';
 import { findById, recordActivity, STREAK_MILESTONES, type ActivityEvent } from '@/lib/users';
-import { BADGES, evaluateEarned } from '@/lib/badges';
+import { BADGES, evaluateEarned, type BadgeDef } from '@/lib/badges';
 import { getVehiclesForUser }     from '@/lib/savedVehicles';
 
 // ── GET — current badge state ─────────────────────────────────────────────
@@ -65,7 +65,7 @@ export async function POST(req: Request) {
   const result = recordActivity(userId, event);
 
   // Resolve full badge objects for any newly earned badges
-  const newBadgeDefs = result.newBadges.map((id) => BADGES.find((b) => b.id === id)).filter(Boolean);
+  const newBadgeDefs = result.newBadges.map((id) => BADGES.find((b) => b.id === id)).filter((b): b is BadgeDef => b !== undefined);
 
   return NextResponse.json({
     newBadges:        newBadgeDefs,

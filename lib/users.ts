@@ -272,7 +272,7 @@ export interface ActivityResult {
 export function recordActivity(userId: string, event: ActivityEvent): ActivityResult {
   const users = read();
   const idx   = users.findIndex((u) => u.id === userId);
-  if (idx === -1) return { newBadges: [], badges: [], streak: 0 };
+  if (idx === -1) return { newBadges: [], badges: [], streak: 0, newMilestonesHit: [] };
 
   const user = users[idx];
   const today      = todayStr();
