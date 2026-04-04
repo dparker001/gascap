@@ -22,6 +22,7 @@ import GasPricePrediction     from './GasPricePrediction';
 import ReferralLeaderboard    from './ReferralLeaderboard';
 import VehicleHealthAlert     from './VehicleHealthAlert';
 import StreakRewards          from './StreakRewards';
+import ManualFillupLogger     from './ManualFillupLogger';
 // ── Tab definitions ──────────────────────────────────────────────────────────
 
 type TabId = 'ai' | 'trip' | 'compare' | 'log' | 'charts' | 'stats' | 'service' | 'share' | 'review';
@@ -145,6 +146,7 @@ export default function ToolsPanel() {
       <div role="tabpanel" id="tabpanel-log" hidden={effectiveTab !== 'log'}>
         {effectiveTab === 'log' && session && (
           <div className="space-y-3">
+            <ManualFillupLogger />
             <MonthlyBudgetGoal />
             <FillupHistory />
           </div>
