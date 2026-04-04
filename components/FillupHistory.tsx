@@ -242,11 +242,11 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
                 {/* Main info */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-2">
-                    <div>
+                    <div className="min-w-0 flex-1">
                       <p className="text-sm font-bold text-slate-700 leading-tight truncate">
                         {f.vehicleName}
                       </p>
-                      <p className="text-xs text-slate-400 mt-0.5">
+                      <p className="text-xs text-slate-400 mt-0.5 truncate">
                         {f.gallonsPumped} gal · ${f.pricePerGallon}/gal
                         {f.odometerReading != null && ` · ${f.odometerReading.toLocaleString()} mi`}
                       </p>
