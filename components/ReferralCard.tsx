@@ -252,31 +252,35 @@ export default function ReferralCard() {
               </div>
             </div>
 
-            {/* QR code toggle */}
-            <div>
-              <button
-                onClick={() => setShowQR((v) => !v)}
-                className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500 hover:text-amber-600 transition-colors"
-              >
-                <span>📷</span>
-                <span>{showQR ? 'Hide QR Code' : 'Show QR Code'}</span>
-                <svg viewBox="0 0 16 16" className={`w-3 h-3 transition-transform ${showQR ? 'rotate-180' : ''}`} fill="currentColor" aria-hidden="true">
-                  <path d="M8 10.5L2.5 5h11L8 10.5z" />
-                </svg>
-              </button>
+            {/* QR code button */}
+            <button
+              onClick={() => setShowQR(true)}
+              className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500 hover:text-amber-600 transition-colors"
+            >
+              <span>📷</span>
+              <span>Show QR Code</span>
+            </button>
 
-              {showQR && (
-                <div className="mt-2 bg-slate-50 border border-slate-200 rounded-2xl p-4 flex flex-col items-center gap-3">
-                  {/* QR image via api.qrserver.com — no key required */}
+            {/* QR code modal */}
+            {showQR && (
+              <div
+                className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-6"
+                onClick={() => setShowQR(false)}
+              >
+                <div
+                  className="bg-white rounded-3xl p-6 w-full max-w-xs flex flex-col items-center gap-4 shadow-2xl"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <p className="text-sm font-black text-slate-700">Your Referral QR Code</p>
                   <img
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=4&color=0f1f34&bgcolor=ffffff&data=${encodeURIComponent(data.referralUrl)}`}
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=280x280&margin=6&color=0f1f34&bgcolor=ffffff&data=${encodeURIComponent(data.referralUrl)}`}
                     alt="Referral QR code"
-                    width={160}
-                    height={160}
-                    className="rounded-xl border border-slate-200"
+                    width={240}
+                    height={240}
+                    className="rounded-2xl border border-slate-200"
                   />
-                  <p className="text-[10px] text-slate-400 text-center leading-relaxed">
-                    Have a friend scan this code to sign up with your referral link
+                  <p className="text-[11px] text-slate-400 text-center leading-relaxed">
+                    Have a friend scan this to sign up with your referral link
                   </p>
                   <a
                     href={`https://api.qrserver.com/v1/create-qr-code/?size=600x600&margin=20&color=0f1f34&bgcolor=ffffff&data=${encodeURIComponent(data.referralUrl)}`}
@@ -285,9 +289,15 @@ export default function ReferralCard() {
                   >
                     ⬇ Download QR Image
                   </a>
+                  <button
+                    onClick={() => setShowQR(false)}
+                    className="w-full py-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-sm font-black text-slate-600 transition-colors"
+                  >
+                    Close QR Code
+                  </button>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
             {/* Beta invite link — only for beta testers */}
             {data.isBeta && data.betaReferralUrl && (
