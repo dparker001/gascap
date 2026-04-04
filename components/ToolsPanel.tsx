@@ -14,7 +14,6 @@ import VehicleComparison       from './VehicleComparison';
 import MaintenanceReminders    from './MaintenanceReminders';
 import ReferralCard           from './ReferralCard';
 import ReviewWidget           from './ReviewWidget';
-import PushNotificationToggle from './PushNotificationToggle';
 import StationComparison      from './StationComparison';
 import MonthlyReportCard      from './MonthlyReportCard';
 import SavingsDashboard       from './SavingsDashboard';
@@ -22,7 +21,6 @@ import WorstFillup            from './WorstFillup';
 import GasPricePrediction     from './GasPricePrediction';
 import ReferralLeaderboard    from './ReferralLeaderboard';
 import VehicleHealthAlert     from './VehicleHealthAlert';
-import FillupReminderToggle   from './FillupReminderToggle';
 import StreakRewards          from './StreakRewards';
 // ── Tab definitions ──────────────────────────────────────────────────────────
 
@@ -197,8 +195,6 @@ export default function ToolsPanel() {
             <StreakRewards />
             <ReferralLeaderboard />
             <ReferralCard />
-            <PushNotificationToggle />
-            <FillupReminderToggle />
           </div>
         )}
         {effectiveTab === 'share' && !session && <SignInPrompt feature="referral program" />}

@@ -3,7 +3,6 @@
 import { useSession, signOut } from 'next-auth/react';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import PushNotificationToggle from '@/components/PushNotificationToggle';
 import { setThemePreference, getThemePreference, isDarkMode, type ThemePreference } from '@/components/DarkModeProvider';
 
 interface ReferralSummary {
@@ -600,15 +599,6 @@ export default function SettingsPage() {
             </div>
           )}
         </div>
-
-        {/* Notifications */}
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 space-y-3">
-            <h2 className="text-sm font-black text-slate-700 uppercase tracking-widest">Notifications</h2>
-            <PushNotificationToggle />
-            <p className="text-[10px] text-slate-400 leading-relaxed">
-              Weekly digests are sent every Sunday and include your monthly spending, MPG trend, and fill-up count.
-            </p>
-          </div>
 
         {/* Danger zone */}
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-3">
