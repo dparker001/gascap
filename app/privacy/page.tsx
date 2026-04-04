@@ -80,18 +80,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-black text-navy-700 mb-2">6b. Gas Price Prophet Game</h2>
-            <p>The Gas Price Prophet feature records your weekly gas price predictions and game scores. Specifically:</p>
-            <ul className="list-disc pl-5 space-y-1 mt-2">
-              <li>Your prediction choice (up/down/flat), the national average price at submission time, and your score are stored on our servers.</li>
-              <li>Your display name and score appear on the in-app leaderboard, which is visible to all signed-in users.</li>
-              <li>No location data is used for the Prophet game — it uses the U.S. national average price from the EIA.</li>
-              <li>Prediction history is retained for the duration of your account.</li>
-            </ul>
-          </section>
-
-          <section>
-            <h2 className="text-lg font-black text-navy-700 mb-2">6c. Streak Reward Credits</h2>
+            <h2 className="text-lg font-black text-navy-700 mb-2">6b. Streak Reward Credits</h2>
             <p>When you earn a streak milestone reward (free Pro month credit), the milestone, date earned, and expiry date are stored with your account. These credits are used solely to apply billing discounts upon request and are never shared with third parties.</p>
           </section>
 

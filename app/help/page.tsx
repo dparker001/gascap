@@ -173,32 +173,6 @@ const SECTIONS = [
     ],
   },
   {
-    id: 'prophet',
-    title: '🔮 Gas Price Prophet',
-    items: [
-      {
-        q: 'What is the Gas Price Prophet?',
-        a: 'The Gas Price Prophet is a weekly prediction game built into GasCap. Each week you predict whether the U.S. national average gas price will go up, down, or stay flat. Correct predictions earn points, and hot streaks earn bonus points. You can see your score, accuracy, and streak on the leaderboard.',
-      },
-      {
-        q: 'How do I make a prediction?',
-        a: 'Open the Tools panel and tap the 🔮 Prophet tab. You\'ll see the current national average gas price and three choices: 📈 Going Up, 📉 Going Down, or ➡️ Staying Flat. Tap your choice and hit "Lock In." You can only submit one prediction per week — no changes after submitting.',
-      },
-      {
-        q: 'When do predictions resolve?',
-        a: 'Predictions resolve every Monday when the U.S. Energy Information Administration (EIA) publishes its latest weekly gas price. If the new price is more than 3¢ higher than last week\'s price, it\'s "up." More than 3¢ lower is "down." Within 3¢ either way is "flat."',
-      },
-      {
-        q: 'How does scoring work?',
-        a: 'A correct prediction earns 10 points. Consecutive correct predictions earn a streak bonus: 2 in a row = 15 pts, 3 in a row = 20 pts, 4 or more in a row = 25 pts (Hot Streak 🔥). Wrong predictions earn 0 points and reset your streak.',
-      },
-      {
-        q: 'Do I need an account to play?',
-        a: 'You need to be signed in to submit a prediction and appear on the leaderboard, but anyone can view the leaderboard without an account.',
-      },
-    ],
-  },
-  {
     id: 'streak-rewards',
     title: '🏆 Streak Rewards',
     items: [
