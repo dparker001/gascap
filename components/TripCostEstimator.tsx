@@ -8,14 +8,18 @@ import type { Vehicle }          from './SavedVehicles';
 // ── Types ──────────────────────────────────────────────────────────────────
 
 interface TripResult {
-  totalMiles:      number;
-  gallonsNeeded:   number;
-  fuelCost:        number;
-  stops:           number;
-  costPerPerson:   number | null;
-  milesPerDollar:  number;
-  tankfulls:       number;
-  summary:         string;
+  totalMiles:        number;
+  totalGallons:      number;   // full trip gallons (no offset)
+  totalTripCost:     number;   // full trip cost (no offset)
+  currentGalOffset:  number;   // gallons already in tank
+  currentCostOffset: number;   // value of fuel already in tank
+  gallonsNeeded:     number;   // gallons still to buy
+  fuelCost:          number;   // cost of gallons still to buy
+  stops:             number;
+  costPerPerson:     number | null;
+  milesPerDollar:    number;
+  tankfulls:         number;
+  summary:           string;
 }
 
 // ── Rental presets ─────────────────────────────────────────────────────────
@@ -50,31 +54,39 @@ function calcTrip(
   pricePGal: number,
   people:    number,
 ): TripResult {
-  const totalGallonsNeeded = miles / mpg;
-  const currentGallons     = tankGal * (fuelPct / 100);
-  const gallonsNeeded      = Math.max(0, totalGallonsNeeded - currentGallons);
+  const totalGallons       = miles / mpg;                          // total gallons for full trip
+  const totalTripCost      = totalGallons * pricePGal;             // full trip cost ignoring current fuel
+  const currentGalOffset   = Math.min(tankGal * (fuelPct / 100), totalGallons); // gallons already in tank (capped at trip need)
+  const currentCostOffset  = currentGalOffset * pricePGal;         // value of current fuel toward trip
+  const gallonsNeeded      = Math.max(0, totalGallons - currentGalOffset);
   const fuelCost           = gallonsNeeded * pricePGal;
   const tankRange          = tankGal * mpg;
   // How many times do we need to stop? (after using current fuel)
-  const remainingAfterCurrent = miles - (currentGallons * mpg);
+  const currentMilesInTank = tankGal * (fuelPct / 100) * mpg;
+  const remainingAfterCurrent = miles - currentMilesInTank;
   const stops              = remainingAfterCurrent <= 0 ? 0 : Math.ceil(remainingAfterCurrent / tankRange);
-  const milesPerDollar     = fuelCost > 0 ? Math.round((miles / fuelCost) * 10) / 10 : 0;
-  const tankfulls          = Math.round((totalGallonsNeeded / tankGal) * 10) / 10;
+  const milesPerDollar     = totalTripCost > 0 ? Math.round((miles / totalTripCost) * 10) / 10 : 0;
+  const tankfulls          = Math.round((totalGallons / tankGal) * 10) / 10;
   const costPerPerson      = people > 1 ? Math.round((fuelCost / people) * 100) / 100 : null;
 
   let summary = '';
   if (gallonsNeeded === 0) {
-    summary = `Great news — you have enough fuel for the full ${miles.toLocaleString()}-mile trip!`;
+    summary = `Great news — you already have enough fuel for the full ${miles.toLocaleString()}-mile trip!`;
   } else {
-    summary = `You'll need ${gallonsNeeded.toFixed(2)} gal of gas for this ${miles.toLocaleString()}-mile trip, ` +
-              `costing about $${fuelCost.toFixed(2)}.`;
+    summary = `This ${miles.toLocaleString()}-mile trip needs ${totalGallons.toFixed(2)} gal total ` +
+              `($${totalTripCost.toFixed(2)}). You'll need to buy ${gallonsNeeded.toFixed(2)} gal ` +
+              `($${fuelCost.toFixed(2)}) on top of what's in your tank.`;
     if (stops > 0) summary += ` Plan for ${stops} fuel stop${stops > 1 ? 's' : ''} along the way.`;
   }
 
   return {
-    totalMiles:   miles,
-    gallonsNeeded: Math.round(gallonsNeeded * 100) / 100,
-    fuelCost:     Math.round(fuelCost * 100) / 100,
+    totalMiles:        miles,
+    totalGallons:      Math.round(totalGallons * 100) / 100,
+    totalTripCost:     Math.round(totalTripCost * 100) / 100,
+    currentGalOffset:  Math.round(currentGalOffset * 100) / 100,
+    currentCostOffset: Math.round(currentCostOffset * 100) / 100,
+    gallonsNeeded:     Math.round(gallonsNeeded * 100) / 100,
+    fuelCost:          Math.round(fuelCost * 100) / 100,
     stops,
     costPerPerson,
     milesPerDollar,
@@ -153,7 +165,7 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
   const [miles,         setMiles]         = useState('');
   const [mpg,           setMpg]           = useState('');
   const [tankGal,       setTankGal]       = useState('');
-  const [fuelPct,       setFuelPct]       = useState('50');
+  const [fuelPct,       setFuelPct]       = useState('0');
   const [pricePerGallon,setPricePerGallon] = useState('');
   const [people,        setPeople]        = useState('1');
   const [result,        setResult]        = useState<TripResult | null>(null);
@@ -245,7 +257,7 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
   }
 
   function handleReset() {
-    setMiles(''); setMpg(''); setTankGal(''); setFuelPct('50');
+    setMiles(''); setMpg(''); setTankGal(''); setFuelPct('0');
     setPricePerGallon(''); setPeople('1'); setResult(null); setErrors({});
     setSelectedVehicleId('');
     setMpgSourceLabel('');
@@ -382,7 +394,7 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
               <input
                 type="number" inputMode="decimal"
                 className={errors.miles ? 'input-field-error' : 'input-field'}
-                placeholder="e.g. 350"
+                placeholder="Enter trip miles"
                 value={miles}
                 min="1" step="1"
                 onChange={(e) => { setMiles(e.target.value); setResult(null); }}
@@ -444,7 +456,7 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
                 <input
                   type="number" inputMode="decimal"
                   className={errors.fuelPct ? 'input-field-error' : 'input-field'}
-                  placeholder="50"
+                  placeholder="0"
                   value={fuelPct}
                   min="0" max="100" step="5"
                   onChange={(e) => { setFuelPct(e.target.value); setResult(null); }}
@@ -453,6 +465,9 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">%</span>
               </div>
               {errors.fuelPct && <p className="mt-1 text-xs text-red-500">{errors.fuelPct}</p>}
+              <p className="text-[10px] text-slate-400 mt-1">
+                💡 0% = show full trip cost. Enter your actual level to see how much more you need to buy.
+              </p>
             </div>
             <div>
               <p className="field-label">Splitting costs?</p>
@@ -518,8 +533,14 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
 // ── Result Card ────────────────────────────────────────────────────────────
 
 function TripResultCard({ result }: { result: TripResult }) {
-  const { totalMiles, gallonsNeeded, fuelCost, stops, costPerPerson, milesPerDollar, tankfulls, summary } = result;
-  const noFuelNeeded = gallonsNeeded === 0;
+  const {
+    totalMiles, totalGallons, totalTripCost,
+    currentGalOffset, currentCostOffset,
+    gallonsNeeded, fuelCost,
+    stops, costPerPerson, milesPerDollar, tankfulls, summary,
+  } = result;
+  const noFuelNeeded     = gallonsNeeded === 0;
+  const hasCurrentFuel   = currentGalOffset > 0;
 
   return (
     <div className="animate-result space-y-3 pt-1">
@@ -533,17 +554,46 @@ function TripResultCard({ result }: { result: TripResult }) {
       {/* Hero stats */}
       <div className="grid grid-cols-2 gap-3">
         <div className="bg-amber-500 rounded-2xl p-4">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-white/60">Fuel Cost</p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-white/60">
+            {hasCurrentFuel ? 'Gas to Buy' : 'Total Fuel Cost'}
+          </p>
           <p className="text-3xl font-black text-white leading-none mt-1">${fuelCost.toFixed(2)}</p>
+          {hasCurrentFuel && (
+            <p className="text-[10px] text-white/60 mt-1">of ${totalTripCost.toFixed(2)} full trip cost</p>
+          )}
         </div>
         <div className="bg-navy-700 rounded-2xl p-4">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-white/60">Gallons</p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-white/60">
+            {hasCurrentFuel ? 'Gallons to Buy' : 'Gallons Needed'}
+          </p>
           <p className="text-3xl font-black text-white leading-none mt-1">
             {gallonsNeeded.toFixed(2)}
             <span className="text-base font-semibold text-white/60 ml-1">gal</span>
           </p>
+          {hasCurrentFuel && (
+            <p className="text-[10px] text-white/60 mt-1">of {totalGallons.toFixed(2)} gal total</p>
+          )}
         </div>
       </div>
+
+      {/* Fuel breakdown (only shown when current fuel offsets the total) */}
+      {hasCurrentFuel && (
+        <div className="bg-slate-50 rounded-2xl border border-slate-100 px-4 py-3 space-y-2">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Fuel Breakdown</p>
+          <div className="flex justify-between text-sm">
+            <span className="text-slate-500">Total fuel for trip</span>
+            <span className="font-bold text-slate-700">{totalGallons.toFixed(2)} gal · ${totalTripCost.toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-slate-500">Fuel already in tank</span>
+            <span className="font-bold text-green-600">− {currentGalOffset.toFixed(2)} gal · ${currentCostOffset.toFixed(2)}</span>
+          </div>
+          <div className="border-t border-slate-200 pt-2 flex justify-between text-sm">
+            <span className="font-black text-slate-700">Gas to buy</span>
+            <span className="font-black text-amber-600">{gallonsNeeded.toFixed(2)} gal · ${fuelCost.toFixed(2)}</span>
+          </div>
+        </div>
+      )}
 
       {/* Secondary stats grid */}
       <div className="grid grid-cols-2 gap-3">
@@ -560,8 +610,7 @@ function TripResultCard({ result }: { result: TripResult }) {
         <div className="bg-blue-50 border border-blue-100 rounded-xl px-3 py-2.5 flex items-start gap-2">
           <span className="text-sm flex-shrink-0">⛽</span>
           <p className="text-xs text-blue-700 font-medium leading-snug">
-            With a {Math.round((parseFloat('0') + 1) * 100)}% tank you could cut this to fewer stops.
-            Top off before you leave to maximize range.
+            Top off your tank before you leave to maximize range and reduce the number of stops.
           </p>
         </div>
       )}
