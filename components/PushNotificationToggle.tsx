@@ -64,10 +64,19 @@ export default function PushNotificationToggle() {
       setPerm(permission as PermState);
       if (permission !== 'granted') return;
 
-      const reg = await navigator.serviceWorker.ready;
+      // serviceWorker.ready can hang forever if the SW never activates —
+      // race it against a 10-second timeout so the button never gets stuck.
+      const swReady = navigator.serviceWorker.ready;
+      const timeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Service worker took too long to activate. Try refreshing the page.')), 10_000),
+      );
+      const reg = await Promise.race([swReady, timeout]);
+
+      // Pass the key as Uint8Array directly — passing .buffer (ArrayBuffer)
+      // causes silent failures in Chrome and some Safari versions.
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly:      true,
-        applicationServerKey: urlBase64ToUint8Array(vapidKey).buffer as ArrayBuffer,
+        applicationServerKey: urlBase64ToUint8Array(vapidKey),
       });
 
       const res = await fetch('/api/push/subscribe', {
