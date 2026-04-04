@@ -34,26 +34,26 @@ export default function StreakCounter() {
   const hasStreak = streak >= 2;
 
   return (
-    <div className="max-w-lg mx-auto w-full px-4 pb-2">
+    <div className="max-w-lg mx-auto w-full px-4 pt-3 pb-2">
       <div className="bg-navy-700 rounded-2xl px-4 py-3 flex items-center gap-3">
         <span className="text-2xl flex-shrink-0" aria-hidden="true">🔥</span>
         <div className="flex-1 min-w-0">
           {hasStreak ? (
             <>
               <p className="text-sm font-black text-amber-400 leading-tight">
-                {streak}-week streak!
+                {streak}-day streak!
               </p>
               <p className="text-[10px] text-white/50 mt-0.5">
-                Keep logging fill-ups every week to grow it.
+                Keep opening GasCap every day to grow it.
               </p>
             </>
           ) : (
             <>
               <p className="text-sm font-black text-white leading-tight">
-                Log a fill-up to start your streak!
+                Start your streak — open GasCap daily!
               </p>
               <p className="text-[10px] text-white/50 mt-0.5">
-                Track fill-ups weekly and watch your streak grow.
+                Come back each day and watch your streak grow.
               </p>
             </>
           )}
@@ -61,7 +61,7 @@ export default function StreakCounter() {
         {hasStreak && (
           <div className="flex-shrink-0 bg-amber-500/20 border border-amber-400/30 rounded-xl px-3 py-1.5 text-center">
             <p className="text-lg font-black text-amber-400 leading-none">{streak}</p>
-            <p className="text-[9px] text-amber-300/60 font-bold uppercase tracking-wide mt-0.5">weeks</p>
+            <p className="text-[9px] text-amber-300/60 font-bold uppercase tracking-wide mt-0.5">days</p>
           </div>
         )}
       </div>
