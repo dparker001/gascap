@@ -9,12 +9,24 @@ import { authOptions }      from '@/lib/auth';
 import Anthropic            from '@anthropic-ai/sdk';
 import { getFillups, computeMpg, getFillupStats } from '@/lib/fillups';
 import { getBudgetGoal }    from '@/lib/budgetGoals';
+import { findById, findByEmail } from '@/lib/users';
 
 const client = new Anthropic({ apiKey: process.env.GASCAP_ANTHROPIC_KEY });
 
+// Must stay in sync with PROMPT_CHIPS in AiAdvisor.tsx
+const ALLOWED_SUGGESTED = new Set([
+  'Why might my MPG be dropping?',
+  'Am I on track with my fuel budget?',
+  'Predict my fuel cost next month',
+  'How can I improve my fuel efficiency?',
+  'Tips for maximizing range on a long trip',
+  'When might my vehicle need maintenance?',
+]);
+
 interface ChatRequest {
-  question: string;
-  vehicles?: Array<{ name: string; gallons: number; fuelType?: string }>;
+  question:    string;
+  vehicles?:   Array<{ name: string; gallons: number; fuelType?: string }>;
+  isSuggested?: boolean;
 }
 
 export async function POST(req: Request) {
@@ -30,6 +42,27 @@ export async function POST(req: Request) {
 
   if (!body.question?.trim()) {
     return NextResponse.json({ error: 'Question required.' }, { status: 400 });
+  }
+
+  // ── Plan enforcement ──────────────────────────────────────────────────────
+  // Suggested questions are allowed for everyone (guest / free / pro).
+  // Open-ended / custom questions require Pro or Fleet.
+  const isSuggested = body.isSuggested === true || ALLOWED_SUGGESTED.has(body.question.trim());
+
+  if (!isSuggested) {
+    // Look up fresh plan from store (avoids stale JWT)
+    const userId      = (session?.user as { id?: string })?.id;
+    const userEmail   = session?.user?.email;
+    const storedUser  = userId ? findById(userId) : (userEmail ? findByEmail(userEmail) : undefined);
+    const livePlan    = storedUser?.plan ?? 'free';
+    const isProServer = livePlan === 'pro' || livePlan === 'fleet';
+
+    if (!isProServer) {
+      return NextResponse.json(
+        { error: 'Open-ended questions require a GasCap™ Pro plan. Upgrade to unlock full AI access.' },
+        { status: 403 }
+      );
+    }
   }
 
   // ── Build user context for the prompt ────────────────────────────────────

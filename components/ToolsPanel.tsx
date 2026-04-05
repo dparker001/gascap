@@ -36,7 +36,7 @@ interface Tab {
 }
 
 const TABS: Tab[] = [
-  { id: 'ai',      emoji: '🤖', label: 'AI',      authRequired: false, planRequired: 'pro'  },
+  { id: 'ai',      emoji: '🤖', label: 'AI',      authRequired: false, planRequired: undefined },
   { id: 'trip',    emoji: '🗺️', label: 'Trip',    authRequired: false, planRequired: undefined },
   { id: 'compare', emoji: '🏪', label: 'Compare', authRequired: false, planRequired: undefined },
   { id: 'log',     emoji: '⛽', label: 'Log',     authRequired: true,  planRequired: undefined },
@@ -121,11 +121,9 @@ export default function ToolsPanel() {
 
       {/* ── Tab panels ──────────────────────────────────────────────────── */}
 
-      {/* AI Advisor */}
+      {/* AI Advisor — available to all; Pro/Fleet unlocks open-ended input */}
       <div role="tabpanel" id="tabpanel-ai" hidden={effectiveTab !== 'ai'}>
-        {effectiveTab === 'ai' && !session && <AiAdvisor embedded />}
-        {effectiveTab === 'ai' && session && isPro && <AiAdvisor embedded />}
-        {effectiveTab === 'ai' && session && !isPro && <UpgradePrompt feature="AI Advisor" />}
+        {effectiveTab === 'ai' && <AiAdvisor embedded />}
       </div>
 
       {/* Trip Cost Estimator */}

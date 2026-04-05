@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
+import Link from 'next/link';
 
 interface Vehicle { name: string; gallons: number; fuelType?: string; }
 interface GarageResp { vehicles: Vehicle[]; }
@@ -30,7 +31,20 @@ export default function AiAdvisor({ embedded = false }: { embedded?: boolean }) 
   const [loading,  setLoading]  = useState(false);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [configured, setConfigured] = useState<boolean | null>(null);
+  const [livePlan,   setLivePlan]   = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  // Fetch live plan so we don't rely on potentially stale JWT
+  useEffect(() => {
+    if (!session) return;
+    fetch('/api/vehicles')
+      .then((r) => r.json())
+      .then((d: { plan?: string }) => { if (d.plan) setLivePlan(d.plan); })
+      .catch(() => {});
+  }, [session]);
+
+  const plan  = livePlan ?? session?.user?.plan ?? 'free';
+  const isPro = plan === 'pro' || plan === 'fleet';
 
   const isOpen = embedded || open;
 
@@ -71,7 +85,7 @@ export default function AiAdvisor({ embedded = false }: { embedded?: boolean }) 
     }
   }, [messages]);
 
-  async function sendMessage(question: string) {
+  async function sendMessage(question: string, suggested = false) {
     const q = question.trim();
     if (!q || loading) return;
 
@@ -87,7 +101,7 @@ export default function AiAdvisor({ embedded = false }: { embedded?: boolean }) 
       const res = await fetch('/api/ai/chat', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ question: q, vehicles }),
+        body:    JSON.stringify({ question: q, vehicles, isSuggested: suggested }),
       });
       const data = await res.json() as { answer?: string; error?: string };
 
@@ -180,9 +194,9 @@ export default function AiAdvisor({ embedded = false }: { embedded?: boolean }) 
                     <p className="text-2xl mb-1.5">🤖</p>
                     <p className="text-sm font-bold text-slate-700">Hi! I&apos;m your GasCap AI Advisor.</p>
                     <p className="text-xs text-slate-400 mt-1">
-                      {session
+                      {isPro
                         ? "I can see your vehicle and fill-up data. Ask me anything!"
-                        : "Ask me about fuel efficiency, cost savings, or trip planning."}
+                        : "Tap a suggested question below to get started."}
                     </p>
                   </div>
                 )}
@@ -231,7 +245,7 @@ export default function AiAdvisor({ embedded = false }: { embedded?: boolean }) 
                     {PROMPT_CHIPS.map((chip) => (
                       <button
                         key={chip.text}
-                        onClick={() => sendMessage(chip.text)}
+                        onClick={() => sendMessage(chip.text, true)}
                         disabled={loading}
                         className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-50
                                    border border-slate-200 text-xs text-slate-600 font-medium
@@ -246,38 +260,54 @@ export default function AiAdvisor({ embedded = false }: { embedded?: boolean }) 
                 </div>
               )}
 
-              {/* Input bar */}
-              <div className="border-t border-slate-100 px-3 py-3 flex gap-2">
-                <input
-                  type="text"
-                  className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2
-                             text-sm text-slate-800 placeholder-slate-400
-                             focus:outline-none focus:ring-2 focus:ring-amber-300 focus:border-transparent"
-                  placeholder="Ask about fuel, MPG, costs…"
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(input); } }}
-                  disabled={loading}
-                  aria-label="Ask GasCap AI"
-                />
-                <button
-                  onClick={() => sendMessage(input)}
-                  disabled={loading || !input.trim()}
-                  className="w-9 h-9 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-40
-                             transition-colors flex items-center justify-center flex-shrink-0"
-                  aria-label="Send"
-                >
-                  <svg viewBox="0 0 16 16" className="w-4 h-4 text-white" fill="none"
-                       stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-                    <path d="M2 8h12M8 2l6 6-6 6"/>
-                  </svg>
-                </button>
-              </div>
-
-              {/* Disclaimer */}
-              <p className="text-[9px] text-slate-300 text-center pb-2">
-                AI responses are for informational purposes · Always verify safety-critical vehicle info
-              </p>
+              {/* Input bar — Pro/Fleet only */}
+              {isPro ? (
+                <>
+                  <div className="border-t border-slate-100 px-3 py-3 flex gap-2">
+                    <input
+                      type="text"
+                      className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2
+                                 text-sm text-slate-800 placeholder-slate-400
+                                 focus:outline-none focus:ring-2 focus:ring-amber-300 focus:border-transparent"
+                      placeholder="Ask about fuel, MPG, costs…"
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(input); } }}
+                      disabled={loading}
+                      aria-label="Ask GasCap AI"
+                    />
+                    <button
+                      onClick={() => sendMessage(input)}
+                      disabled={loading || !input.trim()}
+                      className="w-9 h-9 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-40
+                                 transition-colors flex items-center justify-center flex-shrink-0"
+                      aria-label="Send"
+                    >
+                      <svg viewBox="0 0 16 16" className="w-4 h-4 text-white" fill="none"
+                           stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                        <path d="M2 8h12M8 2l6 6-6 6"/>
+                      </svg>
+                    </button>
+                  </div>
+                  <p className="text-[9px] text-slate-300 text-center pb-2">
+                    AI responses are for informational purposes · Always verify safety-critical vehicle info
+                  </p>
+                </>
+              ) : (
+                /* Upgrade nudge for free / guest */
+                <div className="border-t border-slate-100 px-4 py-3 flex items-center justify-between gap-3">
+                  <p className="text-xs text-slate-400 leading-snug">
+                    <span className="font-semibold text-slate-500">Pro</span> unlocks open-ended questions &amp; your vehicle data
+                  </p>
+                  <Link
+                    href="/upgrade"
+                    className="flex-shrink-0 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-white
+                               text-xs font-black rounded-xl transition-colors whitespace-nowrap"
+                  >
+                    Upgrade →
+                  </Link>
+                </div>
+              )}
             </>
           )}
         </div>
