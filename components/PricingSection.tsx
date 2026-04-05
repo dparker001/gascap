@@ -119,12 +119,12 @@ function PlanCard({
       )}
 
       {/* Plan name + badge */}
-      <div className="flex items-center gap-2 mb-4">
+      <div className="mb-4">
         <h3 className={`font-black text-lg ${popular ? 'text-white' : 'text-navy-700'}`}>
           {name}
         </h3>
         {badge && (
-          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${badgeColor}`}>
+          <span className={`inline-block mt-1 text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${badgeColor}`}>
             {badge}
           </span>
         )}
