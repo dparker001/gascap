@@ -334,7 +334,7 @@ export default function BudgetForm({ activeTab, setActiveTab }: Props) {
       </div>
 
       <button className="btn-amber" onClick={handleCalculate}>Calculate ⚡</button>
-      <button className="btn-secondary" onClick={handleReset}>Clear all</button>
+      <button className="btn-secondary mt-3" onClick={handleReset}>Clear all</button>
 
       <div id="bgt-result">
         {result && (
@@ -363,7 +363,7 @@ function StepLabel({ n, title }: { n: number; title: string }) {
                        flex items-center justify-center flex-shrink-0 shadow-sm">
         {n}
       </span>
-      <span className="text-sm font-bold text-slate-600">{title}</span>
+      <span className="text-sm font-bold text-slate-600 dark:text-slate-100">{title}</span>
     </div>
   );
 }

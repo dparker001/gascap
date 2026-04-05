@@ -67,16 +67,16 @@ export default function ToolsPanel() {
       {/* ── Section header ──────────────────────────────────────────────── */}
       <div className="flex items-center gap-2 mb-3 px-1">
         <span className="text-base">⚡</span>
-        <h2 className="text-sm font-black text-slate-700 uppercase tracking-wider">
+        <h2 className="text-sm font-black text-slate-700 dark:text-slate-100 uppercase tracking-wider">
           Tools &amp; Insights
         </h2>
-        <div className="flex-1 h-px bg-slate-200" />
+        <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
       </div>
 
       {/* ── Tab grid — 2 rows × 5 columns, all tabs always visible ─────── */}
       <div className="mb-4">
         <div
-          className="grid grid-cols-5 gap-1 bg-slate-100 rounded-2xl p-1.5"
+          className="grid grid-cols-5 gap-1 bg-slate-100 dark:bg-slate-800 rounded-2xl p-1.5"
           role="tablist"
         >
           {TABS.map((tab) => {
@@ -96,10 +96,10 @@ export default function ToolsPanel() {
                   'text-[9px] font-bold transition-all duration-200 select-none',
                   'focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400',
                   isActive
-                    ? 'bg-white shadow-sm text-amber-600'
+                    ? 'bg-white dark:bg-slate-700 shadow-sm text-amber-600'
                     : isDisabled
-                      ? 'text-slate-300 cursor-not-allowed'
-                      : 'text-slate-500 hover:text-slate-700 hover:bg-white/60',
+                      ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-white/60 dark:hover:bg-slate-700/60',
                 ].join(' ')}
                 title={isDisabled ? 'Sign in to access this feature' : undefined}
               >
