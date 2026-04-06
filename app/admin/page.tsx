@@ -828,27 +828,20 @@ export default function AdminPage() {
                       </button>
                     )}
 
-                    {/* Beta trial button */}
-                    {!u.isBetaTester ? (
-                      <button
-                        onClick={() => handleBetaGrant(u)}
-                        className="text-xs px-2 py-1 rounded-lg bg-purple-100 text-purple-700 hover:bg-purple-200 font-semibold transition-colors whitespace-nowrap"
-                      >
-                        🧪 Beta Trial
-                      </button>
-                    ) : (
+                    {/* Beta trial status — display only for existing testers (no new grants) */}
+                    {u.isBetaTester && (
                       <span className="text-[10px] px-2 py-1 rounded-lg bg-purple-50 text-purple-600 font-semibold border border-purple-200 whitespace-nowrap">
                         🧪 {u.betaProExpiry
                           ? (() => {
                               const days = Math.ceil((new Date(u.betaProExpiry).getTime() - Date.now()) / 86400_000);
-                              return days > 0 ? `${days}d left` : 'Expired';
+                              return days > 0 ? `Beta · ${days}d left` : 'Beta · Expired';
                             })()
                           : 'Beta'}
                         {' '}
                         <button
                           onClick={() => handleBetaRevoke(u)}
                           className="text-purple-400 hover:text-red-500 ml-0.5"
-                          title="Revoke trial"
+                          title="Revoke trial early"
                         >×</button>
                       </span>
                     )}
