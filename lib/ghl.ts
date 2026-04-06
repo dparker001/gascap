@@ -44,6 +44,7 @@ export interface GhlContactInput {
   isBeta?:      boolean;
   source?:      string;
   phone?:       string;
+  extraTags?:   string[];  // any additional tags to apply
 }
 
 /**
@@ -66,6 +67,7 @@ export async function upsertGhlContact(input: GhlContactInput): Promise<boolean>
       'gascap',
       ...(input.plan ? [PLAN_TAGS[input.plan] ?? 'gascap-free'] : []),
       ...(input.isBeta ? ['gascap-beta-tester'] : []),
+      ...(input.extraTags ?? []),
     ];
 
     const body: Record<string, unknown> = {

@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
-import { createUser, findByEmail, findByReferralCode, setReferredBy, createEmailVerifyToken, enrollEmailCampaign } from '@/lib/users';
+import { createUser, findByEmail, findByReferralCode, setReferredBy, createEmailVerifyToken } from '@/lib/users';
 import { sendMail, verificationEmailHtml } from '@/lib/email';
-import { sendCampaignEmail } from '@/lib/emailCampaign';
 import { upsertGhlContact } from '@/lib/ghl';
 
 function getBaseUrl(req: Request): string {
@@ -63,15 +62,6 @@ export async function POST(req: Request) {
       // Don't fail registration — user can still sign in and request another
     }
 
-    // Enroll in drip campaign + send welcome email (non-blocking)
-    try {
-      enrollEmailCampaign(user.id);
-      await sendCampaignEmail(1, { id: user.id, name: user.name, email: user.email });
-    } catch (campaignErr) {
-      console.error('[GasCap] Welcome campaign email failed:', campaignErr);
-      // Non-fatal — user is registered, campaign can recover via cron
-    }
-
     // Notify admin of new signup (non-blocking)
     sendMail({
       to:      'hello@gascap.app',
@@ -85,13 +75,14 @@ export async function POST(req: Request) {
       text: `New GasCap signup: ${user.name} <${user.email}> — Free plan`,
     }).catch((e) => console.error('[GasCap] Admin signup notify failed:', e));
 
-    // Sync to GHL CRM (non-blocking — don't fail registration if GHL is down)
+    // Sync to GHL CRM — triggers the new-signup automation in GHL (non-blocking)
     upsertGhlContact({
-      name:   user.name,
-      email:  user.email,
-      plan:   'free',
-      isBeta: false,
-      source: 'GasCap Signup',
+      name:      user.name,
+      email:     user.email,
+      plan:      'free',
+      isBeta:    false,
+      source:    'GasCap Signup',
+      extraTags: ['gascap-new-signup'],
     }).catch((err) => console.error('[GHL] signup sync failed:', err));
 
     return NextResponse.json({ id: user.id, email: user.email, name: user.name }, { status: 201 });
