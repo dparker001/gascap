@@ -57,6 +57,10 @@ export interface StoredUser {
   // Streak rewards
   streakMilestonesHit?: number[];    // list of milestone day-counts already awarded (e.g. [30, 90])
   streakCredits?: StreakCredit[];     // free Pro months earned from streak milestones
+  // Email campaign drip sequence
+  emailCampaignStep?:       number;  // 1=welcome sent, 2=day3, 3=day7, 4=day14, 5=day30
+  emailCampaignEnrolledAt?: string;  // ISO date of sign-up enrollment
+  emailOptOut?:             boolean; // true = unsubscribed from marketing emails
   // Internal / testing
   isTestAccount?: boolean;  // bypasses all plan limits — for internal testing only
 }
@@ -193,6 +197,48 @@ export function revokeBetaTrial(userId: string): void {
   users[idx].plan          = 'free';
   users[idx].betaProExpiry = undefined;
   write(users);
+}
+
+// ── Email campaign helpers ──────────────────────────────────────────────────
+
+/** Enroll a new user in the drip campaign and record step 1 (welcome sent). */
+export function enrollEmailCampaign(userId: string): void {
+  const users = read();
+  const idx   = users.findIndex((u) => u.id === userId);
+  if (idx === -1) return;
+  users[idx].emailCampaignEnrolledAt = new Date().toISOString();
+  users[idx].emailCampaignStep       = 1;
+  write(users);
+}
+
+/** Advance the campaign step after sending the next email. */
+export function advanceEmailCampaignStep(userId: string, step: number): void {
+  const users = read();
+  const idx   = users.findIndex((u) => u.id === userId);
+  if (idx === -1) return;
+  users[idx].emailCampaignStep = step;
+  write(users);
+}
+
+/** Opt a user out of marketing emails (unsubscribe). */
+export function optOutEmailCampaign(userId: string): void {
+  const users = read();
+  const idx   = users.findIndex((u) => u.id === userId);
+  if (idx === -1) return;
+  users[idx].emailOptOut = true;
+  write(users);
+}
+
+/** Return all users pending a given campaign step, with at least `minDays` since enrollment. */
+export function getUsersPendingCampaignStep(step: number, minDays: number): StoredUser[] {
+  const cutoff = new Date(Date.now() - minDays * 86_400_000);
+  return read().filter((u) =>
+    !u.emailOptOut &&
+    u.plan === 'free' &&           // skip already-upgraded users
+    u.emailCampaignStep === step - 1 &&
+    !!u.emailCampaignEnrolledAt &&
+    new Date(u.emailCampaignEnrolledAt) <= cutoff,
+  );
 }
 
 /** Return all users whose betaProExpiry has passed and plan is still 'pro' from trial. */

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
-import { createUser, findByEmail, findByReferralCode, setReferredBy, createEmailVerifyToken } from '@/lib/users';
+import { createUser, findByEmail, findByReferralCode, setReferredBy, createEmailVerifyToken, enrollEmailCampaign } from '@/lib/users';
 import { sendMail, verificationEmailHtml } from '@/lib/email';
+import { sendCampaignEmail } from '@/lib/emailCampaign';
 import { upsertGhlContact } from '@/lib/ghl';
 
 function getBaseUrl(req: Request): string {
@@ -60,6 +61,15 @@ export async function POST(req: Request) {
     } catch (emailErr) {
       console.error('[GasCap] Failed to send verification email:', emailErr);
       // Don't fail registration — user can still sign in and request another
+    }
+
+    // Enroll in drip campaign + send welcome email (non-blocking)
+    try {
+      enrollEmailCampaign(user.id);
+      await sendCampaignEmail(1, { id: user.id, name: user.name, email: user.email });
+    } catch (campaignErr) {
+      console.error('[GasCap] Welcome campaign email failed:', campaignErr);
+      // Non-fatal — user is registered, campaign can recover via cron
     }
 
     // Notify admin of new signup (non-blocking)
