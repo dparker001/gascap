@@ -315,7 +315,7 @@ export default function AdminPage() {
         <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-sm space-y-4">
           <div className="text-center">
             <p className="text-2xl font-black text-navy-700">GasCap™ Admin</p>
-            <p className="text-xs text-slate-400 mt-1">Restricted access</p>
+            <p className="text-xs text-slate-600 mt-1">Restricted access</p>
           </div>
           <form onSubmit={handleLogin} className="space-y-3">
             <input
@@ -346,9 +346,9 @@ export default function AdminPage() {
         <div className="flex items-center justify-between">
           <div>
             <p className="text-xl font-black text-navy-700">GasCap™ Admin</p>
-            <p className="text-xs text-slate-400">User management</p>
+            <p className="text-xs text-slate-600">User management</p>
           </div>
-          <button onClick={handleLogout} className="text-xs text-slate-400 hover:text-red-500 transition-colors">
+          <button onClick={handleLogout} className="text-xs text-slate-500 hover:text-red-500 transition-colors">
             Sign out
           </button>
         </div>
@@ -367,7 +367,7 @@ export default function AdminPage() {
           ].map((s) => (
             <div key={s.label} className="bg-white rounded-xl p-3 text-center shadow-sm">
               <p className={`text-2xl font-black ${s.color}`}>{s.value}</p>
-              <p className="text-[10px] text-slate-400 uppercase tracking-wider">{s.label}</p>
+              <p className="text-[10px] text-slate-600 uppercase tracking-wider">{s.label}</p>
             </div>
           ))}
         </div>
@@ -385,7 +385,7 @@ export default function AdminPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-black text-navy-700">🔔 Push Notifications</p>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-xs text-slate-600 mt-0.5">
                 Send to subscribers
                 {subCount !== null && <span className="ml-1 font-bold text-amber-600">· {subCount} subscribed</span>}
               </p>
@@ -442,7 +442,7 @@ export default function AdminPage() {
             </button>
           </div>
 
-          <p className="text-[10px] text-slate-400 leading-relaxed">
+          <p className="text-[10px] text-slate-600 leading-relaxed">
             <strong>Note:</strong> Users must have opted in to push notifications from the Share tab in the app.
             Sending to a user with no active subscription will return a warning.
           </p>
@@ -532,7 +532,7 @@ export default function AdminPage() {
               <span className="text-base">💬</span>
               <div className="text-left">
                 <p className="text-sm font-black text-navy-700">Feedback Inbox</p>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-slate-600">
                   {feedback.length} message{feedback.length !== 1 ? 's' : ''}
                   {feedback.filter((f) => !f.read).length > 0 && (
                     <span className="ml-1.5 bg-red-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full">
@@ -562,7 +562,7 @@ export default function AdminPage() {
                             <span className="text-[10px] font-black bg-red-500 text-white px-1.5 py-0.5 rounded-full">NEW</span>
                           )}
                           <p className="text-xs font-bold text-slate-700">{f.name}</p>
-                          <p className="text-xs text-slate-400">{f.email}</p>
+                          <p className="text-xs text-slate-600">{f.email}</p>
                           <p className="text-[10px] text-slate-500">
                             {new Date(f.createdAt).toLocaleDateString()} · {f.page}
                           </p>
@@ -607,7 +607,7 @@ export default function AdminPage() {
 
           {/* Plan filter */}
           <div className="space-y-1">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Plan</p>
+            <p className="text-[10px] font-bold text-slate-600 uppercase tracking-wide">Plan</p>
             <div className="flex flex-wrap gap-1.5">
               {(['all','free','pro','fleet'] as const).map((p) => (
                 <button key={p} onClick={() => setFilterPlan(p)}
@@ -624,7 +624,7 @@ export default function AdminPage() {
 
           {/* Status filter */}
           <div className="space-y-1">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Email Status</p>
+            <p className="text-[10px] font-bold text-slate-600 uppercase tracking-wide">Email Status</p>
             <div className="flex flex-wrap gap-1.5">
               {([
                 { val: 'all',        label: 'All' },
@@ -645,7 +645,7 @@ export default function AdminPage() {
 
           {/* Activity filter */}
           <div className="space-y-1">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Activity</p>
+            <p className="text-[10px] font-bold text-slate-600 uppercase tracking-wide">Activity</p>
             <div className="flex flex-wrap gap-1.5">
               {([
                 { val: 'all',         label: 'All' },
@@ -668,7 +668,7 @@ export default function AdminPage() {
 
           {/* Stripe filter */}
           <div className="space-y-1">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Billing</p>
+            <p className="text-[10px] font-bold text-slate-600 uppercase tracking-wide">Billing</p>
             <div className="flex flex-wrap gap-1.5">
               {([
                 { val: 'all',       label: 'All' },
@@ -689,12 +689,12 @@ export default function AdminPage() {
 
           {/* Sort + result count row */}
           <div className="flex items-center justify-between gap-3 pt-1 border-t border-slate-100">
-            <p className="text-[11px] text-slate-400 font-semibold">
+            <p className="text-[11px] text-slate-600 font-semibold">
               {filtered.length} user{filtered.length !== 1 ? 's' : ''}
               {filtered.length !== users.length && ` of ${users.length}`}
             </p>
             <div className="flex items-center gap-2">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide whitespace-nowrap">Sort by</label>
+              <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wide whitespace-nowrap">Sort by</label>
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
@@ -724,9 +724,9 @@ export default function AdminPage() {
         {/* User table */}
         <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
           {loading ? (
-            <div className="p-8 text-center text-slate-400 text-sm">Loading…</div>
+            <div className="p-8 text-center text-slate-600 text-sm">Loading…</div>
           ) : filtered.length === 0 ? (
-            <div className="p-8 text-center text-slate-400 text-sm">No users found.</div>
+            <div className="p-8 text-center text-slate-600 text-sm">No users found.</div>
           ) : (
             <div className="divide-y divide-slate-50">
               {filtered.map((u) => (
@@ -754,49 +754,49 @@ export default function AdminPage() {
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-slate-400 truncate">{u.email}</p>
-                    <p className="text-[10px] text-slate-500">
+                    <p className="text-xs text-slate-600 truncate">{u.email}</p>
+                    <p className="text-[10px] text-slate-600">
                       Joined {new Date(u.createdAt).toLocaleDateString()} ·{' '}
                       {u.referralCount} referral{u.referralCount !== 1 ? 's' : ''}
                       {u.stripeCustomerId && ' · Stripe ✓'}
                       {u.referredByName && (
-                        <span className="text-green-400"> · Referred by {u.referredByName}</span>
+                        <span className="text-green-600"> · Referred by {u.referredByName}</span>
                       )}
                     </p>
                     {/* Activity metrics */}
                     <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
-                      <span className="text-[10px] text-slate-400">
-                        🔑 <span className="font-semibold text-slate-600">{u.loginCount}</span> login{u.loginCount !== 1 ? 's' : ''}
+                      <span className="text-[10px] text-slate-600">
+                        🔑 <span className="font-semibold text-slate-700">{u.loginCount}</span> login{u.loginCount !== 1 ? 's' : ''}
                         {u.lastLoginAt && (
-                          <span className="text-slate-300"> · last {new Date(u.lastLoginAt).toLocaleDateString()}</span>
+                          <span className="text-slate-500"> · last {new Date(u.lastLoginAt).toLocaleDateString()}</span>
                         )}
                       </span>
-                      <span className="text-[10px] text-slate-400">
-                        🧮 <span className="font-semibold text-slate-600">{u.calcCount}</span> calc{u.calcCount !== 1 ? 's' : ''}
+                      <span className="text-[10px] text-slate-600">
+                        🧮 <span className="font-semibold text-slate-700">{u.calcCount}</span> calc{u.calcCount !== 1 ? 's' : ''}
                       </span>
-                      <span className="text-[10px] text-slate-400">
-                        ⛽ <span className="font-semibold text-slate-600">{u.fillupCount}</span> fill-up{u.fillupCount !== 1 ? 's' : ''}
+                      <span className="text-[10px] text-slate-600">
+                        ⛽ <span className="font-semibold text-slate-700">{u.fillupCount}</span> fill-up{u.fillupCount !== 1 ? 's' : ''}
                         {u.lastFillup && (
-                          <span className="text-slate-300"> · last {new Date(u.lastFillup + 'T12:00:00').toLocaleDateString()}</span>
+                          <span className="text-slate-500"> · last {new Date(u.lastFillup + 'T12:00:00').toLocaleDateString()}</span>
                         )}
                       </span>
-                      <span className="text-[10px] text-slate-400">
-                        📅 <span className="font-semibold text-slate-600">{u.activeDays}</span> active day{u.activeDays !== 1 ? 's' : ''}
+                      <span className="text-[10px] text-slate-600">
+                        📅 <span className="font-semibold text-slate-700">{u.activeDays}</span> active day{u.activeDays !== 1 ? 's' : ''}
                       </span>
                       {u.streak > 0 && (
-                        <span className="text-[10px] text-amber-500 font-semibold">
+                        <span className="text-[10px] text-amber-600 font-semibold">
                           🔥 {u.streak}-day streak
                         </span>
                       )}
                     </div>
                     {u.referredUsers.length > 0 && (
                       <details className="mt-1">
-                        <summary className="text-[10px] text-amber-500 cursor-pointer font-semibold">
+                        <summary className="text-[10px] text-amber-600 cursor-pointer font-semibold">
                           👥 {u.referredUsers.length} user{u.referredUsers.length !== 1 ? 's' : ''} referred — click to view
                         </summary>
                         <div className="mt-1 space-y-0.5 pl-2 border-l-2 border-amber-200">
                           {u.referredUsers.map((r) => (
-                            <p key={r.email} className="text-[10px] text-slate-400">
+                            <p key={r.email} className="text-[10px] text-slate-600">
                               {r.name} · {r.email} · {new Date(r.joinedAt).toLocaleDateString()}
                             </p>
                           ))}
