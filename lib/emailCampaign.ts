@@ -99,8 +99,8 @@ export function welcomeEmailHtml(name: string, userId: string): string {
         Here's what you can do right now on your free account:
       </p>
       <table cellpadding="0" cellspacing="0" width="100%" style="margin-bottom:24px;">
-        ${featureRow('🔢', 'Target Fill Calculator', 'Enter your fuel level and tank size — see exactly what it'll cost to fill up.')}
-        ${featureRow('💵', 'By Budget Calculator', 'Tell us your budget and we'll show how many gallons you can buy.')}
+        ${featureRow('🔢', 'Target Fill Calculator', 'Enter your fuel level and tank size — see exactly what it\'ll cost to fill up.')}
+        ${featureRow('💵', 'By Budget Calculator', 'Tell us your budget and we\'ll show how many gallons you can buy.')}
         ${featureRow('📍', 'Live Gas Price Lookup', 'Pull the current price at stations near you automatically.')}
         ${featureRow('🚗', '1 Saved Vehicle', 'Save your vehicle specs so calculations are instant every time.')}
       </table>
@@ -135,7 +135,7 @@ export function featureTipsEmailHtml(name: string, userId: string): string {
       <table cellpadding="0" cellspacing="0" width="100%" style="margin-bottom:8px;">
         ${featureRow('📍', 'Let GasCap find the gas price for you', 'Tap the location icon on the calculator — it pulls the current average price near you from the EIA database. No manual entry needed.')}
         ${featureRow('🏷️', 'Add your vehicle specs once, use forever', 'Save your tank size and fuel type in the Garage tab. Every calculation after that is one tap.')}
-        ${featureRow('⭐', 'Earn badges as you use the app', 'Log fill-ups, hit streaks, and refer friends to unlock achievement badges. Check the Stats tab to see what you've earned.')}
+        ${featureRow('⭐', 'Earn badges as you use the app', 'Log fill-ups, hit streaks, and refer friends to unlock achievement badges. Check the Stats tab to see what you\'ve earned.')}
       </table>
 
       <div style="background:#fefce8;border:1px solid #fde68a;border-radius:12px;padding:16px 20px;margin:24px 0;">
@@ -306,7 +306,7 @@ export function lastCallEmailHtml(name: string, userId: string): string {
       <table cellpadding="0" cellspacing="0" width="100%" style="margin-bottom:24px;">
         ${featureRow('🤖', 'GasCap AI Advisor', 'Ask anything — fuel efficiency, cost predictions, maintenance timing.')}
         ${featureRow('📊', 'Full Charts & Analytics', 'MPG trends, spending history, price charts over time.')}
-        ${featureRow('🎯', 'Budget + Spending Alerts', 'Know when you're about to blow your fuel budget before it happens.')}
+        ${featureRow('🎯', 'Budget + Spending Alerts', 'Know when you\'re about to blow your fuel budget before it happens.')}
         ${featureRow('🔧', 'Maintenance Reminders', 'Never miss an oil change or service interval again.')}
       </table>
 
