@@ -36,25 +36,21 @@ export default function Header() {
 
         {/* ── Top row: logo + wordmark + auth ── */}
         <div className="flex items-center justify-between mb-5">
-          <div className="flex items-center gap-3">
-            {/* Logo icon — official P pump SVG mark */}
+
+          {/* Logo on white pill so brand colors aren't swallowed by dark bg */}
+          <div className="flex items-center bg-white rounded-2xl px-3 py-2 shadow-md gap-2.5 flex-shrink-0">
             <img
               src="/logo-icon.svg"
-              alt="GasCap logo"
-              className="w-14 h-14 flex-shrink-0"
+              alt=""
+              className="w-10 h-10 flex-shrink-0 object-contain"
+              aria-hidden="true"
             />
-
-            {/* Wordmark SVG */}
-            <div>
-              <img
-                src="/logo-wordmark.svg"
-                alt="gascap"
-                className="h-9 w-auto max-w-[160px] object-contain object-left"
-              />
-              <p className="text-white/50 text-[9px] font-bold tracking-[0.22em] uppercase mt-0.5">
-                Gas Capacity Calculator
-              </p>
-            </div>
+            <img
+              src="/logo-wordmark.svg"
+              alt="GasCap"
+              className="h-7 w-auto object-contain object-left"
+              style={{ maxWidth: 130 }}
+            />
           </div>
 
           <div className="flex items-center gap-2">
@@ -71,8 +67,13 @@ export default function Header() {
           </div>
         </div>
 
+        {/* Subtitle below logo pill */}
+        <p className="text-white/50 text-[9px] font-bold tracking-[0.22em] uppercase mb-4 -mt-3">
+          Gas Capacity Calculator
+        </p>
+
         {/* ── Divider ── */}
-        <div className="h-px bg-gradient-to-r from-white/0 via-white/10 to-white/0 mb-4" />
+        <div className="h-px bg-gradient-to-r from-white/0 via-white/10 to-white/0 mb-4 mt-1" />
 
         {/* ── Tagline + plan badge row ── */}
         <div className="flex items-start justify-between gap-3 mb-3">
