@@ -30,11 +30,18 @@ module.exports = {
           600: '#d97706',
           700: '#b45309',
         },
+        brand: {
+          dark:   '#005F4A',
+          teal:   '#1EB68F',
+          orange: '#FF8300',
+        },
       },
       boxShadow: {
-        card:  '0 2px 14px 0 rgba(30,58,95,0.07)',
-        amber: '0 4px 16px 0 rgba(245,158,11,0.35)',
-        lift:  '0 8px 28px 0 rgba(30,58,95,0.13)',
+        card:   '0 2px 14px 0 rgba(30,58,95,0.07)',
+        amber:  '0 4px 16px 0 rgba(245,158,11,0.35)',
+        lift:   '0 8px 28px 0 rgba(30,58,95,0.13)',
+        brand:  '0 4px 16px 0 rgba(255,131,0,0.35)',
+        teal:   '0 4px 16px 0 rgba(30,182,143,0.30)',
       },
       fontFamily: {
         sans: [

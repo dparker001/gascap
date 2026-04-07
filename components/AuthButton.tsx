@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useState, useEffect } from 'react';
 
 const AVATAR_COLOR_KEY = 'gascap_avatar_color';
-const DEFAULT_COLOR    = 'bg-amber-500';
+const DEFAULT_COLOR    = 'bg-brand-orange';
 
 /** Initials avatar from a display name */
 function Avatar({ name, color }: { name: string; color: string }) {
@@ -57,8 +57,8 @@ export default function AuthButton() {
         </Link>
         <Link
           href="/signup"
-          className="px-3.5 py-1.5 rounded-xl text-xs font-black text-navy-900
-                     bg-amber-500 hover:bg-amber-400 transition-colors"
+          className="px-3.5 py-1.5 rounded-xl text-xs font-black text-white
+                     bg-brand-orange hover:bg-[#FF9A1A] transition-colors"
         >
           Sign up
         </Link>
@@ -71,15 +71,15 @@ export default function AuthButton() {
   const plan = (session.user as { plan?: string })?.plan ?? 'free';
 
   const planLabel =
-    plan === 'pro'   ? { text: 'Pro',   bg: 'bg-amber-500' } :
-    plan === 'fleet' ? { text: 'Fleet', bg: 'bg-blue-600'  } :
+    plan === 'pro'   ? { text: 'Pro',   bg: 'bg-brand-orange' } :
+    plan === 'fleet' ? { text: 'Fleet', bg: 'bg-blue-600'     } :
     null;
 
   return (
     <div className="relative">
       <button
         className="flex items-center gap-2 focus:outline-none focus-visible:ring-2
-                   focus-visible:ring-amber-400 rounded-xl p-1"
+                   focus-visible:ring-brand-teal rounded-xl p-1"
         onClick={() => setMenuOpen((v) => !v)}
         aria-expanded={menuOpen}
         aria-label="User menu"
@@ -123,7 +123,7 @@ export default function AuthButton() {
               <p className="text-[10px] text-slate-400 truncate">{session.user?.email}</p>
               {!planLabel && (
                 <a href="/upgrade"
-                   className="mt-1.5 inline-block text-[10px] font-bold text-amber-600 hover:text-amber-700">
+                   className="mt-1.5 inline-block text-[10px] font-bold text-brand-dark hover:text-brand-teal">
                   Upgrade to Pro →
                 </a>
               )}

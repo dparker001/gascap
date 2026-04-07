@@ -145,16 +145,16 @@ function GuestHero() {
       {/* ── Hero content ─────────────────────────────────────────────────── */}
       <div className="relative z-10 px-4 pt-10 pb-10 max-w-lg mx-auto w-full text-center">
         {/* Eyebrow badge */}
-        <div className="inline-flex items-center gap-2 bg-amber-400/20 border border-amber-400/40
+        <div className="inline-flex items-center gap-2 bg-brand-orange/20 border border-brand-orange/40
                         rounded-full px-3 py-1 mb-4 backdrop-blur-sm">
-          <span className="text-amber-400 text-xs">⭐</span>
-          <span className="text-amber-300 text-[11px] font-bold">Free · No app store · Works offline</span>
+          <span className="text-brand-orange text-xs">⭐</span>
+          <span className="text-brand-orange/90 text-[11px] font-bold">Free · No app store · Works offline</span>
         </div>
 
         {/* Headline */}
         <h1 className="text-3xl font-black text-white leading-tight mb-3 drop-shadow-lg">
           Know exactly how much gas you need —{' '}
-          <span className="text-amber-400">before you pull up.</span>
+          <span className="text-brand-orange">before you pull up.</span>
         </h1>
 
         {/* Subheadline */}
@@ -359,14 +359,14 @@ function UseCases() {
 function StatsBar() {
   return (
     <section className="px-4 pb-6 max-w-lg mx-auto w-full">
-      <div className="bg-navy-700 rounded-2xl px-5 py-4 grid grid-cols-3 gap-4 text-center">
+      <div className="bg-brand-dark rounded-2xl px-5 py-4 grid grid-cols-3 gap-4 text-center">
         {[
           { value: 'Free', label: 'Forever — no catch' },
           { value: '5.0★', label: 'Average rating' },
           { value: '<2s', label: 'Typical calculation' },
         ].map(({ value, label }) => (
           <div key={label}>
-            <p className="text-lg font-black text-amber-400">{value}</p>
+            <p className="text-lg font-black text-brand-orange">{value}</p>
             <p className="text-[10px] text-white/50 mt-0.5 leading-tight">{label}</p>
           </div>
         ))}
@@ -464,7 +464,7 @@ function FaqSection() {
 function GuestCtaBanner() {
   return (
     <section className="px-4 py-6 max-w-lg mx-auto w-full">
-      <div className="bg-navy-700 rounded-3xl px-6 py-8 text-center relative overflow-hidden">
+      <div className="bg-brand-dark rounded-3xl px-6 py-8 text-center relative overflow-hidden">
         {/* Decorative arc */}
         <svg className="absolute top-0 right-0 opacity-[0.07] pointer-events-none"
              width="180" height="140" viewBox="0 0 180 140" aria-hidden="true">
@@ -474,7 +474,7 @@ function GuestCtaBanner() {
 
         <div className="relative">
           <div className="inline-flex items-center gap-2 bg-white/10 rounded-full px-3 py-1 mb-4">
-            <span className="text-amber-400 text-xs">⭐</span>
+            <span className="text-brand-orange text-xs">⭐</span>
             <span className="text-white/80 text-[11px] font-bold">Free — no credit card ever</span>
           </div>
           <h2 className="text-2xl font-black text-white leading-tight mb-2">
@@ -485,8 +485,8 @@ function GuestCtaBanner() {
           </p>
           <a
             href="/signup"
-            className="inline-block w-full max-w-xs py-3.5 bg-amber-500 hover:bg-amber-400
-                       text-white text-sm font-black rounded-2xl transition-colors shadow-amber"
+            className="inline-block w-full max-w-xs py-3.5 bg-brand-orange hover:bg-[#FF9A1A]
+                       text-white text-sm font-black rounded-2xl transition-colors shadow-brand"
           >
             Create free account →
           </a>
@@ -552,7 +552,7 @@ export default function Home() {
       {/* Guest — save nudge */}
       {isGuest && (
         <section className="px-4 -mt-2 pb-2 max-w-lg mx-auto w-full">
-          <div className="bg-navy-700 rounded-2xl px-4 py-3 flex items-center gap-3">
+          <div className="bg-brand-dark rounded-2xl px-4 py-3 flex items-center gap-3">
             <span className="text-xl flex-shrink-0">💾</span>
             <div className="flex-1 min-w-0">
               <p className="text-xs font-black text-white">Save your calculations</p>
@@ -560,7 +560,7 @@ export default function Home() {
             </div>
             <a
               href="/signup"
-              className="flex-shrink-0 px-3 py-1.5 bg-amber-500 hover:bg-amber-400
+              className="flex-shrink-0 px-3 py-1.5 bg-brand-orange hover:bg-[#FF9A1A]
                          text-white text-xs font-black rounded-xl transition-colors whitespace-nowrap"
             >
               Sign up free
@@ -610,7 +610,7 @@ export default function Home() {
           onClick={() => setShowPricing((v) => !v)}
           className="w-full flex items-center justify-between py-3 px-4 bg-white dark:bg-slate-800
                      rounded-2xl border border-slate-100 dark:border-slate-700
-                     shadow-sm hover:border-amber-200 transition-colors mb-2"
+                     shadow-sm hover:border-brand-teal/30 transition-colors mb-2"
         >
           <div className="flex items-center gap-2.5">
             <span className="text-lg">⭐</span>
@@ -634,7 +634,7 @@ export default function Home() {
       <footer className="border-t border-slate-100 dark:border-slate-800
                          bg-white dark:bg-slate-900 py-8 pb-24 px-4 text-center space-y-3">
         <p className="font-black text-slate-700 dark:text-slate-200">
-          GasCap<sup className="text-amber-500 text-[10px] font-bold">™</sup>
+          GasCap<sup className="text-brand-orange text-[10px] font-bold">™</sup>
         </p>
         <p className="text-xs text-slate-400">Gas Capacity — Know before you go.</p>
         <p className="text-[10px] text-slate-500">© {new Date().getFullYear()} GasCap™ — All rights reserved.</p>
@@ -645,10 +645,10 @@ export default function Home() {
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center gap-2 mt-1 px-4 py-2 rounded-full
-                     bg-navy-700 hover:bg-navy-600 transition-colors group"
+                     bg-brand-dark hover:bg-[#006B54] transition-colors group"
         >
           <span className="text-[10px] text-white/50 font-medium">Powered by</span>
-          <span className="text-[11px] font-black text-amber-400 group-hover:text-amber-300 transition-colors">
+          <span className="text-[11px] font-black text-brand-teal group-hover:text-brand-orange transition-colors">
             VNetCard™
           </span>
           <svg viewBox="0 0 12 12" className="w-2.5 h-2.5 text-white/30 group-hover:text-white/50 transition-colors"
@@ -662,11 +662,11 @@ export default function Home() {
 
         {/* Legal links */}
         <div className="flex items-center justify-center gap-4 pt-1">
-          <a href="/help"    className="text-[11px] text-slate-500 hover:text-amber-500 transition-colors">Help &amp; Support</a>
+          <a href="/help"    className="text-[11px] text-slate-500 hover:text-brand-orange transition-colors">Help &amp; Support</a>
           <span className="text-slate-400">·</span>
-          <a href="/terms"   className="text-[11px] text-slate-500 hover:text-amber-500 transition-colors">Terms of Service</a>
+          <a href="/terms"   className="text-[11px] text-slate-500 hover:text-brand-orange transition-colors">Terms of Service</a>
           <span className="text-slate-400">·</span>
-          <a href="/privacy" className="text-[11px] text-slate-500 hover:text-amber-500 transition-colors">Privacy Policy</a>
+          <a href="/privacy" className="text-[11px] text-slate-500 hover:text-brand-orange transition-colors">Privacy Policy</a>
         </div>
       </footer>
     </main>
