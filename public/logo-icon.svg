@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 118" fill="none">
+
+  <!-- ── OUTER P BOWL (dark green thick stroke) ── -->
+  <path d="M 38 22 C 90 22 90 66 38 66"
+        stroke="#005F4A" stroke-width="10" stroke-linecap="round"/>
+
+  <!-- ── INNER TEAL ARCS (depth / ring effect inside bowl) ── -->
+  <path d="M 38 32 C 74 32 74 56 38 56"
+        stroke="#1EB68F" stroke-width="5" stroke-linecap="round"/>
+  <path d="M 38 39 C 64 39 64 49 38 49"
+        stroke="#1EB68F" stroke-width="4" stroke-linecap="round"/>
+
+  <!-- ── PUMP BODY (filled dark green rectangle — left vertical stroke of P) ── -->
+  <rect x="20" y="20" width="20" height="58" rx="4" fill="#005F4A"/>
+
+  <!-- Pump window / display screen -->
+  <rect x="24" y="30" width="12" height="15" rx="2" fill="white" opacity="0.15"/>
+  <!-- Chevron »  symbol inside window -->
+  <path d="M 26 34.5 L 29 38.5 L 26 42.5"
+        stroke="#1EB68F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 29.5 34.5 L 32.5 38.5 L 29.5 42.5"
+        stroke="#1EB68F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- ── NOZZLE ARM (diagonal from pump top → upper-left) ── -->
+  <path d="M 25 21 Q 17 16 10 12"
+        stroke="#005F4A" stroke-width="7" stroke-linecap="round"/>
+
+  <!-- ── NOZZLE HEAD (gas pump nozzle shape) ── -->
+  <!-- Outer body -->
+  <rect x="5" y="8" width="8" height="9" rx="2" fill="#005F4A"/>
+  <!-- Spout tip -->
+  <rect x="11" y="10" width="6" height="4" rx="1.5" fill="#005F4A"/>
+
+  <!-- ── CONNECTOR BLOCK (bottom-right of pump body) ── -->
+  <rect x="38" y="74" width="10" height="7" rx="2" fill="#005F4A"/>
+
+  <!-- ── HOSE CURVE (bottom loop of P stem) ── -->
+  <path d="M 29 78 Q 29 94 31 97 Q 34 103 43 103 L 47 103"
+        stroke="#005F4A" stroke-width="8" stroke-linecap="round"/>
+
+</svg>

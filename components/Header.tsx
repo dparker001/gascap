@@ -37,35 +37,26 @@ export default function Header() {
         {/* ── Top row: logo + wordmark + auth ── */}
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-3">
-            {/* Logo icon — teal pump with orange nozzle */}
+            {/* Logo icon — official P pump SVG mark */}
             <div className="relative flex-shrink-0">
-              <div className="absolute inset-0 rounded-2xl bg-brand-teal opacity-25 blur-sm scale-110"
+              <div className="absolute inset-0 rounded-2xl bg-brand-teal opacity-20 blur-sm scale-110"
                    aria-hidden="true" />
-              <div className="relative w-12 h-12 rounded-2xl bg-brand-teal
-                              flex items-center justify-center shadow-teal">
-                {/* Gas pump SVG — white body, orange nozzle tip */}
-                <svg viewBox="0 0 24 24" fill="none" className="w-6 h-6" aria-hidden="true">
-                  {/* Pump body */}
-                  <rect x="2" y="6" width="11" height="16" rx="1.5" fill="white" opacity="0.95"/>
-                  {/* Pump window */}
-                  <rect x="4" y="9" width="7" height="4" rx="0.75" fill="#1EB68F" opacity="0.7"/>
-                  {/* Nozzle arm */}
-                  <path d="M13 8 L18 8 Q21 8 21 11 L21 16 Q21 18 19 18"
-                        stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-                  {/* Nozzle tip — orange */}
-                  <circle cx="18.5" cy="18.5" r="2" fill="#FF8300"/>
-                </svg>
-              </div>
+              <img
+                src="/logo-icon.svg"
+                alt="GasCap logo"
+                className="relative w-12 h-12 rounded-xl"
+                aria-hidden="true"
+              />
             </div>
 
-            {/* Wordmark — VAR 1: Two-Tone Stack */}
+            {/* Wordmark — lowercase "gascap™" matching brand style */}
             <div>
-              <h1 className="text-[28px] font-black tracking-tight leading-none flex items-end gap-0">
-                <span className="text-white">GasCa</span>
-                <span className="text-brand-orange">p</span>
+              <h1 className="leading-none">
+                <span className="text-[26px] font-black tracking-tight text-brand-teal">gasca</span>
+                <span className="text-[26px] font-black tracking-tight text-white">p</span>
                 <sup className="text-brand-orange text-[13px] font-bold ml-0.5 align-super">™</sup>
               </h1>
-              <p className="text-brand-teal/70 text-[9px] font-bold tracking-[0.22em] uppercase mt-0.5">
+              <p className="text-white/50 text-[9px] font-bold tracking-[0.22em] uppercase mt-0.5">
                 Gas Capacity Calculator
               </p>
             </div>
