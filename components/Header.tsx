@@ -38,24 +38,19 @@ export default function Header() {
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-3">
             {/* Logo icon — official P pump SVG mark */}
-            <div className="relative flex-shrink-0">
-              <div className="absolute inset-0 rounded-2xl bg-brand-teal opacity-20 blur-sm scale-110"
-                   aria-hidden="true" />
-              <img
-                src="/logo-icon.svg"
-                alt="GasCap logo"
-                className="relative w-12 h-12 rounded-xl"
-                aria-hidden="true"
-              />
-            </div>
+            <img
+              src="/logo-icon.svg"
+              alt="GasCap logo"
+              className="w-14 h-14 flex-shrink-0"
+            />
 
-            {/* Wordmark — lowercase "gascap™" matching brand style */}
+            {/* Wordmark SVG */}
             <div>
-              <h1 className="leading-none">
-                <span className="text-[26px] font-black tracking-tight text-brand-teal">gasca</span>
-                <span className="text-[26px] font-black tracking-tight text-white">p</span>
-                <sup className="text-brand-orange text-[13px] font-bold ml-0.5 align-super">™</sup>
-              </h1>
+              <img
+                src="/logo-wordmark.svg"
+                alt="gascap"
+                className="h-9 w-auto max-w-[160px] object-contain object-left"
+              />
               <p className="text-white/50 text-[9px] font-bold tracking-[0.22em] uppercase mt-0.5">
                 Gas Capacity Calculator
               </p>
