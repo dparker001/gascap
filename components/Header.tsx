@@ -38,18 +38,11 @@ export default function Header() {
         <div className="flex items-center justify-between mb-5">
 
           {/* Logo on white pill so brand colors aren't swallowed by dark bg */}
-          <div className="flex items-center bg-white rounded-2xl px-3 py-2 shadow-md gap-2.5 flex-shrink-0">
+          <div className="bg-white rounded-2xl px-4 py-2 shadow-md flex-shrink-0">
             <img
-              src="/logo-icon.svg"
-              alt=""
-              className="w-10 h-10 flex-shrink-0 object-contain"
-              aria-hidden="true"
-            />
-            <img
-              src="/logo-wordmark.svg"
+              src="/logo-wordmark1.svg"
               alt="GasCap"
-              className="h-7 w-auto object-contain object-left"
-              style={{ maxWidth: 130 }}
+              className="h-14 w-auto object-contain"
             />
           </div>
 
@@ -67,10 +60,6 @@ export default function Header() {
           </div>
         </div>
 
-        {/* Subtitle below logo pill */}
-        <p className="text-white/50 text-[9px] font-bold tracking-[0.22em] uppercase mb-4 -mt-3">
-          Gas Capacity Calculator
-        </p>
 
         {/* ── Divider ── */}
         <div className="h-px bg-gradient-to-r from-white/0 via-white/10 to-white/0 mb-4 mt-1" />
