@@ -38,11 +38,11 @@ export default function Header() {
         <div className="flex items-center justify-between mb-5">
 
           {/* Logo on white pill so brand colors aren't swallowed by dark bg */}
-          <div className="bg-white rounded-2xl px-4 py-2 shadow-md flex-shrink-0">
+          <div className="bg-white rounded-2xl px-4 py-2.5 shadow-md flex-shrink-0">
             <img
-              src="/logo-wordmark1.svg"
+              src="/logo-wordmark3.svg"
               alt="GasCap"
-              className="h-14 w-auto object-contain"
+              className="h-8 w-auto object-contain"
             />
           </div>
 
