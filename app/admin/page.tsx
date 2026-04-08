@@ -314,8 +314,13 @@ export default function AdminPage() {
       <div className="min-h-screen bg-[#eef1f7] flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-sm space-y-4">
           <div className="text-center">
-            <p className="text-2xl font-black text-navy-700">GasCap™ Admin</p>
-            <p className="text-xs text-slate-600 mt-1">Restricted access</p>
+            <div className="flex justify-center mb-3">
+              <div className="bg-brand-dark rounded-xl px-4 py-2">
+                <img src="/logo-wordmark3.svg" alt="GasCap" className="h-7 w-auto" />
+              </div>
+            </div>
+            <p className="text-sm font-black text-slate-700">Admin Panel</p>
+            <p className="text-xs text-slate-500 mt-0.5">Restricted access</p>
           </div>
           <form onSubmit={handleLogin} className="space-y-3">
             <input
@@ -323,12 +328,12 @@ export default function AdminPage() {
               placeholder="Admin password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+              className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-teal"
             />
             {authErr && <p className="text-xs text-red-500">{authErr}</p>}
             <button
               type="submit"
-              className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-white font-black text-sm transition-colors"
+              className="w-full py-3 rounded-xl bg-brand-dark hover:bg-brand-teal text-white font-black text-sm transition-colors"
             >
               Sign In
             </button>
@@ -344,9 +349,14 @@ export default function AdminPage() {
 
         {/* Header */}
         <div className="flex items-center justify-between">
-          <div>
-            <p className="text-xl font-black text-navy-700">GasCap™ Admin</p>
-            <p className="text-xs text-slate-600">User management</p>
+          <div className="flex items-center gap-3">
+            <div className="bg-brand-dark rounded-xl px-3 py-1.5">
+              <img src="/logo-wordmark3.svg" alt="GasCap" className="h-6 w-auto" />
+            </div>
+            <div>
+              <p className="text-sm font-black text-slate-700">Admin Panel</p>
+              <p className="text-xs text-slate-500">User management</p>
+            </div>
           </div>
           <button onClick={handleLogout} className="text-xs text-slate-500 hover:text-red-500 transition-colors">
             Sign out

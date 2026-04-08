@@ -104,14 +104,11 @@ export default function UpgradePage() {
     <div className="min-h-screen bg-[#eef1f7] flex flex-col">
 
       {/* Brand bar */}
-      <div className="bg-navy-700 px-5 py-4">
-        <Link href="/" className="flex items-center gap-2.5 w-fit">
-          <div className="w-8 h-8 rounded-xl bg-amber-500 flex items-center justify-center">
-            <GasPumpIcon />
+      <div className="bg-brand-dark px-5 py-4">
+        <Link href="/" className="flex items-center w-fit">
+          <div className="bg-white rounded-xl px-3 py-1.5">
+            <img src="/logo-wordmark3.svg" alt="GasCap" className="h-7 w-auto" />
           </div>
-          <span className="text-white font-black text-lg">
-            GasCap<sup className="text-amber-400 text-xs ml-0.5">™</sup>
-          </span>
         </Link>
       </div>
 
