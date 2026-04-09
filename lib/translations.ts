@@ -290,10 +290,10 @@ const en = {
     terms:    'Terms of Service',
     privacy:  'Privacy Policy',
   },
-} as const;
+};
 
 // ── Spanish ───────────────────────────────────────────────────────────────────
-const es: Translations = {
+const es: typeof en = {
 
   nav: {
     signIn:         'Iniciar sesión',
