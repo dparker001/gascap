@@ -4,47 +4,16 @@ import { useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { PRICING } from '@/lib/stripe';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
 type Billing  = 'monthly' | 'annual';
 type PlanTier = 'free' | 'pro' | 'fleet';
 
-// ── Feature lists ─────────────────────────────────────────────────────────
-
-const FREE_FEATURES = [
-  { text: '1 saved vehicle',              pro: false },
-  { text: 'Target Fill calculator',       pro: false },
-  { text: 'By Budget calculator',         pro: false },
-  { text: 'EPA vehicle database search',  pro: false },
-  { text: 'Live gas price lookup',        pro: false },
-  { text: 'Badge achievements',           pro: false },
-  { text: 'Works offline (PWA)',          pro: false },
-];
-
-const PRO_FEATURES = [
-  { text: 'Everything in Free',                       highlight: false },
-  { text: 'Up to 3 saved vehicles',                   highlight: true  },
-  { text: 'Manual entry + auto spec lookup',          highlight: true  },
-  { text: 'Engine type & tank size auto-detected',    highlight: false },
-  { text: 'MPG trending chart',                       highlight: true  },
-  { text: 'Fuel cost PDF export',                     highlight: true  },
-  { text: 'Monthly fuel budget tracker',              highlight: false },
-  { text: 'Weekly push notification digest',          highlight: false },
-  { text: 'Priority support',                         highlight: false },
-];
-
-const FLEET_FEATURES = [
-  { text: 'Everything in Pro',                        highlight: false },
-  { text: 'Unlimited vehicles',                       highlight: true  },
-  { text: 'Household & multi-vehicle use',            highlight: true  },
-  { text: 'Shared fleet garage',                      highlight: true  },
-  { text: 'Fleet cost dashboard',                     highlight: true  },
-  { text: 'Per-vehicle spending breakdown',           highlight: false },
-  { text: 'CSV export for accounting',                highlight: true  },
-  { text: 'Multi-driver sub-accounts (coming soon)', highlight: false },
-  { text: 'Dedicated support',                        highlight: false },
-];
+// Highlight flags (order matches translation feature arrays)
+const PRO_HIGHLIGHTS  = [false, true,  true,  false, true,  true,  false, false, false];
+const FLEET_HIGHLIGHTS = [false, true,  true,  true,  true,  false, true,  false, false];
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -68,24 +37,29 @@ function fmt(n: number) {
 // ── Plan card ─────────────────────────────────────────────────────────────
 
 interface PlanCardProps {
-  name:        string;
-  badge?:      string;
-  badgeColor?: string;
-  price:       string;
-  priceUnit?:  string;   // replaces "/mo" when set (e.g. "forever")
-  subline:     string;
-  cta:         string;
-  ctaStyle:    string;
-  features:    { text: string; highlight?: boolean }[];
-  popular?:    boolean;
-  isCurrent?:  boolean;
-  onCta:       () => void;
-  loading?:    boolean;
+  name:               string;
+  badge?:             string;
+  badgeColor?:        string;
+  price:              string;
+  priceUnit?:         string;
+  subline:            string;
+  cta:                string;
+  ctaStyle:           string;
+  features:           { text: string; highlight?: boolean }[];
+  popular?:           boolean;
+  isCurrent?:         boolean;
+  onCta:              () => void;
+  loading?:           boolean;
+  currentPlanRibbon:  string;
+  mostPopular:        string;
+  loadingLabel:       string;
+  moLabel:            string;
 }
 
 function PlanCard({
   name, badge, badgeColor, price, priceUnit, subline, cta, ctaStyle,
   features, popular, isCurrent, onCta, loading,
+  currentPlanRibbon, mostPopular, loadingLabel, moLabel,
 }: PlanCardProps) {
   return (
     <div className={[
@@ -105,7 +79,7 @@ function PlanCard({
             ? 'bg-green-400 text-navy-900'
             : 'bg-green-500 text-white',
         ].join(' ')}>
-          ✓ Your Current Plan
+          {currentPlanRibbon}
         </div>
       )}
 
@@ -114,7 +88,7 @@ function PlanCard({
         <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-amber-400 text-navy-900
                         text-[11px] font-black px-4 py-1 rounded-full uppercase tracking-wider
                         whitespace-nowrap shadow-md">
-          ⭐ Most Popular
+          {mostPopular}
         </div>
       )}
 
@@ -136,7 +110,7 @@ function PlanCard({
           {price}
         </span>
         <span className={`text-sm mb-1 ${popular ? 'text-white/60' : 'text-slate-400'}`}>
-          /{priceUnit ?? 'mo'}
+          /{priceUnit ?? moLabel}
         </span>
       </div>
       <p className={`text-xs mb-6 leading-relaxed ${popular ? 'text-white/60' : 'text-slate-400'}`}>
@@ -149,7 +123,7 @@ function PlanCard({
         disabled={loading || isCurrent}
         className={`w-full py-3 rounded-2xl text-sm font-black transition-colors mb-6 ${ctaStyle}`}
       >
-        {loading ? 'Loading…' : cta}
+        {loading ? loadingLabel : cta}
       </button>
 
       {/* Divider */}
@@ -179,11 +153,17 @@ function PlanCard({
 export default function PricingSection() {
   const { data: session } = useSession();
   const router            = useRouter();
+  const { t }             = useTranslation();
   const [billing, setBilling] = useState<Billing>('annual');
   const [loading, setLoading] = useState<string | null>(null);
 
   // Read the user's current plan from the JWT-enriched session
   const userPlan = (session?.user as { plan?: string })?.plan as PlanTier | undefined ?? 'free';
+
+  // Build translated feature arrays with highlight flags
+  const FREE_FEATURES  = t.pricing.freeFeatures.map((text) => ({ text }));
+  const PRO_FEATURES   = t.pricing.proFeatures.map((text, i) => ({ text, highlight: PRO_HIGHLIGHTS[i] }));
+  const FLEET_FEATURES = t.pricing.fleetFeatures.map((text, i) => ({ text, highlight: FLEET_HIGHLIGHTS[i] }));
 
   async function handleUpgrade(tier: 'pro' | 'fleet') {
     if (!session) {
@@ -209,36 +189,36 @@ export default function PricingSection() {
   const fleetPrice = billing === 'annual' ? fmt(PRICING.fleet.annualPerMonth) : fmt(PRICING.fleet.monthly);
 
   const proSubline = billing === 'annual'
-    ? `Billed ${fmt(PRICING.pro.annual)}/yr — 2 months FREE`
-    : 'Billed monthly · cancel anytime';
+    ? t.pricing.billedAnnual(fmt(PRICING.pro.annual))
+    : t.pricing.billedMonthly;
 
   const fleetSubline = billing === 'annual'
-    ? `Billed ${fmt(PRICING.fleet.annual)}/yr — 2 months FREE`
-    : 'Billed monthly · cancel anytime';
+    ? t.pricing.billedAnnual(fmt(PRICING.fleet.annual))
+    : t.pricing.billedMonthly;
 
   // Per-card CTA text based on user's current plan
   function freeCta()  {
-    if (!session)            return 'Get started free →';
-    if (userPlan === 'free') return '✓ Your current plan';
-    return 'Downgrade to Free';
+    if (!session)            return t.pricing.getStartedFree;
+    if (userPlan === 'free') return t.pricing.yourCurrentPlan;
+    return t.pricing.downgradeToFree;
   }
   function proCta()  {
-    if (userPlan === 'pro')   return '✓ Your current plan';
-    if (userPlan === 'fleet') return 'Downgrade to Pro';
-    return 'Upgrade to Pro →';
+    if (userPlan === 'pro')   return t.pricing.yourCurrentPlan;
+    if (userPlan === 'fleet') return t.pricing.downgradeFromFleet;
+    return t.pricing.upgradeToPro;
   }
   function fleetCta() {
-    if (userPlan === 'fleet') return '✓ Your current plan';
-    return 'Start Fleet Plan →';
+    if (userPlan === 'fleet') return t.pricing.yourCurrentPlan;
+    return t.pricing.startFleetPlan;
   }
 
   return (
     <section aria-labelledby="pricing-heading" className="mt-10">
 
       {/* Heading */}
-      <h2 id="pricing-heading" className="section-eyebrow">Plans & Pricing</h2>
+      <h2 id="pricing-heading" className="section-eyebrow">{t.pricing.heading}</h2>
       <p className="text-center text-slate-500 text-sm mb-6 -mt-2 leading-relaxed">
-        Start free. Upgrade when you&apos;re ready. No surprises.
+        {t.pricing.sub}
       </p>
 
       {/* Billing toggle */}
@@ -252,7 +232,7 @@ export default function PricingSection() {
               : 'text-slate-400 hover:text-slate-600',
           ].join(' ')}
         >
-          Monthly
+          {t.pricing.monthly}
         </button>
         <button
           onClick={() => setBilling('annual')}
@@ -263,9 +243,9 @@ export default function PricingSection() {
               : 'text-slate-400 hover:text-slate-600',
           ].join(' ')}
         >
-          Annual
+          {t.pricing.annual}
           <span className="bg-green-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full leading-none">
-            2 MO FREE
+            {t.pricing.twoMonthsFree}
           </span>
         </button>
       </div>
@@ -276,11 +256,11 @@ export default function PricingSection() {
         {/* Free */}
         <PlanCard
           name="Free"
-          badge="No CC Ever"
+          badge={t.pricing.noCCEver}
           badgeColor="bg-green-100 text-green-700"
           price="$0"
-          priceUnit="forever"
-          subline="Full calculator · gas prices · offline PWA · no catch"
+          priceUnit={t.pricing.forever}
+          subline={t.pricing.freeSub}
           cta={freeCta()}
           ctaStyle={
             userPlan === 'free' && session
@@ -290,12 +270,16 @@ export default function PricingSection() {
           features={FREE_FEATURES}
           isCurrent={!!session && userPlan === 'free'}
           onCta={() => !session && router.push('/signup')}
+          currentPlanRibbon={t.pricing.currentPlanRibbon}
+          mostPopular={t.pricing.mostPopular}
+          loadingLabel={t.pricing.loading}
+          moLabel={t.pricing.mo}
         />
 
         {/* Pro */}
         <PlanCard
           name="Pro"
-          badge="Individuals & Couples"
+          badge={t.pricing.individuals}
           badgeColor="bg-amber-100 text-amber-700"
           price={proPrice}
           subline={proSubline}
@@ -310,12 +294,16 @@ export default function PricingSection() {
           isCurrent={!!session && userPlan === 'pro'}
           onCta={() => userPlan !== 'pro' && handleUpgrade('pro')}
           loading={loading === 'pro'}
+          currentPlanRibbon={t.pricing.currentPlanRibbon}
+          mostPopular={t.pricing.mostPopular}
+          loadingLabel={t.pricing.loading}
+          moLabel={t.pricing.mo}
         />
 
         {/* Fleet */}
         <PlanCard
           name="Fleet"
-          badge="Household & Business"
+          badge={t.pricing.householdBiz}
           badgeColor="bg-blue-100 text-blue-700"
           price={fleetPrice}
           subline={fleetSubline}
@@ -329,6 +317,10 @@ export default function PricingSection() {
           isCurrent={!!session && userPlan === 'fleet'}
           onCta={() => userPlan !== 'fleet' && handleUpgrade('fleet')}
           loading={loading === 'fleet'}
+          currentPlanRibbon={t.pricing.currentPlanRibbon}
+          mostPopular={t.pricing.mostPopular}
+          loadingLabel={t.pricing.loading}
+          moLabel={t.pricing.mo}
         />
       </div>
 
@@ -336,15 +328,14 @@ export default function PricingSection() {
       {billing === 'annual' && (
         <div className="mt-5 text-center animate-fade-in">
           <p className="text-xs text-green-600 font-semibold">
-            🎉 You save <strong>{fmt(PRICING.pro.monthly * 2)}</strong> on Pro
-            and <strong>{fmt(PRICING.fleet.monthly * 2)}</strong> on Fleet by paying annually
+            {t.pricing.annualSavings(fmt(PRICING.pro.monthly * 2), fmt(PRICING.fleet.monthly * 2))}
           </p>
         </div>
       )}
 
       {/* Trust footnote */}
       <p className="text-center text-xs text-slate-400 mt-6 leading-relaxed">
-        Payments processed securely by Stripe · Cancel anytime · No hidden fees
+        {t.pricing.trustNote}
       </p>
     </section>
   );

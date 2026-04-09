@@ -532,8 +532,8 @@ export default function Home() {
           <div className="flex items-center gap-2.5">
             <span className="text-lg">⭐</span>
             <div className="text-left">
-              <p className="text-sm font-black text-slate-700 dark:text-slate-200">Plans &amp; Pricing</p>
-              <p className="text-[10px] text-slate-400">Free · Pro $4.99/mo · Fleet $19.99/mo</p>
+              <p className="text-sm font-black text-slate-700 dark:text-slate-200">{t.pricing.toggleLabel}</p>
+              <p className="text-[10px] text-slate-400">{t.pricing.toggleSub}</p>
             </div>
           </div>
           <svg
@@ -553,8 +553,8 @@ export default function Home() {
         <p className="font-black text-slate-700 dark:text-slate-200">
           GasCap<sup className="text-brand-orange text-[10px] font-bold">™</sup>
         </p>
-        <p className="text-xs text-slate-400">Gas Capacity — Know before you go.</p>
-        <p className="text-[10px] text-slate-500">© {new Date().getFullYear()} GasCap™ — All rights reserved.</p>
+        <p className="text-xs text-slate-400">{t.footer.tagline}</p>
+        <p className="text-[10px] text-slate-500">{t.footer.copyright(new Date().getFullYear())}</p>
 
         {/* VNetCard lead magnet */}
         <a
@@ -564,7 +564,7 @@ export default function Home() {
           className="inline-flex items-center gap-2 mt-1 px-4 py-2 rounded-full
                      bg-brand-dark hover:bg-[#006B54] transition-colors group"
         >
-          <span className="text-[10px] text-white/50 font-medium">Powered by</span>
+          <span className="text-[10px] text-white/50 font-medium">{t.footer.poweredBy}</span>
           <span className="text-[11px] font-black text-brand-teal group-hover:text-brand-orange transition-colors">
             VNetCard™
           </span>
@@ -574,16 +574,16 @@ export default function Home() {
           </svg>
         </a>
         <p className="text-[10px] text-slate-500">
-          Share your digital business card with anyone, anywhere.
+          {t.footer.vnetCardDesc}
         </p>
 
         {/* Legal links */}
         <div className="flex items-center justify-center gap-4 pt-1">
-          <a href="/help"    className="text-[11px] text-slate-500 hover:text-brand-orange transition-colors">Help &amp; Support</a>
+          <a href="/help"    className="text-[11px] text-slate-500 hover:text-brand-orange transition-colors">{t.footer.help}</a>
           <span className="text-slate-400">·</span>
-          <a href="/terms"   className="text-[11px] text-slate-500 hover:text-brand-orange transition-colors">Terms of Service</a>
+          <a href="/terms"   className="text-[11px] text-slate-500 hover:text-brand-orange transition-colors">{t.footer.terms}</a>
           <span className="text-slate-400">·</span>
-          <a href="/privacy" className="text-[11px] text-slate-500 hover:text-brand-orange transition-colors">Privacy Policy</a>
+          <a href="/privacy" className="text-[11px] text-slate-500 hover:text-brand-orange transition-colors">{t.footer.privacy}</a>
         </div>
       </footer>
     </main>

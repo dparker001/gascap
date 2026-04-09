@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 interface GasPriceLookupResult {
   price:      number | null;
@@ -38,6 +39,7 @@ const STATE_NAMES: Record<string, string> = {
 };
 
 export default function GasPriceLookup({ onApply }: GasPriceLookupProps) {
+  const { t } = useTranslation();
   const [status, setStatus]   = useState<Status>('idle');
   const [result, setResult]   = useState<GasPriceLookupResult | null>(null);
   const [errMsg, setErrMsg]   = useState('');
@@ -60,7 +62,7 @@ export default function GasPriceLookup({ onApply }: GasPriceLookupProps) {
       });
     } catch {
       setStatus('error');
-      setErrMsg('Location access denied. Please enter the price manually.');
+      setErrMsg(t.gasPrice.errorDenied);
       return;
     }
 
@@ -78,7 +80,7 @@ export default function GasPriceLookup({ onApply }: GasPriceLookupProps) {
       setStatus('done');
     } catch {
       setStatus('error');
-      setErrMsg('Could not fetch gas prices. Check your connection.');
+      setErrMsg(t.gasPrice.errorNetwork);
     }
   }
 
@@ -106,7 +108,7 @@ export default function GasPriceLookup({ onApply }: GasPriceLookupProps) {
             <path fillRule="evenodd" clipRule="evenodd"
               d="M8 1a5 5 0 100 10A5 5 0 008 1zM0 8a8 8 0 1116 0A8 8 0 010 8zm8-3a1 1 0 011 1v2h2a1 1 0 110 2H8a1 1 0 01-1-1V6a1 1 0 011-1z"/>
           </svg>
-          Use my location to look up local gas prices
+          {t.gasPrice.trigger}
         </button>
       )}
 
@@ -115,7 +117,7 @@ export default function GasPriceLookup({ onApply }: GasPriceLookupProps) {
         <div className="flex items-center gap-2 mt-2 text-xs text-slate-500">
           <span className="inline-block w-3 h-3 border-2 border-amber-400 border-t-transparent
                            rounded-full animate-spin" aria-hidden="true" />
-          {status === 'locating' ? 'Getting your location…' : 'Looking up gas prices…'}
+          {status === 'locating' ? t.gasPrice.locating : t.gasPrice.fetching}
         </div>
       )}
 
@@ -127,7 +129,7 @@ export default function GasPriceLookup({ onApply }: GasPriceLookupProps) {
             onClick={() => setStatus('idle')}
             className="text-xs text-amber-600 font-semibold mt-1 hover:underline"
           >
-            Try again
+            {t.gasPrice.tryAgain}
           </button>
         </div>
       )}
@@ -148,7 +150,7 @@ export default function GasPriceLookup({ onApply }: GasPriceLookupProps) {
               </p>
               <button onClick={() => setStatus('idle')}
                 className="text-xs text-amber-600 font-bold mt-2 hover:underline">
-                Dismiss
+                {t.gasPrice.dismiss}
               </button>
             </div>
           ) : result.price ? (
@@ -158,12 +160,12 @@ export default function GasPriceLookup({ onApply }: GasPriceLookupProps) {
                               flex items-center justify-between gap-3">
                 <div>
                   <p className="text-xs font-bold text-emerald-800">
-                    {result.isState ? `${stateName} weekly avg` : 'National weekly avg'}
+                    {result.isState ? t.gasPrice.stateAvg(stateName) : t.gasPrice.nationalAvg}
                   </p>
                   <p className="text-lg font-black text-emerald-700">
                     ${result.price.toFixed(2)}<span className="text-xs font-normal text-emerald-600 ml-0.5">/gal</span>
                   </p>
-                  <p className="text-[10px] text-emerald-600 mt-0.5">Source: U.S. EIA · regular unleaded</p>
+                  <p className="text-[10px] text-emerald-600 mt-0.5">{t.gasPrice.source}</p>
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <button
@@ -171,13 +173,13 @@ export default function GasPriceLookup({ onApply }: GasPriceLookupProps) {
                     className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold
                                hover:bg-emerald-500 transition-colors whitespace-nowrap"
                   >
-                    Use this price
+                    {t.gasPrice.useThisPrice}
                   </button>
                   <button
                     onClick={() => setStatus('idle')}
                     className="text-[10px] text-slate-400 hover:text-slate-600 text-center"
                   >
-                    Dismiss
+                    {t.gasPrice.dismiss}
                   </button>
                 </div>
               </div>
@@ -193,8 +195,8 @@ export default function GasPriceLookup({ onApply }: GasPriceLookupProps) {
                   <div className="flex items-center gap-2">
                     <span className="text-base">📍</span>
                     <div>
-                      <p className="text-xs font-bold text-blue-800">Find nearby stations</p>
-                      <p className="text-[10px] text-blue-500">See live prices at stations near you</p>
+                      <p className="text-xs font-bold text-blue-800">{t.gasPrice.findNearby}</p>
+                      <p className="text-[10px] text-blue-500">{t.gasPrice.findNearbyHint}</p>
                     </div>
                   </div>
                   <svg className="w-3.5 h-3.5 text-blue-400 group-hover:text-blue-600 flex-shrink-0"
@@ -207,9 +209,9 @@ export default function GasPriceLookup({ onApply }: GasPriceLookupProps) {
             </div>
           ) : (
             <p className="text-xs text-slate-500 mt-2">
-              Price data unavailable for your area.{' '}
+              {t.gasPrice.unavailable}{' '}
               <button onClick={() => setStatus('idle')}
-                className="text-amber-600 font-semibold hover:underline">Dismiss</button>
+                className="text-amber-600 font-semibold hover:underline">{t.gasPrice.dismiss}</button>
             </p>
           )}
         </div>

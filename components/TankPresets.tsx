@@ -1,6 +1,7 @@
 'use client';
 
 import { VEHICLE_PRESETS } from '@/lib/calculations';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 // Typical rental fleet tank sizes by class
 const RENTAL_PRESETS = [
@@ -21,11 +22,12 @@ interface TankPresetsProps {
 }
 
 export default function TankPresets({ value, onChange, rentalMode }: TankPresetsProps) {
+  const { t } = useTranslation();
   return (
     <div>
       <label className="field-label">
-        Tank Size
-        <span className="font-normal text-slate-400 ml-1">(gallons)</span>
+        {t.tankPresets.label}
+        <span className="font-normal text-slate-400 ml-1">{t.tankPresets.unit}</span>
       </label>
 
       {/* Vehicle quick-select */}
@@ -35,11 +37,11 @@ export default function TankPresets({ value, onChange, rentalMode }: TankPresets
         onChange={(e) => { if (e.target.value) onChange(e.target.value); }}
         aria-label="Select a common vehicle to auto-fill tank size"
       >
-        <option value="" disabled>Common vehicles — tap to auto-fill ▾</option>
+        <option value="" disabled>{t.tankPresets.selectPlaceholder}</option>
 
         {/* Rental car class group — shown first when in rental mode */}
         {rentalMode && (
-          <optgroup label="🚗 Rental Car Classes">
+          <optgroup label={t.tankPresets.rentalClasses}>
             {RENTAL_PRESETS.map((p) => (
               <option key={p.label} value={String(p.gallons)}>
                 {p.label} — {p.gallons} gal
@@ -48,7 +50,7 @@ export default function TankPresets({ value, onChange, rentalMode }: TankPresets
           </optgroup>
         )}
 
-        <optgroup label="My Vehicles">
+        <optgroup label={t.tankPresets.myVehicles}>
           {VEHICLE_PRESETS.map((p) => (
             <option key={p.label} value={String(p.gallons)}>
               {p.label} — {p.gallons} gal
@@ -58,7 +60,7 @@ export default function TankPresets({ value, onChange, rentalMode }: TankPresets
 
         {/* Rental car group also visible in normal mode, at bottom */}
         {!rentalMode && (
-          <optgroup label="🚗 Rental Car Classes">
+          <optgroup label={t.tankPresets.rentalClasses}>
             {RENTAL_PRESETS.map((p) => (
               <option key={p.label} value={String(p.gallons)}>
                 {p.label} — {p.gallons} gal
@@ -72,7 +74,7 @@ export default function TankPresets({ value, onChange, rentalMode }: TankPresets
         type="number"
         inputMode="decimal"
         className="input-field"
-        placeholder="Or type exact size: e.g. 14.5"
+        placeholder={t.tankPresets.typePlaceholder}
         value={value}
         min="1" max="200" step="0.1"
         onChange={(e) => onChange(e.target.value)}
