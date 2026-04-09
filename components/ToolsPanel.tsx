@@ -23,6 +23,7 @@ import ReferralLeaderboard    from './ReferralLeaderboard';
 import VehicleHealthAlert     from './VehicleHealthAlert';
 import StreakRewards          from './StreakRewards';
 import ManualFillupLogger     from './ManualFillupLogger';
+import { useTranslation }    from '@/contexts/LanguageContext';
 // ── Tab definitions ──────────────────────────────────────────────────────────
 
 type TabId = 'ai' | 'trip' | 'compare' | 'log' | 'charts' | 'stats' | 'service' | 'share' | 'review';
@@ -35,26 +36,27 @@ interface Tab {
   planRequired?: 'pro' | 'fleet';
 }
 
-const TABS: Tab[] = [
-  { id: 'ai',      emoji: '🤖', label: 'AI',      authRequired: false, planRequired: undefined },
-  { id: 'trip',    emoji: '🗺️', label: 'Trip',    authRequired: false, planRequired: undefined },
-  { id: 'compare', emoji: '🏪', label: 'Compare', authRequired: false, planRequired: undefined },
-  { id: 'log',     emoji: '⛽', label: 'Log',     authRequired: true,  planRequired: undefined },
-  { id: 'charts',  emoji: '📊', label: 'Charts',  authRequired: true,  planRequired: 'pro'  },
-  { id: 'stats',   emoji: '📈', label: 'Stats',   authRequired: true,  planRequired: undefined },
-  { id: 'service', emoji: '🔧', label: 'Service', authRequired: true,  planRequired: 'pro'  },
-  { id: 'share',   emoji: '🔗', label: 'Share',   authRequired: true,  planRequired: undefined },
-  { id: 'review',  emoji: '⭐', label: 'Review',  authRequired: true,  planRequired: undefined },
-];
-
 // ── Component ────────────────────────────────────────────────────────────────
 
 export default function ToolsPanel() {
   const { data: session } = useSession();
+  const { t }             = useTranslation();
   const [activeTab, setActiveTab] = useState<TabId>('ai');
 
   const userPlan = (session?.user as { plan?: string })?.plan ?? 'free';
   const isPro    = userPlan === 'pro' || userPlan === 'fleet';
+
+  const TABS: Tab[] = [
+    { id: 'ai',      emoji: '🤖', label: t.tools.tabs.ai,      authRequired: false, planRequired: undefined },
+    { id: 'trip',    emoji: '🗺️', label: t.tools.tabs.trip,    authRequired: false, planRequired: undefined },
+    { id: 'compare', emoji: '🏪', label: t.tools.tabs.compare, authRequired: false, planRequired: undefined },
+    { id: 'log',     emoji: '⛽', label: t.tools.tabs.log,     authRequired: true,  planRequired: undefined },
+    { id: 'charts',  emoji: '📊', label: t.tools.tabs.charts,  authRequired: true,  planRequired: 'pro'  },
+    { id: 'stats',   emoji: '📈', label: t.tools.tabs.stats,   authRequired: true,  planRequired: undefined },
+    { id: 'service', emoji: '🔧', label: t.tools.tabs.service, authRequired: true,  planRequired: 'pro'  },
+    { id: 'share',   emoji: '🔗', label: t.tools.tabs.share,   authRequired: true,  planRequired: undefined },
+    { id: 'review',  emoji: '⭐', label: t.tools.tabs.review,  authRequired: true,  planRequired: undefined },
+  ];
 
   // If session drops, fall back to an accessible tab
   const effectiveTab =
@@ -68,7 +70,7 @@ export default function ToolsPanel() {
       <div className="flex items-center gap-2 mb-3 px-1">
         <span className="text-base">⚡</span>
         <h2 className="text-sm font-black text-slate-700 dark:text-slate-100 uppercase tracking-wider">
-          Tools &amp; Insights
+          {t.tools.heading}
         </h2>
         <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
       </div>
@@ -101,7 +103,7 @@ export default function ToolsPanel() {
                       ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed'
                       : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-white/60 dark:hover:bg-slate-700/60',
                 ].join(' ')}
-                title={isDisabled ? 'Sign in to access this feature' : undefined}
+                title={isDisabled ? t.tools.signInHint : undefined}
               >
                 <span className={`text-[15px] leading-none transition-transform duration-200 ${isActive ? 'scale-110' : ''}`}>
                   {tab.emoji}

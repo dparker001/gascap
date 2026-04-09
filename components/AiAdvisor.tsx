@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 interface Vehicle { name: string; gallons: number; fuelType?: string; }
 interface GarageResp { vehicles: Vehicle[]; }
@@ -13,17 +14,11 @@ interface Message {
   loading?: boolean;
 }
 
-const PROMPT_CHIPS = [
-  { emoji: '📉', text: 'Why might my MPG be dropping?' },
-  { emoji: '💰', text: 'Am I on track with my fuel budget?' },
-  { emoji: '🔮', text: 'Predict my fuel cost next month' },
-  { emoji: '⚡', text: 'How can I improve my fuel efficiency?' },
-  { emoji: '🛣️', text: 'Tips for maximizing range on a long trip' },
-  { emoji: '🔧', text: 'When might my vehicle need maintenance?' },
-];
+const CHIP_EMOJIS = ['📉', '💰', '🔮', '⚡', '🛣️', '🔧'];
 
 export default function AiAdvisor({ embedded = false }: { embedded?: boolean }) {
   const { data: session, status } = useSession();
+  const { t } = useTranslation();
 
   const [open,     setOpen]     = useState(embedded);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -192,11 +187,11 @@ export default function AiAdvisor({ embedded = false }: { embedded?: boolean }) 
                 {isEmpty && (
                   <div className="text-center py-3">
                     <p className="text-2xl mb-1.5">🤖</p>
-                    <p className="text-sm font-bold text-slate-700">Hi! I&apos;m your GasCap AI Advisor.</p>
+                    <p className="text-sm font-bold text-slate-700">{t.ai.greeting}</p>
                     <p className="text-xs text-slate-400 mt-1">
                       {isPro
                         ? "I can see your vehicle and fill-up data. Ask me anything!"
-                        : "Tap a suggested question below to get started."}
+                        : t.ai.greetingSub}
                     </p>
                   </div>
                 )}
@@ -239,21 +234,21 @@ export default function AiAdvisor({ embedded = false }: { embedded?: boolean }) 
               {isEmpty && (
                 <div className="px-4 pb-3 pt-2">
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-2">
-                    Suggested questions
+                    {t.ai.suggestedLabel}
                   </p>
                   <div className="flex flex-wrap gap-1.5">
-                    {PROMPT_CHIPS.map((chip) => (
+                    {t.ai.chips.map((text, i) => (
                       <button
-                        key={chip.text}
-                        onClick={() => sendMessage(chip.text, true)}
+                        key={text}
+                        onClick={() => sendMessage(text, true)}
                         disabled={loading}
                         className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-50
                                    border border-slate-200 text-xs text-slate-600 font-medium
                                    hover:border-amber-300 hover:bg-amber-50 hover:text-amber-700
                                    transition-colors disabled:opacity-40"
                       >
-                        <span>{chip.emoji}</span>
-                        <span>{chip.text}</span>
+                        <span>{CHIP_EMOJIS[i]}</span>
+                        <span>{text}</span>
                       </button>
                     ))}
                   </div>
@@ -269,7 +264,7 @@ export default function AiAdvisor({ embedded = false }: { embedded?: boolean }) 
                       className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2
                                  text-sm text-slate-800 placeholder-slate-400
                                  focus:outline-none focus:ring-2 focus:ring-amber-300 focus:border-transparent"
-                      placeholder="Ask about fuel, MPG, costs…"
+                      placeholder={t.ai.inputPlaceholder}
                       value={input}
                       onChange={(e) => setInput(e.target.value)}
                       onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(input); } }}
@@ -297,14 +292,14 @@ export default function AiAdvisor({ embedded = false }: { embedded?: boolean }) 
                 /* Upgrade nudge for free / guest */
                 <div className="border-t border-slate-100 px-4 py-3 flex items-center justify-between gap-3">
                   <p className="text-xs text-slate-400 leading-snug">
-                    <span className="font-semibold text-slate-500">Pro</span> unlocks open-ended questions &amp; your vehicle data
+                    {t.ai.proUnlocks}
                   </p>
                   <Link
                     href="/upgrade"
                     className="flex-shrink-0 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-white
                                text-xs font-black rounded-xl transition-colors whitespace-nowrap"
                   >
-                    Upgrade →
+                    {t.ai.upgrade}
                   </Link>
                 </div>
               )}

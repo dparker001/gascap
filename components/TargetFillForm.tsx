@@ -15,6 +15,7 @@ import {
 } from '@/lib/calculations';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import type { CalcTab } from './CalculatorTabs';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -51,10 +52,6 @@ const TARGET_PRESETS = [
   { label: 'Full', value: 100 },
 ];
 
-const GOAL_TABS: { id: CalcTab; emoji: string; label: string; sub: string }[] = [
-  { id: 'target', emoji: '⛽', label: 'Target Fill', sub: 'Fill to a level'   },
-  { id: 'budget', emoji: '💵', label: 'By Budget',   sub: 'Spend a set amount' },
-];
 
 interface Props {
   activeTab:    CalcTab;
@@ -65,8 +62,14 @@ interface Props {
 
 export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
   const { data: session }   = useSession();
+  const { t }               = useTranslation();
   const isPro      = ['pro', 'fleet'].includes((session?.user as { plan?: string })?.plan ?? '');
   const isLoggedIn = !!session;
+
+  const GOAL_TABS: { id: CalcTab; emoji: string; label: string; sub: string }[] = [
+    { id: 'target', emoji: '⛽', label: t.calc.targetFillLabel, sub: t.calc.targetFillSub },
+    { id: 'budget', emoji: '💵', label: t.calc.byBudgetLabel,   sub: t.calc.byBudgetSub  },
+  ];
 
   const [form, setForm]   = useLocalStorage<FormState>('gc_target_v2', DEFAULTS);
   const [errors, setErrors]         = useState<ValidationErrors>({});
@@ -194,7 +197,7 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
 
       {/* ── "How to use" eyebrow ──────────────────────────────────── */}
       <p className="text-[10px] font-black uppercase tracking-[0.22em] text-amber-500 mb-1 mt-2">
-        How to use
+        {t.calc.howToUse}
       </p>
 
       {/* ── Rental car mode toggle ───────────────────────────────── */}
@@ -217,12 +220,10 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
         <span className="text-xl flex-shrink-0" aria-hidden="true">🚗</span>
         <div className="flex-1 text-left">
           <p className={`text-sm font-black leading-none ${rentalMode ? 'text-blue-800' : 'text-slate-700'}`}>
-            Rental Car Return Mode
+            {t.calc.rentalModeTitle}
           </p>
           <p className={`text-[10px] mt-0.5 leading-snug ${rentalMode ? 'text-blue-600' : 'text-slate-400'}`}>
-            {rentalMode
-              ? 'Active — compare pump cost vs. rental company rate'
-              : 'Tap to calculate refill cost before dropping off a rental'}
+            {rentalMode ? t.calc.rentalModeActive : t.calc.rentalModeInactive}
           </p>
         </div>
         <div className={[
@@ -241,12 +242,11 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
         <div className="bg-blue-50 border border-blue-200 rounded-2xl px-4 py-3 mb-3 space-y-2">
           <div className="flex items-center gap-2">
             <span className="text-base" aria-hidden="true">🏢</span>
-            <p className="text-xs font-black text-blue-800">Rental Company's Gas Rate</p>
-            <span className="text-[10px] text-blue-500 font-medium">(optional)</span>
+            <p className="text-xs font-black text-blue-800">{t.calc.rentalRateLabel}</p>
+            <span className="text-[10px] text-blue-500 font-medium">{t.calc.rentalRateOptional}</span>
           </div>
           <p className="text-[11px] text-blue-600 leading-snug">
-            If you return the car empty the rental company charges their rate — often $8–12/gal.
-            Enter it to see exactly how much you save by filling up yourself.
+            {t.calc.rentalRateHint}
           </p>
           <div className="relative">
             <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-blue-400 font-bold text-sm pointer-events-none">$</span>
@@ -269,7 +269,7 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
       {/* ══════════════════════════════════════════════════════════════
           STEP 1 — Pick a vehicle
       ══════════════════════════════════════════════════════════════ */}
-      <StepLabel n={1} title="Pick a vehicle" />
+      <StepLabel n={1} title={t.calc.step1} />
       <div className="card">
         <TankPresets
           value={form.tankCapacity}
@@ -281,8 +281,7 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
           <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-xl px-3 py-2.5 mt-1">
             <span className="text-base flex-shrink-0" aria-hidden="true">🚪</span>
             <p className="text-[11px] text-blue-600 leading-snug">
-              <span className="font-black">Garage door closed</span> — your saved vehicles aren't used for rental calculations.
-              Pick a rental class from the dropdown above.
+              <span className="font-black">{t.calc.garageClosedTitle}</span>{t.calc.garageClosedHint}
             </p>
           </div>
         ) : (
@@ -298,11 +297,11 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
       {/* ══════════════════════════════════════════════════════════════
           STEP 2 — Set fuel level
       ══════════════════════════════════════════════════════════════ */}
-      <StepLabel n={2} title="Set fuel level" />
+      <StepLabel n={2} title={t.calc.step2} />
       <div className="card">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <p className="field-label mb-0">Current Fuel Level</p>
+            <p className="field-label mb-0">{t.calc.currentFuelLevel}</p>
             {/* ⚡ Live badge — Pro only, shown once calculated */}
             {isLive && (
               <span className="text-[9px] font-black bg-amber-500 text-white px-1.5 py-0.5 rounded-full leading-none">
@@ -348,7 +347,7 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
                       className="flex items-center gap-1.5 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-xl px-3 py-2 hover:border-amber-300 hover:text-amber-700 transition-colors disabled:opacity-50"
                     >
                       <span>{gaugeScanning ? '🔄' : '📷'}</span>
-                      <span>{gaugeScanning ? 'Reading gauge…' : 'Scan Gauge'}</span>
+                      <span>{gaugeScanning ? t.calc.readingGauge : t.calc.scanGauge}</span>
                     </button>
                     <button
                       type="button"
@@ -357,7 +356,7 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
                       className="flex items-center gap-1.5 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-xl px-3 py-2 hover:border-amber-300 hover:text-amber-700 transition-colors disabled:opacity-50"
                     >
                       <span>🖼️</span>
-                      <span>Upload Photo</span>
+                      <span>{t.calc.uploadPhoto}</span>
                     </button>
                   </div>
                   {gaugeScanMsg && (
@@ -366,15 +365,15 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
                     </p>
                   )}
                   <p className="text-[10px] text-slate-400 leading-relaxed">
-                    📸 Point your camera at the fuel gauge on your dashboard — AI will read the needle and set your level automatically.
+                    {t.calc.scanHint}
                   </p>
                 </>
               ) : (
                 <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
                   <span className="text-amber-500 text-sm">📷</span>
                   <p className="text-[11px] text-amber-700 leading-snug">
-                    <a href="/signin" className="font-bold underline underline-offset-2">Sign in</a>
-                    {' '}to use AI gauge scan and auto-detect your fuel level from a photo.
+                    <a href="/signin" className="font-bold underline underline-offset-2">{t.nav.signIn}</a>
+                    {' '}{t.calc.signInToScan}
                   </p>
                 </div>
               )}
@@ -402,7 +401,7 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
           <a href="/upgrade"
              className="mt-3 flex items-center gap-1.5 text-[11px] font-semibold text-amber-600 hover:text-amber-500 transition-colors">
             <span className="text-xs bg-amber-100 rounded-full px-1.5 py-0.5">⚡</span>
-            Live recalculation is a Pro feature — Upgrade to Pro
+            {t.calc.liveUpgradeNudge}
           </a>
         )}
       </div>
@@ -410,7 +409,7 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
       {/* ══════════════════════════════════════════════════════════════
           STEP 3 — Choose a goal
       ══════════════════════════════════════════════════════════════ */}
-      <StepLabel n={3} title="Choose a goal" />
+      <StepLabel n={3} title={t.calc.step3} />
 
       {/* Goal type tab switcher */}
       <div className="flex gap-2 mb-4">
@@ -444,7 +443,7 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
 
       {/* Target fill level selector */}
       <div className="card">
-        <p className="field-label">Fill Up To</p>
+        <p className="field-label">{t.calc.fillUpTo}</p>
         <div className="flex gap-2 mb-3">
           {TARGET_PRESETS.map((p) => (
             <button
@@ -461,7 +460,7 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
             onClick={() => patch({ targetPreset: null })}
             aria-pressed={isCustom}
           >
-            Custom
+            {t.calc.custom}
           </button>
         </div>
 
@@ -491,7 +490,7 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
               <p className="mt-2 text-xs text-green-700 bg-green-50 border border-green-200
                             rounded-xl px-3 py-2 flex items-center gap-1.5">
                 <span>✅</span>
-                Your tank is already at or above {target}% — no fill-up needed!
+                {t.calc.alreadyFull(target)}
               </p>
             );
           }
@@ -502,11 +501,11 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
       {/* ══════════════════════════════════════════════════════════════
           STEP 4 — Get the answer
       ══════════════════════════════════════════════════════════════ */}
-      <StepLabel n={4} title="Get the answer" />
+      <StepLabel n={4} title={t.calc.step4} />
 
       {/* Gas price */}
       <div className="card mb-4">
-        <p className="field-label">Gas Price per Gallon</p>
+        <p className="field-label">{t.calc.gasPriceLabel}</p>
         <div className="relative">
           <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-semibold pointer-events-none">$</span>
           <input
@@ -528,21 +527,21 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
       {rentalMode && (
         <div className="flex items-center gap-2 bg-blue-700 rounded-xl px-3 py-2 mb-2">
           <span className="text-base flex-shrink-0" aria-hidden="true">🚗</span>
-          <p className="text-xs font-black text-white flex-1">Rental Car Return Mode Active</p>
+          <p className="text-xs font-black text-white flex-1">{t.calc.rentalModeActiveReminder}</p>
           <button
             type="button"
             onClick={() => setRentalMode(false)}
             className="text-blue-200 hover:text-white text-[11px] font-bold underline whitespace-nowrap transition-colors"
           >
-            Exit
+            {t.calc.rentalModeExit}
           </button>
         </div>
       )}
 
       <button className="btn-amber" onClick={handleCalculate}>
-        {rentalMode ? 'Calculate Rental Fuel Cost ⚡' : 'Calculate ⚡'}
+        {rentalMode ? t.calc.calculateRental : t.calc.calculate}
       </button>
-      <button className="btn-secondary mt-3" onClick={handleReset}>Clear all</button>
+      <button className="btn-secondary mt-3" onClick={handleReset}>{t.calc.clearAll}</button>
 
       <div id="tf-result">
         {result && (

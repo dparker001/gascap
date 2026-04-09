@@ -5,6 +5,7 @@ import { useEffect, useState, useCallback } from 'react';
 import VehiclePicker from './VehiclePicker';
 import BadgeShelf   from './BadgeShelf';
 import type { VehicleSpecs } from '@/lib/vehicleSpecs';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 export interface Vehicle {
   id:               string;
@@ -242,6 +243,7 @@ function VehicleInfoModal({ vehicle, onClose, onSpecsUpdated }: {
 
 export default function SavedVehicles({ currentGallons, onSelect, selectedVehicleId, calcKey }: SavedVehiclesProps) {
   const { data: session, status } = useSession();
+  const { t } = useTranslation();
   const [data,        setData]        = useState<GarageResponse | null>(null);
   const [showPicker,  setShowPicker]  = useState(false);
   const [saving,      setSaving]      = useState(false);
@@ -268,8 +270,8 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
   if (!session) {
     return (
       <p className="text-xs text-slate-400 mt-3 text-center">
-        <a href="/signin" className="text-amber-600 font-semibold hover:underline">Sign in</a>
-        {' '}to save vehicles to your garage.
+        <a href="/signin" className="text-amber-600 font-semibold hover:underline">{t.nav.signIn}</a>
+        {' '}{t.calc.signInToSave}
       </p>
     );
   }
