@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSession }          from 'next-auth/react';
+import { useTranslation }      from '@/contexts/LanguageContext';
 import AdSenseBanner           from '@/components/AdSenseBanner';
 import Header                  from '@/components/Header';
 import CalculatorTabs          from '@/components/CalculatorTabs';
@@ -125,6 +126,13 @@ function SchemaMarkup() {
 // ── Guest Hero (above the calculator) ───────────────────────────────────────
 
 function GuestHero() {
+  const { t } = useTranslation();
+  const pills = [
+    { icon: '⛽', label: t.hero.pill_prices },
+    { icon: '🚗', label: t.hero.pill_rental },
+    { icon: '📊', label: t.hero.pill_mpg    },
+    { icon: '🤖', label: t.hero.pill_ai     },
+  ];
   return (
     <section className="relative w-full overflow-hidden">
       {/* ── Background video ──────────────────────────────────────────────── */}
@@ -148,29 +156,23 @@ function GuestHero() {
         <div className="inline-flex items-center gap-2 bg-brand-orange/20 border border-brand-orange/40
                         rounded-full px-3 py-1 mb-4 backdrop-blur-sm">
           <span className="text-brand-orange text-xs">⭐</span>
-          <span className="text-brand-orange/90 text-[11px] font-bold">Free · No app store · Works offline</span>
+          <span className="text-brand-orange/90 text-[11px] font-bold">{t.hero.badge}</span>
         </div>
 
         {/* Headline */}
         <h1 className="text-3xl font-black text-white leading-tight mb-3 drop-shadow-lg">
-          Know exactly how much gas you need —{' '}
-          <span className="text-brand-orange">before you pull up.</span>
+          {t.hero.headline}{' '}
+          <span className="text-brand-orange">{t.hero.headlineAccent}</span>
         </h1>
 
         {/* Subheadline */}
         <p className="text-sm text-slate-300 leading-relaxed mb-5 max-w-sm mx-auto drop-shadow">
-          GasCap calculates your exact fill-up cost using live local gas prices.
-          No more guessing, no more overpaying — especially on rental car returns.
+          {t.hero.sub}
         </p>
 
         {/* Trust pills */}
         <div className="flex items-center justify-center gap-3 flex-wrap mb-2">
-          {[
-            { icon: '⛽', label: 'Live local prices' },
-            { icon: '🚗', label: 'Rental car mode' },
-            { icon: '📊', label: 'MPG tracking' },
-            { icon: '🤖', label: 'AI advisor' },
-          ].map(({ icon, label }) => (
+          {pills.map(({ icon, label }) => (
             <span key={label}
               className="inline-flex items-center gap-1.5 bg-white/10 backdrop-blur-sm
                          border border-white/20
@@ -187,6 +189,8 @@ function GuestHero() {
 // ── Problem / Solution strip ─────────────────────────────────────────────────
 
 function ProblemSolution() {
+  const { t } = useTranslation();
+  const icons = ['💳', '🚗', '📊'];
   return (
     <section className="px-4 pb-6 max-w-lg mx-auto w-full">
       <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100
@@ -194,34 +198,18 @@ function ProblemSolution() {
         {/* Header */}
         <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-700">
           <h2 className="text-sm font-black text-slate-700 dark:text-slate-200">
-            Stop guessing at the pump
+            {t.problem.heading}
           </h2>
           <p className="text-xs text-slate-400 mt-0.5">
-            GasCap solves the three most frustrating gas station moments.
+            {t.problem.sub}
           </p>
         </div>
 
         {/* Rows */}
-        {[
-          {
-            before: 'Wondering if you have enough cash to fill up',
-            after:  'Know the exact cost before you swipe your card',
-            icon:   '💳',
-          },
-          {
-            before: 'Returning a rental car on empty — $12/gallon fees',
-            after:  'Calculate exactly how many gallons to buy first',
-            icon:   '🚗',
-          },
-          {
-            before: 'No idea what you\'re spending on gas each month',
-            after:  'MPG trends and monthly spend tracked automatically',
-            icon:   '📊',
-          },
-        ].map(({ before, after, icon }, i) => (
+        {t.problem.rows.map(({ before, after }, i) => (
           <div key={i} className="px-5 py-4 flex items-start gap-4
                                   border-b border-slate-50 dark:border-slate-700/50 last:border-0">
-            <span className="text-xl flex-shrink-0 mt-0.5">{icon}</span>
+            <span className="text-xl flex-shrink-0 mt-0.5">{icons[i]}</span>
             <div className="flex-1 min-w-0 space-y-1">
               <p className="text-xs text-slate-400 line-through leading-relaxed">{before}</p>
               <p className="text-xs font-semibold text-slate-700 dark:text-slate-200 leading-relaxed">
@@ -237,45 +225,27 @@ function ProblemSolution() {
 
 // ── Feature showcase ─────────────────────────────────────────────────────────
 
+const FEATURE_ICONS = ['⛽', '📡', '📊', '🤖'];
+
 function Features() {
+  const { t } = useTranslation();
   return (
     <section className="px-4 pb-6 max-w-lg mx-auto w-full">
       <div className="flex items-center gap-2 mb-4 px-1">
         <span className="text-base">⚡</span>
         <h2 className="text-sm font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider">
-          Everything in one free app
+          {t.features.heading}
         </h2>
         <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
       </div>
 
       {/* Feature grid 2×2 */}
       <div className="grid grid-cols-2 gap-3 mb-3">
-        {[
-          {
-            icon: '⛽',
-            title: 'Live gas prices',
-            body: 'Real-time local prices from the U.S. EIA — automatically localized to your state.',
-          },
-          {
-            icon: '📡',
-            title: 'Works offline',
-            body: 'Install it like an app. No signal? The calculator always works with your saved data.',
-          },
-          {
-            icon: '📊',
-            title: 'MPG & spend tracking',
-            body: 'Log every fill-up. See your efficiency trends, monthly spend, and fuel cost per mile.',
-          },
-          {
-            icon: '🤖',
-            title: 'AI fuel advisor',
-            body: 'Ask anything — best fill strategy, octane grade, or how to improve your MPG.',
-          },
-        ].map(({ icon, title, body }) => (
+        {t.features.items.map(({ title, body }, i) => (
           <div key={title}
             className="bg-white dark:bg-slate-800 rounded-2xl p-4 shadow-sm
                        border border-slate-100 dark:border-slate-700">
-            <span className="text-2xl">{icon}</span>
+            <span className="text-2xl">{FEATURE_ICONS[i]}</span>
             <h3 className="text-sm font-black text-slate-800 dark:text-slate-100 mt-2 leading-tight">
               {title}
             </h3>
@@ -289,15 +259,13 @@ function Features() {
         <span className="text-3xl flex-shrink-0 mt-0.5" aria-hidden="true">🚗</span>
         <div>
           <h3 className="text-sm font-black text-white leading-tight">
-            Renting a car? Never overpay at drop-off.
+            {t.features.rentalTitle}
           </h3>
           <p className="text-xs text-blue-200 mt-1 leading-relaxed">
-            Rental companies charge up to $12/gal if you return empty.
-            GasCap™ Rental Car Return Mode tells you exactly how many gallons
-            to buy — and shows your exact savings vs. letting them fill it.
+            {t.features.rentalBody}
           </p>
           <p className="text-[10px] text-blue-300/70 mt-2 font-semibold">
-            Toggle "🚗 Rental Car Return?" in the calculator above.
+            {t.features.rentalHint}
           </p>
         </div>
       </div>
@@ -307,44 +275,26 @@ function Features() {
 
 // ── Use cases ────────────────────────────────────────────────────────────────
 
+const USE_CASE_EMOJIS = ['🚘', '✈️', '🗺️', '🚛'];
+
 function UseCases() {
+  const { t } = useTranslation();
   return (
     <section className="px-4 pb-6 max-w-lg mx-auto w-full">
       <div className="flex items-center gap-2 mb-4 px-1">
         <span className="text-base">👤</span>
         <h2 className="text-sm font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider">
-          Who uses GasCap™
+          {t.useCases.heading}
         </h2>
         <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        {[
-          {
-            emoji: '🚘',
-            who: 'Daily Drivers',
-            what: 'Know your fill-up cost every time. Budget your gas spend to the dollar.',
-          },
-          {
-            emoji: '✈️',
-            who: 'Frequent Travelers',
-            what: 'Use Rental Car Return Mode to skip the $12/gal refueling trap every trip.',
-          },
-          {
-            emoji: '🗺️',
-            who: 'Road Trippers',
-            what: 'Plan your fuel budget stop by stop. Know costs before you leave the driveway.',
-          },
-          {
-            emoji: '🚛',
-            who: 'Fleet Managers',
-            what: 'Track fuel costs across your entire fleet. Export reports. Control spending.',
-          },
-        ].map(({ emoji, who, what }) => (
+        {t.useCases.items.map(({ who, what }, i) => (
           <div key={who}
             className="bg-white dark:bg-slate-800 rounded-2xl p-4 shadow-sm
                        border border-slate-100 dark:border-slate-700">
-            <span className="text-2xl">{emoji}</span>
+            <span className="text-2xl">{USE_CASE_EMOJIS[i]}</span>
             <h3 className="text-sm font-black text-slate-800 dark:text-slate-100 mt-2">{who}</h3>
             <p className="text-xs text-slate-400 mt-1 leading-relaxed">{what}</p>
           </div>
@@ -357,14 +307,11 @@ function UseCases() {
 // ── Stats bar ────────────────────────────────────────────────────────────────
 
 function StatsBar() {
+  const { t } = useTranslation();
   return (
     <section className="px-4 pb-6 max-w-lg mx-auto w-full">
       <div className="bg-brand-dark rounded-2xl px-5 py-4 grid grid-cols-3 gap-4 text-center">
-        {[
-          { value: 'Free', label: 'Forever — no catch' },
-          { value: '5.0★', label: 'Average rating' },
-          { value: '<2s', label: 'Typical calculation' },
-        ].map(({ value, label }) => (
+        {t.stats.map(({ value, label }) => (
           <div key={label}>
             <p className="text-lg font-black text-brand-orange">{value}</p>
             <p className="text-[10px] text-white/50 mt-0.5 leading-tight">{label}</p>
@@ -378,55 +325,21 @@ function StatsBar() {
 // ── FAQ section (SEO) ────────────────────────────────────────────────────────
 
 function FaqSection() {
+  const { t } = useTranslation();
   const [open, setOpen] = useState<number | null>(null);
-
-  const faqs = [
-    {
-      q: 'How does GasCap calculate how much gas I need?',
-      a: 'Enter your current fuel level (or drag the gauge), pick your vehicle, and set your target fill level. GasCap multiplies the gallons needed by your live local gas price — fetched automatically from the U.S. EIA — and shows you the exact cost in seconds.',
-    },
-    {
-      q: 'Is GasCap free?',
-      a: 'Yes — the core calculator, live gas prices, and offline access are free forever with no credit card required. Pro ($4.99/mo) adds fill-up history, MPG charts, AI advisor, and PDF export. Fleet ($19.99/mo) adds unlimited vehicles and fleet reporting.',
-    },
-    {
-      q: 'Do I need to download it from the App Store?',
-      a: 'No. GasCap is a Progressive Web App (PWA). Visit gascap.app on your phone, tap the Share button, then "Add to Home Screen." It installs like a native app — no App Store or Google Play required.',
-    },
-    {
-      q: 'What is Rental Car Return Mode?',
-      a: 'It\'s a special mode that helps you avoid rental company refueling fees. Rental agencies charge up to $12/gallon if you return with less than a full tank. Toggle "Rental Car Return?" in the calculator, enter the rental rate, and GasCap shows your exact savings vs. letting them fill it.',
-    },
-    {
-      q: 'How accurate are the gas prices?',
-      a: 'Very accurate. GasCap pulls weekly data directly from the U.S. Energy Information Administration (EIA) — the official government source. Prices are localized to your state automatically using your device\'s location.',
-    },
-    {
-      q: 'Does it work offline?',
-      a: 'Yes. Once installed as a PWA, the calculator works offline using your last-known gas price and saved vehicles. Live gas price lookup, gauge scanning, and AI features require a connection.',
-    },
-    {
-      q: 'How is this different from a road trip fuel calculator?',
-      a: 'Road trip calculators estimate fuel cost for a journey by distance. GasCap solves a different problem: it tells you exactly what it costs to fill your tank right now, based on your current level and local price. It\'s the tool you use at the pump — not while planning a route.',
-    },
-    {
-      q: 'Can GasCap scan my gas gauge?',
-      a: 'Yes — Pro users can tap "Scan Gauge" to take a photo of their dashboard. GasCap\'s AI reads the needle position and automatically sets your current fuel level. Supports arc, horizontal, and vertical sweep gauges.',
-    },
-  ];
 
   return (
     <section className="px-4 pb-8 max-w-lg mx-auto w-full">
       <div className="flex items-center gap-2 mb-4 px-1">
         <span className="text-base">❓</span>
         <h2 className="text-sm font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider">
-          Frequently Asked Questions
+          {t.faq.heading}
         </h2>
         <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
       </div>
 
       <div className="space-y-2">
-        {faqs.map((faq, i) => (
+        {t.faq.items.map((faq, i) => (
           <div key={i}
             className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100
                        dark:border-slate-700 overflow-hidden">
@@ -462,6 +375,7 @@ function FaqSection() {
 // ── Final CTA ────────────────────────────────────────────────────────────────
 
 function GuestCtaBanner() {
+  const { t } = useTranslation();
   return (
     <section className="px-4 py-6 max-w-lg mx-auto w-full">
       <div className="bg-brand-dark rounded-3xl px-6 py-8 text-center relative overflow-hidden">
@@ -475,25 +389,27 @@ function GuestCtaBanner() {
         <div className="relative">
           <div className="inline-flex items-center gap-2 bg-white/10 rounded-full px-3 py-1 mb-4">
             <span className="text-brand-orange text-xs">⭐</span>
-            <span className="text-white/80 text-[11px] font-bold">Free — no credit card ever</span>
+            <span className="text-white/80 text-[11px] font-bold">{t.cta.badge}</span>
           </div>
           <h2 className="text-2xl font-black text-white leading-tight mb-2">
-            Know before<br />you pull up.
+            {t.cta.headline.split('\n').map((line, i, arr) => (
+              <span key={i}>{line}{i < arr.length - 1 && <br />}</span>
+            ))}
           </h2>
           <p className="text-white/60 text-sm leading-relaxed mb-6 max-w-[260px] mx-auto">
-            Save your vehicles, track your MPG, and stop over-paying at the pump.
+            {t.cta.sub}
           </p>
           <a
             href="/signup"
             className="inline-block w-full max-w-xs py-3.5 bg-brand-orange hover:bg-[#FF9A1A]
                        text-white text-sm font-black rounded-2xl transition-colors shadow-brand"
           >
-            Create free account →
+            {t.cta.createAccount}
           </a>
           <p className="text-white/30 text-[10px] mt-3">
-            Already have an account?{' '}
+            {t.cta.alreadyHave}{' '}
             <a href="/signin" className="text-white/50 hover:text-white/80 underline transition-colors">
-              Sign in
+              {t.cta.signIn}
             </a>
           </p>
         </div>
@@ -507,6 +423,7 @@ function GuestCtaBanner() {
 export default function Home() {
   const [showPricing, setShowPricing] = useState(false);
   const { data: session, status } = useSession();
+  const { t } = useTranslation();
   const userPlan = (session?.user as { plan?: string })?.plan ?? 'free';
   const isGuest  = !session;
 
@@ -555,15 +472,15 @@ export default function Home() {
           <div className="bg-brand-dark rounded-2xl px-4 py-3 flex items-center gap-3">
             <span className="text-xl flex-shrink-0">💾</span>
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-black text-white">Save your calculations</p>
-              <p className="text-[10px] text-white/60 mt-0.5">Free account — no credit card ever.</p>
+              <p className="text-xs font-black text-white">{t.saveNudge.heading}</p>
+              <p className="text-[10px] text-white/60 mt-0.5">{t.saveNudge.sub}</p>
             </div>
             <a
               href="/signup"
               className="flex-shrink-0 px-3 py-1.5 bg-brand-orange hover:bg-[#FF9A1A]
                          text-white text-xs font-black rounded-xl transition-colors whitespace-nowrap"
             >
-              Sign up free
+              {t.saveNudge.button}
             </a>
           </div>
         </section>

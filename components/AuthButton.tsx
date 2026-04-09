@@ -3,6 +3,7 @@
 import { useSession, signOut } from 'next-auth/react';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 const AVATAR_COLOR_KEY = 'gascap_avatar_color';
 const DEFAULT_COLOR    = 'bg-brand-orange';
@@ -25,6 +26,7 @@ function Avatar({ name, color }: { name: string; color: string }) {
 
 export default function AuthButton() {
   const { data: session, status } = useSession();
+  const { t } = useTranslation();
   const [menuOpen,     setMenuOpen]     = useState(false);
   const [avatarColor,  setAvatarColor]  = useState(DEFAULT_COLOR);
 
@@ -53,14 +55,14 @@ export default function AuthButton() {
           className="px-3.5 py-1.5 rounded-xl text-xs font-bold text-white
                      border border-white/30 hover:bg-white/10 transition-colors"
         >
-          Sign in
+          {t.nav.signIn}
         </Link>
         <Link
           href="/signup"
           className="px-3.5 py-1.5 rounded-xl text-xs font-black text-white
                      bg-brand-orange hover:bg-[#FF9A1A] transition-colors"
         >
-          Sign up
+          {t.nav.signUp}
         </Link>
       </div>
     );
@@ -82,7 +84,7 @@ export default function AuthButton() {
                    focus-visible:ring-brand-teal rounded-xl p-1"
         onClick={() => setMenuOpen((v) => !v)}
         aria-expanded={menuOpen}
-        aria-label="User menu"
+        aria-label={t.nav.userMenu}
       >
         <Avatar name={name} color={avatarColor} />
         <div className="hidden sm:flex items-center gap-1.5">
@@ -124,7 +126,7 @@ export default function AuthButton() {
               {!planLabel && (
                 <a href="/upgrade"
                    className="mt-1.5 inline-block text-[10px] font-bold text-brand-dark hover:text-brand-teal">
-                  Upgrade to Pro →
+                  {t.nav.upgradeToPro}
                 </a>
               )}
             </div>
@@ -138,14 +140,14 @@ export default function AuthButton() {
                 <circle cx="10" cy="10" r="3"/>
                 <path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.22 4.22l1.42 1.42M14.36 14.36l1.42 1.42M4.22 15.78l1.42-1.42M14.36 5.64l1.42-1.42"/>
               </svg>
-              Settings
+              {t.nav.settings}
             </Link>
             <button
               onClick={() => { setMenuOpen(false); signOut({ callbackUrl: '/' }); }}
               className="w-full text-left px-4 py-2 text-sm text-red-500 font-medium
                          hover:bg-red-50 transition-colors"
             >
-              Sign out
+              {t.nav.signOut}
             </button>
           </div>
         </>

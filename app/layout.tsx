@@ -1,9 +1,10 @@
 import type { Metadata, Viewport } from 'next';
-import AuthProvider     from '@/components/AuthProvider';
-import FeedbackButton   from '@/components/FeedbackButton';
-import DarkModeProvider from '@/components/DarkModeProvider';
-import PullToRefresh    from '@/components/PullToRefresh';
-import ErrorBoundary    from '@/components/ErrorBoundary';
+import AuthProvider        from '@/components/AuthProvider';
+import FeedbackButton      from '@/components/FeedbackButton';
+import DarkModeProvider    from '@/components/DarkModeProvider';
+import PullToRefresh       from '@/components/PullToRefresh';
+import ErrorBoundary       from '@/components/ErrorBoundary';
+import { LanguageProvider } from '@/contexts/LanguageContext';
 import './globals.css';
 
 const APP_URL = process.env.NEXTAUTH_URL ?? 'https://www.gascap.app';
@@ -68,13 +69,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         {/* Apply dark class before first paint to avoid flash */}
         <DarkModeProvider />
-        <AuthProvider>
-          <ErrorBoundary>
-            <PullToRefresh />
-            {children}
-            <FeedbackButton />
-          </ErrorBoundary>
-        </AuthProvider>
+        <LanguageProvider>
+          <AuthProvider>
+            <ErrorBoundary>
+              <PullToRefresh />
+              {children}
+              <FeedbackButton />
+            </ErrorBoundary>
+          </AuthProvider>
+        </LanguageProvider>
       </body>
     </html>
   );

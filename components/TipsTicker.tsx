@@ -1,24 +1,14 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-
-const TIPS = [
-  "Fill up in the morning — fuel is denser when it's cool, so you get slightly more per gallon.",
-  "A dirty air filter can reduce fuel efficiency by up to 10%. Replace it every 15,000 miles.",
-  "Under-inflated tires reduce MPG by ~0.2% per 1 PSI drop. Check pressure monthly.",
-  "Aggressive acceleration wastes up to 40% more fuel. Accelerate smoothly and steadily.",
-  "Highway driving is typically 30–40% more fuel-efficient than stop-and-go city driving.",
-  "Replacing a faulty O2 sensor can improve fuel economy by up to 40%.",
-  "Every 100 lbs of extra weight reduces MPG by ~1%. Clear out unnecessary cargo.",
-  "Cold engines use more fuel. Short trips under 5 miles are especially inefficient.",
-  "Cruise control on highways can improve MPG by up to 14% by maintaining steady speed.",
-  "Regular oil changes with the right grade oil can improve MPG by 1–2%.",
-];
+import { useTranslation } from '@/contexts/LanguageContext';
 
 const INTERVAL_MS  = 6000;   // time each tip is shown
 const FADE_MS      = 400;    // cross-fade duration
 
 export default function TipsTicker() {
+  const { t }                 = useTranslation();
+  const TIPS                  = t.tips as readonly string[];
   const [idx,     setIdx]     = useState(0);
   const [visible, setVisible] = useState(true);
   const pausedRef             = useRef(false);

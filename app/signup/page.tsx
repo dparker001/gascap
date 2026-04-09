@@ -4,11 +4,13 @@ import { useState, FormEvent, Suspense } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 function SignUpForm() {
   const router       = useRouter();
   const searchParams = useSearchParams();
   const refCode      = searchParams.get('ref') ?? '';
+  const { t }        = useTranslation();
 
   const [name,      setName]      = useState('');
   const [email,     setEmail]     = useState('');
@@ -31,8 +33,8 @@ function SignUpForm() {
     setError('');
 
     // Client-side quick checks
-    if (!name.trim()) return setError('Please enter your name.');
-    if (!pwValid)     return setError('Please meet all password requirements.');
+    if (!name.trim()) return setError(t.signUp.errors.noName);
+    if (!pwValid)     return setError(t.signUp.errors.pwReqs);
 
     setLoading(true);
 
@@ -45,7 +47,7 @@ function SignUpForm() {
 
     if (!res.ok) {
       const data = await res.json() as { error?: string };
-      setError(data.error ?? 'Registration failed.');
+      setError(data.error ?? t.signUp.errors.fallback);
       setLoading(false);
       return;
     }
@@ -82,20 +84,19 @@ function SignUpForm() {
       {/* Form */}
       <div className="flex-1 flex items-start justify-center px-4 pt-10 pb-16">
         <div className="w-full max-w-sm">
-          <h1 className="text-2xl font-black text-navy-700 mb-1">Create your account</h1>
-          <p className="text-slate-500 text-sm mb-5">
-            Free forever. Save your vehicles and calculation history.
-          </p>
+          <h1 className="text-2xl font-black text-navy-700 mb-1">{t.signUp.title}</h1>
+          <p className="text-slate-500 text-sm mb-5">{t.signUp.sub}</p>
 
           {/* Referral banner */}
           {refCode && (
             <div className="mb-5 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 flex items-start gap-3">
               <span className="text-lg flex-shrink-0">🔗</span>
               <div>
-                <p className="text-sm font-black text-amber-800">You were invited!</p>
+                <p className="text-sm font-black text-amber-800">{t.signUp.referralBanner.title}</p>
                 <p className="text-xs text-amber-700 leading-relaxed mt-0.5">
-                  Referral code <span className="font-mono font-bold">{refCode}</span> applied.
-                  Sign up and your friend earns a free month of Pro.
+                  {t.signUp.referralBanner.body1}{' '}
+                  <span className="font-mono font-bold">{refCode}</span>{' '}
+                  {t.signUp.referralBanner.body2}
                 </p>
               </div>
             </div>
@@ -103,34 +104,34 @@ function SignUpForm() {
 
           <form onSubmit={handleSubmit} noValidate className="space-y-4">
             <div>
-              <label className="field-label" htmlFor="name">Your name</label>
+              <label className="field-label" htmlFor="name">{t.signUp.nameLabel}</label>
               <input
                 id="name" type="text" autoComplete="name"
-                className="input-field" placeholder="Alex Johnson"
+                className="input-field" placeholder={t.signUp.namePlaceholder}
                 value={name} onChange={(e) => setName(e.target.value)}
                 required
               />
             </div>
 
             <div>
-              <label className="field-label" htmlFor="email">Email</label>
+              <label className="field-label" htmlFor="email">{t.signUp.emailLabel}</label>
               <input
                 id="email" type="email" autoComplete="email"
-                className="input-field" placeholder="you@example.com"
+                className="input-field" placeholder={t.signUp.emailHolder}
                 value={email} onChange={(e) => setEmail(e.target.value)}
                 required
               />
             </div>
 
             <div>
-              <label className="field-label" htmlFor="password">Password</label>
+              <label className="field-label" htmlFor="password">{t.signUp.passwordLabel}</label>
               <div className="relative">
                 <input
                   id="password"
                   type={showPw ? 'text' : 'password'}
                   autoComplete="new-password"
                   className="input-field pr-11"
-                  placeholder="••••••••"
+                  placeholder={t.signUp.passwordHolder}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   onFocus={() => setPwFocused(true)}
@@ -149,13 +150,15 @@ function SignUpForm() {
               {/* Real-time requirements checklist */}
               {(pwFocused || password.length > 0) && (
                 <ul className="mt-2 space-y-1">
-                  {[
-                    { key: 'length',    label: '8 or more characters' },
-                    { key: 'uppercase', label: 'One uppercase letter (A–Z)' },
-                    { key: 'number',    label: 'One number (0–9)' },
-                    { key: 'special',   label: 'One special character (!@#$…)' },
-                  ].map(({ key, label }) => {
-                    const met = pwChecks[key as keyof typeof pwChecks];
+                  {(
+                    [
+                      { key: 'length',    label: t.signUp.pwReqs.length    },
+                      { key: 'uppercase', label: t.signUp.pwReqs.uppercase  },
+                      { key: 'number',    label: t.signUp.pwReqs.number     },
+                      { key: 'special',   label: t.signUp.pwReqs.special    },
+                    ] as { key: keyof typeof pwChecks; label: string }[]
+                  ).map(({ key, label }) => {
+                    const met = pwChecks[key];
                     return (
                       <li key={key} className={`flex items-center gap-1.5 text-xs font-medium transition-colors ${met ? 'text-green-600' : 'text-slate-400'}`}>
                         <span className="text-base leading-none">{met ? '✓' : '○'}</span>
@@ -174,35 +177,35 @@ function SignUpForm() {
             )}
 
             <button type="submit" disabled={loading} className="btn-amber mt-2">
-              {loading ? 'Creating account…' : 'Create free account'}
+              {loading ? t.signUp.loading : t.signUp.button}
             </button>
           </form>
 
           {/* Trust signals */}
           <div className="mt-5 flex items-center justify-center gap-4 text-[10px] text-slate-400">
-            <span>✓ Free forever</span>
-            <span>✓ No credit card</span>
-            <span>✓ Cancel anytime</span>
+            <span>{t.signUp.trustFree}</span>
+            <span>{t.signUp.trustNoCard}</span>
+            <span>{t.signUp.trustCancel}</span>
           </div>
 
           <p className="text-center text-sm text-slate-500 mt-5">
-            Already have an account?{' '}
+            {t.signUp.haveAccount}{' '}
             <Link href="/signin" className="text-amber-600 font-bold hover:underline">
-              Sign in
+              {t.signUp.signIn}
             </Link>
           </p>
 
           <p className="text-center mt-3">
             <Link href="/" className="text-slate-400 hover:text-slate-600 text-xs">
-              ← Continue without an account
+              {t.signUp.continueGuest}
             </Link>
           </p>
 
           <p className="text-center text-[11px] text-slate-400 mt-4 leading-relaxed">
-            By signing up you agree to our{' '}
-            <Link href="/terms"   className="hover:text-amber-600 underline">Terms of Service</Link>
-            {' '}and{' '}
-            <Link href="/privacy" className="hover:text-amber-600 underline">Privacy Policy</Link>.
+            {t.signUp.termsNote}{' '}
+            <Link href="/terms"   className="hover:text-amber-600 underline">{t.signUp.terms}</Link>
+            {' '}{t.signUp.and}{' '}
+            <Link href="/privacy" className="hover:text-amber-600 underline">{t.signUp.privacy}</Link>.
           </p>
         </div>
       </div>

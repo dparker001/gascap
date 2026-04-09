@@ -4,11 +4,13 @@ import { useState, FormEvent, Suspense } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 function SignInForm() {
   const router       = useRouter();
   const searchParams = useSearchParams();
   const verified     = searchParams.get('verified') === 'success';
+  const { t }        = useTranslation();
 
   const [email,       setEmail]       = useState('');
   const [password,    setPassword]    = useState('');
@@ -30,7 +32,7 @@ function SignInForm() {
     setLoading(false);
 
     if (res?.error) {
-      setError('Incorrect email or password. Please try again.');
+      setError(t.signIn.errorDefault);
     } else {
       router.push('/');
       router.refresh();
@@ -51,17 +53,17 @@ function SignInForm() {
       {/* Form */}
       <div className="flex-1 flex items-start justify-center px-4 pt-10 pb-16">
         <div className="w-full max-w-sm">
-          <h1 className="text-2xl font-black text-navy-700 mb-1">Welcome back</h1>
-          <p className="text-slate-500 text-sm mb-5">Sign in to your GasCap™ account.</p>
+          <h1 className="text-2xl font-black text-navy-700 mb-1">{t.signIn.title}</h1>
+          <p className="text-slate-500 text-sm mb-5">{t.signIn.sub}</p>
 
           {/* Email verified success banner */}
           {verified && (
             <div className="mb-5 bg-green-50 border border-green-200 rounded-2xl px-4 py-3 flex items-start gap-3">
               <span className="text-lg flex-shrink-0">✅</span>
               <div>
-                <p className="text-sm font-black text-green-800">Email verified — you&apos;re all set!</p>
+                <p className="text-sm font-black text-green-800">{t.signIn.verifiedBanner.title}</p>
                 <p className="text-xs text-green-700 leading-relaxed mt-0.5">
-                  Your account is active. Sign in below to go to the calculator.
+                  {t.signIn.verifiedBanner.body}
                 </p>
               </div>
             </div>
@@ -69,10 +71,10 @@ function SignInForm() {
 
           <form onSubmit={handleSubmit} noValidate className="space-y-4">
             <div>
-              <label className="field-label" htmlFor="email">Email</label>
+              <label className="field-label" htmlFor="email">{t.signIn.emailLabel}</label>
               <input
                 id="email" type="email" autoComplete="email"
-                className="input-field" placeholder="you@example.com"
+                className="input-field" placeholder={t.signIn.emailHolder}
                 value={email} onChange={(e) => setEmail(e.target.value)}
                 required
               />
@@ -80,9 +82,9 @@ function SignInForm() {
 
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="field-label !mb-0" htmlFor="password">Password</label>
+                <label className="field-label !mb-0" htmlFor="password">{t.signIn.passwordLabel}</label>
                 <Link href="/forgot-password" className="text-xs text-amber-600 hover:underline font-semibold">
-                  Forgot password?
+                  {t.signIn.forgotPw}
                 </Link>
               </div>
               <div className="relative">
@@ -91,7 +93,7 @@ function SignInForm() {
                   type={showPw ? 'text' : 'password'}
                   autoComplete="current-password"
                   className="input-field pr-11"
-                  placeholder="••••••••"
+                  placeholder={t.signIn.passwordHolder}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
@@ -119,20 +121,20 @@ function SignInForm() {
               disabled={loading}
               className="btn-amber mt-2"
             >
-              {loading ? 'Signing in…' : 'Sign in'}
+              {loading ? t.signIn.loading : t.signIn.button}
             </button>
           </form>
 
           <p className="text-center text-sm text-slate-500 mt-6">
-            Don&apos;t have an account?{' '}
+            {t.signIn.noAccount}{' '}
             <Link href="/signup" className="text-amber-600 font-bold hover:underline">
-              Sign up free
+              {t.signIn.signUpFree}
             </Link>
           </p>
 
           <p className="text-center text-sm mt-3">
             <Link href="/" className="text-slate-400 hover:text-slate-600 text-xs">
-              ← Continue without an account
+              {t.signIn.continueGuest}
             </Link>
           </p>
         </div>

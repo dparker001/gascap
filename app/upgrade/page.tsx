@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { PRICING } from '@/lib/stripe';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 // ── Feature lists ─────────────────────────────────────────────────────────
 
@@ -71,6 +72,7 @@ function GasPumpIcon() {
 
 export default function UpgradePage() {
   const { data: session } = useSession();
+  const { t } = useTranslation();
   const [billing, setBilling] = useState<'monthly' | 'annual'>('annual');
   const [loading, setLoading] = useState<'pro' | 'fleet' | null>(null);
   const [error,   setError]   = useState('');
@@ -117,10 +119,10 @@ export default function UpgradePage() {
         {/* Heading */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-black text-navy-700 leading-tight">
-            Choose your plan
+            {t.upgrade.title}
           </h1>
           <p className="text-slate-500 mt-2 text-sm">
-            Cancel anytime. No hidden fees.
+            {t.upgrade.sub}
           </p>
         </div>
 
@@ -130,16 +132,16 @@ export default function UpgradePage() {
             className={`px-5 py-2 rounded-xl text-sm font-bold transition-all ${
               billing === 'monthly' ? 'bg-navy-700 text-white shadow' : 'bg-white text-slate-500 hover:bg-slate-50'
             }`}>
-            Monthly
+            {t.upgrade.monthly}
           </button>
           <button onClick={() => setBilling('annual')}
             className={`px-5 py-2 rounded-xl text-sm font-bold transition-all relative ${
               billing === 'annual' ? 'bg-navy-700 text-white shadow' : 'bg-white text-slate-500 hover:bg-slate-50'
             }`}>
-            Annual
+            {t.upgrade.annual}
             <span className="absolute -top-2 -right-2 bg-green-500 text-white text-[9px]
                              font-black px-1.5 py-0.5 rounded-full leading-none">
-              SAVE 2 MO
+              {t.upgrade.saveBadge}
             </span>
           </button>
         </div>
@@ -157,10 +159,10 @@ export default function UpgradePage() {
               <div>
                 <span className="inline-block bg-amber-100 text-amber-700 text-[10px] font-black
                                  px-2 py-0.5 rounded-full uppercase tracking-wider mb-1">
-                  Most Popular
+                  {t.upgrade.mostPopular}
                 </span>
                 <h2 className="text-xl font-black text-navy-700">Pro</h2>
-                <p className="text-xs text-slate-400 mt-0.5">For individuals &amp; couples</p>
+                <p className="text-xs text-slate-400 mt-0.5">{t.upgrade.proFor}</p>
               </div>
               <div className="text-right">
                 <p className="text-2xl font-black text-navy-700">{proPrice}</p>
@@ -179,7 +181,7 @@ export default function UpgradePage() {
             <button onClick={() => handleUpgrade('pro')} disabled={loading !== null}
               className="w-full py-3 rounded-2xl bg-amber-500 hover:bg-amber-400 text-white
                          font-black text-sm disabled:opacity-50 transition-colors">
-              {loading === 'pro' ? 'Redirecting…' : session ? `Upgrade to Pro — ${proPrice}` : 'Sign in to upgrade'}
+              {loading === 'pro' ? t.upgrade.redirecting : session ? `${t.upgrade.upgradeBtn} Pro — ${proPrice}` : t.upgrade.signInToUp}
             </button>
           </div>
 
@@ -189,10 +191,10 @@ export default function UpgradePage() {
               <div>
                 <span className="inline-block bg-blue-100 text-blue-700 text-[10px] font-black
                                  px-2 py-0.5 rounded-full uppercase tracking-wider mb-1">
-                  Household &amp; Business
+                  {t.upgrade.houseAndBiz}
                 </span>
                 <h2 className="text-xl font-black text-navy-700">Fleet</h2>
-                <p className="text-xs text-slate-400 mt-0.5">Unlimited vehicles · household or business</p>
+                <p className="text-xs text-slate-400 mt-0.5">{t.upgrade.fleetFor}</p>
               </div>
               <div className="text-right">
                 <p className="text-2xl font-black text-navy-700">{fleetPrice}</p>
@@ -211,13 +213,13 @@ export default function UpgradePage() {
             <button onClick={() => handleUpgrade('fleet')} disabled={loading !== null}
               className="w-full py-3 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white
                          font-black text-sm disabled:opacity-50 transition-colors">
-              {loading === 'fleet' ? 'Redirecting…' : session ? `Upgrade to Fleet — ${fleetPrice}` : 'Sign in to upgrade'}
+              {loading === 'fleet' ? t.upgrade.redirecting : session ? `${t.upgrade.upgradeBtn} Fleet — ${fleetPrice}` : t.upgrade.signInToUp}
             </button>
 
             <p className="text-center text-[11px] text-slate-400 mt-2">
-              Need 50+ vehicles?{' '}
+              {t.upgrade.enterprise}{' '}
               <a href="mailto:hello@gascap.app" className="text-blue-500 hover:underline font-semibold">
-                Contact us for Enterprise pricing
+                {t.upgrade.contactUs}
               </a>
             </p>
           </div>
@@ -226,7 +228,7 @@ export default function UpgradePage() {
           <div className="bg-white rounded-2xl p-5 border border-slate-200">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-base font-black text-navy-700">Free</h2>
-              <span className="text-sm font-black text-slate-400">$0 / forever</span>
+              <span className="text-sm font-black text-slate-400">{t.upgrade.freeForever}</span>
             </div>
             <ul className="space-y-2">
               {FREE_FEATURES.map((f) => (
@@ -241,22 +243,20 @@ export default function UpgradePage() {
 
         {/* Safeguard note */}
         <div className="mt-6 bg-slate-50 border border-slate-200 rounded-2xl p-4">
-          <p className="text-xs font-bold text-slate-600 mb-1">🔒 Plan limits enforced automatically</p>
+          <p className="text-xs font-bold text-slate-600 mb-1">{t.upgrade.safeguardTitle}</p>
           <p className="text-xs text-slate-500 leading-relaxed">
-            Free accounts are limited to 1 vehicle. Pro accounts are limited to 3 vehicles — perfect for individuals and couples.
-            When you reach your limit, you'll be prompted to upgrade — no surprises.
-            Fleet is designed for households and businesses that need more than 3 vehicles.
+            {t.upgrade.safeguardBody}
           </p>
         </div>
 
         <p className="text-center text-xs text-slate-400 mt-6">
-          <Link href="/" className="hover:text-slate-600 underline">← Back to calculator</Link>
+          <Link href="/" className="hover:text-slate-600 underline">{t.upgrade.backLink}</Link>
           {' · '}
-          <Link href="/help" className="hover:text-slate-600 underline">Help</Link>
+          <Link href="/help" className="hover:text-slate-600 underline">{t.upgrade.help}</Link>
           {' · '}
-          <Link href="/terms" className="hover:text-slate-600 underline">Terms</Link>
+          <Link href="/terms" className="hover:text-slate-600 underline">{t.upgrade.terms}</Link>
           {' · '}
-          <Link href="/privacy" className="hover:text-slate-600 underline">Privacy</Link>
+          <Link href="/privacy" className="hover:text-slate-600 underline">{t.upgrade.privacy}</Link>
         </p>
       </div>
     </div>

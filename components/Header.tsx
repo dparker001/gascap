@@ -1,11 +1,14 @@
 // GasCap™ hero header
 'use client';
-import Link        from 'next/link';
-import AuthButton  from './AuthButton';
-import PlanBadge   from './PlanBadge';
-import TipsTicker  from './TipsTicker';
+import Link                 from 'next/link';
+import AuthButton           from './AuthButton';
+import PlanBadge            from './PlanBadge';
+import TipsTicker           from './TipsTicker';
+import { useTranslation }   from '@/contexts/LanguageContext';
 
 export default function Header() {
+  const { t, locale, toggle } = useTranslation();
+
   return (
     <header className="relative overflow-hidden bg-brand-dark pt-10 pb-7 px-5">
 
@@ -47,14 +50,26 @@ export default function Header() {
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Language toggle */}
+            <button
+              onClick={toggle}
+              aria-label={locale === 'en' ? 'Switch to Spanish' : 'Cambiar a inglés'}
+              className="flex items-center gap-1 bg-white/10 hover:bg-white/20
+                         transition-colors rounded-xl px-2.5 py-1.5"
+            >
+              <span className="text-sm" aria-hidden="true">🌐</span>
+              <span className="text-[10px] font-black text-white/80">
+                {locale === 'en' ? 'ES' : 'EN'}
+              </span>
+            </button>
             <Link
               href="/wrapped"
               className="flex items-center gap-1 bg-white/10 hover:bg-white/20
                          transition-colors rounded-xl px-2.5 py-1.5"
-              title="Your Annual Wrapped"
+              title={t.nav.wrapped}
             >
               <span className="text-sm" aria-hidden="true">🎁</span>
-              <span className="text-[10px] font-black text-white/80 hidden sm:inline">Wrapped</span>
+              <span className="text-[10px] font-black text-white/80 hidden sm:inline">{t.nav.wrapped}</span>
             </Link>
             <AuthButton />
           </div>
@@ -68,21 +83,23 @@ export default function Header() {
         <div className="flex items-start justify-between gap-3 mb-3">
           <div>
             <p className="text-white text-[22px] font-black leading-tight tracking-tight">
-              Know before<br />you go.
+              {t.header.tagline.split('\n').map((line, i, arr) => (
+                <span key={i}>{line}{i < arr.length - 1 && <br />}</span>
+              ))}
             </p>
             <p className="text-white/50 text-xs leading-relaxed mt-1.5 max-w-[220px]">
-              Calculate fuel & cost before you pull up to the pump.
+              {t.header.sub}
             </p>
           </div>
           {/* Stats pills */}
           <div className="flex flex-col gap-1.5 flex-shrink-0 mt-1">
             <div className="flex items-center gap-1.5 bg-white/8 rounded-xl px-2.5 py-1.5">
               <span className="text-brand-orange text-xs">⛽</span>
-              <span className="text-white/70 text-[10px] font-semibold">Real-time prices</span>
+              <span className="text-white/70 text-[10px] font-semibold">{t.header.realTimePrices}</span>
             </div>
             <div className="flex items-center gap-1.5 bg-white/8 rounded-xl px-2.5 py-1.5">
               <span className="text-brand-teal text-xs">✓</span>
-              <span className="text-white/70 text-[10px] font-semibold">Works offline</span>
+              <span className="text-white/70 text-[10px] font-semibold">{t.header.worksOffline}</span>
             </div>
           </div>
         </div>
