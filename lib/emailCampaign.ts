@@ -149,7 +149,7 @@ export function welcomeEmailHtml(name: string, userId: string): string {
           <tr>
             <td style="padding:6px 0;vertical-align:top;width:28px;font-size:16px;">🚗</td>
             <td style="padding:6px 0 6px 10px;vertical-align:top;color:#fff;">
-              <p style="margin:0;font-size:13px;font-weight:700;">Up to 5 Saved Vehicles</p>
+              <p style="margin:0;font-size:13px;font-weight:700;">Up to 3 Saved Vehicles</p>
               <p style="margin:0;font-size:12px;color:rgba(255,255,255,.65);line-height:1.5;">Perfect for multi-car households.</p>
             </td>
           </tr>
@@ -455,7 +455,7 @@ export function lastCallEmailHtml(name: string, userId: string): string {
         ${featureRow('📊', 'Full MPG + spending charts', 'Trends, history, and predictive alerts across every vehicle.')}
         ${featureRow('🎯', 'Budget + overspend alerts', 'Know when you\'re about to blow your fuel budget before it happens.')}
         ${featureRow('🔧', 'Maintenance reminders', 'Oil change, tire rotation, and service intervals — never forget one.')}
-        ${featureRow('🚗', 'Up to 5 saved vehicles', 'Perfect for households with multiple cars.')}
+        ${featureRow('🚗', 'Up to 3 saved vehicles', 'Perfect for households with multiple cars.')}
         ${featureRow('📄', 'Monthly PDF fuel reports', 'Expense-report ready in one tap.')}
       </table>
 

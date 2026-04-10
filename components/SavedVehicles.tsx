@@ -538,7 +538,7 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
               <LockIcon className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
               <div>
                 <p className="text-xs font-semibold text-amber-800 group-hover:text-amber-900">
-                  Upgrade to Pro — save up to 5 vehicles
+                  Upgrade to Pro — save up to 3 vehicles
                 </p>
                 <p className="text-[11px] text-amber-600 mt-0.5">
                   $4.99/mo · Manual entry · Auto spec lookup →
