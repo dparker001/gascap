@@ -507,12 +507,12 @@ export async function sendCampaignEmail(step: number, user: CampaignRecipient): 
       text:    proUpsellEmailText(name),
     },
     4: {
-      subject: '9 days left — lock in GasCap Pro before your trial ends ⏰',
+      subject: '9 days left — lock in GasCap™ Pro before your trial ends ⏰',
       html:    annualDealEmailHtml(name, id),
       text:    annualDealEmailText(name),
     },
     5: {
-      subject: 'Last 48 hours of your GasCap Pro trial 🚨',
+      subject: 'Last 48 hours of your GasCap™ Pro trial 🚨',
       html:    lastCallEmailHtml(name, id),
       text:    lastCallEmailText(name),
     },
