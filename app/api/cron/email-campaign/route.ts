@@ -1,32 +1,34 @@
 /**
  * GET /api/cron/email-campaign
  *
- * Drip campaign runner for the 30-day GasCap™ Pro trial — call this daily
- * via cron. Secured with CRON_SECRET env var.
+ * Drip campaign runner — HYBRID MODEL.
  *
- * Railway cron setup:
- *   Command:  curl -s -o /dev/null "$APP_URL/api/cron/email-campaign?secret=$CRON_SECRET"
- *   Schedule: 0 14 * * *   (2 PM UTC / 10 AM ET daily)
+ * As of the 30-day Pro trial rollout, the app ONLY sends Step 1 (Welcome +
+ * Pro activated), which fires directly from /api/auth/register. The four
+ * follow-up drip emails (Day 3/10/21/28) now live in a GoHighLevel
+ * workflow triggered by the `gascap-trial-30day` tag, so the marketing
+ * team / VA can review, edit, and A/B test them without a code push.
  *
- * Campaign schedule (days since sign-up). Each step assumes the prior step
- * was sent — getUsersPendingCampaignStep enforces that ordering.
+ * This endpoint is intentionally left as a no-op so the existing Railway
+ * cron schedule can stay wired up without blowing up. If you ever want to
+ * bring the drip back in-app, re-add entries to STEPS below.
  *
- *   Step 1 → day 0   Welcome + Pro activated (sent directly from register route)
- *   Step 2 → day 3   Feature deep-dive       (27 days of Pro left)
- *   Step 3 → day 10  Mid-trial check-in      (20 days of Pro left)
- *   Step 4 → day 21  Annual deal, 9 days left
- *   Step 5 → day 28  Final 48 hours
+ * Secured with CRON_SECRET env var (unchanged).
  */
-import { NextResponse }                           from 'next/server';
+import { NextResponse } from 'next/server';
+// NOTE: imports kept so re-enabling any step is a one-line change.
 import { getUsersPendingCampaignStep, advanceEmailCampaignStep } from '@/lib/users';
-import { sendCampaignEmail }                      from '@/lib/emailCampaign';
+import { sendCampaignEmail }                                     from '@/lib/emailCampaign';
 
-const STEPS: { step: number; minDays: number; label: string }[] = [
-  { step: 2, minDays: 3,  label: 'feature deep-dive'      },
-  { step: 3, minDays: 10, label: 'mid-trial check-in'     },
-  { step: 4, minDays: 21, label: '9 days left + annual'   },
-  { step: 5, minDays: 28, label: 'final 48 hours'         },
-];
+// Intentionally empty — all drip steps (2–5) moved to GHL workflow.
+// See ClickUp task "GHL workflow: GasCap 30-day Pro trial drip".
+const STEPS: { step: number; minDays: number; label: string }[] = [];
+
+// Silence unused-import warnings while STEPS is empty. These are kept
+// deliberately so re-enabling any step is a one-line edit.
+void getUsersPendingCampaignStep;
+void advanceEmailCampaignStep;
+void sendCampaignEmail;
 
 export async function GET(req: Request) {
   // Verify cron secret
