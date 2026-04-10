@@ -19,6 +19,7 @@ import {
   groupStatsBy,
   getDailyBuckets,
 } from '@/lib/campaigns';
+import { getBaseUrl as resolveBaseUrl } from '@/lib/getBaseUrl';
 
 /**
  * Campaign analytics uses ADMIN_PASSWORD by default so a solo founder can
@@ -34,7 +35,7 @@ function auth(req: NextRequest): boolean {
 }
 
 function baseUrl(req: NextRequest): string {
-  return process.env.NEXTAUTH_URL?.replace(/\/$/, '') ?? req.nextUrl.origin;
+  return resolveBaseUrl(req);
 }
 
 export async function GET(req: NextRequest) {

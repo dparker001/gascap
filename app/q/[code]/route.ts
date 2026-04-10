@@ -10,6 +10,7 @@
  */
 import { NextResponse, type NextRequest } from 'next/server';
 import { getPlacementByCode, logEvent } from '@/lib/campaigns';
+import { getBaseUrl } from '@/lib/getBaseUrl';
 
 const ATTRIBUTION_COOKIE = 'gc_src';
 const SESSION_COOKIE     = 'gc_ssn';
@@ -45,8 +46,9 @@ export async function GET(
     meta:          { known: !!placement, rawCode },
   });
 
-  // Build the landing URL
-  const origin = req.nextUrl.origin;
+  // Build the landing URL — use forwarded host helper because Railway sets
+  // req.nextUrl.origin to an internal localhost address.
+  const origin = getBaseUrl(req);
   const landingPath = placement?.landingPath ?? '/';
   const landing = new URL(landingPath, origin);
   landing.searchParams.set('utm_source',   'gascap_qr');
