@@ -10,7 +10,7 @@ function SignUpForm() {
   const router       = useRouter();
   const searchParams = useSearchParams();
   const refCode      = searchParams.get('ref') ?? '';
-  const { t }        = useTranslation();
+  const { t, locale } = useTranslation();
 
   const [name,      setName]      = useState('');
   const [email,     setEmail]     = useState('');
@@ -38,11 +38,18 @@ function SignUpForm() {
 
     setLoading(true);
 
-    // Register via API — include referral code if present
+    // Register via API — include referral code + active locale so the
+    // verification email link can bring the user back to the correct language.
     const res = await fetch('/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email, password, ...(refCode ? { referralCode: refCode } : {}) }),
+      body: JSON.stringify({
+        name,
+        email,
+        password,
+        locale,
+        ...(refCode ? { referralCode: refCode } : {}),
+      }),
     });
 
     if (!res.ok) {

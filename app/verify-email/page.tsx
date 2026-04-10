@@ -8,6 +8,7 @@ function VerifyEmailContent() {
   const router  = useRouter();
   const params  = useSearchParams();
   const token   = params.get('token') ?? '';
+  const lang    = params.get('lang') ?? '';
   const { data: session } = useSession();
   const [resent,    setResent]    = useState(false);
   const [resending, setResending] = useState(false);
@@ -15,10 +16,17 @@ function VerifyEmailContent() {
 
   useEffect(() => {
     if (token) {
+      // Sync the user's chosen signup locale into localStorage BEFORE we hand
+      // off to the API route. This prevents a stale 'gascap_locale' value
+      // (left by a previous visitor to this browser) from flipping the
+      // post-verification signin page into the wrong language.
+      if (lang === 'en' || lang === 'es') {
+        try { localStorage.setItem('gascap_locale', lang); } catch {}
+      }
       // Token present — hit the verify API and redirect
       window.location.href = `/api/auth/verify-email?token=${token}`;
     }
-  }, [token]);
+  }, [token, lang]);
 
   async function handleResend() {
     setResending(true);

@@ -27,9 +27,14 @@ function getBaseUrl(req: Request): string {
 
 export async function POST(req: Request) {
   try {
-    const { name, email, password, referralCode } = await req.json() as {
-      name?: string; email?: string; password?: string; referralCode?: string;
+    const { name, email, password, referralCode, locale } = await req.json() as {
+      name?: string; email?: string; password?: string; referralCode?: string; locale?: string;
     };
+
+    // Normalize — only 'en' / 'es' are supported. Default to English so a
+    // stale Spanish localStorage on the browser opening the verification link
+    // can't override the user's actual signup language.
+    const userLocale: 'en' | 'es' = locale === 'es' ? 'es' : 'en';
 
     if (!name?.trim())   return NextResponse.json({ error: 'Name is required.' },            { status: 400 });
     if (!email?.trim())  return NextResponse.json({ error: 'Email is required.' },           { status: 400 });
@@ -68,7 +73,7 @@ export async function POST(req: Request) {
     try {
       const token   = createEmailVerifyToken(user.id);
       const baseUrl = getBaseUrl(req);
-      const verifyUrl = `${baseUrl}/verify-email?token=${token}`;
+      const verifyUrl = `${baseUrl}/verify-email?token=${token}&lang=${userLocale}`;
       await sendMail({
         to:      user.email,
         subject: 'Verify your GasCap™ email address',
