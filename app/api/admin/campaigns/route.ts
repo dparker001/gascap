@@ -64,12 +64,16 @@ export async function GET(req: NextRequest) {
   const overview   = getOverview();
   const origin     = baseUrl(req);
 
-  // Attach the QR URL to each placement so the dashboard can render print/copy buttons
+  // Attach the QR URLs to each placement so the dashboard can render
+  // print/copy buttons. Every placement gets BOTH an English and a Spanish
+  // QR URL — the physical placard carries both side-by-side so a Spanish
+  // speaker can scan their language directly instead of hunting for a toggle.
   const enriched = placements.map((p) => {
     const stat = stats.find((s) => s.code.toUpperCase() === p.code.toUpperCase());
     return {
       ...p,
-      qrUrl: `${origin}/q/${p.code}`,
+      qrUrl:   `${origin}/q/${p.code}`,
+      qrUrlEs: `${origin}/q/${p.code}?lang=es`,
       stats: stat,
     };
   });

@@ -113,6 +113,8 @@ export async function POST(req: Request) {
     const placement     = placementCode ? getPlacementByCode(decodeURIComponent(placementCode)) : undefined;
 
     // Log a campaign signup event so the dashboard funnel updates.
+    // Include the signup locale so the admin dashboard can show EN vs ES
+    // conversion rates per placement — critical for bilingual QR campaigns.
     if (placementCode) {
       try {
         const sessionId = /(?:^|;\s*)gc_ssn=([^;]+)/.exec(cookieHeader)?.[1] ?? `ssn_${Date.now().toString(36)}`;
@@ -122,7 +124,7 @@ export async function POST(req: Request) {
           sessionId,
           userId:        user.id,
           path:          '/api/auth/register',
-          meta:          { email: user.email },
+          meta:          { email: user.email, locale: userLocale },
         });
       } catch (e) { console.error('[GasCap] campaign signup log failed:', e); }
     }

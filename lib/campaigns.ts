@@ -256,6 +256,15 @@ export interface PlacementStats {
   calcToComplete: number;
   visitToSignup:  number;
   lastEventAt?:   string;
+  // Bilingual QR pilot — EN vs ES split read from event.meta.locale.
+  // scansEn + scansEs should equal scans (unknown-locale events from before
+  // the bilingual rollout are counted as EN). signupsEn + signupsEs likewise.
+  // Used by the admin dashboard to A/B test Spanish placards against English
+  // ones at the same station.
+  scansEn:        number;
+  scansEs:        number;
+  signupsEn:      number;
+  signupsEs:      number;
 }
 
 function emptyStats(code: string): PlacementStats {
@@ -274,7 +283,17 @@ function emptyStats(code: string): PlacementStats {
     visitToCalc: 0,
     calcToComplete: 0,
     visitToSignup: 0,
+    scansEn: 0,
+    scansEs: 0,
+    signupsEn: 0,
+    signupsEs: 0,
   };
+}
+
+/** Read the locale recorded in event.meta, defaulting to 'en' for backfill. */
+function eventLocale(e: CampaignEvent): 'en' | 'es' {
+  const raw = (e.meta?.locale as string | undefined)?.toLowerCase();
+  return raw === 'es' ? 'es' : 'en';
 }
 
 function computeStats(events: CampaignEvent[], code: string): PlacementStats {
@@ -283,16 +302,22 @@ function computeStats(events: CampaignEvent[], code: string): PlacementStats {
 
   for (const e of events) {
     switch (e.type) {
-      case 'scan':
+      case 'scan': {
         s.scans++;
         uniqueScanSessions.add(e.sessionId);
+        if (eventLocale(e) === 'es') s.scansEs++; else s.scansEn++;
         break;
+      }
       case 'page_view':       s.pageViews++;     break;
       case 'calc_start':      s.calcStarts++;    break;
       case 'calc_complete':   s.calcCompletes++; break;
       case 'save_to_phone':   s.saveToPhone++;   break;
       case 'lead_capture':    s.leadCaptures++;  break;
-      case 'signup':          s.signups++;       break;
+      case 'signup': {
+        s.signups++;
+        if (eventLocale(e) === 'es') s.signupsEs++; else s.signupsEn++;
+        break;
+      }
       case 'return_visit':    s.returnVisits++;  break;
     }
     if (!s.lastEventAt || e.ts > s.lastEventAt) s.lastEventAt = e.ts;

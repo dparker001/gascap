@@ -31,6 +31,10 @@ interface PlacementStats {
   calcToComplete: number;
   visitToSignup:  number;
   lastEventAt?:   string;
+  scansEn:        number;
+  scansEs:        number;
+  signupsEn:      number;
+  signupsEs:      number;
 }
 
 interface Placement {
@@ -49,7 +53,8 @@ interface Placement {
   notes?:          string;
   createdAt:       string;
   active:          boolean;
-  qrUrl:           string;
+  qrUrl:           string;   // English QR target
+  qrUrlEs:         string;   // Spanish QR target (/q/<code>?lang=es)
   stats?:          PlacementStats;
 }
 
@@ -411,18 +416,20 @@ export default function CampaignsAdminPage() {
                   <th className="px-3 py-2">Placement</th>
                   <th className="px-3 py-2">Headline</th>
                   <th className="px-3 py-2 text-right">Scans</th>
+                  <th className="px-3 py-2 text-right" title="Scan split — English vs Spanish QR">EN / ES</th>
                   <th className="px-3 py-2 text-right">Views</th>
                   <th className="px-3 py-2 text-right">Calcs</th>
                   <th className="px-3 py-2 text-right">Signups</th>
                   <th className="px-3 py-2 text-right">Visit→Signup</th>
                   <th className="px-3 py-2">Last event</th>
-                  <th className="px-3 py-2">QR</th>
+                  <th className="px-3 py-2">QR (EN)</th>
+                  <th className="px-3 py-2">QR (ES)</th>
                   <th />
                 </tr>
               </thead>
               <tbody>
                 {placements.length === 0 && (
-                  <tr><td colSpan={12} className="px-3 py-8 text-center text-slate-400">
+                  <tr><td colSpan={13} className="px-3 py-8 text-center text-slate-400">
                     No placements yet. Click <strong>+ New placement</strong> to create your first one.
                   </td></tr>
                 )}
@@ -438,12 +445,24 @@ export default function CampaignsAdminPage() {
                       <td className="px-3 py-2">{p.placement}</td>
                       <td className="px-3 py-2 text-xs">{p.headlineVariant}</td>
                       <td className="px-3 py-2 text-right">{fmt(s?.scans ?? 0)}</td>
+                      <td className="px-3 py-2 text-right text-xs tabular-nums text-slate-600">
+                        {s && s.scans > 0
+                          ? <>{fmt(s.scansEn)} <span className="text-slate-300">/</span> {fmt(s.scansEs)}</>
+                          : '—'}
+                      </td>
                       <td className="px-3 py-2 text-right">{fmt(s?.pageViews ?? 0)}</td>
                       <td className="px-3 py-2 text-right">{fmt(s?.calcStarts ?? 0)}</td>
-                      <td className="px-3 py-2 text-right">{fmt(s?.signups ?? 0)}</td>
+                      <td className="px-3 py-2 text-right">
+                        {fmt(s?.signups ?? 0)}
+                        {s && s.signups > 0 && (
+                          <div className="text-[10px] text-slate-400 tabular-nums">
+                            {fmt(s.signupsEn)} EN · {fmt(s.signupsEs)} ES
+                          </div>
+                        )}
+                      </td>
                       <td className="px-3 py-2 text-right">{s ? pct(s.visitToSignup) : '—'}</td>
                       <td className="px-3 py-2 text-xs text-slate-500">{date(s?.lastEventAt)}</td>
-                      <td className="px-3 py-2">
+                      <td className="px-3 py-2 whitespace-nowrap">
                         <button
                           onClick={() => copyQr(p.qrUrl)}
                           className="text-xs underline text-emerald-700 hover:text-emerald-900"
@@ -457,6 +476,24 @@ export default function CampaignsAdminPage() {
                           target="_blank"
                           rel="noreferrer"
                           className="text-xs underline text-emerald-700 hover:text-emerald-900"
+                        >
+                          PNG
+                        </a>
+                      </td>
+                      <td className="px-3 py-2 whitespace-nowrap">
+                        <button
+                          onClick={() => copyQr(p.qrUrlEs)}
+                          className="text-xs underline text-amber-700 hover:text-amber-900"
+                          title={p.qrUrlEs}
+                        >
+                          copy URL
+                        </button>
+                        {' · '}
+                        <a
+                          href={`https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(p.qrUrlEs)}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-xs underline text-amber-700 hover:text-amber-900"
                         >
                           PNG
                         </a>
@@ -478,7 +515,11 @@ export default function CampaignsAdminPage() {
         </div>
 
         <p className="text-xs text-slate-400 text-center pt-4">
-          QR redirect: <code>/q/&lt;code&gt;</code> · Tracking: <code>/api/campaign/track</code> · Lead capture: <code>/api/campaign/lead</code>
+          QR redirect: <code>/q/&lt;code&gt;</code> (English) · <code>/q/&lt;code&gt;?lang=es</code> (Spanish)
+          · Tracking: <code>/api/campaign/track</code> · Lead capture: <code>/api/campaign/lead</code>
+        </p>
+        <p className="text-[11px] text-slate-400 text-center pt-1">
+          Print both QR codes side-by-side on each placard so scanners land in their own language without tapping a toggle.
         </p>
       </div>
     </div>

@@ -33,12 +33,28 @@ const LanguageContext = createContext<LanguageContextValue>({
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>('en');
 
-  // Hydrate from localStorage on mount (client only)
+  // Hydrate locale on mount, honoring (in priority order):
+  //   1. `?lang=en|es` in the URL — set by /q/[code] on QR scans and by
+  //      /verify-email?lang=… on email-verification click-throughs. This
+  //      wins so a Spanish QR always lands in Spanish even if the browser
+  //      has a stale English value from a prior visitor on a shared device.
+  //   2. `gascap_locale` in localStorage — the user's previous manual choice.
+  //
+  // When #1 hits we also persist it to localStorage so return visits stay
+  // in the same language without needing the query param again.
   useEffect(() => {
     try {
+      // 1. URL param wins
+      const urlLang = new URLSearchParams(window.location.search).get('lang');
+      if (urlLang === 'en' || urlLang === 'es') {
+        setLocaleState(urlLang);
+        localStorage.setItem(STORAGE_KEY, urlLang);
+        return;
+      }
+      // 2. Fall back to saved preference
       const saved = localStorage.getItem(STORAGE_KEY) as Locale | null;
       if (saved === 'en' || saved === 'es') setLocaleState(saved);
-    } catch { /* localStorage unavailable in SSR */ }
+    } catch { /* localStorage / window unavailable in SSR */ }
   }, []);
 
   function setLocale(l: Locale) {
