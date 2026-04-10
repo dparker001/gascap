@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useCallback, useEffect, useState } from 'react';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 // ─── Gauge geometry ────────────────────────────────────────────────────────
 // viewBox: 0 0 280 145   |  center: (140, 135)  |  radius: 115
@@ -70,6 +71,7 @@ interface FuelGaugeProps {
 }
 
 export default function FuelGauge({ percent, onChange, tankCapacity }: FuelGaugeProps) {
+  const { t } = useTranslation();
   const svgRef  = useRef<SVGSVGElement>(null);
   const active  = useRef(false);
   const [dragging, setDragging] = useState(false);
@@ -288,7 +290,7 @@ export default function FuelGauge({ percent, onChange, tankCapacity }: FuelGauge
           className="text-center text-sm font-bold -mt-1 mb-0.5 transition-colors duration-300"
           style={{ color }}
         >
-          ≈ {gallons} gal
+          ≈ {gallons} {t.calc.unitGal}
         </p>
       )}
 
@@ -297,7 +299,7 @@ export default function FuelGauge({ percent, onChange, tankCapacity }: FuelGauge
         className="text-center text-xs mt-1 transition-colors duration-200"
         style={{ color: dragging ? color : '#94a3b8' }}
       >
-        {dragging ? 'Release to set level' : 'Drag the handle · or tap anywhere on the arc'}
+        {dragging ? t.calc.releaseToSet : t.calc.dragHint}
       </p>
     </div>
   );
