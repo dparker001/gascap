@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createUser, findByEmail, findByReferralCode, setReferredBy, createEmailVerifyToken } from '@/lib/users';
 import { sendMail, verificationEmailHtml } from '@/lib/email';
-import { upsertGhlContact } from '@/lib/ghl';
+import { upsertGhlContact, upsertGhlContactWithCampaign } from '@/lib/ghl';
+import { getPlacementByCode, logEvent } from '@/lib/campaigns';
 
 function getBaseUrl(req: Request): string {
   const nextAuthUrl    = process.env.NEXTAUTH_URL;
@@ -75,15 +76,57 @@ export async function POST(req: Request) {
       text: `New GasCap signup: ${user.name} <${user.email}> — Free plan`,
     }).catch((e) => console.error('[GasCap] Admin signup notify failed:', e));
 
+    // Read QR pilot attribution cookie (set by /q/[code]) so we can credit
+    // the signup back to the right placard.
+    const cookieHeader = req.headers.get('cookie') ?? '';
+    const placementCode = /(?:^|;\s*)gc_src=([^;]+)/.exec(cookieHeader)?.[1];
+    const placement     = placementCode ? getPlacementByCode(decodeURIComponent(placementCode)) : undefined;
+
+    // Log a campaign signup event so the dashboard funnel updates.
+    if (placementCode) {
+      try {
+        const sessionId = /(?:^|;\s*)gc_ssn=([^;]+)/.exec(cookieHeader)?.[1] ?? `ssn_${Date.now().toString(36)}`;
+        logEvent({
+          placementCode: placement?.code ?? decodeURIComponent(placementCode),
+          type:          'signup',
+          sessionId,
+          userId:        user.id,
+          path:          '/api/auth/register',
+          meta:          { email: user.email },
+        });
+      } catch (e) { console.error('[GasCap] campaign signup log failed:', e); }
+    }
+
     // Sync to GHL CRM — triggers the new-signup automation in GHL (non-blocking)
-    upsertGhlContact({
-      name:      user.name,
-      email:     user.email,
-      plan:      'free',
-      isBeta:    false,
-      source:    'GasCap Signup',
-      extraTags: ['gascap-new-signup'],
-    }).catch((err) => console.error('[GHL] signup sync failed:', err));
+    if (placement) {
+      upsertGhlContactWithCampaign(
+        {
+          name:      user.name,
+          email:     user.email,
+          plan:      'free',
+          isBeta:    false,
+          source:    `GasCap QR — ${placement.station}`,
+          extraTags: ['gascap-new-signup'],
+        },
+        {
+          placementCode:   placement.code,
+          station:         placement.station,
+          city:            placement.city,
+          placement:       placement.placement,
+          headlineVariant: placement.headlineVariant,
+          campaign:        placement.campaign,
+        },
+      ).catch((err) => console.error('[GHL] campaign signup sync failed:', err));
+    } else {
+      upsertGhlContact({
+        name:      user.name,
+        email:     user.email,
+        plan:      'free',
+        isBeta:    false,
+        source:    'GasCap Signup',
+        extraTags: ['gascap-new-signup'],
+      }).catch((err) => console.error('[GHL] signup sync failed:', err));
+    }
 
     return NextResponse.json({ id: user.id, email: user.email, name: user.name }, { status: 201 });
   } catch (err) {

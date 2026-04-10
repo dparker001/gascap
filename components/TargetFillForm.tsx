@@ -83,9 +83,15 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
   const [rentalRate,    setRentalRate]    = useState('');
   const gaugeCamRef     = useRef<HTMLInputElement>(null);
   const gaugeGalleryRef = useRef<HTMLInputElement>(null);
+  const calcStartFired  = useRef(false);
 
   // Standard patch — clears result (free/guest behaviour)
   function patch(p: Partial<FormState>) {
+    // QR placard pilot — fire calc_start the first time the user touches the form
+    if (!calcStartFired.current && typeof window !== 'undefined' && typeof window.gcTrack === 'function') {
+      calcStartFired.current = true;
+      window.gcTrack('calc_start', { mode: 'target_fill' });
+    }
     setForm((prev) => ({ ...prev, ...p }));
     if (calculated) {
       setResult(null);
@@ -175,6 +181,10 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ event: 'calc' }),
     }).catch(() => {});
+    // QR placard pilot — credit calc completion to attribution placement (no-op if not attributed)
+    if (typeof window !== 'undefined' && typeof window.gcTrack === 'function') {
+      window.gcTrack('calc_complete', { mode: 'target_fill' });
+    }
     setTimeout(() => {
       document.getElementById('tf-result')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }, 80);

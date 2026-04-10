@@ -132,6 +132,52 @@ export async function removeGhlTags(email: string, tagsToRemove: string[]): Prom
   }
 }
 
+// ── Campaign attribution ──────────────────────────────────────────────────
+
+/**
+ * Derive a consistent set of GHL tags for a placement code so that the
+ * QR pilot campaign can drive automations / segmentation in GHL.
+ */
+export interface CampaignAttribution {
+  placementCode:    string;
+  station?:         string;
+  city?:            string;
+  placement?:       string;
+  headlineVariant?: string;
+  campaign?:        string;
+}
+
+function slug(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
+export function buildCampaignTags(a: CampaignAttribution): string[] {
+  const tags: string[] = ['gascap-qr-pilot', `gascap-code-${slug(a.placementCode)}`];
+  if (a.station)         tags.push(`gascap-station-${slug(a.station)}`);
+  if (a.city)            tags.push(`gascap-city-${slug(a.city)}`);
+  if (a.placement)       tags.push(`gascap-placement-${slug(a.placement)}`);
+  if (a.headlineVariant) tags.push(`gascap-headline-${slug(a.headlineVariant)}`);
+  if (a.campaign)        tags.push(`gascap-campaign-${slug(a.campaign)}`);
+  return tags;
+}
+
+/**
+ * Convenience: upsert a contact AND attach campaign attribution tags +
+ * GHL custom fields in a single call. Use this from signup / lead capture
+ * when an attribution cookie is present.
+ */
+export async function upsertGhlContactWithCampaign(
+  contact: GhlContactInput,
+  attribution: CampaignAttribution,
+): Promise<boolean> {
+  const campaignTags = buildCampaignTags(attribution);
+  return upsertGhlContact({
+    ...contact,
+    extraTags: [...(contact.extraTags ?? []), ...campaignTags],
+    source:    contact.source ?? `GasCap QR — ${attribution.station ?? attribution.placementCode}`,
+  });
+}
+
 // ── Plan tag update ───────────────────────────────────────────────────────
 
 /**

@@ -13,6 +13,7 @@ import ReviewsMarquee          from '@/components/ReviewsMarquee';
 import OnboardingModal         from '@/components/OnboardingModal';
 import GasPriceAlertBanner     from '@/components/GasPriceAlertBanner';
 import StreakCounter           from '@/components/StreakCounter';
+import CampaignTracker         from '@/components/CampaignTracker';
 
 // ── JSON-LD Schema Markup ────────────────────────────────────────────────────
 
@@ -439,6 +440,9 @@ export default function Home() {
 
   return (
     <main className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-900">
+
+      {/* QR placard pilot — silently tracks attribution if visitor came from /q/<code> */}
+      <CampaignTracker />
 
       {/* ── SEO Schema (guests only — no point injecting for auth'd users) ── */}
       {isGuest && <SchemaMarkup />}
