@@ -45,11 +45,11 @@ const DEFAULTS: FormState = {
   vehicleOdometer: undefined,
 };
 
-const TARGET_PRESETS = [
-  { label: '¼',    value: 25  },
-  { label: '½',    value: 50  },
-  { label: '¾',    value: 75  },
-  { label: 'Full', value: 100 },
+// Note: "Full" label is localized inside the component via t.calc.presetFull
+const TARGET_PRESET_VALUES: { label: string; value: number }[] = [
+  { label: '¼', value: 25  },
+  { label: '½', value: 50  },
+  { label: '¾', value: 75  },
 ];
 
 
@@ -69,6 +69,11 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
   const GOAL_TABS: { id: CalcTab; emoji: string; label: string; sub: string }[] = [
     { id: 'target', emoji: '⛽', label: t.calc.targetFillLabel, sub: t.calc.targetFillSub },
     { id: 'budget', emoji: '💵', label: t.calc.byBudgetLabel,   sub: t.calc.byBudgetSub  },
+  ];
+
+  const TARGET_PRESETS = [
+    ...TARGET_PRESET_VALUES,
+    { label: t.calc.presetFull, value: 100 },
   ];
 
   const [form, setForm]   = useLocalStorage<FormState>('gc_target_v2', DEFAULTS);
@@ -140,15 +145,15 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
       fd.append('image', file);
       const res  = await fetch('/api/gauge/scan', { method: 'POST', body: fd, credentials: 'include' });
       const data = await res.json() as { percent?: number | null; error?: string };
-      if (!res.ok) { setGaugeScanMsg(data.error ?? 'Scan failed — try again.'); return; }
+      if (!res.ok) { setGaugeScanMsg(data.error ?? t.calc.scanFailed); return; }
       if (data.percent === null || data.percent === undefined) {
-        setGaugeScanMsg('Couldn\'t read the gauge — try a clearer photo of just the fuel gauge.');
+        setGaugeScanMsg(t.calc.scanNotReadable);
         return;
       }
       liveRecalc({ currentFuel: String(data.percent), fuelMode: 'percent' });
-      setGaugeScanMsg(`✓ Detected ~${data.percent}% — drag the gauge to fine-tune.`);
+      setGaugeScanMsg(t.calc.scanDetected(data.percent));
     } catch {
-      setGaugeScanMsg('Network error — try again.');
+      setGaugeScanMsg(t.calc.scanNetworkError);
     } finally {
       setGaugeScanning(false);
     }
@@ -264,12 +269,12 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
               type="number"
               inputMode="decimal"
               className="input-field pl-7 border-blue-200 bg-white text-sm"
-              placeholder="e.g. 9.99"
+              placeholder={t.calc.placeholderRentalRate}
               value={rentalRate}
               min="0.01"
               step="0.01"
               onChange={(e) => setRentalRate(e.target.value)}
-              aria-label="Rental company gas rate per gallon"
+              aria-label={t.calc.ariaRentalRate}
             />
             <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-slate-400 pointer-events-none">/gal</span>
           </div>
@@ -315,14 +320,14 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
             {/* ⚡ Live badge — Pro only, shown once calculated */}
             {isLive && (
               <span className="text-[9px] font-black bg-amber-500 text-white px-1.5 py-0.5 rounded-full leading-none">
-                ⚡ LIVE
+                {t.calc.liveBadge}
               </span>
             )}
           </div>
           <div className="flex gap-1.5">
             <ModeBtn label="%" active={form.fuelMode === 'percent'}
               onClick={() => patch({ fuelMode: 'percent', currentFuel: '25' })} />
-            <ModeBtn label="Gal" active={form.fuelMode === 'gallons'}
+            <ModeBtn label={t.calc.fuelModeGal} active={form.fuelMode === 'gallons'}
               onClick={() => patch({ fuelMode: 'gallons', currentFuel: '' })} />
           </div>
         </div>
@@ -394,14 +399,14 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
             <input
               type="number" inputMode="decimal"
               className={errors.currentFuel ? 'input-field-error' : 'input-field'}
-              placeholder="e.g. 4.5"
+              placeholder={t.calc.placeholderGallons}
               value={form.currentFuel}
               min="0" step="0.1"
               onChange={(e) => patch({ currentFuel: e.target.value })}
               onBlur={(e)  => liveRecalc({ currentFuel: e.target.value })}
-              aria-label="Current fuel in gallons"
+              aria-label={t.calc.ariaCurrentFuelGallons}
             />
-            <Unit>gal</Unit>
+            <Unit>{t.calc.unitGal}</Unit>
           </div>
         )}
         {errors.currentFuel && <FieldError msg={errors.currentFuel} />}
@@ -479,13 +484,13 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
             <input
               type="number" inputMode="decimal"
               className={errors.targetPercent ? 'input-field-error' : 'input-field'}
-              placeholder="e.g. 60"
+              placeholder={t.calc.placeholderPercent}
               value={form.customTarget}
               min="1" max="100" step="1"
               autoFocus
               onChange={(e) => patch({ customTarget: e.target.value })}
               onBlur={(e)  => liveRecalc({ customTarget: e.target.value })}
-              aria-label="Custom target fill percentage"
+              aria-label={t.calc.ariaCustomTarget}
             />
             <Unit>%</Unit>
           </div>
@@ -521,12 +526,12 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
           <input
             type="number" inputMode="decimal"
             className={`${errors.pricePerGallon ? 'input-field-error' : 'input-field'} pl-8`}
-            placeholder="e.g. 3.49"
+            placeholder={t.calc.placeholderPrice}
             value={form.pricePerGallon}
             min="0.01" step="0.01"
             onChange={(e) => patch({ pricePerGallon: e.target.value })}
             onBlur={(e)  => liveRecalc({ pricePerGallon: e.target.value })}
-            aria-label="Gas price per gallon"
+            aria-label={t.calc.ariaGasPrice}
           />
         </div>
         {errors.pricePerGallon && <FieldError msg={errors.pricePerGallon} />}

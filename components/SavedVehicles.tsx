@@ -65,6 +65,7 @@ function VehicleInfoModal({ vehicle, onClose, onSpecsUpdated }: {
   onClose: () => void;
   onSpecsUpdated?: (specs: VehicleSpecs) => void;
 }) {
+  const { t } = useTranslation();
   const [specs,        setSpecs]        = useState<VehicleSpecs | undefined>(vehicle.vehicleSpecs);
   const [fetchingSpec, setFetchingSpec] = useState(false);
   const [fetchError,   setFetchError]   = useState('');
@@ -76,8 +77,8 @@ function VehicleInfoModal({ vehicle, onClose, onSpecsUpdated }: {
     try {
       const res  = await fetch(`/api/vin?vin=${vehicle.vin}`);
       const data = await res.json() as { specs?: VehicleSpecs; error?: string };
-      if (!res.ok || data.error) { setFetchError(data.error ?? 'Lookup failed.'); return; }
-      if (!data.specs) { setFetchError('No specs returned.'); return; }
+      if (!res.ok || data.error) { setFetchError(data.error ?? t.garage.lookupFailed); return; }
+      if (!data.specs) { setFetchError(t.garage.noSpecsReturned); return; }
 
       // Persist to the server
       const patch = await fetch(`/api/vehicles?id=${vehicle.id}`, {
@@ -85,12 +86,12 @@ function VehicleInfoModal({ vehicle, onClose, onSpecsUpdated }: {
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ vehicleSpecs: data.specs }),
       });
-      if (!patch.ok) { setFetchError('Saved locally but could not persist.'); }
+      if (!patch.ok) { setFetchError(t.garage.savedLocallyNotPersisted); }
 
       setSpecs(data.specs);
       onSpecsUpdated?.(data.specs);
     } catch {
-      setFetchError('Network error — check your connection.');
+      setFetchError(t.garage.networkErrorCheck);
     } finally {
       setFetchingSpec(false);
     }
@@ -98,7 +99,7 @@ function VehicleInfoModal({ vehicle, onClose, onSpecsUpdated }: {
 
   function Row({ label, value }: { label: string; value?: string | number | boolean | null }) {
     if (value === undefined || value === null || value === '') return null;
-    const display = typeof value === 'boolean' ? (value ? '✓ Yes' : '✗ No') : String(value);
+    const display = typeof value === 'boolean' ? (value ? t.garage.rowYes : t.garage.rowNo) : String(value);
     return (
       <div className="flex items-start justify-between gap-3 py-1.5 border-b border-slate-50 last:border-0">
         <span className="text-xs text-slate-500 flex-shrink-0">{label}</span>
@@ -145,11 +146,11 @@ function VehicleInfoModal({ vehicle, onClose, onSpecsUpdated }: {
           {!specs ? (
             <div className="text-center py-8 space-y-3">
               <p className="text-3xl">🔍</p>
-              <p className="text-sm text-slate-500">No detailed specs on file.</p>
+              <p className="text-sm text-slate-500">{t.garage.noSpecsOnFile}</p>
               {vehicle.vin ? (
                 <>
                   <p className="text-xs text-slate-400">
-                    VIN on file — tap below to fetch specs from NHTSA.
+                    {t.garage.vinOnFile}
                   </p>
                   {fetchError && (
                     <p className="text-xs text-red-500">{fetchError}</p>
@@ -159,13 +160,13 @@ function VehicleInfoModal({ vehicle, onClose, onSpecsUpdated }: {
                     disabled={fetchingSpec}
                     className="mx-auto px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-white text-xs font-black transition-colors"
                   >
-                    {fetchingSpec ? 'Fetching…' : '🔄 Fetch Specs Now'}
+                    {fetchingSpec ? t.garage.fetching : t.garage.fetchSpecsNow}
                   </button>
                 </>
               ) : (
                 <>
                   <p className="text-xs text-slate-400 leading-relaxed">
-                    Delete this vehicle and re-add it using the VIN tab to capture full specs.
+                    {t.garage.deleteAndReAdd}
                   </p>
                 </>
               )}
@@ -173,62 +174,62 @@ function VehicleInfoModal({ vehicle, onClose, onSpecsUpdated }: {
           ) : (
             <>
               {/* Overview */}
-              <Section title="Overview" emoji="🚗">
-                <Row label="Body Style"    value={specs.bodyClass} />
-                <Row label="Vehicle Type"  value={specs.vehicleType} />
-                <Row label="Series / Trim" value={specs.series} />
-                <Row label="Manufacturer"  value={specs.manufacturer} />
-                <Row label="Seats"         value={specs.seats} />
+              <Section title={t.garage.sectionOverview} emoji="🚗">
+                <Row label={t.garage.rowBodyStyle}   value={specs.bodyClass} />
+                <Row label={t.garage.rowVehicleType} value={specs.vehicleType} />
+                <Row label={t.garage.rowSeries}      value={specs.series} />
+                <Row label={t.garage.rowManufacturer} value={specs.manufacturer} />
+                <Row label={t.garage.rowSeats}       value={specs.seats} />
               </Section>
 
               {/* Engine */}
-              <Section title="Engine" emoji="⚙️">
-                <Row label="Displacement"  value={specs.engineDisplL  ? `${specs.engineDisplL.toFixed(1)} L`    : null} />
-                <Row label="Cylinders"     value={specs.engineCylinders} />
-                <Row label="Configuration" value={specs.engineConfig} />
-                <Row label="Horsepower"    value={specs.engineHP      ? `${specs.engineHP} hp`                  : null} />
-                <Row label="Torque"        value={specs.engineTorqueLbFt ? `${specs.engineTorqueLbFt} lb-ft`   : null} />
-                <Row label="Turbo"         value={specs.turbo} />
-                <Row label="Supercharger"  value={specs.supercharger} />
-                <Row label="Fuel Injector" value={specs.fuelInjector} />
-                <Row label="Fuel Type"     value={specs.fuelType} />
+              <Section title={t.garage.sectionEngine} emoji="⚙️">
+                <Row label={t.garage.rowDisplacement}  value={specs.engineDisplL  ? `${specs.engineDisplL.toFixed(1)} L`    : null} />
+                <Row label={t.garage.rowCylinders}     value={specs.engineCylinders} />
+                <Row label={t.garage.rowConfiguration} value={specs.engineConfig} />
+                <Row label={t.garage.rowHorsepower}    value={specs.engineHP      ? `${specs.engineHP} hp`                  : null} />
+                <Row label={t.garage.rowTorque}        value={specs.engineTorqueLbFt ? `${specs.engineTorqueLbFt} lb-ft`   : null} />
+                <Row label={t.garage.rowTurbo}         value={specs.turbo} />
+                <Row label={t.garage.rowSupercharger}  value={specs.supercharger} />
+                <Row label={t.garage.rowFuelInjector}  value={specs.fuelInjector} />
+                <Row label={t.garage.rowFuelType}      value={specs.fuelType} />
               </Section>
 
               {/* Performance / Economy */}
-              <Section title="Fuel Economy" emoji="⛽">
-                <Row label="Combined MPG"  value={specs.combMpg   ? `${specs.combMpg} mpg`       : null} />
-                <Row label="City MPG"      value={specs.cityMpg   ? `${specs.cityMpg} mpg`       : null} />
-                <Row label="Highway MPG"   value={specs.hwyMpg    ? `${specs.hwyMpg} mpg`        : null} />
-                <Row label="Tank Est."     value={specs.tankEstGallons ? `~${specs.tankEstGallons} gal` : null} />
-                <Row label="Range Est."    value={specs.rangeEstMiles  ? `~${specs.rangeEstMiles} mi`   : null} />
-                <Row label="CO₂ Emissions" value={specs.co2GPerMile    ? `${Math.round(specs.co2GPerMile)} g/mi` : null} />
+              <Section title={t.garage.sectionFuelEconomy} emoji="⛽">
+                <Row label={t.garage.rowCombinedMpg} value={specs.combMpg   ? `${specs.combMpg} mpg`       : null} />
+                <Row label={t.garage.rowCityMpg}     value={specs.cityMpg   ? `${specs.cityMpg} mpg`       : null} />
+                <Row label={t.garage.rowHighwayMpg}  value={specs.hwyMpg    ? `${specs.hwyMpg} mpg`        : null} />
+                <Row label={t.garage.rowTankEst}     value={specs.tankEstGallons ? `~${specs.tankEstGallons} gal` : null} />
+                <Row label={t.garage.rowRangeEst}    value={specs.rangeEstMiles  ? `~${specs.rangeEstMiles} mi`   : null} />
+                <Row label={t.garage.rowCo2}         value={specs.co2GPerMile    ? `${Math.round(specs.co2GPerMile)} g/mi` : null} />
               </Section>
 
               {/* Drivetrain */}
-              <Section title="Drivetrain" emoji="🔧">
-                <Row label="Drive Type"    value={specs.driveType} />
-                <Row label="Transmission"  value={specs.transmission} />
-                <Row label="Wheelbase"     value={specs.wheelbaseIn ? `${specs.wheelbaseIn}"` : null} />
-                <Row label="GVWR"          value={specs.gvwr} />
+              <Section title={t.garage.sectionDrivetrain} emoji="🔧">
+                <Row label={t.garage.rowDriveType}    value={specs.driveType} />
+                <Row label={t.garage.rowTransmission} value={specs.transmission} />
+                <Row label={t.garage.rowWheelbase}    value={specs.wheelbaseIn ? `${specs.wheelbaseIn}"` : null} />
+                <Row label={t.garage.rowGvwr}         value={specs.gvwr} />
               </Section>
 
               {/* Safety */}
-              <Section title="Safety Features" emoji="🛡️">
-                <Row label="ABS"                  value={specs.abs} />
-                <Row label="TPMS"                 value={specs.tpmsType ? `${specs.tpmsType}` : null} />
-                <Row label="Backup Camera"        value={specs.backupCamera} />
-                <Row label="Blind Spot Monitor"   value={specs.blindSpotMonitor} />
-                <Row label="Lane Departure Warn." value={specs.laneDeparture} />
-                <Row label="Adaptive Cruise"      value={specs.adaptiveCruise} />
-                <Row label="Front Airbags"        value={specs.frontAirbags} />
-                <Row label="Side Airbags"         value={specs.sideAirbags} />
-                <Row label="Curtain Airbags"      value={specs.curtainAirbags} />
-                <Row label="Knee Airbags"         value={specs.kneeAirbags} />
+              <Section title={t.garage.sectionSafety} emoji="🛡️">
+                <Row label={t.garage.rowAbs}             value={specs.abs} />
+                <Row label={t.garage.rowTpms}            value={specs.tpmsType ? `${specs.tpmsType}` : null} />
+                <Row label={t.garage.rowBackupCamera}    value={specs.backupCamera} />
+                <Row label={t.garage.rowBlindSpot}       value={specs.blindSpotMonitor} />
+                <Row label={t.garage.rowLaneDeparture}   value={specs.laneDeparture} />
+                <Row label={t.garage.rowAdaptiveCruise}  value={specs.adaptiveCruise} />
+                <Row label={t.garage.rowFrontAirbags}    value={specs.frontAirbags} />
+                <Row label={t.garage.rowSideAirbags}     value={specs.sideAirbags} />
+                <Row label={t.garage.rowCurtainAirbags}  value={specs.curtainAirbags} />
+                <Row label={t.garage.rowKneeAirbags}     value={specs.kneeAirbags} />
               </Section>
 
               {specs.decodedAt && (
                 <p className="text-[10px] text-slate-300 text-center pb-2">
-                  Data decoded {new Date(specs.decodedAt).toLocaleDateString()}
+                  {t.garage.dataDecoded(new Date(specs.decodedAt).toLocaleDateString())}
                 </p>
               )}
             </>
@@ -323,7 +324,7 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
       load();
     } else {
       const d = await res.json() as { error?: string };
-      setSaveError(d.error ?? 'Could not save vehicle.');
+      setSaveError(d.error ?? t.garage.couldNotSave);
     }
   }
 
@@ -334,15 +335,15 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-1.5">
           <CarIcon className="w-4 h-4 text-slate-400" />
-          <p className="text-xs font-bold uppercase tracking-widest text-slate-400">My Garage</p>
+          <p className="text-xs font-bold uppercase tracking-widest text-slate-400">{t.garage.myGarage}</p>
           {plan === 'pro' && (
             <span className="text-[10px] font-bold bg-amber-500 text-white px-1.5 py-0.5 rounded-full">
-              PRO
+              {t.garage.proBadge}
             </span>
           )}
           {plan === 'fleet' && (
             <span className="text-[10px] font-bold bg-blue-600 text-white px-1.5 py-0.5 rounded-full">
-              FLEET
+              {t.garage.fleetBadge}
             </span>
           )}
         </div>
@@ -356,9 +357,9 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
             disabled={atLimit}
             className="text-xs font-bold text-amber-600 hover:text-amber-700 disabled:opacity-40
                        disabled:cursor-not-allowed transition-colors"
-            title={atLimit ? 'Vehicle limit reached' : 'Add a vehicle'}
+            title={atLimit ? t.garage.vehicleLimitReached : t.garage.addVehicleTitle}
           >
-            + Add vehicle
+            {t.garage.addVehicle}
           </button>
         )}
       </div>
@@ -380,8 +381,8 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
           {vehicles.length === 0 ? (
             <div className="text-center py-4 space-y-1">
               <CarIcon className="w-8 h-8 text-slate-200 mx-auto" />
-              <p className="text-xs text-slate-400">Your garage is empty.</p>
-              <p className="text-xs text-slate-400">Add your vehicle to auto-fill tank size.</p>
+              <p className="text-xs text-slate-400">{t.garage.emptyGarage}</p>
+              <p className="text-xs text-slate-400">{t.garage.emptyGarageHint}</p>
             </div>
           ) : (
             <div className="space-y-2">
@@ -391,7 +392,7 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
                     /* ── Inline edit mode ── */
                     <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-3 space-y-2">
                       <p className="text-[10px] font-bold uppercase tracking-widest text-amber-600">
-                        Edit Vehicle
+                        {t.garage.editVehicle}
                       </p>
                       <input
                         type="text"
@@ -399,7 +400,7 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
                                    text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white"
                         value={editName}
                         onChange={(e) => setEditName(e.target.value)}
-                        placeholder="Nickname"
+                        placeholder={t.garage.nicknamePlaceholder}
                         maxLength={40}
                       />
                       <div className="relative">
@@ -411,10 +412,10 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
                           value={editGallons}
                           onChange={(e) => setEditGallons(e.target.value)}
                           min="1" step="0.1"
-                          placeholder="Tank size"
+                          placeholder={t.garage.tankSizePlaceholder}
                         />
                         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">
-                          gal
+                          {t.calc.unitGal}
                         </span>
                       </div>
                       <div className="flex gap-2 pt-1">
@@ -422,7 +423,7 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
                           onClick={() => setEditingId(null)}
                           className="flex-1 py-2 rounded-lg border border-slate-200 text-xs font-semibold text-slate-500"
                         >
-                          Cancel
+                          {t.garage.cancel}
                         </button>
                         <button
                           onClick={handleEditSave}
@@ -430,7 +431,7 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
                           className="flex-1 py-2 rounded-lg bg-amber-500 text-white text-xs font-bold
                                      hover:bg-amber-400 disabled:opacity-40 transition-colors"
                         >
-                          {editSaving ? 'Saving…' : 'Save'}
+                          {editSaving ? t.garage.saving : t.garage.save}
                         </button>
                       </div>
                     </div>
@@ -446,15 +447,15 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
                       <button
                         onClick={() => onSelect(String(v.gallons), v)}
                         className="flex-1 text-left"
-                        title={`Load ${v.name} (${v.gallons} gal)`}
+                        title={t.garage.loadTitle(v.name, v.gallons)}
                       >
                         <p className="text-sm font-semibold text-slate-700 group-hover:text-amber-700
                                       transition-colors leading-tight">
                           {v.name}
                         </p>
                         <p className="text-xs text-slate-400 mt-0.5 leading-tight">
-                          {[v.year, v.make, v.model].filter(Boolean).join(' ') || `${v.gallons} gal tank`}
-                          {v.year && <span className="ml-1">· {v.gallons} gal</span>}
+                          {[v.year, v.make, v.model].filter(Boolean).join(' ') || t.garage.tankFallback(v.gallons)}
+                          {v.year && <span className="ml-1">· {v.gallons} {t.calc.unitGal}</span>}
                         </p>
                         {v.fuelType && (
                           <span className="inline-block mt-1 text-[10px] bg-white border border-slate-200
@@ -467,7 +468,7 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
                             <svg viewBox="0 0 10 10" className="w-2.5 h-2.5" fill="currentColor" aria-hidden="true">
                               <path d="M1.5 5l2.5 2.5 4.5-4.5" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
                             </svg>
-                            Active
+                            {t.garage.active}
                           </span>
                         )}
                       </button>
@@ -476,9 +477,9 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
                       <button
                         onClick={(e) => { e.stopPropagation(); setInfoVehicle(v); }}
                         className="p-1.5 rounded-lg text-slate-400 hover:text-blue-500 hover:bg-blue-50 transition-colors"
-                        title="Vehicle information"
+                        title={t.garage.vehicleInfoTitle}
                       >
-                        <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4" aria-label="Vehicle info">
+                        <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4" aria-label={t.garage.vehicleInfoAria}>
                           <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clipRule="evenodd" />
                         </svg>
                       </button>
@@ -487,7 +488,7 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
                       <button
                         onClick={() => startEdit(v)}
                         className="text-slate-300 hover:text-amber-500 transition-colors flex-shrink-0"
-                        aria-label={`Edit ${v.name}`}
+                        aria-label={t.garage.editAria(v.name)}
                       >
                         <svg viewBox="0 0 16 16" className="w-3.5 h-3.5" fill="none"
                              stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
@@ -499,7 +500,7 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
                       <button
                         onClick={() => handleDelete(v.id)}
                         className="text-slate-300 hover:text-red-400 transition-colors flex-shrink-0"
-                        aria-label={`Remove ${v.name}`}
+                        aria-label={t.garage.removeAria(v.name)}
                       >
                         <svg viewBox="0 0 12 12" className="w-3.5 h-3.5" fill="none"
                              stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
@@ -538,10 +539,10 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
               <LockIcon className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
               <div>
                 <p className="text-xs font-semibold text-amber-800 group-hover:text-amber-900">
-                  Upgrade to Pro — save up to 3 vehicles
+                  {t.garage.upgradeProTitle}
                 </p>
                 <p className="text-[11px] text-amber-600 mt-0.5">
-                  $4.99/mo · Manual entry · Auto spec lookup →
+                  {t.garage.upgradeProSub}
                 </p>
               </div>
             </a>
@@ -556,10 +557,10 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
               <LockIcon className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
               <div>
                 <p className="text-xs font-semibold text-blue-800 group-hover:text-blue-900">
-                  Upgrade to Fleet — unlimited vehicles
+                  {t.garage.upgradeFleetTitle}
                 </p>
                 <p className="text-[11px] text-blue-600 mt-0.5">
-                  $19.99/mo · Unlimited vehicles · Up to 10 drivers →
+                  {t.garage.upgradeFleetSub}
                 </p>
               </div>
             </a>
@@ -572,23 +573,23 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
                          hover:text-blue-700 transition-colors"
             >
               <span>⚠️</span>
-              <span>1 vehicle slot remaining — <span className="font-bold underline">upgrade to Fleet for unlimited</span></span>
+              <span>{t.garage.oneSlotWarning}<span className="font-bold underline">{t.garage.oneSlotWarningLink}</span></span>
             </a>
           )}
 
           {/* Slot count hint for free users not at limit */}
           {plan === 'free' && !atLimit && vehicles.length === 0 && (
             <p className="text-[11px] text-slate-400 text-center mt-1">
-              Free plan · 1 vehicle slot
+              {t.garage.freePlanSlot}
             </p>
           )}
 
           {/* Billing shortcut for paid users */}
           {(plan === 'pro' || plan === 'fleet') && (
             <p className="text-[11px] text-slate-400 text-center mt-1">
-              Manage billing &amp; subscription in{' '}
+              {t.garage.manageBilling1}{' '}
               <a href="/settings" className="font-semibold text-amber-600 hover:underline">
-                Settings
+                {t.garage.manageBillingLink}
               </a>
             </p>
           )}

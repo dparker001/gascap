@@ -189,9 +189,7 @@ export default function AiAdvisor({ embedded = false }: { embedded?: boolean }) 
                     <p className="text-2xl mb-1.5">🤖</p>
                     <p className="text-sm font-bold text-slate-700">{t.ai.greeting}</p>
                     <p className="text-xs text-slate-400 mt-1">
-                      {isPro
-                        ? "I can see your vehicle and fill-up data. Ask me anything!"
-                        : t.ai.greetingSub}
+                      {isPro ? t.ai.greetingProSub : t.ai.greetingSub}
                     </p>
                   </div>
                 )}

@@ -15,6 +15,7 @@ import {
 } from '@/lib/calculations';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import type { CalcTab } from './CalculatorTabs';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -44,11 +45,6 @@ const DEFAULTS: FormState = {
 
 const SHORTCUTS = [10, 20, 30, 40, 50];
 
-const GOAL_TABS: { id: CalcTab; emoji: string; label: string; sub: string }[] = [
-  { id: 'target', emoji: '⛽', label: 'Target Fill', sub: 'Fill to a level'    },
-  { id: 'budget', emoji: '💵', label: 'By Budget',   sub: 'Spend a set amount' },
-];
-
 interface Props {
   activeTab:    CalcTab;
   setActiveTab: (tab: CalcTab) => void;
@@ -58,8 +54,14 @@ interface Props {
 
 export default function BudgetForm({ activeTab, setActiveTab }: Props) {
   const { data: session }   = useSession();
+  const { t }               = useTranslation();
   const isPro      = ['pro', 'fleet'].includes((session?.user as { plan?: string })?.plan ?? '');
   const isLoggedIn = !!session;
+
+  const GOAL_TABS: { id: CalcTab; emoji: string; label: string; sub: string }[] = [
+    { id: 'target', emoji: '⛽', label: t.calc.targetFillLabel, sub: t.calc.targetFillSub },
+    { id: 'budget', emoji: '💵', label: t.calc.byBudgetLabel,   sub: t.calc.byBudgetSub  },
+  ];
 
   const [form, setForm]     = useLocalStorage<FormState>('gc_budget_v2', DEFAULTS);
   const [errors, setErrors] = useState<ValidationErrors>({});
@@ -142,13 +144,13 @@ export default function BudgetForm({ activeTab, setActiveTab }: Props) {
 
       {/* ── "How to use" eyebrow ──────────────────────────────────── */}
       <p className="text-[10px] font-black uppercase tracking-[0.22em] text-amber-500 mb-1 mt-2">
-        How to use
+        {t.calc.howToUse}
       </p>
 
       {/* ══════════════════════════════════════════════════════════════
           STEP 1 — Pick a vehicle
       ══════════════════════════════════════════════════════════════ */}
-      <StepLabel n={1} title="Pick a vehicle" />
+      <StepLabel n={1} title={t.calc.step1} />
       <div className="card">
         <TankPresets
           value={form.tankCapacity}
@@ -165,22 +167,22 @@ export default function BudgetForm({ activeTab, setActiveTab }: Props) {
       {/* ══════════════════════════════════════════════════════════════
           STEP 2 — Set fuel level
       ══════════════════════════════════════════════════════════════ */}
-      <StepLabel n={2} title="Set fuel level" />
+      <StepLabel n={2} title={t.calc.step2} />
       <div className="card">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <p className="field-label mb-0">Current Fuel Level</p>
+            <p className="field-label mb-0">{t.calc.currentFuelLevel}</p>
             {/* ⚡ Live badge — Pro only, shown once calculated */}
             {isLive && (
               <span className="text-[9px] font-black bg-amber-500 text-white px-1.5 py-0.5 rounded-full leading-none">
-                ⚡ LIVE
+                {t.calc.liveBadge}
               </span>
             )}
           </div>
           <div className="flex gap-1.5">
             <ModeBtn label="%" active={form.fuelMode === 'percent'}
               onClick={() => patch({ fuelMode: 'percent', currentFuel: '25' })} />
-            <ModeBtn label="Gal" active={form.fuelMode === 'gallons'}
+            <ModeBtn label={t.calc.fuelModeGal} active={form.fuelMode === 'gallons'}
               onClick={() => patch({ fuelMode: 'gallons', currentFuel: '' })} />
           </div>
         </div>
@@ -196,14 +198,14 @@ export default function BudgetForm({ activeTab, setActiveTab }: Props) {
             <input
               type="number" inputMode="decimal"
               className={errors.currentFuel ? 'input-field-error' : 'input-field'}
-              placeholder="e.g. 4.5"
+              placeholder={t.calc.placeholderGallons}
               value={form.currentFuel}
               min="0" step="0.1"
               onChange={(e) => patch({ currentFuel: e.target.value })}
               onBlur={(e)  => liveRecalc({ currentFuel: e.target.value })}
-              aria-label="Current fuel in gallons"
+              aria-label={t.calc.ariaCurrentFuelGallons}
             />
-            <Unit>gal</Unit>
+            <Unit>{t.calc.unitGal}</Unit>
           </div>
         )}
         {errors.currentFuel && <FieldError msg={errors.currentFuel} />}
@@ -213,7 +215,7 @@ export default function BudgetForm({ activeTab, setActiveTab }: Props) {
           <a href="/upgrade"
              className="mt-3 flex items-center gap-1.5 text-[11px] font-semibold text-amber-600 hover:text-amber-500 transition-colors">
             <span className="text-xs bg-amber-100 rounded-full px-1.5 py-0.5">⚡</span>
-            Live recalculation is a Pro feature — Upgrade to Pro
+            {t.calc.liveUpgradeNudge}
           </a>
         )}
       </div>
@@ -221,7 +223,7 @@ export default function BudgetForm({ activeTab, setActiveTab }: Props) {
       {/* ══════════════════════════════════════════════════════════════
           STEP 3 — Choose a goal
       ══════════════════════════════════════════════════════════════ */}
-      <StepLabel n={3} title="Choose a goal" />
+      <StepLabel n={3} title={t.calc.step3} />
 
       {/* Goal type tab switcher */}
       <div className="flex gap-2 mb-4">
@@ -255,7 +257,7 @@ export default function BudgetForm({ activeTab, setActiveTab }: Props) {
 
       {/* Budget inputs */}
       <div className="card">
-        <p className="field-label">Your Budget</p>
+        <p className="field-label">{t.calc.yourBudget}</p>
         <div className="flex gap-2 mb-3 overflow-x-auto pb-0.5">
           {SHORTCUTS.map((amt) => {
             const str = String(amt);
@@ -282,12 +284,12 @@ export default function BudgetForm({ activeTab, setActiveTab }: Props) {
           <input
             type="number" inputMode="decimal"
             className={`${errors.budget ? 'input-field-error' : 'input-field'} pl-8`}
-            placeholder="e.g. 25.00"
+            placeholder={t.calc.placeholderBudget}
             value={form.budget}
             min="0.01" step="0.01"
             onChange={(e) => patch({ budget: e.target.value })}
             onBlur={(e)  => liveRecalc({ budget: e.target.value })}
-            aria-label="Budget in dollars"
+            aria-label={t.calc.ariaBudgetDollars}
           />
         </div>
         {errors.budget && <FieldError msg={errors.budget} />}
@@ -300,7 +302,7 @@ export default function BudgetForm({ activeTab, setActiveTab }: Props) {
               <p className="mt-2 text-xs text-amber-700 bg-amber-50 border border-amber-200
                             rounded-xl px-3 py-2 flex items-center gap-1.5">
                 <span>⚠️</span>
-                Your budget (${budget.toFixed(2)}) won&apos;t cover a full gallon at ${price.toFixed(2)}/gal.
+                {t.calc.budgetTooSmall(budget.toFixed(2), price.toFixed(2))}
               </p>
             );
           }
@@ -311,30 +313,30 @@ export default function BudgetForm({ activeTab, setActiveTab }: Props) {
       {/* ══════════════════════════════════════════════════════════════
           STEP 4 — Get the answer
       ══════════════════════════════════════════════════════════════ */}
-      <StepLabel n={4} title="Get the answer" />
+      <StepLabel n={4} title={t.calc.step4} />
 
       {/* Gas price */}
       <div className="card mb-4">
-        <p className="field-label">Gas Price per Gallon</p>
+        <p className="field-label">{t.calc.gasPriceLabel}</p>
         <div className="relative">
           <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-semibold pointer-events-none">$</span>
           <input
             type="number" inputMode="decimal"
             className={`${errors.pricePerGallon ? 'input-field-error' : 'input-field'} pl-8`}
-            placeholder="e.g. 3.49"
+            placeholder={t.calc.placeholderPrice}
             value={form.pricePerGallon}
             min="0.01" step="0.01"
             onChange={(e) => patch({ pricePerGallon: e.target.value })}
             onBlur={(e)  => liveRecalc({ pricePerGallon: e.target.value })}
-            aria-label="Gas price per gallon"
+            aria-label={t.calc.ariaGasPrice}
           />
         </div>
         {errors.pricePerGallon && <FieldError msg={errors.pricePerGallon} />}
         <GasPriceLookup onApply={(p) => liveRecalc({ pricePerGallon: p })} />
       </div>
 
-      <button className="btn-amber" onClick={handleCalculate}>Calculate ⚡</button>
-      <button className="btn-secondary mt-3" onClick={handleReset}>Clear all</button>
+      <button className="btn-amber" onClick={handleCalculate}>{t.calc.calculate}</button>
+      <button className="btn-secondary mt-3" onClick={handleReset}>{t.calc.clearAll}</button>
 
       <div id="bgt-result">
         {result && (

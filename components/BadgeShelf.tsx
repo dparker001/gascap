@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { type BadgeDef } from '@/lib/badges';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 interface CatalogueBadge extends BadgeDef {
   earned: boolean;
@@ -22,9 +23,10 @@ interface ActivityData {
 
 /** Animated "new badge!" toast */
 function BadgeToast({ badges, onDone }: { badges: BadgeDef[]; onDone: () => void }) {
+  const { t } = useTranslation();
   useEffect(() => {
-    const t = setTimeout(onDone, 4000);
-    return () => clearTimeout(t);
+    const timer = setTimeout(onDone, 4000);
+    return () => clearTimeout(timer);
   }, [onDone]);
 
   if (badges.length === 0) return null;
@@ -35,7 +37,7 @@ function BadgeToast({ badges, onDone }: { badges: BadgeDef[]; onDone: () => void
                     flex items-center gap-3 max-w-xs w-full mx-4">
       <span className="text-2xl">{badges[0].emoji}</span>
       <div>
-        <p className="text-xs font-bold text-amber-400 leading-tight">Badge Unlocked!</p>
+        <p className="text-xs font-bold text-amber-400 leading-tight">{t.badges.badgeUnlocked}</p>
         <p className="text-sm font-semibold leading-tight">{badges[0].name}</p>
         <p className="text-[11px] text-slate-400 leading-tight mt-0.5">{badges[0].description}</p>
       </div>
@@ -93,6 +95,7 @@ interface BadgeShelfProps {
 }
 
 export default function BadgeShelf({ refreshKey, onNewBadges }: BadgeShelfProps) {
+  const { t } = useTranslation();
   const [data,    setData]    = useState<ActivityData | null>(null);
   const [newIds,  setNewIds]  = useState<string[]>([]);
   const [toast,   setToast]   = useState<BadgeDef[]>([]);
@@ -146,13 +149,13 @@ export default function BadgeShelf({ refreshKey, onNewBadges }: BadgeShelfProps)
           <div className="flex items-center gap-1.5">
             <span className="text-sm">🏅</span>
             <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
-              Achievements
+              {t.badges.achievements}
             </p>
           </div>
           <div className="flex items-center gap-2">
             {data.streak > 1 && (
               <span className="text-[10px] font-bold bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded-full">
-                🔥 {data.streak}-day streak
+                {t.badges.dayStreak(data.streak)}
               </span>
             )}
             <span className="text-[10px] text-slate-400 font-medium">
@@ -182,7 +185,7 @@ export default function BadgeShelf({ refreshKey, onNewBadges }: BadgeShelfProps)
 
         {earned === 0 && (
           <p className="text-[11px] text-slate-400 text-center mt-2">
-            Run a calculation to earn your first badge!
+            {t.badges.runCalcToEarn}
           </p>
         )}
       </div>
