@@ -1,6 +1,15 @@
 import { NextResponse } from 'next/server';
-import { createUser, findByEmail, findByReferralCode, setReferredBy, createEmailVerifyToken } from '@/lib/users';
+import {
+  createUser,
+  findByEmail,
+  findByReferralCode,
+  setReferredBy,
+  createEmailVerifyToken,
+  grantNewSignupProTrial,
+  enrollEmailCampaign,
+} from '@/lib/users';
 import { sendMail, verificationEmailHtml } from '@/lib/email';
+import { sendCampaignEmail } from '@/lib/emailCampaign';
 import { upsertGhlContact, upsertGhlContactWithCampaign } from '@/lib/ghl';
 import { getPlacementByCode, logEvent } from '@/lib/campaigns';
 
@@ -39,6 +48,14 @@ export async function POST(req: Request) {
 
     const user = await createUser(name, email, password);
 
+    // Auto-enroll every new signup in a 30-day GasCap™ Pro trial. Sets
+    // plan='pro', isProTrial=true, betaProExpiry=+30d. The beta-expire cron
+    // will revert them to free automatically if they don't upgrade.
+    grantNewSignupProTrial(user.id, 30);
+
+    // Enroll in the 5-email drip sequence (step 1 = welcome, sent below).
+    enrollEmailCampaign(user.id);
+
     // Store referral code on the new user — credit fires after email verification
     if (referralCode?.trim()) {
       const referrer = findByReferralCode(referralCode.trim());
@@ -63,17 +80,25 @@ export async function POST(req: Request) {
       // Don't fail registration — user can still sign in and request another
     }
 
+    // Fire step-1 welcome email from the drip sequence (non-blocking).
+    // Celebrates the Pro trial activation and kicks off the 5-email journey.
+    sendCampaignEmail(1, { id: user.id, name: user.name, email: user.email })
+      .catch((err) => console.error('[GasCap] Welcome drip email failed:', err));
+
     // Notify admin of new signup (non-blocking)
     sendMail({
       to:      'hello@gascap.app',
-      subject: `🎉 New GasCap™ signup: ${user.name}`,
+      subject: `🎉 New GasCap™ signup: ${user.name} (Pro trial activated)`,
       html: `<div style="font-family:system-ui,sans-serif;max-width:480px;">
-        <p style="font-size:22px;margin:0 0 8px;">🎉 New signup</p>
+        <p style="font-size:22px;margin:0 0 8px;">🎉 New signup — Pro trial activated</p>
         <p style="font-size:15px;color:#334155;margin:0 0 4px;"><strong>${user.name}</strong></p>
         <p style="font-size:14px;color:#64748b;margin:0 0 16px;">${user.email}</p>
-        <p style="font-size:12px;color:#94a3b8;">Signed up ${new Date().toLocaleString('en-US',{timeZone:'America/New_York'})} ET · Plan: Free</p>
+        <p style="font-size:12px;color:#94a3b8;">
+          Signed up ${new Date().toLocaleString('en-US',{timeZone:'America/New_York'})} ET ·
+          Plan: <strong style="color:#f59e0b;">Pro (30-day free trial)</strong>
+        </p>
       </div>`,
-      text: `New GasCap signup: ${user.name} <${user.email}> — Free plan`,
+      text: `New GasCap signup: ${user.name} <${user.email}> — Pro trial (30 days)`,
     }).catch((e) => console.error('[GasCap] Admin signup notify failed:', e));
 
     // Read QR pilot attribution cookie (set by /q/[code]) so we can credit
@@ -97,16 +122,22 @@ export async function POST(req: Request) {
       } catch (e) { console.error('[GasCap] campaign signup log failed:', e); }
     }
 
-    // Sync to GHL CRM — triggers the new-signup automation in GHL (non-blocking)
+    // Sync to GHL CRM — triggers the new-signup automation in GHL (non-blocking).
+    // Every new signup gets plan='pro' so the `gascap-pro` tag is applied
+    // automatically by PLAN_TAGS. We also attach `gascap-trial-30day` so
+    // marketing automations can distinguish trial users from paying Pro
+    // subscribers.
+    const newSignupTags = ['gascap-new-signup', 'gascap-trial-30day'];
+
     if (placement) {
       upsertGhlContactWithCampaign(
         {
           name:      user.name,
           email:     user.email,
-          plan:      'free',
+          plan:      'pro',
           isBeta:    false,
           source:    `GasCap QR — ${placement.station}`,
-          extraTags: ['gascap-new-signup'],
+          extraTags: newSignupTags,
         },
         {
           placementCode:   placement.code,
@@ -121,10 +152,10 @@ export async function POST(req: Request) {
       upsertGhlContact({
         name:      user.name,
         email:     user.email,
-        plan:      'free',
+        plan:      'pro',
         isBeta:    false,
         source:    'GasCap Signup',
-        extraTags: ['gascap-new-signup'],
+        extraTags: newSignupTags,
       }).catch((err) => console.error('[GHL] signup sync failed:', err));
     }
 

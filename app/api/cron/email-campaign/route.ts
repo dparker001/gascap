@@ -1,28 +1,31 @@
 /**
  * GET /api/cron/email-campaign
  *
- * Drip campaign runner — call this daily via a cron job.
- * Secured with CRON_SECRET env var.
+ * Drip campaign runner for the 30-day GasCap™ Pro trial — call this daily
+ * via cron. Secured with CRON_SECRET env var.
  *
  * Railway cron setup:
  *   Command:  curl -s -o /dev/null "$APP_URL/api/cron/email-campaign?secret=$CRON_SECRET"
  *   Schedule: 0 14 * * *   (2 PM UTC / 10 AM ET daily)
  *
- * Campaign schedule (days since sign-up):
- *   Step 2 → day 3   Feature tips
- *   Step 3 → day 7   Pro upsell
- *   Step 4 → day 14  Annual deal + Fleet mention
- *   Step 5 → day 30  Last-call offer
+ * Campaign schedule (days since sign-up). Each step assumes the prior step
+ * was sent — getUsersPendingCampaignStep enforces that ordering.
+ *
+ *   Step 1 → day 0   Welcome + Pro activated (sent directly from register route)
+ *   Step 2 → day 3   Feature deep-dive       (27 days of Pro left)
+ *   Step 3 → day 10  Mid-trial check-in      (20 days of Pro left)
+ *   Step 4 → day 21  Annual deal, 9 days left
+ *   Step 5 → day 28  Final 48 hours
  */
 import { NextResponse }                           from 'next/server';
 import { getUsersPendingCampaignStep, advanceEmailCampaignStep } from '@/lib/users';
 import { sendCampaignEmail }                      from '@/lib/emailCampaign';
 
 const STEPS: { step: number; minDays: number; label: string }[] = [
-  { step: 2, minDays: 3,  label: 'feature tips'   },
-  { step: 3, minDays: 7,  label: 'Pro upsell'      },
-  { step: 4, minDays: 14, label: 'annual deal'     },
-  { step: 5, minDays: 30, label: 'last-call offer' },
+  { step: 2, minDays: 3,  label: 'feature deep-dive'      },
+  { step: 3, minDays: 10, label: 'mid-trial check-in'     },
+  { step: 4, minDays: 21, label: '9 days left + annual'   },
+  { step: 5, minDays: 28, label: 'final 48 hours'         },
 ];
 
 export async function GET(req: Request) {

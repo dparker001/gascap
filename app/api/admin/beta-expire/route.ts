@@ -1,21 +1,96 @@
 /**
  * POST /api/admin/beta-expire
- * Called daily by a cron job. Reverts expired beta trials to free,
- * sends each user an upgrade prompt email, notifies admin.
+ *
+ * Called daily by a cron job. Reverts expired Pro trials back to Free,
+ * sends each user an upgrade-prompt email, and notifies the admin.
+ *
+ * Handles BOTH populations:
+ *   • Admin-granted beta testers   (isBetaTester === true)
+ *   • Auto-enrolled new-signup Pro trials (isProTrial === true)
+ *
+ * Each population gets slightly different email copy — beta testers are
+ * thanked for testing + given BETA30, new-signup trial users get a
+ * trial-ending upgrade pitch.
  *
  * Auth: ADMIN_PASSWORD header OR CRON_SECRET header (for scheduler).
  */
-import { NextResponse }           from 'next/server';
-import { getExpiredBetaUsers, setUserPlan } from '@/lib/users';
+import { NextResponse }                      from 'next/server';
+import { getExpiredBetaUsers, setUserPlan }  from '@/lib/users';
 import { updateGhlContactPlan, removeGhlTags } from '@/lib/ghl';
-import { sendMail }               from '@/lib/email';
+import { sendMail }                          from '@/lib/email';
 
 function auth(req: Request): boolean {
-  const adminPw  = process.env.ADMIN_PASSWORD ?? '';
-  const cronSecret = process.env.CRON_SECRET  ?? '';
-  const header   = req.headers.get('x-admin-password') ?? req.headers.get('x-cron-secret') ?? '';
+  const adminPw    = process.env.ADMIN_PASSWORD ?? '';
+  const cronSecret = process.env.CRON_SECRET    ?? '';
+  const header     = req.headers.get('x-admin-password') ?? req.headers.get('x-cron-secret') ?? '';
   return Boolean((adminPw && header === adminPw) || (cronSecret && header === cronSecret));
 }
+
+// ── Email copy ─────────────────────────────────────────────────────────────
+
+function trialEndedEmailHtml(name: string): string {
+  return `
+    <div style="font-family:system-ui,-apple-system,sans-serif;max-width:560px;margin:32px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
+      <div style="background:#1e3a5f;padding:28px 32px;">
+        <h1 style="color:#fff;margin:0 0 6px;font-size:22px;font-weight:900;">Your 30-day Pro trial has ended ⏰</h1>
+        <p style="color:rgba(255,255,255,0.65);margin:0;font-size:14px;">Your account is now on the free plan — all your data is safe.</p>
+      </div>
+      <div style="padding:32px;">
+        <p style="font-size:16px;color:#334155;margin:0 0 16px;">Hi ${name.split(' ')[0]},</p>
+        <p style="font-size:15px;color:#475569;line-height:1.65;margin:0 0 20px;">
+          Your free 30-day GasCap™ Pro trial just wrapped up. Thanks for taking it for a spin — we hope the MPG tracking, AI fuel advisor, and budget alerts helped you get a handle on your fuel spending.
+        </p>
+        <p style="font-size:15px;color:#475569;line-height:1.65;margin:0 0 24px;">
+          Your account has been moved to the free plan. Your history, saved vehicles, and badges are all still here. If you'd like to keep the Pro features you've been using, you can upgrade any time.
+        </p>
+        <div style="background:#fffbeb;border-radius:12px;padding:20px;margin:0 0 24px;border:1px solid #fde68a;">
+          <p style="font-size:14px;font-weight:700;color:#92400e;margin:0 0 4px;">🎁 Welcome-back offer</p>
+          <p style="font-size:13px;color:#92400e;margin:0 0 16px;">
+            Use code <strong>TRIAL30</strong> at checkout for your first month of Pro on us — just $4.99/mo after that, cancel anytime.
+          </p>
+          <a href="https://www.gascap.app/upgrade" style="display:inline-block;background:#f59e0b;color:#fff;padding:12px 28px;border-radius:10px;font-weight:900;font-size:14px;text-decoration:none;">Upgrade to Pro →</a>
+        </div>
+        <p style="font-size:13px;color:#94a3b8;line-height:1.6;margin:0;">
+          Not ready yet? No pressure — GasCap™ free is yours to keep forever, and you can upgrade whenever you want.
+        </p>
+      </div>
+      <div style="background:#f8fafc;padding:16px 32px;text-align:center;border-top:1px solid #e2e8f0;">
+        <p style="font-size:11px;color:#94a3b8;margin:0;">© 2025 GasCap™ · <a href="https://www.gascap.app/privacy" style="color:#94a3b8;">Privacy Policy</a></p>
+      </div>
+    </div>
+  `;
+}
+
+function betaEndedEmailHtml(name: string): string {
+  return `
+    <div style="font-family:system-ui,-apple-system,sans-serif;max-width:560px;margin:32px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
+      <div style="background:#1e3a5f;padding:28px 32px;">
+        <h1 style="color:#fff;margin:0 0 6px;font-size:22px;font-weight:900;">Your beta tester Pro trial has ended ⏰</h1>
+        <p style="color:rgba(255,255,255,0.65);margin:0;font-size:14px;">Thanks for helping us build GasCap™.</p>
+      </div>
+      <div style="padding:32px;">
+        <p style="font-size:16px;color:#334155;margin:0 0 16px;">Hi ${name.split(' ')[0]},</p>
+        <p style="font-size:15px;color:#475569;line-height:1.65;margin:0 0 20px;">
+          Your 30-day GasCap™ Pro beta trial has ended. Thank you for being one of our first testers — your feedback has been invaluable.
+        </p>
+        <p style="font-size:15px;color:#475569;line-height:1.65;margin:0 0 24px;">
+          Your account is now on the free plan. All your data is safe. To keep the Pro features you've been using — AI advisor, unlimited vehicles, full history, and budget goals — you can upgrade for just $4.99/month.
+        </p>
+        <div style="background:#fffbeb;border-radius:12px;padding:20px;margin:0 0 24px;border:1px solid #fde68a;">
+          <p style="font-size:14px;font-weight:700;color:#92400e;margin:0 0 4px;">🎁 Beta tester discount</p>
+          <p style="font-size:13px;color:#92400e;margin:0 0 16px;">As a thank-you for testing, use code <strong>BETA30</strong> for your first month free when you upgrade.</p>
+          <a href="https://www.gascap.app/upgrade" style="display:inline-block;background:#f59e0b;color:#fff;padding:12px 28px;border-radius:10px;font-weight:900;font-size:14px;text-decoration:none;">Upgrade to Pro →</a>
+        </div>
+        <p style="font-size:13px;color:#94a3b8;line-height:1.6;margin:0;">No pressure — GasCap™ free is yours to keep forever. Reply anytime with questions or feedback.</p>
+      </div>
+      <div style="background:#f8fafc;padding:16px 32px;text-align:center;border-top:1px solid #e2e8f0;">
+        <p style="font-size:11px;color:#94a3b8;margin:0;">© 2025 GasCap™ · <a href="https://www.gascap.app/privacy" style="color:#94a3b8;">Privacy Policy</a></p>
+      </div>
+    </div>
+  `;
+}
+
+// ── Handler ────────────────────────────────────────────────────────────────
 
 export async function POST(req: Request) {
   if (!auth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -26,62 +101,41 @@ export async function POST(req: Request) {
   const results: string[] = [];
 
   for (const user of expired) {
-    // 1. Revert to free
+    const isTrial = !!user.isProTrial;   // auto-signup trial vs admin-granted beta
+
+    // 1. Revert plan to free
     setUserPlan(user.id, 'free');
 
-    // 2. Sync GHL — revert plan tag + remove beta-tester tag
+    // 2. Sync GHL — swap gascap-pro → gascap-free, clean up trial/beta tags
     updateGhlContactPlan(user.email, 'free')
-      .catch((e) => console.error('[GHL] beta revert sync failed:', e));
-    removeGhlTags(user.email, ['gascap-beta-tester'])
-      .catch((e) => console.error('[GHL] beta tag remove failed:', e));
+      .catch((e) => console.error('[GHL] expire: plan sync failed:', e));
+    removeGhlTags(
+      user.email,
+      isTrial ? ['gascap-trial-30day'] : ['gascap-beta-tester'],
+    ).catch((e) => console.error('[GHL] expire: tag remove failed:', e));
 
-    // 3. Email the user — upgrade prompt
-    const daysUsed = user.betaProExpiry
-      ? Math.round((new Date().getTime() - (new Date(user.betaProExpiry).getTime() - 30 * 86400_000)) / 86400_000)
-      : 30;
-
+    // 3. Email the user with tailored copy
     sendMail({
       to:      user.email,
-      subject: 'Your GasCap™ Pro trial has ended — keep the upgrades?',
-      html: `
-        <div style="font-family:system-ui,-apple-system,sans-serif;max-width:560px;margin:32px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
-          <div style="background:#1e3a5f;padding:28px 32px;">
-            <h1 style="color:#fff;margin:0 0 6px;font-size:22px;font-weight:900;">Your Pro trial has ended ⏰</h1>
-            <p style="color:rgba(255,255,255,0.65);margin:0;font-size:14px;">Your account is now on the free plan.</p>
-          </div>
-          <div style="padding:32px;">
-            <p style="font-size:16px;color:#334155;margin:0 0 16px;">Hi ${user.name},</p>
-            <p style="font-size:15px;color:#475569;line-height:1.65;margin:0 0 20px;">
-              Your 30-day GasCap™ Pro beta trial has ended. Thank you for being one of our first testers — your feedback has been invaluable.
-            </p>
-            <p style="font-size:15px;color:#475569;line-height:1.65;margin:0 0 24px;">
-              Your account is now on the free plan. All your data is safe. To keep the Pro features you've been using — ad-free experience, unlimited vehicles, full history, and budget goals — you can upgrade for just $4.99/month.
-            </p>
-            <div style="background:#fffbeb;border-radius:12px;padding:20px;margin:0 0 24px;border:1px solid #fde68a;">
-              <p style="font-size:14px;font-weight:700;color:#92400e;margin:0 0 4px;">🎁 Beta tester discount</p>
-              <p style="font-size:13px;color:#92400e;margin:0 0 16px;">As a thank-you for testing, use code <strong>BETA30</strong> for your first month free when you upgrade.</p>
-              <a href="https://gascap.app/upgrade" style="display:inline-block;background:#f59e0b;color:#fff;padding:12px 28px;border-radius:10px;font-weight:900;font-size:14px;text-decoration:none;">Upgrade to Pro →</a>
-            </div>
-            <p style="font-size:13px;color:#94a3b8;line-height:1.6;margin:0;">No pressure — GasCap™ free is yours to keep forever. Reply anytime with questions or feedback.</p>
-          </div>
-          <div style="background:#f8fafc;padding:16px 32px;text-align:center;border-top:1px solid #e2e8f0;">
-            <p style="font-size:11px;color:#94a3b8;margin:0;">© 2025 GasCap™ · <a href="https://gascap.app/privacy" style="color:#94a3b8;">Privacy Policy</a></p>
-          </div>
-        </div>
-      `,
-      text: `Hi ${user.name}, your 30-day GasCap Pro trial has ended. Upgrade at https://gascap.app/upgrade to keep Pro features ($4.99/mo). Use code BETA30 for your first month free.`,
-    }).catch((e) => console.error('[GasCap] Beta expiry email failed:', e));
+      subject: isTrial
+        ? 'Your 30-day GasCap™ Pro trial has ended — keep the upgrades?'
+        : 'Your GasCap™ Pro beta has ended — keep the upgrades?',
+      html:    isTrial ? trialEndedEmailHtml(user.name) : betaEndedEmailHtml(user.name),
+      text:    isTrial
+        ? `Hi ${user.name}, your 30-day GasCap Pro trial has ended. Upgrade at https://www.gascap.app/upgrade to keep Pro features ($4.99/mo). Use code TRIAL30 for your first month free.`
+        : `Hi ${user.name}, your GasCap Pro beta trial has ended. Upgrade at https://www.gascap.app/upgrade to keep Pro features ($4.99/mo). Use code BETA30 for your first month free.`,
+    }).catch((e) => console.error('[GasCap] expire email failed:', e));
 
-    results.push(`${user.name} <${user.email}>`);
-    console.info(`[GasCap] Beta trial expired: ${user.email}`);
+    results.push(`${user.name} <${user.email}> (${isTrial ? 'trial' : 'beta'})`);
+    console.info(`[GasCap] Pro ${isTrial ? 'trial' : 'beta'} expired: ${user.email}`);
   }
 
   // 4. Notify admin
   sendMail({
     to:      'hello@gascap.app',
-    subject: `⏰ ${expired.length} GasCap™ beta trial(s) expired`,
-    html: `<div style="font-family:system-ui;max-width:480px;"><p style="font-size:16px;font-weight:700;">Beta trials reverted to free:</p><ul>${results.map((r) => `<li style="font-size:14px;color:#475569;">${r}</li>`).join('')}</ul></div>`,
-    text:    `Beta trials expired:\n${results.join('\n')}`,
+    subject: `⏰ ${expired.length} GasCap™ Pro trial(s) expired`,
+    html: `<div style="font-family:system-ui;max-width:480px;"><p style="font-size:16px;font-weight:700;">Pro trials reverted to free:</p><ul>${results.map((r) => `<li style="font-size:14px;color:#475569;">${r}</li>`).join('')}</ul></div>`,
+    text:    `Pro trials expired:\n${results.join('\n')}`,
   }).catch(() => {});
 
   return NextResponse.json({ reverted: expired.length, users: results });

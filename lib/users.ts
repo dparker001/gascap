@@ -32,9 +32,12 @@ export interface StoredUser {
   referralProMonthsEarned?: number; // months of Pro earned via referrals (1 per referral, max 10)
   referralRewardCredited?:  boolean; // true once this user's signup has been credited to their referrer
   referralCredits?:         ReferralCredit[]; // individual credits with expiry tracking
-  // Beta trial
-  isBetaTester?:   boolean;  // marked as a beta tester by admin
-  betaProExpiry?:  string;   // ISO date — when the beta Pro trial ends; null/undefined = no trial
+  // Beta trial (admin-granted) + new-signup Pro trial (automatic)
+  // Both share the same `betaProExpiry` timestamp so the existing expire
+  // cron can revert them in one pass; they're distinguished by the flags.
+  isBetaTester?:   boolean;  // true = admin-granted beta invitee
+  isProTrial?:     boolean;  // true = auto-enrolled 30-day Pro trial at signup
+  betaProExpiry?:  string;   // ISO date — when the Pro trial ends; null/undefined = no trial
   // Email verification
   emailVerified?:      boolean;   // undefined / false = not verified, true = verified
   emailVerifyToken?:   string;    // random token sent in email
@@ -199,6 +202,31 @@ export function revokeBetaTrial(userId: string): void {
   write(users);
 }
 
+/**
+ * Grant a new-signup Pro trial. Called automatically from the register
+ * route so every new user gets 30 days of Pro for free. Sets:
+ *   plan            = 'pro'
+ *   isProTrial      = true
+ *   betaProExpiry   = now + `days` (default 30)
+ *
+ * NOTE: reuses the existing `betaProExpiry` field so the beta-expire cron
+ * can downgrade both admin-granted beta testers and auto-enrolled trial
+ * users in a single sweep. `isBetaTester` is intentionally NOT set, so
+ * the admin UI can still distinguish the two populations.
+ */
+export function grantNewSignupProTrial(userId: string, days = 30): StoredUser | null {
+  const users = read();
+  const idx   = users.findIndex((u) => u.id === userId);
+  if (idx === -1) return null;
+  const expiry = new Date();
+  expiry.setDate(expiry.getDate() + days);
+  users[idx].plan          = 'pro';
+  users[idx].isProTrial    = true;
+  users[idx].betaProExpiry = expiry.toISOString();
+  write(users);
+  return users[idx];
+}
+
 // ── Email campaign helpers ──────────────────────────────────────────────────
 
 /** Enroll a new user in the drip campaign and record step 1 (welcome sent). */
@@ -229,31 +257,56 @@ export function optOutEmailCampaign(userId: string): void {
   write(users);
 }
 
-/** Return all users pending a given campaign step, with at least `minDays` since enrollment. */
+/**
+ * Return all users pending a given campaign step.
+ *
+ * Includes:
+ *   • Free users (never upgraded, never on trial)
+ *   • Trial users (auto-enrolled 30-day Pro trial)
+ *   • Expired-trial users now downgraded back to free
+ *
+ * Excludes:
+ *   • Anyone with `stripeSubscriptionId` — they actually paid, don't upsell
+ *   • Anyone who opted out of marketing emails
+ */
 export function getUsersPendingCampaignStep(step: number, minDays: number): StoredUser[] {
   const cutoff = new Date(Date.now() - minDays * 86_400_000);
   return read().filter((u) =>
     !u.emailOptOut &&
-    u.plan === 'free' &&           // skip already-upgraded users
+    !u.stripeSubscriptionId &&     // skip paying subscribers
     u.emailCampaignStep === step - 1 &&
     !!u.emailCampaignEnrolledAt &&
     new Date(u.emailCampaignEnrolledAt) <= cutoff,
   );
 }
 
-/** Return all users whose betaProExpiry has passed and plan is still 'pro' from trial. */
+/**
+ * Return users whose 30-day Pro trial has ended but whose plan is still 'pro'.
+ * Covers BOTH admin-granted beta testers AND auto-enrolled new-signup trials.
+ * The beta-expire cron uses this to revert them to free and send an
+ * upgrade-prompt email.
+ */
 export function getExpiredBetaUsers(): StoredUser[] {
   const now = new Date();
   return read().filter(
-    (u) => u.isBetaTester && u.betaProExpiry && new Date(u.betaProExpiry) < now && u.plan === 'pro',
+    (u) =>
+      (u.isBetaTester || u.isProTrial) &&
+      u.betaProExpiry &&
+      new Date(u.betaProExpiry) < now &&
+      u.plan === 'pro' &&
+      !u.stripeSubscriptionId,  // don't touch users who converted to paid
   );
 }
 
-/** Return all active beta testers (pro, not yet expired). */
+/** Return all active beta testers / trial users (pro, not yet expired). */
 export function getActiveBetaUsers(): StoredUser[] {
   const now = new Date();
   return read().filter(
-    (u) => u.isBetaTester && u.betaProExpiry && new Date(u.betaProExpiry) >= now && u.plan === 'pro',
+    (u) =>
+      (u.isBetaTester || u.isProTrial) &&
+      u.betaProExpiry &&
+      new Date(u.betaProExpiry) >= now &&
+      u.plan === 'pro',
   );
 }
 
