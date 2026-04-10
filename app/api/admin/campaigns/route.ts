@@ -29,7 +29,10 @@ import { getBaseUrl as resolveBaseUrl } from '@/lib/getBaseUrl';
  * for this route only, no code change needed.
  */
 function auth(req: NextRequest): boolean {
-  const pw = process.env.CAMPAIGN_ADMIN_PASSWORD ?? process.env.ADMIN_PASSWORD;
+  // Use || (not ??) so an empty CAMPAIGN_ADMIN_PASSWORD env var falls through
+  // to ADMIN_PASSWORD. Railway treats "set but empty" as a real value, which
+  // would otherwise lock out the main admin password entirely.
+  const pw = process.env.CAMPAIGN_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD;
   if (!pw) return false;
   return (req.headers.get('x-admin-password') ?? '') === pw;
 }
