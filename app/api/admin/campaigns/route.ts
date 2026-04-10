@@ -21,13 +21,14 @@ import {
 } from '@/lib/campaigns';
 
 /**
- * Campaign analytics uses a dedicated password (CAMPAIGN_ADMIN_PASSWORD),
- * separate from the main site admin (ADMIN_PASSWORD), so marketing/VE
- * collaborators can be given access to /admin/campaigns without seeing
- * the full user list or being able to modify accounts.
+ * Campaign analytics uses ADMIN_PASSWORD by default so a solo founder can
+ * sign in with the same password as /admin. If/when you want to hand the
+ * campaign dashboard to a marketing/VE collaborator without exposing user
+ * data, set CAMPAIGN_ADMIN_PASSWORD in Railway — it overrides ADMIN_PASSWORD
+ * for this route only, no code change needed.
  */
 function auth(req: NextRequest): boolean {
-  const pw = process.env.CAMPAIGN_ADMIN_PASSWORD;
+  const pw = process.env.CAMPAIGN_ADMIN_PASSWORD ?? process.env.ADMIN_PASSWORD;
   if (!pw) return false;
   return (req.headers.get('x-admin-password') ?? '') === pw;
 }
