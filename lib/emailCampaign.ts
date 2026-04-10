@@ -122,6 +122,13 @@ export function welcomeEmailHtml(name: string, userId: string): string {
         </p>
         <table cellpadding="0" cellspacing="0" width="100%">
           <tr>
+            <td style="padding:6px 0;vertical-align:top;width:28px;font-size:16px;">🚗</td>
+            <td style="padding:6px 0 6px 10px;vertical-align:top;color:#fff;">
+              <p style="margin:0;font-size:13px;font-weight:700;">Rental Car Return Mode</p>
+              <p style="margin:0;font-size:12px;color:rgba(255,255,255,.65);line-height:1.5;">Never overpay at return. Calculates the exact gallons to buy before dropping off.</p>
+            </td>
+          </tr>
+          <tr>
             <td style="padding:6px 0;vertical-align:top;width:28px;font-size:16px;">🤖</td>
             <td style="padding:6px 0 6px 10px;vertical-align:top;color:#fff;">
               <p style="margin:0;font-size:13px;font-weight:700;">GasCap AI Fuel Advisor</p>
@@ -166,12 +173,27 @@ export function welcomeEmailHtml(name: string, userId: string): string {
         </table>
       </div>
 
+      <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:12px;padding:18px 22px;margin:0 0 22px;">
+        <p style="margin:0 0 6px;font-size:14px;font-weight:900;color:#92400e;">
+          🚗 Renting a car? Don't miss our most-loved feature
+        </p>
+        <p style="margin:0;font-size:13px;color:#78350f;line-height:1.6;">
+          <strong>Rental Car Return Mode</strong> tells you exactly how many gallons to
+          buy before drop-off — so you don't overpay the $10–$12/gallon refueling fee
+          or waste money over-filling a tank you're about to hand back. Toggle
+          "🚗 Rental Car Return?" on the calculator and enter the rental company's
+          fuel rate to see your exact savings in real time. It alone pays for Pro
+          on a single trip.
+        </p>
+      </div>
+
       <p style="margin:0 0 14px;font-size:15px;font-weight:700;color:#1e2d4a;">
         Here's how to get the most out of your first week:
       </p>
       <ol style="margin:0 0 22px 20px;padding:0;font-size:14px;color:#475569;line-height:1.7;">
         <li><strong>Add your vehicle</strong> — tank size + fuel type, one time only.</li>
         <li><strong>Run a Target Fill calc</strong> — see exactly what a fill-up will cost before you pull in.</li>
+        <li><strong>Try Rental Car Return Mode</strong> next time you rent — avoid the $12/gal refuel trap.</li>
         <li><strong>Try the AI Advisor</strong> — ask it "How much fuel will I need for a 300-mile trip?"</li>
         <li><strong>Set a monthly budget</strong> — GasCap will watch your spending for you.</li>
       </ol>
@@ -195,7 +217,7 @@ export function welcomeEmailHtml(name: string, userId: string): string {
 }
 
 export const welcomeEmailText = (name: string) =>
-  `Hi ${name.split(' ')[0]}, welcome to GasCap™! Your 30-day free Pro trial is now active — AI Fuel Advisor, MPG charts, budget tracking, maintenance reminders, and PDF exports are all unlocked. No credit card needed, auto-reverts to free after 30 days. Open the app: ${BASE_URL}`;
+  `Hi ${name.split(' ')[0]}, welcome to GasCap™! Your 30-day free Pro trial is now active — Rental Car Return Mode (avoid $12/gal refuel fees), AI Fuel Advisor, MPG charts, budget tracking, maintenance reminders, and PDF exports are all unlocked. No credit card needed, auto-reverts to free after 30 days. Open the app: ${BASE_URL}`;
 
 // ── Email 2 — Feature Deep-Dive (Day 3) ───────────────────────────────────
 
@@ -207,13 +229,27 @@ export function featureTipsEmailHtml(name: string, userId: string): string {
       ${trialBadge(27)}
 
       <p style="margin:0 0 6px;font-size:24px;font-weight:900;color:#1e2d4a;line-height:1.2;">
-        3 Pro features to try this week, ${first} 🔥
+        4 Pro features to try this week, ${first} 🔥
       </p>
       <p style="margin:0 0 22px;font-size:15px;color:#475569;line-height:1.65;">
         You're 3 days into your free Pro trial — plenty of time to fall in love
-        with the features paying members use every day. Here are three worth
-        10 seconds of your time.
+        with the features paying members use every day. Here are four worth
+        10 seconds of your time (including the one that can literally pay for
+        Pro on a single rental car trip).
       </p>
+
+      <div style="background:#f8fafc;border-radius:14px;padding:20px 24px;margin-bottom:18px;border-left:4px solid #dc2626;">
+        <p style="margin:0 0 6px;font-size:15px;font-weight:900;color:#1e2d4a;">🚗 Rental Car Return Mode</p>
+        <p style="margin:0 0 10px;font-size:13px;color:#64748b;line-height:1.55;">
+          Rental companies charge <strong>$10–$12 per gallon</strong> when you return a car with less
+          than a full tank — often adding $60+ to a trip. GasCap's Rental Car Return
+          Mode calculates the exact number of gallons to buy at the pump before
+          drop-off, using the car's current fuel level and tank size. Toggle
+          "🚗 Rental Car Return?" on the calculator, drop in the rental company's
+          refuel rate, and GasCap shows your exact savings in real time — typically
+          $30–$80 per trip. This feature alone pays for a full year of Pro on one rental.
+        </p>
+      </div>
 
       <div style="background:#f8fafc;border-radius:14px;padding:20px 24px;margin-bottom:18px;border-left:4px solid #f59e0b;">
         <p style="margin:0 0 6px;font-size:15px;font-weight:900;color:#1e2d4a;">🤖 Ask the AI Fuel Advisor anything</p>
@@ -265,7 +301,7 @@ export function featureTipsEmailHtml(name: string, userId: string): string {
 }
 
 export const featureTipsEmailText = (name: string) =>
-  `Hi ${name.split(' ')[0]}, you're 3 days into your GasCap Pro trial. Try these: AI Fuel Advisor (ask anything), MPG trending charts (catch engine issues early), and monthly budget tracker (never overspend). Open the app: ${BASE_URL}`;
+  `Hi ${name.split(' ')[0]}, you're 3 days into your GasCap Pro trial. Try these: Rental Car Return Mode (avoid the $12/gal refuel trap on rentals — pays for Pro in a single trip), AI Fuel Advisor (ask anything), MPG trending charts (catch engine issues early), and monthly budget tracker (never overspend). Open the app: ${BASE_URL}`;
 
 // ── Email 3 — Mid-Trial Value Check-In (Day 10) ───────────────────────────
 

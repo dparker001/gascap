@@ -8,6 +8,7 @@
  */
 import Script from 'next/script';
 import { useEffect, useRef } from 'react';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 interface AdSenseBannerProps {
   /** Ad slot ID from AdSense (e.g. "1234567890") */
@@ -15,6 +16,7 @@ interface AdSenseBannerProps {
 }
 
 export default function AdSenseBanner({ slotId }: AdSenseBannerProps) {
+  const { t } = useTranslation();
   const publisherId = process.env.NEXT_PUBLIC_ADSENSE_PUBLISHER_ID ?? '';
   const adRef = useRef<HTMLModElement>(null);
 
@@ -32,7 +34,7 @@ export default function AdSenseBanner({ slotId }: AdSenseBannerProps) {
 
   return (
     <div className="w-full max-w-lg mx-auto px-4 py-2">
-      <p className="text-[9px] text-slate-300 text-center mb-1 uppercase tracking-wider">Advertisement</p>
+      <p className="text-[9px] text-slate-300 text-center mb-1 uppercase tracking-wider">{t.adSense.label}</p>
       <Script
         async
         src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${publisherId}`}

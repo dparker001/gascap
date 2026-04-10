@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 interface ActivityResponse {
   streak: number;
@@ -9,6 +10,7 @@ interface ActivityResponse {
 
 export default function StreakCounter() {
   const { data: session } = useSession();
+  const { t }             = useTranslation();
   const [streak, setStreak]   = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -41,19 +43,19 @@ export default function StreakCounter() {
           {hasStreak ? (
             <>
               <p className="text-sm font-black text-amber-400 leading-tight">
-                {streak}-day streak!
+                {t.streak.active(streak)}
               </p>
               <p className="text-[10px] text-white/50 mt-0.5">
-                Keep opening GasCap every day to grow it.
+                {t.streak.activeSub}
               </p>
             </>
           ) : (
             <>
               <p className="text-sm font-black text-white leading-tight">
-                Start your streak — open GasCap daily!
+                {t.streak.start}
               </p>
               <p className="text-[10px] text-white/50 mt-0.5">
-                Come back each day and watch your streak grow.
+                {t.streak.startSub}
               </p>
             </>
           )}
@@ -61,7 +63,7 @@ export default function StreakCounter() {
         {hasStreak && (
           <div className="flex-shrink-0 bg-amber-500/20 border border-amber-400/30 rounded-xl px-3 py-1.5 text-center">
             <p className="text-lg font-black text-amber-400 leading-none">{streak}</p>
-            <p className="text-[9px] text-amber-300/60 font-bold uppercase tracking-wide mt-0.5">days</p>
+            <p className="text-[9px] text-amber-300/60 font-bold uppercase tracking-wide mt-0.5">{t.streak.daysLabel}</p>
           </div>
         )}
       </div>

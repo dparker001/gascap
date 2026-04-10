@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { createPortal }        from 'react-dom';
+import { useTranslation }      from '@/contexts/LanguageContext';
 
 const ONBOARDING_KEY = 'gascap_onboarded';
 
@@ -182,39 +183,42 @@ interface Step {
   Illustration: () => JSX.Element;
 }
 
-const STEPS: Step[] = [
-  {
-    title:    'Welcome to GasCap™',
-    body:     "Calculate exactly how many gallons you need — and what it'll cost — before you pull up to the pump.",
-    cta:      'Show Me How →',
-    skipLabel:'Skip Intro',
-    bg:       'linear-gradient(135deg, #1e3a5f 0%, #2c5491 100%)',
-    Illustration: IllustrationPump,
-  },
-  {
-    title:    'Set Your Fuel Level',
-    body:     'Drag the gauge to your current level, pick a fill target, and get your exact pump cost instantly.',
-    cta:      'Got It →',
-    skipLabel:'Skip Intro',
-    bg:       'linear-gradient(135deg, #172d4a 0%, #1e3a5f 60%, #b45309 100%)',
-    Illustration: IllustrationGauge,
-  },
-  {
-    title:    'You\'re Ready to Go!',
-    body:     'The calculator is completely free — no account needed. Sign up free to save vehicles, log fill-ups, and track your MPG over time.',
-    cta:      'Start Calculating — it\'s free',
-    skipLabel:'Close Intro',
-    bg:       'linear-gradient(135deg, #0f1f34 0%, #1e3a5f 60%, #2c5491 100%)',
-    Illustration: IllustrationRoad,
-  },
-];
-
 // ── Modal ─────────────────────────────────────────────────────────────────────
 
 export default function OnboardingModal() {
+  const { t } = useTranslation();
   const [show,    setShow]    = useState(false);
   const [step,    setStep]    = useState(0);
   const [mounted, setMounted] = useState(false);  // true only in the browser
+
+  // Build steps with localized copy. Gradients + illustrations stay constant;
+  // only the title/body/cta/skip labels flip when the locale changes.
+  const STEPS: Step[] = [
+    {
+      title:     t.onboarding.step1Title,
+      body:      t.onboarding.step1Body,
+      cta:       t.onboarding.step1Cta,
+      skipLabel: t.onboarding.skipIntro,
+      bg:        'linear-gradient(135deg, #1e3a5f 0%, #2c5491 100%)',
+      Illustration: IllustrationPump,
+    },
+    {
+      title:     t.onboarding.step2Title,
+      body:      t.onboarding.step2Body,
+      cta:       t.onboarding.step2Cta,
+      skipLabel: t.onboarding.skipIntro,
+      bg:        'linear-gradient(135deg, #172d4a 0%, #1e3a5f 60%, #b45309 100%)',
+      Illustration: IllustrationGauge,
+    },
+    {
+      title:     t.onboarding.step3Title,
+      body:      t.onboarding.step3Body,
+      cta:       t.onboarding.step3Cta,
+      skipLabel: t.onboarding.closeIntro,
+      bg:        'linear-gradient(135deg, #0f1f34 0%, #1e3a5f 60%, #2c5491 100%)',
+      Illustration: IllustrationRoad,
+    },
+  ];
 
   useEffect(() => {
     setMounted(true);  // mark as client-rendered
@@ -292,7 +296,7 @@ export default function OnboardingModal() {
             onClick={dismiss}
             className="absolute top-3 right-3 w-7 h-7 rounded-full bg-white/10 hover:bg-white/20
                        transition-colors flex items-center justify-center"
-            aria-label="Close onboarding"
+            aria-label={t.onboarding.closeAria}
           >
             <svg viewBox="0 0 12 12" className="w-3 h-3" fill="none"
                  stroke="white" strokeWidth="2" strokeLinecap="round" aria-hidden="true">

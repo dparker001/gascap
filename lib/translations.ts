@@ -456,6 +456,96 @@ const en = {
     inputPlaceholder: 'Ask anything about fuel…',
     send:             'Send',
   },
+
+  // ── Feedback button & modal ────────────────────────────────────────────────
+  feedback: {
+    buttonLabel:  'Share Feedback',
+    ariaLabel:    'Send feedback',
+    sentTitle:    'Thanks for your feedback!',
+    sentSub:      'We read every message.',
+    modalTitle:   'Share feedback',
+    modalSub:     'Ideas, bugs, or anything on your mind.',
+    placeholder:  "What's on your mind? Feature requests, bugs, anything…",
+    cancel:       'Cancel',
+    send:         'Send',
+    sending:      'Sending…',
+    networkError: 'Network error — please try again.',
+  },
+
+  // ── Onboarding modal ───────────────────────────────────────────────────────
+  onboarding: {
+    closeAria:  'Close onboarding',
+    skipIntro:  'Skip Intro',
+    closeIntro: 'Close Intro',
+    step1Title: 'Welcome to GasCap™',
+    step1Body:  "Calculate exactly how many gallons you need — and what it'll cost — before you pull up to the pump.",
+    step1Cta:   'Show Me How →',
+    step2Title: 'Set Your Fuel Level',
+    step2Body:  'Drag the gauge to your current level, pick a fill target, and get your exact pump cost instantly.',
+    step2Cta:   'Got It →',
+    step3Title: "You're Ready to Go!",
+    step3Body:  'The calculator is completely free — no account needed. Sign up free to save vehicles, log fill-ups, and track your MPG over time.',
+    step3Cta:   "Start Calculating — it's free",
+  },
+
+  // ── Tools panel prompts (sign-in + upgrade) ────────────────────────────────
+  toolsPrompts: {
+    signInTo:     'Sign in to access your',
+    signInBody:   'Create a free account to log fill-ups, track MPG, set budgets, and see your spending charts.',
+    proFeature:   'Pro Feature',
+    proBody1:     'is available on the',
+    proBody2:     'plan. Upgrade to unlock AI insights, charts, maintenance tracking, and more.',
+    upgradeToPro: 'Upgrade to Pro →',
+    featureFillUpLog:      'fill-up log',
+    featureCharts:         'charts',
+    featureStats:          'stats',
+    featureMaintenance:    'maintenance reminders',
+    featureReferral:       'referral program',
+    featureReviews:        'reviews',
+    chartsLabel:           'Fuel Charts & Analytics',
+    maintenanceLabel:      'Maintenance Reminders',
+  },
+
+  // ── Email verification banner ──────────────────────────────────────────────
+  verifyBanner: {
+    message:    'Please verify your email address to secure your account.',
+    sent:       '✓ Email sent!',
+    resend:     'Resend email',
+    sending:    'Sending…',
+    failSend:   'Failed to send.',
+    networkErr: 'Network error.',
+  },
+
+  // ── Gas price alert banner ─────────────────────────────────────────────────
+  priceAlert: {
+    headline:  (price: string) => `Gas prices are down! $${price}/gal nationally`,
+    subline:   (savings: string, threshold: string) => `$${savings} below your $${threshold} alert threshold — good time to fill up!`,
+    calculate: 'Calculate',
+    dismiss:   'Dismiss alert',
+  },
+
+  // ── Reviews marquee ────────────────────────────────────────────────────────
+  reviewsMarquee: {
+    ariaLabel: 'User reviews',
+    stars:     (rating: number) => `${rating} out of 5 stars`,
+    avg:       (avg: string, count: number) => `${avg} avg · ${count} reviews`,
+    heading:   'What drivers are saying',
+    sub:       'Real reviews from GasCap™ users',
+  },
+
+  // ── Streak counter ─────────────────────────────────────────────────────────
+  streak: {
+    active:    (streak: number) => `${streak}-day streak!`,
+    activeSub: 'Keep opening GasCap every day to grow it.',
+    start:     'Start your streak — open GasCap daily!',
+    startSub:  'Come back each day and watch your streak grow.',
+    daysLabel: 'days',
+  },
+
+  // ── AdSense banner ─────────────────────────────────────────────────────────
+  adSense: {
+    label: 'Advertisement',
+  },
 };
 
 // ── Spanish ───────────────────────────────────────────────────────────────────
@@ -884,6 +974,88 @@ const es: typeof en = {
     ],
     inputPlaceholder: 'Pregunta lo que quieras sobre combustible…',
     send:             'Enviar',
+  },
+
+  feedback: {
+    buttonLabel:  'Compartir comentarios',
+    ariaLabel:    'Enviar comentarios',
+    sentTitle:    '¡Gracias por tus comentarios!',
+    sentSub:      'Leemos cada mensaje.',
+    modalTitle:   'Compartir comentarios',
+    modalSub:     'Ideas, errores o lo que tengas en mente.',
+    placeholder:  '¿Qué tienes en mente? Sugerencias, errores, lo que sea…',
+    cancel:       'Cancelar',
+    send:         'Enviar',
+    sending:      'Enviando…',
+    networkError: 'Error de red — inténtalo de nuevo.',
+  },
+
+  onboarding: {
+    closeAria:  'Cerrar introducción',
+    skipIntro:  'Omitir introducción',
+    closeIntro: 'Cerrar introducción',
+    step1Title: 'Bienvenido a GasCap™',
+    step1Body:  'Calcula exactamente cuántos galones necesitas — y cuánto costará — antes de llegar a la bomba.',
+    step1Cta:   'Muéstrame cómo →',
+    step2Title: 'Establece tu nivel de combustible',
+    step2Body:  'Arrastra el medidor a tu nivel actual, elige un objetivo de llenado y obtén el costo exacto al instante.',
+    step2Cta:   'Entendido →',
+    step3Title: '¡Listo para empezar!',
+    step3Body:  'La calculadora es totalmente gratuita — sin cuenta necesaria. Regístrate gratis para guardar vehículos, registrar llenados y seguir tu MPG.',
+    step3Cta:   'Comenzar a calcular — es gratis',
+  },
+
+  toolsPrompts: {
+    signInTo:     'Inicia sesión para acceder a tu',
+    signInBody:   'Crea una cuenta gratis para registrar llenados, seguir tu MPG, establecer presupuestos y ver tus gráficas de gastos.',
+    proFeature:   'Función Pro',
+    proBody1:     'está disponible en el plan',
+    proBody2:     '. Mejora para desbloquear insights de IA, gráficas, seguimiento de mantenimiento y más.',
+    upgradeToPro: 'Mejorar a Pro →',
+    featureFillUpLog:      'registro de llenados',
+    featureCharts:         'gráficas',
+    featureStats:          'estadísticas',
+    featureMaintenance:    'recordatorios de mantenimiento',
+    featureReferral:       'programa de referidos',
+    featureReviews:        'reseñas',
+    chartsLabel:           'Gráficas y análisis de combustible',
+    maintenanceLabel:      'Recordatorios de mantenimiento',
+  },
+
+  verifyBanner: {
+    message:    'Por favor verifica tu correo electrónico para asegurar tu cuenta.',
+    sent:       '✓ ¡Correo enviado!',
+    resend:     'Reenviar correo',
+    sending:    'Enviando…',
+    failSend:   'Error al enviar.',
+    networkErr: 'Error de red.',
+  },
+
+  priceAlert: {
+    headline:  (price: string) => `¡Los precios bajaron! $${price}/gal a nivel nacional`,
+    subline:   (savings: string, threshold: string) => `$${savings} por debajo de tu umbral de $${threshold} — ¡buen momento para llenar!`,
+    calculate: 'Calcular',
+    dismiss:   'Cerrar alerta',
+  },
+
+  reviewsMarquee: {
+    ariaLabel: 'Reseñas de usuarios',
+    stars:     (rating: number) => `${rating} de 5 estrellas`,
+    avg:       (avg: string, count: number) => `${avg} promedio · ${count} reseñas`,
+    heading:   'Lo que dicen los conductores',
+    sub:       'Reseñas reales de usuarios de GasCap™',
+  },
+
+  streak: {
+    active:    (streak: number) => `¡Racha de ${streak} días!`,
+    activeSub: 'Sigue abriendo GasCap todos los días para hacerla crecer.',
+    start:     '¡Empieza tu racha — abre GasCap diariamente!',
+    startSub:  'Vuelve cada día y mira crecer tu racha.',
+    daysLabel: 'días',
+  },
+
+  adSense: {
+    label: 'Publicidad',
   },
 };
 

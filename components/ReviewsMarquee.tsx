@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from 'react';
 import type { Review } from '@/lib/reviews';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 // ── Star row ──────────────────────────────────────────────────────────────
 
-function Stars({ rating }: { rating: number }) {
+function Stars({ rating, label }: { rating: number; label: string }) {
   return (
-    <div className="flex gap-0.5" aria-label={`${rating} out of 5 stars`}>
+    <div className="flex gap-0.5" aria-label={label}>
       {[1, 2, 3, 4, 5].map((n) => (
         <span key={n} className={`text-sm leading-none ${n <= rating ? 'text-amber-400' : 'text-slate-200'}`}>
           ★
@@ -19,10 +20,10 @@ function Stars({ rating }: { rating: number }) {
 
 // ── Single review card ────────────────────────────────────────────────────
 
-function ReviewCard({ review }: { review: Review }) {
+function ReviewCard({ review, starsLabel }: { review: Review; starsLabel: string }) {
   return (
     <div className="flex-shrink-0 w-72 bg-white rounded-2xl shadow-card border border-slate-100 p-4 mx-2">
-      <Stars rating={review.rating} />
+      <Stars rating={review.rating} label={starsLabel} />
       <p className="text-sm text-slate-700 leading-relaxed mt-2 line-clamp-3">
         &ldquo;{review.text}&rdquo;
       </p>
@@ -47,13 +48,13 @@ function ReviewCard({ review }: { review: Review }) {
 
 // ── Marquee row ───────────────────────────────────────────────────────────
 
-function MarqueeRow({ reviews }: { reviews: Review[] }) {
+function MarqueeRow({ reviews, starsLabelFor }: { reviews: Review[]; starsLabelFor: (rating: number) => string }) {
   // Duplicate for seamless loop
   const doubled = [...reviews, ...reviews];
   return (
     <div className="flex marquee-track-left" style={{ width: 'max-content' }}>
       {doubled.map((r, i) => (
-        <ReviewCard key={`${r.id}-${i}`} review={r} />
+        <ReviewCard key={`${r.id}-${i}`} review={r} starsLabel={starsLabelFor(r.rating)} />
       ))}
     </div>
   );
@@ -62,6 +63,7 @@ function MarqueeRow({ reviews }: { reviews: Review[] }) {
 // ── Main export ───────────────────────────────────────────────────────────
 
 export default function ReviewsMarquee() {
+  const { t } = useTranslation();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loaded,  setLoaded]  = useState(false);
 
@@ -83,23 +85,23 @@ export default function ReviewsMarquee() {
   const avgRating = (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1);
 
   return (
-    <section aria-label="User reviews" className="py-10 overflow-hidden bg-slate-50">
+    <section aria-label={t.reviewsMarquee.ariaLabel} className="py-10 overflow-hidden bg-slate-50">
       {/* Heading */}
       <div className="text-center mb-6 px-4">
         <div className="inline-flex items-center gap-2 bg-amber-50 border border-amber-100 rounded-full px-4 py-1.5 mb-3">
           <span className="text-amber-400 text-sm">★</span>
-          <span className="text-xs font-black text-amber-700">{avgRating} avg · {reviews.length} reviews</span>
+          <span className="text-xs font-black text-amber-700">{t.reviewsMarquee.avg(avgRating, reviews.length)}</span>
         </div>
         <h2 className="text-xl font-black text-navy-700 leading-tight">
-          What drivers are saying
+          {t.reviewsMarquee.heading}
         </h2>
-        <p className="text-sm text-slate-400 mt-1">Real reviews from GasCap™ users</p>
+        <p className="text-sm text-slate-400 mt-1">{t.reviewsMarquee.sub}</p>
       </div>
 
       {/* Single scrolling row — clipped to content width */}
       <div className="max-w-lg mx-auto px-4">
         <div className="marquee-root select-none overflow-hidden rounded-2xl">
-          <MarqueeRow reviews={padded} />
+          <MarqueeRow reviews={padded} starsLabelFor={(rating) => t.reviewsMarquee.stars(rating)} />
         </div>
       </div>
     </section>

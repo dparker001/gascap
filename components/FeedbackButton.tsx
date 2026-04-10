@@ -2,9 +2,11 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 export default function FeedbackButton() {
   const pathname            = usePathname();
+  const { t }               = useTranslation();
   const [open, setOpen]     = useState(false);
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
@@ -37,7 +39,7 @@ export default function FeedbackButton() {
       setMessage('');
       setTimeout(() => { setSent(false); setOpen(false); }, 2500);
     } catch {
-      setError('Network error — please try again.');
+      setError(t.feedback.networkError);
     } finally {
       setSending(false);
     }
@@ -51,10 +53,10 @@ export default function FeedbackButton() {
         className="fixed bottom-5 right-4 z-50 flex items-center gap-1.5 bg-navy-700
                    hover:bg-navy-600 text-white text-xs font-bold px-3 py-2.5 rounded-full
                    shadow-lg transition-all hover:scale-105 active:scale-95"
-        aria-label="Send feedback"
+        aria-label={t.feedback.ariaLabel}
       >
         <span>💬</span>
-        <span>Share Feedback</span>
+        <span>{t.feedback.buttonLabel}</span>
       </button>
 
       {/* Modal backdrop */}
@@ -69,16 +71,16 @@ export default function FeedbackButton() {
             {sent ? (
               <div className="text-center py-4 space-y-2">
                 <p className="text-3xl">🙏</p>
-                <p className="font-black text-navy-700">Thanks for your feedback!</p>
-                <p className="text-sm text-slate-500">We read every message.</p>
+                <p className="font-black text-navy-700">{t.feedback.sentTitle}</p>
+                <p className="text-sm text-slate-500">{t.feedback.sentSub}</p>
               </div>
             ) : (
               <>
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-black text-navy-700">Share feedback</p>
+                    <p className="font-black text-navy-700">{t.feedback.modalTitle}</p>
                     <p className="text-xs text-slate-400 mt-0.5">
-                      Ideas, bugs, or anything on your mind.
+                      {t.feedback.modalSub}
                     </p>
                   </div>
                   <button
@@ -94,7 +96,7 @@ export default function FeedbackButton() {
                     ref={textareaRef}
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
-                    placeholder="What's on your mind? Feature requests, bugs, anything…"
+                    placeholder={t.feedback.placeholder}
                     rows={4}
                     className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm
                                resize-none focus:outline-none focus:ring-2 focus:ring-amber-400
@@ -109,7 +111,7 @@ export default function FeedbackButton() {
                       className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm
                                  font-semibold text-slate-500 hover:bg-slate-50 transition-colors"
                     >
-                      Cancel
+                      {t.feedback.cancel}
                     </button>
                     <button
                       type="submit"
@@ -117,7 +119,7 @@ export default function FeedbackButton() {
                       className="flex-1 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400
                                  disabled:opacity-40 text-white text-sm font-black transition-colors"
                     >
-                      {sending ? 'Sending…' : 'Send'}
+                      {sending ? t.feedback.sending : t.feedback.send}
                     </button>
                   </div>
                 </form>

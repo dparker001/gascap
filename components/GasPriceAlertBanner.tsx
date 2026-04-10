@@ -3,11 +3,13 @@
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 const DISMISSED_KEY = 'gascap_price_alert_dismissed';
 
 export default function GasPriceAlertBanner() {
   const { data: session } = useSession();
+  const { t }             = useTranslation();
   const [show,      setShow]      = useState(false);
   const [savings,   setSavings]   = useState<number | null>(null);
   const [currentPrice, setCurrentPrice] = useState<number | null>(null);
@@ -62,10 +64,10 @@ export default function GasPriceAlertBanner() {
         <span className="text-xl flex-shrink-0" aria-hidden="true">⛽</span>
         <div className="flex-1 min-w-0">
           <p className="text-xs font-black text-emerald-800">
-            Gas prices are down! ${currentPrice.toFixed(2)}/gal nationally
+            {t.priceAlert.headline(currentPrice.toFixed(2))}
           </p>
           <p className="text-[10px] text-emerald-600 mt-0.5">
-            ${savings?.toFixed(2)} below your ${threshold.toFixed(2)} alert threshold — good time to fill up!
+            {t.priceAlert.subline((savings ?? 0).toFixed(2), threshold.toFixed(2))}
           </p>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
@@ -73,12 +75,12 @@ export default function GasPriceAlertBanner() {
             href="/#calculator"
             className="text-[10px] font-black bg-emerald-600 text-white px-2.5 py-1.5 rounded-xl hover:bg-emerald-700 transition-colors"
           >
-            Calculate
+            {t.priceAlert.calculate}
           </Link>
           <button
             onClick={dismiss}
             className="text-emerald-400 hover:text-emerald-600 transition-colors p-0.5"
-            aria-label="Dismiss alert"
+            aria-label={t.priceAlert.dismiss}
           >
             <svg viewBox="0 0 12 12" className="w-3.5 h-3.5" fill="none"
                  stroke="currentColor" strokeWidth="2" strokeLinecap="round">

@@ -151,7 +151,7 @@ export default function ToolsPanel() {
             <FillupHistory />
           </div>
         )}
-        {effectiveTab === 'log' && !session && <SignInPrompt feature="fill-up log" />}
+        {effectiveTab === 'log' && !session && <SignInPrompt feature={t.toolsPrompts.featureFillUpLog} />}
       </div>
 
       {/* Charts */}
@@ -165,8 +165,8 @@ export default function ToolsPanel() {
             <VehicleComparison />
           </div>
         )}
-        {effectiveTab === 'charts' && session && !isPro && <UpgradePrompt feature="Fuel Charts & Analytics" />}
-        {effectiveTab === 'charts' && !session && <SignInPrompt feature="charts" />}
+        {effectiveTab === 'charts' && session && !isPro && <UpgradePrompt feature={t.toolsPrompts.chartsLabel} />}
+        {effectiveTab === 'charts' && !session && <SignInPrompt feature={t.toolsPrompts.featureCharts} />}
       </div>
 
       {/* Stats */}
@@ -180,14 +180,14 @@ export default function ToolsPanel() {
             <GasPricePrediction />
           </div>
         )}
-        {effectiveTab === 'stats' && !session && <SignInPrompt feature="stats" />}
+        {effectiveTab === 'stats' && !session && <SignInPrompt feature={t.toolsPrompts.featureStats} />}
       </div>
 
       {/* Maintenance / Service */}
       <div role="tabpanel" id="tabpanel-service" hidden={effectiveTab !== 'service'}>
         {effectiveTab === 'service' && session && isPro && <MaintenanceReminders />}
-        {effectiveTab === 'service' && session && !isPro && <UpgradePrompt feature="Maintenance Reminders" />}
-        {effectiveTab === 'service' && !session && <SignInPrompt feature="maintenance reminders" />}
+        {effectiveTab === 'service' && session && !isPro && <UpgradePrompt feature={t.toolsPrompts.maintenanceLabel} />}
+        {effectiveTab === 'service' && !session && <SignInPrompt feature={t.toolsPrompts.featureMaintenance} />}
       </div>
 
       {/* Referral / Share */}
@@ -199,7 +199,7 @@ export default function ToolsPanel() {
             <ReferralCard />
           </div>
         )}
-        {effectiveTab === 'share' && !session && <SignInPrompt feature="referral program" />}
+        {effectiveTab === 'share' && !session && <SignInPrompt feature={t.toolsPrompts.featureReferral} />}
       </div>
 
       {/* Review */}
@@ -209,7 +209,7 @@ export default function ToolsPanel() {
             <ReviewWidget mode="submit" />
           </div>
         )}
-        {effectiveTab === 'review' && !session && <SignInPrompt feature="reviews" />}
+        {effectiveTab === 'review' && !session && <SignInPrompt feature={t.toolsPrompts.featureReviews} />}
       </div>
 
     </div>
@@ -219,12 +219,13 @@ export default function ToolsPanel() {
 // ── Sign-in prompt ────────────────────────────────────────────────────────────
 
 function SignInPrompt({ feature }: { feature: string }) {
+  const { t } = useTranslation();
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-6 py-8 text-center space-y-2">
       <p className="text-2xl">🔒</p>
-      <p className="text-sm font-bold text-slate-700">Sign in to access your {feature}</p>
+      <p className="text-sm font-bold text-slate-700">{t.toolsPrompts.signInTo} {feature}</p>
       <p className="text-xs text-slate-400 leading-relaxed max-w-[240px] mx-auto">
-        Create a free account to log fill-ups, track MPG, set budgets, and see your spending charts.
+        {t.toolsPrompts.signInBody}
       </p>
     </div>
   );
@@ -233,20 +234,20 @@ function SignInPrompt({ feature }: { feature: string }) {
 // ── Upgrade prompt ────────────────────────────────────────────────────────────
 
 function UpgradePrompt({ feature }: { feature: string }) {
+  const { t } = useTranslation();
   return (
     <div className="bg-white rounded-2xl border-2 border-amber-200 shadow-sm px-6 py-8 text-center space-y-3">
       <p className="text-3xl">⭐</p>
-      <p className="text-sm font-black text-slate-700">Pro Feature</p>
+      <p className="text-sm font-black text-slate-700">{t.toolsPrompts.proFeature}</p>
       <p className="text-xs text-slate-500 leading-relaxed max-w-[260px] mx-auto">
-        <span className="font-semibold text-amber-700">{feature}</span> is available on the{' '}
-        <span className="font-semibold">GasCap™ Pro</span> plan. Upgrade to unlock AI insights,
-        charts, maintenance tracking, and more.
+        <span className="font-semibold text-amber-700">{feature}</span> {t.toolsPrompts.proBody1}{' '}
+        <span className="font-semibold">GasCap™ Pro</span> {t.toolsPrompts.proBody2}
       </p>
       <a
         href="/upgrade"
         className="inline-block mt-1 px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-white text-sm font-black rounded-2xl transition-colors"
       >
-        Upgrade to Pro →
+        {t.toolsPrompts.upgradeToPro}
       </a>
     </div>
   );
