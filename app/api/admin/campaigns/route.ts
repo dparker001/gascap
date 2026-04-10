@@ -18,6 +18,7 @@ import {
   getOverview,
   groupStatsBy,
   getDailyBuckets,
+  clearAllEvents,
 } from '@/lib/campaigns';
 import { getBaseUrl as resolveBaseUrl } from '@/lib/getBaseUrl';
 
@@ -134,7 +135,17 @@ export async function PATCH(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   if (!auth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  const id = new URL(req.url).searchParams.get('id');
+
+  const { searchParams } = new URL(req.url);
+
+  // DELETE /api/admin/campaigns?clear=events — wipe the events log
+  // (placements are preserved so QR URLs keep working)
+  if (searchParams.get('clear') === 'events') {
+    const removed = clearAllEvents();
+    return NextResponse.json({ ok: true, removed });
+  }
+
+  const id = searchParams.get('id');
   if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 });
   const ok = deletePlacement(id);
   if (!ok) return NextResponse.json({ error: 'not found' }, { status: 404 });

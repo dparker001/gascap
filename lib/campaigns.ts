@@ -211,6 +211,17 @@ export function logEvent(ev: Omit<CampaignEvent, 'id' | 'ts'>): CampaignEvent {
   return row;
 }
 
+/**
+ * Wipe the events log. Used by the admin dashboard "Reset events" button
+ * to clear test/smoke-test data before a real campaign launch. Placements
+ * are left intact so their QR URLs stay valid.
+ */
+export function clearAllEvents(): number {
+  const n = readEvents().length;
+  writeEvents([]);
+  return n;
+}
+
 export function listEvents(filter?: { placementCode?: string; type?: CampaignEventType; since?: string }): CampaignEvent[] {
   let rows = readEvents();
   if (filter?.placementCode) {

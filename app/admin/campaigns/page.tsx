@@ -229,6 +229,25 @@ export default function CampaignsAdminPage() {
     setTimeout(() => setMsg(''), 2500);
   };
 
+  const handleResetEvents = async () => {
+    if (!confirm(
+      'Reset ALL campaign events?\n\n' +
+      'This wipes every scan, page view, calc, and signup event from the log. ' +
+      'Placements and their QR URLs are preserved. Use this to clear test/' +
+      'smoke-test data before the real pilot launches.\n\n' +
+      'This cannot be undone.',
+    )) return;
+
+    const res = await fetch('/api/admin/campaigns?clear=events', { method: 'DELETE', headers });
+    const data = await res.json();
+    if (res.ok) {
+      setMsg(`Cleared ${data.removed} events`);
+      void fetchAll(pw);
+    } else {
+      setMsg(data.error ?? 'Failed to reset events');
+    }
+  };
+
   // ── Render ─────────────────────────────────────────────────────────────
 
   if (!authed) {
@@ -282,6 +301,13 @@ export default function CampaignsAdminPage() {
               className="px-3 py-2 text-sm rounded-lg bg-emerald-600 text-white hover:bg-emerald-700"
             >
               + New placement
+            </button>
+            <button
+              onClick={handleResetEvents}
+              className="px-3 py-2 text-sm rounded-lg border border-red-300 text-red-700 bg-white hover:bg-red-50"
+              title="Wipe all scan/view/calc/signup events. Placements are preserved."
+            >
+              Reset events
             </button>
             <a href="/admin" className="px-3 py-2 text-sm rounded-lg border border-slate-300 bg-white hover:bg-slate-50">
               ← Admin home
