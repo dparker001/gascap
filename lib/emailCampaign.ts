@@ -17,7 +17,7 @@
  * emailOptOut=true and excluded.
  */
 
-import { sendMail } from './email';
+import { sendMail, brandHeader } from './email';
 
 // ── Shared layout helpers ──────────────────────────────────────────────────
 
@@ -27,13 +27,9 @@ function unsubLink(userId: string) {
   return `${BASE_URL}/api/email/unsubscribe?id=${userId}`;
 }
 
+/** Wrapper that returns the shared GasCap™ brand header (logo pill on navy). */
 function header() {
-  return `
-    <tr><td style="background:#1e2d4a;padding:24px 32px;border-radius:16px 16px 0 0;">
-      <span style="color:#fff;font-size:20px;font-weight:900;letter-spacing:-0.5px;">
-        GasCap<sup style="color:#f59e0b;font-size:11px;">™</sup>
-      </span>
-    </td></tr>`;
+  return brandHeader();
 }
 
 function footer(userId: string) {

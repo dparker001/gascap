@@ -72,6 +72,37 @@ export async function sendMail(opts: MailOptions): Promise<void> {
   console.log('──────────────────────────────────────\n');
 }
 
+/**
+ * Shared GasCap™ email header — mirrors the in-app header by placing the
+ * wordmark inside a white "pill" on a dark navy bar. The wordmark is rendered
+ * as styled HTML text (not an image) so it displays identically in every email
+ * client including Outlook, and uses the exact brand colors from
+ * /public/logo-wordmark3.svg:
+ *
+ *   "Gas" → #15a680  (brand teal-green)
+ *   "Cap" → #0a5240  (brand dark teal)
+ *    ™    → #fa7109  (brand orange)
+ *
+ * A nested <table> is used for the white pill because Outlook is unreliable
+ * with inline-block padding and border-radius on <span>. Single source of
+ * truth so the verification email, password-reset email, and any future
+ * transactional email stay in lock-step with lib/emailCampaign.ts.
+ */
+export function brandHeader(): string {
+  return `
+        <tr><td style="background:#1e2d4a;padding:22px 32px;border-radius:16px 16px 0 0;">
+          <table cellpadding="0" cellspacing="0" border="0" role="presentation"><tr><td
+               style="background:#ffffff;padding:10px 16px;border-radius:10px;mso-padding-alt:10px 16px;">
+            <span style="font-family:system-ui,-apple-system,'Segoe UI',Arial,sans-serif;
+                         font-size:24px;font-weight:900;letter-spacing:-0.5px;line-height:1;
+                         white-space:nowrap;">
+              <span style="color:#15a680;">Gas</span><span style="color:#0a5240;">Cap</span><sup
+                    style="color:#fa7109;font-size:11px;font-weight:900;vertical-align:super;line-height:0;">™</sup>
+            </span>
+          </td></tr></table>
+        </td></tr>`;
+}
+
 export function passwordResetEmailHtml(name: string, resetUrl: string): string {
   return `
 <!DOCTYPE html>
@@ -81,9 +112,7 @@ export function passwordResetEmailHtml(name: string, resetUrl: string): string {
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#eef1f7;padding:40px 16px;">
     <tr><td align="center">
       <table width="100%" style="max-width:480px;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,.08);">
-        <tr><td style="background:#1e2d4a;padding:24px 32px;">
-          <span style="color:#fff;font-size:20px;font-weight:900;">GasCap<sup style="color:#f59e0b;font-size:11px;">™</sup></span>
-        </td></tr>
+${brandHeader()}
         <tr><td style="padding:32px;">
           <p style="margin:0 0 8px;font-size:22px;font-weight:900;color:#1e2d4a;">Reset your password</p>
           <p style="margin:0 0 24px;font-size:15px;color:#475569;">Hi ${name}, click the button below to set a new password for your GasCap account.</p>
@@ -112,10 +141,7 @@ export function verificationEmailHtml(name: string, verifyUrl: string): string {
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#eef1f7;padding:40px 16px;">
     <tr><td align="center">
       <table width="100%" style="max-width:480px;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,.08);">
-        <!-- Header -->
-        <tr><td style="background:#1e2d4a;padding:24px 32px;">
-          <span style="color:#fff;font-size:20px;font-weight:900;">GasCap<sup style="color:#f59e0b;font-size:11px;">™</sup></span>
-        </td></tr>
+${brandHeader()}
         <!-- Body -->
         <tr><td style="padding:32px;">
           <p style="margin:0 0 8px;font-size:22px;font-weight:900;color:#1e2d4a;">Verify your email</p>
