@@ -70,12 +70,23 @@ export default function PushNotificationToggle() {
     setLoading(true);
     setError('');
     try {
-      await OneSignal.User.PushSubscription.optIn();
+      // Race optIn() against a 15-second timeout so the button never hangs
+      await Promise.race([
+        OneSignal.User.PushSubscription.optIn(),
+        new Promise<void>((_, reject) =>
+          setTimeout(() => reject(new Error('timeout')), 15_000),
+        ),
+      ]);
       setSubbed(OneSignal.User.PushSubscription.optedIn ?? false);
       setDenied(Notification.permission === 'denied');
-    } catch (err) {
-      console.error('[Push] Subscribe error:', err);
-      setError('Could not enable notifications — please try again.');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : '';
+      if (msg === 'timeout') {
+        setError('Timed out — did your browser block the permission prompt? Check the address bar.');
+      } else {
+        console.error('[Push] Subscribe error:', err);
+        setError('Could not enable notifications — please try again.');
+      }
     } finally {
       setLoading(false);
     }
