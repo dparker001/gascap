@@ -77,7 +77,7 @@ export async function sendMail(opts: MailOptions): Promise<void> {
  * wordmark inside a white "pill" on a dark navy bar. The wordmark is rendered
  * as styled HTML text (not an image) so it displays identically in every email
  * client including Outlook, and uses the exact brand colors from
- * /public/logo-wordmark3.svg:
+ * /public/logo-wordmark.png:
  *
  *   "Gas" → #15a680  (brand teal-green)
  *   "Cap" → #0a5240  (brand dark teal)

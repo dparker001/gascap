@@ -45,7 +45,7 @@ function SignInForm() {
       <div className="bg-brand-dark px-5 py-4">
         <Link href="/" className="flex items-center w-fit">
           <div className="bg-white rounded-xl px-3 py-1.5">
-            <img src="/logo-wordmark3.svg" alt="GasCap" className="h-7 w-auto" />
+            <img src="/logo-wordmark.png" alt="GasCap" className="h-7 w-auto" />
           </div>
         </Link>
       </div>
