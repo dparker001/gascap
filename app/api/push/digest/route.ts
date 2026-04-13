@@ -1,49 +1,18 @@
-import { NextResponse }      from 'next/server';
-import { getServerSession }  from 'next-auth';
-import type { Session }      from 'next-auth';
-import { authOptions }       from '@/lib/auth';
-import { getAllSubs, getSubs } from '@/lib/pushSubscriptions';
-import { getFillups }         from '@/lib/fillups';
-import { getBudgetGoal }      from '@/lib/budgetGoals';
-import webpush                from 'web-push';
+import { NextResponse }         from 'next/server';
+import { getServerSession }      from 'next-auth';
+import { authOptions }           from '@/lib/auth';
+import { getAllUsers }            from '@/lib/users';
+import { getFillups }            from '@/lib/fillups';
+import { getBudgetGoal }         from '@/lib/budgetGoals';
+import { sendPushNotification }  from '@/lib/oneSignal';
 
-function initVapid() {
-  const pub  = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-  const priv = process.env.VAPID_PRIVATE_KEY;
-  if (!pub || !priv) return false;
-  webpush.setVapidDetails(
-    process.env.VAPID_SUBJECT ?? 'mailto:hello@gascap.app',
-    pub,
-    priv,
-  );
-  return true;
-}
-
-/** POST /api/push/digest?all=1  — send digest to current user (or all if admin query param set) */
-export async function POST(req: Request) {
-  if (!initVapid()) {
-    return NextResponse.json({ error: 'Push not configured.' }, { status: 503 });
-  }
-  const session = await getServerSession(authOptions);
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-  const { searchParams } = new URL(req.url);
-  const sendAll = searchParams.get('all') === '1';
-
-  const subs = sendAll ? getAllSubs() : getSubs(
-    (session.user as { id?: string })?.id ?? session.user?.email ?? ''
-  );
-
-  if (subs.length === 0) return NextResponse.json({ sent: 0 });
-
-  // Build payload for the requesting user
-  const userId   = (session.user as { id?: string })?.id ?? session.user?.email ?? '';
-  const now      = new Date();
-  const month    = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  const fillups  = getFillups(userId);
+function buildDigestBody(userId: string): string {
+  const now       = new Date();
+  const month     = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const fillups   = getFillups(userId);
   const thisMonth = fillups.filter((f) => f.date.startsWith(month));
-  const spent    = thisMonth.reduce((s, f) => s + f.totalCost, 0);
-  const goal     = getBudgetGoal(userId);
+  const spent     = thisMonth.reduce((s, f) => s + f.totalCost, 0);
+  const goal      = getBudgetGoal(userId);
 
   let body = `This month: $${spent.toFixed(2)} spent`;
   if (goal) {
@@ -51,27 +20,47 @@ export async function POST(req: Request) {
     body += ` · ${pct}% of $${goal.monthlyLimit} budget`;
   }
   body += ` · ${fillups.length} total fillup${fillups.length !== 1 ? 's' : ''}`;
+  return body;
+}
 
-  const payload = JSON.stringify({
-    title: '⛽ GasCap Weekly Digest',
-    body,
-    icon:  '/icon-192.png',
-    badge: '/icon-192.png',
-    url:   '/',
-  });
+/** POST /api/push/digest
+ *  Sends the weekly spending digest.
+ *  ?all=1 sends to every user (admin use, requires session)
+ *  Without ?all, sends only to the signed-in user.
+ */
+export async function POST(req: Request) {
+  const session = await getServerSession(authOptions);
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  let sent = 0;
-  for (const sub of subs) {
-    try {
-      await webpush.sendNotification(
-        { endpoint: sub.endpoint, keys: sub.keys },
-        payload,
-      );
-      sent++;
-    } catch {
-      // Subscription expired — silently skip
+  const { searchParams } = new URL(req.url);
+  const sendAll = searchParams.get('all') === '1';
+  const userId  = (session.user as { id?: string })?.id ?? session.user?.email ?? '';
+
+  if (sendAll) {
+    // Send personalized digest to every user individually
+    const users = getAllUsers();
+    let sent = 0;
+    for (const user of users) {
+      const body = buildDigestBody(user.id);
+      const result = await sendPushNotification({
+        title:       '⛽ GasCap Weekly Digest',
+        body,
+        url:         '/',
+        externalIds: [user.id],
+      });
+      if (result.recipients && result.recipients > 0) sent++;
     }
+    return NextResponse.json({ sent });
   }
 
-  return NextResponse.json({ sent });
+  // Single user digest
+  const body = buildDigestBody(userId);
+  const result = await sendPushNotification({
+    title:       '⛽ GasCap Weekly Digest',
+    body,
+    url:         '/',
+    externalIds: [userId],
+  });
+
+  return NextResponse.json({ sent: result.recipients ?? 0 });
 }

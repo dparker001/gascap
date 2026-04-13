@@ -5,6 +5,7 @@ import DarkModeProvider    from '@/components/DarkModeProvider';
 import PullToRefresh       from '@/components/PullToRefresh';
 import ErrorBoundary       from '@/components/ErrorBoundary';
 import { LanguageProvider } from '@/contexts/LanguageContext';
+import OneSignalProvider   from '@/components/OneSignalProvider';
 import './globals.css';
 
 const APP_URL = process.env.NEXTAUTH_URL ?? 'https://www.gascap.app';
@@ -71,6 +72,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <DarkModeProvider />
         <LanguageProvider>
           <AuthProvider>
+            <OneSignalProvider />
             <ErrorBoundary>
               <PullToRefresh />
               {children}

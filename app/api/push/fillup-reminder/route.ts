@@ -3,30 +3,21 @@
  * Sends fill-up reminder push notifications to opted-in users who are overdue.
  * Secured with x-admin-password header — safe to call from Railway cron or manually.
  *
- * GET /api/push/fillup-reminder
- * Returns/updates the current user's reminder preference.
+ * GET  /api/push/fillup-reminder  — returns the current user's reminder preference
+ * PATCH /api/push/fillup-reminder — updates the current user's reminder interval
  * Body: { days: 0 | 7 | 14 }
  */
-import { NextResponse }     from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions }      from '@/lib/auth';
+import { NextResponse }       from 'next/server';
+import { getServerSession }   from 'next-auth';
+import { authOptions }        from '@/lib/auth';
 import {
   getAllUsers,
   setFillupReminderDays,
   setLastFillupReminderSent,
   findById,
 } from '@/lib/users';
-import { getFillups }         from '@/lib/fillups';
-import { getSubs }            from '@/lib/pushSubscriptions';
-import webpush                from 'web-push';
-
-if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
-  webpush.setVapidDetails(
-    'mailto:' + (process.env.VAPID_CONTACT_EMAIL ?? 'support@gascap.app'),
-    process.env.VAPID_PUBLIC_KEY,
-    process.env.VAPID_PRIVATE_KEY,
-  );
-}
+import { getFillups }            from '@/lib/fillups';
+import { sendPushNotification }  from '@/lib/oneSignal';
 
 // ── GET — return current user's reminder setting ──────────────────────────────
 
@@ -67,12 +58,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) {
-    return NextResponse.json({ error: 'Push not configured' }, { status: 503 });
-  }
-
-  const users   = getAllUsers();
-  const now     = Date.now();
+  const users  = getAllUsers();
+  const now    = Date.now();
   let sent = 0, skipped = 0;
 
   for (const user of users) {
@@ -91,36 +78,18 @@ export async function POST(req: Request) {
     );
     if (fillups.length === 0) { skipped++; continue; }
 
-    const lastFillup  = new Date(fillups[0].date).getTime();
-    const daysSince   = (now - lastFillup) / (24 * 60 * 60 * 1000);
+    const lastFillup = new Date(fillups[0].date).getTime();
+    const daysSince  = (now - lastFillup) / (24 * 60 * 60 * 1000);
     if (daysSince < reminderDays) { skipped++; continue; }
 
-    // Send push to all user subscriptions
-    const subs = getSubs(user.id);
-    if (subs.length === 0) { skipped++; continue; }
-
-    const payload = JSON.stringify({
-      title: '⛽ Time to fill up?',
-      body:  `It's been ${Math.round(daysSince)} days since your last fill-up. Tap to log it.`,
-      icon:  '/icon-192.png',
-      badge: '/icon-192.png',
-      url:   '/?tab=log',
+    const result = await sendPushNotification({
+      title:       '⛽ Time to fill up?',
+      body:        `It's been ${Math.round(daysSince)} days since your last fill-up. Tap to log it.`,
+      url:         '/?tab=log',
+      externalIds: [user.id],
     });
 
-    let userSent = false;
-    for (const sub of subs) {
-      try {
-        await webpush.sendNotification(
-          { endpoint: sub.endpoint, keys: sub.keys },
-          payload,
-        );
-        userSent = true;
-      } catch {
-        // expired subscription — ignore
-      }
-    }
-
-    if (userSent) {
+    if (result.recipients && result.recipients > 0) {
       setLastFillupReminderSent(user.id);
       sent++;
     } else {
