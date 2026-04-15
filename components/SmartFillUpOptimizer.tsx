@@ -88,11 +88,12 @@ export default function SmartFillUpOptimizer() {
     // Try geolocation → Nominatim → state code
     let state = 'US';
     try {
-      const coords = await new Promise<GeolocationCoordinates>((resolve, reject) =>
+      const position = await new Promise<GeolocationPosition>((resolve, reject) =>
         navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 8000 }),
       );
+      const { latitude, longitude } = position.coords;
       const geo = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?lat=${coords.latitude}&lon=${coords.longitude}&format=json`,
+        `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`,
         { headers: { 'User-Agent': 'GasCap/1.0 (hello@gascap.app)' } },
       );
       if (geo.ok) {
