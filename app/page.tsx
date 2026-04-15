@@ -25,18 +25,18 @@ function SchemaMarkup() {
     mainEntity: [
       {
         '@type': 'Question',
-        name: 'How does GasCap calculate how much gas I need?',
+        name: 'How does GasCap™ calculate how much gas I need?',
         acceptedAnswer: {
           '@type': 'Answer',
-          text: 'GasCap uses your current fuel level, your vehicle\'s tank size, and your target fill level to calculate the exact number of gallons needed. It then multiplies that by your local gas price — fetched automatically using live EIA data — to show you the exact cost before you reach the pump.',
+          text: 'GasCap™ uses your current fuel level, your vehicle\'s tank size, and your target fill level to calculate the exact number of gallons needed. It then multiplies that by your local gas price — fetched automatically using live EIA data — to show you the exact cost before you reach the pump.',
         },
       },
       {
         '@type': 'Question',
-        name: 'Is GasCap free to use?',
+        name: 'Is GasCap™ free to use?',
         acceptedAnswer: {
           '@type': 'Answer',
-          text: 'Yes — GasCap is free forever with no credit card required. The free plan includes the full fuel calculator, live gas prices, and offline access. Pro ($4.99/mo) and Fleet ($19.99/mo) plans add fill-up history, MPG tracking, AI advisor, PDF export, and more.',
+          text: 'Yes — GasCap™ is free forever with no credit card required. The free plan includes the full fuel calculator, live gas prices, and offline access. Pro ($4.99/mo) and Fleet ($19.99/mo) plans add fill-up history, MPG tracking, AI advisor, PDF export, and more.',
         },
       },
       {
@@ -44,7 +44,7 @@ function SchemaMarkup() {
         name: 'Do I need to download an app from the App Store?',
         acceptedAnswer: {
           '@type': 'Answer',
-          text: 'No app store needed. GasCap is a Progressive Web App (PWA) — just visit gascap.app on your phone and tap "Add to Home Screen" to install it like a native app. It works on iPhone, Android, and any browser.',
+          text: 'No app store needed. GasCap™ is a Progressive Web App (PWA) — just visit gascap.app on your phone and tap "Add to Home Screen" to install it like a native app. It works on iPhone, Android, and any browser.',
         },
       },
       {
@@ -52,7 +52,7 @@ function SchemaMarkup() {
         name: 'What is Rental Car Return Mode?',
         acceptedAnswer: {
           '@type': 'Answer',
-          text: 'Rental Car Return Mode is a GasCap feature that helps you avoid expensive refueling fees at car rental drop-off. Rental companies charge up to $12/gallon if you return with less than a full tank. Enter the rental company\'s rate and GasCap shows you exactly how many gallons to buy at the pump — and exactly how much you\'ll save.',
+          text: 'Rental Car Return Mode is a GasCap™ feature that helps you avoid expensive refueling fees at car rental drop-off. Rental companies charge up to $12/gallon if you return with less than a full tank. Enter the rental company\'s rate and GasCap™ shows you exactly how many gallons to buy at the pump — and exactly how much you\'ll save.',
         },
       },
       {
@@ -60,12 +60,12 @@ function SchemaMarkup() {
         name: 'How accurate are the gas prices?',
         acceptedAnswer: {
           '@type': 'Answer',
-          text: 'GasCap pulls weekly gas price data directly from the U.S. Energy Information Administration (EIA) — the same government source used by major news outlets. Prices are localized to your state using your device\'s GPS.',
+          text: 'GasCap™ pulls weekly gas price data directly from the U.S. Energy Information Administration (EIA) — the same government source used by major news outlets. Prices are localized to your state using your device\'s GPS.',
         },
       },
       {
         '@type': 'Question',
-        name: 'Does GasCap work offline?',
+        name: 'Does GasCap™ work offline?',
         acceptedAnswer: {
           '@type': 'Answer',
           text: 'Yes. Once installed as a PWA, the core calculator works completely offline using your last-known gas price and saved vehicles. Live gas price lookup and AI features require an internet connection.',
@@ -73,18 +73,18 @@ function SchemaMarkup() {
       },
       {
         '@type': 'Question',
-        name: 'What vehicles does GasCap support?',
+        name: 'What vehicles does GasCap™ support?',
         acceptedAnswer: {
           '@type': 'Answer',
-          text: 'GasCap supports any gasoline or diesel vehicle. You can manually enter your tank size, or choose from hundreds of presets including economy cars, midsize sedans, SUVs, trucks, minivans, and rental car classes. Pro users can save up to 3 vehicles; Fleet users can save unlimited vehicles.',
+          text: 'GasCap™ supports any gasoline or diesel vehicle. You can manually enter your tank size, or choose from hundreds of presets including economy cars, midsize sedans, SUVs, trucks, minivans, and rental car classes. Pro users can save up to 3 vehicles; Fleet users can save unlimited vehicles.',
         },
       },
       {
         '@type': 'Question',
-        name: 'How is GasCap different from a road trip fuel cost calculator?',
+        name: 'How is GasCap™ different from a road trip fuel cost calculator?',
         acceptedAnswer: {
           '@type': 'Answer',
-          text: 'Road trip calculators estimate fuel cost for a journey based on distance. GasCap solves a different problem: it tells you exactly how much it will cost to fill your tank right now, based on your current fuel level and local prices. It\'s the tool you use at the pump — not while planning a route.',
+          text: 'Road trip calculators estimate fuel cost for a journey based on distance. GasCap™ solves a different problem: it tells you exactly how much it will cost to fill your tank right now, based on your current fuel level and local prices. It\'s the tool you use at the pump — not while planning a route.',
         },
       },
     ],

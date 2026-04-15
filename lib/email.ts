@@ -115,7 +115,7 @@ export function passwordResetEmailHtml(name: string, resetUrl: string): string {
 ${brandHeader()}
         <tr><td style="padding:32px;">
           <p style="margin:0 0 8px;font-size:22px;font-weight:900;color:#1e2d4a;">Reset your password</p>
-          <p style="margin:0 0 24px;font-size:15px;color:#475569;">Hi ${name}, click the button below to set a new password for your GasCap account.</p>
+          <p style="margin:0 0 24px;font-size:15px;color:#475569;">Hi ${name}, click the button below to set a new password for your GasCap™ account.</p>
           <a href="${resetUrl}" style="display:inline-block;background:#f59e0b;color:#fff;font-weight:900;font-size:15px;padding:14px 32px;border-radius:12px;text-decoration:none;">
             🔑 Reset Password
           </a>
@@ -145,11 +145,11 @@ ${brandHeader()}
         <!-- Body -->
         <tr><td style="padding:32px;">
           <p style="margin:0 0 8px;font-size:22px;font-weight:900;color:#1e2d4a;">Verify your email</p>
-          <p style="margin:0 0 24px;font-size:15px;color:#475569;">Hi ${name}, confirm your email address to activate your GasCap account.</p>
+          <p style="margin:0 0 24px;font-size:15px;color:#475569;">Hi ${name}, confirm your email address to activate your GasCap™ account.</p>
           <a href="${verifyUrl}" style="display:inline-block;background:#f59e0b;color:#fff;font-weight:900;font-size:15px;padding:14px 32px;border-radius:12px;text-decoration:none;">
             ✓ Verify Email Address
           </a>
-          <p style="margin:24px 0 0;font-size:12px;color:#94a3b8;">This link expires in 24 hours. If you didn't create a GasCap account, you can ignore this email.</p>
+          <p style="margin:24px 0 0;font-size:12px;color:#94a3b8;">This link expires in 24 hours. If you didn't create a GasCap™ account, you can ignore this email.</p>
           <p style="margin:12px 0 0;font-size:11px;color:#cbd5e1;word-break:break-all;">Or copy this link: ${verifyUrl}</p>
         </td></tr>
         <!-- Footer -->

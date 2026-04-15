@@ -38,7 +38,7 @@ function footer(userId: string) {
       <p style="margin:0;font-size:11px;color:#94a3b8;line-height:1.6;">
         GasCap™ · Know before you go ·
         <a href="${BASE_URL}" style="color:#f59e0b;text-decoration:none;">gascap.app</a><br>
-        <a href="${unsubLink(userId)}" style="color:#cbd5e1;text-decoration:underline;">Unsubscribe</a> from GasCap marketing emails
+        <a href="${unsubLink(userId)}" style="color:#cbd5e1;text-decoration:underline;">Unsubscribe</a> from GasCap™ marketing emails
       </p>
     </td></tr>`;
 }
@@ -105,14 +105,14 @@ export function welcomeEmailHtml(name: string, userId: string): string {
         Welcome to GasCap™, ${first}! 🎉
       </p>
       <p style="margin:0 0 18px;font-size:17px;font-weight:700;color:#f59e0b;">
-        Your 30-day GasCap Pro trial is live — on us.
+        Your 30-day GasCap™ Pro trial is live — on us.
       </p>
 
       <p style="margin:0 0 20px;font-size:15px;color:#475569;line-height:1.65;">
         You just joined thousands of drivers who stopped guessing at the pump.
         As a welcome gift, every feature of <strong>GasCap™ Pro</strong> is unlocked on
         your account for the next 30 days — no credit card, no catch, no strings attached.
-        We want you to experience everything GasCap can do before you decide whether
+        We want you to experience everything GasCap™ can do before you decide whether
         it's worth keeping.
       </p>
 
@@ -131,7 +131,7 @@ export function welcomeEmailHtml(name: string, userId: string): string {
           <tr>
             <td style="padding:6px 0;vertical-align:top;width:28px;font-size:16px;">🤖</td>
             <td style="padding:6px 0 6px 10px;vertical-align:top;color:#fff;">
-              <p style="margin:0;font-size:13px;font-weight:700;">GasCap AI Fuel Advisor</p>
+              <p style="margin:0;font-size:13px;font-weight:700;">GasCap™ AI Fuel Advisor</p>
               <p style="margin:0;font-size:12px;color:rgba(255,255,255,.65);line-height:1.5;">Ask anything about MPG, costs, or upcoming trips.</p>
             </td>
           </tr>
@@ -195,10 +195,10 @@ export function welcomeEmailHtml(name: string, userId: string): string {
         <li><strong>Run a Target Fill calc</strong> — see exactly what a fill-up will cost before you pull in.</li>
         <li><strong>Try Rental Car Return Mode</strong> next time you rent — avoid the $12/gal refuel trap.</li>
         <li><strong>Try the AI Advisor</strong> — ask it "How much fuel will I need for a 300-mile trip?"</li>
-        <li><strong>Set a monthly budget</strong> — GasCap will watch your spending for you.</li>
+        <li><strong>Set a monthly budget</strong> — GasCap™ will watch your spending for you.</li>
       </ol>
 
-      ${ctaButton('Open GasCap Now →', BASE_URL)}
+      ${ctaButton('Open GasCap™ Now →', BASE_URL)}
 
       <p style="margin:26px 0 0;font-size:13px;color:#64748b;line-height:1.65;">
         <strong>No surprises when your trial ends:</strong> your account will automatically
@@ -209,7 +209,7 @@ export function welcomeEmailHtml(name: string, userId: string): string {
         Got questions? Just reply to this email — every message comes straight to the founder.
       </p>
       <p style="margin:18px 0 0;font-size:13px;color:#475569;">
-        — The GasCap Team
+        — The GasCap™ Team
       </p>
     </td></tr>
     ${footer(userId)}
@@ -242,11 +242,11 @@ export function featureTipsEmailHtml(name: string, userId: string): string {
         <p style="margin:0 0 6px;font-size:15px;font-weight:900;color:#1e2d4a;">🚗 Rental Car Return Mode</p>
         <p style="margin:0 0 10px;font-size:13px;color:#64748b;line-height:1.55;">
           Rental companies charge <strong>$10–$12 per gallon</strong> when you return a car with less
-          than a full tank — often adding $60+ to a trip. GasCap's Rental Car Return
+          than a full tank — often adding $60+ to a trip. GasCap™'s Rental Car Return
           Mode calculates the exact number of gallons to buy at the pump before
           drop-off, using the car's current fuel level and tank size. Toggle
           "🚗 Rental Car Return?" on the calculator, drop in the rental company's
-          refuel rate, and GasCap shows your exact savings in real time — typically
+          refuel rate, and GasCap™ shows your exact savings in real time — typically
           $30–$80 per trip. This feature alone pays for a full year of Pro on one rental.
         </p>
       </div>
@@ -267,7 +267,7 @@ export function featureTipsEmailHtml(name: string, userId: string): string {
       <div style="background:#f8fafc;border-radius:14px;padding:20px 24px;margin-bottom:18px;border-left:4px solid #10b981;">
         <p style="margin:0 0 6px;font-size:15px;font-weight:900;color:#1e2d4a;">📊 Pull up your MPG trending chart</p>
         <p style="margin:0;font-size:13px;color:#64748b;line-height:1.55;">
-          Log two or three fill-ups and GasCap will start plotting your real-world
+          Log two or three fill-ups and GasCap™ will start plotting your real-world
           miles-per-gallon over time. A sudden drop is often the earliest sign of
           an engine issue — catching it early can save hundreds in repairs.
         </p>
@@ -276,7 +276,7 @@ export function featureTipsEmailHtml(name: string, userId: string): string {
       <div style="background:#f8fafc;border-radius:14px;padding:20px 24px;margin-bottom:24px;border-left:4px solid #6366f1;">
         <p style="margin:0 0 6px;font-size:15px;font-weight:900;color:#1e2d4a;">🎯 Set a monthly fuel budget</p>
         <p style="margin:0;font-size:13px;color:#64748b;line-height:1.55;">
-          Tell GasCap what you want to spend on gas this month. It'll track every
+          Tell GasCap™ what you want to spend on gas this month. It'll track every
           fill-up and ping you the moment you're at risk of going over — so you
           can adjust before it hits your bank account.
         </p>
@@ -301,7 +301,7 @@ export function featureTipsEmailHtml(name: string, userId: string): string {
 }
 
 export const featureTipsEmailText = (name: string) =>
-  `Hi ${name.split(' ')[0]}, you're 3 days into your GasCap Pro trial. Try these: Rental Car Return Mode (avoid the $12/gal refuel trap on rentals — pays for Pro in a single trip), AI Fuel Advisor (ask anything), MPG trending charts (catch engine issues early), and monthly budget tracker (never overspend). Open the app: ${BASE_URL}`;
+  `Hi ${name.split(' ')[0]}, you're 3 days into your GasCap™ Pro trial. Try these: Rental Car Return Mode (avoid the $12/gal refuel trap on rentals — pays for Pro in a single trip), AI Fuel Advisor (ask anything), MPG trending charts (catch engine issues early), and monthly budget tracker (never overspend). Open the app: ${BASE_URL}`;
 
 // ── Email 3 — Mid-Trial Value Check-In (Day 10) ───────────────────────────
 
@@ -316,7 +316,7 @@ export function proUpsellEmailHtml(name: string, userId: string): string {
         You're a third of the way through, ${first} 📊
       </p>
       <p style="margin:0 0 22px;font-size:15px;color:#475569;line-height:1.65;">
-        Ten days into your free GasCap Pro trial — nice work. You still have 20 days to
+        Ten days into your free GasCap™ Pro trial — nice work. You still have 20 days to
         explore everything, and here are the features our power users swear by once they
         really dig in.
       </p>
@@ -324,7 +324,7 @@ export function proUpsellEmailHtml(name: string, userId: string): string {
       <table cellpadding="0" cellspacing="0" width="100%"
              style="background:#f8fafc;border-radius:12px;padding:4px 16px;margin-bottom:24px;">
         ${featureRow('🧠', 'AI trip planner', 'Plug in any origin, destination, and vehicle — get fuel cost, stops, and the cheapest stations en route.')}
-        ${featureRow('📉', 'MPG drop detection', 'GasCap flags when your efficiency drops more than 10% — often the first sign of tire pressure, air filter, or fuel injector issues.')}
+        ${featureRow('📉', 'MPG drop detection', 'GasCap™ flags when your efficiency drops more than 10% — often the first sign of tire pressure, air filter, or fuel injector issues.')}
         ${featureRow('💰', 'Cost-per-mile tracking', 'See exactly what every mile costs you in fuel, broken down by vehicle. Perfect for gig drivers and sales reps.')}
         ${featureRow('📅', 'Service history log', 'Record oil changes, tire rotations, and repairs alongside your fill-ups. Resale value gold.')}
         ${featureRow('🏆', 'Unlimited badges + streaks', 'Free users are capped at 3 badges. Pro unlocks every achievement and the 365-day streak rewards.')}
@@ -337,7 +337,7 @@ export function proUpsellEmailHtml(name: string, userId: string): string {
         </p>
         <p style="margin:0;font-size:13px;color:#166534;line-height:1.6;">
           <strong>"The AI told me my MPG dropped 12% in two weeks. I checked, found an underinflated tire, and
-          fixed it in five minutes. GasCap just paid for itself for a year."</strong> — Marcus J., Orlando
+          fixed it in five minutes. GasCap™ just paid for itself for a year."</strong> — Marcus J., Orlando
         </p>
       </div>
 
@@ -347,7 +347,7 @@ export function proUpsellEmailHtml(name: string, userId: string): string {
         <strong>$49/year — 2 months free</strong>).
       </p>
 
-      ${ctaButton('Open GasCap →', BASE_URL)}
+      ${ctaButton('Open GasCap™ →', BASE_URL)}
       &nbsp;
       <a href="${BASE_URL}/upgrade" style="display:inline-block;background:#fff;color:#1e2d4a;border:2px solid #1e2d4a;font-weight:900;
          font-size:15px;padding:12px 28px;border-radius:12px;text-decoration:none;margin-top:4px;">
@@ -363,7 +363,7 @@ export function proUpsellEmailHtml(name: string, userId: string): string {
 }
 
 export const proUpsellEmailText = (name: string) =>
-  `Hi ${name.split(' ')[0]}, you're 10 days into your GasCap Pro trial — 20 days left. Power-user features to try: AI trip planner, MPG drop detection, cost-per-mile tracking, unlimited badges, PDF reports. Open the app: ${BASE_URL}`;
+  `Hi ${name.split(' ')[0]}, you're 10 days into your GasCap™ Pro trial — 20 days left. Power-user features to try: AI trip planner, MPG drop detection, cost-per-mile tracking, unlimited badges, PDF reports. Open the app: ${BASE_URL}`;
 
 // ── Email 4 — 9 Days Left + Annual Deal (Day 21) ──────────────────────────
 
@@ -379,7 +379,7 @@ export function annualDealEmailHtml(name: string, userId: string): string {
       </p>
       <p style="margin:0 0 22px;font-size:15px;color:#475569;line-height:1.65;">
         ${first}, your free GasCap™ Pro trial wraps up in nine days.
-        If GasCap has earned a spot on your phone, this is the moment to lock it in
+        If GasCap™ has earned a spot on your phone, this is the moment to lock it in
         at the best price we offer — and avoid any disruption when your trial ends.
       </p>
 
@@ -416,14 +416,14 @@ export function annualDealEmailHtml(name: string, userId: string): string {
       </div>
 
       <p style="margin:0 0 10px;font-size:14px;color:#475569;line-height:1.65;">
-        Prefer monthly? <a href="${BASE_URL}/upgrade" style="color:#f59e0b;font-weight:700;">GasCap Pro Monthly is $4.99/mo</a> —
+        Prefer monthly? <a href="${BASE_URL}/upgrade" style="color:#f59e0b;font-weight:700;">GasCap™ Pro Monthly is $4.99/mo</a> —
         no contract, cancel anytime.
       </p>
 
       <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:16px 20px;margin-top:24px;">
         <p style="margin:0 0 4px;font-size:13px;font-weight:700;color:#15803d;">🚐 Multiple vehicles or a family?</p>
         <p style="margin:0;font-size:13px;color:#166534;line-height:1.5;">
-          <strong>GasCap Fleet ($199/yr)</strong> covers unlimited vehicles, shared garage access,
+          <strong>GasCap™ Fleet ($199/yr)</strong> covers unlimited vehicles, shared garage access,
           and per-vehicle spending breakdowns — ideal for households with 3+ cars or small business fleets.
           <a href="${BASE_URL}/upgrade" style="color:#16a34a;font-weight:700;">See Fleet →</a>
         </p>
@@ -438,7 +438,7 @@ export function annualDealEmailHtml(name: string, userId: string): string {
 }
 
 export const annualDealEmailText = (name: string) =>
-  `Hi ${name.split(' ')[0]}, your free GasCap Pro trial ends in 9 days. Lock in Pro Annual at $49/yr (just $4.08/mo — 2 months free) or monthly at $4.99. Upgrade: ${BASE_URL}/upgrade`;
+  `Hi ${name.split(' ')[0]}, your free GasCap™ Pro trial ends in 9 days. Lock in Pro Annual at $49/yr (just $4.08/mo — 2 months free) or monthly at $4.99. Upgrade: ${BASE_URL}/upgrade`;
 
 // ── Email 5 — Final 48 Hours (Day 28) ─────────────────────────────────────
 
@@ -483,7 +483,7 @@ export function lastCallEmailHtml(name: string, userId: string): string {
         What you'll keep if you upgrade:
       </p>
       <table cellpadding="0" cellspacing="0" width="100%" style="margin-bottom:24px;">
-        ${featureRow('🤖', 'GasCap AI Fuel Advisor', 'Unlimited questions about fuel, MPG, trips, and maintenance.')}
+        ${featureRow('🤖', 'GasCap™ AI Fuel Advisor', 'Unlimited questions about fuel, MPG, trips, and maintenance.')}
         ${featureRow('📊', 'Full MPG + spending charts', 'Trends, history, and predictive alerts across every vehicle.')}
         ${featureRow('🎯', 'Budget + overspend alerts', 'Know when you\'re about to blow your fuel budget before it happens.')}
         ${featureRow('🔧', 'Maintenance reminders', 'Oil change, tire rotation, and service intervals — never forget one.')}
@@ -492,16 +492,16 @@ export function lastCallEmailHtml(name: string, userId: string): string {
       </table>
 
       <p style="margin:0 0 14px;font-size:14px;color:#475569;line-height:1.65;">
-        <strong>Not upgrading?</strong> That's completely okay. Your GasCap free account will still have
+        <strong>Not upgrading?</strong> That's completely okay. Your GasCap™ free account will still have
         the calculators, live gas price lookup, and one saved vehicle — yours forever, no charge. We'd
-        just love to hear why so we can keep making GasCap better. Just hit reply.
+        just love to hear why so we can keep making GasCap™ better. Just hit reply.
       </p>
 
       <p style="margin:24px 0 0;font-size:13px;color:#94a3b8;line-height:1.6;">
         Thanks for giving GasCap™ a fair shot, ${first}. 🙌
       </p>
       <p style="margin:8px 0 0;font-size:13px;color:#475569;">
-        — The GasCap Team
+        — The GasCap™ Team
       </p>
     </td></tr>
     ${footer(userId)}
@@ -509,7 +509,7 @@ export function lastCallEmailHtml(name: string, userId: string): string {
 }
 
 export const lastCallEmailText = (name: string) =>
-  `Hi ${name.split(' ')[0]}, your GasCap Pro trial ends in 48 hours. Lock in Pro Annual at $49/yr ($4.08/mo) before your account reverts to free. Upgrade: ${BASE_URL}/upgrade`;
+  `Hi ${name.split(' ')[0]}, your GasCap™ Pro trial ends in 48 hours. Lock in Pro Annual at $49/yr ($4.08/mo) before your account reverts to free. Upgrade: ${BASE_URL}/upgrade`;
 
 // ── Campaign dispatch helper ───────────────────────────────────────────────
 

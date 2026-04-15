@@ -25,8 +25,8 @@ const SECTIONS = [
         a: 'A Vehicle Identification Number (VIN) is a 17-character code unique to your car. Find it on the driver-side dashboard (visible through the windshield), the driver-side door jamb sticker, or your vehicle registration / insurance card.',
       },
       {
-        q: 'How do I install GasCap on my phone?',
-        a: 'GasCap is a Progressive Web App (PWA). On iPhone: open gascap.app in Safari → tap the Share icon → "Add to Home Screen." On Android: open in Chrome → tap the menu (⋮) → "Add to Home Screen" or "Install App."',
+        q: 'How do I install GasCap™ on my phone?',
+        a: 'GasCap™ is a Progressive Web App (PWA). On iPhone: open gascap.app in Safari → tap the Share icon → "Add to Home Screen." On Android: open in Chrome → tap the menu (⋮) → "Add to Home Screen" or "Install App."',
       },
     ],
   },
@@ -52,10 +52,10 @@ const SECTIONS = [
       },
       {
         q: 'How does the live gas price lookup work?',
-        a: 'Tap "Use Local Price" and allow location access. GasCap uses your location to look up the current average gas price in your state from the U.S. Energy Information Administration (EIA). It\'s an average — actual pump prices may vary.',
+        a: 'Tap "Use Local Price" and allow location access. GasCap™ uses your location to look up the current average gas price in your state from the U.S. Energy Information Administration (EIA). It\'s an average — actual pump prices may vary.',
       },
       {
-        q: 'Can I use GasCap without internet?',
+        q: 'Can I use GasCap™ without internet?',
         a: 'Yes. Once installed as a PWA, the calculators work fully offline. Gas price lookup, gauge scan, and VIN scan require an internet connection.',
       },
     ],
@@ -104,7 +104,7 @@ const SECTIONS = [
       },
       {
         q: 'Is my payment information secure?',
-        a: 'Yes. GasCap uses Stripe for all payments — we never store your card details on our servers. Stripe is PCI DSS Level 1 certified.',
+        a: 'Yes. GasCap™ uses Stripe for all payments — we never store your card details on our servers. Stripe is PCI DSS Level 1 certified.',
       },
     ],
   },
@@ -121,8 +121,8 @@ const SECTIONS = [
         a: 'Email verification helps us protect your account and ensure we can reach you for important account notices. Check your inbox (and spam folder) for a verification email from hello@gascap.app.',
       },
       {
-        q: 'What data does GasCap collect?',
-        a: 'GasCap collects the information you provide (email, vehicle info, fill-up logs) and basic usage data to improve the app. We do not sell your personal data. See our Privacy Policy for full details.',
+        q: 'What data does GasCap™ collect?',
+        a: 'GasCap™ collects the information you provide (email, vehicle info, fill-up logs) and basic usage data to improve the app. We do not sell your personal data. See our Privacy Policy for full details.',
       },
       {
         q: 'How do I delete my account?',
@@ -140,7 +140,7 @@ const SECTIONS = [
       },
       {
         q: 'How does the Streak Counter work?',
-        a: 'Your streak counts how many consecutive days you\'ve opened GasCap. The counter resets if you miss a day. Your current streak is shown on the main screen when you\'re signed in.',
+        a: 'Your streak counts how many consecutive days you\'ve opened GasCap™. The counter resets if you miss a day. Your current streak is shown on the main screen when you\'re signed in.',
       },
       {
         q: 'What is the Savings Dashboard?',
@@ -156,7 +156,7 @@ const SECTIONS = [
       },
       {
         q: 'How do gas price trend predictions work?',
-        a: 'GasCap compares the average price you\'ve paid in your last two fill-ups vs. the two before that. If prices are trending up, down, or staying flat, you\'ll see a trend indicator with a sparkline chart. You\'ll need at least 4 fill-ups logged to see predictions.',
+        a: 'GasCap™ compares the average price you\'ve paid in your last two fill-ups vs. the two before that. If prices are trending up, down, or staying flat, you\'ll see a trend indicator with a sparkline chart. You\'ll need at least 4 fill-ups logged to see predictions.',
       },
       {
         q: 'What are Vehicle Health Alerts?',
@@ -178,7 +178,7 @@ const SECTIONS = [
     items: [
       {
         q: 'What are Streak Rewards?',
-        a: 'Streak Rewards are free Pro month credits you earn by maintaining a consecutive daily streak in GasCap. Open the app every day to keep your streak alive. Rewards are found in the Share tab under "Streak Rewards."',
+        a: 'Streak Rewards are free Pro month credits you earn by maintaining a consecutive daily streak in GasCap™. Open the app every day to keep your streak alive. Rewards are found in the Share tab under "Streak Rewards."',
       },
       {
         q: 'What milestones earn a free month?',

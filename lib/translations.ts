@@ -23,8 +23,8 @@ const en = {
 
   // ── Plan badges ────────────────────────────────────────────────────────────
   plan: {
-    gascapPro:      'GasCap Pro',
-    gascapFleet:    'GasCap Fleet',
+    gascapPro:      'GasCap™ Pro',
+    gascapFleet:    'GasCap™ Fleet',
     freePlan:       'Free plan · Works offline',
     upgrade:        'Upgrade →',
     freeGuest:      'Free · No account needed · Works offline',
@@ -57,7 +57,7 @@ const en = {
     badge:          'Free · No app store · Works offline',
     headline:       'Know exactly how much gas you need —',
     headlineAccent: 'before you pull up.',
-    sub:            'GasCap calculates your exact fill-up cost using live local gas prices. No more guessing, no more overpaying — especially on rental car returns.',
+    sub:            'GasCap™ calculates your exact fill-up cost using live local gas prices. No more guessing, no more overpaying — especially on rental car returns.',
     pill_prices:    'Live local prices',
     pill_rental:    'Rental car mode',
     pill_mpg:       'MPG tracking',
@@ -67,7 +67,7 @@ const en = {
   // ── Problem / Solution ─────────────────────────────────────────────────────
   problem: {
     heading:    'Stop guessing at the pump',
-    sub:        'GasCap solves the three most frustrating gas station moments.',
+    sub:        'GasCap™ solves the three most frustrating gas station moments.',
     rows: [
       {
         before: 'Wondering if you have enough cash to fill up',
@@ -145,24 +145,24 @@ const en = {
     heading: 'Frequently Asked Questions',
     items: [
       {
-        q: 'How does GasCap calculate how much gas I need?',
-        a: 'Enter your current fuel level (or drag the gauge), pick your vehicle, and set your target fill level. GasCap multiplies the gallons needed by your live local gas price — fetched automatically from the U.S. EIA — and shows you the exact cost in seconds.',
+        q: 'How does GasCap™ calculate how much gas I need?',
+        a: 'Enter your current fuel level (or drag the gauge), pick your vehicle, and set your target fill level. GasCap™ multiplies the gallons needed by your live local gas price — fetched automatically from the U.S. EIA — and shows you the exact cost in seconds.',
       },
       {
-        q: 'Is GasCap free?',
+        q: 'Is GasCap™ free?',
         a: 'Yes — the core calculator, live gas prices, and offline access are free forever with no credit card required. Pro ($4.99/mo) adds fill-up history, MPG charts, AI advisor, and PDF export. Fleet ($19.99/mo) adds unlimited vehicles and fleet reporting.',
       },
       {
         q: 'Do I need to download it from the App Store?',
-        a: 'No. GasCap is a Progressive Web App (PWA). Visit gascap.app on your phone, tap the Share button, then "Add to Home Screen." It installs like a native app — no App Store or Google Play required.',
+        a: 'No. GasCap™ is a Progressive Web App (PWA). Visit gascap.app on your phone, tap the Share button, then "Add to Home Screen." It installs like a native app — no App Store or Google Play required.',
       },
       {
         q: 'What is Rental Car Return Mode?',
-        a: "It's a special mode that helps you avoid rental company refueling fees. Rental agencies charge up to $12/gallon if you return with less than a full tank. Toggle \"Rental Car Return?\" in the calculator, enter the rental rate, and GasCap shows your exact savings vs. letting them fill it.",
+        a: "It's a special mode that helps you avoid rental company refueling fees. Rental agencies charge up to $12/gallon if you return with less than a full tank. Toggle \"Rental Car Return?\" in the calculator, enter the rental rate, and GasCap™ shows your exact savings vs. letting them fill it.",
       },
       {
         q: 'How accurate are the gas prices?',
-        a: "Very accurate. GasCap pulls weekly data directly from the U.S. Energy Information Administration (EIA) — the official government source. Prices are localized to your state automatically using your device's location.",
+        a: "Very accurate. GasCap™ pulls weekly data directly from the U.S. Energy Information Administration (EIA) — the official government source. Prices are localized to your state automatically using your device's location.",
       },
       {
         q: 'Does it work offline?',
@@ -170,11 +170,11 @@ const en = {
       },
       {
         q: 'How is this different from a road trip fuel calculator?',
-        a: "Road trip calculators estimate fuel cost for a journey by distance. GasCap solves a different problem: it tells you exactly what it costs to fill your tank right now, based on your current level and local price. It's the tool you use at the pump — not while planning a route.",
+        a: "Road trip calculators estimate fuel cost for a journey by distance. GasCap™ solves a different problem: it tells you exactly what it costs to fill your tank right now, based on your current level and local price. It's the tool you use at the pump — not while planning a route.",
       },
       {
-        q: 'Can GasCap scan my gas gauge?',
-        a: "Yes — Pro users can tap \"Scan Gauge\" to take a photo of their dashboard. GasCap's AI reads the needle position and automatically sets your current fuel level. Supports arc, horizontal, and vertical sweep gauges.",
+        q: 'Can GasCap™ scan my gas gauge?',
+        a: "Yes — Pro users can tap \"Scan Gauge\" to take a photo of their dashboard. GasCap™'s AI reads the needle position and automatically sets your current fuel level. Supports arc, horizontal, and vertical sweep gauges.",
       },
     ],
   },
@@ -466,7 +466,7 @@ const en = {
 
   // ── AI Advisor ─────────────────────────────────────────────────────────────
   ai: {
-    greeting:      "Hi! I'm your GasCap AI Advisor.",
+    greeting:      "Hi! I'm your GasCap™ AI Advisor.",
     greetingSub:   'Tap a suggested question below to get started.',
     greetingProSub:'I can see your vehicle and fill-up data. Ask me anything!',
     suggestedLabel:'SUGGESTED QUESTIONS',
@@ -563,8 +563,8 @@ const en = {
   // ── Streak counter ─────────────────────────────────────────────────────────
   streak: {
     active:    (streak: number) => `${streak}-day streak!`,
-    activeSub: 'Keep opening GasCap every day to grow it.',
-    start:     'Start your streak — open GasCap daily!',
+    activeSub: 'Keep opening GasCap™ every day to grow it.',
+    start:     'Start your streak — open GasCap™ daily!',
     startSub:  'Come back each day and watch your streak grow.',
     daysLabel: 'days',
   },
@@ -685,8 +685,8 @@ const es: typeof en = {
   },
 
   plan: {
-    gascapPro:      'GasCap Pro',
-    gascapFleet:    'GasCap Flota',
+    gascapPro:      'GasCap™ Pro',
+    gascapFleet:    'GasCap™ Flota',
     freePlan:       'Plan gratuito · Funciona sin internet',
     upgrade:        'Mejorar →',
     freeGuest:      'Gratis · Sin cuenta · Funciona sin internet',
@@ -716,7 +716,7 @@ const es: typeof en = {
     badge:          'Gratis · Sin tienda de apps · Funciona sin internet',
     headline:       'Sabe exactamente cuánta gasolina necesitas —',
     headlineAccent: 'antes de llegar a la bomba.',
-    sub:            'GasCap calcula el costo exacto de tu llenado usando precios locales en tiempo real. Sin adivinanzas, sin pagar de más — especialmente al devolver un auto rentado.',
+    sub:            'GasCap™ calcula el costo exacto de tu llenado usando precios locales en tiempo real. Sin adivinanzas, sin pagar de más — especialmente al devolver un auto rentado.',
     pill_prices:    'Precios locales',
     pill_rental:    'Modo auto rentado',
     pill_mpg:       'Seguimiento MPG',
@@ -725,7 +725,7 @@ const es: typeof en = {
 
   problem: {
     heading:    'Deja de adivinar en la gasolinera',
-    sub:        'GasCap resuelve los tres momentos más frustrantes en la gasolinera.',
+    sub:        'GasCap™ resuelve los tres momentos más frustrantes en la gasolinera.',
     rows: [
       {
         before: 'Preguntarte si tienes suficiente efectivo para llenar',
@@ -799,24 +799,24 @@ const es: typeof en = {
     heading: 'Preguntas frecuentes',
     items: [
       {
-        q: '¿Cómo calcula GasCap cuánta gasolina necesito?',
-        a: 'Ingresa tu nivel de combustible actual (o arrastra el medidor), elige tu vehículo y establece tu nivel objetivo de llenado. GasCap multiplica los galones necesarios por el precio local en tiempo real — obtenido automáticamente de la EIA de EE.UU. — y te muestra el costo exacto en segundos.',
+        q: '¿Cómo calcula GasCap™ cuánta gasolina necesito?',
+        a: 'Ingresa tu nivel de combustible actual (o arrastra el medidor), elige tu vehículo y establece tu nivel objetivo de llenado. GasCap™ multiplica los galones necesarios por el precio local en tiempo real — obtenido automáticamente de la EIA de EE.UU. — y te muestra el costo exacto en segundos.',
       },
       {
-        q: '¿GasCap es gratuito?',
+        q: '¿GasCap™ es gratuito?',
         a: 'Sí — la calculadora básica, los precios de gasolina en tiempo real y el acceso sin conexión son gratuitos para siempre sin tarjeta de crédito. Pro ($4.99/mes) agrega historial de llenados, gráficas de MPG, asesor IA y exportación PDF. Fleet ($19.99/mes) agrega vehículos ilimitados e informes de flota.',
       },
       {
         q: '¿Necesito descargarlo de la App Store?',
-        a: 'No. GasCap es una Progressive Web App (PWA). Visita gascap.app en tu teléfono, toca el botón Compartir y luego "Agregar a pantalla de inicio". Se instala como una app nativa — sin App Store ni Google Play.',
+        a: 'No. GasCap™ es una Progressive Web App (PWA). Visita gascap.app en tu teléfono, toca el botón Compartir y luego "Agregar a pantalla de inicio". Se instala como una app nativa — sin App Store ni Google Play.',
       },
       {
         q: '¿Qué es el Modo Devolución de Auto Rentado?',
-        a: 'Es un modo especial que te ayuda a evitar cargos de recombustible. Las rentadoras cobran hasta $12/galón si devuelves con menos de un tanque lleno. Activa "¿Devolución de Auto Rentado?" en la calculadora, ingresa la tarifa y GasCap te muestra tu ahorro exacto vs. dejar que lo llenen.',
+        a: 'Es un modo especial que te ayuda a evitar cargos de recombustible. Las rentadoras cobran hasta $12/galón si devuelves con menos de un tanque lleno. Activa "¿Devolución de Auto Rentado?" en la calculadora, ingresa la tarifa y GasCap™ te muestra tu ahorro exacto vs. dejar que lo llenen.',
       },
       {
         q: '¿Qué tan precisos son los precios de gasolina?',
-        a: 'Muy precisos. GasCap obtiene datos semanales directamente de la Administración de Información Energética (EIA) de EE.UU. — la fuente oficial del gobierno. Los precios se localizan automáticamente a tu estado usando la ubicación de tu dispositivo.',
+        a: 'Muy precisos. GasCap™ obtiene datos semanales directamente de la Administración de Información Energética (EIA) de EE.UU. — la fuente oficial del gobierno. Los precios se localizan automáticamente a tu estado usando la ubicación de tu dispositivo.',
       },
       {
         q: '¿Funciona sin conexión a internet?',
@@ -824,11 +824,11 @@ const es: typeof en = {
       },
       {
         q: '¿En qué se diferencia de una calculadora de viaje por carretera?',
-        a: 'Las calculadoras de viaje estiman el costo de combustible por distancia. GasCap resuelve un problema distinto: te dice exactamente cuánto cuesta llenar tu tanque ahora mismo, según tu nivel actual y el precio local. Es la herramienta que usas en la gasolinera — no mientras planeas la ruta.',
+        a: 'Las calculadoras de viaje estiman el costo de combustible por distancia. GasCap™ resuelve un problema distinto: te dice exactamente cuánto cuesta llenar tu tanque ahora mismo, según tu nivel actual y el precio local. Es la herramienta que usas en la gasolinera — no mientras planeas la ruta.',
       },
       {
-        q: '¿GasCap puede escanear mi medidor de gasolina?',
-        a: 'Sí — los usuarios Pro pueden tocar "Escanear Medidor" para tomar una foto del tablero. La IA de GasCap lee la posición de la aguja y establece automáticamente tu nivel de combustible. Compatible con medidores de arco, horizontales y verticales.',
+        q: '¿GasCap™ puede escanear mi medidor de gasolina?',
+        a: 'Sí — los usuarios Pro pueden tocar "Escanear Medidor" para tomar una foto del tablero. La IA de GasCap™ lee la posición de la aguja y establece automáticamente tu nivel de combustible. Compatible con medidores de arco, horizontales y verticales.',
       },
     ],
   },
@@ -1108,7 +1108,7 @@ const es: typeof en = {
   },
 
   ai: {
-    greeting:      '¡Hola! Soy tu asesor de combustible IA de GasCap.',
+    greeting:      '¡Hola! Soy tu asesor de combustible IA de GasCap™.',
     greetingSub:   'Toca una pregunta sugerida para empezar.',
     greetingProSub:'Puedo ver los datos de tu vehículo y llenados. ¡Pregúntame lo que quieras!',
     suggestedLabel:'PREGUNTAS SUGERIDAS',
@@ -1198,8 +1198,8 @@ const es: typeof en = {
 
   streak: {
     active:    (streak: number) => `¡Racha de ${streak} días!`,
-    activeSub: 'Sigue abriendo GasCap todos los días para hacerla crecer.',
-    start:     '¡Empieza tu racha — abre GasCap diariamente!',
+    activeSub: 'Sigue abriendo GasCap™ todos los días para hacerla crecer.',
+    start:     '¡Empieza tu racha — abre GasCap™ diariamente!',
     startSub:  'Vuelve cada día y mira crecer tu racha.',
     daysLabel: 'días',
   },

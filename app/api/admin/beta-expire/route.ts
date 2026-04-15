@@ -122,8 +122,8 @@ export async function POST(req: Request) {
         : 'Your GasCap™ Pro beta has ended — keep the upgrades?',
       html:    isTrial ? trialEndedEmailHtml(user.name) : betaEndedEmailHtml(user.name),
       text:    isTrial
-        ? `Hi ${user.name}, your 30-day GasCap Pro trial has ended. Upgrade at https://www.gascap.app/upgrade to keep Pro features ($4.99/mo). Use code TRIAL30 for your first month free.`
-        : `Hi ${user.name}, your GasCap Pro beta trial has ended. Upgrade at https://www.gascap.app/upgrade to keep Pro features ($4.99/mo). Use code BETA30 for your first month free.`,
+        ? `Hi ${user.name}, your 30-day GasCap™ Pro trial has ended. Upgrade at https://www.gascap.app/upgrade to keep Pro features ($4.99/mo). Use code TRIAL30 for your first month free.`
+        : `Hi ${user.name}, your GasCap™ Pro beta trial has ended. Upgrade at https://www.gascap.app/upgrade to keep Pro features ($4.99/mo). Use code BETA30 for your first month free.`,
     }).catch((e) => console.error('[GasCap] expire email failed:', e));
 
     results.push(`${user.name} <${user.email}> (${isTrial ? 'trial' : 'beta'})`);

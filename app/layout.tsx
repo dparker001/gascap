@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   metadataBase: new URL(APP_URL),
   manifest: '/manifest.json',
   icons: { icon: '/favicon.svg', apple: '/apple-touch-icon.png' },
-  appleWebApp: { capable: true, statusBarStyle: 'default', title: 'GasCap' },
+  appleWebApp: { capable: true, statusBarStyle: 'default', title: 'GasCap™' },
   keywords: [
     'gas calculator',
     'fuel cost calculator',
