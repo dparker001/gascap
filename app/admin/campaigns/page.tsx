@@ -53,9 +53,26 @@ interface Placement {
   notes?:          string;
   createdAt:       string;
   active:          boolean;
+  featured?:       boolean;  // shown in-app as a Partner Station near the user
   qrUrl:           string;   // English QR target
   qrUrlEs:         string;   // Spanish QR target (/q/<code>?lang=es)
   stats?:          PlacementStats;
+}
+
+// ── Milestone tier helper (mirrors lib/campaigns.ts) ─────────────────────
+
+interface MilestoneTier {
+  tier:   'none' | 'partner' | 'gold' | 'premium';
+  label:  string;
+  emoji:  string;
+  nextAt: number | null;
+}
+
+function getMilestoneTier(signups: number): MilestoneTier {
+  if (signups >= 250) return { tier: 'premium', label: 'Premium Partner', emoji: '🏆', nextAt: null  };
+  if (signups >= 100) return { tier: 'gold',    label: 'Gold Partner',    emoji: '⭐', nextAt: 250   };
+  if (signups >= 25)  return { tier: 'partner', label: 'Partner',         emoji: '🤝', nextAt: 100   };
+  return               { tier: 'none',    label: 'Candidate',        emoji: '📋', nextAt: 25    };
 }
 
 interface Overview {
@@ -225,6 +242,22 @@ export default function CampaignsAdminPage() {
       void fetchAll(pw);
     } else {
       setMsg('Failed to delete');
+    }
+  };
+
+  const handleToggleFeatured = async (id: string, current: boolean) => {
+    const res = await fetch(`/api/admin/campaigns?id=${id}`, {
+      method:  'PATCH',
+      headers,
+      body:    JSON.stringify({ featured: !current }),
+    });
+    if (res.ok) {
+      const next = !current;
+      setMsg(next ? '⭐ Station is now featured in-app' : 'Station removed from featured');
+      setTimeout(() => setMsg(''), 3000);
+      void fetchAll(pw);
+    } else {
+      setMsg('Failed to update featured status');
     }
   };
 
@@ -413,6 +446,8 @@ export default function CampaignsAdminPage() {
                 <tr>
                   <th className="px-3 py-2">Code</th>
                   <th className="px-3 py-2">Station</th>
+                  <th className="px-3 py-2">Partner Tier</th>
+                  <th className="px-3 py-2 text-center" title="Show this station as a featured partner in the app for nearby users">Featured</th>
                   <th className="px-3 py-2">Placement</th>
                   <th className="px-3 py-2">Headline</th>
                   <th className="px-3 py-2 text-right">Scans</th>
@@ -429,12 +464,19 @@ export default function CampaignsAdminPage() {
               </thead>
               <tbody>
                 {placements.length === 0 && (
-                  <tr><td colSpan={13} className="px-3 py-8 text-center text-slate-400">
+                  <tr><td colSpan={15} className="px-3 py-8 text-center text-slate-400">
                     No placements yet. Click <strong>+ New placement</strong> to create your first one.
                   </td></tr>
                 )}
                 {placements.map((p) => {
                   const s = p.stats;
+                  const signups = s?.signups ?? 0;
+                  const tier = getMilestoneTier(signups);
+                  // Progress toward next milestone (0-100)
+                  const prevAt = tier.tier === 'none' ? 0 : tier.tier === 'partner' ? 25 : tier.tier === 'gold' ? 100 : 250;
+                  const progressPct = tier.nextAt
+                    ? Math.min(100, Math.round(((signups - prevAt) / (tier.nextAt - prevAt)) * 100))
+                    : 100;
                   return (
                     <tr key={p.id} className="border-t hover:bg-slate-50">
                       <td className="px-3 py-2 font-mono text-xs">{p.code}</td>
@@ -442,6 +484,51 @@ export default function CampaignsAdminPage() {
                         <div className="font-medium">{p.station}</div>
                         {p.city && <div className="text-xs text-slate-500">{p.city}</div>}
                       </td>
+
+                      {/* Partner Tier */}
+                      <td className="px-3 py-2 min-w-[130px]">
+                        <div className="flex items-center gap-1">
+                          <span className="text-base leading-none">{tier.emoji}</span>
+                          <span className={`text-xs font-semibold ${
+                            tier.tier === 'premium' ? 'text-amber-600' :
+                            tier.tier === 'gold'    ? 'text-yellow-600' :
+                            tier.tier === 'partner' ? 'text-emerald-700' :
+                            'text-slate-500'
+                          }`}>{tier.label}</span>
+                        </div>
+                        <div className="mt-1 w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                          <div
+                            className={`h-1.5 rounded-full ${
+                              tier.tier === 'premium' ? 'bg-amber-500' :
+                              tier.tier === 'gold'    ? 'bg-yellow-400' :
+                              tier.tier === 'partner' ? 'bg-emerald-500' :
+                              'bg-slate-300'
+                            }`}
+                            style={{ width: `${progressPct}%` }}
+                          />
+                        </div>
+                        {tier.nextAt && (
+                          <div className="text-[10px] text-slate-400 mt-0.5">
+                            {signups}/{tier.nextAt} signups
+                          </div>
+                        )}
+                      </td>
+
+                      {/* Featured toggle */}
+                      <td className="px-3 py-2 text-center">
+                        <button
+                          onClick={() => handleToggleFeatured(p.id, p.featured ?? false)}
+                          title={p.featured ? 'Remove from in-app featured banner' : 'Show in app as a featured partner station'}
+                          className={`px-2 py-1 rounded-lg text-xs font-semibold transition-colors ${
+                            p.featured
+                              ? 'bg-amber-100 text-amber-700 border border-amber-300 hover:bg-amber-200'
+                              : 'bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200'
+                          }`}
+                        >
+                          {p.featured ? '⭐ Featured' : '☆ Feature'}
+                        </button>
+                      </td>
+
                       <td className="px-3 py-2">{p.placement}</td>
                       <td className="px-3 py-2 text-xs">{p.headlineVariant}</td>
                       <td className="px-3 py-2 text-right">{fmt(s?.scans ?? 0)}</td>

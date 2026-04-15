@@ -14,6 +14,7 @@ import OnboardingModal         from '@/components/OnboardingModal';
 import GasPriceAlertBanner     from '@/components/GasPriceAlertBanner';
 import StreakCounter           from '@/components/StreakCounter';
 import CampaignTracker         from '@/components/CampaignTracker';
+import FeaturedStation         from '@/components/FeaturedStation';
 
 // ── JSON-LD Schema Markup ────────────────────────────────────────────────────
 
@@ -494,6 +495,11 @@ export default function Home() {
       {(isGuest || userPlan === 'free') && (
         <AdSenseBanner slotId={process.env.NEXT_PUBLIC_ADSENSE_SLOT_ID} />
       )}
+
+      {/* Partner Station — shown when a featured partner is in the user's city */}
+      <section className="px-4 pb-3 max-w-lg mx-auto w-full">
+        <FeaturedStation />
+      </section>
 
       {/* Tools & Insights */}
       <section className="px-4 pb-6 max-w-lg mx-auto w-full">

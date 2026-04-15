@@ -40,6 +40,23 @@ export interface Placement {
   notes?:          string;
   createdAt:       string;
   active:          boolean;
+  featured?:       boolean;   // shown in-app as a Partner Station near the user
+}
+
+// ── Milestone helpers ────────────────────────────────────────────────────
+
+export interface MilestoneTier {
+  tier:    'none' | 'partner' | 'gold' | 'premium';
+  label:   string;
+  emoji:   string;
+  nextAt:  number | null;   // signups needed for next tier (null = max tier)
+}
+
+export function getMilestoneTier(signups: number): MilestoneTier {
+  if (signups >= 250) return { tier: 'premium', label: 'Premium Partner', emoji: '🏆', nextAt: null  };
+  if (signups >= 100) return { tier: 'gold',    label: 'Gold Partner',    emoji: '⭐', nextAt: 250   };
+  if (signups >= 25)  return { tier: 'partner', label: 'Partner',         emoji: '🤝', nextAt: 100   };
+  return               { tier: 'none',    label: 'Candidate',        emoji: '📋', nextAt: 25    };
 }
 
 /**
