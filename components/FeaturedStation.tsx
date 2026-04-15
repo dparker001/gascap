@@ -4,8 +4,14 @@
  * FeaturedStation — shows a compact "Partner Station Near You" banner
  * when a GasCap partner station is registered in the user's city.
  *
- * - Uses geolocation → Nominatim to detect city (silent if denied)
- * - Calls /api/partner-stations?city=X
+ * Flow:
+ *   1. Pre-check /api/partner-stations (no params) — if 0 featured stations
+ *      exist anywhere, bail immediately without ever asking for location.
+ *   2. Only if featured stations exist: check localStorage for a cached
+ *      city/state (TTL 24 h) before requesting geolocation. This means the
+ *      browser location prompt fires at most once per day, not on every load.
+ *   3. Match by city → render banner, or render nothing if no nearby partner.
+ *
  * - Dismissible; dismissed state persists in localStorage for 24 h
  * - Renders nothing if no partner station found or location unavailable
  */
@@ -19,20 +25,35 @@ interface Station {
   city:    string | null;
 }
 
-const DISMISS_KEY = 'gc_featured_station_dismissed';
-const DISMISS_TTL = 24 * 60 * 60 * 1000; // 24 hours
+const DISMISS_KEY  = 'gc_featured_station_dismissed';
+const LOCATION_KEY = 'gc_location_cache';
+const TTL_24H      = 24 * 60 * 60 * 1000;
 
 function isDismissed(): boolean {
   try {
     const raw = localStorage.getItem(DISMISS_KEY);
     if (!raw) return false;
     const { ts } = JSON.parse(raw) as { ts: number };
-    return Date.now() - ts < DISMISS_TTL;
+    return Date.now() - ts < TTL_24H;
   } catch { return false; }
 }
 
 function setDismissed() {
   try { localStorage.setItem(DISMISS_KEY, JSON.stringify({ ts: Date.now() })); }
+  catch { /* storage unavailable */ }
+}
+
+function getCachedLocation(): { city: string; state: string } | null {
+  try {
+    const raw = localStorage.getItem(LOCATION_KEY);
+    if (!raw) return null;
+    const { city, state, ts } = JSON.parse(raw) as { city: string; state: string; ts: number };
+    return Date.now() - ts < TTL_24H ? { city, state } : null;
+  } catch { return null; }
+}
+
+function setCachedLocation(city: string, state: string) {
+  try { localStorage.setItem(LOCATION_KEY, JSON.stringify({ city, state, ts: Date.now() })); }
   catch { /* storage unavailable */ }
 }
 
@@ -46,30 +67,52 @@ export default function FeaturedStation() {
     let cancelled = false;
 
     async function detect() {
+      // ── Step 1: pre-check — are there ANY featured stations at all? ──────
+      // If not, skip everything — no location prompt, no banner.
+      try {
+        const precheck = await fetch('/api/partner-stations');
+        if (!precheck.ok || cancelled) return;
+        const predata = await precheck.json() as { stations: Station[] };
+        if (predata.stations.length === 0 || cancelled) return;
+      } catch { return; }
+
+      // ── Step 2: get city — use cached value before asking the browser ────
       let city  = '';
       let state = '';
 
-      try {
-        const pos = await new Promise<GeolocationPosition>((resolve, reject) =>
-          navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 6000 }),
-        );
-        const { latitude, longitude } = pos.coords;
-        const geo = await fetch(
-          `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`,
-          { headers: { 'User-Agent': 'GasCap/1.0 (hello@gascap.app)' } },
-        );
-        if (geo.ok) {
-          const d = await geo.json() as {
-            address?: { city?: string; town?: string; county?: string; state_code?: string; 'ISO3166-2-lvl4'?: string };
-          };
-          city  = d.address?.city ?? d.address?.town ?? d.address?.county ?? '';
-          const raw   = d.address?.state_code ?? d.address?.['ISO3166-2-lvl4'] ?? '';
-          state = raw.includes('-') ? raw.split('-')[1] : raw;
+      const cached = getCachedLocation();
+      if (cached) {
+        city  = cached.city;
+        state = cached.state;
+      } else {
+        // Ask for location once; cache the result so we don't ask again today
+        try {
+          const pos = await new Promise<GeolocationPosition>((resolve, reject) =>
+            navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 6000 }),
+          );
+          const { latitude, longitude } = pos.coords;
+          const geo = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`,
+            { headers: { 'User-Agent': 'GasCap/1.0 (hello@gascap.app)' } },
+          );
+          if (geo.ok) {
+            const d = await geo.json() as {
+              address?: { city?: string; town?: string; county?: string; state_code?: string; 'ISO3166-2-lvl4'?: string };
+            };
+            city  = d.address?.city ?? d.address?.town ?? d.address?.county ?? '';
+            const raw   = d.address?.state_code ?? d.address?.['ISO3166-2-lvl4'] ?? '';
+            state = raw.includes('-') ? raw.split('-')[1] : raw;
+            setCachedLocation(city, state);
+          }
+        } catch {
+          // Location denied or unavailable — proceed without city filter
+          // (will fall back to showing any featured station)
         }
-      } catch {
-        // Location denied or unavailable — try without city filter
       }
 
+      if (cancelled) return;
+
+      // ── Step 3: fetch nearest featured station for this city ─────────────
       const params = new URLSearchParams();
       if (city)  params.set('city',  city);
       if (state) params.set('state', state);
