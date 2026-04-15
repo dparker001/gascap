@@ -1,4 +1,3 @@
-import { getToken } from 'next-auth/jwt';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
@@ -31,19 +30,9 @@ export async function middleware(req: NextRequest) {
   // Always allow bypass paths
   if (BYPASS.some((p) => pathname.startsWith(p))) return NextResponse.next();
 
-  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
-
-  // Not signed in — allow through (signin page handles unauthenticated users)
-  if (!token) return NextResponse.next();
-
-  // Signed in but email not verified — redirect to verify page
-  if (!token.emailVerified) {
-    const url = req.nextUrl.clone();
-    url.pathname = '/verify-email';
-    url.search   = '';
-    return NextResponse.redirect(url);
-  }
-
+  // All routes are accessible — email verification is handled via an inline
+  // banner on the homepage rather than a hard redirect, so users can use the
+  // app while their email is pending verification.
   return NextResponse.next();
 }
 

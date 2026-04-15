@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useSession }          from 'next-auth/react';
+import { useState, useEffect, Suspense } from 'react';
+import { useSession }                    from 'next-auth/react';
+import { useSearchParams, useRouter }    from 'next/navigation';
 import { useTranslation }      from '@/contexts/LanguageContext';
 import AdSenseBanner           from '@/components/AdSenseBanner';
 import Header                  from '@/components/Header';
@@ -420,6 +421,62 @@ function GuestCtaBanner() {
   );
 }
 
+// ── Email-verified success toast ──────────────────────────────────────────────
+// Shown briefly when the user lands on / after clicking their verify link.
+
+function VerifiedSuccessToast() {
+  const params  = useSearchParams();
+  const router  = useRouter();
+
+  const verified = params.get('verified');
+  const errMsg   = params.get('msg') ?? '';
+  const isSuccess = verified === 'success';
+  const isError   = verified === 'error' || verified === 'invalid';
+
+  const [show, setShow] = useState(isSuccess || isError);
+
+  useEffect(() => {
+    if (!show) return;
+    // Strip the query params from the URL without a page reload
+    router.replace('/', { scroll: false });
+    const t = setTimeout(() => setShow(false), isSuccess ? 6000 : 10000);
+    return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  if (!show) return null;
+
+  if (isError) {
+    return (
+      <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-sm
+                      bg-red-600 text-white rounded-2xl shadow-xl px-4 py-3 flex items-center gap-3
+                      animate-fade-in">
+        <span className="text-lg flex-shrink-0">❌</span>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-black">Verification failed</p>
+          <p className="text-xs text-red-100 mt-0.5">
+            {decodeURIComponent(errMsg) || 'The link may be invalid or expired. Use the banner below to resend.'}
+          </p>
+        </div>
+        <button onClick={() => setShow(false)} className="flex-shrink-0 text-red-200 hover:text-white" aria-label="Dismiss">✕</button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-sm
+                    bg-green-600 text-white rounded-2xl shadow-xl px-4 py-3 flex items-center gap-3
+                    animate-fade-in">
+      <span className="text-lg flex-shrink-0">✅</span>
+      <div>
+        <p className="text-sm font-black">Email verified!</p>
+        <p className="text-xs text-green-100 mt-0.5">You're all set. Welcome to GasCap™.</p>
+      </div>
+      <button onClick={() => setShow(false)} className="ml-auto text-green-200 hover:text-white" aria-label="Dismiss">✕</button>
+    </div>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function Home() {
@@ -441,6 +498,11 @@ export default function Home() {
 
   return (
     <main className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-900">
+
+      {/* Email verified toast — shown after clicking the verify link */}
+      <Suspense fallback={null}>
+        <VerifiedSuccessToast />
+      </Suspense>
 
       {/* QR placard pilot — silently tracks attribution if visitor came from /q/<code> */}
       <CampaignTracker />

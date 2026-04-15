@@ -1,17 +1,29 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useTranslation } from '@/contexts/LanguageContext';
 
 export default function EmailVerificationBanner() {
-  const { data: session } = useSession();
-  const { t }             = useTranslation();
+  const { data: session, update } = useSession();
+  const { t }                     = useTranslation();
   const [sending, setSending] = useState(false);
   const [sent,    setSent]    = useState(false);
   const [error,   setError]   = useState('');
 
   const isVerified = (session?.user as { emailVerified?: boolean })?.emailVerified ?? true;
+
+  // When the banner mounts for an unverified user, silently ask the server
+  // whether the email has since been verified (e.g. user clicked the link in
+  // another tab or on another device). If it has, the JWT refreshes and the
+  // banner disappears without the user needing to sign out and back in.
+  useEffect(() => {
+    if (session && !isVerified) {
+      void update();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // run once on mount only
+
   // Don't show if not signed in or already verified
   if (!session || isVerified) return null;
 

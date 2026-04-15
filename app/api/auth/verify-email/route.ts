@@ -38,7 +38,10 @@ export async function GET(req: Request) {
     creditVerifiedReferral(result.userId);
   }
 
-  return NextResponse.redirect(`${baseUrl}/signin?verified=success`);
+  // Send the user straight to the app. The EmailVerificationBanner component
+  // calls session.update() on mount, which re-fetches emailVerified from the
+  // DB and refreshes the JWT so the banner disappears automatically.
+  return NextResponse.redirect(`${baseUrl}/?verified=success`);
 }
 
 export async function POST(req: Request) {
