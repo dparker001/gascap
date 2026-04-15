@@ -20,11 +20,23 @@ interface FillupHistoryProps {
   refreshKey?: number;  // increment to force a reload
 }
 
+interface EditDraft {
+  date:            string;
+  gallonsPumped:   string;
+  pricePerGallon:  string;
+  odometerReading: string;
+  notes:           string;
+}
+
 export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
   const { data: session, status } = useSession();
-  const [data,    setData]    = useState<HistoryResponse | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [open,    setOpen]    = useState(false);
+  const [data,       setData]      = useState<HistoryResponse | null>(null);
+  const [loading,    setLoading]   = useState(false);
+  const [open,       setOpen]      = useState(false);
+  const [editingId,  setEditingId] = useState<string | null>(null);
+  const [editDraft,  setEditDraft] = useState<EditDraft | null>(null);
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError,  setEditError]  = useState('');
 
   // ── Derived stats ──────────────────────────────────────────────────────────
 
@@ -89,6 +101,57 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
   async function handleDelete(id: string) {
     await fetch(`/api/fillups?id=${id}`, { method: 'DELETE' });
     load();
+  }
+
+  function handleEditStart(f: Fillup) {
+    setEditingId(f.id);
+    setEditError('');
+    setEditDraft({
+      date:            f.date,
+      gallonsPumped:   String(f.gallonsPumped),
+      pricePerGallon:  String(f.pricePerGallon),
+      odometerReading: f.odometerReading != null ? String(f.odometerReading) : '',
+      notes:           f.notes ?? '',
+    });
+  }
+
+  function handleEditCancel() {
+    setEditingId(null);
+    setEditDraft(null);
+    setEditError('');
+  }
+
+  async function handleEditSave(id: string) {
+    if (!editDraft) return;
+    setEditSaving(true);
+    setEditError('');
+    const body: Record<string, unknown> = {
+      id,
+      date:           editDraft.date,
+      gallonsPumped:  parseFloat(editDraft.gallonsPumped),
+      pricePerGallon: parseFloat(editDraft.pricePerGallon),
+    };
+    if (editDraft.odometerReading !== '')
+      body.odometerReading = parseInt(editDraft.odometerReading, 10);
+    if (editDraft.notes !== '')
+      body.notes = editDraft.notes;
+    try {
+      const res = await fetch('/api/fillups', {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const err = await res.json() as { error?: string };
+        setEditError(err.error ?? 'Could not save changes.');
+        return;
+      }
+      setEditingId(null);
+      setEditDraft(null);
+      load();
+    } finally {
+      setEditSaving(false);
+    }
   }
 
   function handleCsvExport() {
@@ -225,7 +288,107 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
           )}
 
           {!loading && fillups.map((f) => {
-            const mpg = mpgMap[f.id];
+            const mpg      = mpgMap[f.id];
+            const isEditing = editingId === f.id;
+
+            if (isEditing && editDraft) {
+              return (
+                <div key={f.id} className="bg-amber-50 rounded-2xl border border-amber-200 shadow-sm px-4 py-4 space-y-3">
+                  <p className="text-[10px] font-black text-amber-700 uppercase tracking-widest">Edit Fill-Up</p>
+
+                  {/* Row 1: date + gallons */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[10px] font-semibold text-slate-500 mb-1">Date</label>
+                      <input
+                        type="date"
+                        value={editDraft.date}
+                        max={new Date().toISOString().split('T')[0]}
+                        onChange={(e) => setEditDraft((d) => d ? { ...d, date: e.target.value } : d)}
+                        className="w-full text-xs px-2.5 py-2 border border-slate-200 rounded-xl
+                                   focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-semibold text-slate-500 mb-1">Gallons</label>
+                      <input
+                        type="number" inputMode="decimal" min="0.1" step="0.001"
+                        value={editDraft.gallonsPumped}
+                        onChange={(e) => setEditDraft((d) => d ? { ...d, gallonsPumped: e.target.value } : d)}
+                        className="w-full text-xs px-2.5 py-2 border border-slate-200 rounded-xl
+                                   focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Row 2: price + odometer */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[10px] font-semibold text-slate-500 mb-1">$/gal</label>
+                      <input
+                        type="number" inputMode="decimal" min="0.01" step="0.001"
+                        value={editDraft.pricePerGallon}
+                        onChange={(e) => setEditDraft((d) => d ? { ...d, pricePerGallon: e.target.value } : d)}
+                        className="w-full text-xs px-2.5 py-2 border border-slate-200 rounded-xl
+                                   focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-semibold text-slate-500 mb-1">
+                        Odometer <span className="font-normal text-slate-300">(opt)</span>
+                      </label>
+                      <input
+                        type="number" inputMode="numeric" min="0" step="1"
+                        value={editDraft.odometerReading}
+                        placeholder="—"
+                        onChange={(e) => setEditDraft((d) => d ? { ...d, odometerReading: e.target.value } : d)}
+                        className="w-full text-xs px-2.5 py-2 border border-slate-200 rounded-xl
+                                   focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Notes */}
+                  <div>
+                    <label className="block text-[10px] font-semibold text-slate-500 mb-1">
+                      Notes / Station <span className="font-normal text-slate-300">(opt)</span>
+                    </label>
+                    <input
+                      type="text" maxLength={100}
+                      value={editDraft.notes}
+                      placeholder="e.g. Shell on Main St"
+                      onChange={(e) => setEditDraft((d) => d ? { ...d, notes: e.target.value } : d)}
+                      className="w-full text-xs px-2.5 py-2 border border-slate-200 rounded-xl
+                                 focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white"
+                    />
+                  </div>
+
+                  {editError && (
+                    <p className="text-[10px] text-red-500 leading-relaxed">{editError}</p>
+                  )}
+
+                  {/* Save / Cancel */}
+                  <div className="flex gap-2 pt-1">
+                    <button
+                      onClick={() => handleEditSave(f.id)}
+                      disabled={editSaving}
+                      className="flex-1 py-2 bg-amber-500 hover:bg-amber-400 disabled:opacity-50
+                                 text-white text-xs font-bold rounded-xl transition-colors"
+                    >
+                      {editSaving ? '…' : 'Save'}
+                    </button>
+                    <button
+                      onClick={handleEditCancel}
+                      className="flex-1 py-2 bg-white border border-slate-200 hover:border-slate-300
+                                 text-slate-600 text-xs font-bold rounded-xl transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              );
+            }
+
             return (
               <div key={f.id}
                 className="bg-white rounded-2xl border border-slate-100 shadow-sm px-4 py-3 flex items-start gap-3">
@@ -262,6 +425,18 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
                     </div>
                   </div>
                 </div>
+
+                {/* Edit */}
+                <button
+                  onClick={() => handleEditStart(f)}
+                  className="flex-shrink-0 text-slate-200 hover:text-amber-400 transition-colors mt-0.5"
+                  aria-label="Edit fillup"
+                >
+                  <svg viewBox="0 0 12 12" className="w-3.5 h-3.5" fill="none"
+                       stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M8.5 1.5l2 2L4 10H2v-2L8.5 1.5z"/>
+                  </svg>
+                </button>
 
                 {/* Delete */}
                 <button

@@ -191,6 +191,24 @@ export function addFillup(
   return entry;
 }
 
+/** Fields that users are allowed to edit after logging */
+export type FillupPatch = Partial<Pick<Fillup,
+  'date' | 'gallonsPumped' | 'pricePerGallon' | 'odometerReading' | 'notes'
+>>;
+
+/** Update an existing fillup (only if it belongs to the user). Returns the updated record or null. */
+export function updateFillup(userId: string, fillupId: string, patch: FillupPatch): Fillup | null {
+  const all = read();
+  const idx = all.findIndex((f) => f.id === fillupId && f.userId === userId);
+  if (idx === -1) return null;
+  const updated: Fillup = { ...all[idx], ...patch };
+  // Always recalculate totalCost from the (possibly updated) gallons and price
+  updated.totalCost = Math.round(updated.gallonsPumped * updated.pricePerGallon * 100) / 100;
+  all[idx] = updated;
+  write(all);
+  return updated;
+}
+
 /** Delete a fillup by id (only if it belongs to the user) */
 export function deleteFillup(userId: string, fillupId: string): boolean {
   const all = read();

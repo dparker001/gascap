@@ -12,10 +12,12 @@ import {
   getFillups,
   addFillup,
   deleteFillup,
+  updateFillup,
   computeMpg,
   getFillupStats,
   validateNewFillup,
   type Fillup,
+  type FillupPatch,
 } from '@/lib/fillups';
 
 function userId(session: Session | null) {
@@ -72,6 +74,24 @@ export async function POST(req: Request) {
   const { force: _force, ...saveBody } = body;
   const entry = addFillup(userId(session), saveBody);
   return NextResponse.json(entry, { status: 201 });
+}
+
+export async function PATCH(req: Request) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const body = await req.json() as { id: string } & FillupPatch;
+  if (!body.id) return NextResponse.json({ error: 'Missing id.' }, { status: 400 });
+
+  if (body.gallonsPumped != null && body.gallonsPumped <= 0)
+    return NextResponse.json({ error: 'Gallons must be greater than zero.' }, { status: 400 });
+  if (body.pricePerGallon != null && body.pricePerGallon <= 0)
+    return NextResponse.json({ error: 'Price must be greater than zero.' }, { status: 400 });
+
+  const { id, ...patch } = body;
+  const updated = updateFillup(userId(session), id, patch);
+  if (!updated) return NextResponse.json({ error: 'Not found.' }, { status: 404 });
+  return NextResponse.json(updated);
 }
 
 export async function DELETE(req: Request) {
