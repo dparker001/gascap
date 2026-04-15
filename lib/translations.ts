@@ -533,7 +533,7 @@ const en = {
     maintenanceLabel:      'Maintenance Reminders',
   },
 
-  // ── Email verification banner ──────────────────────────────────────────────
+  // ── Email verification banner (inline, on homepage) ──────────────────────
   verifyBanner: {
     message:    'Please verify your email address to secure your account.',
     sent:       '✓ Email sent!',
@@ -541,6 +541,18 @@ const en = {
     sending:    'Sending…',
     failSend:   'Failed to send.',
     networkErr: 'Network error.',
+  },
+
+  // ── Email verification page ────────────────────────────────────────────────
+  verifyPage: {
+    checkInbox:    'Check your inbox',
+    checkBody:     (email: string) => `We sent a verification link to ${email}. Click it to activate your account.`,
+    resend:        '📤 Resend verification email',
+    resending:     'Sending…',
+    resentOk:      '✓ Email resent — check your inbox!',
+    switchAccount: 'Sign in with a different account',
+    verifying:     'Verifying your email…',
+    pleaseWait:    'Please wait a moment.',
   },
 
   // ── Gas price alert banner ─────────────────────────────────────────────────
@@ -1187,6 +1199,17 @@ const es: typeof en = {
     sending:    'Enviando…',
     failSend:   'Error al enviar.',
     networkErr: 'Error de red.',
+  },
+
+  verifyPage: {
+    checkInbox:    'Revisa tu bandeja de entrada',
+    checkBody:     (email: string) => `Enviamos un enlace de verificación a ${email}. Haz clic para activar tu cuenta.`,
+    resend:        '📤 Reenviar correo de verificación',
+    resending:     'Enviando…',
+    resentOk:      '✓ Correo reenviado — ¡revisa tu bandeja!',
+    switchAccount: 'Iniciar sesión con otra cuenta',
+    verifying:     'Verificando tu correo…',
+    pleaseWait:    'Por favor espera un momento.',
   },
 
   priceAlert: {

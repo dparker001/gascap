@@ -3,6 +3,7 @@
 import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 function VerifyEmailContent() {
   const router  = useRouter();
@@ -10,6 +11,9 @@ function VerifyEmailContent() {
   const token   = params.get('token') ?? '';
   const lang    = params.get('lang') ?? '';
   const { data: session } = useSession();
+  const { t } = useTranslation();
+  const vp = t.verifyPage;
+
   const [resent,    setResent]    = useState(false);
   const [resending, setResending] = useState(false);
   const [resendErr, setResendErr] = useState('');
@@ -34,10 +38,10 @@ function VerifyEmailContent() {
     try {
       const res  = await fetch('/api/auth/resend-verification', { method: 'POST' });
       const data = await res.json() as { error?: string };
-      if (!res.ok) { setResendErr(data.error ?? 'Could not resend.'); return; }
+      if (!res.ok) { setResendErr(data.error ?? vp.resending); return; }
       setResent(true);
     } catch {
-      setResendErr('Network error — please try again.');
+      setResendErr(t.verifyBanner.networkErr);
     } finally {
       setResending(false);
     }
@@ -49,29 +53,25 @@ function VerifyEmailContent() {
       <div className="min-h-screen bg-[#eef1f7] flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl shadow-card p-8 text-center max-w-sm w-full space-y-3">
           <p className="text-3xl">⏳</p>
-          <p className="text-lg font-black text-navy-700">Verifying your email…</p>
-          <p className="text-sm text-slate-500">Please wait a moment.</p>
+          <p className="text-lg font-black text-navy-700">{vp.verifying}</p>
+          <p className="text-sm text-slate-500">{vp.pleaseWait}</p>
         </div>
       </div>
     );
   }
 
-  // No token — user was redirected here by middleware (unverified)
+  // No token — user was redirected here after signup (unverified)
   return (
     <div className="min-h-screen bg-[#eef1f7] flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-card p-8 text-center max-w-sm w-full space-y-4">
         <p className="text-4xl">📬</p>
-        <p className="text-xl font-black text-navy-700">Check your inbox</p>
+        <p className="text-xl font-black text-navy-700">{vp.checkInbox}</p>
         <p className="text-sm text-slate-500 leading-relaxed">
-          We sent a verification link to{' '}
-          <span className="font-semibold text-slate-700">
-            {session?.user?.email ?? 'your email address'}
-          </span>
-          . Click it to activate your account.
+          {vp.checkBody(session?.user?.email ?? 'your email address')}
         </p>
 
         {resent ? (
-          <p className="text-sm text-green-600 font-semibold">✓ Email resent — check your inbox!</p>
+          <p className="text-sm text-green-600 font-semibold">{vp.resentOk}</p>
         ) : (
           <>
             {resendErr && <p className="text-xs text-red-500">{resendErr}</p>}
@@ -81,7 +81,7 @@ function VerifyEmailContent() {
               className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-50
                          text-white font-black text-sm transition-colors"
             >
-              {resending ? 'Sending…' : '📤 Resend verification email'}
+              {resending ? vp.resending : vp.resend}
             </button>
           </>
         )}
@@ -91,7 +91,7 @@ function VerifyEmailContent() {
           className="w-full py-2.5 rounded-xl border border-slate-200 text-slate-500
                      hover:bg-slate-50 text-sm font-semibold transition-colors"
         >
-          Sign in with a different account
+          {vp.switchAccount}
         </button>
       </div>
     </div>

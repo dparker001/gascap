@@ -132,7 +132,22 @@ ${brandHeader()}
 </html>`.trim();
 }
 
-export function verificationEmailHtml(name: string, verifyUrl: string): string {
+export function verificationEmailHtml(
+  name: string,
+  verifyUrl: string,
+  locale: 'en' | 'es' = 'en',
+): string {
+  const es = locale === 'es';
+  const heading  = es ? 'Verifica tu correo'               : 'Verify your email';
+  const body     = es
+    ? `Hola ${name}, confirma tu dirección de correo para activar tu cuenta de GasCap™.`
+    : `Hi ${name}, confirm your email address to activate your GasCap™ account.`;
+  const btnLabel = es ? '✓ Verificar correo electrónico'   : '✓ Verify Email Address';
+  const expiry   = es
+    ? 'Este enlace expira en 24 horas. Si no creaste una cuenta de GasCap™, ignora este mensaje.'
+    : 'This link expires in 24 hours. If you didn\'t create a GasCap™ account, you can ignore this email.';
+  const copyLink = es ? 'O copia este enlace:'             : 'Or copy this link:';
+
   return `
 <!DOCTYPE html>
 <html>
@@ -144,13 +159,13 @@ export function verificationEmailHtml(name: string, verifyUrl: string): string {
 ${brandHeader()}
         <!-- Body -->
         <tr><td style="padding:32px;">
-          <p style="margin:0 0 8px;font-size:22px;font-weight:900;color:#1e2d4a;">Verify your email</p>
-          <p style="margin:0 0 24px;font-size:15px;color:#475569;">Hi ${name}, confirm your email address to activate your GasCap™ account.</p>
+          <p style="margin:0 0 8px;font-size:22px;font-weight:900;color:#1e2d4a;">${heading}</p>
+          <p style="margin:0 0 24px;font-size:15px;color:#475569;">${body}</p>
           <a href="${verifyUrl}" style="display:inline-block;background:#f59e0b;color:#fff;font-weight:900;font-size:15px;padding:14px 32px;border-radius:12px;text-decoration:none;">
-            ✓ Verify Email Address
+            ${btnLabel}
           </a>
-          <p style="margin:24px 0 0;font-size:12px;color:#94a3b8;">This link expires in 24 hours. If you didn't create a GasCap™ account, you can ignore this email.</p>
-          <p style="margin:12px 0 0;font-size:11px;color:#cbd5e1;word-break:break-all;">Or copy this link: ${verifyUrl}</p>
+          <p style="margin:24px 0 0;font-size:12px;color:#94a3b8;">${expiry}</p>
+          <p style="margin:12px 0 0;font-size:11px;color:#cbd5e1;word-break:break-all;">${copyLink} ${verifyUrl}</p>
         </td></tr>
         <!-- Footer -->
         <tr><td style="background:#f8fafc;padding:16px 32px;border-top:1px solid #e2e8f0;">

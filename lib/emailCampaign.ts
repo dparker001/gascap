@@ -94,7 +94,7 @@ function wrap(body: string) {
 
 // ── Email 1 — Welcome + Pro Activated (Day 0, immediate) ──────────────────
 
-export function welcomeEmailHtml(name: string, userId: string): string {
+export function welcomeEmailHtml(name: string, userId: string, verifyUrl?: string): string {
   const first = name.split(' ')[0];
   return wrap(`
     ${header()}
@@ -208,6 +208,23 @@ export function welcomeEmailHtml(name: string, userId: string): string {
       <p style="margin:14px 0 0;font-size:13px;color:#94a3b8;line-height:1.6;">
         Got questions? Just reply to this email — every message comes straight to the founder.
       </p>
+
+      ${verifyUrl ? `
+      <div style="background:#fef9f0;border:1px solid #fed7aa;border-radius:12px;padding:16px 20px;margin-top:24px;">
+        <p style="margin:0 0 6px;font-size:13px;font-weight:900;color:#c2410c;">
+          📧 One quick thing — verify your email
+        </p>
+        <p style="margin:0 0 12px;font-size:13px;color:#7c2d12;line-height:1.6;">
+          We sent you a separate verification email. Clicking the link takes just a second
+          and keeps your account secure. If you don't see it, check your spam folder or
+          use the button below.
+        </p>
+        <a href="${verifyUrl}" style="display:inline-block;background:#f59e0b;color:#fff;font-weight:900;
+           font-size:13px;padding:10px 22px;border-radius:10px;text-decoration:none;">
+          ✓ Verify My Email
+        </a>
+      </div>` : ''}
+
       <p style="margin:18px 0 0;font-size:13px;color:#475569;">
         — The GasCap™ Team
       </p>
@@ -514,18 +531,19 @@ export const lastCallEmailText = (name: string) =>
 // ── Campaign dispatch helper ───────────────────────────────────────────────
 
 export interface CampaignRecipient {
-  id:    string;
-  name:  string;
-  email: string;
+  id:        string;
+  name:      string;
+  email:     string;
+  verifyUrl?: string;  // passed on step-1 so the welcome email can include a verification reminder
 }
 
 export async function sendCampaignEmail(step: number, user: CampaignRecipient): Promise<void> {
-  const { id, name, email } = user;
+  const { id, name, email, verifyUrl } = user;
 
   const MAP: Record<number, { subject: string; html: string; text: string }> = {
     1: {
       subject: "Welcome to GasCap™ — your 30-day Pro trial is live 🎉",
-      html:    welcomeEmailHtml(name, id),
+      html:    welcomeEmailHtml(name, id, verifyUrl),
       text:    welcomeEmailText(name),
     },
     2: {

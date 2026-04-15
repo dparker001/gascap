@@ -69,16 +69,23 @@ export async function POST(req: Request) {
       }
     }
 
+    // Build verify URL once — used in both the verification email and the welcome email.
+    const baseUrl   = getBaseUrl(req);
+    const verifyUrl = `${baseUrl}/verify-email?token=${createEmailVerifyToken(user.id)}&lang=${userLocale}`;
+
     // Send verification email (non-blocking — don't fail registration if email fails)
     try {
-      const token   = createEmailVerifyToken(user.id);
-      const baseUrl = getBaseUrl(req);
-      const verifyUrl = `${baseUrl}/verify-email?token=${token}&lang=${userLocale}`;
+      const subject = userLocale === 'es'
+        ? 'Verifica tu dirección de correo de GasCap™'
+        : 'Verify your GasCap™ email address';
+      const textBody = userLocale === 'es'
+        ? `Hola ${user.name}, verifica tu cuenta de GasCap™: ${verifyUrl}`
+        : `Hi ${user.name}, verify your GasCap™ account: ${verifyUrl}`;
       await sendMail({
         to:      user.email,
-        subject: 'Verify your GasCap™ email address',
-        html:    verificationEmailHtml(user.name, verifyUrl),
-        text:    `Hi ${user.name}, verify your GasCap account: ${verifyUrl}`,
+        subject,
+        html:    verificationEmailHtml(user.name, verifyUrl, userLocale),
+        text:    textBody,
       });
     } catch (emailErr) {
       console.error('[GasCap] Failed to send verification email:', emailErr);
@@ -86,8 +93,9 @@ export async function POST(req: Request) {
     }
 
     // Fire step-1 welcome email from the drip sequence (non-blocking).
-    // Celebrates the Pro trial activation and kicks off the 5-email journey.
-    sendCampaignEmail(1, { id: user.id, name: user.name, email: user.email })
+    // Passes verifyUrl so the welcome email includes a verification reminder
+    // — users have the link in two places, reducing the chance of missing it.
+    sendCampaignEmail(1, { id: user.id, name: user.name, email: user.email, verifyUrl })
       .catch((err) => console.error('[GasCap] Welcome drip email failed:', err));
 
     // Notify admin of new signup (non-blocking)
