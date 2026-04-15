@@ -113,7 +113,7 @@ function SignUpForm() {
             <div>
               <label className="field-label" htmlFor="name">{t.signUp.nameLabel}</label>
               <input
-                id="name" type="text" autoComplete="name"
+                id="name" type="text" autoComplete="name" autoCapitalize="words"
                 className="input-field" placeholder={t.signUp.namePlaceholder}
                 value={name} onChange={(e) => setName(e.target.value)}
                 required
