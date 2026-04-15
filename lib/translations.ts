@@ -669,6 +669,14 @@ const en = {
     dayStreak:      (n: number) => `🔥 ${n}-day streak`,
     badgeUnlocked:  'Badge Unlocked!',
   },
+
+  // ── Featured partner station banner ────────────────────────────────────────
+  featuredStation: {
+    heading:  'GasCap™ Partner Station Nearby',
+    badge:    'PARTNER',
+    tagline:  'This station supports GasCap™ — they believe in helping you fuel smarter.',
+    dismiss:  'Dismiss',
+  },
 };
 
 // ── Spanish ───────────────────────────────────────────────────────────────────
@@ -1298,6 +1306,14 @@ const es: typeof en = {
     runCalcToEarn:  '¡Haz un cálculo para ganar tu primera insignia!',
     dayStreak:      (n: number) => `🔥 Racha de ${n} días`,
     badgeUnlocked:  '¡Insignia desbloqueada!',
+  },
+
+  // ── Featured partner station banner ────────────────────────────────────────
+  featuredStation: {
+    heading:  'Estación Socia de GasCap™ Cerca',
+    badge:    'SOCIO',
+    tagline:  'Esta estación apoya GasCap™ — creen en ayudarte a ahorrar en gasolina.',
+    dismiss:  'Cerrar',
   },
 };
 

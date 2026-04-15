@@ -17,6 +17,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 interface Station {
   code:    string;
@@ -58,6 +59,9 @@ function setCachedLocation(city: string, state: string) {
 }
 
 export default function FeaturedStation() {
+  const { t } = useTranslation();
+  const fs = t.featuredStation;
+
   const [station, setStation] = useState<Station | null>(null);
   const [visible, setVisible] = useState(false);
 
@@ -150,9 +154,9 @@ export default function FeaturedStation() {
       {/* Text */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5 flex-wrap">
-          <p className="text-xs font-black text-amber-800">GasCap Partner Station Nearby</p>
+          <p className="text-xs font-black text-amber-800">{fs.heading}</p>
           <span className="text-[9px] font-black bg-amber-500 text-white px-1.5 py-0.5 rounded-full leading-none">
-            PARTNER
+            {fs.badge}
           </span>
         </div>
         <p className="text-xs text-amber-700 font-semibold mt-0.5 truncate">{station.station}</p>
@@ -162,7 +166,7 @@ export default function FeaturedStation() {
           </p>
         )}
         <p className="text-[10px] text-amber-500 mt-1 leading-relaxed">
-          This station supports GasCap™ — they believe in helping you fuel smarter.
+          {fs.tagline}
         </p>
       </div>
 
@@ -170,7 +174,7 @@ export default function FeaturedStation() {
       <button
         onClick={handleDismiss}
         className="flex-shrink-0 text-amber-300 hover:text-amber-500 transition-colors mt-0.5"
-        aria-label="Dismiss"
+        aria-label={fs.dismiss}
       >
         <svg viewBox="0 0 12 12" className="w-3.5 h-3.5" fill="none"
              stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">

@@ -318,9 +318,7 @@ export default function AdminPage() {
         <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-sm space-y-4">
           <div className="text-center">
             <div className="flex justify-center mb-3">
-              <div className="bg-brand-dark rounded-xl px-4 py-2">
-                <img src="/logo-wordmark.png" alt="GasCap" className="h-7 w-auto" />
-              </div>
+              <img src="/logo-wordmark.png" alt="GasCap™" className="h-8 w-auto" />
             </div>
             <p className="text-sm font-black text-slate-700">Admin Panel</p>
             <p className="text-xs text-slate-500 mt-0.5">Restricted access</p>
@@ -353,9 +351,7 @@ export default function AdminPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="bg-brand-dark rounded-xl px-3 py-1.5">
-              <img src="/logo-wordmark.png" alt="GasCap" className="h-6 w-auto" />
-            </div>
+            <img src="/logo-wordmark.png" alt="GasCap™" className="h-7 w-auto" />
             <div>
               <p className="text-sm font-black text-slate-700">Admin Panel</p>
               <p className="text-xs text-slate-500">User management</p>
