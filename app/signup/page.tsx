@@ -69,11 +69,13 @@ function SignUpForm() {
     setLoading(false);
 
     if (signInRes?.error) {
-      setError('Account created — please sign in.');
+      // Auto sign-in failed — send to sign-in page
       router.push('/signin');
     } else {
-      router.push('/');
-      router.refresh();
+      // Signed in — send to the "check your inbox" screen.
+      // User stays here until they click the verification link in their email,
+      // which redirects them to /signin?verified=success.
+      router.push('/verify-email');
     }
   }
 
