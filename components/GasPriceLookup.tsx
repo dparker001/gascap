@@ -19,10 +19,6 @@ interface GasPriceLookupProps {
 
 type Status = 'idle' | 'locating' | 'fetching' | 'done' | 'error';
 
-/** Build a Google Maps URL that shows nearby gas stations with live prices */
-function mapsNearbyUrl(lat: number, lng: number): string {
-  return `https://www.google.com/maps/search/gas+stations/@${lat},${lng},13z`;
-}
 
 const STATE_NAMES: Record<string, string> = {
   AL:'Alabama',AK:'Alaska',AZ:'Arizona',AR:'Arkansas',CA:'California',
@@ -43,7 +39,6 @@ export default function GasPriceLookup({ onApply }: GasPriceLookupProps) {
   const [status, setStatus]   = useState<Status>('idle');
   const [result, setResult]   = useState<GasPriceLookupResult | null>(null);
   const [errMsg, setErrMsg]   = useState('');
-  const [coords, setCoords]   = useState<{ lat: number; lng: number } | null>(null);
 
   async function handleLookup() {
     setStatus('locating');
@@ -65,9 +60,6 @@ export default function GasPriceLookup({ onApply }: GasPriceLookupProps) {
       setErrMsg(t.gasPrice.errorDenied);
       return;
     }
-
-    // Save coords for the Maps link
-    setCoords({ lat: coords.latitude, lng: coords.longitude });
 
     // 2. Fetch price from our API route
     setStatus('fetching');
@@ -183,29 +175,7 @@ export default function GasPriceLookup({ onApply }: GasPriceLookupProps) {
                   </button>
                 </div>
               </div>
-              {/* Nearby stations link — Google Maps shows live pump prices */}
-              {coords && (
-                <a
-                  href={mapsNearbyUrl(coords.lat, coords.lng)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-between w-full bg-blue-50 border border-blue-200
-                             rounded-xl px-3 py-2.5 hover:bg-blue-100 transition-colors group"
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="text-base">📍</span>
-                    <div>
-                      <p className="text-xs font-bold text-blue-800">{t.gasPrice.findNearby}</p>
-                      <p className="text-[10px] text-blue-500">{t.gasPrice.findNearbyHint}</p>
-                    </div>
-                  </div>
-                  <svg className="w-3.5 h-3.5 text-blue-400 group-hover:text-blue-600 flex-shrink-0"
-                       viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2"
-                       strokeLinecap="round" aria-hidden="true">
-                    <path d="M2 6h8M6 2l4 4-4 4"/>
-                  </svg>
-                </a>
-              )}
+
             </div>
           ) : (
             <p className="text-xs text-slate-500 mt-2">
