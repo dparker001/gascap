@@ -112,6 +112,9 @@ export default function ToolsPanel() {
                 {tab.planRequired && !isPro && (
                   <span className="text-[7px] bg-amber-400 text-white px-1 rounded-full leading-none mt-0.5">PRO</span>
                 )}
+                {tab.authRequired && !tab.planRequired && !session && (
+                  <span className="text-[7px] bg-emerald-500 text-white px-1 rounded-full leading-none mt-0.5">FREE</span>
+                )}
                 {isActive && (
                   <span className="w-1 h-1 rounded-full bg-amber-500 mt-0.5" aria-hidden="true" />
                 )}
