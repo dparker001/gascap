@@ -117,13 +117,59 @@ export default function UpgradePage() {
       <div className="flex-1 px-4 py-10 max-w-2xl mx-auto w-full">
 
         {/* Heading */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-6">
           <h1 className="text-3xl font-black text-navy-700 leading-tight">
             {t.upgrade.title}
           </h1>
           <p className="text-slate-500 mt-2 text-sm">
             {t.upgrade.sub}
           </p>
+        </div>
+
+        {/* Pro hero features — visual upsell before pricing cards */}
+        <div className="grid grid-cols-1 gap-3 mb-8">
+          {/* Smart Fill-Up Optimizer */}
+          <div className="bg-white rounded-2xl border-2 border-amber-300 shadow-sm px-5 py-4 flex items-start gap-4">
+            <div className="w-10 h-10 rounded-xl bg-amber-500 flex items-center justify-center flex-shrink-0">
+              <span className="text-xl">🔮</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <p className="text-sm font-black text-slate-800">Smart Fill-Up Optimizer</p>
+                <span className="text-[9px] font-black bg-amber-500 text-white px-2 py-0.5 rounded-full">NEW</span>
+              </div>
+              <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                Uses live EIA government data for your state to tell you the best time to fill up this week —
+                with an exact dollar amount you could save. Personalized to your actual fill-up size.
+              </p>
+            </div>
+          </div>
+          {/* Gas Price Alerts */}
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-5 py-4 flex items-start gap-4">
+            <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center flex-shrink-0">
+              <span className="text-xl">🔔</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-black text-slate-800">Gas Price Drop Alerts</p>
+              <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                Set a target price per gallon. Get a push notification the moment your state average
+                drops below it — so you never miss a cheap fill-up window.
+              </p>
+            </div>
+          </div>
+          {/* Charts */}
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-5 py-4 flex items-start gap-4">
+            <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0">
+              <span className="text-xl">📊</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-black text-slate-800">MPG Trends & Spending Analytics</p>
+              <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                Visual charts of your MPG over time, monthly spend comparisons, per-vehicle breakdowns,
+                and national price context — all in one place.
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Billing toggle */}

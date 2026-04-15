@@ -11,6 +11,7 @@ import FuelPriceHistory      from './FuelPriceHistory';
 import NationalGasPriceChart  from './NationalGasPriceChart';
 import VehicleSpendingBreakdown from './VehicleSpendingBreakdown';
 import VehicleComparison       from './VehicleComparison';
+import SmartFillUpOptimizer    from './SmartFillUpOptimizer';
 import MaintenanceReminders    from './MaintenanceReminders';
 import ReferralCard           from './ReferralCard';
 import ReviewWidget           from './ReviewWidget';
@@ -18,7 +19,6 @@ import StationComparison      from './StationComparison';
 import MonthlyReportCard      from './MonthlyReportCard';
 import SavingsDashboard       from './SavingsDashboard';
 import WorstFillup            from './WorstFillup';
-import GasPricePrediction     from './GasPricePrediction';
 import ReferralLeaderboard    from './ReferralLeaderboard';
 import VehicleHealthAlert     from './VehicleHealthAlert';
 import StreakRewards          from './StreakRewards';
@@ -161,6 +161,8 @@ export default function ToolsPanel() {
       <div role="tabpanel" id="tabpanel-charts" hidden={effectiveTab !== 'charts'}>
         {effectiveTab === 'charts' && session && isPro && (
           <div className="space-y-3">
+            <SmartFillUpOptimizer />
+            <MonthlyReportCard />
             <MpgChart />
             <FuelPriceHistory />
             <NationalGasPriceChart />
@@ -177,10 +179,8 @@ export default function ToolsPanel() {
         {effectiveTab === 'stats' && session && (
           <div className="space-y-3">
             <VehicleHealthAlert />
-            <MonthlyReportCard />
             <SavingsDashboard />
             <WorstFillup />
-            <GasPricePrediction />
           </div>
         )}
         {effectiveTab === 'stats' && !session && <SignInPrompt feature={t.toolsPrompts.featureStats} />}
