@@ -77,6 +77,7 @@ export default function AdminPage() {
   const [filterStatus,   setFilterStatus]   = useState<'all'|'verified'|'unverified'>('all');
   const [filterActivity, setFilterActivity] = useState<'all'|'today'|'has-fillups'|'no-logins'|'has-streak'>('all');
   const [filterStripe,   setFilterStripe]   = useState<'all'|'stripe'|'no-stripe'>('all');
+  const [filterPush,     setFilterPush]     = useState<'all'|'subscribed'|'not-subscribed'>('all');
   const [sortBy,         setSortBy]         = useState<'joined-desc'|'joined-asc'|'logins'|'calcs'|'fillups'|'streak'>('joined-desc');
   const [savedPw,   setSavedPw]   = useState('');
   const [pushMsg,        setPushMsg]        = useState('');
@@ -286,6 +287,8 @@ export default function AdminPage() {
       if (filterActivity === 'has-fillups' && u.fillupCount === 0) return false;
       if (filterActivity === 'no-logins'   && u.loginCount  > 0)   return false;
       if (filterActivity === 'has-streak'  && u.streak      === 0)  return false;
+      if (filterPush === 'subscribed'     && !u.pushSubscribed) return false;
+      if (filterPush === 'not-subscribed' &&  u.pushSubscribed) return false;
       return true;
     })
     .sort((a, b) => {
@@ -697,6 +700,27 @@ export default function AdminPage() {
             </div>
           </div>
 
+          {/* Push filter */}
+          <div className="space-y-1">
+            <p className="text-[10px] font-bold text-slate-600 uppercase tracking-wide">Push Notifications</p>
+            <div className="flex flex-wrap gap-1.5">
+              {([
+                { val: 'all',            label: 'All' },
+                { val: 'subscribed',     label: '🔔 Subscribed' },
+                { val: 'not-subscribed', label: 'Not subscribed' },
+              ] as const).map(({ val, label }) => (
+                <button key={val} onClick={() => setFilterPush(val)}
+                  className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${
+                    filterPush === val
+                      ? 'bg-navy-700 text-white'
+                      : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                  }`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Sort + result count row */}
           <div className="flex items-center justify-between gap-3 pt-1 border-t border-slate-100">
             <p className="text-[11px] text-slate-600 font-semibold">
@@ -721,9 +745,9 @@ export default function AdminPage() {
           </div>
 
           {/* Clear filters */}
-          {(filterPlan !== 'all' || filterStatus !== 'all' || filterActivity !== 'all' || filterStripe !== 'all' || search) && (
+          {(filterPlan !== 'all' || filterStatus !== 'all' || filterActivity !== 'all' || filterStripe !== 'all' || filterPush !== 'all' || search) && (
             <button
-              onClick={() => { setFilterPlan('all'); setFilterStatus('all'); setFilterActivity('all'); setFilterStripe('all'); setSearch(''); }}
+              onClick={() => { setFilterPlan('all'); setFilterStatus('all'); setFilterActivity('all'); setFilterStripe('all'); setFilterPush('all'); setSearch(''); }}
               className="text-[11px] font-bold text-amber-600 hover:text-amber-500 transition-colors"
             >
               × Clear all filters

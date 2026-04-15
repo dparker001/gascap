@@ -10,7 +10,6 @@ import path from 'path';
 import type { StoredUser } from '@/lib/users';
 import { grantBetaTrial, revokeBetaTrial } from '@/lib/users';
 import { upsertGhlContact, removeGhlTags } from '@/lib/ghl';
-import { getAllSubs } from '@/lib/pushSubscriptions';
 import { getFillups } from '@/lib/fillups';
 
 const DATA_FILE = path.join(process.cwd(), 'data', 'users.json');
@@ -35,10 +34,39 @@ function auth(req: Request): boolean {
   return header === pw;
 }
 
+/** Fetch external_user_ids of all active OneSignal subscribers (up to 1 000) */
+async function getOneSignalSubscriberIds(): Promise<Set<string>> {
+  const appId  = process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID  ?? '';
+  const apiKey = process.env.ONESIGNAL_REST_API_KEY ?? '';
+  if (!appId || !apiKey) return new Set();
+  const ids = new Set<string>();
+  const limit = 300;
+  for (let offset = 0; offset < 1000; offset += limit) {
+    try {
+      const res = await fetch(
+        `https://onesignal.com/api/v1/players?app_id=${appId}&limit=${limit}&offset=${offset}`,
+        { headers: { Authorization: `Basic ${apiKey}` }, next: { revalidate: 300 } },
+      );
+      if (!res.ok) break;
+      const data = await res.json() as {
+        total_count: number;
+        players: { external_user_id?: string; notification_types?: number }[];
+      };
+      for (const p of data.players ?? []) {
+        // notification_types > 0 means the device is actively subscribed
+        if (p.external_user_id && (p.notification_types ?? 0) > 0) {
+          ids.add(p.external_user_id);
+        }
+      }
+      if (offset + limit >= data.total_count) break;
+    } catch { break; }
+  }
+  return ids;
+}
+
 export async function GET(req: Request) {
   if (!auth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  const subs              = getAllSubs();
-  const subscribedUserIds = new Set(subs.map((s) => s.userId));
+  const subscribedUserIds = await getOneSignalSubscriberIds();
   const allUsers          = read();
 
   // Build a map of referralCode → user name for quick lookup
