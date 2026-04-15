@@ -44,7 +44,8 @@ export interface GhlContactInput {
   isBeta?:      boolean;
   source?:      string;
   phone?:       string;
-  extraTags?:   string[];  // any additional tags to apply
+  locale?:      'en' | 'es';  // signup language — used for workflow branching in GHL
+  extraTags?:   string[];     // any additional tags to apply
 }
 
 /**
@@ -63,12 +64,19 @@ export async function upsertGhlContact(input: GhlContactInput): Promise<boolean>
     const [firstName, ...rest] = input.name.trim().split(' ');
     const lastName = rest.join(' ') || '';
 
+    const langTag = input.locale === 'es' ? 'gascap-lang-es' : 'gascap-lang-en';
+
     const tags = [
       'gascap',
+      langTag,
       ...(input.plan ? [PLAN_TAGS[input.plan] ?? 'gascap-free'] : []),
       ...(input.isBeta ? ['gascap-beta-tester'] : []),
       ...(input.extraTags ?? []),
     ];
+
+    const customFields: { key: string; field_value: string }[] = [];
+    if (input.plan)   customFields.push({ key: 'gascap_plan',   field_value: input.plan });
+    if (input.locale) customFields.push({ key: 'gascap_locale', field_value: input.locale });
 
     const body: Record<string, unknown> = {
       locationId: GHL_LOCATION_ID,
@@ -77,7 +85,7 @@ export async function upsertGhlContact(input: GhlContactInput): Promise<boolean>
       email:      input.email,
       tags,
       source:     input.source ?? 'GasCap App',
-      ...(input.plan ? { customFields: [{ key: 'gascap_plan', field_value: input.plan }] } : {}),
+      ...(customFields.length > 0 ? { customFields } : {}),
       ...(input.phone ? { phone: input.phone } : {}),
     };
 

@@ -60,6 +60,8 @@ export interface StoredUser {
   // Streak rewards
   streakMilestonesHit?: number[];    // list of milestone day-counts already awarded (e.g. [30, 90])
   streakCredits?: StreakCredit[];     // free Pro months earned from streak milestones
+  // Signup locale — persisted so drip emails + GHL workflows can use the correct language
+  locale?: 'en' | 'es';
   // Email campaign drip sequence
   emailCampaignStep?:       number;  // 1=welcome sent, 2=day3, 3=day7, 4=day14, 5=day30
   emailCampaignEnrolledAt?: string;  // ISO date of sign-up enrollment
@@ -130,6 +132,7 @@ export async function createUser(
   name: string,
   email: string,
   password: string,
+  locale: 'en' | 'es' = 'en',
 ): Promise<StoredUser> {
   const existing = findByEmail(email);
   if (existing) throw new Error('An account with that email already exists.');
@@ -142,6 +145,7 @@ export async function createUser(
     passwordHash,
     plan:      'free',
     createdAt: new Date().toISOString(),
+    locale,
   };
   const users = read();
   users.push(user);

@@ -51,7 +51,7 @@ export async function POST(req: Request) {
     if (findByEmail(email))
                          return NextResponse.json({ error: 'An account with that email already exists.' }, { status: 409 });
 
-    const user = await createUser(name, email, password);
+    const user = await createUser(name, email, password, userLocale);
 
     // Auto-enroll every new signup in a 30-day GasCap™ Pro trial. Sets
     // plan='pro', isProTrial=true, betaProExpiry=+30d. The beta-expire cron
@@ -151,6 +151,7 @@ export async function POST(req: Request) {
           email:     user.email,
           plan:      'pro',
           isBeta:    false,
+          locale:    userLocale,
           source:    `GasCap QR — ${placement.station}`,
           extraTags: newSignupTags,
         },
@@ -169,6 +170,7 @@ export async function POST(req: Request) {
         email:     user.email,
         plan:      'pro',
         isBeta:    false,
+        locale:    userLocale,
         source:    'GasCap Signup',
         extraTags: newSignupTags,
       }).catch((err) => console.error('[GHL] signup sync failed:', err));
