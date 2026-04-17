@@ -12,6 +12,7 @@ import { getFillups } from '@/lib/fillups';
 
 function auth(req: Request): boolean {
   const pw = process.env.ADMIN_PASSWORD;
+  console.log('[admin-auth] pw length:', pw?.length ?? 'undefined', '| header present:', !!req.headers.get('x-admin-password'));
   if (!pw) return false;
   const header = req.headers.get('x-admin-password') ?? '';
   return header === pw;
