@@ -64,7 +64,7 @@ const en = {
     pill_ai:        'AI advisor',
     pill_garage:    'Vehicle Garage',
     pill_fillups:   'Fill-up History',
-    offerStrip:     '🎁 Sign up today — first 30 days of Pro FREE',
+    offerStrip:     'Sign up today — first 30 days of Pro FREE',
     offerStripSub:  'No credit card · Cancel anytime',
   },
 
@@ -748,7 +748,7 @@ const es: typeof en = {
     pill_ai:        'Asesor IA',
     pill_garage:    'Garaje de vehículos',
     pill_fillups:   'Historial de llenados',
-    offerStrip:     '🎁 Regístrate hoy — primeros 30 días de Pro GRATIS',
+    offerStrip:     'Regístrate hoy — primeros 30 días de Pro GRATIS',
     offerStripSub:  'Sin tarjeta de crédito · Cancela cuando quieras',
   },
 
