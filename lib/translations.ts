@@ -64,6 +64,12 @@ const en = {
     pill_ai:        'AI advisor',
     offerStrip:     '🎁 Sign up today — first 30 days of Pro FREE',
     offerStripSub:  'No credit card · Cancel anytime',
+    feature1Icon:   '🏎️',
+    feature1Label:  'Vehicle Garage',
+    feature1Sub:    'Save your cars — always ready',
+    feature2Icon:   '📊',
+    feature2Label:  'Fill-Up History & MPG',
+    feature2Sub:    'Track every fill-up & your spending',
   },
 
   // ── Problem / Solution ─────────────────────────────────────────────────────
@@ -746,6 +752,12 @@ const es: typeof en = {
     pill_ai:        'Asesor IA',
     offerStrip:     '🎁 Regístrate hoy — primeros 30 días de Pro GRATIS',
     offerStripSub:  'Sin tarjeta de crédito · Cancela cuando quieras',
+    feature1Icon:   '🏎️',
+    feature1Label:  'Garaje de vehículos',
+    feature1Sub:    'Guarda tus autos — siempre listos',
+    feature2Icon:   '📊',
+    feature2Label:  'Historial de llenados y MPG',
+    feature2Sub:    'Registra cada llenado y tu gasto',
   },
 
   problem: {

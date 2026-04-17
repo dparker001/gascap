@@ -178,6 +178,22 @@ function GuestHero() {
           ))}
         </div>
 
+        {/* Feature highlights */}
+        <div className="flex gap-3 mb-4 max-w-sm mx-auto">
+          <div className="flex-1 bg-white/10 backdrop-blur-sm border border-white/20
+                          rounded-2xl px-3 py-3 text-left">
+            <span className="text-xl">{t.hero.feature1Icon}</span>
+            <p className="text-white text-xs font-black mt-1.5 leading-tight">{t.hero.feature1Label}</p>
+            <p className="text-white/60 text-[10px] mt-0.5 leading-tight">{t.hero.feature1Sub}</p>
+          </div>
+          <div className="flex-1 bg-white/10 backdrop-blur-sm border border-white/20
+                          rounded-2xl px-3 py-3 text-left">
+            <span className="text-xl">{t.hero.feature2Icon}</span>
+            <p className="text-white text-xs font-black mt-1.5 leading-tight">{t.hero.feature2Label}</p>
+            <p className="text-white/60 text-[10px] mt-0.5 leading-tight">{t.hero.feature2Sub}</p>
+          </div>
+        </div>
+
         {/* 30-day Pro offer strip */}
         <a href="/signup"
            className="block w-full max-w-sm mx-auto bg-brand-orange hover:bg-[#FF9A1A]
