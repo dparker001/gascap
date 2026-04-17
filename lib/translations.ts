@@ -54,7 +54,7 @@ const en = {
 
   // ── Hero (guest landing) ───────────────────────────────────────────────────
   hero: {
-    badge:          'Free · No app store · Works offline',
+    badge:          '30 days Pro free · No app store · Works offline',
     headline:       'Know exactly how much gas you need —',
     headlineAccent: 'before you pull up.',
     sub:            'GasCap™ calculates your exact fill-up cost using live local gas prices. No more guessing, no more overpaying — especially on rental car returns.',
@@ -181,10 +181,10 @@ const en = {
 
   // ── Guest CTA banner ───────────────────────────────────────────────────────
   cta: {
-    badge:          'Free — no credit card ever',
+    badge:          '30 days of Pro free — no credit card ever',
     headline:       'Know before\nyou pull up.',
-    sub:            'Save your vehicles, track your MPG, and stop over-paying at the pump.',
-    createAccount:  'Create free account →',
+    sub:            'Start with 30 free days of Pro. Save your vehicles, track your MPG, and stop over-paying at the pump.',
+    createAccount:  'Start free — 30 days Pro included →',
     alreadyHave:    'Already have an account?',
     signIn:         'Sign in',
   },
@@ -220,7 +220,8 @@ const en = {
   // ── Sign up page ───────────────────────────────────────────────────────────
   signUp: {
     title:            'Create your account',
-    sub:              'Free forever. Save your vehicles and calculation history.',
+    sub:              'Your first 30 days include full Pro access — free, no credit card required.',
+    proTrial:         '🎁 First 30 days: full Pro access included free',
     nameLabel:        'Your name',
     namePlaceholder:  'Alex Johnson',
     emailLabel:       'Email',
@@ -235,7 +236,7 @@ const en = {
     },
     button:         'Create free account',
     loading:        'Creating account…',
-    trustFree:      '✓ Free forever',
+    trustFree:      '🎁 30 days Pro free',
     trustNoCard:    '✓ No credit card',
     trustCancel:    '✓ Cancel anytime',
     haveAccount:    'Already have an account?',
@@ -733,7 +734,7 @@ const es: typeof en = {
   ],
 
   hero: {
-    badge:          'Gratis · Sin tienda de apps · Funciona sin internet',
+    badge:          '30 días Pro gratis · Sin tienda de apps · Funciona sin internet',
     headline:       'Sabe exactamente cuánta gasolina necesitas —',
     headlineAccent: 'antes de llegar a la bomba.',
     sub:            'GasCap™ calcula el costo exacto de tu llenado usando precios locales en tiempo real. Sin adivinanzas, sin pagar de más — especialmente al devolver un auto rentado.',
@@ -854,10 +855,10 @@ const es: typeof en = {
   },
 
   cta: {
-    badge:          'Gratis — sin tarjeta de crédito nunca',
+    badge:          '30 días de Pro gratis — sin tarjeta de crédito nunca',
     headline:       'Sabe antes\nde llegar.',
-    sub:            'Guarda tus vehículos, rastrea tu MPG y deja de pagar de más en la gasolinera.',
-    createAccount:  'Crear cuenta gratis →',
+    sub:            'Empieza con 30 días de Pro gratis. Guarda tus vehículos, rastrea tu MPG y deja de pagar de más en la gasolinera.',
+    createAccount:  'Empezar gratis — 30 días Pro incluidos →',
     alreadyHave:    '¿Ya tienes una cuenta?',
     signIn:         'Iniciar sesión',
   },
@@ -890,7 +891,8 @@ const es: typeof en = {
 
   signUp: {
     title:            'Crea tu cuenta',
-    sub:              'Gratis para siempre. Guarda tus vehículos e historial de cálculos.',
+    sub:              'Tus primeros 30 días incluyen acceso Pro completo — gratis, sin tarjeta de crédito.',
+    proTrial:         '🎁 Primeros 30 días: acceso Pro completo incluido gratis',
     nameLabel:        'Tu nombre',
     namePlaceholder:  'Alex Johnson',
     emailLabel:       'Correo electrónico',
@@ -905,7 +907,7 @@ const es: typeof en = {
     },
     button:         'Crear cuenta gratis',
     loading:        'Creando cuenta…',
-    trustFree:      '✓ Gratis para siempre',
+    trustFree:      '🎁 30 días Pro gratis',
     trustNoCard:    '✓ Sin tarjeta de crédito',
     trustCancel:    '✓ Cancela cuando quieras',
     haveAccount:    '¿Ya tienes una cuenta?',

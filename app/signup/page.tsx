@@ -94,7 +94,13 @@ function SignUpForm() {
       <div className="flex-1 flex items-start justify-center px-4 pt-10 pb-16">
         <div className="w-full max-w-sm">
           <h1 className="text-2xl font-black text-navy-700 mb-1">{t.signUp.title}</h1>
-          <p className="text-slate-500 text-sm mb-5">{t.signUp.sub}</p>
+          <p className="text-slate-500 text-sm mb-4">{t.signUp.sub}</p>
+
+          {/* Pro trial callout */}
+          <div className="mb-5 bg-emerald-50 border border-emerald-200 rounded-2xl px-4 py-3 flex items-center gap-3">
+            <span className="text-xl flex-shrink-0">🎁</span>
+            <p className="text-sm font-bold text-emerald-800">{t.signUp.proTrial}</p>
+          </div>
 
           {/* Referral banner */}
           {refCode && (
