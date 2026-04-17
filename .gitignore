@@ -47,3 +47,5 @@ public/worker-*.js
 # Claude AI assistant files
 .claude/
 memory/
+
+/lib/generated/prisma
