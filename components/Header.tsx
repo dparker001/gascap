@@ -1,6 +1,7 @@
 // GasCap™ hero header
 'use client';
 import Link                 from 'next/link';
+import { useSession }       from 'next-auth/react';
 import AuthButton           from './AuthButton';
 import PlanBadge            from './PlanBadge';
 import TipsTicker           from './TipsTicker';
@@ -8,6 +9,7 @@ import { useTranslation }   from '@/contexts/LanguageContext';
 
 export default function Header() {
   const { t, locale, toggle } = useTranslation();
+  const { data: session }     = useSession();
 
   return (
     <header className="relative overflow-hidden bg-brand-dark pt-10 pb-7 px-5">
@@ -62,15 +64,17 @@ export default function Header() {
                 {locale === 'en' ? 'ES' : 'EN'}
               </span>
             </button>
-            <Link
-              href="/wrapped"
-              className="flex items-center gap-1 bg-white/10 hover:bg-white/20
-                         transition-colors rounded-xl px-2.5 py-1.5"
-              title={t.nav.wrapped}
-            >
-              <span className="text-sm" aria-hidden="true">🎁</span>
-              <span className="text-[10px] font-black text-white/80 hidden sm:inline">{t.nav.wrapped}</span>
-            </Link>
+            {session && (
+              <Link
+                href="/wrapped"
+                className="flex items-center gap-1 bg-white/10 hover:bg-white/20
+                           transition-colors rounded-xl px-2.5 py-1.5"
+                title={t.nav.wrapped}
+              >
+                <span className="text-sm" aria-hidden="true">🎁</span>
+                <span className="text-[10px] font-black text-white/80 hidden sm:inline">{t.nav.wrapped}</span>
+              </Link>
+            )}
             <AuthButton />
           </div>
         </div>
