@@ -5,27 +5,10 @@
  * PATCH  /api/admin/users?id=xxx       — update plan, emailVerified, betaProExpiry, or isTestAccount
  */
 import { NextResponse } from 'next/server';
-import fs   from 'fs';
-import path from 'path';
-import type { StoredUser } from '@/lib/users';
-import { grantBetaTrial, revokeBetaTrial } from '@/lib/users';
+import { prisma } from '@/lib/prisma';
+import { grantBetaTrial, revokeBetaTrial, findById } from '@/lib/users';
 import { upsertGhlContact, removeGhlTags } from '@/lib/ghl';
 import { getFillups } from '@/lib/fillups';
-
-const DATA_FILE = path.join(process.cwd(), 'data', 'users.json');
-
-function read(): StoredUser[] {
-  try {
-    if (!fs.existsSync(DATA_FILE)) return [];
-    return JSON.parse(fs.readFileSync(DATA_FILE, 'utf-8')) as StoredUser[];
-  } catch { return []; }
-}
-
-function write(rows: StoredUser[]) {
-  const dir = path.dirname(DATA_FILE);
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(DATA_FILE, JSON.stringify(rows, null, 2));
-}
 
 function auth(req: Request): boolean {
   const pw = process.env.ADMIN_PASSWORD;
@@ -66,8 +49,10 @@ async function getOneSignalSubscriberIds(): Promise<Set<string>> {
 
 export async function GET(req: Request) {
   if (!auth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  const subscribedUserIds = await getOneSignalSubscriberIds();
-  const allUsers          = read();
+  const [subscribedUserIds, allUsers] = await Promise.all([
+    getOneSignalSubscriberIds(),
+    prisma.user.findMany({ orderBy: { createdAt: 'desc' } }),
+  ]);
 
   // Build a map of referralCode → user name for quick lookup
   const codeToName = new Map<string, string>();
@@ -83,7 +68,7 @@ export async function GET(req: Request) {
           .map((r) => ({ name: r.name, email: r.email, joinedAt: r.createdAt }))
       : [];
 
-    const fillups   = getFillups(u.id);
+    const fillups     = getFillups(u.id);
     const fillupCount = fillups.length;
     const lastFillup  = fillups.length > 0
       ? fillups.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0].date
@@ -94,24 +79,24 @@ export async function GET(req: Request) {
       name:             u.name,
       email:            u.email,
       plan:             u.plan,
-      emailVerified:    u.emailVerified ?? false,
+      emailVerified:    u.emailVerified,
       createdAt:        u.createdAt,
-      referralCount:    u.referralCount ?? 0,
+      referralCount:    u.referralCount,
       referralCode:     u.referralCode  ?? null,
       referredBy:       u.referredBy    ?? null,
       referredByName:   u.referredBy ? (codeToName.get(u.referredBy.toUpperCase()) ?? u.referredBy) : null,
       referredUsers,
       stripeCustomerId: u.stripeCustomerId ?? null,
-      isBetaTester:     u.isBetaTester    ?? false,
+      isBetaTester:     u.isBetaTester,
       betaProExpiry:    u.betaProExpiry   ?? null,
       pushSubscribed:   subscribedUserIds.has(u.id),
-      isTestAccount:    u.isTestAccount   ?? false,
+      isTestAccount:    u.isTestAccount,
       // Activity metrics
-      loginCount:       u.loginCount    ?? 0,
+      loginCount:       u.loginCount,
       lastLoginAt:      u.lastLoginAt   ?? null,
-      calcCount:        u.calcCount     ?? 0,
+      calcCount:        u.calcCount,
       activeDays:       (u.activeDays   ?? []).length,
-      streak:           u.streak        ?? 0,
+      streak:           u.streak,
       fillupCount,
       lastFillup,
     };
@@ -123,8 +108,7 @@ export async function DELETE(req: Request) {
   if (!auth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const id = new URL(req.url).searchParams.get('id');
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
-  const rows = read().filter((u) => u.id !== id);
-  write(rows);
+  await prisma.user.delete({ where: { id } }).catch(() => null);
   return NextResponse.json({ ok: true });
 }
 
@@ -138,20 +122,18 @@ export async function PATCH(req: Request) {
     revokeBetaTrial?: boolean;
     isTestAccount?: boolean;
   };
-  const rows = read();
-  const idx  = rows.findIndex((u) => u.id === id);
-  if (idx === -1) return NextResponse.json({ error: 'User not found' }, { status: 404 });
+
+  const user = await findById(id);
+  if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
   if (body.grantBetaTrial !== undefined) {
-    grantBetaTrial(id, body.grantBetaTrial || 30);
-    const user = rows[idx];
+    await grantBetaTrial(id, body.grantBetaTrial || 30);
     upsertGhlContact({ name: user.name, email: user.email, plan: 'pro', isBeta: true, source: 'GasCap Beta Grant' })
       .catch((e) => console.error('[GHL] beta grant sync failed:', e));
     return NextResponse.json({ ok: true });
   }
   if (body.revokeBetaTrial) {
-    revokeBetaTrial(id);
-    const user = rows[idx];
+    await revokeBetaTrial(id);
     upsertGhlContact({ name: user.name, email: user.email, plan: 'free', source: 'GasCap Beta Revoked' })
       .catch((e) => console.error('[GHL] beta revoke sync failed:', e));
     removeGhlTags(user.email, ['gascap-beta-tester'])
@@ -159,9 +141,11 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ ok: true });
   }
 
-  if (body.plan          !== undefined) rows[idx].plan          = body.plan as StoredUser['plan'];
-  if (body.emailVerified !== undefined) rows[idx].emailVerified = body.emailVerified;
-  if (body.isTestAccount !== undefined) rows[idx].isTestAccount = body.isTestAccount;
-  write(rows);
+  const data: Record<string, unknown> = {};
+  if (body.plan          !== undefined) data.plan          = body.plan;
+  if (body.emailVerified !== undefined) data.emailVerified = body.emailVerified;
+  if (body.isTestAccount !== undefined) data.isTestAccount = body.isTestAccount;
+
+  await prisma.user.update({ where: { id }, data });
   return NextResponse.json({ ok: true });
 }

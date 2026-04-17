@@ -41,13 +41,13 @@ export async function GET(req: Request) {
   const results: Record<string, { sent: number; errors: number }> = {};
 
   for (const { step, minDays, label } of STEPS) {
-    const users  = getUsersPendingCampaignStep(step, minDays);
+    const users  = await getUsersPendingCampaignStep(step, minDays);
     let sent = 0, errors = 0;
 
     for (const user of users) {
       try {
         await sendCampaignEmail(step, { id: user.id, name: user.name, email: user.email });
-        advanceEmailCampaignStep(user.id, step);
+        await advanceEmailCampaignStep(user.id, step);
         sent++;
       } catch (err) {
         console.error(`[Campaign] Step ${step} failed for ${user.email}:`, err);

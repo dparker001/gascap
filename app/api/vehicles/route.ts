@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { findById } from '@/lib/users';
-import { getVehiclesForUser, addVehicle, deleteVehicle } from '@/lib/savedVehicles';
+import { getVehiclesForUser, addVehicle, deleteVehicle, updateVehicle } from '@/lib/savedVehicles';
 import type { VehicleSpecs } from '@/lib/vehicleSpecs';
 
 // Pro limit changed from 5 → 3 for new users (existing users keep their vehicles, just can't add beyond their current count)
@@ -13,9 +13,8 @@ export async function GET() {
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const userId = (session.user as { id?: string }).id ?? session.user.email ?? '';
-  const user = findById(userId);
+  const [user, vehicles] = await Promise.all([findById(userId), getVehiclesForUser(userId)]);
   const plan  = user?.plan ?? 'free';
-  const vehicles = getVehiclesForUser(userId);
   return NextResponse.json({ vehicles, plan, limit: PLAN_LIMITS[plan] });
 }
 
@@ -42,10 +41,9 @@ export async function POST(req: Request) {
   if (!body.name?.trim())              return NextResponse.json({ error: 'Name is required.' },    { status: 400 });
   if (!body.gallons || body.gallons <= 0) return NextResponse.json({ error: 'Invalid tank size.' }, { status: 400 });
 
-  const user  = findById(userId);
+  const [user, existing] = await Promise.all([findById(userId), getVehiclesForUser(userId)]);
   const plan  = user?.plan ?? 'free';
   const limit = PLAN_LIMITS[plan];
-  const existing = getVehiclesForUser(userId);
 
   // Test accounts are exempt from all vehicle limits
   if (!user?.isTestAccount && existing.length >= limit) {
@@ -55,7 +53,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: msg, limitReached: true, plan }, { status: 403 });
   }
 
-  const vehicle = addVehicle(userId, body.name!, body.gallons!, {
+  const vehicle = await addVehicle(userId, body.name!, body.gallons!, {
     vin:             body.vin?.trim().toUpperCase() || undefined,
     year:            body.year,
     make:            body.make,
@@ -79,7 +77,7 @@ export async function DELETE(req: Request) {
   const id = searchParams.get('id');
   if (!id) return NextResponse.json({ error: 'Missing vehicle id.' }, { status: 400 });
 
-  deleteVehicle(userId, id);
+  await deleteVehicle(userId, id);
   return NextResponse.json({ ok: true });
 }
 
@@ -98,8 +96,7 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: 'Invalid tank size.' }, { status: 400 });
   }
 
-  const { updateVehicle } = await import('@/lib/savedVehicles');
-  const updated = updateVehicle(userId, id, body);
+  const updated = await updateVehicle(userId, id, body);
   if (!updated) return NextResponse.json({ error: 'Vehicle not found.' }, { status: 404 });
   return NextResponse.json(updated);
 }

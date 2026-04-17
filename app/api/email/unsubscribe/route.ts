@@ -16,7 +16,7 @@ export async function GET(req: Request) {
     });
   }
 
-  const user = findById(id);
+  const user = await findById(id);
   if (!user) {
     return new NextResponse(unsubPage('Already removed', "You've been removed from our mailing list."), {
       status: 200,
@@ -24,7 +24,7 @@ export async function GET(req: Request) {
     });
   }
 
-  optOutEmailCampaign(id);
+  await optOutEmailCampaign(id);
 
   return new NextResponse(unsubPage('Unsubscribed', `${user.name}, you've been removed from GasCap marketing emails. You'll still receive account-critical emails (password reset, billing receipts).`), {
     status: 200,

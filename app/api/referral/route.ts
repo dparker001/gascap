@@ -17,8 +17,7 @@ export async function GET() {
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const userId = (session.user as { id?: string }).id ?? session.user.email ?? '';
-  const code   = ensureReferralCode(userId);
-  const user   = findById(userId);
+  const [code, user] = await Promise.all([ensureReferralCode(userId), findById(userId)]);
 
   const baseUrl      = process.env.NEXTAUTH_URL ?? 'https://www.gascap.app';
   const referralUrl  = `${baseUrl}/signup?ref=${code}`;
@@ -38,7 +37,7 @@ export async function GET() {
   const betaReferralUrl = isBeta ? `${baseUrl}/signup?ref=${code}&beta=1` : null;
 
   // Get list of users this person referred
-  const allUsers    = getAllUsers();
+  const allUsers    = await getAllUsers();
   const referredUsers = code
     ? allUsers
         .filter((u) => u.referredBy?.toUpperCase() === code.toUpperCase())

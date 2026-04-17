@@ -1,0 +1,103 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id                       String    @id
+  email                    String    @unique
+  name                     String
+  passwordHash             String
+  plan                     String    @default("free")
+  createdAt                String
+
+  // Stripe billing
+  stripeCustomerId         String?
+  stripeSubscriptionId     String?   @unique
+
+  // Activity tracking
+  calcCount                Int       @default(0)
+  budgetCalcCount          Int       @default(0)
+  locationLookups          Int       @default(0)
+  activeDays               String[]  @default([])
+  streak                   Int       @default(0)
+  badges                   String[]  @default([])
+
+  // Referral system
+  referralCode             String?   @unique
+  referredBy               String?
+  referralCount            Int       @default(0)
+  referralProMonthsEarned  Int       @default(0)
+  referralRewardCredited   Boolean   @default(false)
+  referralCredits          Json      @default("[]")
+
+  // Beta / Pro trial
+  isBetaTester             Boolean   @default(false)
+  isProTrial               Boolean   @default(false)
+  betaProExpiry            String?
+
+  // Email verification
+  emailVerified            Boolean   @default(false)
+  emailVerifyToken         String?
+  emailVerifyExpires       String?
+
+  // Password reset
+  passwordResetToken       String?
+  passwordResetExpires     String?
+
+  // Profile
+  phone                    String?
+  displayName              String?
+
+  // Gas price alerts
+  priceAlertThreshold      Float?
+  lastPriceAlertSentAt     String?
+
+  // Login tracking
+  loginCount               Int       @default(0)
+  lastLoginAt              String?
+
+  // Fill-up reminders
+  fillupReminderDays       Int?
+  lastFillupReminderSentAt String?
+
+  // Streak rewards
+  streakMilestonesHit      Int[]     @default([])
+  streakCredits            Json      @default("[]")
+
+  // Signup locale
+  locale                   String?
+
+  // Email campaign drip
+  emailCampaignStep        Int?
+  emailCampaignEnrolledAt  String?
+  emailOptOut              Boolean   @default(false)
+
+  // Internal / testing
+  isTestAccount            Boolean   @default(false)
+
+  vehicles                 Vehicle[]
+}
+
+model Vehicle {
+  id              String  @id
+  userId          String
+  name            String
+  gallons         Float
+  vin             String?
+  year            String?
+  make            String?
+  model           String?
+  trim            String?
+  fuelType        String?
+  epaId           String?
+  currentOdometer Float?
+  vehicleSpecs    Json?
+  createdAt       String
+
+  user            User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}

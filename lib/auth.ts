@@ -12,11 +12,11 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
-        const user = findByEmail(credentials.email);
+        const user = await findByEmail(credentials.email);
         if (!user) return null;
         const valid = await verifyPassword(credentials.password, user.passwordHash);
         if (!valid) return null;
-        recordLogin(user.id);
+        await recordLogin(user.id);
         return { id: user.id, email: user.email, name: user.name, plan: user.plan, emailVerified: user.emailVerified ?? false };
       },
     }),
@@ -38,7 +38,7 @@ export const authOptions: NextAuthOptions = {
       }
       // Re-fetch plan on session refresh so upgrades are reflected immediately
       if (trigger === 'update' || (!user && token.id)) {
-        const fresh = findById(token.id as string);
+        const fresh = await findById(token.id as string);
         if (fresh) {
           token.plan          = fresh.plan;
           token.emailVerified = fresh.emailVerified ?? false;

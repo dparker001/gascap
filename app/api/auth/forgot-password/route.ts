@@ -16,7 +16,7 @@ export async function POST(req: Request) {
   // Always return 200 — never reveal whether an email exists (prevents enumeration)
   if (!email?.trim()) return NextResponse.json({ ok: true });
 
-  const result = createPasswordResetToken(email.trim());
+  const result = await createPasswordResetToken(email.trim());
   if (!result) return NextResponse.json({ ok: true }); // no account — silent
 
   const baseUrl   = getBaseUrl(req);

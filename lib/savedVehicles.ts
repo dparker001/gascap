@@ -1,9 +1,7 @@
 /**
- * Saved vehicles — persisted per user in a JSON file.
- * For production: replace with a DB table.
+ * Saved vehicles — persisted in PostgreSQL via Prisma.
  */
-import fs   from 'fs';
-import path from 'path';
+import { prisma } from './prisma';
 import type { VehicleSpecs } from './vehicleSpecs';
 
 export interface SavedVehicle {
@@ -26,28 +24,49 @@ export interface SavedVehicle {
   createdAt:        string;
 }
 
-const DATA_FILE = path.join(process.cwd(), 'data', 'vehicles.json');
-
-function read(): SavedVehicle[] {
-  try {
-    if (!fs.existsSync(DATA_FILE)) return [];
-    return JSON.parse(fs.readFileSync(DATA_FILE, 'utf-8')) as SavedVehicle[];
-  } catch {
-    return [];
-  }
+function toSavedVehicle(v: {
+  id: string;
+  userId: string;
+  name: string;
+  gallons: number;
+  vin: string | null;
+  year: string | null;
+  make: string | null;
+  model: string | null;
+  trim: string | null;
+  fuelType: string | null;
+  epaId: string | null;
+  currentOdometer: number | null;
+  vehicleSpecs: unknown;
+  createdAt: string;
+}): SavedVehicle {
+  return {
+    id:              v.id,
+    userId:          v.userId,
+    name:            v.name,
+    gallons:         v.gallons,
+    vin:             v.vin             ?? undefined,
+    year:            v.year            ?? undefined,
+    make:            v.make            ?? undefined,
+    model:           v.model           ?? undefined,
+    trim:            v.trim            ?? undefined,
+    fuelType:        v.fuelType        ?? undefined,
+    epaId:           v.epaId           ?? undefined,
+    currentOdometer: v.currentOdometer ?? undefined,
+    vehicleSpecs:    v.vehicleSpecs    != null ? (v.vehicleSpecs as VehicleSpecs) : undefined,
+    createdAt:       v.createdAt,
+  };
 }
 
-function write(rows: SavedVehicle[]) {
-  const dir = path.dirname(DATA_FILE);
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(DATA_FILE, JSON.stringify(rows, null, 2));
+export async function getVehiclesForUser(userId: string): Promise<SavedVehicle[]> {
+  const rows = await prisma.vehicle.findMany({
+    where: { userId },
+    orderBy: { createdAt: 'asc' },
+  });
+  return rows.map(toSavedVehicle);
 }
 
-export function getVehiclesForUser(userId: string): SavedVehicle[] {
-  return read().filter((v) => v.userId === userId);
-}
-
-export function addVehicle(
+export async function addVehicle(
   userId: string,
   name: string,
   gallons: number,
@@ -62,38 +81,54 @@ export function addVehicle(
     currentOdometer?: number;
     vehicleSpecs?:    VehicleSpecs;
   },
-): SavedVehicle {
-  const rows = read();
-  const vehicle: SavedVehicle = {
-    id:        crypto.randomUUID(),
-    userId,
-    name:      name.trim(),
-    gallons,
-    createdAt: new Date().toISOString(),
-    ...extra,
-  };
-  rows.push(vehicle);
-  write(rows);
-  return vehicle;
+): Promise<SavedVehicle> {
+  const row = await prisma.vehicle.create({
+    data: {
+      id:              crypto.randomUUID(),
+      userId,
+      name:            name.trim(),
+      gallons,
+      createdAt:       new Date().toISOString(),
+      vin:             extra?.vin             ?? null,
+      year:            extra?.year            ?? null,
+      make:            extra?.make            ?? null,
+      model:           extra?.model           ?? null,
+      trim:            extra?.trim            ?? null,
+      fuelType:        extra?.fuelType        ?? null,
+      epaId:           extra?.epaId           ?? null,
+      currentOdometer: extra?.currentOdometer ?? null,
+      vehicleSpecs:    (extra?.vehicleSpecs ?? undefined) as unknown as object | undefined,
+    },
+  });
+  return toSavedVehicle(row);
 }
 
-export function deleteVehicle(userId: string, vehicleId: string): void {
-  const rows = read().filter((v) => !(v.id === vehicleId && v.userId === userId));
-  write(rows);
+export async function deleteVehicle(userId: string, vehicleId: string): Promise<void> {
+  await prisma.vehicle.deleteMany({
+    where: { id: vehicleId, userId },
+  });
 }
 
-export function updateVehicle(
+export async function updateVehicle(
   userId: string,
   vehicleId: string,
   updates: { name?: string; gallons?: number; currentOdometer?: number; vehicleSpecs?: VehicleSpecs },
-): SavedVehicle | undefined {
-  const all = read();
-  const idx = all.findIndex((v) => v.userId === userId && v.id === vehicleId);
-  if (idx === -1) return undefined;
-  if (updates.name             !== undefined) all[idx].name             = updates.name;
-  if (updates.gallons          !== undefined) all[idx].gallons          = updates.gallons;
-  if (updates.currentOdometer  !== undefined) all[idx].currentOdometer  = updates.currentOdometer;
-  if (updates.vehicleSpecs     !== undefined) all[idx].vehicleSpecs     = updates.vehicleSpecs;
-  write(all);
-  return all[idx];
+): Promise<SavedVehicle | undefined> {
+  // Verify ownership first
+  const existing = await prisma.vehicle.findFirst({
+    where: { id: vehicleId, userId },
+  });
+  if (!existing) return undefined;
+
+  const data: Record<string, unknown> = {};
+  if (updates.name             !== undefined) data.name             = updates.name;
+  if (updates.gallons          !== undefined) data.gallons          = updates.gallons;
+  if (updates.currentOdometer  !== undefined) data.currentOdometer  = updates.currentOdometer;
+  if (updates.vehicleSpecs     !== undefined) data.vehicleSpecs     = updates.vehicleSpecs;
+
+  const row = await prisma.vehicle.update({
+    where: { id: vehicleId },
+    data,
+  });
+  return toSavedVehicle(row);
 }

@@ -11,7 +11,7 @@ export async function PATCH(req: NextRequest) {
   }
 
   const body = await req.json() as { displayName?: string; phone?: string };
-  const updated = updateUserProfile((session.user as { id?: string })?.id ?? '', {
+  const updated = await updateUserProfile((session.user as { id?: string })?.id ?? '', {
     displayName: body.displayName,
     phone:       body.phone,
   });

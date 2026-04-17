@@ -23,7 +23,7 @@ async function checkAccess() {
   if (!session?.user) return { ok: false, status: 401, user: null, userId: '' };
   // Mirror exactly the same userId derivation used in /api/fillups/route.ts
   const userId = session.user.id ?? session.user.email ?? '';
-  const user   = findById(userId);
+  const user   = await findById(userId);
   if (!user || user.plan === 'free') return { ok: false, status: 403, user, userId };
   return { ok: true, status: 200, user: user!, userId };
 }

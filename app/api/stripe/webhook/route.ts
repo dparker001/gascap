@@ -57,13 +57,13 @@ export async function POST(req: Request) {
       const subscriptionId = typeof session.subscription === 'string' ? session.subscription : null;
       const tier           = (session.metadata?.tier ?? 'pro') as 'pro' | 'fleet';
 
-      setUserPlan(userId, tier, {
+      await setUserPlan(userId, tier, {
         customerId:     customerId     ?? undefined,
         subscriptionId: subscriptionId ?? undefined,
       });
 
       // Sync plan change to GHL CRM + notify admin
-      const upgradedUser = findById(userId);
+      const upgradedUser = await findById(userId);
       if (upgradedUser) {
         updateGhlContactPlan(upgradedUser.email, tier)
           .catch((err) => console.error('[GHL] plan sync failed:', err));
@@ -91,7 +91,7 @@ export async function POST(req: Request) {
       const customerId = typeof invoice.customer === 'string' ? invoice.customer : null;
       if (!customerId) break;
 
-      const user = findByStripeCustomer(customerId);
+      const user = await findByStripeCustomer(customerId);
       if (!user) break;
 
       // Determine tier from subscription metadata; fall back to existing plan if already paid
@@ -112,7 +112,7 @@ export async function POST(req: Request) {
       }
 
       if (user.plan !== tier) {
-        setUserPlan(user.id, tier, { subscriptionId: subId });
+        await setUserPlan(user.id, tier, { subscriptionId: subId });
         console.info(`[GasCap webhook] Activated ${tier} for user ${user.id} on renewal`);
       }
       break;
@@ -125,9 +125,9 @@ export async function POST(req: Request) {
       const customerId = typeof obj.customer === 'string' ? obj.customer : null;
       if (!customerId) break;
 
-      const user = findByStripeCustomer(customerId);
+      const user = await findByStripeCustomer(customerId);
       if (user) {
-        setUserPlan(user.id, 'free');
+        await setUserPlan(user.id, 'free');
         updateGhlContactPlan(user.email, 'free')
           .catch((err) => console.error('[GHL] plan revert sync failed:', err));
 
@@ -152,8 +152,8 @@ export async function POST(req: Request) {
       const customer = event.data.object as Stripe.Customer;
       const userId   = (customer.metadata as Record<string,string>)?.userId;
       if (userId) {
-        const user = findById(userId);
-        if (user) setUserPlan(userId, user.plan, { customerId: customer.id });
+        const user = await findById(userId);
+        if (user) await setUserPlan(userId, user.plan, { customerId: customer.id });
       }
       break;
     }

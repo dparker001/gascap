@@ -17,7 +17,7 @@ export async function POST(req: Request) {
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const userId = (session.user as { id?: string }).id ?? session.user.email ?? '';
-  const user   = findById(userId);
+  const user   = await findById(userId);
   if (!user || user.plan === 'free') {
     return NextResponse.json(
       { error: 'Receipt scanning is a Pro feature. Upgrade to scan receipts automatically.', upgrade: true },

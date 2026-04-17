@@ -24,7 +24,7 @@ export async function POST(req: Request) {
   }
 
   const userId = (session.user as { id?: string }).id ?? session.user.email ?? '';
-  const user   = findById(userId);
+  const user   = await findById(userId);
   if (!user) return NextResponse.json({ error: 'User not found.' }, { status: 404 });
 
   const body = await req.json() as {

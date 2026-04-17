@@ -95,7 +95,7 @@ function betaEndedEmailHtml(name: string): string {
 export async function POST(req: Request) {
   if (!auth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const expired = getExpiredBetaUsers();
+  const expired = await getExpiredBetaUsers();
   if (expired.length === 0) return NextResponse.json({ reverted: 0 });
 
   const results: string[] = [];
@@ -104,7 +104,7 @@ export async function POST(req: Request) {
     const isTrial = !!user.isProTrial;   // auto-signup trial vs admin-granted beta
 
     // 1. Revert plan to free
-    setUserPlan(user.id, 'free');
+    await setUserPlan(user.id, 'free');
 
     // 2. Sync GHL — swap gascap-pro → gascap-free, clean up trial/beta tags
     updateGhlContactPlan(user.email, 'free')

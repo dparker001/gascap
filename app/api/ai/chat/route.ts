@@ -53,7 +53,7 @@ export async function POST(req: Request) {
     // Look up fresh plan from store (avoids stale JWT)
     const userId      = (session?.user as { id?: string })?.id;
     const userEmail   = session?.user?.email;
-    const storedUser  = userId ? findById(userId) : (userEmail ? findByEmail(userEmail) : undefined);
+    const storedUser  = userId ? await findById(userId) : (userEmail ? await findByEmail(userEmail) : undefined);
     const livePlan    = storedUser?.plan ?? 'free';
     const isProServer = livePlan === 'pro' || livePlan === 'fleet';
 

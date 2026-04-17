@@ -38,7 +38,7 @@ export async function POST(req: Request) {
 
   if (sendAll) {
     // Send personalized digest to every user individually
-    const users = getAllUsers();
+    const users = await getAllUsers();
     let sent = 0;
     for (const user of users) {
       const body = buildDigestBody(user.id);

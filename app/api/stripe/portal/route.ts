@@ -17,7 +17,7 @@ export async function POST(req: Request) {
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
 
   const userId = (session.user as { id?: string }).id ?? session.user.email ?? '';
-  const user   = findById(userId);
+  const user   = await findById(userId);
   if (!user) return NextResponse.json({ error: 'User not found.' }, { status: 404 });
 
   let customerId = user.stripeCustomerId;
@@ -27,7 +27,7 @@ export async function POST(req: Request) {
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
     if (customers.data.length > 0) {
       customerId = customers.data[0].id;
-      setUserPlan(userId, user.plan, { customerId });
+      await setUserPlan(userId, user.plan, { customerId });
     }
   }
 
@@ -35,7 +35,7 @@ export async function POST(req: Request) {
   if (!customerId) {
     const customer = await stripe.customers.create({ email: user.email, name: user.name });
     customerId = customer.id;
-    setUserPlan(userId, user.plan, { customerId });
+    await setUserPlan(userId, user.plan, { customerId });
   }
 
   const reqUrl  = new URL(req.url);

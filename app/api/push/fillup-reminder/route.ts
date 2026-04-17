@@ -26,7 +26,7 @@ export async function GET() {
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const userId = (session.user as { id?: string }).id ?? session.user.email ?? '';
-  const user   = findById(userId);
+  const user   = await findById(userId);
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
   return NextResponse.json({ days: user.fillupReminderDays ?? 0 });
@@ -45,7 +45,7 @@ export async function PATCH(req: Request) {
   }
 
   const userId = (session.user as { id?: string }).id ?? session.user.email ?? '';
-  setFillupReminderDays(userId, days);
+  await setFillupReminderDays(userId, days);
 
   return NextResponse.json({ ok: true, days });
 }
@@ -58,7 +58,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  const users  = getAllUsers();
+  const users  = await getAllUsers();
   const now    = Date.now();
   let sent = 0, skipped = 0;
 
@@ -90,7 +90,7 @@ export async function POST(req: Request) {
     });
 
     if (result.recipients && result.recipients > 0) {
-      setLastFillupReminderSent(user.id);
+      await setLastFillupReminderSent(user.id);
       sent++;
     } else {
       skipped++;

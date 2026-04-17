@@ -28,14 +28,14 @@ export async function GET(req: Request) {
     return NextResponse.redirect(`${baseUrl}/?verified=invalid`);
   }
 
-  const result = verifyEmailToken(token);
+  const result = await verifyEmailToken(token);
   if (!result.ok) {
     const msg = encodeURIComponent(result.error ?? 'Verification failed.');
     return NextResponse.redirect(`${baseUrl}/?verified=error&msg=${msg}`);
   }
 
   if (result.userId) {
-    creditVerifiedReferral(result.userId);
+    await creditVerifiedReferral(result.userId);
   }
 
   // Send the user to the sign-in page with a success banner.
@@ -48,14 +48,14 @@ export async function POST(req: Request) {
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const userId = (session.user as { id?: string }).id ?? session.user.email ?? '';
-  const user   = findById(userId);
+  const user   = await findById(userId);
   if (!user) return NextResponse.json({ error: 'User not found.' }, { status: 404 });
   if (user.emailVerified) {
     return NextResponse.json({ message: 'Email already verified.' });
   }
 
   try {
-    const token     = createEmailVerifyToken(userId);
+    const token     = await createEmailVerifyToken(userId);
     const baseUrl   = getBaseUrl(req);
     const verifyUrl = `${baseUrl}/verify-email?token=${token}`;
     await sendMail({

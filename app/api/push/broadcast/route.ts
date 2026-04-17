@@ -24,7 +24,7 @@ export async function POST(req: Request) {
   // If targeting a specific user, resolve their external ID
   let externalIds: string[] | undefined;
   if (targetEmail?.trim()) {
-    const user = findByEmail(targetEmail.trim());
+    const user = await findByEmail(targetEmail.trim());
     if (!user) {
       return NextResponse.json({ error: `No user found with email: ${targetEmail}` }, { status: 404 });
     }

@@ -15,10 +15,10 @@ export async function GET() {
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const userId = (session.user as { id?: string }).id ?? session.user.email ?? '';
-  const user   = findById(userId);
+  const [user, vehicles] = await Promise.all([findById(userId), getVehiclesForUser(userId)]);
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
-  const vehicleCount = getVehiclesForUser(userId).length;
+  const vehicleCount = vehicles.length;
   const earned = user.badges ?? [];
   const now    = new Date();
 
@@ -62,7 +62,7 @@ export async function POST(req: Request) {
     }
   } catch { /* empty body is fine */ }
 
-  const result = recordActivity(userId, event);
+  const result = await recordActivity(userId, event);
 
   // Resolve full badge objects for any newly earned badges
   const newBadgeDefs = result.newBadges.map((id) => BADGES.find((b) => b.id === id)).filter((b): b is BadgeDef => b !== undefined);

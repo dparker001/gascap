@@ -18,7 +18,7 @@ export async function POST(req: Request) {
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const userId   = (session.user as { id?: string }).id ?? session.user.email ?? '';
-  const user     = findById(userId);
+  const user     = await findById(userId);
   const userName = session.user.name ?? user?.name ?? 'GasCap User';
   const plan     = (user?.plan ?? 'free') as 'free' | 'pro' | 'fleet';
 

@@ -48,7 +48,7 @@ export async function POST(req: Request) {
     if (!emailRegex.test(email))
                          return NextResponse.json({ error: 'Enter a valid email address.' }, { status: 400 });
 
-    if (findByEmail(email))
+    if (await findByEmail(email))
                          return NextResponse.json({ error: 'An account with that email already exists.' }, { status: 409 });
 
     const user = await createUser(name, email, password, userLocale);
@@ -56,22 +56,22 @@ export async function POST(req: Request) {
     // Auto-enroll every new signup in a 30-day GasCap™ Pro trial. Sets
     // plan='pro', isProTrial=true, betaProExpiry=+30d. The beta-expire cron
     // will revert them to free automatically if they don't upgrade.
-    grantNewSignupProTrial(user.id, 30);
+    await grantNewSignupProTrial(user.id, 30);
 
     // Enroll in the 5-email drip sequence (step 1 = welcome, sent below).
-    enrollEmailCampaign(user.id);
+    await enrollEmailCampaign(user.id);
 
     // Store referral code on the new user — credit fires after email verification
     if (referralCode?.trim()) {
-      const referrer = findByReferralCode(referralCode.trim());
+      const referrer = await findByReferralCode(referralCode.trim());
       if (referrer && referrer.id !== user.id) {
-        setReferredBy(user.id, referralCode.trim().toUpperCase());
+        await setReferredBy(user.id, referralCode.trim().toUpperCase());
       }
     }
 
     // Build verify URL once — used in both the verification email and the welcome email.
     const baseUrl   = getBaseUrl(req);
-    const verifyUrl = `${baseUrl}/verify-email?token=${createEmailVerifyToken(user.id)}&lang=${userLocale}`;
+    const verifyUrl = `${baseUrl}/verify-email?token=${await createEmailVerifyToken(user.id)}&lang=${userLocale}`;
 
     // Send verification email (non-blocking — don't fail registration if email fails)
     try {

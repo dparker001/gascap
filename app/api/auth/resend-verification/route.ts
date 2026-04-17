@@ -18,11 +18,11 @@ export async function POST(req: Request) {
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const userId = (session as Session).user.id ?? session.user.email ?? '';
-  const user   = findById(userId);
+  const user   = await findById(userId);
   if (!user)  return NextResponse.json({ error: 'User not found.' }, { status: 404 });
   if (user.emailVerified) return NextResponse.json({ error: 'Already verified.' }, { status: 400 });
 
-  const token     = createEmailVerifyToken(user.id);
+  const token     = await createEmailVerifyToken(user.id);
   const baseUrl   = getBaseUrl(req);
   const verifyUrl = `${baseUrl}/verify-email?token=${token}`;
 
