@@ -54,7 +54,7 @@ const en = {
 
   // ── Hero (guest landing) ───────────────────────────────────────────────────
   hero: {
-    badge:          '30 days Pro free · No app store · Works offline',
+    badge:          'No app store · Works offline · Free',
     headline:       'Know exactly how much gas you need —',
     headlineAccent: 'before you pull up.',
     sub:            'GasCap™ calculates your exact fill-up cost using live local gas prices. No more guessing, no more overpaying — especially on rental car returns.',
@@ -223,7 +223,7 @@ const en = {
   signUp: {
     title:            'Create your account',
     sub:              'Join free · No credit card required',
-    proTrial:         '🎁 Your first 30 days are Pro — completely free',
+    proTrial:         'Your first 30 days are Pro — completely free',
     nameLabel:        'Your name',
     namePlaceholder:  'Alex Johnson',
     emailLabel:       'Email',
@@ -736,7 +736,7 @@ const es: typeof en = {
   ],
 
   hero: {
-    badge:          '30 días Pro gratis · Sin tienda de apps · Funciona sin internet',
+    badge:          'Sin tienda de apps · Funciona sin internet · Gratis',
     headline:       'Sabe exactamente cuánta gasolina necesitas —',
     headlineAccent: 'antes de llegar a la bomba.',
     sub:            'GasCap™ calcula el costo exacto de tu llenado usando precios locales en tiempo real. Sin adivinanzas, sin pagar de más — especialmente al devolver un auto rentado.',
@@ -896,7 +896,7 @@ const es: typeof en = {
   signUp: {
     title:            'Crea tu cuenta',
     sub:              'Únete gratis · Sin tarjeta de crédito',
-    proTrial:         '🎁 Tus primeros 30 días son Pro — completamente gratis',
+    proTrial:         'Tus primeros 30 días son Pro — completamente gratis',
     nameLabel:        'Tu nombre',
     namePlaceholder:  'Alex Johnson',
     emailLabel:       'Correo electrónico',
