@@ -97,9 +97,9 @@ function SignUpForm() {
           <p className="text-slate-500 text-sm mb-4">{t.signUp.sub}</p>
 
           {/* Pro trial callout */}
-          <div className="mb-5 bg-emerald-50 border border-emerald-200 rounded-2xl px-4 py-3 flex items-center gap-3">
+          <div className="mb-5 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 flex items-center gap-3">
             <span className="text-xl flex-shrink-0">🎁</span>
-            <p className="text-sm font-bold text-emerald-800">{t.signUp.proTrial}</p>
+            <p className="text-sm font-bold text-amber-800">{t.signUp.proTrial}</p>
           </div>
 
           {/* Referral banner */}

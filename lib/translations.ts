@@ -62,6 +62,8 @@ const en = {
     pill_rental:    'Rental car mode',
     pill_mpg:       'MPG tracking',
     pill_ai:        'AI advisor',
+    offerStrip:     '🎁 Sign up today — first 30 days of Pro FREE',
+    offerStripSub:  'No credit card · Cancel anytime',
   },
 
   // ── Problem / Solution ─────────────────────────────────────────────────────
@@ -220,8 +222,8 @@ const en = {
   // ── Sign up page ───────────────────────────────────────────────────────────
   signUp: {
     title:            'Create your account',
-    sub:              'Your first 30 days include full Pro access — free, no credit card required.',
-    proTrial:         '🎁 First 30 days: full Pro access included free',
+    sub:              'Join free · No credit card required',
+    proTrial:         '🎁 Your first 30 days are Pro — completely free',
     nameLabel:        'Your name',
     namePlaceholder:  'Alex Johnson',
     emailLabel:       'Email',
@@ -236,7 +238,7 @@ const en = {
     },
     button:         'Create free account',
     loading:        'Creating account…',
-    trustFree:      '🎁 30 days Pro free',
+    trustFree:      '✓ 30 days Pro free',
     trustNoCard:    '✓ No credit card',
     trustCancel:    '✓ Cancel anytime',
     haveAccount:    'Already have an account?',
@@ -742,6 +744,8 @@ const es: typeof en = {
     pill_rental:    'Modo auto rentado',
     pill_mpg:       'Seguimiento MPG',
     pill_ai:        'Asesor IA',
+    offerStrip:     '🎁 Regístrate hoy — primeros 30 días de Pro GRATIS',
+    offerStripSub:  'Sin tarjeta de crédito · Cancela cuando quieras',
   },
 
   problem: {
@@ -891,8 +895,8 @@ const es: typeof en = {
 
   signUp: {
     title:            'Crea tu cuenta',
-    sub:              'Tus primeros 30 días incluyen acceso Pro completo — gratis, sin tarjeta de crédito.',
-    proTrial:         '🎁 Primeros 30 días: acceso Pro completo incluido gratis',
+    sub:              'Únete gratis · Sin tarjeta de crédito',
+    proTrial:         '🎁 Tus primeros 30 días son Pro — completamente gratis',
     nameLabel:        'Tu nombre',
     namePlaceholder:  'Alex Johnson',
     emailLabel:       'Correo electrónico',
@@ -907,7 +911,7 @@ const es: typeof en = {
     },
     button:         'Crear cuenta gratis',
     loading:        'Creando cuenta…',
-    trustFree:      '🎁 30 días Pro gratis',
+    trustFree:      '✓ 30 días Pro gratis',
     trustNoCard:    '✓ Sin tarjeta de crédito',
     trustCancel:    '✓ Cancela cuando quieras',
     haveAccount:    '¿Ya tienes una cuenta?',

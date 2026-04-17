@@ -174,7 +174,7 @@ function GuestHero() {
         </p>
 
         {/* Trust pills */}
-        <div className="flex items-center justify-center gap-3 flex-wrap mb-2">
+        <div className="flex items-center justify-center gap-3 flex-wrap mb-5">
           {pills.map(({ icon, label }) => (
             <span key={label}
               className="inline-flex items-center gap-1.5 bg-white/10 backdrop-blur-sm
@@ -184,6 +184,14 @@ function GuestHero() {
             </span>
           ))}
         </div>
+
+        {/* 30-day Pro offer strip */}
+        <a href="/signup"
+           className="block w-full max-w-sm mx-auto bg-brand-orange hover:bg-[#FF9A1A]
+                      transition-colors rounded-2xl px-5 py-3.5 text-center shadow-brand">
+          <p className="text-white text-sm font-black tracking-wide">{t.hero.offerStrip}</p>
+          <p className="text-white/70 text-[11px] mt-0.5">{t.hero.offerStripSub}</p>
+        </a>
       </div>
     </section>
   );
