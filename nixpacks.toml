@@ -1,4 +1,0 @@
-# Pin to Node 24 — Prisma 7 requires Node ^20.19 || ^22.12 || >=24.0
-# Railway's default nixpkgs snapshot has Node 22.11 which is too old.
-[phases.setup]
-nixPkgs = ["nodejs_24", "npm-9_x", "openssl"]
