@@ -72,12 +72,6 @@ export default function PlanBadge() {
     );
   }
 
-  /* ── Signed out (default) ── */
-  return (
-    <div className="mt-4 inline-flex items-center gap-1.5 bg-white/10 border border-white/20
-                    rounded-full px-3.5 py-1.5">
-      <span className="w-1.5 h-1.5 rounded-full bg-green-400 flex-shrink-0" aria-hidden="true" />
-      <span className="text-white/80 text-xs font-medium">{t.plan.freeGuest}</span>
-    </div>
-  );
+  /* ── Signed out — hero offer strip handles the guest messaging ── */
+  return null;
 }

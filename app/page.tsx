@@ -154,14 +154,7 @@ function GuestHero() {
       <div className="absolute inset-0 bg-slate-900/65" />
 
       {/* ── Hero content ─────────────────────────────────────────────────── */}
-      <div className="relative z-10 px-4 pt-10 pb-10 max-w-lg mx-auto w-full text-center">
-        {/* Eyebrow badge */}
-        <div className="inline-flex items-center gap-2 bg-brand-orange/20 border border-brand-orange/40
-                        rounded-full px-3 py-1 mb-4 backdrop-blur-sm">
-          <span className="text-brand-orange text-xs">⭐</span>
-          <span className="text-brand-orange/90 text-[11px] font-bold">{t.hero.badge}</span>
-        </div>
-
+      <div className="relative z-10 px-4 pt-6 pb-6 max-w-lg mx-auto w-full text-center">
         {/* Headline */}
         <h1 className="text-3xl font-black text-white leading-tight mb-3 drop-shadow-lg">
           {t.hero.headline}{' '}
@@ -169,12 +162,12 @@ function GuestHero() {
         </h1>
 
         {/* Subheadline */}
-        <p className="text-sm text-slate-300 leading-relaxed mb-5 max-w-sm mx-auto drop-shadow">
+        <p className="text-sm text-slate-300 leading-relaxed mb-4 max-w-sm mx-auto drop-shadow">
           {t.hero.sub}
         </p>
 
         {/* Trust pills */}
-        <div className="flex items-center justify-center gap-3 flex-wrap mb-5">
+        <div className="flex items-center justify-center gap-3 flex-wrap mb-4">
           {pills.map(({ icon, label }) => (
             <span key={label}
               className="inline-flex items-center gap-1.5 bg-white/10 backdrop-blur-sm
