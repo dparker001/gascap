@@ -180,15 +180,15 @@ function GuestHero() {
           ))}
         </div>
 
-        {/* 30-day Pro offer strip — matches signup page banner exactly */}
+        {/* 30-day Pro offer strip — orange background CTA */}
         <a href="/signup"
-           className="block w-full max-w-sm mx-auto bg-amber-50 border border-amber-200
-                      hover:bg-amber-100 transition-colors rounded-2xl px-4 py-3
+           className="block w-full max-w-sm mx-auto bg-orange-500 hover:bg-orange-600
+                      transition-colors rounded-2xl px-4 py-3
                       flex items-center gap-3">
           <span className="text-xl flex-shrink-0">🎁</span>
           <div>
-            <p className="text-sm font-bold text-amber-800 leading-tight">{t.hero.offerStrip}</p>
-            <p className="text-amber-600 text-[10px] mt-0.5">{t.hero.offerStripSub}</p>
+            <p className="text-sm font-bold text-white leading-tight">{t.hero.offerStrip}</p>
+            <p className="text-orange-100 text-[10px] mt-0.5">{t.hero.offerStripSub}</p>
           </div>
         </a>
       </div>
