@@ -1,11 +1,12 @@
 import type { Metadata, Viewport } from 'next';
-import AuthProvider        from '@/components/AuthProvider';
-import FeedbackButton      from '@/components/FeedbackButton';
-import DarkModeProvider    from '@/components/DarkModeProvider';
-import PullToRefresh       from '@/components/PullToRefresh';
-import ErrorBoundary       from '@/components/ErrorBoundary';
-import { LanguageProvider } from '@/contexts/LanguageContext';
-import OneSignalProvider   from '@/components/OneSignalProvider';
+import AuthProvider          from '@/components/AuthProvider';
+import FeedbackButton        from '@/components/FeedbackButton';
+import DarkModeProvider      from '@/components/DarkModeProvider';
+import PullToRefresh         from '@/components/PullToRefresh';
+import ErrorBoundary         from '@/components/ErrorBoundary';
+import { LanguageProvider }  from '@/contexts/LanguageContext';
+import OneSignalProvider     from '@/components/OneSignalProvider';
+import GiveawayEntryToast    from '@/components/GiveawayEntryToast';
 import './globals.css';
 
 const APP_URL = process.env.NEXTAUTH_URL ?? 'https://www.gascap.app';
@@ -73,6 +74,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <LanguageProvider>
           <AuthProvider>
             <OneSignalProvider />
+            <GiveawayEntryToast />
             <ErrorBoundary>
               <PullToRefresh />
               {children}
