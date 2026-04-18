@@ -1,6 +1,7 @@
 // GasCap™ hero header
 'use client';
 import Link                 from 'next/link';
+import { useState, useEffect } from 'react';
 import { useSession }       from 'next-auth/react';
 import AuthButton           from './AuthButton';
 import PlanBadge            from './PlanBadge';
@@ -10,6 +11,24 @@ import { useTranslation }   from '@/contexts/LanguageContext';
 export default function Header() {
   const { t, locale, toggle } = useTranslation();
   const { data: session }     = useSession();
+  const [giftWiggle, setGiftWiggle] = useState(false);
+
+  // Wiggle the gift box every 6 seconds to draw attention
+  useEffect(() => {
+    if (!session) return;
+    const INTERVAL = 6000;
+    const DURATION = 750;
+    // Small initial delay so it doesn't fire instantly on load
+    const first = setTimeout(() => {
+      setGiftWiggle(true);
+      setTimeout(() => setGiftWiggle(false), DURATION);
+    }, 2500);
+    const interval = setInterval(() => {
+      setGiftWiggle(true);
+      setTimeout(() => setGiftWiggle(false), DURATION);
+    }, INTERVAL);
+    return () => { clearTimeout(first); clearInterval(interval); };
+  }, [session]);
 
   return (
     <header className="relative overflow-hidden bg-brand-dark pt-10 pb-7 px-5">
@@ -71,7 +90,10 @@ export default function Header() {
                            transition-colors rounded-xl px-2.5 py-1.5"
                 title={t.nav.wrapped}
               >
-                <span className="text-sm" aria-hidden="true">🎁</span>
+                <span
+                  className={`text-sm inline-block ${giftWiggle ? 'animate-gift-wiggle' : ''}`}
+                  aria-hidden="true"
+                >🎁</span>
                 <span className="text-[10px] font-black text-white/80 hidden sm:inline">{t.nav.wrapped}</span>
               </Link>
             )}

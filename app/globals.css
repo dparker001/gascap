@@ -154,6 +154,23 @@ input[type='number'] { -moz-appearance: textfield; }
 /* ── Gauge fill bar (result cards) ─────────────────────────────────── */
 .gauge-fill { transition: width 0.7s cubic-bezier(0.4, 0, 0.2, 1); }
 
+/* ── Gift box wiggle ────────────────────────────────────────────────── */
+@keyframes giftWiggle {
+  0%   { transform: rotate(0deg)    scale(1);    }
+  10%  { transform: rotate(-18deg)  scale(1.2);  }
+  25%  { transform: rotate(14deg)   scale(1.2);  }
+  40%  { transform: rotate(-10deg)  scale(1.12); }
+  55%  { transform: rotate(7deg)    scale(1.08); }
+  70%  { transform: rotate(-4deg)   scale(1.04); }
+  85%  { transform: rotate(2deg)    scale(1.02); }
+  100% { transform: rotate(0deg)    scale(1);    }
+}
+.animate-gift-wiggle {
+  animation: giftWiggle 0.75s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+  display: inline-block;
+  transform-origin: center 80%;
+}
+
 /* ── Reviews marquee ────────────────────────────────────────────────── */
 @keyframes marquee-left {
   0%   { transform: translateX(0); }
