@@ -1,32 +1,63 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 116" fill="none">
-  <!-- Outer P bowl — dark forest green -->
-  <path d="M 40 20 C 96 20 96 69 40 69"
-        stroke="#005F4A" stroke-width="11" stroke-linecap="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 118">
+  <!--
+    GasCap™ P/pump logo — closed filled rings only.
 
-  <!-- Inner teal accent arcs -->
-  <path d="M 40 31 C 80 31 80 58 40 58"
-        stroke="#1EB68F" stroke-width="7" stroke-linecap="round"/>
-  <path d="M 40 40 C 68 40 68 49 40 49"
-        stroke="#1EB68F" stroke-width="5.5" stroke-linecap="round"/>
+    All P-bowl rings share the same y extents (14 → 67) and differ only
+    in the x-direction control point (Cx).  Each ring is two opposing
+    bezier arcs joined at x = 41:
 
-  <!-- Pump body — P vertical stem -->
-  <rect x="23" y="19" width="19" height="60" rx="4" fill="#005F4A"/>
+      M 41 14  C Cx_outer 14  Cx_outer 67  41 67   ← CW (down-right)
+               C Cx_inner 67  Cx_inner 14  41 14   ← CCW (up-right)
+      Z
 
-  <!-- Pump window (teal tint) -->
-  <rect x="27" y="29" width="11" height="15" rx="2" fill="#1EB68F" opacity="0.45"/>
+    Midpoint x-reach = 0.125·41 + 0.75·Cx + 0.125·41 = 10.25 + 0.75·Cx
 
-  <!-- Nozzle arm extending upper-left -->
-  <path d="M 27 21 Q 19 16 11 11"
-        stroke="#005F4A" stroke-width="7.5" stroke-linecap="round"/>
+    Cx  97 → midpoint x ≈ 83   (outer edge)
+    Cx  70 → midpoint x ≈ 63   (dark-green / teal boundary)
+    Cx  65 → midpoint x ≈ 59   (teal-1 / teal-2 boundary)
+    Cx  60 → midpoint x ≈ 55   (teal-2 inner = white-space boundary)
 
-  <!-- Nozzle head -->
-  <rect x="5"  y="7"  width="9"  height="10" rx="2.5" fill="#005F4A"/>
-  <rect x="11" y="9.5" width="7" height="5"  rx="2"   fill="#005F4A"/>
+    Band widths at mid-height: green ≈ 20 u | teal-1 ≈ 4 u | teal-2 ≈ 4 u | white ≈ 12 u
+  -->
 
-  <!-- Connector block at base of stem -->
-  <rect x="40" y="75" width="11" height="7" rx="2" fill="#005F4A"/>
+  <!-- ── ① DARK GREEN RING (Cx outer=97, Cx inner=70) ────────── -->
+  <path d="M 41 14 C 97 14 97 67 41 67 C 70 67 70 14 41 14 Z"
+        fill="#005F4A"/>
 
-  <!-- Hose curve at bottom of P -->
-  <path d="M 31 79 Q 31 96 33 99 Q 37 106 46 106 L 52 106"
-        stroke="#005F4A" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- ── ② TEAL RING 1 (Cx outer=70, Cx inner=65) ───────────── -->
+  <path d="M 41 14 C 70 14 70 67 41 67 C 65 67 65 14 41 14 Z"
+        fill="#1EB68F"/>
+
+  <!-- ── ③ TEAL RING 2 thinner (Cx outer=65, Cx inner=60) ───── -->
+  <path d="M 41 14 C 65 14 65 67 41 67 C 60 67 60 14 41 14 Z"
+        fill="#1EB68F"/>
+
+  <!-- ── PUMP BODY covers the left edges of all rings ─────────── -->
+  <rect x="22" y="14" width="21" height="67" rx="4" fill="#005F4A"/>
+
+  <!-- Pump window / display screen -->
+  <rect x="26" y="25" width="13" height="16" rx="2.5"
+        fill="#1EB68F" fill-opacity="0.40"/>
+
+  <!-- ── NOZZLE ARM ──────────────────────────────────────────── -->
+  <g fill="none">
+    <path d="M 27 17 Q 19 12 12 8"
+          fill="none"
+          stroke="#005F4A" stroke-width="7.5" stroke-linecap="round"/>
+  </g>
+
+  <!-- Nozzle tip — fully filled, no stroke ambiguity -->
+  <rect x="5"  y="4"  width="10" height="10" rx="2.5" fill="#005F4A"/>
+  <rect x="11" y="7"  width="7"  height="4.5" rx="2"  fill="#005F4A"/>
+
+  <!-- ── HOSE + CONNECTOR ───────────────────────────────────── -->
+  <rect x="41" y="77" width="11" height="7" rx="2" fill="#005F4A"/>
+
+  <g fill="none">
+    <path d="M 31 81 Q 31 98 33 101 Q 37 109 47 109 L 54 109"
+          fill="none"
+          stroke="#005F4A" stroke-width="9"
+          stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
 </svg>
