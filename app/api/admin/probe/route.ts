@@ -25,11 +25,20 @@ export async function GET(req: Request) {
     ? `${adminPw.slice(0, 2)}${'*'.repeat(adminPw.length - 4)}${adminPw.slice(-2)}`
     : adminPw ? '****' : null;
 
+  // Extract just the hostname from DATABASE_URL (safe to expose)
+  let dbHost = 'unknown';
+  try {
+    if (dbUrl) {
+      const u = new URL(dbUrl);
+      dbHost = `${u.hostname}:${u.port}`;
+    }
+  } catch { /* ignore */ }
+
   return NextResponse.json({
     deployedAt:       new Date().toISOString(),
     nodeEnv,
     ADMIN_PASSWORD:   adminPw  ? `set (${adminPw.length} chars) hint: ${hint}` : 'NOT SET',
-    DATABASE_URL:     dbUrl    ? `set (${dbUrl.length} chars)`   : 'NOT SET',
+    DATABASE_URL:     dbUrl    ? `set (${dbUrl.length} chars) host: ${dbHost}` : 'NOT SET',
     NEXTAUTH_SECRET:  authSec  ? `set (${authSec.length} chars)` : 'NOT SET',
     nodeVersion:      process.version,
     ...(testResult !== undefined && { testResult }),
