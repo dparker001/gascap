@@ -683,7 +683,7 @@ const en = {
   badges: {
     achievements:   'Achievements',
     runCalcToEarn:  'Run a calculation to earn your first badge!',
-    dayStreak:      (n: number) => `🔥 ${n}-day streak`,
+    dayStreak:      (n: number) => `⚡ ${n}-day streak`,
     badgeUnlocked:  'Badge Unlocked!',
   },
 
@@ -1337,7 +1337,7 @@ const es: typeof en = {
   badges: {
     achievements:   'Logros',
     runCalcToEarn:  '¡Haz un cálculo para ganar tu primera insignia!',
-    dayStreak:      (n: number) => `🔥 Racha de ${n} días`,
+    dayStreak:      (n: number) => `⚡ Racha de ${n} días`,
     badgeUnlocked:  '¡Insignia desbloqueada!',
   },
 

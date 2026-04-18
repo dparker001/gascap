@@ -60,7 +60,7 @@ export default function StreakRewards() {
       {/* Header row */}
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm font-black text-navy-700">🔥 Streak Rewards</p>
+          <p className="text-sm font-black text-navy-700">⚡ Streak Rewards</p>
           <p className="text-[10px] text-slate-400 mt-0.5">
             Maintain your daily streak to earn free Pro months
           </p>

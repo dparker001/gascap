@@ -268,7 +268,7 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
 
           {stats && stats.count === 3 && userPlan === 'free' && (
             <UpgradeNudge
-              emoji="🔥"
+              emoji="⚡"
               headline="You're tracking like a pro!"
               body="Unlock MPG Trend charts, spending analytics, and monthly reports. See exactly where your money goes."
               ctaText="Upgrade to Pro →"

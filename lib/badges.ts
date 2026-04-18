@@ -49,7 +49,7 @@ export const BADGES: BadgeDef[] = [
   {
     id:          'streak_3',
     name:        'On a Roll',
-    emoji:       '🔥',
+    emoji:       '⚡',
     description: 'Used GasCap 3 days in a row.',
     hint:        'Use the app 3 days in a row.',
   },

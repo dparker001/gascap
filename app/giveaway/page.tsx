@@ -140,7 +140,7 @@ export default function GiveawayPage() {
               </p>
             ) : (
               <p className="text-center text-[#1EB68F] text-xs font-semibold leading-relaxed">
-                🔥 Great streak! You&apos;re building serious odds this month.
+                ⚡ Great streak! You&apos;re building serious odds this month.
               </p>
             )}
           </div>

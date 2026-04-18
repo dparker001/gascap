@@ -661,7 +661,7 @@ export default function AdminPage() {
                 { val: 'today',       label: '🟢 Active Today' },
                 { val: 'has-fillups', label: '⛽ Has Fill-Ups' },
                 { val: 'no-logins',   label: '😴 Never Logged In' },
-                { val: 'has-streak',  label: '🔥 Has Streak' },
+                { val: 'has-streak',  label: '⚡ Has Streak' },
               ] as const).map(({ val, label }) => (
                 <button key={val} onClick={() => setFilterActivity(val)}
                   className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${
@@ -815,7 +815,7 @@ export default function AdminPage() {
                       </span>
                       {u.streak > 0 && (
                         <span className="text-[10px] text-amber-600 font-semibold">
-                          🔥 {u.streak}-day streak
+                          ⚡ {u.streak}-day streak
                         </span>
                       )}
                     </div>

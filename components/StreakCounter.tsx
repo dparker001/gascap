@@ -38,7 +38,7 @@ export default function StreakCounter() {
   return (
     <div className="max-w-lg mx-auto w-full px-4 pt-3 pb-2">
       <div className="bg-navy-700 rounded-2xl px-4 py-3 flex items-center gap-3">
-        <span className="text-2xl flex-shrink-0" aria-hidden="true">🔥</span>
+        <span className="text-2xl flex-shrink-0" aria-hidden="true">⚡</span>
         <div className="flex-1 min-w-0">
           {hasStreak ? (
             <>

@@ -246,7 +246,7 @@ export function featureTipsEmailHtml(name: string, userId: string): string {
       ${trialBadge(27)}
 
       <p style="margin:0 0 6px;font-size:24px;font-weight:900;color:#1e2d4a;line-height:1.2;">
-        4 Pro features to try this week, ${first} 🔥
+        4 Pro features to try this week, ${first} ⚡
       </p>
       <p style="margin:0 0 22px;font-size:15px;color:#475569;line-height:1.65;">
         You're 3 days into your free Pro trial — plenty of time to fall in love
@@ -547,7 +547,7 @@ export async function sendCampaignEmail(step: number, user: CampaignRecipient): 
       text:    welcomeEmailText(name),
     },
     2: {
-      subject: '3 Pro features to try this week 🔥 (27 days of Pro left)',
+      subject: '3 Pro features to try this week ⚡ (27 days of Pro left)',
       html:    featureTipsEmailHtml(name, id),
       text:    featureTipsEmailText(name),
     },
