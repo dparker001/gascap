@@ -146,19 +146,47 @@ export default function GiveawayPage() {
           </div>
         ) : (
           /* Not eligible — free plan */
-          <div className="bg-white/10 backdrop-blur-sm rounded-3xl p-5 space-y-3 border border-white/10 text-center">
-            <p className="text-4xl">🔒</p>
-            <p className="text-white font-black text-lg">Pro & Fleet members only</p>
-            <p className="text-white/60 text-sm leading-relaxed">
-              Upgrade to Pro or Fleet to earn entries in every monthly gas card drawing.
-            </p>
+          <div className="bg-white/10 backdrop-blur-sm rounded-3xl p-5 space-y-3 border border-white/10">
+
+            {/* Free entry option */}
+            <div className="text-center space-y-1">
+              <p className="text-3xl">🎁</p>
+              <p className="text-white font-black text-base">You have 1 free entry available</p>
+              <p className="text-white/60 text-sm leading-relaxed">
+                Any eligible person can enter once per month — no purchase needed.
+              </p>
+            </div>
+
             <Link
-              href="/upgrade"
-              className="block w-full py-3 rounded-2xl bg-amber-500 hover:bg-amber-400
-                         text-white font-black text-sm transition-colors"
+              href="/amoe"
+              className="block w-full py-3 rounded-2xl bg-[#1EB68F] hover:bg-[#17a07f]
+                         text-white font-black text-sm text-center transition-colors"
             >
-              ⭐ Upgrade to Pro — $4.99/mo
+              Submit My Free Entry →
             </Link>
+
+            {/* Divider */}
+            <div className="flex items-center gap-3 py-1">
+              <div className="flex-1 h-px bg-white/10" />
+              <p className="text-white/30 text-[10px] font-bold uppercase tracking-wider">or</p>
+              <div className="flex-1 h-px bg-white/10" />
+            </div>
+
+            {/* Upgrade CTA */}
+            <div className="text-center space-y-1.5">
+              <p className="text-white/60 text-xs leading-relaxed">
+                Upgrade to Pro and earn up to{' '}
+                <strong className="text-amber-400">31 entries per month</strong>{' '}
+                automatically — one for every day you open the app.
+              </p>
+              <Link
+                href="/upgrade"
+                className="block w-full py-3 rounded-2xl bg-amber-500 hover:bg-amber-400
+                           text-white font-black text-sm transition-colors"
+              >
+                ⭐ Upgrade to Pro — $4.99/mo
+              </Link>
+            </div>
           </div>
         )}
 

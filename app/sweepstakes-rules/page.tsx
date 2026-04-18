@@ -79,22 +79,25 @@ export default function SweepstakesRulesPage() {
                 per calendar day; maximum of 31 entries per Entry Month.
               </p>
               <p>
-                <strong>Method B — No Purchase Necessary (free entry):</strong> Any eligible person may
-                enter without purchasing a GasCap™ subscription by sending a hand-printed 3&rdquo;&nbsp;×&nbsp;5&rdquo;
-                card with their full name, mailing address, email address, date of birth, and the
-                Entry Month (e.g. &ldquo;January 2026&rdquo;) to:
+                <strong>Method B — No Purchase Necessary (free online entry):</strong> Any eligible
+                person may enter without purchasing a GasCap™ subscription by completing the free
+                entry form at:
               </p>
-              <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-mono text-xs text-slate-700">
-                GasCap™ Sweepstakes — [Month Year]<br />
-                {SPONSOR}<br />
-                Attn: Monthly Gas Card Giveaway<br />
-                [Mailing address on file — contact {CONTACT_EMAIL}]
+              <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs text-slate-700">
+                <Link
+                  href="/amoe"
+                  className="text-[#1EB68F] underline font-semibold"
+                >
+                  gascap.app/amoe
+                </Link>
+                <span className="text-slate-500 ml-2">— Free Entry Form</span>
               </div>
               <p>
-                Mail-in entries must be postmarked no later than the last day of the Entry Month and
-                received within 7 calendar days thereafter. Limit one (1) mail-in entry per person per
-                Entry Month. Mail-in entries receive one entry regardless of the number of app active
-                days accrued.
+                The free entry form requires only a first name, last name, and valid email address.
+                Free-entry submissions must be submitted before 11:59:59 PM Eastern Time on the last
+                day of the Entry Month. Limit one (1) free online entry per person per Entry Month,
+                as determined by email address. Free online entries receive one (1) entry regardless
+                of the number of app active days.
               </p>
             </div>
           </section>
