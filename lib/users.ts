@@ -537,11 +537,18 @@ export async function updateUserProfile(
 }
 
 export async function recordLogin(userId: string): Promise<void> {
+  // Also add today to activeDays so each login day earns a giveaway entry
+  const today = todayStr();
+  const user  = await prisma.user.findUnique({ where: { id: userId }, select: { activeDays: true } });
+  const activeDays = user?.activeDays ?? [];
+  const updatedDays = activeDays.includes(today) ? activeDays : [...activeDays, today];
+
   await prisma.user.update({
     where: { id: userId },
     data: {
       loginCount:  { increment: 1 },
       lastLoginAt: new Date().toISOString(),
+      activeDays:  updatedDays,
     },
   });
 }

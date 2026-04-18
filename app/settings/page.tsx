@@ -16,6 +16,12 @@ interface ReferralSummary {
   nextExpiryDate:  string | null;
 }
 
+interface GiveawayEntries {
+  month:      string;
+  entryCount: number;
+  eligible:   boolean;
+}
+
 const AVATAR_COLORS = [
   { bg: 'bg-amber-500',  label: 'Amber'  },
   { bg: 'bg-navy-700',   label: 'Navy'   },
@@ -59,6 +65,7 @@ export default function SettingsPage() {
   const [alertSaved,       setAlertSaved]       = useState(false);
   const [alertSaving,      setAlertSaving]      = useState(false);
   const [livePlan,         setLivePlan]         = useState<string | null>(null);
+  const [giveaway,         setGiveaway]         = useState<GiveawayEntries | null>(null);
 
   useEffect(() => {
     if (!session) return;
@@ -75,6 +82,10 @@ export default function SettingsPage() {
       .then((d: { threshold?: number | null }) => {
         if (d.threshold) setAlertThreshold(String(d.threshold));
       })
+      .catch(() => {});
+    fetch('/api/user/giveaway-entries')
+      .then((r) => r.json())
+      .then((d: GiveawayEntries) => { if (d.eligible) setGiveaway(d); })
       .catch(() => {});
   }, [session]);
 
@@ -479,6 +490,62 @@ export default function SettingsPage() {
               )}
             </div>
 
+          </div>
+        )}
+
+        {/* Monthly Gas Card Giveaway — Pro/Fleet only */}
+        {giveaway && (
+          <div className="bg-white rounded-2xl border border-amber-200 shadow-sm p-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400">Monthly Gas Card</h2>
+              <span className="text-[10px] font-black bg-amber-400 text-white px-2 py-0.5 rounded-full">GIVEAWAY</span>
+            </div>
+
+            {/* Entry count */}
+            <div className="flex items-center gap-4 bg-amber-50 rounded-2xl px-4 py-3">
+              <div className="text-center min-w-[48px]">
+                <p className="text-3xl font-black text-amber-600">{giveaway.entryCount}</p>
+                <p className="text-[10px] text-amber-500 font-bold leading-tight">
+                  {giveaway.entryCount === 1 ? 'entry' : 'entries'}
+                </p>
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-bold text-slate-700">
+                  {giveaway.entryCount === 0
+                    ? 'No entries yet this month'
+                    : `You have ${giveaway.entryCount} entr${giveaway.entryCount === 1 ? 'y' : 'ies'} this month`}
+                </p>
+                <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">
+                  Each day you use GasCap™ earns 1 entry — up to 31 per month.
+                </p>
+              </div>
+            </div>
+
+            {/* Progress bar */}
+            <div>
+              <div className="flex justify-between text-[10px] text-slate-400 mb-1">
+                <span>This month&apos;s progress</span>
+                <span>{giveaway.entryCount} / 31 days</span>
+              </div>
+              <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-amber-400 to-amber-500 rounded-full transition-all"
+                  style={{ width: `${Math.min(100, (giveaway.entryCount / 31) * 100)}%` }}
+                />
+              </div>
+            </div>
+
+            <p className="text-[11px] text-slate-500 leading-relaxed">
+              🎁 One winner drawn each month wins a <strong>$25 gas card</strong>.
+              More active days = better odds!
+            </p>
+
+            <Link
+              href="/sweepstakes-rules"
+              className="block text-center text-[11px] text-[#1EB68F] font-bold hover:underline"
+            >
+              Official Rules &amp; No-Purchase Entry →
+            </Link>
           </div>
         )}
 

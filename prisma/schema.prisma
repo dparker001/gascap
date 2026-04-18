@@ -101,3 +101,17 @@ model Vehicle {
 
   user            User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
+
+model GiveawayDraw {
+  id           String  @id
+  month        String  // "YYYY-MM" — one draw per month
+  winnerId     String
+  winnerName   String
+  winnerEmail  String
+  entryCount   Int     // winner's entries at draw time
+  totalEntries Int     // full pool size at draw time
+  drawnAt      String  // ISO timestamp
+  notes        String?
+
+  @@unique([month])
+}
