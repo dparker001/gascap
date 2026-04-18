@@ -10,12 +10,11 @@ import { grantBetaTrial, revokeBetaTrial, findById } from '@/lib/users';
 import { upsertGhlContact, removeGhlTags } from '@/lib/ghl';
 import { getFillups } from '@/lib/fillups';
 
-function auth(req: Request): boolean {
+function auth(req: Request): 'ok' | 'no-env' | 'wrong' {
   const pw = process.env.ADMIN_PASSWORD;
-  console.log('[admin-auth] pw length:', pw?.length ?? 'undefined', '| header present:', !!req.headers.get('x-admin-password'));
-  if (!pw) return false;
+  if (!pw) return 'no-env';
   const header = req.headers.get('x-admin-password') ?? '';
-  return header === pw;
+  return header === pw ? 'ok' : 'wrong';
 }
 
 /** Fetch external_user_ids of all active OneSignal subscribers (up to 1 000) */
@@ -49,7 +48,9 @@ async function getOneSignalSubscriberIds(): Promise<Set<string>> {
 }
 
 export async function GET(req: Request) {
-  if (!auth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const _auth = auth(req);
+  if (_auth === 'no-env') return NextResponse.json({ error: 'Misconfigured' }, { status: 503 });
+  if (_auth === 'wrong')  return NextResponse.json({ error: 'Unauthorized' },   { status: 401 });
   const [subscribedUserIds, allUsers] = await Promise.all([
     getOneSignalSubscriberIds(),
     prisma.user.findMany({ orderBy: { createdAt: 'desc' } }),
@@ -106,7 +107,9 @@ export async function GET(req: Request) {
 }
 
 export async function DELETE(req: Request) {
-  if (!auth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const _auth = auth(req);
+  if (_auth === 'no-env') return NextResponse.json({ error: 'Misconfigured' }, { status: 503 });
+  if (_auth === 'wrong')  return NextResponse.json({ error: 'Unauthorized' },   { status: 401 });
   const id = new URL(req.url).searchParams.get('id');
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
   await prisma.user.delete({ where: { id } }).catch(() => null);
@@ -114,7 +117,9 @@ export async function DELETE(req: Request) {
 }
 
 export async function PATCH(req: Request) {
-  if (!auth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const _auth = auth(req);
+  if (_auth === 'no-env') return NextResponse.json({ error: 'Misconfigured' }, { status: 503 });
+  if (_auth === 'wrong')  return NextResponse.json({ error: 'Unauthorized' },   { status: 401 });
   const id = new URL(req.url).searchParams.get('id');
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
   const body = await req.json() as {
