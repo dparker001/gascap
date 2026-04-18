@@ -85,16 +85,16 @@ export default function Header() {
             </button>
             {session && (
               <Link
-                href="/wrapped"
+                href="/giveaway"
                 className="flex items-center gap-1 bg-white/10 hover:bg-white/20
                            transition-colors rounded-xl px-2.5 py-1.5"
-                title={t.nav.wrapped}
+                title="Monthly Gas Card Giveaway"
               >
                 <span
                   className={`text-sm inline-block ${giftWiggle ? 'animate-gift-wiggle' : ''}`}
                   aria-hidden="true"
                 >🎁</span>
-                <span className="text-[10px] font-black text-white/80 hidden sm:inline">{t.nav.wrapped}</span>
+                <span className="text-[10px] font-black text-white/80 hidden sm:inline">Gas Card</span>
               </Link>
             )}
             <AuthButton />
