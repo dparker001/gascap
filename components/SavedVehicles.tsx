@@ -252,10 +252,11 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
   const [infoVehicle, setInfoVehicle] = useState<Vehicle | null>(null);
 
   // Edit state
-  const [editingId,   setEditingId]   = useState<string | null>(null);
-  const [editName,    setEditName]    = useState('');
-  const [editGallons, setEditGallons] = useState('');
-  const [editSaving,  setEditSaving]  = useState(false);
+  const [editingId,      setEditingId]      = useState<string | null>(null);
+  const [editName,       setEditName]       = useState('');
+  const [editGallons,    setEditGallons]    = useState('');
+  const [editSaving,     setEditSaving]     = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const res = await fetch('/api/vehicles');
@@ -288,6 +289,7 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
   }
 
   function startEdit(v: Vehicle) {
+    setConfirmDeleteId(null);   // dismiss any pending delete confirmation
     setEditingId(v.id);
     setEditName(v.name);
     setEditGallons(String(v.gallons));
@@ -484,29 +486,50 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
                         </svg>
                       </button>
 
-                      {/* Edit */}
-                      <button
-                        onClick={() => startEdit(v)}
-                        className="text-slate-300 hover:text-amber-500 transition-colors flex-shrink-0"
-                        aria-label={t.garage.editAria(v.name)}
-                      >
-                        <svg viewBox="0 0 16 16" className="w-3.5 h-3.5" fill="none"
-                             stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
-                          <path d="M11.5 2.5l2 2L5 13H3v-2L11.5 2.5z"/>
-                        </svg>
-                      </button>
+                      {confirmDeleteId === v.id ? (
+                        /* ── Inline delete confirmation ── */
+                        <div className="flex items-center gap-1.5 ml-1">
+                          <span className="text-[10px] text-red-400 font-semibold whitespace-nowrap">Remove?</span>
+                          <button
+                            onClick={() => { handleDelete(v.id); setConfirmDeleteId(null); }}
+                            className="text-[10px] font-black px-1.5 py-0.5 rounded bg-red-500 text-white hover:bg-red-600 transition-colors"
+                          >
+                            Yes
+                          </button>
+                          <button
+                            onClick={() => setConfirmDeleteId(null)}
+                            className="text-[10px] font-black px-1.5 py-0.5 rounded bg-slate-200 text-slate-600 hover:bg-slate-300 transition-colors"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          {/* Edit */}
+                          <button
+                            onClick={() => startEdit(v)}
+                            className="text-slate-300 hover:text-amber-500 transition-colors flex-shrink-0"
+                            aria-label={t.garage.editAria(v.name)}
+                          >
+                            <svg viewBox="0 0 16 16" className="w-3.5 h-3.5" fill="none"
+                                 stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+                              <path d="M11.5 2.5l2 2L5 13H3v-2L11.5 2.5z"/>
+                            </svg>
+                          </button>
 
-                      {/* Delete */}
-                      <button
-                        onClick={() => handleDelete(v.id)}
-                        className="text-slate-300 hover:text-red-400 transition-colors flex-shrink-0"
-                        aria-label={t.garage.removeAria(v.name)}
-                      >
-                        <svg viewBox="0 0 12 12" className="w-3.5 h-3.5" fill="none"
-                             stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
-                          <path d="M1 1l10 10M11 1L1 11"/>
-                        </svg>
-                      </button>
+                          {/* Delete — requires confirmation */}
+                          <button
+                            onClick={() => setConfirmDeleteId(v.id)}
+                            className="text-slate-300 hover:text-red-400 transition-colors flex-shrink-0"
+                            aria-label={t.garage.removeAria(v.name)}
+                          >
+                            <svg viewBox="0 0 12 12" className="w-3.5 h-3.5" fill="none"
+                                 stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+                              <path d="M1 1l10 10M11 1L1 11"/>
+                            </svg>
+                          </button>
+                        </>
+                      )}
                     </div>
                   )}
                 </div>
