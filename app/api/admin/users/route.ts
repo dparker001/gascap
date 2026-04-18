@@ -51,20 +51,10 @@ export async function GET(req: Request) {
   const _auth = auth(req);
   if (_auth === 'no-env') return NextResponse.json({ error: 'Misconfigured' }, { status: 503 });
   if (_auth === 'wrong')  return NextResponse.json({ error: 'Unauthorized' },   { status: 401 });
-  let subscribedUserIds: Set<string>;
-  let allUsers: Awaited<ReturnType<typeof prisma.user.findMany>>;
-  try {
-    [subscribedUserIds, allUsers] = await Promise.all([
-      getOneSignalSubscriberIds(),
-      prisma.user.findMany({ orderBy: { createdAt: 'desc' } }),
-    ]);
-  } catch (err) {
-    console.error('[admin/users GET] DB error:', err);
-    return NextResponse.json(
-      { error: 'DB error', detail: String(err) },
-      { status: 500 },
-    );
-  }
+  const [subscribedUserIds, allUsers] = await Promise.all([
+    getOneSignalSubscriberIds(),
+    prisma.user.findMany({ orderBy: { createdAt: 'desc' } }),
+  ]);
 
   // Build a map of referralCode → user name for quick lookup
   const codeToName = new Map<string, string>();
