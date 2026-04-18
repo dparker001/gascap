@@ -142,6 +142,8 @@ export default function CampaignsAdminPage() {
   const [daily, setDaily]         = useState<DailyBucket[]>([]);
   const [msg, setMsg]             = useState('');
   const [showCreate, setShowCreate] = useState(false);
+  const [editingId,  setEditingId]  = useState<string | null>(null);
+  const [editDraft,  setEditDraft]  = useState<Partial<Placement>>({});
 
   const headers = useMemo(() => ({ 'x-admin-password': pw, 'Content-Type': 'application/json' }), [pw]);
 
@@ -232,6 +234,48 @@ export default function CampaignsAdminPage() {
     setShowCreate(false);
     form.reset();
     void fetchAll(pw);
+  };
+
+  const handleEditOpen = (p: Placement) => {
+    setShowCreate(false);
+    setEditingId(p.id);
+    setEditDraft({
+      station:         p.station,
+      address:         p.address         ?? '',
+      city:            p.city            ?? '',
+      contactName:     p.contactName     ?? '',
+      contactEmail:    p.contactEmail    ?? '',
+      contactPhone:    p.contactPhone    ?? '',
+      placement:       p.placement,
+      headlineVariant: p.headlineVariant,
+      notes:           p.notes           ?? '',
+      active:          p.active,
+    });
+  };
+
+  const handleEditSave = async () => {
+    if (!editingId) return;
+    // Strip empty strings so we don't overwrite real values with ''
+    const patch: Record<string, unknown> = {};
+    (Object.keys(editDraft) as (keyof typeof editDraft)[]).forEach((k) => {
+      const v = editDraft[k];
+      if (v !== undefined) patch[k] = v === '' ? null : v;
+    });
+    const res = await fetch(`/api/admin/campaigns?id=${editingId}`, {
+      method:  'PATCH',
+      headers,
+      body:    JSON.stringify(patch),
+    });
+    if (res.ok) {
+      setMsg('Saved changes.');
+      setEditingId(null);
+      setEditDraft({});
+      setTimeout(() => setMsg(''), 3000);
+      void fetchAll(pw);
+    } else {
+      const data = await res.json();
+      setMsg(data.error ?? 'Failed to save.');
+    }
   };
 
   const handleDelete = async (id: string, code: string) => {
@@ -335,7 +379,7 @@ export default function CampaignsAdminPage() {
               {loading ? 'Refreshing\u2026' : 'Refresh'}
             </button>
             <button
-              onClick={() => setShowCreate(!showCreate)}
+              onClick={() => { setShowCreate(!showCreate); setEditingId(null); setEditDraft({}); }}
               className="px-3 py-2 text-sm rounded-lg bg-emerald-600 text-white hover:bg-emerald-700"
             >
               + New placement
@@ -387,6 +431,110 @@ export default function CampaignsAdminPage() {
                 </button>
               </div>
             </form>
+          </div>
+        )}
+
+        {/* Edit placement panel */}
+        {editingId && (
+          <div className="bg-white rounded-2xl shadow p-5 border-l-4 border-emerald-500">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-lg font-semibold">
+                Edit placement —{' '}
+                <span className="font-mono text-sm text-slate-500">
+                  {placements.find((p) => p.id === editingId)?.code}
+                </span>
+              </h2>
+              <button
+                onClick={() => { setEditingId(null); setEditDraft({}); }}
+                className="text-slate-400 hover:text-slate-600 text-xl leading-none"
+              >
+                ×
+              </button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <input
+                placeholder="Station name *"
+                required
+                value={editDraft.station ?? ''}
+                onChange={(e) => setEditDraft((d) => ({ ...d, station: e.target.value }))}
+                className="border rounded-lg px-3 py-2"
+              />
+              <input
+                placeholder="City (e.g. Orlando)"
+                value={editDraft.city ?? ''}
+                onChange={(e) => setEditDraft((d) => ({ ...d, city: e.target.value }))}
+                className="border rounded-lg px-3 py-2"
+              />
+              <input
+                placeholder="Address"
+                value={editDraft.address ?? ''}
+                onChange={(e) => setEditDraft((d) => ({ ...d, address: e.target.value }))}
+                className="border rounded-lg px-3 py-2 md:col-span-2"
+              />
+              <input
+                placeholder="Owner / contact name"
+                value={editDraft.contactName ?? ''}
+                onChange={(e) => setEditDraft((d) => ({ ...d, contactName: e.target.value }))}
+                className="border rounded-lg px-3 py-2"
+              />
+              <input
+                placeholder="Owner email"
+                value={editDraft.contactEmail ?? ''}
+                onChange={(e) => setEditDraft((d) => ({ ...d, contactEmail: e.target.value }))}
+                className="border rounded-lg px-3 py-2"
+              />
+              <input
+                placeholder="Owner phone"
+                value={editDraft.contactPhone ?? ''}
+                onChange={(e) => setEditDraft((d) => ({ ...d, contactPhone: e.target.value }))}
+                className="border rounded-lg px-3 py-2"
+              />
+              <select
+                value={editDraft.placement ?? 'counter'}
+                onChange={(e) => setEditDraft((d) => ({ ...d, placement: e.target.value }))}
+                className="border rounded-lg px-3 py-2"
+              >
+                {PLACEMENT_TYPES.map((p) => <option key={p} value={p}>{p}</option>)}
+              </select>
+              <select
+                value={editDraft.headlineVariant ?? 'A-KnowBefore'}
+                onChange={(e) => setEditDraft((d) => ({ ...d, headlineVariant: e.target.value }))}
+                className="border rounded-lg px-3 py-2"
+              >
+                {HEADLINES.map((h) => <option key={h.value} value={h.value}>{h.label}</option>)}
+              </select>
+              <textarea
+                placeholder="Notes"
+                value={editDraft.notes ?? ''}
+                onChange={(e) => setEditDraft((d) => ({ ...d, notes: e.target.value }))}
+                className="border rounded-lg px-3 py-2 md:col-span-2"
+                rows={2}
+              />
+              {/* Active toggle */}
+              <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={editDraft.active ?? true}
+                  onChange={(e) => setEditDraft((d) => ({ ...d, active: e.target.checked }))}
+                  className="w-4 h-4 rounded accent-emerald-600"
+                />
+                Placement active
+              </label>
+            </div>
+            <div className="flex gap-2 mt-4">
+              <button
+                onClick={() => void handleEditSave()}
+                className="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 font-medium"
+              >
+                Save changes
+              </button>
+              <button
+                onClick={() => { setEditingId(null); setEditDraft({}); }}
+                className="px-4 py-2 rounded-lg border text-slate-600 hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         )}
 
@@ -585,7 +733,15 @@ export default function CampaignsAdminPage() {
                           PNG
                         </a>
                       </td>
-                      <td className="px-3 py-2">
+                      <td className="px-3 py-2 whitespace-nowrap">
+                        <button
+                          onClick={() => handleEditOpen(p)}
+                          className={`text-xs font-medium hover:text-emerald-800 mr-2 ${
+                            editingId === p.id ? 'text-emerald-700 underline' : 'text-emerald-600'
+                          }`}
+                        >
+                          {editingId === p.id ? 'editing…' : 'edit'}
+                        </button>
                         <button
                           onClick={() => handleDelete(p.id, p.code)}
                           className="text-xs text-red-600 hover:text-red-800"
