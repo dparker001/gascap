@@ -203,12 +203,14 @@ export default function FuelGauge({ percent, onChange, tankCapacity }: FuelGauge
             stroke={color}
             strokeWidth={TRACK_W}
             strokeLinecap="round"
-            opacity="0.95"
+            opacity="0.72"
             style={{ transition: dragging ? 'none' : 'stroke 0.4s ease' }}
           />
         )}
 
         {/* ── Minor tick marks — ⅛, ⅜, ⅝, ⅞ (shorter) ─────────── */}
+        {/* When a tick falls inside the filled zone it renders white so it  */}
+        {/* stays visible against the semi-transparent fill color.           */}
         {MINOR_TICKS.map((frac) => {
           const ta  = pctToAngle(frac * 100);
           const cos = Math.cos(toRad(ta));
@@ -219,7 +221,7 @@ export default function FuelGauge({ percent, onChange, tankCapacity }: FuelGauge
               key={frac}
               x1={(CX + (R - 8) * cos).toFixed(2)}  y1={(CY + (R - 8) * sin).toFixed(2)}
               x2={(CX + (R + 8) * cos).toFixed(2)}  y2={(CY + (R + 8) * sin).toFixed(2)}
-              stroke={filled ? color : '#cbd5e1'}
+              stroke={filled ? 'rgba(255,255,255,0.72)' : '#cbd5e1'}
               strokeWidth="2.5"
               strokeLinecap="round"
               style={{ transition: 'stroke 0.3s' }}
@@ -238,7 +240,7 @@ export default function FuelGauge({ percent, onChange, tankCapacity }: FuelGauge
               key={frac}
               x1={(CX + (R - 15) * cos).toFixed(2)} y1={(CY + (R - 15) * sin).toFixed(2)}
               x2={(CX + (R + 15) * cos).toFixed(2)} y2={(CY + (R + 15) * sin).toFixed(2)}
-              stroke={filled ? color : '#94a3b8'}
+              stroke={filled ? 'rgba(255,255,255,0.88)' : '#94a3b8'}
               strokeWidth="4"
               strokeLinecap="round"
               style={{ transition: 'stroke 0.3s' }}

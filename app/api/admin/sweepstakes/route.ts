@@ -16,6 +16,7 @@ import {
   recordDraw,
   getDrawHistory,
   currentMonth,
+  getCurrentPrizeTier,
 } from '@/lib/giveaway';
 import { sendMail, winnerNotificationEmailHtml } from '@/lib/email';
 
@@ -54,9 +55,21 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'Invalid month format. Use YYYY-MM.' }, { status: 400 });
   }
 
-  const entrants     = await getEligibleEntrants(month);
+  const [entrants, tierInfo] = await Promise.all([
+    getEligibleEntrants(month),
+    getCurrentPrizeTier(),
+  ]);
   const totalEntries = entrants.reduce((s, e) => s + e.entryCount, 0);
-  return NextResponse.json({ month, entrants, totalEntries, entrantCount: entrants.length });
+  return NextResponse.json({
+    month,
+    entrants,
+    totalEntries,
+    entrantCount:    entrants.length,
+    prize:           tierInfo.currentTier.prize,
+    subscriberCount: tierInfo.subscriberCount,
+    currentTier:     tierInfo.currentTier,
+    nextTier:        tierInfo.nextTier,
+  });
 }
 
 export async function POST(req: Request) {
@@ -78,7 +91,8 @@ export async function POST(req: Request) {
     // ── Fire-and-forget notifications ────────────────────────────────────
     // Neither failure should roll back or block the draw response.
     const monthLabel  = fmtMonth(month);
-    const prize       = process.env.SWEEPSTAKES_PRIZE ?? '$25';
+    const { currentTier } = await getCurrentPrizeTier();
+    const prize       = currentTier.prize;   // scales automatically with subscriber count
     const webhookUrl  = process.env.GHL_WINNER_WEBHOOK_URL;
 
     void Promise.allSettled([

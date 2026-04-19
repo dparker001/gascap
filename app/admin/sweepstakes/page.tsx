@@ -22,6 +22,12 @@ interface DrawRecord {
   notes:        string | null;
 }
 
+interface PrizeTier {
+  minSubscribers: number;
+  prize:          string;
+  label:          string;
+}
+
 const SESSION_KEY = 'gascap_admin_session';
 const SESSION_TTL = 15 * 60 * 1000;
 
@@ -67,6 +73,11 @@ export default function SweepstakesAdminPage() {
   const [history,   setHistory]   = useState<DrawRecord[]>([]);
   const [notes,     setNotes]     = useState('');
 
+  const [prize,           setPrize]           = useState('$25');
+  const [subscriberCount, setSubscriberCount] = useState<number | null>(null);
+  const [currentTier,     setCurrentTier]     = useState<PrizeTier | null>(null);
+  const [nextTier,        setNextTier]        = useState<PrizeTier | null>(null);
+
   const loadHistory = useCallback(async (pw: string) => {
     const res = await fetch('/api/admin/sweepstakes?history=1', {
       headers: { 'x-admin-password': pw },
@@ -102,9 +113,20 @@ export default function SweepstakesAdminPage() {
     const res = await fetch(`/api/admin/sweepstakes?month=${month}`, {
       headers: { 'x-admin-password': savedPw },
     });
-    const data = await res.json() as { entrants: EntrantRow[]; totalEntries: number };
+    const data = await res.json() as {
+      entrants:        EntrantRow[];
+      totalEntries:    number;
+      prize?:          string;
+      subscriberCount?: number;
+      currentTier?:    PrizeTier;
+      nextTier?:       PrizeTier | null;
+    };
     setEntrants(data.entrants ?? []);
     setTotalEntries(data.totalEntries ?? 0);
+    if (data.prize)           setPrize(data.prize);
+    if (data.subscriberCount !== undefined) setSubscriberCount(data.subscriberCount);
+    if (data.currentTier)     setCurrentTier(data.currentTier);
+    setNextTier(data.nextTier ?? null);
     setPreviewed(true);
     setPreviewing(false);
     setWinner(null);
@@ -208,6 +230,50 @@ export default function SweepstakesAdminPage() {
                 ? `↻ Refresh  (${totalEntries} ${totalEntries === 1 ? 'entry' : 'entries'})`
                 : `Click to Preview ${fmtMonth(month)} Entries`}
           </button>
+
+          {/* Prize tier / subscriber progress */}
+          {previewed && currentTier && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] font-bold text-amber-700 uppercase tracking-wide">
+                    {currentTier.label} Tier · Current Prize
+                  </p>
+                  <p className="text-2xl font-black text-slate-800 leading-tight">
+                    {prize} Gas Card
+                  </p>
+                </div>
+                {nextTier ? (
+                  <div className="text-right">
+                    <p className="text-[10px] text-slate-400 leading-tight">Next tier</p>
+                    <p className="text-sm font-black text-green-600">{nextTier.prize}</p>
+                    <p className="text-[10px] text-slate-500">
+                      at {nextTier.minSubscribers} members
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-[10px] font-bold text-green-600">Max tier 🏆</p>
+                )}
+              </div>
+
+              {nextTier && subscriberCount !== null && (
+                <div className="space-y-1">
+                  <div className="flex justify-between text-[10px] text-slate-500">
+                    <span>{subscriberCount} paying member{subscriberCount !== 1 ? 's' : ''}</span>
+                    <span>{nextTier.minSubscribers - subscriberCount} to go → {nextTier.prize}</span>
+                  </div>
+                  <div className="h-2 bg-amber-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-amber-400 to-green-500 transition-all duration-500"
+                      style={{
+                        width: `${Math.min(100, (subscriberCount / nextTier.minSubscribers) * 100).toFixed(1)}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Entrant table */}
           {previewed && (

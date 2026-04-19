@@ -4,9 +4,71 @@
  * Entries are derived from activeDays — each day a Pro/Fleet user is
  * active in the current calendar month counts as one entry (max ~31/month).
  * No separate entry counter is stored; everything is computed at draw time.
+ *
+ * Prize tiers scale automatically with the paying subscriber base.
+ * Add a new row to PRIZE_TIERS (keep sorted by minSubscribers) to unlock
+ * the next tier — no other code changes needed.
  */
 import { randomUUID } from 'crypto';
 import { prisma } from '@/lib/prisma';
+
+// ─── Prize Tiers ─────────────────────────────────────────────────────────────
+
+export interface PrizeTier {
+  minSubscribers: number;
+  prize:          string;   // display string, e.g. "$25"
+  label:          string;   // internal name shown in admin UI
+}
+
+/**
+ * Prize ladder — sorted ascending by minSubscribers.
+ * The highest tier whose minSubscribers ≤ current count is active.
+ *
+ * To unlock the next tier, add a row here and redeploy.
+ */
+export const PRIZE_TIERS: PrizeTier[] = [
+  { minSubscribers:   0, prize: '$25',  label: 'Starter' },
+  { minSubscribers: 500, prize: '$50',  label: 'Growth'  },
+  // { minSubscribers: 1000, prize: '$100', label: 'Scale' },  // ← unlock when ready
+];
+
+/** Count of currently active paying Pro + Fleet subscribers */
+export async function countPayingSubscribers(): Promise<number> {
+  return prisma.user.count({
+    where: { plan: { in: ['pro', 'fleet'] } },
+  });
+}
+
+/** Return the highest tier whose threshold the given count meets */
+export function tierForCount(count: number): PrizeTier {
+  let active = PRIZE_TIERS[0];
+  for (const tier of PRIZE_TIERS) {
+    if (count >= tier.minSubscribers) active = tier;
+  }
+  return active;
+}
+
+/** Return the next tier above the current count, or null if already at max */
+export function nextTierForCount(count: number): PrizeTier | null {
+  return PRIZE_TIERS.find((t) => t.minSubscribers > count) ?? null;
+}
+
+/**
+ * One-stop helper: query the live subscriber count, resolve current + next tier.
+ * Use at draw time and in the admin preview endpoint.
+ */
+export async function getCurrentPrizeTier(): Promise<{
+  subscriberCount: number;
+  currentTier:     PrizeTier;
+  nextTier:        PrizeTier | null;
+}> {
+  const subscriberCount = await countPayingSubscribers();
+  return {
+    subscriberCount,
+    currentTier: tierForCount(subscriberCount),
+    nextTier:    nextTierForCount(subscriberCount),
+  };
+}
 
 export interface EntrantRow {
   userId:     string;
