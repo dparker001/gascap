@@ -41,7 +41,10 @@ function currentMonthStr(): string {
 
 function fmtMonth(m: string): string {
   const [y, mo] = m.split('-');
-  const names = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const names = [
+    'January','February','March','April','May','June',
+    'July','August','September','October','November','December',
+  ];
   return `${names[parseInt(mo, 10) - 1]} ${y}`;
 }
 
@@ -180,22 +183,31 @@ export default function SweepstakesAdminPage() {
         <div className="bg-white rounded-2xl shadow-sm p-5 space-y-4">
           <p className="text-sm font-black text-slate-700">Run Monthly Drawing</p>
 
-          {/* Month + preview */}
-          <div className="flex gap-2">
+          {/* Selected month — human-readable */}
+          <div className="flex items-center justify-between">
+            <p className="text-base font-black text-slate-700">{fmtMonth(month)}</p>
             <input
               type="month"
               value={month}
               onChange={(e) => { setMonth(e.target.value); setPreviewed(false); setWinner(null); }}
-              className="border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+              className="border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-500
+                         focus:outline-none focus:ring-2 focus:ring-amber-400"
             />
-            <button
-              onClick={handlePreview}
-              disabled={previewing}
-              className="flex-1 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-bold transition-colors disabled:opacity-50"
-            >
-              {previewing ? 'Loading…' : 'Preview Entrants'}
-            </button>
           </div>
+
+          {/* Preview button */}
+          <button
+            onClick={handlePreview}
+            disabled={previewing}
+            className="w-full py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700
+                       text-sm font-bold transition-colors disabled:opacity-50"
+          >
+            {previewing
+              ? 'Loading…'
+              : previewed
+                ? `↻ Refresh  (${totalEntries} ${totalEntries === 1 ? 'entry' : 'entries'})`
+                : `Click to Preview ${fmtMonth(month)} Entries`}
+          </button>
 
           {/* Entrant table */}
           {previewed && (
