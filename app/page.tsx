@@ -13,6 +13,7 @@ import EmailVerificationBanner from '@/components/EmailVerificationBanner';
 import ReviewsMarquee          from '@/components/ReviewsMarquee';
 import OnboardingModal         from '@/components/OnboardingModal';
 import SetupChecklist          from '@/components/SetupChecklist';
+import MpgInsightCard          from '@/components/MpgInsightCard';
 import GasPriceAlertBanner     from '@/components/GasPriceAlertBanner';
 import StreakCounter           from '@/components/StreakCounter';
 import CampaignTracker         from '@/components/CampaignTracker';
@@ -577,6 +578,9 @@ export default function Home() {
       <section className="px-4 pb-3 max-w-lg mx-auto w-full">
         <FeaturedStation />
       </section>
+
+      {/* MPG Insight Card — visible once the user has calculable MPG data */}
+      {session && <MpgInsightCard />}
 
       {/* Tools & Insights */}
       <section id="gascap-tools" className="px-4 pb-6 max-w-lg mx-auto w-full">
