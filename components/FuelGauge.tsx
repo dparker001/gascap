@@ -187,22 +187,26 @@ export default function FuelGauge({ percent, onChange, tankCapacity }: FuelGauge
         </defs>
 
         {/* ── Background track ───────────────────────────────────── */}
+        {/* strokeLinecap="butt" — flat ends at E and F; no rounded stub  */}
+        {/* extending past either endpoint of the gauge arc.             */}
         <path
           d={arcPath(START_ANGLE, END_ANGLE)}
           fill="none"
           stroke="#e2e8f0"
           strokeWidth={TRACK_W}
-          strokeLinecap="round"
+          strokeLinecap="butt"
         />
 
         {/* ── Colored fill arc ───────────────────────────────────── */}
+        {/* strokeLinecap="butt" — no colored cap leaking past E when  */}
+        {/* the gauge is at or near empty.                             */}
         {clampedPct > 0.5 && (
           <path
             d={arcPath(START_ANGLE, fillEnd)}
             fill="none"
             stroke={color}
             strokeWidth={TRACK_W}
-            strokeLinecap="round"
+            strokeLinecap="butt"
             opacity="0.72"
             style={{ transition: dragging ? 'none' : 'stroke 0.4s ease' }}
           />
