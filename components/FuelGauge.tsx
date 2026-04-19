@@ -47,10 +47,13 @@ function angleToPct(deg: number): number {
   return 0;
 }
 
-/** Snap a raw percent to the nearest ⅛ step (0, 12.5, 25 … 100) */
+/** Snap a raw percent to the nearest ⅛ step (0, 12.5, 25 … 100) — used for drag */
 function snapToEighth(pct: number): number {
   return Math.max(0, Math.min(100, Math.round(pct / 12.5) * 12.5));
 }
+
+/** Step size for the ± nudge buttons: 1/64 of the full tank */
+const NUDGE_STEP = 100 / 64; // ≈ 1.5625 %
 
 /** Pick a colour based on fill level */
 function levelColor(p: number): string {
@@ -88,7 +91,7 @@ function fuelLabel(pct: number): string {
 interface FuelGaugeProps {
   /** Current fill level, 0–100 */
   percent: number;
-  /** Called with a value snapped to the nearest ⅛ (0, 12.5, 25 … 100) */
+  /** Called with the new percent value (drag snaps to nearest ⅛; nudge moves in 1/64 steps) */
   onChange: (pct: number) => void;
   /** Optional tank size in gallons — shows secondary readout when set */
   tankCapacity?: number;
@@ -140,10 +143,11 @@ export default function FuelGauge({ percent, onChange, tankCapacity }: FuelGauge
     onChange(snapToEighth(Number(e.target.value)));
   };
 
-  // ── Nudge helpers ─────────────────────────────────────────────────────
+  // ── Nudge helpers (1/64 tank increments) ─────────────────────────────
   function nudge(dir: 1 | -1) {
-    const currentStep = Math.round(clampedPct / 12.5);
-    onChange(Math.max(0, Math.min(8, currentStep + dir)) * 12.5);
+    const currentStep = Math.round(clampedPct / NUDGE_STEP);
+    const newStep     = Math.max(0, Math.min(64, currentStep + dir));
+    onChange(parseFloat((newStep * NUDGE_STEP).toFixed(6)));
   }
 
   // Derived display values
@@ -330,7 +334,7 @@ export default function FuelGauge({ percent, onChange, tankCapacity }: FuelGauge
         </button>
 
         <div className="text-center min-w-[80px]">
-          <p className="text-[10px] text-slate-400 font-semibold leading-tight">⅛ tank step</p>
+          <p className="text-[10px] text-slate-400 font-semibold leading-tight">1/64 tank step</p>
           {gallons && (
             <p
               className="text-sm font-black leading-tight transition-colors duration-300"

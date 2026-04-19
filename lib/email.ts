@@ -132,6 +132,102 @@ ${brandHeader()}
 </html>`.trim();
 }
 
+/** ─────────────────────────────────────────────────────────────────────────
+ * Sweepstakes winner notification — sent immediately after a draw is run.
+ * @param name         Winner's full name
+ * @param month        "YYYY-MM" draw month
+ * @param entryCount   Winner's entry count that month
+ * @param totalEntries Total pool entries
+ * @param prize        Prize description, e.g. "$25"
+ */
+export function winnerNotificationEmailHtml(
+  name: string,
+  month: string,
+  entryCount: number,
+  totalEntries: number,
+  prize: string = '$25',
+): string {
+  const [y, mo] = month.split('-');
+  const MONTH_NAMES = [
+    'January','February','March','April','May','June',
+    'July','August','September','October','November','December',
+  ];
+  const monthLabel = `${MONTH_NAMES[parseInt(mo, 10) - 1]} ${y}`;
+  const odds = totalEntries > 0
+    ? `${((entryCount / totalEntries) * 100).toFixed(1)}%`
+    : '—';
+
+  return `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#eef1f7;font-family:system-ui,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#eef1f7;padding:40px 16px;">
+    <tr><td align="center">
+      <table width="100%" style="max-width:480px;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,.08);">
+${brandHeader()}
+        <tr><td style="padding:32px;">
+
+          <!-- Trophy -->
+          <p style="margin:0 0 8px;font-size:52px;text-align:center;line-height:1;">🏆</p>
+          <p style="margin:0 0 6px;font-size:23px;font-weight:900;color:#1e2d4a;text-align:center;">
+            You won the ${monthLabel}<br>Gas Card Giveaway!
+          </p>
+          <p style="margin:0 0 24px;font-size:15px;color:#475569;text-align:center;">
+            Congratulations, ${name}! Your entry was drawn from the pool this month. 🎉
+          </p>
+
+          <!-- Prize badge -->
+          <table width="100%" cellpadding="0" cellspacing="0"
+                 style="background:#fef3c7;border:2px solid #f59e0b;border-radius:14px;margin:0 0 24px;">
+            <tr><td style="padding:20px 24px;text-align:center;">
+              <p style="margin:0 0 4px;font-size:11px;font-weight:800;color:#b45309;
+                         text-transform:uppercase;letter-spacing:.08em;">Your Prize</p>
+              <p style="margin:0;font-size:36px;font-weight:900;color:#1e2d4a;">${prize} Gas Card</p>
+              <p style="margin:6px 0 0;font-size:12px;color:#92400e;">
+                ${entryCount}&nbsp;${entryCount === 1 ? 'entry' : 'entries'}&nbsp;·&nbsp;${odds}&nbsp;odds&nbsp;·&nbsp;${monthLabel}
+              </p>
+            </td></tr>
+          </table>
+
+          <!-- Body copy -->
+          <p style="margin:0 0 16px;font-size:14px;color:#475569;line-height:1.65;">
+            A GasCap™ team member will reach out within&nbsp;<strong>7&nbsp;days</strong> with your
+            prepaid gas card or a link to claim it digitally. Please reply to this email to confirm
+            you received it — if we don't hear back within&nbsp;<strong>14&nbsp;days</strong> we
+            may need to select an alternate winner per our official rules.
+          </p>
+          <p style="margin:0 0 24px;font-size:14px;color:#475569;line-height:1.65;">
+            Questions? Email us any time at
+            <a href="mailto:support@gascap.app"
+               style="color:#15a680;font-weight:600;">support@gascap.app</a>.
+          </p>
+
+          <!-- CTA -->
+          <div style="text-align:center;">
+            <a href="https://gascap.app"
+               style="display:inline-block;background:#005f4a;color:#fff;font-weight:900;
+                      font-size:14px;padding:13px 28px;border-radius:12px;text-decoration:none;">
+              Open GasCap™
+            </a>
+          </div>
+
+        </td></tr>
+        <tr><td style="background:#f8fafc;padding:16px 32px;border-top:1px solid #e2e8f0;">
+          <p style="margin:0;font-size:11px;color:#94a3b8;">
+            GasCap™ · Know before you go ·
+            <a href="https://gascap.app" style="color:#f59e0b;">gascap.app</a> ·
+            <a href="https://gascap.app/sweepstakes-rules"
+               style="color:#94a3b8;">Official Rules</a>
+          </p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`.trim();
+}
+
 export function verificationEmailHtml(
   name: string,
   verifyUrl: string,
