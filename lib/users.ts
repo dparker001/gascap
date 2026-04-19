@@ -511,8 +511,15 @@ export async function creditVerifiedReferral(userId: string): Promise<boolean> {
   });
   if (!referrer || referrer.id === userId) return false;
 
-  // Mark user as credited (prevents double credit)
-  await prisma.user.update({ where: { id: userId }, data: { referralRewardCredited: true } });
+  // Atomic compare-and-swap: updateMany with the un-credited condition as a
+  // WHERE clause. PostgreSQL guarantees only one concurrent writer wins — if
+  // a duplicate webhook fires simultaneously, the second update sees count=0
+  // and short-circuits before calling recordReferral, preventing double credit.
+  const result = await prisma.user.updateMany({
+    where: { id: userId, referralRewardCredited: false },
+    data:  { referralRewardCredited: true },
+  });
+  if (result.count === 0) return false; // another process already claimed it
 
   const current = referrer.referralCount ?? 0;
   if (current < MAX_REFERRAL_REWARDS) {

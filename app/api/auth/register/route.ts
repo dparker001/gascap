@@ -61,7 +61,8 @@ export async function POST(req: Request) {
     // Enroll in the 5-email drip sequence (step 1 = welcome, sent below).
     await enrollEmailCampaign(user.id);
 
-    // Store referral code on the new user — credit fires after email verification
+    // Store referral code on the new user — credit fires in the Stripe webhook
+    // on the referred user's first paid invoice (amount_paid > 0)
     if (referralCode?.trim()) {
       const referrer = await findByReferralCode(referralCode.trim());
       if (referrer && referrer.id !== user.id) {

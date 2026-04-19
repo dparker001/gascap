@@ -186,6 +186,47 @@ export async function POST(req: Request) {
       break;
     }
 
+    // Chargeback opened — alert admin immediately so the account can be reviewed.
+    // We do NOT auto-revoke referral credits here: disputes can be won, and
+    // revoking prematurely would punish legitimate referrers. Admin investigates
+    // and acts manually if the dispute is confirmed fraudulent.
+    case 'charge.dispute.created': {
+      const dispute  = event.data.object as Stripe.Dispute;
+      const amount   = `$${(dispute.amount / 100).toFixed(2)}`;
+      const reason   = dispute.reason ?? 'unknown';
+
+      // Dispute has charge (not customer) — fetch the charge to get customer ID
+      const chargeId   = typeof dispute.charge === 'string' ? dispute.charge : dispute.charge?.id;
+      let customerId: string | null = null;
+      if (stripe && chargeId) {
+        try {
+          const charge = await stripe.charges.retrieve(chargeId);
+          customerId = typeof charge.customer === 'string' ? charge.customer : null;
+        } catch { /* non-fatal */ }
+      }
+
+      const disputedUser = customerId ? await findByStripeCustomer(customerId) : null;
+      const nameLabel    = disputedUser ? `${disputedUser.name} (${disputedUser.email})` : customerId ?? 'unknown';
+      const hadReferral  = disputedUser?.referralRewardCredited ? ' — ⚠️ referral credit was already awarded' : '';
+
+      sendAdminMail({
+        subject: `🚨 Stripe dispute: ${nameLabel} — ${amount}`,
+        html: `<div style="font-family:system-ui,sans-serif;max-width:480px;">
+          <p style="font-size:22px;margin:0 0 8px;">🚨 Chargeback opened</p>
+          <p style="font-size:15px;color:#334155;margin:0 0 4px;"><strong>${nameLabel}</strong></p>
+          <p style="font-size:14px;color:#64748b;margin:0 0 4px;">Amount disputed: <strong>${amount}</strong></p>
+          <p style="font-size:14px;color:#64748b;margin:0 0 4px;">Reason: <strong>${reason}</strong></p>
+          <p style="font-size:14px;color:#64748b;margin:0 0 16px;">Dispute ID: ${dispute.id}</p>
+          ${hadReferral ? `<p style="font-size:13px;color:#dc2626;font-weight:700;margin:0 0 12px;">⚠️ This user had a referral credit awarded. Review whether to revoke it.</p>` : ''}
+          <p style="font-size:12px;color:#94a3b8;">${new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })} ET</p>
+        </div>`,
+        text: `GasCap chargeback: ${nameLabel} — ${amount} (${reason}) · Dispute ID: ${dispute.id}${hadReferral}`,
+      });
+
+      console.warn(`[GasCap webhook] Dispute created — ${nameLabel} — ${amount} (${reason})`);
+      break;
+    }
+
     default:
       // Unhandled — Stripe expects a 200 so it doesn't retry
       break;
