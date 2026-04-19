@@ -119,6 +119,11 @@ export async function POST(req: Request) {
               prize,
               drawnAt:      draw.drawnAt,
               notes:        draw.notes ?? '',
+              // GHL tag fields — use these directly in your workflow
+              // Primary winner tag, e.g. "gascap-sweepstakes-winner-april-2026"
+              winnerTag:    `gascap-sweepstakes-winner-${monthLabel.toLowerCase().replace(' ', '-')}`,
+              // Alternate winner tag if primary forfeits within 14 days
+              alternateTag: `gascap-sweepstakes-alternate-${monthLabel.toLowerCase().replace(' ', '-')}`,
             }),
           }).catch((err) => console.error('[sweepstakes] GHL webhook failed:', err))
         : Promise.resolve(),
