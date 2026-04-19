@@ -276,26 +276,27 @@ export default function FuelGauge({ percent, onChange, tankCapacity }: FuelGauge
         <circle cx={CX} cy={CY} r="5"  fill="white" />
 
         {/* ── Position indicator — perpendicular line at arc position ── */}
-        {/* Replaces the old filled circle so tick marks show through.   */}
+        {/* Outer end flush with track outer edge (R+10); butt cap so no */}
+        {/* rounded stub protrudes past the gauge track boundary.        */}
         {/* White halo layer first (contrast against both track & fill)  */}
         <line
           x1={(CX + (R - 19) * Math.cos(toRad(needleAng))).toFixed(2)}
           y1={(CY + (R - 19) * Math.sin(toRad(needleAng))).toFixed(2)}
-          x2={(CX + (R + 19) * Math.cos(toRad(needleAng))).toFixed(2)}
-          y2={(CY + (R + 19) * Math.sin(toRad(needleAng))).toFixed(2)}
+          x2={(CX + (R + 10) * Math.cos(toRad(needleAng))).toFixed(2)}
+          y2={(CY + (R + 10) * Math.sin(toRad(needleAng))).toFixed(2)}
           stroke="white"
           strokeWidth="7"
-          strokeLinecap="round"
+          strokeLinecap="butt"
         />
         {/* Colored line on top */}
         <line
           x1={(CX + (R - 19) * Math.cos(toRad(needleAng))).toFixed(2)}
           y1={(CY + (R - 19) * Math.sin(toRad(needleAng))).toFixed(2)}
-          x2={(CX + (R + 19) * Math.cos(toRad(needleAng))).toFixed(2)}
-          y2={(CY + (R + 19) * Math.sin(toRad(needleAng))).toFixed(2)}
+          x2={(CX + (R + 10) * Math.cos(toRad(needleAng))).toFixed(2)}
+          y2={(CY + (R + 10) * Math.sin(toRad(needleAng))).toFixed(2)}
           stroke={color}
           strokeWidth="4"
-          strokeLinecap="round"
+          strokeLinecap="butt"
           filter={dragging ? 'url(#gc-glow)' : undefined}
           style={{ transition: dragging ? 'none' : 'stroke 0.3s ease' }}
         />
