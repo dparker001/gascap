@@ -80,6 +80,9 @@ model User {
   // Internal / testing
   isTestAccount            Boolean   @default(false)
 
+  // Fleet Phase 1 — driver roster (names only; no sub-accounts yet)
+  fleetDrivers             String[]  @default([])
+
   vehicles                 Vehicle[]
 }
 

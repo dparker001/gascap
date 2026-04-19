@@ -172,9 +172,22 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
   const stats    = data?.stats;
   const mpgMap   = data?.mpgMap ?? {};
   const userPlan = session?.user?.plan ?? 'free';
+  const isFleet  = userPlan === 'fleet';
+
+  // Driver filter — only meaningful for fleet accounts
+  const [driverFilter, setDriverFilter] = useState<string>('all');
+  const allDriverLabels = isFleet
+    ? [...new Set(fillups.map((f) => f.driverLabel).filter((d): d is string => !!d))]
+    : [];
 
   // ── Grouped + filtered data ────────────────────────────────────────────────
-  const allGroups      = groupByMonth(fillups);
+  const visibleFillups = driverFilter === 'all'
+    ? fillups
+    : driverFilter === '__unassigned__'
+      ? fillups.filter((f) => !f.driverLabel)
+      : fillups.filter((f) => f.driverLabel === driverFilter);
+
+  const allGroups      = groupByMonth(visibleFillups);
   const filteredGroups = applyFilter(allGroups, filterMode, customMonth);
 
   // ── Edit / Delete handlers ─────────────────────────────────────────────────
@@ -385,35 +398,72 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
 
           {/* ── Filter bar ────────────────────────────────────────────────── */}
           {!loading && fillups.length > 0 && (
-            <div className="flex items-center gap-1.5 flex-wrap">
-              {FILTER_PILLS.map((pill) => (
-                <button
-                  key={pill.id}
-                  onClick={() => setFilterMode(pill.id)}
+            <div className="space-y-2">
+              {/* Date range pills */}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {FILTER_PILLS.map((pill) => (
+                  <button
+                    key={pill.id}
+                    onClick={() => setFilterMode(pill.id)}
+                    className={[
+                      'px-3 py-1 rounded-full text-[10px] font-bold transition-colors whitespace-nowrap',
+                      filterMode === pill.id
+                        ? 'bg-amber-500 text-white'
+                        : 'bg-slate-100 text-slate-500 hover:bg-slate-200',
+                    ].join(' ')}
+                  >
+                    {pill.label}
+                  </button>
+                ))}
+                {/* Custom month picker — selecting a date auto-activates 'custom' */}
+                <input
+                  type="month"
+                  value={customMonth}
+                  onChange={(e) => { setCustomMonth(e.target.value); setFilterMode('custom'); }}
                   className={[
-                    'px-3 py-1 rounded-full text-[10px] font-bold transition-colors whitespace-nowrap',
-                    filterMode === pill.id
-                      ? 'bg-amber-500 text-white'
-                      : 'bg-slate-100 text-slate-500 hover:bg-slate-200',
+                    'px-2 py-0.5 rounded-full text-[10px] font-bold border transition-colors cursor-pointer',
+                    filterMode === 'custom'
+                      ? 'border-amber-400 text-amber-700 bg-amber-50'
+                      : 'border-slate-200 text-slate-400 bg-white hover:border-slate-300',
                   ].join(' ')}
-                >
-                  {pill.label}
-                </button>
-              ))}
-              {/* Custom month picker — selecting a date auto-activates 'custom' */}
-              <input
-                type="month"
-                value={customMonth}
-                onChange={(e) => { setCustomMonth(e.target.value); setFilterMode('custom'); }}
-                className={[
-                  'px-2 py-0.5 rounded-full text-[10px] font-bold border transition-colors cursor-pointer',
-                  filterMode === 'custom'
-                    ? 'border-amber-400 text-amber-700 bg-amber-50'
-                    : 'border-slate-200 text-slate-400 bg-white hover:border-slate-300',
-                ].join(' ')}
-                title="Filter by specific month"
-                aria-label="Filter by specific month"
-              />
+                  title="Filter by specific month"
+                  aria-label="Filter by specific month"
+                />
+              </div>
+
+              {/* Fleet driver filter — only shown when driver labels exist */}
+              {isFleet && allDriverLabels.length > 0 && (
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-[9px] font-bold text-blue-600 uppercase tracking-wide mr-0.5">Driver:</span>
+                  <button
+                    onClick={() => setDriverFilter('all')}
+                    className={`px-3 py-1 rounded-full text-[10px] font-bold transition-colors whitespace-nowrap ${
+                      driverFilter === 'all' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                    }`}
+                  >
+                    All
+                  </button>
+                  {allDriverLabels.map((d) => (
+                    <button
+                      key={d}
+                      onClick={() => setDriverFilter(d)}
+                      className={`px-3 py-1 rounded-full text-[10px] font-bold transition-colors whitespace-nowrap ${
+                        driverFilter === d ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                      }`}
+                    >
+                      {d}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => setDriverFilter('__unassigned__')}
+                    className={`px-3 py-1 rounded-full text-[10px] font-bold transition-colors whitespace-nowrap ${
+                      driverFilter === '__unassigned__' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                    }`}
+                  >
+                    Unassigned
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
@@ -607,6 +657,11 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
                                 </p>
                                 {f.notes && (
                                   <p className="text-[10px] text-slate-400 italic mt-0.5 truncate">{f.notes}</p>
+                                )}
+                                {f.driverLabel && (
+                                  <span className="inline-block mt-0.5 text-[9px] font-bold bg-blue-50 text-blue-600 border border-blue-100 px-1.5 py-0.5 rounded-full">
+                                    👤 {f.driverLabel}
+                                  </span>
                                 )}
                               </div>
                               <div className="text-right flex-shrink-0">

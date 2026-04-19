@@ -39,7 +39,10 @@ export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const body = await req.json() as Omit<Fillup, 'id' | 'userId' | 'totalCost' | 'createdAt'> & { force?: boolean };
+  const body = await req.json() as Omit<Fillup, 'id' | 'userId' | 'totalCost' | 'createdAt'> & {
+    force?:       boolean;
+    driverLabel?: string;  // Fleet Phase 1 — optional driver attribution
+  };
 
   // Basic field validation
   if (!body.gallonsPumped || body.gallonsPumped <= 0)
@@ -80,7 +83,7 @@ export async function PATCH(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const body = await req.json() as { id: string } & FillupPatch;
+  const body = await req.json() as { id: string; driverLabel?: string } & FillupPatch;
   if (!body.id) return NextResponse.json({ error: 'Missing id.' }, { status: 400 });
 
   if (body.gallonsPumped != null && body.gallonsPumped <= 0)

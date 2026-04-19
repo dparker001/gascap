@@ -354,6 +354,14 @@ export default function SettingsPage() {
               <p className="text-sm text-slate-500">
                 GasCap™ Fleet — unlimited vehicles, multi-driver, fleet reporting &amp; more.
               </p>
+              <Link
+                href="/fleet"
+                className="flex items-center justify-between w-full py-3 px-4 rounded-2xl
+                           bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm transition-colors"
+              >
+                <span>🚛 Fleet Dashboard</span>
+                <span>Drivers &amp; Reports →</span>
+              </Link>
               <button
                 onClick={openPortal}
                 disabled={portalLoading}

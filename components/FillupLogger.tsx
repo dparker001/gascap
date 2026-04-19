@@ -15,9 +15,11 @@ interface FillupLoggerProps {
   };
   onSaved: () => void;   // called after successful save (to refresh history)
   onCancel: () => void;
+  /** Fleet Phase 1 — driver roster. When provided, shows a driver picker. */
+  drivers?: string[];
 }
 
-export default function FillupLogger({ prefill, onSaved, onCancel }: FillupLoggerProps) {
+export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] }: FillupLoggerProps) {
   const { data: session } = useSession();
 
   const today = new Date().toISOString().split('T')[0];
@@ -29,6 +31,7 @@ export default function FillupLogger({ prefill, onSaved, onCancel }: FillupLogge
     prefill.vehicleOdometer != null ? String(prefill.vehicleOdometer) : ''
   );
   const [notes,          setNotes]          = useState('');
+  const [driverLabel,    setDriverLabel]    = useState('');
   const [saving,         setSaving]         = useState(false);
   const [error,          setError]          = useState('');
   const [warnings,     setWarnings]     = useState<string[]>([]);
@@ -110,6 +113,7 @@ export default function FillupLogger({ prefill, onSaved, onCancel }: FillupLogge
           odometerReading: odometer ? parseInt(odometer, 10) : undefined,
           fuelLevelBefore: prefill.fuelLevelBefore,
           notes:           notes.trim() || undefined,
+          driverLabel:     driverLabel.trim() || undefined,
           force,
         }),
       });
@@ -226,6 +230,26 @@ export default function FillupLogger({ prefill, onSaved, onCancel }: FillupLogge
       </p>
 
       <div className="border-t border-amber-100" />
+
+      {/* Fleet — driver picker (only shown when driver roster is available) */}
+      {drivers.length > 0 && (
+        <div>
+          <label className="field-label">
+            Driver
+            <span className="ml-1 text-[9px] font-bold bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full">FLEET</span>
+          </label>
+          <select
+            value={driverLabel}
+            onChange={(e) => setDriverLabel(e.target.value)}
+            className="input-field text-sm"
+          >
+            <option value="">— Unassigned —</option>
+            {drivers.map((d) => (
+              <option key={d} value={d}>{d}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {/* Date row — full width to avoid iOS date-input overflow */}
       <div>

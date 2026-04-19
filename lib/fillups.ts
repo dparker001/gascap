@@ -20,6 +20,7 @@ export interface Fillup {
   odometerReading?: number; // optional — enables MPG calculation
   fuelLevelBefore?: number; // 0–100 %
   notes?:         string;
+  driverLabel?:   string;   // Fleet Phase 1 — who drove (attribution only)
   createdAt:      string;   // ISO timestamp
 }
 
@@ -193,7 +194,7 @@ export function addFillup(
 
 /** Fields that users are allowed to edit after logging */
 export type FillupPatch = Partial<Pick<Fillup,
-  'date' | 'gallonsPumped' | 'pricePerGallon' | 'odometerReading' | 'notes'
+  'date' | 'gallonsPumped' | 'pricePerGallon' | 'odometerReading' | 'notes' | 'driverLabel'
 >>;
 
 /** Update an existing fillup (only if it belongs to the user). Returns the updated record or null. */

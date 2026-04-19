@@ -18,16 +18,24 @@ export default function ManualFillupLogger() {
   const [open,     setOpen]     = useState(false);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [selId,    setSelId]    = useState<string>('');
+  const [drivers,  setDrivers]  = useState<string[]>([]);
 
   // Fetch saved vehicles once when opened
   useEffect(() => {
     if (!session || vehicles.length > 0) return;
     fetch('/api/vehicles')
       .then((r) => r.json())
-      .then((d: { vehicles?: Vehicle[] }) => {
+      .then((d: { vehicles?: Vehicle[]; plan?: string }) => {
         const list = d.vehicles ?? [];
         setVehicles(list);
         if (list.length > 0) setSelId(list[0].id);
+        // Fetch driver roster for fleet users
+        if (d.plan === 'fleet') {
+          fetch('/api/fleet/drivers')
+            .then((r) => r.json())
+            .then((fd: { drivers?: string[] }) => setDrivers(fd.drivers ?? []))
+            .catch(() => {});
+        }
       })
       .catch(() => {});
   }, [session, vehicles.length]);
@@ -99,6 +107,7 @@ export default function ManualFillupLogger() {
                 vehicleName:    selected.name,
                 vehicleId:      selected.id,
               }}
+              drivers={drivers}
               onSaved={handleClose}
               onCancel={handleClose}
             />

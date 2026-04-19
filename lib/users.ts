@@ -56,6 +56,7 @@ export interface StoredUser {
   emailCampaignEnrolledAt?: string;
   emailOptOut?:             boolean;
   isTestAccount?: boolean;
+  fleetDrivers?:  string[];
 }
 
 export interface ReferralCredit {
@@ -117,6 +118,7 @@ function toStoredUser(u: PrismaUser): StoredUser {
     activeDays:         u.activeDays,
     badges:             u.badges,
     streakMilestonesHit: u.streakMilestonesHit,
+    fleetDrivers:        u.fleetDrivers ?? [],
   };
 }
 
@@ -569,6 +571,46 @@ export async function setLastFillupReminderSent(userId: string): Promise<void> {
     where: { id: userId },
     data: { lastFillupReminderSentAt: new Date().toISOString() },
   });
+}
+
+// ── Fleet driver roster (Phase 1) ────────────────────────────────────────────
+
+export const FLEET_DRIVER_LIMIT = 10;
+
+/** Return the fleet driver name list for a user */
+export async function getFleetDrivers(userId: string): Promise<string[]> {
+  const user = await prisma.user.findUnique({
+    where:  { id: userId },
+    select: { fleetDrivers: true },
+  });
+  return user?.fleetDrivers ?? [];
+}
+
+/**
+ * Add a driver name to the roster.
+ * Silently no-ops if the name already exists or the limit is reached.
+ * Returns the updated list.
+ */
+export async function addFleetDriver(userId: string, name: string): Promise<string[]> {
+  const trimmed = name.trim().slice(0, 40);
+  if (!trimmed) return getFleetDrivers(userId);
+  const current = await getFleetDrivers(userId);
+  if (current.includes(trimmed) || current.length >= FLEET_DRIVER_LIMIT) return current;
+  const updated = [...current, trimmed];
+  await prisma.user.update({ where: { id: userId }, data: { fleetDrivers: updated } });
+  return updated;
+}
+
+/**
+ * Remove a driver name from the roster.
+ * Historical fill-up records keep their driverLabel for audit purposes.
+ * Returns the updated list.
+ */
+export async function removeFleetDriver(userId: string, name: string): Promise<string[]> {
+  const current = await getFleetDrivers(userId);
+  const updated = current.filter((d) => d !== name);
+  await prisma.user.update({ where: { id: userId }, data: { fleetDrivers: updated } });
+  return updated;
 }
 
 export async function setPriceAlertThreshold(userId: string, threshold: number | null): Promise<void> {
