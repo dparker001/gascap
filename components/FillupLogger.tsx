@@ -179,33 +179,51 @@ export default function FillupLogger({ prefill, onSaved, onCancel }: FillupLogge
       />
 
       {/* Scan receipt section */}
-      <div className="space-y-1.5">
-        <div className="flex flex-wrap items-center gap-2">
+      <div className="rounded-xl bg-white border border-slate-200 p-3 space-y-2">
+        {/* Header row */}
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-[11px] font-black text-slate-700">
+              ✨ Auto-fill from your receipt
+            </p>
+            <p className="text-[10px] text-slate-400 leading-snug mt-0.5">
+              AI reads the receipt image and fills in gallons,<br />
+              price &amp; date for you — review before saving
+            </p>
+          </div>
+          <span className={`text-[10px] font-bold border rounded-full px-2 py-0.5 flex-shrink-0 ${isPro ? 'text-blue-600 bg-blue-50 border-blue-200' : 'text-amber-600 bg-amber-50 border-amber-200'}`}>
+            {planBadge}
+          </span>
+        </div>
+
+        {/* Buttons */}
+        <div className="flex flex-wrap gap-2">
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={saving || scanning}
-            className="flex items-center gap-1.5 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-xl px-3 py-2 hover:border-amber-300 hover:text-amber-700 transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 text-xs font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 hover:border-amber-300 hover:text-amber-700 transition-colors disabled:opacity-50"
           >
             <span>{scanning ? '🔄' : '📷'}</span>
-            <span>{scanning ? 'Scanning…' : 'Scan Receipt'}</span>
+            <span>{scanning ? 'Reading receipt…' : 'Use Camera'}</span>
           </button>
           <button
             type="button"
             onClick={() => galleryInputRef.current?.click()}
             disabled={saving || scanning}
-            className="flex items-center gap-1.5 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-xl px-3 py-2 hover:border-amber-300 hover:text-amber-700 transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 text-xs font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 hover:border-amber-300 hover:text-amber-700 transition-colors disabled:opacity-50"
           >
             <span>🖼️</span>
             <span>Upload from Photos</span>
           </button>
-          <span className={`text-[10px] font-bold border rounded-full px-2 py-0.5 ${isPro ? 'text-blue-600 bg-blue-50 border-blue-200' : 'text-amber-600 bg-amber-50 border-amber-200'}`}>
-            {planBadge}
-          </span>
         </div>
-        <p className="text-[10px] text-slate-400">or fill in manually below</p>
+
         {scanError && <p className="text-[11px] text-red-500 font-medium">{scanError}</p>}
       </div>
+
+      <p className="text-[10px] text-slate-400 -mt-1 px-0.5">
+        Or fill in the fields manually below ↓
+      </p>
 
       <div className="border-t border-amber-100" />
 

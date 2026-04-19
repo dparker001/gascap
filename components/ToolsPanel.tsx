@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import AiAdvisor             from './AiAdvisor';
 import TripCostEstimator     from './TripCostEstimator';
@@ -45,6 +45,27 @@ export default function ToolsPanel() {
 
   const userPlan = (session?.user as { plan?: string })?.plan ?? 'free';
   const isPro    = userPlan === 'pro' || userPlan === 'fleet';
+
+  // Fill-up count — shown as a badge on the Log tab
+  const [fillupCount, setFillupCount] = useState<number | null>(null);
+  useEffect(() => {
+    if (!session) { setFillupCount(null); return; }
+    let cancelled = false;
+    const fetchCount = () => {
+      fetch('/api/fillups')
+        .then((r) => r.ok ? r.json() : null)
+        .then((d: { stats?: { count?: number }; fillups?: unknown[] } | null) => {
+          if (!cancelled && d) {
+            setFillupCount(d.stats?.count ?? d.fillups?.length ?? 0);
+          }
+        })
+        .catch(() => {});
+    };
+    fetchCount();
+    const onSaved = () => fetchCount();
+    window.addEventListener('fillup-saved', onSaved);
+    return () => { cancelled = true; window.removeEventListener('fillup-saved', onSaved); };
+  }, [session]);
 
   const TABS: Tab[] = [
     { id: 'ai',      emoji: '🤖', label: t.tools.tabs.ai,      authRequired: false, planRequired: undefined },
@@ -108,7 +129,12 @@ export default function ToolsPanel() {
                 <span className={`text-[15px] leading-none transition-transform duration-200 ${isActive ? 'scale-110' : ''}`}>
                   {tab.emoji}
                 </span>
-                <span className="leading-none mt-0.5 whitespace-nowrap">{tab.label}</span>
+                <span className="leading-none mt-0.5 whitespace-nowrap">
+                  {tab.label}
+                  {tab.id === 'log' && fillupCount !== null && fillupCount > 0 && (
+                    <span className="ml-0.5 opacity-70">({fillupCount})</span>
+                  )}
+                </span>
                 {tab.planRequired && !isPro && (
                   <span className="text-[7px] bg-amber-400 text-white px-1 rounded-full leading-none mt-0.5">PRO</span>
                 )}

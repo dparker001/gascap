@@ -271,21 +271,35 @@ export default function FuelGauge({ percent, onChange, tankCapacity }: FuelGauge
         <circle cx={CX} cy={CY} r="10" fill="#1e3a5f" />
         <circle cx={CX} cy={CY} r="5"  fill="white" />
 
-        {/* ── Drag handle ────────────────────────────────────────── */}
-        <circle
-          cx={tip.x.toFixed(2)} cy={tip.y.toFixed(2)}
-          r="13"
-          fill={color}
+        {/* ── Position indicator — perpendicular line at arc position ── */}
+        {/* Replaces the old filled circle so tick marks show through.   */}
+        {/* White halo layer first (contrast against both track & fill)  */}
+        <line
+          x1={(CX + (R - 19) * Math.cos(toRad(needleAng))).toFixed(2)}
+          y1={(CY + (R - 19) * Math.sin(toRad(needleAng))).toFixed(2)}
+          x2={(CX + (R + 19) * Math.cos(toRad(needleAng))).toFixed(2)}
+          y2={(CY + (R + 19) * Math.sin(toRad(needleAng))).toFixed(2)}
           stroke="white"
-          strokeWidth="3"
-          filter={dragging ? 'url(#gc-glow)' : undefined}
-          style={{ transition: dragging ? 'none' : 'fill 0.3s ease' }}
+          strokeWidth="7"
+          strokeLinecap="round"
         />
+        {/* Colored line on top */}
+        <line
+          x1={(CX + (R - 19) * Math.cos(toRad(needleAng))).toFixed(2)}
+          y1={(CY + (R - 19) * Math.sin(toRad(needleAng))).toFixed(2)}
+          x2={(CX + (R + 19) * Math.cos(toRad(needleAng))).toFixed(2)}
+          y2={(CY + (R + 19) * Math.sin(toRad(needleAng))).toFixed(2)}
+          stroke={color}
+          strokeWidth="4"
+          strokeLinecap="round"
+          filter={dragging ? 'url(#gc-glow)' : undefined}
+          style={{ transition: dragging ? 'none' : 'stroke 0.3s ease' }}
+        />
+        {/* Transparent touch target — preserves the large drag grab area */}
         <circle
           cx={tip.x.toFixed(2)} cy={tip.y.toFixed(2)}
-          r="4"
-          fill="white"
-          opacity="0.7"
+          r="18"
+          fill="transparent"
         />
 
         {/* ── Central readout — fraction label (⅛ ¼ … F) or % ───── */}
