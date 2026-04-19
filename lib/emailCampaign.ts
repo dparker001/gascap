@@ -572,3 +572,109 @@ export async function sendCampaignEmail(step: number, user: CampaignRecipient): 
   if (!mail) throw new Error(`Unknown campaign step: ${step}`);
   await sendMail({ to: email, ...mail });
 }
+
+// ── Referral credit earned notification ───────────────────────────────────────
+// Sent to the referrer when a referred user makes their first real payment.
+
+export function referralCreditEmailHtml(
+  referrerName: string,
+  referrerId:   string,
+  totalCredits: number,
+): string {
+  const first    = referrerName.split(' ')[0];
+  const creditWord = totalCredits === 1 ? 'credit' : 'credits';
+  const settingsUrl = `${BASE_URL}/settings`;
+
+  return wrap(`
+    ${header()}
+    <tr><td style="padding:32px;">
+
+      <p style="margin:0 0 8px;font-size:28px;font-weight:900;color:#1e2d4a;line-height:1.15;">
+        You earned a free month! 🎉
+      </p>
+      <p style="margin:0 0 20px;font-size:15px;color:#475569;line-height:1.65;">
+        Good news, ${first} — someone you referred just made their first GasCap™ payment.
+        That means <strong>1 free month of GasCap™ Pro</strong> has been added to your account.
+      </p>
+
+      <!-- Credit balance pill -->
+      <div style="background:#fef3c7;border:1.5px solid #fcd34d;border-radius:14px;
+                  padding:20px 24px;margin:0 0 24px;text-align:center;">
+        <p style="margin:0 0 4px;font-size:36px;font-weight:900;color:#d97706;">${totalCredits}</p>
+        <p style="margin:0;font-size:13px;font-weight:700;color:#92400e;text-transform:uppercase;
+                  letter-spacing:0.5px;">
+          free month${totalCredits === 1 ? '' : 's'} banked
+        </p>
+      </div>
+
+      <!-- How it works -->
+      <div style="background:#f8fafc;border-radius:12px;padding:20px 24px;margin:0 0 24px;">
+        <p style="margin:0 0 12px;font-size:12px;font-weight:900;color:#1e2d4a;
+                  letter-spacing:0.8px;text-transform:uppercase;">
+          ℹ️ How your ${creditWord} work
+        </p>
+        <table cellpadding="0" cellspacing="0" width="100%">
+          <tr>
+            <td style="padding:6px 0;vertical-align:top;width:20px;color:#f59e0b;font-size:14px;font-weight:900;">✓</td>
+            <td style="padding:6px 0 6px 10px;font-size:13px;color:#475569;line-height:1.5;">
+              Each credit = 1 free month of GasCap™ Pro ($4.99 value)
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:6px 0;vertical-align:top;width:20px;color:#f59e0b;font-size:14px;font-weight:900;">✓</td>
+            <td style="padding:6px 0 6px 10px;font-size:13px;color:#475569;line-height:1.5;">
+              Credits apply automatically on your next billing cycle
+              (up to 3 at a time — you can bank more for later)
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:6px 0;vertical-align:top;width:20px;color:#f59e0b;font-size:14px;font-weight:900;">✓</td>
+            <td style="padding:6px 0 6px 10px;font-size:13px;color:#475569;line-height:1.5;">
+              Credits are earned when your referral makes their <strong>first paid payment</strong>
+              (not just when they sign up — so you're always rewarded for real conversions)
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:6px 0;vertical-align:top;width:20px;color:#dc2626;font-size:14px;font-weight:900;">!</td>
+            <td style="padding:6px 0 6px 10px;font-size:13px;color:#475569;line-height:1.5;">
+              Credits expire after 6 months if unused — redeem them before they expire!
+            </td>
+          </tr>
+        </table>
+      </div>
+
+      <p style="margin:0 0 20px;font-size:14px;color:#64748b;line-height:1.6;">
+        Keep sharing your referral link to earn more free months. You can earn up to
+        <strong>10 free months</strong> total — and redeem them whenever you like.
+      </p>
+
+      <div style="text-align:center;">
+        ${ctaButton('View My Credits →', settingsUrl)}
+      </div>
+
+    </td></tr>
+    ${footer(referrerId)}
+  `);
+}
+
+export function referralCreditEmailText(
+  referrerName: string,
+  totalCredits: number,
+): string {
+  const first = referrerName.split(' ')[0];
+  return `Hi ${first}, someone you referred just made their first GasCap™ payment! You've earned 1 free month of Pro. You now have ${totalCredits} credit${totalCredits === 1 ? '' : 's'} banked (each = 1 free month, $4.99 value). Credits apply on your next billing cycle (up to 3 at once) and expire after 6 months. View your credits: ${BASE_URL}/settings`;
+}
+
+export async function sendReferralCreditEmail(
+  referrerId:   string,
+  referrerEmail: string,
+  referrerName:  string,
+  totalCredits:  number,
+): Promise<void> {
+  await sendMail({
+    to:      referrerEmail,
+    subject: `🎉 You earned a free month on GasCap™! (${totalCredits} banked)`,
+    html:    referralCreditEmailHtml(referrerName, referrerId, totalCredits),
+    text:    referralCreditEmailText(referrerName, totalCredits),
+  });
+}

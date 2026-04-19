@@ -384,11 +384,17 @@ export default function SettingsPage() {
               </Link>
             </div>
 
-            {/* Stats */}
+            {/* How credits are earned */}
+            <p className="text-[11px] text-slate-500 leading-relaxed bg-slate-50 rounded-xl px-3 py-2.5">
+              💡 You earn <strong>1 free month</strong> for every friend who signs up with your link
+              <em> and </em>makes their first payment. Trial sign-ups that cancel don&apos;t count — only real paying customers.
+            </p>
+
+          {/* Stats */}
             <div className="flex gap-3">
               <div className="flex-1 bg-slate-50 rounded-xl px-3 py-2 text-center">
                 <p className="text-lg font-black text-slate-700">{referral.referralCount}</p>
-                <p className="text-[10px] text-slate-400">Friends Joined</p>
+                <p className="text-[10px] text-slate-400">Paid Referrals</p>
               </div>
               <div className={`flex-1 rounded-xl px-3 py-2 text-center ${referral.activeCredits > 0 ? 'bg-amber-50' : 'bg-slate-50'}`}>
                 <p className={`text-lg font-black ${referral.activeCredits > 0 ? 'text-amber-600' : 'text-slate-400'}`}>

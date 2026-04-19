@@ -9,9 +9,10 @@
 import { NextResponse }                     from 'next/server';
 import type Stripe                          from 'stripe';
 import { stripe }                           from '@/lib/stripe';
-import { setUserPlan, findByStripeCustomer, findById } from '@/lib/users';
+import { setUserPlan, findByStripeCustomer, findById, findByReferralCode, creditVerifiedReferral, getActiveCredits } from '@/lib/users';
 import { updateGhlContactPlan }            from '@/lib/ghl';
 import { sendMail }                        from '@/lib/email';
+import { sendReferralCreditEmail }         from '@/lib/emailCampaign';
 
 /** Fire-and-forget admin notification */
 function sendAdminMail(opts: { subject: string; html: string; text: string }) {
@@ -114,6 +115,33 @@ export async function POST(req: Request) {
       if (user.plan !== tier) {
         await setUserPlan(user.id, tier, { subscriptionId: subId });
         console.info(`[GasCap webhook] Activated ${tier} for user ${user.id} on renewal`);
+      }
+
+      // ── Referral credit — fire on the first real payment only ─────────────
+      // Conditions: amount_paid > 0, referredBy is set, not yet credited.
+      // This ensures trial cancellers never trigger a credit.
+      if (
+        invoice.amount_paid > 0 &&
+        user.referredBy &&
+        !user.referralRewardCredited
+      ) {
+        const credited = await creditVerifiedReferral(user.id);
+        if (credited && user.referredBy) {
+          // Look up the referrer to send them a notification
+          const referrer = await findByReferralCode(user.referredBy);
+          if (referrer) {
+            // Re-fetch to get the updated credit count after recording
+            const fresh = await findById(referrer.id);
+            const totalCredits = fresh ? getActiveCredits(fresh).length : 1;
+            sendReferralCreditEmail(
+              referrer.id,
+              referrer.email,
+              referrer.name,
+              totalCredits,
+            ).catch((e) => console.error('[GasCap] Referral credit email failed:', e));
+            console.info(`[GasCap webhook] Referral credit awarded to ${referrer.email} (${totalCredits} total)`);
+          }
+        }
       }
       break;
     }

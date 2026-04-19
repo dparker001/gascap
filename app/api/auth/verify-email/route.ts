@@ -8,7 +8,7 @@
 import { NextResponse }     from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions }      from '@/lib/auth';
-import { findById, verifyEmailToken, createEmailVerifyToken, creditVerifiedReferral } from '@/lib/users';
+import { findById, verifyEmailToken, createEmailVerifyToken } from '@/lib/users';
 import { sendMail, verificationEmailHtml } from '@/lib/email';
 
 function getBaseUrl(req: Request): string {
@@ -34,9 +34,9 @@ export async function GET(req: Request) {
     return NextResponse.redirect(`${baseUrl}/?verified=error&msg=${msg}`);
   }
 
-  if (result.userId) {
-    await creditVerifiedReferral(result.userId);
-  }
+  // Referral credit is NOT awarded here. It fires in the Stripe webhook on
+  // invoice.payment_succeeded (first real payment > $0) so trial cancellers
+  // never earn a referrer a free month.
 
   // Send the user to the sign-in page with a success banner.
   // They sign in fresh here, which creates a JWT with emailVerified:true.
