@@ -12,6 +12,7 @@ import PricingSection          from '@/components/PricingSection';
 import EmailVerificationBanner from '@/components/EmailVerificationBanner';
 import ReviewsMarquee          from '@/components/ReviewsMarquee';
 import OnboardingModal         from '@/components/OnboardingModal';
+import SetupChecklist          from '@/components/SetupChecklist';
 import GasPriceAlertBanner     from '@/components/GasPriceAlertBanner';
 import StreakCounter           from '@/components/StreakCounter';
 import CampaignTracker         from '@/components/CampaignTracker';
@@ -535,8 +536,15 @@ export default function Home() {
       {/* Streak counter — logged-in users only */}
       {session && <StreakCounter />}
 
+      {/* Setup checklist — shown once to new signed-in users until all steps are complete */}
+      {session && (
+        <section className="px-4 max-w-lg mx-auto w-full">
+          <SetupChecklist />
+        </section>
+      )}
+
       {/* Calculator */}
-      <section className="flex-1 px-4 pt-5 pb-4 max-w-lg mx-auto w-full">
+      <section id="gascap-calculator" className="flex-1 px-4 pt-5 pb-4 max-w-lg mx-auto w-full">
         <CalculatorTabs />
       </section>
 
@@ -571,7 +579,7 @@ export default function Home() {
       </section>
 
       {/* Tools & Insights */}
-      <section className="px-4 pb-6 max-w-lg mx-auto w-full">
+      <section id="gascap-tools" className="px-4 pb-6 max-w-lg mx-auto w-full">
         <ToolsPanel />
       </section>
 

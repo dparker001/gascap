@@ -67,6 +67,16 @@ export default function ToolsPanel() {
     return () => { cancelled = true; window.removeEventListener('fillup-saved', onSaved); };
   }, [session]);
 
+  // Allow the setup checklist (and other components) to switch tabs programmatically
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const tab = (e as CustomEvent<{ tab: TabId }>).detail?.tab;
+      if (tab) setActiveTab(tab);
+    };
+    window.addEventListener('gascap:switch-tools-tab', handler);
+    return () => window.removeEventListener('gascap:switch-tools-tab', handler);
+  }, []);
+
   const TABS: Tab[] = [
     { id: 'ai',      emoji: '🤖', label: t.tools.tabs.ai,      authRequired: false, planRequired: undefined },
     { id: 'trip',    emoji: '🗺️', label: t.tools.tabs.trip,    authRequired: false, planRequired: undefined },

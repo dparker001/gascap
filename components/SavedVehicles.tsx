@@ -267,6 +267,13 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
     if (session) load();
   }, [session, load]);
 
+  // Allow the setup checklist to open the vehicle picker via a custom event
+  useEffect(() => {
+    const handler = () => setShowPicker(true);
+    window.addEventListener('gascap:focus-vehicles', handler);
+    return () => window.removeEventListener('gascap:focus-vehicles', handler);
+  }, []);
+
   if (status === 'loading') return null;
 
   if (!session) {
@@ -322,6 +329,7 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
     });
     setSaving(false);
     if (res.ok) {
+      window.dispatchEvent(new Event('vehicle-saved'));
       setShowPicker(false);
       load();
     } else {
