@@ -87,6 +87,15 @@ export default function SettingsPage() {
       .then((r) => r.json())
       .then((d: GiveawayEntries) => { if (d.eligible) setGiveaway(d); })
       .catch(() => {});
+    // Pre-populate editable profile fields from the database so they're not
+    // blank on every visit and so saving never accidentally wipes saved data.
+    fetch('/api/user/profile')
+      .then((r) => r.json())
+      .then((d: { displayName?: string; phone?: string }) => {
+        if (d.displayName) setDisplayName(d.displayName);
+        if (d.phone)       setPhone(d.phone);
+      })
+      .catch(() => {});
   }, [session]);
 
   if (status === 'loading') {

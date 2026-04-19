@@ -52,6 +52,30 @@ export async function POST(req: Request) {
 
   const origin = getBaseUrl(req);
 
+  // ── Fleet trial days ──────────────────────────────────────────────────────
+  // • If the user is on an active pro trial (isProTrial/isBetaTester) and hasn't
+  //   paid for anything yet, carry those remaining days over as the fleet trial.
+  //   This means upgrading mid-trial doesn't forfeit the free period.
+  // • If they have no subscription at all (brand-new or expired-trial free user),
+  //   give them a 14-day fleet trial.
+  // • Paid pro subscribers upgrading to fleet get no trial — Stripe prorates
+  //   the current billing period automatically.
+  let trialDays = 0;
+  if (tier === 'fleet') {
+    const hasTrial     = (user.isProTrial || user.isBetaTester) && !!user.betaProExpiry;
+    const hasActiveSub = !!user.stripeSubscriptionId;
+
+    if (hasTrial && !hasActiveSub) {
+      // Carry over remaining pro-trial days (floor to whole days, min 1)
+      const remainingMs = new Date(user.betaProExpiry!).getTime() - Date.now();
+      trialDays = Math.max(1, Math.floor(remainingMs / 86_400_000));
+    } else if (!hasActiveSub) {
+      // No prior trial and no paid sub → fresh 14-day fleet trial
+      trialDays = 14;
+    }
+    // hasActiveSub (paid pro) → trialDays stays 0; Stripe handles proration
+  }
+
   const checkoutSession = await stripe.checkout.sessions.create({
     mode:                    'subscription',
     payment_method_types:    ['card'],
@@ -68,7 +92,8 @@ export async function POST(req: Request) {
       billing,
     },
     subscription_data: {
-      metadata: { userId, tier },
+      metadata:                    { userId, tier },
+      ...(trialDays > 0 ? { trial_period_days: trialDays } : {}),
     },
   });
 

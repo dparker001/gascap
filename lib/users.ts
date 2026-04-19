@@ -526,11 +526,18 @@ export async function updateUserProfile(
   userId: string,
   fields: { displayName?: string; phone?: string },
 ): Promise<StoredUser | null> {
+  // `undefined` → field not included in the request; leave as-is.
+  // `''` (empty string) → user explicitly cleared the field; store null.
+  // Any other string → trim and save.
   const user = await prisma.user.update({
     where: { id: userId },
     data: {
-      ...(fields.displayName !== undefined ? { displayName: fields.displayName.trim() } : {}),
-      ...(fields.phone       !== undefined ? { phone:       fields.phone.trim()       } : {}),
+      ...(fields.displayName !== undefined
+        ? { displayName: fields.displayName.trim() || null }
+        : {}),
+      ...(fields.phone !== undefined
+        ? { phone: fields.phone.trim() || null }
+        : {}),
     },
   }).catch(() => null);
   return user ? toStoredUser(user) : null;
