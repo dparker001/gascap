@@ -187,8 +187,8 @@ export default function FillupLogger({ prefill, onSaved, onCancel }: FillupLogge
               ✨ Auto-fill from your receipt
             </p>
             <p className="text-[10px] text-slate-400 leading-snug mt-0.5">
-              AI reads the receipt image and fills in gallons,<br />
-              price &amp; date for you — review before saving
+              For pay-at-the-pump receipts or final store receipts.<br />
+              AI reads gallons, price &amp; date — review before saving.
             </p>
           </div>
           <span className={`text-[10px] font-bold border rounded-full px-2 py-0.5 flex-shrink-0 ${isPro ? 'text-blue-600 bg-blue-50 border-blue-200' : 'text-amber-600 bg-amber-50 border-amber-200'}`}>
