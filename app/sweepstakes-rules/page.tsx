@@ -57,6 +57,15 @@ export default function SweepstakesRulesPage() {
               of entry. Employees of the Sponsor and their immediate family members are not eligible.
               Void where prohibited by law.
             </p>
+            <p className="text-sm text-slate-600 leading-relaxed">
+              <strong>Winner Frequency Restriction:</strong> A person who has won a prize in the
+              immediately preceding calendar month is not eligible to win again in the current Entry
+              Month. Additionally, a person may not win more than once per calendar quarter
+              (Q1: January–March; Q2: April–June; Q3: July–September; Q4: October–December).
+              If a selected winner is ineligible under these restrictions, an additional drawing
+              will be conducted from the remaining eligible entries until an eligible winner is
+              selected.
+            </p>
           </section>
 
           <section className="p-5 space-y-2">
@@ -110,6 +119,14 @@ export default function SweepstakesRulesPage() {
               Each entry represents one equal chance to win. The drawing is conducted electronically by
               the Sponsor using a randomized selection process. Odds of winning depend on the total
               number of entries received.
+            </p>
+            <p className="text-sm text-slate-600 leading-relaxed">
+              If the selected potential winner is ineligible due to the winner frequency restrictions
+              set forth in Section 2, that person&apos;s entries will be removed from the pool and
+              an additional drawing will be conducted from the remaining eligible entries. This process
+              will repeat until an eligible winner is identified. In the unlikely event that all
+              entrants are ineligible under the frequency restrictions, no prize will be awarded for
+              that Entry Month and the prize will not carry over.
             </p>
           </section>
 

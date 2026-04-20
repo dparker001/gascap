@@ -90,6 +90,65 @@ export function currentMonth(): string {
   return new Date().toISOString().slice(0, 7);
 }
 
+/**
+ * Return the calendar quarter (1–4) for a "YYYY-MM" string.
+ * Q1 = Jan–Mar, Q2 = Apr–Jun, Q3 = Jul–Sep, Q4 = Oct–Dec
+ */
+export function quarterForMonth(month: string): number {
+  const mo = parseInt(month.split('-')[1], 10);
+  return Math.ceil(mo / 3);
+}
+
+/** Return the year as a number from a "YYYY-MM" string */
+export function yearForMonth(month: string): number {
+  return parseInt(month.split('-')[0], 10);
+}
+
+/**
+ * Return the immediately preceding "YYYY-MM" string.
+ * e.g. "2026-01" → "2025-12"
+ */
+export function prevMonth(month: string): string {
+  const [y, m] = month.split('-').map(Number);
+  const d = new Date(y, m - 2, 1); // month is 0-indexed
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+/**
+ * Given a draw month and the full draw history, return the set of
+ * winner userIds who are ineligible to win again:
+ *  – Won the immediately preceding month (no consecutive wins)
+ *  – Won any draw in the same calendar quarter of the same year
+ */
+export function ineligibleWinners(
+  drawMonth: string,
+  history: { winnerId: string; month: string }[],
+): Set<string> {
+  const ineligible = new Set<string>();
+  const prev       = prevMonth(drawMonth);
+  const drawQ      = quarterForMonth(drawMonth);
+  const drawY      = yearForMonth(drawMonth);
+
+  for (const d of history) {
+    // Skip the draw month itself (shouldn't exist yet, but be safe)
+    if (d.month === drawMonth) continue;
+
+    // Consecutive month rule
+    if (d.month === prev) {
+      ineligible.add(d.winnerId);
+    }
+
+    // Same-quarter rule
+    if (
+      yearForMonth(d.month)    === drawY &&
+      quarterForMonth(d.month) === drawQ
+    ) {
+      ineligible.add(d.winnerId);
+    }
+  }
+  return ineligible;
+}
+
 /** All Pro/Fleet users with ≥1 active day in the given month */
 export async function getEligibleEntrants(month: string): Promise<EntrantRow[]> {
   const prefix = `${month}-`;
@@ -110,23 +169,48 @@ export async function getEligibleEntrants(month: string): Promise<EntrantRow[]> 
     .sort((a, b) => b.entryCount - a.entryCount);
 }
 
-/** Weighted random draw — more entries = proportionally better odds */
+/**
+ * Weighted random draw — more entries = proportionally better odds.
+ *
+ * Enforces two winner-restriction rules automatically:
+ *  1. No consecutive-month wins
+ *  2. Maximum one win per calendar quarter (same year)
+ *
+ * If the first selection is ineligible, that entrant is removed from the pool
+ * and the draw repeats until an eligible winner is found.
+ * Throws if no eligible entrants remain after applying restrictions.
+ */
 export async function runWeightedDraw(month: string): Promise<DrawResult> {
-  const entrants = await getEligibleEntrants(month);
-  if (entrants.length === 0) throw new Error('No eligible entrants for this month.');
+  const [allEntrants, history] = await Promise.all([
+    getEligibleEntrants(month),
+    getDrawHistory(),
+  ]);
+  if (allEntrants.length === 0) throw new Error('No eligible entrants for this month.');
 
-  const totalEntries = entrants.reduce((s, e) => s + e.entryCount, 0);
+  const ineligible = ineligibleWinners(month, history);
 
-  // Build weighted pool and pick
-  let pick = Math.floor(Math.random() * totalEntries);
+  // Filter to entrants who are eligible under the restriction rules
+  let pool = allEntrants.filter((e) => !ineligible.has(e.userId));
+  if (pool.length === 0) {
+    throw new Error(
+      'No eligible entrants for this month after applying consecutive-month ' +
+      'and quarterly winner restrictions. All entrants have won recently.',
+    );
+  }
+
+  const totalEntries    = allEntrants.reduce((s, e) => s + e.entryCount, 0);
+  const eligibleEntries = pool.reduce((s, e) => s + e.entryCount, 0);
+
+  // Weighted random pick from the eligible pool
+  let pick = Math.floor(Math.random() * eligibleEntries);
   let winner: EntrantRow | null = null;
-  for (const e of entrants) {
+  for (const e of pool) {
     pick -= e.entryCount;
     if (pick < 0) { winner = e; break; }
   }
-  winner ??= entrants[entrants.length - 1]; // fallback (shouldn't occur)
+  winner ??= pool[pool.length - 1]; // fallback (shouldn't occur)
 
-  return { winner, totalEntries, entrantCount: entrants.length, month };
+  return { winner, totalEntries, entrantCount: allEntrants.length, month };
 }
 
 /** Persist the draw result — throws if draw already exists for this month */
