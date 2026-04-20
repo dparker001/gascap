@@ -17,7 +17,14 @@ export default function StreakCounter() {
   useEffect(() => {
     if (!session) return;
     setLoading(true);
-    fetch('/api/activity', { credentials: 'include' })
+    // POST a 'visit' event — this records today in activeDays (idempotent)
+    // and returns the freshly-calculated streak including today.
+    fetch('/api/activity', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ event: 'visit' }),
+    })
       .then((r) => r.ok ? r.json() as Promise<ActivityResponse> : Promise.reject())
       .then((d) => setStreak(d.streak ?? 0))
       .catch(() => setStreak(0))
