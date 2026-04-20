@@ -77,52 +77,8 @@ export async function POST(req: Request) {
   if (_auth === 'no-env') return NextResponse.json({ error: 'Misconfigured' }, { status: 503 });
   if (_auth === 'wrong')  return NextResponse.json({ error: 'Unauthorized'  }, { status: 401 });
 
-  const body  = await req.json() as { month?: string; notes?: string; test?: boolean };
+  const body  = await req.json() as { month?: string; notes?: string };
   const month = body.month ?? currentMonth();
-  const isTest = body.test === true;
-
-  // ── TEST MODE ─────────────────────────────────────────────────────────────
-  // Fires the GHL webhook with dummy data. No draw is recorded, no email sent.
-  // Remove this block once the webhook integration is confirmed working.
-  if (isTest) {
-    const webhookUrl = process.env.GHL_WINNER_WEBHOOK_URL;
-    if (!webhookUrl) {
-      return NextResponse.json({ error: 'GHL_WINNER_WEBHOOK_URL not set in Railway env vars.' }, { status: 503 });
-    }
-    const testPayload = {
-      firstName:    'Test',
-      lastName:     'Winner',
-      email:        'test-winner@gascap.app',
-      phone:        '',
-      month:        '2026-04',
-      monthLabel:   'April 2026',
-      entryCount:   15,
-      totalEntries: 42,
-      prize:        '$25',
-      drawnAt:      new Date().toISOString(),
-      notes:        'TEST FIRE — webhook integration check. Not a real draw.',
-      winnerTag:    'gascap-sweepstakes-winner-april-2026',
-      alternateTag: 'gascap-sweepstakes-alternate-april-2026',
-      isTest:       true,
-    };
-    try {
-      const res = await fetch(webhookUrl, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify(testPayload),
-      });
-      return NextResponse.json({
-        ok:          true,
-        test:        true,
-        webhookStatus: res.status,
-        webhookOk:   res.ok,
-        payload:     testPayload,
-      });
-    } catch (err) {
-      return NextResponse.json({ error: 'Webhook POST failed: ' + String(err), test: true }, { status: 502 });
-    }
-  }
-  // ─────────────────────────────────────────────────────────────────────────
 
   if (!/^\d{4}-\d{2}$/.test(month)) {
     return NextResponse.json({ error: 'Invalid month format. Use YYYY-MM.' }, { status: 400 });
