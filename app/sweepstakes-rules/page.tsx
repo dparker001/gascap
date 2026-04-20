@@ -189,7 +189,7 @@ export default function SweepstakesRulesPage() {
               This Sweepstakes is governed by the laws of the State of Florida and, where
               applicable, the laws of the United States, without regard to conflict-of-law
               principles. All disputes shall be resolved exclusively in the state or federal
-              courts located in Pinellas County, Florida.
+              courts located in Orange County, Florida.
             </p>
           </section>
 
