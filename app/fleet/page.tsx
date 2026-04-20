@@ -4,6 +4,7 @@ import { useSession }      from 'next-auth/react';
 import { useEffect, useState, useCallback } from 'react';
 import Link                from 'next/link';
 import type { Fillup }     from '@/lib/fillups';
+import ManualFillupLogger  from '@/components/ManualFillupLogger';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -91,6 +92,13 @@ export default function FleetPage() {
   useEffect(() => {
     if (session) loadAll();
   }, [session, loadAll]);
+
+  // Refresh fleet data whenever a fill-up is saved from ManualFillupLogger
+  useEffect(() => {
+    const handler = () => loadAll();
+    window.addEventListener('fillup-saved', handler);
+    return () => window.removeEventListener('fillup-saved', handler);
+  }, [loadAll]);
 
   // ── Guard: must be signed in and fleet plan ──────────────────────────────────
   if (status === 'loading') {
@@ -261,6 +269,9 @@ export default function FleetPage() {
               <StatPill emoji="💰" label="This Month" value={`$${thisMonthSpent.toFixed(2)}`} sub={`${thisMonthFillups.length} fill-up${thisMonthFillups.length !== 1 ? 's' : ''}`} color="text-amber-600" />
               <StatPill emoji="⛽" label="All Time" value={`$${(fillupData?.stats.totalSpent ?? 0).toFixed(2)}`} sub={`${fillupData?.stats.count ?? 0} fill-ups`} color="text-green-600" />
             </div>
+
+            {/* ── Log Fill-Up ─────────────────────────────────────────────── */}
+            <ManualFillupLogger />
 
             {/* ── Driver Roster ────────────────────────────────────────────── */}
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">

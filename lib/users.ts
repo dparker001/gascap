@@ -298,7 +298,7 @@ function todayStr(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-function calcStreak(activeDays: string[]): number {
+export function calcStreak(activeDays: string[]): number {
   if (activeDays.length === 0) return 0;
   const sorted = [...activeDays].sort().reverse();
   const today  = todayStr();

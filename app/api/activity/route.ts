@@ -5,7 +5,7 @@
 import { NextResponse }    from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions }     from '@/lib/auth';
-import { findById, recordActivity, STREAK_MILESTONES, type ActivityEvent } from '@/lib/users';
+import { findById, recordActivity, calcStreak, STREAK_MILESTONES, type ActivityEvent } from '@/lib/users';
 import { BADGES, evaluateEarned, type BadgeDef } from '@/lib/badges';
 import { getVehiclesForUser }     from '@/lib/savedVehicles';
 
@@ -29,7 +29,7 @@ export async function GET() {
 
   return NextResponse.json({
     badges:  earned,
-    streak:  user.streak ?? 0,
+    streak:  calcStreak(user.activeDays ?? []),
     stats: {
       calcCount:       user.calcCount       ?? 0,
       budgetCalcCount: user.budgetCalcCount ?? 0,
