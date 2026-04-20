@@ -169,6 +169,8 @@ export default function SweepstakesRulesPage() {
               To the fullest extent permitted by law, the Sponsor is not responsible for any
               technical failures, lost or misdirected entries, or any injuries, losses, or damages
               of any kind arising from participation in this Sweepstakes or acceptance of any prize.
+              The Sponsor&apos;s maximum liability to any entrant shall not exceed the value of the
+              prize offered in the applicable Entry Month.
             </p>
           </section>
 
@@ -184,9 +186,10 @@ export default function SweepstakesRulesPage() {
           <section className="p-5 space-y-2">
             <h2 className="text-sm font-black text-slate-800">11. Governing Law</h2>
             <p className="text-sm text-slate-600 leading-relaxed">
-              This Sweepstakes is governed by the laws of the United States and the state in which
-              the Sponsor is incorporated, without regard to conflict-of-law principles. All disputes
-              shall be resolved exclusively in the courts of that jurisdiction.
+              This Sweepstakes is governed by the laws of the State of Florida and, where
+              applicable, the laws of the United States, without regard to conflict-of-law
+              principles. All disputes shall be resolved exclusively in the state or federal
+              courts located in Pinellas County, Florida.
             </p>
           </section>
 
@@ -195,7 +198,8 @@ export default function SweepstakesRulesPage() {
             <p className="text-sm text-slate-600 leading-relaxed">
               For questions, a copy of these rules, or a list of prize winners (available after
               the conclusion of each Entry Month), contact us at{' '}
-              <a href={`mailto:${CONTACT_EMAIL}`} className="text-[#1EB68F] underline">{CONTACT_EMAIL}</a>.
+              <a href={`mailto:${CONTACT_EMAIL}`} className="text-[#1EB68F] underline">{CONTACT_EMAIL}</a>{' '}
+              or by mail at: {SPONSOR}, 7901 4th St N, STE 300, St. Petersburg, FL 33702.
             </p>
           </section>
 
@@ -203,7 +207,9 @@ export default function SweepstakesRulesPage() {
 
         {/* Disclaimer */}
         <p className="text-[10px] text-slate-400 text-center leading-relaxed pb-4">
-          These rules are subject to change without notice. This page constitutes the complete
+          These rules may be amended at any time; any material changes will be posted at
+          gascap.app/sweepstakes-rules. Continued participation after a change is posted
+          constitutes acceptance of the revised rules. This page constitutes the complete
           Official Rules for the GasCap™ Monthly Gas Card Giveaway.{' '}
           <strong>No purchase necessary. A purchase does not improve your odds of winning.</strong>
         </p>

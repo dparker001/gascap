@@ -19,9 +19,10 @@ function currentMonthLabel(): string {
 }
 
 export default function AmoePage() {
-  const [firstName, setFirstName] = useState('');
-  const [lastName,  setLastName]  = useState('');
-  const [email,     setEmail]     = useState('');
+  const [firstName,     setFirstName]     = useState('');
+  const [lastName,      setLastName]      = useState('');
+  const [email,         setEmail]         = useState('');
+  const [ageConfirmed,  setAgeConfirmed]  = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [success,    setSuccess]   = useState(false);
   const [errorMsg,   setErrorMsg]  = useState('');
@@ -189,6 +190,21 @@ export default function AmoePage() {
                 </p>
               </div>
 
+              {/* Age & residency confirmation */}
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  required
+                  checked={ageConfirmed}
+                  onChange={(e) => setAgeConfirmed(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 flex-shrink-0 rounded accent-[#1EB68F] cursor-pointer"
+                />
+                <span className="text-white/60 text-xs leading-relaxed">
+                  I confirm that I am <strong className="text-white/80">18 years of age or older</strong> and
+                  a <strong className="text-white/80">legal resident of the United States</strong>.
+                </span>
+              </label>
+
               {/* Error */}
               {errorMsg && (
                 <div className="bg-red-500/20 border border-red-400/30 rounded-xl px-4 py-2.5">
@@ -199,7 +215,7 @@ export default function AmoePage() {
               {/* Submit */}
               <button
                 type="submit"
-                disabled={submitting || !firstName.trim() || !lastName.trim() || !email.trim()}
+                disabled={submitting || !firstName.trim() || !lastName.trim() || !email.trim() || !ageConfirmed}
                 className="w-full py-4 rounded-2xl bg-[#1EB68F] hover:bg-[#17a07f] active:scale-[0.98]
                            text-white font-black text-sm transition-all disabled:opacity-40
                            disabled:pointer-events-none mt-1"
