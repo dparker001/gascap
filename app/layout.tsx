@@ -96,7 +96,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </noscript>
         {/* ── End Meta Pixel ───────────────────────────────────────────────── */}
 
-        {/* GHL Chat Widget — disabled (covers mobile content; PWA is mobile-first) */}
+        {/* ── GHL Chat Widget (desktop only — hidden on mobile via CSS) ────── */}
+        <Script
+          id="ghl-chat-widget"
+          src="https://widgets.leadconnectorhq.com/loader.js"
+          data-resources-url="https://widgets.leadconnectorhq.com/chat-widget/loader.js"
+          data-widget-id="69e91838391771c2f342128d"
+          strategy="lazyOnload"
+        />
+        {/* ── End GHL Chat Widget ───────────────────────────────────────────── */}
 
         {/* Apply dark class before first paint to avoid flash */}
         <DarkModeProvider />

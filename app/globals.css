@@ -196,3 +196,14 @@ input[type='number'] { -moz-appearance: textfield; }
 .marquee-track-right { animation: marquee-right 38s linear infinite; }
 .marquee-root:hover .marquee-track-left,
 .marquee-root:hover .marquee-track-right { animation-play-state: paused; }
+
+/* ── GHL Chat Widget — desktop only ────────────────────────────────── */
+/* Hide on mobile (PWA is mobile-first; bubble covers app content)     */
+@media (max-width: 767px) {
+  #chat-widget-container,
+  .chat-widget-container,
+  iframe[src*="leadconnectorhq"],
+  div[data-widget-id] {
+    display: none !important;
+  }
+}
