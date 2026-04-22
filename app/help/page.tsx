@@ -261,6 +261,48 @@ const SECTIONS = [
     ],
   },
   {
+    id: 'referrals',
+    title: '🔗 Referral Program',
+    items: [
+      {
+        q: 'How does the referral program work?',
+        a: 'Every GasCap™ account has a unique referral link (gascap.app/signup?ref=YOURCODE). Share your link with friends. When someone signs up using your link and makes their first paid subscription payment, you earn 1 free month of GasCap™ Pro — automatically credited to your account.',
+      },
+      {
+        q: 'Where do I find my referral link?',
+        a: 'Your referral link is in the Share tab inside the app. Tap the share icon or visit your Settings to find and copy your unique link.',
+      },
+      {
+        q: 'When exactly do I earn the credit?',
+        a: 'You earn the credit only when your referred friend makes their first real payment — meaning they upgrade to Pro or Fleet and their first invoice is successfully charged. If they sign up but never upgrade, or start a trial and cancel before paying, no credit is awarded.',
+      },
+      {
+        q: 'How many free months can I earn?',
+        a: 'You can earn a maximum of 10 free Pro months total over the lifetime of your account. There is no annual reset — once you reach 10 credits earned, the referral program is complete for your account.',
+      },
+      {
+        q: 'How many credits can I redeem at once?',
+        a: 'You can redeem up to 3 credits per billing cycle. If you have more than 3 banked, the remaining credits carry over to future billing cycles.',
+      },
+      {
+        q: 'Do referral credits expire?',
+        a: 'Yes — each credit expires 6 months from the date it was earned. Make sure to redeem credits before they expire. You\'ll receive an email notification when a credit is earned so you can track it.',
+      },
+      {
+        q: 'How do I redeem my referral credits?',
+        a: 'Referral credits are applied automatically to your next billing cycle when you have active (unredeemed, unexpired) credits on your account. If you need help applying a credit manually, email hello@gascap.app.',
+      },
+      {
+        q: 'Can I refer myself with a second email address?',
+        a: 'Self-referrals are blocked. If the system detects the same account attempting to refer itself, no credit is awarded.',
+      },
+      {
+        q: 'I referred someone but didn\'t receive my credit — what should I do?',
+        a: 'Make sure your friend completed their first paid subscription payment (not just a free trial signup). Credits are triggered by the first successful charge, not by account creation. If your friend has paid and you still haven\'t received credit after 24 hours, email hello@gascap.app with your referral code and we\'ll look into it.',
+      },
+    ],
+  },
+  {
     id: 'streak-rewards',
     title: '🏆 Streak Rewards',
     items: [
