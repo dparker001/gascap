@@ -35,7 +35,7 @@ interface FormState {
 const DEFAULTS: FormState = {
   tankCapacity:    '',
   fuelMode:        'percent',
-  currentFuel:     '25',
+  currentFuel:     '0',
   pricePerGallon:  '',
   budget:          '',
   vehicleName:     '',
