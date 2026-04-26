@@ -68,6 +68,7 @@ export default function BudgetForm({ activeTab, setActiveTab }: Props) {
   const [result, setResult] = useState<BudgetResult | null>(null);
   const [calculated, setCalculated]   = useState(false);
   const [showLiveNudge, setShowLiveNudge] = useState(false);
+  const [validationAttempted, setValidationAttempted] = useState(false);
 
   // Standard patch — clears result (free/guest behaviour)
   function patch(p: Partial<FormState>) {
@@ -118,11 +119,27 @@ export default function BudgetForm({ activeTab, setActiveTab }: Props) {
 
     const errs = validateBudget(input);
     setErrors(errs);
-    if (Object.keys(errs).length > 0) return;
+    setValidationAttempted(true);
+
+    if (Object.keys(errs).length > 0) {
+      // Scroll to the first field with an error so it's visible
+      const firstErrId = errs.tankCapacity   ? 'bgt-step1'
+                       : errs.currentFuel    ? 'bgt-step2'
+                       : errs.budget         ? 'bgt-step3'
+                       : errs.pricePerGallon ? 'bgt-step4'
+                       : null;
+      if (firstErrId) {
+        setTimeout(() => {
+          document.getElementById(firstErrId)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 50);
+      }
+      return;
+    }
 
     setResult(calcBudget(input));
     setCalculated(true);
     setShowLiveNudge(false);
+    setValidationAttempted(false);
     setTimeout(() => {
       document.getElementById('bgt-result')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }, 80);
@@ -134,6 +151,7 @@ export default function BudgetForm({ activeTab, setActiveTab }: Props) {
     setResult(null);
     setCalculated(false);
     setShowLiveNudge(false);
+    setValidationAttempted(false);
   }
 
   const tankNum = Number(form.tankCapacity) || undefined;
@@ -151,7 +169,7 @@ export default function BudgetForm({ activeTab, setActiveTab }: Props) {
           STEP 1 — Pick a vehicle
       ══════════════════════════════════════════════════════════════ */}
       <StepLabel n={1} title={t.calc.step1} />
-      <div className="card">
+      <div id="bgt-step1" className="card">
         <TankPresets
           value={form.tankCapacity}
           onChange={(v) => patch({ tankCapacity: v })}
@@ -168,7 +186,7 @@ export default function BudgetForm({ activeTab, setActiveTab }: Props) {
           STEP 2 — Set fuel level
       ══════════════════════════════════════════════════════════════ */}
       <StepLabel n={2} title={t.calc.step2} />
-      <div className="card">
+      <div id="bgt-step2" className="card">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <p className="field-label mb-0">{t.calc.currentFuelLevel}</p>
@@ -256,7 +274,7 @@ export default function BudgetForm({ activeTab, setActiveTab }: Props) {
       </div>
 
       {/* Budget inputs */}
-      <div className="card">
+      <div id="bgt-step3" className="card">
         <p className="field-label">{t.calc.yourBudget}</p>
         <div className="flex gap-2 mb-3 overflow-x-auto pb-0.5">
           {SHORTCUTS.map((amt) => {
@@ -316,7 +334,7 @@ export default function BudgetForm({ activeTab, setActiveTab }: Props) {
       <StepLabel n={4} title={t.calc.step4} />
 
       {/* Gas price */}
-      <div className="card mb-4">
+      <div id="bgt-step4" className="card mb-4">
         <p className="field-label">{t.calc.gasPriceLabel}</p>
         <div className="relative">
           <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-semibold pointer-events-none">$</span>
@@ -334,6 +352,16 @@ export default function BudgetForm({ activeTab, setActiveTab }: Props) {
         {errors.pricePerGallon && <FieldError msg={errors.pricePerGallon} />}
         <GasPriceLookup onApply={(p) => liveRecalc({ pricePerGallon: p })} />
       </div>
+
+      {/* Validation summary — only shown after a failed calculate attempt */}
+      {validationAttempted && Object.keys(errors).length > 0 && (
+        <div className="flex items-start gap-2.5 bg-red-50 border border-red-200 rounded-2xl px-4 py-3 mb-3">
+          <span className="text-base flex-shrink-0 mt-0.5">⚠️</span>
+          <p className="text-red-700 text-sm font-semibold leading-snug">
+            Please fill in the required fields highlighted above before calculating.
+          </p>
+        </div>
+      )}
 
       <button className="btn-amber" onClick={handleCalculate}>{t.calc.calculate}</button>
       <button className="btn-secondary mt-3" onClick={handleReset}>{t.calc.clearAll}</button>
