@@ -357,9 +357,19 @@ export default function AdminPage() {
               <p className="text-xs text-slate-500">User management</p>
             </div>
           </div>
-          <button onClick={handleLogout} className="text-xs text-slate-500 hover:text-red-500 transition-colors">
-            Sign out
-          </button>
+          <div className="flex items-center gap-3">
+            <a
+              href="/admin/analytics"
+              className="text-xs font-semibold text-[#005F4A] hover:text-[#1EB68F] transition-colors flex items-center gap-1"
+            >
+              📊 Analytics
+            </a>
+            <a href="/admin/campaigns" className="text-xs text-slate-500 hover:text-slate-700 transition-colors">Campaigns</a>
+            <a href="/admin/sweepstakes" className="text-xs text-slate-500 hover:text-slate-700 transition-colors">Sweepstakes</a>
+            <button onClick={handleLogout} className="text-xs text-slate-500 hover:text-red-500 transition-colors">
+              Sign out
+            </button>
+          </div>
         </div>
 
         {/* Stats */}
