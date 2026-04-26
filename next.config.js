@@ -12,6 +12,7 @@ const nextConfig = {
   // Railway injects PORT; tell Next.js to bind to it
   env: {
     PORT: process.env.PORT ?? '3000',
+    NEXT_PUBLIC_GA_MEASUREMENT_ID: process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID ?? '',
   },
   images: {
     remotePatterns: [
