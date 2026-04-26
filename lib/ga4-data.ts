@@ -64,11 +64,13 @@ export interface AnalyticsSummary {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function metricVal(row: { metricValues?: { value?: string }[] }, idx: number): number {
-  return parseInt(row.metricValues?.[idx]?.value ?? '0', 10);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function metricVal(row: any, idx: number): number {
+  return parseInt(row?.metricValues?.[idx]?.value ?? '0', 10);
 }
-function dimVal(row: { dimensionValues?: { value?: string }[] }, idx: number): string {
-  return row.dimensionValues?.[idx]?.value ?? '';
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function dimVal(row: any, idx: number): string {
+  return row?.dimensionValues?.[idx]?.value ?? '';
 }
 
 // ── Queries ───────────────────────────────────────────────────────────────────
