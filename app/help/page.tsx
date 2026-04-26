@@ -64,7 +64,7 @@ const SECTIONS = [
       },
       {
         q: 'How does the live gas price lookup work?',
-        a: 'Tap "Use Local Price" and allow location access. GasCap™ fetches the current average price in your state from the U.S. Energy Information Administration (EIA). If you deny location access, it falls back to the national average. Prices are averages — actual pump prices may vary.',
+        a: 'Live gas price lookup requires a free GasCap™ account. Once signed in, tap "Use Local Price" and allow location access. GasCap™ fetches the current average price in your state from the U.S. Energy Information Administration (EIA). If you deny location access, it falls back to the national average. Prices are averages — actual pump prices may vary. Guests can always enter a price manually.',
       },
       {
         q: 'Can I use GasCap™ without internet?',
@@ -194,11 +194,11 @@ const SECTIONS = [
     items: [
       {
         q: 'What\'s included in the free plan?',
-        a: 'The free plan includes 1 saved vehicle, both calculators (Target Fill & By Budget), Trip Cost Estimator, Station Comparison, EPA vehicle database search, live local gas price lookup, dark mode, and offline use.',
+        a: 'The free plan includes 1 saved vehicle, both calculators (Target Fill & By Budget), Trip Cost Estimator, Station Comparison, EPA vehicle database search, live local gas price lookup (free account required), dark mode, and offline use. Creating an account is free — no credit card ever required.',
       },
       {
         q: 'How do I get 30 days of Pro free?',
-        a: 'All new users who create a GasCap™ account automatically receive 30 days of Pro features — no credit card required. Your free trial gives full access to fill-up tracking, MPG insights, receipt scanning, AI Fuel Advisor, Gas Price Alert, stats, streak rewards, referral program, and monthly giveaway entries.',
+        a: 'All new users who create a GasCap™ account automatically receive 30 days of Pro features — no credit card required. Your free trial gives full access to fill-up tracking, MPG insights, receipt scanning, AI Fuel Advisor, Gas Price Alert, stats, streak rewards, referral program, and monthly giveaway entries. After the 30-day trial, Pro is $4.99/month (or $49/year). You can cancel anytime before the trial ends and you\'ll never be charged.',
       },
       {
         q: 'What does Pro add?',

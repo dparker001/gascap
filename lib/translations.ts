@@ -65,7 +65,7 @@ const en = {
     pill_garage:    'Vehicle Garage',
     pill_fillups:   'Fill-up History',
     offerStrip:     'Sign up today — first 30 days of Pro FREE',
-    offerStripSub:  'No credit card · Cancel anytime',
+    offerStripSub:  '$4.99/mo after trial · No credit card · Cancel anytime',
   },
 
   // ── Problem / Solution ─────────────────────────────────────────────────────
@@ -90,23 +90,37 @@ const en = {
 
   // ── Features ───────────────────────────────────────────────────────────────
   features: {
-    heading:  'Everything in one free app',
+    heading:  'Everything you need to stop overpaying',
     items: [
       {
+        title: 'Fuel calculator',
+        body:  'Enter your tank level, pick a target fill, and get the exact gallon count and cost — in seconds.',
+        badge: 'Free',
+      },
+      {
         title: 'Live gas prices',
-        body:  'Real-time local prices from the U.S. EIA — automatically localized to your state.',
+        body:  'Real-time local prices from the U.S. EIA — auto-detected by location. Free with an account.',
+        badge: 'Free account',
       },
       {
         title: 'Works offline',
         body:  'Install it like an app. No signal? The calculator always works with your saved data.',
+        badge: 'Free',
       },
       {
         title: 'MPG & spend tracking',
         body:  'Log every fill-up. See your efficiency trends, monthly spend, and fuel cost per mile.',
+        badge: 'Pro',
       },
       {
         title: 'AI fuel advisor',
         body:  'Ask anything — best fill strategy, octane grade, or how to improve your MPG.',
+        badge: 'Pro',
+      },
+      {
+        title: 'PDF & CSV export',
+        body:  'Export your fill-up history and fuel reports for personal finance or fleet records.',
+        badge: 'Pro',
       },
     ],
     rentalTitle: 'Renting a car? Never overpay at drop-off.',
@@ -187,7 +201,7 @@ const en = {
   cta: {
     badge:          '30 days of Pro free — no credit card ever',
     headline:       'Know before\nyou pull up.',
-    sub:            'Start with 30 free days of Pro. Save your vehicles, track your MPG, and stop over-paying at the pump.',
+    sub:            'Start with 30 free days of Pro — then $4.99/mo, cancel anytime. Save your vehicles, track your MPG, and stop over-paying at the pump.',
     createAccount:  'Start free — 30 days Pro included →',
     alreadyHave:    'Already have an account?',
     signIn:         'Sign in',
@@ -225,7 +239,7 @@ const en = {
   signUp: {
     title:            'Create your account',
     sub:              'Join free · No credit card required',
-    proTrial:         'Your first 30 days are Pro — completely free',
+    proTrial:         '🎁 Your first 30 days are Pro — free. Then $4.99/mo, cancel anytime.',
     nameLabel:        'Your name',
     namePlaceholder:  'Alex Johnson',
     emailLabel:       'Email',
@@ -749,7 +763,7 @@ const es: typeof en = {
     pill_garage:    'Garaje de vehículos',
     pill_fillups:   'Historial de llenados',
     offerStrip:     'Regístrate hoy — primeros 30 días de Pro GRATIS',
-    offerStripSub:  'Sin tarjeta de crédito · Cancela cuando quieras',
+    offerStripSub:  '$4.99/mes después del período de prueba · Sin tarjeta · Cancela cuando quieras',
   },
 
   problem: {
@@ -772,23 +786,37 @@ const es: typeof en = {
   },
 
   features: {
-    heading:  'Todo en una app gratuita',
+    heading:  'Todo lo que necesitas para dejar de pagar de más',
     items: [
       {
+        title: 'Calculadora de combustible',
+        body:  'Ingresa el nivel de tu tanque, elige una meta de llenado y obtén el conteo exacto de galones y el costo — en segundos.',
+        badge: 'Free',
+      },
+      {
         title: 'Precios de gasolina en vivo',
-        body:  'Precios locales en tiempo real de la EIA de EE.UU. — automáticamente localizados a tu estado.',
+        body:  'Precios locales en tiempo real de la EIA de EE.UU. — detectados automáticamente por ubicación. Gratis con cuenta.',
+        badge: 'Free account',
       },
       {
         title: 'Funciona sin internet',
         body:  'Instálala como una app. ¿Sin señal? La calculadora siempre funciona con tus datos guardados.',
+        badge: 'Free',
       },
       {
         title: 'Seguimiento de MPG y gasto',
         body:  'Registra cada llenado. Observa tus tendencias de eficiencia, gasto mensual y costo por milla.',
+        badge: 'Pro',
       },
       {
         title: 'Asesor de combustible IA',
         body:  'Pregunta lo que quieras — mejor estrategia de llenado, grado de octano o cómo mejorar tu MPG.',
+        badge: 'Pro',
+      },
+      {
+        title: 'Exportar PDF y CSV',
+        body:  'Exporta tu historial de llenados e informes de combustible para finanzas personales o registros de flota.',
+        badge: 'Pro',
       },
     ],
     rentalTitle: '¿Rentando un auto? Nunca pagues de más al devolverlo.',
@@ -865,7 +893,7 @@ const es: typeof en = {
   cta: {
     badge:          '30 días de Pro gratis — sin tarjeta de crédito nunca',
     headline:       'Sabe antes\nde llegar.',
-    sub:            'Empieza con 30 días de Pro gratis. Guarda tus vehículos, rastrea tu MPG y deja de pagar de más en la gasolinera.',
+    sub:            'Empieza con 30 días de Pro gratis — luego $4.99/mes, cancela cuando quieras. Guarda tus vehículos, rastrea tu MPG y deja de pagar de más en la gasolinera.',
     createAccount:  'Empezar gratis — 30 días Pro incluidos →',
     alreadyHave:    '¿Ya tienes una cuenta?',
     signIn:         'Iniciar sesión',
@@ -900,7 +928,7 @@ const es: typeof en = {
   signUp: {
     title:            'Crea tu cuenta',
     sub:              'Únete gratis · Sin tarjeta de crédito',
-    proTrial:         'Tus primeros 30 días son Pro — completamente gratis',
+    proTrial:         '🎁 Tus primeros 30 días son Pro — gratis. Luego $4.99/mes, cancela cuando quieras.',
     nameLabel:        'Tu nombre',
     namePlaceholder:  'Alex Johnson',
     emailLabel:       'Correo electrónico',

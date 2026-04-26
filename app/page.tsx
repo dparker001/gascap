@@ -237,7 +237,7 @@ function ProblemSolution() {
 
 // ── Feature showcase ─────────────────────────────────────────────────────────
 
-const FEATURE_ICONS = ['⛽', '📡', '📊', '🤖'];
+const FEATURE_ICONS = ['⛽', '📍', '📡', '📊', '🤖', '📄'];
 
 function Features() {
   const { t } = useTranslation();
@@ -251,19 +251,33 @@ function Features() {
         <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
       </div>
 
-      {/* Feature grid 2×2 */}
+      {/* Feature grid 2×3 */}
       <div className="grid grid-cols-2 gap-3 mb-3">
-        {t.features.items.map(({ title, body }, i) => (
-          <div key={title}
-            className="bg-white dark:bg-slate-800 rounded-2xl p-4 shadow-sm
-                       border border-slate-100 dark:border-slate-700">
-            <span className="text-2xl">{FEATURE_ICONS[i]}</span>
-            <h3 className="text-sm font-black text-slate-800 dark:text-slate-100 mt-2 leading-tight">
-              {title}
-            </h3>
-            <p className="text-xs text-slate-400 mt-1 leading-relaxed">{body}</p>
-          </div>
-        ))}
+        {t.features.items.map(({ title, body, badge }, i) => {
+          const isPro      = badge === 'Pro';
+          const isFreeAcct = badge === 'Free account';
+          return (
+            <div key={title}
+              className="bg-white dark:bg-slate-800 rounded-2xl p-4 shadow-sm
+                         border border-slate-100 dark:border-slate-700 flex flex-col">
+              <div className="flex items-start justify-between gap-1 mb-2">
+                <span className="text-2xl">{FEATURE_ICONS[i]}</span>
+                {badge && (
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap
+                    ${isPro      ? 'bg-amber-100 text-amber-700'
+                    : isFreeAcct ? 'bg-blue-50 text-blue-600'
+                    :              'bg-emerald-50 text-emerald-700'}`}>
+                    {isPro ? '⭐ Pro' : isFreeAcct ? '🔑 Free acct' : '✓ Free'}
+                  </span>
+                )}
+              </div>
+              <h3 className="text-sm font-black text-slate-800 dark:text-slate-100 leading-tight">
+                {title}
+              </h3>
+              <p className="text-xs text-slate-400 mt-1 leading-relaxed">{body}</p>
+            </div>
+          );
+        })}
       </div>
 
       {/* Rental car — full width feature card */}
