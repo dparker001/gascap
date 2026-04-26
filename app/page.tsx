@@ -10,6 +10,7 @@ import CalculatorTabs          from '@/components/CalculatorTabs';
 import ToolsPanel              from '@/components/ToolsPanel';
 import PricingSection          from '@/components/PricingSection';
 import EmailVerificationBanner from '@/components/EmailVerificationBanner';
+import TrialExpiryBanner      from '@/components/TrialExpiryBanner';
 import ReviewsMarquee          from '@/components/ReviewsMarquee';
 import OnboardingModal         from '@/components/OnboardingModal';
 import SetupChecklist          from '@/components/SetupChecklist';
@@ -538,6 +539,9 @@ export default function Home() {
 
       {/* Email verification prompt */}
       <EmailVerificationBanner />
+
+      {/* Trial expiry nudge — shown when ≤ 5 days remain on a Pro trial */}
+      <TrialExpiryBanner />
 
       {/* Gas price drop alert — Pro users */}
       <GasPriceAlertBanner />

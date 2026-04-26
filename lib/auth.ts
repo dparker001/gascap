@@ -32,9 +32,11 @@ export const authOptions: NextAuthOptions = {
     // Expose user id in the JWT token and session
     async jwt({ token, user, trigger }) {
       if (user) {
-        token.id            = user.id;
-        token.plan          = (user as { plan?: string }).plan ?? 'free';
-        token.emailVerified = (user as { emailVerified?: boolean }).emailVerified ?? false;
+        token.id              = user.id;
+        token.plan            = (user as { plan?: string }).plan ?? 'free';
+        token.emailVerified   = (user as { emailVerified?: boolean }).emailVerified ?? false;
+        token.isProTrial      = (user as { isProTrial?: boolean }).isProTrial ?? false;
+        token.betaProExpiry   = (user as { betaProExpiry?: string }).betaProExpiry ?? null;
       }
       // Re-fetch plan on session refresh so upgrades are reflected immediately
       if (trigger === 'update' || (!user && token.id)) {
@@ -42,15 +44,19 @@ export const authOptions: NextAuthOptions = {
         if (fresh) {
           token.plan          = fresh.plan;
           token.emailVerified = fresh.emailVerified ?? false;
+          token.isProTrial    = fresh.isProTrial    ?? false;
+          token.betaProExpiry = fresh.betaProExpiry ?? null;
         }
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
-        (session.user as { id?: string; plan?: string }).id   = token.id   as string;
-        (session.user as { id?: string; plan?: string }).plan = token.plan as string ?? 'free';
-        (session.user as { emailVerified?: boolean }).emailVerified = token.emailVerified as boolean ?? false;
+        (session.user as { id?: string; plan?: string }).id             = token.id           as string;
+        (session.user as { id?: string; plan?: string }).plan           = token.plan         as string ?? 'free';
+        (session.user as { emailVerified?: boolean }).emailVerified     = token.emailVerified as boolean ?? false;
+        (session.user as { isProTrial?: boolean }).isProTrial           = token.isProTrial   as boolean ?? false;
+        (session.user as { betaProExpiry?: string | null }).betaProExpiry = token.betaProExpiry as string | null ?? null;
       }
       return session;
     },
