@@ -5,6 +5,7 @@ import { signIn } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useTranslation } from '@/contexts/LanguageContext';
+import { trackSignUp, fbTrack } from '@/lib/gtag';
 
 function SignUpForm() {
   const router       = useRouter();
@@ -58,6 +59,13 @@ function SignUpForm() {
       setLoading(false);
       return;
     }
+
+    // ── Conversion tracking ───────────────────────────────────────────────
+    // Fire immediately after the server confirms account creation.
+    // Both events run client-side so the pixel/gtag scripts are available.
+    trackSignUp();                          // GA4: sign_up event
+    fbTrack('CompleteRegistration');        // Meta Pixel: CompleteRegistration
+    // ─────────────────────────────────────────────────────────────────────
 
     // Auto sign-in after registration
     const signInRes = await signIn('credentials', {

@@ -12,7 +12,17 @@ declare global {
   interface Window {
     gtag: (...args: unknown[]) => void;
     dataLayer: unknown[];
+    fbq:  (...args: unknown[]) => void;
   }
+}
+
+/** Fire a Meta Pixel standard event (safe no-op if pixel not loaded) */
+export function fbTrack(
+  event: string,
+  params?: Record<string, string | number | boolean>
+) {
+  if (typeof window === 'undefined' || !window.fbq) return;
+  window.fbq('track', event, params ?? {});
 }
 
 /** Send a GA4 custom event */
