@@ -16,6 +16,7 @@ import {
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import type { CalcTab } from './CalculatorTabs';
 import { useTranslation } from '@/contexts/LanguageContext';
+import { trackCalculateTarget } from '@/lib/gtag';
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -181,6 +182,7 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
     setCalculated(true);
     setShowLiveNudge(false);
     setCalcKey((k) => k + 1);
+    trackCalculateTarget();
     fetch('/api/activity', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },

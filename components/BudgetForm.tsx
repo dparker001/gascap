@@ -16,6 +16,7 @@ import {
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import type { CalcTab } from './CalculatorTabs';
 import { useTranslation } from '@/contexts/LanguageContext';
+import { trackCalculateBudget } from '@/lib/gtag';
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -140,6 +141,7 @@ export default function BudgetForm({ activeTab, setActiveTab }: Props) {
     setCalculated(true);
     setShowLiveNudge(false);
     setValidationAttempted(false);
+    trackCalculateBudget();
     setTimeout(() => {
       document.getElementById('bgt-result')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }, 80);

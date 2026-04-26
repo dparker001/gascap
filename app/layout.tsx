@@ -3,6 +3,7 @@ import Script                from 'next/script';
 import AuthProvider          from '@/components/AuthProvider';
 import FeedbackButton        from '@/components/FeedbackButton';
 import GHLChatWidget         from '@/components/GHLChatWidget';
+import GoogleAnalytics       from '@/components/GoogleAnalytics';
 import DarkModeProvider      from '@/components/DarkModeProvider';
 import PullToRefresh         from '@/components/PullToRefresh';
 import ErrorBoundary         from '@/components/ErrorBoundary';
@@ -96,6 +97,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           />
         </noscript>
         {/* ── End Meta Pixel ───────────────────────────────────────────────── */}
+
+        {/* ── Google Analytics 4 ───────────────────────────────────────────── */}
+        <GoogleAnalytics />
+        {/* ── End Google Analytics 4 ───────────────────────────────────────── */}
 
         {/* ── GHL Chat Widget (desktop only — not mounted on mobile) ──────── */}
         <GHLChatWidget />
