@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { useSession } from 'next-auth/react';
+import Link from 'next/link';
 import { useTranslation } from '@/contexts/LanguageContext';
 
 interface GasPriceLookupResult {
@@ -36,9 +38,13 @@ const STATE_NAMES: Record<string, string> = {
 
 export default function GasPriceLookup({ onApply }: GasPriceLookupProps) {
   const { t } = useTranslation();
+  const { data: session, status: sessionStatus } = useSession();
+  const isGuest = sessionStatus !== 'loading' && !session;
+
   const [status, setStatus]   = useState<Status>('idle');
   const [result, setResult]   = useState<GasPriceLookupResult | null>(null);
   const [errMsg, setErrMsg]   = useState('');
+  const [showGate, setShowGate] = useState(false);
 
   async function handleLookup() {
     setStatus('locating');
@@ -89,10 +95,16 @@ export default function GasPriceLookup({ onApply }: GasPriceLookupProps) {
   return (
     <div>
       {/* ── Trigger button ── */}
-      {status === 'idle' && (
+      {status === 'idle' && !showGate && (
         <button
           type="button"
-          onClick={handleLookup}
+          onClick={() => {
+            if (isGuest) {
+              setShowGate(true);
+            } else {
+              handleLookup();
+            }
+          }}
           className="flex items-center gap-2 text-xs font-bold text-amber-600
                      hover:text-amber-700 transition-colors mt-2"
         >
@@ -102,6 +114,35 @@ export default function GasPriceLookup({ onApply }: GasPriceLookupProps) {
           </svg>
           {t.gasPrice.trigger}
         </button>
+      )}
+
+      {/* ── Guest gate — sign-up prompt ── */}
+      {showGate && (
+        <div className="mt-2 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3">
+          <p className="text-xs font-black text-amber-800 mb-0.5">
+            📍 Live gas prices — free with an account
+          </p>
+          <p className="text-[11px] text-amber-700 leading-relaxed mb-3">
+            Create your free GasCap account to auto-detect local gas prices by location.
+            No credit card required.
+          </p>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/signup"
+              className="px-4 py-2 rounded-xl bg-[#005F4A] text-white text-xs font-bold
+                         hover:bg-[#004d3b] transition-colors whitespace-nowrap"
+            >
+              Create free account →
+            </Link>
+            <button
+              type="button"
+              onClick={() => setShowGate(false)}
+              className="text-[11px] text-amber-600 font-semibold hover:underline"
+            >
+              Enter manually
+            </button>
+          </div>
+        </div>
       )}
 
       {/* ── Loading states ── */}
