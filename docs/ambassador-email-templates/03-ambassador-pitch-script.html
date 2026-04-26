@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Your GasCap™ Pitch Script</title>
+  <!--
+    GHL TEMPLATE NAME: Ambassador Onboarding — Email 2: Pitch Script
+    GHL SUBJECT LINE:  Your exact pitch script (memorize this) 📋
+    TRIGGER:           GHL Automation — fires 1 day after Email 1 (ambassador tag)
+    MERGE FIELDS USED: {{contact.first_name}}, {{contact.unsubscribe_url}}
+  -->
+  <style>
+    body { margin:0; padding:0; background:#f4f4f4; font-family:Arial,Helvetica,sans-serif; }
+    .wrapper { max-width:600px; margin:0 auto; background:#ffffff; }
+    .header  { background:#005F4A; padding:32px 40px; text-align:center; }
+    .hero    { background:#005F4A; padding:0 40px 32px; text-align:center; }
+    .hero h1 { color:#ffffff; font-size:24px; margin:0 0 8px; line-height:1.3; }
+    .hero p  { color:#1EB68F; font-size:15px; margin:0; }
+    .body-section    { padding:32px 40px; }
+    .body-section h2 { color:#005F4A; font-size:18px; margin:0 0 12px; }
+    .body-section p  { color:#333333; font-size:15px; line-height:1.6; margin:0 0 16px; }
+    .script-box   { background:#eef9f5; border:2px solid #1EB68F; border-radius:8px; padding:20px 24px; margin:20px 0; }
+    .script-box p { margin:0; color:#1E2D4A; font-size:15px; line-height:1.7; font-style:italic; }
+    .obj-table    { width:100%; border-collapse:collapse; margin:16px 0; }
+    .obj-table th { background:#1E2D4A; color:#ffffff; padding:10px 14px; text-align:left; font-size:13px; }
+    .obj-table td { padding:10px 14px; font-size:13px; border-bottom:1px solid #e8e8e8; color:#333; vertical-align:top; }
+    .obj-table tr:nth-child(even) td { background:#f5f7fa; }
+    ul.loc-list    { margin:0; padding:0; list-style:none; }
+    ul.loc-list li { padding:8px 8px 8px 28px; position:relative; font-size:14px; color:#333; border-bottom:1px solid #f0f0f0; }
+    ul.loc-list li::before { content:"✅"; position:absolute; left:4px; top:8px; }
+    .tip-box   { background:#FFF5EC; border-left:4px solid #FA7109; padding:16px 20px; margin:24px 0; border-radius:4px; }
+    .tip-box p { margin:0; color:#333; font-size:14px; line-height:1.5; }
+    .footer    { background:#1E2D4A; padding:24px 40px; text-align:center; }
+    .footer p  { color:#8a9ab5; font-size:13px; margin:4px 0; }
+    .footer a  { color:#1EB68F; text-decoration:none; }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+
+  <div class="header">
+    <p style="color:#1EB68F;font-size:20px;font-weight:bold;margin:0;">GasCap™</p>
+  </div>
+
+  <div class="hero">
+    <h1>Your Exact Pitch Script 📋</h1>
+    <p>Memorize this. It works.</p>
+  </div>
+
+  <div class="body-section">
+    <p>Hi {{contact.first_name}},</p>
+    <p>This is Email 2 of your ambassador onboarding. Here's the exact script to use when you walk into a business — plus how to handle the most common objections.</p>
+
+    <h2>The Pitch (word for word)</h2>
+    <div class="script-box">
+      <p>"Hi, my name is [Your Name] — I work with GasCap, a free fuel calculator app for drivers. We're placing small QR code displays at local businesses so customers can calculate exactly how much gas they need before heading to the pump. There's no cost to you, it takes 30 seconds to set up, and it's a nice value-add for your customers. Would you be open to hosting one?"</p>
+    </div>
+    <p>That's it. Short, clear, and low-pressure. If they say yes, place the placard and hand them the consent form to sign.</p>
+
+    <h2>Handling Objections</h2>
+    <table class="obj-table">
+      <thead>
+        <tr><th>If they say…</th><th>You say…</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><em>"What does it cost?"</em></td><td>Nothing — completely free for you.</td></tr>
+        <tr><td><em>"What do you get out of it?"</em></td><td>We're trying to get the word out. You'd be listed as a participating location in the app.</td></tr>
+        <tr><td><em>"Need to check with corporate"</em></td><td>No problem — here's a card. I can come back or follow up by email.</td></tr>
+        <tr><td><em>"We don't allow advertising"</em></td><td>Totally understand. Thanks for your time.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Best Locations to Target</h2>
+    <ul class="loc-list">
+      <li>Gas station pump areas (laminated card w/ magnets)</li>
+      <li>Gas station counter / register (tent card)</li>
+      <li>Oil change shop waiting room (tent card)</li>
+      <li>Tire shop waiting room (tent card + wall mount)</li>
+      <li>Car wash entrance (window cling)</li>
+      <li>Mechanic shop service counter (tent card)</li>
+      <li>Convenience store register (counter tent card)</li>
+      <li>Used car lot sales desk (tent card)</li>
+    </ul>
+
+    <div class="tip-box">
+      <p>🚗 <strong>Pro tip for gig drivers:</strong> If you drive for Uber, Lyft, DoorDash, or Amazon Flex — you already visit these locations constantly. Knock out 3–4 placements on your normal routes and you're at the Builder tier ($50/month) in no time.</p>
+    </div>
+
+    <p>Email 3 is coming next — it walks through your ambassador kit and the reporting form. Stay tuned!</p>
+    <p>— Don Parker<br>GasCap™ | <a href="https://gascap.app" style="color:#005F4A;">gascap.app</a></p>
+  </div>
+
+  <div class="footer">
+    <p>GasCap™ Ambassador Program</p>
+    <p><a href="https://gascap.app">gascap.app</a> &nbsp;|&nbsp; <a href="mailto:admin@gascap.app">admin@gascap.app</a></p>
+    <p style="font-size:11px;color:#5a6a85;margin-top:12px;"><a href="{{contact.unsubscribe_url}}" style="color:#5a6a85;">Unsubscribe</a></p>
+  </div>
+
+</div>
+</body>
+</html>

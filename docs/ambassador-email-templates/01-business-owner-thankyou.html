@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Thanks for hosting a GasCap™ placard!</title>
+  <!--
+    GHL TEMPLATE NAME: Ambassador Program — Business Owner Thank-You
+    GHL SUBJECT LINE:  Thanks for hosting a GasCap™ placard, {{contact.business_name}}!
+    TRIGGER:           GHL Automation — fires when ambassador submits placement form (tag: pilot-partner-candidate)
+    MERGE FIELDS USED: {{contact.first_name}}, {{contact.business_name}}, {{contact.unsubscribe_url}}
+  -->
+  <style>
+    body { margin:0; padding:0; background:#f4f4f4; font-family:Arial,Helvetica,sans-serif; }
+    .wrapper { max-width:600px; margin:0 auto; background:#ffffff; }
+    .header  { background:#005F4A; padding:32px 40px; text-align:center; }
+    .hero    { background:#005F4A; padding:0 40px 32px; text-align:center; }
+    .hero h1 { color:#ffffff; font-size:24px; margin:0 0 8px; line-height:1.3; }
+    .hero p  { color:#1EB68F; font-size:15px; margin:0; }
+    .body-section   { padding:32px 40px; }
+    .body-section p { color:#333333; font-size:15px; line-height:1.6; margin:0 0 16px; }
+    .callout { background:#eef9f5; border-left:4px solid #1EB68F; padding:16px 20px; margin:24px 0; border-radius:4px; }
+    .callout p { margin:0; color:#005F4A; font-size:14px; line-height:1.5; }
+    .cta-block { text-align:center; padding:8px 40px 32px; }
+    .cta-btn   { display:inline-block; background:#FA7109; color:#ffffff; text-decoration:none; font-size:16px; font-weight:bold; padding:14px 32px; border-radius:6px; }
+    .footer    { background:#1E2D4A; padding:24px 40px; text-align:center; }
+    .footer p  { color:#8a9ab5; font-size:13px; margin:4px 0; }
+    .footer a  { color:#1EB68F; text-decoration:none; }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+
+  <div class="header">
+    <!-- Logo placeholder — upload logo image in GHL builder and replace this comment -->
+    <p style="color:#1EB68F;font-size:20px;font-weight:bold;margin:0;">GasCap™</p>
+  </div>
+
+  <div class="hero">
+    <h1>Thanks for hosting a GasCap™ placard, {{contact.business_name}}! 🙌</h1>
+    <p>You're now part of the GasCap™ network.</p>
+  </div>
+
+  <div class="body-section">
+    <p>Hi {{contact.first_name}},</p>
+    <p>Thanks so much for letting us place a GasCap™ display at <strong>{{contact.business_name}}</strong>. Your customers can now scan the QR code to calculate exactly how much fuel they need and what it'll cost — before they even leave.</p>
+    <p>GasCap™ is completely free for anyone to use. No sign-up required, no app store download — it works instantly from any phone's camera.</p>
+
+    <div class="callout">
+      <p>📍 As a participating location, we'd love to feature <strong>{{contact.business_name}}</strong> in the GasCap™ app as a nearby partner station for users in your area. I'll be in touch once your location goes live.</p>
+    </div>
+
+    <p>While you wait, feel free to try the app yourself — just visit <a href="https://gascap.app" style="color:#005F4A;font-weight:bold;">gascap.app</a> from any phone.</p>
+    <p>Questions? Just reply to this email or reach us at <a href="mailto:admin@gascap.app" style="color:#005F4A;">admin@gascap.app</a>.</p>
+    <p>Thanks again for your support,</p>
+    <p><strong>Don Parker</strong><br>GasCap™ | <a href="https://gascap.app" style="color:#005F4A;">gascap.app</a></p>
+  </div>
+
+  <div class="cta-block">
+    <a href="https://gascap.app" class="cta-btn">Try GasCap™ Free</a>
+  </div>
+
+  <div class="footer">
+    <p>GasCap™ — Know Before You Go</p>
+    <p><a href="https://gascap.app">gascap.app</a> &nbsp;|&nbsp; <a href="mailto:admin@gascap.app">admin@gascap.app</a></p>
+    <p style="font-size:11px;color:#5a6a85;margin-top:12px;">
+      You received this because you agreed to host a GasCap™ placard at your business.<br>
+      <a href="{{contact.unsubscribe_url}}" style="color:#5a6a85;">Unsubscribe</a>
+    </p>
+  </div>
+
+</div>
+</body>
+</html>

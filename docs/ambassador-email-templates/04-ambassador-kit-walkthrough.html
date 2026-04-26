@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Your GasCap™ Ambassador Kit</title>
+  <!--
+    GHL TEMPLATE NAME: Ambassador Onboarding — Email 3: Kit Walkthrough
+    GHL SUBJECT LINE:  Your ambassador kit is on the way — here's what's inside 📦
+    TRIGGER:           GHL Automation — fires 2 days after Email 1 (ambassador tag)
+    MERGE FIELDS USED: {{contact.first_name}}, {{placement_form_url}}, {{contact.unsubscribe_url}}
+    NOTE: Replace {{placement_form_url}} with the live Google Form URL before activating.
+  -->
+  <style>
+    body { margin:0; padding:0; background:#f4f4f4; font-family:Arial,Helvetica,sans-serif; }
+    .wrapper { max-width:600px; margin:0 auto; background:#ffffff; }
+    .header  { background:#005F4A; padding:32px 40px; text-align:center; }
+    .hero    { background:#005F4A; padding:0 40px 32px; text-align:center; }
+    .hero h1 { color:#ffffff; font-size:24px; margin:0 0 8px; line-height:1.3; }
+    .hero p  { color:#1EB68F; font-size:15px; margin:0; }
+    .body-section    { padding:32px 40px; }
+    .body-section h2 { color:#005F4A; font-size:18px; margin:0 0 12px; }
+    .body-section p  { color:#333333; font-size:15px; line-height:1.6; margin:0 0 16px; }
+    ul.kit-list    { margin:0; padding:0; list-style:none; }
+    ul.kit-list li { padding:10px 10px 10px 36px; position:relative; font-size:14px; color:#333; border-bottom:1px solid #f0f0f0; line-height:1.5; }
+    ul.kit-list li::before { content:"📦"; position:absolute; left:4px; top:9px; font-size:13px; }
+    ul.kit-list li strong  { display:block; color:#005F4A; }
+    .code-box   { background:#1E2D4A; border-radius:6px; padding:16px 20px; margin:16px 0; }
+    .code-box p { margin:0; color:#1EB68F; font-size:14px; font-family:monospace; line-height:1.8; }
+    ol.steps    { counter-reset:step; margin:0; padding:0; list-style:none; }
+    ol.steps li { counter-increment:step; padding:12px 12px 12px 52px; position:relative; border-bottom:1px solid #f0f0f0; font-size:14px; color:#333; line-height:1.5; }
+    ol.steps li::before { content:counter(step); position:absolute; left:12px; top:10px; background:#FA7109; color:#fff; width:26px; height:26px; border-radius:50%; text-align:center; line-height:26px; font-weight:bold; font-size:13px; }
+    .callout   { background:#eef9f5; border-left:4px solid #1EB68F; padding:16px 20px; margin:24px 0; border-radius:4px; }
+    .callout p { margin:0; color:#005F4A; font-size:14px; line-height:1.5; }
+    .cta-block { text-align:center; padding:8px 40px 32px; }
+    .cta-btn   { display:inline-block; background:#FA7109; color:#ffffff; text-decoration:none; font-size:16px; font-weight:bold; padding:14px 32px; border-radius:6px; }
+    .footer    { background:#1E2D4A; padding:24px 40px; text-align:center; }
+    .footer p  { color:#8a9ab5; font-size:13px; margin:4px 0; }
+    .footer a  { color:#1EB68F; text-decoration:none; }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+
+  <div class="header">
+    <p style="color:#1EB68F;font-size:20px;font-weight:bold;margin:0;">GasCap™</p>
+  </div>
+
+  <div class="hero">
+    <h1>Your Ambassador Kit Is On Its Way 📦</h1>
+    <p>Here's everything inside and exactly how to use it.</p>
+  </div>
+
+  <div class="body-section">
+    <p>Hi {{contact.first_name}},</p>
+    <p>This is Email 3 — the kit walkthrough. By the time this arrives, your ambassador kit should be on its way (or already in your hands). Let's go through each item.</p>
+
+    <h2>What's In Your Kit</h2>
+    <ul class="kit-list">
+      <li>
+        <strong>Pump Placards (laminated, magnets attached)</strong>
+        These attach directly to metal gas pump cabinets. The magnets are already on the back — just press firmly against any flat metal surface.
+      </li>
+      <li>
+        <strong>Tent Cards</strong>
+        Free-standing cards for counters, waiting rooms, and sales desks. Fold along the score line to stand them up.
+      </li>
+      <li>
+        <strong>Window Clings</strong>
+        Static-cling vinyl for smooth glass surfaces (car wash windows, storefront glass). No adhesive — just press and smooth.
+      </li>
+      <li>
+        <strong>Consent Forms (10 printed, 2-up per sheet)</strong>
+        After a business owner agrees, fill out the form together and have them sign. Leave one copy with them, keep the second copy and mail it back to us using the pre-addressed return envelope in the kit.
+      </li>
+      <li>
+        <strong>Business Pitch Card</strong>
+        A one-page reference card with the pitch summary and app overview. Hand this to owners who want to think it over.
+      </li>
+      <li>
+        <strong>Ambassador Instructions Card</strong>
+        Quick-reference guide to the whole process.
+      </li>
+      <li>
+        <strong>Pre-Addressed Return Envelope</strong>
+        Mail signed consent form copies back to us once you've collected a few.
+      </li>
+    </ul>
+
+    <h2>Understanding the Placard Codes</h2>
+    <p>Each placard has a unique tracking code printed on the back. Here's how to read it:</p>
+    <div class="code-box">
+      <p>
+        ORL003C<br>
+        ││└──── C = Counter &nbsp;(P=Pump, W=Window, F=Flyer)<br>
+        │└───── 003 = Location #3 in your territory<br>
+        └────── ORL = Orlando
+      </p>
+    </div>
+    <p>This code is how GasCap™ tracks scans, app opens, and sign-ups back to your specific placements — and to you. <strong>Never swap codes between locations.</strong></p>
+
+    <h2>After Each Placement — Report It</h2>
+    <ol class="steps">
+      <li>Place the placard and get the consent form signed.</li>
+      <li>Take a photo of the placard in place (proof of placement).</li>
+      <li>Open the reporting form: <a href="{{placement_form_url}}" style="color:#005F4A;font-weight:bold;">Submit Placement Report →</a></li>
+      <li>Fill in: placard code, business name, address, owner contact info, placement type, photo upload.</li>
+      <li>Hit submit. Done. Your placement is logged and counted toward your monthly reward.</li>
+    </ol>
+
+    <div class="callout">
+      <p>⚡ <strong>Submit the form immediately after each placement</strong> — while the details are fresh. It takes about 90 seconds.</p>
+    </div>
+
+    <p>That's everything! You're ready to go. Start with the locations closest to your normal routes, and don't overthink it — the pitch is short, the ask is free, and most business owners say yes.</p>
+    <p>Let me know if you have any questions. You can reply to this email or reach me at <a href="mailto:admin@gascap.app" style="color:#005F4A;">admin@gascap.app</a>.</p>
+    <p>Go get those placements! 🚀</p>
+    <p><strong>Don Parker</strong><br>GasCap™ | <a href="https://gascap.app" style="color:#005F4A;">gascap.app</a></p>
+  </div>
+
+  <div class="cta-block">
+    <a href="{{placement_form_url}}" class="cta-btn">Open Placement Report Form</a>
+  </div>
+
+  <div class="footer">
+    <p>GasCap™ Ambassador Program</p>
+    <p><a href="https://gascap.app">gascap.app</a> &nbsp;|&nbsp; <a href="mailto:admin@gascap.app">admin@gascap.app</a></p>
+    <p style="font-size:11px;color:#5a6a85;margin-top:12px;"><a href="{{contact.unsubscribe_url}}" style="color:#5a6a85;">Unsubscribe</a></p>
+  </div>
+
+</div>
+</body>
+</html>

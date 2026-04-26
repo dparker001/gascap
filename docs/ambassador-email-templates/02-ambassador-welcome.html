@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Welcome to the GasCap™ Ambassador Program</title>
+  <!--
+    GHL TEMPLATE NAME: Ambassador Onboarding — Email 1: Welcome
+    GHL SUBJECT LINE:  Welcome to the GasCap™ Ambassador Program 🎉
+    TRIGGER:           GHL Automation — fires immediately when ambassador contact is created (tag: ambassador)
+    MERGE FIELDS USED: {{contact.first_name}}, {{contact.unsubscribe_url}}
+  -->
+  <style>
+    body { margin:0; padding:0; background:#f4f4f4; font-family:Arial,Helvetica,sans-serif; }
+    .wrapper { max-width:600px; margin:0 auto; background:#ffffff; }
+    .header  { background:#005F4A; padding:32px 40px; text-align:center; }
+    .hero    { background:#005F4A; padding:0 40px 32px; text-align:center; }
+    .hero h1 { color:#ffffff; font-size:24px; margin:0 0 8px; line-height:1.3; }
+    .hero p  { color:#1EB68F; font-size:15px; margin:0; }
+    .body-section    { padding:32px 40px; }
+    .body-section h2 { color:#005F4A; font-size:18px; margin:0 0 12px; }
+    .body-section p  { color:#333333; font-size:15px; line-height:1.6; margin:0 0 16px; }
+    .tier-table    { width:100%; border-collapse:collapse; margin:16px 0; }
+    .tier-table th { background:#005F4A; color:#ffffff; padding:10px 14px; text-align:left; font-size:14px; }
+    .tier-table td { padding:10px 14px; font-size:14px; border-bottom:1px solid #e8e8e8; color:#333; }
+    .tier-table tr:nth-child(even) td { background:#f9fffe; }
+    .highlight   { background:#FFF5EC; border-left:4px solid #FA7109; padding:16px 20px; margin:24px 0; border-radius:4px; }
+    .highlight p { margin:0; color:#333; font-size:14px; line-height:1.5; }
+    ol.steps     { counter-reset:step; margin:0; padding:0; list-style:none; }
+    ol.steps li  { counter-increment:step; padding:12px 12px 12px 52px; position:relative; border-bottom:1px solid #f0f0f0; font-size:14px; color:#333; line-height:1.5; }
+    ol.steps li::before { content:counter(step); position:absolute; left:12px; top:10px; background:#005F4A; color:#fff; width:26px; height:26px; border-radius:50%; text-align:center; line-height:26px; font-weight:bold; font-size:13px; }
+    .cta-block { text-align:center; padding:8px 40px 32px; }
+    .cta-btn   { display:inline-block; background:#FA7109; color:#ffffff; text-decoration:none; font-size:16px; font-weight:bold; padding:14px 32px; border-radius:6px; }
+    .footer    { background:#1E2D4A; padding:24px 40px; text-align:center; }
+    .footer p  { color:#8a9ab5; font-size:13px; margin:4px 0; }
+    .footer a  { color:#1EB68F; text-decoration:none; }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+
+  <div class="header">
+    <p style="color:#1EB68F;font-size:20px;font-weight:bold;margin:0;">GasCap™</p>
+  </div>
+
+  <div class="hero">
+    <h1>Welcome to the GasCap™ Ambassador Program! 🎉</h1>
+    <p>You're officially part of something great.</p>
+  </div>
+
+  <div class="body-section">
+    <p>Hi {{contact.first_name}},</p>
+    <p>Welcome aboard! You've joined the GasCap™ Field Ambassador Program — and we're pumped to have you. Here's everything you need to know to get started and start earning.</p>
+
+    <h2>What You Do</h2>
+    <p>Your job is simple: visit local businesses (gas stations, oil change shops, tire stores, car washes, convenience stores, mechanic shops), ask permission to place a small QR placard, and submit a quick Google Form after each placement.</p>
+    <p>That's it. No selling. No quotas. Work your own schedule, in your own area.</p>
+
+    <h2>What You Earn</h2>
+    <table class="tier-table">
+      <thead>
+        <tr><th>Tier</th><th>Active Placements</th><th>Monthly Reward</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><strong>Starter</strong></td><td>1–5</td><td>$25 gas card</td></tr>
+        <tr><td><strong>Builder</strong></td><td>6–15</td><td>$50 gas card</td></tr>
+        <tr><td><strong>Elite</strong></td><td>16+</td><td>$100 gas card</td></tr>
+      </tbody>
+    </table>
+
+    <div class="highlight">
+      <p>💡 <strong>Bonus:</strong> Earn an extra $10–$25 gas card when any of your locations generates 10+ new GasCap™ sign-ups in a month. You also get <strong>GasCap™ Pro for free</strong> for as long as you're active.</p>
+    </div>
+
+    <h2>Your Next Steps</h2>
+    <ol class="steps">
+      <li>Try the GasCap™ app at <a href="https://gascap.app" style="color:#005F4A;">gascap.app</a> — you'll be pitching it, so know it!</li>
+      <li>Watch for Email 2 (arriving shortly) — it has your exact pitch script.</li>
+      <li>Watch for Email 3 — it walks through everything in your ambassador kit.</li>
+      <li>Your kit ships once you reply to confirm your mailing address.</li>
+    </ol>
+
+    <p style="margin-top:20px;">Questions? Reply to this email anytime. We're here to help you succeed.</p>
+    <p>Let's go,</p>
+    <p><strong>Don Parker</strong><br>GasCap™ | <a href="https://gascap.app" style="color:#005F4A;">gascap.app</a></p>
+  </div>
+
+  <div class="cta-block">
+    <a href="https://gascap.app" class="cta-btn">Try the App Now</a>
+  </div>
+
+  <div class="footer">
+    <p>GasCap™ Ambassador Program</p>
+    <p><a href="https://gascap.app">gascap.app</a> &nbsp;|&nbsp; <a href="mailto:admin@gascap.app">admin@gascap.app</a></p>
+    <p style="font-size:11px;color:#5a6a85;margin-top:12px;"><a href="{{contact.unsubscribe_url}}" style="color:#5a6a85;">Unsubscribe</a></p>
+  </div>
+
+</div>
+</body>
+</html>
