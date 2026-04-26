@@ -26,6 +26,16 @@ function auth(req: Request): boolean {
   return Boolean((adminPw && header === adminPw) || (cronSecret && header === cronSecret));
 }
 
+// ── TODO: Create these promo codes in Stripe Dashboard before any trial expires ──
+// 1. Go to Stripe Dashboard → Products → Coupons → Create coupon
+// 2. TRIAL30 — 100% off, duration: once (1 month), max 1 redemption per customer
+//              Promotion code: TRIAL30
+//              (sent to regular sign-up trial users on day 30)
+// 3. BETA30  — same settings, promotion code: BETA30
+//              (sent to manually-granted beta testers on day 30)
+// The checkout route already has allow_promotion_codes: true — no code change needed.
+// ────────────────────────────────────────────────────────────────────────────────
+
 // ── Email copy ─────────────────────────────────────────────────────────────
 
 function trialEndedEmailHtml(name: string): string {
