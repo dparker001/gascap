@@ -2,9 +2,11 @@
  * GasCap™ — Google Analytics 4 utility
  * Wraps window.gtag with TypeScript types and a safe no-op fallback.
  * Import `gtagEvent` anywhere in the app to fire a custom GA4 event.
+ * Measurement ID is set via NEXT_PUBLIC_GA_MEASUREMENT_ID env var (Railway).
  */
 
-export const GA_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID ?? '';
+// NEXT_PUBLIC_* vars are baked in at build time by Next.js
+export const GA_ID: string = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID ?? '';
 
 declare global {
   interface Window {
