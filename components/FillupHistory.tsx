@@ -25,6 +25,7 @@ interface EditDraft {
   gallonsPumped:   string;
   pricePerGallon:  string;
   odometerReading: string;
+  stationName:     string;
   notes:           string;
 }
 
@@ -205,6 +206,7 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
       gallonsPumped:   String(f.gallonsPumped),
       pricePerGallon:  String(f.pricePerGallon),
       odometerReading: f.odometerReading != null ? String(f.odometerReading) : '',
+      stationName:     f.stationName ?? '',
       notes:           f.notes ?? '',
     });
   }
@@ -227,6 +229,8 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
     };
     if (editDraft.odometerReading !== '')
       body.odometerReading = parseInt(editDraft.odometerReading, 10);
+    // Send stationName: include even when empty so the user can clear it
+    body.stationName = editDraft.stationName.trim() || undefined;
     if (editDraft.notes !== '')
       body.notes = editDraft.notes;
     try {
@@ -250,12 +254,13 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
 
   function handleCsvExport() {
     if (!data || fillups.length === 0) return;
-    const header = ['Date', 'Vehicle', 'Gallons', 'Price/Gal', 'Total Cost', 'Odometer', 'MPG', 'Notes'];
+    const header = ['Date', 'Vehicle', 'Station', 'Gallons', 'Price/Gal', 'Total Cost', 'Odometer', 'MPG', 'Notes'];
     const rows = fillups.map((f) => {
       const mpg = mpgMap[f.id];
       return [
         f.date,
         `"${f.vehicleName}"`,
+        f.stationName ? `"${f.stationName}"` : '',
         f.gallonsPumped,
         f.pricePerGallon,
         f.totalCost.toFixed(2),
@@ -588,15 +593,30 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
                               </div>
                             </div>
 
+                            {/* Gas Station */}
+                            <div>
+                              <label className="block text-[10px] font-semibold text-slate-500 mb-1">
+                                ⛽ Gas Station <span className="font-normal text-slate-300">(opt)</span>
+                              </label>
+                              <input
+                                type="text" maxLength={60}
+                                value={editDraft.stationName}
+                                placeholder="e.g. Shell, Chevron, BP…"
+                                onChange={(e) => setEditDraft((d) => d ? { ...d, stationName: e.target.value } : d)}
+                                className="w-full text-xs px-2.5 py-2 border border-slate-200 rounded-xl
+                                           focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white"
+                              />
+                            </div>
+
                             {/* Notes */}
                             <div>
                               <label className="block text-[10px] font-semibold text-slate-500 mb-1">
-                                Notes / Station <span className="font-normal text-slate-300">(opt)</span>
+                                Notes <span className="font-normal text-slate-300">(opt)</span>
                               </label>
                               <input
                                 type="text" maxLength={100}
                                 value={editDraft.notes}
-                                placeholder="e.g. Shell on Main St"
+                                placeholder="Any other notes…"
                                 onChange={(e) => setEditDraft((d) => d ? { ...d, notes: e.target.value } : d)}
                                 className="w-full text-xs px-2.5 py-2 border border-slate-200 rounded-xl
                                            focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white"
@@ -655,6 +675,9 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
                                   {f.gallonsPumped} gal · ${f.pricePerGallon}/gal
                                   {f.odometerReading != null && ` · ${f.odometerReading.toLocaleString()} mi`}
                                 </p>
+                                {f.stationName && (
+                                  <p className="text-[10px] text-slate-500 mt-0.5 truncate">⛽ {f.stationName}</p>
+                                )}
                                 {f.notes && (
                                   <p className="text-[10px] text-slate-400 italic mt-0.5 truncate">{f.notes}</p>
                                 )}

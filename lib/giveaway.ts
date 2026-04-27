@@ -149,11 +149,14 @@ export function ineligibleWinners(
   return ineligible;
 }
 
-/** All Pro/Fleet users with ≥1 active day in the given month */
+/** All Pro/Fleet users with ≥1 active day in the given month, excluding test accounts */
 export async function getEligibleEntrants(month: string): Promise<EntrantRow[]> {
   const prefix = `${month}-`;
   const users  = await prisma.user.findMany({
-    where: { plan: { in: ['pro', 'fleet'] } },
+    where: {
+      plan:          { in: ['pro', 'fleet'] },
+      isTestAccount: { not: true },   // exclude test/internal accounts from draws
+    },
     select: { id: true, name: true, email: true, plan: true, activeDays: true },
   });
 

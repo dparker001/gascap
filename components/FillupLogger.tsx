@@ -30,6 +30,8 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
   const [odometer,       setOdometer]       = useState(
     prefill.vehicleOdometer != null ? String(prefill.vehicleOdometer) : ''
   );
+  const [stationName,    setStationName]    = useState('');
+  const [recentStations, setRecentStations] = useState<string[]>([]);
   const [notes,          setNotes]          = useState('');
   const [driverLabel,    setDriverLabel]    = useState('');
   const [saving,         setSaving]         = useState(false);
@@ -48,6 +50,15 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
     fetch('/api/vehicles')
       .then((r) => r.json())
       .then((d: { plan?: string }) => { if (d.plan) setLivePlan(d.plan); })
+      .catch(() => {});
+  }, [session]);
+
+  // Fetch recent station names for the picker
+  useEffect(() => {
+    if (!session) return;
+    fetch('/api/fillups/stations')
+      .then((r) => r.json())
+      .then((d: { stations?: string[] }) => { if (d.stations) setRecentStations(d.stations); })
       .catch(() => {});
   }, [session]);
 
@@ -84,7 +95,7 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
       if (data.gallons       != null) setGallons(String(data.gallons));
       if (data.pricePerGallon != null) setPrice(String(data.pricePerGallon));
       if (data.date           != null) setDate(data.date);
-      if (data.stationName    != null) setNotes(data.stationName);
+      if (data.stationName    != null) setStationName(data.stationName);
     } catch {
       setScanError('Network error — try again.');
     } finally {
@@ -112,6 +123,7 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
           pricePerGallon:  parseFloat(price),
           odometerReading: odometer ? parseInt(odometer, 10) : undefined,
           fuelLevelBefore: prefill.fuelLevelBefore,
+          stationName:     stationName.trim() || undefined,
           notes:           notes.trim() || undefined,
           driverLabel:     driverLabel.trim() || undefined,
           force,
@@ -310,13 +322,53 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
       </div>
 
 
+      {/* Gas Station */}
+      <div>
+        <label className="field-label">⛽ Gas Station <span className="text-slate-400 font-normal">(optional)</span></label>
+        <input
+          id="station-input"
+          type="text"
+          list="station-suggestions"
+          className="input-field text-sm"
+          placeholder="e.g. Shell, Chevron, BP…"
+          value={stationName}
+          maxLength={60}
+          onChange={(e) => setStationName(e.target.value)}
+        />
+        <datalist id="station-suggestions">
+          {recentStations.map((s) => (
+            <option key={s} value={s} />
+          ))}
+        </datalist>
+        {/* Quick-select chips — top 3 recent stations */}
+        {recentStations.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mt-1.5">
+            {recentStations.slice(0, 3).map((s) => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => setStationName((prev) => prev === s ? '' : s)}
+                className={[
+                  'text-[10px] font-semibold px-2.5 py-1 rounded-full border transition-colors',
+                  stationName === s
+                    ? 'bg-amber-500 text-white border-amber-500'
+                    : 'bg-white text-slate-500 border-slate-200 hover:border-amber-300 hover:text-amber-700',
+                ].join(' ')}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Notes */}
       <div>
         <label className="field-label">Notes <span className="text-slate-400 font-normal">(optional)</span></label>
         <input
           type="text"
           className="input-field text-sm"
-          placeholder='e.g. "Shell on Main St"'
+          placeholder="Any other notes…"
           value={notes}
           maxLength={100}
           onChange={(e) => setNotes(e.target.value)}

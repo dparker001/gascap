@@ -19,6 +19,7 @@ export interface Fillup {
   totalCost:      number;   // gallonsPumped × pricePerGallon
   odometerReading?: number; // optional — enables MPG calculation
   fuelLevelBefore?: number; // 0–100 %
+  stationName?:   string;   // gas station name (for recall/history)
   notes?:         string;
   driverLabel?:   string;   // Fleet Phase 1 — who drove (attribution only)
   createdAt:      string;   // ISO timestamp
@@ -194,8 +195,26 @@ export function addFillup(
 
 /** Fields that users are allowed to edit after logging */
 export type FillupPatch = Partial<Pick<Fillup,
-  'date' | 'gallonsPumped' | 'pricePerGallon' | 'odometerReading' | 'notes' | 'driverLabel'
+  'date' | 'gallonsPumped' | 'pricePerGallon' | 'odometerReading' | 'stationName' | 'notes' | 'driverLabel'
 >>;
+
+/**
+ * Return the user's recently used station names, newest-first, deduplicated.
+ * Used to power the "recent stations" picker in the fill-up logger.
+ */
+export function getRecentStations(userId: string, limit = 10): string[] {
+  const fillups = getFillups(userId); // already sorted newest → oldest
+  const seen    = new Set<string>();
+  const result: string[] = [];
+  for (const f of fillups) {
+    if (f.stationName && !seen.has(f.stationName)) {
+      seen.add(f.stationName);
+      result.push(f.stationName);
+      if (result.length >= limit) break;
+    }
+  }
+  return result;
+}
 
 /** Update an existing fillup (only if it belongs to the user). Returns the updated record or null. */
 export function updateFillup(userId: string, fillupId: string, patch: FillupPatch): Fillup | null {
