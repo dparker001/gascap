@@ -8,7 +8,7 @@ import { authOptions }      from '@/lib/auth';
 import { findById, setUserPlan, clearStripeCustomerId } from '@/lib/users';
 import { stripe }           from '@/lib/stripe';
 
-async function resolveCustomerId(userId: string, user: { email: string; name?: string; plan: string; stripeCustomerId?: string }) {
+async function resolveCustomerId(userId: string, user: { email: string; name?: string; plan: 'free' | 'pro' | 'fleet'; stripeCustomerId?: string }) {
   if (!stripe) throw new Error('Stripe not configured.');
 
   let customerId = user.stripeCustomerId;
