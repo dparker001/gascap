@@ -206,7 +206,7 @@ export function welcomeEmailHtml(name: string, userId: string, verifyUrl?: strin
         If you love Pro (we think you will), you can upgrade anytime from the app.
       </p>
       <p style="margin:14px 0 0;font-size:13px;color:#94a3b8;line-height:1.6;">
-        Got questions? Just reply to this email — every message comes straight to the founder.
+        Got questions? Just reply to this email — it reaches me directly.
       </p>
 
       ${verifyUrl ? `
@@ -226,7 +226,7 @@ export function welcomeEmailHtml(name: string, userId: string, verifyUrl?: strin
       </div>` : ''}
 
       <p style="margin:18px 0 0;font-size:13px;color:#475569;">
-        — The GasCap™ Team
+        — Don, Founder of GasCap™
       </p>
     </td></tr>
     ${footer(userId)}
@@ -312,6 +312,9 @@ export function featureTipsEmailHtml(name: string, userId: string): string {
       <p style="margin:22px 0 0;font-size:13px;color:#94a3b8;line-height:1.6;">
         Reply to this email if you get stuck or have a feature request — we read every one.
       </p>
+      <p style="margin:10px 0 0;font-size:13px;color:#475569;">
+        — The GasCap™ Team
+      </p>
     </td></tr>
     ${footer(userId)}
   `);
@@ -373,6 +376,9 @@ export function proUpsellEmailHtml(name: string, userId: string): string {
 
       <p style="margin:26px 0 0;font-size:12px;color:#94a3b8;line-height:1.6;">
         Reminder: your trial auto-reverts to the free plan on day 30. No card on file, no surprise charges.
+      </p>
+      <p style="margin:10px 0 0;font-size:13px;color:#475569;">
+        — The GasCap™ Team
       </p>
     </td></tr>
     ${footer(userId)}
@@ -449,6 +455,9 @@ export function annualDealEmailHtml(name: string, userId: string): string {
       <p style="margin:22px 0 0;font-size:12px;color:#94a3b8;line-height:1.6;">
         Your trial still has 9 days. If you don't upgrade, we'll automatically move you to the free plan — no charges, nothing to cancel.
       </p>
+      <p style="margin:10px 0 0;font-size:13px;color:#475569;">
+        — The GasCap™ Team
+      </p>
     </td></tr>
     ${footer(userId)}
   `);
@@ -515,10 +524,10 @@ export function lastCallEmailHtml(name: string, userId: string): string {
       </p>
 
       <p style="margin:24px 0 0;font-size:13px;color:#94a3b8;line-height:1.6;">
-        Thanks for giving GasCap™ a fair shot, ${first}. 🙌
+        Thanks for giving GasCap™ a real shot, ${first}. Whatever you decide, we're glad you're here. 🙌
       </p>
       <p style="margin:8px 0 0;font-size:13px;color:#475569;">
-        — The GasCap™ Team
+        — Don, Founder of GasCap™
       </p>
     </td></tr>
     ${footer(userId)}
@@ -542,27 +551,27 @@ export async function sendCampaignEmail(step: number, user: CampaignRecipient): 
 
   const MAP: Record<number, { subject: string; html: string; text: string }> = {
     1: {
-      subject: "Welcome to GasCap™ — your 30-day Pro trial is live 🎉",
+      subject: "Welcome to GasCap™ — your free Pro trial is live 🎉",
       html:    welcomeEmailHtml(name, id, verifyUrl),
       text:    welcomeEmailText(name),
     },
     2: {
-      subject: '3 Pro features to try this week ⚡ (27 days of Pro left)',
+      subject: '4 Pro features worth trying this week ⚡',
       html:    featureTipsEmailHtml(name, id),
       text:    featureTipsEmailText(name),
     },
     3: {
-      subject: "You're 1/3 through your Pro trial — here's what to try next 📊",
+      subject: "10 days in — here are the features GasCap™ power users love 📊",
       html:    proUpsellEmailHtml(name, id),
       text:    proUpsellEmailText(name),
     },
     4: {
-      subject: '9 days left — lock in GasCap™ Pro before your trial ends ⏰',
+      subject: '9 days left on your Pro trial — lock in the best price ⏰',
       html:    annualDealEmailHtml(name, id),
       text:    annualDealEmailText(name),
     },
     5: {
-      subject: 'Last 48 hours of your GasCap™ Pro trial 🚨',
+      subject: 'Your GasCap™ Pro trial ends in 48 hours 🚨',
       html:    lastCallEmailHtml(name, id),
       text:    lastCallEmailText(name),
     },
