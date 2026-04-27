@@ -1,0 +1,15 @@
+[
+  {
+    "id": "welcome-trial-2026",
+    "emoji": "🎉",
+    "title": "Welcome to GasCap™ Pro!",
+    "message": "You're on a free 30-day Pro trial. Explore MPG tracking, AI fuel advisor, and budget goals — all free until your trial ends.",
+    "link": "/help",
+    "linkText": "See what's included",
+    "startDate": "2026-01-01",
+    "endDate": "2026-12-31",
+    "targetPlans": ["pro"],
+    "dismissible": true,
+    "active": false
+  }
+]

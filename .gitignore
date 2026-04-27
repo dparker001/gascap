@@ -25,6 +25,8 @@ yarn-error.log*
 
 # Data — local JSON store (never commit real user data)
 data/*.json
+# But announcements.json is config, not user data — keep it in git
+!data/announcements.json
 
 # OS
 Thumbs.db

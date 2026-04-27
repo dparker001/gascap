@@ -39,6 +39,38 @@ interface AdminUser {
   lastFillup:       string | null;
 }
 
+interface AnnItem {
+  id:           string;
+  emoji:        string;
+  title:        string;
+  message:      string;
+  link?:        string;
+  linkText?:    string;
+  startDate:    string;
+  endDate:      string;
+  targetPlans:  string[];
+  dismissible:  boolean;
+  active:       boolean;
+}
+
+function blankAnn(): AnnItem {
+  const today = new Date().toISOString().slice(0, 10);
+  const next7 = new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 10);
+  return {
+    id: `ann-${Date.now()}`,
+    emoji: '📢',
+    title: '',
+    message: '',
+    link: '',
+    linkText: '',
+    startDate: today,
+    endDate: next7,
+    targetPlans: [],
+    dismissible: true,
+    active: true,
+  };
+}
+
 const PLAN_COLORS = {
   free:  'bg-slate-100 text-slate-600',
   pro:   'bg-amber-100 text-amber-700',
@@ -91,6 +123,13 @@ export default function AdminPage() {
   const [bcastMsg,       setBcastMsg]       = useState('');
   const [feedback,  setFeedback]  = useState<FeedbackItem[]>([]);
   const [fbOpen,    setFbOpen]    = useState(false);
+  // ── Announcements ─────────────────────────────────────────────────────
+  const [annOpen,      setAnnOpen]      = useState(false);
+  const [announcements, setAnnouncements] = useState<AnnItem[]>([]);
+  const [annLoading,   setAnnLoading]   = useState(false);
+  const [annMsg,       setAnnMsg]       = useState('');
+  const [annEditing,   setAnnEditing]   = useState<AnnItem | null>(null);
+  const [annNew,       setAnnNew]       = useState(false);
 
   const load = useCallback(async (pw: string) => {
     setLoading(true);
@@ -242,6 +281,56 @@ export default function AdminPage() {
       const data = await res.json() as { count: number };
       setSubCount(data.count);
     }
+  }
+
+  // ── Announcements helpers ──────────────────────────────────────────────
+  async function loadAnnouncements() {
+    setAnnLoading(true);
+    // Admin reads ALL announcements (active + inactive) via GET — same endpoint
+    // but we read the raw file via a special flag
+    const res = await fetch('/api/announcements?all=1', {
+      headers: { 'x-admin-password': savedPw },
+    });
+    setAnnLoading(false);
+    if (res.ok) {
+      const data = await res.json() as AnnItem[];
+      setAnnouncements(data);
+    }
+  }
+
+  async function saveAnnouncements(list: AnnItem[]) {
+    const res = await fetch('/api/announcements', {
+      method:  'POST',
+      headers: { 'x-admin-password': savedPw, 'Content-Type': 'application/json' },
+      body:    JSON.stringify(list),
+    });
+    if (res.ok) {
+      setAnnouncements(list);
+      setAnnMsg('✅ Saved');
+      setTimeout(() => setAnnMsg(''), 3000);
+    } else {
+      setAnnMsg('❌ Save failed');
+    }
+  }
+
+  function handleAnnToggle(id: string) {
+    const updated = announcements.map((a) => a.id === id ? { ...a, active: !a.active } : a);
+    saveAnnouncements(updated);
+  }
+
+  function handleAnnDelete(id: string) {
+    if (!confirm('Delete this announcement?')) return;
+    saveAnnouncements(announcements.filter((a) => a.id !== id));
+  }
+
+  function handleAnnSaveEdit(item: AnnItem) {
+    const exists = announcements.find((a) => a.id === item.id);
+    const updated = exists
+      ? announcements.map((a) => a.id === item.id ? item : a)
+      : [...announcements, item];
+    saveAnnouncements(updated);
+    setAnnEditing(null);
+    setAnnNew(false);
   }
 
   async function handleBroadcast() {
@@ -612,6 +701,124 @@ export default function AdminPage() {
           )}
         </div>
 
+        {/* ── Announcements ──────────────────────────────────────────────────── */}
+        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+          <button
+            onClick={() => {
+              setAnnOpen((o) => !o);
+              if (!annOpen && announcements.length === 0) loadAnnouncements();
+            }}
+            className="w-full px-5 py-4 flex items-center justify-between hover:bg-slate-50 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-base">📢</span>
+              <div className="text-left">
+                <p className="text-sm font-black text-navy-700">In-App Announcements</p>
+                <p className="text-xs text-slate-600">
+                  Create messages that appear as banners inside the app
+                </p>
+              </div>
+            </div>
+            <svg className={`w-4 h-4 text-slate-400 transition-transform ${annOpen ? 'rotate-180' : ''}`}
+                 viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M4 6l4 4 4-4"/>
+            </svg>
+          </button>
+
+          {annOpen && (
+            <div className="border-t border-slate-100 px-5 py-4 space-y-4">
+              {annMsg && (
+                <div className={`rounded-xl px-4 py-2 text-sm flex justify-between ${
+                  annMsg.startsWith('✅') ? 'bg-green-50 border border-green-200 text-green-700'
+                  : 'bg-red-50 border border-red-200 text-red-600'
+                }`}>
+                  <span>{annMsg}</span>
+                  <button onClick={() => setAnnMsg('')} className="ml-2 opacity-50 hover:opacity-100">×</button>
+                </div>
+              )}
+
+              {annLoading && <p className="text-sm text-slate-400 text-center py-4">Loading…</p>}
+
+              {!annLoading && (
+                <>
+                  {/* List of existing announcements */}
+                  {announcements.length === 0 ? (
+                    <p className="text-sm text-slate-400 text-center py-2">No announcements yet.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {announcements.map((a) => (
+                        <div key={a.id}
+                             className={`rounded-xl border px-4 py-3 flex items-start gap-3 ${
+                               a.active ? 'border-teal-200 bg-teal-50' : 'border-slate-200 bg-slate-50 opacity-60'
+                             }`}>
+                          <span className="text-lg flex-shrink-0">{a.emoji}</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="text-xs font-black text-slate-800">{a.title || <em className="text-slate-400">Untitled</em>}</p>
+                              {a.active
+                                ? <span className="text-[10px] bg-teal-600 text-white px-1.5 py-0.5 rounded-full font-bold">ACTIVE</span>
+                                : <span className="text-[10px] bg-slate-400 text-white px-1.5 py-0.5 rounded-full font-bold">OFF</span>
+                              }
+                            </div>
+                            <p className="text-[11px] text-slate-500 mt-0.5 truncate">{a.message}</p>
+                            <p className="text-[10px] text-slate-400 mt-1">
+                              {a.startDate} → {a.endDate}
+                              {a.targetPlans.length > 0
+                                ? ` · ${a.targetPlans.join(', ')}`
+                                : ' · all plans'}
+                            </p>
+                          </div>
+                          <div className="flex flex-col gap-1.5 flex-shrink-0">
+                            <button
+                              onClick={() => { setAnnEditing({ ...a }); setAnnNew(false); }}
+                              className="text-xs px-2 py-1 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 font-semibold"
+                            >Edit</button>
+                            <button
+                              onClick={() => handleAnnToggle(a.id)}
+                              className={`text-xs px-2 py-1 rounded-lg font-semibold ${
+                                a.active
+                                  ? 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                  : 'bg-teal-100 text-teal-700 hover:bg-teal-200'
+                              }`}
+                            >{a.active ? 'Pause' : 'Activate'}</button>
+                            <button
+                              onClick={() => handleAnnDelete(a.id)}
+                              className="text-xs px-2 py-1 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 font-semibold"
+                            >Delete</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* New announcement button */}
+                  {!annEditing && !annNew && (
+                    <button
+                      onClick={() => { setAnnEditing(blankAnn()); setAnnNew(true); }}
+                      className="w-full py-2.5 rounded-xl border-2 border-dashed border-slate-200
+                                 text-sm text-slate-400 hover:border-teal-400 hover:text-teal-600
+                                 transition-colors font-semibold"
+                    >
+                      + New announcement
+                    </button>
+                  )}
+
+                  {/* Edit / create form */}
+                  {annEditing && (
+                    <AnnForm
+                      item={annEditing}
+                      isNew={annNew}
+                      onChange={setAnnEditing}
+                      onSave={handleAnnSaveEdit}
+                      onCancel={() => { setAnnEditing(null); setAnnNew(false); }}
+                    />
+                  )}
+                </>
+              )}
+            </div>
+          )}
+        </div>
+
         {/* Search + Filters */}
         <div className="bg-white rounded-2xl shadow-sm p-4 space-y-3">
 
@@ -922,6 +1129,166 @@ export default function AdminPage() {
         <p className="text-[10px] text-slate-500 text-center pb-4">
           GasCap™ Admin · {users.length} total users
         </p>
+      </div>
+    </div>
+  );
+}
+
+// ── AnnForm sub-component ──────────────────────────────────────────────────
+
+interface AnnFormProps {
+  item:     AnnItem;
+  isNew:    boolean;
+  onChange: (item: AnnItem) => void;
+  onSave:   (item: AnnItem) => void;
+  onCancel: () => void;
+}
+
+const PLAN_OPTIONS = ['free', 'pro', 'fleet'];
+
+function AnnForm({ item, isNew, onChange, onSave, onCancel }: AnnFormProps) {
+  function field(k: keyof AnnItem, val: string | boolean | string[]) {
+    onChange({ ...item, [k]: val });
+  }
+
+  function togglePlan(plan: string) {
+    const plans = item.targetPlans.includes(plan)
+      ? item.targetPlans.filter((p) => p !== plan)
+      : [...item.targetPlans, plan];
+    field('targetPlans', plans);
+  }
+
+  return (
+    <div className="rounded-2xl border-2 border-teal-300 bg-teal-50 p-4 space-y-3">
+      <p className="text-xs font-black text-teal-800">{isNew ? '➕ New Announcement' : '✏️ Edit Announcement'}</p>
+
+      {/* Row 1: emoji + title */}
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={item.emoji}
+          onChange={(e) => field('emoji', e.target.value)}
+          maxLength={4}
+          className="w-14 border border-slate-200 rounded-xl px-2 py-2 text-center text-lg focus:outline-none focus:ring-2 focus:ring-teal-400"
+        />
+        <input
+          type="text"
+          placeholder="Title"
+          value={item.title}
+          onChange={(e) => field('title', e.target.value)}
+          className="flex-1 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
+        />
+      </div>
+
+      {/* Message */}
+      <textarea
+        rows={2}
+        placeholder="Message text shown to the user…"
+        value={item.message}
+        onChange={(e) => field('message', e.target.value)}
+        className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-teal-400"
+      />
+
+      {/* Link */}
+      <div className="flex gap-2">
+        <input
+          type="text"
+          placeholder="Button URL (e.g. /upgrade)"
+          value={item.link ?? ''}
+          onChange={(e) => field('link', e.target.value)}
+          className="flex-1 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-teal-400"
+        />
+        <input
+          type="text"
+          placeholder="Button label"
+          value={item.linkText ?? ''}
+          onChange={(e) => field('linkText', e.target.value)}
+          className="w-36 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-teal-400"
+        />
+      </div>
+
+      {/* Dates */}
+      <div className="flex gap-2">
+        <div className="flex-1">
+          <p className="text-[10px] text-slate-500 mb-1">Start date</p>
+          <input
+            type="date"
+            value={item.startDate}
+            onChange={(e) => field('startDate', e.target.value)}
+            className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-teal-400"
+          />
+        </div>
+        <div className="flex-1">
+          <p className="text-[10px] text-slate-500 mb-1">End date</p>
+          <input
+            type="date"
+            value={item.endDate}
+            onChange={(e) => field('endDate', e.target.value)}
+            className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-teal-400"
+          />
+        </div>
+      </div>
+
+      {/* Target plans */}
+      <div>
+        <p className="text-[10px] text-slate-500 mb-1.5">Show to (leave empty = all signed-in users)</p>
+        <div className="flex gap-2">
+          {PLAN_OPTIONS.map((p) => (
+            <button
+              key={p}
+              type="button"
+              onClick={() => togglePlan(p)}
+              className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${
+                item.targetPlans.includes(p)
+                  ? 'bg-teal-600 text-white'
+                  : 'bg-white border border-slate-200 text-slate-500 hover:border-teal-400'
+              }`}
+            >{p}</button>
+          ))}
+        </div>
+      </div>
+
+      {/* Toggles */}
+      <div className="flex items-center gap-4">
+        <label className="flex items-center gap-2 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={item.dismissible}
+            onChange={(e) => field('dismissible', e.target.checked)}
+            className="rounded"
+          />
+          <span className="text-xs text-slate-600">Dismissible</span>
+        </label>
+        <label className="flex items-center gap-2 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={item.active}
+            onChange={(e) => field('active', e.target.checked)}
+            className="rounded"
+          />
+          <span className="text-xs text-slate-600">Active</span>
+        </label>
+      </div>
+
+      {/* Save / Cancel */}
+      <div className="flex gap-2 pt-1">
+        <button
+          type="button"
+          onClick={() => onSave(item)}
+          disabled={!item.title.trim() || !item.message.trim()}
+          className="flex-1 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-sm font-black
+                     transition-colors disabled:opacity-40"
+        >
+          {isNew ? 'Create announcement' : 'Save changes'}
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="px-4 py-2 rounded-xl bg-white border border-slate-200 text-sm text-slate-500
+                     hover:bg-slate-50 font-semibold transition-colors"
+        >
+          Cancel
+        </button>
       </div>
     </div>
   );

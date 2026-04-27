@@ -11,6 +11,7 @@ import ToolsPanel              from '@/components/ToolsPanel';
 import PricingSection          from '@/components/PricingSection';
 import EmailVerificationBanner from '@/components/EmailVerificationBanner';
 import TrialExpiryBanner      from '@/components/TrialExpiryBanner';
+import AnnouncementToast      from '@/components/AnnouncementToast';
 import ReviewsMarquee          from '@/components/ReviewsMarquee';
 import OnboardingModal         from '@/components/OnboardingModal';
 import SetupChecklist          from '@/components/SetupChecklist';
@@ -542,6 +543,9 @@ export default function Home() {
 
       {/* Trial expiry nudge — shown when ≤ 5 days remain on a Pro trial */}
       <TrialExpiryBanner />
+
+      {/* Announcement toasts — driven by data/announcements.json */}
+      <AnnouncementToast />
 
       {/* Gas price drop alert — Pro users */}
       <GasPriceAlertBanner />
