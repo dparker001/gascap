@@ -101,7 +101,7 @@ export default function TermsPage() {
 
           <section>
             <h2 className="text-lg font-black text-navy-700 mb-2">12. Contact</h2>
-            <p>Questions about these Terms? Email us at <a href="mailto:hello@gascap.app" className="text-amber-600 hover:underline">hello@gascap.app</a>.</p>
+            <p>Questions about these Terms? Email us at <a href="mailto:support@gascap.app" className="text-amber-600 hover:underline">support@gascap.app</a>.</p>
           </section>
         </div>
 

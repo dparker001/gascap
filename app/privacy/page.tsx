@@ -86,7 +86,7 @@ export default function PrivacyPage() {
 
           <section>
             <h2 className="text-lg font-black text-navy-700 mb-2">7. Your Rights</h2>
-            <p>You may request deletion of your account and data at any time by contacting us at <a href="mailto:hello@gascap.app" className="text-amber-600 hover:underline">hello@gascap.app</a>. You may also update or correct your information from within the app under Settings.</p>
+            <p>You may request deletion of your account and data at any time by contacting us at <a href="mailto:support@gascap.app" className="text-amber-600 hover:underline">support@gascap.app</a>. You may also update or correct your information from within the app under Settings.</p>
           </section>
 
           <section>
@@ -106,7 +106,7 @@ export default function PrivacyPage() {
 
           <section>
             <h2 className="text-lg font-black text-navy-700 mb-2">11. Contact</h2>
-            <p>Questions about this Privacy Policy? Email us at <a href="mailto:hello@gascap.app" className="text-amber-600 hover:underline">hello@gascap.app</a>.</p>
+            <p>Questions about this Privacy Policy? Email us at <a href="mailto:support@gascap.app" className="text-amber-600 hover:underline">support@gascap.app</a>.</p>
           </section>
         </div>
 

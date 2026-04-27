@@ -3,6 +3,8 @@
  *
  * Entries are derived from activeDays — each day a Pro/Fleet user is
  * active in the current calendar month counts as one entry (max ~31/month).
+ * A streak bonus adds extra entries based on the user's current login streak,
+ * rewarding daily engagement independent of whether they can win this month.
  * No separate entry counter is stored; everything is computed at draw time.
  *
  * Prize tiers scale automatically with the paying subscriber base.
@@ -31,6 +33,56 @@ export const PRIZE_TIERS: PrizeTier[] = [
   { minSubscribers: 500, prize: '$50',  label: 'Growth'  },
   // { minSubscribers: 1000, prize: '$100', label: 'Scale' },  // ← unlock when ready
 ];
+
+// ─── Streak Bonus Tiers ───────────────────────────────────────────────────────
+
+export interface StreakBonusTier {
+  minStreak: number;
+  bonus:     number;
+  label:     string;   // shown in UI / admin
+}
+
+/**
+ * Bonus draw entries awarded based on the user's current login streak.
+ * Sorted ascending by minStreak; highest matching tier wins.
+ *
+ * Streak bonus:
+ *  – Keeps daily engagement rewarding even during ineligible months
+ *  – Max +10 entries on top of the ~31 active-day entries
+ *  – Requires ≥1 active day this month to qualify for the draw at all
+ */
+export const STREAK_BONUS_TIERS: StreakBonusTier[] = [
+  { minStreak:  0, bonus:  0, label: 'No bonus'       },
+  { minStreak:  7, bonus:  2, label: '1-week streak'  },
+  { minStreak: 30, bonus:  5, label: '1-month streak' },
+  { minStreak: 90, bonus: 10, label: '3-month streak' },
+];
+
+/**
+ * Return the bonus entries for a given streak length.
+ * e.g. streak 45 → 5 bonus entries (1-month tier)
+ */
+export function streakBonusEntries(streak: number): number {
+  let bonus = 0;
+  for (const tier of STREAK_BONUS_TIERS) {
+    if (streak >= tier.minStreak) bonus = tier.bonus;
+  }
+  return bonus;
+}
+
+/** Return the streak bonus tier object for a given streak length */
+export function streakTierForStreak(streak: number): StreakBonusTier {
+  let active = STREAK_BONUS_TIERS[0];
+  for (const tier of STREAK_BONUS_TIERS) {
+    if (streak >= tier.minStreak) active = tier;
+  }
+  return active;
+}
+
+/** Return the next streak bonus tier above the current streak, or null if at max */
+export function nextStreakTier(streak: number): StreakBonusTier | null {
+  return STREAK_BONUS_TIERS.find((t) => t.minStreak > streak) ?? null;
+}
 
 /** Count of currently active paying Pro + Fleet subscribers */
 export async function countPayingSubscribers(): Promise<number> {
@@ -71,11 +123,14 @@ export async function getCurrentPrizeTier(): Promise<{
 }
 
 export interface EntrantRow {
-  userId:     string;
-  name:       string;
-  email:      string;
-  plan:       string;
-  entryCount: number;
+  userId:      string;
+  name:        string;
+  email:       string;
+  plan:        string;
+  streak:      number;
+  baseEntries: number;   // active-day entries (one per calendar day used this month)
+  streakBonus: number;   // bonus entries from streak tier
+  entryCount:  number;   // baseEntries + streakBonus (total weight in the draw)
 }
 
 export interface DrawResult {
@@ -157,18 +212,25 @@ export async function getEligibleEntrants(month: string): Promise<EntrantRow[]> 
       plan:          { in: ['pro', 'fleet'] },
       isTestAccount: { not: true },   // exclude test/internal accounts from draws
     },
-    select: { id: true, name: true, email: true, plan: true, activeDays: true },
+    select: { id: true, name: true, email: true, plan: true, activeDays: true, streak: true },
   });
 
   return users
-    .map((u) => ({
-      userId:     u.id,
-      name:       u.name,
-      email:      u.email,
-      plan:       u.plan,
-      entryCount: (u.activeDays ?? []).filter((d) => d.startsWith(prefix)).length,
-    }))
-    .filter((u) => u.entryCount > 0)
+    .map((u) => {
+      const baseEntries = (u.activeDays ?? []).filter((d) => d.startsWith(prefix)).length;
+      const streakBonus = streakBonusEntries(u.streak ?? 0);
+      return {
+        userId:      u.id,
+        name:        u.name,
+        email:       u.email,
+        plan:        u.plan,
+        streak:      u.streak ?? 0,
+        baseEntries,
+        streakBonus,
+        entryCount:  baseEntries + streakBonus,
+      };
+    })
+    .filter((u) => u.baseEntries > 0)  // must have used the app at least once this month
     .sort((a, b) => b.entryCount - a.entryCount);
 }
 

@@ -35,7 +35,9 @@ export default function SweepstakesRulesPage() {
           <p className="text-sm text-slate-700 leading-relaxed">
             <strong>Plain-English Summary:</strong> Every month, GasCap™ gives away a {PRIZE_VALUE} gas card to one
             lucky Pro or Fleet member. The more days you use the app, the more entries you earn —
-            up to one entry per day per calendar month. No purchase is required to enter.
+            up to one entry per day. Keep a login streak going for bonus entries: a 7-day streak
+            adds 2, a 30-day streak adds 5, and a 90-day streak adds 10 bonus entries. No purchase
+            is required to enter.
           </p>
         </div>
 
@@ -85,7 +87,16 @@ export default function SweepstakesRulesPage() {
                 automatically earn one (1) entry for each calendar day they use the app during the
                 Entry Month. &ldquo;Use&rdquo; means opening the app and performing any action (fuel calculation,
                 gas price lookup, vehicle management, or account login). Maximum of one entry per user
-                per calendar day; maximum of 31 entries per Entry Month.
+                per calendar day; maximum of 31 base entries per Entry Month.
+              </p>
+              <p>
+                <strong>Streak Bonus Entries (Method A subscribers only):</strong> Subscribers who
+                maintain a consecutive daily-use streak also receive bonus entries on top of their
+                base entries. Bonus entries are awarded based on the subscriber&apos;s active streak
+                as of the last day of the Entry Month: 7–29 consecutive days = 2 bonus entries;
+                30–89 consecutive days = 5 bonus entries; 90 or more consecutive days = 10 bonus
+                entries. Streak bonus entries require at least one (1) base active-day entry to be
+                awarded. Maximum combined entries per subscriber per Entry Month: 41.
               </p>
               <p>
                 <strong>Method B — No Purchase Necessary (free online entry):</strong> Any eligible

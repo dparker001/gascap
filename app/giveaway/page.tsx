@@ -6,9 +6,14 @@ import { useRouter }           from 'next/navigation';
 import Link                    from 'next/link';
 
 interface GiveawayEntries {
-  month:      string;
-  entryCount: number;
-  eligible:   boolean;
+  month:          string;
+  entryCount:     number;
+  baseEntries:    number;
+  streakBonus:    number;
+  streak:         number;
+  streakTier:     { minStreak: number; bonus: number; label: string };
+  nextStreakTier: { minStreak: number; bonus: number; label: string } | null;
+  eligible:       boolean;
 }
 
 interface DrawRecord {
@@ -63,11 +68,15 @@ export default function GiveawayPage() {
     );
   }
 
-  const month      = entries?.month ?? currentMonthStr();
-  const entryCount = entries?.entryCount ?? 0;
-  const eligible   = entries?.eligible ?? false;
-  const maxEntries = 31;
-  const progressPct = Math.min(100, Math.round((entryCount / maxEntries) * 100));
+  const month          = entries?.month ?? currentMonthStr();
+  const entryCount     = entries?.entryCount ?? 0;
+  const baseEntries    = entries?.baseEntries ?? 0;
+  const streakBonus    = entries?.streakBonus ?? 0;
+  const streak         = entries?.streak ?? 0;
+  const nextStreakTier = entries?.nextStreakTier ?? null;
+  const eligible       = entries?.eligible ?? false;
+  const maxDays        = 31;
+  const progressPct    = Math.min(100, Math.round((baseEntries / maxDays) * 100));
 
   return (
     <div className="min-h-screen bg-[#005F4A]">
@@ -111,13 +120,24 @@ export default function GiveawayPage() {
               <p className="text-white/60 text-sm mt-1">
                 {entryCount === 1 ? 'entry this month' : 'entries this month'}
               </p>
+              {/* Breakdown when streak bonus applies */}
+              {streakBonus > 0 && (
+                <div className="flex items-center justify-center gap-2 mt-2 flex-wrap">
+                  <span className="text-xs text-white/50 bg-white/10 rounded-full px-2.5 py-0.5">
+                    📅 {baseEntries} active days
+                  </span>
+                  <span className="text-xs text-amber-400 bg-amber-500/20 rounded-full px-2.5 py-0.5 font-semibold">
+                    🔥 +{streakBonus} streak bonus
+                  </span>
+                </div>
+              )}
             </div>
 
-            {/* Progress bar */}
+            {/* Active-day progress bar */}
             <div className="space-y-1.5">
               <div className="flex justify-between text-[11px] text-white/50">
-                <span>Daily progress</span>
-                <span>{entryCount} / {maxEntries} days</span>
+                <span>Active days this month</span>
+                <span>{baseEntries} / {maxDays}</span>
               </div>
               <div className="h-3 bg-white/10 rounded-full overflow-hidden">
                 <div
@@ -130,17 +150,44 @@ export default function GiveawayPage() {
               </div>
             </div>
 
-            {entryCount === 0 ? (
+            {/* Streak display */}
+            <div className="bg-white/5 rounded-2xl px-4 py-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-lg">🔥</span>
+                <div>
+                  <p className="text-white text-xs font-bold">{streak}-day streak</p>
+                  <p className="text-white/40 text-[10px]">
+                    {streakBonus > 0
+                      ? `+${streakBonus} bonus entries active`
+                      : nextStreakTier
+                        ? `${nextStreakTier.minStreak - streak} more days → +${nextStreakTier.bonus} bonus entries`
+                        : 'Keep it up!'}
+                  </p>
+                </div>
+              </div>
+              {streakBonus > 0 && (
+                <span className="text-xs font-black text-amber-400 bg-amber-500/20 rounded-full px-2 py-0.5">
+                  +{streakBonus}
+                </span>
+              )}
+              {streakBonus === 0 && nextStreakTier && (
+                <span className="text-[10px] text-white/30 bg-white/5 rounded-full px-2 py-0.5">
+                  {nextStreakTier.minStreak - streak}d away
+                </span>
+              )}
+            </div>
+
+            {baseEntries === 0 ? (
               <p className="text-center text-white/60 text-xs leading-relaxed">
                 Use GasCap™ today to earn your first entry — every day you open the app counts!
               </p>
-            ) : entryCount < 10 ? (
+            ) : baseEntries < 10 ? (
               <p className="text-center text-white/60 text-xs leading-relaxed">
                 Keep it up! Open the app each day to stack more entries. More entries = better odds.
               </p>
             ) : (
               <p className="text-center text-[#1EB68F] text-xs font-semibold leading-relaxed">
-                ⚡ Great streak! You&apos;re building serious odds this month.
+                ⚡ You&apos;re building serious odds this month — great work!
               </p>
             )}
           </div>
@@ -177,7 +224,9 @@ export default function GiveawayPage() {
               <p className="text-white/60 text-xs leading-relaxed">
                 Upgrade to Pro and earn up to{' '}
                 <strong className="text-amber-400">31 entries per month</strong>{' '}
-                automatically — one for every day you open the app.
+                automatically, plus{' '}
+                <strong className="text-amber-400">up to 10 bonus entries</strong>{' '}
+                for maintaining a daily streak.
               </p>
               <Link
                 href="/upgrade"
@@ -195,8 +244,9 @@ export default function GiveawayPage() {
           <p className="text-white font-black text-sm">How entries work</p>
           <div className="space-y-2.5">
             {[
-              { emoji: '📅', text: 'Each day you open GasCap™ earns 1 entry' },
-              { emoji: '📈', text: 'More active days = better odds of winning' },
+              { emoji: '📅', text: 'Each day you open GasCap™ earns 1 entry (up to 31/month)' },
+              { emoji: '🔥', text: '7-day streak = +2 bonus entries · 30-day = +5 · 90-day = +10' },
+              { emoji: '📈', text: 'More entries = better odds — streaks compound your edge' },
               { emoji: '🏆', text: 'One winner drawn on the 5th of each month' },
               { emoji: '⛽', text: '$25 gas card sent directly to the winner' },
             ].map((item) => (

@@ -4,11 +4,14 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 
 interface EntrantRow {
-  userId:     string;
-  name:       string;
-  email:      string;
-  plan:       string;
-  entryCount: number;
+  userId:      string;
+  name:        string;
+  email:       string;
+  plan:        string;
+  streak:      number;
+  baseEntries: number;
+  streakBonus: number;
+  entryCount:  number;
 }
 
 interface DrawRecord {
@@ -293,12 +296,18 @@ export default function SweepstakesAdminPage() {
                       <div key={e.userId} className="flex items-center justify-between px-3 py-2 bg-white">
                         <div>
                           <p className="text-sm font-semibold text-slate-700">{e.name}</p>
-                          <p className="text-[11px] text-slate-500">{e.email} · <span className="uppercase text-[10px] font-bold text-amber-600">{e.plan}</span></p>
+                          <p className="text-[11px] text-slate-500">
+                            {e.email} · <span className="uppercase text-[10px] font-bold text-amber-600">{e.plan}</span>
+                            {e.streak > 0 && <span className="text-orange-500 ml-1">🔥{e.streak}d</span>}
+                          </p>
                         </div>
                         <div className="text-right">
                           <p className="text-sm font-black text-slate-700">{e.entryCount}</p>
                           <p className="text-[10px] text-slate-400">
-                            {totalEntries > 0 ? `${((e.entryCount / totalEntries) * 100).toFixed(1)}%` : '—'}
+                            {e.streakBonus > 0
+                              ? <span>{e.baseEntries}+<span className="text-orange-500">{e.streakBonus}</span> · {totalEntries > 0 ? `${((e.entryCount / totalEntries) * 100).toFixed(1)}%` : '—'}</span>
+                              : totalEntries > 0 ? `${((e.entryCount / totalEntries) * 100).toFixed(1)}%` : '—'
+                            }
                           </p>
                         </div>
                       </div>

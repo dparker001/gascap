@@ -236,7 +236,7 @@ const SECTIONS = [
       },
       {
         q: 'How do I earn entries as a Pro or Fleet member?',
-        a: 'Pro and Fleet subscribers automatically earn one (1) entry for each calendar day they open and use the app — up to a maximum of 31 entries per month.',
+        a: 'Pro and Fleet subscribers automatically earn one (1) entry for each calendar day they open and use the app — up to 31 base entries per month. You also earn streak bonus entries based on your current login streak: a 7-day streak adds 2 bonus entries, a 30-day streak adds 5, and a 90-day streak adds 10 — for a maximum of 41 entries per month.',
       },
       {
         q: 'Can I enter without a paid subscription?',
