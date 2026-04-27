@@ -47,8 +47,8 @@ export async function POST(req: Request) {
         locale:    (user.locale as 'en' | 'es' | undefined) ?? 'en',
         source:    'GasCap Admin Backfill',
         extraTags: [
-          'gascap-original-beta',
-          ...(user.isProTrial ? ['gascap-trial-30day'] : []),
+          ...(user.isProTrial    ? ['gascap-trial-30day'] : []),
+          ...(user.isBetaTester  ? ['gascap-original-beta'] : []),
         ],
       });
 
