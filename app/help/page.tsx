@@ -34,7 +34,7 @@ const SECTIONS = [
       },
       {
         q: 'How do I switch between Light and Dark mode?',
-        a: 'Tap the sun/moon icon in the app header to cycle through three modes: Auto (follows your device\'s system setting and adjusts at sunrise/sunset), Light, and Dark. Your preference is saved automatically.',
+        a: 'Open the app, go to Settings (tap your profile or the settings icon), then find the Appearance section. Tap the three-way toggle to choose Auto (follows your device\'s system setting and switches at sunrise/sunset), Light, or Dark. Your preference is saved automatically.',
       },
     ],
   },
