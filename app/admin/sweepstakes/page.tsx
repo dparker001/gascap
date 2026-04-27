@@ -298,7 +298,7 @@ export default function SweepstakesAdminPage() {
                           <p className="text-sm font-semibold text-slate-700">{e.name}</p>
                           <p className="text-[11px] text-slate-500">
                             {e.email} · <span className="uppercase text-[10px] font-bold text-amber-600">{e.plan}</span>
-                            {e.streak > 0 && <span className="text-orange-500 ml-1">🔥{e.streak}d</span>}
+                            {e.streak > 0 && <span className="text-orange-500 ml-1">⚡{e.streak}d</span>}
                           </p>
                         </div>
                         <div className="text-right">

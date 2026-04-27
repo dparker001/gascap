@@ -127,7 +127,7 @@ export default function GiveawayPage() {
                     📅 {baseEntries} active days
                   </span>
                   <span className="text-xs text-amber-400 bg-amber-500/20 rounded-full px-2.5 py-0.5 font-semibold">
-                    🔥 +{streakBonus} streak bonus
+                    ⚡ +{streakBonus} streak bonus
                   </span>
                 </div>
               )}
@@ -153,7 +153,7 @@ export default function GiveawayPage() {
             {/* Streak display */}
             <div className="bg-white/5 rounded-2xl px-4 py-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="text-lg">🔥</span>
+                <span className="text-lg">⚡</span>
                 <div>
                   <p className="text-white text-xs font-bold">{streak}-day streak</p>
                   <p className="text-white/40 text-[10px]">
@@ -245,7 +245,7 @@ export default function GiveawayPage() {
           <div className="space-y-2.5">
             {[
               { emoji: '📅', text: 'Each day you open GasCap™ earns 1 entry (up to 31/month)' },
-              { emoji: '🔥', text: '7-day streak = +2 bonus entries · 30-day = +5 · 90-day = +10' },
+              { emoji: '⚡', text: '7-day streak = +2 bonus entries · 30-day = +5 · 90-day = +10' },
               { emoji: '📈', text: 'More entries = better odds — streaks compound your edge' },
               { emoji: '🏆', text: 'One winner drawn on the 5th of each month' },
               { emoji: '⛽', text: '$25 gas card sent directly to the winner' },
