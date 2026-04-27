@@ -127,7 +127,9 @@ export default function SettingsPage() {
       const res  = await fetch('/api/stripe/portal', { method: 'POST' });
       const data = await res.json() as { url?: string; error?: string };
       if (data.url) window.location.href = data.url;
-      else alert(data.error ?? 'Could not open billing portal.');
+      else alert(data.error ?? 'Could not open billing portal. Please try again or contact support@gascap.app.');
+    } catch {
+      alert('Could not reach the billing portal. Please try again or contact support@gascap.app.');
     } finally {
       setPortalLoading(false);
     }
@@ -347,6 +349,9 @@ export default function SettingsPage() {
               >
                 {portalLoading ? 'Opening…' : 'Manage Billing & Subscription →'}
               </button>
+              <p className="text-center text-[11px] text-slate-400">
+                Update payment method, view invoices, or cancel anytime.
+              </p>
             </>
           )}
 
@@ -371,6 +376,9 @@ export default function SettingsPage() {
               >
                 {portalLoading ? 'Opening…' : 'Manage Billing & Subscription →'}
               </button>
+              <p className="text-center text-[11px] text-slate-400">
+                Update payment method, view invoices, or cancel anytime.
+              </p>
             </>
           )}
         </div>
