@@ -170,7 +170,7 @@ export default function ReferralCard() {
                         {data.activeCredits > data.maxRedeemAtOnce && ` (${data.activeCredits} total, max ${data.maxRedeemAtOnce} at once)`}
                       </p>
                       <p className="text-[10px] text-green-700 leading-relaxed">
-                        Credits apply to your next billing cycle. Contact us at hello@gascap.app to apply immediately.
+                        Credits apply to your next billing cycle. Contact us at info@gascap.app to apply immediately.
                       </p>
                     </>
                   ) : (

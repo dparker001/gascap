@@ -101,7 +101,7 @@ export async function POST(req: Request) {
 
     // Notify admin of new signup (non-blocking)
     sendMail({
-      to:      'hello@gascap.app',
+      to:      'info@gascap.app',
       subject: `🎉 New GasCap™ signup: ${user.name} (Pro trial activated)`,
       html: `<div style="font-family:system-ui,sans-serif;max-width:480px;">
         <p style="font-size:22px;margin:0 0 8px;">🎉 New signup — Pro trial activated</p>

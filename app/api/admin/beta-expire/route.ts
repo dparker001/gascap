@@ -142,7 +142,7 @@ export async function POST(req: Request) {
 
   // 4. Notify admin
   sendMail({
-    to:      'hello@gascap.app',
+    to:      'info@gascap.app',
     subject: `⏰ ${expired.length} GasCap™ Pro trial(s) expired`,
     html: `<div style="font-family:system-ui;max-width:480px;"><p style="font-size:16px;font-weight:700;">Pro trials reverted to free:</p><ul>${results.map((r) => `<li style="font-size:14px;color:#475569;">${r}</li>`).join('')}</ul></div>`,
     text:    `Pro trials expired:\n${results.join('\n')}`,

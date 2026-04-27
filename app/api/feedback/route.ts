@@ -28,7 +28,7 @@ export async function POST(req: Request) {
 
   try {
     await sendMail({
-      to:      'hello@gascap.app',
+      to:      'info@gascap.app',
       subject: `[GasCap™ Feedback] from ${name}`,
       html: `
         <div style="font-family:system-ui,sans-serif;max-width:600px;margin:0 auto;">

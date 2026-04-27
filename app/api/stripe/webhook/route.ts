@@ -18,7 +18,7 @@ import { PRICES }                          from '@/lib/stripe';
 
 /** Fire-and-forget admin notification */
 function sendAdminMail(opts: { subject: string; html: string; text: string }) {
-  sendMail({ to: 'hello@gascap.app', ...opts })
+  sendMail({ to: 'info@gascap.app', ...opts })
     .catch((e) => console.error('[GasCap] Admin notify failed:', e));
 }
 

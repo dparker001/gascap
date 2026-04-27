@@ -172,8 +172,8 @@ export default function StreakRewards() {
           </p>
           <p className="text-[10px] text-white/60 leading-snug">
             Email{' '}
-            <a href="mailto:hello@gascap.app" className="text-amber-400 underline underline-offset-2">
-              hello@gascap.app
+            <a href="mailto:info@gascap.app" className="text-amber-400 underline underline-offset-2">
+              info@gascap.app
             </a>{' '}
             to redeem your free month{credits.length !== 1 ? 's' : ''} toward your subscription.
           </p>

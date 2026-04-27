@@ -22,7 +22,7 @@ async function getStateFromCoords(lat: number, lng: number): Promise<string> {
   try {
     const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`;
     const res  = await fetch(url, {
-      headers: { 'User-Agent': 'GasCap/1.0 (hello@gascap.app)' },
+      headers: { 'User-Agent': 'GasCap/1.0 (info@gascap.app)' },
       next:    { revalidate: 3600 },
     });
     if (!res.ok) return 'US';

@@ -94,7 +94,7 @@ export default function SmartFillUpOptimizer() {
       const { latitude, longitude } = position.coords;
       const geo = await fetch(
         `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`,
-        { headers: { 'User-Agent': 'GasCap/1.0 (hello@gascap.app)' } },
+        { headers: { 'User-Agent': 'GasCap/1.0 (info@gascap.app)' } },
       );
       if (geo.ok) {
         const d = await geo.json() as { address?: { state_code?: string; 'ISO3166-2-lvl4'?: string } };
