@@ -168,7 +168,7 @@ const SECTIONS = [
     items: [
       {
         q: 'What is GasCap™ Fleet?',
-        a: 'Fleet is for businesses and owner-operators managing multiple vehicles. It includes unlimited vehicles, up to 10 drivers, driver attribution on fill-ups, a fleet-wide fuel dashboard, per-vehicle and per-driver reporting, bulk vehicle import, driver roster management, CSV export with driver column, and monthly giveaway entries.',
+        a: 'Fleet is for businesses and owner-operators managing multiple vehicles. It includes unlimited vehicles, up to 10 drivers, driver attribution on fill-ups, a fleet-wide fuel dashboard, per-vehicle and per-driver reporting, annual tax report (PDF), bulk vehicle import, driver roster management, CSV export with driver column, referral rewards, and monthly giveaway entries.',
       },
       {
         q: 'How do I add drivers to my fleet?',
@@ -177,6 +177,10 @@ const SECTIONS = [
       {
         q: 'What does the Fleet Dashboard show?',
         a: 'The Fleet Dashboard shows active drivers, total vehicles, this-month spend, all-time spend, a per-driver breakdown (fill-ups, gallons, spend, last fill date), and a sortable fill-up activity table with driver and month filters. An "Unattributed fill-ups" warning appears if any fill-ups haven\'t been assigned to a driver.',
+      },
+      {
+        q: 'Can I download an annual tax report?',
+        a: 'Yes — Fleet subscribers can download a PDF Annual Fleet Fuel Tax Report directly from the Fleet Dashboard. Tap the Reports card, choose a tax year from the dropdown, and tap "Download PDF." The report includes a monthly cost breakdown, per-vehicle summary with MPG, a complete fill-up log with driver attribution, and a tax disclaimer. It is ready to hand to your accountant or attach to your IRS records.',
       },
       {
         q: 'Can drivers log fill-ups on their own devices?',
@@ -206,7 +210,7 @@ const SECTIONS = [
       },
       {
         q: 'What does Fleet add over Pro?',
-        a: 'Fleet ($19.99/mo or $199/yr) adds unlimited vehicles (vs. 3), up to 10 drivers, driver attribution on fill-ups, fleet-wide fuel dashboard, per-driver reporting, bulk vehicle import, and driver roster management. Everything in Pro is included.',
+        a: 'Fleet ($19.99/mo or $199/yr) adds unlimited vehicles (vs. 3), up to 10 drivers, driver attribution on fill-ups, fleet-wide fuel dashboard, per-driver reporting, annual tax report (PDF), bulk vehicle import, and driver roster management. Everything in Pro is included.',
       },
       {
         q: 'How do I upgrade my plan?',
@@ -214,7 +218,7 @@ const SECTIONS = [
       },
       {
         q: 'How do I cancel my subscription?',
-        a: 'Email us at support@gascap.app and we\'ll cancel your subscription and issue any applicable refund. A self-serve cancellation portal is coming soon.',
+        a: 'Go to Settings → Plan → "Manage Billing & Subscription." This opens the Stripe self-serve portal where you can cancel, change your plan, or update your payment method at any time. You can also email support@gascap.app and we\'ll take care of it for you.',
       },
       {
         q: 'Is my payment information secure?',
@@ -270,7 +274,7 @@ const SECTIONS = [
     items: [
       {
         q: 'How does the referral program work?',
-        a: 'Every GasCap™ account has a unique referral link (gascap.app/signup?ref=YOURCODE). When someone signs up using your link and makes their first paid subscription payment, you earn 1 free month of GasCap™ Pro — automatically credited to your account.',
+        a: 'Every GasCap™ account has a unique referral link (gascap.app/signup?ref=YOURCODE). When someone signs up using your link and makes their first paid subscription payment, you earn 1 free month — automatically credited to your account. The credit applies to whichever plan you are on (Pro or Fleet).',
       },
       {
         q: 'Where do I find my referral link?',
