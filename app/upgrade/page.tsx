@@ -37,6 +37,7 @@ const FLEET_FEATURES = [
   'Annual tax report (PDF)',
   'Bulk vehicle import',
   'CSV export for accounting',
+  'Referral rewards',
   'All Pro features included',
   'Multi-driver sub-accounts (coming soon)',
   'Dedicated fleet support',

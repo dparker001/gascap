@@ -63,8 +63,11 @@ export default function FleetPage() {
   const [addError,      setAddError]      = useState('');
 
   // ── Filter state ────────────────────────────────────────────────────────────
-  const [driverFilter, setDriverFilter] = useState('all');
-  const [monthFilter,  setMonthFilter]  = useState('all');
+  const [driverFilter,     setDriverFilter]     = useState('all');
+  const [monthFilter,      setMonthFilter]      = useState('all');
+  const [taxYear,          setTaxYear]          = useState(String(new Date().getFullYear()));
+  const [taxReportLoading, setTaxReportLoading] = useState(false);
+  const [taxReportError,   setTaxReportError]   = useState('');
 
   const userPlan = (session?.user as { plan?: string })?.plan ?? 'free';
 
@@ -156,6 +159,11 @@ export default function FleetPage() {
     .sort()
     .reverse();
 
+  // Years that have at least one fill-up (for tax report year selector)
+  const availableYears = [...new Set(allFillups.map((f) => f.date.slice(0, 4)))]
+    .sort()
+    .reverse();
+
   // Per-driver breakdown
   interface DriverStat {
     name:         string;
@@ -233,6 +241,31 @@ export default function FleetPage() {
     URL.revokeObjectURL(url);
   }
 
+  // ── Tax report download ───────────────────────────────────────────────────────
+  async function handleTaxReport() {
+    setTaxReportLoading(true);
+    setTaxReportError('');
+    try {
+      const res = await fetch(`/api/fleet/tax-report?year=${taxYear}`);
+      if (!res.ok) {
+        const data = await res.json() as { error?: string };
+        setTaxReportError(data.error ?? 'Could not generate report.');
+        return;
+      }
+      const blob     = await res.blob();
+      const url      = URL.createObjectURL(blob);
+      const a        = document.createElement('a');
+      a.href         = url;
+      a.download     = `gascap-fleet-tax-report-${taxYear}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      setTaxReportError('Network error — please try again.');
+    } finally {
+      setTaxReportLoading(false);
+    }
+  }
+
   // ── Render ──────────────────────────────────────────────────────────────────��─
   return (
     <div className="min-h-screen bg-slate-50">
@@ -272,6 +305,66 @@ export default function FleetPage() {
 
             {/* ── Log Fill-Up ─────────────────────────────────────────────── */}
             <ManualFillupLogger />
+
+            {/* ── Reports ─────────────────────────────────────────────────── */}
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+              <div className="px-4 py-3 border-b border-slate-100">
+                <p className="text-sm font-black text-slate-700">📄 Reports</p>
+              </div>
+              <div className="px-4 py-4 space-y-3">
+                {/* Annual Tax Report */}
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-black text-slate-700">Annual Fleet Fuel Tax Report</p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">PDF summary of all fuel costs by vehicle &amp; month</p>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {availableYears.length > 0 ? (
+                      <select
+                        value={taxYear}
+                        onChange={(e) => { setTaxYear(e.target.value); setTaxReportError(''); }}
+                        className="text-xs font-bold text-slate-600 bg-slate-50 border border-slate-200
+                                   rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                      >
+                        {availableYears.map((y) => (
+                          <option key={y} value={y}>{y}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span className="text-[10px] text-slate-400">{new Date().getFullYear()}</span>
+                    )}
+                    <button
+                      onClick={handleTaxReport}
+                      disabled={taxReportLoading || allFillups.length === 0}
+                      className="flex items-center gap-1.5 text-[11px] font-black text-white
+                                 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 transition-colors
+                                 rounded-xl px-3 py-1.5 whitespace-nowrap"
+                    >
+                      {taxReportLoading ? (
+                        <>
+                          <div className="w-3 h-3 rounded-full border border-white border-t-transparent animate-spin" />
+                          Generating…
+                        </>
+                      ) : (
+                        <>
+                          <svg viewBox="0 0 16 16" className="w-3 h-3" fill="none" stroke="currentColor"
+                               strokeWidth="1.8" strokeLinecap="round">
+                            <path d="M8 2v9M4 7l4 4 4-4M2 14h12"/>
+                          </svg>
+                          Download PDF
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+                {taxReportError && (
+                  <p className="text-[11px] text-red-500">{taxReportError}</p>
+                )}
+                {allFillups.length === 0 && (
+                  <p className="text-[11px] text-slate-400">Log your first fill-up to generate a tax report.</p>
+                )}
+              </div>
+            </div>
 
             {/* ── Driver Roster ────────────────────────────────────────────── */}
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
