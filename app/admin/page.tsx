@@ -123,6 +123,10 @@ export default function AdminPage() {
   const [bcastMsg,       setBcastMsg]       = useState('');
   const [feedback,  setFeedback]  = useState<FeedbackItem[]>([]);
   const [fbOpen,    setFbOpen]    = useState(false);
+  // ── GHL Backfill ──────────────────────────────────────────────────────
+  const [backfillLoading, setBackfillLoading] = useState(false);
+  const [backfillMsg,     setBackfillMsg]     = useState('');
+
   // ── Announcements ─────────────────────────────────────────────────────
   const [annOpen,      setAnnOpen]      = useState(false);
   const [announcements, setAnnouncements] = useState<AnnItem[]>([]);
@@ -281,6 +285,25 @@ export default function AdminPage() {
       const data = await res.json() as { count: number };
       setSubCount(data.count);
     }
+  }
+
+  // ── GHL Backfill handler ───────────────────────────────────────────────
+  async function handleGhlBackfill() {
+    if (!confirm('Sync all users to GHL? Safe to run multiple times — upsert is idempotent.')) return;
+    setBackfillLoading(true);
+    setBackfillMsg('');
+    try {
+      const res  = await fetch('/api/admin/ghl-backfill', { method: 'POST', headers: { 'x-admin-password': savedPw } });
+      const data = await res.json() as { total: number; synced: number; skipped: number; errors: string[] };
+      if (res.ok) {
+        setBackfillMsg(`✅ Synced ${data.synced} of ${data.total} users to GHL${data.errors.length > 0 ? ` (${data.errors.length} errors — check logs)` : ''}`);
+      } else {
+        setBackfillMsg('❌ Backfill failed — check logs');
+      }
+    } catch {
+      setBackfillMsg('❌ Network error');
+    }
+    setBackfillLoading(false);
   }
 
   // ── Announcements helpers ──────────────────────────────────────────────
@@ -628,6 +651,36 @@ export default function AdminPage() {
                   : '🚀 Send to all subscribers'}
             </button>
           </div>
+        </div>
+
+        {/* GHL Sync */}
+        <div className="bg-white rounded-2xl shadow-sm p-5 space-y-3">
+          <div>
+            <p className="text-sm font-black text-navy-700">🔗 GHL Contact Sync</p>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Backfill all app users into GHL. Safe to run multiple times.
+              Backfilled contacts get the <code className="bg-slate-100 px-1 rounded">gascap-original-beta</code> tag.
+            </p>
+          </div>
+
+          {backfillMsg && (
+            <div className={`rounded-xl px-4 py-2 text-sm flex justify-between ${
+              backfillMsg.startsWith('✅') ? 'bg-green-50 border border-green-200 text-green-700'
+              : 'bg-red-50 border border-red-200 text-red-600'
+            }`}>
+              <span>{backfillMsg}</span>
+              <button onClick={() => setBackfillMsg('')} className="ml-2 opacity-50 hover:opacity-100">×</button>
+            </div>
+          )}
+
+          <button
+            onClick={handleGhlBackfill}
+            disabled={backfillLoading}
+            className="w-full py-2.5 px-4 rounded-xl bg-teal-600 hover:bg-teal-500 text-white
+                       text-sm font-bold transition-colors disabled:opacity-50"
+          >
+            {backfillLoading ? 'Syncing…' : '↑ Sync all users → GHL'}
+          </button>
         </div>
 
         {/* Feedback Inbox */}
