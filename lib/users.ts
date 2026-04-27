@@ -55,6 +55,10 @@ export interface StoredUser {
   emailCampaignStep?:       number;
   emailCampaignEnrolledAt?: string;
   emailOptOut?:             boolean;
+  paidCampaignStep?:        number;
+  paidCampaignEnrolledAt?:  string;
+  stripeInterval?:          string;
+  verifyReminderSentAt?:    string;
   isTestAccount?: boolean;
   fleetDrivers?:  string[];
 }
@@ -108,6 +112,10 @@ function toStoredUser(u: PrismaUser): StoredUser {
     lastFillupReminderSentAt: u.lastFillupReminderSentAt ?? undefined,
     emailCampaignEnrolledAt: u.emailCampaignEnrolledAt ?? undefined,
     emailCampaignStep:  u.emailCampaignStep   ?? undefined,
+    paidCampaignStep:       u.paidCampaignStep       ?? undefined,
+    paidCampaignEnrolledAt: u.paidCampaignEnrolledAt ?? undefined,
+    stripeInterval:         u.stripeInterval         ?? undefined,
+    verifyReminderSentAt:   u.verifyReminderSentAt   ?? undefined,
     fillupReminderDays: u.fillupReminderDays  ?? undefined,
     priceAlertThreshold: u.priceAlertThreshold ?? undefined,
     loginCount:         u.loginCount,
@@ -265,6 +273,83 @@ export async function getUsersPendingCampaignStep(step: number, minDays: number)
     },
   });
   return users.map(toStoredUser);
+}
+
+// ── Paid campaign ───────────────────────────────────────────────────────────
+
+/**
+ * Enroll a user in the paid drip sequence on their first upgrade.
+ * Sets step=1 (P1 already sent), records enrollment timestamp + billing interval.
+ */
+export async function enrollPaidCampaign(
+  userId: string,
+  interval: 'monthly' | 'annual',
+): Promise<void> {
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      paidCampaignStep:       1,
+      paidCampaignEnrolledAt: new Date().toISOString(),
+      stripeInterval:         interval,
+    },
+  });
+}
+
+export async function advancePaidCampaignStep(userId: string, step: number): Promise<void> {
+  await prisma.user.update({
+    where: { id: userId },
+    data: { paidCampaignStep: step },
+  });
+}
+
+/**
+ * Find paying users whose next paid drip email is due.
+ * step 2 = P2 at day 30, step 3 = P3 at day 60, step 4 = P4 at day 330 (annual only)
+ */
+export async function getUsersPendingPaidCampaignStep(
+  step: 2 | 3 | 4,
+  minDays: number,
+): Promise<StoredUser[]> {
+  const cutoff = new Date(Date.now() - minDays * 86_400_000).toISOString();
+  // P4 only fires for annual subscribers
+  const users = await prisma.user.findMany({
+    where: {
+      emailOptOut:            false,
+      paidCampaignStep:       step - 1,
+      paidCampaignEnrolledAt: { not: null, lte: cutoff },
+      stripeSubscriptionId:   { not: null },
+      ...(step === 4 ? { stripeInterval: 'annual' } : {}),
+    },
+  });
+  return users.map(toStoredUser);
+}
+
+// ── Email verification reminder ─────────────────────────────────────────────
+
+/**
+ * Find users who have not verified their email, signed up 3+ days ago,
+ * and have not yet received a reminder nudge.
+ * Cap at 30 days so we don't keep nudging very stale accounts.
+ */
+export async function getUnverifiedUsersForReminder(): Promise<StoredUser[]> {
+  const threeDaysAgo   = new Date(Date.now() - 3  * 86_400_000).toISOString();
+  const thirtyDaysAgo  = new Date(Date.now() - 30 * 86_400_000).toISOString();
+  const users = await prisma.user.findMany({
+    where: {
+      emailVerified:        false,
+      emailOptOut:          false,
+      verifyReminderSentAt: null,            // no reminder sent yet
+      createdAt:            { lte: threeDaysAgo, gte: thirtyDaysAgo },
+    },
+  });
+  return users.map(toStoredUser);
+}
+
+export async function markVerifyReminderSent(userId: string): Promise<void> {
+  await prisma.user.update({
+    where: { id: userId },
+    data: { verifyReminderSentAt: new Date().toISOString() },
+  });
 }
 
 export async function getExpiredBetaUsers(): Promise<StoredUser[]> {

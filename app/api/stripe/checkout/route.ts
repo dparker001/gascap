@@ -27,6 +27,15 @@ export async function POST(req: Request) {
   const user   = await findById(userId);
   if (!user) return NextResponse.json({ error: 'User not found.' }, { status: 404 });
 
+  // Require email verification before allowing upgrade to paid plan.
+  // This ensures billing receipts and subscription emails reach the user.
+  if (!user.emailVerified) {
+    return NextResponse.json(
+      { error: 'Please verify your email address before upgrading. Check your inbox for a verification link.' },
+      { status: 403 },
+    );
+  }
+
   const body = await req.json() as {
     tier?:    'pro' | 'fleet';
     billing?: 'monthly' | 'annual';

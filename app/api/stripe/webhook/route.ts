@@ -9,10 +9,12 @@
 import { NextResponse }                     from 'next/server';
 import type Stripe                          from 'stripe';
 import { stripe }                           from '@/lib/stripe';
-import { setUserPlan, findByStripeCustomer, findById, findByReferralCode, creditVerifiedReferral, getActiveCredits } from '@/lib/users';
+import { setUserPlan, findByStripeCustomer, findById, findByReferralCode, creditVerifiedReferral, getActiveCredits, enrollPaidCampaign } from '@/lib/users';
 import { updateGhlContactPlan }            from '@/lib/ghl';
 import { sendMail }                        from '@/lib/email';
 import { sendReferralCreditEmail }         from '@/lib/emailCampaign';
+import { sendPaidCampaignEmail }           from '@/lib/emailCampaignPaid';
+import { PRICES }                          from '@/lib/stripe';
 
 /** Fire-and-forget admin notification */
 function sendAdminMail(opts: { subject: string; html: string; text: string }) {
@@ -80,6 +82,37 @@ export async function POST(req: Request) {
           </div>`,
           text: `GasCap upgrade: ${upgradedUser.name} <${upgradedUser.email}> → ${tierLabel}`,
         });
+
+        // ── P1: Upgrade confirmation email ──────────────────────────────────
+        // Determine billing interval from the checkout session billing param
+        // (stored in metadata) or fall back to price ID matching.
+        const billingMeta = session.metadata?.billing as string | undefined;
+        let interval: 'monthly' | 'annual' = 'monthly';
+        if (billingMeta === 'annual') {
+          interval = 'annual';
+        } else {
+          const annualPrices = [PRICES.proAnnual, PRICES.fleetAnnual].filter(Boolean);
+          if (subscriptionId && stripe) {
+            try {
+              const sub     = await stripe.subscriptions.retrieve(subscriptionId);
+              const priceId = sub.items.data[0]?.price?.id ?? '';
+              if (annualPrices.includes(priceId)) interval = 'annual';
+            } catch { /* non-fatal: default stays monthly */ }
+          }
+        }
+
+        // Only enroll if not already in the paid campaign (idempotent guard)
+        if (!upgradedUser.paidCampaignEnrolledAt) {
+          await enrollPaidCampaign(userId, interval);
+        }
+
+        sendPaidCampaignEmail('P1', {
+          id:       upgradedUser.id,
+          name:     upgradedUser.name,
+          email:    upgradedUser.email,
+          tier,
+          interval,
+        }).catch((err) => console.error('[paid-campaign] P1 send failed:', err));
       }
 
       console.info(`[GasCap webhook] Upgraded user ${userId} to ${tier}`);
@@ -169,6 +202,19 @@ export async function POST(req: Request) {
           </div>`,
           text: `GasCap cancellation: ${user.name} <${user.email}> reverted to Free (${event.type})`,
         });
+
+        // ── P5: Win-back email — only on hard cancellation (not payment failure)
+        // We skip this for invoice.payment_failed because that's a dunning scenario
+        // (card declined), not a deliberate cancellation — different message needed.
+        if (event.type === 'customer.subscription.deleted' && !user.emailOptOut) {
+          sendPaidCampaignEmail('P5', {
+            id:       user.id,
+            name:     user.name,
+            email:    user.email,
+            tier:     'pro', // already reverted; tier label is cosmetic
+            interval: (user.stripeInterval ?? 'monthly') as 'monthly' | 'annual',
+          }).catch((err) => console.error('[paid-campaign] P5 send failed:', err));
+        }
 
         console.info(`[GasCap webhook] Reverted user ${user.id} to Free (${event.type})`);
       }

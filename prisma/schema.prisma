@@ -72,10 +72,18 @@ model User {
   // Signup locale
   locale                   String?
 
-  // Email campaign drip
+  // Email campaign drip — trial sequence (5 steps, day 0/3/10/21/28)
   emailCampaignStep        Int?
   emailCampaignEnrolledAt  String?
   emailOptOut              Boolean   @default(false)
+
+  // Paid user drip — post-upgrade sequence (P1 immediate, P2 day30, P3 day60, P4 day330 annual only)
+  paidCampaignStep         Int?      // 0=not enrolled, 1=P1 sent, 2=P2 sent, 3=P3 sent, 4=P4 sent
+  paidCampaignEnrolledAt   String?   // ISO timestamp of first upgrade — used to schedule P2/P3/P4
+  stripeInterval           String?   // 'monthly' | 'annual' — P4 only fires for annual
+
+  // Email verification reminder
+  verifyReminderSentAt     String?   // ISO timestamp of last verification reminder email
 
   // Internal / testing
   isTestAccount            Boolean   @default(false)
