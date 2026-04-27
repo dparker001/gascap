@@ -4,14 +4,15 @@
  * AnnouncementToast
  *
  * Fetches active announcements from /api/announcements and shows them
- * as dismissible banners, one at a time (newest-first).
+ * as dismissible banners, one at a time.
  *
- * Dismissal is stored in sessionStorage so each toast re-appears if the
- * user opens a new tab/session but not on every page interaction within
- * the same browser session.
+ * Client-side filters applied before display:
+ *  - targetPlans   — only matching plan users (empty = all signed-in)
+ *  - verifiedOnly  — skip unverified email users
+ *  - trialOnly     — only isProTrial users
+ *  - newUserDays   — only users whose account is ≤ N days old (0 = off)
  *
- * Visible only to signed-in users whose plan matches targetPlans.
- * Pass targetPlans: [] to show to all signed-in users.
+ * Dismissal persists in sessionStorage (key per announcement id).
  */
 
 import { useSession }   from 'next-auth/react';
@@ -41,11 +42,29 @@ export default function AnnouncementToast() {
     fetch('/api/announcements')
       .then((r) => r.json())
       .then((all: Announcement[]) => {
-        const userPlan = (session?.user as { plan?: string })?.plan ?? 'free';
+        const u = session?.user as {
+          plan?:          string;
+          emailVerified?: boolean;
+          isProTrial?:    boolean;
+          createdAt?:     string | null;
+        } | undefined;
+
+        const userPlan      = u?.plan          ?? 'free';
+        const isVerified    = u?.emailVerified ?? false;
+        const isProTrial    = u?.isProTrial    ?? false;
+        const accountAgeDays = u?.createdAt
+          ? Math.floor((Date.now() - new Date(u.createdAt).getTime()) / 86_400_000)
+          : null;
 
         const filtered = all.filter((a) => {
           // Plan check
           if (a.targetPlans.length > 0 && !a.targetPlans.includes(userPlan)) return false;
+          // Verified-only check
+          if (a.verifiedOnly && !isVerified) return false;
+          // Trial-only check
+          if (a.trialOnly && !isProTrial) return false;
+          // New-user-days check
+          if (a.newUserDays > 0 && (accountAgeDays === null || accountAgeDays > a.newUserDays)) return false;
           // Already dismissed this session?
           if (typeof window !== 'undefined') {
             if (sessionStorage.getItem(DISMISS_PREFIX + a.id) === '1') return false;

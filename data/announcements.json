@@ -9,6 +9,9 @@
     "startDate": "2026-01-01",
     "endDate": "2026-12-31",
     "targetPlans": ["pro"],
+    "verifiedOnly": false,
+    "trialOnly": true,
+    "newUserDays": 3,
     "dismissible": true,
     "active": false
   }

@@ -49,6 +49,9 @@ interface AnnItem {
   startDate:    string;
   endDate:      string;
   targetPlans:  string[];
+  verifiedOnly: boolean;
+  trialOnly:    boolean;
+  newUserDays:  number;
   dismissible:  boolean;
   active:       boolean;
 }
@@ -66,6 +69,9 @@ function blankAnn(): AnnItem {
     startDate: today,
     endDate: next7,
     targetPlans: [],
+    verifiedOnly: false,
+    trialOnly: false,
+    newUserDays: 0,
     dismissible: true,
     active: true,
   };
@@ -819,6 +825,9 @@ export default function AdminPage() {
                               {a.targetPlans.length > 0
                                 ? ` · ${a.targetPlans.join(', ')}`
                                 : ' · all plans'}
+                              {a.verifiedOnly  && ' · verified only'}
+                              {a.trialOnly     && ' · trial only'}
+                              {a.newUserDays > 0 && ` · new ≤${a.newUserDays}d`}
                             </p>
                           </div>
                           <div className="flex flex-col gap-1.5 flex-shrink-0">
@@ -1200,7 +1209,7 @@ interface AnnFormProps {
 const PLAN_OPTIONS = ['free', 'pro', 'fleet'];
 
 function AnnForm({ item, isNew, onChange, onSave, onCancel }: AnnFormProps) {
-  function field(k: keyof AnnItem, val: string | boolean | string[]) {
+  function field(k: keyof AnnItem, val: string | boolean | string[] | number) {
     onChange({ ...item, [k]: val });
   }
 
@@ -1298,6 +1307,43 @@ function AnnForm({ item, isNew, onChange, onSave, onCancel }: AnnFormProps) {
               }`}
             >{p}</button>
           ))}
+        </div>
+      </div>
+
+      {/* Additional targeting */}
+      <div>
+        <p className="text-[10px] text-slate-500 mb-1.5">Additional filters</p>
+        <div className="flex flex-wrap gap-x-4 gap-y-2">
+          <label className="flex items-center gap-2 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={item.verifiedOnly}
+              onChange={(e) => field('verifiedOnly', e.target.checked)}
+              className="rounded"
+            />
+            <span className="text-xs text-slate-600">Verified email only</span>
+          </label>
+          <label className="flex items-center gap-2 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={item.trialOnly}
+              onChange={(e) => field('trialOnly', e.target.checked)}
+              className="rounded"
+            />
+            <span className="text-xs text-slate-600">Trial users only</span>
+          </label>
+          <label className="flex items-center gap-2 cursor-pointer select-none">
+            <span className="text-xs text-slate-600">New users within</span>
+            <input
+              type="number"
+              min={0}
+              max={90}
+              value={item.newUserDays}
+              onChange={(e) => field('newUserDays', parseInt(e.target.value, 10) || 0)}
+              className="w-12 border border-slate-200 rounded-lg px-2 py-1 text-xs text-center focus:outline-none focus:ring-2 focus:ring-teal-400"
+            />
+            <span className="text-xs text-slate-600">days (0 = off)</span>
+          </label>
         </div>
       </div>
 

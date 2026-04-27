@@ -21,17 +21,20 @@ import path              from 'path';
 const FILE = path.join(process.cwd(), 'data', 'announcements.json');
 
 export interface Announcement {
-  id:           string;
-  emoji:        string;
-  title:        string;
-  message:      string;
-  link?:        string;
-  linkText?:    string;
-  startDate:    string;  // YYYY-MM-DD
-  endDate:      string;  // YYYY-MM-DD
-  targetPlans:  string[];   // [] = all plans
-  dismissible:  boolean;
-  active:       boolean;
+  id:            string;
+  emoji:         string;
+  title:         string;
+  message:       string;
+  link?:         string;
+  linkText?:     string;
+  startDate:     string;   // YYYY-MM-DD
+  endDate:       string;   // YYYY-MM-DD
+  targetPlans:   string[]; // [] = all plans
+  verifiedOnly:  boolean;  // only users who've confirmed their email
+  trialOnly:     boolean;  // only isProTrial users (subset of pro)
+  newUserDays:   number;   // only users who joined within N days (0 = off)
+  dismissible:   boolean;
+  active:        boolean;
 }
 
 function readAll(): Announcement[] {
