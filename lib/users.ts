@@ -194,6 +194,14 @@ export async function setUserPlan(
   });
 }
 
+/** Clear a stale Stripe customer ID (e.g. after test↔live mode switch). */
+export async function clearStripeCustomerId(userId: string): Promise<void> {
+  await prisma.user.update({
+    where: { id: userId },
+    data:  { stripeCustomerId: null },
+  });
+}
+
 export async function findByStripeCustomer(customerId: string): Promise<StoredUser | undefined> {
   const user = await prisma.user.findFirst({ where: { stripeCustomerId: customerId } });
   return user ? toStoredUser(user) : undefined;
