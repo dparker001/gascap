@@ -264,7 +264,7 @@ export default function UpgradePage() {
 
             <p className="text-center text-[11px] text-slate-400 mt-2">
               {t.upgrade.enterprise}{' '}
-              <a href="mailto:hello@gascap.app" className="text-blue-500 hover:underline font-semibold">
+              <a href="mailto:support@gascap.app" className="text-blue-500 hover:underline font-semibold">
                 {t.upgrade.contactUs}
               </a>
             </p>

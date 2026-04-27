@@ -39,7 +39,7 @@ export default function TermsPage() {
 
           <section>
             <h2 className="text-lg font-black text-navy-700 mb-2">4. Paid Subscriptions</h2>
-            <p>Pro and Fleet plan subscriptions are billed monthly or annually through Stripe. You may cancel at any time; your access continues until the end of the current billing period. You can upgrade your plan directly from the Settings page within the app or by visiting gascap.app/upgrade. We reserve the right to change pricing with 30 days' notice.</p>
+            <p>Pro and Fleet plan subscriptions are billed monthly or annually through Stripe. You may cancel at any time; your access continues until the end of the current billing period. You can upgrade your plan directly from the Settings page within the app or by visiting{' '}<Link href="/upgrade" className="text-amber-600 hover:underline">gascap.app/upgrade</Link>. We reserve the right to change pricing with 30 days&apos; notice.</p>
           </section>
 
           <section>

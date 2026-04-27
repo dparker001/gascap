@@ -48,7 +48,8 @@ export default function SweepstakesRulesPage() {
             <h2 className="text-sm font-black text-slate-800">1. Sponsor</h2>
             <p className="text-sm text-slate-600 leading-relaxed">
               The GasCap™ Monthly Gas Card Giveaway (&ldquo;Sweepstakes&rdquo;) is sponsored by {SPONSOR}
-              (&ldquo;Sponsor&rdquo;), the operator of gascap.app.
+              (&ldquo;Sponsor&rdquo;), the operator of{' '}
+              <Link href="https://www.gascap.app" className="text-[#1EB68F] underline" target="_blank" rel="noopener noreferrer">gascap.app</Link>.
             </p>
           </section>
 
@@ -218,8 +219,9 @@ export default function SweepstakesRulesPage() {
 
         {/* Disclaimer */}
         <p className="text-[10px] text-slate-400 text-center leading-relaxed pb-4">
-          These rules may be amended at any time; any material changes will be posted at
-          gascap.app/sweepstakes-rules. Continued participation after a change is posted
+          These rules may be amended at any time; any material changes will be posted at{' '}
+          <Link href="/sweepstakes-rules" className="text-slate-500 hover:text-slate-700 underline">gascap.app/sweepstakes-rules</Link>.
+          Continued participation after a change is posted
           constitutes acceptance of the revised rules. This page constitutes the complete
           Official Rules for the GasCap™ Monthly Gas Card Giveaway.{' '}
           <strong>No purchase necessary. A purchase does not improve your odds of winning.</strong>

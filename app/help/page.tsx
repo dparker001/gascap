@@ -214,7 +214,7 @@ const SECTIONS = [
       },
       {
         q: 'How do I cancel my subscription?',
-        a: 'Email us at hello@gascap.app and we\'ll cancel your subscription and issue any applicable refund. A self-serve cancellation portal is coming soon.',
+        a: 'Email us at support@gascap.app and we\'ll cancel your subscription and issue any applicable refund. A self-serve cancellation portal is coming soon.',
       },
       {
         q: 'Is my payment information secure?',
@@ -298,7 +298,7 @@ const SECTIONS = [
       },
       {
         q: 'I referred someone but didn\'t receive my credit.',
-        a: 'Make sure your friend completed their first paid subscription payment (not just a free trial signup). Credits trigger on the first successful charge, not on account creation. If your friend has paid and you still haven\'t received credit after 24 hours, email hello@gascap.app with your referral code.',
+        a: 'Make sure your friend completed their first paid subscription payment (not just a free trial signup). Credits trigger on the first successful charge, not on account creation. If your friend has paid and you still haven\'t received credit after 24 hours, email support@gascap.app with your referral code.',
       },
     ],
   },
@@ -316,7 +316,7 @@ const SECTIONS = [
       },
       {
         q: 'How do I redeem a banked free month?',
-        a: 'Email hello@gascap.app from your account email and mention your banked streak credit. We\'ll apply it to your next billing cycle.',
+        a: 'Email support@gascap.app from your account email and mention your banked streak credit. We\'ll apply it to your next billing cycle.',
       },
       {
         q: 'Does breaking my streak affect credits I already earned?',
@@ -334,7 +334,7 @@ const SECTIONS = [
       },
       {
         q: 'Why do I need to verify my email?',
-        a: 'Email verification protects your account and ensures we can reach you for important notices. Check your inbox and spam folder for a verification email from hello@gascap.app.',
+        a: 'Email verification protects your account and ensures we can reach you for important notices. Check your inbox and spam folder for a verification email from support@gascap.app.',
       },
       {
         q: 'What data does GasCap™ collect?',
@@ -342,11 +342,11 @@ const SECTIONS = [
       },
       {
         q: 'How do I opt out of marketing emails?',
-        a: 'Use the unsubscribe link in any GasCap™ email, or email hello@gascap.app and we\'ll remove you from marketing communications. Transactional emails (receipts, password resets) are not affected.',
+        a: 'Use the unsubscribe link in any GasCap™ email, or email support@gascap.app and we\'ll remove you from marketing communications. Transactional emails (receipts, password resets) are not affected.',
       },
       {
         q: 'How do I delete my account?',
-        a: 'Email hello@gascap.app with your account email address and we\'ll permanently delete your account and all associated data within 30 days.',
+        a: 'Email support@gascap.app with your account email address and we\'ll permanently delete your account and all associated data within 30 days.',
       },
     ],
   },
@@ -376,11 +376,29 @@ const SECTIONS = [
       },
       {
         q: 'The AI Fuel Advisor isn\'t responding.',
-        a: 'The AI Fuel Advisor requires an internet connection and an active Pro or Fleet plan. If you\'re connected and subscribed and it\'s still unresponsive, try refreshing the app. If the issue continues, email hello@gascap.app.',
+        a: 'The AI Fuel Advisor requires an internet connection and an active Pro or Fleet plan. If you\'re connected and subscribed and it\'s still unresponsive, try refreshing the app. If the issue continues, email support@gascap.app.',
       },
       {
         q: 'I\'m having a different issue not listed here.',
-        a: 'Use the "Share Feedback" button (bottom-right corner of the app) to describe what\'s happening, or email hello@gascap.app. We typically respond within 1 business day.',
+        a: 'Use the "Share Feedback" button (bottom-right corner of the app) to describe what\'s happening, or email support@gascap.app. We typically respond within 1 business day.',
+      },
+    ],
+  },
+  {
+    id: 'about',
+    title: 'ℹ️ About',
+    items: [
+      {
+        q: 'What does "Powered by VNetCard™" mean in the footer?',
+        a: 'GasCap™ is built and operated by the same team behind VNetCard™ — a digital business card platform. The "Powered by VNetCard™" badge in the footer is simply a nod to the parent product. VNetCard™ has no access to your GasCap™ account or data. If you\'re curious about VNetCard™, visit vnetcard.com.',
+      },
+      {
+        q: 'Who is Gas Capacity LLC?',
+        a: 'Gas Capacity LLC is the Florida-based company that owns and operates GasCap™. It is a registered Florida LLC. For legal or business inquiries, contact admin@gascap.app.',
+      },
+      {
+        q: 'How do I contact GasCap™ support?',
+        a: 'Email support@gascap.app — we typically respond within 1 business day. You can also use the "Share Feedback" button inside the app.',
       },
     ],
   },
@@ -434,7 +452,7 @@ export default function HelpPage() {
           <h1 className="text-3xl font-black text-[#1E2D4A] leading-tight">Help &amp; Support</h1>
           <p className="text-sm text-slate-500 mt-2">
             Find answers below, or{' '}
-            <a href="mailto:hello@gascap.app" className="text-[#FA7109] font-semibold hover:underline">
+            <a href="mailto:support@gascap.app" className="text-[#FA7109] font-semibold hover:underline">
               contact us
             </a>{' '}
             and we&apos;ll respond within 1 business day.
@@ -499,11 +517,11 @@ export default function HelpPage() {
             Our team typically responds within 1 business day.
           </p>
           <a
-            href="mailto:hello@gascap.app"
+            href="mailto:support@gascap.app"
             className="inline-block bg-[#FA7109] hover:bg-orange-400 text-white
                        font-black text-sm px-6 py-3 rounded-2xl transition-colors"
           >
-            Email hello@gascap.app
+            Email support@gascap.app
           </a>
           <p className="text-white/40 text-xs mt-4">
             You can also use the{' '}
