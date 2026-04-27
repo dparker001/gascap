@@ -22,9 +22,9 @@
       "purpose": "any maskable"
     },
     {
-      "src": "/favicon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml"
+      "src": "/favicon.png",
+      "sizes": "48x48",
+      "type": "image/png"
     }
   ]
 }
