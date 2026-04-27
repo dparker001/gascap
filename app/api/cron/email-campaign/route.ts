@@ -1,34 +1,23 @@
 /**
  * GET /api/cron/email-campaign
  *
- * Drip campaign runner — HYBRID MODEL.
+ * Free-trial drip campaign runner.
  *
- * As of the 30-day Pro trial rollout, the app ONLY sends Step 1 (Welcome +
- * Pro activated), which fires directly from /api/auth/register. The four
- * follow-up drip emails (Day 3/10/21/28) now live in a GoHighLevel
- * workflow triggered by the `gascap-trial-30day` tag, so the marketing
- * team / VA can review, edit, and A/B test them without a code push.
+ * Step 1 (Welcome + Pro activated) fires immediately from /api/auth/register.
+ * Steps 2–5 fire here on a daily cron schedule.
  *
- * This endpoint is intentionally left as a no-op so the existing Railway
- * cron schedule can stay wired up without blowing up. If you ever want to
- * bring the drip back in-app, re-add entries to STEPS below.
- *
- * Secured with CRON_SECRET env var (unchanged).
+ * Secured with CRON_SECRET env var.
  */
 import { NextResponse } from 'next/server';
-// NOTE: imports kept so re-enabling any step is a one-line change.
 import { getUsersPendingCampaignStep, advanceEmailCampaignStep } from '@/lib/users';
 import { sendCampaignEmail }                                     from '@/lib/emailCampaign';
 
-// Intentionally empty — all drip steps (2–5) moved to GHL workflow.
-// See ClickUp task "GHL workflow: GasCap 30-day Pro trial drip".
-const STEPS: { step: number; minDays: number; label: string }[] = [];
-
-// Silence unused-import warnings while STEPS is empty. These are kept
-// deliberately so re-enabling any step is a one-line edit.
-void getUsersPendingCampaignStep;
-void advanceEmailCampaignStep;
-void sendCampaignEmail;
+const STEPS: { step: number; minDays: number; label: string }[] = [
+  { step: 2, minDays: 3,  label: 'Day-3 feature deep-dive'    },
+  { step: 3, minDays: 10, label: 'Day-10 power user check-in' },
+  { step: 4, minDays: 21, label: 'Day-21 annual deal offer'   },
+  { step: 5, minDays: 28, label: 'Day-28 final 48 hours'      },
+];
 
 export async function GET(req: Request) {
   // Verify cron secret

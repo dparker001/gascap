@@ -100,14 +100,21 @@ export function upgradeConfirmEmailHtml(
       </p>
       <table cellpadding="0" cellspacing="0" width="100%"
              style="background:#1e2d4a;border-radius:14px;padding:16px 20px;margin:0 0 24px;">
-        ${[
+        ${(tier === 'fleet' ? [
+          ['🚗', 'Unlimited vehicles',       'Add your entire fleet — no per-vehicle cap.'],
+          ['👥', 'Multiple driver profiles',  'Separate fill-up tracking for each driver in your fleet.'],
+          ['📊', 'Fleet dashboard',           'Centralized fuel spend, MPG, and efficiency across all vehicles.'],
+          ['📄', 'Annual tax report',         'One-click PDF of annual fuel costs, ready for filing.'],
+          ['🤖', 'AI Fuel Advisor',           'Unlimited questions on any vehicle — costs, MPG, trips, maintenance.'],
+          ['🔧', 'Maintenance reminders',     'Service intervals and alerts for every vehicle in your fleet.'],
+        ] : [
           ['🤖', 'AI Fuel Advisor',       'Unlimited questions — fuel costs, MPG, trips, maintenance.'],
           ['📊', 'MPG + spending charts', 'Full history, trends, and predictive drop alerts.'],
           ['🎯', 'Budget + alerts',        'Monthly fuel budget tracker with overspend notifications.'],
           ['🔧', 'Maintenance reminders', 'Oil changes, tire rotations, and service intervals.'],
           ['🚗', 'Up to 3 saved vehicles','Switch between cars in one tap.'],
           ['📄', 'Monthly PDF reports',   'Expense-report ready fuel summaries in one tap.'],
-        ].map(([icon, title, body]) => `
+        ]).map(([icon, title, body]) => `
           <tr>
             <td style="padding:7px 0;vertical-align:top;width:28px;font-size:16px;">${icon}</td>
             <td style="padding:7px 0 7px 10px;vertical-align:top;">
@@ -254,11 +261,11 @@ export function paidSpotlightEmailHtml(name: string, userId: string): string {
           💚 From a Pro member
         </p>
         <p style="margin:0;font-size:13px;color:#78350f;line-height:1.6;font-style:italic;">
-          "I asked the AI if my MPG drop was tire pressure or something more serious.
-          It walked me through exactly what to check. Turned out to be a dirty air filter —
-          $18 fix. Saved me from an unnecessary $200 shop visit."
+          "I drive a lot for work and never tracked my gas spend closely. The AI Advisor
+          flagged that my F-150 was burning about 12% more than expected. Tires were 8 PSI
+          low — fixed in 10 minutes at the pump. Saves me roughly $40 a month now."
         </p>
-        <p style="margin:8px 0 0;font-size:12px;color:#92400e;font-weight:700;">— Marcus J., Orlando</p>
+        <p style="margin:8px 0 0;font-size:12px;color:#92400e;font-weight:700;">— Derek T., Houston</p>
       </div>
 
       ${ctaButton('Ask the AI Advisor →', BASE_URL)}
@@ -279,17 +286,21 @@ export const paidSpotlightEmailText = (name: string) =>
 
 // ── P4 — Annual Renewal Reminder (annual only, day 330) ──────────────────────
 
-export function renewalReminderEmailHtml(name: string, userId: string): string {
-  const first = name.split(' ')[0];
+export function renewalReminderEmailHtml(name: string, userId: string, tier: 'pro' | 'fleet' = 'pro'): string {
+  const first      = name.split(' ')[0];
+  const planLabel  = tier === 'fleet' ? 'GasCap™ Fleet' : 'GasCap™ Pro';
+  const price      = tier === 'fleet' ? '$199' : '$49';
+  const perMonth   = tier === 'fleet' ? '$16.58/mo' : '$4.08/mo';
+  const valueNote  = tier === 'fleet' ? 'less than 4 tanks of gas per year' : 'less than a single gallon of gas';
   return wrap(`
     ${header()}
     <tr><td style="padding:32px;">
 
       <p style="margin:0 0 6px;font-size:24px;font-weight:900;color:#1e2d4a;line-height:1.2;">
-        Your GasCap™ Pro renews in 30 days 📅
+        Your ${planLabel} renews in 30 days 📅
       </p>
       <p style="margin:0 0 22px;font-size:15px;color:#475569;line-height:1.65;">
-        ${first}, your annual GasCap™ Pro subscription renews in about 30 days at $49.
+        ${first}, your annual ${planLabel} subscription renews in about 30 days at ${price}.
         We wanted to give you a heads-up — and a quick look at what the year looked like.
       </p>
 
@@ -318,10 +329,10 @@ export function renewalReminderEmailHtml(name: string, userId: string): string {
         <p style="margin:0 0 4px;color:rgba(255,255,255,.6);font-size:12px;font-weight:700;
                   text-transform:uppercase;letter-spacing:1px;">Renewing at</p>
         <p style="margin:0;color:#fff;font-size:36px;font-weight:900;line-height:1.1;">
-          $49<span style="font-size:16px;font-weight:400;color:rgba(255,255,255,.6)">/year</span>
+          ${price}<span style="font-size:16px;font-weight:400;color:rgba(255,255,255,.6)">/year</span>
         </p>
         <p style="margin:6px 0 18px;color:#fbbf24;font-size:13px;">
-          That's $4.08/mo — less than a single gallon of gas
+          That's ${perMonth} — ${valueNote}
         </p>
         <a href="${BASE_URL}/settings" style="display:inline-block;background:#f59e0b;color:#fff;
            font-weight:900;font-size:14px;padding:12px 28px;border-radius:12px;text-decoration:none;">
@@ -343,22 +354,28 @@ export function renewalReminderEmailHtml(name: string, userId: string): string {
   `);
 }
 
-export const renewalReminderEmailText = (name: string) =>
-  `Hi ${name.split(' ')[0]}, your GasCap™ Pro annual subscription renews in ~30 days at $49 ($4.08/mo). To manage or cancel, visit: ${BASE_URL}/settings. Thanks for a great year with us.`;
+export const renewalReminderEmailText = (name: string, tier: 'pro' | 'fleet' = 'pro') => {
+  const planLabel = tier === 'fleet' ? 'GasCap™ Fleet' : 'GasCap™ Pro';
+  const price     = tier === 'fleet' ? '$199 ($16.58/mo)' : '$49 ($4.08/mo)';
+  return `Hi ${name.split(' ')[0]}, your ${planLabel} annual subscription renews in ~30 days at ${price}. To manage or cancel, visit: ${BASE_URL}/settings. Thanks for a great year with us.`;
+};
 
 // ── P5 — Cancellation / Win-Back (immediate on subscription.deleted) ─────────
 
-export function cancellationEmailHtml(name: string, userId: string): string {
-  const first = name.split(' ')[0];
+export function cancellationEmailHtml(name: string, userId: string, tier: 'pro' | 'fleet' = 'pro'): string {
+  const first         = name.split(' ')[0];
+  const planLabel     = tier === 'fleet' ? 'Fleet' : 'Pro';
+  const couponCode    = tier === 'fleet' ? 'BETA30'           : 'TRIAL30';
+  const reactivateCta = tier === 'fleet' ? 'Reactivate Fleet →' : 'Reactivate Pro →';
   return wrap(`
     ${header()}
     <tr><td style="padding:32px;">
 
       <p style="margin:0 0 6px;font-size:24px;font-weight:900;color:#1e2d4a;line-height:1.2;">
-        Your GasCap™ Pro subscription has been cancelled
+        Your GasCap™ ${planLabel} subscription has been cancelled
       </p>
       <p style="margin:0 0 22px;font-size:15px;color:#475569;line-height:1.65;">
-        ${first}, your Pro subscription has ended and your account has moved to the free plan.
+        ${first}, your ${planLabel} subscription has ended and your account has moved to the free plan.
         Your data — fill-up history, vehicles, badges, and streaks — is all still here.
       </p>
 
@@ -387,10 +404,10 @@ export function cancellationEmailHtml(name: string, userId: string): string {
           🎁 Come back anytime — first month on us
         </p>
         <p style="margin:0 0 14px;font-size:13px;color:#92400e;line-height:1.55;">
-          If you change your mind, use code <strong>TRIAL30</strong> at checkout for your
-          first month of Pro free. No pressure — the offer doesn't expire.
+          If you change your mind, use code <strong>${couponCode}</strong> at checkout for your
+          first month back free. No pressure — the offer doesn't expire.
         </p>
-        ${ctaButton('Reactivate Pro →', `${BASE_URL}/upgrade`, '#f59e0b')}
+        ${ctaButton(reactivateCta, `${BASE_URL}/upgrade`, '#f59e0b')}
       </div>
 
       <p style="margin:0 0 14px;font-size:14px;color:#475569;line-height:1.65;">
@@ -405,8 +422,11 @@ export function cancellationEmailHtml(name: string, userId: string): string {
   `);
 }
 
-export const cancellationEmailText = (name: string) =>
-  `Hi ${name.split(' ')[0]}, your GasCap™ Pro subscription has ended. Your free account keeps the calculator, live gas prices, 1 saved vehicle, and all your badges. Want to come back? Use code TRIAL30 for your first month free: ${BASE_URL}/upgrade. Hit reply if there's anything we could improve.`;
+export const cancellationEmailText = (name: string, tier: 'pro' | 'fleet' = 'pro') => {
+  const planLabel  = tier === 'fleet' ? 'Fleet' : 'Pro';
+  const couponCode = tier === 'fleet' ? 'BETA30' : 'TRIAL30';
+  return `Hi ${name.split(' ')[0]}, your GasCap™ ${planLabel} subscription has ended. Your free account keeps the calculator, live gas prices, 1 saved vehicle, and all your badges. Want to come back? Use code ${couponCode} for your first month back free: ${BASE_URL}/upgrade. Hit reply if there's anything we could improve.`;
+};
 
 // ── Dispatch helper ───────────────────────────────────────────────────────────
 
@@ -441,14 +461,14 @@ export async function sendPaidCampaignEmail(
       text:    paidSpotlightEmailText(name),
     },
     P4: {
-      subject: 'Your GasCap™ Pro renews in 30 days — here\'s your year in review 📅',
-      html:    renewalReminderEmailHtml(name, id),
-      text:    renewalReminderEmailText(name),
+      subject: `Your GasCap™ ${tier === 'fleet' ? 'Fleet' : 'Pro'} renews in 30 days — here's your year in review 📅`,
+      html:    renewalReminderEmailHtml(name, id, tier),
+      text:    renewalReminderEmailText(name, tier),
     },
     P5: {
-      subject: 'Your GasCap™ Pro has been cancelled',
-      html:    cancellationEmailHtml(name, id),
-      text:    cancellationEmailText(name),
+      subject: `Your GasCap™ ${tier === 'fleet' ? 'Fleet' : 'Pro'} subscription has been cancelled`,
+      html:    cancellationEmailHtml(name, id, tier),
+      text:    cancellationEmailText(name, tier),
     },
   };
 
