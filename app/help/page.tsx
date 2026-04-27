@@ -158,7 +158,7 @@ const SECTIONS = [
       },
       {
         q: 'How do Fill-Up Reminders work?',
-        a: 'Fill-Up Reminders send a push notification if you haven\'t logged a fill-up in a while. Set reminders to weekly (7 days) or bi-weekly (14 days) from the Share tab in the Tools panel. Push notifications must be enabled.',
+        a: 'Fill-Up Reminders send a push notification when you haven\'t logged a fill-up within your chosen interval. Go to Settings → Notifications and choose Weekly (7 days) or Bi-weekly (14 days). Push notifications must be enabled on your device first.',
       },
     ],
   },
