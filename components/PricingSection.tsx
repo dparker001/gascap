@@ -12,8 +12,10 @@ type Billing  = 'monthly' | 'annual';
 type PlanTier = 'free' | 'pro' | 'fleet';
 
 // Highlight flags (order matches translation feature arrays)
-const PRO_HIGHLIGHTS  = [false, true,  true,  false, true,  true,  false, false, false];
-const FLEET_HIGHLIGHTS = [false, true,  true,  true,  true,  false, true,  false, false];
+const PRO_HIGHLIGHTS   = [false, true,  true,  false, true,  true,  false, false, false, false];
+//                         every  3veh   manual auto   mpg    pdf    budget push   referral prio
+const FLEET_HIGHLIGHTS = [false, true,  true,  true,  true,  true,  true,  false, false, false, false, false];
+//                         every  unlim  house  garage dash   tax    import spend  csv    referral multi  supp
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
