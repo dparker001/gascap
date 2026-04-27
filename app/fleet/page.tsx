@@ -69,6 +69,13 @@ export default function FleetPage() {
   const [taxReportLoading, setTaxReportLoading] = useState(false);
   const [taxReportError,   setTaxReportError]   = useState('');
 
+  // ── Bulk import state ───────────────────────────────────────────────────────
+  type ImportRow = { row: number; name: string; status: 'created' | 'skipped'; error?: string };
+  const [importFile,     setImportFile]     = useState<File | null>(null);
+  const [importLoading,  setImportLoading]  = useState(false);
+  const [importResults,  setImportResults]  = useState<{ created: number; skipped: number; rows: ImportRow[] } | null>(null);
+  const [importError,    setImportError]    = useState('');
+
   const userPlan = (session?.user as { plan?: string })?.plan ?? 'free';
 
   // ── Load all fleet data ──────────────────────────────────────────────────────
@@ -266,6 +273,44 @@ export default function FleetPage() {
     }
   }
 
+  // ── Bulk vehicle import ───────────────────────────────────────────────────────
+  async function handleImport() {
+    if (!importFile) return;
+    setImportLoading(true);
+    setImportError('');
+    setImportResults(null);
+    try {
+      const fd = new FormData();
+      fd.append('file', importFile);
+      const res  = await fetch('/api/vehicles/import', { method: 'POST', body: fd });
+      const data = await res.json() as { created?: number; skipped?: number; rows?: ImportRow[]; error?: string };
+      if (!res.ok) { setImportError(data.error ?? 'Import failed.'); return; }
+      setImportResults({ created: data.created ?? 0, skipped: data.skipped ?? 0, rows: data.rows ?? [] });
+      setImportFile(null);
+      if ((data.created ?? 0) > 0) loadAll(); // refresh fleet data
+    } catch {
+      setImportError('Network error — please try again.');
+    } finally {
+      setImportLoading(false);
+    }
+  }
+
+  function downloadTemplate() {
+    const csv = [
+      'Name,Tank Size (gal),Year,Make,Model,Trim,VIN,Odometer',
+      '"2022 Toyota Camry SE",15.8,2022,Toyota,Camry,SE,,52000',
+      '"2019 Ford F-150 XLT",36.0,2019,Ford,F-150,XLT,,88000',
+      '"2023 Honda CR-V",14.8,2023,Honda,CR-V,EX-L,,12500',
+    ].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = 'gascap-vehicle-import-template.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   // ── Render ──────────────────────────────────────────────────────────────────��─
   return (
     <div className="min-h-screen bg-slate-50">
@@ -362,6 +407,106 @@ export default function FleetPage() {
                 )}
                 {allFillups.length === 0 && (
                   <p className="text-[11px] text-slate-400">Log your first fill-up to generate a tax report.</p>
+                )}
+              </div>
+            </div>
+
+            {/* ── Bulk Vehicle Import ─────────────────────────────────────── */}
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+              <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+                <p className="text-sm font-black text-slate-700">🚗 Bulk Vehicle Import</p>
+                <button
+                  onClick={downloadTemplate}
+                  className="flex items-center gap-1 text-[10px] font-bold text-slate-400
+                             hover:text-teal-600 transition-colors"
+                >
+                  <svg viewBox="0 0 16 16" className="w-3 h-3" fill="none" stroke="currentColor"
+                       strokeWidth="1.8" strokeLinecap="round">
+                    <path d="M8 2v9M4 7l4 4 4-4M2 14h12"/>
+                  </svg>
+                  Download Template
+                </button>
+              </div>
+              <div className="px-4 py-4 space-y-3">
+                <p className="text-[11px] text-slate-400 leading-relaxed">
+                  Upload a CSV to add multiple vehicles at once. Required columns: <strong>Name</strong> and <strong>Tank Size (gal)</strong>.
+                  Optional: Year, Make, Model, Trim, VIN, Odometer.
+                </p>
+
+                {/* File picker */}
+                <label className={`flex items-center gap-3 border-2 border-dashed rounded-xl px-4 py-3 cursor-pointer transition-colors ${
+                  importFile ? 'border-teal-400 bg-teal-50' : 'border-slate-200 hover:border-slate-300'
+                }`}>
+                  <svg viewBox="0 0 24 24" className="w-5 h-5 text-slate-400 flex-shrink-0"
+                       fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <line x1="12" y1="18" x2="12" y2="12"/>
+                    <line x1="9" y1="15" x2="15" y2="15"/>
+                  </svg>
+                  <div className="flex-1 min-w-0">
+                    {importFile ? (
+                      <>
+                        <p className="text-xs font-bold text-teal-700 truncate">{importFile.name}</p>
+                        <p className="text-[10px] text-teal-500">{(importFile.size / 1024).toFixed(1)} KB</p>
+                      </>
+                    ) : (
+                      <p className="text-xs text-slate-400">Choose a .csv file…</p>
+                    )}
+                  </div>
+                  <input
+                    type="file"
+                    accept=".csv"
+                    className="sr-only"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0] ?? null;
+                      setImportFile(f);
+                      setImportResults(null);
+                      setImportError('');
+                      e.target.value = '';
+                    }}
+                  />
+                </label>
+
+                {/* Import button */}
+                <button
+                  onClick={handleImport}
+                  disabled={!importFile || importLoading}
+                  className="w-full py-2.5 rounded-xl bg-[#1E2D4A] hover:bg-[#2a3d60] text-white
+                             font-black text-sm disabled:opacity-40 transition-colors"
+                >
+                  {importLoading ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <span className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                      Importing…
+                    </span>
+                  ) : 'Import Vehicles'}
+                </button>
+
+                {/* Error */}
+                {importError && (
+                  <p className="text-[11px] text-red-500">{importError}</p>
+                )}
+
+                {/* Results */}
+                {importResults && (
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <span className="text-[11px] font-black text-green-600 bg-green-50 rounded-full px-2.5 py-1">
+                        ✓ {importResults.created} imported
+                      </span>
+                      {importResults.skipped > 0 && (
+                        <span className="text-[11px] font-black text-amber-600 bg-amber-50 rounded-full px-2.5 py-1">
+                          ⚠ {importResults.skipped} skipped
+                        </span>
+                      )}
+                    </div>
+                    {importResults.rows.filter((r) => r.status === 'skipped').map((r) => (
+                      <div key={r.row} className="text-[10px] text-slate-500 bg-slate-50 rounded-lg px-3 py-1.5">
+                        <span className="font-bold">Row {r.row} — {r.name}:</span> {r.error}
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
             </div>
