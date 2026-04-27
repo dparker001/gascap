@@ -179,6 +179,10 @@ const SECTIONS = [
         a: 'The Fleet Dashboard shows active drivers, total vehicles, this-month spend, all-time spend, a per-driver breakdown (fill-ups, gallons, spend, last fill date), and a sortable fill-up activity table with driver and month filters. An "Unattributed fill-ups" warning appears if any fill-ups haven\'t been assigned to a driver.',
       },
       {
+        q: 'How do I bulk import vehicles from a CSV?',
+        a: 'From the Fleet Dashboard, tap the "Bulk Vehicle Import" card. Download the template CSV to see the expected format, fill in your vehicles, then upload the file and tap "Import Vehicles." Required columns are Name and Tank Size (gal). Optional columns include Year, Make, Model, Trim, VIN, and Odometer. The import supports up to 200 vehicles per file. After import, a results summary shows how many were created and flags any rows that were skipped with a reason.',
+      },
+      {
         q: 'Can I download an annual tax report?',
         a: 'Yes — Fleet subscribers can download a PDF Annual Fleet Fuel Tax Report directly from the Fleet Dashboard. Tap the Reports card, choose a tax year from the dropdown, and tap "Download PDF." The report includes a monthly cost breakdown, per-vehicle summary with MPG, a complete fill-up log with driver attribution, and a tax disclaimer. It is ready to hand to your accountant or attach to your IRS records.',
       },
