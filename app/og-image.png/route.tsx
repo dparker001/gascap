@@ -2,7 +2,10 @@ import { ImageResponse } from 'next/og';
 
 export const runtime = 'edge';
 
-export async function GET() {
+export async function GET(request: Request) {
+  // Derive origin so image refs work in both dev and prod
+  const { origin } = new URL(request.url);
+
   return new ImageResponse(
     (
       <div
@@ -13,75 +16,143 @@ export async function GET() {
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          background: '#1e3a5f',
+          background: '#1E2D4A',
           fontFamily: 'system-ui, sans-serif',
-          padding: '60px',
+          padding: '36px 60px',
+          gap: 0,
         }}
       >
-        {/* Icon */}
-        <div
-          style={{
-            width: 100,
-            height: 100,
-            borderRadius: 24,
-            background: '#f59e0b',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginBottom: 32,
-          }}
-        >
-          <svg viewBox="0 0 24 24" width="56" height="56" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="2" y="6" width="11" height="16" rx="1.5" />
-            <rect x="4" y="9" width="7" height="4" rx="0.75" />
-            <path d="M13 8 L18 8 Q21 8 21 11 L21 16 Q21 18 19 18" />
-            <circle cx="18.5" cy="18.5" r="1.5" />
-          </svg>
-        </div>
+        {/* ── Icon (gas pump + gauge, transparent bg) ──────────── */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={`${origin}/gascap-icon-raw.png`}
+          width={148}
+          height={148}
+          style={{ display: 'block', marginBottom: 10 }}
+        />
 
-        {/* Logo text */}
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 20 }}>
-          <span style={{ fontSize: 72, fontWeight: 900, color: 'white', letterSpacing: '-2px' }}>
-            GasCap
+        {/* ── Wordmark ──────────────────────────────────────────── */}
+        {/* Gas=teal, Cap=white, ™=orange — legible on navy */}
+        <div style={{ display: 'flex', alignItems: 'baseline', marginBottom: 6 }}>
+          <span
+            style={{
+              fontSize: 82,
+              fontWeight: 900,
+              color: '#1EB68F',
+              letterSpacing: '-2px',
+              lineHeight: 1,
+            }}
+          >
+            Gas
           </span>
-          <span style={{ fontSize: 28, fontWeight: 900, color: '#f59e0b', marginLeft: 4 }}>™</span>
+          <span
+            style={{
+              fontSize: 82,
+              fontWeight: 900,
+              color: 'white',
+              letterSpacing: '-2px',
+              lineHeight: 1,
+            }}
+          >
+            Cap
+          </span>
+          <span
+            style={{
+              fontSize: 32,
+              fontWeight: 900,
+              color: '#FA7109',
+              marginLeft: 5,
+              lineHeight: 1,
+            }}
+          >
+            ™
+          </span>
         </div>
 
-        {/* Tagline */}
+        {/* ── Tagline ───────────────────────────────────────────── */}
         <div
           style={{
-            fontSize: 32,
-            fontWeight: 700,
-            color: 'rgba(255,255,255,0.75)',
-            textAlign: 'center',
-            letterSpacing: '-0.5px',
+            fontSize: 26,
+            fontWeight: 600,
+            color: 'rgba(255,255,255,0.60)',
+            letterSpacing: '0.3px',
+            marginBottom: 26,
           }}
         >
           Know Before You Go.
         </div>
 
-        {/* Feature pills */}
-        <div style={{ display: 'flex', gap: 16, marginTop: 40 }}>
-          {['⛽ Fuel Calculator', '📍 Live Local Prices', '📊 MPG Tracking'].map((f) => (
-            <div
-              key={f}
-              style={{
-                background: 'rgba(255,255,255,0.1)',
-                border: '1px solid rgba(255,255,255,0.2)',
-                borderRadius: 40,
-                padding: '10px 22px',
-                fontSize: 20,
-                color: 'rgba(255,255,255,0.85)',
-                fontWeight: 600,
-              }}
-            >
-              {f}
-            </div>
-          ))}
+        {/* ── Promotional banner ────────────────────────────────── */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            background: '#FA7109',
+            borderRadius: 50,
+            paddingTop: 15,
+            paddingBottom: 15,
+            paddingLeft: 42,
+            paddingRight: 42,
+            marginBottom: 24,
+          }}
+        >
+          <span
+            style={{
+              fontSize: 27,
+              fontWeight: 900,
+              color: 'white',
+              letterSpacing: '-0.2px',
+            }}
+          >
+            ✨  Try GasCap Pro FREE for 30 days
+          </span>
         </div>
 
-        {/* URL */}
-        <div style={{ marginTop: 48, fontSize: 22, color: '#f59e0b', fontWeight: 700 }}>
+        {/* ── Feature pills ─────────────────────────────────────── */}
+        <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
+          <div
+            style={{
+              background: 'rgba(255,255,255,0.10)',
+              border: '1px solid rgba(255,255,255,0.18)',
+              borderRadius: 40,
+              padding: '9px 20px',
+              fontSize: 18,
+              color: 'rgba(255,255,255,0.82)',
+              fontWeight: 600,
+            }}
+          >
+            ⛽ Fuel Calculator
+          </div>
+          <div
+            style={{
+              background: 'rgba(255,255,255,0.10)',
+              border: '1px solid rgba(255,255,255,0.18)',
+              borderRadius: 40,
+              padding: '9px 20px',
+              fontSize: 18,
+              color: 'rgba(255,255,255,0.82)',
+              fontWeight: 600,
+            }}
+          >
+            📍 Live Local Prices
+          </div>
+          <div
+            style={{
+              background: 'rgba(255,255,255,0.10)',
+              border: '1px solid rgba(255,255,255,0.18)',
+              borderRadius: 40,
+              padding: '9px 20px',
+              fontSize: 18,
+              color: 'rgba(255,255,255,0.82)',
+              fontWeight: 600,
+            }}
+          >
+            📊 MPG Tracking
+          </div>
+        </div>
+
+        {/* ── URL ──────────────────────────────────────────────── */}
+        <div style={{ fontSize: 20, color: '#1EB68F', fontWeight: 700 }}>
           gascap.app
         </div>
       </div>
