@@ -64,7 +64,7 @@ export default function Header() {
           {/* Logo on white pill so brand colors aren't swallowed by dark bg */}
           <div className="bg-white rounded-2xl px-4 py-2.5 shadow-md flex-shrink-0">
             <img
-              src="/logo-wordmark.png"
+              src="/logo-lockup-green.png"
               alt="GasCap"
               className="h-8 w-auto object-contain"
             />
