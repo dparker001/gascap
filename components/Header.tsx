@@ -61,14 +61,12 @@ export default function Header() {
         {/* ── Top row: logo + wordmark + auth ── */}
         <div className="flex items-center justify-between mb-5">
 
-          {/* Logo on white pill so brand colors aren't swallowed by dark bg */}
-          <div className="bg-white rounded-2xl px-4 py-2.5 shadow-md flex-shrink-0">
-            <img
-              src="/logo-lockup-green.png"
-              alt="GasCap"
-              className="h-8 w-auto object-contain"
-            />
-          </div>
+          {/* Logo — white lockup on dark green header, no pill background */}
+          <img
+            src="/logo-lockup-white.png"
+            alt="GasCap"
+            className="h-11 w-auto object-contain flex-shrink-0"
+          />
 
           <div className="flex items-center gap-2">
             {/* Language toggle */}
