@@ -449,6 +449,15 @@ export default function SettingsPage() {
               </div>
             </div>
 
+            {/* Ambassador program link */}
+            <Link
+              href="/ambassador"
+              className="flex items-center justify-between text-xs font-bold text-slate-500 hover:text-navy-700 transition-colors py-1"
+            >
+              <span>🏆 Become a GasCap™ Ambassador</span>
+              <span className="text-slate-300">→</span>
+            </Link>
+
             {/* QR code share */}
             <div>
               <button

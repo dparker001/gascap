@@ -109,6 +109,25 @@ const NUDGES: NudgeDef[] = [
       dismiss: 'text-green-300 hover:text-green-500',
     },
   },
+
+  // ── 6. Ambassador invite — engaged users (3+ fill-ups, 10+ days) ───────
+  {
+    id:         'ambassador_invite',
+    dismissTtl: 'permanent',
+    match:      (d) => d.fillupCount >= 3 && d.daysSinceCreation >= 10,
+    icon:       '🏆',
+    headline:   'Become a GasCap™ Ambassador',
+    body:       () => `You're an active user — want to earn monthly gas cards by spreading the word? Join the Ambassador Program.`,
+    cta:        { label: 'Learn more →', href: '/ambassador' },
+    color: {
+      bg:      'bg-navy-50',
+      border:  'border-navy-200',
+      title:   'text-navy-700',
+      body:    'text-navy-600',
+      btn:     'bg-navy-700 hover:bg-navy-800 text-white',
+      dismiss: 'text-navy-300 hover:text-navy-500',
+    },
+  },
 ];
 
 // ── Dismissal helpers ────────────────────────────────────────────────────────
