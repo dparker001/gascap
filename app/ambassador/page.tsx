@@ -9,13 +9,6 @@ interface ReferralSummary {
   referralCount: number;
 }
 
-// ── Incentive tiers ───────────────────────────────────────────────────────────
-const TIERS = [
-  { label: 'Starter',  range: '1–5 placements',  reward: '$25 gas card / mo',  color: 'bg-slate-50   border-slate-200  text-slate-700' },
-  { label: 'Builder',  range: '6–15 placements', reward: '$50 gas card / mo',  color: 'bg-teal-50    border-teal-200   text-teal-700'  },
-  { label: 'Elite',    range: '16+ placements',  reward: '$100 gas card / mo', color: 'bg-amber-50   border-amber-200  text-amber-700' },
-];
-
 // ── Steps ─────────────────────────────────────────────────────────────────────
 const USER_STEPS = [
   { n: '1', title: 'Use the app',        body: 'Log a fill-up, track your MPG, check live prices. The more you use it, the more authentically you can recommend it.' },
@@ -182,25 +175,34 @@ export default function AmbassadorPage() {
           </div>
         </div>
 
-        {/* ── Reward Tiers ─────────────────────────────────────────── */}
+        {/* ── Reward Tiers — Coming Soon ───────────────────────────── */}
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-          <div className="bg-navy-700 px-4 py-3">
-            <p className="text-xs font-black text-white uppercase tracking-wider">Monthly Reward Tiers</p>
-            <p className="text-[10px] text-white/50">Business Partner track · Paid via gas gift card</p>
+          <div className="bg-navy-700 px-4 py-3 flex items-center justify-between">
+            <div>
+              <p className="text-xs font-black text-white uppercase tracking-wider">Ambassador Rewards</p>
+              <p className="text-[10px] text-white/50">Business Partner track</p>
+            </div>
+            <span className="text-[10px] font-black bg-amber-500 text-white px-2.5 py-1 rounded-full uppercase tracking-wide">
+              Coming Soon
+            </span>
           </div>
-          <div className="p-4 space-y-2">
-            {TIERS.map((t) => (
-              <div key={t.label} className={`flex items-center justify-between rounded-xl border px-4 py-3 ${t.color}`}>
-                <div>
-                  <p className="text-xs font-black">{t.label}</p>
-                  <p className="text-[10px] opacity-70">{t.range}</p>
-                </div>
-                <p className="text-xs font-bold">{t.reward}</p>
-              </div>
-            ))}
-            <p className="text-[10px] text-slate-400 leading-relaxed pt-1">
-              + Free GasCap™ Pro for life while active · $25 bonus when a location hits 10 sign-ups/mo
+          <div className="p-5 flex flex-col items-center text-center gap-3">
+            <div className="text-3xl">🎁</div>
+            <p className="text-sm font-black text-slate-700">Rewards program launching soon</p>
+            <p className="text-xs text-slate-500 leading-relaxed max-w-xs">
+              We&apos;re finalizing the Ambassador reward structure to make sure it&apos;s
+              fair, sustainable, and fraud-proof. Early partners who express interest
+              now will be the first to know when it launches.
             </p>
+            <div className="bg-amber-50 border border-amber-100 rounded-xl px-4 py-3 w-full">
+              <p className="text-xs font-bold text-amber-700">
+                ✅ Free GasCap™ Pro guaranteed for all active partners
+              </p>
+              <p className="text-[11px] text-amber-600 mt-0.5">
+                While we finalize the full rewards program, every Business Partner
+                with an active placement gets Pro for free.
+              </p>
+            </div>
           </div>
         </div>
 
