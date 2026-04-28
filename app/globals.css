@@ -20,7 +20,10 @@ html.dark {
   --card-border: #253d5a;
 }
 
-html { scroll-behavior: smooth; }
+html {
+  scroll-behavior: smooth;
+  overflow-x: hidden; /* prevent horizontal drift on mobile */
+}
 
 body {
   background-color: var(--bg-page);
@@ -28,6 +31,8 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   transition: background-color 0.2s ease, color 0.2s ease;
+  overflow-x: hidden; /* belt-and-suspenders: clip any overflow child */
+  width: 100%;        /* guard against body wider than viewport */
 }
 
 /* ── Component classes ─────────────────────────────────────────────── */
