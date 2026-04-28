@@ -13,6 +13,7 @@
  */
 import { randomUUID } from 'crypto';
 import { prisma } from '@/lib/prisma';
+import { getAmbassadorTier, ambassadorEntryMultiplier, isAlwaysEligible, type AmbassadorTier } from '@/lib/ambassador';
 
 // ─── Prize Tiers ─────────────────────────────────────────────────────────────
 
@@ -123,14 +124,18 @@ export async function getCurrentPrizeTier(): Promise<{
 }
 
 export interface EntrantRow {
-  userId:      string;
-  name:        string;
-  email:       string;
-  plan:        string;
-  streak:      number;
-  baseEntries: number;   // active-day entries (one per calendar day used this month)
-  streakBonus: number;   // bonus entries from streak tier
-  entryCount:  number;   // baseEntries + streakBonus (total weight in the draw)
+  userId:          string;
+  name:            string;
+  email:           string;
+  plan:            string;
+  streak:          number;
+  referralCount:   number;
+  ambassadorTier:  AmbassadorTier;
+  entryMultiplier: number;        // 1× standard, 2× Supporter, 3× Ambassador, 5× Elite
+  baseEntries:     number;        // active days × entryMultiplier
+  streakBonus:     number;        // flat bonus from streak tier (not multiplied)
+  entryCount:      number;        // baseEntries + streakBonus (total weight in the draw)
+  alwaysEligible:  boolean;       // true for Ambassador tier holders — skip win restrictions
 }
 
 export interface DrawResult {
@@ -212,22 +217,32 @@ export async function getEligibleEntrants(month: string): Promise<EntrantRow[]> 
       plan:          { in: ['pro', 'fleet'] },
       isTestAccount: { not: true },   // exclude test/internal accounts from draws
     },
-    select: { id: true, name: true, email: true, plan: true, activeDays: true, streak: true },
+    select: {
+      id: true, name: true, email: true, plan: true,
+      activeDays: true, streak: true, referralCount: true,
+    },
   });
 
   return users
     .map((u) => {
-      const baseEntries = (u.activeDays ?? []).filter((d) => d.startsWith(prefix)).length;
-      const streakBonus = streakBonusEntries(u.streak ?? 0);
+      const refCount      = u.referralCount ?? 0;
+      const multiplier    = ambassadorEntryMultiplier(refCount);
+      const activeDayCount = (u.activeDays ?? []).filter((d) => d.startsWith(prefix)).length;
+      const baseEntries   = activeDayCount * multiplier;  // multiplier applied to active days
+      const streakBonus   = streakBonusEntries(u.streak ?? 0);
       return {
-        userId:      u.id,
-        name:        u.name,
-        email:       u.email,
-        plan:        u.plan,
-        streak:      u.streak ?? 0,
+        userId:          u.id,
+        name:            u.name,
+        email:           u.email,
+        plan:            u.plan,
+        streak:          u.streak ?? 0,
+        referralCount:   refCount,
+        ambassadorTier:  getAmbassadorTier(refCount),
+        entryMultiplier: multiplier,
         baseEntries,
         streakBonus,
-        entryCount:  baseEntries + streakBonus,
+        entryCount:      baseEntries + streakBonus,
+        alwaysEligible:  isAlwaysEligible(refCount),
       };
     })
     .filter((u) => u.baseEntries > 0)  // must have used the app at least once this month
@@ -254,8 +269,12 @@ export async function runWeightedDraw(month: string): Promise<DrawResult> {
 
   const ineligible = ineligibleWinners(month, history);
 
-  // Filter to entrants who are eligible under the restriction rules
-  let pool = allEntrants.filter((e) => !ineligible.has(e.userId));
+  // Ambassador tier holders are always eligible — the consecutive-month and
+  // quarterly restrictions do not apply to them (per program rules).
+  // Standard users are still filtered through the normal ineligibility check.
+  let pool = allEntrants.filter(
+    (e) => e.alwaysEligible || !ineligible.has(e.userId),
+  );
   if (pool.length === 0) {
     throw new Error(
       'No eligible entrants for this month after applying consecutive-month ' +

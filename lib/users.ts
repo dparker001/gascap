@@ -9,6 +9,9 @@ import { findNewBadges, type UserStats } from './badges';
 import { getVehiclesForUser } from './savedVehicles';
 import type { User as PrismaUser } from './generated/prisma/client';
 import { Prisma } from './generated/prisma/client';
+import { qualifiesForFreeProForLife, AMBASSADOR_THRESHOLDS } from './ambassador';
+
+export { getAmbassadorTier, ambassadorEntryMultiplier, isAlwaysEligible, AMBASSADOR_THRESHOLDS } from './ambassador';
 
 // ── Public types (unchanged) ────────────────────────────────────────────────
 
@@ -59,6 +62,7 @@ export interface StoredUser {
   paidCampaignEnrolledAt?:  string;
   stripeInterval?:          string;
   verifyReminderSentAt?:    string;
+  ambassadorProForLife?: boolean;
   isTestAccount?: boolean;
   fleetDrivers?:  string[];
 }
@@ -125,8 +129,9 @@ function toStoredUser(u: PrismaUser): StoredUser {
     streak:             u.streak,
     activeDays:         u.activeDays,
     badges:             u.badges,
-    streakMilestonesHit: u.streakMilestonesHit,
-    fleetDrivers:        u.fleetDrivers ?? [],
+    streakMilestonesHit:  u.streakMilestonesHit,
+    ambassadorProForLife: u.ambassadorProForLife ?? false,
+    fleetDrivers:         u.fleetDrivers ?? [],
   };
 }
 
@@ -184,6 +189,26 @@ export async function setUserPlan(
   plan: 'free' | 'pro' | 'fleet',
   stripe?: { customerId?: string; subscriptionId?: string },
 ): Promise<void> {
+  // Ambassador Pro-for-life protection: if a Stripe subscription cancels and
+  // the caller tries to revert this user to free, check whether they hold the
+  // Ambassador (15+) or Elite (30+) milestone. If so, keep plan = 'pro' —
+  // their subscription is complimentary and must not be revoked by churn.
+  // We still clear the stripeSubscriptionId so billing stays accurate.
+  if (plan === 'free') {
+    const u = await prisma.user.findUnique({
+      where:  { id: userId },
+      select: { ambassadorProForLife: true },
+    });
+    if (u?.ambassadorProForLife) {
+      // Keep Pro, just clear the cancelled subscription ID
+      await prisma.user.update({
+        where: { id: userId },
+        data:  { stripeSubscriptionId: null },
+      });
+      return;
+    }
+  }
+
   await prisma.user.update({
     where: { id: userId },
     data: {
@@ -553,7 +578,7 @@ export async function findByReferralCode(code: string): Promise<StoredUser | und
   return user ? toStoredUser(user) : undefined;
 }
 
-const MAX_REFERRAL_REWARDS = 10;
+// No hard cap on referral count — Ambassador Program goes to 30+
 const MAX_REDEEM_AT_ONCE   = 3;
 // 12 months — generous window since credits can bank before the referrer upgrades
 const CREDIT_EXPIRY_MONTHS = 12;
@@ -572,26 +597,43 @@ export function getRedeemableMonths(user: StoredUser): number {
 export async function recordReferral(referrerId: string): Promise<void> {
   const user = await prisma.user.findUnique({ where: { id: referrerId } });
   if (!user) return;
-  const current = user.referralCount ?? 0;
-  if (current >= MAX_REFERRAL_REWARDS) return;
 
-  const now    = new Date();
-  const expiry = new Date(now);
-  expiry.setMonth(expiry.getMonth() + CREDIT_EXPIRY_MONTHS);
+  const current  = user.referralCount ?? 0;
+  const newCount = current + 1;
 
-  const credit: ReferralCredit = {
-    id:        crypto.randomUUID(),
-    earnedAt:  now.toISOString(),
-    expiresAt: expiry.toISOString(),
-  };
-
+  // ── Supporter-tier credit (1 free Pro month per paying referral) ─────────
+  // Only add credits below the Ambassador milestone — at 15+ the referrer
+  // earns free Pro for life, making individual month credits redundant.
   const existing = (user.referralCredits as unknown as ReferralCredit[]) ?? [];
+  let updatedCredits = existing;
+  if (!qualifiesForFreeProForLife(newCount)) {
+    const now    = new Date();
+    const expiry = new Date(now);
+    expiry.setMonth(expiry.getMonth() + CREDIT_EXPIRY_MONTHS);
+    const credit: ReferralCredit = {
+      id:        crypto.randomUUID(),
+      earnedAt:  now.toISOString(),
+      expiresAt: expiry.toISOString(),
+    };
+    updatedCredits = [...existing, credit];
+  }
+
+  // ── Ambassador milestone: free Pro for life ──────────────────────────────
+  // Fires exactly once when the count first crosses the Ambassador threshold.
+  // Fleet subscribers keep fleet; free/pro subscribers are upgraded to pro.
+  const justCrossedAmbassador =
+    qualifiesForFreeProForLife(newCount) && !qualifiesForFreeProForLife(current);
+  const grantedPlan: 'pro' | undefined =
+    justCrossedAmbassador && user.plan !== 'fleet' ? 'pro' : undefined;
+
   await prisma.user.update({
     where: { id: referrerId },
     data: {
-      referralCount:           current + 1,
+      referralCount:           newCount,
       referralProMonthsEarned: (user.referralProMonthsEarned ?? 0) + 1,
-      referralCredits:         [...existing, credit] as unknown as Prisma.InputJsonValue,
+      referralCredits:         updatedCredits as unknown as Prisma.InputJsonValue,
+      ...(justCrossedAmbassador ? { ambassadorProForLife: true } : {}),
+      ...(grantedPlan           ? { plan: grantedPlan }          : {}),
     },
   });
 }
@@ -637,12 +679,8 @@ export async function creditVerifiedReferral(userId: string): Promise<boolean> {
   });
   if (result.count === 0) return false; // another process already claimed it
 
-  const current = referrer.referralCount ?? 0;
-  if (current < MAX_REFERRAL_REWARDS) {
-    await recordReferral(referrer.id);
-    return true;
-  }
-  return false;
+  await recordReferral(referrer.id);
+  return true;
 }
 
 // ── Profile ─────────────────────────────────────────────────────────────────

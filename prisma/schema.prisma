@@ -85,6 +85,9 @@ model User {
   // Email verification reminder
   verifyReminderSentAt     String?   // ISO timestamp of last verification reminder email
 
+  // Ambassador Program
+  ambassadorProForLife     Boolean   @default(false)
+
   // Internal / testing
   isTestAccount            Boolean   @default(false)
 

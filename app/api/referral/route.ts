@@ -8,9 +8,9 @@ import { NextResponse }     from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions }      from '@/lib/auth';
 import { ensureReferralCode, findById, getActiveCredits, getRedeemableMonths, getAllUsers } from '@/lib/users';
+import { getAmbassadorTier, ambassadorEntryMultiplier, AMBASSADOR_THRESHOLDS } from '@/lib/ambassador';
 
-const MAX_REFERRAL_REWARDS = 10;
-const MAX_REDEEM_AT_ONCE   = 3;
+const MAX_REDEEM_AT_ONCE = 3;
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -22,8 +22,11 @@ export async function GET() {
   const baseUrl      = process.env.NEXTAUTH_URL ?? 'https://www.gascap.app';
   const referralUrl  = `${baseUrl}/signup?ref=${code}`;
   const plan         = user?.plan ?? 'free';
-  const isPaid       = plan === 'pro' || plan === 'fleet';
-  const monthsEarned = user?.referralProMonthsEarned ?? 0;
+  const isPaid         = plan === 'pro' || plan === 'fleet';
+  const monthsEarned   = user?.referralProMonthsEarned ?? 0;
+  const refCount       = user?.referralCount ?? 0;
+  const tier           = getAmbassadorTier(refCount);
+  const multiplier     = ambassadorEntryMultiplier(refCount);
 
   const activeCredits    = user ? getActiveCredits(user) : [];
   const redeemableMonths = user ? getRedeemableMonths(user) : 0;
@@ -53,20 +56,22 @@ export async function GET() {
   return NextResponse.json({
     code,
     referralUrl,
-    betaReferralUrl,               // only set for beta testers
+    betaReferralUrl,
     isBeta,
-    referralCount:    user?.referralCount ?? 0,
-    proMonthsEarned:  monthsEarned,
-    referredBy:       user?.referredBy    ?? null,
-    maxReferrals:     MAX_REFERRAL_REWARDS,
-    maxRedeemAtOnce:  MAX_REDEEM_AT_ONCE,
-    reachedCap:       (user?.referralCount ?? 0) >= MAX_REFERRAL_REWARDS,
-    canRefer:         true,            // all plans can refer
-    activeCredits:    activeCredits.length,
-    redeemableMonths,                  // capped at MAX_REDEEM_AT_ONCE, only if on Pro/Fleet
-    nextExpiryDate,                    // ISO string of soonest-expiring credit
-    userPlan:         plan,
+    referralCount:       refCount,
+    proMonthsEarned:     monthsEarned,
+    referredBy:          user?.referredBy ?? null,
+    ambassadorTier:      tier,                        // 'supporter'|'ambassador'|'elite'|null
+    entryMultiplier:     multiplier,                  // 1|2|3|5
+    ambassadorProForLife: user?.ambassadorProForLife ?? false,
+    thresholds:          AMBASSADOR_THRESHOLDS,       // expose for UI progress bars
+    maxRedeemAtOnce:     MAX_REDEEM_AT_ONCE,
+    canRefer:            true,
+    activeCredits:       activeCredits.length,
+    redeemableMonths,
+    nextExpiryDate,
+    userPlan:            plan,
     isPaid,
-    referredUsers,                 // list of users this person referred
+    referredUsers,
   });
 }

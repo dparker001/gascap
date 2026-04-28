@@ -14,6 +14,11 @@ import {
   streakTierForStreak,
   nextStreakTier,
 } from '@/lib/giveaway';
+import {
+  getAmbassadorTier,
+  ambassadorEntryMultiplier,
+  isAlwaysEligible,
+} from '@/lib/ambassador';
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -24,25 +29,33 @@ export async function GET() {
 
   const user = await prisma.user.findUnique({
     where:  { id: userId },
-    select: { activeDays: true, plan: true, streak: true },
+    select: { activeDays: true, plan: true, streak: true, referralCount: true },
   });
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
-  const month       = currentMonth();
-  const baseEntries = entryCountForMonth(user.activeDays ?? [], month);
-  const streak      = user.streak ?? 0;
-  const streakBonus = streakBonusEntries(streak);
-  const entryCount  = baseEntries + streakBonus;
-  const eligible    = user.plan === 'pro' || user.plan === 'fleet';
+  const month          = currentMonth();
+  const refCount       = user.referralCount ?? 0;
+  const multiplier     = ambassadorEntryMultiplier(refCount);
+  const activeDayCount = entryCountForMonth(user.activeDays ?? [], month);
+  const baseEntries    = activeDayCount * multiplier;   // multiplier on active days
+  const streak         = user.streak ?? 0;
+  const streakBonus    = streakBonusEntries(streak);
+  const entryCount     = baseEntries + streakBonus;
+  const eligible       = user.plan === 'pro' || user.plan === 'fleet';
 
   return NextResponse.json({
     month,
     entryCount,
     baseEntries,
+    activeDayCount,   // raw days before multiplier — useful for UI display
+    entryMultiplier:  multiplier,
     streakBonus,
     streak,
-    streakTier:     streakTierForStreak(streak),
-    nextStreakTier: nextStreakTier(streak),
+    streakTier:       streakTierForStreak(streak),
+    nextStreakTier:   nextStreakTier(streak),
     eligible,
+    ambassadorTier:   getAmbassadorTier(refCount),
+    alwaysEligible:   isAlwaysEligible(refCount),
+    referralCount:    refCount,
   });
 }
