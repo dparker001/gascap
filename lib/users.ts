@@ -388,7 +388,9 @@ export async function getActiveBetaUsers(): Promise<StoredUser[]> {
 // ── Activity + badge tracking ───────────────────────────────────────────────
 
 function todayStr(): string {
-  return new Date().toISOString().slice(0, 10);
+  // Use Eastern Time (America/New_York) so the streak day boundary is
+  // midnight ET for US users — not 8 PM ET (midnight UTC).
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
 }
 
 export function calcStreak(activeDays: string[]): number {
@@ -396,7 +398,8 @@ export function calcStreak(activeDays: string[]): number {
   const sorted = [...activeDays].sort().reverse();
   const today  = todayStr();
   if (sorted[0] !== today) {
-    const yesterday = new Date(Date.now() - 86400_000).toISOString().slice(0, 10);
+    const yd = new Date(Date.now() - 86400_000);
+    const yesterday = yd.toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
     if (sorted[0] !== yesterday) return 1;
   }
   let streak = 1;
