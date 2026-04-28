@@ -62,14 +62,14 @@ export default function Header() {
         <div className="flex items-center justify-between mb-5">
 
           {/* Logo — transparent icon + text, no background */}
-          <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="flex items-center gap-1.5 flex-shrink-0">
             <img
               src="/gascap-icon-raw.png"
               alt=""
               className="h-12 w-auto object-contain drop-shadow-sm"
             />
             <span className="text-white font-black text-2xl leading-none tracking-tight">
-              GasCap<sup className="text-sm font-bold align-super">™</sup>
+              GasCap<sup className="text-xs font-bold" style={{ verticalAlign: '0.6em' }}>™</sup>
             </span>
           </div>
 
