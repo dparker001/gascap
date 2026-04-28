@@ -601,10 +601,8 @@ export default function Home() {
         <FeaturedStation />
       </section>
 
-      {/* Engagement nudge — contextual, dismissible, one at a time */}
-      <div className="max-w-lg mx-auto w-full">
-        <EngagementNudge />
-      </div>
+      {/* Engagement nudge — fixed bottom toast, contextual, dismissible */}
+      <EngagementNudge />
 
       {/* Tools & Insights */}
       <section id="gascap-tools" className="px-4 pb-6 max-w-lg mx-auto w-full">

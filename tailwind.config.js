@@ -49,6 +49,15 @@ module.exports = {
           '"Helvetica Neue"', 'Arial', 'sans-serif',
         ],
       },
+      keyframes: {
+        'slide-up': {
+          '0%':   { opacity: '0', transform: 'translateY(16px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+      },
+      animation: {
+        'slide-up': 'slide-up 0.25s ease-out both',
+      },
     },
   },
   plugins: [],

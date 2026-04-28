@@ -169,36 +169,47 @@ export default function EngagementNudge() {
   }
 
   return (
-    <div className={`mx-4 mb-3 rounded-2xl border ${c.bg} ${c.border} px-4 py-3 shadow-sm`}>
-      <div className="flex items-start gap-3">
-        {/* Icon */}
-        <span className="text-xl flex-shrink-0 mt-0.5" aria-hidden="true">{activeNudge.icon}</span>
+    /* Fixed bottom toast — floats above the feedback button, never pushes content */
+    <div className="fixed bottom-20 left-0 right-0 z-40 px-4 pointer-events-none">
+      <div
+        className={`
+          max-w-lg mx-auto pointer-events-auto
+          rounded-2xl border shadow-lg
+          ${c.bg} ${c.border}
+          px-4 py-3
+          animate-slide-up
+        `}
+      >
+        <div className="flex items-start gap-3">
+          {/* Icon */}
+          <span className="text-xl flex-shrink-0 mt-0.5" aria-hidden="true">{activeNudge.icon}</span>
 
-        {/* Content */}
-        <div className="flex-1 min-w-0">
-          <p className={`text-sm font-black ${c.title} leading-tight`}>{activeNudge.headline}</p>
-          <p className={`text-xs ${c.body} mt-0.5 leading-relaxed`}>{activeNudge.body(d)}</p>
+          {/* Content */}
+          <div className="flex-1 min-w-0">
+            <p className={`text-sm font-black ${c.title} leading-tight`}>{activeNudge.headline}</p>
+            <p className={`text-xs ${c.body} mt-0.5 leading-relaxed`}>{activeNudge.body(d)}</p>
 
-          {activeNudge.cta && (
-            <a
-              href={activeNudge.cta.href}
-              className={`inline-block mt-2 px-4 py-1.5 rounded-xl text-xs font-bold transition-colors ${c.btn}`}
-            >
-              {activeNudge.cta.label}
-            </a>
-          )}
+            {activeNudge.cta && (
+              <a
+                href={activeNudge.cta.href}
+                className={`inline-block mt-2 px-4 py-1.5 rounded-xl text-xs font-bold transition-colors ${c.btn}`}
+              >
+                {activeNudge.cta.label}
+              </a>
+            )}
+          </div>
+
+          {/* Dismiss */}
+          <button
+            onClick={handleDismiss}
+            className={`flex-shrink-0 mt-0.5 ${c.dismiss} transition-colors`}
+            aria-label="Dismiss"
+          >
+            <svg viewBox="0 0 16 16" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M4 4l8 8M12 4l-8 8" />
+            </svg>
+          </button>
         </div>
-
-        {/* Dismiss */}
-        <button
-          onClick={handleDismiss}
-          className={`flex-shrink-0 mt-0.5 ${c.dismiss} transition-colors`}
-          aria-label="Dismiss"
-        >
-          <svg viewBox="0 0 16 16" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-            <path d="M4 4l8 8M12 4l-8 8" />
-          </svg>
-        </button>
       </div>
     </div>
   );
