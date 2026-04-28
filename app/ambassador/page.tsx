@@ -29,34 +29,34 @@ const STEPS = [
 
 const TIERS = [
   {
-    icon:    '🤝',
-    label:   'Supporter',
-    range:   '1–4 paying referrals',
-    reward:  '1 free month of Pro per referral',
-    sub:     'Credited automatically each time someone you referred pays.',
-    color:   'bg-slate-50 border-slate-200',
-    title:   'text-slate-700',
-    badge:   'bg-slate-200 text-slate-600',
+    icon:      '🤝',
+    label:     'Supporter',
+    threshold: 5,
+    reward:    '1 free Pro month per paying referral',
+    sub:       'Earn 1 free month of Pro for every person you refer who becomes a paying subscriber. Credited automatically — no action needed.',
+    color:     'bg-slate-50 border-slate-200',
+    title:     'text-slate-700',
+    badge:     'bg-slate-200 text-slate-600',
   },
   {
-    icon:    '🏅',
-    label:   'Ambassador',
-    range:   '5–14 paying referrals',
-    reward:  'Free GasCap™ Pro for life',
-    sub:     'Once you hit 5 paying referrals, your Pro subscription is on us — permanently.',
-    color:   'bg-navy-50 border-navy-200',
-    title:   'text-navy-700',
-    badge:   'bg-navy-700 text-white',
+    icon:      '🏅',
+    label:     'Ambassador',
+    threshold: 14,
+    reward:    'Free GasCap™ Pro for life',
+    sub:       'Reach 14 cumulative paying referrals and your Pro subscription is on us — permanently. This milestone is locked in and never revoked.',
+    color:     'bg-navy-50 border-navy-200',
+    title:     'text-navy-700',
+    badge:     'bg-navy-700 text-white',
   },
   {
-    icon:    '🏆',
-    label:   'Elite Ambassador',
-    range:   '15+ paying referrals',
-    reward:  'Pro for life + personal recognition',
-    sub:     'Named on the Top Ambassadors list, early access to new features, and a personal thank-you from Don.',
-    color:   'bg-amber-50 border-amber-200',
-    title:   'text-amber-700',
-    badge:   'bg-amber-500 text-white',
+    icon:      '🏆',
+    label:     'Elite Ambassador',
+    threshold: 25,
+    reward:    'Pro for life + personal recognition',
+    sub:       'Named on the Top Ambassadors list in the app, early access to new features, and a personal thank-you from Don.',
+    color:     'bg-amber-50 border-amber-200',
+    title:     'text-amber-700',
+    badge:     'bg-amber-500 text-white',
   },
 ];
 
@@ -83,7 +83,7 @@ export default function AmbassadorPage() {
 
   // Determine current tier from referral count
   const count = referral?.referralCount ?? 0;
-  const currentTier = count >= 15 ? 2 : count >= 5 ? 1 : count >= 1 ? 0 : null;
+  const currentTier = count >= 25 ? 2 : count >= 14 ? 1 : count >= 5 ? 0 : null;
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -123,8 +123,8 @@ export default function AmbassadorPage() {
                 </div>
                 <p className={`text-xs mt-0.5 ${TIERS[currentTier].title} opacity-70`}>
                   {count} paying referral{count !== 1 ? 's' : ''} so far
-                  {currentTier === 0 && ` — ${5 - count} more to unlock Ambassador`}
-                  {currentTier === 1 && ` — ${15 - count} more to reach Elite`}
+                  {currentTier === 0 && ` — ${14 - count} more to unlock Ambassador`}
+                  {currentTier === 1 && ` — ${25 - count} more to reach Elite`}
                   {currentTier === 2 && ' — Elite Ambassador 🎉'}
                 </p>
               </div>
@@ -204,7 +204,7 @@ export default function AmbassadorPage() {
                       <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full ${t.badge}`}>YOU</span>
                     )}
                   </div>
-                  <p className={`text-[10px] font-bold opacity-60 ${t.title}`}>{t.range}</p>
+                  <p className={`text-[10px] font-bold opacity-60 ${t.title}`}>{t.threshold}+ referrals</p>
                 </div>
                 <p className={`text-xs font-bold ${t.title}`}>{t.reward}</p>
                 <p className={`text-[11px] opacity-60 ${t.title} leading-relaxed`}>{t.sub}</p>
