@@ -290,7 +290,7 @@ const SECTIONS = [
       },
       {
         q: 'What are the Ambassador tier thresholds and rewards?',
-        a: 'There are three tiers based on your cumulative all-time paying referrals: Supporter (5+ referrals) — earn 1 free Pro month for every paying referral, plus 2× daily drawing entries; Ambassador (15+ referrals) — earn free GasCap™ Pro for life, plus 3× daily drawing entries; Elite Ambassador (30+ referrals) — Pro for life, 5× daily drawing entries, recognition in the Top Ambassadors list, early feature access, and a personal thank-you from Don.',
+        a: 'There are three tiers based on your cumulative all-time paying referrals: Supporter (5+ referrals) — earn 1 free Pro month for every paying referral, plus 2× daily drawing entries; Ambassador (15+ referrals) — earn free GasCap™ Pro for life, plus 3× daily drawing entries; Elite Ambassador (30+ referrals) — Pro for life, 5× daily drawing entries, recognition in the Top Ambassadors list, early feature access, and a personal thank-you from the GasCap™ team.',
       },
       {
         q: 'How do Ambassador tiers affect my monthly drawing entries?',

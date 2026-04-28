@@ -56,7 +56,7 @@ const TIERS = [
     threshold: 30,
     entries:   5,
     reward:    'Pro for life + personal recognition',
-    sub:       'Named on the Top Ambassadors list in the app, early access to new features, and a personal thank-you from Don.',
+    sub:       'Named on the Top Ambassadors list in the app, early access to new features, and a personal thank-you from the GasCap™ team.',
     color:     'bg-amber-50 border-amber-200',
     title:     'text-amber-700',
     badge:     'bg-amber-500 text-white',
@@ -233,11 +233,11 @@ export default function AmbassadorPage() {
             referral network — reach out directly.
           </p>
           <a
-            href="mailto:admin@gascap.app?subject=Ambassador%20Program&body=Hi%20Don%2C%0A%0AI%27m%20interested%20in%20the%20GasCap%20Ambassador%20Program.%0A%0AName%3A%0ACity%3A%0A%0AThanks!"
+            href="mailto:admin@gascap.app?subject=Ambassador%20Program&body=Hi%20there%2C%0A%0AI%27m%20interested%20in%20the%20GasCap%20Ambassador%20Program.%0A%0AName%3A%0ACity%3A%0A%0AThanks!"
             className="block w-full py-3 rounded-2xl text-white text-sm font-black hover:opacity-90 transition-opacity"
             style={{ backgroundColor: '#FA7109' }}
           >
-            Email Don → admin@gascap.app
+            Email us → admin@gascap.app
           </a>
           <p className="text-[10px] text-slate-400">We reply within 24 hours.</p>
         </div>
