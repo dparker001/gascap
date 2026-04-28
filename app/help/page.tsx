@@ -14,7 +14,7 @@ const SECTIONS = [
     items: [
       {
         q: 'Do I need an account to use GasCap™?',
-        a: 'No — the fuel calculators work right away without signing up. Creating a free account lets you save 1 vehicle and sync your data across devices. Upgrading to Pro ($4.99/mo) unlocks fill-up tracking, MPG insights, receipt scanning, and up to 3 saved vehicles. Fleet ($19.99/mo) supports unlimited vehicles and up to 10 drivers. New users get 30 days of Pro free — no credit card required.',
+        a: 'No — the fuel calculators work right away without signing up. Creating a free account lets you save 1 vehicle and sync your data across devices. Upgrading to Pro ($4.99/mo) unlocks fill-up tracking, MPG insights, receipt scanning, and up to 3 saved vehicles. Fleet ($19.99/mo) supports unlimited vehicles and up to 25 drivers. New users get 30 days of Pro free — no credit card required.',
       },
       {
         q: 'I just signed up — what should I do first?',
@@ -168,7 +168,7 @@ const SECTIONS = [
     items: [
       {
         q: 'What is GasCap™ Fleet?',
-        a: 'Fleet is for businesses and owner-operators managing multiple vehicles. It includes unlimited vehicles, up to 10 drivers, driver attribution on fill-ups, a fleet-wide fuel dashboard, per-vehicle and per-driver reporting, annual tax report (PDF), bulk vehicle import, driver roster management, CSV export with driver column, referral rewards, and monthly giveaway entries.',
+        a: 'Fleet is for businesses and owner-operators managing multiple vehicles. It includes unlimited vehicles, up to 25 drivers, driver attribution on fill-ups, a fleet-wide fuel dashboard, per-vehicle and per-driver reporting, annual tax report (PDF), bulk vehicle import, driver roster management, CSV export with driver column, referral rewards, and monthly giveaway entries.',
       },
       {
         q: 'How do I add drivers to my fleet?',
@@ -214,7 +214,7 @@ const SECTIONS = [
       },
       {
         q: 'What does Fleet add over Pro?',
-        a: 'Fleet ($19.99/mo or $199/yr) adds unlimited vehicles (vs. 3), up to 10 drivers, driver attribution on fill-ups, fleet-wide fuel dashboard, per-driver reporting, annual tax report (PDF), bulk vehicle import, and driver roster management. Everything in Pro is included.',
+        a: 'Fleet ($19.99/mo or $199/yr) adds unlimited vehicles (vs. 3), up to 25 drivers, driver attribution on fill-ups, fleet-wide fuel dashboard, per-driver reporting, annual tax report (PDF), bulk vehicle import, and driver roster management. Everything in Pro is included.',
       },
       {
         q: 'How do I upgrade my plan?',

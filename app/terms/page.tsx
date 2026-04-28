@@ -27,7 +27,7 @@ export default function TermsPage() {
             <ul className="list-disc pl-5 space-y-1 mt-2">
               <li><strong>Free:</strong> 1 saved vehicle, fuel calculators (Target Fill &amp; By Budget), EPA vehicle database, live gas price lookup, offline use, badge achievements.</li>
               <li><strong>Pro ($4.99/mo or $49/yr):</strong> Up to 3 saved vehicles, VIN photo scan, fill-up history &amp; MPG tracking, pump receipt scan, fuel savings dashboard, streak counter, monthly report card, gas price predictions, vehicle health alerts, fill-up reminders, Annual Wrapped, and referral rewards.</li>
-              <li><strong>Fleet ($19.99/mo or $199/yr):</strong> Unlimited vehicles, up to 10 drivers, fleet-wide fuel dashboard, per-vehicle and per-driver reporting, bulk vehicle import, and driver management.</li>
+              <li><strong>Fleet ($19.99/mo or $199/yr):</strong> Unlimited vehicles, up to 25 drivers, fleet-wide fuel dashboard, per-vehicle and per-driver reporting, bulk vehicle import, and driver management.</li>
             </ul>
             <p className="mt-2">Feature availability may change over time. We will notify users of significant changes via email or in-app notice.</p>
           </section>

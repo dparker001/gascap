@@ -675,7 +675,7 @@ export async function setLastFillupReminderSent(userId: string): Promise<void> {
 
 // ── Fleet driver roster (Phase 1) ────────────────────────────────────────────
 
-export const FLEET_DRIVER_LIMIT = 10;
+export const FLEET_DRIVER_LIMIT = 25;
 
 /** Return the fleet driver name list for a user */
 export async function getFleetDrivers(userId: string): Promise<string[]> {
