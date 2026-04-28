@@ -186,7 +186,7 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
     fetch('/api/activity', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ event: 'calc' }),
+      body:    JSON.stringify({ event: 'calc', localDate: new Date().toLocaleDateString('en-CA') }),
     }).catch(() => {});
     // QR placard pilot — credit calc completion to attribution placement (no-op if not attributed)
     if (typeof window !== 'undefined' && typeof window.gcTrack === 'function') {

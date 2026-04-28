@@ -121,29 +121,29 @@ export default function VehicleSpendingBreakdown() {
       {/* Toggle header */}
       <button
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between py-3 px-4 bg-white
-                   hover:bg-slate-50 transition-colors"
+        className="w-full flex items-center justify-between py-2.5 px-4 bg-navy-700
+                   hover:bg-navy-800 transition-colors"
       >
-        <div className="flex items-center gap-2.5">
-          <span className="text-lg">🚗</span>
+        <div className="flex items-center gap-2">
+          <span className="text-sm" aria-hidden="true">🚗</span>
           <div className="text-left">
-            <p className="text-sm font-black text-slate-700">Vehicle Spending</p>
+            <p className="text-xs font-black text-white uppercase tracking-wider">Vehicle Spending</p>
             {loading
-              ? <p className="text-[10px] text-slate-400">Loading…</p>
+              ? <p className="text-[10px] text-white/50">Loading…</p>
               : hasData
-                ? <p className="text-[10px] text-slate-400">{vehicleStats.length} vehicle{vehicleStats.length !== 1 ? 's' : ''} · ${data?.stats.totalSpent.toFixed(2)} total</p>
-                : <p className="text-[10px] text-slate-400">Log fill-ups to see breakdown</p>
+                ? <p className="text-[10px] text-white/50">{vehicleStats.length} vehicle{vehicleStats.length !== 1 ? 's' : ''} · ${data?.stats.totalSpent.toFixed(2)} total</p>
+                : <p className="text-[10px] text-white/50">Log fill-ups to see breakdown</p>
             }
           </div>
         </div>
         <div className="flex items-center gap-3">
           {topVehicle && (
-            <span className="text-[11px] font-black text-amber-600 max-w-[80px] truncate">
+            <span className="text-[11px] font-black text-white/80 max-w-[80px] truncate">
               {topVehicle.name}
             </span>
           )}
           <svg
-            className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+            className={`w-4 h-4 text-white/60 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
             viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
             aria-hidden="true"
           >

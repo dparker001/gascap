@@ -42,11 +42,17 @@ export default function WorstFillup() {
   if (!session || loading || !worst || !best) return null;
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 space-y-3">
-      <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400">
-        Hall of Fame
-      </h3>
+    <div className="rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+      {/* Navy header strip */}
+      <div className="flex items-center gap-2 py-2.5 px-4 bg-navy-700">
+        <span className="text-sm" aria-hidden="true">🏆</span>
+        <div>
+          <p className="text-xs font-black text-white uppercase tracking-wider">Hall of Fame</p>
+          <p className="text-[10px] text-white/50">Your best deal &amp; biggest fill-up</p>
+        </div>
+      </div>
 
+      <div className="bg-white p-4 space-y-3">
       <div className="grid grid-cols-2 gap-3">
         {/* Worst */}
         <div className="bg-red-50 border border-red-100 rounded-xl p-3 space-y-1">
@@ -84,6 +90,7 @@ export default function WorstFillup() {
       <p className="text-[10px] text-slate-300 text-center">
         Based on your logged fill-ups
       </p>
+      </div>
     </div>
   );
 }

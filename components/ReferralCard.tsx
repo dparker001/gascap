@@ -83,16 +83,14 @@ export default function ReferralCard() {
 
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-amber-500 to-amber-400 px-4 py-3">
-        <div className="flex items-center gap-2">
-          <span className="text-xl">🔗</span>
-          <div>
-            <p className="text-sm font-black text-white">Refer &amp; Earn</p>
-            <p className="text-[10px] text-amber-100">
-              1 free Pro month per friend · up to 10 · redeem up to 3 at a time
-            </p>
-          </div>
+      {/* Navy header strip */}
+      <div className="flex items-center gap-2 py-2.5 px-4 bg-navy-700">
+        <span className="text-sm" aria-hidden="true">🔗</span>
+        <div>
+          <p className="text-xs font-black text-white uppercase tracking-wider">Refer &amp; Earn</p>
+          <p className="text-[10px] text-white/50">
+            1 free month when a friend signs up · up to 10 · no purchase needed
+          </p>
         </div>
       </div>
 
@@ -195,9 +193,9 @@ export default function ReferralCard() {
             {/* Free user upgrade nudge — only if no credits yet */}
             {!data.isPaid && data.activeCredits === 0 && (
               <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5 text-center space-y-1">
-                <p className="text-xs font-black text-slate-700">Credits accumulate on any plan</p>
+                <p className="text-xs font-black text-slate-700">Start earning before you upgrade</p>
                 <p className="text-[10px] text-slate-500 leading-relaxed">
-                  Refer friends now — your free months bank up and unlock automatically when you upgrade to Pro.
+                  Credits bank the moment each friend signs up — no purchase required. They're waiting for you when you go Pro.
                 </p>
                 <a
                   href="/upgrade"
@@ -328,7 +326,7 @@ export default function ReferralCard() {
 
             {/* Footer */}
             <p className="text-[10px] text-slate-400 text-center leading-relaxed">
-              Reward triggers when your friend verifies their email. Credits expire 6 months after earning.
+              Credit banks the moment your friend creates their free account — no purchase needed on either end. Credits are valid for 12 months.
             </p>
 
             {data.referredBy && (

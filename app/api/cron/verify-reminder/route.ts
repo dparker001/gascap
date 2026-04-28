@@ -27,12 +27,19 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const users = await getUnverifiedUsersForReminder();
+  let users;
+  try {
+    users = await getUnverifiedUsersForReminder();
+  } catch (err) {
+    console.error('[verify-reminder] DB query failed:', err);
+    return NextResponse.json({ ok: false, error: 'DB query failed', ran: new Date().toISOString() }, { status: 500 });
+  }
+
   let sent = 0, errors = 0;
 
   for (const user of users) {
     try {
-      // Generate a fresh verification token (7-day expiry set inside createEmailVerifyToken)
+      // Generate a fresh verification token (24-hour expiry)
       const token     = await createEmailVerifyToken(user.id);
       const verifyUrl = `${BASE_URL}/verify-email?token=${token}`;
 

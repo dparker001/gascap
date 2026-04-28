@@ -3,13 +3,16 @@ import {
   createUser,
   findByEmail,
   findByReferralCode,
+  findById,
   setReferredBy,
+  creditVerifiedReferral,
+  getActiveCredits,
   createEmailVerifyToken,
   grantNewSignupProTrial,
   enrollEmailCampaign,
 } from '@/lib/users';
 import { sendMail, verificationEmailHtml } from '@/lib/email';
-import { sendCampaignEmail } from '@/lib/emailCampaign';
+import { sendCampaignEmail, sendReferralCreditEmail } from '@/lib/emailCampaign';
 import { upsertGhlContact, upsertGhlContactWithCampaign } from '@/lib/ghl';
 import { getPlacementByCode, logEvent } from '@/lib/campaigns';
 
@@ -61,12 +64,28 @@ export async function POST(req: Request) {
     // Enroll in the 5-email drip sequence (step 1 = welcome, sent below).
     await enrollEmailCampaign(user.id);
 
-    // Store referral code on the new user — credit fires in the Stripe webhook
-    // on the referred user's first paid invoice (amount_paid > 0)
+    // Store referral code and immediately credit the referrer.
+    // Credit fires when the referred friend starts their free trial — no payment
+    // required. The Stripe webhook still runs as a fallback for any edge cases
+    // where this path was missed (e.g. old signups).
     if (referralCode?.trim()) {
       const referrer = await findByReferralCode(referralCode.trim());
       if (referrer && referrer.id !== user.id) {
         await setReferredBy(user.id, referralCode.trim().toUpperCase());
+        // Fire credit immediately (non-blocking — don't delay the signup response)
+        creditVerifiedReferral(user.id)
+          .then(async (credited) => {
+            if (!credited) return;
+            const fresh = await findById(referrer.id);
+            const totalCredits = fresh ? getActiveCredits(fresh).length : 1;
+            return sendReferralCreditEmail(
+              referrer.id,
+              referrer.email,
+              referrer.name,
+              totalCredits,
+            );
+          })
+          .catch((e) => console.error('[GasCap] Referral credit on signup failed:', e));
       }
     }
 

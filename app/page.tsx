@@ -15,11 +15,11 @@ import AnnouncementToast      from '@/components/AnnouncementToast';
 import ReviewsMarquee          from '@/components/ReviewsMarquee';
 import OnboardingModal         from '@/components/OnboardingModal';
 import SetupChecklist          from '@/components/SetupChecklist';
-import MpgInsightCard          from '@/components/MpgInsightCard';
 import GasPriceAlertBanner     from '@/components/GasPriceAlertBanner';
 import StreakCounter           from '@/components/StreakCounter';
 import CampaignTracker         from '@/components/CampaignTracker';
 import FeaturedStation         from '@/components/FeaturedStation';
+import EngagementNudge        from '@/components/EngagementNudge';
 
 // ── JSON-LD Schema Markup ────────────────────────────────────────────────────
 
@@ -601,8 +601,10 @@ export default function Home() {
         <FeaturedStation />
       </section>
 
-      {/* MPG Insight Card — visible once the user has calculable MPG data */}
-      {session && <MpgInsightCard />}
+      {/* Engagement nudge — contextual, dismissible, one at a time */}
+      <div className="max-w-lg mx-auto w-full">
+        <EngagementNudge />
+      </div>
 
       {/* Tools & Insights */}
       <section id="gascap-tools" className="px-4 pb-6 max-w-lg mx-auto w-full">

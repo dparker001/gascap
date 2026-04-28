@@ -278,15 +278,15 @@ const SECTIONS = [
     items: [
       {
         q: 'How does the referral program work?',
-        a: 'Every GasCap™ account has a unique referral link (gascap.app/signup?ref=YOURCODE). When someone signs up using your link and makes their first paid subscription payment, you earn 1 free month — automatically credited to your account. The credit applies to whichever plan you are on (Pro or Fleet).',
+        a: 'Every GasCap™ account has a unique referral link (gascap.app/signup?ref=YOURCODE). Share it with a friend — the moment they create their free GasCap™ account using your link, you automatically earn 1 free Pro month. No purchase is required on your end or theirs. Credits bank in your account and apply automatically when you subscribe to Pro or Fleet.',
       },
       {
         q: 'Where do I find my referral link?',
-        a: 'Your referral link is in the Share tab inside the app, or in your Settings page.',
+        a: 'Your referral link and QR code are in the 🔗 Share tab inside the app. You can copy the link, share it directly via the share sheet, or download the QR code to send to a friend.',
       },
       {
         q: 'When exactly do I earn the credit?',
-        a: 'Only when your referred friend makes their first real payment — they upgrade to Pro or Fleet and their first invoice is successfully charged. Free signups and trial cancellations do not earn a credit.',
+        a: 'The moment your friend creates their free GasCap™ account using your referral link — that\'s it. They do not need to upgrade or pay anything. You\'ll receive a confirmation email as soon as the credit is banked.',
       },
       {
         q: 'How many free months can I earn?',
@@ -294,11 +294,15 @@ const SECTIONS = [
       },
       {
         q: 'How many credits can I redeem at once?',
-        a: 'Up to 3 credits per billing cycle. If you have more than 3 banked, the remaining credits carry over to future billing cycles.',
+        a: 'Up to 3 credits per billing cycle. If you have more than 3 banked, the remaining credits carry over to future billing cycles automatically.',
       },
       {
         q: 'Do referral credits expire?',
-        a: 'Yes — each credit expires 6 months from the date it was earned. You\'ll receive an email when a credit is earned so you can track it.',
+        a: 'Yes — each credit is valid for 12 months from the date it was earned. Your credits page shows the expiration date for each one. You\'ll receive a confirmation email when a credit is banked.',
+      },
+      {
+        q: 'I\'m on a free trial — can I still earn and bank credits?',
+        a: 'Yes. Credits bank the moment each friend signs up, regardless of your current plan. When you upgrade to Pro or Fleet, your banked credits apply automatically — potentially making your first month free.',
       },
       {
         q: 'Can I refer myself?',
@@ -306,7 +310,7 @@ const SECTIONS = [
       },
       {
         q: 'I referred someone but didn\'t receive my credit.',
-        a: 'Make sure your friend completed their first paid subscription payment (not just a free trial signup). Credits trigger on the first successful charge, not on account creation. If your friend has paid and you still haven\'t received credit after 24 hours, email support@gascap.app with your referral code.',
+        a: 'Make sure your friend signed up using your referral link specifically (gascap.app/signup?ref=YOURCODE). If they signed up directly without the link, the system cannot attribute the referral. If you believe your link was used and you still haven\'t received credit after 24 hours, email support@gascap.app with your referral code and your friend\'s email address.',
       },
     ],
   },
@@ -329,6 +333,10 @@ const SECTIONS = [
       {
         q: 'Does breaking my streak affect credits I already earned?',
         a: 'No. Once a milestone is hit, the credit is banked permanently (valid for 12 months). Your streak resets to zero but you keep the credit.',
+      },
+      {
+        q: 'When does a new streak day start?',
+        a: 'Each day starts at midnight in your own local time zone — Eastern, Central, Mountain, Pacific, Hawaii, or anywhere else. GasCap™ uses your device\'s clock, so there\'s no unfair cutoff for users outside the East Coast.',
       },
     ],
   },
@@ -380,7 +388,7 @@ const SECTIONS = [
       },
       {
         q: 'My streak didn\'t count today even though I used the app.',
-        a: 'Make sure you\'re signed in — streaks only count for registered users. If you used the app and the streak didn\'t increment, sign out and back in to force a session refresh.',
+        a: 'Make sure you\'re signed in — streaks only count for registered users. Each new streak day is counted at midnight in your device\'s local time zone, so whether you\'re on the East Coast, Central, Mountain, Pacific, or any other time zone, your streak resets at midnight where you are. If you used the app and the streak didn\'t increment, sign out and back in to force a session refresh.',
       },
       {
         q: 'The AI Fuel Advisor isn\'t responding.',

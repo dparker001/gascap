@@ -126,18 +126,18 @@ export default function SmartFillUpOptimizer() {
   const cfg = result ? CONFIG[result.recommendation] : null;
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-4">
+    <div className="rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
 
-      {/* Header */}
-      <div className="flex items-center gap-2.5">
-        <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center flex-shrink-0">
-          <span className="text-lg">🔮</span>
-        </div>
+      {/* Navy header strip */}
+      <div className="flex items-center gap-2 py-2.5 px-4 bg-navy-700">
+        <span className="text-sm" aria-hidden="true">🔮</span>
         <div>
-          <p className="text-sm font-black text-slate-700">Smart Fill-Up Optimizer</p>
-          <p className="text-[10px] text-slate-400">Live EIA market data · personalized to your fill-up size</p>
+          <p className="text-xs font-black text-white uppercase tracking-wider">Smart Fill-Up Optimizer</p>
+          <p className="text-[10px] text-white/50">Live EIA market data · personalized to your fill-up size</p>
         </div>
       </div>
+
+      <div className="bg-white p-4 space-y-4">
 
       {/* Idle */}
       {status === 'idle' && (
@@ -257,6 +257,7 @@ export default function SmartFillUpOptimizer() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

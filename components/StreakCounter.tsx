@@ -19,11 +19,14 @@ export default function StreakCounter() {
     setLoading(true);
     // POST a 'visit' event — this records today in activeDays (idempotent)
     // and returns the freshly-calculated streak including today.
+    // We send the device's local date (YYYY-MM-DD) so streak resets at
+    // midnight in the user's own timezone, not server UTC.
+    const localDate = new Date().toLocaleDateString('en-CA');
     fetch('/api/activity', {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ event: 'visit' }),
+      body: JSON.stringify({ event: 'visit', localDate }),
     })
       .then((r) => r.ok ? r.json() as Promise<ActivityResponse> : Promise.reject())
       .then((d) => setStreak(d.streak ?? 0))

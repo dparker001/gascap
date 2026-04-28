@@ -89,28 +89,28 @@ export default function MaintenanceReminders() {
   }
 
   return (
-    <div className="mt-4">
+    <div className="mt-4 rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
       {/* Toggle header */}
       <button
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between py-3 px-4 bg-white rounded-2xl
-                   border border-slate-100 shadow-sm hover:border-amber-200 transition-colors"
+        className="w-full flex items-center justify-between py-2.5 px-4 bg-navy-700
+                   hover:bg-navy-800 transition-colors"
       >
-        <div className="flex items-center gap-2.5">
-          <span className="text-lg">🔧</span>
+        <div className="flex items-center gap-2">
+          <span className="text-sm" aria-hidden="true">🔧</span>
           <div className="text-left">
-            <p className="text-sm font-black text-slate-700">Maintenance Reminders</p>
+            <p className="text-xs font-black text-white uppercase tracking-wider">Maintenance Reminders</p>
             {loading
-              ? <p className="text-[10px] text-slate-400">Loading…</p>
+              ? <p className="text-[10px] text-white/50">Loading…</p>
               : reminders.length === 0
-                ? <p className="text-[10px] text-slate-400">Track oil changes, tire rotations &amp; more</p>
+                ? <p className="text-[10px] text-white/50">Track oil changes, tire rotations &amp; more</p>
                 : alertCount > 0
-                  ? <p className="text-[10px] text-red-500 font-bold">
+                  ? <p className="text-[10px] text-red-300 font-bold">
                       {overdueCount > 0 && `${overdueCount} overdue`}
                       {overdueCount > 0 && dueSoonCount > 0 && ' · '}
                       {dueSoonCount > 0 && `${dueSoonCount} due soon`}
                     </p>
-                  : <p className="text-[10px] text-green-600 font-semibold">
+                  : <p className="text-[10px] text-green-300 font-semibold">
                       ✓ All {reminders.length} service{reminders.length !== 1 ? 's' : ''} up to date
                     </p>
             }
@@ -123,7 +123,7 @@ export default function MaintenanceReminders() {
             </span>
           )}
           <svg
-            className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+            className={`w-4 h-4 text-white/60 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
             viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
             aria-hidden="true"
           >
@@ -133,7 +133,7 @@ export default function MaintenanceReminders() {
       </button>
 
       {open && (
-        <div className="mt-2 bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+        <div className="border-t border-slate-100 bg-white overflow-hidden">
 
           {/* Header bar inside panel */}
           <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-slate-100">

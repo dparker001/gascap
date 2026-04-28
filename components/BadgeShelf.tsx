@@ -101,7 +101,8 @@ export default function BadgeShelf({ refreshKey, onNewBadges }: BadgeShelfProps)
   const [toast,   setToast]   = useState<BadgeDef[]>([]);
 
   const load = useCallback(async () => {
-    const res = await fetch('/api/activity');
+    const ld  = new Date().toLocaleDateString('en-CA');
+    const res = await fetch(`/api/activity?localDate=${ld}`);
     if (!res.ok) return;
     setData(await res.json() as ActivityData);
   }, []);
@@ -113,7 +114,7 @@ export default function BadgeShelf({ refreshKey, onNewBadges }: BadgeShelfProps)
   useEffect(() => {
     if (refreshKey === undefined || refreshKey === 0) return;
 
-    fetch('/api/activity')
+    fetch(`/api/activity?localDate=${new Date().toLocaleDateString('en-CA')}`)
       .then((r) => r.ok ? r.json() as Promise<ActivityData> : null)
       .then((fresh) => {
         if (!fresh) return;

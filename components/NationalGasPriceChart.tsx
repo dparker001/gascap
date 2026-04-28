@@ -141,34 +141,34 @@ export default function NationalGasPriceChart() {
       {/* Toggle header */}
       <button
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between py-3 px-4 bg-white
-                   hover:bg-slate-50 transition-colors"
+        className="w-full flex items-center justify-between py-2.5 px-4 bg-navy-700
+                   hover:bg-navy-800 transition-colors"
       >
-        <div className="flex items-center gap-2.5">
-          <span className="text-lg">🇺🇸</span>
+        <div className="flex items-center gap-2">
+          <span className="text-sm" aria-hidden="true">🇺🇸</span>
           <div className="text-left">
-            <p className="text-sm font-black text-slate-700">National Gas Price Trend</p>
+            <p className="text-xs font-black text-white uppercase tracking-wider">National Gas Price Trend</p>
             {latest
-              ? <p className="text-[10px] text-slate-400">
+              ? <p className="text-[10px] text-white/50">
                   US avg ${latest.price.toFixed(3)}/gal
                   {vsYearAgo != null && (
-                    <span className={vsYearAgo > 0 ? ' text-red-500' : ' text-green-500'}>
+                    <span className={vsYearAgo > 0 ? ' text-red-300' : ' text-green-300'}>
                       {' '}{vsYearAgo > 0 ? '▲' : '▼'} ${Math.abs(vsYearAgo).toFixed(3)} vs last year
                     </span>
                   )}
                 </p>
-              : <p className="text-[10px] text-slate-400">Weekly EIA national averages</p>
+              : <p className="text-[10px] text-white/50">Weekly EIA national averages</p>
             }
           </div>
         </div>
         <div className="flex items-center gap-2">
           {latest && (
-            <span className={`text-sm font-black ${vsYearAgo != null && vsYearAgo > 0 ? 'text-red-500' : 'text-green-600'}`}>
+            <span className="text-xs font-black text-white/80">
               ${latest.price.toFixed(3)}
             </span>
           )}
           <svg
-            className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+            className={`w-4 h-4 text-white/60 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
             viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
             aria-hidden="true"
           >

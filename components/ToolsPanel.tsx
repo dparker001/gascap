@@ -13,7 +13,9 @@ import VehicleSpendingBreakdown from './VehicleSpendingBreakdown';
 import VehicleComparison       from './VehicleComparison';
 import SmartFillUpOptimizer    from './SmartFillUpOptimizer';
 import MaintenanceReminders    from './MaintenanceReminders';
+import MpgInsightCard        from './MpgInsightCard';
 import ReferralCard           from './ReferralCard';
+import ReferralNudge         from './ReferralNudge';
 import ReviewWidget           from './ReviewWidget';
 import StationComparison      from './StationComparison';
 import MonthlyReportCard      from './MonthlyReportCard';
@@ -75,6 +77,23 @@ export default function ToolsPanel() {
     };
     window.addEventListener('gascap:switch-tools-tab', handler);
     return () => window.removeEventListener('gascap:switch-tools-tab', handler);
+  }, []);
+
+  // Hash-based deep link: gascap.app/#share opens the Share tab directly.
+  // Used by email CTAs so the referral card opens without a separate page.
+  useEffect(() => {
+    const openFromHash = () => {
+      const hash = window.location.hash.replace('#', '') as TabId;
+      const validIds = ['ai','trip','compare','log','charts','stats','service','share','review'] as const;
+      if (validIds.includes(hash as typeof validIds[number])) {
+        setActiveTab(hash);
+        // Clean up the hash without adding a history entry
+        history.replaceState(null, '', window.location.pathname + window.location.search);
+      }
+    };
+    openFromHash();        // run on mount
+    window.addEventListener('hashchange', openFromHash);
+    return () => window.removeEventListener('hashchange', openFromHash);
   }, []);
 
   const TABS: Tab[] = [
@@ -160,6 +179,9 @@ export default function ToolsPanel() {
         </div>
       </div>
 
+      {/* ── First fill-up referral nudge ──────────────────────────────── */}
+      {session && <ReferralNudge fillupCount={fillupCount} />}
+
       {/* ── Tab panels ──────────────────────────────────────────────────── */}
 
       {/* AI Advisor — available to all; Pro/Fleet unlocks open-ended input */}
@@ -197,6 +219,7 @@ export default function ToolsPanel() {
       <div role="tabpanel" id="tabpanel-charts" hidden={effectiveTab !== 'charts'}>
         {effectiveTab === 'charts' && session && isPro && (
           <div className="space-y-3">
+            <MpgInsightCard />
             <SmartFillUpOptimizer />
             <MonthlyReportCard />
             <MpgChart />

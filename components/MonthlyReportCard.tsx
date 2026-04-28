@@ -63,12 +63,18 @@ export default function MonthlyReportCard() {
 
   if (loading) {
     return (
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 space-y-2">
-        <div className="h-4 w-40 bg-slate-100 rounded animate-pulse" />
-        <div className="grid grid-cols-2 gap-2">
-          {[0, 1, 2, 3].map((i) => (
-            <div key={i} className="h-16 bg-slate-100 rounded-xl animate-pulse" />
-          ))}
+      <div className="rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+        <div className="flex items-center gap-2 py-2.5 px-4 bg-navy-700">
+          <span className="text-sm" aria-hidden="true">📅</span>
+          <p className="text-xs font-black text-white uppercase tracking-wider">Monthly Report Card</p>
+        </div>
+        <div className="bg-white p-4 space-y-2">
+          <div className="h-4 w-40 bg-slate-100 rounded animate-pulse" />
+          <div className="grid grid-cols-2 gap-2">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="h-16 bg-slate-100 rounded-xl animate-pulse" />
+            ))}
+          </div>
         </div>
       </div>
     );
@@ -76,8 +82,14 @@ export default function MonthlyReportCard() {
 
   if (error) {
     return (
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 text-center">
-        <p className="text-xs text-slate-400">Could not load report data.</p>
+      <div className="rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+        <div className="flex items-center gap-2 py-2.5 px-4 bg-navy-700">
+          <span className="text-sm" aria-hidden="true">📅</span>
+          <p className="text-xs font-black text-white uppercase tracking-wider">Monthly Report Card</p>
+        </div>
+        <div className="bg-white p-4 text-center">
+          <p className="text-xs text-slate-400">Could not load report data.</p>
+        </div>
       </div>
     );
   }
@@ -130,36 +142,39 @@ export default function MonthlyReportCard() {
   ];
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 space-y-3">
-      <div className="flex items-center gap-2">
-        <span className="text-base" aria-hidden="true">📅</span>
+    <div className="rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+      {/* Navy header strip */}
+      <div className="flex items-center gap-2 py-2.5 px-4 bg-navy-700">
+        <span className="text-sm" aria-hidden="true">📅</span>
         <div>
-          <h3 className="text-sm font-black text-slate-700 leading-tight">Monthly Report Card</h3>
-          <p className="text-[10px] text-slate-400">{monthName}</p>
+          <p className="text-xs font-black text-white uppercase tracking-wider">Monthly Report Card</p>
+          <p className="text-[10px] text-white/50">{monthName}</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
-        {rows.map(({ label, curVal, rawCur, rawPrev, higherIsBad }) => (
-          <div key={label} className="bg-slate-50 rounded-xl px-3 py-2.5">
-            <div className="flex items-center gap-1.5">
-              <p className="text-base font-black text-slate-700 leading-tight">{curVal}</p>
+      <div className="bg-white p-4 space-y-3">
+        <div className="grid grid-cols-2 gap-2">
+          {rows.map(({ label, curVal, rawCur, rawPrev, higherIsBad }) => (
+            <div key={label} className="bg-slate-50 rounded-xl px-3 py-2.5">
+              <div className="flex items-center gap-1.5">
+                <p className="text-base font-black text-slate-700 leading-tight">{curVal}</p>
+                {prev.fills > 0 && (
+                  <Arrow current={rawCur} prev={rawPrev} higherIsBad={higherIsBad} />
+                )}
+              </div>
+              <p className="text-[10px] font-bold text-slate-500 mt-0.5 leading-tight">{label}</p>
               {prev.fills > 0 && (
-                <Arrow current={rawCur} prev={rawPrev} higherIsBad={higherIsBad} />
+                <p className="text-[9px] text-slate-400 mt-0.5">
+                  vs {rawPrev > 0 ? (
+                    label === 'Total Spent' || label === 'Avg $/gal'
+                      ? `$${rawPrev.toFixed(label === 'Avg $/gal' ? 3 : 2)}`
+                      : rawPrev.toFixed(label === 'Gallons' ? 1 : 0)
+                  ) : '—'} last mo
+                </p>
               )}
             </div>
-            <p className="text-[10px] font-bold text-slate-500 mt-0.5 leading-tight">{label}</p>
-            {prev.fills > 0 && (
-              <p className="text-[9px] text-slate-400 mt-0.5">
-                vs {rawPrev > 0 ? (
-                  label === 'Total Spent' || label === 'Avg $/gal'
-                    ? `$${rawPrev.toFixed(label === 'Avg $/gal' ? 3 : 2)}`
-                    : rawPrev.toFixed(label === 'Gallons' ? 1 : 0)
-                ) : '—'} last mo
-              </p>
-            )}
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     </div>
   );

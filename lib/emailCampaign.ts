@@ -361,6 +361,24 @@ export function proUpsellEmailHtml(name: string, userId: string): string {
         </p>
       </div>
 
+      <!-- ── Referral callout ── -->
+      <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:12px;padding:18px 22px;margin:0 0 22px;">
+        <p style="margin:0 0 6px;font-size:14px;font-weight:900;color:#92400e;">
+          🔗 Earn Pro for free — refer a friend
+        </p>
+        <p style="margin:0 0 14px;font-size:13px;color:#78350f;line-height:1.6;">
+          Every GasCap™ account includes a personal referral link inside the
+          <strong>🔗 Share</strong> tab. Share it with a friend — the moment they
+          create their free GasCap™ account, we automatically bank
+          <strong>1 free Pro month</strong> for you. No purchase required on
+          either end. You can earn up to 10 free months total.
+        </p>
+        <a href="${BASE_URL}/#share" style="display:inline-block;background:#f59e0b;color:#fff;font-weight:900;
+           font-size:13px;padding:10px 22px;border-radius:10px;text-decoration:none;">
+          📤 Get My Referral Link →
+        </a>
+      </div>
+
       <p style="margin:0 0 16px;font-size:14px;color:#475569;line-height:1.65;">
         Twenty days still to go on your trial — use them. And if you love what you see,
         you can lock in Pro permanently starting at <strong>$4.99/month</strong> (or
@@ -386,7 +404,7 @@ export function proUpsellEmailHtml(name: string, userId: string): string {
 }
 
 export const proUpsellEmailText = (name: string) =>
-  `Hi ${name.split(' ')[0]}, you're 10 days into your GasCap™ Pro trial — 20 days left. Power-user features to try: AI trip planner, MPG drop detection, cost-per-mile tracking, unlimited badges, PDF reports. Open the app: ${BASE_URL}`;
+  `Hi ${name.split(' ')[0]}, you're 10 days into your GasCap™ Pro trial — 20 days left. Power-user features to try: AI trip planner, MPG drop detection, cost-per-mile tracking, unlimited badges, PDF reports. BONUS: Share your referral link (in the Share tab) and earn 1 free Pro month the moment a friend signs up — no purchase needed. Open the app: ${BASE_URL}`;
 
 // ── Email 4 — 9 Days Left + Annual Deal (Day 21) ──────────────────────────
 
@@ -426,6 +444,24 @@ export function annualDealEmailHtml(name: string, userId: string): string {
         </tr>
       </table>
 
+      <!-- ── Referral first-month-free callout ── -->
+      <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:12px;padding:18px 22px;margin:0 0 22px;">
+        <p style="margin:0 0 6px;font-size:14px;font-weight:900;color:#075985;">
+          💡 Want your first month of Pro for free?
+        </p>
+        <p style="margin:0 0 14px;font-size:13px;color:#0c4a6e;line-height:1.6;">
+          You still have 9 days on your trial. Share your personal referral link right now —
+          the moment a friend creates their free GasCap™ account, we bank
+          <strong>1 free Pro month</strong> for you. Upgrade after that and
+          your first month is <strong>on us</strong>. Find your link in the
+          <strong>🔗 Share</strong> tab.
+        </p>
+        <a href="${BASE_URL}/#share" style="display:inline-block;background:#0284c7;color:#fff;font-weight:900;
+           font-size:13px;padding:10px 22px;border-radius:10px;text-decoration:none;">
+          🔗 Share My Referral Link →
+        </a>
+      </div>
+
       <div style="text-align:center;padding:24px 20px;background:linear-gradient(135deg,#1e2d4a,#2d4a6e);border-radius:14px;margin-bottom:22px;">
         <p style="margin:0 0 4px;color:rgba(255,255,255,.7);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;">Best value — most popular</p>
         <p style="margin:0;color:#fff;font-size:36px;font-weight:900;line-height:1;">$49<span style="font-size:16px;font-weight:400;color:rgba(255,255,255,.6)">/year</span></p>
@@ -464,7 +500,7 @@ export function annualDealEmailHtml(name: string, userId: string): string {
 }
 
 export const annualDealEmailText = (name: string) =>
-  `Hi ${name.split(' ')[0]}, your free GasCap™ Pro trial ends in 9 days. Lock in Pro Annual at $49/yr (just $4.08/mo — 2 months free) or monthly at $4.99. Upgrade: ${BASE_URL}/upgrade`;
+  `Hi ${name.split(' ')[0]}, your free GasCap™ Pro trial ends in 9 days. Quick tip: share your referral link now (in the Share tab) — if a friend signs up, we bank 1 free Pro month for you, making your first month $0. Lock in Pro Annual at $49/yr (just $4.08/mo — 2 months free) or monthly at $4.99. Upgrade: ${BASE_URL}/upgrade`;
 
 // ── Email 5 — Final 48 Hours (Day 28) ─────────────────────────────────────
 

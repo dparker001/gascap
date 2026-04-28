@@ -83,31 +83,31 @@ export default function MonthlyBudgetGoal() {
   }
 
   return (
-    <div className="mb-2">
+    <div className="mb-2 rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
       {/* Toggle header */}
       <button
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between py-3 px-4 bg-white rounded-2xl
-                   border border-slate-100 shadow-sm hover:border-amber-200 transition-colors"
+        className="w-full flex items-center justify-between py-2.5 px-4 bg-navy-700
+                   hover:bg-navy-800 transition-colors"
       >
-        <div className="flex items-center gap-2.5">
-          <span className="text-lg">💰</span>
+        <div className="flex items-center gap-2">
+          <span className="text-sm" aria-hidden="true">💰</span>
           <div className="text-left">
-            <p className="text-sm font-black text-slate-700">Monthly Budget</p>
+            <p className="text-xs font-black text-white uppercase tracking-wider">Monthly Budget</p>
             {hasGoal && data ? (
-              <p className={`text-[10px] font-semibold ${colors.text}`}>
+              <p className="text-[10px] text-white/70 font-semibold">
                 ${data.spent.toFixed(2)} / ${data.limit!.toFixed(0)} · {data.daysLeft}d left
               </p>
             ) : (
-              <p className="text-[10px] text-slate-400">Set a monthly fuel spending goal</p>
+              <p className="text-[10px] text-white/50">Set a monthly fuel spending goal</p>
             )}
           </div>
         </div>
         <div className="flex items-center gap-3">
           {hasGoal && data && (
             <div className="flex flex-col items-end gap-1">
-              <span className={`text-sm font-black ${colors.text}`}>{pct}%</span>
-              <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+              <span className="text-sm font-black text-white/80">{pct}%</span>
+              <div className="w-16 h-1.5 bg-white/20 rounded-full overflow-hidden">
                 <div
                   className={`h-full rounded-full transition-all duration-500 ${colors.bar}`}
                   style={{ width: `${Math.min(100, pct)}%` }}
@@ -116,7 +116,7 @@ export default function MonthlyBudgetGoal() {
             </div>
           )}
           <svg
-            className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+            className={`w-4 h-4 text-white/60 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
             viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
             aria-hidden="true"
           >
@@ -126,7 +126,7 @@ export default function MonthlyBudgetGoal() {
       </button>
 
       {open && (
-        <div className="mt-2 bg-white rounded-2xl border border-slate-100 shadow-sm p-4 space-y-4">
+        <div className="border-t border-slate-100 bg-white p-4 space-y-4">
 
           {/* No goal set yet */}
           {!hasGoal && !editing && (

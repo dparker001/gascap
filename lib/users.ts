@@ -387,19 +387,33 @@ export async function getActiveBetaUsers(): Promise<StoredUser[]> {
 
 // ── Activity + badge tracking ───────────────────────────────────────────────
 
+/** Server-side fallback: current date in UTC (YYYY-MM-DD). */
 function todayStr(): string {
-  // Use Eastern Time (America/New_York) so the streak day boundary is
-  // midnight ET for US users — not 8 PM ET (midnight UTC).
-  return new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+  return new Date().toISOString().slice(0, 10);
 }
 
-export function calcStreak(activeDays: string[]): number {
+/**
+ * Validate a client-supplied localDate string.
+ * Must be YYYY-MM-DD and within ±2 calendar days of server UTC
+ * (covers UTC-12 through UTC+14 edge cases).
+ */
+function isValidLocalDate(localDate: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(localDate)) return false;
+  const serverUtc  = todayStr();
+  const diffMs     = new Date(localDate).getTime() - new Date(serverUtc).getTime();
+  const diffDays   = Math.abs(diffMs / 86_400_000);
+  return diffDays <= 2;
+}
+
+export function calcStreak(activeDays: string[], today?: string): number {
   if (activeDays.length === 0) return 0;
-  const sorted = [...activeDays].sort().reverse();
-  const today  = todayStr();
-  if (sorted[0] !== today) {
-    const yd = new Date(Date.now() - 86400_000);
-    const yesterday = yd.toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+  const sorted    = [...activeDays].sort().reverse();
+  const todayDate = today ?? todayStr();
+  if (sorted[0] !== todayDate) {
+    // Build yesterday string from todayDate (avoids DST drift)
+    const [y, m, d] = todayDate.split('-').map(Number);
+    const ydDate    = new Date(Date.UTC(y, m - 1, d - 1));
+    const yesterday = ydDate.toISOString().slice(0, 10);
     if (sorted[0] !== yesterday) return 1;
   }
   let streak = 1;
@@ -448,11 +462,16 @@ export interface ActivityResult {
   newMilestonesHit: number[];
 }
 
-export async function recordActivity(userId: string, event: ActivityEvent): Promise<ActivityResult> {
+export async function recordActivity(
+  userId:    string,
+  event:     ActivityEvent,
+  localDate?: string,
+): Promise<ActivityResult> {
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) return { newBadges: [], badges: [], streak: 0, newMilestonesHit: [] };
 
-  const today      = todayStr();
+  // Use the client's local date when provided and sane; fall back to server UTC.
+  const today      = (localDate && isValidLocalDate(localDate)) ? localDate : todayStr();
   const activeDays = user.activeDays ?? [];
   const badges     = user.badges     ?? [];
 
@@ -465,7 +484,7 @@ export async function recordActivity(userId: string, event: ActivityEvent): Prom
   if (event === 'location_lookup') locationLookups++;
 
   const updatedDays = activeDays.includes(today) ? activeDays : [...activeDays, today];
-  const streak      = calcStreak(updatedDays);
+  const streak      = calcStreak(updatedDays, today);
 
   const vehicleCount = (await getVehiclesForUser(userId)).length;
   const stats: UserStats = {
@@ -536,7 +555,8 @@ export async function findByReferralCode(code: string): Promise<StoredUser | und
 
 const MAX_REFERRAL_REWARDS = 10;
 const MAX_REDEEM_AT_ONCE   = 3;
-const CREDIT_EXPIRY_MONTHS = 6;
+// 12 months — generous window since credits can bank before the referrer upgrades
+const CREDIT_EXPIRY_MONTHS = 12;
 
 export function getActiveCredits(user: StoredUser): ReferralCredit[] {
   const now = new Date();

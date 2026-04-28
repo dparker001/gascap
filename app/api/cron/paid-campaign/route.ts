@@ -38,7 +38,14 @@ export async function GET(req: Request) {
   const results: Record<string, { sent: number; errors: number }> = {};
 
   for (const { step, pStep, minDays, label } of STEPS) {
-    const users = await getUsersPendingPaidCampaignStep(step, minDays);
+    let users;
+    try {
+      users = await getUsersPendingPaidCampaignStep(step, minDays);
+    } catch (err) {
+      console.error(`[paid-campaign] DB query failed for ${pStep}:`, err);
+      results[label] = { sent: 0, errors: 1 };
+      continue;
+    }
     let sent = 0, errors = 0;
 
     for (const user of users) {

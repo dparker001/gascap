@@ -49,15 +49,19 @@ export default function ReferralLeaderboard() {
     : 100;
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400">
-          Referral Milestones
-        </h3>
-        <span className="text-xs font-black text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
+    <div className="rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+      {/* Navy header strip */}
+      <div className="flex items-center justify-between py-2.5 px-4 bg-navy-700">
+        <div className="flex items-center gap-2">
+          <span className="text-sm" aria-hidden="true">🏆</span>
+          <p className="text-xs font-black text-white uppercase tracking-wider">Referral Milestones</p>
+        </div>
+        <span className="text-xs font-black text-amber-300 bg-white/10 px-2 py-0.5 rounded-full">
           {count} referral{count !== 1 ? 's' : ''}
         </span>
       </div>
+
+      <div className="bg-white p-4 space-y-4">
 
       {/* Progress to next milestone */}
       {nextMilestone && (
@@ -112,6 +116,7 @@ export default function ReferralLeaderboard() {
           🎁 You have {data.activeCredits} free month{data.activeCredits !== 1 ? 's' : ''} banked — redeem in billing settings
         </p>
       )}
+      </div>
     </div>
   );
 }

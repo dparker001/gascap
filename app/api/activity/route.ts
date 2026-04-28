@@ -10,13 +10,17 @@ import { BADGES, evaluateEarned, type BadgeDef } from '@/lib/badges';
 import { getVehiclesForUser }     from '@/lib/savedVehicles';
 
 // ── GET — current badge state ─────────────────────────────────────────────
-export async function GET() {
+export async function GET(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const userId = (session.user as { id?: string }).id ?? session.user.email ?? '';
   const [user, vehicles] = await Promise.all([findById(userId), getVehiclesForUser(userId)]);
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
+
+  // Accept ?localDate=YYYY-MM-DD so calcStreak uses the viewer's local day boundary
+  const { searchParams } = new URL(req.url);
+  const localDate = searchParams.get('localDate') ?? undefined;
 
   const vehicleCount = vehicles.length;
   const earned = user.badges ?? [];
@@ -29,7 +33,7 @@ export async function GET() {
 
   return NextResponse.json({
     badges:  earned,
-    streak:  calcStreak(user.activeDays ?? []),
+    streak:  calcStreak(user.activeDays ?? [], localDate),
     stats: {
       calcCount:       user.calcCount       ?? 0,
       budgetCalcCount: user.budgetCalcCount ?? 0,
@@ -55,14 +59,16 @@ export async function POST(req: Request) {
   const userId = (session.user as { id?: string }).id ?? session.user.email ?? '';
 
   let event: ActivityEvent = 'visit';
+  let localDate: string | undefined;
   try {
-    const body = await req.json() as { event?: string };
+    const body = await req.json() as { event?: string; localDate?: string };
     if (['calc', 'budget_calc', 'location_lookup', 'visit'].includes(body.event ?? '')) {
       event = body.event as ActivityEvent;
     }
+    if (typeof body.localDate === 'string') localDate = body.localDate;
   } catch { /* empty body is fine */ }
 
-  const result = await recordActivity(userId, event);
+  const result = await recordActivity(userId, event, localDate);
 
   // Resolve full badge objects for any newly earned badges
   const newBadgeDefs = result.newBadges.map((id) => BADGES.find((b) => b.id === id)).filter((b): b is BadgeDef => b !== undefined);

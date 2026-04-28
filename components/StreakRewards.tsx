@@ -32,7 +32,7 @@ export default function StreakRewards() {
 
   useEffect(() => {
     if (!session) return;
-    fetch('/api/activity', { credentials: 'include' })
+    fetch(`/api/activity?localDate=${new Date().toLocaleDateString('en-CA')}`, { credentials: 'include' })
       .then((r) => r.ok ? r.json() as Promise<ActivityResp> : Promise.reject())
       .then((d) => {
         setStreak(d.streak ?? 0);
@@ -55,23 +55,26 @@ export default function StreakRewards() {
   const allEarned = !nextMilestone;
 
   return (
-    <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-4 space-y-4">
+    <div className="rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
 
-      {/* Header row */}
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-black text-navy-700">⚡ Streak Rewards</p>
-          <p className="text-[10px] text-slate-400 mt-0.5">
-            Maintain your daily streak to earn free Pro months
-          </p>
+      {/* Navy header strip */}
+      <div className="flex items-center justify-between py-2.5 px-4 bg-navy-700">
+        <div className="flex items-center gap-2">
+          <span className="text-sm" aria-hidden="true">⚡</span>
+          <div>
+            <p className="text-xs font-black text-white uppercase tracking-wider">Streak Rewards</p>
+            <p className="text-[10px] text-white/50">Maintain your daily streak to earn free Pro months</p>
+          </div>
         </div>
-        <div className="bg-amber-500 rounded-xl px-3 py-1.5 text-center min-w-[52px]">
+        <div className="bg-amber-500 rounded-xl px-3 py-1.5 text-center min-w-[52px] flex-shrink-0">
           <p className="text-xl font-black text-white leading-none">{streak}</p>
           <p className="text-[9px] text-white/70 font-bold uppercase tracking-wide mt-0.5">
             {streak === 1 ? 'day' : 'days'}
           </p>
         </div>
       </div>
+
+      <div className="bg-white p-4 space-y-4">
 
       {/* Progress bar to next milestone */}
       {nextMilestone && (
@@ -183,6 +186,7 @@ export default function StreakRewards() {
           💡 Open GasCap every single day to grow your streak. Missing a day resets it to zero!
         </p>
       )}
+      </div>
     </div>
   );
 }

@@ -130,11 +130,9 @@ export default function MpgInsightCard() {
   }, [load]);
 
   function goToCharts() {
-    document.getElementById('gascap-tools')
+    // Card lives inside the Charts tab — just scroll down to the full chart
+    document.getElementById('tabpanel-charts')
       ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    window.dispatchEvent(
-      new CustomEvent('gascap:switch-tools-tab', { detail: { tab: 'charts' } }),
-    );
   }
 
   // Gates
@@ -185,7 +183,7 @@ export default function MpgInsightCard() {
             </p>
           </div>
           <span className="text-[10px] text-white/40 group-hover:text-white/60 transition-colors">
-            Full charts →
+            See full chart ↓
           </span>
         </div>
 
