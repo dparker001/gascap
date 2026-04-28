@@ -66,7 +66,7 @@ export default function Header() {
             <img
               src="/gascap-icon-raw.png"
               alt=""
-              className="h-10 w-auto object-contain drop-shadow-sm"
+              className="h-12 w-auto object-contain drop-shadow-sm"
             />
             <span className="text-white font-black text-2xl leading-none tracking-tight">
               GasCap<sup className="text-sm font-bold align-super">™</sup>
