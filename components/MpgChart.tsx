@@ -93,6 +93,7 @@ export default function MpgChart() {
   }
 
   const hasMpg    = points.length >= 2;
+  const hasOneMpg = points.length === 1;
   const avgMpg    = data?.stats.avgMpg;
   const latestMpg = points.length > 0 ? points[points.length - 1].mpg : null;
 
@@ -118,12 +119,12 @@ export default function MpgChart() {
   const ticks = hasMpg ? [minMpg, Math.round((minMpg + maxMpg) / 2), maxMpg] : [0, 25, 50];
 
   return (
-    <div className="mt-4">
+    <div className="mt-4 rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
       {/* Toggle header */}
       <button
         onClick={() => { setOpen((v) => !v); }}
-        className="w-full flex items-center justify-between py-3 px-4 bg-white rounded-2xl
-                   border border-slate-100 shadow-sm hover:border-amber-200 transition-colors"
+        className="w-full flex items-center justify-between py-3 px-4 bg-white
+                   hover:bg-slate-50 transition-colors"
       >
         <div className="flex items-center gap-2.5">
           <span className="text-lg">📈</span>
@@ -150,7 +151,7 @@ export default function MpgChart() {
       </button>
 
       {open && (
-        <div className="mt-2 bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
+        <div className="border-t border-slate-100 bg-white p-4">
 
           {loading && (
             <p className="text-xs text-slate-400 text-center py-6">Loading…</p>
@@ -164,7 +165,15 @@ export default function MpgChart() {
             return (
               <div className="text-center py-6">
                 <p className="text-3xl mb-2">🛣️</p>
-                {needsOdo ? (
+                {hasOneMpg ? (
+                  <>
+                    <p className="text-sm font-bold text-slate-600">Almost there!</p>
+                    <p className="text-xs text-slate-400 mt-1 leading-relaxed max-w-[240px] mx-auto">
+                      Your first MPG reading is <strong>{points[0].mpg} mpg</strong>. Log one more
+                      fill-up with an odometer reading to see your trend graph.
+                    </p>
+                  </>
+                ) : needsOdo ? (
                   <>
                     <p className="text-sm font-bold text-slate-600">Add odometer readings</p>
                     <p className="text-xs text-slate-400 mt-1 leading-relaxed max-w-[240px] mx-auto">
@@ -185,7 +194,7 @@ export default function MpgChart() {
                   <>
                     <p className="text-sm font-bold text-slate-600">No MPG data yet</p>
                     <p className="text-xs text-slate-400 mt-1 leading-relaxed max-w-[220px] mx-auto">
-                      Log at least 2 fill-ups with odometer readings to start tracking fuel efficiency.
+                      Log fill-ups with odometer readings to start tracking fuel efficiency.
                     </p>
                   </>
                 )}

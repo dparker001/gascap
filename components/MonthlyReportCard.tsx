@@ -134,8 +134,8 @@ export default function MonthlyReportCard() {
       <div className="flex items-center gap-2">
         <span className="text-base" aria-hidden="true">📅</span>
         <div>
-          <h3 className="text-sm font-black text-slate-700 leading-tight">{monthName}</h3>
-          <p className="text-[10px] text-slate-400">Monthly Report Card</p>
+          <h3 className="text-sm font-black text-slate-700 leading-tight">Monthly Report Card</h3>
+          <p className="text-[10px] text-slate-400">{monthName}</p>
         </div>
       </div>
 

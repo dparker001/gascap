@@ -137,12 +137,12 @@ export default function NationalGasPriceChart() {
     : [];
 
   return (
-    <div className="mt-4">
+    <div className="mt-4 rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
       {/* Toggle header */}
       <button
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between py-3 px-4 bg-white rounded-2xl
-                   border border-slate-100 shadow-sm hover:border-amber-200 transition-colors"
+        className="w-full flex items-center justify-between py-3 px-4 bg-white
+                   hover:bg-slate-50 transition-colors"
       >
         <div className="flex items-center gap-2.5">
           <span className="text-lg">🇺🇸</span>
@@ -178,7 +178,7 @@ export default function NationalGasPriceChart() {
       </button>
 
       {open && (
-        <div className="mt-2 bg-white rounded-2xl border border-slate-100 shadow-sm p-4 space-y-3">
+        <div className="border-t border-slate-100 bg-white p-4 space-y-3">
 
           {/* Time range toggle */}
           <div className="flex gap-1.5 bg-slate-100 rounded-xl p-1">
