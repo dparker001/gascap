@@ -10,7 +10,7 @@ import { useEffect, useState } from 'react';
 import { useSession }          from 'next-auth/react';
 
 const STORAGE_KEY = 'gascap_entry_toast';
-const SHOW_MS     = 5000;   // visible duration
+const SHOW_MS     = 9000;   // visible duration
 const EXIT_MS     = 350;    // must match .animate-toast-exit duration
 
 const MONTH_NAMES = [

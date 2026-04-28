@@ -12,7 +12,7 @@ import OneSignalProvider     from '@/components/OneSignalProvider';
 import GiveawayEntryToast    from '@/components/GiveawayEntryToast';
 import './globals.css';
 
-const APP_URL = process.env.NEXTAUTH_URL ?? 'https://www.gascap.app';
+const APP_URL = 'https://www.gascap.app';
 
 export const metadata: Metadata = {
   title: 'GasCap™ — Free Gas Calculator | Know Before You Pull Up',
@@ -22,6 +22,9 @@ export const metadata: Metadata = {
   manifest: '/manifest.json',
   icons: { icon: '/favicon.png', apple: '/apple-touch-icon.png' },
   appleWebApp: { capable: true, statusBarStyle: 'default', title: 'GasCap™' },
+  alternates: {
+    canonical: APP_URL,
+  },
   keywords: [
     'gas calculator',
     'fuel cost calculator',

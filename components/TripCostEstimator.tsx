@@ -175,10 +175,24 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
   const [vehicleMode,       setVehicleMode]       = useState<VehicleMode>('garage');
   const [rentalType,        setRentalType]        = useState<string>('');
 
+  // When embedded (tab panel), eagerly load garage so vehicles are ready without a button click
+  useEffect(() => {
+    if (embedded && session) loadGarage();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [embedded, session]);
+
   // Once vehicles load, default to garage if there are vehicles, otherwise rental
   useEffect(() => {
     if (!session) setVehicleMode('rental');
   }, [session]);
+
+  // Auto-select first garage vehicle when vehicles load and nothing is selected yet
+  useEffect(() => {
+    if (vehicles.length > 0 && !selectedVehicleId && vehicleMode === 'garage') {
+      loadVehicle(vehicles[0]);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vehicles]);
 
   function loadVehicle(v: Vehicle) {
     const { mpg: resolvedMpg, label } = resolveMpg(v, avgMpgByVehicleId);
