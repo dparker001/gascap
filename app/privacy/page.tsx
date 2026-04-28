@@ -13,7 +13,7 @@ export default function PrivacyPage() {
 
       <div className="max-w-2xl mx-auto px-5 py-10 pb-20">
         <h1 className="text-3xl font-black text-navy-700 mb-2">Privacy Policy</h1>
-        <p className="text-sm text-slate-400 mb-8">Last updated: April 3, 2026 (rev. 2)</p>
+        <p className="text-sm text-slate-400 mb-8">Last updated: April 28, 2026 (rev. 3)</p>
 
         <div className="space-y-8 text-slate-700 text-sm leading-relaxed">
           <section>
@@ -70,8 +70,15 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-black text-navy-700 mb-2">6. Referral Program &amp; Leaderboard</h2>
-            <p>When you participate in the referral program, your referral code is associated with your account. We track which users signed up using your code in order to credit your account with referral rewards. Your referral count and milestone badges may be displayed within the app. No sensitive personal data is shared with referred users.</p>
+            <h2 className="text-lg font-black text-navy-700 mb-2">6. Ambassador Program &amp; Referral Tracking</h2>
+            <p>When you participate in the Ambassador Program, your unique referral code is associated with your account. We track which users signed up and subsequently activated a paid subscription using your code in order to credit your account with Ambassador Program rewards. The following data is stored with your account:</p>
+            <ul className="list-disc pl-5 space-y-1 mt-2">
+              <li>Your cumulative paying referral count</li>
+              <li>Your current Ambassador tier (Supporter, Ambassador, or Elite Ambassador)</li>
+              <li>Tier-related rewards including complimentary Pro access status and drawing entry multiplier</li>
+              <li>Month-end referral count snapshots used to determine tier eligibility</li>
+            </ul>
+            <p className="mt-2">Your referral count and Ambassador tier may be displayed within the app. No sensitive personal data is shared with referred users.</p>
           </section>
 
           <section>

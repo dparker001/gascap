@@ -34,10 +34,11 @@ export default function SweepstakesRulesPage() {
         <div className="bg-[#1EB68F]/10 border border-[#1EB68F]/30 rounded-2xl p-5">
           <p className="text-sm text-slate-700 leading-relaxed">
             <strong>Plain-English Summary:</strong> Every month, GasCap™ gives away a {PRIZE_VALUE} gas card to one
-            lucky Pro or Fleet member. The more days you use the app, the more entries you earn —
-            up to one entry per day. Keep a login streak going for bonus entries: a 7-day streak
-            adds 2, a 30-day streak adds 5, and a 90-day streak adds 10 bonus entries. No purchase
-            is required to enter.
+            lucky Pro or Fleet member. The more days you use the app, the more entries you earn.
+            Standard users earn 1 entry per day; Ambassador Program members earn 2–5 entries per day
+            depending on their tier (based on cumulative paying referrals). Keep a login streak going
+            for additional bonus entries. Ambassador tier holders are always eligible to win — no
+            consecutive-month restrictions apply to them. No purchase is required to enter.
           </p>
         </div>
 
@@ -69,6 +70,15 @@ export default function SweepstakesRulesPage() {
               will be conducted from the remaining eligible entries until an eligible winner is
               selected.
             </p>
+            <p className="text-sm text-slate-600 leading-relaxed">
+              <strong>Ambassador Program Exception:</strong> Entrants who have reached a GasCap™
+              Ambassador Program tier (Supporter, Ambassador, or Elite Ambassador) as of the last day
+              of the preceding Entry Month are exempt from the Winner Frequency Restriction set forth
+              above. Such entrants are eligible to win in any Entry Month, including consecutive
+              calendar months and multiple times per calendar quarter. Tier status is determined by
+              cumulative paying referral count as of the last day of the month immediately preceding
+              the Entry Month.
+            </p>
           </section>
 
           <section className="p-5 space-y-2">
@@ -85,10 +95,23 @@ export default function SweepstakesRulesPage() {
             <div className="space-y-3 text-sm text-slate-600 leading-relaxed">
               <p>
                 <strong>Method A — App Use (paid plans):</strong> GasCap™ Pro and Fleet subscribers
-                automatically earn one (1) entry for each calendar day they use the app during the
+                automatically earn entries for each calendar day they use the app during the
                 Entry Month. &ldquo;Use&rdquo; means opening the app and performing any action (fuel calculation,
-                gas price lookup, vehicle management, or account login). Maximum of one entry per user
-                per calendar day; maximum of 31 base entries per Entry Month.
+                gas price lookup, vehicle management, or account login). The number of entries earned
+                per active day is determined by the subscriber&apos;s Ambassador Program tier as of the
+                last day of the month immediately preceding the Entry Month, as follows:
+              </p>
+              <ul className="list-disc pl-5 space-y-1 text-sm text-slate-600">
+                <li><strong>Standard (0–4 cumulative paying referrals):</strong> one (1) entry per active day; maximum 31 base entries per Entry Month.</li>
+                <li><strong>Supporter tier (5–14 cumulative paying referrals):</strong> two (2) entries per active day; maximum 62 base entries per Entry Month.</li>
+                <li><strong>Ambassador tier (15–29 cumulative paying referrals):</strong> three (3) entries per active day; maximum 93 base entries per Entry Month.</li>
+                <li><strong>Elite Ambassador tier (30 or more cumulative paying referrals):</strong> five (5) entries per active day; maximum 155 base entries per Entry Month.</li>
+              </ul>
+              <p>
+                &ldquo;Cumulative paying referrals&rdquo; means the total number of individuals who signed up using
+                the subscriber&apos;s unique referral link and subsequently activated a paid GasCap™
+                subscription at any point in time, regardless of whether those referred users remain
+                active subscribers.
               </p>
               <p>
                 <strong>Streak Bonus Entries (Method A subscribers only):</strong> Subscribers who
@@ -97,7 +120,7 @@ export default function SweepstakesRulesPage() {
                 as of the last day of the Entry Month: 7–29 consecutive days = 2 bonus entries;
                 30–89 consecutive days = 5 bonus entries; 90 or more consecutive days = 10 bonus
                 entries. Streak bonus entries require at least one (1) base active-day entry to be
-                awarded. Maximum combined entries per subscriber per Entry Month: 41.
+                awarded. Streak bonus entries are fixed and are not multiplied by Ambassador tier.
               </p>
               <p>
                 <strong>Method B — No Purchase Necessary (free online entry):</strong> Any eligible

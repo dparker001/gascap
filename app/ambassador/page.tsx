@@ -23,7 +23,7 @@ const STEPS = [
   {
     n:     '3',
     title: 'Earn as they pay',
-    body:  'Every person who signs up with your link and subscribes to Pro earns you a reward. Free sign-ups that never pay don\'t count — only real paying customers.',
+    body:  'Every person who signs up with your link and subscribes to Pro counts as a paying referral. Free sign-ups that never pay don\'t count. Referrals are tallied at month-end — once you cross a tier threshold, that milestone is yours permanently.',
   },
 ];
 
@@ -32,8 +32,9 @@ const TIERS = [
     icon:      '🤝',
     label:     'Supporter',
     threshold: 5,
+    entries:   2,
     reward:    '1 free Pro month per paying referral',
-    sub:       'Earn 1 free month of Pro for every person you refer who becomes a paying subscriber. Credited automatically — no action needed.',
+    sub:       'Earn 1 free month of Pro for every person you refer who becomes a paying subscriber. Credited automatically at each month-end — no action needed.',
     color:     'bg-slate-50 border-slate-200',
     title:     'text-slate-700',
     badge:     'bg-slate-200 text-slate-600',
@@ -41,9 +42,10 @@ const TIERS = [
   {
     icon:      '🏅',
     label:     'Ambassador',
-    threshold: 14,
+    threshold: 15,
+    entries:   3,
     reward:    'Free GasCap™ Pro for life',
-    sub:       'Reach 14 cumulative paying referrals and your Pro subscription is on us — permanently. This milestone is locked in and never revoked.',
+    sub:       'Reach 15 cumulative paying referrals and your Pro subscription is on us — permanently. This milestone is locked in and never revoked.',
     color:     'bg-navy-50 border-navy-200',
     title:     'text-navy-700',
     badge:     'bg-navy-700 text-white',
@@ -51,7 +53,8 @@ const TIERS = [
   {
     icon:      '🏆',
     label:     'Elite Ambassador',
-    threshold: 25,
+    threshold: 30,
+    entries:   5,
     reward:    'Pro for life + personal recognition',
     sub:       'Named on the Top Ambassadors list in the app, early access to new features, and a personal thank-you from Don.',
     color:     'bg-amber-50 border-amber-200',
@@ -83,7 +86,7 @@ export default function AmbassadorPage() {
 
   // Determine current tier from referral count
   const count = referral?.referralCount ?? 0;
-  const currentTier = count >= 25 ? 2 : count >= 14 ? 1 : count >= 5 ? 0 : null;
+  const currentTier = count >= 30 ? 2 : count >= 15 ? 1 : count >= 5 ? 0 : null;
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -123,8 +126,8 @@ export default function AmbassadorPage() {
                 </div>
                 <p className={`text-xs mt-0.5 ${TIERS[currentTier].title} opacity-70`}>
                   {count} paying referral{count !== 1 ? 's' : ''} so far
-                  {currentTier === 0 && ` — ${14 - count} more to unlock Ambassador`}
-                  {currentTier === 1 && ` — ${25 - count} more to reach Elite`}
+                  {currentTier === 0 && ` — ${15 - count} more to unlock Ambassador`}
+                  {currentTier === 1 && ` — ${30 - count} more to reach Elite`}
                   {currentTier === 2 && ' — Elite Ambassador 🎉'}
                 </p>
               </div>
@@ -207,13 +210,17 @@ export default function AmbassadorPage() {
                   <p className={`text-[10px] font-bold opacity-60 ${t.title}`}>{t.threshold}+ referrals</p>
                 </div>
                 <p className={`text-xs font-bold ${t.title}`}>{t.reward}</p>
+                <p className={`text-[11px] font-bold ${t.title} opacity-80`}>
+                  🎟️ {t.entries}× daily drawing entries · always eligible to win
+                </p>
                 <p className={`text-[11px] opacity-60 ${t.title} leading-relaxed`}>{t.sub}</p>
               </div>
             ))}
 
-            <div className="bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 text-[11px] text-slate-500 leading-relaxed">
-              💡 <strong>Only paying conversions count.</strong> Free trial sign-ups that never subscribe don&apos;t
-              qualify — this keeps the program sustainable and fraud-proof.
+            <div className="bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 text-[11px] text-slate-500 leading-relaxed space-y-1.5">
+              <p>💡 <strong>Only paying conversions count.</strong> Free trial sign-ups that never subscribe don&apos;t
+              qualify — this keeps the program sustainable and fraud-proof.</p>
+              <p>📅 <strong>Month-end snapshots.</strong> Your cumulative referral count is tallied on the last day of each month. Crossing a new tier takes effect the following month for drawing entry purposes. Milestones are permanent once reached.</p>
             </div>
           </div>
         </div>

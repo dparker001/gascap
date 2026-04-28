@@ -117,7 +117,7 @@ const NUDGES: NudgeDef[] = [
     match:      (d) => d.fillupCount >= 3 && d.daysSinceCreation >= 10,
     icon:       '🏆',
     headline:   'Become a GasCap™ Ambassador',
-    body:       () => `You're an active user — want to earn monthly gas cards by spreading the word? Join the Ambassador Program.`,
+    body:       () => `You're an active user — share your link to earn free Pro months, unlock lifetime Pro access, and get bonus drawing entries every day.`,
     cta:        { label: 'Learn more →', href: '/ambassador' },
     color: {
       bg:      'bg-navy-50',
