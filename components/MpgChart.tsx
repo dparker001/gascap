@@ -92,9 +92,9 @@ export default function MpgChart() {
     }
   }
 
-  const hasMpg    = points.length >= 2;
-  const hasOneMpg = points.length === 1;
-  const avgMpg    = data?.stats.avgMpg;
+  const hasMpg      = points.length >= 1;   // enough to render chart
+  const hasChartLine = points.length >= 2;  // enough to draw line + area
+  const avgMpg      = data?.stats.avgMpg;
   const latestMpg = points.length > 0 ? points[points.length - 1].mpg : null;
 
   // ── Chart coordinate helpers ───────────────────────────────────────────────
@@ -111,7 +111,7 @@ export default function MpgChart() {
 
   const svgPts    = points.map((p, i) => toSvg(i, p.mpg));
   const linePath  = buildSmoothPath(svgPts);
-  const areaPath  = hasMpg
+  const areaPath  = hasChartLine
     ? linePath + ` L${svgPts[svgPts.length - 1].x.toFixed(1)},${(PAD.top + IH).toFixed(1)} L${svgPts[0].x.toFixed(1)},${(PAD.top + IH).toFixed(1)} Z`
     : '';
 
@@ -131,7 +131,7 @@ export default function MpgChart() {
           <div className="text-left">
             <p className="text-sm font-black text-slate-700">MPG Trend</p>
             {avgMpg != null
-              ? <p className="text-[10px] text-slate-400">Avg {avgMpg} mpg · {points.length} readings</p>
+              ? <p className="text-[10px] text-slate-400">Avg {avgMpg} mpg · {points.length} reading{points.length !== 1 ? 's' : ''}</p>
               : <p className="text-[10px] text-slate-400">Add odometer readings to unlock</p>
             }
           </div>
@@ -161,19 +161,12 @@ export default function MpgChart() {
             const fillupCount  = data?.fillups?.length ?? 0;
             const withOdo      = data?.fillups?.filter((f) => f.odometerReading != null).length ?? 0;
             const needsOdo     = fillupCount > 0 && withOdo === 0;
-            const needsMoreOdo = fillupCount > 0 && withOdo === 1;
+            const needsMoreOdo = withOdo === 1;
+            const badOdometer  = withOdo >= 2; // has pairs but computed no MPG → non-increasing values
             return (
               <div className="text-center py-6">
                 <p className="text-3xl mb-2">🛣️</p>
-                {hasOneMpg ? (
-                  <>
-                    <p className="text-sm font-bold text-slate-600">Almost there!</p>
-                    <p className="text-xs text-slate-400 mt-1 leading-relaxed max-w-[240px] mx-auto">
-                      Your first MPG reading is <strong>{points[0].mpg} mpg</strong>. Log one more
-                      fill-up with an odometer reading to see your trend graph.
-                    </p>
-                  </>
-                ) : needsOdo ? (
+                {needsOdo ? (
                   <>
                     <p className="text-sm font-bold text-slate-600">Add odometer readings</p>
                     <p className="text-xs text-slate-400 mt-1 leading-relaxed max-w-[240px] mx-auto">
@@ -190,11 +183,20 @@ export default function MpgChart() {
                       a mileage reading and your MPG trend will appear here.
                     </p>
                   </>
+                ) : badOdometer ? (
+                  <>
+                    <p className="text-sm font-bold text-slate-600">Check your odometer readings</p>
+                    <p className="text-xs text-slate-400 mt-1 leading-relaxed max-w-[240px] mx-auto">
+                      You have <strong>{withOdo} odometer readings</strong> but MPG couldn&apos;t be
+                      calculated. Make sure each fill-up&apos;s odometer is <strong>higher</strong> than
+                      the previous one.
+                    </p>
+                  </>
                 ) : (
                   <>
-                    <p className="text-sm font-bold text-slate-600">No MPG data yet</p>
+                    <p className="text-sm font-bold text-slate-600">No fill-ups yet</p>
                     <p className="text-xs text-slate-400 mt-1 leading-relaxed max-w-[220px] mx-auto">
-                      Log fill-ups with odometer readings to start tracking fuel efficiency.
+                      Log your first fill-up with an odometer reading to start tracking fuel efficiency.
                     </p>
                   </>
                 )}
@@ -347,9 +349,15 @@ export default function MpgChart() {
                 </svg>
               </div>
 
-              <p className="text-[9px] text-slate-300 text-center mt-2">
-                Hover over a point to see details · Add odometer readings at each fill-up to keep this chart growing
-              </p>
+              {hasChartLine ? (
+                <p className="text-[9px] text-slate-300 text-center mt-2">
+                  Hover over a point to see details · Add odometer readings at each fill-up to keep this chart growing
+                </p>
+              ) : (
+                <p className="text-[9px] text-slate-400 text-center mt-2">
+                  First MPG logged! Log one more fill-up with an odometer reading to see your trend line.
+                </p>
+              )}
             </>
           )}
         </div>
