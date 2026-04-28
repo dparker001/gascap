@@ -47,7 +47,7 @@ export const metadata: Metadata = {
     description: 'Calculate exactly how much fuel you need and what it will cost — before you pull up to the pump. Free, works offline, no account needed.',
     images: [
       {
-        url:    '/og-image.png',
+        url:    '/og-image.png?v=2',
         width:  1200,
         height: 630,
         alt:    'GasCap™ — Know Before You Go',
@@ -60,7 +60,7 @@ export const metadata: Metadata = {
     card:        'summary_large_image',
     title:       'GasCap™ — Know Before You Go',
     description: 'Calculate exactly how much fuel you need before you pull up to the pump. Free gas calculator + live local prices.',
-    images:      ['/og-image.png'],
+    images:      ['/og-image.png?v=2'],
   },
 };
 
