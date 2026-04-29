@@ -16,6 +16,8 @@ export default function PrivacyPage() {
         <p className="text-xs text-slate-500 mb-1">
           <strong>Gas Capacity LLC</strong> · 16260 Bristol Lake Circle, Orlando, FL 32828 ·{' '}
           <a href="mailto:admin@gascap.app" className="text-amber-600 hover:underline">admin@gascap.app</a>
+          {' · '}
+          <a href="tel:+13215131321" className="text-amber-600 hover:underline">(321) 513-1321</a>
         </p>
         <p className="text-sm text-slate-400 mb-8">Last updated: April 29, 2026 (rev. 4)</p>
 

@@ -705,6 +705,10 @@ export default function Home() {
             <a href="mailto:admin@gascap.app" className="hover:text-brand-orange transition-colors">
               admin@gascap.app
             </a>
+            {' · '}
+            <a href="tel:+13215131321" className="hover:text-brand-orange transition-colors">
+              (321) 513-1321
+            </a>
           </p>
         </div>
       </footer>

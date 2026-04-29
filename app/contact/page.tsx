@@ -8,8 +8,7 @@ import StaticPageHeader from '@/components/StaticPageHeader';
 const LEGAL_NAME    = 'Gas Capacity LLC';
 const BUSINESS_EMAIL = 'admin@gascap.app';
 const BUSINESS_ADDR  = '16260 Bristol Lake Circle, Orlando, FL 32828';
-// TODO: Replace with your GHL-provisioned SMS phone number before A2P submission
-const BUSINESS_PHONE = '';   // e.g. '(407) 555-0100'
+const BUSINESS_PHONE = '(321) 513-1321';
 
 const YEAR = new Date().getFullYear();
 
