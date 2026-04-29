@@ -52,6 +52,7 @@ model User {
   // Profile
   phone                    String?
   displayName              String?
+  smsOptIn                 Boolean   @default(false)
 
   // Gas price alerts
   priceAlertThreshold      Float?

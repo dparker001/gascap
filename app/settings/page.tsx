@@ -54,6 +54,7 @@ export default function SettingsPage() {
   }, []);
   const [displayName,    setDisplayName]    = useState('');
   const [phone,          setPhone]          = useState('');
+  const [smsOptIn,       setSmsOptIn]       = useState(false);
   const [saved,          setSaved]          = useState(false);
   const [saving,         setSaving]         = useState(false);
   const [portalLoading,  setPortalLoading]  = useState(false);
@@ -92,9 +93,10 @@ export default function SettingsPage() {
     // blank on every visit and so saving never accidentally wipes saved data.
     fetch('/api/user/profile')
       .then((r) => r.json())
-      .then((d: { displayName?: string; phone?: string }) => {
-        if (d.displayName) setDisplayName(d.displayName);
-        if (d.phone)       setPhone(d.phone);
+      .then((d: { displayName?: string; phone?: string; smsOptIn?: boolean }) => {
+        if (d.displayName)        setDisplayName(d.displayName);
+        if (d.phone)              setPhone(d.phone);
+        if (d.smsOptIn !== undefined) setSmsOptIn(d.smsOptIn);
       })
       .catch(() => {});
   }, [session]);
@@ -173,7 +175,7 @@ export default function SettingsPage() {
       await fetch('/api/user/profile', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ displayName, phone }),
+        body: JSON.stringify({ displayName, phone, smsOptIn }),
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
@@ -274,13 +276,41 @@ export default function SettingsPage() {
               className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800
                          focus:outline-none focus:ring-2 focus:ring-amber-400"
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+              onChange={(e) => { setPhone(e.target.value); if (!e.target.value.trim()) setSmsOptIn(false); }}
               placeholder="+1 (555) 000-0000"
               maxLength={20}
             />
-            <p className="text-[11px] text-slate-400 mt-1">
-              📱 Add your number to receive gas price alerts by text. Standard messaging rates may apply.
-            </p>
+          </div>
+
+          {/* SMS opt-in */}
+          <div className={`rounded-xl border p-3.5 transition-all ${smsOptIn ? 'border-teal-300 bg-teal-50' : 'border-slate-200 bg-slate-50'}`}>
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                className="mt-0.5 h-4 w-4 rounded border-slate-300 accent-teal-600 cursor-pointer flex-shrink-0"
+                checked={smsOptIn}
+                disabled={!phone.trim()}
+                onChange={(e) => setSmsOptIn(e.target.checked)}
+              />
+              <div>
+                <p className={`text-sm font-semibold ${smsOptIn ? 'text-teal-800' : 'text-slate-600'}`}>
+                  📱 Receive SMS text messages from GasCap™
+                </p>
+                <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
+                  Get gas price alerts, fill-up reminders, and tips by text. Message &amp; data rates may apply.
+                  Reply STOP at any time to opt out.
+                  {!phone.trim() && (
+                    <span className="block mt-0.5 text-amber-600 font-medium">Add a phone number above to enable SMS.</span>
+                  )}
+                </p>
+              </div>
+            </label>
+            {smsOptIn && (
+              <p className="mt-2 text-[11px] text-teal-700 border-t border-teal-200 pt-2">
+                ✓ By checking this box you consent to receive recurring automated text messages from
+                Gas Capacity LLC at the number provided. Consent is not a condition of purchase.
+              </p>
+            )}
           </div>
 
           <button

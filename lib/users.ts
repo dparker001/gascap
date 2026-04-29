@@ -44,8 +44,9 @@ export interface StoredUser {
   emailVerifyExpires?: string;
   passwordResetToken?:   string;
   passwordResetExpires?: string;
-  phone?:  string;
+  phone?:      string;
   displayName?: string;
+  smsOptIn?:   boolean;
   priceAlertThreshold?:   number;
   lastPriceAlertSentAt?:  string;
   loginCount?:    number;
@@ -111,6 +112,7 @@ function toStoredUser(u: PrismaUser): StoredUser {
     referredBy:         u.referredBy          ?? undefined,
     phone:              u.phone               ?? undefined,
     displayName:        u.displayName         ?? undefined,
+    smsOptIn:           u.smsOptIn            ?? false,
     lastPriceAlertSentAt: u.lastPriceAlertSentAt ?? undefined,
     lastLoginAt:        u.lastLoginAt         ?? undefined,
     lastFillupReminderSentAt: u.lastFillupReminderSentAt ?? undefined,
@@ -731,7 +733,7 @@ export async function creditVerifiedReferral(userId: string): Promise<boolean> {
 
 export async function updateUserProfile(
   userId: string,
-  fields: { displayName?: string; phone?: string },
+  fields: { displayName?: string; phone?: string; smsOptIn?: boolean },
 ): Promise<StoredUser | null> {
   // `undefined` → field not included in the request; leave as-is.
   // `''` (empty string) → user explicitly cleared the field; store null.
@@ -744,6 +746,9 @@ export async function updateUserProfile(
         : {}),
       ...(fields.phone !== undefined
         ? { phone: fields.phone.trim() || null }
+        : {}),
+      ...(fields.smsOptIn !== undefined
+        ? { smsOptIn: fields.smsOptIn }
         : {}),
     },
   }).catch(() => null);
