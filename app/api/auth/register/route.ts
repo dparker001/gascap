@@ -13,6 +13,8 @@ import {
 } from '@/lib/users';
 import { sendMail, verificationEmailHtml } from '@/lib/email';
 import { sendCampaignEmail, sendReferralCreditEmail } from '@/lib/emailCampaign';
+import { sendMilestoneEmail }                         from '@/lib/emailEngagement';
+import { markMilestoneSent }                          from '@/lib/users';
 import { upsertGhlContact, upsertGhlContactWithCampaign } from '@/lib/ghl';
 import { getPlacementByCode, logEvent } from '@/lib/campaigns';
 
@@ -78,12 +80,22 @@ export async function POST(req: Request) {
             if (!credited) return;
             const fresh = await findById(referrer.id);
             const totalCredits = fresh ? getActiveCredits(fresh).length : 1;
-            return sendReferralCreditEmail(
+            await sendReferralCreditEmail(
               referrer.id,
               referrer.email,
               referrer.name,
               totalCredits,
             );
+            // M3 — first referral milestone (fires once, to the referrer)
+            if (fresh && !fresh.milestoneReferral1Sent && (fresh.referralCount ?? 0) >= 1) {
+              await sendMilestoneEmail('referral1', {
+                id:    fresh.id,
+                name:  fresh.name,
+                email: fresh.email,
+                plan:  fresh.plan,
+              });
+              await markMilestoneSent(fresh.id, 'referral1');
+            }
           })
           .catch((e) => console.error('[GasCap] Referral credit on signup failed:', e));
       }

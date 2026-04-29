@@ -19,6 +19,8 @@ import {
   type Fillup,
   type FillupPatch,
 } from '@/lib/fillups';
+import { findById, markMilestoneSent } from '@/lib/users';
+import { sendMilestoneEmail }          from '@/lib/emailEngagement';
 
 function userId(session: Session | null) {
   return session?.user?.id ?? session?.user?.email ?? '';
@@ -75,7 +77,36 @@ export async function POST(req: Request) {
 
   // Remove `force` before storing
   const { force: _force, ...saveBody } = body;
-  const entry = addFillup(userId(session), saveBody);
+  const uid   = userId(session);
+  const entry = addFillup(uid, saveBody);
+
+  // Milestone checks — non-blocking so the 201 response is instant
+  ;(async () => {
+    try {
+      const allFillups = getFillups(uid);
+      const mpgMap     = computeMpg(allFillups);
+      const user       = await findById(uid);
+      if (!user || user.emailOptOut) return;
+
+      const engUser = { id: user.id, name: user.name, email: user.email, plan: user.plan };
+
+      // M1 — 10th fill-up
+      if (allFillups.length === 10 && !user.milestoneFillup10Sent) {
+        await sendMilestoneEmail('fillup10', engUser);
+        await markMilestoneSent(user.id, 'fillup10');
+      }
+
+      // M2 — First MPG data point (any non-null value in the map)
+      const hasMpg = Object.values(mpgMap).some((v) => v != null);
+      if (hasMpg && !user.milestoneMpgSent) {
+        await sendMilestoneEmail('mpg', engUser);
+        await markMilestoneSent(user.id, 'mpg');
+      }
+    } catch (e) {
+      console.error('[GasCap] Milestone check failed after fillup POST:', e);
+    }
+  })();
+
   return NextResponse.json(entry, { status: 201 });
 }
 
