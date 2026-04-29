@@ -30,6 +30,10 @@ interface AdminUser {
   pushSubscribed?:  boolean;
   isTestAccount?:        boolean;
   ambassadorProForLife?: boolean;
+  // Profile
+  phone?:       string | null;
+  smsOptIn?:    boolean;
+  displayName?: string | null;
   // Activity metrics
   loginCount:       number;
   lastLoginAt:      string | null;
@@ -1261,6 +1265,11 @@ export default function AdminPage() {
                           🔔 PUSH
                         </span>
                       )}
+                      {u.smsOptIn && (
+                        <span title="SMS opt-in active" className="text-[10px] font-black px-2 py-0.5 rounded-full bg-green-100 text-green-700">
+                          📱 SMS
+                        </span>
+                      )}
                       {u.isTestAccount && (
                         <span title="Test account — no plan limits" className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
                           🧪 TEST
@@ -1273,6 +1282,14 @@ export default function AdminPage() {
                       )}
                     </div>
                     <p className="text-xs text-slate-600 truncate">{u.email}</p>
+                    {u.phone && (
+                      <p className="text-xs text-slate-500">
+                        <a href={`tel:${u.phone}`} className="hover:text-[#1EB68F] transition-colors">
+                          📱 {u.phone}
+                        </a>
+                        {u.smsOptIn && <span className="text-green-600 ml-1">· SMS opted in</span>}
+                      </p>
+                    )}
                     <p className="text-[10px] text-slate-600">
                       Joined {new Date(u.createdAt).toLocaleDateString()} ·{' '}
                       {u.referralCount} referral{u.referralCount !== 1 ? 's' : ''}

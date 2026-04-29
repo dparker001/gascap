@@ -96,6 +96,10 @@ export async function GET(req: Request) {
       pushSubscribed:   subscribedUserIds.has(u.id),
       isTestAccount:        u.isTestAccount,
       ambassadorProForLife: u.ambassadorProForLife,
+      // Profile
+      phone:            u.phone       ?? null,
+      smsOptIn:         u.smsOptIn    ?? false,
+      displayName:      u.displayName ?? null,
       // Activity metrics
       loginCount:       u.loginCount,
       lastLoginAt:      u.lastLoginAt   ?? null,

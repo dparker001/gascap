@@ -357,6 +357,18 @@ const SECTIONS = [
         a: 'GasCap™ collects the information you provide (email, vehicle info, fill-up logs) and basic usage data to improve the app. We do not sell your personal data. See our Privacy Policy for full details.',
       },
       {
+        q: 'How do I update my display name or phone number?',
+        a: 'Go to Settings → Profile. You can update your display name (shown in the app instead of your full name) and your phone number. Your phone number is optional and used only for SMS notifications if you choose to opt in.',
+      },
+      {
+        q: 'How do I opt into SMS text message notifications?',
+        a: 'Go to Settings → Profile. Enter your phone number, then check the "SMS Notifications" box. By opting in you consent to receive account alerts, gas price notifications, fill-up reminders, and occasional promotional messages from Gas Capacity LLC. Message & data rates may apply. You must be 18 or older to opt in.',
+      },
+      {
+        q: 'How do I opt out of SMS messages?',
+        a: 'Reply STOP to any text message from GasCap™ to unsubscribe immediately. You can also go to Settings → Profile and uncheck the "SMS Notifications" box. Either method stops all further SMS from us.',
+      },
+      {
         q: 'How do I opt out of marketing emails?',
         a: 'Use the unsubscribe link in any GasCap™ email, or email support@gascap.app and we\'ll remove you from marketing communications. Transactional emails (receipts, password resets) are not affected.',
       },
@@ -414,7 +426,7 @@ const SECTIONS = [
       },
       {
         q: 'How do I contact GasCap™ support?',
-        a: 'Email support@gascap.app — we typically respond within 1 business day. You can also use the "Share Feedback" button inside the app.',
+        a: 'Visit gascap.app/contact to send us a message directly, or email support@gascap.app — we typically respond within 1 business day. You can also use the "Share Feedback" button inside the app.',
       },
     ],
   },
