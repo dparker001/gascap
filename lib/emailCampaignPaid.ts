@@ -21,7 +21,7 @@ function unsubLink(userId: string) {
   return `${BASE_URL}/api/email/unsubscribe?id=${userId}`;
 }
 
-function header() { return brandHeader(); }
+function header(plan?: string) { return brandHeader(plan); }
 
 function footer(userId: string) {
   return `
@@ -76,7 +76,7 @@ export function upgradeConfirmEmailHtml(
   const renewLabel = interval === 'annual' ? 'annually' : 'monthly';
 
   return wrap(`
-    ${header()}
+    ${header(tier)}
     <tr><td style="padding:32px;">
 
       <p style="margin:0 0 6px;font-size:28px;font-weight:900;color:#1e2d4a;line-height:1.15;">
@@ -144,10 +144,10 @@ export const upgradeConfirmEmailText = (name: string, tier: 'pro' | 'fleet', int
 
 // ── P2 — 30-Day Check-In ─────────────────────────────────────────────────────
 
-export function paidCheckInEmailHtml(name: string, userId: string): string {
+export function paidCheckInEmailHtml(name: string, userId: string, tier: 'pro' | 'fleet' = 'pro'): string {
   const first = name.split(' ')[0];
   return wrap(`
-    ${header()}
+    ${header(tier)}
     <tr><td style="padding:32px;">
 
       <p style="margin:0 0 6px;font-size:24px;font-weight:900;color:#1e2d4a;line-height:1.2;">
@@ -213,10 +213,10 @@ export const paidCheckInEmailText = (name: string) =>
 
 // ── P3 — 60-Day Feature Spotlight ────────────────────────────────────────────
 
-export function paidSpotlightEmailHtml(name: string, userId: string): string {
+export function paidSpotlightEmailHtml(name: string, userId: string, tier: 'pro' | 'fleet' = 'pro'): string {
   const first = name.split(' ')[0];
   return wrap(`
-    ${header()}
+    ${header(tier)}
     <tr><td style="padding:32px;">
 
       <p style="margin:0 0 6px;font-size:24px;font-weight:900;color:#1e2d4a;line-height:1.2;">
@@ -293,7 +293,7 @@ export function renewalReminderEmailHtml(name: string, userId: string, tier: 'pr
   const perMonth   = tier === 'fleet' ? '$16.58/mo' : '$4.08/mo';
   const valueNote  = tier === 'fleet' ? 'less than 4 tanks of gas per year' : 'less than a single gallon of gas';
   return wrap(`
-    ${header()}
+    ${header(tier)}
     <tr><td style="padding:32px;">
 
       <p style="margin:0 0 6px;font-size:24px;font-weight:900;color:#1e2d4a;line-height:1.2;">
@@ -368,7 +368,7 @@ export function cancellationEmailHtml(name: string, userId: string, tier: 'pro' 
   const couponCode    = tier === 'fleet' ? 'BETA30'           : 'TRIAL30';
   const reactivateCta = tier === 'fleet' ? 'Reactivate Fleet →' : 'Reactivate Pro →';
   return wrap(`
-    ${header()}
+    ${header(tier)}
     <tr><td style="padding:32px;">
 
       <p style="margin:0 0 6px;font-size:24px;font-weight:900;color:#1e2d4a;line-height:1.2;">

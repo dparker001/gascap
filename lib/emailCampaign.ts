@@ -28,8 +28,8 @@ function unsubLink(userId: string) {
 }
 
 /** Wrapper that returns the shared GasCap™ brand header (logo pill on navy). */
-function header() {
-  return brandHeader();
+function header(plan?: string) {
+  return brandHeader(plan);
 }
 
 function footer(userId: string) {
@@ -97,7 +97,7 @@ function wrap(body: string) {
 export function welcomeEmailHtml(name: string, userId: string, verifyUrl?: string): string {
   const first = name.split(' ')[0];
   return wrap(`
-    ${header()}
+    ${header('trial')}
     <tr><td style="padding:32px;">
       ${trialBadge(30)}
 
@@ -241,7 +241,7 @@ export const welcomeEmailText = (name: string) =>
 export function featureTipsEmailHtml(name: string, userId: string): string {
   const first = name.split(' ')[0];
   return wrap(`
-    ${header()}
+    ${header('trial')}
     <tr><td style="padding:32px;">
       ${trialBadge(27)}
 
@@ -328,7 +328,7 @@ export const featureTipsEmailText = (name: string) =>
 export function proUpsellEmailHtml(name: string, userId: string): string {
   const first = name.split(' ')[0];
   return wrap(`
-    ${header()}
+    ${header('trial')}
     <tr><td style="padding:32px;">
       ${trialBadge(20)}
 
@@ -411,7 +411,7 @@ export const proUpsellEmailText = (name: string) =>
 export function annualDealEmailHtml(name: string, userId: string): string {
   const first = name.split(' ')[0];
   return wrap(`
-    ${header()}
+    ${header('trial')}
     <tr><td style="padding:32px;">
       ${trialBadge(9)}
 
@@ -507,7 +507,7 @@ export const annualDealEmailText = (name: string) =>
 export function lastCallEmailHtml(name: string, userId: string): string {
   const first = name.split(' ')[0];
   return wrap(`
-    ${header()}
+    ${header('trial')}
     <tr><td style="padding:32px;">
       ${trialBadge(2)}
 
@@ -729,7 +729,7 @@ export async function sendReferralCreditEmail(
 export function compProForLifeEmailHtml(name: string, userId: string): string {
   const first = name.split(' ')[0];
   return wrap(`
-    ${header()}
+    ${header('comp')}
     <tr><td style="padding:32px;">
       <div style="display:inline-block;background:#005F4A;color:#fff;font-weight:900;
                   font-size:11px;padding:6px 14px;border-radius:20px;letter-spacing:0.5px;
@@ -839,7 +839,7 @@ export function compC2EmailHtml(name: string, userId: string): string {
   const first = name.split(' ')[0];
   const referralUrl = `${BASE_URL}/#share`;
   return wrap(`
-    ${header()}
+    ${header('comp')}
     <tr><td style="padding:32px;">
       ${compBadge()}
 
@@ -906,7 +906,7 @@ export const compC2EmailText = (name: string): string => {
 export function compC3EmailHtml(name: string, userId: string): string {
   const first = name.split(' ')[0];
   return wrap(`
-    ${header()}
+    ${header('comp')}
     <tr><td style="padding:32px;">
       ${compBadge()}
 
@@ -961,7 +961,7 @@ export const compC3EmailText = (name: string): string => {
 export function compC4EmailHtml(name: string, userId: string): string {
   const first = name.split(' ')[0];
   return wrap(`
-    ${header()}
+    ${header('comp')}
     <tr><td style="padding:32px;">
       ${compBadge()}
 
@@ -1025,7 +1025,7 @@ export const compC4EmailText = (name: string): string => {
 export function compC5EmailHtml(name: string, userId: string): string {
   const first = name.split(' ')[0];
   return wrap(`
-    ${header()}
+    ${header('comp')}
     <tr><td style="padding:32px;">
       ${compBadge()}
 

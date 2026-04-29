@@ -93,6 +93,16 @@ model User {
   compCampaignStep         Int?      // 0=not enrolled, 1=C1 sent, 2=C2 sent … 5=C5 sent (done)
   compCampaignEnrolledAt   String?   // ISO timestamp of comp grant — used to schedule C2–C5
 
+  // Engagement campaign — paying Pro/Fleet subscribers
+  engagementStep         Int?      // 0=enrolled(unsent), 1=S1/F1 sent, 2=S2/F2 sent, etc.
+  engagementEnrolledAt   String?   // ISO timestamp of enrollment
+  engagementTrack        String?   // 'pro' | 'fleet'
+
+  // Milestone emails (one-time, behavior-triggered)
+  milestoneFillup10Sent  Boolean   @default(false)
+  milestoneMpgSent       Boolean   @default(false)
+  milestoneReferral1Sent Boolean   @default(false)
+
   // Internal / testing
   isTestAccount            Boolean   @default(false)
 

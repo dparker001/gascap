@@ -9,7 +9,7 @@
 import { NextResponse }                     from 'next/server';
 import type Stripe                          from 'stripe';
 import { stripe }                           from '@/lib/stripe';
-import { setUserPlan, findByStripeCustomer, findById, findByReferralCode, creditVerifiedReferral, getActiveCredits, enrollPaidCampaign } from '@/lib/users';
+import { setUserPlan, findByStripeCustomer, findById, findByReferralCode, creditVerifiedReferral, getActiveCredits, enrollPaidCampaign, enrollEngagementCampaign } from '@/lib/users';
 import { updateGhlContactPlan }            from '@/lib/ghl';
 import { sendMail }                        from '@/lib/email';
 import { sendReferralCreditEmail }         from '@/lib/emailCampaign';
@@ -104,6 +104,10 @@ export async function POST(req: Request) {
         // Only enroll if not already in the paid campaign (idempotent guard)
         if (!upgradedUser.paidCampaignEnrolledAt) {
           await enrollPaidCampaign(userId, interval);
+        }
+
+        if (!upgradedUser.engagementEnrolledAt) {
+          await enrollEngagementCampaign(upgradedUser.id, tier === 'fleet' ? 'fleet' : 'pro');
         }
 
         sendPaidCampaignEmail('P1', {

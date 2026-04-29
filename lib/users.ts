@@ -66,6 +66,14 @@ export interface StoredUser {
   ambassadorProForLife?: boolean;
   isTestAccount?: boolean;
   fleetDrivers?:  string[];
+  compCampaignStep?:       number;
+  compCampaignEnrolledAt?: string;
+  engagementStep?:         number;
+  engagementEnrolledAt?:   string;
+  engagementTrack?:        string;
+  milestoneFillup10Sent?:  boolean;
+  milestoneMpgSent?:       boolean;
+  milestoneReferral1Sent?: boolean;
 }
 
 export interface ReferralCredit {
@@ -134,6 +142,14 @@ function toStoredUser(u: PrismaUser): StoredUser {
     streakMilestonesHit:  u.streakMilestonesHit,
     ambassadorProForLife: u.ambassadorProForLife ?? false,
     fleetDrivers:         u.fleetDrivers ?? [],
+    compCampaignStep:       u.compCampaignStep       ?? undefined,
+    compCampaignEnrolledAt: u.compCampaignEnrolledAt ?? undefined,
+    engagementStep:         u.engagementStep         ?? undefined,
+    engagementEnrolledAt:   u.engagementEnrolledAt   ?? undefined,
+    engagementTrack:        u.engagementTrack        ?? undefined,
+    milestoneFillup10Sent:  u.milestoneFillup10Sent  ?? false,
+    milestoneMpgSent:       u.milestoneMpgSent       ?? false,
+    milestoneReferral1Sent: u.milestoneReferral1Sent ?? false,
   };
 }
 
@@ -901,4 +917,71 @@ export async function consumePasswordResetToken(
     },
   });
   return { ok: true };
+}
+
+// ── Engagement Campaign ─────────────────────────────────────────────────────
+
+/**
+ * Enroll a paying subscriber in the engagement drip (called at upgrade time).
+ * Sets step=0 so the cron picks up S1/F1 after the configured delay.
+ */
+export async function enrollEngagementCampaign(
+  userId: string,
+  track: 'pro' | 'fleet',
+): Promise<void> {
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      engagementStep:       0,
+      engagementEnrolledAt: new Date().toISOString(),
+      engagementTrack:      track,
+    },
+  });
+}
+
+export async function advanceEngagementStep(userId: string, step: number): Promise<void> {
+  await prisma.user.update({
+    where: { id: userId },
+    data: { engagementStep: step },
+  });
+}
+
+/**
+ * Find subscribers whose next engagement email is due.
+ * step=1 → S1/F1 (first email), step=2 → S2/F2, etc.
+ * minDays is measured from engagementEnrolledAt (upgrade date).
+ */
+export async function getUsersPendingEngagementStep(
+  step: number,
+  minDays: number,
+  track: 'pro' | 'fleet',
+  annualOnly = false,
+): Promise<StoredUser[]> {
+  const cutoff = new Date(Date.now() - minDays * 86_400_000).toISOString();
+  const users = await prisma.user.findMany({
+    where: {
+      emailOptOut:          false,
+      engagementStep:       step - 1,
+      engagementEnrolledAt: { not: null, lte: cutoff },
+      engagementTrack:      track,
+      stripeSubscriptionId: { not: null },
+      ...(annualOnly ? { stripeInterval: 'annual' } : {}),
+    },
+  });
+  return users.map(toStoredUser);
+}
+
+export async function markMilestoneSent(
+  userId: string,
+  milestone: 'fillup10' | 'mpg' | 'referral1',
+): Promise<void> {
+  const fieldMap: Record<string, string> = {
+    fillup10:  'milestoneFillup10Sent',
+    mpg:       'milestoneMpgSent',
+    referral1: 'milestoneReferral1Sent',
+  };
+  await prisma.user.update({
+    where: { id: userId },
+    data: { [fieldMap[milestone]]: true },
+  });
 }

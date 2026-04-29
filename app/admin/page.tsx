@@ -851,6 +851,72 @@ export default function AdminPage() {
                     ))}
                   </div>
                 </div>
+
+                <div className="space-y-1.5">
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">⭐ Pro Engagement Drip</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      { id: 'eng-s1', label: 'S1 — Data Check-in (Day 45)' },
+                      { id: 'eng-s2', label: 'S2 — Habit Reinforcement (Day 75)' },
+                      { id: 'eng-s3', label: 'S3 — Referral Nudge (Day 105)' },
+                      { id: 'eng-s4', label: 'S4 — Loyalty Milestone (Day 165)' },
+                      { id: 'eng-s5', label: 'S5 — Annual Renewal (Day 335)' },
+                    ].map(({ id, label }) => (
+                      <button
+                        key={id}
+                        onClick={() => { setEmailPreviewTemplate(id); loadEmailPreview(id); }}
+                        className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${
+                          emailPreviewTemplate === id
+                            ? 'bg-green-600 text-white'
+                            : 'bg-slate-100 text-slate-500 hover:bg-green-50 hover:text-green-700'
+                        }`}
+                      >{label}</button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">🚗 Fleet Engagement Drip</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      { id: 'eng-f1', label: 'F1 — Quick-Start (Day 14)' },
+                      { id: 'eng-f2', label: 'F2 — Tax Report (Day 45)' },
+                      { id: 'eng-f3', label: 'F3 — Referral Nudge (Day 105)' },
+                      { id: 'eng-f4', label: 'F4 — ROI Summary (Day 180)' },
+                    ].map(({ id, label }) => (
+                      <button
+                        key={id}
+                        onClick={() => { setEmailPreviewTemplate(id); loadEmailPreview(id); }}
+                        className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${
+                          emailPreviewTemplate === id
+                            ? 'bg-teal-700 text-white'
+                            : 'bg-slate-100 text-slate-500 hover:bg-teal-50 hover:text-teal-700'
+                        }`}
+                      >{label}</button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">🎉 Milestone Emails</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      { id: 'eng-m1', label: 'M1 — 10 Fill-ups' },
+                      { id: 'eng-m2', label: 'M2 — First MPG' },
+                      { id: 'eng-m3', label: 'M3 — First Referral' },
+                    ].map(({ id, label }) => (
+                      <button
+                        key={id}
+                        onClick={() => { setEmailPreviewTemplate(id); loadEmailPreview(id); }}
+                        className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${
+                          emailPreviewTemplate === id
+                            ? 'bg-purple-600 text-white'
+                            : 'bg-slate-100 text-slate-500 hover:bg-purple-50 hover:text-purple-700'
+                        }`}
+                      >{label}</button>
+                    ))}
+                  </div>
+                </div>
               </div>
 
               {/* Preview iframe */}

@@ -10,6 +10,9 @@
  *   trial-d1, trial-d2, trial-d3, trial-d4, trial-d5
  *   comp-c1, comp-c2, comp-c3, comp-c4, comp-c5
  *   paid-p1, paid-p2, paid-p3, paid-p5
+ *   eng-s1, eng-s2, eng-s3, eng-s4, eng-s5  (Pro engagement drip)
+ *   eng-f1, eng-f2, eng-f3, eng-f4           (Fleet engagement drip)
+ *   eng-m1, eng-m2, eng-m3                   (Milestone emails)
  */
 import { NextResponse } from 'next/server';
 import {
@@ -30,6 +33,20 @@ import {
   paidSpotlightEmailHtml,
   cancellationEmailHtml,
 } from '@/lib/emailCampaignPaid';
+import {
+  engS1EmailHtml,
+  engS2EmailHtml,
+  engS3EmailHtml,
+  engS4EmailHtml,
+  engS5EmailHtml,
+  engF1EmailHtml,
+  engF2EmailHtml,
+  engF3EmailHtml,
+  engF4EmailHtml,
+  milestoneM1EmailHtml,
+  milestoneM2EmailHtml,
+  milestoneM3EmailHtml,
+} from '@/lib/emailEngagement';
 
 const PREVIEW_USER = {
   id:    'preview-user-id',
@@ -98,6 +115,48 @@ export async function GET(req: Request) {
       break;
     case 'paid-p5':
       html = cancellationEmailHtml(PREVIEW_USER.name, PREVIEW_USER.id);
+      break;
+
+    // ── Pro engagement drip ──────────────────────────────────────────────────
+    case 'eng-s1':
+      html = engS1EmailHtml(PREVIEW_USER.name, PREVIEW_USER.id);
+      break;
+    case 'eng-s2':
+      html = engS2EmailHtml(PREVIEW_USER.name, PREVIEW_USER.id);
+      break;
+    case 'eng-s3':
+      html = engS3EmailHtml(PREVIEW_USER.name, PREVIEW_USER.id);
+      break;
+    case 'eng-s4':
+      html = engS4EmailHtml(PREVIEW_USER.name, PREVIEW_USER.id);
+      break;
+    case 'eng-s5':
+      html = engS5EmailHtml(PREVIEW_USER.name, PREVIEW_USER.id);
+      break;
+
+    // ── Fleet engagement drip ────────────────────────────────────────────────
+    case 'eng-f1':
+      html = engF1EmailHtml(PREVIEW_USER.name, PREVIEW_USER.id);
+      break;
+    case 'eng-f2':
+      html = engF2EmailHtml(PREVIEW_USER.name, PREVIEW_USER.id);
+      break;
+    case 'eng-f3':
+      html = engF3EmailHtml(PREVIEW_USER.name, PREVIEW_USER.id);
+      break;
+    case 'eng-f4':
+      html = engF4EmailHtml(PREVIEW_USER.name, PREVIEW_USER.id);
+      break;
+
+    // ── Milestone emails ─────────────────────────────────────────────────────
+    case 'eng-m1':
+      html = milestoneM1EmailHtml(PREVIEW_USER.name, PREVIEW_USER.id);
+      break;
+    case 'eng-m2':
+      html = milestoneM2EmailHtml(PREVIEW_USER.name, PREVIEW_USER.id);
+      break;
+    case 'eng-m3':
+      html = milestoneM3EmailHtml(PREVIEW_USER.name, PREVIEW_USER.id);
       break;
 
     default:

@@ -74,31 +74,65 @@ export async function sendMail(opts: MailOptions): Promise<void> {
 
 /**
  * Shared GasCap™ email header — mirrors Header.tsx exactly:
- * transparent orange pump icon + white "GasCap™" text, no pill or box,
- * floating directly on the dark navy bar.
+ * transparent orange pump icon + white "GasCap™" text on the navy bar.
  *
- * Two-cell table keeps icon + text aligned in all email clients (Outlook
- * doesn't support flexbox). Icon served from gascap.app CDN so it loads
- * in Gmail, Apple Mail, and Outlook web without embedding.
+ * Optional `plan` param adds a right-side badge + "Open App →" link:
+ *   'trial'  → ⭐ Pro Trial  (amber tones)
+ *   'pro'    → ⭐ Pro Member (green)
+ *   'fleet'  → 🚗 Fleet Member (teal)
+ *   'comp'   → 🎁 Ambassador Pro (dark green)
+ *   undefined → no badge (transactional emails: verify, reset, winner)
  */
-export function brandHeader(): string {
+export function brandHeader(plan?: string): string {
+  let badge = '';
+  if (plan) {
+    const configs: Record<string, { emoji: string; label: string; bg: string; border: string; color: string }> = {
+      trial: { emoji: '⭐', label: 'Pro Trial',      bg: 'rgba(250,113,9,0.18)',   border: 'rgba(250,113,9,0.4)',    color: '#fbbf24' },
+      pro:   { emoji: '⭐', label: 'Pro Member',     bg: 'rgba(30,182,143,0.18)',  border: 'rgba(30,182,143,0.4)',   color: '#6ee7d0' },
+      fleet: { emoji: '🚗', label: 'Fleet Member',   bg: 'rgba(30,182,143,0.18)',  border: 'rgba(30,182,143,0.4)',   color: '#6ee7d0' },
+      comp:  { emoji: '🎁', label: 'Ambassador Pro', bg: 'rgba(0,95,74,0.35)',     border: 'rgba(30,182,143,0.5)',   color: '#6ee7d0' },
+    };
+    const cfg = configs[plan] ?? configs.pro;
+    const appUrl = plan === 'trial' ? 'https://www.gascap.app/upgrade' : 'https://www.gascap.app';
+    const appLabel = plan === 'trial' ? 'Upgrade to Pro →' : 'Open App →';
+    badge = `
+              <td style="text-align:right;vertical-align:middle;white-space:nowrap;">
+                <div style="display:inline-block;background:${cfg.bg};border:1px solid ${cfg.border};
+                            border-radius:20px;padding:4px 12px;margin-bottom:5px;">
+                  <span style="font-family:system-ui,-apple-system,sans-serif;font-size:11px;
+                               font-weight:800;color:${cfg.color};white-space:nowrap;">
+                    ${cfg.emoji} ${cfg.label}
+                  </span>
+                </div><br>
+                <a href="${appUrl}"
+                   style="font-family:system-ui,-apple-system,sans-serif;font-size:11px;
+                          font-weight:700;color:#fa7109;text-decoration:none;">${appLabel}</a>
+              </td>`;
+  }
+
   return `
         <tr><td style="background:#1e2d4a;padding:20px 32px;border-radius:16px 16px 0 0;">
-          <table cellpadding="0" cellspacing="0" border="0" role="presentation">
+          <table cellpadding="0" cellspacing="0" border="0" role="presentation" width="100%">
             <tr>
-              <td style="vertical-align:middle;padding-right:8px;">
-                <img src="https://www.gascap.app/gascap-icon-raw.png"
-                     alt="" width="44" height="44"
-                     style="display:block;width:44px;height:44px;border:0;outline:none;" />
-              </td>
               <td style="vertical-align:middle;">
-                <span style="font-family:system-ui,-apple-system,'Segoe UI',Arial,sans-serif;
-                             font-size:26px;font-weight:900;color:#ffffff;
-                             letter-spacing:-0.5px;line-height:1;white-space:nowrap;">
-                  GasCap<sup style="font-size:12px;font-weight:900;color:#ffffff;
-                                    vertical-align:super;line-height:0;">™</sup>
-                </span>
-              </td>
+                <table cellpadding="0" cellspacing="0" border="0" role="presentation">
+                  <tr>
+                    <td style="vertical-align:middle;padding-right:8px;">
+                      <img src="https://www.gascap.app/gascap-icon-raw.png"
+                           alt="" width="44" height="44"
+                           style="display:block;width:44px;height:44px;border:0;outline:none;" />
+                    </td>
+                    <td style="vertical-align:middle;">
+                      <span style="font-family:system-ui,-apple-system,'Segoe UI',Arial,sans-serif;
+                                   font-size:26px;font-weight:900;color:#ffffff;
+                                   letter-spacing:-0.5px;line-height:1;white-space:nowrap;">
+                        GasCap<sup style="font-size:12px;font-weight:900;color:#ffffff;
+                                          vertical-align:super;line-height:0;">™</sup>
+                      </span>
+                    </td>
+                  </tr>
+                </table>
+              </td>${badge}
             </tr>
           </table>
         </td></tr>`;
