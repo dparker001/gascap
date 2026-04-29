@@ -188,6 +188,13 @@ input[type='number'] { -moz-appearance: textfield; }
 .animate-toast-enter { animation: toastEnter 0.35s cubic-bezier(0.22, 1, 0.36, 1) both; }
 .animate-toast-exit  { animation: toastExit  0.35s cubic-bezier(0.4, 0, 1, 1) both; }
 
+/* ── Sign-up exit-intent bottom sheet ──────────────────────────────── */
+@keyframes sheetSlideUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+.animate-sheet-up { animation: sheetSlideUp 0.35s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
 /* ── Reviews marquee ────────────────────────────────────────────────── */
 @keyframes marquee-left {
   0%   { transform: translateX(0); }

@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useTranslation } from '@/contexts/LanguageContext';
 import { trackSignUp, fbTrack } from '@/lib/gtag';
+import SignUpExitIntent from '@/components/SignUpExitIntent';
 
 function SignUpForm() {
   const router       = useRouter();
@@ -103,6 +104,23 @@ function SignUpForm() {
         <div className="w-full max-w-sm">
           <h1 className="text-2xl font-black text-navy-700 mb-1">{t.signUp.title}</h1>
           <p className="text-slate-500 text-sm mb-4">{t.signUp.sub}</p>
+
+          {/* Quick benefit cards */}
+          <div className="grid grid-cols-3 gap-2 mb-5">
+            {([
+              { icon: '💰', label: 'Stop overspending' },
+              { icon: '⚡', label: 'Know before you go' },
+              { icon: '📱', label: 'No app store needed' },
+            ] as { icon: string; label: string }[]).map(({ icon, label }) => (
+              <div
+                key={label}
+                className="bg-white border border-slate-100 rounded-xl p-2.5 text-center shadow-sm"
+              >
+                <div className="text-lg mb-1" aria-hidden="true">{icon}</div>
+                <p className="text-[10px] font-semibold text-slate-600 leading-tight">{label}</p>
+              </div>
+            ))}
+          </div>
 
           {/* Pro trial callout */}
           <div className="mb-5 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 flex items-center gap-3">
@@ -232,6 +250,9 @@ function SignUpForm() {
           </p>
         </div>
       </div>
+
+      {/* Exit-intent bottom sheet — fires after 8 s on exit signals */}
+      <SignUpExitIntent />
     </div>
   );
 }
