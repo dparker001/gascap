@@ -52,8 +52,9 @@ export default function ReferralNudge({ fillupCount }: Props) {
             Nice — first fill-up logged! 🎉
           </p>
           <p className="text-xs text-amber-800 mt-0.5 leading-relaxed">
-            Share GasCap™ with a friend. The moment they sign up, you earn{' '}
-            <strong>1 free Pro month</strong> — no purchase needed.
+            Share GasCap™ with a friend. When they upgrade to Pro, you earn{' '}
+            <strong>1 free Pro month</strong> — plus bonus drawing entries and a path to{' '}
+            <strong>lifetime Pro access</strong>.
           </p>
           <button
             onClick={openShareTab}

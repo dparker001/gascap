@@ -79,7 +79,7 @@ export async function GET(req: Request) {
       try {
         await sendPushNotification({
           title:       '🔗 Earn a free Pro month',
-          body:        'Share GasCap™ with one friend. The moment they sign up, we bank a free month for you — no purchase needed.',
+          body:        'Share GasCap™ with a friend. When they upgrade to Pro, you earn a free month — plus bonus drawing entries every day.',
           url:         '/#share',
           externalIds: [user.id],
         });

@@ -11,30 +11,69 @@ interface ReferredUser {
   credited: boolean;
 }
 
+type AmbassadorTier = 'supporter' | 'ambassador' | 'elite' | null;
+interface Thresholds { SUPPORTER: number; AMBASSADOR: number; ELITE: number }
+
 interface ReferralData {
-  code:             string;
-  referralUrl:      string;
-  referralCount:    number;
-  proMonthsEarned:  number;
-  referredBy:       string | null;
-  maxReferrals:     number;
-  maxRedeemAtOnce:  number;
-  reachedCap:       boolean;
-  canRefer:         boolean;
-  activeCredits:    number;
-  redeemableMonths: number;
-  nextExpiryDate:   string | null;
-  userPlan:         string;
-  isPaid:           boolean;
-  referredUsers:    ReferredUser[];
+  code:                string;
+  referralUrl:         string;
+  betaReferralUrl:     string | null;
+  isBeta:              boolean;
+  referralCount:       number;
+  proMonthsEarned:     number;
+  referredBy:          string | null;
+  ambassadorTier:      AmbassadorTier;
+  entryMultiplier:     number;
+  ambassadorProForLife: boolean;
+  thresholds:          Thresholds;
+  maxRedeemAtOnce:     number;
+  canRefer:            boolean;
+  activeCredits:       number;
+  redeemableMonths:    number;
+  nextExpiryDate:      string | null;
+  userPlan:            string;
+  isPaid:              boolean;
+  referredUsers:       ReferredUser[];
+}
+
+const TIER_CONFIG: Record<string, { icon: string; label: string; color: string; bg: string; border: string }> = {
+  supporter:  { icon: '⭐', label: 'Supporter',  color: 'text-amber-700',  bg: 'bg-amber-50',  border: 'border-amber-200'  },
+  ambassador: { icon: '🏆', label: 'Ambassador', color: 'text-teal-700',   bg: 'bg-teal-50',   border: 'border-teal-200'   },
+  elite:      { icon: '👑', label: 'Elite',       color: 'text-purple-700', bg: 'bg-purple-50', border: 'border-purple-200' },
+};
+
+function tierProgress(
+  count: number,
+  t: Thresholds,
+): { pct: number; toNext: number; nextKey: string; nextLabel: string } | null {
+  if (count < t.SUPPORTER) {
+    return { pct: Math.round((count / t.SUPPORTER) * 100), toNext: t.SUPPORTER - count, nextKey: 'supporter', nextLabel: 'Supporter' };
+  }
+  if (count < t.AMBASSADOR) {
+    return {
+      pct:       Math.round(((count - t.SUPPORTER)  / (t.AMBASSADOR - t.SUPPORTER))  * 100),
+      toNext:    t.AMBASSADOR - count,
+      nextKey:   'ambassador',
+      nextLabel: 'Ambassador',
+    };
+  }
+  if (count < t.ELITE) {
+    return {
+      pct:       Math.round(((count - t.AMBASSADOR) / (t.ELITE - t.AMBASSADOR)) * 100),
+      toNext:    t.ELITE - count,
+      nextKey:   'elite',
+      nextLabel: 'Elite',
+    };
+  }
+  return null; // already Elite
 }
 
 export default function ReferralCard() {
   const { data: session } = useSession();
-  const [data,         setData]        = useState<ReferralData | null>(null);
-  const [loading,      setLoading]     = useState(false);
-  const [copied,       setCopied]      = useState(false);
-  const [showQR,       setShowQR]      = useState(false);
+  const [data,    setData]    = useState<ReferralData | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [copied,  setCopied]  = useState(false);
+  const [showQR,  setShowQR]  = useState(false);
 
   useEffect(() => {
     if (!session) return;
@@ -81,6 +120,9 @@ export default function ReferralCard() {
 
   if (!session) return null;
 
+  const tierCfg  = data?.ambassadorTier ? TIER_CONFIG[data.ambassadorTier] : null;
+  const progress = data ? tierProgress(data.referralCount, data.thresholds) : null;
+
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
       {/* Navy header strip */}
@@ -89,7 +131,7 @@ export default function ReferralCard() {
         <div>
           <p className="text-xs font-black text-white uppercase tracking-wider">Refer &amp; Earn</p>
           <p className="text-[10px] text-white/50">
-            1 free month when a friend signs up · up to 10 · no purchase needed
+            Free Pro months · bonus drawing entries · lifetime Pro access
           </p>
         </div>
       </div>
@@ -104,11 +146,31 @@ export default function ReferralCard() {
 
         {data && (
           <>
+            {/* Ambassador tier badge */}
+            {tierCfg && (
+              <div className={`flex items-center gap-2.5 rounded-xl px-3 py-2.5 border ${tierCfg.bg} ${tierCfg.border}`}>
+                <span className="text-xl flex-shrink-0">{tierCfg.icon}</span>
+                <div className="min-w-0">
+                  <p className={`text-xs font-black ${tierCfg.color}`}>
+                    {tierCfg.label} Ambassador
+                    {data.ambassadorProForLife && (
+                      <span className="ml-1.5 text-[9px] font-bold bg-white/60 px-1.5 py-0.5 rounded-full">
+                        Pro for Life ✓
+                      </span>
+                    )}
+                  </p>
+                  <p className="text-[10px] text-slate-500 leading-tight">
+                    {data.entryMultiplier}× daily drawing entries · always eligible to win
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Stats row */}
             <div className="flex gap-3">
               <div className="flex-1 bg-slate-50 rounded-xl px-3 py-2.5 text-center">
                 <p className="text-lg font-black text-slate-700">{data.referralCount}</p>
-                <p className="text-[10px] text-slate-400 font-semibold">Friends Joined</p>
+                <p className="text-[10px] text-slate-400 font-semibold">Paying Referrals</p>
               </div>
               <div className={[
                 'flex-1 rounded-xl px-3 py-2.5 text-center',
@@ -124,34 +186,34 @@ export default function ReferralCard() {
               </div>
             </div>
 
-            {/* Progress bar */}
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">
-                  Referral Progress
-                </span>
-                <span className={[
-                  'text-[10px] font-bold',
-                  data.reachedCap ? 'text-green-600' : 'text-slate-400',
-                ].join(' ')}>
-                  {data.reachedCap ? '🎉 Max reached!' : `${data.referralCount} / ${data.maxReferrals}`}
-                </span>
-              </div>
-              <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                <div
-                  className={[
-                    'h-full rounded-full transition-all duration-500',
-                    data.reachedCap ? 'bg-green-400' : 'bg-amber-400',
-                  ].join(' ')}
-                  style={{ width: `${Math.min((data.referralCount / data.maxReferrals) * 100, 100)}%` }}
-                />
-              </div>
-              {!data.reachedCap && (
+            {/* Ambassador tier progress */}
+            {progress ? (
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">
+                    Next: {TIER_CONFIG[progress.nextKey].icon} {progress.nextLabel}
+                  </span>
+                  <span className="text-[10px] font-bold text-slate-400">
+                    {data.referralCount} / {data.referralCount + progress.toNext}
+                  </span>
+                </div>
+                <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-amber-400 rounded-full transition-all duration-500"
+                    style={{ width: `${Math.min(progress.pct, 100)}%` }}
+                  />
+                </div>
                 <p className="text-[10px] text-slate-400 mt-1">
-                  {data.maxReferrals - data.referralCount} more to earn a free month each
+                  {progress.toNext} more paying referral{progress.toNext !== 1 ? 's' : ''} to unlock {progress.nextLabel}
                 </p>
-              )}
-            </div>
+              </div>
+            ) : (
+              <div className="rounded-xl bg-purple-50 border border-purple-200 px-3 py-2.5 text-center">
+                <p className="text-xs font-black text-purple-700">
+                  👑 Elite Ambassador — maximum tier reached!
+                </p>
+              </div>
+            )}
 
             {/* Credit status */}
             {data.activeCredits > 0 && (
@@ -168,7 +230,7 @@ export default function ReferralCard() {
                         {data.activeCredits > data.maxRedeemAtOnce && ` (${data.activeCredits} total, max ${data.maxRedeemAtOnce} at once)`}
                       </p>
                       <p className="text-[10px] text-green-700 leading-relaxed">
-                        Credits apply to your next billing cycle. Contact us at info@gascap.app to apply immediately.
+                        Credits apply to your next billing cycle. Contact us at admin@gascap.app to apply immediately.
                       </p>
                     </>
                   ) : (
@@ -190,12 +252,12 @@ export default function ReferralCard() {
               </div>
             )}
 
-            {/* Free user upgrade nudge — only if no credits yet */}
+            {/* Free user with no credits — upgrade nudge */}
             {!data.isPaid && data.activeCredits === 0 && (
               <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5 text-center space-y-1">
-                <p className="text-xs font-black text-slate-700">Start earning before you upgrade</p>
+                <p className="text-xs font-black text-slate-700">Start referring today</p>
                 <p className="text-[10px] text-slate-500 leading-relaxed">
-                  Credits bank the moment each friend signs up — no purchase required. They're waiting for you when you go Pro.
+                  Earn a free month for every friend who upgrades to Pro — plus bonus drawing entries and a path to lifetime Pro access.
                 </p>
                 <a
                   href="/upgrade"
@@ -276,23 +338,14 @@ export default function ReferralCard() {
               </div>
             )}
 
-            {/* Share button */}
-            {!data.reachedCap && (
-              <button
-                onClick={handleShare}
-                className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-white text-sm font-black transition-colors flex items-center justify-center gap-2"
-              >
-                <span>📤</span>
-                Share with a Friend
-              </button>
-            )}
-
-            {data.reachedCap && (
-              <div className="w-full py-2.5 rounded-xl bg-green-500 text-white text-sm font-black flex items-center justify-center gap-2">
-                <span>🎉</span>
-                You've maxed out your referral rewards!
-              </div>
-            )}
+            {/* Share button — always shown */}
+            <button
+              onClick={handleShare}
+              className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-white text-sm font-black transition-colors flex items-center justify-center gap-2"
+            >
+              <span>📤</span>
+              Share with a Friend
+            </button>
 
             {/* Referred users list */}
             {data.referredUsers.length > 0 && (
@@ -315,7 +368,7 @@ export default function ReferralCard() {
                           <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-slate-100 text-slate-400">Pending</span>
                         )}
                         {r.credited && (
-                          <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-600">+1 mo</span>
+                          <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-600">💳 Paid</span>
                         )}
                       </div>
                     </div>
@@ -326,7 +379,7 @@ export default function ReferralCard() {
 
             {/* Footer */}
             <p className="text-[10px] text-slate-400 text-center leading-relaxed">
-              Credit banks the moment your friend creates their free account — no purchase needed on either end. Credits are valid for 12 months.
+              Rewards apply when your referred friend upgrades to a paid plan · credits valid for 12 months
             </p>
 
             {data.referredBy && (

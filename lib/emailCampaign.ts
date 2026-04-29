@@ -368,10 +368,10 @@ export function proUpsellEmailHtml(name: string, userId: string): string {
         </p>
         <p style="margin:0 0 14px;font-size:13px;color:#78350f;line-height:1.6;">
           Every GasCap™ account includes a personal referral link inside the
-          <strong>🔗 Share</strong> tab. Share it with a friend — the moment they
-          create their free GasCap™ account, we automatically bank
-          <strong>1 free Pro month</strong> for you. No purchase required on
-          either end. You can earn up to 10 free months total.
+          <strong>🔗 Share</strong> tab. Share it with a friend — when they
+          upgrade to a paid plan, we automatically bank
+          <strong>1 free Pro month</strong> for you. Refer enough friends and
+          you can unlock <strong>lifetime Pro access</strong> — no subscription needed ever again.
         </p>
         <a href="${BASE_URL}/#share" style="display:inline-block;background:#f59e0b;color:#fff;font-weight:900;
            font-size:13px;padding:10px 22px;border-radius:10px;text-decoration:none;">
@@ -404,7 +404,7 @@ export function proUpsellEmailHtml(name: string, userId: string): string {
 }
 
 export const proUpsellEmailText = (name: string) =>
-  `Hi ${name.split(' ')[0]}, you're 10 days into your GasCap™ Pro trial — 20 days left. Power-user features to try: AI trip planner, MPG drop detection, cost-per-mile tracking, unlimited badges, PDF reports. BONUS: Share your referral link (in the Share tab) and earn 1 free Pro month the moment a friend signs up — no purchase needed. Open the app: ${BASE_URL}`;
+  `Hi ${name.split(' ')[0]}, you're 10 days into your GasCap™ Pro trial — 20 days left. Power-user features to try: AI trip planner, MPG drop detection, cost-per-mile tracking, unlimited badges, PDF reports. BONUS: Share your referral link (in the Share tab) — earn a free Pro month every time a friend upgrades, plus bonus drawing entries. Refer 15 and Pro is yours for life. Open the app: ${BASE_URL}`;
 
 // ── Email 4 — 9 Days Left + Annual Deal (Day 21) ──────────────────────────
 

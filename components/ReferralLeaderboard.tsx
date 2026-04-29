@@ -3,25 +3,64 @@
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 
+type AmbassadorTier = 'supporter' | 'ambassador' | 'elite' | null;
+interface Thresholds { SUPPORTER: number; AMBASSADOR: number; ELITE: number }
+
 interface ReferralData {
-  code:           string;
-  referralCount:  number;
-  reachedCap:     boolean;
-  activeCredits:  number;
+  referralCount:        number;
+  ambassadorTier:       AmbassadorTier;
+  entryMultiplier:      number;
+  ambassadorProForLife: boolean;
+  thresholds:           Thresholds;
+  activeCredits:        number;
 }
 
-interface Milestone {
-  count:  number;
-  label:  string;
-  icon:   string;
-  reward: string;
+interface TierDef {
+  key:      AmbassadorTier;
+  icon:     string;
+  label:    string;
+  perks:    string[];
+  color:    string;
+  bg:       string;
+  border:   string;
+  headBg:   string;
+  headText: string;
 }
 
-const MILESTONES: Milestone[] = [
-  { count: 1,  icon: '🎯', label: 'First Recruit',    reward: '1 free month' },
-  { count: 3,  icon: '⛽', label: 'Fuel Evangelist',  reward: '3 free months' },
-  { count: 5,  icon: '🏆', label: 'Gas Guru',         reward: '5 free months' },
-  { count: 10, icon: '👑', label: 'GasCap Legend',    reward: '10 free months' },
+const TIERS: TierDef[] = [
+  {
+    key:      'supporter',
+    icon:     '⭐',
+    label:    'Supporter',
+    perks:    ['2× daily drawing entries', 'Always eligible to win', 'Free Pro month per paid referral'],
+    color:    'text-amber-700',
+    bg:       'bg-amber-50',
+    border:   'border-amber-200',
+    headBg:   'bg-amber-100',
+    headText: 'text-amber-700',
+  },
+  {
+    key:      'ambassador',
+    icon:     '🏆',
+    label:    'Ambassador',
+    perks:    ['3× daily drawing entries', 'Always eligible to win', 'Pro for Life — free forever'],
+    color:    'text-teal-700',
+    bg:       'bg-teal-50',
+    border:   'border-teal-200',
+    headBg:   'bg-teal-100',
+    headText: 'text-teal-700',
+  },
+  {
+    key:      'elite',
+    icon:     '👑',
+    label:    'Elite',
+    perks:    ['5× daily drawing entries', 'Always eligible to win', 'Elite recognition & top status'],
+    color:    'text-purple-700',
+    bg:       'bg-purple-50',
+    border:   'border-purple-200',
+    headBg:   'bg-purple-100',
+    headText: 'text-purple-700',
+  },
 ];
 
 export default function ReferralLeaderboard() {
@@ -32,7 +71,7 @@ export default function ReferralLeaderboard() {
   useEffect(() => {
     if (!session) return;
     fetch('/api/referral', { credentials: 'include' })
-      .then(r => r.json())
+      .then((r) => r.json())
       .then((d: ReferralData) => setData(d))
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -40,82 +79,138 @@ export default function ReferralLeaderboard() {
 
   if (!session || loading || !data) return null;
 
-  const count       = data.referralCount ?? 0;
-  const nextMilestone = MILESTONES.find(m => m.count > count);
-  const toNext        = nextMilestone ? nextMilestone.count - count : 0;
-  const prevMilestone = [...MILESTONES].reverse().find(m => m.count <= count);
-  const pct = nextMilestone
-    ? Math.round(((count - (prevMilestone?.count ?? 0)) / (nextMilestone.count - (prevMilestone?.count ?? 0))) * 100)
-    : 100;
+  const count = data.referralCount ?? 0;
+  const { SUPPORTER, AMBASSADOR, ELITE } = data.thresholds;
+
+  // Resolve progress bar toward next tier
+  let progressPct = 0;
+  let toNext      = 0;
+  let nextLabel   = '';
+  const atMax     = count >= ELITE;
+
+  if (!atMax) {
+    if (count >= AMBASSADOR) {
+      progressPct = Math.round(((count - AMBASSADOR) / (ELITE      - AMBASSADOR)) * 100);
+      toNext      = ELITE - count;
+      nextLabel   = 'Elite';
+    } else if (count >= SUPPORTER) {
+      progressPct = Math.round(((count - SUPPORTER)  / (AMBASSADOR - SUPPORTER))  * 100);
+      toNext      = AMBASSADOR - count;
+      nextLabel   = 'Ambassador';
+    } else {
+      progressPct = Math.round((count / SUPPORTER) * 100);
+      toNext      = SUPPORTER - count;
+      nextLabel   = 'Supporter';
+    }
+  }
 
   return (
     <div className="rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
       {/* Navy header strip */}
       <div className="flex items-center justify-between py-2.5 px-4 bg-navy-700">
         <div className="flex items-center gap-2">
-          <span className="text-sm" aria-hidden="true">🏆</span>
-          <p className="text-xs font-black text-white uppercase tracking-wider">Referral Milestones</p>
+          <span className="text-sm" aria-hidden="true">🌟</span>
+          <p className="text-xs font-black text-white uppercase tracking-wider">Ambassador Program</p>
         </div>
         <span className="text-xs font-black text-amber-300 bg-white/10 px-2 py-0.5 rounded-full">
-          {count} referral{count !== 1 ? 's' : ''}
+          {count} paying referral{count !== 1 ? 's' : ''}
         </span>
       </div>
 
       <div className="bg-white p-4 space-y-4">
 
-      {/* Progress to next milestone */}
-      {nextMilestone && (
-        <div className="space-y-1.5">
-          <div className="flex justify-between items-center">
-            <p className="text-[11px] text-slate-500">
-              <span className="font-bold text-slate-700">{toNext} more</span> to unlock {nextMilestone.icon} {nextMilestone.label}
-            </p>
-            <p className="text-[11px] text-slate-400">{pct}%</p>
-          </div>
-          <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-amber-400 rounded-full transition-all duration-500"
-              style={{ width: `${pct}%` }}
-            />
-          </div>
-        </div>
-      )}
-      {!nextMilestone && (
-        <p className="text-xs font-black text-amber-600 text-center">
-          👑 You&apos;ve unlocked all milestones!
-        </p>
-      )}
-
-      {/* Milestone badges */}
-      <div className="grid grid-cols-4 gap-2">
-        {MILESTONES.map(m => {
-          const earned = count >= m.count;
-          return (
-            <div
-              key={m.count}
-              className={`flex flex-col items-center gap-1 rounded-xl p-2 border transition-all ${
-                earned
-                  ? 'bg-amber-50 border-amber-200'
-                  : 'bg-slate-50 border-slate-100 opacity-40'
-              }`}
-            >
-              <span className="text-xl">{m.icon}</span>
-              <p className="text-[9px] font-black text-center text-slate-600 leading-tight">
-                {m.label}
+        {/* Progress bar */}
+        {atMax ? (
+          <p className="text-xs font-black text-purple-700 text-center bg-purple-50 rounded-xl py-2 px-3">
+            👑 Elite Ambassador — you&apos;ve reached the highest tier!
+          </p>
+        ) : (
+          <div className="space-y-1.5">
+            <div className="flex justify-between items-center">
+              <p className="text-[11px] text-slate-500">
+                <span className="font-bold text-slate-700">{toNext} more</span> paying referral{toNext !== 1 ? 's' : ''} to unlock {nextLabel}
               </p>
-              <p className="text-[9px] text-center text-slate-400 leading-tight">
-                {m.count} referral{m.count !== 1 ? 's' : ''}
-              </p>
+              <p className="text-[11px] text-slate-400">{progressPct}%</p>
             </div>
-          );
-        })}
-      </div>
+            <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-amber-400 rounded-full transition-all duration-500"
+                style={{ width: `${progressPct}%` }}
+              />
+            </div>
+          </div>
+        )}
 
-      {data.activeCredits > 0 && (
-        <p className="text-[11px] text-center text-green-600 font-semibold bg-green-50 rounded-xl py-2 px-3">
-          🎁 You have {data.activeCredits} free month{data.activeCredits !== 1 ? 's' : ''} banked — redeem in billing settings
+        {/* Tier cards */}
+        <div className="space-y-2">
+          {TIERS.map((tier) => {
+            const threshold = tier.key === 'supporter' ? SUPPORTER : tier.key === 'ambassador' ? AMBASSADOR : ELITE;
+            const earned    = count >= threshold;
+            const isCurrent = data.ambassadorTier === tier.key;
+
+            return (
+              <div
+                key={tier.key}
+                className={[
+                  'rounded-xl border overflow-hidden transition-all',
+                  earned ? `${tier.bg} ${tier.border}` : 'bg-slate-50 border-slate-100 opacity-50',
+                ].join(' ')}
+              >
+                {/* Tier header row */}
+                <div className={[
+                  'flex items-center justify-between px-3 py-2',
+                  earned ? tier.headBg : 'bg-slate-100',
+                ].join(' ')}>
+                  <div className="flex items-center gap-2">
+                    <span className="text-base">{tier.icon}</span>
+                    <p className={`text-xs font-black ${earned ? tier.headText : 'text-slate-400'}`}>
+                      {tier.label}
+                      {isCurrent && (
+                        <span className="ml-1.5 text-[9px] font-bold bg-white/70 px-1.5 py-0.5 rounded-full">
+                          Current
+                        </span>
+                      )}
+                      {tier.key === 'ambassador' && earned && data.ambassadorProForLife && (
+                        <span className="ml-1.5 text-[9px] font-bold bg-white/70 px-1.5 py-0.5 rounded-full">
+                          Pro for Life ✓
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                  <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                    earned ? 'bg-white/60 text-slate-600' : 'bg-slate-200 text-slate-400'
+                  }`}>
+                    {threshold}+ referrals
+                  </span>
+                </div>
+
+                {/* Perks list */}
+                <ul className="px-3 py-2 space-y-0.5">
+                  {tier.perks.map((perk) => (
+                    <li
+                      key={perk}
+                      className={`text-[10px] flex items-center gap-1.5 ${earned ? tier.color : 'text-slate-400'}`}
+                    >
+                      <span className="text-[8px] flex-shrink-0">✦</span>
+                      {perk}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Banked credits callout */}
+        {data.activeCredits > 0 && (
+          <p className="text-[11px] text-center text-green-600 font-semibold bg-green-50 rounded-xl py-2 px-3">
+            🎁 You have {data.activeCredits} free month{data.activeCredits !== 1 ? 's' : ''} banked — redeem in billing settings
+          </p>
+        )}
+
+        <p className="text-[9px] text-slate-300 text-center leading-relaxed">
+          Tier status based on cumulative paying referrals · tallied at month-end
         </p>
-      )}
       </div>
     </div>
   );

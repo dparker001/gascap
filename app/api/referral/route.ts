@@ -1,8 +1,8 @@
 /**
  * GET /api/referral — get the signed-in user's referral code and stats
  * Returns: { code, referralUrl, referralCount, proMonthsEarned, referredBy,
- *            maxReferrals, reachedCap, canRefer, redeemableMonths, activeCredits,
- *            nextExpiryDate, userPlan }
+ *            ambassadorTier, entryMultiplier, ambassadorProForLife, thresholds,
+ *            canRefer, redeemableMonths, activeCredits, nextExpiryDate, userPlan }
  */
 import { NextResponse }     from 'next/server';
 import { getServerSession } from 'next-auth';
