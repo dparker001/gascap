@@ -32,7 +32,7 @@ const MESSAGES = [
   },
   {
     headline: 'Join the community.',
-    body: '500+ drivers are already saving with GasCap™. Your account takes 30 seconds to create.',
+    body: 'Many drivers are already saving with GasCap™. Your account takes 30 seconds to create.',
   },
   {
     headline: 'Almost there.',
