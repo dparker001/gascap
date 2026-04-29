@@ -1,31 +1,29 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
-import { useTranslation } from '@/contexts/LanguageContext';
+import { useSession }         from 'next-auth/react';
+import { usePathname }        from 'next/navigation';
+import { useTranslation }     from '@/contexts/LanguageContext';
 
 export default function EmailVerificationBanner() {
   const { data: session, update } = useSession();
   const { t }                     = useTranslation();
-  const [sending, setSending] = useState(false);
-  const [sent,    setSent]    = useState(false);
-  const [error,   setError]   = useState('');
+  const pathname                  = usePathname();
+  const [sending, setSending]     = useState(false);
+  const [sent,    setSent]        = useState(false);
+  const [error,   setError]       = useState('');
 
   const isVerified = (session?.user as { emailVerified?: boolean })?.emailVerified ?? true;
 
-  // When the banner mounts for an unverified user, silently ask the server
-  // whether the email has since been verified (e.g. user clicked the link in
-  // another tab or on another device). If it has, the JWT refreshes and the
-  // banner disappears without the user needing to sign out and back in.
+  // Silently refresh the JWT on mount — picks up verification done in another
+  // tab or device without the user needing to sign out and back in.
   useEffect(() => {
-    if (session && !isVerified) {
-      void update();
-    }
+    if (session && !isVerified) void update();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // run once on mount only
+  }, []);
 
-  // Don't show if not signed in or already verified
-  if (!session || isVerified) return null;
+  // Don't show if: not signed in, already verified, or on the verify-email page itself
+  if (!session || isVerified || pathname.startsWith('/verify-email')) return null;
 
   async function handleResend() {
     setSending(true);
@@ -34,7 +32,7 @@ export default function EmailVerificationBanner() {
       const res = await fetch('/api/auth/verify-email', { method: 'POST' });
       if (res.ok) {
         setSent(true);
-        setTimeout(() => setSent(false), 10000);
+        setTimeout(() => setSent(false), 12000);
       } else {
         const d = await res.json() as { error?: string };
         setError(d.error ?? t.verifyBanner.failSend);
@@ -47,26 +45,42 @@ export default function EmailVerificationBanner() {
   }
 
   return (
-    <div className="bg-amber-500 px-4 py-2.5 flex items-center justify-between gap-3 text-white">
-      <div className="flex items-center gap-2 min-w-0">
-        <span className="text-base flex-shrink-0">📧</span>
-        <p className="text-xs font-semibold truncate">
-          {t.verifyBanner.message}
-        </p>
-      </div>
-      <div className="flex items-center gap-2 flex-shrink-0">
-        {error && <span className="text-[10px] text-amber-100">{error}</span>}
-        {sent ? (
-          <span className="text-[11px] font-bold text-amber-100">{t.verifyBanner.sent}</span>
-        ) : (
-          <button
-            onClick={handleResend}
-            disabled={sending}
-            className="text-[11px] font-black bg-white/20 hover:bg-white/30 px-3 py-1 rounded-lg transition-colors disabled:opacity-50 whitespace-nowrap"
-          >
-            {sending ? t.verifyBanner.sending : t.verifyBanner.resend}
-          </button>
-        )}
+    <div className="bg-amber-500 border-b-2 border-amber-600 px-4 py-3 text-white">
+      <div className="max-w-2xl mx-auto flex items-center justify-between gap-4">
+
+        {/* Icon + text */}
+        <div className="flex items-start gap-3 min-w-0">
+          <span className="text-2xl flex-shrink-0 mt-0.5" aria-hidden="true">📧</span>
+          <div className="min-w-0">
+            <p className="text-sm font-black leading-tight">{t.verifyBanner.message}</p>
+            <p className="text-[11px] text-amber-100 leading-snug mt-0.5">
+              {t.verifyBanner.subtitle}
+            </p>
+            {error && (
+              <p className="text-[10px] text-amber-100 mt-1">{error}</p>
+            )}
+          </div>
+        </div>
+
+        {/* CTA */}
+        <div className="flex-shrink-0">
+          {sent ? (
+            <span className="text-[11px] font-bold text-white bg-amber-600 px-3 py-2 rounded-xl">
+              {t.verifyBanner.sent}
+            </span>
+          ) : (
+            <button
+              onClick={handleResend}
+              disabled={sending}
+              className="text-xs font-black bg-white text-amber-600 hover:bg-amber-50
+                         px-4 py-2 rounded-xl transition-colors disabled:opacity-60
+                         whitespace-nowrap shadow-sm"
+            >
+              {sending ? t.verifyBanner.sending : t.verifyBanner.resend}
+            </button>
+          )}
+        </div>
+
       </div>
     </div>
   );

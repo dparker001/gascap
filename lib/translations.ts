@@ -558,9 +558,10 @@ const en = {
 
   // ── Email verification banner (inline, on homepage) ──────────────────────
   verifyBanner: {
-    message:    'Please verify your email address to secure your account.',
-    sent:       '✓ Email sent!',
-    resend:     'Resend email',
+    message:    'Action required: verify your email address',
+    subtitle:   'Check your inbox for a verification link. Unverified accounts may lose access.',
+    sent:       '✓ Email sent — check your inbox!',
+    resend:     'Resend verification email',
     sending:    'Sending…',
     failSend:   'Failed to send.',
     networkErr: 'Network error.',
@@ -1239,9 +1240,10 @@ const es: typeof en = {
   },
 
   verifyBanner: {
-    message:    'Por favor verifica tu correo electrónico para asegurar tu cuenta.',
-    sent:       '✓ ¡Correo enviado!',
-    resend:     'Reenviar correo',
+    message:    'Acción requerida: verifica tu correo electrónico',
+    subtitle:   'Revisa tu bandeja de entrada. Las cuentas no verificadas pueden perder el acceso.',
+    sent:       '✓ ¡Correo enviado — revisa tu bandeja!',
+    resend:     'Reenviar correo de verificación',
     sending:    'Enviando…',
     failSend:   'Error al enviar.',
     networkErr: 'Error de red.',

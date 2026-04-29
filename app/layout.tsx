@@ -8,8 +8,9 @@ import DarkModeProvider      from '@/components/DarkModeProvider';
 import PullToRefresh         from '@/components/PullToRefresh';
 import ErrorBoundary         from '@/components/ErrorBoundary';
 import { LanguageProvider }  from '@/contexts/LanguageContext';
-import OneSignalProvider     from '@/components/OneSignalProvider';
-import GiveawayEntryToast    from '@/components/GiveawayEntryToast';
+import OneSignalProvider          from '@/components/OneSignalProvider';
+import GiveawayEntryToast         from '@/components/GiveawayEntryToast';
+import EmailVerificationBanner    from '@/components/EmailVerificationBanner';
 import './globals.css';
 
 const APP_URL = 'https://www.gascap.app';
@@ -115,6 +116,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <AuthProvider>
             <OneSignalProvider />
             <GiveawayEntryToast />
+            {/* Email verification nudge — shown on every page for unverified users */}
+            <EmailVerificationBanner />
             <ErrorBoundary>
               <PullToRefresh />
               {children}

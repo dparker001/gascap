@@ -9,7 +9,6 @@ import Header                  from '@/components/Header';
 import CalculatorTabs          from '@/components/CalculatorTabs';
 import ToolsPanel              from '@/components/ToolsPanel';
 import PricingSection          from '@/components/PricingSection';
-import EmailVerificationBanner from '@/components/EmailVerificationBanner';
 import TrialExpiryBanner      from '@/components/TrialExpiryBanner';
 import AnnouncementToast      from '@/components/AnnouncementToast';
 import ReviewsMarquee          from '@/components/ReviewsMarquee';
@@ -537,9 +536,6 @@ export default function Home() {
 
       {/* Onboarding — shown once to new visitors */}
       {isGuest && <OnboardingModal />}
-
-      {/* Email verification prompt */}
-      <EmailVerificationBanner />
 
       {/* Trial expiry nudge — shown when ≤ 5 days remain on a Pro trial */}
       <TrialExpiryBanner />
