@@ -729,7 +729,8 @@ export async function sendReferralCreditEmail(
 export function compProForLifeEmailHtml(name: string, userId: string): string {
   const first = name.split(' ')[0];
   return wrap(`
-    <tr><td style="padding:32px 32px 0;">
+    ${header()}
+    <tr><td style="padding:32px;">
       <div style="display:inline-block;background:#005F4A;color:#fff;font-weight:900;
                   font-size:11px;padding:6px 14px;border-radius:20px;letter-spacing:0.5px;
                   text-transform:uppercase;margin-bottom:16px;">
