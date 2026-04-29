@@ -12,15 +12,22 @@ export default function TermsPage() {
       <StaticPageHeader active="terms" />
 
       <div className="max-w-2xl mx-auto px-5 py-10 pb-20">
-        <h1 className="text-3xl font-black text-navy-700 mb-2">Terms of Service</h1>
-        <p className="text-sm text-slate-400 mb-8">Last updated: April 28, 2026</p>
+        <h1 className="text-3xl font-black text-navy-700 mb-1">Terms of Service</h1>
+        <p className="text-xs text-slate-500 mb-1">
+          <strong>Gas Capacity LLC</strong> · 16260 Bristol Lake Circle, Orlando, FL 32828 ·{' '}
+          <a href="mailto:admin@gascap.app" className="text-amber-600 hover:underline">admin@gascap.app</a>
+        </p>
+        <p className="text-sm text-slate-400 mb-8">Last updated: April 29, 2026</p>
 
         <div className="space-y-8 text-slate-700 text-sm leading-relaxed">
+
+          {/* 1 */}
           <section>
             <h2 className="text-lg font-black text-navy-700 mb-2">1. Acceptance of Terms</h2>
-            <p>By accessing or using GasCap™ ("the Service"), you agree to be bound by these Terms of Service. If you do not agree, please do not use the Service.</p>
+            <p>By accessing or using GasCap™ ("the Service"), operated by Gas Capacity LLC, you agree to be bound by these Terms of Service and our <Link href="/privacy" className="text-amber-600 hover:underline">Privacy Policy</Link>. If you do not agree, please do not use the Service.</p>
           </section>
 
+          {/* 2 */}
           <section>
             <h2 className="text-lg font-black text-navy-700 mb-2">2. Description of Service</h2>
             <p>GasCap™ is a fuel cost calculator and vehicle management tool that helps you estimate fuel costs, track fill-ups, and manage vehicle information. The Service includes free and paid subscription tiers with the following features:</p>
@@ -32,16 +39,19 @@ export default function TermsPage() {
             <p className="mt-2">Feature availability may change over time. We will notify users of significant changes via email or in-app notice.</p>
           </section>
 
+          {/* 3 */}
           <section>
             <h2 className="text-lg font-black text-navy-700 mb-2">3. User Accounts</h2>
-            <p>You are responsible for maintaining the confidentiality of your account credentials and for all activity under your account. You must provide accurate information when creating an account and keep it up to date. You must be at least 13 years old to use the Service.</p>
+            <p>You are responsible for maintaining the confidentiality of your account credentials and for all activity under your account. You must provide accurate information when creating an account and keep it up to date. You must be at least 13 years old to create an account. You must be at least <strong>18 years old</strong> to opt into SMS communications (see Section 7c).</p>
           </section>
 
+          {/* 4 */}
           <section>
             <h2 className="text-lg font-black text-navy-700 mb-2">4. Paid Subscriptions</h2>
             <p>Pro and Fleet plan subscriptions are billed monthly or annually through Stripe. You may cancel at any time; your access continues until the end of the current billing period. You can upgrade your plan directly from the Settings page within the app or by visiting{' '}<Link href="/upgrade" className="text-amber-600 hover:underline">gascap.app/upgrade</Link>. We reserve the right to change pricing with 30 days&apos; notice.</p>
           </section>
 
+          {/* 5 */}
           <section>
             <h2 className="text-lg font-black text-navy-700 mb-2">5. Ambassador Program &amp; Referral Rewards</h2>
             <p>GasCap™ operates an Ambassador Program that allows users to earn rewards by referring new users who become paying subscribers. Referral progress is measured in <strong>cumulative paying referrals</strong> — the total number of individuals who have signed up using your unique referral link and subsequently activated a paid GasCap™ Pro or Fleet subscription. Free sign-ups that never become paying subscribers do not count. The following terms apply:</p>
@@ -61,16 +71,18 @@ export default function TermsPage() {
             </ul>
           </section>
 
+          {/* 7 */}
           <section>
             <h2 className="text-lg font-black text-navy-700 mb-2">7. Push Notifications &amp; Fill-Up Reminders</h2>
             <p>If you enable push notifications, GasCap™ may send you service-related alerts, gas price updates, weekly digests, fill-up reminders, and promotional messages.</p>
             <ul className="list-disc pl-5 space-y-1 mt-2">
-              <li><strong>Fill-Up Reminders:</strong> Pro and Fleet users may configure automatic push reminders to log fill-ups on a weekly (7-day) or bi-weekly (14-day) schedule. Reminders are sent only if you haven't logged a fill-up within the selected interval.</li>
+              <li><strong>Fill-Up Reminders:</strong> Pro and Fleet users may configure automatic push reminders to log fill-ups on a weekly (7-day) or bi-weekly (14-day) schedule. Reminders are sent only if you haven&apos;t logged a fill-up within the selected interval.</li>
               <li>Reminders require push notifications to be enabled on your device and within the app.</li>
               <li>You may disable fill-up reminders or all push notifications at any time from the Share tab in the Tools panel or from your device settings.</li>
             </ul>
           </section>
 
+          {/* 7b */}
           <section>
             <h2 className="text-lg font-black text-navy-700 mb-2">7b. Streak Reward Credits</h2>
             <p>Users who maintain consecutive daily usage streaks may earn free Pro month credits at the following milestones: 30, 90, 180, and 365 consecutive days. The following terms apply:</p>
@@ -83,36 +95,102 @@ export default function TermsPage() {
             </ul>
           </section>
 
+          {/* 7c — SMS (required for A2P) */}
           <section>
-            <h2 className="text-lg font-black text-navy-700 mb-2">8. Acceptable Use</h2>
-            <p>You agree not to misuse the Service, including but not limited to: attempting to gain unauthorized access, distributing malware, scraping data, or using the Service for any unlawful purpose.</p>
+            <h2 className="text-lg font-black text-navy-700 mb-2">7c. SMS &amp; Text Message Communications</h2>
+            <p>Gas Capacity LLC may send text (SMS) messages to users and contacts who have opted into SMS communications through the GasCap™ website contact form (<Link href="/contact" className="text-amber-600 hover:underline">gascap.app/contact</Link>) or the in-app Settings page.</p>
+
+            <p className="mt-2"><strong>SMS Use Cases</strong></p>
+            <p className="mt-1">SMS messages sent by Gas Capacity LLC may include:</p>
+            <ul className="list-disc pl-5 space-y-1 mt-1">
+              <li>Account notifications (plan changes, billing confirmations, account alerts)</li>
+              <li>Gas price alerts when prices drop below your configured threshold</li>
+              <li>Fill-up reminders to help you maintain your fuel tracking habit</li>
+              <li>Service updates, feature announcements, and operational communications</li>
+              <li>Marketing or promotional messages (only if you have separately consented to marketing messages)</li>
+            </ul>
+
+            <p className="mt-3"><strong>Age Requirement</strong></p>
+            <p className="mt-1">You must be at least <strong>18 years of age</strong> to opt into SMS communications from Gas Capacity LLC. By providing your phone number and opting in, you represent that you are 18 or older.</p>
+
+            <p className="mt-3"><strong>Message Frequency &amp; Data Rates</strong></p>
+            <p className="mt-1">Message frequency varies based on your account activity, alert settings, and preferences. <strong>Standard message and data rates may apply</strong> depending on your mobile carrier plan. Gas Capacity LLC is not responsible for any charges incurred through your mobile carrier.</p>
+
+            <p className="mt-3"><strong>Opt-Out Instructions</strong></p>
+            <p className="mt-1">You may opt out of SMS communications at any time by:</p>
+            <ul className="list-disc pl-5 space-y-1 mt-1">
+              <li>Replying <strong>STOP</strong> to any SMS message from us — you will receive one final confirmation message and no further SMS will be sent</li>
+              <li>Navigating to <strong>Settings → Profile → SMS Notifications</strong> within the GasCap™ app and unchecking the SMS opt-in checkbox</li>
+            </ul>
+
+            <p className="mt-3"><strong>Customer Support</strong></p>
+            <p className="mt-1">Reply <strong>HELP</strong> to any SMS message for assistance. You may also contact us at:</p>
+            <ul className="list-none pl-0 mt-1 space-y-0.5">
+              <li>Email: <a href="mailto:admin@gascap.app" className="text-amber-600 hover:underline">admin@gascap.app</a></li>
+              <li>Web: <Link href="/contact" className="text-amber-600 hover:underline">gascap.app/contact</Link></li>
+              <li>Mail: Gas Capacity LLC, 16260 Bristol Lake Circle, Orlando, FL 32828</li>
+            </ul>
+
+            <p className="mt-3"><strong>Carrier Disclaimer</strong></p>
+            <p className="mt-1">Carriers (including but not limited to AT&amp;T, T-Mobile, Verizon, and Sprint) are not liable for delayed or undelivered SMS messages. Delivery of SMS messages is subject to effective transmission from your mobile operator.</p>
+
+            <p className="mt-3"><strong>Privacy</strong></p>
+            <p className="mt-1">Your mobile phone number and SMS opt-in status will not be shared with third parties for their own marketing purposes. See our full <Link href="/privacy" className="text-amber-600 hover:underline">Privacy Policy</Link> — specifically Section 5a — for complete details on mobile information handling.</p>
           </section>
 
+          {/* 8 */}
+          <section>
+            <h2 className="text-lg font-black text-navy-700 mb-2">8. Acceptable Use</h2>
+            <p>You agree not to misuse the Service, including but not limited to: attempting to gain unauthorized access, distributing malware, scraping data, submitting fraudulent referrals, or using the Service for any unlawful purpose.</p>
+          </section>
+
+          {/* 9 */}
           <section>
             <h2 className="text-lg font-black text-navy-700 mb-2">9. Disclaimers</h2>
             <p>Gas price data is provided by the U.S. Energy Information Administration (EIA) and may not reflect real-time local prices. Fuel estimates are approximate and for informational purposes only. The Service is provided "as is" without warranties of any kind.</p>
           </section>
 
+          {/* 10 */}
           <section>
             <h2 className="text-lg font-black text-navy-700 mb-2">10. Limitation of Liability</h2>
-            <p>To the maximum extent permitted by law, GasCap™ shall not be liable for any indirect, incidental, or consequential damages arising from your use of the Service.</p>
+            <p>To the maximum extent permitted by law, Gas Capacity LLC shall not be liable for any indirect, incidental, or consequential damages arising from your use of the Service.</p>
           </section>
 
+          {/* 11 */}
           <section>
-            <h2 className="text-lg font-black text-navy-700 mb-2">11. Changes to Terms</h2>
+            <h2 className="text-lg font-black text-navy-700 mb-2">11. Governing Law</h2>
+            <p>These Terms are governed by the laws of the State of Florida, without regard to conflict of law principles. Any disputes shall be resolved in the courts of Orange County, Florida.</p>
+          </section>
+
+          {/* 12 */}
+          <section>
+            <h2 className="text-lg font-black text-navy-700 mb-2">12. Changes to Terms</h2>
             <p>We may update these Terms from time to time. Continued use of the Service after changes constitutes acceptance of the new Terms. We will notify users of material changes via email.</p>
           </section>
 
+          {/* 13 */}
           <section>
-            <h2 className="text-lg font-black text-navy-700 mb-2">12. Contact</h2>
-            <p>Questions about these Terms? Email us at <a href="mailto:support@gascap.app" className="text-amber-600 hover:underline">support@gascap.app</a>.</p>
+            <h2 className="text-lg font-black text-navy-700 mb-2">13. Contact</h2>
+            <p>Questions about these Terms? Contact us:</p>
+            <ul className="list-none pl-0 space-y-0.5 mt-2">
+              <li><strong>Gas Capacity LLC</strong></li>
+              <li>16260 Bristol Lake Circle, Orlando, FL 32828</li>
+              <li>
+                <a href="mailto:admin@gascap.app" className="text-amber-600 hover:underline">admin@gascap.app</a>
+              </li>
+              <li>
+                <Link href="/contact" className="text-amber-600 hover:underline">gascap.app/contact</Link>
+              </li>
+            </ul>
           </section>
+
         </div>
 
         <div className="mt-10 pt-6 border-t border-slate-200 flex items-center justify-between gap-4 text-xs text-slate-400">
-          <span>© {YEAR} GasCap™ — All rights reserved.</span>
+          <span>© {YEAR} Gas Capacity LLC — All rights reserved.</span>
           <div className="flex gap-4">
             <Link href="/privacy" className="hover:text-amber-600">Privacy Policy</Link>
+            <Link href="/contact" className="hover:text-amber-600">Contact</Link>
             <Link href="/help"    className="hover:text-amber-600">Help</Link>
           </div>
         </div>

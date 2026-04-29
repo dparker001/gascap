@@ -3,16 +3,17 @@ import Link from 'next/link';
 const YEAR = new Date().getFullYear();
 
 const NAV_LINKS = [
-  { href: '/',        label: '← App'   },
-  { href: '/help',    label: 'Help'    },
-  { href: '/upgrade', label: 'Upgrade' },
-  { href: '/terms',   label: 'Terms'   },
-  { href: '/privacy', label: 'Privacy' },
+  { href: '/',         label: '← App'   },
+  { href: '/help',     label: 'Help'    },
+  { href: '/upgrade',  label: 'Upgrade' },
+  { href: '/terms',    label: 'Terms'   },
+  { href: '/privacy',  label: 'Privacy' },
+  { href: '/contact',  label: 'Contact' },
 ];
 
 interface StaticPageHeaderProps {
   /** Highlight the active page in the nav */
-  active?: 'help' | 'terms' | 'privacy' | 'upgrade';
+  active?: 'help' | 'terms' | 'privacy' | 'upgrade' | 'contact';
 }
 
 export default function StaticPageHeader({ active }: StaticPageHeaderProps) {

@@ -687,12 +687,25 @@ export default function Home() {
         </p>
 
         {/* Legal links */}
-        <div className="flex items-center justify-center gap-4 pt-1">
+        <div className="flex items-center justify-center flex-wrap gap-x-4 gap-y-1 pt-1">
           <a href="/help"    className="text-[11px] text-slate-500 hover:text-brand-orange transition-colors">{t.footer.help}</a>
           <span className="text-slate-400">·</span>
           <a href="/terms"   className="text-[11px] text-slate-500 hover:text-brand-orange transition-colors">{t.footer.terms}</a>
           <span className="text-slate-400">·</span>
           <a href="/privacy" className="text-[11px] text-slate-500 hover:text-brand-orange transition-colors">{t.footer.privacy}</a>
+          <span className="text-slate-400">·</span>
+          <a href="/contact" className="text-[11px] text-slate-500 hover:text-brand-orange transition-colors">{t.footer.contact}</a>
+        </div>
+
+        {/* Business info — required for A2P compliance */}
+        <div className="pt-2 space-y-0.5">
+          <p className="text-[10px] text-slate-400 font-semibold">Gas Capacity LLC</p>
+          <p className="text-[10px] text-slate-400">16260 Bristol Lake Circle, Orlando, FL 32828</p>
+          <p className="text-[10px] text-slate-400">
+            <a href="mailto:admin@gascap.app" className="hover:text-brand-orange transition-colors">
+              admin@gascap.app
+            </a>
+          </p>
         </div>
       </footer>
     </main>

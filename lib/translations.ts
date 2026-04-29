@@ -310,6 +310,7 @@ const en = {
     help:         'Help & Support',
     terms:        'Terms of Service',
     privacy:      'Privacy Policy',
+    contact:      'Contact Us',
   },
 
   // ── Gas price lookup ───────────────────────────────────────────────────────
@@ -1002,6 +1003,7 @@ const es: typeof en = {
     help:         'Ayuda y Soporte',
     terms:        'Términos de Servicio',
     privacy:      'Política de Privacidad',
+    contact:      'Contáctenos',
   },
 
   gasPrice: {
