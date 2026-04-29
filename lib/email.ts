@@ -73,22 +73,34 @@ export async function sendMail(opts: MailOptions): Promise<void> {
 }
 
 /**
- * Shared GasCap™ email header — navy bar with the white logo lockup image
- * (orange gas-pump icon + white "GasCap™" wordmark), matching the in-app
- * Header.tsx exactly.
+ * Shared GasCap™ email header — mirrors Header.tsx exactly:
+ * transparent orange pump icon + white "GasCap™" text, no pill or box,
+ * floating directly on the dark navy bar.
  *
- * Image: /public/logo-lockup-white.png served from gascap.app CDN.
- * Fallback alt text shown when images are blocked.
- * Single source of truth for all transactional and campaign emails.
+ * Two-cell table keeps icon + text aligned in all email clients (Outlook
+ * doesn't support flexbox). Icon served from gascap.app CDN so it loads
+ * in Gmail, Apple Mail, and Outlook web without embedding.
  */
 export function brandHeader(): string {
   return `
         <tr><td style="background:#1e2d4a;padding:20px 32px;border-radius:16px 16px 0 0;">
-          <img src="https://www.gascap.app/logo-lockup-white.png"
-               alt="GasCap™"
-               width="152" height="41"
-               style="display:block;height:41px;width:auto;max-width:100%;border:0;outline:none;"
-          />
+          <table cellpadding="0" cellspacing="0" border="0" role="presentation">
+            <tr>
+              <td style="vertical-align:middle;padding-right:8px;">
+                <img src="https://www.gascap.app/gascap-icon-raw.png"
+                     alt="" width="44" height="44"
+                     style="display:block;width:44px;height:44px;border:0;outline:none;" />
+              </td>
+              <td style="vertical-align:middle;">
+                <span style="font-family:system-ui,-apple-system,'Segoe UI',Arial,sans-serif;
+                             font-size:26px;font-weight:900;color:#ffffff;
+                             letter-spacing:-0.5px;line-height:1;white-space:nowrap;">
+                  GasCap<sup style="font-size:12px;font-weight:900;color:#ffffff;
+                                    vertical-align:super;line-height:0;">™</sup>
+                </span>
+              </td>
+            </tr>
+          </table>
         </td></tr>`;
 }
 
