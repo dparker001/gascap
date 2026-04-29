@@ -4,8 +4,6 @@ import { useSession, signOut } from 'next-auth/react';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { setThemePreference, getThemePreference, isDarkMode, type ThemePreference } from '@/components/DarkModeProvider';
-import PushNotificationToggle   from '@/components/PushNotificationToggle';
-import FillupReminderToggle     from '@/components/FillupReminderToggle';
 
 interface ReferralSummary {
   code:            string;
@@ -676,13 +674,6 @@ export default function SettingsPage() {
               </div>
             </div>
           </div>
-        </div>
-
-        {/* Notifications */}
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-4">
-          <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400">Notifications</h2>
-          <PushNotificationToggle />
-          <FillupReminderToggle />
         </div>
 
         {/* Gas price alert — Pro only */}

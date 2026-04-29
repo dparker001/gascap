@@ -158,7 +158,7 @@ const SECTIONS = [
       },
       {
         q: 'How do Fill-Up Reminders work?',
-        a: 'Fill-Up Reminders send a push notification when you haven\'t logged a fill-up within your chosen interval. Go to Settings → Notifications and choose Weekly (7 days) or Bi-weekly (14 days). Push notifications must be enabled on your device first.',
+        a: 'Fill-Up Reminders notify you when you haven\'t logged a fill-up within your chosen interval. SMS reminders (via your opted-in phone number) are coming soon. In the meantime, you can set a recurring reminder manually in your phone\'s calendar app.',
       },
     ],
   },
@@ -210,7 +210,7 @@ const SECTIONS = [
       },
       {
         q: 'What does Pro add?',
-        a: 'Pro ($4.99/mo or $49/yr) adds up to 3 saved vehicles, VIN photo scan, fill-up history & MPG tracking, receipt scanning, MPG Insight Card, AI Fuel Advisor, Gas Price Alert, fuel savings dashboard, streak counter, monthly report card, gas price trend predictions, vehicle health alerts, fill-up reminders, Annual Wrapped, referral rewards, and monthly gas card giveaway entries.',
+        a: 'Pro ($4.99/mo or $49/yr) adds up to 3 saved vehicles, VIN photo scan, fill-up history & MPG tracking, receipt scanning, MPG Insight Card, AI Fuel Advisor, Gas Price Alert, fuel savings dashboard, streak counter, monthly report card, gas price trend predictions, vehicle health alerts, Annual Wrapped, referral rewards, and monthly gas card giveaway entries.',
       },
       {
         q: 'What does Fleet add over Pro?',
