@@ -559,7 +559,7 @@ const en = {
   // ── Email verification banner (inline, on homepage) ──────────────────────
   verifyBanner: {
     message:    'Action required: verify your email address',
-    subtitle:   'Check your inbox for a verification link. Unverified accounts may lose access.',
+    subtitle:   'Check your inbox (and spam folder) for a verification link. Unverified accounts may lose access.',
     sent:       '✓ Email sent — check your inbox!',
     resend:     'Resend verification email',
     sending:    'Sending…',
@@ -1241,7 +1241,7 @@ const es: typeof en = {
 
   verifyBanner: {
     message:    'Acción requerida: verifica tu correo electrónico',
-    subtitle:   'Revisa tu bandeja de entrada. Las cuentas no verificadas pueden perder el acceso.',
+    subtitle:   'Revisa tu bandeja de entrada y carpeta de spam. Las cuentas no verificadas pueden perder el acceso.',
     sent:       '✓ ¡Correo enviado — revisa tu bandeja!',
     resend:     'Reenviar correo de verificación',
     sending:    'Enviando…',
