@@ -787,3 +787,336 @@ export async function sendCompProForLifeEmail(
     text:    compProForLifeEmailText(userName),
   });
 }
+
+// ── Comp Ambassador Drip — C2–C5 ──────────────────────────────────────────────
+// These emails go only to ambassadorProForLife=true users, managed by the
+// comp-campaign cron. C1 is the comp welcome email above (sent immediately).
+
+/** Dark teal badge for comp ambassador emails */
+function compBadge() {
+  return `
+    <div style="display:inline-block;background:#005F4A;color:#fff;font-weight:900;
+                font-size:11px;padding:6px 14px;border-radius:20px;letter-spacing:0.5px;
+                text-transform:uppercase;margin-bottom:16px;">
+      🎁 GasCap™ Ambassador — Exclusive
+    </div>`;
+}
+
+/** Teal CTA button variant for comp emails */
+function compCtaButton(label: string, url: string) {
+  return `
+    <a href="${url}" style="display:inline-block;background:#005F4A;color:#fff;font-weight:900;
+       font-size:15px;padding:14px 32px;border-radius:12px;text-decoration:none;margin-top:4px;">
+      ${label}
+    </a>`;
+}
+
+/** Reward milestone row for the milestone breakdown email */
+function milestoneRow(count: string, reward: string, desc: string, reached: boolean) {
+  const bg = reached ? '#ecfdf5' : '#f8fafc';
+  const border = reached ? '#6ee7b7' : '#e2e8f0';
+  return `
+    <tr>
+      <td style="padding:10px 12px;border-radius:10px;background:${bg};border:1px solid ${border};margin-bottom:8px;display:block;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="background:#005F4A;color:#fff;font-size:11px;font-weight:900;
+                      padding:4px 10px;border-radius:20px;white-space:nowrap;">${count}</div>
+          <div>
+            <p style="margin:0;font-size:14px;font-weight:900;color:#1e2d4a;">${reward}</p>
+            <p style="margin:0;font-size:12px;color:#64748b;">${desc}</p>
+          </div>
+          ${reached ? '<div style="margin-left:auto;color:#059669;font-size:18px;">✓</div>' : ''}
+        </div>
+      </td>
+    </tr>
+    <tr><td style="padding:4px;"></td></tr>`;
+}
+
+// ── C2 — Day 3: Share mechanics walkthrough ────────────────────────────────
+
+export function compC2EmailHtml(name: string, userId: string): string {
+  const first = name.split(' ')[0];
+  const referralUrl = `${BASE_URL}/#share`;
+  return wrap(`
+    ${header()}
+    <tr><td style="padding:32px;">
+      ${compBadge()}
+
+      <p style="margin:0 0 6px;font-size:24px;font-weight:900;color:#1e2d4a;line-height:1.2;">
+        Here's how to share GasCap™, ${first} 🔗
+      </p>
+      <p style="margin:0 0 20px;font-size:15px;color:#475569;line-height:1.65;">
+        Your personal referral link is ready — and sharing it is simpler than you think.
+        Here's a quick walkthrough so you can start earning toward your gas card rewards.
+      </p>
+
+      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:14px;padding:22px;margin-bottom:24px;">
+        <p style="margin:0 0 14px;font-size:12px;font-weight:900;color:#166534;letter-spacing:1px;text-transform:uppercase;">
+          ⚡ 3 steps to share
+        </p>
+        <table cellpadding="0" cellspacing="0" width="100%">
+          ${featureRow('1️⃣', 'Open GasCap™ → Share tab', 'Tap the Share icon at the bottom of the app. Your unique referral link and QR code are right there.')}
+          ${featureRow('2️⃣', 'Copy your link or grab your QR code', 'Paste the link in a text, group chat, or social caption — or screenshot the QR code for in-person sharing.')}
+          ${featureRow('3️⃣', 'When they upgrade, you earn', 'Every time someone you referred upgrades to a paid plan, you earn credit toward your gas card milestones.')}
+        </table>
+      </div>
+
+      <div style="background:#1e2d4a;border-radius:14px;padding:20px;margin-bottom:24px;">
+        <p style="margin:0 0 8px;font-size:13px;font-weight:900;color:#fbbf24;letter-spacing:0.5px;text-transform:uppercase;">
+          📋 Copy-paste ready messages
+        </p>
+        <div style="background:rgba(255,255,255,.08);border-radius:10px;padding:14px;margin-bottom:10px;">
+          <p style="margin:0 0 4px;font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Text message</p>
+          <p style="margin:0;font-size:13px;color:#fff;line-height:1.6;font-style:italic;">
+            "Hey — try this app called GasCap™. It tells you exactly how many gallons to pump so you never overpay. Free to use: [YOUR LINK]"
+          </p>
+        </div>
+        <div style="background:rgba(255,255,255,.08);border-radius:10px;padding:14px;">
+          <p style="margin:0 0 4px;font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Group chat or social post</p>
+          <p style="margin:0;font-size:13px;color:#fff;line-height:1.6;font-style:italic;">
+            "Anyone else tired of guessing at the gas pump? I've been using GasCap™ — it calculates exactly what to pump before you pull up. Free app: [YOUR LINK]"
+          </p>
+        </div>
+      </div>
+
+      <p style="margin:0 0 20px;font-size:14px;color:#475569;line-height:1.65;">
+        <strong>Pro tip:</strong> The QR code is your secret weapon for in-person sharing —
+        at gas stations, break rooms, parking lots. Anyone can scan it without typing a thing.
+      </p>
+
+      ${compCtaButton('Get Your Referral Link + QR Code →', referralUrl)}
+
+      <p style="margin:28px 0 0;font-size:13px;color:#94a3b8;line-height:1.6;">
+        Questions? Just reply — we read every message.
+      </p>
+      <p style="margin:8px 0 0;font-size:13px;color:#475569;">— The GasCap™ Team</p>
+    </td></tr>
+    ${footer(userId)}
+  `);
+}
+
+export const compC2EmailText = (name: string): string => {
+  const first = name.split(' ')[0];
+  return `Hi ${first}, your GasCap™ referral link is ready. Here's how to share it in 3 steps: (1) Open GasCap™ and go to the Share tab. (2) Copy your link or save your QR code. (3) Paste it in a text, group chat, or social caption — when someone you referred upgrades, you earn toward your gas card rewards. Copy-paste text: "Hey — try this app called GasCap™. It tells you exactly how many gallons to pump so you never overpay. Free to use: [YOUR LINK]". Get your link at ${BASE_URL}/#share`;
+};
+
+// ── C3 — Day 7: Best places to share ──────────────────────────────────────
+
+export function compC3EmailHtml(name: string, userId: string): string {
+  const first = name.split(' ')[0];
+  return wrap(`
+    ${header()}
+    <tr><td style="padding:32px;">
+      ${compBadge()}
+
+      <p style="margin:0 0 6px;font-size:24px;font-weight:900;color:#1e2d4a;line-height:1.2;">
+        The best places to share GasCap™, ${first} 📋
+      </p>
+      <p style="margin:0 0 20px;font-size:15px;color:#475569;line-height:1.65;">
+        Not sure where to start? Here are the highest-conversion spots our top ambassadors use —
+        plus ready-to-send messages for each one.
+      </p>
+
+      <table cellpadding="0" cellspacing="0" width="100%">
+        ${featureRow('💬', 'Group chats (WhatsApp, iMessage, Telegram)', 'Groups of 10–30 people are the sweet spot. One message reaches everyone who drives. Use the casual script from C2.')}
+        ${featureRow('🏘️', 'Facebook groups (local community, gas price alerts, commuters)', 'Search your city + "gas prices" or "driving" on Facebook. Post your referral link in the first comment — not the post body — to avoid algorithm suppression.')}
+        ${featureRow('👷', 'Work break room or team chat (Slack, Teams)', '"Anyone else dealing with gas prices this week? I found this…" — professional setting, high trust.')}
+        ${featureRow('⛽', 'In person at the gas station', 'Show someone the QR code while you\'re both filling up. The context is perfect and the conversion rate is high.')}
+        ${featureRow('📱', 'Your Instagram or Facebook story', 'Screenshot the app in action, add your referral link in the bio, tell people to check the link in your bio.')}
+      </table>
+
+      <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:12px;padding:18px 22px;margin:20px 0 24px;">
+        <p style="margin:0 0 6px;font-size:14px;font-weight:900;color:#92400e;">
+          🎯 The script that works everywhere
+        </p>
+        <p style="margin:0;font-size:14px;color:#78350f;line-height:1.65;font-style:italic;">
+          "Do you ever guess at the pump and end up paying too much? This app called GasCap™ tells you exactly how many gallons you need — based on your tank size and current price. It's free. Here's the link: [YOUR LINK]"
+        </p>
+      </div>
+
+      <p style="margin:0 0 16px;font-size:14px;color:#475569;line-height:1.65;">
+        <strong>Remember:</strong> You earn gas card credits only when someone you referred
+        upgrades to a paid plan. So the more people you reach, the faster your rewards stack up.
+      </p>
+
+      ${compCtaButton('Open GasCap™ + Share Tab →', `${BASE_URL}/#share`)}
+
+      <p style="margin:28px 0 0;font-size:13px;color:#94a3b8;line-height:1.6;">
+        Reply anytime — we love hearing what's working for our ambassadors.
+      </p>
+      <p style="margin:8px 0 0;font-size:13px;color:#475569;">— The GasCap™ Team</p>
+    </td></tr>
+    ${footer(userId)}
+  `);
+}
+
+export const compC3EmailText = (name: string): string => {
+  const first = name.split(' ')[0];
+  return `Hi ${first}, here are the best places to share GasCap™: (1) Group chats — WhatsApp, iMessage, Telegram. (2) Facebook groups — local community, gas price alerts, commuters. (3) Work break rooms or team chat. (4) In person at the gas station — show them your QR code. (5) Your Instagram or Facebook story. The script that works everywhere: "Do you ever guess at the pump and end up paying too much? This app called GasCap™ tells you exactly how many gallons you need. It's free: [YOUR LINK]". Share at ${BASE_URL}/#share`;
+};
+
+// ── C4 — Day 14: Milestone rewards breakdown ───────────────────────────────
+
+export function compC4EmailHtml(name: string, userId: string): string {
+  const first = name.split(' ')[0];
+  return wrap(`
+    ${header()}
+    <tr><td style="padding:32px;">
+      ${compBadge()}
+
+      <p style="margin:0 0 6px;font-size:24px;font-weight:900;color:#1e2d4a;line-height:1.2;">
+        Your Ambassador rewards, ${first} 🎁
+      </p>
+      <p style="margin:0 0 20px;font-size:15px;color:#475569;line-height:1.65;">
+        Here's a full breakdown of what you unlock as you refer more people to GasCap™.
+        Every paying referral counts — and they add up for life.
+      </p>
+
+      <div style="background:#1e2d4a;border-radius:14px;padding:22px;margin-bottom:24px;">
+        <p style="margin:0 0 14px;font-size:12px;font-weight:900;color:#fbbf24;letter-spacing:1px;text-transform:uppercase;">
+          🏆 Gas Card Milestone Rewards
+        </p>
+        <table cellpadding="0" cellspacing="0" width="100%">
+          ${milestoneRow('10 paying referrals', '$25 Gas Card', 'We mail or Venmo you a $25 fuel gift card', false)}
+          ${milestoneRow('25 paying referrals', '$50 Gas Card', 'You\'ve helped 25 drivers save — here\'s $50 back', false)}
+          ${milestoneRow('50 paying referrals', '$100 Gas Card', 'Elite Ambassador status — you\'ve earned it', false)}
+        </table>
+        <p style="margin:12px 0 0;font-size:11px;color:rgba(255,255,255,.5);line-height:1.5;">
+          Milestones are cumulative and permanent — they never reset. We'll reach out when you hit one.
+        </p>
+      </div>
+
+      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:14px;padding:20px;margin-bottom:24px;">
+        <p style="margin:0 0 10px;font-size:13px;font-weight:900;color:#166534;">📊 How referrals are counted</p>
+        <table cellpadding="0" cellspacing="0" width="100%">
+          ${featureRow('✓', 'Someone signs up using your referral link', 'They appear in your referred list immediately')}
+          ${featureRow('💳', 'They upgrade to a paid GasCap™ plan', 'This is when your referral count goes up — free signups don\'t count toward milestones')}
+          ${featureRow('📈', 'Your count only goes up — never resets', 'Even if they later cancel, your milestone count stays')}
+        </table>
+      </div>
+
+      <p style="margin:0 0 6px;font-size:14px;font-weight:900;color:#1e2d4a;">
+        📬 How to claim
+      </p>
+      <p style="margin:0 0 20px;font-size:14px;color:#475569;line-height:1.65;">
+        We monitor ambassador referral counts and will reach out by email when you cross a milestone.
+        No need to do anything — just keep sharing and we'll take care of the rest.
+      </p>
+
+      ${compCtaButton('Check Your Referral Count →', `${BASE_URL}/#share`)}
+
+      <p style="margin:28px 0 0;font-size:13px;color:#94a3b8;line-height:1.6;">
+        Questions about your rewards? Just reply to this email.
+      </p>
+      <p style="margin:8px 0 0;font-size:13px;color:#475569;">— The GasCap™ Team</p>
+    </td></tr>
+    ${footer(userId)}
+  `);
+}
+
+export const compC4EmailText = (name: string): string => {
+  const first = name.split(' ')[0];
+  return `Hi ${first}, here's your Ambassador rewards breakdown: 10 paying referrals → $25 gas card. 25 paying referrals → $50 gas card. 50 paying referrals → $100 gas card. Milestones are cumulative and permanent — they never reset. We'll reach out when you hit one. Referrals count only when someone you referred upgrades to a paid plan. Check your count at ${BASE_URL}/#share. Questions? Just reply to this email.`;
+};
+
+// ── C5 — Day 30: Re-engagement + top ambassador tips ──────────────────────
+
+export function compC5EmailHtml(name: string, userId: string): string {
+  const first = name.split(' ')[0];
+  return wrap(`
+    ${header()}
+    <tr><td style="padding:32px;">
+      ${compBadge()}
+
+      <p style="margin:0 0 6px;font-size:24px;font-weight:900;color:#1e2d4a;line-height:1.2;">
+        One month in, ${first} — thank you 🏆
+      </p>
+      <p style="margin:0 0 20px;font-size:15px;color:#475569;line-height:1.65;">
+        You've been a GasCap™ Ambassador for 30 days. Whether you've shared once or a dozen times,
+        your support is genuinely helping us grow — and we don't take that lightly.
+      </p>
+
+      <div style="background:#1e2d4a;border-radius:14px;padding:22px;margin-bottom:24px;">
+        <p style="margin:0 0 14px;font-size:12px;font-weight:900;color:#fbbf24;letter-spacing:1px;text-transform:uppercase;">
+          💡 What's working for our top ambassadors
+        </p>
+        <table cellpadding="0" cellspacing="0" width="100%">
+          ${featureRow('🗣️', 'Personal recommendation beats everything', 'A direct message to one person who drives a lot converts better than posting to 1,000 followers. Be specific — "I know you commute 40 miles each way, you\'ll love this."')}
+          ${featureRow('📸', 'Show, don\'t just tell', 'Screenshot the calculator mid-use with a real price and tank size. Seeing the output ("pump exactly 8.2 gallons") is more convincing than any description.')}
+          ${featureRow('🔄', 'Re-share when gas prices spike', 'Gas price headlines are your cue. People are most receptive to fuel-saving tools when prices are in the news.')}
+          ${featureRow('💬', 'Reply to questions you get', 'If someone asks "does it really work?" — answer them personally. That one conversation can unlock a cascade of referrals.')}
+        </table>
+      </div>
+
+      <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:12px;padding:18px 22px;margin-bottom:24px;">
+        <p style="margin:0 0 8px;font-size:14px;font-weight:900;color:#92400e;">
+          🎁 Your gas card milestones — a quick recap
+        </p>
+        <p style="margin:0;font-size:14px;color:#78350f;line-height:1.65;">
+          10 paying referrals → <strong>$25 gas card</strong><br>
+          25 paying referrals → <strong>$50 gas card</strong><br>
+          50 paying referrals → <strong>$100 gas card</strong><br>
+          <span style="font-size:12px;color:#92400e;opacity:.8;">Cumulative and permanent — milestones never reset</span>
+        </p>
+      </div>
+
+      <p style="margin:0 0 16px;font-size:14px;color:#475569;line-height:1.65;">
+        <strong>We're here to help you succeed.</strong> If there's anything we can do to make sharing easier —
+        better graphics, a custom message template, anything — just reply to this email and ask.
+        We build fast.
+      </p>
+
+      ${compCtaButton('Open GasCap™ + Share Tab →', `${BASE_URL}/#share`)}
+
+      <p style="margin:28px 0 0;font-size:13px;color:#94a3b8;line-height:1.6;">
+        Thank you again for being part of this from the beginning.
+      </p>
+      <p style="margin:8px 0 0;font-size:13px;color:#475569;">— Don & the GasCap™ Team</p>
+    </td></tr>
+    ${footer(userId)}
+  `);
+}
+
+export const compC5EmailText = (name: string): string => {
+  const first = name.split(' ')[0];
+  return `Hi ${first}, you've been a GasCap™ Ambassador for 30 days — thank you. Tips from our top ambassadors: (1) Personal recommendation beats mass posting. (2) Show the calculator mid-use in a screenshot. (3) Re-share when gas prices spike in the news. (4) Reply personally to questions. Gas card milestone recap: 10 referrals → $25, 25 referrals → $50, 50 referrals → $100. Milestones are cumulative and permanent. Want help with better graphics or message templates? Just reply to this email. Open GasCap™ at ${BASE_URL}/#share`;
+};
+
+// ── Comp Campaign dispatcher ───────────────────────────────────────────────
+
+/** Send the appropriate comp ambassador drip email for a given step (2–5). */
+export async function sendCompCampaignEmail(
+  step:  number,
+  user:  { id: string; name: string; email: string },
+): Promise<void> {
+  let subject: string;
+  let html:    string;
+  let text:    string;
+
+  switch (step) {
+    case 2:
+      subject = '🔗 Here\'s how to share GasCap™ — your link + QR code';
+      html    = compC2EmailHtml(user.name, user.id);
+      text    = compC2EmailText(user.name);
+      break;
+    case 3:
+      subject = '📋 The best places to share GasCap™ (copy-paste scripts inside)';
+      html    = compC3EmailHtml(user.name, user.id);
+      text    = compC3EmailText(user.name);
+      break;
+    case 4:
+      subject = '🎁 Your GasCap™ Ambassador milestone rewards';
+      html    = compC4EmailHtml(user.name, user.id);
+      text    = compC4EmailText(user.name);
+      break;
+    case 5:
+      subject = '🏆 One month in — tips from our top ambassadors';
+      html    = compC5EmailHtml(user.name, user.id);
+      text    = compC5EmailText(user.name);
+      break;
+    default:
+      throw new Error(`[compCampaign] Unknown step ${step}`);
+  }
+
+  await sendMail({ to: user.email, subject, html, text });
+}

@@ -7,7 +7,7 @@
  */
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { grantBetaTrial, revokeBetaTrial, findById } from '@/lib/users';
+import { grantBetaTrial, revokeBetaTrial, findById, enrollCompCampaign } from '@/lib/users';
 import { upsertGhlContact, removeGhlTags } from '@/lib/ghl';
 import { getFillups } from '@/lib/fillups';
 import { sendCompProForLifeEmail } from '@/lib/emailCampaign';
@@ -153,7 +153,7 @@ export async function PATCH(req: Request) {
   }
 
   if (body.compProForLife) {
-    // Grant complimentary Pro for Life — Stripe-proof, stops trial drip, sends comp email
+    // Grant complimentary Pro for Life — Stripe-proof, stops trial drip, starts comp drip
     await prisma.user.update({
       where: { id },
       data: {
@@ -162,8 +162,11 @@ export async function PATCH(req: Request) {
         emailCampaignStep:   5,   // stops trial drip (step 5 = done)
       },
     });
+    // C1 (welcome email) fires immediately; C2–C5 picked up by comp-campaign cron
     sendCompProForLifeEmail(id, user.email, user.name)
       .catch((e) => console.error('[CompPro] email failed:', e));
+    enrollCompCampaign(id)
+      .catch((e) => console.error('[CompPro] enroll comp campaign failed:', e));
     upsertGhlContact({ name: user.name, email: user.email, plan: 'pro', source: 'GasCap Comp Pro For Life' })
       .catch((e) => console.error('[GHL] comp pro sync failed:', e));
     return NextResponse.json({ ok: true });

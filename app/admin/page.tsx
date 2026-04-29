@@ -134,6 +134,12 @@ export default function AdminPage() {
   const [backfillLoading, setBackfillLoading] = useState(false);
   const [backfillMsg,     setBackfillMsg]     = useState('');
 
+  // ── Email Preview ─────────────────────────────────────────────────────
+  const [emailPreviewOpen,     setEmailPreviewOpen]     = useState(false);
+  const [emailPreviewTemplate, setEmailPreviewTemplate] = useState('comp-c1');
+  const [emailPreviewSrc,      setEmailPreviewSrc]      = useState<string | null>(null);
+  const [emailPreviewLoading,  setEmailPreviewLoading]  = useState(false);
+
   // ── Announcements ─────────────────────────────────────────────────────
   const [annOpen,      setAnnOpen]      = useState(false);
   const [announcements, setAnnouncements] = useState<AnnItem[]>([]);
@@ -292,6 +298,23 @@ export default function AdminPage() {
     });
     setMsg(`Revoked Comp Pro for ${user.email} — reverted to Free.`);
     await load(savedPw);
+  }
+
+  async function loadEmailPreview(template: string) {
+    setEmailPreviewLoading(true);
+    setEmailPreviewSrc(null);
+    try {
+      const url = `/api/admin/email-preview?template=${template}`;
+      // Fetch as text then create a blob URL for the iframe
+      const res  = await fetch(url, { headers: { 'x-admin-password': savedPw } });
+      if (!res.ok) { setEmailPreviewSrc(null); }
+      else {
+        const html = await res.text();
+        const blob = new Blob([html], { type: 'text/html' });
+        setEmailPreviewSrc(URL.createObjectURL(blob));
+      }
+    } catch { setEmailPreviewSrc(null); }
+    finally { setEmailPreviewLoading(false); }
   }
 
   async function handleFbRead(id: string) {
@@ -724,6 +747,150 @@ export default function AdminPage() {
           >
             {backfillLoading ? 'Syncing…' : '↑ Sync all users → GHL'}
           </button>
+        </div>
+
+        {/* ── Email Preview ─────────────────────────────────────────────── */}
+        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+          <button
+            onClick={() => {
+              setEmailPreviewOpen((o) => !o);
+              // Auto-load the first template when opening for the first time
+              if (!emailPreviewOpen && !emailPreviewSrc) {
+                loadEmailPreview(emailPreviewTemplate);
+              }
+            }}
+            className="w-full flex items-center justify-between px-5 py-4 hover:bg-slate-50 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-base">📧</span>
+              <div className="text-left">
+                <p className="text-sm font-black text-navy-700">Email Template Preview</p>
+                <p className="text-xs text-slate-600">
+                  Review all drip emails — trial, comp ambassador, and paid
+                </p>
+              </div>
+            </div>
+            <svg className={`w-4 h-4 text-slate-400 transition-transform ${emailPreviewOpen ? 'rotate-180' : ''}`}
+                 viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M4 6l4 4 4-4"/>
+            </svg>
+          </button>
+
+          {emailPreviewOpen && (
+            <div className="border-t border-slate-100 px-5 py-4 space-y-4">
+              {/* Template selector groups */}
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">🎁 Comp Ambassador Drip (exclusive)</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      { id: 'comp-c1', label: 'C1 — Welcome (Day 0)' },
+                      { id: 'comp-c2', label: 'C2 — Share Link (Day 3)' },
+                      { id: 'comp-c3', label: 'C3 — Best Places (Day 7)' },
+                      { id: 'comp-c4', label: 'C4 — Milestones (Day 14)' },
+                      { id: 'comp-c5', label: 'C5 — Re-engage (Day 30)' },
+                    ].map(({ id, label }) => (
+                      <button
+                        key={id}
+                        onClick={() => { setEmailPreviewTemplate(id); loadEmailPreview(id); }}
+                        className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${
+                          emailPreviewTemplate === id
+                            ? 'bg-teal-600 text-white'
+                            : 'bg-slate-100 text-slate-500 hover:bg-teal-50 hover:text-teal-700'
+                        }`}
+                      >{label}</button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">⭐ Free Trial Drip</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      { id: 'trial-d1', label: 'D1 — Welcome (Day 0)' },
+                      { id: 'trial-d2', label: 'D2 — Features (Day 3)' },
+                      { id: 'trial-d3', label: 'D3 — Check-in (Day 10)' },
+                      { id: 'trial-d4', label: 'D4 — Annual Deal (Day 21)' },
+                      { id: 'trial-d5', label: 'D5 — Last Call (Day 28)' },
+                    ].map(({ id, label }) => (
+                      <button
+                        key={id}
+                        onClick={() => { setEmailPreviewTemplate(id); loadEmailPreview(id); }}
+                        className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${
+                          emailPreviewTemplate === id
+                            ? 'bg-amber-500 text-white'
+                            : 'bg-slate-100 text-slate-500 hover:bg-amber-50 hover:text-amber-700'
+                        }`}
+                      >{label}</button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">💳 Paid Subscriber Drip</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      { id: 'paid-p1', label: 'P1 — Upgrade Confirm' },
+                      { id: 'paid-p2', label: 'P2 — 30-day Check-in' },
+                      { id: 'paid-p3', label: 'P3 — Feature Spotlight' },
+                      { id: 'paid-p5', label: 'P5 — Win-back' },
+                    ].map(({ id, label }) => (
+                      <button
+                        key={id}
+                        onClick={() => { setEmailPreviewTemplate(id); loadEmailPreview(id); }}
+                        className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${
+                          emailPreviewTemplate === id
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-slate-100 text-slate-500 hover:bg-blue-50 hover:text-blue-700'
+                        }`}
+                      >{label}</button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Preview iframe */}
+              <div className="rounded-xl border border-slate-200 overflow-hidden bg-slate-50">
+                <div className="px-4 py-2 border-b border-slate-200 flex items-center justify-between bg-white">
+                  <p className="text-xs font-semibold text-slate-600">
+                    Preview: <span className="text-slate-800 font-black">{emailPreviewTemplate}</span>
+                    <span className="ml-2 text-slate-400 font-normal">· Rendered with sample user "Alex Preview"</span>
+                  </p>
+                  {emailPreviewSrc && (
+                    <a
+                      href={emailPreviewSrc}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-teal-600 hover:text-teal-700 font-semibold"
+                    >
+                      Open in new tab ↗
+                    </a>
+                  )}
+                </div>
+                {emailPreviewLoading ? (
+                  <div className="h-96 flex items-center justify-center text-sm text-slate-400">
+                    Loading email preview…
+                  </div>
+                ) : emailPreviewSrc ? (
+                  <iframe
+                    src={emailPreviewSrc}
+                    className="w-full h-[600px] border-0"
+                    title="Email preview"
+                    sandbox="allow-same-origin"
+                  />
+                ) : (
+                  <div className="h-96 flex items-center justify-center text-sm text-slate-400">
+                    Select a template above to preview it.
+                  </div>
+                )}
+              </div>
+
+              <p className="text-[10px] text-slate-400 leading-relaxed">
+                Previews use a sample user ("Alex Preview"). Links and unsubscribe buttons are functional.
+                Changes to email templates require a redeploy to appear here.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Feedback Inbox */}

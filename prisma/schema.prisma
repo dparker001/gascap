@@ -88,6 +88,10 @@ model User {
   // Ambassador Program
   ambassadorProForLife     Boolean   @default(false)
 
+  // Comp Ambassador drip — 5-email sequence for comped members (C1 sent immediately on comp grant)
+  compCampaignStep         Int?      // 0=not enrolled, 1=C1 sent, 2=C2 sent … 5=C5 sent (done)
+  compCampaignEnrolledAt   String?   // ISO timestamp of comp grant — used to schedule C2–C5
+
   // Internal / testing
   isTestAccount            Boolean   @default(false)
 

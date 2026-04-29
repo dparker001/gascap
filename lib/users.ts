@@ -385,6 +385,50 @@ export async function markVerifyReminderSent(userId: string): Promise<void> {
   });
 }
 
+// ── Comp Ambassador drip ────────────────────────────────────────────────────
+
+/**
+ * Enroll a user in the Comp Ambassador drip sequence (C1 already sent externally).
+ * Sets compCampaignStep=1 and records the enrollment timestamp.
+ * Called immediately when the admin grants Comp Pro for Life.
+ */
+export async function enrollCompCampaign(userId: string): Promise<void> {
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      compCampaignStep:       1,
+      compCampaignEnrolledAt: new Date().toISOString(),
+    },
+  });
+}
+
+export async function advanceCompCampaignStep(userId: string, step: number): Promise<void> {
+  await prisma.user.update({
+    where: { id: userId },
+    data: { compCampaignStep: step },
+  });
+}
+
+/**
+ * Find comped users whose next Comp drip email is due.
+ * step 2 = C2 at day 3, step 3 = C3 at day 7, step 4 = C4 at day 14, step 5 = C5 at day 30
+ */
+export async function getUsersPendingCompCampaignStep(
+  step: number,
+  minDays: number,
+): Promise<StoredUser[]> {
+  const cutoff = new Date(Date.now() - minDays * 86_400_000).toISOString();
+  const users = await prisma.user.findMany({
+    where: {
+      emailOptOut:            false,
+      ambassadorProForLife:   true,
+      compCampaignStep:       step - 1,
+      compCampaignEnrolledAt: { not: null, lte: cutoff },
+    },
+  });
+  return users.map(toStoredUser);
+}
+
 export async function getExpiredBetaUsers(): Promise<StoredUser[]> {
   const now = new Date().toISOString();
   const users = await prisma.user.findMany({
