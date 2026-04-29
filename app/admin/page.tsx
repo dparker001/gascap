@@ -420,13 +420,26 @@ export default function AdminPage() {
       }
     });
   const stats = {
-    total:      users.length,
-    free:       users.filter((u) => u.plan === 'free').length,
-    pro:        users.filter((u) => u.plan === 'pro').length,
-    fleet:      users.filter((u) => u.plan === 'fleet').length,
-    unverified: users.filter((u) => !u.emailVerified).length,
-    push:       users.filter((u) => u.pushSubscribed).length,
-    activeToday: users.filter((u) => u.lastLoginAt && new Date(u.lastLoginAt).toLocaleDateString() === today).length,
+    total:        users.length,
+    // Plan
+    free:         users.filter((u) => u.plan === 'free').length,
+    pro:          users.filter((u) => u.plan === 'pro').length,
+    fleet:        users.filter((u) => u.plan === 'fleet').length,
+    // Email status
+    verified:     users.filter((u) =>  u.emailVerified).length,
+    unverified:   users.filter((u) => !u.emailVerified).length,
+    // Activity
+    activeToday:  users.filter((u) => u.lastLoginAt && new Date(u.lastLoginAt).toLocaleDateString() === today).length,
+    hasFillups:   users.filter((u) => u.fillupCount > 0).length,
+    neverLoggedIn: users.filter((u) => u.loginCount === 0).length,
+    hasStreak:    users.filter((u) => u.streak > 0).length,
+    // Billing
+    hasStripe:    users.filter((u) => !!u.stripeCustomerId).length,
+    noStripe:     users.filter((u) => !u.stripeCustomerId).length,
+    // Push
+    push:         users.filter((u) =>  u.pushSubscribed).length,
+    notPush:      users.filter((u) => !u.pushSubscribed).length,
+    // Totals
     totalFillups: users.reduce((s, u) => s + u.fillupCount, 0),
   };
 
@@ -916,9 +929,9 @@ export default function AdminPage() {
             <p className="text-[10px] font-bold text-slate-600 uppercase tracking-wide">Email Status</p>
             <div className="flex flex-wrap gap-1.5">
               {([
-                { val: 'all',        label: 'All' },
-                { val: 'verified',   label: '✓ Verified' },
-                { val: 'unverified', label: '⚠ Unverified' },
+                { val: 'all',        label: `All (${users.length})` },
+                { val: 'verified',   label: `✓ Verified (${stats.verified})` },
+                { val: 'unverified', label: `⚠ Unverified (${stats.unverified})` },
               ] as const).map(({ val, label }) => (
                 <button key={val} onClick={() => setFilterStatus(val)}
                   className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${
@@ -937,11 +950,11 @@ export default function AdminPage() {
             <p className="text-[10px] font-bold text-slate-600 uppercase tracking-wide">Activity</p>
             <div className="flex flex-wrap gap-1.5">
               {([
-                { val: 'all',         label: 'All' },
-                { val: 'today',       label: '🟢 Active Today' },
-                { val: 'has-fillups', label: '⛽ Has Fill-Ups' },
-                { val: 'no-logins',   label: '😴 Never Logged In' },
-                { val: 'has-streak',  label: '⚡ Has Streak' },
+                { val: 'all',         label: `All (${users.length})` },
+                { val: 'today',       label: `🟢 Active Today (${stats.activeToday})` },
+                { val: 'has-fillups', label: `⛽ Has Fill-Ups (${stats.hasFillups})` },
+                { val: 'no-logins',   label: `😴 Never Logged In (${stats.neverLoggedIn})` },
+                { val: 'has-streak',  label: `⚡ Has Streak (${stats.hasStreak})` },
               ] as const).map(({ val, label }) => (
                 <button key={val} onClick={() => setFilterActivity(val)}
                   className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${
@@ -960,9 +973,9 @@ export default function AdminPage() {
             <p className="text-[10px] font-bold text-slate-600 uppercase tracking-wide">Billing</p>
             <div className="flex flex-wrap gap-1.5">
               {([
-                { val: 'all',       label: 'All' },
-                { val: 'stripe',    label: '💳 Has Stripe' },
-                { val: 'no-stripe', label: 'No Stripe' },
+                { val: 'all',       label: `All (${users.length})` },
+                { val: 'stripe',    label: `💳 Has Stripe (${stats.hasStripe})` },
+                { val: 'no-stripe', label: `No Stripe (${stats.noStripe})` },
               ] as const).map(({ val, label }) => (
                 <button key={val} onClick={() => setFilterStripe(val)}
                   className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${
@@ -981,9 +994,9 @@ export default function AdminPage() {
             <p className="text-[10px] font-bold text-slate-600 uppercase tracking-wide">Push Notifications</p>
             <div className="flex flex-wrap gap-1.5">
               {([
-                { val: 'all',            label: 'All' },
-                { val: 'subscribed',     label: '🔔 Subscribed' },
-                { val: 'not-subscribed', label: 'Not subscribed' },
+                { val: 'all',            label: `All (${users.length})` },
+                { val: 'subscribed',     label: `🔔 Subscribed (${stats.push})` },
+                { val: 'not-subscribed', label: `Not subscribed (${stats.notPush})` },
               ] as const).map(({ val, label }) => (
                 <button key={val} onClick={() => setFilterPush(val)}
                   className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${
