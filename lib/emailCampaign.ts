@@ -573,6 +573,74 @@ export function lastCallEmailHtml(name: string, userId: string): string {
 export const lastCallEmailText = (name: string) =>
   `Hi ${name.split(' ')[0]}, your GasCap™ Pro trial ends in 48 hours. Lock in Pro Annual at $49/yr ($4.08/mo) before your account reverts to free. Upgrade: ${BASE_URL}/upgrade`;
 
+// ── Email 6 — Trial Ended (fires from expiry cron on downgrade) ────────────
+
+export function trialEndedEmailHtml(name: string, userId: string): string {
+  const first = name.split(' ')[0];
+  return wrap(`
+    ${header()}
+    <tr><td style="padding:32px;">
+      <p style="margin:0 0 6px;font-size:24px;font-weight:900;color:#1e2d4a;line-height:1.2;">
+        Your Pro trial has ended, ${first}
+      </p>
+      <p style="margin:0 0 22px;font-size:15px;color:#475569;line-height:1.65;">
+        Your 30-day GasCap™ Pro trial wrapped up today. Your account is now on the
+        free plan — your data, vehicles, and fill-up history are all still there,
+        nothing was lost.
+      </p>
+
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:16px;
+                  padding:20px 24px;margin-bottom:24px;">
+        <p style="margin:0 0 12px;font-size:13px;font-weight:800;color:#1e2d4a;
+                  text-transform:uppercase;letter-spacing:0.5px;">
+          What you had on Pro — still available if you upgrade
+        </p>
+        <table width="100%" cellpadding="0" cellspacing="0">
+          ${featureRow('📊', 'MPG drop detection', 'Automatic alerts when your fuel economy slips')}
+          ${featureRow('🤖', 'AI Trip Advisor', 'Smart fill-up timing and route cost estimates')}
+          ${featureRow('📄', 'PDF export', 'Full fill-up history for taxes or reimbursements')}
+          ${featureRow('🏅', 'Unlimited badges & streaks', 'All milestones, no cap')}
+          ${featureRow('📍', 'Unlimited vehicles', 'Track your whole household or small fleet')}
+          ${featureRow('🎁', 'Referral rewards', 'Earn free months — refer 15 and Pro is free for life')}
+        </table>
+      </div>
+
+      <div style="text-align:center;background:linear-gradient(135deg,#fefce8,#fef3c7);
+                  border:2px solid #fde68a;border-radius:16px;padding:24px;margin-bottom:24px;">
+        <p style="margin:0 0 4px;font-size:22px;font-weight:900;color:#92400e;">
+          Still want Pro?
+        </p>
+        <p style="margin:0 0 16px;font-size:14px;color:#92400e;">
+          <strong>$4.99/mo</strong> or save 2 months with <strong>$49/yr</strong>
+        </p>
+        ${ctaButton('Upgrade to Pro →', `${BASE_URL}/upgrade`)}
+        <p style="margin:14px 0 0;font-size:12px;color:#b45309;">
+          No commitment on monthly. Cancel anytime.
+        </p>
+      </div>
+
+      <p style="margin:0 0 14px;font-size:14px;color:#475569;line-height:1.65;">
+        Staying on the free plan? No problem at all. You'll keep unlimited
+        fuel calculations, live gas price lookup, and one saved vehicle — free, forever.
+      </p>
+      <p style="margin:0 0 14px;font-size:14px;color:#475569;line-height:1.65;">
+        If there's anything we could have done better during your trial, just
+        hit reply — we read every message personally.
+      </p>
+      <p style="margin:24px 0 0;font-size:13px;color:#94a3b8;">
+        Thanks for trying GasCap™, ${first}. We hope to see you back on Pro soon. 🙌
+      </p>
+      <p style="margin:8px 0 0;font-size:13px;color:#475569;">
+        — Don, Founder of GasCap™
+      </p>
+    </td></tr>
+    ${footer(userId)}
+  `);
+}
+
+export const trialEndedEmailText = (name: string) =>
+  `Hi ${name.split(' ')[0]}, your GasCap™ Pro trial has ended and your account is now on the free plan. Your data is safe. Want to keep Pro? Upgrade at ${BASE_URL}/upgrade — $4.99/mo or $49/yr. Free plan keeps unlimited calculations, gas price lookup, and one vehicle. — Don, GasCap™`;
+
 // ── Campaign dispatch helper ───────────────────────────────────────────────
 
 export interface CampaignRecipient {

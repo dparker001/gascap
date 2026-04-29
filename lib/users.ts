@@ -269,8 +269,30 @@ export async function grantBetaTrial(userId: string, days = 30): Promise<StoredU
 export async function revokeBetaTrial(userId: string): Promise<void> {
   await prisma.user.update({
     where: { id: userId },
-    data: { plan: 'free', betaProExpiry: null },
+    data: { plan: 'free', isProTrial: false, betaProExpiry: null },
   });
+}
+
+/** Expires a free Pro trial — downgrades to free and clears all trial flags. */
+export async function expireTrial(userId: string): Promise<void> {
+  await prisma.user.update({
+    where: { id: userId },
+    data: { plan: 'free', isProTrial: false, betaProExpiry: null },
+  });
+}
+
+/** Returns all users whose free Pro trial has expired but haven't been downgraded yet. */
+export async function getExpiredTrialUsers(): Promise<StoredUser[]> {
+  const now = new Date().toISOString();
+  const users = await prisma.user.findMany({
+    where: {
+      isProTrial:    true,
+      betaProExpiry: { lt: now },
+      emailOptOut:   false,
+      isTestAccount: false,
+    },
+  });
+  return users.map(toStoredUser);
 }
 
 export async function grantNewSignupProTrial(userId: string, days = 30): Promise<StoredUser | null> {
