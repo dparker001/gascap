@@ -167,7 +167,7 @@ export async function PATCH(req: Request) {
       .catch((e) => console.error('[CompPro] email failed:', e));
     enrollCompCampaign(id)
       .catch((e) => console.error('[CompPro] enroll comp campaign failed:', e));
-    upsertGhlContact({ name: user.name, email: user.email, plan: 'pro', source: 'GasCap Comp Pro For Life' })
+    upsertGhlContact({ name: user.name, email: user.email, plan: 'pro', source: 'GasCap Comp Pro For Life', extraTags: ['gascap-comp-ambassador'] })
       .catch((e) => console.error('[GHL] comp pro sync failed:', e));
     return NextResponse.json({ ok: true });
   }
