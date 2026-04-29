@@ -723,3 +723,67 @@ export async function sendReferralCreditEmail(
     text:    referralCreditEmailText(referrerName, totalCredits),
   });
 }
+
+// ── Complimentary Pro for Life ─────────────────────────────────────────────────
+
+export function compProForLifeEmailHtml(name: string, userId: string): string {
+  const first = name.split(' ')[0];
+  return wrap(`
+    <tr><td style="padding:32px 32px 0;">
+      <div style="display:inline-block;background:#005F4A;color:#fff;font-weight:900;
+                  font-size:11px;padding:6px 14px;border-radius:20px;letter-spacing:0.5px;
+                  text-transform:uppercase;margin-bottom:16px;">
+        🎁 Complimentary Pro — No Subscription Required
+      </div>
+
+      <h1 style="margin:0 0 10px;font-size:24px;font-weight:900;color:#1e2d4a;line-height:1.2;">
+        You&apos;ve got GasCap™ Pro — on us. Forever.
+      </h1>
+
+      <p style="margin:0 0 20px;font-size:15px;color:#475569;line-height:1.65;">
+        Hi ${first}, we&apos;ve set up your GasCap™ account with complimentary Pro access —
+        no subscription needed, no expiry date, no credit card. Your account is Pro for life.
+      </p>
+
+      <p style="margin:0 0 18px;font-size:14px;color:#475569;line-height:1.65;">
+        Here&apos;s everything that&apos;s now unlocked on your account:
+      </p>
+
+      <table style="width:100%;border-collapse:collapse;margin-bottom:24px;">
+        ${featureRow('⛽', 'Smart Fill-Up Calculator', 'Know exactly how many gallons to pump and what it will cost — before you pull up.')}
+        ${featureRow('📊', 'MPG Tracking & Charts', 'Log every fill-up and watch your fuel efficiency trend over time. Spot drops before they become expensive.')}
+        ${featureRow('💰', 'Monthly Budget Tracker', 'See your real fuel spend per month, compare to previous months, and set a target.')}
+        ${featureRow('🚗', 'Rental Car Return Mode', 'Avoid the $12/gal refuel trap — calculate exactly how much to pump before returning any rental.')}
+        ${featureRow('🤖', 'AI Fuel Advisor', 'Ask anything about fuel costs, routes, or savings — personalized to your vehicle and fill-up history.')}
+        ${featureRow('🏆', 'Monthly Gas Card Giveaway', 'You&apos;re automatically entered every month you&apos;re active. No extra steps.')}
+        ${featureRow('🔗', 'Referral Program', 'Share your link — earn credits and help unlock lifetime Pro access for yourself.')}
+      </table>
+
+      ${ctaButton('Open GasCap™ Now →', BASE_URL)}
+
+      <p style="margin:28px 0 0;font-size:13px;color:#94a3b8;line-height:1.6;">
+        Questions? Just reply to this email — we&apos;re a small team and we read everything.
+      </p>
+      <p style="margin:10px 0 0;font-size:13px;color:#475569;">
+        — The GasCap™ Team
+      </p>
+    </td></tr>
+    ${footer(userId)}
+  `);
+}
+
+export const compProForLifeEmailText = (name: string): string =>
+  `Hi ${name.split(' ')[0]}, great news — your GasCap™ account has been set up with complimentary Pro access. No subscription, no expiry, no credit card required. Your account is Pro for life. Sign in to explore all your Pro features at ${BASE_URL}. Questions? Just reply to this email. — The GasCap™ Team`;
+
+export async function sendCompProForLifeEmail(
+  userId:    string,
+  userEmail: string,
+  userName:  string,
+): Promise<void> {
+  await sendMail({
+    to:      userEmail,
+    subject: `🎁 Your GasCap™ Pro access — complimentary, forever`,
+    html:    compProForLifeEmailHtml(userName, userId),
+    text:    compProForLifeEmailText(userName),
+  });
+}

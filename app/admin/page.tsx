@@ -28,7 +28,8 @@ interface AdminUser {
   isBetaTester?:    boolean;
   betaProExpiry?:   string | null;
   pushSubscribed?:  boolean;
-  isTestAccount?:   boolean;
+  isTestAccount?:        boolean;
+  ambassadorProForLife?: boolean;
   // Activity metrics
   loginCount:       number;
   lastLoginAt:      string | null;
@@ -268,6 +269,28 @@ export default function AdminPage() {
     setMsg(enable
       ? `🧪 ${user.email} marked as test account — unlimited vehicles, no plan limits`
       : `Removed test account flag from ${user.email}`);
+    await load(savedPw);
+  }
+
+  async function handleCompProForLife(user: AdminUser) {
+    if (!confirm(`Grant complimentary Pro for Life to ${user.name}?\n\nThis will:\n• Set their plan to Pro permanently\n• Stop any trial drip emails\n• Send them a "You've got Pro for life" email`)) return;
+    await fetch(`/api/admin/users?id=${user.id}`, {
+      method:  'PATCH',
+      headers: { 'x-admin-password': savedPw, 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ compProForLife: true }),
+    });
+    setMsg(`🎁 ${user.email} — Comp Pro for Life granted. Welcome email sent.`);
+    await load(savedPw);
+  }
+
+  async function handleRevokeComp(user: AdminUser) {
+    if (!confirm(`Revoke Comp Pro for Life from ${user.name}? They will revert to Free.`)) return;
+    await fetch(`/api/admin/users?id=${user.id}`, {
+      method:  'PATCH',
+      headers: { 'x-admin-password': savedPw, 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ revokeCompProForLife: true }),
+    });
+    setMsg(`Revoked Comp Pro for ${user.email} — reverted to Free.`);
     await load(savedPw);
   }
 
@@ -1076,6 +1099,11 @@ export default function AdminPage() {
                           🧪 TEST
                         </span>
                       )}
+                      {u.ambassadorProForLife && (
+                        <span title="Complimentary Pro for Life — Stripe-proof" className="text-[10px] font-black px-2 py-0.5 rounded-full bg-teal-100 text-teal-700">
+                          🎁 COMPED
+                        </span>
+                      )}
                     </div>
                     <p className="text-xs text-slate-600 truncate">{u.email}</p>
                     <p className="text-[10px] text-slate-600">
@@ -1185,6 +1213,25 @@ export default function AdminPage() {
                         title="Remove test account exemption — restore normal plan limits"
                       >
                         🧪 → Live
+                      </button>
+                    )}
+
+                    {/* Comp Pro for Life */}
+                    {!u.ambassadorProForLife ? (
+                      <button
+                        onClick={() => handleCompProForLife(u)}
+                        className="text-xs px-2 py-1 rounded-lg bg-teal-100 text-teal-700 hover:bg-teal-200 font-semibold transition-colors whitespace-nowrap"
+                        title="Grant complimentary Pro for Life — Stripe-proof, sends welcome email"
+                      >
+                        🎁 Comp Pro
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleRevokeComp(u)}
+                        className="text-xs px-2 py-1 rounded-lg bg-teal-600 text-white hover:bg-teal-700 font-semibold transition-colors whitespace-nowrap"
+                        title="Revoke complimentary access — reverts to Free"
+                      >
+                        🎁 Comped ×
                       </button>
                     )}
 

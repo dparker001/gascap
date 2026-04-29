@@ -2,13 +2,15 @@
  * Admin API — protected by ADMIN_PASSWORD env var
  * GET    /api/admin/users              — list all users
  * DELETE /api/admin/users?id=xxx       — delete a user
- * PATCH  /api/admin/users?id=xxx       — update plan, emailVerified, betaProExpiry, or isTestAccount
+ * PATCH  /api/admin/users?id=xxx       — update plan, emailVerified, betaProExpiry, isTestAccount,
+ *                                        compProForLife, revokeCompProForLife
  */
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { grantBetaTrial, revokeBetaTrial, findById } from '@/lib/users';
 import { upsertGhlContact, removeGhlTags } from '@/lib/ghl';
 import { getFillups } from '@/lib/fillups';
+import { sendCompProForLifeEmail } from '@/lib/emailCampaign';
 
 function auth(req: Request): 'ok' | 'no-env' | 'wrong' {
   const pw = process.env.ADMIN_PASSWORD;
@@ -92,7 +94,8 @@ export async function GET(req: Request) {
       isBetaTester:     u.isBetaTester,
       betaProExpiry:    u.betaProExpiry   ?? null,
       pushSubscribed:   subscribedUserIds.has(u.id),
-      isTestAccount:    u.isTestAccount,
+      isTestAccount:        u.isTestAccount,
+      ambassadorProForLife: u.ambassadorProForLife,
       // Activity metrics
       loginCount:       u.loginCount,
       lastLoginAt:      u.lastLoginAt   ?? null,
@@ -127,6 +130,8 @@ export async function PATCH(req: Request) {
     grantBetaTrial?: number;  // days (default 30)
     revokeBetaTrial?: boolean;
     isTestAccount?: boolean;
+    compProForLife?: boolean;
+    revokeCompProForLife?: boolean;
   };
 
   const user = await findById(id);
@@ -144,6 +149,33 @@ export async function PATCH(req: Request) {
       .catch((e) => console.error('[GHL] beta revoke sync failed:', e));
     removeGhlTags(user.email, ['gascap-beta-tester'])
       .catch((e) => console.error('[GHL] beta tag remove failed:', e));
+    return NextResponse.json({ ok: true });
+  }
+
+  if (body.compProForLife) {
+    // Grant complimentary Pro for Life — Stripe-proof, stops trial drip, sends comp email
+    await prisma.user.update({
+      where: { id },
+      data: {
+        plan:                'pro',
+        ambassadorProForLife: true,
+        emailCampaignStep:   5,   // stops trial drip (step 5 = done)
+      },
+    });
+    sendCompProForLifeEmail(id, user.email, user.name)
+      .catch((e) => console.error('[CompPro] email failed:', e));
+    upsertGhlContact({ name: user.name, email: user.email, plan: 'pro', source: 'GasCap Comp Pro For Life' })
+      .catch((e) => console.error('[GHL] comp pro sync failed:', e));
+    return NextResponse.json({ ok: true });
+  }
+
+  if (body.revokeCompProForLife) {
+    await prisma.user.update({
+      where: { id },
+      data: { ambassadorProForLife: false, plan: 'free' },
+    });
+    upsertGhlContact({ name: user.name, email: user.email, plan: 'free', source: 'GasCap Comp Pro Revoked' })
+      .catch((e) => console.error('[GHL] comp revoke sync failed:', e));
     return NextResponse.json({ ok: true });
   }
 
