@@ -14,7 +14,7 @@ const SECTIONS = [
     items: [
       {
         q: 'Do I need an account to use GasCap™?',
-        a: 'No — the fuel calculators work right away without signing up. Creating a free account lets you save 1 vehicle and sync your data across devices. Upgrading to Pro ($4.99/mo) unlocks fill-up tracking, MPG insights, receipt scanning, and up to 3 saved vehicles. Fleet ($19.99/mo) supports unlimited vehicles and up to 25 drivers. New users get 30 days of Pro free — no credit card required.',
+        a: 'No — the fuel calculators work right away without signing up. Creating a free account lets you save 1 vehicle and sync your data across devices. Upgrading to Pro ($4.99/mo) unlocks fill-up tracking, MPG insights, receipt scanning, and up to 3 saved vehicles. Fleet ($19.99/mo) supports unlimited vehicles and up to 25 drivers. New users get 30 days of Pro free — no credit card required. After the trial, your account automatically reverts to the free plan.',
       },
       {
         q: 'I just signed up — what should I do first?',
@@ -158,7 +158,7 @@ const SECTIONS = [
       },
       {
         q: 'How do Fill-Up Reminders work?',
-        a: 'Fill-Up Reminders notify you when you haven\'t logged a fill-up within your chosen interval. SMS reminders (via your opted-in phone number) are coming soon. In the meantime, you can set a recurring reminder manually in your phone\'s calendar app.',
+        a: 'Fill-Up Reminders will notify you when you haven\'t logged a fill-up within your chosen interval. Reminders will be delivered via SMS to your opted-in phone number — this feature is coming soon (pending SMS service activation). GasCap™ does not use push notifications. In the meantime, you can set a recurring reminder manually in your phone\'s calendar app.',
       },
     ],
   },
@@ -192,7 +192,7 @@ const SECTIONS = [
       },
       {
         q: 'Is there a free trial for Fleet?',
-        a: 'Yes — new users receive 30 days of Fleet features free with no credit card required. After the trial, Fleet is $19.99/month or $199/year.',
+        a: 'Yes — new users receive 30 days of Fleet features free with no credit card required. After the trial, your account automatically downgrades to the free plan. To continue with Fleet, upgrade at $19.99/month or $199/year.',
       },
     ],
   },
@@ -206,7 +206,7 @@ const SECTIONS = [
       },
       {
         q: 'How do I get 30 days of Pro free?',
-        a: 'All new users who create a GasCap™ account automatically receive 30 days of Pro features — no credit card required. Your free trial gives full access to fill-up tracking, MPG insights, receipt scanning, AI Fuel Advisor, Gas Price Alert, stats, streak rewards, referral program, and monthly giveaway entries. After the 30-day trial, Pro is $4.99/month (or $49/year). You can cancel anytime before the trial ends and you\'ll never be charged.',
+        a: 'All new users who create a GasCap™ account automatically receive 30 days of Pro features — no credit card required. Your free trial gives full access to fill-up tracking, MPG insights, receipt scanning, AI Fuel Advisor, Gas Price Alert, stats, streak rewards, referral program, and monthly giveaway entries. When there are 15 days left in your trial, a banner appears in the app to remind you. After the 30-day trial ends, your account automatically downgrades to the free plan — you are never charged. To keep Pro features, upgrade before the trial expires at $4.99/month (or $49/year).',
       },
       {
         q: 'What does Pro add?',
@@ -401,6 +401,10 @@ const SECTIONS = [
       {
         q: 'My streak didn\'t count today even though I used the app.',
         a: 'Make sure you\'re signed in — streaks only count for registered users. Each new streak day is counted at midnight in your device\'s local time zone, so whether you\'re on the East Coast, Central, Mountain, Pacific, or any other time zone, your streak resets at midnight where you are. If you used the app and the streak didn\'t increment, sign out and back in to force a session refresh.',
+      },
+      {
+        q: 'My Pro features disappeared after my trial ended.',
+        a: 'At the end of the 30-day free trial, your account automatically reverts to the free plan. No charge is ever applied — you simply lose access to Pro-only features (fill-up tracking, MPG charts, AI Advisor, etc.). To restore Pro access, go to Settings → Plan → "Upgrade to Pro." A reminder banner appears in the app starting 15 days before your trial expires so you have plenty of notice.',
       },
       {
         q: 'The AI Fuel Advisor isn\'t responding.',
