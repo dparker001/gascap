@@ -24,6 +24,7 @@ import WorstFillup            from './WorstFillup';
 import ReferralLeaderboard    from './ReferralLeaderboard';
 import VehicleHealthAlert     from './VehicleHealthAlert';
 import StreakRewards          from './StreakRewards';
+import CompAmbassadorTracker  from './CompAmbassadorTracker';
 import ManualFillupLogger     from './ManualFillupLogger';
 import { useTranslation }    from '@/contexts/LanguageContext';
 // ── Tab definitions ──────────────────────────────────────────────────────────
@@ -256,6 +257,7 @@ export default function ToolsPanel() {
       <div role="tabpanel" id="tabpanel-share" hidden={effectiveTab !== 'share'}>
         {effectiveTab === 'share' && session && (
           <div className="space-y-3">
+            <CompAmbassadorTracker />
             <StreakRewards />
             <ReferralLeaderboard />
             <ReferralCard />
