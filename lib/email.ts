@@ -73,33 +73,22 @@ export async function sendMail(opts: MailOptions): Promise<void> {
 }
 
 /**
- * Shared GasCap™ email header — mirrors the in-app header by placing the
- * wordmark inside a white "pill" on a dark navy bar. The wordmark is rendered
- * as styled HTML text (not an image) so it displays identically in every email
- * client including Outlook, and uses the exact brand colors from
- * /public/logo-wordmark.png:
+ * Shared GasCap™ email header — navy bar with the white logo lockup image
+ * (orange gas-pump icon + white "GasCap™" wordmark), matching the in-app
+ * Header.tsx exactly.
  *
- *   "Gas" → #15a680  (brand teal-green)
- *   "Cap" → #0a5240  (brand dark teal)
- *    ™    → #fa7109  (brand orange)
- *
- * A nested <table> is used for the white pill because Outlook is unreliable
- * with inline-block padding and border-radius on <span>. Single source of
- * truth so the verification email, password-reset email, and any future
- * transactional email stay in lock-step with lib/emailCampaign.ts.
+ * Image: /public/logo-lockup-white.png served from gascap.app CDN.
+ * Fallback alt text shown when images are blocked.
+ * Single source of truth for all transactional and campaign emails.
  */
 export function brandHeader(): string {
   return `
-        <tr><td style="background:#1e2d4a;padding:22px 32px;border-radius:16px 16px 0 0;">
-          <table cellpadding="0" cellspacing="0" border="0" role="presentation"><tr><td
-               style="background:#ffffff;padding:10px 16px;border-radius:10px;mso-padding-alt:10px 16px;">
-            <span style="font-family:system-ui,-apple-system,'Segoe UI',Arial,sans-serif;
-                         font-size:24px;font-weight:900;letter-spacing:-0.5px;line-height:1;
-                         white-space:nowrap;">
-              <span style="color:#15a680;">Gas</span><span style="color:#0a5240;">Cap</span><sup
-                    style="color:#fa7109;font-size:11px;font-weight:900;vertical-align:super;line-height:0;">™</sup>
-            </span>
-          </td></tr></table>
+        <tr><td style="background:#1e2d4a;padding:20px 32px;border-radius:16px 16px 0 0;">
+          <img src="https://www.gascap.app/logo-lockup-white.png"
+               alt="GasCap™"
+               width="152" height="41"
+               style="display:block;height:41px;width:auto;max-width:100%;border:0;outline:none;"
+          />
         </td></tr>`;
 }
 
