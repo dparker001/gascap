@@ -700,7 +700,7 @@ export default function Home() {
         {/* Business info — required for A2P compliance */}
         <div className="pt-2 space-y-0.5">
           <p className="text-[10px] text-slate-400 font-semibold">Gas Capacity LLC</p>
-          <p className="text-[10px] text-slate-400">16260 Bristol Lake Circle, Orlando, FL 32828</p>
+          <p className="text-[10px] text-slate-400">7901 4th St N STE 300, St. Petersburg, FL 33702</p>
           <p className="text-[10px] text-slate-400">
             <a href="mailto:admin@gascap.app" className="hover:text-brand-orange transition-colors">
               admin@gascap.app

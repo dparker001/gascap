@@ -14,7 +14,7 @@ export default function PrivacyPage() {
       <div className="max-w-2xl mx-auto px-5 py-10 pb-20">
         <h1 className="text-3xl font-black text-navy-700 mb-1">Privacy Policy</h1>
         <p className="text-xs text-slate-500 mb-1">
-          <strong>Gas Capacity LLC</strong> · 16260 Bristol Lake Circle, Orlando, FL 32828 ·{' '}
+          <strong>Gas Capacity LLC</strong> · 7901 4th St N STE 300, St. Petersburg, FL 33702 ·{' '}
           <a href="mailto:admin@gascap.app" className="text-amber-600 hover:underline">admin@gascap.app</a>
           {' · '}
           <a href="tel:+13215131321" className="text-amber-600 hover:underline">(321) 513-1321</a>
@@ -183,7 +183,7 @@ export default function PrivacyPage() {
             <p>Questions or concerns about this Privacy Policy? Contact us:</p>
             <ul className="list-none pl-0 space-y-0.5 mt-2">
               <li><strong>Gas Capacity LLC</strong></li>
-              <li>16260 Bristol Lake Circle, Orlando, FL 32828</li>
+              <li>7901 4th St N STE 300, St. Petersburg, FL 33702</li>
               <li>
                 <a href="mailto:admin@gascap.app" className="text-amber-600 hover:underline">admin@gascap.app</a>
               </li>

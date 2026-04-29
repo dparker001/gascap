@@ -7,7 +7,7 @@ import StaticPageHeader from '@/components/StaticPageHeader';
 // ─── Business constants ───────────────────────────────────────────────────────
 const LEGAL_NAME    = 'Gas Capacity LLC';
 const BUSINESS_EMAIL = 'admin@gascap.app';
-const BUSINESS_ADDR  = '16260 Bristol Lake Circle, Orlando, FL 32828';
+const BUSINESS_ADDR  = '7901 4th St N STE 300, St. Petersburg, FL 33702';
 const BUSINESS_PHONE = '(321) 513-1321';
 
 const YEAR = new Date().getFullYear();
