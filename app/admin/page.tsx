@@ -85,17 +85,17 @@ const PLAN_COLORS = {
 };
 
 const SESSION_KEY = 'gascap_admin_session';
-const SESSION_TTL = 15 * 60 * 1000; // 15 minutes
+const SESSION_TTL = 8 * 60 * 60 * 1000; // 8 hours — survives tab closes, expires after a full work day
 
 function saveSession(pw: string) {
-  sessionStorage.setItem(SESSION_KEY, JSON.stringify({ pw, ts: Date.now() }));
+  localStorage.setItem(SESSION_KEY, JSON.stringify({ pw, ts: Date.now() }));
 }
 function clearSession() {
-  sessionStorage.removeItem(SESSION_KEY);
+  localStorage.removeItem(SESSION_KEY);
 }
 function loadSession(): string | null {
   try {
-    const raw = sessionStorage.getItem(SESSION_KEY);
+    const raw = localStorage.getItem(SESSION_KEY);
     if (!raw) return null;
     const { pw, ts } = JSON.parse(raw) as { pw: string; ts: number };
     if (Date.now() - ts > SESSION_TTL) { clearSession(); return null; }
