@@ -78,8 +78,9 @@ export default function SweepstakesAdminPage() {
     name: string; email: string; entryCount: number; totalEntries: number; prize: string; month: string;
   } | null>(null);
 
-  const [history,   setHistory]   = useState<DrawRecord[]>([]);
-  const [notes,     setNotes]     = useState('');
+  const [history,         setHistory]         = useState<DrawRecord[]>([]);
+  const [notes,           setNotes]           = useState('');
+  const [sendWinnerEmail, setSendWinnerEmail] = useState(true);
 
   const [prize,           setPrize]           = useState('$25');
   const [subscriberCount, setSubscriberCount] = useState<number | null>(null);
@@ -160,14 +161,17 @@ export default function SweepstakesAdminPage() {
   }
 
   async function handleDraw() {
-    if (!confirm(`Run the weighted draw for ${fmtMonth(month)}? This cannot be undone.\n\nThe winner will receive an email immediately.`)) return;
+    const emailWarning = sendWinnerEmail
+      ? 'Winner email + non-winner results emails will be sent immediately.'
+      : 'Winner email is suppressed — contact the winner manually. Non-winner results emails will still send.';
+    if (!confirm(`Run the weighted draw for ${fmtMonth(month)}? This cannot be undone.\n\n${emailWarning}`)) return;
     setDrawing(true);
     setDrawErr('');
     setDryRunResult(null);
     const res = await fetch('/api/admin/sweepstakes', {
       method:  'POST',
       headers: { 'x-admin-password': savedPw, 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ month, notes: notes.trim() || undefined }),
+      body:    JSON.stringify({ month, notes: notes.trim() || undefined, suppressWinnerEmail: !sendWinnerEmail }),
     });
     const data = await res.json() as { ok?: boolean; draw?: DrawRecord; error?: string; existing?: DrawRecord };
     setDrawing(false);
@@ -303,7 +307,87 @@ export default function SweepstakesAdminPage() {
             </div>
           )}
 
-          {/* Entrant table */}
+          {/* ── Action panel — always above the entrant list ── */}
+          {previewed && entrants.length > 0 && !winner && (
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+              <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Draw Controls</p>
+
+              {/* Notes */}
+              <input
+                type="text"
+                placeholder="Optional notes (e.g. prize amount, card type)"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                maxLength={200}
+                className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm bg-white
+                           focus:outline-none focus:ring-2 focus:ring-amber-400"
+              />
+
+              {/* Send winner email toggle */}
+              <label className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 cursor-pointer transition-colors
+                ${sendWinnerEmail
+                  ? 'border-green-200 bg-green-50'
+                  : 'border-amber-200 bg-amber-50'}`}>
+                <input
+                  type="checkbox"
+                  checked={sendWinnerEmail}
+                  onChange={(e) => setSendWinnerEmail(e.target.checked)}
+                  className="w-4 h-4 accent-green-600 cursor-pointer"
+                />
+                <div>
+                  <p className={`text-xs font-bold ${sendWinnerEmail ? 'text-green-700' : 'text-amber-700'}`}>
+                    {sendWinnerEmail ? '✉️ Send winner email immediately' : '🔕 Suppress winner email — contact manually'}
+                  </p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">
+                    {sendWinnerEmail
+                      ? 'Winner receives the congratulations email the moment you click Draw.'
+                      : 'Winner is selected and recorded — no email sent. Non-winner emails still go out.'}
+                  </p>
+                </div>
+              </label>
+
+              {/* Dry run button */}
+              <button
+                onClick={handleDryRun}
+                disabled={dryRunning || drawing}
+                className="w-full py-2.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-100
+                           text-slate-600 text-sm font-bold transition-colors disabled:opacity-50"
+              >
+                {dryRunning ? '🎲 Simulating…' : '🔍 Dry Run — Preview Winner (nothing sent)'}
+              </button>
+
+              {/* Dry run result */}
+              {dryRunResult && (
+                <div className="rounded-xl border-2 border-dashed border-slate-300 bg-white p-3 text-center space-y-1">
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                    Dry Run — Not recorded · No emails sent
+                  </p>
+                  <p className="text-base font-black text-slate-700">{dryRunResult.name}</p>
+                  <p className="text-xs text-slate-500">{dryRunResult.email}</p>
+                  <p className="text-[10px] text-slate-400">
+                    {dryRunResult.entryCount} {dryRunResult.entryCount === 1 ? 'entry' : 'entries'} of {dryRunResult.totalEntries} total
+                    {' '}· {((dryRunResult.entryCount / dryRunResult.totalEntries) * 100).toFixed(1)}% odds
+                  </p>
+                  <p className="text-[9px] text-slate-400">Run again for a different simulation, or click Draw to make it official.</p>
+                </div>
+              )}
+
+              {/* Draw button */}
+              <button
+                onClick={handleDraw}
+                disabled={drawing || dryRunning}
+                className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-white font-black text-sm transition-colors disabled:opacity-50"
+              >
+                {drawing
+                  ? '🎲 Drawing…'
+                  : `🎰 Draw Winner for ${fmtMonth(month)}${sendWinnerEmail ? ' — Sends Email' : ' — Email Suppressed'}`}
+              </button>
+
+              {drawErr && <p className="text-sm text-red-500 text-center">{drawErr}</p>}
+            </div>
+          )}
+
+          {/* Entrant list — reference only, scrollable */}
           {previewed && (
             <div className="space-y-2">
               {entrants.length === 0 ? (
@@ -313,10 +397,10 @@ export default function SweepstakesAdminPage() {
               ) : (
                 <>
                   <div className="flex justify-between text-[10px] font-bold text-slate-500 uppercase tracking-wide px-1">
-                    <span>User</span>
-                    <span>Entries · Odds</span>
+                    <span>Entrants — {entrants.length} eligible user{entrants.length !== 1 ? 's' : ''}</span>
+                    <span>{totalEntries} total entries</span>
                   </div>
-                  <div className="divide-y divide-slate-50 rounded-xl border border-slate-100 overflow-hidden">
+                  <div className="divide-y divide-slate-50 rounded-xl border border-slate-100 overflow-hidden max-h-80 overflow-y-auto">
                     {entrants.map((e) => (
                       <div key={e.userId} className="flex items-center justify-between px-3 py-2 bg-white">
                         <div>
@@ -338,69 +422,13 @@ export default function SweepstakesAdminPage() {
                       </div>
                     ))}
                   </div>
-                  <div className="flex justify-between text-xs text-slate-500 px-1 pt-1">
-                    <span>{entrants.length} eligible user{entrants.length !== 1 ? 's' : ''}</span>
-                    <span>{totalEntries} total entries</span>
-                  </div>
                 </>
               )}
             </div>
           )}
 
-          {/* Notes */}
-          {previewed && entrants.length > 0 && (
-            <input
-              type="text"
-              placeholder="Optional notes (e.g. prize amount, card type)"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              maxLength={200}
-              className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
-            />
-          )}
-
-          {/* Dry run button */}
-          {previewed && entrants.length > 0 && !winner && (
-            <button
-              onClick={handleDryRun}
-              disabled={dryRunning || drawing}
-              className="w-full py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600
-                         text-sm font-bold transition-colors disabled:opacity-50"
-            >
-              {dryRunning ? '🎲 Simulating…' : '🔍 Dry Run — Preview Winner (no email sent)'}
-            </button>
-          )}
-
-          {/* Dry run result */}
-          {dryRunResult && !winner && (
-            <div className="rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 p-4 text-center space-y-1.5">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                DRY RUN — No email sent · Not recorded
-              </p>
-              <p className="text-lg font-black text-slate-700">{dryRunResult.name}</p>
-              <p className="text-sm text-slate-500">{dryRunResult.email}</p>
-              <p className="text-[11px] text-slate-400">
-                {dryRunResult.entryCount} entr{dryRunResult.entryCount !== 1 ? 'ies' : 'y'} out of {dryRunResult.totalEntries} total
-                {' '}· {((dryRunResult.entryCount / dryRunResult.totalEntries) * 100).toFixed(1)}% odds
-              </p>
-              <p className="text-[10px] text-slate-400 pt-1">
-                Run again to get a different simulated result, or press Draw Winner below to make it official.
-              </p>
-            </div>
-          )}
-
-          {/* Draw button */}
-          {previewed && entrants.length > 0 && !winner && (
-            <button
-              onClick={handleDraw}
-              disabled={drawing || dryRunning}
-              className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-white font-black text-sm transition-colors disabled:opacity-50"
-            >
-              {drawing ? '🎲 Drawing…' : `🎰 Draw Winner for ${fmtMonth(month)} — Sends Email`}
-            </button>
-          )}
-
-          {drawErr && (
+          {/* Winner reveal — shown after a real draw */}
+          {drawErr && !winner && (
             <p className="text-sm text-red-500 text-center">{drawErr}</p>
           )}
 

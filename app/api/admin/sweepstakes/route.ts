@@ -78,9 +78,10 @@ export async function POST(req: Request) {
   if (_auth === 'no-env') return NextResponse.json({ error: 'Misconfigured' }, { status: 503 });
   if (_auth === 'wrong')  return NextResponse.json({ error: 'Unauthorized'  }, { status: 401 });
 
-  const body    = await req.json() as { month?: string; notes?: string; dryRun?: boolean };
-  const month   = body.month ?? currentMonth();
-  const dryRun  = body.dryRun === true;
+  const body                = await req.json() as { month?: string; notes?: string; dryRun?: boolean; suppressWinnerEmail?: boolean };
+  const month               = body.month ?? currentMonth();
+  const dryRun              = body.dryRun === true;
+  const suppressWinnerEmail = body.suppressWinnerEmail === true;
 
   if (!/^\d{4}-\d{2}$/.test(month)) {
     return NextResponse.json({ error: 'Invalid month format. Use YYYY-MM.' }, { status: 400 });
@@ -138,8 +139,10 @@ export async function POST(req: Request) {
     const nonWinners  = allEntrants.filter((e) => e.userId !== result.winner.userId);
 
     void Promise.allSettled([
-      // 1. Branded winner email
-      sendMail({
+      // 1. Branded winner email (skipped if suppressWinnerEmail is true)
+      suppressWinnerEmail
+        ? Promise.resolve()
+        : sendMail({
         to:      result.winner.email,
         subject: `🏆 You won the ${monthLabel} GasCap™ Gas Card!`,
         html:    winnerNotificationEmailHtml(
