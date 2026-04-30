@@ -2,6 +2,16 @@
 
 import { useState, useEffect, useCallback } from 'react';
 
+interface EmailLogEntry {
+  id:        string;
+  userId:    string;
+  userEmail: string;
+  userName:  string;
+  type:      string;
+  subject:   string;
+  sentAt:    string;
+}
+
 interface FeedbackItem {
   id:        string;
   name:      string;
@@ -134,6 +144,12 @@ export default function AdminPage() {
   const [bcastMsg,       setBcastMsg]       = useState('');
   const [feedback,  setFeedback]  = useState<FeedbackItem[]>([]);
   const [fbOpen,    setFbOpen]    = useState(false);
+  // ── Email Activity Log ────────────────────────────────────────────────
+  const [emailLogOpen,    setEmailLogOpen]    = useState(false);
+  const [emailLogEntries, setEmailLogEntries] = useState<EmailLogEntry[]>([]);
+  const [emailLogSearch,  setEmailLogSearch]  = useState('');
+  const [emailLogType,    setEmailLogType]    = useState('');
+  const [emailLogLoading, setEmailLogLoading] = useState(false);
   // ── GHL Backfill ──────────────────────────────────────────────────────
   const [backfillLoading, setBackfillLoading] = useState(false);
   const [backfillMsg,     setBackfillMsg]     = useState('');
@@ -335,6 +351,24 @@ export default function AdminPage() {
     setFeedback((prev) => prev.filter((f) => f.id !== id));
   }
 
+  async function loadEmailLog(search = emailLogSearch, type = emailLogType) {
+    setEmailLogLoading(true);
+    const params = new URLSearchParams({ limit: '200' });
+    if (search.trim()) params.set('search', search.trim());
+    if (type.trim())   params.set('type',   type.trim());
+    try {
+      const res = await fetch(`/api/admin/email-log?${params}`, {
+        headers: { 'x-admin-password': savedPw },
+      });
+      if (res.ok) {
+        const data = await res.json() as { logs: EmailLogEntry[] };
+        setEmailLogEntries(data.logs);
+      }
+    } finally {
+      setEmailLogLoading(false);
+    }
+  }
+
   async function loadSubCount() {
     const res = await fetch('/api/push/broadcast', { headers: { 'x-admin-password': savedPw } });
     if (res.ok) {
@@ -439,6 +473,39 @@ export default function AdminPage() {
   }
 
   const today = new Date().toLocaleDateString();
+
+  // ── Email log helpers ────────────────────────────────────────────────────
+  function emailTypeLabel(type: string): string {
+    const labels: Record<string, string> = {
+      'trial-d1': 'Trial D1', 'trial-d2': 'Trial D2', 'trial-d3': 'Trial D3',
+      'trial-d4': 'Trial D4', 'trial-d5': 'Trial D5',
+      'paid-p1': 'Paid P1', 'paid-p2': 'Paid P2', 'paid-p3': 'Paid P3',
+      'paid-p4': 'Paid P4', 'paid-p5': 'Paid P5',
+      'comp-c1': 'Comp C1', 'comp-c2': 'Comp C2', 'comp-c3': 'Comp C3',
+      'comp-c4': 'Comp C4', 'comp-c5': 'Comp C5',
+      'eng-s1': 'Eng S1', 'eng-s2': 'Eng S2', 'eng-s3': 'Eng S3',
+      'eng-s4': 'Eng S4', 'eng-s5': 'Eng S5',
+      'eng-f1': 'Fleet F1', 'eng-f2': 'Fleet F2', 'eng-f3': 'Fleet F3', 'eng-f4': 'Fleet F4',
+      'milestone-fillup10': 'M1 Fill-ups', 'milestone-mpg': 'M2 MPG',
+      'milestone-referral1': 'M3 Referral',
+      'referral-credit': 'Referral Credit',
+      'trial-ended': 'Trial Ended',
+      'early-upgrade-offer': 'Early Upgrade',
+      'comp-pro-for-life': 'Comp Pro Life',
+    };
+    return labels[type] ?? type;
+  }
+  function emailTypeBadgeColor(type: string): string {
+    if (type.startsWith('trial-'))      return 'bg-amber-100 text-amber-700';
+    if (type.startsWith('paid-'))       return 'bg-blue-100 text-blue-700';
+    if (type.startsWith('comp-'))       return 'bg-teal-100 text-teal-700';
+    if (type.startsWith('eng-'))        return 'bg-green-100 text-green-700';
+    if (type.startsWith('milestone-'))  return 'bg-purple-100 text-purple-700';
+    if (type === 'referral-credit')     return 'bg-yellow-100 text-yellow-700';
+    if (type === 'trial-ended')         return 'bg-red-100 text-red-600';
+    if (type === 'early-upgrade-offer') return 'bg-orange-100 text-orange-700';
+    return 'bg-slate-100 text-slate-600';
+  }
 
   const filtered = users
     .filter((u) => {
@@ -1030,6 +1097,155 @@ export default function AdminPage() {
                   </div>
                 ))
               )}
+            </div>
+          )}
+        </div>
+
+        {/* ── Email Activity Log ────────────────────────────────────────────── */}
+        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+          <button
+            onClick={() => {
+              const next = !emailLogOpen;
+              setEmailLogOpen(next);
+              if (next && emailLogEntries.length === 0) loadEmailLog();
+            }}
+            className="w-full flex items-center justify-between px-5 py-4 hover:bg-slate-50 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-base">📬</span>
+              <div className="text-left">
+                <p className="text-sm font-black text-navy-700">Email Activity Log</p>
+                <p className="text-xs text-slate-600">
+                  Track every email sent — by member, type, and date
+                </p>
+              </div>
+            </div>
+            <svg className={`w-4 h-4 text-slate-400 transition-transform ${emailLogOpen ? 'rotate-180' : ''}`}
+                 viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M4 6l4 4 4-4"/>
+            </svg>
+          </button>
+
+          {emailLogOpen && (
+            <div className="border-t border-slate-100 px-5 py-4 space-y-3">
+              {/* Filters */}
+              <div className="flex flex-col sm:flex-row gap-2">
+                <input
+                  type="text"
+                  placeholder="Search by name or email…"
+                  value={emailLogSearch}
+                  onChange={(e) => setEmailLogSearch(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && loadEmailLog(emailLogSearch, emailLogType)}
+                  className="flex-1 border border-slate-200 rounded-xl px-3 py-2 text-sm
+                             focus:outline-none focus:ring-2 focus:ring-amber-400 bg-slate-50"
+                />
+                <select
+                  value={emailLogType}
+                  onChange={(e) => setEmailLogType(e.target.value)}
+                  className="border border-slate-200 rounded-xl px-3 py-2 text-xs bg-white
+                             focus:outline-none focus:ring-2 focus:ring-amber-400 text-slate-600"
+                >
+                  <option value="">All types</option>
+                  <optgroup label="Trial Drip">
+                    <option value="trial-d1">Trial D1</option>
+                    <option value="trial-d2">Trial D2</option>
+                    <option value="trial-d3">Trial D3</option>
+                    <option value="trial-d4">Trial D4</option>
+                    <option value="trial-d5">Trial D5</option>
+                  </optgroup>
+                  <optgroup label="Paid Drip">
+                    <option value="paid-p1">Paid P1</option>
+                    <option value="paid-p2">Paid P2</option>
+                    <option value="paid-p3">Paid P3</option>
+                    <option value="paid-p4">Paid P4</option>
+                    <option value="paid-p5">Paid P5</option>
+                  </optgroup>
+                  <optgroup label="Comp Drip">
+                    <option value="comp-c1">Comp C1</option>
+                    <option value="comp-c2">Comp C2</option>
+                    <option value="comp-c3">Comp C3</option>
+                    <option value="comp-c4">Comp C4</option>
+                    <option value="comp-c5">Comp C5</option>
+                  </optgroup>
+                  <optgroup label="Engagement">
+                    <option value="eng-s">Pro S1–S5</option>
+                    <option value="eng-f">Fleet F1–F4</option>
+                  </optgroup>
+                  <optgroup label="Milestones">
+                    <option value="milestone-fillup10">M1 Fill-ups</option>
+                    <option value="milestone-mpg">M2 MPG</option>
+                    <option value="milestone-referral1">M3 Referral</option>
+                  </optgroup>
+                  <optgroup label="Other">
+                    <option value="referral-credit">Referral Credit</option>
+                    <option value="trial-ended">Trial Ended</option>
+                    <option value="early-upgrade-offer">Early Upgrade</option>
+                    <option value="comp-pro-for-life">Comp Pro Life</option>
+                  </optgroup>
+                </select>
+                <button
+                  onClick={() => loadEmailLog(emailLogSearch, emailLogType)}
+                  disabled={emailLogLoading}
+                  className="px-4 py-2 rounded-xl bg-navy-700 hover:bg-navy-600 text-white
+                             text-xs font-bold transition-colors disabled:opacity-50 whitespace-nowrap"
+                >
+                  {emailLogLoading ? 'Loading…' : 'Search'}
+                </button>
+                {(emailLogSearch || emailLogType) && (
+                  <button
+                    onClick={() => { setEmailLogSearch(''); setEmailLogType(''); loadEmailLog('', ''); }}
+                    className="text-xs text-slate-400 hover:text-red-500 transition-colors whitespace-nowrap"
+                  >
+                    × Clear
+                  </button>
+                )}
+              </div>
+
+              {/* Log table */}
+              {emailLogLoading ? (
+                <p className="text-sm text-slate-400 text-center py-4">Loading…</p>
+              ) : emailLogEntries.length === 0 ? (
+                <p className="text-sm text-slate-400 text-center py-4">
+                  No email records yet — emails will appear here as they are sent.
+                </p>
+              ) : (
+                <div className="rounded-xl border border-slate-100 overflow-hidden">
+                  <div className="divide-y divide-slate-50">
+                    {emailLogEntries.map((e) => (
+                      <div key={e.id} className="flex items-start gap-3 px-4 py-2.5 hover:bg-slate-50">
+                        {/* Timestamp */}
+                        <div className="w-28 flex-shrink-0">
+                          <p className="text-[10px] font-semibold text-slate-500 whitespace-nowrap">
+                            {new Date(e.sentAt).toLocaleDateString()}
+                          </p>
+                          <p className="text-[10px] text-slate-400 whitespace-nowrap">
+                            {new Date(e.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                        </div>
+
+                        {/* Type badge */}
+                        <span className={`flex-shrink-0 text-[10px] font-black px-2 py-0.5 rounded-full whitespace-nowrap
+                                          mt-0.5 ${emailTypeBadgeColor(e.type)}`}>
+                          {emailTypeLabel(e.type)}
+                        </span>
+
+                        {/* User + subject */}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold text-slate-700 truncate">{e.userName}</p>
+                          <p className="text-[10px] text-slate-500 truncate">{e.userEmail}</p>
+                          <p className="text-[10px] text-slate-400 truncate mt-0.5 italic">{e.subject}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <p className="text-[10px] text-slate-400">
+                Showing {emailLogEntries.length} most recent sends
+                {emailLogSearch && ` · filtered by "${emailLogSearch}"`}
+                {emailLogType && ` · type: ${emailTypeLabel(emailLogType)}`}
+              </p>
             </div>
           )}
         </div>

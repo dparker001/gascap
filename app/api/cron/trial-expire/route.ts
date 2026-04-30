@@ -11,6 +11,7 @@ import { NextResponse }                        from 'next/server';
 import { getExpiredTrialUsers, expireTrial }   from '@/lib/users';
 import { sendMail }                            from '@/lib/email';
 import { trialEndedEmailHtml, trialEndedEmailText } from '@/lib/emailCampaign';
+import { logEmail }                            from '@/lib/emailLog';
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -42,12 +43,14 @@ export async function GET(req: Request) {
       downgraded++;
 
       // 2. Send "trial ended" email
+      const trialEndedSubject = 'Your GasCap™ Pro trial has ended';
       await sendMail({
         to:      user.email,
-        subject: 'Your GasCap™ Pro trial has ended',
+        subject: trialEndedSubject,
         html:    trialEndedEmailHtml(user.name, user.id),
         text:    trialEndedEmailText(user.name),
       });
+      logEmail({ userId: user.id, userEmail: user.email, userName: user.name, type: 'trial-ended', subject: trialEndedSubject }).catch(() => {});
       emailsSent++;
 
       console.log(`[trial-expire] Expired trial for ${user.email}`);

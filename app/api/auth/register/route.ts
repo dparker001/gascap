@@ -79,6 +79,8 @@ export async function POST(req: Request) {
           .then(async (credited) => {
             if (!credited) return;
             const fresh = await findById(referrer.id);
+            // Never send referral credit emails to test/internal accounts
+            if (fresh?.isTestAccount) return;
             const totalCredits = fresh ? getActiveCredits(fresh).length : 1;
             await sendReferralCreditEmail(
               referrer.id,

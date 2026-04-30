@@ -18,6 +18,7 @@
  */
 
 import { sendMail, brandHeader } from './email';
+import { logEmail }              from './emailLog';
 
 // ── Shared layout helpers ──────────────────────────────────────────────────
 
@@ -684,6 +685,7 @@ export async function sendCampaignEmail(step: number, user: CampaignRecipient): 
   const mail = MAP[step];
   if (!mail) throw new Error(`Unknown campaign step: ${step}`);
   await sendMail({ to: email, ...mail });
+  logEmail({ userId: id, userEmail: email, userName: name, type: `trial-d${step}`, subject: mail.subject }).catch(() => {});
 }
 
 // ── Referral credit earned notification ───────────────────────────────────────
@@ -706,7 +708,7 @@ export function referralCreditEmailHtml(
         You earned a free month! 🎉
       </p>
       <p style="margin:0 0 20px;font-size:15px;color:#475569;line-height:1.65;">
-        Good news, ${first} — someone you referred just made their first GasCap™ payment.
+        Good news, ${first} — someone you referred just joined GasCap™ using your referral link.
         That means <strong>1 free month of GasCap™ Pro</strong> has been added to your account.
       </p>
 
@@ -743,8 +745,8 @@ export function referralCreditEmailHtml(
           <tr>
             <td style="padding:6px 0;vertical-align:top;width:20px;color:#f59e0b;font-size:14px;font-weight:900;">✓</td>
             <td style="padding:6px 0 6px 10px;font-size:13px;color:#475569;line-height:1.5;">
-              Credits are earned when your referral makes their <strong>first paid payment</strong>
-              (not just when they sign up — so you're always rewarded for real conversions)
+              Credits are earned when your referral signs up for their free Pro trial —
+              you're rewarded the moment they join, no payment required
             </td>
           </tr>
           <tr>
@@ -775,7 +777,7 @@ export function referralCreditEmailText(
   totalCredits: number,
 ): string {
   const first = referrerName.split(' ')[0];
-  return `Hi ${first}, someone you referred just made their first GasCap™ payment! You've earned 1 free month of Pro. You now have ${totalCredits} credit${totalCredits === 1 ? '' : 's'} banked (each = 1 free month, $4.99 value). Credits apply on your next billing cycle (up to 3 at once) and expire after 6 months. View your credits: ${BASE_URL}/settings`;
+  return `Hi ${first}, someone you referred just joined GasCap™ using your referral link! You've earned 1 free month of Pro. You now have ${totalCredits} credit${totalCredits === 1 ? '' : 's'} banked (each = 1 free month, $4.99 value). Credits apply on your next billing cycle (up to 3 at once) and expire after 6 months. View your credits: ${BASE_URL}/settings`;
 }
 
 export async function sendReferralCreditEmail(
@@ -784,12 +786,14 @@ export async function sendReferralCreditEmail(
   referrerName:  string,
   totalCredits:  number,
 ): Promise<void> {
+  const subject = `🎉 You earned a free month on GasCap™! (${totalCredits} banked)`;
   await sendMail({
     to:      referrerEmail,
-    subject: `🎉 You earned a free month on GasCap™! (${totalCredits} banked)`,
+    subject,
     html:    referralCreditEmailHtml(referrerName, referrerId, totalCredits),
     text:    referralCreditEmailText(referrerName, totalCredits),
   });
+  logEmail({ userId: referrerId, userEmail: referrerEmail, userName: referrerName, type: 'referral-credit', subject }).catch(() => {});
 }
 
 // ── Complimentary Pro for Life ─────────────────────────────────────────────────
@@ -849,12 +853,14 @@ export async function sendCompProForLifeEmail(
   userEmail: string,
   userName:  string,
 ): Promise<void> {
+  const subject = `🎁 Your GasCap™ Pro access — complimentary, forever`;
   await sendMail({
     to:      userEmail,
-    subject: `🎁 Your GasCap™ Pro access — complimentary, forever`,
+    subject,
     html:    compProForLifeEmailHtml(userName, userId),
     text:    compProForLifeEmailText(userName),
   });
+  logEmail({ userId, userEmail, userName, type: 'comp-pro-for-life', subject }).catch(() => {});
 }
 
 // ── Comp Ambassador Drip — C2–C5 ──────────────────────────────────────────────
@@ -1286,4 +1292,5 @@ export async function sendCompCampaignEmail(
   }
 
   await sendMail({ to: user.email, subject, html, text });
+  logEmail({ userId: user.id, userEmail: user.email, userName: user.name, type: `comp-c${step}`, subject }).catch(() => {});
 }

@@ -134,6 +134,20 @@ model Vehicle {
   user            User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+model EmailLog {
+  id        String  @id
+  userId    String
+  userEmail String
+  userName  String
+  type      String  // e.g. 'trial-d1', 'referral-credit', 'milestone-fillup10', 'paid-p1'
+  subject   String
+  sentAt    String  // ISO timestamp
+
+  @@index([userId])
+  @@index([sentAt])
+  @@index([type])
+}
+
 model GiveawayDraw {
   id           String  @id
   month        String  // "YYYY-MM" — one draw per month

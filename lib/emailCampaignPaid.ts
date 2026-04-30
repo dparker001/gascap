@@ -14,6 +14,7 @@
  */
 
 import { sendMail, brandHeader } from './email';
+import { logEmail }              from './emailLog';
 
 const BASE_URL = process.env.NEXTAUTH_URL?.replace(/\/$/, '') ?? 'https://www.gascap.app';
 
@@ -475,4 +476,5 @@ export async function sendPaidCampaignEmail(
   const mail = MAP[step];
   if (!mail) throw new Error(`Unknown paid campaign step: ${step}`);
   await sendMail({ to: email, ...mail });
+  logEmail({ userId: id, userEmail: email, userName: name, type: `paid-${step.toLowerCase()}`, subject: mail.subject }).catch(() => {});
 }

@@ -12,6 +12,7 @@
  *   M3 — First referral signup
  */
 import { sendMail, brandHeader } from './email';
+import { logEmail }              from './emailLog';
 
 const BASE_URL = process.env.NEXTAUTH_URL?.replace(/\/$/, '') ?? 'https://www.gascap.app';
 
@@ -612,6 +613,7 @@ export async function sendEngagementEmail(
   }
 
   await sendMail({ to: email, subject, html });
+  logEmail({ userId: id, userEmail: email, userName: name, type: `eng-${track === 'pro' ? 's' : 'f'}${step}`, subject }).catch(() => {});
 }
 
 export async function sendMilestoneEmail(
@@ -628,4 +630,5 @@ export async function sendMilestoneEmail(
 
   const { subject, html } = configs[milestone];
   await sendMail({ to: email, subject, html });
+  logEmail({ userId: id, userEmail: email, userName: name, type: `milestone-${milestone}`, subject }).catch(() => {});
 }
