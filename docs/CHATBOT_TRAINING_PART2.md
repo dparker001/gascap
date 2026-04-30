@@ -7,13 +7,25 @@ A: Every month, GasCap™ gives away a $25 gas card to one lucky winner. The dra
 A: Legal U.S. residents 18 years of age or older. Employees of Gas Capacity LLC and their immediate family members are not eligible. Void where prohibited by law.
 
 **Q: How do Pro and Fleet members earn entries?**
-A: Pro and Fleet subscribers automatically earn entries for each calendar day they use the app. Daily entry count depends on your Ambassador tier:
+A: Pro and Fleet subscribers automatically earn entries for each calendar day they **log in or use GasCap™** — either action counts. Daily entry count depends on your Ambassador tier:
 - Standard users: 1 entry/day (up to 31/month)
 - Supporter tier (5+ paying referrals): 2 entries/day (up to 62/month)
 - Ambassador tier (15+ paying referrals): 3 entries/day (up to 93/month)
 - Elite Ambassador tier (30+ paying referrals): 5 entries/day (up to 155/month)
 
-Streak bonuses also apply on top: 7-day streak = +2 entries; 30-day streak = +5 entries; 90-day streak = +10 entries.
+Entries reset each month — they do NOT carry over from one month to the next.
+
+Streak bonus entries are calculated separately and added on top as a flat one-time addition (not multiplied):
+- 7-day streak → +2 bonus entries
+- 30-day streak → +5 bonus entries
+- 90-day streak → +10 bonus entries
+- 180-day streak → +15 bonus entries
+- 365-day streak → +20 bonus entries
+
+**Formula:** Total entries = (active days this month × your daily rate) + streak bonus flat addition
+
+**Q: Is there a leaderboard showing everyone's entry counts?**
+A: No. There is no public leaderboard. Your entry count is private and visible only to you on your own giveaway page at gascap.app/giveaway.
 
 **Q: How do I enter without a paid subscription?**
 A: Submit one free entry per month using the form at gascap.app/amoe. Only your name and email are required. No purchase necessary.
@@ -97,7 +109,7 @@ A: On the sign-in page, tap "Forgot password?" Enter your email and we'll send a
 A: Go to Settings → Profile. Update your display name (shown in the app) and your phone number. Your phone number is optional and used only for SMS notifications if you opt in.
 
 **Q: How do I opt into SMS notifications?**
-A: Go to Settings → Profile. Enter your phone number, then check "SMS Notifications." By opting in you consent to receive account alerts, gas price notifications, fill-up reminders, and occasional promotional messages from Gas Capacity LLC. Message & data rates may apply. Must be 18 or older to opt in.
+A: You can opt in at signup (enter a phone number and check the SMS consent box), in Settings → Profile (enter your phone number and check "SMS Notifications"), or via the contact form at gascap.app/contact. By opting in you consent to receive gas price drop alerts, fill-up reminders, and account notifications from Gas Capacity LLC. Message & data rates may apply. Must be 18 or older to opt in. Reply STOP at any time to opt out.
 
 **Q: How do I opt out of SMS messages?**
 A: Reply STOP to any text from GasCap™, or go to Settings → Profile and uncheck "SMS Notifications." Either method stops all further SMS immediately.
@@ -139,10 +151,14 @@ A: The AI Fuel Advisor requires an internet connection and an active Pro or Flee
 **Q: I'm having a different issue not listed here.**
 A: Use the "Share Feedback" button (bottom-right corner of the app) to describe what's happening, or email support@gascap.app. We respond within 1 business day.
 
+**Q: Where is the live chat? I don't see it.**
+A: Live chat (GasCap Support bot) is available on desktop only — visit gascap.app on a laptop or computer to access it. It does not appear on mobile browsers. If you're on a mobile device, please contact support@gascap.app or use the contact form at gascap.app/contact.
+
 ---
 
 ## SECTION 14 — CONTACT & ESCALATION
 
+**Live chat:** Available on desktop only (gascap.app on a laptop or computer). Not visible on mobile — direct mobile users to email instead.
 **Support email:** support@gascap.app (1 business day response)
 **Admin/business:** admin@gascap.app
 **Website:** gascap.app

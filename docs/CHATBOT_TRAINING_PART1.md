@@ -43,7 +43,7 @@ A: GasCap™ is built by the same team behind VNetCard™, a digital business ca
 A: No — the fuel calculators work right away without signing up. Creating a free account lets you save 1 vehicle and sync your data across devices. Upgrading to Pro unlocks fill-up tracking, MPG insights, receipt scanning, and more.
 
 **Q: How do I create an account?**
-A: Visit gascap.app and tap "Sign Up." Enter your name, email, and a password. You'll receive a verification email — click the link to activate your account. All new accounts automatically start with 30 days of Pro free, no credit card required.
+A: Visit gascap.app and tap "Sign Up." Enter your name, email, and a password. Phone number is an **optional field** on the signup form — you are not required to provide it. If you enter a phone number, an SMS opt-in checkbox appears with consent language (gas price drops, fill-up reminders, and account notifications; msg & data rates may apply; reply STOP to opt out; must be 18+). You'll receive a verification email — click the link to activate your account. All new accounts automatically start with 30 days of Pro free, no credit card required.
 
 **Q: I just signed up — what should I do first?**
 A: After signing up, GasCap™ shows a setup checklist on the main screen. It walks you through adding your first vehicle, logging your first fill-up, and (for Fleet) adding a driver. Each step completes automatically. You can dismiss the checklist at any time.
@@ -190,10 +190,10 @@ A: 1 saved vehicle, both calculators (Target Fill & By Budget), Trip Cost Estima
 A: All new accounts automatically receive 30 days of Pro features — no credit card required. Full access to fill-up tracking, MPG insights, receipt scanning, AI Fuel Advisor, Gas Price Alert, stats, streak rewards, referral program, and monthly giveaway entries. After the 30-day trial, your account automatically reverts to free — you are never charged without taking action.
 
 **Q: What does Pro include?**
-A: Pro ($4.99/mo or $49/yr) adds: up to 3 saved vehicles, VIN photo scan, fill-up history & MPG tracking, receipt scanning, MPG Insight Card, AI Fuel Advisor, Gas Price Alert, fuel savings dashboard, streak counter, monthly report card, gas price trend predictions, vehicle health alerts, Annual Wrapped, referral rewards, and monthly gas card giveaway entries.
+A: Pro ($4.99/mo or $49/yr) adds: Your Garage (up to 3 vehicles), VIN photo scan, fill-up history & MPG tracking, receipt scanning, MPG Insight Card, AI Fuel Advisor, Gas Price Alert, fuel savings dashboard, streak counter, monthly report card, gas price trend predictions, vehicle health alerts, Annual Wrapped, referral rewards, and monthly gas card giveaway entries.
 
 **Q: What does Fleet add over Pro?**
-A: Fleet ($19.99/mo or $199/yr) adds: unlimited vehicles (vs. 3 on Pro), up to 25 drivers, driver attribution on fill-ups, fleet-wide fuel dashboard, per-driver reporting, annual tax report (PDF), bulk vehicle import, and driver roster management. Everything in Pro is included.
+A: Fleet ($19.99/mo or $199/yr) adds: unlimited vehicles (vs. 3 in Your Garage on Pro), up to 25 drivers, driver attribution on fill-ups, fleet-wide fuel dashboard, per-driver reporting, annual tax report (PDF), bulk vehicle import, and driver roster management. Everything in Pro is included.
 
 **Q: How do I upgrade?**
 A: Tap your profile icon or visit Settings → "Upgrade to Pro" or "Upgrade to Fleet." You can also visit gascap.app/upgrade. You'll be taken to a secure Stripe checkout page.

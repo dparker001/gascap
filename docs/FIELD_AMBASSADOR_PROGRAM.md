@@ -1,7 +1,9 @@
-# GasCap™ — Field Ambassador Program
+# GasCap™ — Pilot Partner Program
 
 > Last updated: 2026-04-30
 > Owner: Don Parker (admin@gascap.app)
+
+> **Note on terminology:** People who visit local businesses to place placards are **Pilot Partners** (also called Field Reps). Businesses hosting placards are **Partner Stations**. "Field Ambassador" / "Ambassador" refers exclusively to the in-app referral program — a separate program.
 
 ---
 
@@ -18,13 +20,13 @@
 
 ## Program Overview
 
-Field ambassadors visit local businesses to get permission to place GasCap™ QR
-placard displays. Each placard has a unique tracking code so scans, app opens,
-and sign-ups are attributed back to the specific placement — and to the
-ambassador who placed it.
+Pilot Partners (Field Reps) visit local businesses to get permission to place
+GasCap™ QR placard displays. Each placard has a unique tracking code so scans,
+app opens, and sign-ups are attributed back to the specific placement — and to
+the Pilot Partner who placed it.
 
 **Goal:** Get QR placards into high-traffic automotive and driver-facing
-locations across target markets.
+locations across target markets, building a network of Partner Stations.
 
 ---
 
@@ -44,23 +46,64 @@ locations across target markets.
 
 ---
 
-## Ambassador Incentive Structure
+## Pilot Partner Incentive Structure
 
 **Non-cash incentives (recommended over cash):**
 
-| Tier | Active Placements | Monthly Reward |
-|---|---|---|
-| Starter | 1–5 | $25 gas card |
-| Builder | 6–15 | $50 gas card |
-| Elite | 16+ | $100 gas card |
+### Layer 1 — One-Time Placement Bonus (per verified new business location)
 
-**Additional rewards:**
-- Free GasCap™ Pro for life while active as an ambassador
-- $10–25 bonus gas card when a location generates 10+ sign-ups/month
-- Monthly "Top Ambassador" recognition
+- **$5 gas card** per verified business location placed
+- "Verified" = consent form signed + at least one placard physically placed + proof photo submitted via Google Form
 
-**Reward delivery:** Via TangoCard (prepaid gas station gift cards — Shell,
-BP, Chevron, Exxon). Distributed monthly based on placement log data.
+### Layer 2 — Monthly Performance Bonus (ongoing, based on active verified locations)
+
+| Active Verified Locations | Monthly Reward |
+|---|---|
+| 1–5 | $25 gas card |
+| 6–15 | $50 gas card |
+| 16–30 | $100 gas card |
+| 31+ | $150 gas card |
+
+"Active" = placard still up with at least 1 scan in the past 30 days.
+
+### Milestone Bonus
+
+- **$15 one-time** when any single location generates 25+ cumulative sign-ups (same threshold as Partner Station app recognition).
+
+### Additional Perks
+
+- **Free GasCap™ Pro for life** while active as a Field Rep
+- No consecutive-month or quarterly win restriction on the monthly giveaway
+
+**Reward delivery:** Via TangoCard (digital gas gift cards — Shell, BP,
+Chevron, Exxon). Distributed monthly based on placement log data.
+
+---
+
+## Verified Placement Definition
+
+A placement is "verified" when ALL of the following are true:
+
+- ✓ Consent form signed by business owner or manager
+- ✓ At least one placard physically placed at the location
+- ✓ Proof photo submitted via the Google Form
+
+**Ongoing activity requirement:** If a placement records zero scans for 60 consecutive days, it is flagged as potentially removed. The Field Rep is responsible for checking that location and confirming or removing it from active status.
+
+---
+
+## What's in It for the Business (Partner Stations)
+
+When pitching a business, highlight these free benefits:
+
+- **Map pin in the GasCap™ app** as a featured Partner Station once the location reaches 25+ sign-ups
+- **Monthly scan count report** shared with the business owner
+- **Logo in the app** — featured in the endorser marquee on the GasCap™ landing page
+- **Free** — no cost, no commitment, remove anytime
+- **Tiered Partner Station recognition** automatically applied as sign-ups grow:
+  - 25+ sign-ups: Partner 🤝
+  - 100+ sign-ups: Gold Partner ⭐
+  - 250+ sign-ups: Premium Partner 🏆
 
 ---
 
@@ -98,12 +141,13 @@ after you explain it to them, overpromises.
 > local presence by placing QR code displays at gas stations, oil change shops,
 > tire stores, and car washes.
 >
-> We're looking for 3–5 people in the [City] area to visit local businesses,
-> get permission to place a small display card, and earn rewards for every
-> active placement.
+> We're looking for 3–5 Pilot Partners in the [City] area to visit local
+> businesses, get permission to place a small display card, and earn rewards
+> for every active placement.
 >
 > **What you get:**
 > ✅ Free GasCap Pro for life
+> ✅ $5 per verified new business location placed
 > ✅ Monthly gas cards based on your active placements
 > ✅ Flexible — work your own hours, your own territory
 > ✅ No experience needed — we provide everything
@@ -130,11 +174,11 @@ after you explain it to them, overpromises.
 4. Print + laminate placards (code printed small on the back)
 5. Attach magnets to pump placards
 6. Assemble tent cards, cut window clings
-7. Pack into labeled ambassador kit
+7. Pack into labeled Pilot Partner kit
 
 ---
 
-## Ambassador Kit Contents
+## Pilot Partner Kit Contents
 
 ```
 Kit #1 — [Territory Name]
@@ -146,7 +190,7 @@ Kit #1 — [Territory Name]
 ├── ORL006W — window cling
 ├── 10x Consent forms (printed, 2-up per sheet)
 ├── One-page business pitch card
-├── Ambassador instructions card
+├── Field Rep instructions card
 └── Pre-addressed return envelope (for signed consent copies)
 ```
 
@@ -198,13 +242,13 @@ Placard Code: ___________________
 ─────────────────────────────────────────────────────
 ```
 
-Two copies: one for business owner, one returned to Don via ambassador.
+Two copies: one for business owner, one returned to Don via the Field Rep.
 
 ---
 
 ## Post-Placement Reporting (Google Form)
 
-Ambassador submits immediately after each placement:
+Field Rep submits immediately after each placement:
 
 **Form fields:**
 - Placard code (written on back of placard)
@@ -279,13 +323,13 @@ After receiving the Google Form notification:
 **Weekly (5 min):**
 - Review scan activity per placement in admin dashboard
 - Flag placards with zero scans for 2+ weeks (may have been removed)
-- Ambassador checks flagged locations on next visit
+- Field Rep checks flagged locations on next visit
 
 **Monthly:**
-- Pull ambassador stats from master placement log
-- Calculate gas card rewards by tier
+- Pull Field Rep stats from master placement log
+- Calculate gas card rewards by active verified location count (Layer 2 tiers)
 - Distribute rewards via TangoCard
-- Send ambassadors monthly performance summary via GHL
+- Send Field Reps monthly performance summary via GHL
 
 **Quarterly:**
 - Analyze which location types convert best
@@ -362,6 +406,6 @@ ES scan and sign-up split per location — useful for Spanish-dominant areas.
 
 ## Start Small
 
-**Launch with 2–3 ambassadors maximum.** Prove the workflow, learn which
-location types convert best, then scale to 5–10 ambassadors once the
+**Launch with 2–3 Pilot Partners maximum.** Prove the workflow, learn which
+location types convert best, then scale to 5–10 Field Reps once the
 process runs smoothly.
