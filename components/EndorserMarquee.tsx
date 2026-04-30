@@ -116,8 +116,8 @@ export default function EndorserMarquee() {
       className="w-full py-4 overflow-hidden bg-slate-50/80 border-y border-slate-100"
     >
       {/* Label */}
-      <p className="text-center text-[10px] font-black uppercase tracking-[0.15em] text-slate-300 mb-3 px-4">
-        {realCount > 0 ? 'Trusted by drivers at' : 'Partnering with local businesses near you'}
+      <p className="text-center text-[10px] font-black uppercase tracking-[0.15em] text-slate-500 mb-3 px-4">
+        {realCount > 0 ? 'Trusted by drivers at' : 'Partnering with local businesses'}
       </p>
 
       {/* Scrolling strip */}
