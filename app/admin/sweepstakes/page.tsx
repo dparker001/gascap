@@ -73,6 +73,11 @@ export default function SweepstakesAdminPage() {
   const [winner,    setWinner]    = useState<DrawRecord | null>(null);
   const [drawErr,   setDrawErr]   = useState('');
 
+  const [dryRunning,   setDryRunning]   = useState(false);
+  const [dryRunResult, setDryRunResult] = useState<{
+    name: string; email: string; entryCount: number; totalEntries: number; prize: string; month: string;
+  } | null>(null);
+
   const [history,   setHistory]   = useState<DrawRecord[]>([]);
   const [notes,     setNotes]     = useState('');
 
@@ -135,10 +140,30 @@ export default function SweepstakesAdminPage() {
     setWinner(null);
   }
 
+  async function handleDryRun() {
+    setDryRunning(true);
+    setDrawErr('');
+    setDryRunResult(null);
+    const res  = await fetch('/api/admin/sweepstakes', {
+      method:  'POST',
+      headers: { 'x-admin-password': savedPw, 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ month, dryRun: true }),
+    });
+    const data = await res.json() as {
+      ok?: boolean; dryRun?: boolean;
+      winner?: { name: string; email: string; entryCount: number; totalEntries: number; prize: string; month: string };
+      error?: string;
+    };
+    setDryRunning(false);
+    if (!res.ok || !data.winner) { setDrawErr(data.error ?? 'Dry run failed.'); return; }
+    setDryRunResult(data.winner);
+  }
+
   async function handleDraw() {
-    if (!confirm(`Run the weighted draw for ${fmtMonth(month)}? This cannot be undone.`)) return;
+    if (!confirm(`Run the weighted draw for ${fmtMonth(month)}? This cannot be undone.\n\nThe winner will receive an email immediately.`)) return;
     setDrawing(true);
     setDrawErr('');
+    setDryRunResult(null);
     const res = await fetch('/api/admin/sweepstakes', {
       method:  'POST',
       headers: { 'x-admin-password': savedPw, 'Content-Type': 'application/json' },
@@ -334,14 +359,44 @@ export default function SweepstakesAdminPage() {
             />
           )}
 
+          {/* Dry run button */}
+          {previewed && entrants.length > 0 && !winner && (
+            <button
+              onClick={handleDryRun}
+              disabled={dryRunning || drawing}
+              className="w-full py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600
+                         text-sm font-bold transition-colors disabled:opacity-50"
+            >
+              {dryRunning ? '🎲 Simulating…' : '🔍 Dry Run — Preview Winner (no email sent)'}
+            </button>
+          )}
+
+          {/* Dry run result */}
+          {dryRunResult && !winner && (
+            <div className="rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 p-4 text-center space-y-1.5">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                DRY RUN — No email sent · Not recorded
+              </p>
+              <p className="text-lg font-black text-slate-700">{dryRunResult.name}</p>
+              <p className="text-sm text-slate-500">{dryRunResult.email}</p>
+              <p className="text-[11px] text-slate-400">
+                {dryRunResult.entryCount} entr{dryRunResult.entryCount !== 1 ? 'ies' : 'y'} out of {dryRunResult.totalEntries} total
+                {' '}· {((dryRunResult.entryCount / dryRunResult.totalEntries) * 100).toFixed(1)}% odds
+              </p>
+              <p className="text-[10px] text-slate-400 pt-1">
+                Run again to get a different simulated result, or press Draw Winner below to make it official.
+              </p>
+            </div>
+          )}
+
           {/* Draw button */}
           {previewed && entrants.length > 0 && !winner && (
             <button
               onClick={handleDraw}
-              disabled={drawing}
+              disabled={drawing || dryRunning}
               className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-white font-black text-sm transition-colors disabled:opacity-50"
             >
-              {drawing ? '🎲 Drawing…' : `🎰 Draw Winner for ${fmtMonth(month)}`}
+              {drawing ? '🎲 Drawing…' : `🎰 Draw Winner for ${fmtMonth(month)} — Sends Email`}
             </button>
           )}
 

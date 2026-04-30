@@ -77,8 +77,9 @@ export async function POST(req: Request) {
   if (_auth === 'no-env') return NextResponse.json({ error: 'Misconfigured' }, { status: 503 });
   if (_auth === 'wrong')  return NextResponse.json({ error: 'Unauthorized'  }, { status: 401 });
 
-  const body  = await req.json() as { month?: string; notes?: string };
-  const month = body.month ?? currentMonth();
+  const body    = await req.json() as { month?: string; notes?: string; dryRun?: boolean };
+  const month   = body.month ?? currentMonth();
+  const dryRun  = body.dryRun === true;
 
   if (!/^\d{4}-\d{2}$/.test(month)) {
     return NextResponse.json({ error: 'Invalid month format. Use YYYY-MM.' }, { status: 400 });
@@ -86,6 +87,25 @@ export async function POST(req: Request) {
 
   try {
     const result = await runWeightedDraw(month);
+
+    // ── Dry run — return the simulated winner without saving or notifying ─
+    if (dryRun) {
+      const { currentTier } = await getCurrentPrizeTier();
+      return NextResponse.json({
+        ok:     true,
+        dryRun: true,
+        winner: {
+          name:         result.winner.name,
+          email:        result.winner.email,
+          entryCount:   result.winner.entryCount,
+          totalEntries: result.totalEntries,
+          prize:        currentTier.prize,
+          month,
+        },
+      });
+    }
+    // ─────────────────────────────────────────────────────────────────────
+
     const draw   = await recordDraw(result, body.notes);
 
     // ── Fire-and-forget notifications ────────────────────────────────────
