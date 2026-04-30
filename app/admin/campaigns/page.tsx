@@ -411,6 +411,7 @@ export default function CampaignsAdminPage() {
               onSubmit={(e) => { e.preventDefault(); void handleCreate(e.currentTarget); }}
               className="grid grid-cols-1 md:grid-cols-2 gap-3"
             >
+              <input name="code" placeholder="Placard code (e.g. GC-ORGFL-D1.01-1001) — leave blank to auto-generate" className="border rounded-lg px-3 py-2 md:col-span-2 font-mono text-sm" />
               <input name="station" placeholder="Station name *" required className="border rounded-lg px-3 py-2" />
               <input name="city" placeholder="City (e.g. Orlando)" className="border rounded-lg px-3 py-2" />
               <input name="address" placeholder="Address" className="border rounded-lg px-3 py-2 md:col-span-2" />

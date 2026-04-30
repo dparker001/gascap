@@ -272,7 +272,7 @@ export default function SweepstakesAdminPage() {
                     {currentTier.label} Tier · Current Prize
                   </p>
                   <p className="text-2xl font-black text-slate-800 leading-tight">
-                    {prize} Gas Card
+                    {prize} Visa Prepaid Card
                   </p>
                 </div>
                 {nextTier ? (
