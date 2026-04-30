@@ -19,6 +19,7 @@ import StreakCounter           from '@/components/StreakCounter';
 import CampaignTracker         from '@/components/CampaignTracker';
 import FeaturedStation         from '@/components/FeaturedStation';
 import EngagementNudge        from '@/components/EngagementNudge';
+import EndorserMarquee        from '@/components/EndorserMarquee';
 
 // ── JSON-LD Schema Markup ────────────────────────────────────────────────────
 
@@ -551,6 +552,9 @@ export default function Home() {
 
       {/* ── Guest hero — SEO headline above the calculator ────────────── */}
       {isGuest && <GuestHero />}
+
+      {/* ── Endorser / partner logo marquee — guests only ─────────────── */}
+      {isGuest && <EndorserMarquee />}
 
       {/* Streak counter — logged-in users only */}
       {session && <StreakCounter />}

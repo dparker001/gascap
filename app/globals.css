@@ -206,8 +206,10 @@ input[type='number'] { -moz-appearance: textfield; }
 }
 .marquee-track-left  { animation: marquee-left  42s linear infinite; }
 .marquee-track-right { animation: marquee-right 38s linear infinite; }
+.marquee-track-logos { animation: marquee-left  28s linear infinite; }
 .marquee-root:hover .marquee-track-left,
-.marquee-root:hover .marquee-track-right { animation-play-state: paused; }
+.marquee-root:hover .marquee-track-right,
+.marquee-root:hover .marquee-track-logos { animation-play-state: paused; }
 
 /* ── GHL Chat Widget — mobile suppression ───────────────────────────── */
 /* Belt-and-suspenders: JS gate in GHLChatWidget.tsx prevents the script  */
