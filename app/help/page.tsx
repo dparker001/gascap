@@ -236,7 +236,7 @@ const SECTIONS = [
     items: [
       {
         q: 'What is the Monthly Gas Card Giveaway?',
-        a: 'Every month, GasCap™ gives away a gas card to one lucky winner. The prize is $25 and scales to $50 once 500+ paying Pro and Fleet subscribers are active. The drawing is held on or about the 5th of the following month. No purchase is required to enter.',
+        a: 'Every month, GasCap™ gives away a $25 gas card to one lucky winner. The drawing is held on or about the 5th of the following month. No purchase is required to enter.',
       },
       {
         q: 'Who is eligible to enter?',
