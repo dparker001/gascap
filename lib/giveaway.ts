@@ -53,10 +53,12 @@ export interface StreakBonusTier {
  *  – Requires ≥1 active day this month to qualify for the draw at all
  */
 export const STREAK_BONUS_TIERS: StreakBonusTier[] = [
-  { minStreak:  0, bonus:  0, label: 'No bonus'       },
-  { minStreak:  7, bonus:  2, label: '1-week streak'  },
-  { minStreak: 30, bonus:  5, label: '1-month streak' },
-  { minStreak: 90, bonus: 10, label: '3-month streak' },
+  { minStreak:   0, bonus:  0, label: 'No bonus'        },
+  { minStreak:   7, bonus:  2, label: '1-week streak'   },
+  { minStreak:  30, bonus:  5, label: '1-month streak'  },
+  { minStreak:  90, bonus: 10, label: '3-month streak'  },
+  { minStreak: 180, bonus: 15, label: '6-month streak'  },
+  { minStreak: 365, bonus: 20, label: '1-year streak'   },
 ];
 
 /**

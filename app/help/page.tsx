@@ -244,7 +244,7 @@ const SECTIONS = [
       },
       {
         q: 'How do I earn entries as a Pro or Fleet member?',
-        a: 'Pro and Fleet subscribers automatically earn entries for each calendar day they use the app. Your daily entry count depends on your Ambassador Program tier: standard users earn 1 entry/day (up to 31/month); Supporters (5+ paying referrals) earn 2 entries/day (up to 62/month); Ambassadors (15+ paying referrals) earn 3 entries/day (up to 93/month); Elite Ambassadors (30+ paying referrals) earn 5 entries/day (up to 155/month). Tier status is based on your cumulative paying referral count as of the last day of the previous month. On top of daily entries, streak bonuses still apply: a 7-day streak adds 2 bonus entries, a 30-day streak adds 5, and a 90-day streak adds 10.',
+        a: 'Pro and Fleet subscribers automatically earn entries for each calendar day they use the app. Your daily entry count depends on your Ambassador Program tier: standard users earn 1 entry/day (up to 31/month); Supporters (5+ paying referrals) earn 2 entries/day (up to 62/month); Ambassadors (15+ paying referrals) earn 3 entries/day (up to 93/month); Elite Ambassadors (30+ paying referrals) earn 5 entries/day (up to 155/month). Tier status is based on your cumulative paying referral count as of the last day of the previous month. On top of daily entries, streak bonuses apply as a flat addition: a 7-day streak adds +2 bonus entries, 30-day adds +5, 90-day adds +10, 180-day adds +15, and a full 365-day streak adds +20 bonus entries per month.',
       },
       {
         q: 'Can I enter without a paid subscription?',

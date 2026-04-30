@@ -225,7 +225,7 @@ export default function GiveawayPage() {
                 Upgrade to Pro and earn up to{' '}
                 <strong className="text-amber-400">31 entries per month</strong>{' '}
                 automatically, plus{' '}
-                <strong className="text-amber-400">up to 10 bonus entries</strong>{' '}
+                <strong className="text-amber-400">up to 20 bonus entries</strong>{' '}
                 for maintaining a daily streak.
               </p>
               <Link
@@ -245,7 +245,7 @@ export default function GiveawayPage() {
           <div className="space-y-2.5">
             {[
               { emoji: '📅', text: 'Each day you open GasCap™ earns 1 entry (up to 31/month)' },
-              { emoji: '⚡', text: '7-day streak = +2 bonus entries · 30-day = +5 · 90-day = +10' },
+              { emoji: '⚡', text: '7-day streak = +2 · 30-day = +5 · 90-day = +10 · 180-day = +15 · 1-year = +20' },
               { emoji: '📈', text: 'More entries = better odds — streaks compound your edge' },
               { emoji: '🏆', text: 'One winner drawn on the 5th of each month' },
               { emoji: '⛽', text: '$25 gas card sent directly to the winner' },
