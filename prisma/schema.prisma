@@ -98,6 +98,9 @@ model User {
   engagementEnrolledAt   String?   // ISO timestamp of enrollment
   engagementTrack        String?   // 'pro' | 'fleet'
 
+  // Early-upgrade bonus — +10 draw entries/month for trial-to-paid conversions
+  earlyUpgradeBonusEntries  Int  @default(0)
+
   // Milestone emails (one-time, behavior-triggered)
   milestoneFillup10Sent  Boolean   @default(false)
   milestoneMpgSent       Boolean   @default(false)

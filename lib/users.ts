@@ -74,6 +74,7 @@ export interface StoredUser {
   milestoneFillup10Sent?:  boolean;
   milestoneMpgSent?:       boolean;
   milestoneReferral1Sent?: boolean;
+  earlyUpgradeBonusEntries?: number;
 }
 
 export interface ReferralCredit {
@@ -150,6 +151,7 @@ function toStoredUser(u: PrismaUser): StoredUser {
     milestoneFillup10Sent:  u.milestoneFillup10Sent  ?? false,
     milestoneMpgSent:       u.milestoneMpgSent       ?? false,
     milestoneReferral1Sent: u.milestoneReferral1Sent ?? false,
+    earlyUpgradeBonusEntries: u.earlyUpgradeBonusEntries ?? 0,
   };
 }
 
@@ -1006,4 +1008,16 @@ export async function markMilestoneSent(
     where: { id: userId },
     data: { [fieldMap[milestone]]: true },
   });
+}
+
+// ── Early-upgrade bonus ──────────────────────────────────────────────────────
+
+/**
+ * Set the early-upgrade bonus draw entries for a user.
+ * Called once at checkout when the user was on a Pro trial at upgrade time.
+ * The bonus persists as long as they remain a paying subscriber; if they cancel
+ * they drop to free and are excluded from draws entirely.
+ */
+export async function setEarlyUpgradeBonus(userId: string, bonus: number): Promise<void> {
+  await prisma.user.update({ where: { id: userId }, data: { earlyUpgradeBonusEntries: bonus } });
 }

@@ -9,7 +9,7 @@
 import { NextResponse }                     from 'next/server';
 import type Stripe                          from 'stripe';
 import { stripe }                           from '@/lib/stripe';
-import { setUserPlan, findByStripeCustomer, findById, findByReferralCode, creditVerifiedReferral, getActiveCredits, enrollPaidCampaign, enrollEngagementCampaign } from '@/lib/users';
+import { setUserPlan, findByStripeCustomer, findById, findByReferralCode, creditVerifiedReferral, getActiveCredits, enrollPaidCampaign, enrollEngagementCampaign, setEarlyUpgradeBonus } from '@/lib/users';
 import { updateGhlContactPlan }            from '@/lib/ghl';
 import { sendMail }                        from '@/lib/email';
 import { sendReferralCreditEmail }         from '@/lib/emailCampaign';
@@ -99,6 +99,11 @@ export async function POST(req: Request) {
               if (annualPrices.includes(priceId)) interval = 'annual';
             } catch { /* non-fatal: default stays monthly */ }
           }
+        }
+
+        // Credit early-upgrade bonus if they were on a Pro trial at upgrade time
+        if (upgradedUser.isProTrial) {
+          await setEarlyUpgradeBonus(userId, 10);
         }
 
         // Only enroll if not already in the paid campaign (idempotent guard)

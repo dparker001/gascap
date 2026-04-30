@@ -173,6 +173,23 @@ export default function UpgradePage() {
           </div>
         </div>
 
+        {/* Early-upgrade bonus callout — shown only during trial */}
+        {(session?.user as { isProTrial?: boolean } | undefined)?.isProTrial && (
+          <div className="bg-teal-50 border border-teal-300 rounded-2xl px-5 py-4 mb-6 flex items-start gap-3">
+            <span className="text-2xl flex-shrink-0" aria-hidden="true">🎰</span>
+            <div>
+              <p className="text-sm font-black text-teal-800">
+                Upgrade during your trial → +10 bonus draw entries/month, forever
+              </p>
+              <p className="text-xs text-teal-700 mt-1 leading-relaxed">
+                Upgrade before your 30-day trial expires and earn 10 extra entries into the
+                monthly gas card giveaway <em>every</em> month you stay on Pro or Fleet.
+                These stack on top of your regular entries from app activity and streaks.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Billing toggle */}
         <div className="flex items-center justify-center gap-3 mb-8">
           <button onClick={() => setBilling('monthly')}

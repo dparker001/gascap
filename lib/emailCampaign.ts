@@ -1151,6 +1151,104 @@ export const compC5EmailText = (name: string): string => {
   return `Hi ${first}, you've been a GasCap™ Ambassador for 30 days — thank you. Tips from our top ambassadors: (1) Personal recommendation beats mass posting. (2) Show the calculator mid-use in a screenshot. (3) Re-share when gas prices spike in the news. (4) Reply personally to questions. Gas card milestone recap: 10 referrals → $25, 25 referrals → $50, 50 referrals → $100. Milestones are cumulative and permanent. Want help with better graphics or message templates? Just reply to this email. Open GasCap™ at ${BASE_URL}/#share`;
 };
 
+// ── Early-Upgrade Offer — one-time announcement to active trial users ─────────
+
+export function earlyUpgradeOfferEmailHtml(name: string, userId: string): string {
+  const first = name.split(' ')[0];
+  return wrap(`
+    ${header('trial')}
+    <tr><td style="padding:32px;">
+
+      <div style="display:inline-block;background:#0d9488;color:#fff;font-weight:900;
+                  font-size:11px;padding:6px 14px;border-radius:20px;letter-spacing:0.5px;
+                  text-transform:uppercase;margin-bottom:16px;">
+        🎰 Special offer for Pro trial members
+      </div>
+
+      <p style="margin:0 0 8px;font-size:26px;font-weight:900;color:#1e2d4a;line-height:1.2;">
+        Upgrade before your trial ends → +10 bonus draw entries/month
+      </p>
+
+      <p style="margin:0 0 20px;font-size:15px;color:#475569;line-height:1.65;">
+        Hi ${first} — we're adding a new perk for members who upgrade while their free
+        Pro trial is still active. <strong>Upgrade to Pro or Fleet before your 30-day
+        trial expires</strong> and you'll earn <strong>+10 bonus giveaway entries</strong>
+        every single month you stay subscribed. Not a one-time thing — every month,
+        on top of everything you already earn.
+      </p>
+
+      <!-- What is the giveaway? -->
+      <div style="background:#f8fafc;border-radius:14px;padding:20px 24px;margin-bottom:24px;border-left:4px solid #0d9488;">
+        <p style="margin:0 0 8px;font-size:14px;font-weight:900;color:#1e2d4a;">🎁 The monthly GasCap™ Gas Card Giveaway</p>
+        <p style="margin:0;font-size:13px;color:#475569;line-height:1.6;">
+          Every month we draw a winner from the pool of active Pro and Fleet members.
+          Your entries are earned from days you use the app, your login streak, and now —
+          for early upgraders — a permanent +10 bonus on top. The more entries you have,
+          the better your odds.
+        </p>
+      </div>
+
+      <!-- Breakdown example -->
+      <div style="background:#1e2d4a;border-radius:14px;padding:22px;margin-bottom:24px;">
+        <p style="margin:0 0 14px;font-size:12px;font-weight:900;color:#fbbf24;letter-spacing:1px;text-transform:uppercase;">
+          📊 Example entry breakdown for a typical month
+        </p>
+        <table cellpadding="0" cellspacing="0" width="100%">
+          <tr>
+            <td style="padding:8px 0;border-bottom:1px solid rgba(255,255,255,.1);font-size:13px;color:rgba(255,255,255,.8);">15 active days in the month</td>
+            <td style="padding:8px 0;border-bottom:1px solid rgba(255,255,255,.1);font-size:13px;font-weight:900;color:#fff;text-align:right;">+15 entries</td>
+          </tr>
+          <tr>
+            <td style="padding:8px 0;border-bottom:1px solid rgba(255,255,255,.1);font-size:13px;color:rgba(255,255,255,.8);">7-day login streak bonus</td>
+            <td style="padding:8px 0;border-bottom:1px solid rgba(255,255,255,.1);font-size:13px;font-weight:900;color:#fff;text-align:right;">+2 entries</td>
+          </tr>
+          <tr>
+            <td style="padding:8px 0;font-size:13px;font-weight:900;color:#fbbf24;">🎰 Early-upgrade bonus (yours forever)</td>
+            <td style="padding:8px 0;font-size:13px;font-weight:900;color:#fbbf24;text-align:right;">+10 entries</td>
+          </tr>
+          <tr>
+            <td colspan="2" style="padding:12px 0 0;border-top:1px solid rgba(255,255,255,.2);">
+              <p style="margin:0;font-size:15px;font-weight:900;color:#fff;">Total: <strong>27 entries</strong> that month</p>
+            </td>
+          </tr>
+        </table>
+        <p style="margin:12px 0 0;font-size:11px;color:rgba(255,255,255,.5);line-height:1.5;">
+          Without the early-upgrade bonus: only 17 entries. The bonus stacks every month you stay subscribed.
+        </p>
+      </div>
+
+      <!-- How it works -->
+      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:18px 22px;margin-bottom:24px;">
+        <p style="margin:0 0 8px;font-size:13px;font-weight:900;color:#166534;">How it works</p>
+        <table cellpadding="0" cellspacing="0" width="100%">
+          ${featureRow('✓', 'Upgrade during your free trial', 'Must be active on a Pro trial when you complete your first payment.')}
+          ${featureRow('🎰', '+10 entries added to your account', 'Credited immediately — shown in your giveaway entries dashboard.')}
+          ${featureRow('🔄', 'Bonus applies every month, automatically', 'No action needed. As long as your subscription is active, the bonus counts.')}
+          ${featureRow('🚫', 'Bonus is tied to your subscription', 'If you cancel and rejoin, the bonus doesn\'t carry over. Keep the streak going.')}
+        </table>
+      </div>
+
+      <div style="text-align:center;">
+        ${ctaButton('Claim Your Bonus → Upgrade Now', `${BASE_URL}/upgrade`)}
+      </div>
+
+      <p style="margin:22px 0 0;font-size:13px;color:#94a3b8;line-height:1.6;">
+        Your trial is still running — this offer is available until it expires. Upgrade now
+        to lock in the bonus before the trial clock runs out.
+      </p>
+      <p style="margin:10px 0 0;font-size:13px;color:#475569;">
+        — Don, Founder of GasCap™
+      </p>
+    </td></tr>
+    ${footer(userId)}
+  `);
+}
+
+export const earlyUpgradeOfferEmailText = (name: string): string => {
+  const first = name.split(' ')[0];
+  return `Hi ${first}, we have a special offer for Pro trial members: upgrade to Pro or Fleet before your 30-day trial expires and earn +10 bonus draw entries into the monthly GasCap™ gas card giveaway — every month you stay subscribed. Example: 15 active days (15 entries) + 7-day streak bonus (2 entries) + early-upgrade bonus (10 entries) = 27 total entries that month. The bonus stacks automatically each month as long as your subscription is active. Upgrade now: ${BASE_URL}/upgrade`;
+};
+
 // ── Comp Campaign dispatcher ───────────────────────────────────────────────
 
 /** Send the appropriate comp ambassador drip email for a given step (2–5). */

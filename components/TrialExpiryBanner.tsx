@@ -88,6 +88,9 @@ export default function TrialExpiryBanner() {
       <div className="flex-1 min-w-0">
         <p className={`text-xs font-black leading-snug ${colors.title}`}>{headline}</p>
         <p className={`text-[11px] mt-0.5 leading-relaxed ${colors.body}`}>{subline}</p>
+        <p className={`text-[11px] mt-0.5 font-semibold leading-relaxed ${colors.body}`}>
+          🎰 Upgrade now → earn +10 bonus draw entries every month
+        </p>
 
         <div className="flex items-center gap-3 mt-2">
           <Link

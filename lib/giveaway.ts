@@ -134,7 +134,8 @@ export interface EntrantRow {
   entryMultiplier: number;        // 1× standard, 2× Supporter, 3× Ambassador, 5× Elite
   baseEntries:     number;        // active days × entryMultiplier
   streakBonus:     number;        // flat bonus from streak tier (not multiplied)
-  entryCount:      number;        // baseEntries + streakBonus (total weight in the draw)
+  earlyUpgradeBonusEntries: number; // +10 bonus for trial-to-paid conversions
+  entryCount:      number;        // baseEntries + streakBonus + earlyUpgradeBonusEntries
   alwaysEligible:  boolean;       // true for Ambassador tier holders — skip win restrictions
 }
 
@@ -220,6 +221,7 @@ export async function getEligibleEntrants(month: string): Promise<EntrantRow[]> 
     select: {
       id: true, name: true, email: true, plan: true,
       activeDays: true, streak: true, referralCount: true,
+      earlyUpgradeBonusEntries: true,
     },
   });
 
@@ -230,6 +232,7 @@ export async function getEligibleEntrants(month: string): Promise<EntrantRow[]> 
       const activeDayCount = (u.activeDays ?? []).filter((d) => d.startsWith(prefix)).length;
       const baseEntries   = activeDayCount * multiplier;  // multiplier applied to active days
       const streakBonus   = streakBonusEntries(u.streak ?? 0);
+      const bonusEntries  = u.earlyUpgradeBonusEntries ?? 0;
       return {
         userId:          u.id,
         name:            u.name,
@@ -241,7 +244,8 @@ export async function getEligibleEntrants(month: string): Promise<EntrantRow[]> 
         entryMultiplier: multiplier,
         baseEntries,
         streakBonus,
-        entryCount:      baseEntries + streakBonus,
+        earlyUpgradeBonusEntries: bonusEntries,
+        entryCount:      baseEntries + streakBonus + bonusEntries,
         alwaysEligible:  isAlwaysEligible(refCount),
       };
     })
