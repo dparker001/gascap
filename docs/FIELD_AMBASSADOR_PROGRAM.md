@@ -1,6 +1,6 @@
 # GasCap™ — Field Ambassador Program
 
-> Last updated: 2026-04-22
+> Last updated: 2026-04-30
 > Owner: Don Parker (admin@gascap.app)
 
 ---

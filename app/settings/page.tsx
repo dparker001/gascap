@@ -423,8 +423,7 @@ export default function SettingsPage() {
 
             {/* How credits are earned */}
             <p className="text-[11px] text-slate-500 leading-relaxed bg-slate-50 rounded-xl px-3 py-2.5">
-              💡 You earn <strong>1 free month</strong> for every friend who signs up with your link
-              <em> and </em>makes their first payment. Trial sign-ups that cancel don&apos;t count — only real paying customers.
+              💡 You earn <strong>1 free month</strong> for every friend who subscribes to a paid GasCap™ plan using your link — up to <strong>6 free months</strong> total. Trial sign-ups that never pay don&apos;t count. Credits are issued within 24 hours of their first payment.
             </p>
 
           {/* Stats */}

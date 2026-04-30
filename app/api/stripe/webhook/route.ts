@@ -9,11 +9,12 @@
 import { NextResponse }                     from 'next/server';
 import type Stripe                          from 'stripe';
 import { stripe }                           from '@/lib/stripe';
-import { setUserPlan, findByStripeCustomer, findById, findByReferralCode, creditVerifiedReferral, getActiveCredits, enrollPaidCampaign, enrollEngagementCampaign, setEarlyUpgradeBonus } from '@/lib/users';
+import { setUserPlan, findByStripeCustomer, findById, findByReferralCode, creditVerifiedReferral, getActiveCredits, enrollPaidCampaign, enrollEngagementCampaign, setEarlyUpgradeBonus, markMilestoneSent } from '@/lib/users';
 import { updateGhlContactPlan }            from '@/lib/ghl';
 import { sendMail }                        from '@/lib/email';
 import { sendReferralCreditEmail }         from '@/lib/emailCampaign';
 import { sendPaidCampaignEmail }           from '@/lib/emailCampaignPaid';
+import { sendMilestoneEmail }              from '@/lib/emailEngagement';
 import { PRICES }                          from '@/lib/stripe';
 
 /** Fire-and-forget admin notification */
@@ -159,9 +160,10 @@ export async function POST(req: Request) {
         console.info(`[GasCap webhook] Activated ${tier} for user ${user.id} on renewal`);
       }
 
-      // ── Referral credit — fire on the first real payment only ─────────────
+      // ── Referral credit — fires on first real payment only ────────────────
       // Conditions: amount_paid > 0, referredBy is set, not yet credited.
-      // This ensures trial cancellers never trigger a credit.
+      // Free trial sign-ups do NOT earn a referral credit; only paying
+      // conversions count. This is the ONLY place creditVerifiedReferral fires.
       if (
         invoice.amount_paid > 0 &&
         user.referredBy &&
@@ -171,7 +173,7 @@ export async function POST(req: Request) {
         if (credited && user.referredBy) {
           // Look up the referrer to send them a notification
           const referrer = await findByReferralCode(user.referredBy);
-          if (referrer) {
+          if (referrer && !referrer.isTestAccount) {
             // Re-fetch to get the updated credit count after recording
             const fresh = await findById(referrer.id);
             const totalCredits = fresh ? getActiveCredits(fresh).length : 1;
@@ -182,6 +184,19 @@ export async function POST(req: Request) {
               totalCredits,
             ).catch((e) => console.error('[GasCap] Referral credit email failed:', e));
             console.info(`[GasCap webhook] Referral credit awarded to ${referrer.email} (${totalCredits} total)`);
+
+            // M3 — first referral milestone email (fires once when referrer hits
+            // their very first paying referral)
+            if (fresh && !fresh.milestoneReferral1Sent && (fresh.referralCount ?? 0) >= 1) {
+              sendMilestoneEmail('referral1', {
+                id:    fresh.id,
+                name:  fresh.name,
+                email: fresh.email,
+                plan:  fresh.plan,
+              }).catch((e) => console.error('[GasCap] M3 milestone email failed:', e));
+              markMilestoneSent(fresh.id, 'referral1')
+                .catch((e) => console.error('[GasCap] M3 milestone mark failed:', e));
+            }
           }
         }
       }

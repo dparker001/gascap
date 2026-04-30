@@ -708,7 +708,7 @@ export function referralCreditEmailHtml(
         You earned a free month! 🎉
       </p>
       <p style="margin:0 0 20px;font-size:15px;color:#475569;line-height:1.65;">
-        Good news, ${first} — someone you referred just joined GasCap™ using your referral link.
+        Good news, ${first} — someone you referred just became a paying GasCap™ subscriber.
         That means <strong>1 free month of GasCap™ Pro</strong> has been added to your account.
       </p>
 
@@ -745,14 +745,14 @@ export function referralCreditEmailHtml(
           <tr>
             <td style="padding:6px 0;vertical-align:top;width:20px;color:#f59e0b;font-size:14px;font-weight:900;">✓</td>
             <td style="padding:6px 0 6px 10px;font-size:13px;color:#475569;line-height:1.5;">
-              Credits are earned when your referral signs up for their free Pro trial —
-              you're rewarded the moment they join, no payment required
+              Credits are earned when your referral subscribes to a paid GasCap™ plan —
+              free trial sign-ups that never pay <strong>do not count</strong>
             </td>
           </tr>
           <tr>
             <td style="padding:6px 0;vertical-align:top;width:20px;color:#dc2626;font-size:14px;font-weight:900;">!</td>
             <td style="padding:6px 0 6px 10px;font-size:13px;color:#475569;line-height:1.5;">
-              Credits expire after 6 months if unused — redeem them before they expire!
+              Credits expire after 12 months if unused — redeem them before they expire!
             </td>
           </tr>
         </table>
@@ -760,7 +760,7 @@ export function referralCreditEmailHtml(
 
       <p style="margin:0 0 20px;font-size:14px;color:#64748b;line-height:1.6;">
         Keep sharing your referral link to earn more free months. You can earn up to
-        <strong>10 free months</strong> total — and redeem them whenever you like.
+        <strong>6 free months</strong> total — and at 15 paying referrals, Pro is yours for life.
       </p>
 
       <div style="text-align:center;">
@@ -777,7 +777,7 @@ export function referralCreditEmailText(
   totalCredits: number,
 ): string {
   const first = referrerName.split(' ')[0];
-  return `Hi ${first}, someone you referred just joined GasCap™ using your referral link! You've earned 1 free month of Pro. You now have ${totalCredits} credit${totalCredits === 1 ? '' : 's'} banked (each = 1 free month, $4.99 value). Credits apply on your next billing cycle (up to 3 at once) and expire after 6 months. View your credits: ${BASE_URL}/settings`;
+  return `Hi ${first}, someone you referred just became a paying GasCap™ subscriber! You've earned 1 free month of Pro. You now have ${totalCredits} credit${totalCredits === 1 ? '' : 's'} banked (each = 1 free month, $4.99 value). Credits apply on your next billing cycle (up to 3 at once) and expire after 12 months. You can earn up to 6 free months total — at 15 paying referrals, Pro is yours for life. View your credits: ${BASE_URL}/settings`;
 }
 
 export async function sendReferralCreditEmail(

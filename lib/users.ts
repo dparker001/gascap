@@ -664,7 +664,10 @@ export async function findByReferralCode(code: string): Promise<StoredUser | und
   return user ? toStoredUser(user) : undefined;
 }
 
-// No hard cap on referral count — Ambassador Program goes to 30+
+// Maximum free months earnable through referrals (caps credit issuance).
+// After hitting this cap, referrers keep earning draw-entry multipliers and
+// eventually Free Pro for Life at 15 paying referrals — credits become moot.
+const MAX_REFERRAL_CREDITS = 6;
 const MAX_REDEEM_AT_ONCE   = 3;
 // 12 months — generous window since credits can bank before the referrer upgrades
 const CREDIT_EXPIRY_MONTHS = 12;
@@ -688,11 +691,19 @@ export async function recordReferral(referrerId: string): Promise<void> {
   const newCount = current + 1;
 
   // ── Supporter-tier credit (1 free Pro month per paying referral) ─────────
-  // Only add credits below the Ambassador milestone — at 15+ the referrer
-  // earns free Pro for life, making individual month credits redundant.
-  const existing = (user.referralCredits as unknown as ReferralCredit[]) ?? [];
+  // Two conditions must both be true to issue a credit:
+  //   1. Not yet at the Ambassador milestone (free Pro for life makes credits moot)
+  //   2. Lifetime credits issued < MAX_REFERRAL_CREDITS (hard cap of 6)
+  // After 6 credits, the referrer's ongoing incentive is the draw-entry
+  // multiplier and the path to Free Pro for Life at 15 paying referrals.
+  const existing        = (user.referralCredits as unknown as ReferralCredit[]) ?? [];
+  const monthsEarned    = user.referralProMonthsEarned ?? 0;
+  const underCreditCap  = monthsEarned < MAX_REFERRAL_CREDITS;
+  const belowProForLife = !qualifiesForFreeProForLife(newCount);
+
   let updatedCredits = existing;
-  if (!qualifiesForFreeProForLife(newCount)) {
+  let earnedMonth    = false;
+  if (belowProForLife && underCreditCap) {
     const now    = new Date();
     const expiry = new Date(now);
     expiry.setMonth(expiry.getMonth() + CREDIT_EXPIRY_MONTHS);
@@ -702,11 +713,13 @@ export async function recordReferral(referrerId: string): Promise<void> {
       expiresAt: expiry.toISOString(),
     };
     updatedCredits = [...existing, credit];
+    earnedMonth    = true;
   }
 
   // ── Ambassador milestone: free Pro for life ──────────────────────────────
-  // Fires exactly once when the count first crosses the Ambassador threshold.
-  // Fleet subscribers keep fleet; free/pro subscribers are upgraded to pro.
+  // Fires exactly once when the count first crosses the Ambassador threshold
+  // (15 cumulative paying referrals). Fleet subscribers keep fleet;
+  // free/pro subscribers are upgraded to pro.
   const justCrossedAmbassador =
     qualifiesForFreeProForLife(newCount) && !qualifiesForFreeProForLife(current);
   const grantedPlan: 'pro' | undefined =
@@ -716,7 +729,8 @@ export async function recordReferral(referrerId: string): Promise<void> {
     where: { id: referrerId },
     data: {
       referralCount:           newCount,
-      referralProMonthsEarned: (user.referralProMonthsEarned ?? 0) + 1,
+      // Only increment months-earned counter when a credit was actually issued
+      referralProMonthsEarned: earnedMonth ? monthsEarned + 1 : monthsEarned,
       referralCredits:         updatedCredits as unknown as Prisma.InputJsonValue,
       ...(justCrossedAmbassador ? { ambassadorProForLife: true } : {}),
       ...(grantedPlan           ? { plan: grantedPlan }          : {}),

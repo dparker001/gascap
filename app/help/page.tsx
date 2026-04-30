@@ -278,7 +278,7 @@ const SECTIONS = [
     items: [
       {
         q: 'How does the Ambassador Program work?',
-        a: 'Share your personal referral link with friends, family, coworkers, or followers. Every person who signs up using your link and subscribes to a paid GasCap™ Pro or Fleet plan counts as a paying referral. As your cumulative paying referral count grows, you unlock higher Ambassador tiers with better rewards — including free Pro months, free Pro for life, and bonus drawing entries every day.',
+        a: 'Share your personal referral link with friends, family, coworkers, or followers. Every person who signs up using your link and subscribes to a paid GasCap™ Pro or Fleet plan counts as a paying referral. Only paid conversions count — free trial sign-ups that never pay do not. As your cumulative paying referral count grows, you unlock higher Ambassador tiers with better rewards — including up to 6 free Pro months, free Pro for life at 15 referrals, and bonus drawing entries every day.',
       },
       {
         q: 'Where do I find my referral link?',
@@ -286,31 +286,35 @@ const SECTIONS = [
       },
       {
         q: 'What counts as a paying referral?',
-        a: 'A paying referral is someone who signed up using your unique referral link AND activated a paid GasCap™ Pro or Fleet subscription. Free sign-ups that never upgrade do not count toward your Ambassador tier. Only real paying customers qualify — this keeps the program sustainable and fraud-proof.',
+        a: 'A paying referral is someone who (1) signed up using your unique referral link AND (2) activated a paid GasCap™ Pro or Fleet subscription. Free trial sign-ups that never upgrade do not count — period. Self-referrals are blocked by the system. Only real paying customers qualify, which keeps the program sustainable and fraud-proof.',
       },
       {
         q: 'What are the Ambassador tier thresholds and rewards?',
-        a: 'There are three tiers based on your cumulative all-time paying referrals: Supporter (5+ referrals) — earn 1 free Pro month for every paying referral, plus 2× daily drawing entries; Ambassador (15+ referrals) — earn free GasCap™ Pro for life, plus 3× daily drawing entries; Elite Ambassador (30+ referrals) — Pro for life, 5× daily drawing entries, recognition in the Top Ambassadors list, early feature access, and a personal thank-you from the GasCap™ team.',
+        a: 'Three tiers, based on cumulative all-time paying referrals: Supporter (5+ referrals) — earn 1 free Pro month per paying referral, up to 6 free months total, plus 2× daily drawing entries; Ambassador (15+ referrals) — earn free GasCap™ Pro for life (no subscription ever required), plus 3× daily drawing entries; Elite Ambassador (30+ referrals) — Pro for life, 5× daily drawing entries, recognition in the Top Ambassadors list, early feature access, and a personal thank-you from the GasCap™ team.',
+      },
+      {
+        q: 'How many free months can I earn through referrals?',
+        a: 'You can earn up to 6 free Pro months through the referral program — 1 free month per paying referral, credited within 24 hours of their first payment. Once you reach 6 banked months, free month credits stop — but your referral count keeps climbing toward Pro for Life at 15 paying referrals. Credits are valid for 12 months and are applied automatically to your next billing cycle (up to 3 at a time).',
       },
       {
         q: 'How do Ambassador tiers affect my monthly drawing entries?',
-        a: 'Once you reach a tier, your daily drawing entries are multiplied automatically: Supporter members earn 2 entries per day (up to 62/month); Ambassadors earn 3 entries per day (up to 93/month); Elite Ambassadors earn 5 entries per day (up to 155/month). Streak bonus entries still apply on top. Additionally, all Ambassador tier holders are always eligible to win the monthly drawing — the standard consecutive-month restriction does not apply.',
+        a: 'Once you reach a tier, your daily drawing entries are multiplied automatically: Supporter members earn 2 entries per day (up to 62/month); Ambassadors earn 3 entries per day (up to 93/month); Elite Ambassadors earn 5 entries per day (up to 155/month). Streak bonus entries still apply on top. Additionally, all Ambassador tier holders are always eligible to win the monthly drawing — the standard consecutive-month and quarterly restrictions do not apply.',
       },
       {
-        q: 'When are tier thresholds evaluated?',
-        a: 'Your cumulative paying referral count is tallied at the end of each calendar month (11:59 PM ET on the last day of the month). If you cross a tier threshold during that snapshot, your new tier takes effect for the following month\'s drawing entries. Milestones are permanent — once a threshold is crossed, it is never revoked regardless of whether referred subscribers later cancel.',
+        q: 'When does my referral count update?',
+        a: 'Your referral count updates within 24 hours of your referred friend\'s first payment. Milestones are permanent — once a tier threshold is crossed, it is never revoked regardless of whether referred subscribers later cancel.',
       },
       {
         q: 'What if my referred customers cancel their subscription?',
-        a: 'Nothing changes for you. Ambassador tiers are based on cumulative all-time paying referrals, not on how many remain active today. If 15 people have ever paid after using your link, you are Ambassador tier — even if some of them have since cancelled. Your milestone is locked in permanently.',
+        a: 'Nothing changes for you. Ambassador tiers are based on cumulative all-time paying referrals, not on how many are still active. If 15 people have ever paid after using your link, you are Ambassador tier — even if some have since cancelled. Your milestone is locked in permanently.',
       },
       {
         q: 'Can I refer myself?',
-        a: 'No — self-referrals are blocked by the system. No credit will be awarded.',
+        a: 'No — self-referrals are blocked at the system level. No credit will be awarded under any circumstance.',
       },
       {
         q: 'I referred someone but they don\'t appear in my referral count.',
-        a: 'First confirm your friend signed up using your referral link (gascap.app/signup?ref=YOURCODE) and has activated a paid subscription. Free sign-ups without a paid plan do not count. If your link was used and they are a paying subscriber and you still haven\'t seen the count update after 24 hours, email support@gascap.app with your referral code and their email address.',
+        a: 'Confirm that your friend (1) signed up using your exact referral link (gascap.app/signup?ref=YOURCODE) and (2) has an active paid subscription. Free trial sign-ups without a paid plan do not count. Counts update within 24 hours of payment. If both conditions are met and 24 hours have passed, email support@gascap.app with your referral code and their email address.',
       },
     ],
   },

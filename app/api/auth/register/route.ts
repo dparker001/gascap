@@ -3,18 +3,13 @@ import {
   createUser,
   findByEmail,
   findByReferralCode,
-  findById,
   setReferredBy,
-  creditVerifiedReferral,
-  getActiveCredits,
   createEmailVerifyToken,
   grantNewSignupProTrial,
   enrollEmailCampaign,
 } from '@/lib/users';
 import { sendMail, verificationEmailHtml } from '@/lib/email';
-import { sendCampaignEmail, sendReferralCreditEmail } from '@/lib/emailCampaign';
-import { sendMilestoneEmail }                         from '@/lib/emailEngagement';
-import { markMilestoneSent }                          from '@/lib/users';
+import { sendCampaignEmail } from '@/lib/emailCampaign';
 import { upsertGhlContact, upsertGhlContactWithCampaign } from '@/lib/ghl';
 import { getPlacementByCode, logEvent } from '@/lib/campaigns';
 
@@ -66,40 +61,13 @@ export async function POST(req: Request) {
     // Enroll in the 5-email drip sequence (step 1 = welcome, sent below).
     await enrollEmailCampaign(user.id);
 
-    // Store referral code and immediately credit the referrer.
-    // Credit fires when the referred friend starts their free trial — no payment
-    // required. The Stripe webhook still runs as a fallback for any edge cases
-    // where this path was missed (e.g. old signups).
+    // Record referral attribution — credit fires later via Stripe webhook on
+    // first real payment (amount_paid > 0). Free trial sign-ups do NOT earn
+    // a referral credit; only paying conversions count.
     if (referralCode?.trim()) {
       const referrer = await findByReferralCode(referralCode.trim());
       if (referrer && referrer.id !== user.id) {
         await setReferredBy(user.id, referralCode.trim().toUpperCase());
-        // Fire credit immediately (non-blocking — don't delay the signup response)
-        creditVerifiedReferral(user.id)
-          .then(async (credited) => {
-            if (!credited) return;
-            const fresh = await findById(referrer.id);
-            // Never send referral credit emails to test/internal accounts
-            if (fresh?.isTestAccount) return;
-            const totalCredits = fresh ? getActiveCredits(fresh).length : 1;
-            await sendReferralCreditEmail(
-              referrer.id,
-              referrer.email,
-              referrer.name,
-              totalCredits,
-            );
-            // M3 — first referral milestone (fires once, to the referrer)
-            if (fresh && !fresh.milestoneReferral1Sent && (fresh.referralCount ?? 0) >= 1) {
-              await sendMilestoneEmail('referral1', {
-                id:    fresh.id,
-                name:  fresh.name,
-                email: fresh.email,
-                plan:  fresh.plan,
-              });
-              await markMilestoneSent(fresh.id, 'referral1');
-            }
-          })
-          .catch((e) => console.error('[GasCap] Referral credit on signup failed:', e));
       }
     }
 

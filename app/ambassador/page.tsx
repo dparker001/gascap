@@ -23,7 +23,7 @@ const STEPS = [
   {
     n:     '3',
     title: 'Earn as they pay',
-    body:  'Every person who signs up with your link and subscribes to Pro counts as a paying referral. Free sign-ups that never pay don\'t count. Referrals are tallied at month-end — once you cross a tier threshold, that milestone is yours permanently.',
+    body:  'Every person who signs up with your link and subscribes to a paid GasCap™ plan counts as a paying referral. Free trial sign-ups that never pay don\'t count. Credits are issued within 24 hours of your referral\'s first payment — once you cross a tier threshold, that milestone is yours permanently.',
   },
 ];
 
@@ -34,7 +34,7 @@ const TIERS = [
     threshold: 5,
     entries:   2,
     reward:    '1 free Pro month per paying referral',
-    sub:       'Earn 1 free month of Pro for every person you refer who becomes a paying subscriber. Credited automatically at each month-end — no action needed.',
+    sub:       'Earn 1 free month of Pro for every person you refer who subscribes to a paid plan — up to 6 free months total. Credited automatically within 24 hours of their first payment. No action needed.',
     color:     'bg-slate-50 border-slate-200',
     title:     'text-slate-700',
     badge:     'bg-slate-200 text-slate-600',
@@ -218,9 +218,9 @@ export default function AmbassadorPage() {
             ))}
 
             <div className="bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 text-[11px] text-slate-500 leading-relaxed space-y-1.5">
-              <p>💡 <strong>Only paying conversions count.</strong> Free trial sign-ups that never subscribe don&apos;t
-              qualify — this keeps the program sustainable and fraud-proof.</p>
-              <p>📅 <strong>Month-end snapshots.</strong> Your cumulative referral count is tallied on the last day of each month. Crossing a new tier takes effect the following month for drawing entry purposes. Milestones are permanent once reached.</p>
+              <p>💡 <strong>Only paying conversions count.</strong> Free trial sign-ups that never subscribe don&apos;t qualify — this keeps the program sustainable and fraud-proof.</p>
+              <p>⚡ <strong>Credited within 24 hours.</strong> Your referral count updates within 24 hours of your referral&apos;s first payment. Milestones are permanent once reached — even if they later cancel, your tier stays.</p>
+              <p>🔒 <strong>Up to 6 free months, then Pro for Life.</strong> Free month credits are capped at 6 lifetime. Once you hit 15 paying referrals, GasCap™ Pro is yours forever — no subscription needed.</p>
             </div>
           </div>
         </div>
