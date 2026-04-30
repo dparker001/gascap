@@ -21,20 +21,17 @@ export default function StaticPageHeader({ active }: StaticPageHeaderProps) {
     <header className="sticky top-0 z-50 bg-navy-700 shadow-md">
       <div className="max-w-4xl mx-auto px-4 py-0 flex items-center justify-between gap-4">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2 py-3 flex-shrink-0">
-          <div className="w-7 h-7 rounded-xl bg-amber-500 flex items-center justify-center">
-            <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"
-                 strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5" aria-hidden="true">
-              <rect x="2" y="6" width="11" height="16" rx="1.5" />
-              <rect x="4" y="9" width="7" height="4" rx="0.75" />
-              <path d="M13 8 L18 8 Q21 8 21 11 L21 16 Q21 18 19 18" />
-              <circle cx="18.5" cy="18.5" r="1.5" />
-            </svg>
-          </div>
-          <span className="text-white font-black text-base leading-none">
-            GasCap<sup className="text-amber-400 text-[9px] ml-0.5">™</sup>
+        <Link href="/" className="flex items-center gap-1.5 py-3 flex-shrink-0">
+          <img
+            src="/gascap-icon-raw.png"
+            alt=""
+            className="h-8 w-auto object-contain drop-shadow-sm"
+            aria-hidden="true"
+          />
+          <span className="text-white font-black text-base leading-none tracking-tight">
+            GasCap<sup className="text-xs font-bold" style={{ verticalAlign: '0.6em' }}>™</sup>
           </span>
-          <span className="hidden sm:block text-white/30 text-[10px] font-medium ml-0.5">
+          <span className="hidden sm:block text-white/30 text-[10px] font-medium ml-1">
             © {YEAR}
           </span>
         </Link>

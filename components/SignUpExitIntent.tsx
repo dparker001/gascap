@@ -140,11 +140,16 @@ export default function SignUpExitIntent() {
           </svg>
         </button>
 
-        {/* Icon */}
-        <div className="w-11 h-11 rounded-2xl bg-amber-50 border border-amber-100
-                        flex items-center justify-center mb-4 text-2xl select-none"
-             aria-hidden="true">
-          ⛽
+        {/* Brand lockup */}
+        <div className="flex items-center gap-1.5 mb-4" aria-hidden="true">
+          <img
+            src="/gascap-icon-raw.png"
+            alt=""
+            className="h-9 w-auto object-contain drop-shadow-sm"
+          />
+          <span className="text-[#1E2D4A] font-black text-xl leading-none tracking-tight">
+            GasCap<sup className="text-xs font-bold" style={{ verticalAlign: '0.6em' }}>™</sup>
+          </span>
         </div>
 
         {/* Message */}

@@ -5,6 +5,7 @@ import { signIn } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useTranslation } from '@/contexts/LanguageContext';
+import BrandBar from '@/components/BrandBar';
 
 function SignInForm() {
   const router       = useRouter();
@@ -41,14 +42,7 @@ function SignInForm() {
 
   return (
     <div className="min-h-screen bg-[#eef1f7] flex flex-col">
-      {/* Top brand bar */}
-      <div className="bg-brand-dark px-5 py-4">
-        <Link href="/" className="flex items-center w-fit">
-          <div className="bg-white rounded-xl px-3 py-1.5">
-            <img src="/logo-lockup-green.png" alt="GasCap" className="h-7 w-auto" />
-          </div>
-        </Link>
-      </div>
+      <BrandBar />
 
       {/* Form */}
       <div className="flex-1 flex items-start justify-center px-4 pt-10 pb-16">

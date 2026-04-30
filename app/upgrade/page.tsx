@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { PRICING } from '@/lib/stripe';
 import { useTranslation } from '@/contexts/LanguageContext';
+import BrandBar from '@/components/BrandBar';
 
 // ── Feature lists ─────────────────────────────────────────────────────────
 
@@ -106,14 +107,7 @@ export default function UpgradePage() {
   return (
     <div className="min-h-screen bg-[#eef1f7] flex flex-col">
 
-      {/* Brand bar */}
-      <div className="bg-brand-dark px-5 py-4">
-        <Link href="/" className="flex items-center w-fit">
-          <div className="bg-white rounded-xl px-3 py-1.5">
-            <img src="/logo-lockup-green.png" alt="GasCap" className="h-7 w-auto" />
-          </div>
-        </Link>
-      </div>
+      <BrandBar />
 
       <div className="flex-1 px-4 py-10 max-w-2xl mx-auto w-full">
 
