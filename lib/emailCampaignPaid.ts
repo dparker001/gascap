@@ -113,7 +113,7 @@ export function upgradeConfirmEmailHtml(
           ['📊', 'MPG + spending charts', 'Full history, trends, and predictive drop alerts.'],
           ['🎯', 'Budget + alerts',        'Monthly fuel budget tracker with overspend notifications.'],
           ['🔧', 'Maintenance reminders', 'Oil changes, tire rotations, and service intervals.'],
-          ['🚗', 'Up to 3 saved vehicles','Switch between cars in one tap.'],
+          ['🚗', 'Your Garage — up to 3 vehicles','Save every car you drive. Switch between them in one tap.'],
           ['📄', 'Monthly PDF reports',   'Expense-report ready fuel summaries in one tap.'],
         ]).map(([icon, title, body]) => `
           <tr>
