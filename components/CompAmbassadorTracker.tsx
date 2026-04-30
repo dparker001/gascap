@@ -31,9 +31,9 @@ interface Milestone {
 }
 
 const MILESTONES: Milestone[] = [
-  { threshold: 10, reward: '$25 gas card', label: 'Starter Reward'  },
-  { threshold: 25, reward: '$50 gas card', label: 'Growth Reward'   },
-  { threshold: 50, reward: '$100 gas card', label: 'Elite Reward'   },
+  { threshold: 10, reward: '$25 Visa prepaid card', label: 'Starter Reward'  },
+  { threshold: 25, reward: '$50 Visa prepaid card', label: 'Growth Reward'   },
+  { threshold: 50, reward: '$100 Visa prepaid card', label: 'Elite Reward'   },
 ];
 
 function MilestoneBar({ milestone, count }: { milestone: Milestone; count: number }) {
@@ -147,7 +147,7 @@ export default function CompAmbassadorTracker() {
       <div className="mt-4 rounded-lg bg-teal-50 border border-teal-100 px-3 py-2.5 text-xs text-teal-700">
         {allEarned ? (
           <p>
-            🎊 <strong>You've earned all three gas card rewards!</strong> We'll reach out to deliver your cards. Thank you for being a top ambassador.
+            🎊 <strong>You've earned all three Visa prepaid card rewards!</strong> We'll reach out to deliver your cards. Thank you for being a top ambassador.
           </p>
         ) : nextMilestone ? (
           <p>
@@ -165,7 +165,7 @@ export default function CompAmbassadorTracker() {
         </summary>
         <p className="mt-1.5 text-xs text-gray-500 leading-relaxed">
           A referral is counted when someone you referred upgrades to GasCap™ Pro
-          and makes their first payment. Free sign-ups don't count toward gas card milestones.
+          and makes their first payment. Free sign-ups don't count toward Visa prepaid card milestones.
           Gas cards are delivered manually — we'll contact you when you hit a milestone.
         </p>
       </details>

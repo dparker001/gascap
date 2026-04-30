@@ -34,9 +34,9 @@ const STEPS: { step: number; minDays: number; label: string }[] = [
 
 /** Gas card milestone thresholds (paying referrals → reward) */
 const GAS_CARD_MILESTONES: { threshold: number; reward: string }[] = [
-  { threshold: 10, reward: '$25 gas card' },
-  { threshold: 25, reward: '$50 gas card' },
-  { threshold: 50, reward: '$100 gas card' },
+  { threshold: 10, reward: '$25 Visa prepaid card' },
+  { threshold: 25, reward: '$50 Visa prepaid card' },
+  { threshold: 50, reward: '$100 Visa prepaid card' },
 ];
 
 /** Send an internal admin alert when a comped member crosses a gas card milestone */

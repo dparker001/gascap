@@ -176,11 +176,11 @@ export function welcomeEmailHtml(name: string, userId: string, verifyUrl?: strin
 
       <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:18px 22px;margin:0 0 22px;">
         <p style="margin:0 0 6px;font-size:14px;font-weight:900;color:#14532d;">
-          🎁 Monthly Gas Card Drawing — you're already entered
+          🎁 Monthly Gas Card Giveaway — you're already entered
         </p>
         <p style="margin:0;font-size:13px;color:#166534;line-height:1.6;">
           Every day you <strong>log in or use GasCap™</strong> earns you an entry for that month's
-          $25 gas card drawing. The more days you're active, the better your odds. Drawing is held
+          $25 Visa prepaid card drawing. The more days you're active, the better your odds. Drawing is held
           monthly — free to enter, no purchase required.
         </p>
       </div>
@@ -933,7 +933,7 @@ export function compC2EmailHtml(name: string, userId: string): string {
       </p>
       <p style="margin:0 0 20px;font-size:15px;color:#475569;line-height:1.65;">
         Your personal referral link is ready — and sharing it is simpler than you think.
-        Here's a quick walkthrough so you can start earning toward your gas card rewards.
+        Here's a quick walkthrough so you can start earning toward your Visa prepaid card rewards.
       </p>
 
       <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:14px;padding:22px;margin-bottom:24px;">
@@ -943,7 +943,7 @@ export function compC2EmailHtml(name: string, userId: string): string {
         <table cellpadding="0" cellspacing="0" width="100%">
           ${featureRow('1️⃣', 'Open GasCap™ → Share tab', 'Tap the Share icon at the bottom of the app. Your unique referral link and QR code are right there.')}
           ${featureRow('2️⃣', 'Copy your link or grab your QR code', 'Paste the link in a text, group chat, or social caption — or screenshot the QR code for in-person sharing.')}
-          ${featureRow('3️⃣', 'When they upgrade, you earn', 'Every time someone you referred upgrades to a paid plan, you earn credit toward your gas card milestones.')}
+          ${featureRow('3️⃣', 'When they upgrade, you earn', 'Every time someone you referred upgrades to a paid plan, you earn credit toward your Visa prepaid card milestones.')}
         </table>
       </div>
 
@@ -983,7 +983,7 @@ export function compC2EmailHtml(name: string, userId: string): string {
 
 export const compC2EmailText = (name: string): string => {
   const first = name.split(' ')[0];
-  return `Hi ${first}, your GasCap™ referral link is ready. Here's how to share it in 3 steps: (1) Open GasCap™ and go to the Share tab. (2) Copy your link or save your QR code. (3) Paste it in a text, group chat, or social caption — when someone you referred upgrades, you earn toward your gas card rewards. Copy-paste text: "Hey — try this app called GasCap™. It tells you exactly how many gallons to pump so you never overpay. Free to use: [YOUR LINK]". Get your link at ${BASE_URL}/#share`;
+  return `Hi ${first}, your GasCap™ referral link is ready. Here's how to share it in 3 steps: (1) Open GasCap™ and go to the Share tab. (2) Copy your link or save your QR code. (3) Paste it in a text, group chat, or social caption — when someone you referred upgrades, you earn toward your Visa prepaid card rewards. Copy-paste text: "Hey — try this app called GasCap™. It tells you exactly how many gallons to pump so you never overpay. Free to use: [YOUR LINK]". Get your link at ${BASE_URL}/#share`;
 };
 
 // ── C3 — Day 7: Best places to share ──────────────────────────────────────
@@ -1021,7 +1021,7 @@ export function compC3EmailHtml(name: string, userId: string): string {
       </div>
 
       <p style="margin:0 0 16px;font-size:14px;color:#475569;line-height:1.65;">
-        <strong>Remember:</strong> You earn gas card credits only when someone you referred
+        <strong>Remember:</strong> You earn Visa prepaid card credits only when someone you referred
         upgrades to a paid plan. So the more people you reach, the faster your rewards stack up.
       </p>
 
@@ -1060,12 +1060,12 @@ export function compC4EmailHtml(name: string, userId: string): string {
 
       <div style="background:#1e2d4a;border-radius:14px;padding:22px;margin-bottom:24px;">
         <p style="margin:0 0 14px;font-size:12px;font-weight:900;color:#fbbf24;letter-spacing:1px;text-transform:uppercase;">
-          🏆 Gas Card Milestone Rewards
+          🏆 Visa Prepaid Card Milestone Rewards
         </p>
         <table cellpadding="0" cellspacing="0" width="100%">
-          ${milestoneRow('10 paying referrals', '$25 Gas Card', 'We mail or Venmo you a $25 fuel gift card', false)}
-          ${milestoneRow('25 paying referrals', '$50 Gas Card', 'You\'ve helped 25 drivers save — here\'s $50 back', false)}
-          ${milestoneRow('50 paying referrals', '$100 Gas Card', 'Elite Ambassador status — you\'ve earned it', false)}
+          ${milestoneRow('10 paying referrals', '$25 Visa Prepaid Card', 'We send you a $25 Visa prepaid card — use it anywhere Visa is accepted', false)}
+          ${milestoneRow('25 paying referrals', '$50 Visa Prepaid Card', 'You\'ve helped 25 drivers save — here\'s $50 back', false)}
+          ${milestoneRow('50 paying referrals', '$100 Visa Prepaid Card', 'Elite Ambassador status — you\'ve earned it', false)}
         </table>
         <p style="margin:12px 0 0;font-size:11px;color:rgba(255,255,255,.5);line-height:1.5;">
           Milestones are cumulative and permanent — they never reset. We'll reach out when you hit one.
@@ -1102,7 +1102,7 @@ export function compC4EmailHtml(name: string, userId: string): string {
 
 export const compC4EmailText = (name: string): string => {
   const first = name.split(' ')[0];
-  return `Hi ${first}, here's your Ambassador rewards breakdown: 10 paying referrals → $25 gas card. 25 paying referrals → $50 gas card. 50 paying referrals → $100 gas card. Milestones are cumulative and permanent — they never reset. We'll reach out when you hit one. Referrals count only when someone you referred upgrades to a paid plan. Check your count at ${BASE_URL}/#share. Questions? Just reply to this email.`;
+  return `Hi ${first}, here's your Ambassador rewards breakdown: 10 paying referrals → $25 Visa prepaid card. 25 paying referrals → $50 Visa prepaid card. 50 paying referrals → $100 Visa prepaid card. Milestones are cumulative and permanent — they never reset. We'll reach out when you hit one. Referrals count only when someone you referred upgrades to a paid plan. Check your count at ${BASE_URL}/#share. Questions? Just reply to this email.`;
 };
 
 // ── C5 — Day 30: Re-engagement + top ambassador tips ──────────────────────
@@ -1136,12 +1136,12 @@ export function compC5EmailHtml(name: string, userId: string): string {
 
       <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:12px;padding:18px 22px;margin-bottom:24px;">
         <p style="margin:0 0 8px;font-size:14px;font-weight:900;color:#92400e;">
-          🎁 Your gas card milestones — a quick recap
+          🎁 Your Visa prepaid card milestones — a quick recap
         </p>
         <p style="margin:0;font-size:14px;color:#78350f;line-height:1.65;">
-          10 paying referrals → <strong>$25 gas card</strong><br>
-          25 paying referrals → <strong>$50 gas card</strong><br>
-          50 paying referrals → <strong>$100 gas card</strong><br>
+          10 paying referrals → <strong>$25 Visa prepaid card</strong><br>
+          25 paying referrals → <strong>$50 Visa prepaid card</strong><br>
+          50 paying referrals → <strong>$100 Visa prepaid card</strong><br>
           <span style="font-size:12px;color:#92400e;opacity:.8;">Cumulative and permanent — milestones never reset</span>
         </p>
       </div>
@@ -1165,7 +1165,7 @@ export function compC5EmailHtml(name: string, userId: string): string {
 
 export const compC5EmailText = (name: string): string => {
   const first = name.split(' ')[0];
-  return `Hi ${first}, you've been a GasCap™ Ambassador for 30 days — thank you. Tips from our top ambassadors: (1) Personal recommendation beats mass posting. (2) Show the calculator mid-use in a screenshot. (3) Re-share when gas prices spike in the news. (4) Reply personally to questions. Gas card milestone recap: 10 referrals → $25, 25 referrals → $50, 50 referrals → $100. Milestones are cumulative and permanent. Want help with better graphics or message templates? Just reply to this email. Open GasCap™ at ${BASE_URL}/#share`;
+  return `Hi ${first}, you've been a GasCap™ Ambassador for 30 days — thank you. Tips from our top ambassadors: (1) Personal recommendation beats mass posting. (2) Show the calculator mid-use in a screenshot. (3) Re-share when gas prices spike in the news. (4) Reply personally to questions. Visa prepaid card milestone recap: 10 referrals → $25, 25 referrals → $50, 50 referrals → $100. Milestones are cumulative and permanent. Want help with better graphics or message templates? Just reply to this email. Open GasCap™ at ${BASE_URL}/#share`;
 };
 
 // ── Early-Upgrade Offer — one-time announcement to active trial users ─────────

@@ -33,7 +33,7 @@ export default function SweepstakesRulesPage() {
         {/* Intro box */}
         <div className="bg-[#1EB68F]/10 border border-[#1EB68F]/30 rounded-2xl p-5">
           <p className="text-sm text-slate-700 leading-relaxed">
-            <strong>Plain-English Summary:</strong> Every month, GasCap™ gives away a {PRIZE_VALUE} gas card to one
+            <strong>Plain-English Summary:</strong> Every month, GasCap™ gives away a {PRIZE_VALUE} Visa prepaid card — use it at the pump or anywhere Visa is accepted — to one
             lucky Pro or Fleet member. The more days you use the app, the more entries you earn.
             Standard users earn 1 entry per day; Ambassador Program members earn 2–5 entries per day
             depending on their tier (based on cumulative paying referrals). Keep a login streak going
@@ -168,8 +168,8 @@ export default function SweepstakesRulesPage() {
           <section className="p-5 space-y-2">
             <h2 className="text-sm font-black text-slate-800">6. Prize</h2>
             <p className="text-sm text-slate-600 leading-relaxed">
-              One (1) Grand Prize per Entry Month: a {PRIZE_VALUE} prepaid gas gift card (or equivalent
-              digital gift card to a major fuel retailer, at Sponsor&apos;s discretion). Approximate retail
+              One (1) Grand Prize per Entry Month: a {PRIZE_VALUE} Visa prepaid card (or equivalent
+              Visa prepaid card of equal value, at Sponsor&apos;s discretion). Approximate retail
               value: {PRIZE_VALUE}. Prize is non-transferable and no substitution or cash equivalent is
               permitted, except at Sponsor&apos;s sole discretion. Sponsor reserves the right to substitute
               a prize of equal or greater value if the advertised prize becomes unavailable.

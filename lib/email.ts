@@ -218,7 +218,7 @@ ${brandHeader()}
             <tr><td style="padding:20px 24px;text-align:center;">
               <p style="margin:0 0 4px;font-size:11px;font-weight:800;color:#b45309;
                          text-transform:uppercase;letter-spacing:.08em;">Your Prize</p>
-              <p style="margin:0;font-size:36px;font-weight:900;color:#1e2d4a;">${prize} Gas Card</p>
+              <p style="margin:0;font-size:36px;font-weight:900;color:#1e2d4a;">${prize} Visa Prepaid Card</p>
               <p style="margin:6px 0 0;font-size:12px;color:#92400e;">
                 ${entryCount}&nbsp;${entryCount === 1 ? 'entry' : 'entries'}&nbsp;·&nbsp;${odds}&nbsp;odds&nbsp;·&nbsp;${monthLabel}
               </p>
@@ -228,7 +228,7 @@ ${brandHeader()}
           <!-- Body copy -->
           <p style="margin:0 0 16px;font-size:14px;color:#475569;line-height:1.65;">
             A GasCap™ team member will reach out within&nbsp;<strong>7&nbsp;days</strong> with your
-            prepaid gas card or a link to claim it digitally. Please reply to this email to confirm
+            Visa prepaid card — use it at the pump or anywhere Visa is accepted — or a link to claim it digitally. Please reply to this email to confirm
             you received it — if we don't hear back within&nbsp;<strong>14&nbsp;days</strong> we
             may need to select an alternate winner per our official rules.
           </p>
@@ -313,7 +313,7 @@ ${brandHeader(plan)}
             ${monthLabel} Drawing Results
           </p>
           <p style="margin:0 0 24px;font-size:14px;color:#475569;text-align:center;">
-            Hi ${recipientName} — the ${monthLabel} gas card drawing just wrapped up.
+            Hi ${recipientName} — the ${monthLabel} Gas Card Drawing just wrapped up.
           </p>
 
           <!-- Winner announcement -->
@@ -324,7 +324,7 @@ ${brandHeader(plan)}
                          text-transform:uppercase;letter-spacing:.08em;">${monthLabel} Winner 🏆</p>
               <p style="margin:0;font-size:20px;font-weight:900;color:#1e2d4a;">${winnerLabel}</p>
               <p style="margin:6px 0 0;font-size:12px;color:#166534;">
-                ${prize} gas card · ${totalEntries} total entries in the pool
+                ${prize} Visa prepaid card · ${totalEntries} total entries in the pool
               </p>
             </td></tr>
           </table>

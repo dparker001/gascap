@@ -604,7 +604,7 @@ export default function SettingsPage() {
             </div>
 
             <p className="text-[11px] text-slate-500 leading-relaxed">
-              🎁 One winner drawn each month wins a <strong>$25 gas card</strong>.
+              🎁 One winner drawn each month wins a <strong>$25 Visa prepaid card</strong>.
               More active days = better odds!
             </p>
 

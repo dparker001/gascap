@@ -102,7 +102,7 @@ export default function GiveawayPage() {
         {/* Gift box hero */}
         <div className="text-center py-4">
           <p className="text-6xl mb-3">🎁</p>
-          <p className="text-white text-2xl font-black leading-tight">Win a $25 Gas Card</p>
+          <p className="text-white text-2xl font-black leading-tight">Win a $25 Visa Prepaid Card</p>
           <p className="text-white/60 text-sm mt-1">One winner drawn every month</p>
         </div>
 
@@ -248,7 +248,7 @@ export default function GiveawayPage() {
               { emoji: '⚡', text: '7-day streak = +2 · 30-day = +5 · 90-day = +10 · 180-day = +15 · 1-year = +20' },
               { emoji: '📈', text: 'More entries = better odds — streaks compound your edge' },
               { emoji: '🏆', text: 'One winner drawn on the 5th of each month' },
-              { emoji: '⛽', text: '$25 gas card sent directly to the winner' },
+              { emoji: '⛽', text: '$25 Visa prepaid card sent directly to the winner' },
             ].map((item) => (
               <div key={item.text} className="flex items-start gap-3">
                 <span className="text-lg leading-none mt-0.5">{item.emoji}</span>

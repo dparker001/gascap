@@ -52,17 +52,17 @@ locations across target markets, building a network of Partner Stations.
 
 ### Layer 1 — One-Time Placement Bonus (per verified new business location)
 
-- **$5 gas card** per verified business location placed
+- **$5 Visa prepaid card** per verified business location placed
 - "Verified" = consent form signed + at least one placard physically placed + proof photo submitted via Google Form
 
 ### Layer 2 — Monthly Performance Bonus (ongoing, based on active verified locations)
 
 | Active Verified Locations | Monthly Reward |
 |---|---|
-| 1–5 | $25 gas card |
-| 6–15 | $50 gas card |
-| 16–30 | $100 gas card |
-| 31+ | $150 gas card |
+| 1–5 | $25 Visa prepaid card |
+| 6–15 | $50 Visa prepaid card |
+| 16–30 | $100 Visa prepaid card |
+| 31+ | $150 Visa prepaid card |
 
 "Active" = placard still up with at least 1 scan in the past 30 days.
 
@@ -75,8 +75,7 @@ locations across target markets, building a network of Partner Stations.
 - **Free GasCap™ Pro for life** while active as a Field Rep
 - No consecutive-month or quarterly win restriction on the monthly giveaway
 
-**Reward delivery:** Via TangoCard (digital gas gift cards — Shell, BP,
-Chevron, Exxon). Distributed monthly based on placement log data.
+**Reward delivery:** Via Visa prepaid card (digital or physical). Distributed monthly based on placement log data.
 
 ---
 
@@ -169,7 +168,7 @@ after you explain it to them, overpromises.
 
 ## Facebook Recruiting Post Template
 
-> 🚗 **Earn gas cards + rewards driving around [City]**
+> 🚗 **Earn Visa prepaid cards + rewards driving around [City]**
 >
 > GasCap™ (gascap.app) is a free fuel calculator app and we're building our
 > local presence by placing QR code displays at gas stations, oil change shops,
@@ -182,7 +181,7 @@ after you explain it to them, overpromises.
 > **What you get:**
 > ✅ Free GasCap Pro for life
 > ✅ $5 per verified new business location placed
-> ✅ Monthly gas cards based on your active placements
+> ✅ Monthly Visa prepaid cards based on your active placements
 > ✅ Flexible — work your own hours, your own territory
 > ✅ No experience needed — we provide everything
 >
@@ -361,7 +360,7 @@ After receiving the Google Form notification:
 
 **Monthly:**
 - Pull Field Rep stats from master placement log
-- Calculate gas card rewards by active verified location count (Layer 2 tiers)
+- Calculate Visa prepaid card rewards by active verified location count (Layer 2 tiers)
 - Distribute rewards via TangoCard
 - Send Field Reps monthly performance summary via GHL
 

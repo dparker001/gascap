@@ -1,7 +1,7 @@
 ## SECTION 9 — MONTHLY GAS CARD GIVEAWAY
 
 **Q: What is the Monthly Gas Card Giveaway?**
-A: Every month, GasCap™ gives away a $25 gas card to one lucky winner. The drawing is held on or about the 5th of the following month. No purchase is required to enter.
+A: Every month, GasCap™ gives away a $25 Visa prepaid card to one lucky winner — use it at the pump or anywhere Visa is accepted. The drawing is held on or about the 5th of the following month. No purchase is required to enter.
 
 **Q: Who can enter?**
 A: Legal U.S. residents 18 years of age or older. Employees of Gas Capacity LLC and their immediate family members are not eligible. Void where prohibited by law.

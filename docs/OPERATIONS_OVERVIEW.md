@@ -81,7 +81,7 @@ Documented in: `app/giveaway/page.tsx` · `app/sweepstakes-rules/page.tsx` · `l
 - Entries earned: 1 per day you log in or use GasCap™ (Pro/Fleet only)
 - Entries reset each month — no carryover
 - Streak bonus (flat, separate from monthly entries): 7d=+2, 30d=+5, 90d=+10, 180d=+15, 365d=+20
-- Prize: $25 gas card (scales to $50 at 500 paying subscribers)
+- Prize: $25 Visa prepaid card (scales to $50 at 500 paying subscribers)
 - Drawing: on or about the 5th of the following month
 
 ### Pilot Partner Program (field placard visits)
@@ -89,7 +89,7 @@ Documented in: `docs/FIELD_AMBASSADOR_PROGRAM.md`
 
 - Field Reps visit local businesses to place GasCap™ QR tent cards/placards
 - Paid per verified business location (not per placard)
-- Rewards: $5 one-time per verified placement + monthly gas card by active location count
+- Rewards: $5 Visa prepaid card one-time per verified placement + monthly Visa prepaid card by active location count
 - Tracking codes: `GC-ORGFL-D1.01-[1001+]` format · master log in `tent-card-placement-tracker.csv`
 - Rewards delivered via TangoCard
 

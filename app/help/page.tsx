@@ -236,7 +236,7 @@ const SECTIONS = [
     items: [
       {
         q: 'What is the Monthly Gas Card Giveaway?',
-        a: 'Every month, GasCap™ gives away a $25 gas card to one lucky winner. The drawing is held on or about the 5th of the following month. No purchase is required to enter.',
+        a: 'Every month, GasCap™ gives away a $25 Visa prepaid card — use it at the pump or anywhere Visa is accepted — to one lucky winner. The drawing is held on or about the 5th of the following month. No purchase is required to enter.',
       },
       {
         q: 'Who is eligible to enter?',

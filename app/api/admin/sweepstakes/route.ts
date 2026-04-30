@@ -155,7 +155,7 @@ export async function POST(req: Request) {
         text: [
           `Congratulations ${result.winner.name}!`,
           `You won the ${monthLabel} GasCap™ Gas Card Giveaway (${prize}).`,
-          `Your ${prize} prepaid gas card will be sent within 7 days.`,
+          `Your ${prize} Visa prepaid card — use it at the pump or anywhere Visa is accepted — will be sent within 7 days.`,
           `Reply to confirm receipt or email support@gascap.app with questions.`,
           `You must respond within 14 days to claim your prize.`,
         ].join('\n\n'),
@@ -179,7 +179,7 @@ export async function POST(req: Request) {
                      ),
             text: [
               `Hi ${entrant.name.split(' ')[0] ?? entrant.name},`,
-              `The ${monthLabel} GasCap™ drawing just wrapped — congratulations to ${winnerLabel} who won the ${prize} gas card!`,
+              `The ${monthLabel} GasCap™ drawing just wrapped — congratulations to ${winnerLabel} who won the ${prize} Visa prepaid card!`,
               `You had ${entrant.entryCount} ${entrant.entryCount === 1 ? 'entry' : 'entries'} this month.`,
               `To earn more entries for ${nextDrawMonth}: open GasCap™ every day (1 entry/day, up to 31), and build your streak for bonus entries (7 days = +2, 30 days = +5, 90 days = +10).`,
               `Next drawing is on or about the 5th of ${nextDrawMonth}.`,
