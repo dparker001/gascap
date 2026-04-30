@@ -2,13 +2,17 @@
  * Admin Sweepstakes API — protected by ADMIN_PASSWORD
  * GET  /api/admin/sweepstakes?month=YYYY-MM  — preview entrants
  * GET  /api/admin/sweepstakes?history=1      — past draw results
- * POST /api/admin/sweepstakes                — run draw { month, notes?, dryRun? }
+ * POST /api/admin/sweepstakes                — run draw { month, notes?, dryRun?, suppressWinnerEmail? }
  *
- * After a successful draw the route fires three fire-and-forget side-effects:
+ * After a successful draw the route fires four fire-and-forget side-effects:
  *  1. Winner notification email  (via lib/email.ts → SMTP or Resend)
+ *     Skipped if suppressWinnerEmail = true
  *  2. Non-winner results email   (sent to all eligible entrants who didn't win)
- *  3. GHL webhook POST           (GHL_WINNER_WEBHOOK_URL env var)
- *     → triggers a GHL workflow that creates the VA task + sends the gas card
+ *  3. Tremendous API             (TREMENDOUS_API_KEY + TREMENDOUS_CAMPAIGN_ID env vars)
+ *     → delivers a Visa prepaid card directly to the winner's email
+ *     Skipped if suppressWinnerEmail = true
+ *  4. GHL webhook POST           (GHL_WINNER_WEBHOOK_URL env var)
+ *     → triggers a GHL workflow for any additional VA follow-up tasks
  */
 import { NextResponse } from 'next/server';
 import {
@@ -192,7 +196,55 @@ export async function POST(req: Request) {
         }
       })(),
 
-      // 3. GHL webhook → triggers VA workflow for gas card fulfillment
+      // 3. Tremendous API — deliver Visa prepaid card directly to winner
+      //    Skipped if suppressWinnerEmail is true (manual fulfillment mode)
+      //    Prize string is "$25", "$50", etc. — parse the number for the API
+      (() => {
+        if (suppressWinnerEmail) return Promise.resolve();
+        const tremendousKey        = process.env.TREMENDOUS_API_KEY;
+        const tremendousCampaignId = process.env.TREMENDOUS_CAMPAIGN_ID;
+        if (!tremendousKey || !tremendousCampaignId) {
+          console.warn('[sweepstakes] Tremendous env vars not set — skipping reward delivery');
+          return Promise.resolve();
+        }
+        const denomination = parseFloat(prize.replace(/[^0-9.]/g, ''));
+        if (isNaN(denomination) || denomination <= 0) {
+          console.warn('[sweepstakes] Could not parse prize amount from:', prize);
+          return Promise.resolve();
+        }
+        return fetch('https://www.tremendous.com/api/v2/orders', {
+          method:  'POST',
+          headers: {
+            'Authorization': `Bearer ${tremendousKey}`,
+            'Content-Type':  'application/json',
+          },
+          body: JSON.stringify({
+            payment: { funding_source_id: 'BALANCE' },
+            rewards: [{
+              campaign_id: tremendousCampaignId,
+              recipient: {
+                name:  result.winner.name,
+                email: result.winner.email,
+              },
+              value: {
+                denomination,
+                currency_code: 'USD',
+              },
+            }],
+          }),
+        })
+          .then(async (r) => {
+            if (!r.ok) {
+              const err = await r.text();
+              console.error('[sweepstakes] Tremendous API error:', err);
+            } else {
+              console.log(`[sweepstakes] Tremendous reward sent to ${result.winner.email} (${prize})`);
+            }
+          })
+          .catch((err) => console.error('[sweepstakes] Tremendous fetch failed:', err));
+      })(),
+
+      // 4. GHL webhook → VA follow-up workflow
       webhookUrl
         ? fetch(webhookUrl, {
             method:  'POST',
