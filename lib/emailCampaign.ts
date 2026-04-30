@@ -174,6 +174,17 @@ export function welcomeEmailHtml(name: string, userId: string, verifyUrl?: strin
         </table>
       </div>
 
+      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:18px 22px;margin:0 0 22px;">
+        <p style="margin:0 0 6px;font-size:14px;font-weight:900;color:#14532d;">
+          🎁 Monthly Gas Card Drawing — you're already entered
+        </p>
+        <p style="margin:0;font-size:13px;color:#166534;line-height:1.6;">
+          Every day you <strong>log in or use GasCap™</strong> earns you an entry for that month's
+          $25 gas card drawing. The more days you're active, the better your odds. Drawing is held
+          monthly — free to enter, no purchase required.
+        </p>
+      </div>
+
       <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:12px;padding:18px 22px;margin:0 0 22px;">
         <p style="margin:0 0 6px;font-size:14px;font-weight:900;color:#92400e;">
           🚗 Renting a car? Don't miss our most-loved feature
