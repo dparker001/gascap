@@ -44,9 +44,10 @@ export interface StoredUser {
   emailVerifyExpires?: string;
   passwordResetToken?:   string;
   passwordResetExpires?: string;
-  phone?:      string;
-  displayName?: string;
-  smsOptIn?:   boolean;
+  phone?:         string;
+  displayName?:   string;
+  smsOptIn?:      boolean;
+  smsOptInDate?:  string; // ISO timestamp of SMS consent — A2P audit trail
   priceAlertThreshold?:   number;
   lastPriceAlertSentAt?:  string;
   loginCount?:    number;
@@ -122,6 +123,7 @@ function toStoredUser(u: PrismaUser): StoredUser {
     phone:              u.phone               ?? undefined,
     displayName:        u.displayName         ?? undefined,
     smsOptIn:           u.smsOptIn            ?? false,
+    smsOptInDate:       u.smsOptInDate        ?? undefined,
     lastPriceAlertSentAt: u.lastPriceAlertSentAt ?? undefined,
     lastLoginAt:        u.lastLoginAt         ?? undefined,
     lastFillupReminderSentAt: u.lastFillupReminderSentAt ?? undefined,
@@ -802,7 +804,11 @@ export async function updateUserProfile(
         ? { phone: fields.phone.trim() || null }
         : {}),
       ...(fields.smsOptIn !== undefined
-        ? { smsOptIn: fields.smsOptIn }
+        ? {
+            smsOptIn: fields.smsOptIn,
+            // Stamp the opt-in date only when toggling ON; clear it on opt-out
+            smsOptInDate: fields.smsOptIn ? new Date().toISOString() : null,
+          }
         : {}),
     },
   }).catch(() => null);

@@ -53,6 +53,7 @@ model User {
   phone                    String?
   displayName              String?
   smsOptIn                 Boolean   @default(false)
+  smsOptInDate             String?   // ISO timestamp when SMS consent was recorded (A2P audit trail)
 
   // Gas price alerts
   priceAlertThreshold      Float?

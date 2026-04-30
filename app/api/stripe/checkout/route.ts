@@ -89,6 +89,7 @@ export async function POST(req: Request) {
     mode:                    'subscription',
     payment_method_types:    ['card'],
     allow_promotion_codes:   true,
+    phone_number_collection: { enabled: true },   // Collect phone for billing; saved to user record via webhook
     line_items:              [{ price: priceId, quantity: 1 }],
     customer_email:          user.stripeCustomerId ? undefined : user.email,
     customer:                user.stripeCustomerId ?? undefined,

@@ -17,6 +17,8 @@ function SignUpForm() {
   const [name,      setName]      = useState('');
   const [email,     setEmail]     = useState('');
   const [password,  setPassword]  = useState('');
+  const [phone,     setPhone]     = useState('');
+  const [smsOptIn,  setSmsOptIn]  = useState(false);
   const [showPw,    setShowPw]    = useState(false);
   const [error,     setError]     = useState('');
   const [loading,   setLoading]   = useState(false);
@@ -50,7 +52,9 @@ function SignUpForm() {
         email,
         password,
         locale,
-        ...(refCode ? { referralCode: refCode } : {}),
+        ...(phone.trim()   ? { phone: phone.trim() }   : {}),
+        ...(smsOptIn       ? { smsOptIn: true }         : {}),
+        ...(refCode        ? { referralCode: refCode }  : {}),
       }),
     });
 
@@ -210,6 +214,54 @@ function SignUpForm() {
                 </ul>
               )}
             </div>
+
+            {/* ── Phone + SMS opt-in (optional) ─────────────────────── */}
+            <div>
+              <label className="field-label" htmlFor="phone">
+                Phone <span className="font-normal text-slate-400">(optional)</span>
+              </label>
+              <input
+                id="phone"
+                type="tel"
+                autoComplete="tel"
+                className="input-field"
+                placeholder="(321) 555-0100"
+                value={phone}
+                onChange={(e) => {
+                  setPhone(e.target.value);
+                  // Clear opt-in if phone is erased
+                  if (!e.target.value.trim()) setSmsOptIn(false);
+                }}
+              />
+            </div>
+
+            {/* SMS consent — only rendered once a phone number is typed */}
+            {phone.trim() && (
+              <div className={`rounded-xl border p-3.5 transition-all ${smsOptIn ? 'border-teal-300 bg-teal-50' : 'border-slate-200 bg-slate-50'}`}>
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={smsOptIn}
+                    onChange={(e) => setSmsOptIn(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 rounded border-slate-300 text-teal-600
+                               focus:ring-teal-500 cursor-pointer flex-shrink-0"
+                  />
+                  <div>
+                    <p className={`text-sm font-semibold ${smsOptIn ? 'text-teal-800' : 'text-slate-600'}`}>
+                      Send me SMS alerts
+                    </p>
+                    <p className="text-[11px] text-slate-500 leading-relaxed mt-0.5">
+                      Gas price drops, fill-up reminders, and account notifications.
+                      Msg &amp; data rates may apply. Reply STOP to opt out at any time.
+                      Must be 18+ to receive SMS. See our{' '}
+                      <a href="/terms#sms" className="text-amber-600 hover:underline" target="_blank" rel="noopener noreferrer">
+                        SMS Terms
+                      </a>.
+                    </p>
+                  </div>
+                </label>
+              </div>
+            )}
 
             {error && (
               <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3">

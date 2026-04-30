@@ -9,7 +9,7 @@
 import { NextResponse }                     from 'next/server';
 import type Stripe                          from 'stripe';
 import { stripe }                           from '@/lib/stripe';
-import { setUserPlan, findByStripeCustomer, findById, findByReferralCode, creditVerifiedReferral, getActiveCredits, enrollPaidCampaign, enrollEngagementCampaign, setEarlyUpgradeBonus, markMilestoneSent } from '@/lib/users';
+import { setUserPlan, findByStripeCustomer, findById, findByReferralCode, creditVerifiedReferral, getActiveCredits, enrollPaidCampaign, enrollEngagementCampaign, setEarlyUpgradeBonus, markMilestoneSent, updateUserProfile } from '@/lib/users';
 import { updateGhlContactPlan }            from '@/lib/ghl';
 import { sendMail }                        from '@/lib/email';
 import { sendReferralCreditEmail }         from '@/lib/emailCampaign';
@@ -65,6 +65,19 @@ export async function POST(req: Request) {
         customerId:     customerId     ?? undefined,
         subscriptionId: subscriptionId ?? undefined,
       });
+
+      // Backfill phone from Stripe checkout if user didn't provide one at signup.
+      // Note: Stripe phone is for billing only — SMS consent must come from the
+      // opt-in checkbox on the signup or Settings page, never assumed here.
+      const stripePhone = (session as Stripe.Checkout.Session & { customer_details?: { phone?: string | null } })
+        ?.customer_details?.phone;
+      if (stripePhone) {
+        const existingUser = await findById(userId);
+        if (existingUser && !existingUser.phone) {
+          updateUserProfile(userId, { phone: stripePhone })
+            .catch((e) => console.error('[GasCap] Stripe phone backfill failed:', e));
+        }
+      }
 
       // Sync plan change to GHL CRM + notify admin
       const upgradedUser = await findById(userId);

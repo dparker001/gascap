@@ -7,6 +7,7 @@ import {
   createEmailVerifyToken,
   grantNewSignupProTrial,
   enrollEmailCampaign,
+  updateUserProfile,
 } from '@/lib/users';
 import { sendMail, verificationEmailHtml } from '@/lib/email';
 import { sendCampaignEmail } from '@/lib/emailCampaign';
@@ -27,8 +28,9 @@ function getBaseUrl(req: Request): string {
 
 export async function POST(req: Request) {
   try {
-    const { name, email, password, referralCode, locale } = await req.json() as {
+    const { name, email, password, referralCode, locale, phone, smsOptIn } = await req.json() as {
       name?: string; email?: string; password?: string; referralCode?: string; locale?: string;
+      phone?: string; smsOptIn?: boolean;
     };
 
     // Normalize — only 'en' / 'es' are supported. Default to English so a
@@ -52,6 +54,15 @@ export async function POST(req: Request) {
                          return NextResponse.json({ error: 'An account with that email already exists.' }, { status: 409 });
 
     const user = await createUser(name, email, password, userLocale);
+
+    // Save optional phone + SMS consent collected at signup.
+    // smsOptInDate is stamped inside updateUserProfile when smsOptIn=true.
+    if (phone?.trim() || smsOptIn) {
+      await updateUserProfile(user.id, {
+        ...(phone?.trim() ? { phone: phone.trim() } : {}),
+        ...(smsOptIn      ? { smsOptIn: true }       : {}),
+      }).catch((e) => console.error('[GasCap] phone/smsOptIn save failed:', e));
+    }
 
     // Auto-enroll every new signup in a 30-day GasCap™ Pro trial. Sets
     // plan='pro', isProTrial=true, betaProExpiry=+30d. The beta-expire cron
