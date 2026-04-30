@@ -263,6 +263,140 @@ ${brandHeader()}
 </html>`.trim();
 }
 
+/**
+ * Non-winner notification — sent to all eligible entrants who did not win.
+ * Announces the winner (first name + last initial + city), shows the
+ * recipient's personal entry count, and motivates them to earn more next month.
+ *
+ * @param recipientName   Recipient's first name
+ * @param winnerLabel     Anonymized winner, e.g. "Madlon P. — Orlando, FL"
+ * @param month           "YYYY-MM" draw month
+ * @param entryCount      Recipient's entry count that month
+ * @param totalEntries    Total pool entries
+ * @param nextDrawMonth   Human-readable next draw month, e.g. "June 2026"
+ * @param plan            Recipient's plan for the badge header
+ * @param prize           Prize amount, e.g. "$25"
+ */
+export function nonWinnerNotificationEmailHtml(
+  recipientName: string,
+  winnerLabel:   string,
+  month:         string,
+  entryCount:    number,
+  totalEntries:  number,
+  nextDrawMonth: string,
+  plan:          string = 'pro',
+  prize:         string = '$25',
+): string {
+  const [y, mo] = month.split('-');
+  const MONTH_NAMES = [
+    'January','February','March','April','May','June',
+    'July','August','September','October','November','December',
+  ];
+  const monthLabel = `${MONTH_NAMES[parseInt(mo, 10) - 1]} ${y}`;
+  const odds = totalEntries > 0
+    ? `${((entryCount / totalEntries) * 100).toFixed(1)}%`
+    : '—';
+
+  return `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#eef1f7;font-family:system-ui,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#eef1f7;padding:40px 16px;">
+    <tr><td align="center">
+      <table width="100%" style="max-width:480px;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,.08);">
+${brandHeader(plan)}
+        <tr><td style="padding:32px;">
+
+          <!-- Heading -->
+          <p style="margin:0 0 6px;font-size:22px;font-weight:900;color:#1e2d4a;text-align:center;">
+            ${monthLabel} Drawing Results
+          </p>
+          <p style="margin:0 0 24px;font-size:14px;color:#475569;text-align:center;">
+            Hi ${recipientName} — the ${monthLabel} gas card drawing just wrapped up.
+          </p>
+
+          <!-- Winner announcement -->
+          <table width="100%" cellpadding="0" cellspacing="0"
+                 style="background:#f0fdf4;border:2px solid #86efac;border-radius:14px;margin:0 0 24px;">
+            <tr><td style="padding:18px 24px;text-align:center;">
+              <p style="margin:0 0 4px;font-size:11px;font-weight:800;color:#15803d;
+                         text-transform:uppercase;letter-spacing:.08em;">${monthLabel} Winner 🏆</p>
+              <p style="margin:0;font-size:20px;font-weight:900;color:#1e2d4a;">${winnerLabel}</p>
+              <p style="margin:6px 0 0;font-size:12px;color:#166534;">
+                ${prize} gas card · ${totalEntries} total entries in the pool
+              </p>
+            </td></tr>
+          </table>
+
+          <!-- Personal stats -->
+          <table width="100%" cellpadding="0" cellspacing="0"
+                 style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;margin:0 0 24px;">
+            <tr><td style="padding:16px 20px;">
+              <p style="margin:0 0 10px;font-size:12px;font-weight:800;color:#64748b;
+                         text-transform:uppercase;letter-spacing:.06em;">Your ${monthLabel} Stats</p>
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="text-align:center;padding:8px;">
+                    <p style="margin:0;font-size:28px;font-weight:900;color:#1e2d4a;">${entryCount}</p>
+                    <p style="margin:2px 0 0;font-size:11px;color:#94a3b8;">
+                      ${entryCount === 1 ? 'entry' : 'entries'}
+                    </p>
+                  </td>
+                  <td style="text-align:center;padding:8px;border-left:1px solid #e2e8f0;">
+                    <p style="margin:0;font-size:28px;font-weight:900;color:#1e2d4a;">${odds}</p>
+                    <p style="margin:2px 0 0;font-size:11px;color:#94a3b8;">your odds</p>
+                  </td>
+                </tr>
+              </table>
+            </td></tr>
+          </table>
+
+          <!-- How to earn more -->
+          <p style="margin:0 0 12px;font-size:14px;font-weight:900;color:#1e2d4a;">
+            Stack more entries for ${nextDrawMonth} →
+          </p>
+          <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
+            ${[
+              ['📅', '<strong>Open GasCap™ every day</strong> — each active day earns 1 entry (up to 31/month)'],
+              ['⚡', '<strong>Build your streak</strong> — 7 days = +2 bonus · 30 days = +5 · 90 days = +10 · 180 days = +15 · 1 year = +20'],
+              ['📈', '<strong>More entries = better odds</strong> — a full month of daily opens plus a streak can put you well ahead of the pool'],
+            ].map(([emoji, text]) => `
+            <tr>
+              <td style="width:32px;vertical-align:top;padding:5px 8px 5px 0;
+                         font-size:18px;line-height:1.4;">${emoji}</td>
+              <td style="vertical-align:top;padding:5px 0;font-size:13px;
+                         color:#475569;line-height:1.5;">${text}</td>
+            </tr>`).join('')}
+          </table>
+
+          <!-- CTA -->
+          <div style="text-align:center;margin-bottom:8px;">
+            <a href="https://gascap.app"
+               style="display:inline-block;background:#005f4a;color:#fff;font-weight:900;
+                      font-size:14px;padding:13px 28px;border-radius:12px;text-decoration:none;">
+              ⛽ Open GasCap™ Today
+            </a>
+          </div>
+          <p style="margin:12px 0 0;font-size:12px;color:#94a3b8;text-align:center;">
+            Next drawing: on or about the 5th of ${nextDrawMonth}
+          </p>
+
+        </td></tr>
+        <tr><td style="background:#f8fafc;padding:16px 32px;border-top:1px solid #e2e8f0;">
+          <p style="margin:0;font-size:11px;color:#94a3b8;">
+            GasCap™ · Know before you go ·
+            <a href="https://gascap.app" style="color:#f59e0b;">gascap.app</a> ·
+            <a href="https://gascap.app/sweepstakes-rules" style="color:#94a3b8;">Official Rules</a>
+          </p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`.trim();
+}
+
 export function verificationEmailHtml(
   name: string,
   verifyUrl: string,

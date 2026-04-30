@@ -2,11 +2,12 @@
  * Admin Sweepstakes API — protected by ADMIN_PASSWORD
  * GET  /api/admin/sweepstakes?month=YYYY-MM  — preview entrants
  * GET  /api/admin/sweepstakes?history=1      — past draw results
- * POST /api/admin/sweepstakes                — run draw { month, notes? }
+ * POST /api/admin/sweepstakes                — run draw { month, notes?, dryRun? }
  *
- * After a successful draw the route fires two fire-and-forget side-effects:
+ * After a successful draw the route fires three fire-and-forget side-effects:
  *  1. Winner notification email  (via lib/email.ts → SMTP or Resend)
- *  2. GHL webhook POST           (GHL_WINNER_WEBHOOK_URL env var)
+ *  2. Non-winner results email   (sent to all eligible entrants who didn't win)
+ *  3. GHL webhook POST           (GHL_WINNER_WEBHOOK_URL env var)
  *     → triggers a GHL workflow that creates the VA task + sends the gas card
  */
 import { NextResponse } from 'next/server';
@@ -18,7 +19,7 @@ import {
   currentMonth,
   getCurrentPrizeTier,
 } from '@/lib/giveaway';
-import { sendMail, winnerNotificationEmailHtml } from '@/lib/email';
+import { sendMail, winnerNotificationEmailHtml, nonWinnerNotificationEmailHtml } from '@/lib/email';
 
 /** "YYYY-MM" → "April 2026" */
 function fmtMonth(m: string): string {
@@ -115,6 +116,27 @@ export async function POST(req: Request) {
     const prize       = currentTier.prize;   // scales automatically with subscriber count
     const webhookUrl  = process.env.GHL_WINNER_WEBHOOK_URL;
 
+    // Build the anonymised winner label for non-winner emails:
+    // "Madlon P. — Orlando, FL"  (first name + last initial — city comes from
+    // the notes field if provided, otherwise omitted)
+    const [wFirst, ...wRest] = result.winner.name.trim().split(' ');
+    const wLastInitial = wRest.length > 0 ? ` ${wRest[wRest.length - 1][0]}.` : '';
+    const winnerLabel = `${wFirst}${wLastInitial}`;
+
+    // "May 2026" → next month label for the "next drawing" prompt
+    const [mYear, mMo] = month.split('-').map(Number);
+    const nextMo   = mMo === 12 ? 1 : mMo + 1;
+    const nextYear = mMo === 12 ? mYear + 1 : mYear;
+    const MONTH_NAMES = [
+      'January','February','March','April','May','June',
+      'July','August','September','October','November','December',
+    ];
+    const nextDrawMonth = `${MONTH_NAMES[nextMo - 1]} ${nextYear}`;
+
+    // Fetch all entrants for the non-winner batch (already computed in draw)
+    const allEntrants = await getEligibleEntrants(month);
+    const nonWinners  = allEntrants.filter((e) => e.userId !== result.winner.userId);
+
     void Promise.allSettled([
       // 1. Branded winner email
       sendMail({
@@ -136,7 +158,38 @@ export async function POST(req: Request) {
         ].join('\n\n'),
       }).catch((err) => console.error('[sweepstakes] winner email failed:', err)),
 
-      // 2. GHL webhook → triggers VA workflow for gas card fulfillment
+      // 2. Non-winner results emails — staggered 200 ms apart to avoid burst limits
+      (async () => {
+        for (const entrant of nonWinners) {
+          await sendMail({
+            to:      entrant.email,
+            subject: `${monthLabel} Drawing Results — GasCap™`,
+            html:    nonWinnerNotificationEmailHtml(
+                       entrant.name.split(' ')[0] ?? entrant.name,
+                       winnerLabel,
+                       month,
+                       entrant.entryCount,
+                       result.totalEntries,
+                       nextDrawMonth,
+                       entrant.plan,
+                       prize,
+                     ),
+            text: [
+              `Hi ${entrant.name.split(' ')[0] ?? entrant.name},`,
+              `The ${monthLabel} GasCap™ drawing just wrapped — congratulations to ${winnerLabel} who won the ${prize} gas card!`,
+              `You had ${entrant.entryCount} ${entrant.entryCount === 1 ? 'entry' : 'entries'} this month.`,
+              `To earn more entries for ${nextDrawMonth}: open GasCap™ every day (1 entry/day, up to 31), and build your streak for bonus entries (7 days = +2, 30 days = +5, 90 days = +10).`,
+              `Next drawing is on or about the 5th of ${nextDrawMonth}.`,
+              `Open the app: https://gascap.app`,
+            ].join('\n\n'),
+          }).catch((err) =>
+            console.error(`[sweepstakes] non-winner email failed for ${entrant.email}:`, err),
+          );
+          await new Promise((r) => setTimeout(r, 200));
+        }
+      })(),
+
+      // 3. GHL webhook → triggers VA workflow for gas card fulfillment
       webhookUrl
         ? fetch(webhookUrl, {
             method:  'POST',
