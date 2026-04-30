@@ -105,19 +105,14 @@ function LogoTrack({ endorsers }: { endorsers: Endorser[] }) {
 // ── Main export ───────────────────────────────────────────────────────────────
 
 export default function EndorserMarquee() {
-  // Count how many real logos we have (for display logic)
-  const realCount = ENDORSERS.filter((e) => !e.isPlaceholder).length;
-
-  // Always render the marquee — placeholders keep the strip active until real
-  // logos arrive, so the feature is never "dormant" from the visitor's POV.
   return (
     <section
-      aria-label="Trusted by drivers at these local businesses"
+      aria-label="Partnering with local businesses"
       className="w-full py-4 overflow-hidden bg-slate-50/80 border-y border-slate-100"
     >
       {/* Label */}
       <p className="text-center text-[10px] font-black uppercase tracking-[0.15em] text-slate-500 mb-3 px-4">
-        {realCount > 0 ? 'Trusted by drivers at' : 'Partnering with local businesses'}
+        Partnering with local businesses
       </p>
 
       {/* Scrolling strip */}
