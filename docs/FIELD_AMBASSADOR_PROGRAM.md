@@ -98,12 +98,46 @@ When pitching a business, highlight these free benefits:
 
 - **Map pin in the GasCap™ app** as a featured Partner Station once the location reaches 25+ sign-ups
 - **Monthly scan count report** shared with the business owner
-- **Logo in the app** — featured in the endorser marquee on the GasCap™ landing page
+- **Logo in the app** — featured in the endorser marquee on the GasCap™ landing page (see logo rights note below)
 - **Free** — no cost, no commitment, remove anytime
 - **Tiered Partner Station recognition** automatically applied as sign-ups grow:
   - 25+ sign-ups: Partner 🤝
   - 100+ sign-ups: Gold Partner ⭐
   - 250+ sign-ups: Premium Partner 🏆
+
+---
+
+## Logo Rights — What Local Consent Covers (and What It Doesn't)
+
+This is a critical distinction. Field Reps must never over-promise logo placement to a business.
+
+**The consent form authorizes two separate things:**
+1. **Placard hosting** — the business agrees to display a GasCap™ QR placard on their premises
+2. **Name in the app** — the business name and city may appear in the GasCap™ app as a Partner Station
+
+**What the consent form does NOT authorize:**
+- Use of a corporate or franchise brand's trademarked logo on gascap.app
+
+**Rules by business type:**
+
+| Business Type | Placard Placement | Logo in Marquee |
+|---|---|---|
+| Independently owned (local mechanic, local car wash, etc.) | Local owner consent ✓ | Same owner consent covers logo ✓ |
+| Franchise location (local Shell, Valvoline, Meineke, etc.) | Franchisee consent ✓ | Franchisee owns the store, not the brand — corporate approval needed ⚠️ |
+| Corporate chain (Pep Boys, Jiffy Lube, Firestone, etc.) | Local manager consent ✓ | Corporate marketing/legal approval required — do NOT add logo ✗ |
+
+**Why this matters:** A store manager at Pep Boys has no authority to license the Pep Boys trademark to GasCap™. Their signature on a consent form carries zero legal weight for logo usage. Using a corporate logo without approval exposes GasCap™ to trademark infringement claims.
+
+**What Field Reps should say when asked about logo placement:**
+> *"We'd love to feature your logo on the app. For independently owned locations, your signature here covers that. For corporate or franchise brands, we'll need to get a quick approval from your marketing or corporate team — which we're happy to handle directly once you're on board."*
+
+**The path for corporate chain locations:**
+1. Get placard placed with local manager consent ✓
+2. Collect scan and sign-up data for 2–3 months
+3. Don approaches corporate partnerships/marketing with data: *"Your [City] location drove X sign-ups last quarter"*
+4. Receive formal written approval from corporate before logo goes live in the marquee
+
+**Business name as text is always fine.** Displaying "Pep Boys — Orlando, FL" as a text Partner Station listing in the app is factual and covered by local consent. Only the visual logo requires separate authorization.
 
 ---
 
