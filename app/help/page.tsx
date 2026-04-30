@@ -434,7 +434,7 @@ const SECTIONS = [
       },
       {
         q: 'How do I contact GasCap™ support?',
-        a: 'Visit gascap.app/contact to send us a message directly, or email support@gascap.app — we typically respond within 1 business day. You can also use the "Share Feedback" button inside the app.',
+        a: 'Visit gascap.app/contact to send us a message, or email support@gascap.app — we respond within 1 business day. You can also use the "Share Feedback" button (bottom-right corner of the app). Live chat is available when visiting gascap.app on a desktop or laptop computer.',
       },
     ],
   },
