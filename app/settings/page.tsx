@@ -1,7 +1,7 @@
 'use client';
 
 import { useSession, signOut } from 'next-auth/react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { setThemePreference, getThemePreference, isDarkMode, type ThemePreference } from '@/components/DarkModeProvider';
 
@@ -98,6 +98,42 @@ export default function SettingsPage() {
       })
       .catch(() => {});
   }, [session]);
+
+  /* ── Sticky tab bar ── */
+  const TABS = [
+    { id: 'profile',     label: '👤 Profile'     },
+    { id: 'plan',        label: '⭐ Plan'         },
+    { id: 'perks',       label: '🎁 Perks'        },
+    { id: 'preferences', label: '⚙️ Preferences'  },
+    { id: 'account',     label: '🔐 Account'      },
+  ] as const;
+
+  type TabId = (typeof TABS)[number]['id'];
+  const [activeTab, setActiveTab] = useState<TabId>('profile');
+  const sectionRefs = useRef<Partial<Record<TabId, HTMLElement | null>>>({});
+
+  function scrollToSection(id: TabId) {
+    const el = sectionRefs.current[id];
+    if (!el) return;
+    const offset = 60; // height of sticky bar + a little breathing room
+    const top = el.getBoundingClientRect().top + window.scrollY - offset;
+    window.scrollTo({ top, behavior: 'smooth' });
+    setActiveTab(id);
+  }
+
+  useEffect(() => {
+    function onScroll() {
+      const scrollY = window.scrollY + 80;
+      let current: TabId = 'profile';
+      for (const { id } of TABS) {
+        const el = sectionRefs.current[id];
+        if (el && el.offsetTop <= scrollY) current = id;
+      }
+      setActiveTab(current);
+    }
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   if (status === 'loading') {
     return <div className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -218,10 +254,34 @@ export default function SettingsPage() {
         </div>
       </div>
 
+      {/* Sticky section tab bar */}
+      <div className="sticky top-0 z-20 bg-slate-50/95 backdrop-blur-sm border-b border-slate-200/70 shadow-sm">
+        <div className="max-w-lg mx-auto px-3 py-2 overflow-x-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+          <div className="flex gap-1.5 min-w-max" style={{ WebkitOverflowScrolling: 'touch' }}>
+            {TABS.map(({ id, label }) => (
+              <button
+                key={id}
+                onClick={() => scrollToSection(id)}
+                className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all ${
+                  activeTab === id
+                    ? 'bg-navy-700 text-white shadow-sm'
+                    : 'bg-white text-slate-500 border border-slate-200 hover:border-slate-300 hover:text-slate-700'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
       <div className="max-w-lg mx-auto px-4 py-6 space-y-4">
 
         {/* Profile card */}
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-5">
+        <div
+          ref={(el) => { sectionRefs.current['profile'] = el; }}
+          className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-5"
+        >
           <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400">Profile</h2>
 
           {/* Avatar preview + color picker */}
@@ -321,7 +381,10 @@ export default function SettingsPage() {
         </div>
 
         {/* Plan card */}
-        <div className={`bg-white rounded-2xl border shadow-sm p-5 space-y-4 ${planConfig.border}`}>
+        <div
+          ref={(el) => { sectionRefs.current['plan'] = el; }}
+          className={`bg-white rounded-2xl border shadow-sm p-5 space-y-4 ${planConfig.border}`}
+        >
           <div className="flex items-center justify-between">
             <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400">Plan</h2>
             <span className={`text-xs font-black px-2.5 py-1 rounded-full ${planConfig.bg} ${planConfig.text}`}>
@@ -410,6 +473,9 @@ export default function SettingsPage() {
             </>
           )}
         </div>
+
+        {/* Perks anchor — wraps Referral + Giveaway */}
+        <div ref={(el) => { sectionRefs.current['perks'] = el; }} className="space-y-4">
 
         {/* Referral summary */}
         {referral && (
@@ -617,8 +683,13 @@ export default function SettingsPage() {
           </div>
         )}
 
+        </div>{/* end perks anchor */}
+
         {/* App preferences */}
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-4">
+        <div
+          ref={(el) => { sectionRefs.current['preferences'] = el; }}
+          className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-4"
+        >
           <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400">Preferences</h2>
           <div className="space-y-3">
             <div className="flex items-center justify-between">
@@ -737,8 +808,11 @@ export default function SettingsPage() {
           )}
         </div>
 
-        {/* Danger zone */}
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-3">
+        {/* Account / danger zone */}
+        <div
+          ref={(el) => { sectionRefs.current['account'] = el; }}
+          className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-3"
+        >
           <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400">Account</h2>
           <button
             onClick={() => signOut({ callbackUrl: '/' })}
