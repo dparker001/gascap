@@ -30,6 +30,15 @@ const AVATAR_COLORS = [
   { bg: 'bg-sky-500',    label: 'Sky'    },
 ];
 
+function SectionBanner({ icon, title }: { icon: string; title: string }) {
+  return (
+    <div className="flex items-center gap-2.5 bg-navy-700 rounded-xl px-4 py-2.5 mb-3 shadow-sm">
+      <span className="text-base leading-none">{icon}</span>
+      <h2 className="text-sm font-black text-white tracking-wide">{title}</h2>
+    </div>
+  );
+}
+
 function Avatar({ name, color }: { name: string; color: string }) {
   const initials = name.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase();
   return (
@@ -280,12 +289,10 @@ export default function SettingsPage() {
 
       <div className="max-w-lg mx-auto px-4 py-6 space-y-4">
 
-        {/* Profile card */}
-        <div
-          ref={(el) => { sectionRefs.current['profile'] = el; }}
-          className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-5"
-        >
-          <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400">Profile</h2>
+        {/* Profile section */}
+        <div ref={(el) => { sectionRefs.current['profile'] = el; }}>
+          <SectionBanner icon="👤" title="Profile" />
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-5">
 
           {/* Avatar preview + color picker */}
           <div className="flex flex-col items-center gap-4">
@@ -381,15 +388,14 @@ export default function SettingsPage() {
           >
             {saved ? '✓ Saved!' : saving ? 'Saving…' : 'Save Changes'}
           </button>
-        </div>
+          </div>{/* end profile card */}
+        </div>{/* end profile section */}
 
-        {/* Plan card */}
-        <div
-          ref={(el) => { sectionRefs.current['plan'] = el; }}
-          className={`bg-white rounded-2xl border shadow-sm p-5 space-y-4 ${planConfig.border}`}
-        >
+        {/* Plan section */}
+        <div ref={(el) => { sectionRefs.current['plan'] = el; }}>
+          <SectionBanner icon="⭐" title="Plan" />
+          <div className={`bg-white rounded-2xl border shadow-sm p-5 space-y-4 ${planConfig.border}`}>
           <div className="flex items-center justify-between">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400">Plan</h2>
             <span className={`text-xs font-black px-2.5 py-1 rounded-full ${planConfig.bg} ${planConfig.text}`}>
               {planConfig.label.toUpperCase()}
             </span>
@@ -475,16 +481,17 @@ export default function SettingsPage() {
               </p>
             </>
           )}
-        </div>
+          </div>{/* end plan card */}
+        </div>{/* end plan section */}
 
-        {/* Perks anchor — wraps Referral + Giveaway */}
+        {/* Perks section — wraps Referral + Giveaway */}
         <div ref={(el) => { sectionRefs.current['perks'] = el; }} className="space-y-4">
+          <SectionBanner icon="🎁" title="Perks" />
 
         {/* Referral summary */}
         {referral && (
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-3">
             <div className="flex items-center justify-between">
-              <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400">Refer &amp; Earn</h2>
               <Link href="/?tab=referral" className="text-[11px] text-amber-500 font-bold hover:underline">
                 Full details →
               </Link>
@@ -688,12 +695,10 @@ export default function SettingsPage() {
 
         </div>{/* end perks anchor */}
 
-        {/* App preferences */}
-        <div
-          ref={(el) => { sectionRefs.current['preferences'] = el; }}
-          className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-4"
-        >
-          <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400">Preferences</h2>
+        {/* Preferences section */}
+        <div ref={(el) => { sectionRefs.current['preferences'] = el; }}>
+          <SectionBanner icon="⚙️" title="Preferences" />
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-4">
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <div>
@@ -809,21 +814,21 @@ export default function SettingsPage() {
               )}
             </div>
           )}
-        </div>
+          </div>{/* end Gas Price Alert card */}
+        </div>{/* end preferences section */}
 
-        {/* Account / danger zone */}
-        <div
-          ref={(el) => { sectionRefs.current['account'] = el; }}
-          className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-3"
-        >
-          <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400">Account</h2>
-          <button
-            onClick={() => signOut({ callbackUrl: '/' })}
-            className="w-full py-3 rounded-2xl border-2 border-red-100 text-sm font-bold
-                       text-red-500 hover:bg-red-50 transition-colors"
-          >
-            Sign Out
-          </button>
+        {/* Account section */}
+        <div ref={(el) => { sectionRefs.current['account'] = el; }}>
+          <SectionBanner icon="🔐" title="Account" />
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-3">
+            <button
+              onClick={() => signOut({ callbackUrl: '/' })}
+              className="w-full py-3 rounded-2xl border-2 border-red-100 text-sm font-bold
+                         text-red-500 hover:bg-red-50 transition-colors"
+            >
+              Sign Out
+            </button>
+          </div>
         </div>
 
         <p className="text-center text-[11px] text-slate-300 pb-4">GasCap™ v0.1 · Gas Capacity</p>
