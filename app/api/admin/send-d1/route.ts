@@ -5,7 +5,10 @@
  * registration, then enrolls them with their original createdAt as the
  * enrolledAt date so the daily cron will fire D2 on the correct schedule.
  *
- * Body: { userIds: string[] }
+ * Body: { userIds: string[], force?: boolean }
+ *   force=true  — send D1 even if the user is already at step=1
+ *                 (use when D1 was never actually sent despite step being set).
+ *                 Does NOT change their existing step or enrolledAt.
  *
  * Protected by ADMIN_PASSWORD header.
  */
@@ -22,8 +25,8 @@ function auth(req: Request): boolean {
 export async function POST(req: Request) {
   if (!auth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const body = await req.json() as { userIds?: string[] };
-  const { userIds } = body;
+  const body = await req.json() as { userIds?: string[]; force?: boolean };
+  const { userIds, force = false } = body;
   if (!userIds?.length) return NextResponse.json({ error: 'userIds required' }, { status: 400 });
 
   const results: { userId: string; email: string; status: string; error?: string }[] = [];
@@ -35,8 +38,8 @@ export async function POST(req: Request) {
       continue;
     }
 
-    // Skip if already enrolled
-    if (user.emailCampaignStep !== null) {
+    // Block re-send unless force=true
+    if (user.emailCampaignStep !== null && !force) {
       results.push({ userId, email: user.email, status: 'already_enrolled', error: `step=${user.emailCampaignStep}` });
       continue;
     }
@@ -49,15 +52,18 @@ export async function POST(req: Request) {
         email: user.email,
       });
 
-      // Enroll with their original createdAt so the daily cron fires D2
-      // on schedule (createdAt is 4-5 days ago → D2 eligible tomorrow)
-      await prisma.user.update({
-        where: { id: userId },
-        data: {
-          emailCampaignStep:       1,
-          emailCampaignEnrolledAt: user.createdAt,
-        },
-      });
+      if (!force) {
+        // First-time enrollment: set step=1 and enrolledAt=createdAt so the
+        // daily cron fires D2 on the correct schedule.
+        await prisma.user.update({
+          where: { id: userId },
+          data: {
+            emailCampaignStep:       1,
+            emailCampaignEnrolledAt: user.createdAt,
+          },
+        });
+      }
+      // force=true: step and enrolledAt are already correct — don't touch them.
 
       results.push({ userId, email: user.email, status: 'sent' });
     } catch (err) {
