@@ -57,7 +57,7 @@ function removeWidgetFromDom() {
   });
   // Clear GHL global state so the loader re-initializes on next inject.
   // Without this the loader detects an existing instance and skips init.
-  const w = window as Record<string, unknown>;
+  const w = window as unknown as Record<string, unknown>;
   delete w['LeadConnector'];
   delete w['lc_chat_widget'];
   delete w['hl_messenger'];
