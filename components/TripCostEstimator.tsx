@@ -123,12 +123,13 @@ interface AvgMpgResp    { avgMpgByVehicleId: Record<string, number>; }
 
 function useGarageData() {
   const { data: session } = useSession();
-  const [vehicles,         setVehicles]         = useState<Vehicle[]>([]);
+  const [vehicles,          setVehicles]          = useState<Vehicle[]>([]);
   const [avgMpgByVehicleId, setAvgMpgByVehicleId] = useState<Record<string, number>>({});
-  const [loaded,           setLoaded]           = useState(false);
+  const [loaded,            setLoaded]            = useState(false);
 
-  const load = useCallback(async () => {
-    if (!session || loaded) return;
+  // fetchAll always fetches fresh — used by load() and the vehicle-saved event listener
+  const fetchAll = useCallback(async () => {
+    if (!session) return;
     const [vRes, mRes] = await Promise.all([
       fetch('/api/vehicles'),
       fetch('/api/fillups/avg-mpg'),
@@ -142,7 +143,20 @@ function useGarageData() {
       setAvgMpgByVehicleId(d.avgMpgByVehicleId ?? {});
     }
     setLoaded(true);
-  }, [session, loaded]);
+  }, [session]);
+
+  const load = useCallback(async () => {
+    if (!session || loaded) return;
+    await fetchAll();
+  }, [session, loaded, fetchAll]);
+
+  // Re-sync whenever a vehicle is saved or updated anywhere in the app
+  // (SavedVehicles dispatches 'vehicle-saved' on add, edit, or spec lookup)
+  useEffect(() => {
+    function onVehicleSaved() { fetchAll(); }
+    window.addEventListener('vehicle-saved', onVehicleSaved);
+    return () => window.removeEventListener('vehicle-saved', onVehicleSaved);
+  }, [fetchAll]);
 
   return { vehicles, avgMpgByVehicleId, load };
 }
@@ -212,6 +226,16 @@ function resolveMpg(v: Vehicle, avgMpgByVehicleId: Record<string, number>): MpgR
   return { mpg: null, label: '' };
 }
 
+// ── Duration formatting ────────────────────────────────────────────────────
+
+function formatDuration(seconds: number): string {
+  const totalMins = Math.round(seconds / 60);
+  if (totalMins < 60) return `${totalMins} min`;
+  const hours = Math.floor(totalMins / 60);
+  const mins  = totalMins % 60;
+  return mins === 0 ? `${hours}h` : `${hours}h ${mins}m`;
+}
+
 // ── Address autocomplete hook ─────────────────────────────────────────────
 
 function useAddressAutocomplete(query: string, enabled: boolean) {
@@ -266,6 +290,8 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
   const [errors,        setErrors]        = useState<Record<string, string>>({});
   const [selectedVehicleId, setSelectedVehicleId] = useState<string>('');
   const [mpgSourceLabel,    setMpgSourceLabel]    = useState<string>('');
+  const [mpgLookingUp,      setMpgLookingUp]      = useState(false);
+  const [mpgOptions, setMpgOptions] = useState<{ city: number; hwy: number; comb: number } | null>(null);
   const [vehicleMode,       setVehicleMode]       = useState<VehicleMode>('garage');
   const [rentalType,        setRentalType]        = useState<string>('');
   const [tripPlanMode,      setTripPlanMode]      = useState<TripPlanMode>('manual');
@@ -334,16 +360,44 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vehicles]);
 
-  function loadVehicle(v: Vehicle) {
+  async function loadVehicle(v: Vehicle) {
     const { mpg: resolvedMpg, label } = resolveMpg(v, avgMpgByVehicleId);
     setTankGal(String(v.gallons));
     setSelectedVehicleId(v.id);
+    setMpgOptions(null);
+
     if (resolvedMpg != null) {
+      // Fill-up history or EPA spec already has MPG — use it directly
       setMpg(String(resolvedMpg));
       setMpgSourceLabel(label);
+      setMpgLookingUp(false);
+    } else if (v.year && v.make && v.model) {
+      // No fill-up history or EPA data — look up from FuelEconomy.gov
+      setMpg('');
+      setMpgSourceLabel('');
+      setMpgLookingUp(true);
+      try {
+        const res  = await fetch(
+          `/api/mpg-lookup?year=${encodeURIComponent(v.year)}&make=${encodeURIComponent(v.make)}&model=${encodeURIComponent(v.model)}`,
+        );
+        const data = await res.json() as {
+          ok: boolean; combMpg?: number; cityMpg?: number; hwyMpg?: number;
+        };
+        if (data.ok && data.combMpg) {
+          setMpg(String(data.combMpg));
+          setMpgSourceLabel(`🔍 Typical for ${v.year} ${v.make} ${v.model}`);
+          setMpgOptions({
+            comb: data.combMpg,
+            city: data.cityMpg ?? data.combMpg,
+            hwy:  data.hwyMpg  ?? data.combMpg,
+          });
+        }
+      } catch { /* ignore — user can enter MPG manually */ }
+      finally { setMpgLookingUp(false); }
     } else {
       setMpg('');
       setMpgSourceLabel(label);
+      setMpgLookingUp(false);
     }
     setResult(null);
   }
@@ -495,6 +549,8 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
     setPricePerGallon(''); setPeople('1'); setResult(null); setErrors({});
     setSelectedVehicleId('');
     setMpgSourceLabel('');
+    setMpgLookingUp(false);
+    setMpgOptions(null);
     setRentalType('');
     setVehicleMode(session && vehicles.length > 0 ? 'garage' : 'rental');
     // Route planner reset
@@ -718,7 +774,7 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
                         <span className="text-sm">📍</span>
                         <p className="text-xs font-bold text-emerald-700">
                           Route: {metersToMiles(routeData.distanceMeters).toLocaleString()} miles
-                          {' '}· {Math.round(routeData.durationSeconds / 60)} min drive
+                          {' '}· {formatDuration(routeData.durationSeconds)} drive
                         </p>
                       </div>
                     )}
@@ -852,21 +908,66 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
                 <input
                   type="number" inputMode="decimal"
                   className={errors.mpg ? 'input-field-error' : 'input-field'}
-                  placeholder="e.g. 30"
+                  placeholder={mpgLookingUp ? '' : 'e.g. 30'}
                   value={mpg}
                   min="1" step="0.5"
-                  onChange={(e) => { setMpg(e.target.value); setMpgSourceLabel(''); setResult(null); }}
+                  readOnly={mpgLookingUp}
+                  onChange={(e) => { setMpg(e.target.value); setMpgSourceLabel(''); setMpgOptions(null); setResult(null); }}
                   aria-label="Miles per gallon"
                 />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">mpg</span>
+                {mpgLookingUp ? (
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                    <span className="inline-block w-3.5 h-3.5 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+                  </span>
+                ) : (
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">mpg</span>
+                )}
               </div>
               {errors.mpg && <p className="mt-1 text-xs text-red-500">{errors.mpg}</p>}
-              {mpgSourceLabel ? (
+              {mpgLookingUp ? (
+                <p className="text-[10px] text-amber-500 mt-1 font-medium leading-snug animate-pulse">
+                  Looking up typical MPG…
+                </p>
+              ) : mpgSourceLabel ? (
                 <p className="text-[10px] text-amber-600 mt-1 font-medium leading-snug">{mpgSourceLabel}</p>
               ) : (
                 <p className="text-[10px] text-slate-400 mt-1 leading-snug">
-                  💡 Select a vehicle type above for an estimate, or check your owner's manual.
+                  💡 Select a vehicle above for an estimate, or check your owner&apos;s manual.
                 </p>
+              )}
+              {/* City / Highway / Combined toggle — shown when EPA lookup returned all three */}
+              {mpgOptions && !mpgLookingUp && (
+                <div className="flex gap-1 mt-2">
+                  {(
+                    [
+                      ['comb', 'Comb.', mpgOptions.comb],
+                      ['city', 'City',  mpgOptions.city],
+                      ['hwy',  'Hwy',   mpgOptions.hwy ],
+                    ] as const
+                  ).map(([type, label, val]) => (
+                    <button
+                      key={type}
+                      type="button"
+                      onClick={() => {
+                        setMpg(String(val));
+                        setMpgSourceLabel(
+                          type === 'comb' ? '📊 Combined MPG' :
+                          type === 'city' ? '🏙️ City MPG — use for city trips' :
+                          '🛣️ Highway MPG — use for highway trips',
+                        );
+                        setResult(null);
+                      }}
+                      className={[
+                        'flex-1 py-1 rounded-lg text-[9px] font-bold border transition-all leading-tight text-center',
+                        mpg === String(val)
+                          ? 'border-amber-400 bg-amber-50 text-amber-700'
+                          : 'border-slate-200 bg-white text-slate-500 hover:border-amber-300',
+                      ].join(' ')}
+                    >
+                      {label}<br />{val}
+                    </button>
+                  ))}
+                </div>
               )}
             </div>
             <div>
@@ -965,18 +1066,32 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
               <button
                 className="btn-amber flex-1"
                 onClick={handleRouteCalculate}
-                disabled={routeLoading}
+                disabled={routeLoading || mpgLookingUp}
               >
                 {routeLoading ? (
                   <span className="flex items-center justify-center gap-2">
                     <span className="inline-block w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                     Calculating Route…
                   </span>
+                ) : mpgLookingUp ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <span className="inline-block w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Looking up MPG…
+                  </span>
                 ) : 'Calculate Trip ⚡'}
               </button>
             ) : (
-              <button className="btn-amber flex-1" onClick={handleCalculate}>
-                Calculate Trip ⚡
+              <button
+                className="btn-amber flex-1"
+                onClick={handleCalculate}
+                disabled={mpgLookingUp}
+              >
+                {mpgLookingUp ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <span className="inline-block w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Looking up MPG…
+                  </span>
+                ) : 'Calculate Trip ⚡'}
               </button>
             )}
             {(miles || routeOrigin || mpg || result) && (

@@ -88,6 +88,7 @@ function VehicleInfoModal({ vehicle, onClose, onSpecsUpdated }: {
       });
       if (!patch.ok) { setFetchError(t.garage.savedLocallyNotPersisted); }
 
+      window.dispatchEvent(new Event('vehicle-saved'));
       setSpecs(data.specs);
       onSpecsUpdated?.(data.specs);
     } catch {
@@ -312,6 +313,7 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
     });
     setEditSaving(false);
     setEditingId(null);
+    window.dispatchEvent(new Event('vehicle-saved'));
     load();
   }
 
