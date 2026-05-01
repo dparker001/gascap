@@ -6,7 +6,7 @@ import Link                                  from 'next/link';
 import GasPriceLookup                        from './GasPriceLookup';
 import GoogleMapsHandoffButton               from './GoogleMapsHandoffButton';
 import WazeDeepLinkButton                    from './WazeDeepLinkButton';
-import { canAccessFeature, UPGRADE_COPY }    from '@/lib/featureAccess';
+import { canAccessFeature, getPlanTier, UPGRADE_COPY } from '@/lib/featureAccess';
 import { metersToMiles }                     from '@/lib/tripFuelPlanner';
 import type { RouteResult, FuelStop }        from '@/lib/mapsProvider/types';
 import type { Vehicle }                      from './SavedVehicles';
@@ -198,8 +198,14 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
   const [fuelStops,         setFuelStops]         = useState<FuelStop[]>([]);
   const [stopsLoading,      setStopsLoading]      = useState(false);
 
-  const userPlan = (session?.user as { plan?: string })?.plan ?? '';
+  const userPlan       = (session?.user as { plan?: string })?.plan ?? '';
+  const planTier       = getPlanTier((session?.user as { plan?: string } | null) ?? null);
   const canUseRoutePlanner = canAccessFeature('route_based_trip_planner', userPlan);
+  const canSaveTrips       = canAccessFeature('save_trip', userPlan);
+
+  // Save-trip state
+  const [tripSaved,   setTripSaved]   = useState(false);
+  const [tripSaving,  setTripSaving]  = useState(false);
 
   // When embedded (tab panel), eagerly load garage so vehicles are ready without a button click
   useEffect(() => {
@@ -333,6 +339,7 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
     const routeMiles = metersToMiles(route.distanceMeters);
     const r = calcTrip(routeMiles, mpgNum, tankNum, pctNum, priceNum, parseInt(people, 10));
     setResult(r);
+    setTripSaved(false);
     setTimeout(() => {
       document.getElementById('trip-result')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }, 80);
@@ -369,6 +376,7 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
       parseInt(people, 10),
     );
     setResult(r);
+    setTripSaved(false);
     setTimeout(() => {
       document.getElementById('trip-result')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }, 80);
@@ -384,6 +392,36 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
     // Route planner reset
     setRouteOrigin(''); setRouteDest('');
     setRouteData(null); setRouteError(''); setFuelStops([]);
+    // Save state reset
+    setTripSaved(false);
+  }
+
+  async function handleSaveTrip(r: TripResult) {
+    if (!session || !canSaveTrips || tripSaved || tripSaving) return;
+    setTripSaving(true);
+    try {
+      await fetch('/api/trips', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          origin:         tripPlanMode === 'route' ? routeOrigin.trim() || undefined : undefined,
+          destination:    tripPlanMode === 'route' ? routeDest.trim()   || undefined : undefined,
+          distanceMiles:  r.totalMiles,
+          mpg:            parseFloat(mpg),
+          tankGallons:    parseFloat(tankGal),
+          pricePerGallon: parseFloat(pricePerGallon),
+          travelers:      parseInt(people, 10),
+          fuelPct:        parseFloat(fuelPct),
+          gallonsNeeded:  r.gallonsNeeded,
+          fuelCost:       r.fuelCost,
+          stops:          r.stops,
+          totalTripCost:  r.totalTripCost,
+        }),
+      });
+      setTripSaved(true);
+    } finally {
+      setTripSaving(false);
+    }
   }
 
   const hasResult = result !== null;
@@ -488,7 +526,7 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
                       <input
                         type="text"
                         className={errors.routeOrigin ? 'input-field-error' : 'input-field'}
-                        placeholder="e.g. Orlando, FL"
+                        placeholder="City, state or full address"
                         value={routeOrigin}
                         onChange={(e) => { setRouteOrigin(e.target.value); setRouteData(null); setResult(null); }}
                         aria-label="Trip starting point"
@@ -500,7 +538,7 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
                       <input
                         type="text"
                         className={errors.routeDest ? 'input-field-error' : 'input-field'}
-                        placeholder="e.g. Miami, FL"
+                        placeholder="City, state or full address"
                         value={routeDest}
                         onChange={(e) => { setRouteDest(e.target.value); setRouteData(null); setResult(null); }}
                         aria-label="Trip destination"
@@ -793,6 +831,12 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
                 routeDest={tripPlanMode   === 'route' ? routeDest   : undefined}
                 fuelStops={fuelStops}
                 stopsLoading={stopsLoading}
+                canSave={canSaveTrips}
+                isSaved={tripSaved}
+                isSaving={tripSaving}
+                isSignedIn={!!session}
+                onSave={() => handleSaveTrip(result)}
+                planTier={planTier}
               />
             )}
           </div>
@@ -812,6 +856,12 @@ function TripResultCard({
   routeDest,
   fuelStops = [],
   stopsLoading = false,
+  canSave     = false,
+  isSaved     = false,
+  isSaving    = false,
+  isSignedIn  = false,
+  onSave,
+  planTier    = 'free',
 }: {
   result:        TripResult;
   latitude?:     number;
@@ -820,6 +870,12 @@ function TripResultCard({
   routeDest?:    string;
   fuelStops?:    FuelStop[];
   stopsLoading?: boolean;
+  canSave?:      boolean;
+  isSaved?:      boolean;
+  isSaving?:     boolean;
+  isSignedIn?:   boolean;
+  onSave?:       () => void;
+  planTier?:     string;
 }) {
   const {
     totalMiles, totalGallons, totalTripCost,
@@ -960,6 +1016,44 @@ function TripResultCard({
             </div>
           )}
         </div>
+      )}
+
+      {/* Save this trip */}
+      {isSignedIn && (
+        canSave ? (
+          <button
+            onClick={onSave}
+            disabled={isSaved || isSaving}
+            className={[
+              'w-full flex items-center justify-center gap-2 py-2.5 rounded-2xl text-sm font-bold',
+              'border-2 transition-all',
+              isSaved
+                ? 'border-emerald-300 bg-emerald-50 text-emerald-700 cursor-default'
+                : 'border-[#005F4A]/30 bg-[#005F4A]/10 text-[#005F4A] hover:bg-[#005F4A]/20 hover:border-[#005F4A]/50',
+            ].join(' ')}
+          >
+            {isSaved ? (
+              <>✓ Trip Saved</>
+            ) : isSaving ? (
+              <>
+                <span className="inline-block w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                Saving…
+              </>
+            ) : (
+              <>🗺️ Save This Trip</>
+            )}
+          </button>
+        ) : (
+          /* Free user — show locked save button */
+          <Link
+            href="/upgrade"
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-2xl text-sm font-bold
+                       border-2 border-amber-200 bg-amber-50 text-amber-700
+                       hover:bg-amber-100 transition-all"
+          >
+            🔒 Save This Trip — Pro Feature
+          </Link>
+        )
       )}
 
       {/* Navigation handoffs */}

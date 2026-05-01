@@ -19,6 +19,7 @@ import ReferralNudge         from './ReferralNudge';
 import ReviewWidget           from './ReviewWidget';
 import StationComparison      from './StationComparison';
 import MonthlyReportCard      from './MonthlyReportCard';
+import SavedTrips             from './SavedTrips';
 import SavingsDashboard       from './SavingsDashboard';
 import WorstFillup            from './WorstFillup';
 import ReferralLeaderboard    from './ReferralLeaderboard';
@@ -293,6 +294,7 @@ export default function ToolsPanel() {
               />
             </div>
             <VehicleHealthAlert />
+            <SavedTrips />
             <SavingsDashboard />
             <WorstFillup />
           </div>

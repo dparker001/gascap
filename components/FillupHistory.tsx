@@ -97,10 +97,11 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
   const [data,       setData]      = useState<HistoryResponse | null>(null);
   const [loading,    setLoading]   = useState(false);
   const [open,       setOpen]      = useState(false);
-  const [editingId,  setEditingId] = useState<string | null>(null);
-  const [editDraft,  setEditDraft] = useState<EditDraft | null>(null);
-  const [editSaving, setEditSaving] = useState(false);
-  const [editError,  setEditError]  = useState('');
+  const [editingId,       setEditingId]       = useState<string | null>(null);
+  const [editDraft,       setEditDraft]       = useState<EditDraft | null>(null);
+  const [editSaving,      setEditSaving]      = useState(false);
+  const [editError,       setEditError]       = useState('');
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
   // ── Filter + month expansion state ─────────────────────────────────────────
   const [filterMode,     setFilterMode]     = useState<FilterMode>('all');
@@ -195,6 +196,7 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
 
   async function handleDelete(id: string) {
     await fetch(`/api/fillups?id=${id}`, { method: 'DELETE' });
+    setPendingDeleteId(null);
     load();
   }
 
@@ -696,29 +698,52 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
                             </div>
                           </div>
 
-                          {/* Edit */}
-                          <button
-                            onClick={() => handleEditStart(f)}
-                            className="flex-shrink-0 text-slate-200 hover:text-amber-400 transition-colors mt-0.5"
-                            aria-label="Edit fillup"
-                          >
-                            <svg viewBox="0 0 12 12" className="w-3.5 h-3.5" fill="none"
-                                 stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M8.5 1.5l2 2L4 10H2v-2L8.5 1.5z"/>
-                            </svg>
-                          </button>
+                          {pendingDeleteId === f.id ? (
+                            /* ── Delete confirmation — replaces edit + delete icons ── */
+                            <>
+                              <button
+                                onClick={() => setPendingDeleteId(null)}
+                                className="flex-shrink-0 text-[10px] font-bold text-slate-400 hover:text-slate-600 transition-colors mt-0.5 whitespace-nowrap"
+                                aria-label="Cancel delete"
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                onClick={() => handleDelete(f.id)}
+                                className="flex-shrink-0 text-[10px] font-bold text-red-500 hover:text-red-700 transition-colors mt-0.5 whitespace-nowrap"
+                                aria-label="Confirm delete fill-up"
+                              >
+                                Delete
+                              </button>
+                            </>
+                          ) : (
+                            /* ── Normal edit + delete icons ── */
+                            <>
+                              {/* Edit */}
+                              <button
+                                onClick={() => handleEditStart(f)}
+                                className="flex-shrink-0 text-slate-200 hover:text-amber-400 transition-colors mt-0.5"
+                                aria-label="Edit fillup"
+                              >
+                                <svg viewBox="0 0 12 12" className="w-3.5 h-3.5" fill="none"
+                                     stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M8.5 1.5l2 2L4 10H2v-2L8.5 1.5z"/>
+                                </svg>
+                              </button>
 
-                          {/* Delete */}
-                          <button
-                            onClick={() => handleDelete(f.id)}
-                            className="flex-shrink-0 text-slate-200 hover:text-red-400 transition-colors mt-0.5"
-                            aria-label="Delete fillup"
-                          >
-                            <svg viewBox="0 0 12 12" className="w-3.5 h-3.5" fill="none"
-                                 stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-                              <path d="M1 1l10 10M11 1L1 11"/>
-                            </svg>
-                          </button>
+                              {/* Delete — requires confirmation tap */}
+                              <button
+                                onClick={() => setPendingDeleteId(f.id)}
+                                className="flex-shrink-0 text-slate-200 hover:text-red-400 transition-colors mt-0.5"
+                                aria-label="Delete fillup"
+                              >
+                                <svg viewBox="0 0 12 12" className="w-3.5 h-3.5" fill="none"
+                                     stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                                  <path d="M1 1l10 10M11 1L1 11"/>
+                                </svg>
+                              </button>
+                            </>
+                          )}
                         </div>
                       );
                     })}
