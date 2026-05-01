@@ -4,7 +4,8 @@ import { useSession } from 'next-auth/react';
 import { useState, useCallback, useEffect, useRef } from 'react';
 import TankGauge from './TankGauge';
 import FillupLogger from './FillupLogger';
-import WazeDeepLinkButton from './WazeDeepLinkButton';
+import WazeDeepLinkButton          from './WazeDeepLinkButton';
+import GoogleMapsHandoffButton      from './GoogleMapsHandoffButton';
 import type { TargetFillResult, BudgetResult } from '@/lib/calculations';
 
 // ── Shareable card helper ──────────────────────────────────────────────────────
@@ -235,12 +236,23 @@ export function TargetResultCard({ result, vehicleName, vehicleId, vehicleOdomet
         </div>
       )}
 
-      {/* ── Waze button ── */}
-      <WazeDeepLinkButton
-        latitude={latitude}
-        longitude={longitude}
-        label={isRental ? 'Find a Fuel Stop Before Return' : 'Find a Gas Station'}
-      />
+      {/* ── Navigation handoffs (Google Maps first, then Waze) ── */}
+      <div className="space-y-2">
+        <GoogleMapsHandoffButton
+          mode={isRental ? 'rental_return' : 'target_fill'}
+          calculationData={{
+            gallonsNeeded:  gallonsNeeded,
+            estimatedCost:  estimatedCost,
+            gasPrice:       pricePerGallon,
+            targetLevel:    targetPercent,
+          }}
+        />
+        <WazeDeepLinkButton
+          latitude={latitude}
+          longitude={longitude}
+          label={isRental ? 'Find a Fuel Stop Before Return' : 'Find a Gas Station'}
+        />
+      </div>
 
       {/* ── Visual tank gauge ── */}
       <div className="card-bordered">
@@ -363,12 +375,22 @@ export function BudgetResultCard({ result, pricePerGallon, vehicleName, vehicleI
         <SecondaryStat label="Gallons in tank" value={`${resultingGallons.toFixed(2)} gal`} />
       </div>
 
-      {/* ── Waze button ── */}
-      <WazeDeepLinkButton
-        latitude={latitude}
-        longitude={longitude}
-        label="Find a Gas Station"
-      />
+      {/* ── Navigation handoffs (Google Maps first, then Waze) ── */}
+      <div className="space-y-2">
+        <GoogleMapsHandoffButton
+          mode="budget"
+          calculationData={{
+            gallonsNeeded: gallonsAffordable,
+            estimatedCost: actualCost,
+            gasPrice:      resolvedPrice,
+          }}
+        />
+        <WazeDeepLinkButton
+          latitude={latitude}
+          longitude={longitude}
+          label="Find a Gas Station"
+        />
+      </div>
 
       {/* ── Visual tank gauge ── */}
       <div className="card-bordered">

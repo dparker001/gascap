@@ -1,9 +1,13 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { useSession }            from 'next-auth/react';
-import GasPriceLookup            from './GasPriceLookup';
-import type { Vehicle }          from './SavedVehicles';
+import { useSession }                        from 'next-auth/react';
+import Link                                  from 'next/link';
+import GasPriceLookup                        from './GasPriceLookup';
+import GoogleMapsHandoffButton               from './GoogleMapsHandoffButton';
+import WazeDeepLinkButton                    from './WazeDeepLinkButton';
+import { canAccessFeature, UPGRADE_COPY }    from '@/lib/featureAccess';
+import type { Vehicle }                      from './SavedVehicles';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -156,6 +160,7 @@ const DISTANCE_PRESETS = [
 ];
 
 type VehicleMode = 'garage' | 'rental';
+type TripPlanMode = 'manual' | 'route';
 
 export default function TripCostEstimator({ embedded = false }: { embedded?: boolean }) {
   const { data: session } = useSession();
@@ -174,6 +179,11 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
   const [mpgSourceLabel,    setMpgSourceLabel]    = useState<string>('');
   const [vehicleMode,       setVehicleMode]       = useState<VehicleMode>('garage');
   const [rentalType,        setRentalType]        = useState<string>('');
+  const [tripPlanMode,      setTripPlanMode]      = useState<TripPlanMode>('manual');
+  const [gasCoords,         setGasCoords]         = useState<{ lat: number; lng: number } | null>(null);
+
+  const userPlan = (session?.user as { plan?: string })?.plan ?? '';
+  const canUseRoutePlanner = canAccessFeature('route_based_trip_planner', userPlan);
 
   // When embedded (tab panel), eagerly load garage so vehicles are ready without a button click
   useEffect(() => {
@@ -310,7 +320,99 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
       {(open || embedded) && (
         <div className={embedded ? 'space-y-4' : 'mt-2 bg-white rounded-2xl border border-slate-100 shadow-sm p-4 space-y-4'}>
 
-          {/* ── Mode toggle (signed-in only) ── */}
+          {/* ── Trip plan mode: Manual vs Route-Based ── */}
+          <div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setTripPlanMode('manual')}
+                className={[
+                  'flex-1 py-2 rounded-xl text-xs font-bold border-2 transition-all',
+                  tripPlanMode === 'manual'
+                    ? 'border-amber-500 bg-amber-50 text-amber-700'
+                    : 'border-slate-200 bg-white text-slate-500 hover:border-amber-300',
+                ].join(' ')}
+              >
+                📏 Manual Distance
+              </button>
+              <button
+                onClick={() => setTripPlanMode('route')}
+                className={[
+                  'flex-1 py-2 rounded-xl text-xs font-bold border-2 transition-all',
+                  tripPlanMode === 'route'
+                    ? 'border-amber-500 bg-amber-50 text-amber-700'
+                    : 'border-slate-200 bg-white text-slate-500 hover:border-amber-300',
+                  !canUseRoutePlanner ? 'opacity-70' : '',
+                ].join(' ')}
+              >
+                🗺️ Route-Based {!canUseRoutePlanner && '⭐'}
+              </button>
+            </div>
+
+            {/* Route-based mode panel */}
+            {tripPlanMode === 'route' && (
+              <div className="mt-3">
+                {!canUseRoutePlanner ? (
+                  /* Free user — upgrade prompt */
+                  <div className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-4 space-y-3">
+                    <div className="flex items-start gap-2.5">
+                      <span className="text-xl flex-shrink-0">⭐</span>
+                      <div>
+                        <p className="text-sm font-black text-amber-800 leading-snug">
+                          {UPGRADE_COPY.routeBasedTripPlanner}
+                        </p>
+                        <p className="text-[11px] text-amber-700 mt-1 leading-relaxed">
+                          Enter a starting point and destination to calculate fuel needs
+                          along your actual route — including a recommended refuel window
+                          and gas stations along the way.
+                        </p>
+                      </div>
+                    </div>
+                    <Link
+                      href="/upgrade"
+                      className="block w-full text-center px-4 py-2.5 rounded-xl
+                                 bg-[#005F4A] text-white text-xs font-bold
+                                 hover:bg-[#004d3b] transition-colors"
+                    >
+                      {UPGRADE_COPY.upgradeCta} →
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => setTripPlanMode('manual')}
+                      className="w-full text-[11px] text-amber-600 font-semibold hover:underline"
+                    >
+                      Use manual distance instead
+                    </button>
+                  </div>
+                ) : (
+                  /* Pro user — coming soon (API not yet configured) */
+                  <div className="bg-slate-50 border border-slate-200 rounded-2xl px-4 py-4 space-y-2">
+                    <div className="flex items-start gap-2.5">
+                      <span className="text-xl flex-shrink-0">🗺️</span>
+                      <div>
+                        <p className="text-sm font-black text-slate-700 leading-snug">
+                          Route-based planning is coming soon.
+                        </p>
+                        <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                          Enter a starting point and destination to calculate fuel needs
+                          along your actual route. For now, GasCap™ can still estimate
+                          your fuel need using trip distance below.
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setTripPlanMode('manual')}
+                      className="text-[11px] text-amber-600 font-semibold hover:underline"
+                    >
+                      Use manual distance for now →
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* ── Mode toggle (garage/rental — signed-in only) ── */}
           {session && (
             <div>
               <div className="flex gap-2">
@@ -517,7 +619,13 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
               />
             </div>
             {errors.pricePerGallon && <p className="mt-1 text-xs text-red-500">{errors.pricePerGallon}</p>}
-            <GasPriceLookup onApply={(p) => { setPricePerGallon(p); setResult(null); }} />
+            <GasPriceLookup
+              onApply={(p, lat, lng) => {
+                setPricePerGallon(p);
+                setResult(null);
+                if (lat != null && lng != null) setGasCoords({ lat, lng });
+              }}
+            />
           </div>
 
           {/* ── Buttons ── */}
@@ -535,7 +643,11 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
           {/* ── Result ── */}
           <div id="trip-result">
             {hasResult && result && (
-              <TripResultCard result={result} />
+              <TripResultCard
+                result={result}
+                latitude={gasCoords?.lat}
+                longitude={gasCoords?.lng}
+              />
             )}
           </div>
         </div>
@@ -546,7 +658,15 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
 
 // ── Result Card ────────────────────────────────────────────────────────────
 
-function TripResultCard({ result }: { result: TripResult }) {
+function TripResultCard({
+  result,
+  latitude,
+  longitude,
+}: {
+  result: TripResult;
+  latitude?: number;
+  longitude?: number;
+}) {
   const {
     totalMiles, totalGallons, totalTripCost,
     currentGalOffset, currentCostOffset,
@@ -626,6 +746,25 @@ function TripResultCard({ result }: { result: TripResult }) {
           <p className="text-xs text-blue-700 font-medium leading-snug">
             Top off your tank before you leave to maximize range and reduce the number of stops.
           </p>
+        </div>
+      )}
+
+      {/* Navigation handoffs */}
+      {!noFuelNeeded && (
+        <div className="space-y-2 pt-1">
+          <GoogleMapsHandoffButton
+            mode="trip"
+            calculationData={{
+              gallonsNeeded: gallonsNeeded,
+              estimatedCost: fuelCost,
+              tripDistance:  totalMiles,
+            }}
+          />
+          <WazeDeepLinkButton
+            latitude={latitude}
+            longitude={longitude}
+            label="Find Fuel Along the Way"
+          />
         </div>
       )}
     </div>

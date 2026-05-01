@@ -71,3 +71,7 @@ export const trackReferralShare = () =>
 /** User scanned a QR placard link (/q/[code]) */
 export const trackQrScan = (code: string) =>
   gtagEvent('qr_scan', { placement_code: code });
+
+/** User opened Google Maps from a calculation result or trip planner */
+export const trackGoogleMapsOpen = (mode: string, userPlan: string) =>
+  gtagEvent('google_maps_open', { mode, user_plan: userPlan });
