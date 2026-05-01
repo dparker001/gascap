@@ -186,29 +186,67 @@ export default function ToolsPanel() {
       {/* ── Tab panels ──────────────────────────────────────────────────── */}
 
       {/* AI Advisor — available to all; Pro/Fleet unlocks open-ended input */}
+      {/* AiAdvisor renders its own card when embedded, so header lives in a separate card above */}
       <div role="tabpanel" id="tabpanel-ai" hidden={effectiveTab !== 'ai'}>
-        {effectiveTab === 'ai' && <AiAdvisor embedded />}
+        {effectiveTab === 'ai' && (
+          <div className="space-y-3">
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-4 py-3.5">
+              <ToolHeader
+                emoji="🤖"
+                title="AI Fuel Advisor"
+                description="Get personalized fuel-saving tips, trip estimates, and smart driving advice."
+                withDivider={false}
+              />
+            </div>
+            <AiAdvisor embedded />
+          </div>
+        )}
       </div>
 
       {/* Trip Cost Estimator */}
       <div role="tabpanel" id="tabpanel-trip" hidden={effectiveTab !== 'trip'}>
         {effectiveTab === 'trip' && (
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
+            <ToolHeader
+              emoji="🗺️"
+              title="Trip Cost Estimator"
+              description="Calculate fuel costs and find gas stations for your road trip."
+            />
             <TripCostEstimator embedded />
           </div>
         )}
       </div>
 
       {/* Station Comparison */}
+      {/* StationComparison renders its own card when embedded, so header lives in a separate card above */}
       <div role="tabpanel" id="tabpanel-compare" hidden={effectiveTab !== 'compare'}>
-        {effectiveTab === 'compare' && <StationComparison embedded />}
+        {effectiveTab === 'compare' && (
+          <div className="space-y-3">
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-4 py-3.5">
+              <ToolHeader
+                emoji="🏪"
+                title="Station Comparison"
+                description="Compare gas prices at nearby stations to find the best deal before you pull in."
+                withDivider={false}
+              />
+            </div>
+            <StationComparison embedded />
+          </div>
+        )}
       </div>
 
       {/* Fillup Log + Budget */}
       <div role="tabpanel" id="tabpanel-log" hidden={effectiveTab !== 'log'}>
         {effectiveTab === 'log' && session && (
           <div className="space-y-3">
-            <ManualFillupLogger />
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
+              <ToolHeader
+                emoji="⛽"
+                title="Fill-Up Log"
+                description="Track every fill-up, monitor your fuel spending, and build your MPG history."
+              />
+              <ManualFillupLogger />
+            </div>
             <MonthlyBudgetGoal />
             <FillupHistory />
           </div>
@@ -220,6 +258,14 @@ export default function ToolsPanel() {
       <div role="tabpanel" id="tabpanel-charts" hidden={effectiveTab !== 'charts'}>
         {effectiveTab === 'charts' && session && isPro && (
           <div className="space-y-3">
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-4 py-3.5">
+              <ToolHeader
+                emoji="📊"
+                title="Fuel Charts"
+                description="Visualize your MPG trends, fuel spending patterns, and vehicle efficiency over time."
+                withDivider={false}
+              />
+            </div>
             <MpgInsightCard />
             <SmartFillUpOptimizer />
             <MonthlyReportCard />
@@ -238,6 +284,14 @@ export default function ToolsPanel() {
       <div role="tabpanel" id="tabpanel-stats" hidden={effectiveTab !== 'stats'}>
         {effectiveTab === 'stats' && session && (
           <div className="space-y-3">
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-4 py-3.5">
+              <ToolHeader
+                emoji="📈"
+                title="Fuel Stats"
+                description="Your personal fuel efficiency insights, savings summary, and spending breakdown."
+                withDivider={false}
+              />
+            </div>
             <VehicleHealthAlert />
             <SavingsDashboard />
             <WorstFillup />
@@ -248,7 +302,16 @@ export default function ToolsPanel() {
 
       {/* Maintenance / Service */}
       <div role="tabpanel" id="tabpanel-service" hidden={effectiveTab !== 'service'}>
-        {effectiveTab === 'service' && session && isPro && <MaintenanceReminders />}
+        {effectiveTab === 'service' && session && isPro && (
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
+            <ToolHeader
+              emoji="🔧"
+              title="Maintenance Reminders"
+              description="Stay ahead of oil changes, tire rotations, and other service intervals."
+            />
+            <MaintenanceReminders />
+          </div>
+        )}
         {effectiveTab === 'service' && session && !isPro && <UpgradePrompt feature={t.toolsPrompts.maintenanceLabel} />}
         {effectiveTab === 'service' && !session && <SignInPrompt feature={t.toolsPrompts.featureMaintenance} />}
       </div>
@@ -257,6 +320,14 @@ export default function ToolsPanel() {
       <div role="tabpanel" id="tabpanel-share" hidden={effectiveTab !== 'share'}>
         {effectiveTab === 'share' && session && (
           <div className="space-y-3">
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-4 py-3.5">
+              <ToolHeader
+                emoji="🔗"
+                title="Refer & Earn"
+                description="Share GasCap with friends and family — earn rewards for every sign-up you bring in."
+                withDivider={false}
+              />
+            </div>
             <CompAmbassadorTracker />
             <StreakRewards />
             <ReferralLeaderboard />
@@ -270,12 +341,44 @@ export default function ToolsPanel() {
       <div role="tabpanel" id="tabpanel-review" hidden={effectiveTab !== 'review'}>
         {effectiveTab === 'review' && session && (
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
+            <ToolHeader
+              emoji="⭐"
+              title="Leave a Review"
+              description="Enjoying GasCap? Share your experience and help other drivers find it."
+            />
             <ReviewWidget mode="submit" />
           </div>
         )}
         {effectiveTab === 'review' && !session && <SignInPrompt feature={t.toolsPrompts.featureReviews} />}
       </div>
 
+    </div>
+  );
+}
+
+// ── Tool panel header ─────────────────────────────────────────────────────────
+
+function ToolHeader({
+  emoji,
+  title,
+  description,
+  withDivider = true,
+}: {
+  emoji: string;
+  title: string;
+  description: string;
+  /** Show a bottom border/divider — set false when header is the sole card content */
+  withDivider?: boolean;
+}) {
+  return (
+    <div className={`flex items-center gap-3${withDivider ? ' mb-4 pb-3.5 border-b border-slate-100' : ''}`}>
+      <div className="w-10 h-10 rounded-2xl bg-[#005F4A]/10 flex items-center justify-center flex-shrink-0">
+        <span className="text-xl leading-none">{emoji}</span>
+      </div>
+      <div className="min-w-0">
+        <h3 className="text-sm font-black text-slate-800">{title}</h3>
+        <p className="text-[11px] text-slate-400 leading-snug mt-0.5">{description}</p>
+      </div>
     </div>
   );
 }

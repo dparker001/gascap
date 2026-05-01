@@ -21,7 +21,8 @@ interface TripResult {
   currentCostOffset: number;   // value of fuel already in tank
   gallonsNeeded:     number;   // gallons still to buy
   fuelCost:          number;   // cost of gallons still to buy
-  stops:             number;
+  stops:             number;   // en-route refuel stops based on current fuel
+  stopsIfFull:       number;   // en-route stops if you top off before leaving
   costPerPerson:     number | null;
   milesPerDollar:    number;
   tankfulls:         number;
@@ -67,11 +68,14 @@ function calcTrip(
   const gallonsNeeded      = Math.max(0, totalGallons - currentGalOffset);
   const fuelCost           = gallonsNeeded * pricePGal;
   const tankRange          = tankGal * mpg;
-  // How many times do we need to stop? (after using current fuel)
-  const currentMilesInTank = tankGal * (fuelPct / 100) * mpg;
+  // En-route stops based on current fuel level (stops made while driving)
+  const currentMilesInTank    = tankGal * (fuelPct / 100) * mpg;
   const remainingAfterCurrent = miles - currentMilesInTank;
-  const stops              = remainingAfterCurrent <= 0 ? 0 : Math.ceil(remainingAfterCurrent / tankRange);
-  const milesPerDollar     = totalTripCost > 0 ? Math.round((miles / totalTripCost) * 10) / 10 : 0;
+  const stops                 = remainingAfterCurrent <= 0 ? 0 : Math.ceil(remainingAfterCurrent / tankRange);
+  // En-route stops if the driver tops off to full before leaving
+  const remainingIfFull       = Math.max(0, miles - tankRange);
+  const stopsIfFull           = remainingIfFull <= 0 ? 0 : Math.ceil(remainingIfFull / tankRange);
+  const milesPerDollar        = totalTripCost > 0 ? Math.round((miles / totalTripCost) * 10) / 10 : 0;
   const tankfulls          = Math.round((totalGallons / tankGal) * 10) / 10;
   const costPerPerson      = people > 1 ? Math.round((fuelCost / people) * 100) / 100 : null;
 
@@ -82,7 +86,7 @@ function calcTrip(
     summary = `This ${miles.toLocaleString()}-mile trip needs ${totalGallons.toFixed(2)} gal total ` +
               `($${totalTripCost.toFixed(2)}). You'll need to buy ${gallonsNeeded.toFixed(2)} gal ` +
               `($${fuelCost.toFixed(2)}) on top of what's in your tank.`;
-    if (stops > 0) summary += ` Plan for ${stops} fuel stop${stops > 1 ? 's' : ''} along the way.`;
+    if (stops > 0) summary += ` Plan for ${stops} refuel stop${stops > 1 ? 's' : ''} on the road.`;
   }
 
   return {
@@ -94,6 +98,7 @@ function calcTrip(
     gallonsNeeded:     Math.round(gallonsNeeded * 100) / 100,
     fuelCost:          Math.round(fuelCost * 100) / 100,
     stops,
+    stopsIfFull,
     costPerPerson,
     milesPerDollar,
     tankfulls,
@@ -597,39 +602,41 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
             </div>
           )}
 
-          {/* ── Distance ── */}
-          <div>
-            <p className="field-label">Trip Distance</p>
-            <div className="flex gap-2 mb-2 overflow-x-auto pb-0.5">
-              {DISTANCE_PRESETS.map((p) => (
-                <button
-                  key={p.value}
-                  onClick={() => setMilesPreset(p.value)}
-                  className={[
-                    'flex-shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold border-2 transition-all',
-                    miles === String(p.value)
-                      ? 'border-amber-500 bg-amber-50 text-amber-700'
-                      : 'border-slate-200 bg-white text-slate-500 hover:border-amber-300',
-                  ].join(' ')}
-                >
-                  {p.label}
-                </button>
-              ))}
+          {/* ── Distance — manual mode only; route mode gets distance from Google ── */}
+          {tripPlanMode !== 'route' && (
+            <div>
+              <p className="field-label">Trip Distance</p>
+              <div className="flex gap-2 mb-2 overflow-x-auto pb-0.5">
+                {DISTANCE_PRESETS.map((p) => (
+                  <button
+                    key={p.value}
+                    onClick={() => setMilesPreset(p.value)}
+                    className={[
+                      'flex-shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold border-2 transition-all',
+                      miles === String(p.value)
+                        ? 'border-amber-500 bg-amber-50 text-amber-700'
+                        : 'border-slate-200 bg-white text-slate-500 hover:border-amber-300',
+                    ].join(' ')}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+              <div className="relative">
+                <input
+                  type="number" inputMode="decimal"
+                  className={errors.miles ? 'input-field-error' : 'input-field'}
+                  placeholder="Enter trip miles"
+                  value={miles}
+                  min="1" step="1"
+                  onChange={(e) => { setMiles(e.target.value); setResult(null); }}
+                  aria-label="Trip distance in miles"
+                />
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-slate-400 pointer-events-none">mi</span>
+              </div>
+              {errors.miles && <p className="mt-1 text-xs text-red-500">{errors.miles}</p>}
             </div>
-            <div className="relative">
-              <input
-                type="number" inputMode="decimal"
-                className={errors.miles ? 'input-field-error' : 'input-field'}
-                placeholder="Enter trip miles"
-                value={miles}
-                min="1" step="1"
-                onChange={(e) => { setMiles(e.target.value); setResult(null); }}
-                aria-label="Trip distance in miles"
-              />
-              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-slate-400 pointer-events-none">mi</span>
-            </div>
-            {errors.miles && <p className="mt-1 text-xs text-red-500">{errors.miles}</p>}
-          </div>
+          )}
 
           {/* ── Vehicle specs row ── */}
           <div className="grid grid-cols-2 gap-3">
@@ -674,43 +681,53 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
             </div>
           </div>
 
-          {/* ── Current fuel + people row ── */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
+          {/* ── Current fuel level (slider) ── */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
               <p className="field-label">Current Fuel Level</p>
-              <div className="relative">
-                <input
-                  type="number" inputMode="decimal"
-                  className={errors.fuelPct ? 'input-field-error' : 'input-field'}
-                  placeholder="0"
-                  value={fuelPct}
-                  min="0" max="100" step="5"
-                  onChange={(e) => { setFuelPct(e.target.value); setResult(null); }}
-                  aria-label="Current fuel percentage"
-                />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">%</span>
-              </div>
-              {errors.fuelPct && <p className="mt-1 text-xs text-red-500">{errors.fuelPct}</p>}
-              <p className="text-[10px] text-slate-400 mt-1">
-                💡 0% = show full trip cost. Enter your actual level to see how much more you need to buy.
-              </p>
+              <span className="text-sm font-bold text-amber-600 tabular-nums">
+                {fuelPct}%
+                {Number(fuelPct) >= 100 && <span className="text-[10px] font-normal text-slate-400 ml-1">Full</span>}
+                {Number(fuelPct) === 0   && <span className="text-[10px] font-normal text-slate-400 ml-1">Empty</span>}
+              </span>
             </div>
-            <div>
-              <p className="field-label">Splitting costs?</p>
-              <div className="relative">
-                <input
-                  type="number" inputMode="numeric"
-                  className={errors.people ? 'input-field-error' : 'input-field'}
-                  placeholder="1"
-                  value={people}
-                  min="1" max="20" step="1"
-                  onChange={(e) => { setPeople(e.target.value); setResult(null); }}
-                  aria-label="Number of people splitting cost"
-                />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">people</span>
-              </div>
-              {errors.people && <p className="mt-1 text-xs text-red-500">{errors.people}</p>}
+            <input
+              type="range"
+              min="0" max="100" step="5"
+              value={fuelPct}
+              onChange={(e) => { setFuelPct(e.target.value); setResult(null); }}
+              className="w-full accent-amber-500"
+              aria-label="Current fuel level percentage"
+            />
+            <div className="flex justify-between text-[9px] font-bold text-slate-400 mt-1 px-0.5">
+              <span>E</span>
+              <span>¼</span>
+              <span>½</span>
+              <span>¾</span>
+              <span>F</span>
             </div>
+            {errors.fuelPct && <p className="mt-1 text-xs text-red-500">{errors.fuelPct}</p>}
+            <p className="text-[10px] text-slate-400 mt-1.5">
+              💡 Slide to match your gauge — leave at E to see the full trip cost with a fresh tank.
+            </p>
+          </div>
+
+          {/* ── Travelers (cost splitting) ── */}
+          <div>
+            <p className="field-label">Travelers (for cost splitting)</p>
+            <div className="relative">
+              <input
+                type="number" inputMode="numeric"
+                className={errors.people ? 'input-field-error' : 'input-field'}
+                placeholder="1"
+                value={people}
+                min="1" max="20" step="1"
+                onChange={(e) => { setPeople(e.target.value); setResult(null); }}
+                aria-label="Number of people splitting cost"
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">people</span>
+            </div>
+            {errors.people && <p className="mt-1 text-xs text-red-500">{errors.people}</p>}
           </div>
 
           {/* ── Gas price ── */}
@@ -808,7 +825,7 @@ function TripResultCard({
     totalMiles, totalGallons, totalTripCost,
     currentGalOffset, currentCostOffset,
     gallonsNeeded, fuelCost,
-    stops, costPerPerson, milesPerDollar, tankfulls, summary,
+    stops, stopsIfFull, costPerPerson, milesPerDollar, tankfulls, summary,
   } = result;
   const noFuelNeeded     = gallonsNeeded === 0;
   const hasCurrentFuel   = currentGalOffset > 0;
@@ -881,7 +898,11 @@ function TripResultCard({
 
       {/* Secondary stats grid */}
       <div className="grid grid-cols-2 gap-3">
-        <SecStat label="Fuel stops"      value={stops === 0 ? 'None needed' : `${stops} stop${stops > 1 ? 's' : ''}`} />
+        <SecStat
+          label="Refuel stops"
+          value={stops === 0 ? 'None needed' : `${stops} on the road`}
+          hint={stops > 0 ? 'stops made while driving' : undefined}
+        />
         <SecStat label="Tank fill-ups"   value={`${tankfulls}×`} />
         <SecStat label="Miles per $1"    value={`${milesPerDollar} mi`} />
         {costPerPerson != null && (
@@ -889,12 +910,15 @@ function TripResultCard({
         )}
       </div>
 
-      {/* Smart range tip */}
+      {/* Pre-trip top-off tip */}
       {stops > 0 && (
         <div className="bg-blue-50 border border-blue-100 rounded-xl px-3 py-2.5 flex items-start gap-2">
           <span className="text-sm flex-shrink-0">⛽</span>
           <p className="text-xs text-blue-700 font-medium leading-snug">
-            Top off your tank before you leave to maximize range and reduce the number of stops.
+            <span className="font-black">Pre-trip tip:</span>{' '}
+            {stopsIfFull < stops
+              ? `Topping off at your local station before leaving reduces your road stops from ${stops} to ${stopsIfFull}. That's fewer interruptions on the highway.`
+              : 'Top off at your local station before leaving to start with maximum range and minimize highway stops.'}
           </p>
         </div>
       )}
@@ -902,7 +926,7 @@ function TripResultCard({
       {/* Fuel stops from Google Places — shown when route-based search returned results */}
       {(stopsLoading || fuelStops.length > 0) && stops > 0 && (
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-4 py-4">
-          <p className="section-eyebrow">⛽ Gas Stations Along Your Route</p>
+          <p className="section-eyebrow">⛽ Gas Stations Near Your Refuel Stop</p>
           {stopsLoading ? (
             <div className="flex items-center gap-2 text-xs text-slate-400 py-2">
               <span className="inline-block w-3 h-3 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
@@ -960,13 +984,14 @@ function TripResultCard({
   );
 }
 
-function SecStat({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
+function SecStat({ label, value, accent, hint }: { label: string; value: string; accent?: boolean; hint?: string }) {
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
       <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{label}</p>
       <p className={`text-xl font-bold leading-tight mt-0.5 ${accent ? 'text-amber-600' : 'text-navy-700'}`}>
         {value}
       </p>
+      {hint && <p className="text-[9px] text-slate-400 mt-0.5 leading-tight">{hint}</p>}
     </div>
   );
 }
