@@ -290,21 +290,42 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [embedded, session]);
 
-  // Scroll back to trip results when returning from an external navigation (e.g. Google Maps)
+  // Scroll back to trip results when returning from an external navigation (e.g. Google Maps / Waze).
+  // Uses three complementary events because mobile platform behaviour varies:
+  //   • visibilitychange — most browsers on Android
+  //   • pageshow         — iOS BFCache restore / Safari PWA app-switch
+  //   • focus            — desktop fallback when the tab regains focus
   useEffect(() => {
-    function onVisible() {
-      if (document.visibilityState !== 'visible') return;
+    function scrollBack() {
       try {
-        if (sessionStorage.getItem('gc_trip_nav_away')) {
-          sessionStorage.removeItem('gc_trip_nav_away');
-          setTimeout(() => {
-            document.getElementById('trip-result')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-          }, 200);
-        }
-      } catch { /* ignore */ }
+        if (!sessionStorage.getItem('gc_trip_nav_away')) return;
+        sessionStorage.removeItem('gc_trip_nav_away');
+        // 350 ms lets the PWA finish its own transition animation before scrolling
+        setTimeout(() => {
+          document.getElementById('trip-result')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 350);
+      } catch { /* sessionStorage may be unavailable in some private modes */ }
     }
-    document.addEventListener('visibilitychange', onVisible);
-    return () => document.removeEventListener('visibilitychange', onVisible);
+
+    function onVisibilityChange() {
+      if (document.visibilityState === 'visible') scrollBack();
+    }
+    function onPageShow(e: PageTransitionEvent) {
+      // e.persisted === true when the page is restored from the back-forward cache
+      if (e.persisted || document.visibilityState === 'visible') scrollBack();
+    }
+    function onFocus() {
+      scrollBack();
+    }
+
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    window.addEventListener('pageshow', onPageShow);
+    window.addEventListener('focus', onFocus);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('pageshow', onPageShow);
+      window.removeEventListener('focus', onFocus);
+    };
   }, []);
 
   // Once vehicles load, default to garage if there are vehicles, otherwise rental
@@ -1333,9 +1354,15 @@ function TripResultCard({
         )
       )}
 
-      {/* Navigation handoffs */}
+      {/* Navigation handoffs — clicking any link here sets the scroll-restore flag */}
       {!noFuelNeeded && (
-        <div className="space-y-2 pt-1">
+        // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
+        <div
+          className="space-y-2 pt-1"
+          onClick={() => {
+            try { sessionStorage.setItem('gc_trip_nav_away', '1'); } catch { /* ignore */ }
+          }}
+        >
           <GoogleMapsHandoffButton
             mode="trip"
             calculationData={{
