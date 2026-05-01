@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useSession }                        from 'next-auth/react';
 import Link                                  from 'next/link';
 import GasPriceLookup                        from './GasPriceLookup';
@@ -156,6 +156,32 @@ function resolveMpg(v: Vehicle, avgMpgByVehicleId: Record<string, number>): MpgR
   return { mpg: null, label: 'Enter manually' };
 }
 
+// ── Address autocomplete hook ─────────────────────────────────────────────
+
+function useAddressAutocomplete(query: string, enabled: boolean) {
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (!enabled || query.length < 2) { setSuggestions([]); return; }
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      fetch('/api/maps/autocomplete', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ input: query }),
+      })
+        .then((r) => r.json() as Promise<{ ok: boolean; suggestions: string[] }>)
+        .then((d) => { if (d.ok) setSuggestions(d.suggestions); })
+        .catch(() => {});
+    }, 300);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [query, enabled]);
+
+  function clear() { setSuggestions([]); }
+  return { suggestions, clear };
+}
+
 // ── Component ─────────────────────────────────────────────────────────────
 
 const DISTANCE_PRESETS = [
@@ -202,6 +228,15 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
   const planTier       = getPlanTier((session?.user as { plan?: string } | null) ?? null);
   const canUseRoutePlanner = canAccessFeature('route_based_trip_planner', userPlan);
   const canSaveTrips       = canAccessFeature('save_trip', userPlan);
+
+  // Lock tank size when a garage vehicle is selected (tank is auto-populated from the vehicle)
+  const garageVehicleLocked = vehicleMode === 'garage' && selectedVehicleId !== '';
+
+  // Address autocomplete for route-based planner
+  const { suggestions: originSuggestions, clear: clearOriginSugg } =
+    useAddressAutocomplete(routeOrigin, canUseRoutePlanner && tripPlanMode === 'route');
+  const { suggestions: destSuggestions, clear: clearDestSugg } =
+    useAddressAutocomplete(routeDest, canUseRoutePlanner && tripPlanMode === 'route');
 
   // Save-trip state
   const [tripSaved,   setTripSaved]   = useState(false);
@@ -523,26 +558,62 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
                   <div className="space-y-3">
                     <div>
                       <p className="field-label">Starting Point</p>
-                      <input
-                        type="text"
-                        className={errors.routeOrigin ? 'input-field-error' : 'input-field'}
-                        placeholder="City, state or full address"
-                        value={routeOrigin}
-                        onChange={(e) => { setRouteOrigin(e.target.value); setRouteData(null); setResult(null); }}
-                        aria-label="Trip starting point"
-                      />
+                      <div className="relative">
+                        <input
+                          type="text"
+                          className={errors.routeOrigin ? 'input-field-error' : 'input-field'}
+                          placeholder="City, state or full address"
+                          value={routeOrigin}
+                          autoComplete="off"
+                          onChange={(e) => { setRouteOrigin(e.target.value); setRouteData(null); setResult(null); }}
+                          onBlur={() => { setTimeout(clearOriginSugg, 150); }}
+                          aria-label="Trip starting point"
+                        />
+                        {originSuggestions.length > 0 && (
+                          <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
+                            {originSuggestions.map((s) => (
+                              <button
+                                key={s}
+                                type="button"
+                                className="w-full text-left px-3 py-2.5 text-xs text-slate-700 hover:bg-amber-50 hover:text-amber-800 border-b border-slate-50 last:border-0 transition-colors"
+                                onMouseDown={(e) => { e.preventDefault(); setRouteOrigin(s); clearOriginSugg(); setRouteData(null); setResult(null); }}
+                              >
+                                📍 {s}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                       {errors.routeOrigin && <p className="mt-1 text-xs text-red-500">{errors.routeOrigin}</p>}
                     </div>
                     <div>
                       <p className="field-label">Destination</p>
-                      <input
-                        type="text"
-                        className={errors.routeDest ? 'input-field-error' : 'input-field'}
-                        placeholder="City, state or full address"
-                        value={routeDest}
-                        onChange={(e) => { setRouteDest(e.target.value); setRouteData(null); setResult(null); }}
-                        aria-label="Trip destination"
-                      />
+                      <div className="relative">
+                        <input
+                          type="text"
+                          className={errors.routeDest ? 'input-field-error' : 'input-field'}
+                          placeholder="City, state or full address"
+                          value={routeDest}
+                          autoComplete="off"
+                          onChange={(e) => { setRouteDest(e.target.value); setRouteData(null); setResult(null); }}
+                          onBlur={() => { setTimeout(clearDestSugg, 150); }}
+                          aria-label="Trip destination"
+                        />
+                        {destSuggestions.length > 0 && (
+                          <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
+                            {destSuggestions.map((s) => (
+                              <button
+                                key={s}
+                                type="button"
+                                className="w-full text-left px-3 py-2.5 text-xs text-slate-700 hover:bg-amber-50 hover:text-amber-800 border-b border-slate-50 last:border-0 transition-colors"
+                                onMouseDown={(e) => { e.preventDefault(); setRouteDest(s); clearDestSugg(); setRouteData(null); setResult(null); }}
+                              >
+                                📍 {s}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                       {errors.routeDest && <p className="mt-1 text-xs text-red-500">{errors.routeDest}</p>}
                     </div>
                     {routeData && (
@@ -706,44 +777,59 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
               <div className="relative">
                 <input
                   type="number" inputMode="decimal"
-                  className={errors.tankGal ? 'input-field-error' : 'input-field'}
+                  className={
+                    errors.tankGal
+                      ? 'input-field-error'
+                      : garageVehicleLocked
+                        ? 'input-field bg-slate-50 text-slate-400 cursor-not-allowed'
+                        : 'input-field'
+                  }
                   placeholder="e.g. 15"
                   value={tankGal}
                   min="1" step="0.5"
-                  onChange={(e) => { setTankGal(e.target.value); setResult(null); }}
+                  readOnly={garageVehicleLocked}
+                  onChange={garageVehicleLocked ? undefined : (e) => { setTankGal(e.target.value); setResult(null); }}
                   aria-label="Tank capacity in gallons"
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">gal</span>
               </div>
               {errors.tankGal && <p className="mt-1 text-xs text-red-500">{errors.tankGal}</p>}
+              {garageVehicleLocked && (
+                <p className="text-[10px] text-slate-400 mt-1">🚗 From your saved vehicle</p>
+              )}
             </div>
           </div>
 
           {/* ── Current fuel level (slider) ── */}
           <div>
-            <div className="flex items-center justify-between mb-2">
-              <p className="field-label">Current Fuel Level</p>
+            <div className="flex items-center justify-between mb-1">
+              <p className="field-label mb-0">Current Fuel Level</p>
               <span className="text-sm font-bold text-amber-600 tabular-nums">
                 {fuelPct}%
                 {Number(fuelPct) >= 100 && <span className="text-[10px] font-normal text-slate-400 ml-1">Full</span>}
                 {Number(fuelPct) === 0   && <span className="text-[10px] font-normal text-slate-400 ml-1">Empty</span>}
               </span>
             </div>
+            {/* Labels ABOVE the slider — visible even when sliding on mobile */}
+            <div className="flex justify-between text-[9px] font-bold text-slate-400 mb-1 px-0.5">
+              <span>E</span>
+              <span>⅛</span>
+              <span>¼</span>
+              <span>⅜</span>
+              <span>½</span>
+              <span>⅝</span>
+              <span>¾</span>
+              <span>⅞</span>
+              <span>F</span>
+            </div>
             <input
               type="range"
-              min="0" max="100" step="5"
+              min="0" max="100" step="12.5"
               value={fuelPct}
               onChange={(e) => { setFuelPct(e.target.value); setResult(null); }}
               className="w-full accent-amber-500"
               aria-label="Current fuel level percentage"
             />
-            <div className="flex justify-between text-[9px] font-bold text-slate-400 mt-1 px-0.5">
-              <span>E</span>
-              <span>¼</span>
-              <span>½</span>
-              <span>¾</span>
-              <span>F</span>
-            </div>
             {errors.fuelPct && <p className="mt-1 text-xs text-red-500">{errors.fuelPct}</p>}
             <p className="text-[10px] text-slate-400 mt-1.5">
               💡 Slide to match your gauge — leave at E to see the full trip cost with a fresh tank.
@@ -784,6 +870,11 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
               />
             </div>
             {errors.pricePerGallon && <p className="mt-1 text-xs text-red-500">{errors.pricePerGallon}</p>}
+            {tripPlanMode === 'route' && (
+              <p className="text-[10px] text-slate-400 mt-1 leading-snug">
+                ⚠️ Highway prices may vary — this estimate uses your entered local price for all stops.
+              </p>
+            )}
             <GasPriceLookup
               onApply={(p, lat, lng) => {
                 setPricePerGallon(p);

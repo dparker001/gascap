@@ -207,7 +207,7 @@ export default function ToolsPanel() {
       {/* Trip Cost Estimator */}
       <div role="tabpanel" id="tabpanel-trip" hidden={effectiveTab !== 'trip'}>
         {effectiveTab === 'trip' && (
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 overflow-hidden">
             <ToolHeader
               emoji="🗺️"
               title="Trip Cost Estimator"
@@ -240,7 +240,7 @@ export default function ToolsPanel() {
       <div role="tabpanel" id="tabpanel-log" hidden={effectiveTab !== 'log'}>
         {effectiveTab === 'log' && session && (
           <div className="space-y-3">
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 overflow-hidden">
               <ToolHeader
                 emoji="⛽"
                 title="Fill-Up Log"
@@ -305,7 +305,7 @@ export default function ToolsPanel() {
       {/* Maintenance / Service */}
       <div role="tabpanel" id="tabpanel-service" hidden={effectiveTab !== 'service'}>
         {effectiveTab === 'service' && session && isPro && (
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 overflow-hidden">
             <ToolHeader
               emoji="🔧"
               title="Maintenance Reminders"
@@ -342,7 +342,7 @@ export default function ToolsPanel() {
       {/* Review */}
       <div role="tabpanel" id="tabpanel-review" hidden={effectiveTab !== 'review'}>
         {effectiveTab === 'review' && session && (
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 overflow-hidden">
             <ToolHeader
               emoji="⭐"
               title="Leave a Review"
@@ -359,6 +359,13 @@ export default function ToolsPanel() {
 }
 
 // ── Tool panel header ─────────────────────────────────────────────────────────
+//
+// withDivider=true  → header lives inside a content card with p-4 padding;
+//                     negative margins extend it edge-to-edge as a navy top banner.
+//                     The parent card MUST have overflow-hidden for corner clipping.
+//
+// withDivider=false → header IS the standalone card content (px-4 py-3.5 parent);
+//                     negative margins fill the entire card with the navy banner.
 
 function ToolHeader({
   emoji,
@@ -369,17 +376,23 @@ function ToolHeader({
   emoji: string;
   title: string;
   description: string;
-  /** Show a bottom border/divider — set false when header is the sole card content */
   withDivider?: boolean;
 }) {
   return (
-    <div className={`flex items-center gap-3${withDivider ? ' mb-4 pb-3.5 border-b border-slate-100' : ''}`}>
-      <div className="w-10 h-10 rounded-2xl bg-[#005F4A]/10 flex items-center justify-center flex-shrink-0">
-        <span className="text-xl leading-none">{emoji}</span>
+    <div
+      className={[
+        'flex items-center gap-3 bg-[#1E2D4A]',
+        withDivider
+          ? '-mx-4 -mt-4 mb-4 px-4 py-3.5'   // inside card: extend to edges, add bottom margin
+          : '-mx-4 -my-3.5 px-4 py-3.5',      // standalone card: fill the entire card
+      ].join(' ')}
+    >
+      <div className="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center flex-shrink-0">
+        <span className="text-lg leading-none">{emoji}</span>
       </div>
       <div className="min-w-0">
-        <h3 className="text-sm font-black text-slate-800">{title}</h3>
-        <p className="text-[11px] text-slate-400 leading-snug mt-0.5">{description}</p>
+        <h3 className="text-sm font-black text-white">{title}</h3>
+        <p className="text-[11px] text-white/60 leading-snug mt-0.5">{description}</p>
       </div>
     </div>
   );
