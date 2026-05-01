@@ -7,10 +7,12 @@
  */
 
 interface MailOptions {
-  to:      string;
-  subject: string;
-  html:    string;
-  text?:   string;
+  to:              string;
+  subject:         string;
+  html:            string;
+  text?:           string;
+  /** One-click unsubscribe URL — sets List-Unsubscribe headers for better inbox placement. */
+  unsubscribeUrl?: string;
 }
 
 export async function sendMail(opts: MailOptions): Promise<void> {
@@ -34,6 +36,12 @@ export async function sendMail(opts: MailOptions): Promise<void> {
       subject: opts.subject,
       html:    opts.html,
       text:    opts.text,
+      ...(opts.unsubscribeUrl ? {
+        headers: {
+          'List-Unsubscribe':      `<${opts.unsubscribeUrl}>`,
+          'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+        },
+      } : {}),
     });
     return;
   }
@@ -53,6 +61,12 @@ export async function sendMail(opts: MailOptions): Promise<void> {
         subject: opts.subject,
         html:    opts.html,
         text:    opts.text,
+        ...(opts.unsubscribeUrl ? {
+          headers: {
+            'List-Unsubscribe':      `<${opts.unsubscribeUrl}>`,
+            'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+          },
+        } : {}),
       }),
     });
     if (!res.ok) {

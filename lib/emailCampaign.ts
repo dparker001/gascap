@@ -695,7 +695,7 @@ export async function sendCampaignEmail(step: number, user: CampaignRecipient): 
 
   const mail = MAP[step];
   if (!mail) throw new Error(`Unknown campaign step: ${step}`);
-  await sendMail({ to: email, ...mail });
+  await sendMail({ to: email, ...mail, unsubscribeUrl: unsubLink(id) });
   logEmail({ userId: id, userEmail: email, userName: name, type: `trial-d${step}`, subject: mail.subject }).catch(() => {});
 }
 
@@ -799,10 +799,11 @@ export async function sendReferralCreditEmail(
 ): Promise<void> {
   const subject = `🎉 You earned a free month on GasCap™! (${totalCredits} banked)`;
   await sendMail({
-    to:      referrerEmail,
+    to:             referrerEmail,
     subject,
-    html:    referralCreditEmailHtml(referrerName, referrerId, totalCredits),
-    text:    referralCreditEmailText(referrerName, totalCredits),
+    html:           referralCreditEmailHtml(referrerName, referrerId, totalCredits),
+    text:           referralCreditEmailText(referrerName, totalCredits),
+    unsubscribeUrl: unsubLink(referrerId),
   });
   logEmail({ userId: referrerId, userEmail: referrerEmail, userName: referrerName, type: 'referral-credit', subject }).catch(() => {});
 }
@@ -866,10 +867,11 @@ export async function sendCompProForLifeEmail(
 ): Promise<void> {
   const subject = `🎁 Your GasCap™ Pro access — complimentary, forever`;
   await sendMail({
-    to:      userEmail,
+    to:             userEmail,
     subject,
-    html:    compProForLifeEmailHtml(userName, userId),
-    text:    compProForLifeEmailText(userName),
+    html:           compProForLifeEmailHtml(userName, userId),
+    text:           compProForLifeEmailText(userName),
+    unsubscribeUrl: unsubLink(userId),
   });
   logEmail({ userId, userEmail, userName, type: 'comp-pro-for-life', subject }).catch(() => {});
 }
@@ -1302,6 +1304,6 @@ export async function sendCompCampaignEmail(
       throw new Error(`[compCampaign] Unknown step ${step}`);
   }
 
-  await sendMail({ to: user.email, subject, html, text });
+  await sendMail({ to: user.email, subject, html, text, unsubscribeUrl: unsubLink(user.id) });
   logEmail({ userId: user.id, userEmail: user.email, userName: user.name, type: `comp-c${step}`, subject }).catch(() => {});
 }

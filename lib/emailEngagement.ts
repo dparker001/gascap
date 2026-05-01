@@ -612,7 +612,7 @@ export async function sendEngagementEmail(
     }
   }
 
-  await sendMail({ to: email, subject, html });
+  await sendMail({ to: email, subject, html, unsubscribeUrl: unsubLink(id) });
   logEmail({ userId: id, userEmail: email, userName: name, type: `eng-${track === 'pro' ? 's' : 'f'}${step}`, subject }).catch(() => {});
 }
 
@@ -629,6 +629,6 @@ export async function sendMilestoneEmail(
   };
 
   const { subject, html } = configs[milestone];
-  await sendMail({ to: email, subject, html });
+  await sendMail({ to: email, subject, html, unsubscribeUrl: unsubLink(id) });
   logEmail({ userId: id, userEmail: email, userName: name, type: `milestone-${milestone}`, subject }).catch(() => {});
 }
