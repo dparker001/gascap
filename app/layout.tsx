@@ -106,13 +106,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <GoogleAnalytics />
         {/* ── End Google Analytics 4 ───────────────────────────────────────── */}
 
-        {/* ── GHL Chat Widget (desktop only — not mounted on mobile) ──────── */}
-        <GHLChatWidget />
-        {/* ── End GHL Chat Widget ─────────────────────────────────────────── */}
-
         {/* Apply dark class before first paint to avoid flash */}
         <DarkModeProvider />
         <LanguageProvider>
+          {/* ── GHL Chat Widget (desktop only, bilingual) ────────────────── */}
+          {/* Must be inside LanguageProvider so it can read the active locale */}
+          <GHLChatWidget />
+          {/* ── End GHL Chat Widget ──────────────────────────────────────── */}
           <AuthProvider>
             <OneSignalProvider />
             <GiveawayEntryToast />
