@@ -46,8 +46,8 @@ export interface RouteResult {
 // ── Fuel stop types ───────────────────────────────────────────────────────────
 
 export interface FuelStopSearchRequest {
-  /** Encoded polyline of the route to search along */
-  routePolyline:      string;
+  /** Encoded polyline — reserved for future Search Along Route use */
+  routePolyline?:     string;
   /** Search query — defaults to "gas station" */
   searchQuery?:       string;
   /** A point along the route near which to bias results (e.g. refuel window midpoint) */
@@ -97,7 +97,12 @@ export interface RouteApiResponse {
 }
 
 export interface FuelStopsApiRequest {
-  routePolyline:      string;
+  /** Encoded polyline — reserved for future Search Along Route use */
+  routePolyline?:     string;
+  /** Latitude near which to search for stations (e.g. refuel window midpoint) */
+  nearLat?:           number;
+  /** Longitude near which to search for stations */
+  nearLng?:           number;
   refuelAtMile?:      number;
   preferredFuelType?: string;
 }

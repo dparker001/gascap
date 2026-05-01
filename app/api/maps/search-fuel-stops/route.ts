@@ -1,18 +1,18 @@
 /**
  * POST /api/maps/search-fuel-stops
  *
- * Searches for gas stations along a route polyline using
- * Google Places API (New) — Search Along Route.
+ * Searches for gas stations near a given coordinate using
+ * Google Places API (New) — searchText with locationBias.
  * SERVER-SIDE ONLY — the API key is never sent to the client.
  *
- * ⚠️  Returns 503 (feature disabled) until these env vars are set on Railway:
- *     GOOGLE_MAPS_API_KEY=your_key
- *     GOOGLE_MAPS_TRIP_PLANNER_ENABLED=true
+ * Requires on Railway:
+ *   GOOGLE_MAPS_API_KEY=your_key
+ *   GOOGLE_MAPS_TRIP_PLANNER_ENABLED=true
  *
- * Access: Pro + Fleet users (also gated client-side via canAccessFeature())
+ * Request body:
+ *   { nearLat: number, nearLng: number, preferredFuelType?: string }
  *
- * Request body:  { routePolyline: string, refuelAtMile?: number, preferredFuelType?: string }
- * Response:      FuelStopsApiResponse
+ * Response: FuelStopsApiResponse
  */
 
 import { NextResponse }                    from 'next/server';
@@ -26,7 +26,7 @@ export async function POST(req: Request): Promise<Response> {
         ok:              false,
         featureDisabled: true,
         error:
-          'Fuel stop search along route is not yet configured. ' +
+          'Fuel stop search is not yet configured. ' +
           'Set GOOGLE_MAPS_API_KEY and GOOGLE_MAPS_TRIP_PLANNER_ENABLED=true to activate.',
       } satisfies FuelStopsApiResponse,
       { status: 503 },
@@ -43,11 +43,11 @@ export async function POST(req: Request): Promise<Response> {
     );
   }
 
-  const { routePolyline, preferredFuelType } = body;
+  const { nearLat, nearLng, preferredFuelType } = body;
 
-  if (!routePolyline || typeof routePolyline !== 'string' || !routePolyline.trim()) {
+  if (nearLat == null || nearLng == null || isNaN(Number(nearLat)) || isNaN(Number(nearLng))) {
     return NextResponse.json(
-      { ok: false, error: 'routePolyline is required' } satisfies FuelStopsApiResponse,
+      { ok: false, error: 'nearLat and nearLng are required' } satisfies FuelStopsApiResponse,
       { status: 400 },
     );
   }
@@ -56,10 +56,10 @@ export async function POST(req: Request): Promise<Response> {
 
   try {
     const stops = await provider.searchFuelStops({
-      routePolyline:    routePolyline.trim(),
       searchQuery:      'gas station',
-      maxResultCount:   10,
+      maxResultCount:   5,
       preferredFuelType,
+      searchOrigin:     { latitude: Number(nearLat), longitude: Number(nearLng) },
     });
 
     return NextResponse.json({ ok: true, stops } satisfies FuelStopsApiResponse);

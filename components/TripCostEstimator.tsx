@@ -7,6 +7,8 @@ import GasPriceLookup                        from './GasPriceLookup';
 import GoogleMapsHandoffButton               from './GoogleMapsHandoffButton';
 import WazeDeepLinkButton                    from './WazeDeepLinkButton';
 import { canAccessFeature, UPGRADE_COPY }    from '@/lib/featureAccess';
+import { metersToMiles }                     from '@/lib/tripFuelPlanner';
+import type { RouteResult, FuelStop }        from '@/lib/mapsProvider/types';
 import type { Vehicle }                      from './SavedVehicles';
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -182,6 +184,15 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
   const [tripPlanMode,      setTripPlanMode]      = useState<TripPlanMode>('manual');
   const [gasCoords,         setGasCoords]         = useState<{ lat: number; lng: number } | null>(null);
 
+  // Route-based planner state
+  const [routeOrigin,       setRouteOrigin]       = useState('');
+  const [routeDest,         setRouteDest]         = useState('');
+  const [routeData,         setRouteData]         = useState<RouteResult | null>(null);
+  const [routeLoading,      setRouteLoading]      = useState(false);
+  const [routeError,        setRouteError]        = useState('');
+  const [fuelStops,         setFuelStops]         = useState<FuelStop[]>([]);
+  const [stopsLoading,      setStopsLoading]      = useState(false);
+
   const userPlan = (session?.user as { plan?: string })?.plan ?? '';
   const canUseRoutePlanner = canAccessFeature('route_based_trip_planner', userPlan);
 
@@ -264,6 +275,84 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
     return Object.keys(errs).length === 0;
   }
 
+  async function handleRouteCalculate() {
+    setRouteError('');
+    setRouteData(null);
+    setFuelStops([]);
+    setResult(null);
+
+    // Validate vehicle inputs
+    const mpgNum   = parseFloat(mpg);
+    const tankNum  = parseFloat(tankGal);
+    const priceNum = parseFloat(pricePerGallon);
+    const pctNum   = parseFloat(fuelPct);
+    const errs: Record<string, string> = {};
+    if (!routeOrigin.trim())              errs.routeOrigin = 'Enter a starting point.';
+    if (!routeDest.trim())                errs.routeDest   = 'Enter a destination.';
+    if (!mpgNum || mpgNum <= 0)           errs.mpg         = 'Enter your vehicle\'s MPG.';
+    if (!tankNum || tankNum <= 0)         errs.tankGal     = 'Enter tank capacity.';
+    if (!priceNum || priceNum <= 0)       errs.pricePerGallon = 'Enter gas price per gallon.';
+    if (isNaN(pctNum) || pctNum < 0 || pctNum > 100) errs.fuelPct = 'Enter 0–100%.';
+    setErrors(errs);
+    if (Object.keys(errs).length > 0) return;
+
+    // 1. Fetch route
+    setRouteLoading(true);
+    let route: RouteResult;
+    try {
+      const res  = await fetch('/api/maps/route', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ origin: routeOrigin.trim(), destination: routeDest.trim() }),
+      });
+      const data = await res.json() as { ok: boolean; route?: RouteResult; error?: string; featureDisabled?: boolean };
+      if (!data.ok) {
+        setRouteError(
+          data.featureDisabled
+            ? 'Route planning is not activated yet. Add GOOGLE_MAPS_API_KEY and GOOGLE_MAPS_TRIP_PLANNER_ENABLED=true to your Railway env vars.'
+            : (data.error ?? 'Could not calculate the route. Please try again.'),
+        );
+        setRouteLoading(false);
+        return;
+      }
+      route = data.route!;
+    } catch {
+      setRouteError('Network error — please check your connection and try again.');
+      setRouteLoading(false);
+      return;
+    }
+    setRouteLoading(false);
+    setRouteData(route);
+
+    // 2. Run local fuel calculation with the route distance
+    const routeMiles = metersToMiles(route.distanceMeters);
+    const r = calcTrip(routeMiles, mpgNum, tankNum, pctNum, priceNum, parseInt(people, 10));
+    setResult(r);
+    setTimeout(() => {
+      document.getElementById('trip-result')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 80);
+
+    // 3. If refuel needed, search for nearby stations (fire-and-forget, non-blocking)
+    if (r.stops > 0 && route.legs?.length) {
+      setStopsLoading(true);
+      const fraction = Math.min(1, Math.max(0, (routeMiles * 0.5) / routeMiles));
+      const start    = route.legs[0].startLocation;
+      const end      = route.legs[route.legs.length - 1].endLocation;
+      const refuelLat = start.latitude  + (end.latitude  - start.latitude)  * fraction;
+      const refuelLng = start.longitude + (end.longitude - start.longitude) * fraction;
+
+      fetch('/api/maps/search-fuel-stops', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ nearLat: refuelLat, nearLng: refuelLng }),
+      })
+        .then((res) => res.json() as Promise<{ ok: boolean; stops?: FuelStop[] }>)
+        .then((data) => { if (data.ok && data.stops) setFuelStops(data.stops); })
+        .catch(() => {})
+        .finally(() => setStopsLoading(false));
+    }
+  }
+
   function handleCalculate() {
     if (!validate()) return;
     const r = calcTrip(
@@ -287,6 +376,9 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
     setMpgSourceLabel('');
     setRentalType('');
     setVehicleMode(session && vehicles.length > 0 ? 'garage' : 'rental');
+    // Route planner reset
+    setRouteOrigin(''); setRouteDest('');
+    setRouteData(null); setRouteError(''); setFuelStops([]);
   }
 
   const hasResult = result !== null;
@@ -384,28 +476,46 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
                     </button>
                   </div>
                 ) : (
-                  /* Pro user — coming soon (API not yet configured) */
-                  <div className="bg-slate-50 border border-slate-200 rounded-2xl px-4 py-4 space-y-2">
-                    <div className="flex items-start gap-2.5">
-                      <span className="text-xl flex-shrink-0">🗺️</span>
-                      <div>
-                        <p className="text-sm font-black text-slate-700 leading-snug">
-                          Route-based planning is coming soon.
-                        </p>
-                        <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                          Enter a starting point and destination to calculate fuel needs
-                          along your actual route. For now, GasCap™ can still estimate
-                          your fuel need using trip distance below.
+                  /* Pro user — full route form */
+                  <div className="space-y-3">
+                    <div>
+                      <p className="field-label">Starting Point</p>
+                      <input
+                        type="text"
+                        className={errors.routeOrigin ? 'input-field-error' : 'input-field'}
+                        placeholder="e.g. Orlando, FL"
+                        value={routeOrigin}
+                        onChange={(e) => { setRouteOrigin(e.target.value); setRouteData(null); setResult(null); }}
+                        aria-label="Trip starting point"
+                      />
+                      {errors.routeOrigin && <p className="mt-1 text-xs text-red-500">{errors.routeOrigin}</p>}
+                    </div>
+                    <div>
+                      <p className="field-label">Destination</p>
+                      <input
+                        type="text"
+                        className={errors.routeDest ? 'input-field-error' : 'input-field'}
+                        placeholder="e.g. Miami, FL"
+                        value={routeDest}
+                        onChange={(e) => { setRouteDest(e.target.value); setRouteData(null); setResult(null); }}
+                        aria-label="Trip destination"
+                      />
+                      {errors.routeDest && <p className="mt-1 text-xs text-red-500">{errors.routeDest}</p>}
+                    </div>
+                    {routeData && (
+                      <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2">
+                        <span className="text-sm">📍</span>
+                        <p className="text-xs font-bold text-emerald-700">
+                          Route: {metersToMiles(routeData.distanceMeters).toLocaleString()} miles
+                          {' '}· {Math.round(routeData.durationSeconds / 60)} min drive
                         </p>
                       </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setTripPlanMode('manual')}
-                      className="text-[11px] text-amber-600 font-semibold hover:underline"
-                    >
-                      Use manual distance for now →
-                    </button>
+                    )}
+                    {routeError && (
+                      <div className="bg-red-50 border border-red-200 rounded-xl px-3 py-2.5">
+                        <p className="text-xs text-red-600 font-medium">{routeError}</p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -630,10 +740,25 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
 
           {/* ── Buttons ── */}
           <div className="flex gap-2 pt-1">
-            <button className="btn-amber flex-1" onClick={handleCalculate}>
-              Calculate Trip ⚡
-            </button>
-            {(miles || mpg || result) && (
+            {tripPlanMode === 'route' && canUseRoutePlanner ? (
+              <button
+                className="btn-amber flex-1"
+                onClick={handleRouteCalculate}
+                disabled={routeLoading}
+              >
+                {routeLoading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <span className="inline-block w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Calculating Route…
+                  </span>
+                ) : 'Calculate Trip ⚡'}
+              </button>
+            ) : (
+              <button className="btn-amber flex-1" onClick={handleCalculate}>
+                Calculate Trip ⚡
+              </button>
+            )}
+            {(miles || routeOrigin || mpg || result) && (
               <button className="btn-secondary" onClick={handleReset}>
                 Clear
               </button>
@@ -647,6 +772,10 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
                 result={result}
                 latitude={gasCoords?.lat}
                 longitude={gasCoords?.lng}
+                routeOrigin={tripPlanMode === 'route' ? routeOrigin : undefined}
+                routeDest={tripPlanMode   === 'route' ? routeDest   : undefined}
+                fuelStops={fuelStops}
+                stopsLoading={stopsLoading}
               />
             )}
           </div>
@@ -662,10 +791,18 @@ function TripResultCard({
   result,
   latitude,
   longitude,
+  routeOrigin,
+  routeDest,
+  fuelStops = [],
+  stopsLoading = false,
 }: {
-  result: TripResult;
-  latitude?: number;
-  longitude?: number;
+  result:        TripResult;
+  latitude?:     number;
+  longitude?:    number;
+  routeOrigin?:  string;
+  routeDest?:    string;
+  fuelStops?:    FuelStop[];
+  stopsLoading?: boolean;
 }) {
   const {
     totalMiles, totalGallons, totalTripCost,
@@ -678,6 +815,19 @@ function TripResultCard({
 
   return (
     <div className="animate-result space-y-3 pt-1">
+
+      {/* Route badge — shown when origin/destination were used */}
+      {routeOrigin && routeDest && (
+        <div className="flex items-center gap-2 bg-[#005F4A]/10 border border-[#005F4A]/20 rounded-2xl px-4 py-3">
+          <span className="text-base flex-shrink-0">🗺️</span>
+          <div className="min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-[#005F4A]/70">Route</p>
+            <p className="text-sm font-black text-[#005F4A] truncate">
+              {routeOrigin} → {routeDest}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Summary */}
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-4 py-3.5 flex items-start gap-3">
@@ -746,6 +896,45 @@ function TripResultCard({
           <p className="text-xs text-blue-700 font-medium leading-snug">
             Top off your tank before you leave to maximize range and reduce the number of stops.
           </p>
+        </div>
+      )}
+
+      {/* Fuel stops from Google Places — shown when route-based search returned results */}
+      {(stopsLoading || fuelStops.length > 0) && stops > 0 && (
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-4 py-4">
+          <p className="section-eyebrow">⛽ Gas Stations Along Your Route</p>
+          {stopsLoading ? (
+            <div className="flex items-center gap-2 text-xs text-slate-400 py-2">
+              <span className="inline-block w-3 h-3 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+              Searching for stations…
+            </div>
+          ) : (
+            <div className="space-y-2 mt-2">
+              {fuelStops.map((stop, i) => (
+                <div key={stop.placeId ?? i}
+                  className="flex items-start justify-between gap-3 py-2 border-b border-slate-50 last:border-0">
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-slate-700 truncate">{stop.name}</p>
+                    {stop.address && (
+                      <p className="text-[10px] text-slate-400 truncate">{stop.address}</p>
+                    )}
+                    {stop.rating && (
+                      <p className="text-[10px] text-amber-600 font-medium">★ {stop.rating.toFixed(1)}</p>
+                    )}
+                  </div>
+                  <a
+                    href={`https://www.google.com/maps/dir/?api=1&destination=${stop.latitude},${stop.longitude}&travelmode=driving`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-shrink-0 text-[11px] font-bold text-[#1a73e8] hover:underline whitespace-nowrap"
+                    aria-label={`Navigate to ${stop.name} in Google Maps`}
+                  >
+                    Navigate →
+                  </a>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
