@@ -3,6 +3,7 @@
 import { useState, FormEvent } from 'react';
 import Link from 'next/link';
 import StaticPageHeader from '@/components/StaticPageHeader';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 // ─── Business constants ───────────────────────────────────────────────────────
 const LEGAL_NAME    = 'Gas Capacity LLC';
@@ -13,6 +14,9 @@ const BUSINESS_PHONE = '(321) 513-1321';
 const YEAR = new Date().getFullYear();
 
 export default function ContactPage() {
+  const { t } = useTranslation();
+  const c = t.contact;
+
   const [firstName,        setFirstName]        = useState('');
   const [lastName,         setLastName]         = useState('');
   const [email,            setEmail]            = useState('');
@@ -40,13 +44,13 @@ export default function ContactPage() {
 
       if (!res.ok) {
         const data = await res.json() as { error?: string };
-        throw new Error(data.error ?? 'Submission failed. Please try again.');
+        throw new Error(data.error ?? c.submissionFailed);
       }
 
       setStatus('success');
     } catch (err) {
       setStatus('error');
-      setErrorMsg(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
+      setErrorMsg(err instanceof Error ? err.message : c.errorFallback);
     }
   }
 
@@ -56,7 +60,7 @@ export default function ContactPage() {
 
       <div className="max-w-2xl mx-auto px-5 py-10 pb-20">
         {/* Header */}
-        <h1 className="text-3xl font-black text-navy-700 mb-1">Contact Us</h1>
+        <h1 className="text-3xl font-black text-navy-700 mb-1">{c.heading}</h1>
         <p className="text-sm text-slate-500 mb-1">
           <span className="font-semibold text-slate-700">{LEGAL_NAME}</span>
         </p>
@@ -70,12 +74,12 @@ export default function ContactPage() {
                 <path d="M20 6 9 17l-5-5" />
               </svg>
             </div>
-            <h2 className="text-xl font-black text-slate-800">Message Sent!</h2>
+            <h2 className="text-xl font-black text-slate-800">{c.successTitle}</h2>
             <p className="text-sm text-slate-500">
-              Thanks for reaching out. We&apos;ll get back to you at <strong>{email}</strong> as soon as possible.
+              {c.successBody(email)}
             </p>
             <Link href="/" className="inline-block mt-2 text-sm text-amber-600 hover:underline font-semibold">
-              ← Back to GasCap™
+              {c.backLink}
             </Link>
           </div>
         ) : (
@@ -85,7 +89,7 @@ export default function ContactPage() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label htmlFor="firstName" className="block text-xs font-semibold text-slate-600 mb-1">
-                  First Name
+                  {c.firstNameLabel}
                 </label>
                 <input
                   id="firstName"
@@ -95,12 +99,12 @@ export default function ContactPage() {
                   onChange={(e) => setFirstName(e.target.value)}
                   className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm
                              focus:outline-none focus:ring-2 focus:ring-[#1EB68F]/40 focus:border-[#1EB68F]"
-                  placeholder="First Name"
+                  placeholder={c.firstNamePlaceholder}
                 />
               </div>
               <div>
                 <label htmlFor="lastName" className="block text-xs font-semibold text-slate-600 mb-1">
-                  Last Name
+                  {c.lastNameLabel}
                 </label>
                 <input
                   id="lastName"
@@ -110,7 +114,7 @@ export default function ContactPage() {
                   onChange={(e) => setLastName(e.target.value)}
                   className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm
                              focus:outline-none focus:ring-2 focus:ring-[#1EB68F]/40 focus:border-[#1EB68F]"
-                  placeholder="Last Name"
+                  placeholder={c.lastNamePlaceholder}
                 />
               </div>
             </div>
@@ -118,7 +122,7 @@ export default function ContactPage() {
             {/* Email */}
             <div>
               <label htmlFor="email" className="block text-xs font-semibold text-slate-600 mb-1">
-                Email <span className="text-red-500">*</span>
+                {c.emailLabel} <span className="text-red-500">*</span>
               </label>
               <input
                 id="email"
@@ -136,7 +140,7 @@ export default function ContactPage() {
             {/* Phone */}
             <div>
               <label htmlFor="phone" className="block text-xs font-semibold text-slate-600 mb-1">
-                Phone
+                {c.phoneLabel}
               </label>
               <input
                 id="phone"
@@ -153,7 +157,7 @@ export default function ContactPage() {
             {/* Message */}
             <div>
               <label htmlFor="message" className="block text-xs font-semibold text-slate-600 mb-1">
-                Message
+                {c.messageLabel}
               </label>
               <textarea
                 id="message"
@@ -163,7 +167,7 @@ export default function ContactPage() {
                 className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm
                            focus:outline-none focus:ring-2 focus:ring-[#1EB68F]/40 focus:border-[#1EB68F]
                            resize-none"
-                placeholder="How can we help?"
+                placeholder={c.messagePlaceholder}
               />
             </div>
 
@@ -181,7 +185,6 @@ export default function ContactPage() {
                   checked={smsConsent}
                   onChange={(e) => {
                     setSmsConsent(e.target.checked);
-                    // If phone is empty and they check SMS, remind them
                   }}
                   disabled={!phone}
                   className="w-4 h-4 rounded border-slate-300 text-[#1EB68F] accent-[#1EB68F]
@@ -195,12 +198,12 @@ export default function ContactPage() {
                   !phone ? 'text-slate-400' : 'text-slate-600',
                 ].join(' ')}
               >
-                I consent to receive SMS notifications and alerts from{' '}
-                <strong>{LEGAL_NAME}</strong>. Message frequency varies. Message &amp; data
-                rates may apply. Reply <strong>HELP</strong> for help or{' '}
-                <strong>STOP</strong> to unsubscribe at any time.
+                {c.smsConsentBefore}{' '}
+                <strong>{LEGAL_NAME}</strong>{c.smsConsentMid}{' '}
+                <strong>HELP</strong>{' '}{c.smsConsentHelp}{' '}
+                <strong>STOP</strong>{' '}{c.smsConsentStop}
                 {!phone && (
-                  <span className="ml-1 text-slate-400 italic">(Enter phone number above to enable)</span>
+                  <span className="ml-1 text-slate-400 italic">{c.smsConsentNoPhone}</span>
                 )}
               </label>
             </div>
@@ -226,19 +229,19 @@ export default function ContactPage() {
                 htmlFor="marketingConsent"
                 className="text-xs leading-relaxed text-slate-600 cursor-pointer select-none"
               >
-                By checking this box, I agree to receive occasional marketing
-                messages from <strong>{LEGAL_NAME}</strong>. Message frequency varies.
-                Message &amp; data rates may apply. Reply <strong>HELP</strong> for help
-                or <strong>STOP</strong> to unsubscribe at any time.
+                {c.marketingConsentBefore}{' '}
+                <strong>{LEGAL_NAME}</strong>{c.smsConsentMid}{' '}
+                <strong>HELP</strong>{' '}{c.smsConsentHelp}{' '}
+                <strong>STOP</strong>{' '}{c.smsConsentStop}
               </label>
             </div>
 
             {/* Legal links */}
             <p className="text-[11px] text-slate-400 text-center">
-              By submitting this form you agree to our{' '}
-              <Link href="/privacy" className="text-amber-600 hover:underline">Privacy Policy</Link>
-              {' '}and{' '}
-              <Link href="/terms" className="text-amber-600 hover:underline">Terms &amp; Conditions</Link>.
+              {c.legalPrefix}{' '}
+              <Link href="/privacy" className="text-amber-600 hover:underline">{c.privacyPolicy}</Link>
+              {' '}{c.legalAnd}{' '}
+              <Link href="/terms" className="text-amber-600 hover:underline">{c.termsConditions}</Link>.
             </p>
 
             {/* Error */}
@@ -254,7 +257,7 @@ export default function ContactPage() {
                          bg-[#005F4A] hover:bg-[#006B54] active:bg-[#005040]
                          transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {status === 'sending' ? 'Sending…' : 'Complete & Send'}
+              {status === 'sending' ? c.sending : c.submit}
             </button>
           </form>
         )}
@@ -282,7 +285,7 @@ export default function ContactPage() {
         <div className="mt-10 pt-6 border-t border-slate-200 flex items-center justify-between gap-4 text-xs text-slate-400">
           <span>© {YEAR} GasCap™ — All rights reserved.</span>
           <div className="flex gap-4">
-            <Link href="/privacy" className="hover:text-amber-600">Privacy Policy</Link>
+            <Link href="/privacy" className="hover:text-amber-600">{c.privacyPolicy}</Link>
             <Link href="/terms"   className="hover:text-amber-600">Terms</Link>
             <Link href="/help"    className="hover:text-amber-600">Help</Link>
           </div>
