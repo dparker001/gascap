@@ -714,6 +714,51 @@ const en = {
     tagline:  'This station supports GasCap™ — they believe in helping you fuel smarter.',
     dismiss:  'Dismiss',
   },
+
+  // ── Trial expiry banner ────────────────────────────────────────────────────
+  trialBanner: {
+    endsToday:    'Your Pro trial ends today',
+    endsDays:     (days: number) => `Your Pro trial ends in ${days} day${days === 1 ? '' : 's'}`,
+    keepFeatures: 'Keep fill-up tracking, MPG insights, and AI advisor — just $4.99/mo.',
+    lockInRate:   'Enjoying Pro? Lock in your rate before the trial ends.',
+    bonusEntries: '🎰 Upgrade now → earn +10 bonus draw entries every month',
+    upgradeNow:   'Upgrade now →',
+    remindLater:  'Remind me later',
+    dismiss:      'Dismiss',
+  },
+
+  // ── Engagement nudges ──────────────────────────────────────────────────────
+  engagementNudge: {
+    dismiss:            'Dismiss',
+    trialMidpointTitle: 'Making the most of your Pro trial?',
+    trialMidpointBody:  (days: number) => `${days} days left. Log fill-ups, add your odometer, and check the Charts tab — that's where Pro really shines.`,
+    trialMidpointCta:   'See what Pro includes →',
+    noFillupsTitle:     'Log your first fill-up',
+    noFillupsBody:      `You're on Pro trial but haven't logged a fill-up yet. Log one now and GasCap starts tracking your real cost-per-mile.`,
+    noFillupsCta:       'Log a fill-up →',
+    staleTitle:         'Your data is getting stale',
+    staleBody:          (days: number) => `It's been ${days} days since your last fill-up. Log your next one to keep your spending and MPG trends accurate.`,
+    staleCta:           'Log a fill-up →',
+    unlockMpgTitle:     'Unlock MPG tracking',
+    unlockMpgBody:      `You have fill-ups logged but no odometer readings. Add a mileage reading next time you fill up and your MPG trend chart unlocks automatically.`,
+    ambassadorTitle:    'Become a GasCap™ Ambassador',
+    ambassadorBody:     `You're an active user — share your link to earn free Pro months, unlock lifetime Pro access, and get bonus drawing entries every day.`,
+    ambassadorCta:      'Learn more →',
+  },
+
+  // ── Referral nudge ─────────────────────────────────────────────────────────
+  referralNudge: {
+    title:   'Nice — first fill-up logged! 🎉',
+    body:    'Share GasCap™ with a friend. When they upgrade to Pro, you earn 1 free Pro month — plus bonus drawing entries and a path to lifetime Pro access.',
+    cta:     'Get My Referral Link',
+    dismiss: 'Dismiss',
+  },
+
+  // ── Upgrade nudge (props-driven card) ──────────────────────────────────────
+  upgradeNudge: {
+    defaultCta: 'Upgrade to Pro →',
+    dismiss:    'Dismiss',
+  },
 };
 
 // ── Spanish ───────────────────────────────────────────────────────────────────
@@ -1387,6 +1432,51 @@ const es: typeof en = {
     badge:    'SOCIO',
     tagline:  'Esta estación apoya GasCap™ — creen en ayudarte a ahorrar en gasolina.',
     dismiss:  'Cerrar',
+  },
+
+  // ── Trial expiry banner ────────────────────────────────────────────────────
+  trialBanner: {
+    endsToday:    'Tu prueba Pro termina hoy',
+    endsDays:     (days: number) => `Tu prueba Pro termina en ${days} día${days === 1 ? '' : 's'}`,
+    keepFeatures: 'Conserva el registro de recargas, análisis de MPG y asesor de IA — solo $4.99/mes.',
+    lockInRate:   '¿Disfrutando Pro? Fija tu tarifa antes de que termine la prueba.',
+    bonusEntries: '🎰 Mejora ahora → gana +10 entradas de sorteo extra cada mes',
+    upgradeNow:   'Mejorar ahora →',
+    remindLater:  'Recuérdame después',
+    dismiss:      'Cerrar',
+  },
+
+  // ── Engagement nudges ──────────────────────────────────────────────────────
+  engagementNudge: {
+    dismiss:            'Cerrar',
+    trialMidpointTitle: '¿Aprovechando al máximo tu prueba Pro?',
+    trialMidpointBody:  (days: number) => `${days} días restantes. Registra recargas, agrega tu odómetro y revisa la pestaña de Gráficas — ahí es donde Pro realmente brilla.`,
+    trialMidpointCta:   'Ver qué incluye Pro →',
+    noFillupsTitle:     'Registra tu primera recarga',
+    noFillupsBody:      `Estás en prueba Pro pero aún no has registrado una recarga. Hazlo ahora y GasCap comenzará a rastrear tu costo real por milla.`,
+    noFillupsCta:       'Registrar recarga →',
+    staleTitle:         'Tus datos están desactualizados',
+    staleBody:          (days: number) => `Han pasado ${days} días desde tu última recarga. Registra la siguiente para mantener precisos tus gastos y tendencias de MPG.`,
+    staleCta:           'Registrar recarga →',
+    unlockMpgTitle:     'Desbloquea el rastreo de MPG',
+    unlockMpgBody:      `Tienes recargas registradas pero sin lecturas de odómetro. Agrega una lectura de millaje la próxima vez que recargues y tu gráfica de MPG se desbloqueará automáticamente.`,
+    ambassadorTitle:    'Conviértete en Embajador de GasCap™',
+    ambassadorBody:     `Eres un usuario activo — comparte tu enlace para ganar meses Pro gratis, desbloquear acceso Pro de por vida y obtener entradas de sorteo bonus cada día.`,
+    ambassadorCta:      'Más información →',
+  },
+
+  // ── Referral nudge ─────────────────────────────────────────────────────────
+  referralNudge: {
+    title:   '¡Primera recarga registrada! 🎉',
+    body:    'Comparte GasCap™ con un amigo. Cuando mejore a Pro, ganas 1 mes Pro gratis — más entradas de sorteo bonus y un camino hacia el acceso Pro de por vida.',
+    cta:     'Obtener Mi Enlace de Referido',
+    dismiss: 'Cerrar',
+  },
+
+  // ── Upgrade nudge (props-driven card) ──────────────────────────────────────
+  upgradeNudge: {
+    defaultCta: 'Mejorar a Pro →',
+    dismiss:    'Cerrar',
   },
 };
 

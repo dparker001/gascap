@@ -26,6 +26,9 @@ export async function GET(req: Request) {
   const type   = searchParams.get('type')?.trim()   || undefined;
   const limit  = Math.min(parseInt(searchParams.get('limit') ?? '200', 10), 500);
 
+  // Optional status filter — default to all; pass status=failed to see only errors
+  const statusFilter = new URL(req.url).searchParams.get('status')?.trim() || undefined;
+
   const logs = await prisma.emailLog.findMany({
     where: {
       ...(search ? {
@@ -34,7 +37,8 @@ export async function GET(req: Request) {
           { userName:  { contains: search, mode: 'insensitive' } },
         ],
       } : {}),
-      ...(type ? { type: { contains: type, mode: 'insensitive' } } : {}),
+      ...(type   ? { type:   { contains: type,   mode: 'insensitive' } } : {}),
+      ...(statusFilter ? { status: statusFilter } : {}),
     },
     orderBy: { sentAt: 'desc' },
     take:    limit,

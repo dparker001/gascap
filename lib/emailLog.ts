@@ -48,12 +48,49 @@ export async function logEmail(entry: EmailLogEntry): Promise<void> {
         type:      entry.type,
         subject:   entry.subject,
         sentAt:    new Date().toISOString(),
+        status:    'sent',
       },
     });
   } catch (err) {
     console.error('[emailLog] Failed to write log entry:', err);
   }
 }
+
+/**
+ * Record a failed email send. Never throws.
+ * Creates a log row with status='failed' so admin can see and retry it.
+ */
+export async function logEmailError(
+  entry: EmailLogEntry,
+  error: unknown,
+): Promise<void> {
+  const errMsg = error instanceof Error ? error.message : String(error);
+  try {
+    await prisma.emailLog.create({
+      data: {
+        id:        randomUUID(),
+        userId:    entry.userId,
+        userEmail: entry.userEmail,
+        userName:  entry.userName,
+        type:      entry.type,
+        subject:   entry.subject,
+        sentAt:    new Date().toISOString(),
+        status:    'failed',
+        error:     errMsg.slice(0, 1000), // cap at 1 000 chars
+      },
+    });
+  } catch (err) {
+    console.error('[emailLog] Failed to write error log entry:', err);
+  }
+}
+
+/** Known subjects for each campaign step — used when logging errors */
+export const CAMPAIGN_STEP_META: Record<number, { type: string; subject: string }> = {
+  2: { type: 'trial-d2', subject: '4 Pro features worth trying this week ⚡' },
+  3: { type: 'trial-d3', subject: '10 days in — here are the features GasCap™ power users love 📊' },
+  4: { type: 'trial-d4', subject: '9 days left on your Pro trial — lock in the best price ⏰' },
+  5: { type: 'trial-d5', subject: 'Your GasCap™ Pro trial ends in 48 hours 🚨' },
+};
 
 /** Human-readable label for each email type — used in admin panel badges */
 export function emailTypeLabel(type: string): string {

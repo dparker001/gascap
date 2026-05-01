@@ -6,6 +6,7 @@
  * to the Share tab where the referral link lives.
  */
 import { useState, useEffect } from 'react';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 const DISMISS_KEY = 'gascap_referral_nudge_dismissed';
 
@@ -14,6 +15,7 @@ interface Props {
 }
 
 export default function ReferralNudge({ fillupCount }: Props) {
+  const { t } = useTranslation();
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -49,12 +51,10 @@ export default function ReferralNudge({ fillupCount }: Props) {
         <span className="text-xl flex-shrink-0 mt-0.5">🔗</span>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-black text-amber-900 leading-tight">
-            Nice — first fill-up logged! 🎉
+            {t.referralNudge.title}
           </p>
           <p className="text-xs text-amber-800 mt-0.5 leading-relaxed">
-            Share GasCap™ with a friend. When they upgrade to Pro, you earn{' '}
-            <strong>1 free Pro month</strong> — plus bonus drawing entries and a path to{' '}
-            <strong>lifetime Pro access</strong>.
+            {t.referralNudge.body}
           </p>
           <button
             onClick={openShareTab}
@@ -62,12 +62,12 @@ export default function ReferralNudge({ fillupCount }: Props) {
                        text-white text-xs font-black px-3 py-1.5 rounded-xl transition-colors"
           >
             <span>📤</span>
-            Get My Referral Link
+            {t.referralNudge.cta}
           </button>
         </div>
         <button
           onClick={dismiss}
-          aria-label="Dismiss"
+          aria-label={t.referralNudge.dismiss}
           className="flex-shrink-0 text-amber-400 hover:text-amber-600 transition-colors text-lg leading-none mt-0.5"
         >
           ×

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 interface UpgradeNudgeProps {
   emoji:    string;
@@ -12,9 +13,12 @@ interface UpgradeNudgeProps {
 
 export default function UpgradeNudge({
   emoji, headline, body,
-  ctaText = 'Upgrade to Pro →',
+  ctaText,
   ctaHref = '/#pricing',
 }: UpgradeNudgeProps) {
+  const { t } = useTranslation();
+  const resolvedCta = ctaText ?? t.upgradeNudge.defaultCta;
+
   return (
     <div data-nudge className="mt-3 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200
                     rounded-2xl px-4 py-3.5 flex items-start gap-3">
@@ -27,13 +31,13 @@ export default function UpgradeNudge({
           className="inline-block mt-2 px-4 py-1.5 bg-amber-500 hover:bg-amber-400
                      text-white text-xs font-black rounded-xl transition-colors"
         >
-          {ctaText}
+          {resolvedCta}
         </Link>
       </div>
       <button
         onClick={(e) => (e.currentTarget.closest('[data-nudge]') as HTMLElement | null)?.remove()}
         className="flex-shrink-0 text-amber-400 hover:text-amber-600 transition-colors text-lg leading-none mt-0.5"
-        aria-label="Dismiss"
+        aria-label={t.upgradeNudge.dismiss}
       >
         ×
       </button>

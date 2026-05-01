@@ -16,12 +16,14 @@
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 const WARN_DAYS        = 15;  // show banner when ≤ this many days remain
 const DISMISS_KEY      = 'gc_trial_banner_dismissed';
 
 export default function TrialExpiryBanner() {
   const { data: session, status } = useSession();
+  const { t } = useTranslation();
   const [dismissed, setDismissed] = useState(true); // start hidden to avoid flash
 
   useEffect(() => {
@@ -52,8 +54,7 @@ export default function TrialExpiryBanner() {
   const isWarning  = daysLeft <= 5;   // amber — 2–5 days
   // else gentle     = 6–15 days (teal/green)
 
-  const icon     = isUrgent ? '⏰' : isWarning ? '⚡' : '🗓️';
-  const dayLabel = isUrgent ? 'today' : `in ${daysLeft} day${daysLeft === 1 ? '' : 's'}`;
+  const icon   = isUrgent ? '⏰' : isWarning ? '⚡' : '🗓️';
 
   const colors = isUrgent
     ? { bg: 'bg-red-50',   border: 'border-red-200',   title: 'text-red-800',   body: 'text-red-700',   btn: 'bg-red-600 hover:bg-red-500',     link: 'text-red-500',   x: 'text-red-300 hover:text-red-500'   }
@@ -62,12 +63,12 @@ export default function TrialExpiryBanner() {
     : { bg: 'bg-teal-50',  border: 'border-teal-200',  title: 'text-teal-800',  body: 'text-teal-700',  btn: 'bg-teal-600 hover:bg-teal-500',   link: 'text-teal-600',  x: 'text-teal-300 hover:text-teal-500'  };
 
   const headline = isUrgent
-    ? `Your Pro trial ends today`
-    : `Your Pro trial ends ${dayLabel}`;
+    ? t.trialBanner.endsToday
+    : t.trialBanner.endsDays(daysLeft);
 
   const subline = isUrgent || isWarning
-    ? 'Keep fill-up tracking, MPG insights, and AI advisor — just $4.99/mo.'
-    : `Enjoying Pro? Lock in your rate before the trial ends.`;
+    ? t.trialBanner.keepFeatures
+    : t.trialBanner.lockInRate;
 
   function handleDismiss() {
     sessionStorage.setItem(DISMISS_KEY, '1');
@@ -89,7 +90,7 @@ export default function TrialExpiryBanner() {
         <p className={`text-xs font-black leading-snug ${colors.title}`}>{headline}</p>
         <p className={`text-[11px] mt-0.5 leading-relaxed ${colors.body}`}>{subline}</p>
         <p className={`text-[11px] mt-0.5 font-semibold leading-relaxed ${colors.body}`}>
-          🎰 Upgrade now → earn +10 bonus draw entries every month
+          {t.trialBanner.bonusEntries}
         </p>
 
         <div className="flex items-center gap-3 mt-2">
@@ -98,14 +99,14 @@ export default function TrialExpiryBanner() {
             className={`px-3 py-1.5 rounded-xl text-xs font-black text-white
                         transition-colors whitespace-nowrap ${colors.btn}`}
           >
-            Upgrade now →
+            {t.trialBanner.upgradeNow}
           </Link>
           <button
             type="button"
             onClick={handleDismiss}
             className={`text-[11px] font-semibold hover:underline ${colors.link}`}
           >
-            Remind me later
+            {t.trialBanner.remindLater}
           </button>
         </div>
       </div>
@@ -114,7 +115,7 @@ export default function TrialExpiryBanner() {
       <button
         type="button"
         onClick={handleDismiss}
-        aria-label="Dismiss"
+        aria-label={t.trialBanner.dismiss}
         className={`flex-shrink-0 text-lg leading-none mt-0.5 transition-colors ${colors.x}`}
       >
         ×

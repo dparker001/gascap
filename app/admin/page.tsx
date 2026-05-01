@@ -10,6 +10,8 @@ interface EmailLogEntry {
   type:      string;
   subject:   string;
   sentAt:    string;
+  status?:   string;   // "sent" | "failed" | "retried"
+  error?:    string;   // populated when status === "failed"
 }
 
 interface FeedbackItem {
@@ -145,11 +147,13 @@ export default function AdminPage() {
   const [feedback,  setFeedback]  = useState<FeedbackItem[]>([]);
   const [fbOpen,    setFbOpen]    = useState(false);
   // ── Email Activity Log ────────────────────────────────────────────────
-  const [emailLogOpen,    setEmailLogOpen]    = useState(false);
-  const [emailLogEntries, setEmailLogEntries] = useState<EmailLogEntry[]>([]);
-  const [emailLogSearch,  setEmailLogSearch]  = useState('');
-  const [emailLogType,    setEmailLogType]    = useState('');
-  const [emailLogLoading, setEmailLogLoading] = useState(false);
+  const [emailLogOpen,       setEmailLogOpen]       = useState(false);
+  const [emailLogEntries,    setEmailLogEntries]    = useState<EmailLogEntry[]>([]);
+  const [emailLogSearch,     setEmailLogSearch]     = useState('');
+  const [emailLogType,       setEmailLogType]       = useState('');
+  const [emailLogStatus,     setEmailLogStatus]     = useState('');   // '' | 'failed'
+  const [emailLogLoading,    setEmailLogLoading]    = useState(false);
+  const [emailRetryLoading,  setEmailRetryLoading]  = useState<string | null>(null); // logId being retried
   // ── GHL Backfill ──────────────────────────────────────────────────────
   const [backfillLoading, setBackfillLoading] = useState(false);
   const [backfillMsg,     setBackfillMsg]     = useState('');
@@ -351,11 +355,12 @@ export default function AdminPage() {
     setFeedback((prev) => prev.filter((f) => f.id !== id));
   }
 
-  async function loadEmailLog(search = emailLogSearch, type = emailLogType) {
+  async function loadEmailLog(search = emailLogSearch, type = emailLogType, status = emailLogStatus) {
     setEmailLogLoading(true);
-    const params = new URLSearchParams({ limit: '200' });
+    const params = new URLSearchParams({ limit: '300' });
     if (search.trim()) params.set('search', search.trim());
     if (type.trim())   params.set('type',   type.trim());
+    if (status.trim()) params.set('status', status.trim());
     try {
       const res = await fetch(`/api/admin/email-log?${params}`, {
         headers: { 'x-admin-password': savedPw },
@@ -366,6 +371,30 @@ export default function AdminPage() {
       }
     } finally {
       setEmailLogLoading(false);
+    }
+  }
+
+  async function handleEmailRetry(logId: string) {
+    setEmailRetryLoading(logId);
+    try {
+      const res = await fetch('/api/admin/email-retry', {
+        method:  'POST',
+        headers: { 'x-admin-password': savedPw, 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ logId }),
+      });
+      const data = await res.json() as { ok?: boolean; message?: string; error?: string };
+      if (res.ok) {
+        setMsg(`✅ ${data.message ?? 'Email resent'}`);
+        // Refresh the log to reflect the updated status
+        void loadEmailLog(emailLogSearch, emailLogType, emailLogStatus);
+      } else {
+        setMsg(`❌ Retry failed: ${data.error ?? 'Unknown error'}`);
+      }
+    } catch {
+      setMsg('❌ Network error during retry');
+    } finally {
+      setEmailRetryLoading(null);
+      setTimeout(() => setMsg(''), 4000);
     }
   }
 
@@ -1129,13 +1158,13 @@ export default function AdminPage() {
           {emailLogOpen && (
             <div className="border-t border-slate-100 px-5 py-4 space-y-3">
               {/* Filters */}
-              <div className="flex flex-col sm:flex-row gap-2">
+              <div className="flex flex-col sm:flex-row gap-2 flex-wrap">
                 <input
                   type="text"
                   placeholder="Search by name or email…"
                   value={emailLogSearch}
                   onChange={(e) => setEmailLogSearch(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && loadEmailLog(emailLogSearch, emailLogType)}
+                  onKeyDown={(e) => e.key === 'Enter' && loadEmailLog(emailLogSearch, emailLogType, emailLogStatus)}
                   className="flex-1 border border-slate-200 rounded-xl px-3 py-2 text-sm
                              focus:outline-none focus:ring-2 focus:ring-amber-400 bg-slate-50"
                 />
@@ -1183,17 +1212,37 @@ export default function AdminPage() {
                     <option value="comp-pro-for-life">Comp Pro Life</option>
                   </optgroup>
                 </select>
+                {/* Errors-only toggle */}
                 <button
-                  onClick={() => loadEmailLog(emailLogSearch, emailLogType)}
+                  onClick={() => {
+                    const next = emailLogStatus === 'failed' ? '' : 'failed';
+                    setEmailLogStatus(next);
+                    loadEmailLog(emailLogSearch, emailLogType, next);
+                  }}
+                  className={`px-3 py-2 rounded-xl text-xs font-bold border transition-colors whitespace-nowrap
+                    ${emailLogStatus === 'failed'
+                      ? 'bg-red-100 text-red-700 border-red-300'
+                      : 'bg-white text-slate-500 border-slate-200 hover:bg-red-50 hover:text-red-600'
+                    }`}
+                >
+                  ❌ Errors only
+                </button>
+                <button
+                  onClick={() => loadEmailLog(emailLogSearch, emailLogType, emailLogStatus)}
                   disabled={emailLogLoading}
                   className="px-4 py-2 rounded-xl bg-navy-700 hover:bg-navy-600 text-white
                              text-xs font-bold transition-colors disabled:opacity-50 whitespace-nowrap"
                 >
                   {emailLogLoading ? 'Loading…' : 'Search'}
                 </button>
-                {(emailLogSearch || emailLogType) && (
+                {(emailLogSearch || emailLogType || emailLogStatus) && (
                   <button
-                    onClick={() => { setEmailLogSearch(''); setEmailLogType(''); loadEmailLog('', ''); }}
+                    onClick={() => {
+                      setEmailLogSearch('');
+                      setEmailLogType('');
+                      setEmailLogStatus('');
+                      loadEmailLog('', '', '');
+                    }}
                     className="text-xs text-slate-400 hover:text-red-500 transition-colors whitespace-nowrap"
                   >
                     × Clear
@@ -1206,43 +1255,84 @@ export default function AdminPage() {
                 <p className="text-sm text-slate-400 text-center py-4">Loading…</p>
               ) : emailLogEntries.length === 0 ? (
                 <p className="text-sm text-slate-400 text-center py-4">
-                  No email records yet — emails will appear here as they are sent.
+                  {emailLogStatus === 'failed'
+                    ? '✅ No failed emails — all clear!'
+                    : 'No email records yet — emails will appear here as they are sent.'}
                 </p>
               ) : (
                 <div className="rounded-xl border border-slate-100 overflow-hidden">
                   <div className="divide-y divide-slate-50">
-                    {emailLogEntries.map((e) => (
-                      <div key={e.id} className="flex items-start gap-3 px-4 py-2.5 hover:bg-slate-50">
-                        {/* Timestamp */}
-                        <div className="w-28 flex-shrink-0">
-                          <p className="text-[10px] font-semibold text-slate-500 whitespace-nowrap">
-                            {new Date(e.sentAt).toLocaleDateString()}
-                          </p>
-                          <p className="text-[10px] text-slate-400 whitespace-nowrap">
-                            {new Date(e.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </p>
-                        </div>
+                    {emailLogEntries.map((e) => {
+                      const isFailed  = e.status === 'failed';
+                      const isRetried = e.status === 'retried';
+                      return (
+                        <div
+                          key={e.id}
+                          className={`flex items-start gap-3 px-4 py-2.5 hover:bg-slate-50
+                            ${isFailed ? 'bg-red-50 hover:bg-red-100' : ''}`}
+                        >
+                          {/* Timestamp */}
+                          <div className="w-28 flex-shrink-0">
+                            <p className="text-[10px] font-semibold text-slate-500 whitespace-nowrap">
+                              {new Date(e.sentAt).toLocaleDateString()}
+                            </p>
+                            <p className="text-[10px] text-slate-400 whitespace-nowrap">
+                              {new Date(e.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                          </div>
 
-                        {/* Type badge */}
-                        <span className={`flex-shrink-0 text-[10px] font-black px-2 py-0.5 rounded-full whitespace-nowrap
-                                          mt-0.5 ${emailTypeBadgeColor(e.type)}`}>
-                          {emailTypeLabel(e.type)}
-                        </span>
+                          {/* Type badge + status */}
+                          <div className="flex flex-col gap-1 flex-shrink-0 mt-0.5">
+                            <span className={`text-[10px] font-black px-2 py-0.5 rounded-full whitespace-nowrap
+                                              ${emailTypeBadgeColor(e.type)}`}>
+                              {emailTypeLabel(e.type)}
+                            </span>
+                            {isFailed && (
+                              <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-red-100 text-red-700 whitespace-nowrap">
+                                FAILED
+                              </span>
+                            )}
+                            {isRetried && (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 whitespace-nowrap">
+                                retried
+                              </span>
+                            )}
+                          </div>
 
-                        {/* User + subject */}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold text-slate-700 truncate">{e.userName}</p>
-                          <p className="text-[10px] text-slate-500 truncate">{e.userEmail}</p>
-                          <p className="text-[10px] text-slate-400 truncate mt-0.5 italic">{e.subject}</p>
+                          {/* User + subject + error */}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-semibold text-slate-700 truncate">{e.userName}</p>
+                            <p className="text-[10px] text-slate-500 truncate">{e.userEmail}</p>
+                            <p className="text-[10px] text-slate-400 truncate mt-0.5 italic">{e.subject}</p>
+                            {isFailed && e.error && (
+                              <p className="text-[10px] text-red-600 mt-1 font-mono break-all leading-tight">
+                                {e.error.slice(0, 120)}
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Retry button — only for failed trial drip steps */}
+                          {isFailed && e.type.startsWith('trial-d') && e.type !== 'trial-d1' && (
+                            <button
+                              onClick={() => void handleEmailRetry(e.id)}
+                              disabled={emailRetryLoading === e.id}
+                              className="flex-shrink-0 px-3 py-1.5 rounded-xl bg-red-600 hover:bg-red-500
+                                         text-white text-[10px] font-black transition-colors disabled:opacity-50
+                                         whitespace-nowrap"
+                            >
+                              {emailRetryLoading === e.id ? 'Sending…' : 'Retry ↗'}
+                            </button>
+                          )}
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
 
               <p className="text-[10px] text-slate-400">
-                Showing {emailLogEntries.length} most recent sends
+                Showing {emailLogEntries.length} records
+                {emailLogStatus === 'failed' && ' · errors only'}
                 {emailLogSearch && ` · filtered by "${emailLogSearch}"`}
                 {emailLogType && ` · type: ${emailTypeLabel(emailLogType)}`}
               </p>

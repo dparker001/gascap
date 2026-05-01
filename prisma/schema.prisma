@@ -143,10 +143,13 @@ model EmailLog {
   type      String  // e.g. 'trial-d1', 'referral-credit', 'milestone-fillup10', 'paid-p1'
   subject   String
   sentAt    String  // ISO timestamp
+  status    String  @default("sent")  // "sent" | "failed"
+  error     String?                   // error detail when status = "failed"
 
   @@index([userId])
   @@index([sentAt])
   @@index([type])
+  @@index([status])
 }
 
 model GiveawayDraw {

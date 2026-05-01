@@ -16,6 +16,7 @@ import { NextResponse } from 'next/server';
 import { getUsersPendingCampaignStep, advanceEmailCampaignStep, getAllUsers } from '@/lib/users';
 import { sendCampaignEmail }  from '@/lib/emailCampaign';
 import { sendPushNotification } from '@/lib/oneSignal';
+import { logEmailError, CAMPAIGN_STEP_META } from '@/lib/emailLog';
 
 const STEPS: { step: number; minDays: number; label: string }[] = [
   { step: 2, minDays: 3,  label: 'Day-3 feature deep-dive'    },
@@ -54,6 +55,14 @@ export async function GET(req: Request) {
       } catch (err) {
         console.error(`[Campaign] Step ${step} failed for ${user.email}:`, err);
         errors++;
+        // Persist the failure so it appears in the admin email activity log
+        const meta = CAMPAIGN_STEP_META[step];
+        if (meta) {
+          await logEmailError(
+            { userId: user.id, userEmail: user.email, userName: user.name, type: meta.type, subject: meta.subject },
+            err,
+          );
+        }
       }
     }
 

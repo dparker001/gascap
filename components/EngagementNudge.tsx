@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 interface NudgeData {
   plan:               string;
@@ -156,6 +157,7 @@ function dismiss(id: string, ttl: number | 'permanent') {
 
 export default function EngagementNudge() {
   const { data: session, status } = useSession();
+  const { t } = useTranslation();
   const [nudgeData,   setNudgeData]   = useState<NudgeData | null>(null);
   const [dismissed,   setDismissed]   = useState(false);
   const [activeNudge, setActiveNudge] = useState<NudgeDef | null>(null);
@@ -179,6 +181,21 @@ export default function EngagementNudge() {
 
   const d   = nudgeData!;
   const c   = activeNudge.color;
+  const en  = t.engagementNudge;
+
+  // Translated headline / body / CTA per nudge id
+  const localizedContent: Record<string, { headline: string; body: string; ctaLabel?: string }> = {
+    trial_midpoint:   { headline: en.trialMidpointTitle, body: en.trialMidpointBody(d.trialDaysLeft),          ctaLabel: en.trialMidpointCta },
+    trial_no_fillups: { headline: en.noFillupsTitle,     body: en.noFillupsBody,                                ctaLabel: en.noFillupsCta },
+    inactive_fillup:  { headline: en.staleTitle,         body: en.staleBody(d.daysSinceLastFillup ?? 0),        ctaLabel: en.staleCta },
+    unlock_mpg:       { headline: en.unlockMpgTitle,     body: en.unlockMpgBody },
+    ambassador_invite:{ headline: en.ambassadorTitle,    body: en.ambassadorBody,                               ctaLabel: en.ambassadorCta },
+  };
+  const content = localizedContent[activeNudge.id] ?? {
+    headline: activeNudge.headline,
+    body:     activeNudge.body(d),
+    ctaLabel: activeNudge.cta?.label,
+  };
 
   function handleDismiss() {
     dismiss(activeNudge!.id, activeNudge!.dismissTtl);
@@ -205,15 +222,15 @@ export default function EngagementNudge() {
 
           {/* Content */}
           <div className="flex-1 min-w-0">
-            <p className={`text-sm font-black ${c.title} leading-tight`}>{activeNudge.headline}</p>
-            <p className={`text-xs ${c.body} mt-0.5 leading-relaxed`}>{activeNudge.body(d)}</p>
+            <p className={`text-sm font-black ${c.title} leading-tight`}>{content.headline}</p>
+            <p className={`text-xs ${c.body} mt-0.5 leading-relaxed`}>{content.body}</p>
 
-            {activeNudge.cta && (
+            {activeNudge.cta && content.ctaLabel && (
               <a
                 href={activeNudge.cta.href}
                 className={`inline-block mt-2 px-4 py-1.5 rounded-xl text-xs font-bold transition-colors ${c.btn}`}
               >
-                {activeNudge.cta.label}
+                {content.ctaLabel}
               </a>
             )}
           </div>
@@ -222,7 +239,7 @@ export default function EngagementNudge() {
           <button
             onClick={handleDismiss}
             className={`flex-shrink-0 mt-0.5 ${c.dismiss} transition-colors`}
-            aria-label="Dismiss"
+            aria-label={en.dismiss}
           >
             <svg viewBox="0 0 16 16" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <path d="M4 4l8 8M12 4l-8 8" />
