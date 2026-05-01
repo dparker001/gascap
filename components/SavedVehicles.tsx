@@ -17,6 +17,7 @@ export interface Vehicle {
   model?:           string;
   trim?:            string;
   fuelType?:        string;
+  epaId?:           string;
   currentOdometer?: number;
   vehicleSpecs?:    VehicleSpecs;
 }

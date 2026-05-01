@@ -168,61 +168,21 @@ interface MpgResolution {
   label: string;
 }
 
-/**
- * Typical combined MPG by NHTSA body-class string (partial-match friendly).
- * Used as a last-resort fallback when no fill-up history or EPA data exists.
- */
-const BODY_CLASS_MPG: [string, number][] = [
-  ['hybrid',       52],
-  ['electric',     0 ],  // skip — MPG doesn't apply
-  ['sedan',        30],
-  ['saloon',       30],
-  ['hatchback',    30],
-  ['liftback',     30],
-  ['coupe',        27],
-  ['convertible',  26],
-  ['cabriolet',    26],
-  ['roadster',     26],
-  ['wagon',        28],
-  ['estate',       28],
-  ['crossover',    27],
-  ['cuv',          27],
-  ['suv',          23],
-  ['multi-purpose',22],
-  ['mpv',          22],
-  ['minivan',      22],
-  ['van',          20],
-  ['pickup',       19],
-  ['truck',        18],
-];
-
-function estimateMpgFromBodyClass(bodyClass: string): number | null {
-  const lower = bodyClass.toLowerCase();
-  for (const [keyword, mpg] of BODY_CLASS_MPG) {
-    if (lower.includes(keyword)) return mpg === 0 ? null : mpg;
-  }
-  return null;
-}
 
 function resolveMpg(v: Vehicle, avgMpgByVehicleId: Record<string, number>): MpgResolution {
-  // 1. Best: actual fill-up history average
-  const historyMpg = avgMpgByVehicleId[v.id];
-  if (historyMpg != null) {
-    return { mpg: historyMpg, label: '📊 Your avg from fill-up log' };
-  }
-  // 2. EPA official combined estimate
+  // 1. EPA official combined estimate already stored in vehicleSpecs
+  //    (takes priority — avoids a redundant /api/mpg-lookup network call)
   const epaMpg = v.vehicleSpecs?.combMpg;
   if (epaMpg != null) {
     return { mpg: epaMpg, label: '📋 EPA combined estimate' };
   }
-  // 3. Rough estimate from vehicle body class (NHTSA bodyClass field)
-  const bodyClass = v.vehicleSpecs?.bodyClass ?? v.vehicleSpecs?.vehicleType ?? '';
-  if (bodyClass) {
-    const estMpg = estimateMpgFromBodyClass(bodyClass);
-    if (estMpg != null) {
-      return { mpg: estMpg, label: `📊 Estimated (${bodyClass}) — add fill-ups for your actual MPG` };
-    }
+  // 2. Fill-up history average — only when the value is in a believable range
+  //    (guards against test data / sporadic odometer entries producing wild MPG)
+  const historyMpg = avgMpgByVehicleId[v.id];
+  if (historyMpg != null && historyMpg >= 5 && historyMpg <= 200) {
+    return { mpg: historyMpg, label: '📊 Your avg from fill-up log' };
   }
+  // 3. No stored data — caller should perform a live EPA lookup via /api/mpg-lookup
   return { mpg: null, label: '' };
 }
 
@@ -371,28 +331,31 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
       setMpg(String(resolvedMpg));
       setMpgSourceLabel(label);
       setMpgLookingUp(false);
-    } else if (v.year && v.make && v.model) {
-      // No fill-up history or EPA data — look up from FuelEconomy.gov
+    } else if (v.epaId || (v.year && v.make && v.model)) {
+      // No stored EPA data — fetch live from FuelEconomy.gov.
+      // Prefer epaId (exact trim) over year/make/model (averaged across trims).
       setMpg('');
       setMpgSourceLabel('');
       setMpgLookingUp(true);
       try {
-        const res  = await fetch(
-          `/api/mpg-lookup?year=${encodeURIComponent(v.year)}&make=${encodeURIComponent(v.make)}&model=${encodeURIComponent(v.model)}`,
-        );
+        const qs = v.epaId
+          ? `epaId=${encodeURIComponent(v.epaId)}`
+          : `year=${encodeURIComponent(v.year!)}&make=${encodeURIComponent(v.make!)}&model=${encodeURIComponent(v.model!)}`;
+        const res  = await fetch(`/api/mpg-lookup?${qs}`);
         const data = await res.json() as {
           ok: boolean; combMpg?: number; cityMpg?: number; hwyMpg?: number;
         };
         if (data.ok && data.combMpg) {
           setMpg(String(data.combMpg));
-          setMpgSourceLabel(`🔍 Typical for ${v.year} ${v.make} ${v.model}`);
+          const vehicleLabel = [v.year, v.make, v.model].filter(Boolean).join(' ');
+          setMpgSourceLabel(`📋 EPA estimate${vehicleLabel ? ` · ${vehicleLabel}` : ''}`);
           setMpgOptions({
             comb: data.combMpg,
             city: data.cityMpg ?? data.combMpg,
             hwy:  data.hwyMpg  ?? data.combMpg,
           });
         }
-      } catch { /* ignore — user can enter MPG manually */ }
+      } catch { /* ignore — field stays empty, user can pick a toggle value */ }
       finally { setMpgLookingUp(false); }
     } else {
       setMpg('');
@@ -903,16 +866,25 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
           {/* ── Vehicle specs row ── */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <p className="field-label">Your MPG</p>
+              <p className="field-label">
+                {garageVehicleLocked ? 'EPA Fuel Economy' : 'Your MPG'}
+              </p>
               <div className="relative">
                 <input
                   type="number" inputMode="decimal"
-                  className={errors.mpg ? 'input-field-error' : 'input-field'}
-                  placeholder={mpgLookingUp ? '' : 'e.g. 30'}
+                  autoComplete="off"
+                  className={
+                    errors.mpg
+                      ? 'input-field-error'
+                      : garageVehicleLocked
+                        ? 'input-field bg-slate-50 text-slate-400 cursor-not-allowed'
+                        : 'input-field'
+                  }
+                  placeholder={mpgLookingUp ? '' : garageVehicleLocked ? '—' : 'e.g. 30'}
                   value={mpg}
                   min="1" step="0.5"
-                  readOnly={mpgLookingUp}
-                  onChange={(e) => { setMpg(e.target.value); setMpgSourceLabel(''); setMpgOptions(null); setResult(null); }}
+                  readOnly={garageVehicleLocked || mpgLookingUp}
+                  onChange={garageVehicleLocked ? undefined : (e) => { setMpg(e.target.value); setMpgSourceLabel(''); setMpgOptions(null); setResult(null); }}
                   aria-label="Miles per gallon"
                 />
                 {mpgLookingUp ? (
@@ -926,10 +898,14 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
               {errors.mpg && <p className="mt-1 text-xs text-red-500">{errors.mpg}</p>}
               {mpgLookingUp ? (
                 <p className="text-[10px] text-amber-500 mt-1 font-medium leading-snug animate-pulse">
-                  Looking up typical MPG…
+                  Looking up EPA fuel economy…
                 </p>
               ) : mpgSourceLabel ? (
                 <p className="text-[10px] text-amber-600 mt-1 font-medium leading-snug">{mpgSourceLabel}</p>
+              ) : garageVehicleLocked ? (
+                <p className="text-[10px] text-slate-400 mt-1 leading-snug">
+                  🔍 Fetching EPA data…
+                </p>
               ) : (
                 <p className="text-[10px] text-slate-400 mt-1 leading-snug">
                   💡 Select a vehicle above for an estimate, or check your owner&apos;s manual.
@@ -982,6 +958,7 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
                         ? 'input-field bg-slate-50 text-slate-400 cursor-not-allowed'
                         : 'input-field'
                   }
+                  autoComplete="off"
                   placeholder="e.g. 15"
                   value={tankGal}
                   min="1" step="0.5"
