@@ -52,11 +52,11 @@ export default function FeedbackButton() {
           Desktop : full pill with label, bottom-left (clear of GHL chat widget on right) */}
       <button
         onClick={() => setOpen(true)}
-        className="fixed bottom-5 left-4 z-50 flex items-center justify-center
+        className="fixed bottom-5 right-4 z-50 flex items-center justify-center
                    bg-navy-700 hover:bg-navy-600 text-white font-bold rounded-full
                    shadow-lg transition-all hover:scale-105 active:scale-95
                    w-10 h-10 text-base
-                   md:w-auto md:h-auto md:text-xs md:gap-1.5 md:px-3 md:py-2.5"
+                   md:right-auto md:left-4 md:w-auto md:h-auto md:text-xs md:gap-1.5 md:px-3 md:py-2.5"
         aria-label={t.feedback.ariaLabel}
       >
         <span>💬</span>
