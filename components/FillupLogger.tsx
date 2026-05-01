@@ -307,12 +307,17 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
 
       {/* Odometer row — full width */}
       <div>
-        <label className="field-label">Odometer <span className="text-[10px] font-bold text-green-600 bg-green-50 rounded px-1 py-0.5">MPG tracking</span></label>
+        <label className="field-label">
+          Odometer{' '}
+          <span className="text-slate-400 font-normal">(optional)</span>
+          {' '}
+          <span className="text-[10px] font-bold text-green-600 bg-green-50 rounded px-1 py-0.5">MPG tracking</span>
+        </label>
         <div className="relative">
           <input
             type="number" inputMode="numeric"
             className="input-field text-sm pr-10"
-            placeholder="e.g. 42500"
+            placeholder="e.g. 42500 — skip if you don't track every fill-up"
             value={odometer}
             min="0" step="1"
             onChange={(e) => setOdometer(e.target.value)}
@@ -320,7 +325,6 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">mi</span>
         </div>
       </div>
-
 
       {/* Gas Station */}
       <div>
@@ -377,7 +381,10 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
 
       {/* Odometer tip */}
       <p className="text-[10px] text-slate-400 leading-relaxed">
-        💡 Add your odometer reading each fill-up to unlock <span className="font-semibold text-amber-600">MPG tracking</span>.
+        💡 <span className="font-semibold text-slate-500">Optional:</span> Log your odometer on every fill-up to unlock{' '}
+        <span className="font-semibold text-amber-600">real-world MPG tracking</span>.{' '}
+        After 4 consecutive fill-ups with odometer readings, your personal avg MPG will appear in the Trip Planner.
+        Skip it if you don&apos;t track every fill-up — the app uses EPA estimates instead.
       </p>
 
       {warnings.length > 0 && (
