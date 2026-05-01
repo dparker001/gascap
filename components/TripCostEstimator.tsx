@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useSession }                        from 'next-auth/react';
 import Link                                  from 'next/link';
+import FuelGauge                             from './FuelGauge';
 import GasPriceLookup                        from './GasPriceLookup';
 import GoogleMapsHandoffButton               from './GoogleMapsHandoffButton';
 import WazeDeepLinkButton                    from './WazeDeepLinkButton';
@@ -144,16 +145,62 @@ interface MpgResolution {
   label: string;
 }
 
+/**
+ * Typical combined MPG by NHTSA body-class string (partial-match friendly).
+ * Used as a last-resort fallback when no fill-up history or EPA data exists.
+ */
+const BODY_CLASS_MPG: [string, number][] = [
+  ['hybrid',       52],
+  ['electric',     0 ],  // skip — MPG doesn't apply
+  ['sedan',        30],
+  ['saloon',       30],
+  ['hatchback',    30],
+  ['liftback',     30],
+  ['coupe',        27],
+  ['convertible',  26],
+  ['cabriolet',    26],
+  ['roadster',     26],
+  ['wagon',        28],
+  ['estate',       28],
+  ['crossover',    27],
+  ['cuv',          27],
+  ['suv',          23],
+  ['multi-purpose',22],
+  ['mpv',          22],
+  ['minivan',      22],
+  ['van',          20],
+  ['pickup',       19],
+  ['truck',        18],
+];
+
+function estimateMpgFromBodyClass(bodyClass: string): number | null {
+  const lower = bodyClass.toLowerCase();
+  for (const [keyword, mpg] of BODY_CLASS_MPG) {
+    if (lower.includes(keyword)) return mpg === 0 ? null : mpg;
+  }
+  return null;
+}
+
 function resolveMpg(v: Vehicle, avgMpgByVehicleId: Record<string, number>): MpgResolution {
+  // 1. Best: actual fill-up history average
   const historyMpg = avgMpgByVehicleId[v.id];
   if (historyMpg != null) {
-    return { mpg: historyMpg, label: '📊 Your avg from fillup log' };
+    return { mpg: historyMpg, label: '📊 Your avg from fill-up log' };
   }
+  // 2. EPA official combined estimate
   const epaMpg = v.vehicleSpecs?.combMpg;
   if (epaMpg != null) {
-    return { mpg: epaMpg, label: '📋 EPA estimate' };
+    return { mpg: epaMpg, label: '📋 EPA combined estimate' };
   }
-  return { mpg: null, label: 'Enter manually' };
+  // 3. Rough estimate from vehicle body class (NHTSA bodyClass field)
+  const bodyClass = v.vehicleSpecs?.bodyClass ?? v.vehicleSpecs?.vehicleType ?? '';
+  if (bodyClass) {
+    const estMpg = estimateMpgFromBodyClass(bodyClass);
+    if (estMpg != null) {
+      return { mpg: estMpg, label: `📊 Estimated (${bodyClass}) — add fill-ups for your actual MPG` };
+    }
+  }
+  return { mpg: null, label: '' };
 }
 
 // ── Address autocomplete hook ─────────────────────────────────────────────
@@ -247,6 +294,23 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
     if (embedded && session) loadGarage();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [embedded, session]);
+
+  // Scroll back to trip results when returning from an external navigation (e.g. Google Maps)
+  useEffect(() => {
+    function onVisible() {
+      if (document.visibilityState !== 'visible') return;
+      try {
+        if (sessionStorage.getItem('gc_trip_nav_away')) {
+          sessionStorage.removeItem('gc_trip_nav_away');
+          setTimeout(() => {
+            document.getElementById('trip-result')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }, 200);
+        }
+      } catch { /* ignore */ }
+    }
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, []);
 
   // Once vehicles load, default to garage if there are vehicles, otherwise rental
   useEffect(() => {
@@ -561,7 +625,7 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
                       <div className="relative">
                         <input
                           type="text"
-                          className={errors.routeOrigin ? 'input-field-error' : 'input-field'}
+                          className={`${errors.routeOrigin ? 'input-field-error' : 'input-field'} ${routeOrigin ? 'pr-8' : ''}`}
                           placeholder="City, state or full address"
                           value={routeOrigin}
                           autoComplete="off"
@@ -569,6 +633,18 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
                           onBlur={() => { setTimeout(clearOriginSugg, 150); }}
                           aria-label="Trip starting point"
                         />
+                        {routeOrigin && (
+                          <button
+                            type="button"
+                            onClick={() => { setRouteOrigin(''); clearOriginSugg(); setRouteData(null); setResult(null); }}
+                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500 transition-colors"
+                            aria-label="Clear starting point"
+                          >
+                            <svg className="w-3.5 h-3.5" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                              <path d="M1 1l10 10M11 1L1 11" />
+                            </svg>
+                          </button>
+                        )}
                         {originSuggestions.length > 0 && (
                           <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
                             {originSuggestions.map((s) => (
@@ -591,7 +667,7 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
                       <div className="relative">
                         <input
                           type="text"
-                          className={errors.routeDest ? 'input-field-error' : 'input-field'}
+                          className={`${errors.routeDest ? 'input-field-error' : 'input-field'} ${routeDest ? 'pr-8' : ''}`}
                           placeholder="City, state or full address"
                           value={routeDest}
                           autoComplete="off"
@@ -599,6 +675,18 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
                           onBlur={() => { setTimeout(clearDestSugg, 150); }}
                           aria-label="Trip destination"
                         />
+                        {routeDest && (
+                          <button
+                            type="button"
+                            onClick={() => { setRouteDest(''); clearDestSugg(); setRouteData(null); setResult(null); }}
+                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500 transition-colors"
+                            aria-label="Clear destination"
+                          >
+                            <svg className="w-3.5 h-3.5" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                              <path d="M1 1l10 10M11 1L1 11" />
+                            </svg>
+                          </button>
+                        )}
                         {destSuggestions.length > 0 && (
                           <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
                             {destSuggestions.map((s) => (
@@ -765,10 +853,10 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
               </div>
               {errors.mpg && <p className="mt-1 text-xs text-red-500">{errors.mpg}</p>}
               {mpgSourceLabel ? (
-                <p className="text-[10px] text-amber-600 mt-1 font-medium">{mpgSourceLabel}</p>
+                <p className="text-[10px] text-amber-600 mt-1 font-medium leading-snug">{mpgSourceLabel}</p>
               ) : (
-                <p className="text-[10px] text-slate-400 mt-1">
-                  💡 Check your MPG Trend chart for an accurate figure.
+                <p className="text-[10px] text-slate-400 mt-1 leading-snug">
+                  💡 Select a vehicle type above for an estimate, or check your owner's manual.
                 </p>
               )}
             </div>
@@ -800,39 +888,17 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
             </div>
           </div>
 
-          {/* ── Current fuel level (slider) ── */}
+          {/* ── Current fuel level (gauge) ── */}
           <div>
-            <div className="flex items-center justify-between mb-1">
-              <p className="field-label mb-0">Current Fuel Level</p>
-              <span className="text-sm font-bold text-amber-600 tabular-nums">
-                {fuelPct}%
-                {Number(fuelPct) >= 100 && <span className="text-[10px] font-normal text-slate-400 ml-1">Full</span>}
-                {Number(fuelPct) === 0   && <span className="text-[10px] font-normal text-slate-400 ml-1">Empty</span>}
-              </span>
-            </div>
-            {/* Labels ABOVE the slider — visible even when sliding on mobile */}
-            <div className="flex justify-between text-[9px] font-bold text-slate-400 mb-1 px-0.5">
-              <span>E</span>
-              <span>⅛</span>
-              <span>¼</span>
-              <span>⅜</span>
-              <span>½</span>
-              <span>⅝</span>
-              <span>¾</span>
-              <span>⅞</span>
-              <span>F</span>
-            </div>
-            <input
-              type="range"
-              min="0" max="100" step="12.5"
-              value={fuelPct}
-              onChange={(e) => { setFuelPct(e.target.value); setResult(null); }}
-              className="w-full accent-amber-500"
-              aria-label="Current fuel level percentage"
+            <p className="field-label">Current Fuel Level</p>
+            <FuelGauge
+              percent={Number(fuelPct)}
+              onChange={(pct) => { setFuelPct(String(pct)); setResult(null); }}
+              tankCapacity={tankGal ? parseFloat(tankGal) || undefined : undefined}
             />
             {errors.fuelPct && <p className="mt-1 text-xs text-red-500">{errors.fuelPct}</p>}
-            <p className="text-[10px] text-slate-400 mt-1.5">
-              💡 Slide to match your gauge — leave at E to see the full trip cost with a fresh tank.
+            <p className="text-[10px] text-slate-400 mt-1">
+              💡 Drag the gauge or use +/− to set your current level. Leave at E to price a full tank.
             </p>
           </div>
 
@@ -1097,6 +1163,9 @@ function TripResultCard({
                     href={`https://www.google.com/maps/dir/?api=1&destination=${stop.latitude},${stop.longitude}&travelmode=driving`}
                     target="_blank"
                     rel="noopener noreferrer"
+                    onClick={() => {
+                      try { sessionStorage.setItem('gc_trip_nav_away', '1'); } catch { /* ignore */ }
+                    }}
                     className="flex-shrink-0 text-[11px] font-bold text-[#1a73e8] hover:underline whitespace-nowrap"
                     aria-label={`Navigate to ${stop.name} in Google Maps`}
                   >
