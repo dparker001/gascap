@@ -36,9 +36,8 @@ import { useTranslation } from '@/contexts/LanguageContext';
 /** English widget — always available */
 const WIDGET_EN = '69f213df829cb9710742418d';
 
-/** Spanish widget — add NEXT_PUBLIC_GHL_CHAT_WIDGET_ID_ES to Railway once
- *  the Spanish bot is created in GHL. Empty string = fall back to English. */
-const WIDGET_ES = process.env.NEXT_PUBLIC_GHL_CHAT_WIDGET_ID_ES ?? '';
+/** Spanish widget — hardcoded as primary source; env var can override if needed */
+const WIDGET_ES = process.env.NEXT_PUBLIC_GHL_CHAT_WIDGET_ID_ES || '69f492d44a590de06c3cb048';
 
 // Pages excluded from chat widget (have their own phone/SMS opt-in forms)
 const EXCLUDED_PATHS = ['/contact', '/settings'];
@@ -56,6 +55,13 @@ function removeWidgetFromDom() {
   GHL_SELECTORS.forEach((sel) => {
     document.querySelectorAll(sel).forEach((el) => el.remove());
   });
+  // Clear GHL global state so the loader re-initializes on next inject.
+  // Without this the loader detects an existing instance and skips init.
+  const w = window as Record<string, unknown>;
+  delete w['LeadConnector'];
+  delete w['lc_chat_widget'];
+  delete w['hl_messenger'];
+  delete w['GHL_CHAT_WIDGET'];
 }
 
 export default function GHLChatWidget() {
