@@ -148,7 +148,7 @@ export function engS2EmailHtml(name: string, userId: string): string {
 
       <table style="width:100%;border-collapse:collapse;margin-bottom:24px;">
         ${featureRow('🛣️', 'Odometer = real MPG', 'Without a mileage reading, GasCap estimates your efficiency. With it, you get exact numbers — and a chart that shows whether your car is getting more or less efficient over time.')}
-        ${featureRow('🔥', 'Your streak keeps you honest', 'The streak counter at the top of the app tracks consecutive active weeks. Drivers with streaks over 30 days log fill-ups 3× more consistently — and save more as a result.')}
+        ${featureRow('⚡️', 'Your streak keeps you honest', 'The streak counter at the top of the app tracks consecutive active weeks. Drivers with streaks over 30 days log fill-ups 3× more consistently — and save more as a result.')}
         ${featureRow('📋', 'Monthly report card', 'Every month, your Pro dashboard generates a report: total spend, average price paid per gallon, best and worst weeks. It\'s the kind of data your mechanic doesn\'t have — but you do.')}
       </table>
 
@@ -516,7 +516,7 @@ export function milestoneM2EmailHtml(name: string, userId: string, plan: string 
       <table style="width:100%;border-collapse:collapse;margin-bottom:24px;">
         ${featureRow('📈', 'What "good" MPG looks like', 'Your baseline is your current average. A drop of 2+ MPG from your baseline often signals something: dirty air filter, low tire pressure, or a tune-up due. Catching it early is much cheaper than ignoring it.')}
         ${featureRow('🌡️', 'Seasonal changes are normal', 'MPG typically drops 5–15% in winter due to cold starts, heavier oil, and more idling. Your chart will show this pattern — it\'s not a problem, it\'s just data.')}
-        ${featureRow('🔥', 'Keep the streak going', 'The more consistently you log odometer readings, the more accurate your trend becomes. Add your mileage every time you fill up — it takes 5 seconds.')}
+        ${featureRow('⚡️', 'Keep the streak going', 'The more consistently you log odometer readings, the more accurate your trend becomes. Add your mileage every time you fill up — it takes 5 seconds.')}
       </table>
 
       ${ctaButton('View my MPG chart →', BASE_URL)}
