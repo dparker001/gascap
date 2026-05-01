@@ -251,8 +251,8 @@ export default function SettingsPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* Sticky header + tab bar — combined so both travel together */}
-      <div className="sticky top-0 z-20 shadow-md">
+      {/* Fixed header + tab bar — position:fixed guarantees it never scrolls away */}
+      <div className="fixed inset-x-0 top-0 z-20 shadow-md">
         {/* Header */}
         <div className="bg-navy-700 px-5 pt-4 pb-3">
           <div className="max-w-lg mx-auto flex items-center gap-4">
@@ -287,7 +287,7 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      <div className="max-w-lg mx-auto px-4 py-6 space-y-4">
+      <div className="max-w-lg mx-auto px-4 pt-28 pb-6 space-y-4">
 
         {/* Profile section */}
         <div ref={(el) => { sectionRefs.current['profile'] = el; }}>
