@@ -154,6 +154,8 @@ export default function AdminPage() {
   const [emailLogStatus,     setEmailLogStatus]     = useState('');   // '' | 'failed'
   const [emailLogLoading,    setEmailLogLoading]    = useState(false);
   const [emailRetryLoading,  setEmailRetryLoading]  = useState<string | null>(null); // logId being retried
+  // ── Per-user email history map (userId → sent emails) ────────────────
+  const [userEmailMap, setUserEmailMap] = useState<Record<string, { type: string; status: string; sentAt: string }[]>>({});
   // ── GHL Backfill ──────────────────────────────────────────────────────
   const [backfillLoading, setBackfillLoading] = useState(false);
   const [backfillMsg,     setBackfillMsg]     = useState('');
@@ -174,9 +176,10 @@ export default function AdminPage() {
 
   const load = useCallback(async (pw: string) => {
     setLoading(true);
-    const [usersRes, fbRes] = await Promise.all([
-      fetch('/api/admin/users',    { headers: { 'x-admin-password': pw } }),
-      fetch('/api/admin/feedback', { headers: { 'x-admin-password': pw } }),
+    const [usersRes, fbRes, emailMapRes] = await Promise.all([
+      fetch('/api/admin/users',                       { headers: { 'x-admin-password': pw } }),
+      fetch('/api/admin/feedback',                    { headers: { 'x-admin-password': pw } }),
+      fetch('/api/admin/email-log?limit=500',         { headers: { 'x-admin-password': pw } }),
     ]);
     setLoading(false);
     if (usersRes.status === 401) { setAuthErr('Wrong password.'); clearSession(); return; }
@@ -185,6 +188,18 @@ export default function AdminPage() {
     if (fbRes.ok) {
       const fbData = await fbRes.json() as { feedback: FeedbackItem[] };
       setFeedback(fbData.feedback);
+    }
+    if (emailMapRes.ok) {
+      const emailData = await emailMapRes.json() as { logs: EmailLogEntry[] };
+      const map: Record<string, { type: string; status: string; sentAt: string }[]> = {};
+      for (const entry of emailData.logs) {
+        if (!map[entry.userId]) map[entry.userId] = [];
+        map[entry.userId].push({ type: entry.type, status: entry.status ?? 'sent', sentAt: entry.sentAt });
+      }
+      for (const uid of Object.keys(map)) {
+        map[uid].sort((a, b) => a.sentAt.localeCompare(b.sentAt));
+      }
+      setUserEmailMap(map);
     }
     setSavedPw(pw);
     saveSession(pw);
@@ -534,6 +549,29 @@ export default function AdminPage() {
     if (type === 'trial-ended')         return 'bg-red-100 text-red-600';
     if (type === 'early-upgrade-offer') return 'bg-orange-100 text-orange-700';
     return 'bg-slate-100 text-slate-600';
+  }
+
+  // ── Email badge helpers ──────────────────────────────────────────────────
+  function emailBadgeLabel(type: string): string {
+    if (type.startsWith('trial-d'))   return 'D' + type.slice(-1);
+    if (type.startsWith('paid-p'))    return 'P' + type.slice(-1).toUpperCase();
+    if (type.startsWith('comp-c'))    return 'C' + type.slice(-1);
+    if (type.startsWith('eng-s'))     return 'ES' + type.slice(-1);
+    if (type.startsWith('eng-f'))     return 'EF' + type.slice(-1);
+    if (type === 'referral-credit')   return 'Ref';
+    if (type === 'comp-pro-for-life') return 'Cmp';
+    if (type.startsWith('milestone-')) return 'M';
+    return type.slice(0, 3).toUpperCase();
+  }
+  function emailBadgeClass(type: string, status: string): string {
+    if (status === 'failed')          return 'bg-red-100 text-red-700 border border-red-200';
+    if (status === 'retried')         return 'bg-orange-100 text-orange-700 border border-orange-200';
+    if (type.startsWith('trial-d'))   return 'bg-amber-100 text-amber-700 border border-amber-200';
+    if (type.startsWith('paid-p'))    return 'bg-green-100 text-green-700 border border-green-200';
+    if (type.startsWith('comp-c'))    return 'bg-teal-100 text-teal-700 border border-teal-200';
+    if (type.startsWith('eng-'))      return 'bg-blue-100 text-blue-700 border border-blue-200';
+    if (type === 'comp-pro-for-life') return 'bg-purple-100 text-purple-700 border border-purple-200';
+    return 'bg-slate-100 text-slate-600 border border-slate-200';
   }
 
   const filtered = users
@@ -1696,6 +1734,21 @@ export default function AdminPage() {
                         </span>
                       )}
                     </div>
+                    {/* Email history badge row */}
+                    {userEmailMap[u.id]?.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-1.5">
+                        {userEmailMap[u.id].map((e, i) => (
+                          <span
+                            key={i}
+                            title={`${e.type} · ${new Date(e.sentAt).toLocaleDateString()}${e.status !== 'sent' ? ` · ${e.status}` : ''}`}
+                            className={`text-[9px] font-black px-1.5 py-0.5 rounded ${emailBadgeClass(e.type, e.status)}`}
+                          >
+                            {emailBadgeLabel(e.type)}{e.status === 'failed' ? ' ✗' : e.status === 'retried' ? ' ↺' : ''}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
                     {u.referredUsers.length > 0 && (
                       <details className="mt-1">
                         <summary className="text-[10px] text-amber-600 cursor-pointer font-semibold">
