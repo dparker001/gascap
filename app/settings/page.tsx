@@ -115,7 +115,7 @@ export default function SettingsPage() {
   function scrollToSection(id: TabId) {
     const el = sectionRefs.current[id];
     if (!el) return;
-    const offset = 60; // height of sticky bar + a little breathing room
+    const offset = 90; // height of sticky header + tab bar + breathing room
     const top = el.getBoundingClientRect().top + window.scrollY - offset;
     window.scrollTo({ top, behavior: 'smooth' });
     setActiveTab(id);
@@ -242,35 +242,38 @@ export default function SettingsPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* Header */}
-      <div className="bg-navy-700 pt-12 pb-8 px-5">
-        <div className="max-w-lg mx-auto flex items-center gap-4">
-          <Link href="/" className="text-white/60 hover:text-white transition-colors">
-            <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-              <path d="M19 12H5M12 5l-7 7 7 7" />
-            </svg>
-          </Link>
-          <h1 className="text-white font-black text-xl">Settings</h1>
+      {/* Sticky header + tab bar — combined so both travel together */}
+      <div className="sticky top-0 z-20 shadow-md">
+        {/* Header */}
+        <div className="bg-navy-700 px-5 pt-4 pb-3">
+          <div className="max-w-lg mx-auto flex items-center gap-4">
+            <Link href="/" className="text-white/60 hover:text-white transition-colors">
+              <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <path d="M19 12H5M12 5l-7 7 7 7" />
+              </svg>
+            </Link>
+            <h1 className="text-white font-black text-xl">Settings</h1>
+          </div>
         </div>
-      </div>
 
-      {/* Sticky section tab bar */}
-      <div className="sticky top-0 z-20 bg-slate-50/95 backdrop-blur-sm border-b border-slate-200/70 shadow-sm">
-        <div className="max-w-lg mx-auto px-3 py-2 overflow-x-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-          <div className="flex gap-1.5 min-w-max" style={{ WebkitOverflowScrolling: 'touch' }}>
-            {TABS.map(({ id, label }) => (
-              <button
-                key={id}
-                onClick={() => scrollToSection(id)}
-                className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all ${
-                  activeTab === id
-                    ? 'bg-navy-700 text-white shadow-sm'
-                    : 'bg-white text-slate-500 border border-slate-200 hover:border-slate-300 hover:text-slate-700'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
+        {/* Section tab bar */}
+        <div className="bg-slate-50/95 backdrop-blur-sm border-b border-slate-200/70">
+          <div className="max-w-lg mx-auto px-3 py-2 overflow-x-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+            <div className="flex gap-1.5 min-w-max" style={{ WebkitOverflowScrolling: 'touch' }}>
+              {TABS.map(({ id, label }) => (
+                <button
+                  key={id}
+                  onClick={() => scrollToSection(id)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all ${
+                    activeTab === id
+                      ? 'bg-navy-700 text-white shadow-sm'
+                      : 'bg-white text-slate-500 border border-slate-200 hover:border-slate-300 hover:text-slate-700'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>
