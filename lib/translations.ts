@@ -759,6 +759,28 @@ const en = {
     defaultCta: 'Upgrade to Pro →',
     dismiss:    'Dismiss',
   },
+
+  // ── Setup checklist ────────────────────────────────────────────────────────
+  setupChecklist: {
+    header:          'Get started with GasCap™',
+    stepsTotal:      (n: number) => `${n} quick steps to unlock everything`,
+    stepsProgress:   (done: number, total: number) => `${done} of ${total} steps complete`,
+    allDone:         'All done!',
+    dismissAria:     'Dismiss setup checklist',
+    step1Title:      'Add your first vehicle',
+    step1Sub:        'Save your tank size for one-tap calculations',
+    step1Cta:        'Add →',
+    step2Title:      'Log your first fill-up',
+    step2Sub:        'Start tracking MPG and spend history',
+    step2Cta:        'Log →',
+    step3Title:      'Add your first driver',
+    step3Sub:        'Attribute fill-ups to drivers in your fleet',
+    step3Cta:        'Go →',
+    celebrationTitle: "You're all set!",
+    celebrationSub:   'GasCap™ is ready to go.',
+    footerHint:      'You can always find this in Settings',
+    skipNow:         'Skip for now',
+  },
 };
 
 // ── Spanish ───────────────────────────────────────────────────────────────────
@@ -1477,6 +1499,28 @@ const es: typeof en = {
   upgradeNudge: {
     defaultCta: 'Mejorar a Pro →',
     dismiss:    'Cerrar',
+  },
+
+  // ── Setup checklist ────────────────────────────────────────────────────────
+  setupChecklist: {
+    header:          'Empieza con GasCap™',
+    stepsTotal:      (n: number) => `${n} pasos rápidos para desbloquear todo`,
+    stepsProgress:   (done: number, total: number) => `${done} de ${total} pasos completados`,
+    allDone:         '¡Todo listo!',
+    dismissAria:     'Cerrar lista de configuración',
+    step1Title:      'Agrega tu primer vehículo',
+    step1Sub:        'Guarda el tamaño de tu tanque para cálculos con un toque',
+    step1Cta:        'Agregar →',
+    step2Title:      'Registra tu primera recarga',
+    step2Sub:        'Empieza a rastrear tu MPG e historial de gastos',
+    step2Cta:        'Registrar →',
+    step3Title:      'Agrega tu primer conductor',
+    step3Sub:        'Atribuye recargas a conductores en tu flota',
+    step3Cta:        'Ir →',
+    celebrationTitle: '¡Todo configurado!',
+    celebrationSub:   'GasCap™ está listo.',
+    footerHint:      'Siempre puedes encontrar esto en Configuración',
+    skipNow:         'Omitir por ahora',
   },
 };
 

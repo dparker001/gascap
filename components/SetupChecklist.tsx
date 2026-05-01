@@ -16,9 +16,10 @@
  * Auto-dismisses 2.5 s after all steps are complete.
  */
 
-import { useState, useEffect } from 'react';
-import { useSession }          from 'next-auth/react';
-import Link                    from 'next/link';
+import { useState, useEffect }  from 'react';
+import { useSession }           from 'next-auth/react';
+import Link                     from 'next/link';
+import { useTranslation }       from '@/contexts/LanguageContext';
 
 const SETUP_KEY = 'gascap_setup_v1';
 
@@ -41,6 +42,8 @@ function CheckCircle({ done, index }: { done: boolean; index: number }) {
 
 export default function SetupChecklist() {
   const { data: session } = useSession();
+  const { t } = useTranslation();
+  const sc = t.setupChecklist;
 
   const [mounted,    setMounted]    = useState(false);
   const [dismissed,  setDismissed]  = useState(true);   // true until client confirms not dismissed
@@ -135,8 +138,8 @@ export default function SetupChecklist() {
     return (
       <div className="mb-4 rounded-2xl bg-green-50 border border-green-200 px-4 py-4 text-center animate-fade-in">
         <p className="text-xl mb-1">🎉</p>
-        <p className="text-sm font-black text-green-700">You&apos;re all set!</p>
-        <p className="text-xs text-green-600 mt-0.5">GasCap™ is ready to go.</p>
+        <p className="text-sm font-black text-green-700">{sc.celebrationTitle}</p>
+        <p className="text-xs text-green-600 mt-0.5">{sc.celebrationSub}</p>
       </div>
     );
   }
@@ -150,13 +153,13 @@ export default function SetupChecklist() {
         <div className="flex items-center gap-2.5">
           <span className="text-base">🚀</span>
           <div>
-            <p className="text-sm font-black text-white leading-tight">Get started with GasCap™</p>
+            <p className="text-sm font-black text-white leading-tight">{sc.header}</p>
             <p className="text-[10px] text-white/50 mt-0.5">
               {doneCount === 0
-                ? `${total} quick steps to unlock everything`
+                ? sc.stepsTotal(total)
                 : doneCount < total
-                  ? `${doneCount} of ${total} steps complete`
-                  : 'All done!'}
+                  ? sc.stepsProgress(doneCount, total)
+                  : sc.allDone}
             </p>
           </div>
         </div>
@@ -175,7 +178,7 @@ export default function SetupChecklist() {
 
         <button
           onClick={dismiss}
-          aria-label="Dismiss setup checklist"
+          aria-label={sc.dismissAria}
           className="w-6 h-6 rounded-full bg-white/10 hover:bg-white/20 transition-colors
                      flex items-center justify-center flex-shrink-0"
         >
@@ -194,11 +197,9 @@ export default function SetupChecklist() {
           <CheckCircle done={hasVehicle} index={0} />
           <div className="flex-1 min-w-0">
             <p className={`text-sm font-bold leading-tight ${hasVehicle ? 'text-slate-400 line-through' : 'text-slate-800'}`}>
-              Add your first vehicle
+              {sc.step1Title}
             </p>
-            <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">
-              Save your tank size for one-tap calculations
-            </p>
+            <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">{sc.step1Sub}</p>
           </div>
           {!hasVehicle && (
             <button
@@ -206,7 +207,7 @@ export default function SetupChecklist() {
               className="flex-shrink-0 px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400
                          text-white text-xs font-bold transition-colors"
             >
-              Add →
+              {sc.step1Cta}
             </button>
           )}
         </div>
@@ -216,11 +217,9 @@ export default function SetupChecklist() {
           <CheckCircle done={hasFillup} index={1} />
           <div className="flex-1 min-w-0">
             <p className={`text-sm font-bold leading-tight ${hasFillup ? 'text-slate-400 line-through' : 'text-slate-800'}`}>
-              Log your first fill-up
+              {sc.step2Title}
             </p>
-            <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">
-              Start tracking MPG and spend history
-            </p>
+            <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">{sc.step2Sub}</p>
           </div>
           {!hasFillup && (
             <button
@@ -228,7 +227,7 @@ export default function SetupChecklist() {
               className="flex-shrink-0 px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400
                          text-white text-xs font-bold transition-colors"
             >
-              Log →
+              {sc.step2Cta}
             </button>
           )}
         </div>
@@ -239,11 +238,9 @@ export default function SetupChecklist() {
             <CheckCircle done={hasDriver} index={2} />
             <div className="flex-1 min-w-0">
               <p className={`text-sm font-bold leading-tight ${hasDriver ? 'text-slate-400 line-through' : 'text-slate-800'}`}>
-                Add your first driver
+                {sc.step3Title}
               </p>
-              <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">
-                Attribute fill-ups to drivers in your fleet
-              </p>
+              <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">{sc.step3Sub}</p>
             </div>
             {!hasDriver && (
               <Link
@@ -251,7 +248,7 @@ export default function SetupChecklist() {
                 className="flex-shrink-0 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500
                            text-white text-xs font-bold transition-colors"
               >
-                Go →
+                {sc.step3Cta}
               </Link>
             )}
           </div>
@@ -260,14 +257,12 @@ export default function SetupChecklist() {
 
       {/* Footer */}
       <div className="bg-slate-50 px-4 py-2.5 flex items-center justify-between border-t border-slate-100">
-        <p className="text-[10px] text-slate-400">
-          You can always find this in Settings
-        </p>
+        <p className="text-[10px] text-slate-400">{sc.footerHint}</p>
         <button
           onClick={dismiss}
           className="text-[10px] text-slate-400 hover:text-slate-600 font-semibold transition-colors"
         >
-          Skip for now
+          {sc.skipNow}
         </button>
       </div>
     </div>
