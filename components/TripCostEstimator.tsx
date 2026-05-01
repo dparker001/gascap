@@ -24,6 +24,7 @@ interface TripResult {
   fuelCost:          number;   // cost of gallons still to buy
   stops:             number;   // en-route refuel stops based on current fuel
   stopsIfFull:       number;   // en-route stops if you top off before leaving
+  tankRange:         number;   // full-tank range in miles (for diagnostics)
   costPerPerson:     number | null;
   milesPerDollar:    number;
   tankfulls:         number;
@@ -69,13 +70,20 @@ function calcTrip(
   const gallonsNeeded      = Math.max(0, totalGallons - currentGalOffset);
   const fuelCost           = gallonsNeeded * pricePGal;
   const tankRange          = tankGal * mpg;
-  // En-route stops based on current fuel level (stops made while driving)
+  // En-route stops if the driver tops off to full before leaving
+  // (the initial fill-up is pre-trip, so stops = additional full-tank fills required on the road)
+  const remainingIfFull = Math.max(0, miles - tankRange);
+  const stopsIfFull     = remainingIfFull <= 0 ? 0 : Math.ceil(remainingIfFull / tankRange);
+  // En-route stops based on current fuel level
+  // KEY: when fuelPct = 0, the driver will fill up before leaving (not on the road),
+  // so the stop count is the same as starting full — avoids the off-by-one overcount.
   const currentMilesInTank    = tankGal * (fuelPct / 100) * mpg;
   const remainingAfterCurrent = miles - currentMilesInTank;
-  const stops                 = remainingAfterCurrent <= 0 ? 0 : Math.ceil(remainingAfterCurrent / tankRange);
-  // En-route stops if the driver tops off to full before leaving
-  const remainingIfFull       = Math.max(0, miles - tankRange);
-  const stopsIfFull           = remainingIfFull <= 0 ? 0 : Math.ceil(remainingIfFull / tankRange);
+  const stops = remainingAfterCurrent <= 0
+    ? 0
+    : fuelPct <= 0
+      ? stopsIfFull   // at E → first fill-up is pre-trip, not a road stop
+      : Math.ceil(remainingAfterCurrent / tankRange);
   const milesPerDollar        = totalTripCost > 0 ? Math.round((miles / totalTripCost) * 10) / 10 : 0;
   const tankfulls          = Math.round((totalGallons / tankGal) * 10) / 10;
   const costPerPerson      = people > 1 ? Math.round((fuelCost / people) * 100) / 100 : null;
@@ -100,6 +108,7 @@ function calcTrip(
     fuelCost:          Math.round(fuelCost * 100) / 100,
     stops,
     stopsIfFull,
+    tankRange:         Math.round(tankRange),
     costPerPerson,
     milesPerDollar,
     tankfulls,
@@ -1038,10 +1047,12 @@ function TripResultCard({
     totalMiles, totalGallons, totalTripCost,
     currentGalOffset, currentCostOffset,
     gallonsNeeded, fuelCost,
-    stops, stopsIfFull, costPerPerson, milesPerDollar, tankfulls, summary,
+    stops, stopsIfFull, tankRange, costPerPerson, milesPerDollar, tankfulls, summary,
   } = result;
-  const noFuelNeeded     = gallonsNeeded === 0;
-  const hasCurrentFuel   = currentGalOffset > 0;
+  const noFuelNeeded       = gallonsNeeded === 0;
+  const hasCurrentFuel     = currentGalOffset > 0;
+  // Warn if tank range is suspiciously short — likely a bad MPG or tank-size entry
+  const shortRangeWarning  = tankRange > 0 && tankRange < 150;
 
   return (
     <div className="animate-result space-y-3 pt-1">
@@ -1114,17 +1125,31 @@ function TripResultCard({
         <SecStat
           label="Refuel stops"
           value={stops === 0 ? 'None needed' : `${stops} on the road`}
-          hint={stops > 0 ? 'stops made while driving' : undefined}
+          hint={stops > 0 ? 'stops while driving (not pre-trip)' : undefined}
         />
-        <SecStat label="Tank fill-ups"   value={`${tankfulls}×`} />
+        <SecStat label="Tank range"      value={`${tankRange} mi`}           hint="per full tank" />
         <SecStat label="Miles per $1"    value={`${milesPerDollar} mi`} />
+        <SecStat label="Tank fill-ups"   value={`${tankfulls}×`} />
         {costPerPerson != null && (
           <SecStat label="Per person"    value={`$${costPerPerson.toFixed(2)}`} accent />
         )}
       </div>
 
+      {/* Short tank-range warning — suggests user verify MPG / tank size */}
+      {shortRangeWarning && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 flex items-start gap-2">
+          <span className="text-sm flex-shrink-0">⚠️</span>
+          <p className="text-xs text-amber-800 font-medium leading-snug">
+            <span className="font-black">Check your inputs:</span>{' '}
+            Your vehicle's calculated range is only {tankRange} mi per full tank —
+            that's unusually short. Please verify your <span className="font-bold">MPG</span> and{' '}
+            <span className="font-bold">tank size</span> values are correct.
+          </p>
+        </div>
+      )}
+
       {/* Pre-trip top-off tip */}
-      {stops > 0 && (
+      {stops > 0 && !shortRangeWarning && (
         <div className="bg-blue-50 border border-blue-100 rounded-xl px-3 py-2.5 flex items-start gap-2">
           <span className="text-sm flex-shrink-0">⛽</span>
           <p className="text-xs text-blue-700 font-medium leading-snug">
