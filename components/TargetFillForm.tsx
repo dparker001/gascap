@@ -87,6 +87,7 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
   const [gaugeScanMsg,  setGaugeScanMsg]  = useState('');
   const [rentalMode,    setRentalMode]    = useState(false);
   const [rentalRate,    setRentalRate]    = useState('');
+  const [gasCoords,     setGasCoords]     = useState<{ lat: number; lng: number } | null>(null);
   const gaugeCamRef     = useRef<HTMLInputElement>(null);
   const gaugeGalleryRef = useRef<HTMLInputElement>(null);
   const calcStartFired  = useRef(false);
@@ -537,7 +538,12 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
           />
         </div>
         {errors.pricePerGallon && <FieldError msg={errors.pricePerGallon} />}
-        <GasPriceLookup onApply={(p) => liveRecalc({ pricePerGallon: p })} />
+        <GasPriceLookup
+          onApply={(p, lat, lng) => {
+            liveRecalc({ pricePerGallon: p });
+            if (lat != null && lng != null) setGasCoords({ lat, lng });
+          }}
+        />
       </div>
 
       {/* Rental mode active reminder — shown just above the calculate button */}
@@ -572,6 +578,8 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
             }
             isRental={rentalMode}
             rentalRate={rentalMode && rentalRate ? Number(rentalRate) : undefined}
+            latitude={gasCoords?.lat}
+            longitude={gasCoords?.lng}
           />
         )}
       </div>

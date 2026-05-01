@@ -4,6 +4,7 @@ import { useSession } from 'next-auth/react';
 import { useState, useCallback, useEffect, useRef } from 'react';
 import TankGauge from './TankGauge';
 import FillupLogger from './FillupLogger';
+import WazeDeepLinkButton from './WazeDeepLinkButton';
 import type { TargetFillResult, BudgetResult } from '@/lib/calculations';
 
 // ── Shareable card helper ──────────────────────────────────────────────────────
@@ -121,9 +122,11 @@ interface TargetResultCardProps {
   fuelLevelBefore?: number;
   rentalRate?: number;   // rental company's per-gallon rate — enables savings comparison
   isRental?: boolean;    // true when rental mode is on, even if no rate entered
+  latitude?: number;     // user's GPS lat from GasPriceLookup
+  longitude?: number;    // user's GPS lng from GasPriceLookup
 }
 
-export function TargetResultCard({ result, vehicleName, vehicleId, vehicleOdometer, fuelLevelBefore, rentalRate, isRental }: TargetResultCardProps) {
+export function TargetResultCard({ result, vehicleName, vehicleId, vehicleOdometer, fuelLevelBefore, rentalRate, isRental, latitude, longitude }: TargetResultCardProps) {
   const {
     gallonsNeeded, estimatedCost,
     currentPercent, targetPercent, targetGallons, summary,
@@ -232,6 +235,13 @@ export function TargetResultCard({ result, vehicleName, vehicleId, vehicleOdomet
         </div>
       )}
 
+      {/* ── Waze button ── */}
+      <WazeDeepLinkButton
+        latitude={latitude}
+        longitude={longitude}
+        label={isRental ? 'Find a Fuel Stop Before Return' : 'Find a Gas Station'}
+      />
+
       {/* ── Visual tank gauge ── */}
       <div className="card-bordered">
         <p className="section-eyebrow">Tank Level</p>
@@ -302,9 +312,11 @@ interface BudgetResultCardProps {
   vehicleId?: string;
   vehicleOdometer?: number;
   fuelLevelBefore?: number;
+  latitude?: number;     // user's GPS lat from GasPriceLookup
+  longitude?: number;    // user's GPS lng from GasPriceLookup
 }
 
-export function BudgetResultCard({ result, pricePerGallon, vehicleName, vehicleId, vehicleOdometer, fuelLevelBefore }: BudgetResultCardProps) {
+export function BudgetResultCard({ result, pricePerGallon, vehicleName, vehicleId, vehicleOdometer, fuelLevelBefore, latitude, longitude }: BudgetResultCardProps) {
   const {
     gallonsAffordable, resultingGallons, resultingPercent,
     actualCost, wouldOverfill, currentPercent, summary,
@@ -350,6 +362,13 @@ export function BudgetResultCard({ result, pricePerGallon, vehicleName, vehicleI
         <SecondaryStat label="Resulting level" value={`${resultingPercent.toFixed(0)}%`} />
         <SecondaryStat label="Gallons in tank" value={`${resultingGallons.toFixed(2)} gal`} />
       </div>
+
+      {/* ── Waze button ── */}
+      <WazeDeepLinkButton
+        latitude={latitude}
+        longitude={longitude}
+        label="Find a Gas Station"
+      />
 
       {/* ── Visual tank gauge ── */}
       <div className="card-bordered">

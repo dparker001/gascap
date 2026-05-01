@@ -70,6 +70,7 @@ export default function BudgetForm({ activeTab, setActiveTab }: Props) {
   const [calculated, setCalculated]   = useState(false);
   const [showLiveNudge, setShowLiveNudge] = useState(false);
   const [validationAttempted, setValidationAttempted] = useState(false);
+  const [gasCoords, setGasCoords] = useState<{ lat: number; lng: number } | null>(null);
 
   // Standard patch — clears result (free/guest behaviour)
   function patch(p: Partial<FormState>) {
@@ -352,7 +353,12 @@ export default function BudgetForm({ activeTab, setActiveTab }: Props) {
           />
         </div>
         {errors.pricePerGallon && <FieldError msg={errors.pricePerGallon} />}
-        <GasPriceLookup onApply={(p) => liveRecalc({ pricePerGallon: p })} />
+        <GasPriceLookup
+          onApply={(p, lat, lng) => {
+            liveRecalc({ pricePerGallon: p });
+            if (lat != null && lng != null) setGasCoords({ lat, lng });
+          }}
+        />
       </div>
 
       {/* Validation summary — only shown after a failed calculate attempt */}
@@ -379,6 +385,8 @@ export default function BudgetForm({ activeTab, setActiveTab }: Props) {
             fuelLevelBefore={
               form.fuelMode === 'percent' ? Number(form.currentFuel) : undefined
             }
+            latitude={gasCoords?.lat}
+            longitude={gasCoords?.lng}
           />
         )}
       </div>

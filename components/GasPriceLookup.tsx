@@ -15,8 +15,8 @@ interface GasPriceLookupResult {
 }
 
 interface GasPriceLookupProps {
-  /** Called with the detected price when the user accepts it */
-  onApply: (price: string) => void;
+  /** Called with the detected price (and optional coords) when the user accepts it */
+  onApply: (price: string, lat?: number, lng?: number) => void;
 }
 
 type Status = 'idle' | 'locating' | 'fetching' | 'done' | 'error';
@@ -45,16 +45,18 @@ export default function GasPriceLookup({ onApply }: GasPriceLookupProps) {
   const [result, setResult]   = useState<GasPriceLookupResult | null>(null);
   const [errMsg, setErrMsg]   = useState('');
   const [showGate, setShowGate] = useState(false);
+  const [coords, setCoords]   = useState<{ lat: number; lng: number } | null>(null);
 
   async function handleLookup() {
     setStatus('locating');
     setResult(null);
     setErrMsg('');
+    setCoords(null);
 
     // 1. Get geolocation
-    let coords: GeolocationCoordinates;
+    let position: GeolocationCoordinates;
     try {
-      coords = await new Promise<GeolocationCoordinates>((resolve, reject) => {
+      position = await new Promise<GeolocationCoordinates>((resolve, reject) => {
         navigator.geolocation.getCurrentPosition(
           (pos) => resolve(pos.coords),
           (err) => reject(err),
@@ -67,11 +69,14 @@ export default function GasPriceLookup({ onApply }: GasPriceLookupProps) {
       return;
     }
 
+    // Store coords for use in onApply
+    setCoords({ lat: position.latitude, lng: position.longitude });
+
     // 2. Fetch price from our API route
     setStatus('fetching');
     try {
       const res = await fetch(
-        `/api/gas-price?lat=${coords.latitude}&lng=${coords.longitude}`,
+        `/api/gas-price?lat=${position.latitude}&lng=${position.longitude}`,
       );
       const data = await res.json() as GasPriceLookupResult;
       setResult(data);
@@ -84,7 +89,7 @@ export default function GasPriceLookup({ onApply }: GasPriceLookupProps) {
 
   function handleApply() {
     if (result?.price) {
-      onApply(result.price.toFixed(2));
+      onApply(result.price.toFixed(2), coords?.lat, coords?.lng);
       setStatus('idle');
       setResult(null);
     }
