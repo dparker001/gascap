@@ -579,6 +579,25 @@ export default function Home() {
             {/* Streak counter */}
             <StreakCounter />
 
+            {/* Fleet Dashboard banner — mobile only (desktop sees it in right panel) */}
+            {userPlan === 'fleet' && (
+              <section className="px-4 lg:hidden max-w-lg mx-auto w-full pt-3">
+                <a href="/fleet"
+                   className="flex items-center gap-3 bg-[#1E2D4A] rounded-2xl px-4 py-3.5
+                              hover:bg-[#253d5e] transition-colors">
+                  <span className="text-2xl flex-shrink-0">🚛</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white text-sm font-black leading-tight">Fleet Dashboard</p>
+                    <p className="text-white/50 text-[10px] mt-0.5">Manage drivers, vehicles &amp; fuel reports</p>
+                  </div>
+                  <svg viewBox="0 0 12 12" className="w-4 h-4 flex-shrink-0 text-white/40" fill="none"
+                       stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                    <path d="M2 6h8M6 2l4 4-4 4"/>
+                  </svg>
+                </a>
+              </section>
+            )}
+
             {/* Setup checklist */}
             <section className="px-4 lg:px-0 max-w-lg lg:max-w-none mx-auto w-full">
               <SetupChecklist />
@@ -663,17 +682,27 @@ export default function Home() {
 
               {/* Fleet corporate banner — right panel, desktop, fleet only */}
               {userPlan === 'fleet' && (
-                <div className="rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm mt-4">
-                  <div className="bg-[#1E2D4A] px-4 py-3 flex items-center gap-3">
-                    <span className="text-xl">🚛</span>
+                <div className="rounded-2xl overflow-hidden border border-[#1E2D4A] shadow-sm mt-4">
+                  <div className="bg-[#1E2D4A] px-4 py-3.5 flex items-center gap-3">
+                    <span className="text-2xl">🚛</span>
                     <div>
-                      <p className="text-white text-xs font-black">GasCap™ Fleet Dashboard</p>
-                      <p className="text-white/50 text-[10px]">Fleet management &amp; fuel analytics</p>
+                      <p className="text-white text-sm font-black">GasCap™ Fleet</p>
+                      <p className="text-white/50 text-[10px]">Vehicles · Drivers · Fuel analytics</p>
                     </div>
                   </div>
-                  <div className="bg-white dark:bg-slate-800 px-4 py-3">
-                    <a href="/settings#fleet" className="text-[11px] text-brand-teal font-bold hover:text-brand-orange transition-colors">
-                      Configure fleet branding →
+                  <div className="bg-white dark:bg-slate-800 px-4 py-3 flex flex-col gap-2">
+                    <a href="/fleet"
+                       className="flex items-center justify-between w-full text-xs font-black
+                                  text-white bg-[#1E2D4A] hover:bg-[#253d5e]
+                                  rounded-xl px-3 py-2 transition-colors">
+                      Open Fleet Dashboard
+                      <svg viewBox="0 0 12 12" className="w-3 h-3 flex-shrink-0" fill="none"
+                           stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                        <path d="M2 6h8M6 2l4 4-4 4"/>
+                      </svg>
+                    </a>
+                    <a href="/settings#fleet" className="text-[11px] text-slate-400 hover:text-brand-teal transition-colors text-center">
+                      Configure branding →
                     </a>
                   </div>
                 </div>
@@ -726,29 +755,41 @@ export default function Home() {
                 <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
               </div>
               <div className="grid grid-cols-2 gap-2">
-                <a href="/fillups"
-                   className="flex flex-col gap-1 bg-white dark:bg-slate-800 rounded-xl
-                              border border-slate-100 dark:border-slate-700 p-3
-                              hover:border-brand-teal/40 transition-colors group shadow-sm">
-                  <span className="text-lg">📋</span>
-                  <p className="text-[11px] font-black text-slate-700 dark:text-slate-200 group-hover:text-brand-teal transition-colors leading-tight">Fill-Up Log</p>
-                  <p className="text-[10px] text-slate-400 leading-snug">MPG &amp; spending history</p>
-                </a>
+                {/* Fleet Dashboard — fleet users only; replaces Refer & Earn */}
+                {userPlan === 'fleet' ? (
+                  <a href="/fleet"
+                     className="flex flex-col gap-1 bg-[#1E2D4A] rounded-xl
+                                border border-[#1E2D4A] p-3
+                                hover:bg-[#253d5e] transition-colors group shadow-sm">
+                    <span className="text-lg">🚛</span>
+                    <p className="text-[11px] font-black text-white leading-tight">Fleet Dashboard</p>
+                    <p className="text-[10px] text-white/50 leading-snug">Drivers, fill-ups &amp; tax</p>
+                  </a>
+                ) : (
+                  <a href="#share"
+                     className="flex flex-col gap-1 bg-white dark:bg-slate-800 rounded-xl
+                                border border-slate-100 dark:border-slate-700 p-3
+                                hover:border-brand-teal/40 transition-colors group shadow-sm">
+                    <span className="text-lg">🤝</span>
+                    <p className="text-[11px] font-black text-slate-700 dark:text-slate-200 group-hover:text-brand-teal transition-colors leading-tight">Refer &amp; Earn</p>
+                    <p className="text-[10px] text-slate-400 leading-snug">Free Pro months</p>
+                  </a>
+                )}
                 <a href="/giveaway"
                    className="flex flex-col gap-1 bg-white dark:bg-slate-800 rounded-xl
                               border border-slate-100 dark:border-slate-700 p-3
                               hover:border-amber-300/60 transition-colors group shadow-sm">
                   <span className="text-lg">🎁</span>
                   <p className="text-[11px] font-black text-slate-700 dark:text-slate-200 group-hover:text-amber-600 transition-colors leading-tight">Gas Card</p>
-                  <p className="text-[10px] text-slate-400 leading-snug">Monthly giveaway entries</p>
+                  <p className="text-[10px] text-slate-400 leading-snug">Monthly giveaway</p>
                 </a>
-                <a href="/referral"
+                <a href="#log"
                    className="flex flex-col gap-1 bg-white dark:bg-slate-800 rounded-xl
                               border border-slate-100 dark:border-slate-700 p-3
                               hover:border-brand-teal/40 transition-colors group shadow-sm">
-                  <span className="text-lg">🤝</span>
-                  <p className="text-[11px] font-black text-slate-700 dark:text-slate-200 group-hover:text-brand-teal transition-colors leading-tight">Refer &amp; Earn</p>
-                  <p className="text-[10px] text-slate-400 leading-snug">Free Pro months</p>
+                  <span className="text-lg">📋</span>
+                  <p className="text-[11px] font-black text-slate-700 dark:text-slate-200 group-hover:text-brand-teal transition-colors leading-tight">Fill-Up Log</p>
+                  <p className="text-[10px] text-slate-400 leading-snug">MPG &amp; spending history</p>
                 </a>
                 <a href="/settings"
                    className="flex flex-col gap-1 bg-white dark:bg-slate-800 rounded-xl
