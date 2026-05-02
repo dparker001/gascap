@@ -1,7 +1,7 @@
 'use client';
 
 import { useSession } from 'next-auth/react';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import VehiclePicker from './VehiclePicker';
 import BadgeShelf   from './BadgeShelf';
 import type { VehicleSpecs } from '@/lib/vehicleSpecs';
@@ -308,7 +308,10 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
   const [editVin,         setEditVin]         = useState('');
   const [editSaving,      setEditSaving]      = useState(false);
   const [editVinStatus,   setEditVinStatus]   = useState<'idle' | 'fetching' | 'done' | 'error'>('idle');
+  const [editVinScanning, setEditVinScanning] = useState(false);
+  const [editVinScanErr,  setEditVinScanErr]  = useState('');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const editVinFileRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
     const res = await fetch('/api/vehicles');
@@ -356,6 +359,33 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
     setEditGallons(String(v.gallons));
     setEditVin(v.vin ?? '');
     setEditVinStatus('idle');
+    setEditVinScanning(false);
+    setEditVinScanErr('');
+  }
+
+  async function handleEditVinScan(file: File) {
+    setEditVinScanning(true);
+    setEditVinScanErr('');
+    try {
+      const fd = new FormData();
+      fd.append('image', file);
+      const res  = await fetch('/api/vin/scan', { method: 'POST', body: fd, credentials: 'include' });
+      const data = await res.json() as { vin?: string | null; error?: string };
+      if (!res.ok || data.error) {
+        setEditVinScanErr(data.error ?? 'Could not read VIN from image.');
+        return;
+      }
+      if (!data.vin) {
+        setEditVinScanErr('No VIN found — zoom in so the "VIN" label is clearly visible, or try the dashboard plate.');
+        return;
+      }
+      setEditVin(data.vin);
+      setEditVinScanErr('');
+    } catch {
+      setEditVinScanErr('Network error — try again.');
+    } finally {
+      setEditVinScanning(false);
+    }
   }
 
   async function handleEditSave() {
@@ -530,32 +560,77 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
                       </div>
 
                       {/* VIN */}
-                      <div className="relative">
+                      <div className="space-y-1">
+                        {/* Hidden file input — opens camera/gallery */}
                         <input
-                          type="text"
-                          inputMode="text"
-                          className="w-full border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm
-                                     text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white
-                                     font-mono tracking-wider uppercase pr-14"
-                          value={editVin}
-                          onChange={(e) =>
-                            setEditVin(
-                              e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 17)
-                            )
-                          }
-                          placeholder="VIN (optional)"
-                          maxLength={17}
-                          autoCorrect="off"
-                          autoCapitalize="characters"
-                          spellCheck={false}
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          ref={editVinFileRef}
+                          className="hidden"
+                          onChange={(e) => {
+                            const f = e.target.files?.[0];
+                            if (f) handleEditVinScan(f);
+                            e.target.value = '';
+                          }}
                         />
-                        <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 pointer-events-none tabular-nums">
-                          {editVin.length}/17
-                        </span>
+
+                        {/* Label row with scan button */}
+                        <div className="flex items-center justify-between">
+                          <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">
+                            VIN <span className="font-normal normal-case">(optional)</span>
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => editVinFileRef.current?.click()}
+                            disabled={editVinScanning}
+                            className="flex items-center gap-1 text-[11px] font-bold text-amber-700 bg-amber-50
+                                       border border-amber-200 rounded-lg px-2 py-0.5 hover:bg-amber-100
+                                       disabled:opacity-50 transition-colors"
+                            title="Photograph the VIN plate on your dashboard or door jamb"
+                          >
+                            <span>{editVinScanning ? '🔄' : '📷'}</span>
+                            <span>{editVinScanning ? 'Scanning…' : 'Scan VIN'}</span>
+                          </button>
+                        </div>
+
+                        {editVinScanErr && (
+                          <p className="text-[10px] text-red-500 font-medium">{editVinScanErr}</p>
+                        )}
+
+                        <div className="relative">
+                          <input
+                            type="text"
+                            inputMode="text"
+                            className="w-full border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm
+                                       text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white
+                                       font-mono tracking-wider uppercase pr-14"
+                            value={editVin}
+                            onChange={(e) =>
+                              setEditVin(
+                                e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 17)
+                              )
+                            }
+                            placeholder="e.g. 1HGCM82633A123456"
+                            maxLength={17}
+                            autoCorrect="off"
+                            autoCapitalize="characters"
+                            spellCheck={false}
+                          />
+                          <span className={`absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] pointer-events-none tabular-nums font-bold ${
+                            editVin.length === 0 ? 'text-slate-300'
+                            : editVin.length === 17 ? 'text-green-600'
+                            : 'text-amber-500'
+                          }`}>
+                            {editVin.length}/17
+                          </span>
+                        </div>
+                        {editVin.length > 0 && editVin.length !== 17 && (
+                          <p className="text-[10px] text-amber-600">
+                            VIN must be exactly 17 characters ({17 - editVin.length} more needed)
+                          </p>
+                        )}
                       </div>
-                      {editVin.length > 0 && editVin.length !== 17 && (
-                        <p className="text-[10px] text-amber-600">VIN must be exactly 17 characters</p>
-                      )}
 
                       <div className="flex gap-2 pt-1">
                         <button
