@@ -74,6 +74,40 @@ function VehicleInfoModal({ vehicle, onClose, onSpecsUpdated }: {
   const [fetchingSpec, setFetchingSpec] = useState(false);
   const [fetchError,   setFetchError]   = useState('');
 
+  // Auto-fetch specs on open if a VIN is on file but specs haven't been decoded yet
+  useEffect(() => {
+    if (specs || !vehicle.vin || fetchingSpec) return;
+    let cancelled = false;
+    setFetchingSpec(true);
+    setFetchError('');
+    (async () => {
+      try {
+        const res  = await fetch(`/api/vin?vin=${vehicle.vin}`);
+        const data = await res.json() as { specs?: VehicleSpecs; error?: string };
+        if (cancelled) return;
+        if (!res.ok || data.error || !data.specs) {
+          setFetchError(data.error ?? t.garage.lookupFailed);
+          return;
+        }
+        // Persist decoded specs to the server
+        await fetch(`/api/vehicles?id=${vehicle.id}`, {
+          method:  'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ vehicleSpecs: data.specs }),
+        });
+        window.dispatchEvent(new Event('vehicle-saved'));
+        setSpecs(data.specs);
+        onSpecsUpdated?.(data.specs);
+      } catch {
+        if (!cancelled) setFetchError(t.garage.networkErrorCheck);
+      } finally {
+        if (!cancelled) setFetchingSpec(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   async function handleFetchSpecs() {
     if (!vehicle.vin) return;
     setFetchingSpec(true);
@@ -125,6 +159,8 @@ function VehicleInfoModal({ vehicle, onClose, onSpecsUpdated }: {
     );
   }
 
+  const vinDisplay = vehicle.vin ?? specs?.vin;
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/50 animate-fade-in"
@@ -141,7 +177,9 @@ function VehicleInfoModal({ vehicle, onClose, onSpecsUpdated }: {
               {[vehicle.year, vehicle.make, vehicle.model].filter(Boolean).join(' ') || vehicle.name}
             </p>
             {vehicle.trim && <p className="text-white/60 text-xs mt-0.5">{vehicle.trim}</p>}
-            {specs?.vin && <p className="text-white/40 text-[10px] font-mono mt-1">{specs.vin}</p>}
+            {vinDisplay && (
+              <p className="text-white/40 text-[10px] font-mono mt-1 tracking-wider">{vinDisplay}</p>
+            )}
           </div>
           <button onClick={onClose} className="text-white/60 hover:text-white text-xl leading-none mt-0.5 ml-4">✕</button>
         </div>
@@ -150,29 +188,35 @@ function VehicleInfoModal({ vehicle, onClose, onSpecsUpdated }: {
         <div className="overflow-y-auto flex-1 px-4 py-4">
           {!specs ? (
             <div className="text-center py-8 space-y-3">
-              <p className="text-3xl">🔍</p>
-              <p className="text-sm text-slate-500">{t.garage.noSpecsOnFile}</p>
-              {vehicle.vin ? (
+              {fetchingSpec ? (
                 <>
-                  <p className="text-xs text-slate-400">
-                    {t.garage.vinOnFile}
-                  </p>
-                  {fetchError && (
-                    <p className="text-xs text-red-500">{fetchError}</p>
+                  <p className="text-2xl animate-spin inline-block">⚙️</p>
+                  <p className="text-sm text-slate-500 font-semibold">Looking up your vehicle…</p>
+                  {vinDisplay && (
+                    <p className="text-xs text-slate-400 font-mono tracking-wider">{vinDisplay}</p>
                   )}
-                  <button
-                    onClick={handleFetchSpecs}
-                    disabled={fetchingSpec}
-                    className="mx-auto px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-white text-xs font-black transition-colors"
-                  >
-                    {fetchingSpec ? t.garage.fetching : t.garage.fetchSpecsNow}
-                  </button>
                 </>
               ) : (
                 <>
-                  <p className="text-xs text-slate-400 leading-relaxed">
-                    {t.garage.deleteAndReAdd}
-                  </p>
+                  <p className="text-3xl">🔍</p>
+                  <p className="text-sm text-slate-500">{t.garage.noSpecsOnFile}</p>
+                  {vehicle.vin ? (
+                    <>
+                      <p className="text-xs text-slate-400">{t.garage.vinOnFile}</p>
+                      {fetchError && <p className="text-xs text-red-500">{fetchError}</p>}
+                      <button
+                        onClick={handleFetchSpecs}
+                        disabled={fetchingSpec}
+                        className="mx-auto px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-white text-xs font-black transition-colors"
+                      >
+                        {t.garage.fetchSpecsNow}
+                      </button>
+                    </>
+                  ) : (
+                    <p className="text-xs text-slate-400 leading-relaxed">
+                      {t.garage.deleteAndReAdd}
+                    </p>
+                  )}
                 </>
               )}
             </div>
@@ -258,10 +302,12 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
   const [infoVehicle, setInfoVehicle] = useState<Vehicle | null>(null);
 
   // Edit state
-  const [editingId,      setEditingId]      = useState<string | null>(null);
-  const [editName,       setEditName]       = useState('');
-  const [editGallons,    setEditGallons]    = useState('');
-  const [editSaving,     setEditSaving]     = useState(false);
+  const [editingId,       setEditingId]       = useState<string | null>(null);
+  const [editName,        setEditName]        = useState('');
+  const [editGallons,     setEditGallons]     = useState('');
+  const [editVin,         setEditVin]         = useState('');
+  const [editSaving,      setEditSaving]      = useState(false);
+  const [editVinStatus,   setEditVinStatus]   = useState<'idle' | 'fetching' | 'done' | 'error'>('idle');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -308,16 +354,52 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
     setEditingId(v.id);
     setEditName(v.name);
     setEditGallons(String(v.gallons));
+    setEditVin(v.vin ?? '');
+    setEditVinStatus('idle');
   }
 
   async function handleEditSave() {
     if (!editingId) return;
     setEditSaving(true);
-    await fetch(`/api/vehicles?id=${editingId}`, {
+
+    const currentVehicle = vehicles.find(v => v.id === editingId);
+    const cleanVin       = editVin.trim().toUpperCase().replace(/[^A-Z0-9]/g, '') || undefined;
+    const vinChanged     = cleanVin !== (currentVehicle?.vin ?? undefined);
+
+    // 1. Persist name, gallons, and VIN
+    const patchRes = await fetch(`/api/vehicles?id=${editingId}`, {
       method:  'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ name: editName.trim(), gallons: parseFloat(editGallons) }),
+      body:    JSON.stringify({
+        name:    editName.trim(),
+        gallons: parseFloat(editGallons),
+        ...(vinChanged ? { vin: cleanVin ?? '' } : {}),
+      }),
     });
+
+    if (!patchRes.ok) { setEditSaving(false); return; }
+
+    // 2. If a VIN was newly added or changed, fetch & persist the decoded specs
+    if (vinChanged && cleanVin && cleanVin.length === 17) {
+      setEditVinStatus('fetching');
+      try {
+        const specRes  = await fetch(`/api/vin?vin=${cleanVin}`);
+        const specData = await specRes.json() as { specs?: VehicleSpecs };
+        if (specRes.ok && specData.specs) {
+          await fetch(`/api/vehicles?id=${editingId}`, {
+            method:  'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ vehicleSpecs: specData.specs }),
+          });
+          setEditVinStatus('done');
+        } else {
+          setEditVinStatus('error');
+        }
+      } catch {
+        setEditVinStatus('error');
+      }
+    }
+
     setEditSaving(false);
     setEditingId(null);
     window.dispatchEvent(new Event('vehicle-saved'));
@@ -418,6 +500,8 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
                       <p className="text-[10px] font-bold uppercase tracking-widest text-amber-600">
                         {t.garage.editVehicle}
                       </p>
+
+                      {/* Nickname */}
                       <input
                         type="text"
                         className="w-full border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm
@@ -427,6 +511,8 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
                         placeholder={t.garage.nicknamePlaceholder}
                         maxLength={40}
                       />
+
+                      {/* Tank size */}
                       <div className="relative">
                         <input
                           type="number"
@@ -442,20 +528,58 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
                           {t.calc.unitGal}
                         </span>
                       </div>
+
+                      {/* VIN */}
+                      <div className="relative">
+                        <input
+                          type="text"
+                          inputMode="text"
+                          className="w-full border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm
+                                     text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white
+                                     font-mono tracking-wider uppercase pr-14"
+                          value={editVin}
+                          onChange={(e) =>
+                            setEditVin(
+                              e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 17)
+                            )
+                          }
+                          placeholder="VIN (optional)"
+                          maxLength={17}
+                          autoCorrect="off"
+                          autoCapitalize="characters"
+                          spellCheck={false}
+                        />
+                        <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 pointer-events-none tabular-nums">
+                          {editVin.length}/17
+                        </span>
+                      </div>
+                      {editVin.length > 0 && editVin.length !== 17 && (
+                        <p className="text-[10px] text-amber-600">VIN must be exactly 17 characters</p>
+                      )}
+
                       <div className="flex gap-2 pt-1">
                         <button
-                          onClick={() => setEditingId(null)}
+                          onClick={() => { setEditingId(null); setEditVinStatus('idle'); }}
                           className="flex-1 py-2 rounded-lg border border-slate-200 text-xs font-semibold text-slate-500"
                         >
                           {t.garage.cancel}
                         </button>
                         <button
                           onClick={handleEditSave}
-                          disabled={editSaving || !editName.trim() || parseFloat(editGallons) <= 0}
+                          disabled={
+                            editSaving ||
+                            !editName.trim() ||
+                            parseFloat(editGallons) <= 0 ||
+                            (editVin.length > 0 && editVin.length !== 17)
+                          }
                           className="flex-1 py-2 rounded-lg bg-amber-500 text-white text-xs font-bold
                                      hover:bg-amber-400 disabled:opacity-40 transition-colors"
                         >
-                          {editSaving ? t.garage.saving : t.garage.save}
+                          {editVinStatus === 'fetching'
+                            ? 'Looking up VIN…'
+                            : editSaving
+                            ? t.garage.saving
+                            : t.garage.save}
                         </button>
                       </div>
                     </div>
@@ -467,13 +591,13 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
                         ? 'bg-amber-50 border-2 border-amber-400 shadow-sm'
                         : 'bg-slate-50 border border-slate-200 group hover:border-amber-300',
                     ].join(' ')}>
-                      {/* Vehicle side-profile silhouette */}
+                      {/* Vehicle side-profile silhouette — stops before the action buttons */}
                       <div
-                        className="absolute inset-y-0 right-0 w-[48%] pointer-events-none select-none overflow-hidden"
+                        className="absolute inset-y-0 right-[78px] w-[34%] pointer-events-none select-none overflow-hidden"
                       >
-                        {/* Gradient fade — blends silhouette into card background */}
+                        {/* Left gradient fade */}
                         <div
-                          className="absolute inset-y-0 left-0 w-16 z-10"
+                          className="absolute inset-y-0 left-0 w-12 z-10"
                           style={{
                             background: `linear-gradient(to right, ${
                               v.id === selectedVehicleId ? '#fffbeb' : '#f8fafc'
@@ -485,7 +609,7 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
                           fillRule="evenodd"
                           preserveAspectRatio="xMidYMax meet"
                           className="absolute inset-0 w-full h-full"
-                          style={{ fill: '#94a3b8', opacity: 0.40 }}
+                          style={{ fill: '#94a3b8', opacity: 0.32 }}
                           aria-hidden="true"
                         >
                           <path d={VEHICLE_PATHS[detectVehicleType({ name: v.name, make: v.make, model: v.model })]} />

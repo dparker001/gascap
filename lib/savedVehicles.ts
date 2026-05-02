@@ -112,7 +112,7 @@ export async function deleteVehicle(userId: string, vehicleId: string): Promise<
 export async function updateVehicle(
   userId: string,
   vehicleId: string,
-  updates: { name?: string; gallons?: number; currentOdometer?: number; vehicleSpecs?: VehicleSpecs },
+  updates: { name?: string; gallons?: number; vin?: string; currentOdometer?: number; vehicleSpecs?: VehicleSpecs },
 ): Promise<SavedVehicle | undefined> {
   // Verify ownership first
   const existing = await prisma.vehicle.findFirst({
@@ -123,6 +123,7 @@ export async function updateVehicle(
   const data: Record<string, unknown> = {};
   if (updates.name             !== undefined) data.name             = updates.name;
   if (updates.gallons          !== undefined) data.gallons          = updates.gallons;
+  if (updates.vin              !== undefined) data.vin              = updates.vin || null;
   if (updates.currentOdometer  !== undefined) data.currentOdometer  = updates.currentOdometer;
   if (updates.vehicleSpecs     !== undefined) data.vehicleSpecs     = updates.vehicleSpecs;
 

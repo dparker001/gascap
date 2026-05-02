@@ -81,7 +81,7 @@ export async function DELETE(req: Request) {
   return NextResponse.json({ ok: true });
 }
 
-// PATCH /api/vehicles?id=xxx — update name and/or gallons
+// PATCH /api/vehicles?id=xxx — update name, gallons, VIN, and/or specs
 export async function PATCH(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -91,12 +91,17 @@ export async function PATCH(req: Request) {
   const id = searchParams.get('id');
   if (!id) return NextResponse.json({ error: 'Missing vehicle id.' }, { status: 400 });
 
-  const body = await req.json() as { name?: string; gallons?: number; currentOdometer?: number; vehicleSpecs?: VehicleSpecs };
+  const body = await req.json() as { name?: string; gallons?: number; vin?: string; currentOdometer?: number; vehicleSpecs?: VehicleSpecs };
   if (body.gallons !== undefined && body.gallons <= 0) {
     return NextResponse.json({ error: 'Invalid tank size.' }, { status: 400 });
   }
 
-  const updated = await updateVehicle(userId, id, body);
+  const updated = await updateVehicle(userId, id, {
+    ...body,
+    vin: body.vin !== undefined
+      ? (body.vin.trim().toUpperCase() || undefined)
+      : undefined,
+  });
   if (!updated) return NextResponse.json({ error: 'Vehicle not found.' }, { status: 404 });
   return NextResponse.json(updated);
 }
