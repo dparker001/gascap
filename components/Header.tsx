@@ -33,6 +33,20 @@ export default function Header() {
   return (
     <header className="relative overflow-hidden bg-brand-dark pt-10 pb-7 px-5">
 
+      {/* ── Background video ── */}
+      <video
+        autoPlay
+        muted
+        loop
+        playsInline
+        aria-hidden="true"
+        className="absolute inset-0 w-full h-full object-cover opacity-[0.18]"
+      >
+        <source src="/videos/hero-bg.mp4" type="video/mp4" />
+      </video>
+      {/* Overlay keeps text crisp over the video */}
+      <div className="absolute inset-0 bg-[#1E2D4A]/60 pointer-events-none" aria-hidden="true" />
+
       {/* ── Decorative background shapes ── */}
       {/* Large arc top-right */}
       <svg className="absolute top-0 right-0 opacity-[0.06] pointer-events-none"
