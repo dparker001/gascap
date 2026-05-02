@@ -8,7 +8,7 @@ import type { VehicleSpecs } from '@/lib/vehicleSpecs';
 import { useTranslation } from '@/contexts/LanguageContext';
 import { GarageDoor }                        from './GarageDoor';
 import { useGarageDoorPrefs }                from '@/hooks/useGarageDoorPrefs';
-import { detectVehicleType, FRONT_VEHICLE_PATHS } from '@/lib/vehicleSilhouette';
+import { detectVehicleType, VEHICLE_PATHS } from '@/lib/vehicleSilhouette';
 
 export interface Vehicle {
   id:               string;
@@ -661,15 +661,49 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
                   ) : (
                     /* ── Normal card ── */
                     <div className={[
-                      'relative flex items-center gap-2 rounded-xl px-3 py-2.5 transition-colors overflow-hidden',
+                      'relative flex items-center gap-2 rounded-xl px-3 py-2.5 transition-all overflow-hidden',
                       v.id === selectedVehicleId
-                        ? 'bg-amber-50 border-2 border-amber-400 shadow-sm'
+                        ? 'bg-white border-2 border-amber-400 shadow-md'
                         : 'bg-slate-50 border border-slate-200 group hover:border-amber-300',
                     ].join(' ')}>
+
+                      {/* ── Frosted vehicle background — active card only ── */}
+                      {v.id === selectedVehicleId && (() => {
+                        const vType = detectVehicleType({ name: v.name, make: v.make, model: v.model });
+                        return (
+                          <div className="absolute inset-0 pointer-events-none select-none">
+                            {/* Side-profile silhouette watermark */}
+                            <svg
+                              viewBox="0 0 200 80"
+                              fillRule="evenodd"
+                              preserveAspectRatio="xMidYMid meet"
+                              aria-hidden="true"
+                              style={{
+                                position:  'absolute',
+                                height:    '190%',
+                                width:     'auto',
+                                right:     '74px',
+                                top:       '50%',
+                                transform: 'translateY(-50%)',
+                                fill:      '#b45309',
+                                opacity:   0.09,
+                              }}
+                            >
+                              <path d={VEHICLE_PATHS[vType]} />
+                            </svg>
+                            {/* Frosted gradient fade — keeps text fully readable */}
+                            <div
+                              className="absolute inset-y-0 left-0 z-[1]"
+                              style={{ width: '58%', background: 'linear-gradient(to right, white 55%, transparent)' }}
+                            />
+                          </div>
+                        );
+                      })()}
+
                       {/* Select / load button */}
                       <button
                         onClick={() => onSelect(String(v.gallons), v)}
-                        className="flex-1 min-w-0 text-left"
+                        className="flex-1 min-w-0 text-left relative z-[1]"
                         title={t.garage.loadTitle(v.name, v.gallons)}
                       >
                         <p className="text-sm font-semibold text-slate-700 group-hover:text-amber-700
@@ -696,23 +730,10 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
                         )}
                       </button>
 
-                      {/* Front-view vehicle silhouette — small inline icon, no overlap with text */}
-                      <div className="flex-shrink-0 w-10 opacity-[0.18] pointer-events-none select-none">
-                        <svg
-                          viewBox="0 0 60 54"
-                          fillRule="evenodd"
-                          className="w-full"
-                          style={{ fill: v.id === selectedVehicleId ? '#b45309' : '#64748b' }}
-                          aria-hidden="true"
-                        >
-                          <path d={FRONT_VEHICLE_PATHS[detectVehicleType({ name: v.name, make: v.make, model: v.model })]} />
-                        </svg>
-                      </div>
-
                       {/* Info */}
                       <button
                         onClick={(e) => { e.stopPropagation(); setInfoVehicle(v); }}
-                        className="flex-shrink-0 p-1.5 rounded-lg text-slate-400 hover:text-blue-500 hover:bg-blue-50 transition-colors"
+                        className="relative z-[1] flex-shrink-0 p-1.5 rounded-lg text-slate-400 hover:text-blue-500 hover:bg-blue-50 transition-colors"
                         title={t.garage.vehicleInfoTitle}
                       >
                         <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4" aria-label={t.garage.vehicleInfoAria}>
