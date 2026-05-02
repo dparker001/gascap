@@ -44,8 +44,8 @@ const TIERS = [
     label:     'Ambassador',
     threshold: 15,
     entries:   3,
-    reward:    'Free GasCap™ Pro for life',
-    sub:       'Reach 15 cumulative paying referrals and your Pro subscription is on us — permanently. This milestone is locked in and never revoked.',
+    reward:    'Free GasCap™ Pro (while 5+ referrals are active)',
+    sub:       'Reach 15 cumulative paying referrals and your Pro subscription is complimentary — active while you maintain 5 or more currently active paying referrals.',
     color:     'bg-navy-50 border-navy-200',
     title:     'text-navy-700',
     badge:     'bg-navy-700 text-white',
@@ -55,7 +55,7 @@ const TIERS = [
     label:     'Elite Ambassador',
     threshold: 30,
     entries:   5,
-    reward:    'Pro for life + personal recognition',
+    reward:    'Pro (while 5+ active) + personal recognition',
     sub:       'Named on the Top Ambassadors list in the app, early access to new features, and a personal thank-you from the GasCap™ team.',
     color:     'bg-amber-50 border-amber-200',
     title:     'text-amber-700',
@@ -175,7 +175,7 @@ export default function AmbassadorPage() {
                 </div>
               ) : (
                 <Link
-                  href="/auth/signin"
+                  href="/signin"
                   className="block w-full text-center py-2.5 rounded-xl bg-navy-700 text-white text-xs font-bold hover:bg-navy-800 transition-colors"
                 >
                   Sign in to get your link →
@@ -219,8 +219,8 @@ export default function AmbassadorPage() {
 
             <div className="bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 text-[11px] text-slate-500 leading-relaxed space-y-1.5">
               <p>💡 <strong>Only paying conversions count.</strong> Free trial sign-ups that never subscribe don&apos;t qualify — this keeps the program sustainable and fraud-proof.</p>
-              <p>⚡ <strong>Credited within 24 hours.</strong> Your referral count updates within 24 hours of your referral&apos;s first payment. Milestones are permanent once reached — even if they later cancel, your tier stays.</p>
-              <p>🔒 <strong>Up to 6 free months, then Pro for Life.</strong> Free month credits are capped at 6 lifetime. Once you hit 15 paying referrals, GasCap™ Pro is yours forever — no subscription needed.</p>
+              <p>⚡ <strong>Credited within 24 hours.</strong> Your referral count updates within 24 hours of your referral&apos;s first payment. Your tier status is based on cumulative all-time referrals and is never revoked.</p>
+              <p>🔒 <strong>Up to 6 free months, then Pro while you stay active.</strong> Free month credits are capped at 6 lifetime. Once you hit 15 paying referrals, GasCap™ Pro is complimentary while you maintain 5+ active paying referrals.</p>
             </div>
           </div>
         </div>

@@ -715,7 +715,7 @@ export default function Home() {
                   My Garage
                 </h2>
                 <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
-                <a href="/garage"
+                <a href="/settings"
                    className="text-[11px] font-bold text-brand-teal hover:text-brand-orange
                               transition-colors flex items-center gap-1">
                   Manage
