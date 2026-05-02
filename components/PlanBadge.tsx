@@ -5,25 +5,33 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from '@/contexts/LanguageContext';
 
 /**
- * Displays a contextual pill in the header:
- *  - Signed out  → "Free · No account needed · Works offline"
- *  - Free plan   → "Free plan · Works offline"
- *  - Pro plan    → "⭐ GasCap Pro"  (amber)
- *  - Fleet plan  → "🚛 GasCap Fleet" (blue)
+ * Displays a contextual pill in the hero section:
+ *  - Signed out       → nothing (handled by hero guest strip)
+ *  - Free plan        → "Free plan · Upgrade"
+ *  - Pro Trial        → "⭐ Pro Trial · X days left" + "Upgrade to keep Pro →"
+ *  - Pro (paid)       → "⭐ GasCap Pro"  (amber)
+ *  - Fleet plan       → "🚛 GasCap Fleet" (blue)
  *
- * Uses a live server fetch so the badge is always accurate even when
- * the session JWT is stale (e.g. after a plan upgrade in the installed PWA).
+ * Always fetches fresh trial/plan state from the server so the badge stays
+ * accurate even when the session JWT is stale (e.g. installed PWA).
  */
+
+interface LivePlanData {
+  plan:          string;
+  isProTrial:    boolean;
+  betaProExpiry: string | null;
+}
+
 export default function PlanBadge() {
   const { data: session, status } = useSession();
   const { t } = useTranslation();
-  const [livePlan, setLivePlan] = useState<string | null>(null);
+  const [liveData, setLiveData] = useState<LivePlanData | null>(null);
 
   useEffect(() => {
     if (!session) return;
     fetch('/api/vehicles')
       .then((r) => r.json())
-      .then((d: { plan?: string }) => { if (d.plan) setLivePlan(d.plan); })
+      .then((d: LivePlanData) => { if (d.plan) setLiveData(d); })
       .catch(() => {});
   }, [session]);
 
@@ -31,11 +39,57 @@ export default function PlanBadge() {
     return <div className="mt-4 h-7 w-52 rounded-full bg-white/10 animate-pulse" />;
   }
 
-  // Live plan takes priority over JWT plan — always reflects current billing state
-  const jwtPlan = session?.user?.plan ?? null;
-  const plan    = livePlan ?? jwtPlan;
+  // Live server data takes priority over JWT — always reflects current billing state
+  const jwtUser      = session?.user as { plan?: string; isProTrial?: boolean; betaProExpiry?: string | null } | undefined;
+  const plan         = liveData?.plan         ?? jwtUser?.plan         ?? null;
+  const isProTrial   = liveData?.isProTrial   ?? jwtUser?.isProTrial   ?? false;
+  const betaProExpiry = liveData?.betaProExpiry ?? jwtUser?.betaProExpiry ?? null;
 
-  /* ── Pro ── */
+  /* ── Pro Trial ── */
+  if (plan === 'pro' && isProTrial && betaProExpiry) {
+    const msRemaining = new Date(betaProExpiry).getTime() - Date.now();
+    const daysLeft    = Math.max(0, Math.ceil(msRemaining / 86_400_000));
+
+    const isUrgent  = daysLeft <= 2;
+    const isWarning = daysLeft <= 7;
+
+    const pillColors = isUrgent
+      ? 'bg-red-500/25 border-red-400/50'
+      : isWarning
+      ? 'bg-orange-500/25 border-orange-400/50'
+      : 'bg-amber-500/20 border-amber-400/40';
+
+    const textColor  = isUrgent ? 'text-red-200'    : 'text-amber-200';
+    const countColor = isUrgent ? 'text-red-300'     : isWarning ? 'text-orange-300' : 'text-amber-300';
+    const icon       = isUrgent ? '⏰'               : isWarning ? '⚡' : '⭐';
+
+    const daysLabel  = daysLeft <= 0 ? 'Expires today'
+                     : daysLeft === 1 ? '1 day left'
+                     : `${daysLeft} days left`;
+
+    return (
+      <div className="mt-4 flex flex-col items-center gap-1.5">
+        {/* Main pill */}
+        <div className={`inline-flex items-center gap-2 border rounded-full px-3.5 py-1.5 ${pillColors}`}>
+          <span className="text-xs" aria-hidden="true">{icon}</span>
+          <span className={`text-xs font-bold tracking-wide ${textColor}`}>Pro Trial</span>
+          <span className="text-white/25 mx-0.5">·</span>
+          <span className={`text-xs font-black ${countColor}`}>{daysLabel}</span>
+        </div>
+
+        {/* Upgrade nudge below the pill */}
+        <a
+          href="/upgrade"
+          className="text-amber-400/80 text-[11px] font-bold hover:text-amber-300
+                     transition-colors underline-offset-2 hover:underline"
+        >
+          Upgrade to keep Pro →
+        </a>
+      </div>
+    );
+  }
+
+  /* ── Pro (paid, not trial) ── */
   if (plan === 'pro') {
     return (
       <div className="mt-4 inline-flex items-center gap-2 bg-amber-500/20 border border-amber-400/40
@@ -72,6 +126,6 @@ export default function PlanBadge() {
     );
   }
 
-  /* ── Signed out — hero offer strip handles the guest messaging ── */
+  /* ── Signed out — hero guest strip handles messaging ── */
   return null;
 }

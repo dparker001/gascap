@@ -15,7 +15,13 @@ export async function GET() {
   const userId = (session.user as { id?: string }).id ?? session.user.email ?? '';
   const [user, vehicles] = await Promise.all([findById(userId), getVehiclesForUser(userId)]);
   const plan  = user?.plan ?? 'free';
-  return NextResponse.json({ vehicles, plan, limit: PLAN_LIMITS[plan] });
+  return NextResponse.json({
+    vehicles,
+    plan,
+    limit:         PLAN_LIMITS[plan],
+    isProTrial:    user?.isProTrial    ?? false,
+    betaProExpiry: user?.betaProExpiry ?? null,
+  });
 }
 
 // POST /api/vehicles — save a new vehicle
