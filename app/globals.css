@@ -213,9 +213,9 @@ input[type='number'] { -moz-appearance: textfield; }
 
 /* ── GHL Chat Widget — mobile suppression ───────────────────────────── */
 /* Belt-and-suspenders: JS gate in GHLChatWidget.tsx prevents the script  */
-/* from loading on mobile, but if the widget DOM persists from a prior    */
-/* desktop render (Next.js SPA navigation) this CSS hides it hard.        */
-@media (max-width: 767px) {
+/* from loading on mobile, but if the widget DOM persists (e.g. landscape */
+/* rotation or SPA navigation) this CSS hides it hard below 1024px.       */
+@media (max-width: 1023px) {
   #chat-widget-container,
   .hl_messenger-frame,
   [id^="chat-widget"],

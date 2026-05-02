@@ -46,7 +46,9 @@ export default function GHLChatWidget() {
   );
 
   useEffect(() => {
-    const mq = window.matchMedia('(min-width: 768px)');
+    // 1024px threshold: phones in landscape top out ~900px; tablets/desktops start at 1024px.
+    // This prevents the widget from appearing when a mobile device rotates to landscape.
+    const mq = window.matchMedia('(min-width: 1024px)');
 
     const handle = (matches: boolean) => {
       setIsDesktop(matches);

@@ -7,10 +7,18 @@
 import { NextResponse }     from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions }      from '@/lib/auth';
-import { ensureReferralCode, findById, getActiveCredits, getRedeemableMonths, getAllUsers } from '@/lib/users';
+import { ensureReferralCode, findById, findByReferralCode, getActiveCredits, getRedeemableMonths, getAllUsers } from '@/lib/users';
 import { getAmbassadorTier, ambassadorEntryMultiplier, AMBASSADOR_THRESHOLDS } from '@/lib/ambassador';
 
 const MAX_REDEEM_AT_ONCE = 3;
+
+/** "John Doe" → "John D."  |  "John" → "John" */
+function formatReferrerName(name: string | undefined | null): string | null {
+  if (!name?.trim()) return null;
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0];
+  return `${parts[0]} ${parts[parts.length - 1].charAt(0).toUpperCase()}.`;
+}
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -39,6 +47,12 @@ export async function GET() {
   const isBeta = user?.isBetaTester ?? false;
   const betaReferralUrl = isBeta ? `${baseUrl}/signup?ref=${code}&beta=1` : null;
 
+  // Look up the name of whoever referred this user (via their referral code)
+  const referrer = user?.referredBy
+    ? await findByReferralCode(user.referredBy)
+    : undefined;
+  const referredByName = formatReferrerName(referrer?.name);
+
   // Get list of users this person referred
   const allUsers    = await getAllUsers();
   const referredUsers = code
@@ -60,7 +74,8 @@ export async function GET() {
     isBeta,
     referralCount:       refCount,
     proMonthsEarned:     monthsEarned,
-    referredBy:          user?.referredBy ?? null,
+    referredBy:          user?.referredBy   ?? null,
+    referredByName:      referredByName      ?? null,
     ambassadorTier:      tier,                        // 'supporter'|'ambassador'|'elite'|null
     entryMultiplier:     multiplier,                  // 1|2|3|5
     ambassadorProForLife: user?.ambassadorProForLife ?? false,

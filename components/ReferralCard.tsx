@@ -22,6 +22,7 @@ interface ReferralData {
   referralCount:       number;
   proMonthsEarned:     number;
   referredBy:          string | null;
+  referredByName:      string | null;
   ambassadorTier:      AmbassadorTier;
   entryMultiplier:     number;
   ambassadorProForLife: boolean;
@@ -384,7 +385,11 @@ export default function ReferralCard() {
 
             {data.referredBy && (
               <p className="text-[10px] text-green-600 text-center font-semibold">
-                ✓ You were referred by code <span className="font-mono">{data.referredBy}</span>
+                ✓ You were referred by{' '}
+                {data.referredByName
+                  ? <span className="font-bold">{data.referredByName}</span>
+                  : <span className="font-mono">{data.referredBy}</span>
+                }
               </p>
             )}
           </>
