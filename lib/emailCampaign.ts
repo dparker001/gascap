@@ -130,6 +130,13 @@ export function welcomeEmailHtml(name: string, userId: string, verifyUrl?: strin
             </td>
           </tr>
           <tr>
+            <td style="padding:6px 0;vertical-align:top;width:28px;font-size:16px;">🗺️</td>
+            <td style="padding:6px 0 6px 10px;vertical-align:top;color:#fff;">
+              <p style="margin:0;font-size:13px;font-weight:700;">Route Trip Planner + Google Maps</p>
+              <p style="margin:0;font-size:12px;color:rgba(255,255,255,.65);line-height:1.5;">Enter any origin and destination — GasCap™ calculates your exact fuel cost for the real route and finds gas stations along the way. Opens directly in Google Maps or Waze.</p>
+            </td>
+          </tr>
+          <tr>
             <td style="padding:6px 0;vertical-align:top;width:28px;font-size:16px;">🤖</td>
             <td style="padding:6px 0 6px 10px;vertical-align:top;color:#fff;">
               <p style="margin:0;font-size:13px;font-weight:700;">GasCap™ AI Fuel Advisor</p>
@@ -246,7 +253,7 @@ export function welcomeEmailHtml(name: string, userId: string, verifyUrl?: strin
 }
 
 export const welcomeEmailText = (name: string) =>
-  `Hi ${name.split(' ')[0]}, welcome to GasCap™! Your 30-day free Pro trial is now active — Rental Car Return Mode (avoid $12/gal refuel fees), AI Fuel Advisor, MPG charts, budget tracking, maintenance reminders, and PDF exports are all unlocked. No credit card needed, auto-reverts to free after 30 days. Open the app: ${BASE_URL}`;
+  `Hi ${name.split(' ')[0]}, welcome to GasCap™! Your 30-day free Pro trial is now active — Rental Car Return Mode (avoid $12/gal refuel fees), Route Trip Planner (Google Maps integration), AI Fuel Advisor, MPG charts, budget tracking, maintenance reminders, and PDF exports are all unlocked. No credit card needed, auto-reverts to free after 30 days. Open the app: ${BASE_URL}`;
 
 // ── Email 2 — Feature Deep-Dive (Day 3) ───────────────────────────────────
 
@@ -258,11 +265,11 @@ export function featureTipsEmailHtml(name: string, userId: string): string {
       ${trialBadge(27)}
 
       <p style="margin:0 0 6px;font-size:24px;font-weight:900;color:#1e2d4a;line-height:1.2;">
-        4 Pro features to try this week, ${first} ⚡
+        5 Pro features to try this week, ${first} ⚡
       </p>
       <p style="margin:0 0 22px;font-size:15px;color:#475569;line-height:1.65;">
         You're 3 days into your free Pro trial — plenty of time to fall in love
-        with the features paying members use every day. Here are four worth
+        with the features paying members use every day. Here are five worth
         10 seconds of your time (including the one that can literally pay for
         Pro on a single rental car trip).
       </p>
@@ -277,6 +284,13 @@ export function featureTipsEmailHtml(name: string, userId: string): string {
           "🚗 Rental Car Return?" on the calculator, drop in the rental company's
           refuel rate, and GasCap™ shows your exact savings in real time — typically
           $30–$80 per trip. This feature alone pays for a full year of Pro on one rental.
+        </p>
+      </div>
+
+      <div style="background:#f8fafc;border-radius:14px;padding:20px 24px;margin-bottom:18px;border-left:4px solid #1eb68f;">
+        <p style="margin:0 0 6px;font-size:15px;font-weight:900;color:#1e2d4a;">🗺️ Route Trip Planner — with Google Maps</p>
+        <p style="margin:0 0 10px;font-size:13px;color:#64748b;line-height:1.55;">
+          Planning a road trip or a long commute? Open the Trip tab, enter your origin and destination, and GasCap™ calculates your <strong>exact fuel cost for the real route</strong> — not a rough estimate. If you need to stop for gas, it finds actual stations along the way and opens them in <strong>Google Maps or Waze</strong> with turn-by-turn directions. Your trips are saved so you can reference them anytime.
         </p>
       </div>
 
@@ -672,7 +686,7 @@ export async function sendCampaignEmail(step: number, user: CampaignRecipient): 
       text:    welcomeEmailText(name),
     },
     2: {
-      subject: '4 Pro features worth trying this week ⚡',
+      subject: '5 Pro features worth trying this week ⚡',
       html:    featureTipsEmailHtml(name, id),
       text:    featureTipsEmailText(name),
     },

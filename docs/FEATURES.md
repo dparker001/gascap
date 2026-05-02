@@ -1,6 +1,6 @@
 # GasCap™ — Feature Catalog
 
-> Last updated: 2026-04-19  
+> Last updated: 2026-05-02  
 > See [SYSTEM.md](./SYSTEM.md) for technical architecture.
 
 Each feature lists: what it does, which plan unlocks it, and where it lives in the codebase.
@@ -40,6 +40,8 @@ Users save vehicles with name, tank size (gallons), year/make/model, trim, fuel 
 
 Fires `vehicle-saved` window event on successful save (consumed by `SetupChecklist`).  
 Listens for `gascap:focus-vehicles` event to auto-open the add-vehicle form (used by `SetupChecklist`).
+
+**Garage Door Session Persistence (Pro/Fleet):** The animated garage door stays open for the entire browser tab session. State is backed by `sessionStorage('gascap:garage-open')`, so it survives component remounts and page scrolling. Resets only when the tab is closed, the page is hard-refreshed, or the user logs out.
 
 ---
 
@@ -106,6 +108,13 @@ Dashboard shows:
 - Unattributed fill-up warning
 
 Driver names are stored as `String[]` on the User model (`fleetDrivers`). Removing a driver does NOT delete their historical `driverLabel` values on fill-ups (preserved for audit).
+
+### Fleet White-Label Branding
+
+**Plan:** Fleet only  
+**API:** `GET/PATCH /api/fleet/branding`
+
+Fleet subscribers can set a company name and logo URL in **Settings → Fleet Branding**. The company name and logo appear in the desktop dashboard header as a corporate identity bar. "Powered by GasCap™ Fleet" attribution is displayed alongside the branding. Fields stored on the User model: `fleetCompanyName`, `fleetLogoUrl`.
 
 ---
 
@@ -195,10 +204,21 @@ Conversational chat interface powered by GPT-4o. Users can ask anything about fu
 
 ## Trip Cost Estimator
 
-**Plan:** Free  
-**Component:** `TripCostEstimator`
+**Plan:** Free (manual mode), Pro/Fleet (route-based with Google Maps)  
+**Component:** `TripCostEstimator`, `GoogleMapsHandoffButton`, `WazeDeepLinkButton`  
+**APIs:** `/api/maps/route`, `/api/maps/autocomplete`, `/api/maps/search-fuel-stops`
 
-Estimate the fuel cost of a road trip: enter distance, vehicle MPG, and current gas price → see total gallons needed and cost. No account required.
+Two modes:
+
+**Manual mode (Free):** Enter distance, vehicle MPG, and current gas price to see total gallons needed and estimated fuel cost. No account required.
+
+**Route-based mode (Pro/Fleet):** Enter an origin and destination using address autocomplete. The Google Routes API calculates the actual route distance (not straight-line) and computes exact gallons needed and total fuel cost for that route.
+
+- If refuel stops are needed, the app finds real gas stations along the route. A "Find Fuel Along the Way" button hands off to Google Maps or Waze with turn-by-turn directions to the nearest fuel stop.
+- "Open Google Maps to Find Gas Nearby" is available for non-trip lookups.
+- Both `GoogleMapsHandoffButton` and `WazeDeepLinkButton` are present side-by-side on the result card.
+- Pro/Fleet users can save trips; saved trips appear in the Stats tab.
+- After returning from Maps or Waze, the app auto-scrolls back to the trip result card.
 
 ---
 
@@ -245,3 +265,16 @@ GasCap™ is installable as a Progressive Web App on iOS and Android via "Add to
 **API:** `/api/campaigns`
 
 Gas station QR placards embed a placement code (e.g., `SHELL-MAIN-ST-01`). Scanning sets a `gc_src` cookie. On signup, the cookie is read and the signup is attributed to the placement. Admin dashboard shows scans, signups, and conversion rates per placard.
+
+---
+
+## Desktop Two-Column Dashboard
+
+**Plan:** All logged-in users (on desktop/lg screens)
+
+At the `lg` breakpoint (1024px+), the main dashboard splits into two equal columns with a visual separator between them:
+
+- **Left column:** calculator, streak counter, setup checklist, featured station
+- **Right column:** vehicle garage, Tools & Insights panel, quick links
+
+The right column is non-scrollable as an independent pane — it scrolls with the page. The single-column mobile layout is unchanged.

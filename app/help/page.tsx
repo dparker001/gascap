@@ -78,7 +78,11 @@ const SECTIONS = [
     items: [
       {
         q: 'What is the Trip Cost Estimator?',
-        a: 'The Trip Cost Estimator calculates the fuel cost of a road trip. Enter your trip distance, vehicle MPG, and current gas price — it shows the total gallons needed and estimated cost. Available free to all users, no account required.',
+        a: 'The Trip Cost Estimator calculates the fuel cost of a road trip. In manual mode (free for all users), enter your trip distance, vehicle MPG, and gas price to see total gallons needed and estimated cost. Pro and Fleet users can also use route mode: enter an origin and destination with address autocomplete and GasCap™ uses Google Routes API to calculate the real route distance — so you get a cost estimate for the actual road, not a straight line. When a fuel stop is needed along the way, GasCap™ finds real gas stations on the route. Your completed trips are saved and appear in the Stats tab.',
+      },
+      {
+        q: 'Does GasCap™ work with Google Maps?',
+        a: 'Yes. In the Trip tab, Pro and Fleet users can enter an origin and destination to get the exact fuel cost for the real route. When a fuel stop is needed, GasCap™ finds actual gas stations along the route — tap "Find Fuel Along the Way" to open Google Maps (or Waze) with turn-by-turn directions straight to the pump. After you close Maps and return to GasCap™, the app scrolls you right back to your trip result.',
       },
       {
         q: 'What is the Station Comparison tool?',
@@ -185,6 +189,10 @@ const SECTIONS = [
       {
         q: 'Can I download an annual tax report?',
         a: 'Yes — Fleet subscribers can download a PDF Annual Fleet Fuel Tax Report directly from the Fleet Dashboard. Tap the Reports card, choose a tax year from the dropdown, and tap "Download PDF." The report includes a monthly cost breakdown, per-vehicle summary with MPG, a complete fill-up log with driver attribution, and a tax disclaimer. It is ready to hand to your accountant or attach to your IRS records.',
+      },
+      {
+        q: 'Can I show my company\'s logo in GasCap™?',
+        a: 'Yes — Fleet subscribers can white-label the dashboard with their company name and logo. Go to Settings → Fleet Branding, enter your company name and logo URL, and your branding will appear in the desktop dashboard header for all fleet users. Your logo sits alongside "Powered by GasCap™ Fleet" attribution.',
       },
       {
         q: 'Can drivers log fill-ups on their own devices?',

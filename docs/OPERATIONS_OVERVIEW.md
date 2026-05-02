@@ -1,6 +1,6 @@
 # GasCap™ — Operations Overview
 
-> Last updated: 2026-04-30
+> Last updated: 2026-05-02
 > Owner: Don Parker (admin@gascap.app)
 > This document is a map — not a rulebook. Follow the links for authoritative content.
 

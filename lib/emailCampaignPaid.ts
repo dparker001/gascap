@@ -107,9 +107,11 @@ export function upgradeConfirmEmailHtml(
           ['📊', 'Fleet dashboard',           'Centralized fuel spend, MPG, and efficiency across all vehicles.'],
           ['📄', 'Annual tax report',         'One-click PDF of annual fuel costs, ready for filing.'],
           ['🤖', 'AI Fuel Advisor',           'Unlimited questions on any vehicle — costs, MPG, trips, maintenance.'],
+          ['🗺️', 'Route Trip Planner + Google Maps', 'Fuel cost planning for any route, with live fuel stop search and Google Maps/Waze handoff.'],
           ['🔧', 'Maintenance reminders',     'Service intervals and alerts for every vehicle in your fleet.'],
         ] : [
           ['🤖', 'AI Fuel Advisor',       'Unlimited questions — fuel costs, MPG, trips, maintenance.'],
+          ['🗺️', 'Route Trip Planner + Google Maps', 'Real route distance, exact fuel cost, and fuel stops found along the way — open in Google Maps or Waze.'],
           ['📊', 'MPG + spending charts', 'Full history, trends, and predictive drop alerts.'],
           ['🎯', 'Budget + alerts',        'Monthly fuel budget tracker with overspend notifications.'],
           ['🔧', 'Maintenance reminders', 'Oil changes, tire rotations, and service intervals.'],
@@ -185,7 +187,7 @@ export function paidCheckInEmailHtml(name: string, userId: string, tier: 'pro' |
       </div>
 
       <div style="background:#f8fafc;border-radius:14px;padding:20px 24px;
-                  margin-bottom:24px;border-left:4px solid #6366f1;">
+                  margin-bottom:16px;border-left:4px solid #6366f1;">
         <p style="margin:0 0 5px;font-size:15px;font-weight:900;color:#1e2d4a;">
           📄 Export your first monthly report
         </p>
@@ -193,6 +195,16 @@ export function paidCheckInEmailHtml(name: string, userId: string, tier: 'pro' |
           One tap generates a PDF of the full month — miles driven, gallons burned,
           total spend, avg MPG. Perfect for expense reimbursements, small business records,
           or just tracking your fuel costs over time.
+        </p>
+      </div>
+
+      <div style="background:#f8fafc;border-radius:14px;padding:20px 24px;
+                  margin-bottom:16px;border-left:4px solid #1eb68f;">
+        <p style="margin:0 0 5px;font-size:15px;font-weight:900;color:#1e2d4a;">
+          🗺️ Plan your next road trip in the Trip tab
+        </p>
+        <p style="margin:0;font-size:13px;color:#64748b;line-height:1.55;">
+          Enter an origin and destination — GasCap™ uses Google to calculate the real route distance, then shows your exact fuel cost and finds gas stations along the way. Tap to open in Google Maps or Waze with turn-by-turn directions straight to the pump.
         </p>
       </div>
 

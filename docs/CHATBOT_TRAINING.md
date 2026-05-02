@@ -1,5 +1,5 @@
 # GasCap™ Chatbot — Full Training Document
-> Last updated: 2026-04-30
+> Last updated: 2026-05-02
 > For use in GHL Conversation AI knowledge base
 > Support email: support@gascap.app | Website: gascap.app
 
@@ -93,7 +93,10 @@ A: Yes. Once installed as a PWA, the calculators work fully offline using the la
 ## SECTION 4 — TOOLS
 
 **Q: What is the Trip Cost Estimator?**
-A: The Trip Cost Estimator calculates the fuel cost of a road trip. Enter your trip distance, vehicle MPG, and current gas price — it shows total gallons needed and estimated cost. Free for all users, no account required.
+A: The Trip Cost Estimator calculates the fuel cost of a road trip. In **manual mode** (free for all users), enter your trip distance, vehicle MPG, and current gas price — it shows total gallons needed and estimated cost. **Pro and Fleet users** also have **route mode**: enter an origin and destination with address autocomplete and GasCap™ uses Google Routes API to calculate the real route distance — giving you a cost estimate for the actual road, not a straight line. When a fuel stop is needed, GasCap™ finds real gas stations along the route. Completed trips are saved and appear in the Stats tab.
+
+**Q: Does GasCap™ work with Google Maps or Waze?**
+A: Yes — this is a **Pro and Fleet feature**. In the Trip tab, enter an origin and destination to get the exact fuel cost for the real route. When a fuel stop is needed, GasCap™ finds actual gas stations along the route. Tap "Find Fuel Along the Way" to open Google Maps (or Waze) with turn-by-turn directions straight to the pump. After you close Maps and return to GasCap™, the app scrolls you right back to your trip result.
 
 **Q: What is the Station Comparison tool?**
 A: Station Comparison lets you compare two nearby gas stations side by side. Enter the price per gallon at each station and the amount you need — it tells you which is cheaper and by exactly how much. Free for all users.
@@ -172,6 +175,9 @@ A: From the Fleet Dashboard, tap "Bulk Vehicle Import." Download the template CS
 
 **Q: Can I download an annual tax report?**
 A: Yes — Fleet subscribers can download a PDF Annual Fleet Fuel Tax Report from the Fleet Dashboard. Tap Reports, choose a tax year, and tap "Download PDF." The report includes a monthly cost breakdown, per-vehicle summary with MPG, a complete fill-up log with driver attribution, and a tax disclaimer.
+
+**Q: Can I show my company's logo in GasCap™?**
+A: Yes — **Fleet subscribers** can white-label the dashboard with their company name and logo. Go to Settings → Fleet Branding, enter your company name and logo URL, and your branding will appear in the desktop dashboard header. Your logo sits alongside "Powered by GasCap™ Fleet" attribution.
 
 **Q: Can drivers log fill-ups on their own devices?**
 A: Currently, fill-ups are logged by the account holder and attributed to a driver. Multi-driver login with individual accounts is on the roadmap for a future Fleet update.
