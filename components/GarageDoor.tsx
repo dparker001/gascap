@@ -5,8 +5,9 @@
  *
  * Wraps the garage vehicles section with a decorative door. The user taps/clicks
  * the door to open it. On first open each calendar day, the server awards +5
- * monthly draw entries (garage bonus). The door stays open for the rest of the
- * current page load; it resets on page navigation or refresh.
+ * monthly draw entries (garage bonus). Once opened, the door stays open for
+ * the entire browser-tab session (sessionStorage) and only resets when the tab
+ * is closed, the page is refreshed, or the user logs out.
  *
  * Door styles:  Classic · Modern · Wood · Steel
  * Open directions: Roll Up · Slide Left · Slide Right
@@ -247,7 +248,10 @@ export function GarageDoor({
   doorDirection,
   children,
 }: GarageDoorProps) {
-  const [isOpen,     setIsOpen]     = useState(false);
+  const [isOpen,     setIsOpen]     = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return sessionStorage.getItem('gascap:garage-open') === 'true';
+  });
   const [mounted,    setMounted]    = useState(false);
   const [showToast,  setShowToast]  = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -257,6 +261,7 @@ export function GarageDoor({
   const handleOpen = useCallback(async () => {
     if (isOpen) return;
     setIsOpen(true);
+    sessionStorage.setItem('gascap:garage-open', 'true');
 
     // Fire-and-forget: award the daily garage bonus
     try {
