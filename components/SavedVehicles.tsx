@@ -6,6 +6,8 @@ import VehiclePicker from './VehiclePicker';
 import BadgeShelf   from './BadgeShelf';
 import type { VehicleSpecs } from '@/lib/vehicleSpecs';
 import { useTranslation } from '@/contexts/LanguageContext';
+import { GarageDoor }        from './GarageDoor';
+import { useGarageDoorPrefs } from '@/hooks/useGarageDoorPrefs';
 
 export interface Vehicle {
   id:               string;
@@ -247,6 +249,7 @@ function VehicleInfoModal({ vehicle, onClose, onSpecsUpdated }: {
 export default function SavedVehicles({ currentGallons, onSelect, selectedVehicleId, calcKey }: SavedVehiclesProps) {
   const { data: session, status } = useSession();
   const { t } = useTranslation();
+  const { doorStyle, doorDirection } = useGarageDoorPrefs();
   const [data,        setData]        = useState<GarageResponse | null>(null);
   const [showPicker,  setShowPicker]  = useState(false);
   const [saving,      setSaving]      = useState(false);
@@ -291,6 +294,8 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
   const plan     = data?.plan     ?? 'free';
   const limit    = data?.limit    ?? 1;
   const atLimit  = vehicles.length >= limit;
+
+  const isPro = plan === 'pro' || plan === 'fleet';
 
   async function handleDelete(id: string) {
     await fetch(`/api/vehicles?id=${id}`, { method: 'DELETE' });
@@ -388,8 +393,13 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
         />
       )}
 
-      {/* Saved vehicle cards */}
+      {/* Saved vehicle cards — wrapped in animated garage door for Pro members */}
       {!showPicker && (
+        <GarageDoor
+          isPro={isPro}
+          doorStyle={doorStyle}
+          doorDirection={doorDirection}
+        >
         <>
           {vehicles.length === 0 ? (
             <div className="text-center py-4 space-y-1">
@@ -628,6 +638,7 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
             </p>
           )}
         </>
+        </GarageDoor>
       )}
 
       {/* ── Achievements ── */}

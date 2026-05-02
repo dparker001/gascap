@@ -18,7 +18,8 @@ export type FeatureKey =
   | 'fuel_stops_along_route'
   | 'save_trip'
   | 'fleet_trip_planning'
-  | 'fleet_driver_route_planning';
+  | 'fleet_driver_route_planning'
+  | 'garage_door';
 
 // ── Access rules ──────────────────────────────────────────────────────────────
 // List the plans that are ALLOWED to use each feature.
@@ -38,6 +39,9 @@ const ALLOWED_PLANS: Record<FeatureKey, PlanTier[]> = {
   // Fleet-only
   fleet_trip_planning:          ['fleet'],
   fleet_driver_route_planning:  ['fleet'],
+
+  // Pro+ cosmetic feature
+  garage_door:                  ['pro', 'fleet'],
 };
 
 /**

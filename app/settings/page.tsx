@@ -4,6 +4,8 @@ import { useSession, signOut } from 'next-auth/react';
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { setThemePreference, getThemePreference, isDarkMode, type ThemePreference } from '@/components/DarkModeProvider';
+import { DoorMiniPreview, DOOR_STYLE_LABELS, DOOR_DIRECTION_LABELS } from '@/components/GarageDoor';
+import { useGarageDoorPrefs, type DoorStyle, type DoorDirection } from '@/hooks/useGarageDoorPrefs';
 
 interface ReferralSummary {
   code:            string;
@@ -75,6 +77,7 @@ export default function SettingsPage() {
   const [alertSaving,      setAlertSaving]      = useState(false);
   const [livePlan,         setLivePlan]         = useState<string | null>(null);
   const [giveaway,         setGiveaway]         = useState<GiveawayEntries | null>(null);
+  const { doorStyle, setDoorStyle, doorDirection, setDoorDirection } = useGarageDoorPrefs();
 
   useEffect(() => {
     if (!session) return;
@@ -880,6 +883,86 @@ export default function SettingsPage() {
             </div>
           )}
           </div>{/* end Gas Price Alert card */}
+
+        {/* Garage Door — Pro only */}
+        <div className={`bg-white rounded-2xl border shadow-sm p-5 space-y-4 ${
+          plan === 'pro' || plan === 'fleet' ? 'border-slate-100' : 'border-slate-100 opacity-80'
+        }`}>
+          <div className="flex items-center justify-between">
+            <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400">
+              Garage Door
+            </h2>
+            {plan === 'free' && (
+              <span className="text-[9px] font-black bg-amber-400 text-white px-2 py-0.5 rounded-full">PRO</span>
+            )}
+          </div>
+
+          {plan === 'free' ? (
+            <div className="space-y-2">
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Unlock an animated garage door that opens when you scroll to your
+                saved vehicles. Choose your door style and opening direction.
+              </p>
+              <Link
+                href="/upgrade"
+                className="inline-block text-xs font-bold text-amber-600 hover:text-amber-700 transition-colors"
+              >
+                Upgrade to Pro to unlock →
+              </Link>
+            </div>
+          ) : (
+            <div className="space-y-5">
+              {/* Door style grid */}
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-slate-600">Door Style</p>
+                <div className="grid grid-cols-4 gap-2">
+                  {(['classic', 'modern', 'wood', 'steel'] as DoorStyle[]).map((style) => (
+                    <button
+                      key={style}
+                      onClick={() => setDoorStyle(style)}
+                      className="flex flex-col items-center gap-1.5 group"
+                    >
+                      <div className="relative w-full">
+                        <DoorMiniPreview style={style} active={doorStyle === style} />
+                      </div>
+                      <span className={`text-[10px] font-bold transition-colors ${
+                        doorStyle === style ? 'text-amber-600' : 'text-slate-400 group-hover:text-slate-600'
+                      }`}>
+                        {DOOR_STYLE_LABELS[style]}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Opening direction toggle */}
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-slate-600">Opening Direction</p>
+                <div className="flex rounded-xl overflow-hidden border border-slate-200">
+                  {(['roll-up', 'slide-left', 'slide-right'] as DoorDirection[]).map((dir) => (
+                    <button
+                      key={dir}
+                      onClick={() => setDoorDirection(dir)}
+                      className={`flex-1 py-2 text-[10px] font-bold transition-colors ${
+                        doorDirection === dir
+                          ? 'bg-navy-700 text-white'
+                          : 'bg-white text-slate-500 hover:bg-slate-50'
+                      }`}
+                    >
+                      {DOOR_DIRECTION_LABELS[dir]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                The door opens the first time you scroll to your garage each visit,
+                then stays open until you leave or sign out.
+              </p>
+            </div>
+          )}
+        </div>{/* end Garage Door card */}
+
         </div>{/* end preferences section */}
 
         <p className="text-center text-[11px] text-slate-300 pb-4">GasCap™ v0.1 · Gas Capacity</p>
