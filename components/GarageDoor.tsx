@@ -285,7 +285,7 @@ export function GarageDoor({
         style={{
           transform:     isOpen ? openTransform : 'translate(0, 0)',
           transition:    isOpen
-            ? 'transform 0.8s cubic-bezier(0.22, 1, 0.36, 1)'
+            ? 'transform 1.6s cubic-bezier(0.22, 1, 0.36, 1)'
             : 'none',
           willChange:    'transform',
           pointerEvents: isOpen ? 'none' : 'auto',
