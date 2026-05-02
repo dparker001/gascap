@@ -367,6 +367,10 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const editVinFileRef = useRef<HTMLInputElement>(null);
 
+  // Fleet search + pagination
+  const [searchQuery,     setSearchQuery]     = useState('');
+  const [showAllVehicles, setShowAllVehicles] = useState(false);
+
   const load = useCallback(async () => {
     const res = await fetch('/api/vehicles');
     if (res.ok) setData(await res.json() as GarageResponse);
@@ -399,7 +403,27 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
   const limit    = data?.limit    ?? 1;
   const atLimit  = vehicles.length >= limit;
 
-  const isPro = plan === 'pro' || plan === 'fleet';
+  const isPro    = plan === 'pro' || plan === 'fleet';
+  const isFleet  = plan === 'fleet';
+
+  // Fleet: filter by search query, then page to first 4 until expanded
+  const FLEET_PAGE = 4;
+  const filteredVehicles = searchQuery.trim()
+    ? vehicles.filter((v) => {
+        const q = searchQuery.toLowerCase();
+        return (
+          v.name.toLowerCase().includes(q)   ||
+          v.make?.toLowerCase().includes(q)  ||
+          v.model?.toLowerCase().includes(q) ||
+          v.year?.toLowerCase().includes(q)
+        );
+      })
+    : vehicles;
+  const visibleVehicles = isFleet && !showAllVehicles && !searchQuery.trim()
+    ? filteredVehicles.slice(0, FLEET_PAGE)
+    : filteredVehicles;
+  const hasMore = isFleet && !showAllVehicles && !searchQuery.trim()
+    && filteredVehicles.length > FLEET_PAGE;
 
   async function handleDelete(id: string) {
     await fetch(`/api/vehicles?id=${id}`, { method: 'DELETE' });
@@ -562,13 +586,48 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
 
       {/* Saved vehicle cards — wrapped in animated garage door for Pro members */}
       {!showPicker && (
-        <GarageDoor
-          isPro={isPro}
-          doorStyle={doorStyle}
-          doorDirection={doorDirection}
-          userName={session.user?.name ?? undefined}
-          locked={vehicles.length === 0}
-        >
+        <>
+          {/* Fleet vehicle search — always visible above the closed/open door */}
+          {isFleet && vehicles.length > 0 && (
+            <div className="relative mb-2">
+              <div className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none">
+                <svg viewBox="0 0 20 20" fill="currentColor"
+                     className="w-3.5 h-3.5 text-slate-400" aria-hidden="true">
+                  <path fillRule="evenodd" d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search vehicles…"
+                className="w-full pl-8 pr-7 py-2 text-xs bg-slate-50 border border-slate-200
+                           rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400
+                           focus:border-transparent placeholder:text-slate-400 text-slate-700"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400
+                             hover:text-slate-600 transition-colors"
+                  aria-label="Clear search"
+                >
+                  <svg viewBox="0 0 12 12" fill="none" stroke="currentColor"
+                       strokeWidth="2" strokeLinecap="round" className="w-3 h-3" aria-hidden="true">
+                    <path d="M1 1l10 10M11 1L1 11"/>
+                  </svg>
+                </button>
+              )}
+            </div>
+          )}
+
+          <GarageDoor
+            isPro={isPro}
+            doorStyle={doorStyle}
+            doorDirection={doorDirection}
+            userName={session.user?.name ?? undefined}
+            locked={vehicles.length === 0}
+          >
         <>
           {vehicles.length === 0 ? (
             <div className="text-center py-4 space-y-1">
@@ -576,9 +635,23 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
               <p className="text-xs text-slate-400">{t.garage.emptyGarage}</p>
               <p className="text-xs text-slate-400">{t.garage.emptyGarageHint}</p>
             </div>
+          ) : filteredVehicles.length === 0 ? (
+            /* No search results */
+            <div className="text-center py-5 space-y-2">
+              <p className="text-2xl">🔍</p>
+              <p className="text-xs font-semibold text-slate-500">
+                No vehicles match &ldquo;{searchQuery}&rdquo;
+              </p>
+              <button
+                onClick={() => setSearchQuery('')}
+                className="text-[11px] text-blue-600 font-bold hover:underline"
+              >
+                Clear search
+              </button>
+            </div>
           ) : (
             <div className="space-y-2">
-              {vehicles.map((v) => (
+              {visibleVehicles.map((v) => (
                 <div key={v.id}>
                   {editingId === v.id ? (
                     /* ── Inline edit mode ── */
@@ -823,6 +896,24 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
             </div>
           )}
 
+          {/* Show more — fleet only, when first-4 page is active */}
+          {hasMore && (
+            <button
+              onClick={() => setShowAllVehicles(true)}
+              className="w-full flex flex-col items-center gap-0.5 pt-2 pb-1
+                         text-slate-400 hover:text-blue-600 transition-colors group"
+              aria-label="Show more vehicles"
+            >
+              <svg viewBox="0 0 20 20" fill="currentColor"
+                   className="w-5 h-5 group-hover:animate-bounce" aria-hidden="true">
+                <path fillRule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" />
+              </svg>
+              <span className="text-[10px] font-bold">
+                {filteredVehicles.length - FLEET_PAGE} more vehicle{filteredVehicles.length - FLEET_PAGE !== 1 ? 's' : ''}
+              </span>
+            </button>
+          )}
+
           {/* Slot indicators */}
           <div className="flex items-center gap-1.5 mt-3">
             {Array.from({ length: limit }).map((_, i) => (
@@ -903,7 +994,8 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
             </p>
           )}
         </>
-        </GarageDoor>
+          </GarageDoor>
+        </>
       )}
 
       {/* ── Achievements ── */}
