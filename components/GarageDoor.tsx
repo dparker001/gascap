@@ -257,16 +257,48 @@ export function DoorMiniPreview({ style, active }: { style: DoorStyle; active: b
 
 // ── Bonus toast ───────────────────────────────────────────────────────────────
 
-function BonusToast({ show }: { show: boolean }) {
+interface BonusToastProps {
+  show:         boolean;
+  bonusEntries: number;
+  totalDays:    number;
+}
+
+function BonusToast({ show, bonusEntries, totalDays }: BonusToastProps) {
   return (
     <div
-      className={`absolute top-3 left-1/2 -translate-x-1/2 z-30 transition-all duration-500 ${
-        show ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2 pointer-events-none'
+      className={`absolute inset-x-3 top-3 z-30 transition-all duration-500 ${
+        show
+          ? 'opacity-100 translate-y-0 scale-100'
+          : 'opacity-0 -translate-y-3 scale-95 pointer-events-none'
       }`}
     >
-      <div className="flex items-center gap-1.5 bg-amber-500 text-white text-[11px] font-black
-                      px-3 py-1.5 rounded-full shadow-lg whitespace-nowrap">
-        🎟️ +5 draw entries earned!
+      <div className="bg-amber-500 rounded-2xl shadow-xl overflow-hidden">
+        {/* Header row */}
+        <div className="flex items-center gap-3 px-4 pt-3 pb-2">
+          <span className="text-2xl flex-shrink-0">🎟️</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-white text-sm font-black leading-tight">
+              +{bonusEntries} Daily Draw Entries!
+            </p>
+            <p className="text-white/75 text-[11px] font-semibold leading-tight mt-0.5">
+              Daily Garage Bonus
+            </p>
+          </div>
+          {totalDays > 1 && (
+            <div className="flex-shrink-0 text-right">
+              <p className="text-white text-[10px] font-black leading-tight">🔥 {totalDays}</p>
+              <p className="text-white/60 text-[9px] leading-tight">day streak</p>
+            </div>
+          )}
+        </div>
+
+        {/* Explanation */}
+        <div className="bg-black/10 px-4 py-2.5">
+          <p className="text-white/90 text-[11px] leading-relaxed">
+            You earn <span className="font-black text-white">{bonusEntries} bonus entries</span> every
+            day you open your garage. Come back tomorrow to earn more!
+          </p>
+        </div>
       </div>
     </div>
   );
@@ -290,13 +322,15 @@ export function GarageDoor({
   children,
   userName,
 }: GarageDoorProps) {
-  const [isOpen,     setIsOpen]     = useState<boolean>(() => {
+  const [isOpen,       setIsOpen]       = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
     // Option C: open for the rest of the calendar day, reset each morning
     return localStorage.getItem('gascap:garage-open-date') === getToday();
   });
-  const [mounted,    setMounted]    = useState(false);
-  const [showToast,  setShowToast]  = useState(false);
+  const [mounted,      setMounted]      = useState(false);
+  const [showToast,    setShowToast]    = useState(false);
+  const [bonusEntries, setBonusEntries] = useState(10);
+  const [totalDays,    setTotalDays]    = useState(1);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { setMounted(true); }, []);
@@ -310,10 +344,12 @@ export function GarageDoor({
     // Fire-and-forget: award the daily garage bonus
     try {
       const res  = await fetch('/api/giveaway/garage-bonus', { method: 'POST' });
-      const data = await res.json() as { awarded?: boolean };
+      const data = await res.json() as { awarded?: boolean; bonusEntries?: number; totalGarageDays?: number };
       if (data.awarded) {
+        setBonusEntries(data.bonusEntries ?? 10);
+        setTotalDays(data.totalGarageDays ?? 1);
         setShowToast(true);
-        setTimeout(() => setShowToast(false), 3500);
+        setTimeout(() => setShowToast(false), 6000);
       }
     } catch { /* ignore network errors — don't block the animation */ }
   }, [isOpen]);
@@ -325,7 +361,7 @@ export function GarageDoor({
   return (
     <div ref={wrapperRef} className="relative overflow-hidden rounded-xl">
       {children}
-      <BonusToast show={showToast} />
+      <BonusToast show={showToast} bonusEntries={bonusEntries} totalDays={totalDays} />
 
       {/* Door overlay — click to open */}
       <div

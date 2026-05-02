@@ -1,19 +1,19 @@
 /**
  * POST /api/giveaway/garage-bonus
  *
- * Awards +5 monthly draw entries when a Pro/Fleet user taps to open their
+ * Awards +10 daily draw entries when a Pro/Fleet user taps to open their
  * garage door. Idempotent: only one award per calendar day.
  *
  * Response:
- *   { awarded: true,  bonusEntries: 5, totalGarageDays: number }  ← first open today
- *   { awarded: false, bonusEntries: 0, totalGarageDays: number }  ← already opened today
+ *   { awarded: true,  bonusEntries: 10, totalGarageDays: number }  ← first open today
+ *   { awarded: false, bonusEntries: 0,  totalGarageDays: number }  ← already opened today
  */
 import { NextResponse }     from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions }      from '@/lib/auth';
 import { prisma }           from '@/lib/prisma';
 
-const BONUS_PER_OPEN = 5;
+const BONUS_PER_OPEN = 10;
 
 export async function POST() {
   const session = await getServerSession(authOptions);
