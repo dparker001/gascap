@@ -570,11 +570,11 @@ export default function Home() {
           Desktop (lg+): left 520px calc column + right sticky garage panel
       ══════════════════════════════════════════════════════════════════ */}
       {session && (
-        <div className="lg:grid lg:grid-cols-[1fr_300px] lg:gap-6
+        <div className="lg:grid lg:grid-cols-2 lg:gap-0
                         lg:max-w-5xl lg:mx-auto lg:px-6 lg:pt-4 lg:items-start">
 
           {/* ── LEFT COLUMN ── */}
-          <div className="min-w-0 overflow-hidden">
+          <div className="min-w-0 overflow-hidden lg:pr-6">
 
             {/* Streak counter */}
             <StreakCounter />
@@ -658,8 +658,8 @@ export default function Home() {
           </div>
 
           {/* ── RIGHT COLUMN — desktop only ── */}
-          <div className="hidden lg:block min-w-0">
-            <div className="sticky top-4 space-y-4 pb-8 overflow-y-auto max-h-[calc(100vh-2rem)]">
+          <div className="hidden lg:block min-w-0 border-l border-slate-200 dark:border-slate-700 lg:pl-6">
+            <div className="sticky top-4 space-y-4 pb-8">
 
               {/* ── Garage panel header ── */}
               <div className="flex items-center gap-2 px-1 pt-4">
@@ -694,14 +694,7 @@ export default function Home() {
                 selectedVehicleId={desktopSelectedId}
               />
 
-              {/* ── Tools & Insights ── */}
-              <div className="flex items-center gap-2 px-1">
-                <span className="text-base">⚡</span>
-                <h2 className="text-sm font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider">
-                  Tools &amp; Insights
-                </h2>
-                <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
-              </div>
+              {/* Tools & Insights */}
               <section id="gascap-tools">
                 <ToolsPanel />
               </section>
