@@ -77,6 +77,10 @@ export default function SettingsPage() {
   const [alertSaving,      setAlertSaving]      = useState(false);
   const [livePlan,         setLivePlan]         = useState<string | null>(null);
   const [giveaway,         setGiveaway]         = useState<GiveawayEntries | null>(null);
+  const [fleetCompanyName, setFleetCompanyName] = useState('');
+  const [fleetLogoUrl,     setFleetLogoUrl]     = useState('');
+  const [fleetSaved,       setFleetSaved]       = useState(false);
+  const [fleetSaving,      setFleetSaving]      = useState(false);
   const { doorStyle, setDoorStyle, doorDirection, setDoorDirection } = useGarageDoorPrefs();
 
   useEffect(() => {
@@ -85,6 +89,17 @@ export default function SettingsPage() {
       .then((r) => r.json())
       .then((d: { plan?: string }) => { if (d.plan) setLivePlan(d.plan); })
       .catch(() => {});
+    // Fleet branding is fetched here when session plan is already 'fleet';
+    // a second fetch is triggered below when livePlan resolves to 'fleet'.
+    if ((session?.user as { plan?: string })?.plan === 'fleet') {
+      fetch('/api/fleet/branding')
+        .then(r => r.json())
+        .then((d: { companyName?: string; logoUrl?: string }) => {
+          if (d.companyName) setFleetCompanyName(d.companyName);
+          if (d.logoUrl) setFleetLogoUrl(d.logoUrl);
+        })
+        .catch(() => {});
+    }
     fetch('/api/referral')
       .then((r) => r.json())
       .then((d: ReferralSummary) => setReferral(d))
@@ -111,16 +126,36 @@ export default function SettingsPage() {
       .catch(() => {});
   }, [session]);
 
+  // Fetch fleet branding when livePlan resolves to 'fleet' (in case session plan was stale)
+  useEffect(() => {
+    if (livePlan !== 'fleet') return;
+    if ((session?.user as { plan?: string })?.plan === 'fleet') return; // already fetched above
+    fetch('/api/fleet/branding')
+      .then(r => r.json())
+      .then((d: { companyName?: string; logoUrl?: string }) => {
+        if (d.companyName) setFleetCompanyName(d.companyName);
+        if (d.logoUrl) setFleetLogoUrl(d.logoUrl);
+      })
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [livePlan]);
+
   /* ── Sticky tab bar ── */
-  const TABS = [
+  const ALL_TABS = [
     { id: 'profile',     label: '👤 Profile'     },
     { id: 'account',     label: '🔐 Account'      },
     { id: 'plan',        label: '⭐ Plan'         },
     { id: 'perks',       label: '🎁 Perks'        },
     { id: 'preferences', label: '⚙️ Preferences'  },
+    { id: 'fleet',       label: '🚛 Fleet'        },
   ] as const;
 
-  type TabId = (typeof TABS)[number]['id'];
+  type TabId = (typeof ALL_TABS)[number]['id'];
+
+  // Only show the Fleet tab when the user is on the fleet plan
+  const currentPlanForTabs = livePlan ?? (session?.user as { plan?: string })?.plan ?? 'free';
+  const TABS = ALL_TABS.filter((t) => t.id !== 'fleet' || currentPlanForTabs === 'fleet');
+
   const [activeTab, setActiveTab] = useState<TabId>('profile');
   const sectionRefs = useRef<Partial<Record<TabId, HTMLElement | null>>>({});
 
@@ -964,6 +999,85 @@ export default function SettingsPage() {
         </div>{/* end Garage Door card */}
 
         </div>{/* end preferences section */}
+
+        {/* Fleet branding section */}
+        {(livePlan === 'fleet' || (session?.user as { plan?: string })?.plan === 'fleet') && (
+          <section ref={(el) => { sectionRefs.current.fleet = el; }} className="space-y-3">
+            <SectionBanner icon="🚛" title="Fleet Branding" />
+            <div className="bg-white dark:bg-slate-800 rounded-b-2xl border border-t-0 border-slate-100 dark:border-slate-700 p-5 space-y-4">
+              <p className="text-xs text-slate-500 leading-relaxed">
+                White-label the GasCap™ dashboard for your fleet. Your company logo and name appear in the desktop header for all fleet users.
+              </p>
+
+              {/* Company name */}
+              <div>
+                <label className="field-label">Company Name</label>
+                <input
+                  type="text"
+                  className="input-field"
+                  placeholder="Acme Logistics LLC"
+                  value={fleetCompanyName}
+                  onChange={(e) => setFleetCompanyName(e.target.value)}
+                  maxLength={60}
+                />
+              </div>
+
+              {/* Logo URL */}
+              <div>
+                <label className="field-label">Logo URL <span className="text-slate-400 font-normal">(must start with https://)</span></label>
+                <input
+                  type="url"
+                  className="input-field"
+                  placeholder="https://yourcompany.com/logo.png"
+                  value={fleetLogoUrl}
+                  onChange={(e) => setFleetLogoUrl(e.target.value)}
+                />
+                <p className="field-hint">Use a PNG or SVG on a transparent or dark background for best results. Recommended size: 160×40px or similar.</p>
+              </div>
+
+              {/* Logo preview */}
+              {fleetLogoUrl && fleetLogoUrl.startsWith('https://') && (
+                <div>
+                  <p className="field-label">Preview</p>
+                  <div className="rounded-xl bg-[#1E2D4A] p-4 inline-flex items-center gap-3">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={fleetLogoUrl}
+                      alt="Logo preview"
+                      className="h-8 w-auto object-contain"
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                    />
+                    <div>
+                      <p className="text-white text-sm font-black">{fleetCompanyName || 'Your Company'}</p>
+                      <p className="text-white/40 text-[10px]">Powered by GasCap™ Fleet</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Save button */}
+              <button
+                onClick={async () => {
+                  setFleetSaving(true);
+                  try {
+                    const res = await fetch('/api/fleet/branding', {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ companyName: fleetCompanyName, logoUrl: fleetLogoUrl }),
+                    });
+                    if (res.ok) { setFleetSaved(true); setTimeout(() => setFleetSaved(false), 3000); }
+                  } finally {
+                    setFleetSaving(false);
+                  }
+                }}
+                disabled={fleetSaving}
+                className="btn-amber"
+              >
+                {fleetSaving ? 'Saving…' : fleetSaved ? '✓ Saved!' : 'Save Fleet Branding'}
+              </button>
+            </div>
+          </section>
+        )}
 
         <p className="text-center text-[11px] text-slate-300 pb-4">GasCap™ v0.1 · Gas Capacity</p>
       </div>

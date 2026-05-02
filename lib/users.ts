@@ -67,6 +67,8 @@ export interface StoredUser {
   ambassadorProForLife?: boolean;
   isTestAccount?: boolean;
   fleetDrivers?:  string[];
+  fleetCompanyName?: string;
+  fleetLogoUrl?:     string;
   compCampaignStep?:       number;
   compCampaignEnrolledAt?: string;
   engagementStep?:         number;
@@ -145,6 +147,8 @@ function toStoredUser(u: PrismaUser): StoredUser {
     streakMilestonesHit:  u.streakMilestonesHit,
     ambassadorProForLife: u.ambassadorProForLife ?? false,
     fleetDrivers:         u.fleetDrivers ?? [],
+    fleetCompanyName:     u.fleetCompanyName ?? undefined,
+    fleetLogoUrl:         u.fleetLogoUrl     ?? undefined,
     compCampaignStep:       u.compCampaignStep       ?? undefined,
     compCampaignEnrolledAt: u.compCampaignEnrolledAt ?? undefined,
     engagementStep:         u.engagementStep         ?? undefined,

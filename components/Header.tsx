@@ -8,10 +8,38 @@ import PlanBadge            from './PlanBadge';
 import TipsTicker           from './TipsTicker';
 import { useTranslation }   from '@/contexts/LanguageContext';
 
+interface LiveVehiclesData {
+  plan?: string;
+  fleetCompanyName?: string | null;
+  fleetLogoUrl?: string | null;
+  userName?: string | null;
+}
+
 export default function Header() {
   const { t, locale, toggle } = useTranslation();
   const { data: session }     = useSession();
   const [giftWiggle, setGiftWiggle] = useState(false);
+  const [fleetBranding, setFleetBranding] = useState<{ companyName: string; logoUrl: string } | null>(null);
+  const [userName, setUserName] = useState<string | null>(null);
+
+  const isFleet = (session?.user as { plan?: string })?.plan === 'fleet';
+
+  // Fetch fleet branding + userName once per session
+  useEffect(() => {
+    if (!session) return;
+    fetch('/api/vehicles')
+      .then((r) => r.json())
+      .then((d: LiveVehiclesData) => {
+        if (d.userName) setUserName(d.userName);
+        if (d.plan === 'fleet') {
+          setFleetBranding({
+            companyName: d.fleetCompanyName ?? '',
+            logoUrl:     d.fleetLogoUrl     ?? '',
+          });
+        }
+      })
+      .catch(() => {});
+  }, [session]);
 
   // Wiggle the gift box every 6 seconds to draw attention
   useEffect(() => {
@@ -71,6 +99,38 @@ export default function Header() {
       </div>
 
       <div className="relative max-w-lg lg:max-w-6xl mx-auto">
+
+        {/* ── Fleet corporate identity bar — desktop only ── */}
+        {isFleet && (
+          <div className="hidden lg:flex items-center justify-between mb-4 pb-3 border-b border-white/10">
+            <div className="flex items-center gap-3">
+              {fleetBranding?.logoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={fleetBranding.logoUrl}
+                  alt={fleetBranding.companyName || 'Company logo'}
+                  className="h-8 w-auto object-contain rounded"
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                />
+              ) : (
+                <div className="w-8 h-8 rounded bg-white/15 flex items-center justify-center flex-shrink-0">
+                  <span className="text-sm">🏢</span>
+                </div>
+              )}
+              <div>
+                <p className="text-white text-sm font-black leading-tight">
+                  {fleetBranding?.companyName || 'Your Company'}
+                </p>
+                <p className="text-white/40 text-[10px]">Powered by GasCap™ Fleet</p>
+              </div>
+            </div>
+            {userName && (
+              <p className="text-white/50 text-xs">
+                Welcome back, <span className="text-white/80 font-semibold">{userName.split(' ')[0]}</span>
+              </p>
+            )}
+          </div>
+        )}
 
         {/* ── Top row: logo + wordmark + auth ── */}
         <div className="flex items-center justify-between mb-5">

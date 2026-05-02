@@ -661,6 +661,24 @@ export default function Home() {
           <div className="hidden lg:block min-w-0 border-l border-slate-200 dark:border-slate-700 lg:pl-6">
             <div className="sticky top-4 space-y-4 pb-8">
 
+              {/* Fleet corporate banner — right panel, desktop, fleet only */}
+              {userPlan === 'fleet' && (
+                <div className="rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm mt-4">
+                  <div className="bg-[#1E2D4A] px-4 py-3 flex items-center gap-3">
+                    <span className="text-xl">🚛</span>
+                    <div>
+                      <p className="text-white text-xs font-black">GasCap™ Fleet Dashboard</p>
+                      <p className="text-white/50 text-[10px]">Fleet management &amp; fuel analytics</p>
+                    </div>
+                  </div>
+                  <div className="bg-white dark:bg-slate-800 px-4 py-3">
+                    <a href="/settings#fleet" className="text-[11px] text-brand-teal font-bold hover:text-brand-orange transition-colors">
+                      Configure fleet branding →
+                    </a>
+                  </div>
+                </div>
+              )}
+
               {/* ── Garage panel header ── */}
               <div className="flex items-center gap-2 px-1 pt-4">
                 <span className="text-base">🚗</span>

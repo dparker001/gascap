@@ -18,9 +18,12 @@ export async function GET() {
   return NextResponse.json({
     vehicles,
     plan,
-    limit:         PLAN_LIMITS[plan],
-    isProTrial:    user?.isProTrial    ?? false,
-    betaProExpiry: user?.betaProExpiry ?? null,
+    limit:            PLAN_LIMITS[plan],
+    isProTrial:       user?.isProTrial       ?? false,
+    betaProExpiry:    user?.betaProExpiry    ?? null,
+    fleetCompanyName: user?.fleetCompanyName ?? null,
+    fleetLogoUrl:     user?.fleetLogoUrl     ?? null,
+    userName:         user?.displayName || user?.name || null,
   });
 }
 

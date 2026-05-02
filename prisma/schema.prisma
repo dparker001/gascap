@@ -117,6 +117,10 @@ model User {
   // Fleet Phase 1 — driver roster (names only; no sub-accounts yet)
   fleetDrivers             String[]  @default([])
 
+  // Fleet White Label
+  fleetCompanyName         String?   // Company display name for white-label header
+  fleetLogoUrl             String?   // HTTPS URL to company logo image
+
   vehicles                 Vehicle[]
 }
 
