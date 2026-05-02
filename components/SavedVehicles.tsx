@@ -63,61 +63,27 @@ function LockIcon({ className }: { className?: string }) {
 }
 
 // ── Manufacturer logo ────────────────────────────────────────────────────
+// Source: filippofilip95/car-logos-dataset via jsDelivr CDN (387 brands, no API key)
+// URL pattern: https://cdn.jsdelivr.net/gh/filippofilip95/car-logos-dataset@master/logos/thumb/{slug}.png
 
-const MAKE_DOMAINS: Record<string, string> = {
-  'acura':          'acura.com',
-  'alfa romeo':     'alfaromeo.com',
-  'audi':           'audi.com',
-  'bmw':            'bmw.com',
-  'buick':          'buick.com',
-  'cadillac':       'cadillac.com',
-  'chevrolet':      'chevrolet.com',
-  'chevy':          'chevrolet.com',
-  'chrysler':       'chrysler.com',
-  'dodge':          'dodge.com',
-  'ferrari':        'ferrari.com',
-  'fiat':           'fiat.com',
-  'ford':           'ford.com',
-  'genesis':        'genesis.com',
-  'gmc':            'gmc.com',
-  'honda':          'honda.com',
-  'hyundai':        'hyundai.com',
-  'infiniti':       'infinitiusa.com',
-  'jaguar':         'jaguar.com',
-  'jeep':           'jeep.com',
-  'kia':            'kia.com',
-  'lamborghini':    'lamborghini.com',
-  'land rover':     'landrover.com',
-  'lexus':          'lexus.com',
-  'lincoln':        'lincoln.com',
-  'lucid':          'lucidmotors.com',
-  'maserati':       'maserati.com',
-  'mazda':          'mazda.com',
-  'mercedes-benz':  'mercedes-benz.com',
-  'mercedes':       'mercedes-benz.com',
-  'mini':           'miniusa.com',
-  'mitsubishi':     'mitsubishicars.com',
-  'nissan':         'nissanusa.com',
-  'pontiac':        'pontiac.com',
-  'porsche':        'porsche.com',
-  'ram':            'ramtrucks.com',
-  'rivian':         'rivian.com',
-  'rolls-royce':    'rolls-roycemotorcars.com',
-  'subaru':         'subaru.com',
-  'tesla':          'tesla.com',
-  'toyota':         'toyota.com',
-  'volkswagen':     'vw.com',
-  'vw':             'vw.com',
-  'volvo':          'volvocars.com',
+// Overrides where the make name doesn't map cleanly to the dataset slug
+const MAKE_SLUG_OVERRIDES: Record<string, string> = {
+  'chevy':           'chevrolet',
+  'vw':              'volkswagen',
+  'mercedes':        'mercedes-benz',
+  'alfa romeo':      'alfa-romeo',
+  'land rover':      'land-rover',
+  'aston martin':    'aston-martin',
 };
 
-function getMakeDomain(make: string): string | null {
-  return MAKE_DOMAINS[make.toLowerCase().trim()] ?? null;
+function getMakeLogoUrl(make: string): string {
+  const key  = make.toLowerCase().trim();
+  const slug = MAKE_SLUG_OVERRIDES[key] ?? key.replace(/\s+/g, '-');
+  return `https://cdn.jsdelivr.net/gh/filippofilip95/car-logos-dataset@master/logos/thumb/${slug}.png`;
 }
 
 function MakeLogo({ make, selected }: { make: string; selected: boolean }) {
   const [failed, setFailed] = useState(false);
-  const domain = getMakeDomain(make);
 
   const containerCls = [
     'flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center overflow-hidden transition-all',
@@ -126,8 +92,7 @@ function MakeLogo({ make, selected }: { make: string; selected: boolean }) {
       : 'bg-white border border-slate-100 shadow-sm',
   ].join(' ');
 
-  if (!domain || failed) {
-    // Fallback: first letter of make in a tinted badge
+  if (failed) {
     return (
       <div className={containerCls}>
         <span className="text-xs font-black text-slate-400 select-none">
@@ -141,10 +106,10 @@ function MakeLogo({ make, selected }: { make: string; selected: boolean }) {
     <div className={containerCls}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src={`https://logo.clearbit.com/${domain}?size=64`}
-        alt={make}
+        src={getMakeLogoUrl(make)}
+        alt={`${make} logo`}
         loading="lazy"
-        className="w-5 h-5 object-contain"
+        className="w-6 h-6 object-contain"
         onError={() => setFailed(true)}
       />
     </div>
