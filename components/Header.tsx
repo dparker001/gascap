@@ -70,7 +70,7 @@ export default function Header() {
         aria-hidden="true"
         className="absolute inset-0 w-full h-full object-cover opacity-[0.18]"
       >
-        <source src="/videos/hero-bg.mp4" type="video/mp4" />
+        <source src={isFleet ? "/videos/hero-bg-fleet.mp4" : "/videos/hero-bg.mp4"} type="video/mp4" />
       </video>
       {/* Overlay keeps text crisp over the video */}
       <div className="absolute inset-0 bg-[#1E2D4A]/60 pointer-events-none" aria-hidden="true" />

@@ -767,9 +767,14 @@ export default function Home() {
                   </a>
                 ) : (
                   <a href="#share"
+                     onClick={(e) => {
+                       e.preventDefault();
+                       window.dispatchEvent(new CustomEvent('gascap:switch-tools-tab', { detail: { tab: 'share' } }));
+                       document.getElementById('gascap-tools')?.scrollIntoView({ behavior: 'smooth' });
+                     }}
                      className="flex flex-col gap-1 bg-white dark:bg-slate-800 rounded-xl
                                 border border-slate-100 dark:border-slate-700 p-3
-                                hover:border-brand-teal/40 transition-colors group shadow-sm">
+                                hover:border-brand-teal/40 transition-colors group shadow-sm cursor-pointer">
                     <span className="text-lg">🤝</span>
                     <p className="text-[11px] font-black text-slate-700 dark:text-slate-200 group-hover:text-brand-teal transition-colors leading-tight">Refer &amp; Earn</p>
                     <p className="text-[10px] text-slate-400 leading-snug">Free Pro months</p>
@@ -784,9 +789,14 @@ export default function Home() {
                   <p className="text-[10px] text-slate-400 leading-snug">Monthly giveaway</p>
                 </a>
                 <a href="#log"
+                   onClick={(e) => {
+                     e.preventDefault();
+                     window.dispatchEvent(new CustomEvent('gascap:switch-tools-tab', { detail: { tab: 'log' } }));
+                     document.getElementById('gascap-tools')?.scrollIntoView({ behavior: 'smooth' });
+                   }}
                    className="flex flex-col gap-1 bg-white dark:bg-slate-800 rounded-xl
                               border border-slate-100 dark:border-slate-700 p-3
-                              hover:border-brand-teal/40 transition-colors group shadow-sm">
+                              hover:border-brand-teal/40 transition-colors group shadow-sm cursor-pointer">
                   <span className="text-lg">📋</span>
                   <p className="text-[11px] font-black text-slate-700 dark:text-slate-200 group-hover:text-brand-teal transition-colors leading-tight">Fill-Up Log</p>
                   <p className="text-[10px] text-slate-400 leading-snug">MPG &amp; spending history</p>
@@ -898,8 +908,8 @@ export default function Home() {
           className="inline-flex items-center gap-2 mt-1 px-4 py-2 rounded-full
                      bg-brand-dark hover:bg-[#006B54] transition-colors group"
         >
-          <span className="text-[10px] text-white/50 font-medium">{t.footer.poweredBy}</span>
-          <span className="text-[11px] font-black text-brand-teal group-hover:text-brand-orange transition-colors">
+          <span className="text-[10px] text-white/80 font-medium">{t.footer.poweredBy}</span>
+          <span className="text-[11px] font-black text-white group-hover:text-brand-orange transition-colors">
             VNetCard™
           </span>
           <svg viewBox="0 0 12 12" className="w-2.5 h-2.5 text-white/30 group-hover:text-white/50 transition-colors"

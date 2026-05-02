@@ -1002,7 +1002,7 @@ export default function SettingsPage() {
 
         {/* Fleet branding section */}
         {(livePlan === 'fleet' || (session?.user as { plan?: string })?.plan === 'fleet') && (
-          <section ref={(el) => { sectionRefs.current.fleet = el; }} className="space-y-3">
+          <section id="fleet" ref={(el) => { sectionRefs.current.fleet = el; }} className="space-y-3">
             <SectionBanner icon="🚛" title="Fleet Branding" />
             <div className="bg-white dark:bg-slate-800 rounded-b-2xl border border-t-0 border-slate-100 dark:border-slate-700 p-5 space-y-4">
               <p className="text-xs text-slate-500 leading-relaxed">
