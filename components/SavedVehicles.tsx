@@ -6,8 +6,9 @@ import VehiclePicker from './VehiclePicker';
 import BadgeShelf   from './BadgeShelf';
 import type { VehicleSpecs } from '@/lib/vehicleSpecs';
 import { useTranslation } from '@/contexts/LanguageContext';
-import { GarageDoor }        from './GarageDoor';
-import { useGarageDoorPrefs } from '@/hooks/useGarageDoorPrefs';
+import { GarageDoor }                        from './GarageDoor';
+import { useGarageDoorPrefs }                from '@/hooks/useGarageDoorPrefs';
+import { detectVehicleType, VEHICLE_PATHS }  from '@/lib/vehicleSilhouette';
 
 export interface Vehicle {
   id:               string;
@@ -462,11 +463,20 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
                   ) : (
                     /* ── Normal card ── */
                     <div className={[
-                      'flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors',
+                      'relative overflow-hidden flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors',
                       v.id === selectedVehicleId
                         ? 'bg-amber-50 border-2 border-amber-400 shadow-sm'
                         : 'bg-slate-50 border border-slate-200 group hover:border-amber-300',
                     ].join(' ')}>
+                      {/* Vehicle silhouette watermark */}
+                      <svg
+                        viewBox="0 0 100 40"
+                        aria-hidden="true"
+                        className="absolute -right-3 top-1/2 -translate-y-1/2 w-24 pointer-events-none select-none"
+                        style={{ fill: '#94a3b8', opacity: 0.10 }}
+                      >
+                        <path d={VEHICLE_PATHS[detectVehicleType({ name: v.name, make: v.make, model: v.model })]} />
+                      </svg>
                       {/* Select / load button */}
                       <button
                         onClick={() => onSelect(String(v.gallons), v)}

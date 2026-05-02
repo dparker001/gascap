@@ -3,24 +3,24 @@
 /**
  * GarageDoor — Pro-only animated garage door overlay
  *
- * Wraps the garage vehicles section with a decorative door that opens when
- * the section scrolls into view (IntersectionObserver). The door remains open
- * for the rest of the session (sessionStorage flag), so switching tabs or
- * scrolling away and back doesn't trigger the animation again.
- *
- * For non-Pro users the component is a transparent pass-through.
+ * Wraps the garage vehicles section with a decorative door. The user taps/clicks
+ * the door to open it. On first open each calendar day, the server awards +5
+ * monthly draw entries (garage bonus). The door stays open for the rest of the
+ * current page load; it resets on page navigation or refresh.
  *
  * Door styles:  Classic · Modern · Wood · Steel
  * Open directions: Roll Up · Slide Left · Slide Right
  *
- * Vehicle silhouettes: up to 3 vehicle-type-matched SVG silhouettes are
- * etched onto the door panel, inferred from each vehicle's name / make / model.
+ * Vehicle silhouettes: up to 3 body-type-matched SVG silhouettes etched onto
+ * the closed door, inferred from each vehicle's name / make / model.
  */
 
-import { useRef, useState, useEffect, type ReactNode } from 'react';
+import { useRef, useState, useEffect, useCallback, type ReactNode } from 'react';
 import type { DoorStyle, DoorDirection } from '@/hooks/useGarageDoorPrefs';
+import { detectVehicleType, VEHICLE_PATHS, type VehicleInfo } from '@/lib/vehicleSilhouette';
 
 export type { DoorStyle, DoorDirection };
+export type { VehicleInfo };
 
 // ── Display labels (used by the settings UI) ─────────────────────────────────
 
@@ -37,65 +37,6 @@ export const DOOR_DIRECTION_LABELS: Record<DoorDirection, string> = {
   'slide-right': '→ Slide Right',
 };
 
-// ── Vehicle silhouettes ───────────────────────────────────────────────────────
-
-/** Minimal vehicle info needed to pick a silhouette type */
-export interface VehicleInfo {
-  name:   string;
-  make?:  string;
-  model?: string;
-}
-
-type VehicleType = 'sedan' | 'suv' | 'truck' | 'van';
-
-/** Infer a vehicle body type from name / make / model keywords */
-function detectVehicleType(v: VehicleInfo): VehicleType {
-  const text = [v.name, v.make, v.model]
-    .filter(Boolean).join(' ').toLowerCase();
-
-  if (/\b(truck|pickup|f-?150|f-?250|f-?350|silverado|sierra|ram\b|tundra|tacoma|frontier|ridgeline|colorado|canyon|ranger|maverick|gladiator|titan)\b/.test(text))
-    return 'truck';
-
-  if (/\b(van|minivan|caravan|odyssey|sienna|pacifica|transit|express|savana|voyager|town.?country)\b/.test(text))
-    return 'van';
-
-  if (/\b(suv|crossover|explorer|expedition|tahoe|suburban|yukon|escalade|4runner|highlander|rav4|cr-?v|cx-?[0-9]|pilot|traverse|equinox|edge|escape|rogue|murano|pathfinder|armada|sequoia|land.?cruiser|wrangler|compass|cherokee|durango|terrain|blazer|bronco|defender|range.?rover|navigator|santa.?fe|tucson|sportage|telluride|palisade|atlas|tiguan|passport|4wd|awd|4x4)\b/.test(text))
-    return 'suv';
-
-  return 'sedan';
-}
-
-/**
- * SVG path data for each vehicle type.
- * viewBox "0 0 100 40" — wheels are cubic-bezier arches cut from the bottom.
- * Paths face LEFT (front of vehicle on left side).
- */
-const VEHICLE_PATHS: Record<VehicleType, string> = {
-  // 3-box sedan: sloped hood, defined roofline, short trunk
-  sedan:
-    'M4,34 L4,24 L16,13 L28,10 L72,10 L84,13 L96,24 L96,34 ' +
-    'L88,34 C88,26 72,26 72,34 ' +
-    'L28,34 C28,26 12,26 12,34 Z',
-
-  // SUV / crossover: taller, boxier, higher roofline
-  suv:
-    'M4,34 L4,20 L11,10 L22,7 L78,7 L89,10 L96,20 L96,34 ' +
-    'L88,34 C88,26 72,26 72,34 ' +
-    'L28,34 C28,26 12,26 12,34 Z',
-
-  // Pickup truck: sloped cab on left, flat low bed on right, 3 wheel arches
-  truck:
-    'M4,34 L4,22 L10,11 Q16,8 22,8 L56,8 L58,14 L96,14 L96,34 ' +
-    'L88,34 C88,26 72,26 72,34 ' +
-    'L28,34 C28,26 12,26 12,34 Z',
-
-  // Van / minivan: very tall, near-vertical sides, curved rear top
-  van:
-    'M4,34 L4,14 L9,8 L18,6 L76,6 L85,10 L93,18 L96,24 L96,34 ' +
-    'L88,34 C88,26 72,26 72,34 ' +
-    'L28,34 C28,26 12,26 12,34 Z',
-};
-
 // ── Style configs ─────────────────────────────────────────────────────────────
 
 interface StyleConfig {
@@ -105,8 +46,9 @@ interface StyleConfig {
   handle:            string;
   trackBg:           string;
   labelColor:        string;
-  silhouetteFill:    string;   // fill color for vehicle silhouettes
-  silhouetteOpacity: number;   // opacity for vehicle silhouettes
+  silhouetteFill:    string;
+  silhouetteOpacity: number;
+  hintColor:         string;   // "TAP TO OPEN" hint text color class
   gradient?:         (i: number) => string;
 }
 
@@ -120,6 +62,7 @@ const STYLE_CONFIGS: Record<DoorStyle, StyleConfig> = {
     labelColor:        'text-stone-400',
     silhouetteFill:    '#7A6A5E',
     silhouetteOpacity: 0.22,
+    hintColor:         'text-stone-500',
   },
   modern: {
     panelBg:           '#2D3142',
@@ -130,6 +73,7 @@ const STYLE_CONFIGS: Record<DoorStyle, StyleConfig> = {
     labelColor:        'text-slate-500',
     silhouetteFill:    '#FFFFFF',
     silhouetteOpacity: 0.18,
+    hintColor:         'text-slate-400',
   },
   wood: {
     panelBg:           '#8B5E3C',
@@ -140,6 +84,7 @@ const STYLE_CONFIGS: Record<DoorStyle, StyleConfig> = {
     labelColor:        'text-amber-200/40',
     silhouetteFill:    '#2A1408',
     silhouetteOpacity: 0.22,
+    hintColor:         'text-amber-200/60',
     gradient: (i) =>
       i % 2 === 0
         ? 'linear-gradient(to bottom, #9B6E4C 0%, #7B4E2C 50%, #8B5E3C 100%)'
@@ -154,69 +99,56 @@ const STYLE_CONFIGS: Record<DoorStyle, StyleConfig> = {
     labelColor:        'text-slate-300/30',
     silhouetteFill:    '#1A2530',
     silhouetteOpacity: 0.20,
+    hintColor:         'text-slate-200/60',
     gradient: (i) =>
       `linear-gradient(to bottom, ${i % 2 === 0 ? '#8A9499' : '#7A8491'} 0%, ${i % 2 === 0 ? '#6E7880' : '#7A8491'} 100%)`,
   },
 };
 
-// ── Vehicle silhouette renderer ───────────────────────────────────────────────
+const OPEN_TRANSFORMS: Record<DoorDirection, string> = {
+  'roll-up':    'translateY(-102%)',
+  'slide-left': 'translateX(-102%)',
+  'slide-right': 'translateX(102%)',
+};
 
-function VehicleSilhouettes({
-  vehicles,
-  style,
-}: {
-  vehicles: VehicleInfo[];
-  style:    DoorStyle;
-}) {
-  const cfg      = STYLE_CONFIGS[style];
-  const shown    = vehicles.slice(0, 3);
-  const count    = shown.length;
-  if (count === 0) return null;
+const PANEL_COUNT = 5;
 
-  // Width each silhouette should occupy (as % of the SVG container)
-  const widthMap = [55, 36, 26] as const;
-  const w        = widthMap[Math.min(count - 1, 2) as 0 | 1 | 2];
+// ── Vehicle silhouette strip ──────────────────────────────────────────────────
+
+function VehicleSilhouettes({ vehicles, style }: { vehicles: VehicleInfo[]; style: DoorStyle }) {
+  const cfg   = STYLE_CONFIGS[style];
+  const shown = vehicles.slice(0, 3);
+  if (shown.length === 0) return null;
+
+  const widthMap = [52, 35, 26] as const;
+  const w = widthMap[Math.min(shown.length - 1, 2) as 0 | 1 | 2];
 
   return (
     <div
-      className="absolute inset-x-4 flex items-end justify-center gap-4 pointer-events-none select-none"
+      className="absolute inset-x-4 flex items-end justify-center gap-3 pointer-events-none select-none"
       style={{ bottom: '28%' }}
     >
-      {shown.map((v, idx) => {
-        const type = detectVehicleType(v);
-        return (
-          <svg
-            key={idx}
-            viewBox="0 0 100 40"
-            style={{
-              width:   `${w}%`,
-              fill:    cfg.silhouetteFill,
-              opacity: cfg.silhouetteOpacity,
-              flexShrink: 0,
-            }}
-            aria-hidden="true"
-          >
-            <path d={VEHICLE_PATHS[type]} />
-          </svg>
-        );
-      })}
+      {shown.map((v, i) => (
+        <svg
+          key={i}
+          viewBox="0 0 100 40"
+          style={{ width: `${w}%`, fill: cfg.silhouetteFill, opacity: cfg.silhouetteOpacity, flexShrink: 0 }}
+          aria-hidden="true"
+        >
+          <path d={VEHICLE_PATHS[detectVehicleType(v)]} />
+        </svg>
+      ))}
     </div>
   );
 }
 
 // ── Door face ─────────────────────────────────────────────────────────────────
 
-function DoorFace({
-  style,
-  vehicles,
-}: {
-  style:     DoorStyle;
-  vehicles?: VehicleInfo[];
-}) {
+function DoorFace({ style, vehicles }: { style: DoorStyle; vehicles?: VehicleInfo[] }) {
   const cfg = STYLE_CONFIGS[style];
 
   return (
-    <div className="absolute inset-0 flex flex-col overflow-hidden">
+    <div className="absolute inset-0 flex flex-col overflow-hidden cursor-pointer select-none">
 
       {/* Panel stack */}
       {Array.from({ length: PANEL_COUNT }).map((_, i) => (
@@ -228,75 +160,62 @@ function DoorFace({
             borderBottom: i < PANEL_COUNT - 1 ? `2px solid ${cfg.panelBorder}` : 'none',
           }}
         >
-          {/* Top ridge highlight on each panel (depth illusion) */}
-          <div
-            className="absolute inset-x-0 top-0 h-px opacity-40"
-            style={{ background: 'rgba(255,255,255,0.5)' }}
-          />
-
-          {/* Steel rivets */}
+          <div className="absolute inset-x-0 top-0 h-px opacity-40"
+               style={{ background: 'rgba(255,255,255,0.5)' }} />
           {style === 'steel' && (
             <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex justify-between px-5">
-              <div className="w-2 h-2 rounded-full shadow-inner"
+              <div className="w-2 h-2 rounded-full"
                    style={{ background: '#4E5968', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.4)' }} />
-              <div className="w-2 h-2 rounded-full shadow-inner"
+              <div className="w-2 h-2 rounded-full"
                    style={{ background: '#4E5968', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.4)' }} />
             </div>
           )}
-
-          {/* Wood grain overlay */}
           {style === 'wood' && (
-            <div
-              className="absolute inset-0 opacity-10"
-              style={{
-                background: 'repeating-linear-gradient(90deg, transparent, transparent 8px, rgba(0,0,0,0.15) 8px, rgba(0,0,0,0.15) 9px)',
-              }}
-            />
+            <div className="absolute inset-0 opacity-10"
+                 style={{ background: 'repeating-linear-gradient(90deg,transparent,transparent 8px,rgba(0,0,0,0.15) 8px,rgba(0,0,0,0.15) 9px)' }} />
           )}
         </div>
       ))}
 
-      {/* Vehicle silhouettes — etched into the door center */}
-      {vehicles && vehicles.length > 0 && (
+      {/* Vehicle silhouettes */}
+      {vehicles && vehicles.length > 0 ? (
         <VehicleSilhouettes vehicles={vehicles} style={style} />
-      )}
-
-      {/* "My Garage" label — shown only when no vehicles are set */}
-      {(!vehicles || vehicles.length === 0) && (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none">
+      ) : (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <span className={`text-[11px] font-black tracking-[0.25em] uppercase opacity-60 ${cfg.labelColor}`}>
             My Garage
           </span>
         </div>
       )}
 
-      {/* Door handle — centered on the lower section */}
+      {/* Door handle */}
       <div className="absolute bottom-[10%] left-1/2 -translate-x-1/2 z-10">
-        <div
-          className="rounded-full px-5 py-2 shadow-md flex items-center justify-center"
-          style={{ background: cfg.handleBg }}
-        >
-          <div
-            className="w-10 h-[5px] rounded-full shadow-sm"
-            style={{ background: cfg.handle }}
-          />
+        <div className="rounded-full px-5 py-2 shadow-md flex items-center justify-center"
+             style={{ background: cfg.handleBg }}>
+          <div className="w-10 h-[5px] rounded-full shadow-sm" style={{ background: cfg.handle }} />
         </div>
       </div>
 
-      {/* Left + right track rails */}
-      <div
-        className="absolute left-0 top-0 bottom-0 w-2 opacity-80"
-        style={{ background: cfg.trackBg }}
-      />
-      <div
-        className="absolute right-0 top-0 bottom-0 w-2 opacity-80"
-        style={{ background: cfg.trackBg }}
-      />
+      {/* "Tap to Open" hint — pulsing, above the handle */}
+      <div className="absolute bottom-[22%] left-1/2 -translate-x-1/2 flex flex-col items-center gap-0.5 pointer-events-none">
+        <svg viewBox="0 0 16 10" className="w-4 h-3 animate-bounce opacity-70"
+             fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+             style={{ color: cfg.hintColor.replace('text-', '') }}>
+          <path d="M2 8l6-6 6 6" />
+        </svg>
+        <span className={`text-[9px] font-black tracking-widest uppercase opacity-70 ${cfg.hintColor}`}>
+          Tap to Open
+        </span>
+      </div>
+
+      {/* Track rails */}
+      <div className="absolute left-0 top-0 bottom-0 w-2 opacity-80" style={{ background: cfg.trackBg }} />
+      <div className="absolute right-0 top-0 bottom-0 w-2 opacity-80" style={{ background: cfg.trackBg }} />
     </div>
   );
 }
 
-// ── Mini preview (used in settings) ──────────────────────────────────────────
+// ── Mini preview (settings) ───────────────────────────────────────────────────
 
 export function DoorMiniPreview({ style, active }: { style: DoorStyle; active: boolean }) {
   const cfg = STYLE_CONFIGS[style];
@@ -307,56 +226,46 @@ export function DoorMiniPreview({ style, active }: { style: DoorStyle; active: b
       }`}
       style={{ background: cfg.panelBg }}
     >
-      {/* Mini panels */}
       {Array.from({ length: 3 }).map((_, i) => (
-        <div
-          key={i}
-          className="relative"
-          style={{
-            height:       '33.33%',
-            background:   cfg.gradient ? cfg.gradient(i) : cfg.panelBg,
-            borderBottom: i < 2 ? `1px solid ${cfg.panelBorder}` : 'none',
-          }}
-        />
+        <div key={i} className="relative" style={{
+          height: '33.33%',
+          background: cfg.gradient ? cfg.gradient(i) : cfg.panelBg,
+          borderBottom: i < 2 ? `1px solid ${cfg.panelBorder}` : 'none',
+        }} />
       ))}
       {/* Mini sedan silhouette */}
-      <div className="absolute inset-x-0 flex justify-center" style={{ bottom: '30%' }}>
-        <svg
-          viewBox="0 0 100 40"
-          style={{
-            width:   '55%',
-            fill:    cfg.silhouetteFill,
-            opacity: cfg.silhouetteOpacity,
-          }}
-          aria-hidden="true"
-        >
+      <div className="absolute inset-x-0 flex justify-center" style={{ bottom: '28%' }}>
+        <svg viewBox="0 0 100 40"
+             style={{ width: '55%', fill: cfg.silhouetteFill, opacity: cfg.silhouetteOpacity }}
+             aria-hidden="true">
           <path d={VEHICLE_PATHS.sedan} />
         </svg>
       </div>
-      {/* Mini handle */}
       <div className="absolute inset-x-0 bottom-[8%] flex justify-center">
-        <div
-          className="w-6 h-1.5 rounded-full"
-          style={{ background: cfg.handle, opacity: 0.8 }}
-        />
+        <div className="w-6 h-1.5 rounded-full" style={{ background: cfg.handle, opacity: 0.8 }} />
+      </div>
+    </div>
+  );
+}
+
+// ── Bonus toast ───────────────────────────────────────────────────────────────
+
+function BonusToast({ show }: { show: boolean }) {
+  return (
+    <div
+      className={`absolute top-3 left-1/2 -translate-x-1/2 z-30 transition-all duration-500 ${
+        show ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2 pointer-events-none'
+      }`}
+    >
+      <div className="flex items-center gap-1.5 bg-amber-500 text-white text-[11px] font-black
+                      px-3 py-1.5 rounded-full shadow-lg whitespace-nowrap">
+        🎟️ +5 draw entries earned!
       </div>
     </div>
   );
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
-
-const PANEL_COUNT = 5;
-
-// sessionStorage key — door stays open for the whole browser session once opened
-const SESSION_KEY = 'gc_garage_door_opened';
-
-// Transform applied when the door is fully open
-const OPEN_TRANSFORMS: Record<DoorDirection, string> = {
-  'roll-up':    'translateY(-102%)',
-  'slide-left': 'translateX(-102%)',
-  'slide-right': 'translateX(102%)',
-};
 
 interface GarageDoorProps {
   isPro:          boolean;
@@ -373,45 +282,28 @@ export function GarageDoor({
   vehicles,
   children,
 }: GarageDoorProps) {
-  const [isOpen,  setIsOpen]  = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const [isOpen,     setIsOpen]     = useState(false);
+  const [mounted,    setMounted]    = useState(false);
+  const [showToast,  setShowToast]  = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const isOpenRef  = useRef(false);
 
-  // Hydration gate — keeps server and first-client renders in sync
-  useEffect(() => {
-    setMounted(true);
+  useEffect(() => { setMounted(true); }, []);
+
+  const handleOpen = useCallback(async () => {
+    if (isOpen) return;
+    setIsOpen(true);
+
+    // Fire-and-forget: award the daily garage bonus
     try {
-      if (sessionStorage.getItem(SESSION_KEY)) {
-        isOpenRef.current = true;
-        setIsOpen(true);
+      const res  = await fetch('/api/giveaway/garage-bonus', { method: 'POST' });
+      const data = await res.json() as { awarded?: boolean };
+      if (data.awarded) {
+        setShowToast(true);
+        setTimeout(() => setShowToast(false), 3500);
       }
-    } catch { /* sessionStorage unavailable */ }
-  }, []);
+    } catch { /* ignore network errors — don't block the animation */ }
+  }, [isOpen]);
 
-  // IntersectionObserver — opens the door when the garage section enters view
-  useEffect(() => {
-    if (!isPro || !mounted) return;
-    if (isOpenRef.current) return;
-
-    const el = wrapperRef.current;
-    if (!el) return;
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (!entry.isIntersecting || isOpenRef.current) return;
-        isOpenRef.current = true;
-        try { sessionStorage.setItem(SESSION_KEY, '1'); } catch { /* ignore */ }
-        setTimeout(() => setIsOpen(true), 250);
-      },
-      { threshold: 0.2, rootMargin: '0px 0px -40px 0px' },
-    );
-
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [isPro, mounted]);
-
-  // Non-Pro: transparent pass-through
   if (!isPro || !mounted) return <>{children}</>;
 
   const openTransform = OPEN_TRANSFORMS[doorDirection];
@@ -419,17 +311,19 @@ export function GarageDoor({
   return (
     <div ref={wrapperRef} className="relative overflow-hidden rounded-xl">
       {children}
+      <BonusToast show={showToast} />
 
-      {/* Door overlay — absolutely positioned on top, animates away when open */}
+      {/* Door overlay — click to open */}
       <div
-        role="presentation"
-        aria-hidden="true"
+        role="button"
+        aria-label="Open garage"
+        tabIndex={0}
         className="absolute inset-0 z-10"
+        onClick={handleOpen}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleOpen(); }}
         style={{
           transform:     isOpen ? openTransform : 'translate(0, 0)',
-          transition:    isOpen
-            ? 'transform 1.6s cubic-bezier(0.22, 1, 0.36, 1)'
-            : 'none',
+          transition:    isOpen ? 'transform 1.6s cubic-bezier(0.22, 1, 0.36, 1)' : 'none',
           willChange:    'transform',
           pointerEvents: isOpen ? 'none' : 'auto',
         }}

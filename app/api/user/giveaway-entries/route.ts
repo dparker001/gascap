@@ -29,7 +29,7 @@ export async function GET() {
 
   const user = await prisma.user.findUnique({
     where:  { id: userId },
-    select: { activeDays: true, plan: true, streak: true, referralCount: true, earlyUpgradeBonusEntries: true },
+    select: { activeDays: true, plan: true, streak: true, referralCount: true, earlyUpgradeBonusEntries: true, garageBonusDays: true },
   });
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
@@ -41,7 +41,10 @@ export async function GET() {
   const streak         = user.streak ?? 0;
   const streakBonus    = streakBonusEntries(streak);
   const bonusEntries   = user.earlyUpgradeBonusEntries ?? 0;
-  const entryCount     = baseEntries + streakBonus + bonusEntries;
+  const garageDaysThisMonth = (user.garageBonusDays ?? [])
+    .filter((d: string) => d.startsWith(month)).length;
+  const garageBonusEntries  = garageDaysThisMonth * 5;
+  const entryCount     = baseEntries + streakBonus + bonusEntries + garageBonusEntries;
   const eligible       = user.plan === 'pro' || user.plan === 'fleet';
 
   return NextResponse.json({
@@ -59,5 +62,7 @@ export async function GET() {
     alwaysEligible:   isAlwaysEligible(refCount),
     referralCount:    refCount,
     earlyUpgradeBonusEntries: bonusEntries,
+    garageBonusEntries,
+    garageDaysThisMonth,
   });
 }

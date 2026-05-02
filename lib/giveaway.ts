@@ -137,7 +137,8 @@ export interface EntrantRow {
   baseEntries:     number;        // active days × entryMultiplier
   streakBonus:     number;        // flat bonus from streak tier (not multiplied)
   earlyUpgradeBonusEntries: number; // +10 bonus for trial-to-paid conversions
-  entryCount:      number;        // baseEntries + streakBonus + earlyUpgradeBonusEntries
+  garageBonusEntries: number;    // +5/day for tapping to open garage (Pro+)
+  entryCount:      number;        // baseEntries + streakBonus + earlyUpgrade + garageBonus
   alwaysEligible:  boolean;       // true for Ambassador tier holders — skip win restrictions
 }
 
@@ -224,6 +225,7 @@ export async function getEligibleEntrants(month: string): Promise<EntrantRow[]> 
       id: true, name: true, email: true, plan: true,
       activeDays: true, streak: true, referralCount: true,
       earlyUpgradeBonusEntries: true,
+      garageBonusDays: true,
     },
   });
 
@@ -235,6 +237,10 @@ export async function getEligibleEntrants(month: string): Promise<EntrantRow[]> 
       const baseEntries   = activeDayCount * multiplier;  // multiplier applied to active days
       const streakBonus   = streakBonusEntries(u.streak ?? 0);
       const bonusEntries  = u.earlyUpgradeBonusEntries ?? 0;
+      // Garage bonus: +5 per day user tapped to open their garage this month
+      const garageDaysThisMonth = (u.garageBonusDays ?? [])
+        .filter((d: string) => d.startsWith(prefix)).length;
+      const garageBonusEntries  = garageDaysThisMonth * 5;
       return {
         userId:          u.id,
         name:            u.name,
@@ -247,7 +253,8 @@ export async function getEligibleEntrants(month: string): Promise<EntrantRow[]> 
         baseEntries,
         streakBonus,
         earlyUpgradeBonusEntries: bonusEntries,
-        entryCount:      baseEntries + streakBonus + bonusEntries,
+        garageBonusEntries,
+        entryCount:      baseEntries + streakBonus + bonusEntries + garageBonusEntries,
         alwaysEligible:  isAlwaysEligible(refCount),
       };
     })

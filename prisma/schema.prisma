@@ -107,6 +107,10 @@ model User {
   milestoneMpgSent       Boolean   @default(false)
   milestoneReferral1Sent Boolean   @default(false)
 
+  // Garage-door daily bonus draw entries (+5/day when tapping to open)
+  garageLastOpenedDate     String?              // YYYY-MM-DD — daily dedup gate
+  garageBonusDays          String[] @default([]) // dates bonus was earned, e.g. ["2026-05-01"]
+
   // Internal / testing
   isTestAccount            Boolean   @default(false)
 

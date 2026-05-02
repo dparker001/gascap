@@ -22,6 +22,8 @@
     "@types/nodemailer": "^7.0.11",
     "@types/pdfkit": "^0.17.5",
     "bcryptjs": "^3.0.3",
+    "csv-parse": "^6.2.1",
+    "csv-stringify": "^6.7.0",
     "dotenv": "^17.4.2",
     "next": "^14.2.35",
     "next-auth": "^4.24.13",
