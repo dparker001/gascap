@@ -172,7 +172,7 @@ const SECTIONS = [
     items: [
       {
         q: 'What is GasCap™ Fleet?',
-        a: 'Fleet is for businesses and owner-operators managing multiple vehicles. It includes unlimited vehicles, up to 25 drivers, driver attribution on fill-ups, a fleet-wide fuel dashboard, per-vehicle and per-driver reporting, annual tax report (PDF), bulk vehicle import, driver roster management, CSV export with driver column, referral rewards, and monthly giveaway entries.',
+        a: 'Fleet is for businesses and owner-operators managing multiple vehicles. It includes unlimited vehicles, up to 25 drivers, driver attribution on fill-ups, a fleet-wide fuel dashboard, per-vehicle and per-driver reporting, annual tax report (PDF), bulk vehicle import, driver roster management, CSV export with driver column, referral rewards, and daily gas card giveaway entries.',
       },
       {
         q: 'How do I add drivers to my fleet?',
@@ -214,11 +214,11 @@ const SECTIONS = [
       },
       {
         q: 'How do I get 30 days of Pro free?',
-        a: 'All new users who create a GasCap™ account automatically receive 30 days of Pro features — no credit card required. Your free trial gives full access to fill-up tracking, MPG insights, receipt scanning, AI Fuel Advisor, Gas Price Alert, stats, streak rewards, referral program, and monthly giveaway entries. When there are 15 days left in your trial, a banner appears in the app to remind you. After the 30-day trial ends, your account automatically downgrades to the free plan — you are never charged. To keep Pro features, upgrade before the trial expires at $4.99/month (or $49/year).',
+        a: 'All new users who create a GasCap™ account automatically receive 30 days of Pro features — no credit card required. Your free trial gives full access to fill-up tracking, MPG insights, receipt scanning, AI Fuel Advisor, Gas Price Alert, stats, streak rewards, referral program, and daily gas card giveaway entries. When there are 15 days left in your trial, a banner appears in the app to remind you. After the 30-day trial ends, your account automatically downgrades to the free plan — you are never charged. To keep Pro features, upgrade before the trial expires at $4.99/month (or $49/year).',
       },
       {
         q: 'What does Pro add?',
-        a: 'Pro ($4.99/mo or $49/yr) adds up to 3 saved vehicles, VIN photo scan, fill-up history & MPG tracking, receipt scanning, MPG Insight Card, AI Fuel Advisor, Gas Price Alert, fuel savings dashboard, streak counter, monthly report card, gas price trend predictions, vehicle health alerts, Annual Wrapped, referral rewards, and monthly gas card giveaway entries.',
+        a: 'Pro ($4.99/mo or $49/yr) adds up to 3 saved vehicles, VIN photo scan, fill-up history & MPG tracking, receipt scanning, MPG Insight Card, AI Fuel Advisor, Gas Price Alert, fuel savings dashboard, streak counter, monthly report card, gas price trend predictions, vehicle health alerts, Annual Wrapped, referral rewards, Route Trip Planner with Google Maps, and daily gas card giveaway entries.',
       },
       {
         q: 'What does Fleet add over Pro?',
@@ -264,7 +264,7 @@ const SECTIONS = [
       },
       {
         q: 'Where can I check my entry count?',
-        a: 'Visit gascap.app/giveaway to see your current entry count, eligibility status, and the most recent past winner.',
+        a: 'Two ways: tap the 🎁 gift box icon in the app header for a quick look at your current entry count, or visit gascap.app/giveaway for your full entry count, eligibility status, and the most recent past winner.',
       },
       {
         q: 'Can I win every month?',
@@ -424,7 +424,7 @@ const SECTIONS = [
       },
       {
         q: 'I\'m having a different issue not listed here.',
-        a: 'Tap the chat bubble icon (💬) in the bottom-left corner of the app to describe what\'s happening, or email support@gascap.app. We typically respond within 1 business day.',
+        a: 'Tap the chat bubble icon (💬) in the bottom-right corner of the app on mobile, or the "Share Feedback" button in the bottom-left corner on desktop, to describe what\'s happening. You can also email support@gascap.app. We typically respond within 1 business day.',
       },
     ],
   },
@@ -442,7 +442,7 @@ const SECTIONS = [
       },
       {
         q: 'How do I contact GasCap™ support?',
-        a: 'Visit gascap.app/contact to send us a message, or email support@gascap.app — we respond within 1 business day. You can also tap the chat bubble icon (💬) in the bottom-left corner of the app. Live chat is available when visiting gascap.app on a desktop or laptop computer.',
+        a: 'Visit gascap.app/contact to send us a message, or email support@gascap.app — we respond within 1 business day. On mobile, tap the chat bubble icon (💬) in the bottom-right corner of the app. On desktop, use the "Share Feedback" button in the bottom-left corner. Live chat is also available when visiting gascap.app on a desktop or laptop computer.',
       },
     ],
   },
@@ -568,9 +568,11 @@ export default function HelpPage() {
             Email support@gascap.app
           </a>
           <p className="text-white/40 text-xs mt-4">
-            You can also tap the{' '}
+            On mobile, tap the{' '}
             <span className="text-[#FA7109] font-semibold">💬 chat bubble</span>{' '}
-            in the bottom-left corner of the app.
+            (bottom-right). On desktop, use{' '}
+            <span className="text-[#FA7109] font-semibold">"Share Feedback"</span>{' '}
+            (bottom-left).
           </p>
         </div>
 
