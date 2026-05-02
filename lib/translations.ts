@@ -303,7 +303,7 @@ const en = {
 
   // ── Footer ─────────────────────────────────────────────────────────────────
   footer: {
-    tagline:      'Gas Capacity — Know before you go.',
+    tagline:      'Gas Capacity LLC — Know Before You Go',
     poweredBy:    'Powered by',
     vnetCardDesc: 'Share your digital business card with anyone, anywhere.',
     copyright:    (year: number) => `© ${year} GasCap™ — All rights reserved.`,
@@ -1093,7 +1093,7 @@ const es: typeof en = {
   },
 
   footer: {
-    tagline:      'Capacidad de Gas — Sabe antes de llegar.',
+    tagline:      'Gas Capacity LLC — Sabe antes de llegar.',
     poweredBy:    'Desarrollado por',
     vnetCardDesc: 'Comparte tu tarjeta de presentación digital con cualquiera, en cualquier lugar.',
     copyright:    (year: number) => `© ${year} GasCap™ — Todos los derechos reservados.`,

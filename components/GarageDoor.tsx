@@ -128,10 +128,8 @@ function toFirstName(name: string): string {
 
 // ── Door face ─────────────────────────────────────────────────────────────────
 
-function DoorFace({ style, userName, locked }: { style: DoorStyle; userName?: string; locked?: boolean }) {
-  const cfg       = STYLE_CONFIGS[style];
-  // "DON'S GARAGE" when signed in, fallback "MY GARAGE"
-  const nameLabel = userName ? `${toFirstName(userName)}'S GARAGE` : 'MY GARAGE';
+function DoorFace({ style, nameLabel, locked }: { style: DoorStyle; nameLabel: string; locked?: boolean }) {
+  const cfg = STYLE_CONFIGS[style];
 
   // Dark doors (modern) use a light-tinted plate; light doors use a dark-tinted plate
   const plateBg     = style === 'modern'
@@ -330,6 +328,8 @@ interface GarageDoorProps {
   children:       ReactNode;
   /** Display name of the signed-in user — first word shown on the nameplate. */
   userName?:      string;
+  /** Fleet accounts show "[NAME]'S FLEET" instead of "[NAME]'S GARAGE". */
+  isFleet?:       boolean;
   /**
    * When true the door stays permanently closed with a "save a vehicle to
    * unlock" message and cannot be opened until a vehicle is added.
@@ -343,8 +343,12 @@ export function GarageDoor({
   doorDirection,
   children,
   userName,
-  locked = false,
+  isFleet  = false,
+  locked   = false,
 }: GarageDoorProps) {
+  // Nameplate label: "DON'S FLEET" for fleet, "DON'S GARAGE" for pro, fallback variants
+  const suffix    = isFleet ? 'FLEET' : 'GARAGE';
+  const nameLabel = userName ? `${toFirstName(userName)}'S ${suffix}` : `MY ${suffix}`;
   const [isOpen,       setIsOpen]       = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
     // Option C: open for the rest of the calendar day, reset each morning
@@ -401,7 +405,7 @@ export function GarageDoor({
           pointerEvents: isOpen || locked ? 'none' : 'auto',
         }}
       >
-        <DoorFace style={doorStyle} userName={userName} locked={locked} />
+        <DoorFace style={doorStyle} nameLabel={nameLabel} locked={locked} />
       </div>
     </div>
   );

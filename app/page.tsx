@@ -894,9 +894,13 @@ export default function Home() {
       {/* Footer */}
       <footer className="border-t border-slate-100 dark:border-slate-800
                          bg-white dark:bg-slate-900 py-8 pb-24 px-4 text-center space-y-3">
-        <p className="font-black text-slate-700 dark:text-slate-200">
-          GasCap<sup className="text-brand-orange text-[10px] font-bold">™</sup>
-        </p>
+        <div className="flex items-center justify-center gap-2">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/icon-base.svg" alt="" aria-hidden="true" className="w-8 h-8" />
+          <p className="font-black text-slate-700 dark:text-slate-200 text-lg">
+            GasCap<sup className="text-brand-orange text-[10px] font-bold">™</sup>
+          </p>
+        </div>
         <p className="text-xs text-slate-400">{t.footer.tagline}</p>
         <p className="text-[10px] text-slate-500">{t.footer.copyright(new Date().getFullYear())}</p>
 
