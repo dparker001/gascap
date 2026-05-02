@@ -424,7 +424,7 @@ const SECTIONS = [
       },
       {
         q: 'I\'m having a different issue not listed here.',
-        a: 'Use the "Share Feedback" button (bottom-right corner of the app) to describe what\'s happening, or email support@gascap.app. We typically respond within 1 business day.',
+        a: 'Tap the chat bubble icon (💬) in the bottom-left corner of the app to describe what\'s happening, or email support@gascap.app. We typically respond within 1 business day.',
       },
     ],
   },
@@ -442,7 +442,7 @@ const SECTIONS = [
       },
       {
         q: 'How do I contact GasCap™ support?',
-        a: 'Visit gascap.app/contact to send us a message, or email support@gascap.app — we respond within 1 business day. You can also use the "Share Feedback" button (bottom-right corner of the app). Live chat is available when visiting gascap.app on a desktop or laptop computer.',
+        a: 'Visit gascap.app/contact to send us a message, or email support@gascap.app — we respond within 1 business day. You can also tap the chat bubble icon (💬) in the bottom-left corner of the app. Live chat is available when visiting gascap.app on a desktop or laptop computer.',
       },
     ],
   },
@@ -568,9 +568,9 @@ export default function HelpPage() {
             Email support@gascap.app
           </a>
           <p className="text-white/40 text-xs mt-4">
-            You can also use the{' '}
-            <span className="text-[#FA7109] font-semibold">💬 Share Feedback</span>{' '}
-            button inside the app.
+            You can also tap the{' '}
+            <span className="text-[#FA7109] font-semibold">💬 chat bubble</span>{' '}
+            in the bottom-left corner of the app.
           </p>
         </div>
 

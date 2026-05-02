@@ -47,20 +47,19 @@ export default function FeedbackButton() {
 
   return (
     <>
-      {/* Floating trigger button
-          Mobile  : small icon-only circle (40×40) — unobtrusive, bottom-left
-          Desktop : full pill with label, bottom-left (clear of GHL chat widget on right) */}
+      {/* Floating trigger button — chat bubble icon, always bottom-left */}
       <button
         onClick={() => setOpen(true)}
-        className="fixed bottom-5 right-4 z-50 flex items-center justify-center
-                   bg-navy-700 hover:bg-navy-600 text-white font-bold rounded-full
+        className="fixed bottom-5 left-4 z-50 flex items-center justify-center
+                   bg-navy-700 hover:bg-navy-600 text-white rounded-full
                    shadow-lg transition-all hover:scale-105 active:scale-95
-                   w-10 h-10 text-base
-                   md:right-auto md:left-4 md:w-auto md:h-auto md:text-xs md:gap-1.5 md:px-3 md:py-2.5"
+                   w-11 h-11"
         aria-label={t.feedback.ariaLabel}
       >
-        <span>💬</span>
-        <span className="hidden md:inline">{t.feedback.buttonLabel}</span>
+        {/* Chat bubble SVG */}
+        <svg viewBox="0 0 24 24" className="w-5 h-5" fill="currentColor" aria-hidden="true">
+          <path d="M20 2H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h3l3 3 3-3h7a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2Z"/>
+        </svg>
       </button>
 
       {/* Modal backdrop */}
