@@ -17,10 +17,9 @@
 
 import { useRef, useState, useEffect, useCallback, type ReactNode } from 'react';
 import type { DoorStyle, DoorDirection } from '@/hooks/useGarageDoorPrefs';
-import { detectVehicleType, VEHICLE_PATHS, type VehicleInfo } from '@/lib/vehicleSilhouette';
+import { VEHICLE_PATHS } from '@/lib/vehicleSilhouette';
 
 export type { DoorStyle, DoorDirection };
-export type { VehicleInfo };
 
 // ── Display labels (used by the settings UI) ─────────────────────────────────
 
@@ -113,38 +112,9 @@ const OPEN_TRANSFORMS: Record<DoorDirection, string> = {
 
 const PANEL_COUNT = 5;
 
-// ── Vehicle silhouette strip ──────────────────────────────────────────────────
-
-function VehicleSilhouettes({ vehicles, style }: { vehicles: VehicleInfo[]; style: DoorStyle }) {
-  const cfg   = STYLE_CONFIGS[style];
-  const shown = vehicles.slice(0, 3);
-  if (shown.length === 0) return null;
-
-  const widthMap = [52, 35, 26] as const;
-  const w = widthMap[Math.min(shown.length - 1, 2) as 0 | 1 | 2];
-
-  return (
-    <div
-      className="absolute inset-x-4 flex items-end justify-center gap-3 pointer-events-none select-none"
-      style={{ bottom: '28%' }}
-    >
-      {shown.map((v, i) => (
-        <svg
-          key={i}
-          viewBox="0 0 100 40"
-          style={{ width: `${w}%`, fill: cfg.silhouetteFill, opacity: cfg.silhouetteOpacity, flexShrink: 0 }}
-          aria-hidden="true"
-        >
-          <path d={VEHICLE_PATHS[detectVehicleType(v)]} />
-        </svg>
-      ))}
-    </div>
-  );
-}
-
 // ── Door face ─────────────────────────────────────────────────────────────────
 
-function DoorFace({ style, vehicles }: { style: DoorStyle; vehicles?: VehicleInfo[] }) {
+function DoorFace({ style }: { style: DoorStyle }) {
   const cfg = STYLE_CONFIGS[style];
 
   return (
@@ -177,16 +147,12 @@ function DoorFace({ style, vehicles }: { style: DoorStyle; vehicles?: VehicleInf
         </div>
       ))}
 
-      {/* Vehicle silhouettes */}
-      {vehicles && vehicles.length > 0 ? (
-        <VehicleSilhouettes vehicles={vehicles} style={style} />
-      ) : (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <span className={`text-[11px] font-black tracking-[0.25em] uppercase opacity-60 ${cfg.labelColor}`}>
-            My Garage
-          </span>
-        </div>
-      )}
+      {/* "My Garage" label — centered on closed door */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        <span className={`text-[11px] font-black tracking-[0.25em] uppercase opacity-60 ${cfg.labelColor}`}>
+          My Garage
+        </span>
+      </div>
 
       {/* Door handle */}
       <div className="absolute bottom-[10%] left-1/2 -translate-x-1/2 z-10">
@@ -234,9 +200,10 @@ export function DoorMiniPreview({ style, active }: { style: DoorStyle; active: b
         }} />
       ))}
       {/* Mini sedan silhouette */}
-      <div className="absolute inset-x-0 flex justify-center" style={{ bottom: '28%' }}>
-        <svg viewBox="0 0 100 40"
-             style={{ width: '55%', fill: cfg.silhouetteFill, opacity: cfg.silhouetteOpacity }}
+      <div className="absolute inset-x-0 flex justify-center" style={{ bottom: '20%' }}>
+        <svg viewBox="0 0 200 80"
+             style={{ width: '68%', fill: cfg.silhouetteFill, opacity: cfg.silhouetteOpacity }}
+             fillRule="evenodd"
              aria-hidden="true">
           <path d={VEHICLE_PATHS.sedan} />
         </svg>
@@ -271,7 +238,6 @@ interface GarageDoorProps {
   isPro:          boolean;
   doorStyle:      DoorStyle;
   doorDirection:  DoorDirection;
-  vehicles?:      VehicleInfo[];
   children:       ReactNode;
 }
 
@@ -279,7 +245,6 @@ export function GarageDoor({
   isPro,
   doorStyle,
   doorDirection,
-  vehicles,
   children,
 }: GarageDoorProps) {
   const [isOpen,     setIsOpen]     = useState(false);
@@ -328,7 +293,7 @@ export function GarageDoor({
           pointerEvents: isOpen ? 'none' : 'auto',
         }}
       >
-        <DoorFace style={doorStyle} vehicles={vehicles} />
+        <DoorFace style={doorStyle} />
       </div>
     </div>
   );

@@ -400,7 +400,6 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
           isPro={isPro}
           doorStyle={doorStyle}
           doorDirection={doorDirection}
-          vehicles={vehicles}
         >
         <>
           {vehicles.length === 0 ? (
@@ -468,15 +467,30 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
                         ? 'bg-amber-50 border-2 border-amber-400 shadow-sm'
                         : 'bg-slate-50 border border-slate-200 group hover:border-amber-300',
                     ].join(' ')}>
-                      {/* Vehicle silhouette watermark */}
-                      <svg
-                        viewBox="0 0 100 40"
-                        aria-hidden="true"
-                        className="absolute -right-3 top-1/2 -translate-y-1/2 w-24 pointer-events-none select-none"
-                        style={{ fill: '#94a3b8', opacity: 0.10 }}
+                      {/* Vehicle side-profile silhouette */}
+                      <div
+                        className="absolute inset-y-0 right-0 w-[48%] pointer-events-none select-none overflow-hidden"
                       >
-                        <path d={VEHICLE_PATHS[detectVehicleType({ name: v.name, make: v.make, model: v.model })]} />
-                      </svg>
+                        {/* Gradient fade — blends silhouette into card background */}
+                        <div
+                          className="absolute inset-y-0 left-0 w-16 z-10"
+                          style={{
+                            background: `linear-gradient(to right, ${
+                              v.id === selectedVehicleId ? '#fffbeb' : '#f8fafc'
+                            }, transparent)`,
+                          }}
+                        />
+                        <svg
+                          viewBox="0 0 200 80"
+                          fillRule="evenodd"
+                          preserveAspectRatio="xMidYMax meet"
+                          className="absolute inset-0 w-full h-full"
+                          style={{ fill: '#94a3b8', opacity: 0.40 }}
+                          aria-hidden="true"
+                        >
+                          <path d={VEHICLE_PATHS[detectVehicleType({ name: v.name, make: v.make, model: v.model })]} />
+                        </svg>
+                      </div>
                       {/* Select / load button */}
                       <button
                         onClick={() => onSelect(String(v.gallons), v)}
@@ -510,7 +524,7 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
                       {/* Info */}
                       <button
                         onClick={(e) => { e.stopPropagation(); setInfoVehicle(v); }}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-blue-500 hover:bg-blue-50 transition-colors"
+                        className="relative z-[1] p-1.5 rounded-lg text-slate-400 hover:text-blue-500 hover:bg-blue-50 transition-colors"
                         title={t.garage.vehicleInfoTitle}
                       >
                         <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4" aria-label={t.garage.vehicleInfoAria}>
@@ -520,7 +534,7 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
 
                       {confirmDeleteId === v.id ? (
                         /* ── Inline delete confirmation ── */
-                        <div className="flex items-center gap-1.5 ml-1">
+                        <div className="relative z-[1] flex items-center gap-1.5 ml-1">
                           <span className="text-[10px] text-red-400 font-semibold whitespace-nowrap">Remove?</span>
                           <button
                             onClick={() => { handleDelete(v.id); setConfirmDeleteId(null); }}
@@ -540,7 +554,7 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
                           {/* Edit */}
                           <button
                             onClick={() => startEdit(v)}
-                            className="text-slate-300 hover:text-amber-500 transition-colors flex-shrink-0"
+                            className="relative z-[1] text-slate-300 hover:text-amber-500 transition-colors flex-shrink-0"
                             aria-label={t.garage.editAria(v.name)}
                           >
                             <svg viewBox="0 0 16 16" className="w-3.5 h-3.5" fill="none"
@@ -552,7 +566,7 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
                           {/* Delete — requires confirmation */}
                           <button
                             onClick={() => setConfirmDeleteId(v.id)}
-                            className="text-slate-300 hover:text-red-400 transition-colors flex-shrink-0"
+                            className="relative z-[1] text-slate-300 hover:text-red-400 transition-colors flex-shrink-0"
                             aria-label={t.garage.removeAria(v.name)}
                           >
                             <svg viewBox="0 0 12 12" className="w-3.5 h-3.5" fill="none"
