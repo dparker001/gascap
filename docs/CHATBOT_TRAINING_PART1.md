@@ -1,5 +1,5 @@
 # GasCap™ Chatbot — Full Training Document
-> Last updated: 2026-04-30
+> Last updated: 2026-05-02
 > For use in GHL Conversation AI knowledge base
 > Support email: support@gascap.app | Website: gascap.app
 

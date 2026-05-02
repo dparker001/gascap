@@ -1,6 +1,6 @@
 # GasCap™ — Referral Program Rules
 
-> Last updated: 2026-04-19  
+> Last updated: 2026-05-02  
 > This document is the source of truth for referral business logic.  
 > Update it any time the rules change, alongside the code change.
 
@@ -41,6 +41,34 @@ This means:
 
 ---
 
+## Ambassador Tier Sustainability Rule
+
+Reaching the **Ambassador tier (15+ cumulative paying referrals)** or **Elite Ambassador tier (30+)** grants a complimentary GasCap™ Pro subscription. This perk has an **active retention condition**:
+
+| Condition | Effect |
+|---|---|
+| Active paying referrals ≥ 5 | Complimentary Pro subscription remains active |
+| Active paying referrals < 5 | Complimentary Pro subscription is **paused** |
+| Active paying referrals recovers to ≥ 5 | Complimentary Pro subscription is **reinstated** |
+
+**Key distinctions:**
+
+- **Tier status is permanent and cumulative.** Once a user crosses the 15 (or 30) paying-referral threshold, they remain an Ambassador (or Elite) forever. Cancellations by referred users do not demote the tier.
+- **Drawing entry multipliers follow tier status**, not active referral count. An Ambassador sitting below 5 active referrals still gets 3 daily drawing entries.
+- **Only the free Pro perk has the active condition.** The 5+ active paying referral floor must be maintained to keep the complimentary subscription live.
+
+**Rationale:** This rule aligns Ambassador incentives with retention. Without it, someone could convert 15 users in a single month, let them all churn, and hold free Pro indefinitely — rewarding acquisition without retention. The 5-active floor ensures Ambassadors remain engaged advocates.
+
+**Enforcement (future implementation):** A periodic job (recommended: daily cron or triggered on Stripe `customer.subscription.deleted` events) should:
+1. Count each Ambassador/Elite user's currently active paying referrals (Stripe subscriptions with status `active` or `trialing`, tied to users who set `referredBy = this ambassador's code`).
+2. If count < 5 and Pro subscription is active → pause the complimentary Pro.
+3. If count ≥ 5 and Pro subscription is paused → reinstate the complimentary Pro.
+4. Notify the Ambassador by email on pause and reinstatement.
+
+This enforcement logic is **not yet implemented in code** as of 2026-05-02 — this section documents it as binding policy for future development.
+
+---
+
 ## Where the Credit Logic Lives
 
 | Step | File | Function |
@@ -69,6 +97,9 @@ This means:
 | Changing referral code after signup | `setReferredBy` only callable from the register route; no user-facing API |
 | Fake referral codes | Code must exist in DB — `findByReferralCode` validates |
 | Two-email self-referral | Economically neutral — costs $4.99 to earn $4.99; not worth addressing |
+
+### Ambassador Active-Referral Floor Enforcement
+Ambassadors and Elite Ambassadors must maintain 5+ currently active paying referrals to keep the complimentary Pro subscription. When a referred user's subscription cancels or lapses, the system should re-evaluate the Ambassador's active count. If the count drops below 5, the complimentary Pro is paused; it is reinstated automatically when the count recovers. Admin can review borderline cases manually. See the "Ambassador Tier Sustainability Rule" section above for full policy details and the enforcement implementation spec.
 
 ### Chargeback Policy
 When a `charge.dispute.created` event fires, admin is notified immediately with dispute amount, reason, and a flag if a referral credit was previously awarded. Credits are **not auto-revoked** — disputes can be won, and auto-revoking would penalize legitimate referrers. Admin reviews and manually revokes if the dispute is confirmed fraudulent.
@@ -126,4 +157,5 @@ If you change any referral business logic:
    - `app/settings/page.tsx` (referral section)
    - `lib/emailCampaign.ts` (`referralCreditEmailHtml`)
    - `components/ReferralCard.tsx`
+   - `app/terms/page.tsx` (Section 5 — Ambassador Program & Referral Rewards)
 4. Update `CHANGELOG.md`

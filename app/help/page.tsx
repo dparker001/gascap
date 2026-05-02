@@ -286,7 +286,7 @@ const SECTIONS = [
     items: [
       {
         q: 'How does the Ambassador Program work?',
-        a: 'Share your personal referral link with friends, family, coworkers, or followers. Every person who signs up using your link and subscribes to a paid GasCap™ Pro or Fleet plan counts as a paying referral. Only paid conversions count — free trial sign-ups that never pay do not. As your cumulative paying referral count grows, you unlock higher Ambassador tiers with better rewards — including up to 6 free Pro months, free Pro for life at 15 referrals, and bonus drawing entries every day.',
+        a: 'Share your personal referral link with friends, family, coworkers, or followers. Every person who signs up using your link and subscribes to a paid GasCap™ Pro or Fleet plan counts as a paying referral. Only paid conversions count — free trial sign-ups that never pay do not. As your cumulative paying referral count grows, you unlock higher Ambassador tiers with better rewards — including up to 6 free Pro months, free Pro at Ambassador tier (15+) as long as you keep 5 or more active paying referrals, and bonus drawing entries every day.',
       },
       {
         q: 'Where do I find my referral link?',
@@ -298,7 +298,7 @@ const SECTIONS = [
       },
       {
         q: 'What are the Ambassador tier thresholds and rewards?',
-        a: 'Three tiers, based on cumulative all-time paying referrals: Supporter (5+ referrals) — earn 1 free Pro month per paying referral, up to 6 free months total, plus 2× daily drawing entries; Ambassador (15+ referrals) — earn free GasCap™ Pro for life (no subscription ever required), plus 3× daily drawing entries; Elite Ambassador (30+ referrals) — Pro for life, 5× daily drawing entries, recognition in the Top Ambassadors list, early feature access, and a personal thank-you from the GasCap™ team.',
+        a: 'Three tiers, based on cumulative all-time paying referrals: Supporter (5+ referrals) — earn 1 free Pro month per paying referral, up to 6 free months total, plus 2× daily drawing entries; Ambassador (15+ referrals) — earn free GasCap™ Pro while you maintain 5 or more currently active paying referrals, plus 3× daily drawing entries; Elite Ambassador (30+ referrals) — free Pro while you maintain 5+ active paying referrals, 5× daily drawing entries, recognition in the Top Ambassadors list, early feature access, and a personal thank-you from the GasCap™ team.',
       },
       {
         q: 'How many free months can I earn through referrals?',
@@ -310,11 +310,11 @@ const SECTIONS = [
       },
       {
         q: 'When does my referral count update?',
-        a: 'Your referral count updates within 24 hours of your referred friend\'s first payment. Milestones are permanent — once a tier threshold is crossed, it is never revoked regardless of whether referred subscribers later cancel.',
+        a: 'Your referral count updates within 24 hours of your referred friend\'s first payment. Your tier status is based on cumulative all-time paying referrals and is never revoked. However, the free Pro perk at Ambassador and Elite tiers requires at least 5 currently active paying referrals — if that count drops below 5, your complimentary Pro is paused until it recovers.',
       },
       {
         q: 'What if my referred customers cancel their subscription?',
-        a: 'Nothing changes for you. Ambassador tiers are based on cumulative all-time paying referrals, not on how many are still active. If 15 people have ever paid after using your link, you are Ambassador tier — even if some have since cancelled. Your milestone is locked in permanently.',
+        a: 'Your Ambassador tier status is locked in permanently based on your cumulative all-time paying referral count — cancellations don\'t lower your tier. However, the free Pro perk requires at least 5 of your referrals to have active paid subscriptions at any given time. If cancellations bring your active count below 5, your complimentary Pro is paused until it recovers to 5+. Your drawing entry multiplier and tier recognition are not affected.',
       },
       {
         q: 'Can I refer myself?',

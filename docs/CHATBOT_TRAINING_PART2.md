@@ -58,17 +58,17 @@ A: Two conditions must BOTH be met: (1) the person signed up using your unique r
 **Q: What are the tier thresholds and rewards?**
 A: Three tiers based on cumulative all-time paying referrals:
 - **Supporter (5+):** 1 free Pro month per paying referral, up to 6 free months total, plus 2× daily drawing entries and no consecutive-win restriction.
-- **Ambassador (15+):** Free GasCap™ Pro for life — no subscription ever required, permanently. Plus 3× daily drawing entries.
-- **Elite Ambassador (30+):** Pro for life, 5× daily drawing entries, recognition in the Top Ambassadors list, early feature access, and a personal thank-you from the GasCap™ founder.
+- **Ambassador (15+):** Free GasCap™ Pro while maintaining 5 or more currently active paying referrals. If active referrals fall below 5, complimentary Pro pauses until restored. Plus 3× daily drawing entries.
+- **Elite Ambassador (30+):** Free GasCap™ Pro while maintaining 5 or more currently active paying referrals (same active condition as Ambassador). If active referrals fall below 5, complimentary Pro pauses until restored. Plus 5× daily drawing entries, recognition in the Top Ambassadors list, early feature access, and a personal thank-you from the GasCap™ founder.
 
 **Q: How many free months can I earn through referrals?**
 A: Up to 6 free Pro months total — 1 free month per paying referral, credited within 24 hours of their first payment. Once you reach 6 banked months, free month credits stop. But your referral count keeps climbing toward Pro for Life at 15 paying referrals. Credits are valid for 12 months and applied automatically to your next billing cycle (up to 3 at a time).
 
 **Q: When does my referral count update?**
-A: Within 24 hours of your referred friend's first payment. Milestones are permanent — once crossed, they are never revoked even if referred subscribers later cancel.
+A: Within 24 hours of your referred friend's first payment. Your tier status is based on cumulative all-time paying referrals and is not revoked due to cancellations. However, the free Pro perk at Ambassador and Elite tiers requires at least 5 currently active paying referrals. If that count drops below 5, the complimentary Pro pauses until it recovers.
 
 **Q: What if my referrals cancel?**
-A: Nothing changes for you. Tiers are based on cumulative all-time paying referrals, not current active subscribers. If 15 people have ever paid after using your link, you are Ambassador tier — permanently — even if some have since cancelled.
+A: Your Ambassador tier status stays locked in — it's based on cumulative all-time referrals, not current active count. However, the complimentary Pro subscription requires at least 5 currently active paying referrals. If cancellations bring your active count below 5, your free Pro pauses until it recovers to 5+. Your drawing entry multiplier and tier recognition are unaffected.
 
 **Q: Can I refer myself?**
 A: No. Self-referrals are blocked at the system level. No credit will ever be awarded for a self-referral.
