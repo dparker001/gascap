@@ -567,6 +567,7 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
           doorStyle={doorStyle}
           doorDirection={doorDirection}
           userName={session.user?.name ?? undefined}
+          locked={vehicles.length === 0}
         >
         <>
           {vehicles.length === 0 ? (

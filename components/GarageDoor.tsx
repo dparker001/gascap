@@ -128,7 +128,7 @@ function toFirstName(name: string): string {
 
 // ── Door face ─────────────────────────────────────────────────────────────────
 
-function DoorFace({ style, userName }: { style: DoorStyle; userName?: string }) {
+function DoorFace({ style, userName, locked }: { style: DoorStyle; userName?: string; locked?: boolean }) {
   const cfg       = STYLE_CONFIGS[style];
   const nameLabel = userName ? toFirstName(userName) : 'MY GARAGE';
 
@@ -141,7 +141,7 @@ function DoorFace({ style, userName }: { style: DoorStyle; userName?: string }) 
     : 'rgba(0,0,0,0.18)';
 
   return (
-    <div className="absolute inset-0 flex flex-col overflow-hidden cursor-pointer select-none">
+    <div className={`absolute inset-0 flex flex-col overflow-hidden select-none ${locked ? 'cursor-default' : 'cursor-pointer'}`}>
 
       {/* Panel stack */}
       {Array.from({ length: PANEL_COUNT }).map((_, i) => (
@@ -170,49 +170,64 @@ function DoorFace({ style, userName }: { style: DoorStyle; userName?: string }) 
         </div>
       ))}
 
-      {/* ── Nameplate — etched metal plate, centered upper area ── */}
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none"
-           style={{ paddingBottom: '28%' }}>
-        <div
-          className="flex items-center gap-2 px-4 py-1.5 rounded-[3px]"
-          style={{
-            background:  plateBg,
-            border:      `1px solid ${plateBorder}`,
-            boxShadow:   'inset 0 1px 3px rgba(0,0,0,0.28), 0 1px 0 rgba(255,255,255,0.10)',
-          }}
-        >
-          {/* Left rivet */}
-          <div className="w-[5px] h-[5px] rounded-full flex-shrink-0 opacity-50"
-               style={{ background: cfg.handle, boxShadow: 'inset 0 1px 1px rgba(0,0,0,0.4)' }} />
-          <span className={`text-[10px] font-black tracking-[0.3em] uppercase ${cfg.labelColor}`}
-                style={{ textShadow: '0 1px 1px rgba(0,0,0,0.2)' }}>
-            {nameLabel}
-          </span>
-          {/* Right rivet */}
-          <div className="w-[5px] h-[5px] rounded-full flex-shrink-0 opacity-50"
-               style={{ background: cfg.handle, boxShadow: 'inset 0 1px 1px rgba(0,0,0,0.4)' }} />
+      {locked ? (
+        /* ── Locked state: no vehicle saved ─────────────────────── */
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none"
+             style={{ paddingBottom: '15%' }}>
+          <div className="flex flex-col items-center gap-2.5 px-6">
+            {/* Lock icon */}
+            <div className="w-9 h-9 rounded-full flex items-center justify-center opacity-40"
+                 style={{ background: plateBg, border: `1px solid ${plateBorder}` }}>
+              <svg viewBox="0 0 20 20" fill="currentColor" className={`w-5 h-5 ${cfg.labelColor}`} aria-hidden="true">
+                <path fillRule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clipRule="evenodd" />
+              </svg>
+            </div>
+            {/* Message */}
+            <p className={`text-[10px] font-black text-center leading-relaxed tracking-wide uppercase opacity-45 ${cfg.labelColor}`}>
+              Save a vehicle to<br />unlock the garage door
+            </p>
+          </div>
         </div>
-      </div>
+      ) : (
+        /* ── Normal state: nameplate + tap hint ──────────────────── */
+        <>
+          {/* Nameplate — etched metal plate, centered upper area */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none"
+               style={{ paddingBottom: '28%' }}>
+            <div
+              className="flex items-center gap-2 px-4 py-1.5 rounded-[3px]"
+              style={{
+                background:  plateBg,
+                border:      `1px solid ${plateBorder}`,
+                boxShadow:   'inset 0 1px 3px rgba(0,0,0,0.28), 0 1px 0 rgba(255,255,255,0.10)',
+              }}
+            >
+              {/* Left rivet */}
+              <div className="w-[5px] h-[5px] rounded-full flex-shrink-0 opacity-50"
+                   style={{ background: cfg.handle, boxShadow: 'inset 0 1px 1px rgba(0,0,0,0.4)' }} />
+              <span className={`text-[10px] font-black tracking-[0.3em] uppercase ${cfg.labelColor}`}
+                    style={{ textShadow: '0 1px 1px rgba(0,0,0,0.2)' }}>
+                {nameLabel}
+              </span>
+              {/* Right rivet */}
+              <div className="w-[5px] h-[5px] rounded-full flex-shrink-0 opacity-50"
+                   style={{ background: cfg.handle, boxShadow: 'inset 0 1px 1px rgba(0,0,0,0.4)' }} />
+            </div>
+          </div>
 
-      {/* Door handle */}
-      <div className="absolute bottom-[10%] left-1/2 -translate-x-1/2 z-10">
-        <div className="rounded-full px-5 py-2 shadow-md flex items-center justify-center"
-             style={{ background: cfg.handleBg }}>
-          <div className="w-10 h-[5px] rounded-full shadow-sm" style={{ background: cfg.handle }} />
-        </div>
-      </div>
-
-      {/* "Tap to Open" hint — pulsing, above the handle */}
-      <div className="absolute bottom-[22%] left-1/2 -translate-x-1/2 flex flex-col items-center gap-0.5 pointer-events-none">
-        <svg viewBox="0 0 16 10" className="w-4 h-3 animate-bounce opacity-70"
-             fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-             style={{ color: cfg.hintColor.replace('text-', '') }}>
-          <path d="M2 8l6-6 6 6" />
-        </svg>
-        <span className={`text-[9px] font-black tracking-widest uppercase opacity-70 ${cfg.hintColor}`}>
-          Tap to Open
-        </span>
-      </div>
+          {/* "Tap to Open" hint — pulsing, above the handle */}
+          <div className="absolute bottom-[22%] left-1/2 -translate-x-1/2 flex flex-col items-center gap-0.5 pointer-events-none">
+            <svg viewBox="0 0 16 10" className="w-4 h-3 animate-bounce opacity-70"
+                 fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                 style={{ color: cfg.hintColor.replace('text-', '') }}>
+              <path d="M2 8l6-6 6 6" />
+            </svg>
+            <span className={`text-[9px] font-black tracking-widest uppercase opacity-70 ${cfg.hintColor}`}>
+              Tap to Open
+            </span>
+          </div>
+        </>
+      )}
 
       {/* Track rails */}
       <div className="absolute left-0 top-0 bottom-0 w-2 opacity-80" style={{ background: cfg.trackBg }} />
@@ -313,6 +328,11 @@ interface GarageDoorProps {
   children:       ReactNode;
   /** Display name of the signed-in user — first word shown on the nameplate. */
   userName?:      string;
+  /**
+   * When true the door stays permanently closed with a "save a vehicle to
+   * unlock" message and cannot be opened until a vehicle is added.
+   */
+  locked?:        boolean;
 }
 
 export function GarageDoor({
@@ -321,6 +341,7 @@ export function GarageDoor({
   doorDirection,
   children,
   userName,
+  locked = false,
 }: GarageDoorProps) {
   const [isOpen,       setIsOpen]       = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
@@ -363,22 +384,22 @@ export function GarageDoor({
       {children}
       <BonusToast show={showToast} bonusEntries={bonusEntries} totalDays={totalDays} />
 
-      {/* Door overlay — click to open */}
+      {/* Door overlay — click to open (disabled when locked) */}
       <div
-        role="button"
-        aria-label="Open garage"
-        tabIndex={0}
+        role={locked ? 'img' : 'button'}
+        aria-label={locked ? 'Garage locked — save a vehicle to unlock' : 'Open garage'}
+        tabIndex={locked ? -1 : 0}
         className="absolute inset-0 z-10"
-        onClick={handleOpen}
-        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleOpen(); }}
+        onClick={locked ? undefined : handleOpen}
+        onKeyDown={locked ? undefined : (e) => { if (e.key === 'Enter' || e.key === ' ') handleOpen(); }}
         style={{
           transform:     isOpen ? openTransform : 'translate(0, 0)',
           transition:    isOpen ? 'transform 1.6s cubic-bezier(0.22, 1, 0.36, 1)' : 'none',
           willChange:    'transform',
-          pointerEvents: isOpen ? 'none' : 'auto',
+          pointerEvents: isOpen || locked ? 'none' : 'auto',
         }}
       >
-        <DoorFace style={doorStyle} userName={userName} />
+        <DoorFace style={doorStyle} userName={userName} locked={locked} />
       </div>
     </div>
   );
