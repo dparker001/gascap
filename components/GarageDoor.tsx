@@ -130,7 +130,8 @@ function toFirstName(name: string): string {
 
 function DoorFace({ style, userName, locked }: { style: DoorStyle; userName?: string; locked?: boolean }) {
   const cfg       = STYLE_CONFIGS[style];
-  const nameLabel = userName ? toFirstName(userName) : 'MY GARAGE';
+  // "DON'S GARAGE" when signed in, fallback "MY GARAGE"
+  const nameLabel = userName ? `${toFirstName(userName)}'S GARAGE` : 'MY GARAGE';
 
   // Dark doors (modern) use a light-tinted plate; light doors use a dark-tinted plate
   const plateBg     = style === 'modern'
@@ -143,7 +144,7 @@ function DoorFace({ style, userName, locked }: { style: DoorStyle; userName?: st
   return (
     <div className={`absolute inset-0 flex flex-col overflow-hidden select-none ${locked ? 'cursor-default' : 'cursor-pointer'}`}>
 
-      {/* Panel stack */}
+      {/* Panel stack — nameplate lives inside the centre panel (index 2) */}
       {Array.from({ length: PANEL_COUNT }).map((_, i) => (
         <div
           key={i}
@@ -167,6 +168,31 @@ function DoorFace({ style, userName, locked }: { style: DoorStyle; userName?: st
             <div className="absolute inset-0 opacity-10"
                  style={{ background: 'repeating-linear-gradient(90deg,transparent,transparent 8px,rgba(0,0,0,0.15) 8px,rgba(0,0,0,0.15) 9px)' }} />
           )}
+
+          {/* ── Nameplate: centred inside middle panel, not locked ── */}
+          {i === 2 && !locked && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div
+                className="flex items-center gap-2.5 px-5 py-2 rounded-[3px]"
+                style={{
+                  background:  plateBg,
+                  border:      `1px solid ${plateBorder}`,
+                  boxShadow:   'inset 0 1px 3px rgba(0,0,0,0.28), 0 1px 0 rgba(255,255,255,0.10)',
+                }}
+              >
+                {/* Left rivet */}
+                <div className="w-[5px] h-[5px] rounded-full flex-shrink-0 opacity-55"
+                     style={{ background: cfg.handle, boxShadow: 'inset 0 1px 1px rgba(0,0,0,0.4)' }} />
+                <span className={`text-[13px] font-black tracking-[0.28em] uppercase ${cfg.labelColor}`}
+                      style={{ textShadow: '0 1px 1px rgba(0,0,0,0.25)' }}>
+                  {nameLabel}
+                </span>
+                {/* Right rivet */}
+                <div className="w-[5px] h-[5px] rounded-full flex-shrink-0 opacity-55"
+                     style={{ background: cfg.handle, boxShadow: 'inset 0 1px 1px rgba(0,0,0,0.4)' }} />
+              </div>
+            </div>
+          )}
         </div>
       ))}
 
@@ -189,32 +215,8 @@ function DoorFace({ style, userName, locked }: { style: DoorStyle; userName?: st
           </div>
         </div>
       ) : (
-        /* ── Normal state: nameplate + tap hint ──────────────────── */
+        /* ── Normal state: tap hint only (nameplate is in panel 2) ── */
         <>
-          {/* Nameplate — etched metal plate, centered upper area */}
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none"
-               style={{ paddingBottom: '28%' }}>
-            <div
-              className="flex items-center gap-2 px-4 py-1.5 rounded-[3px]"
-              style={{
-                background:  plateBg,
-                border:      `1px solid ${plateBorder}`,
-                boxShadow:   'inset 0 1px 3px rgba(0,0,0,0.28), 0 1px 0 rgba(255,255,255,0.10)',
-              }}
-            >
-              {/* Left rivet */}
-              <div className="w-[5px] h-[5px] rounded-full flex-shrink-0 opacity-50"
-                   style={{ background: cfg.handle, boxShadow: 'inset 0 1px 1px rgba(0,0,0,0.4)' }} />
-              <span className={`text-[10px] font-black tracking-[0.3em] uppercase ${cfg.labelColor}`}
-                    style={{ textShadow: '0 1px 1px rgba(0,0,0,0.2)' }}>
-                {nameLabel}
-              </span>
-              {/* Right rivet */}
-              <div className="w-[5px] h-[5px] rounded-full flex-shrink-0 opacity-50"
-                   style={{ background: cfg.handle, boxShadow: 'inset 0 1px 1px rgba(0,0,0,0.4)' }} />
-            </div>
-          </div>
-
           {/* "Tap to Open" hint — pulsing, above the handle */}
           <div className="absolute bottom-[22%] left-1/2 -translate-x-1/2 flex flex-col items-center gap-0.5 pointer-events-none">
             <svg viewBox="0 0 16 10" className="w-4 h-3 animate-bounce opacity-70"
