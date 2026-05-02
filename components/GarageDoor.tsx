@@ -5,9 +5,9 @@
  *
  * Wraps the garage vehicles section with a decorative door. The user taps/clicks
  * the door to open it. On first open each calendar day, the server awards +5
- * monthly draw entries (garage bonus). Once opened, the door stays open for
- * the entire browser-tab session (sessionStorage) and only resets when the tab
- * is closed, the page is refreshed, or the user logs out.
+ * daily draw entries (garage bonus). Once opened, the door stays open for
+ * the rest of that calendar day (localStorage date-stamp, Option C). It resets
+ * automatically the next day — giving every daily visit a fresh personalized reveal.
  *
  * Door styles:  Classic · Modern · Wood · Steel
  * Open directions: Roll Up · Slide Left · Slide Right
@@ -113,10 +113,32 @@ const OPEN_TRANSFORMS: Record<DoorDirection, string> = {
 
 const PANEL_COUNT = 5;
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+/** Returns today's date as YYYY-MM-DD in local time. */
+function getToday(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/** Extracts and upper-cases the first word of a display name. */
+function toFirstName(name: string): string {
+  return (name.trim().split(/\s+/)[0] ?? '').toUpperCase() || 'MY GARAGE';
+}
+
 // ── Door face ─────────────────────────────────────────────────────────────────
 
-function DoorFace({ style }: { style: DoorStyle }) {
-  const cfg = STYLE_CONFIGS[style];
+function DoorFace({ style, userName }: { style: DoorStyle; userName?: string }) {
+  const cfg       = STYLE_CONFIGS[style];
+  const nameLabel = userName ? toFirstName(userName) : 'MY GARAGE';
+
+  // Dark doors (modern) use a light-tinted plate; light doors use a dark-tinted plate
+  const plateBg     = style === 'modern'
+    ? 'rgba(255,255,255,0.08)'
+    : 'rgba(0,0,0,0.10)';
+  const plateBorder = style === 'modern'
+    ? 'rgba(255,255,255,0.14)'
+    : 'rgba(0,0,0,0.18)';
 
   return (
     <div className="absolute inset-0 flex flex-col overflow-hidden cursor-pointer select-none">
@@ -148,11 +170,28 @@ function DoorFace({ style }: { style: DoorStyle }) {
         </div>
       ))}
 
-      {/* "My Garage" label — centered on closed door */}
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        <span className={`text-[11px] font-black tracking-[0.25em] uppercase opacity-60 ${cfg.labelColor}`}>
-          My Garage
-        </span>
+      {/* ── Nameplate — etched metal plate, centered upper area ── */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none"
+           style={{ paddingBottom: '28%' }}>
+        <div
+          className="flex items-center gap-2 px-4 py-1.5 rounded-[3px]"
+          style={{
+            background:  plateBg,
+            border:      `1px solid ${plateBorder}`,
+            boxShadow:   'inset 0 1px 3px rgba(0,0,0,0.28), 0 1px 0 rgba(255,255,255,0.10)',
+          }}
+        >
+          {/* Left rivet */}
+          <div className="w-[5px] h-[5px] rounded-full flex-shrink-0 opacity-50"
+               style={{ background: cfg.handle, boxShadow: 'inset 0 1px 1px rgba(0,0,0,0.4)' }} />
+          <span className={`text-[10px] font-black tracking-[0.3em] uppercase ${cfg.labelColor}`}
+                style={{ textShadow: '0 1px 1px rgba(0,0,0,0.2)' }}>
+            {nameLabel}
+          </span>
+          {/* Right rivet */}
+          <div className="w-[5px] h-[5px] rounded-full flex-shrink-0 opacity-50"
+               style={{ background: cfg.handle, boxShadow: 'inset 0 1px 1px rgba(0,0,0,0.4)' }} />
+        </div>
       </div>
 
       {/* Door handle */}
@@ -240,6 +279,8 @@ interface GarageDoorProps {
   doorStyle:      DoorStyle;
   doorDirection:  DoorDirection;
   children:       ReactNode;
+  /** Display name of the signed-in user — first word shown on the nameplate. */
+  userName?:      string;
 }
 
 export function GarageDoor({
@@ -247,10 +288,12 @@ export function GarageDoor({
   doorStyle,
   doorDirection,
   children,
+  userName,
 }: GarageDoorProps) {
   const [isOpen,     setIsOpen]     = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
-    return sessionStorage.getItem('gascap:garage-open') === 'true';
+    // Option C: open for the rest of the calendar day, reset each morning
+    return localStorage.getItem('gascap:garage-open-date') === getToday();
   });
   const [mounted,    setMounted]    = useState(false);
   const [showToast,  setShowToast]  = useState(false);
@@ -261,7 +304,8 @@ export function GarageDoor({
   const handleOpen = useCallback(async () => {
     if (isOpen) return;
     setIsOpen(true);
-    sessionStorage.setItem('gascap:garage-open', 'true');
+    // Stamp today's date so the door stays open all day and resets tomorrow
+    localStorage.setItem('gascap:garage-open-date', getToday());
 
     // Fire-and-forget: award the daily garage bonus
     try {
@@ -298,7 +342,7 @@ export function GarageDoor({
           pointerEvents: isOpen ? 'none' : 'auto',
         }}
       >
-        <DoorFace style={doorStyle} />
+        <DoorFace style={doorStyle} userName={userName} />
       </div>
     </div>
   );
