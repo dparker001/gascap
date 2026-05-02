@@ -399,6 +399,7 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
           isPro={isPro}
           doorStyle={doorStyle}
           doorDirection={doorDirection}
+          vehicles={vehicles}
         >
         <>
           {vehicles.length === 0 ? (
