@@ -191,7 +191,7 @@ export default function ToolsPanel() {
       <div role="tabpanel" id="tabpanel-ai" hidden={effectiveTab !== 'ai'}>
         {effectiveTab === 'ai' && (
           <div className="space-y-3">
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-4 py-3.5">
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-4 py-3.5 overflow-hidden">
               <ToolHeader
                 emoji="🤖"
                 title="AI Fuel Advisor"
@@ -223,7 +223,7 @@ export default function ToolsPanel() {
       <div role="tabpanel" id="tabpanel-compare" hidden={effectiveTab !== 'compare'}>
         {effectiveTab === 'compare' && (
           <div className="space-y-3">
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-4 py-3.5">
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-4 py-3.5 overflow-hidden">
               <ToolHeader
                 emoji="🏪"
                 title="Station Comparison"
@@ -259,7 +259,7 @@ export default function ToolsPanel() {
       <div role="tabpanel" id="tabpanel-charts" hidden={effectiveTab !== 'charts'}>
         {effectiveTab === 'charts' && session && isPro && (
           <div className="space-y-3">
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-4 py-3.5">
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-4 py-3.5 overflow-hidden">
               <ToolHeader
                 emoji="📊"
                 title="Fuel Charts"
@@ -285,7 +285,7 @@ export default function ToolsPanel() {
       <div role="tabpanel" id="tabpanel-stats" hidden={effectiveTab !== 'stats'}>
         {effectiveTab === 'stats' && session && (
           <div className="space-y-3">
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-4 py-3.5">
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-4 py-3.5 overflow-hidden">
               <ToolHeader
                 emoji="📈"
                 title="Fuel Stats"
@@ -322,7 +322,7 @@ export default function ToolsPanel() {
       <div role="tabpanel" id="tabpanel-share" hidden={effectiveTab !== 'share'}>
         {effectiveTab === 'share' && session && (
           <div className="space-y-3">
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-4 py-3.5">
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-4 py-3.5 overflow-hidden">
               <ToolHeader
                 emoji="🔗"
                 title="Refer & Earn"

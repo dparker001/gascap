@@ -512,6 +512,10 @@ export default function Home() {
   const userPlan = (session?.user as { plan?: string })?.plan ?? 'free';
   const isGuest  = !session;
 
+  // Desktop right-panel: track which vehicle is highlighted + surface it in left column
+  const [desktopSelectedId,      setDesktopSelectedId]      = useState('');
+  const [desktopSelectedVehicle, setDesktopSelectedVehicle] = useState<Vehicle | null>(null);
+
   // Auto-expand pricing for guests once session is resolved
   useEffect(() => {
     if (status !== 'loading' && isGuest) setShowPricing(true);
@@ -566,11 +570,11 @@ export default function Home() {
           Desktop (lg+): left 520px calc column + right sticky garage panel
       ══════════════════════════════════════════════════════════════════ */}
       {session && (
-        <div className="lg:grid lg:grid-cols-[520px_1fr] lg:gap-8
-                        lg:max-w-6xl lg:mx-auto lg:px-6 lg:pt-4 lg:items-start">
+        <div className="lg:grid lg:grid-cols-[1fr_300px] lg:gap-6
+                        lg:max-w-5xl lg:mx-auto lg:px-6 lg:pt-4 lg:items-start">
 
           {/* ── LEFT COLUMN ── */}
-          <div className="min-w-0">
+          <div className="min-w-0 overflow-hidden">
 
             {/* Streak counter */}
             <StreakCounter />
@@ -579,6 +583,24 @@ export default function Home() {
             <section className="px-4 lg:px-0 max-w-lg lg:max-w-none mx-auto w-full">
               <SetupChecklist />
             </section>
+
+            {/* Desktop active-vehicle badge — shows which vehicle is loaded into the calc */}
+            {desktopSelectedVehicle && (
+              <div className="hidden lg:flex items-center gap-2.5 px-4 py-2.5 mx-auto
+                              bg-amber-50 border border-amber-200 rounded-xl mb-0 mt-4 text-xs
+                              max-w-lg lg:max-w-none">
+                <span className="text-base" aria-hidden="true">🚗</span>
+                <div className="flex-1 min-w-0">
+                  <span className="font-bold text-amber-800 truncate block">{desktopSelectedVehicle.name}</span>
+                  <span className="text-amber-600/70">{desktopSelectedVehicle.gallons} gal tank — loaded into calculator</span>
+                </div>
+                <button
+                  onClick={() => { setDesktopSelectedId(''); setDesktopSelectedVehicle(null); }}
+                  className="flex-shrink-0 text-amber-400 hover:text-amber-600 transition-colors"
+                  aria-label="Clear selected vehicle"
+                >✕</button>
+              </div>
+            )}
 
             {/* Calculator — SavedVehicles inside is hidden at lg+ via lg:hidden wrapper */}
             <section id="gascap-calculator" className="flex-1 px-4 lg:px-0 pt-5 pb-4 max-w-lg lg:max-w-none mx-auto w-full">
@@ -595,8 +617,8 @@ export default function Home() {
               <FeaturedStation />
             </section>
 
-            {/* Tools & Insights */}
-            <section id="gascap-tools" className="px-4 lg:px-0 pb-6 max-w-lg lg:max-w-none mx-auto w-full">
+            {/* Tools & Insights — mobile only; desktop shows in right column */}
+            <section id="gascap-tools" className="lg:hidden px-4 pb-6 max-w-lg mx-auto w-full">
               <ToolsPanel />
             </section>
 
@@ -636,11 +658,11 @@ export default function Home() {
           </div>
 
           {/* ── RIGHT COLUMN — desktop only ── */}
-          <div className="hidden lg:block">
-            <div className="sticky top-4 space-y-4 pb-8">
+          <div className="hidden lg:block min-w-0">
+            <div className="sticky top-4 space-y-4 pb-8 overflow-y-auto max-h-[calc(100vh-2rem)]">
 
               {/* ── Garage panel header ── */}
-              <div className="flex items-center gap-2 px-1">
+              <div className="flex items-center gap-2 px-1 pt-4">
                 <span className="text-base">🚗</span>
                 <h2 className="text-sm font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider">
                   My Garage
@@ -657,52 +679,73 @@ export default function Home() {
                 </a>
               </div>
 
-              {/* Standalone SavedVehicles — dispatches custom event to update calculator */}
+              {/* Standalone SavedVehicles — selectedVehicleId keeps highlight in sync */}
               <SavedVehicles
-                currentGallons=""
+                currentGallons={desktopSelectedVehicle ? String(desktopSelectedVehicle.gallons) : ''}
                 onSelect={(gallons, vehicle) => {
+                  setDesktopSelectedId(vehicle?.id ?? '');
+                  setDesktopSelectedVehicle(vehicle ?? null);
                   window.dispatchEvent(
                     new CustomEvent<{ gallons: string; vehicle?: Vehicle }>('gascap:vehicle-select', {
                       detail: { gallons, vehicle },
                     })
                   );
                 }}
-                selectedVehicleId=""
+                selectedVehicleId={desktopSelectedId}
               />
 
+              {/* ── Tools & Insights ── */}
+              <div className="flex items-center gap-2 px-1">
+                <span className="text-base">⚡</span>
+                <h2 className="text-sm font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider">
+                  Tools &amp; Insights
+                </h2>
+                <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
+              </div>
+              <section id="gascap-tools">
+                <ToolsPanel />
+              </section>
+
               {/* ── Quick links ── */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="flex items-center gap-2 px-1">
+                <span className="text-base">🔗</span>
+                <h2 className="text-sm font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider">
+                  Quick Links
+                </h2>
+                <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
                 <a href="/fillups"
-                   className="flex flex-col gap-1.5 bg-white dark:bg-slate-800 rounded-2xl
-                              border border-slate-100 dark:border-slate-700 p-4
+                   className="flex flex-col gap-1 bg-white dark:bg-slate-800 rounded-xl
+                              border border-slate-100 dark:border-slate-700 p-3
                               hover:border-brand-teal/40 transition-colors group shadow-sm">
-                  <span className="text-xl">📋</span>
-                  <p className="text-xs font-black text-slate-700 dark:text-slate-200 group-hover:text-brand-teal transition-colors">Fill-Up Log</p>
-                  <p className="text-[10px] text-slate-400 leading-snug">Track every fill-up, MPG &amp; spending</p>
+                  <span className="text-lg">📋</span>
+                  <p className="text-[11px] font-black text-slate-700 dark:text-slate-200 group-hover:text-brand-teal transition-colors leading-tight">Fill-Up Log</p>
+                  <p className="text-[10px] text-slate-400 leading-snug">MPG &amp; spending history</p>
                 </a>
                 <a href="/giveaway"
-                   className="flex flex-col gap-1.5 bg-white dark:bg-slate-800 rounded-2xl
-                              border border-slate-100 dark:border-slate-700 p-4
+                   className="flex flex-col gap-1 bg-white dark:bg-slate-800 rounded-xl
+                              border border-slate-100 dark:border-slate-700 p-3
                               hover:border-amber-300/60 transition-colors group shadow-sm">
-                  <span className="text-xl">🎁</span>
-                  <p className="text-xs font-black text-slate-700 dark:text-slate-200 group-hover:text-amber-600 transition-colors">Gas Card Giveaway</p>
-                  <p className="text-[10px] text-slate-400 leading-snug">Earn entries every month</p>
+                  <span className="text-lg">🎁</span>
+                  <p className="text-[11px] font-black text-slate-700 dark:text-slate-200 group-hover:text-amber-600 transition-colors leading-tight">Gas Card</p>
+                  <p className="text-[10px] text-slate-400 leading-snug">Monthly giveaway entries</p>
                 </a>
                 <a href="/referral"
-                   className="flex flex-col gap-1.5 bg-white dark:bg-slate-800 rounded-2xl
-                              border border-slate-100 dark:border-slate-700 p-4
+                   className="flex flex-col gap-1 bg-white dark:bg-slate-800 rounded-xl
+                              border border-slate-100 dark:border-slate-700 p-3
                               hover:border-brand-teal/40 transition-colors group shadow-sm">
-                  <span className="text-xl">🤝</span>
-                  <p className="text-xs font-black text-slate-700 dark:text-slate-200 group-hover:text-brand-teal transition-colors">Refer &amp; Earn</p>
-                  <p className="text-[10px] text-slate-400 leading-snug">Free Pro months for every referral</p>
+                  <span className="text-lg">🤝</span>
+                  <p className="text-[11px] font-black text-slate-700 dark:text-slate-200 group-hover:text-brand-teal transition-colors leading-tight">Refer &amp; Earn</p>
+                  <p className="text-[10px] text-slate-400 leading-snug">Free Pro months</p>
                 </a>
                 <a href="/settings"
-                   className="flex flex-col gap-1.5 bg-white dark:bg-slate-800 rounded-2xl
-                              border border-slate-100 dark:border-slate-700 p-4
+                   className="flex flex-col gap-1 bg-white dark:bg-slate-800 rounded-xl
+                              border border-slate-100 dark:border-slate-700 p-3
                               hover:border-slate-300 transition-colors group shadow-sm">
-                  <span className="text-xl">⚙️</span>
-                  <p className="text-xs font-black text-slate-700 dark:text-slate-200 group-hover:text-slate-600 transition-colors">Settings</p>
-                  <p className="text-[10px] text-slate-400 leading-snug">Plan, alerts &amp; account</p>
+                  <span className="text-lg">⚙️</span>
+                  <p className="text-[11px] font-black text-slate-700 dark:text-slate-200 group-hover:text-slate-600 transition-colors leading-tight">Settings</p>
+                  <p className="text-[10px] text-slate-400 leading-snug">Plan &amp; account</p>
                 </a>
               </div>
 
