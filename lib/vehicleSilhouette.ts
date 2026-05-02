@@ -107,3 +107,54 @@ export const VEHICLE_PATHS: Record<VehicleType, string> = {
     // Windows (counter-clockwise) — large glass area typical of minivans
     'M84,32 L160,32 L168,12 L158,7 L104,7 L96,12 Z',
 };
+
+/**
+ * Front-view silhouette paths. viewBox "0 0 60 54".
+ * Viewer is standing in front of the vehicle looking at the grille/windshield.
+ *
+ * Two sub-paths per type (body CW + windshield CCW). Render with fillRule="evenodd".
+ *
+ * Key shape differences:
+ *   sedan  — medium roof height (y≈12), gentle curves, standard proportions
+ *   coupe  — lower roof (y≈14), slightly wider stance, sportier
+ *   suv    — taller body (y≈8), more upright/squared sides, bigger windshield
+ *   truck  — tallest body (y≈6), widest, very squared, high stance
+ *   van    — very tall (y≈10), nearly vertical slab sides, cab-forward look
+ */
+export const FRONT_VEHICLE_PATHS: Record<VehicleType, string> = {
+
+  // ── SEDAN ────────────────────────────────────────────────────────────────
+  sedan:
+    // Body (CW)
+    'M5,52 L55,52 L57,46 L57,36 L54,26 L50,18 L44,12 L16,12 L10,18 L6,26 L3,36 L3,46 Z ' +
+    // Windshield (CCW cutout)
+    'M19,28 L41,28 L39,14 L21,14 Z',
+
+  // ── COUPE ────────────────────────────────────────────────────────────────
+  coupe:
+    // Body (CW) — wider, lower roof
+    'M4,52 L56,52 L58,46 L58,36 L55,26 L51,19 L45,14 L15,14 L9,19 L5,26 L2,36 L2,46 Z ' +
+    // Windshield (CCW cutout) — smaller, more raked
+    'M18,30 L42,30 L40,16 L20,16 Z',
+
+  // ── SUV ──────────────────────────────────────────────────────────────────
+  suv:
+    // Body (CW) — taller, boxier
+    'M4,52 L56,52 L58,46 L58,34 L56,23 L52,14 L46,8 L14,8 L8,14 L4,23 L2,34 L2,46 Z ' +
+    // Windshield (CCW cutout) — taller, more upright
+    'M16,28 L44,28 L44,10 L16,10 Z',
+
+  // ── PICKUP TRUCK ─────────────────────────────────────────────────────────
+  truck:
+    // Body (CW) — tallest, widest, very squared
+    'M3,52 L57,52 L59,46 L59,34 L57,22 L53,12 L47,6 L13,6 L7,12 L3,22 L1,34 L1,46 Z ' +
+    // Cab windshield (CCW cutout) — tall, wide
+    'M14,26 L46,26 L46,8 L14,8 Z',
+
+  // ── VAN / MINIVAN ─────────────────────────────────────────────────────────
+  van:
+    // Body (CW) — very tall, nearly vertical slab sides
+    'M4,52 L56,52 L58,46 L58,30 L57,18 L53,10 L7,10 L3,18 L2,30 L2,46 Z ' +
+    // Windshield (CCW cutout) — very tall, nearly full-width
+    'M12,28 L48,28 L48,12 L12,12 Z',
+};

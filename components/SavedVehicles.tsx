@@ -8,7 +8,7 @@ import type { VehicleSpecs } from '@/lib/vehicleSpecs';
 import { useTranslation } from '@/contexts/LanguageContext';
 import { GarageDoor }                        from './GarageDoor';
 import { useGarageDoorPrefs }                from '@/hooks/useGarageDoorPrefs';
-import { detectVehicleType, VEHICLE_PATHS }  from '@/lib/vehicleSilhouette';
+import { detectVehicleType, FRONT_VEHICLE_PATHS } from '@/lib/vehicleSilhouette';
 
 export interface Vehicle {
   id:               string;
@@ -661,39 +661,15 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
                   ) : (
                     /* ── Normal card ── */
                     <div className={[
-                      'relative overflow-hidden flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors',
+                      'relative flex items-center gap-2 rounded-xl px-3 py-2.5 transition-colors overflow-hidden',
                       v.id === selectedVehicleId
                         ? 'bg-amber-50 border-2 border-amber-400 shadow-sm'
                         : 'bg-slate-50 border border-slate-200 group hover:border-amber-300',
                     ].join(' ')}>
-                      {/* Vehicle side-profile silhouette — stops before the action buttons */}
-                      <div
-                        className="absolute inset-y-0 right-[78px] w-[34%] pointer-events-none select-none overflow-hidden"
-                      >
-                        {/* Left gradient fade */}
-                        <div
-                          className="absolute inset-y-0 left-0 w-12 z-10"
-                          style={{
-                            background: `linear-gradient(to right, ${
-                              v.id === selectedVehicleId ? '#fffbeb' : '#f8fafc'
-                            }, transparent)`,
-                          }}
-                        />
-                        <svg
-                          viewBox="0 0 200 80"
-                          fillRule="evenodd"
-                          preserveAspectRatio="xMidYMax meet"
-                          className="absolute inset-0 w-full h-full"
-                          style={{ fill: '#94a3b8', opacity: 0.32 }}
-                          aria-hidden="true"
-                        >
-                          <path d={VEHICLE_PATHS[detectVehicleType({ name: v.name, make: v.make, model: v.model })]} />
-                        </svg>
-                      </div>
                       {/* Select / load button */}
                       <button
                         onClick={() => onSelect(String(v.gallons), v)}
-                        className="flex-1 text-left"
+                        className="flex-1 min-w-0 text-left"
                         title={t.garage.loadTitle(v.name, v.gallons)}
                       >
                         <p className="text-sm font-semibold text-slate-700 group-hover:text-amber-700
@@ -720,10 +696,23 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
                         )}
                       </button>
 
+                      {/* Front-view vehicle silhouette — small inline icon, no overlap with text */}
+                      <div className="flex-shrink-0 w-10 opacity-[0.18] pointer-events-none select-none">
+                        <svg
+                          viewBox="0 0 60 54"
+                          fillRule="evenodd"
+                          className="w-full"
+                          style={{ fill: v.id === selectedVehicleId ? '#b45309' : '#64748b' }}
+                          aria-hidden="true"
+                        >
+                          <path d={FRONT_VEHICLE_PATHS[detectVehicleType({ name: v.name, make: v.make, model: v.model })]} />
+                        </svg>
+                      </div>
+
                       {/* Info */}
                       <button
                         onClick={(e) => { e.stopPropagation(); setInfoVehicle(v); }}
-                        className="relative z-[1] p-1.5 rounded-lg text-slate-400 hover:text-blue-500 hover:bg-blue-50 transition-colors"
+                        className="flex-shrink-0 p-1.5 rounded-lg text-slate-400 hover:text-blue-500 hover:bg-blue-50 transition-colors"
                         title={t.garage.vehicleInfoTitle}
                       >
                         <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4" aria-label={t.garage.vehicleInfoAria}>
@@ -732,28 +721,32 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
                       </button>
 
                       {confirmDeleteId === v.id ? (
-                        /* ── Inline delete confirmation ── */
-                        <div className="relative z-[1] flex items-center gap-1.5 ml-1">
-                          <span className="text-[10px] text-red-400 font-semibold whitespace-nowrap">Remove?</span>
-                          <button
-                            onClick={() => { handleDelete(v.id); setConfirmDeleteId(null); }}
-                            className="text-[10px] font-black px-1.5 py-0.5 rounded bg-red-500 text-white hover:bg-red-600 transition-colors"
-                          >
-                            Yes
-                          </button>
-                          <button
-                            onClick={() => setConfirmDeleteId(null)}
-                            className="text-[10px] font-black px-1.5 py-0.5 rounded bg-slate-200 text-slate-600 hover:bg-slate-300 transition-colors"
-                          >
-                            Cancel
-                          </button>
+                        /* ── Delete confirmation — replaces edit+delete buttons ── */
+                        <div className="flex-shrink-0 flex flex-col items-end gap-1">
+                          <span className="text-[10px] font-bold text-red-500 whitespace-nowrap">Remove vehicle?</span>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              onClick={() => setConfirmDeleteId(null)}
+                              className="text-[10px] font-bold px-2 py-1 rounded-lg bg-slate-100 text-slate-600
+                                         hover:bg-slate-200 border border-slate-200 transition-colors whitespace-nowrap"
+                            >
+                              Keep it
+                            </button>
+                            <button
+                              onClick={() => { handleDelete(v.id); setConfirmDeleteId(null); }}
+                              className="text-[10px] font-black px-2 py-1 rounded-lg bg-red-500 text-white
+                                         hover:bg-red-600 transition-colors whitespace-nowrap"
+                            >
+                              Yes, remove
+                            </button>
+                          </div>
                         </div>
                       ) : (
                         <>
                           {/* Edit */}
                           <button
                             onClick={() => startEdit(v)}
-                            className="relative z-[1] text-slate-300 hover:text-amber-500 transition-colors flex-shrink-0"
+                            className="flex-shrink-0 text-slate-300 hover:text-amber-500 transition-colors p-1"
                             aria-label={t.garage.editAria(v.name)}
                           >
                             <svg viewBox="0 0 16 16" className="w-3.5 h-3.5" fill="none"
@@ -762,10 +755,10 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
                             </svg>
                           </button>
 
-                          {/* Delete — requires confirmation */}
+                          {/* Delete — tapping shows confirmation above */}
                           <button
                             onClick={() => setConfirmDeleteId(v.id)}
-                            className="relative z-[1] text-slate-300 hover:text-red-400 transition-colors flex-shrink-0"
+                            className="flex-shrink-0 text-slate-300 hover:text-red-400 transition-colors p-1"
                             aria-label={t.garage.removeAria(v.name)}
                           >
                             <svg viewBox="0 0 12 12" className="w-3.5 h-3.5" fill="none"
