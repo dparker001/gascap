@@ -7,6 +7,7 @@ import { useTranslation }      from '@/contexts/LanguageContext';
 import AdSenseBanner           from '@/components/AdSenseBanner';
 import Header                  from '@/components/Header';
 import CalculatorTabs          from '@/components/CalculatorTabs';
+import SavedVehicles, { type Vehicle } from '@/components/SavedVehicles';
 import ToolsPanel              from '@/components/ToolsPanel';
 import PricingSection          from '@/components/PricingSection';
 import TrialExpiryBanner      from '@/components/TrialExpiryBanner';
@@ -547,6 +548,9 @@ export default function Home() {
       {/* Gas price drop alert — Pro users */}
       <GasPriceAlertBanner />
 
+      {/* Engagement nudge — fixed bottom toast, contextual, dismissible */}
+      <EngagementNudge />
+
       {/* Brand header */}
       <Header />
 
@@ -556,62 +560,196 @@ export default function Home() {
       {/* ── Endorser / partner logo marquee — guests only ─────────────── */}
       {isGuest && <EndorserMarquee />}
 
-      {/* Streak counter — logged-in users only */}
-      {session && <StreakCounter />}
-
-      {/* Setup checklist — shown once to new signed-in users until all steps are complete */}
+      {/* ══════════════════════════════════════════════════════════════════
+          LOGGED-IN: two-column desktop layout
+          Mobile: single column (lg:hidden / hidden lg:block control visibility)
+          Desktop (lg+): left 520px calc column + right sticky garage panel
+      ══════════════════════════════════════════════════════════════════ */}
       {session && (
-        <section className="px-4 max-w-lg mx-auto w-full">
-          <SetupChecklist />
-        </section>
-      )}
+        <div className="lg:grid lg:grid-cols-[520px_1fr] lg:gap-8
+                        lg:max-w-6xl lg:mx-auto lg:px-6 lg:pt-4 lg:items-start">
 
-      {/* Calculator */}
-      <section id="gascap-calculator" className="flex-1 px-4 pt-5 pb-4 max-w-lg mx-auto w-full">
-        <CalculatorTabs />
-      </section>
+          {/* ── LEFT COLUMN ── */}
+          <div className="min-w-0">
 
-      {/* Guest — save nudge */}
-      {isGuest && (
-        <section className="px-4 -mt-2 pb-2 max-w-lg mx-auto w-full">
-          <div className="bg-brand-dark rounded-2xl px-4 py-3 flex items-center gap-3">
-            <span className="text-xl flex-shrink-0">💾</span>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-black text-white">{t.saveNudge.heading}</p>
-              <p className="text-[10px] text-white/60 mt-0.5">{t.saveNudge.sub}</p>
+            {/* Streak counter */}
+            <StreakCounter />
+
+            {/* Setup checklist */}
+            <section className="px-4 lg:px-0 max-w-lg lg:max-w-none mx-auto w-full">
+              <SetupChecklist />
+            </section>
+
+            {/* Calculator — SavedVehicles inside is hidden at lg+ via lg:hidden wrapper */}
+            <section id="gascap-calculator" className="flex-1 px-4 lg:px-0 pt-5 pb-4 max-w-lg lg:max-w-none mx-auto w-full">
+              <CalculatorTabs />
+            </section>
+
+            {/* AdSense — free users */}
+            {userPlan === 'free' && (
+              <AdSenseBanner slotId={process.env.NEXT_PUBLIC_ADSENSE_SLOT_ID} />
+            )}
+
+            {/* Partner Station */}
+            <section className="px-4 lg:px-0 pb-3 max-w-lg lg:max-w-none mx-auto w-full">
+              <FeaturedStation />
+            </section>
+
+            {/* Tools & Insights */}
+            <section id="gascap-tools" className="px-4 lg:px-0 pb-6 max-w-lg lg:max-w-none mx-auto w-full">
+              <ToolsPanel />
+            </section>
+
+            {/* Separator + Pricing */}
+            <div className="max-w-lg lg:max-w-none mx-auto w-full px-4 lg:px-0 pb-2">
+              <div className="flex items-center gap-3">
+                <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
+                <span className="text-[10px] font-black uppercase tracking-widest
+                                 text-slate-300 dark:text-slate-600">More</span>
+                <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
+              </div>
             </div>
-            <a
-              href="/signup"
-              className="flex-shrink-0 px-3 py-1.5 bg-brand-orange hover:bg-[#FF9A1A]
-                         text-white text-xs font-black rounded-xl transition-colors whitespace-nowrap"
-            >
-              {t.saveNudge.button}
-            </a>
+            <section className="px-4 lg:px-0 pb-12 max-w-2xl lg:max-w-none mx-auto w-full">
+              <button
+                onClick={() => setShowPricing((v) => !v)}
+                className="w-full flex items-center justify-between py-3 px-4 bg-white dark:bg-slate-800
+                           rounded-2xl border border-slate-100 dark:border-slate-700
+                           shadow-sm hover:border-brand-teal/30 transition-colors mb-2"
+              >
+                <div className="flex items-center gap-2.5">
+                  <span className="text-lg">⭐</span>
+                  <div className="text-left">
+                    <p className="text-sm font-black text-slate-700 dark:text-slate-200">{t.pricing.toggleLabel}</p>
+                    <p className="text-[10px] text-slate-400">{t.pricing.toggleSub}</p>
+                  </div>
+                </div>
+                <svg
+                  className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${showPricing ? 'rotate-180' : ''}`}
+                  viewBox="0 0 16 16" fill="none" stroke="currentColor"
+                  strokeWidth="2" strokeLinecap="round" aria-hidden="true"
+                >
+                  <path d="M 4 6l4 4 4-4" />
+                </svg>
+              </button>
+              {showPricing && <PricingSection />}
+            </section>
           </div>
-        </section>
+
+          {/* ── RIGHT COLUMN — desktop only ── */}
+          <div className="hidden lg:block">
+            <div className="sticky top-4 space-y-4 pb-8">
+
+              {/* ── Garage panel header ── */}
+              <div className="flex items-center gap-2 px-1">
+                <span className="text-base">🚗</span>
+                <h2 className="text-sm font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider">
+                  My Garage
+                </h2>
+                <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
+                <a href="/garage"
+                   className="text-[11px] font-bold text-brand-teal hover:text-brand-orange
+                              transition-colors flex items-center gap-1">
+                  Manage
+                  <svg viewBox="0 0 12 12" className="w-2.5 h-2.5" fill="none"
+                       stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                    <path d="M2 6h8M6 2l4 4-4 4"/>
+                  </svg>
+                </a>
+              </div>
+
+              {/* Standalone SavedVehicles — dispatches custom event to update calculator */}
+              <SavedVehicles
+                currentGallons=""
+                onSelect={(gallons, vehicle) => {
+                  window.dispatchEvent(
+                    new CustomEvent<{ gallons: string; vehicle?: Vehicle }>('gascap:vehicle-select', {
+                      detail: { gallons, vehicle },
+                    })
+                  );
+                }}
+                selectedVehicleId=""
+              />
+
+              {/* ── Quick links ── */}
+              <div className="grid grid-cols-2 gap-3">
+                <a href="/fillups"
+                   className="flex flex-col gap-1.5 bg-white dark:bg-slate-800 rounded-2xl
+                              border border-slate-100 dark:border-slate-700 p-4
+                              hover:border-brand-teal/40 transition-colors group shadow-sm">
+                  <span className="text-xl">📋</span>
+                  <p className="text-xs font-black text-slate-700 dark:text-slate-200 group-hover:text-brand-teal transition-colors">Fill-Up Log</p>
+                  <p className="text-[10px] text-slate-400 leading-snug">Track every fill-up, MPG &amp; spending</p>
+                </a>
+                <a href="/giveaway"
+                   className="flex flex-col gap-1.5 bg-white dark:bg-slate-800 rounded-2xl
+                              border border-slate-100 dark:border-slate-700 p-4
+                              hover:border-amber-300/60 transition-colors group shadow-sm">
+                  <span className="text-xl">🎁</span>
+                  <p className="text-xs font-black text-slate-700 dark:text-slate-200 group-hover:text-amber-600 transition-colors">Gas Card Giveaway</p>
+                  <p className="text-[10px] text-slate-400 leading-snug">Earn entries every month</p>
+                </a>
+                <a href="/referral"
+                   className="flex flex-col gap-1.5 bg-white dark:bg-slate-800 rounded-2xl
+                              border border-slate-100 dark:border-slate-700 p-4
+                              hover:border-brand-teal/40 transition-colors group shadow-sm">
+                  <span className="text-xl">🤝</span>
+                  <p className="text-xs font-black text-slate-700 dark:text-slate-200 group-hover:text-brand-teal transition-colors">Refer &amp; Earn</p>
+                  <p className="text-[10px] text-slate-400 leading-snug">Free Pro months for every referral</p>
+                </a>
+                <a href="/settings"
+                   className="flex flex-col gap-1.5 bg-white dark:bg-slate-800 rounded-2xl
+                              border border-slate-100 dark:border-slate-700 p-4
+                              hover:border-slate-300 transition-colors group shadow-sm">
+                  <span className="text-xl">⚙️</span>
+                  <p className="text-xs font-black text-slate-700 dark:text-slate-200 group-hover:text-slate-600 transition-colors">Settings</p>
+                  <p className="text-[10px] text-slate-400 leading-snug">Plan, alerts &amp; account</p>
+                </a>
+              </div>
+
+            </div>
+          </div>
+        </div>
       )}
 
-      {/* AdSense — free + guest users */}
-      {(isGuest || userPlan === 'free') && (
-        <AdSenseBanner slotId={process.env.NEXT_PUBLIC_ADSENSE_SLOT_ID} />
-      )}
-
-      {/* Partner Station — shown when a featured partner is in the user's city */}
-      <section className="px-4 pb-3 max-w-lg mx-auto w-full">
-        <FeaturedStation />
-      </section>
-
-      {/* Engagement nudge — fixed bottom toast, contextual, dismissible */}
-      <EngagementNudge />
-
-      {/* Tools & Insights */}
-      <section id="gascap-tools" className="px-4 pb-6 max-w-lg mx-auto w-full">
-        <ToolsPanel />
-      </section>
-
-      {/* ── Guest-only landing content ─────────────────────────────────── */}
+      {/* ── Guest single-column content ─────────────────────────────────── */}
       {isGuest && (
         <>
+          {/* Calculator */}
+          <section id="gascap-calculator" className="flex-1 px-4 pt-5 pb-4 max-w-lg mx-auto w-full">
+            <CalculatorTabs />
+          </section>
+
+          {/* Save nudge */}
+          <section className="px-4 -mt-2 pb-2 max-w-lg mx-auto w-full">
+            <div className="bg-brand-dark rounded-2xl px-4 py-3 flex items-center gap-3">
+              <span className="text-xl flex-shrink-0">💾</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-black text-white">{t.saveNudge.heading}</p>
+                <p className="text-[10px] text-white/60 mt-0.5">{t.saveNudge.sub}</p>
+              </div>
+              <a
+                href="/signup"
+                className="flex-shrink-0 px-3 py-1.5 bg-brand-orange hover:bg-[#FF9A1A]
+                           text-white text-xs font-black rounded-xl transition-colors whitespace-nowrap"
+              >
+                {t.saveNudge.button}
+              </a>
+            </div>
+          </section>
+
+          {/* AdSense — guests */}
+          <AdSenseBanner slotId={process.env.NEXT_PUBLIC_ADSENSE_SLOT_ID} />
+
+          {/* Partner Station */}
+          <section className="px-4 pb-3 max-w-lg mx-auto w-full">
+            <FeaturedStation />
+          </section>
+
+          {/* Tools & Insights */}
+          <section id="gascap-tools" className="px-4 pb-6 max-w-lg mx-auto w-full">
+            <ToolsPanel />
+          </section>
+
           <ProblemSolution />
           <Features />
           <UseCases />
@@ -619,46 +757,34 @@ export default function Home() {
           <ReviewsMarquee />
           <FaqSection />
           <GuestCtaBanner />
+
+          {/* Pricing */}
+          <section className="px-4 pb-12 max-w-2xl mx-auto w-full">
+            <button
+              onClick={() => setShowPricing((v) => !v)}
+              className="w-full flex items-center justify-between py-3 px-4 bg-white dark:bg-slate-800
+                         rounded-2xl border border-slate-100 dark:border-slate-700
+                         shadow-sm hover:border-brand-teal/30 transition-colors mb-2"
+            >
+              <div className="flex items-center gap-2.5">
+                <span className="text-lg">⭐</span>
+                <div className="text-left">
+                  <p className="text-sm font-black text-slate-700 dark:text-slate-200">{t.pricing.toggleLabel}</p>
+                  <p className="text-[10px] text-slate-400">{t.pricing.toggleSub}</p>
+                </div>
+              </div>
+              <svg
+                className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${showPricing ? 'rotate-180' : ''}`}
+                viewBox="0 0 16 16" fill="none" stroke="currentColor"
+                strokeWidth="2" strokeLinecap="round" aria-hidden="true"
+              >
+                <path d="M 4 6l4 4 4-4" />
+              </svg>
+            </button>
+            {showPricing && <PricingSection />}
+          </section>
         </>
       )}
-
-      {/* Separator between tools and pricing for logged-in users */}
-      {!isGuest && (
-        <div className="max-w-lg mx-auto w-full px-4 pb-2">
-          <div className="flex items-center gap-3">
-            <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
-            <span className="text-[10px] font-black uppercase tracking-widest
-                             text-slate-300 dark:text-slate-600">More</span>
-            <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
-          </div>
-        </div>
-      )}
-
-      {/* Pricing */}
-      <section className="px-4 pb-12 max-w-2xl mx-auto w-full">
-        <button
-          onClick={() => setShowPricing((v) => !v)}
-          className="w-full flex items-center justify-between py-3 px-4 bg-white dark:bg-slate-800
-                     rounded-2xl border border-slate-100 dark:border-slate-700
-                     shadow-sm hover:border-brand-teal/30 transition-colors mb-2"
-        >
-          <div className="flex items-center gap-2.5">
-            <span className="text-lg">⭐</span>
-            <div className="text-left">
-              <p className="text-sm font-black text-slate-700 dark:text-slate-200">{t.pricing.toggleLabel}</p>
-              <p className="text-[10px] text-slate-400">{t.pricing.toggleSub}</p>
-            </div>
-          </div>
-          <svg
-            className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${showPricing ? 'rotate-180' : ''}`}
-            viewBox="0 0 16 16" fill="none" stroke="currentColor"
-            strokeWidth="2" strokeLinecap="round" aria-hidden="true"
-          >
-            <path d="M 4 6l4 4 4-4" />
-          </svg>
-        </button>
-        {showPricing && <PricingSection />}
-      </section>
 
       {/* Footer */}
       <footer className="border-t border-slate-100 dark:border-slate-800

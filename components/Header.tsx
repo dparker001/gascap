@@ -56,7 +56,7 @@ export default function Header() {
         ))}
       </div>
 
-      <div className="relative max-w-lg mx-auto">
+      <div className="relative max-w-lg lg:max-w-6xl mx-auto">
 
         {/* ── Top row: logo + wordmark + auth ── */}
         <div className="flex items-center justify-between mb-5">

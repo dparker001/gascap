@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import FuelGauge      from './FuelGauge';
 import TankPresets    from './TankPresets';
-import SavedVehicles  from './SavedVehicles';
+import SavedVehicles, { type Vehicle }  from './SavedVehicles';
 import GasPriceLookup from './GasPriceLookup';
 import { BudgetResultCard } from './ResultCard';
 import {
@@ -81,6 +81,17 @@ export default function BudgetForm({ activeTab, setActiveTab }: Props) {
       if (isLoggedIn && !isPro) setShowLiveNudge(true);
     }
   }
+
+  // Desktop right-panel bridge — listens for vehicle selection from the sticky garage panel
+  useEffect(() => {
+    function onDesktopVehicleSelect(e: Event) {
+      const { gallons, vehicle } = (e as CustomEvent<{ gallons: string; vehicle?: Vehicle }>).detail;
+      patch({ tankCapacity: gallons, vehicleName: vehicle?.name ?? '', vehicleId: vehicle?.id ?? '', vehicleOdometer: vehicle?.currentOdometer });
+    }
+    window.addEventListener('gascap:vehicle-select', onDesktopVehicleSelect);
+    return () => window.removeEventListener('gascap:vehicle-select', onDesktopVehicleSelect);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [calculated, isLoggedIn, isPro]);
 
   // Live recalc — Pro only. Merges update and immediately recalculates.
   function liveRecalc(p: Partial<FormState>) {
@@ -191,11 +202,13 @@ export default function BudgetForm({ activeTab, setActiveTab }: Props) {
           onChange={(v) => patch({ tankCapacity: v })}
         />
         {errors.tankCapacity && <FieldError msg={errors.tankCapacity} />}
-        <SavedVehicles
-          currentGallons={form.tankCapacity}
-          onSelect={(g, v) => patch({ tankCapacity: g, vehicleName: v?.name ?? '', vehicleId: v?.id ?? '', vehicleOdometer: v?.currentOdometer })}
-          selectedVehicleId={form.vehicleId}
-        />
+        <div className="lg:hidden">
+          <SavedVehicles
+            currentGallons={form.tankCapacity}
+            onSelect={(g, v) => patch({ tankCapacity: g, vehicleName: v?.name ?? '', vehicleId: v?.id ?? '', vehicleOdometer: v?.currentOdometer })}
+            selectedVehicleId={form.vehicleId}
+          />
+        </div>
       </div>
 
       {/* ══════════════════════════════════════════════════════════════
