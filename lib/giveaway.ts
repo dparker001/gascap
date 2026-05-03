@@ -136,9 +136,10 @@ export interface EntrantRow {
   entryMultiplier: number;        // 1× standard, 2× Supporter, 3× Ambassador, 5× Elite
   baseEntries:     number;        // active days × entryMultiplier
   streakBonus:     number;        // flat bonus from streak tier (not multiplied)
-  earlyUpgradeBonusEntries: number; // +10 bonus for trial-to-paid conversions
-  garageBonusEntries: number;    // +5/day for tapping to open garage (Pro+)
-  entryCount:      number;        // baseEntries + streakBonus + earlyUpgrade + garageBonus
+  earlyUpgradeBonusEntries:    number; // +10 bonus for trial-to-paid conversions
+  garageBonusEntries:          number; // +10/day for tapping to open garage (Pro+)
+  verifyReminderBonusEntries:  number; // +25 one-time for verifying email within 7 days of reminder
+  entryCount:      number;        // baseEntries + streakBonus + earlyUpgrade + garageBonus + verifyReminderBonus
   alwaysEligible:  boolean;       // true for Ambassador tier holders — skip win restrictions
 }
 
@@ -226,6 +227,7 @@ export async function getEligibleEntrants(month: string): Promise<EntrantRow[]> 
       activeDays: true, streak: true, referralCount: true,
       earlyUpgradeBonusEntries: true,
       garageBonusDays: true,
+      verifyReminderBonusEntries: true,
     },
   });
 
@@ -237,10 +239,11 @@ export async function getEligibleEntrants(month: string): Promise<EntrantRow[]> 
       const baseEntries   = activeDayCount * multiplier;  // multiplier applied to active days
       const streakBonus   = streakBonusEntries(u.streak ?? 0);
       const bonusEntries  = u.earlyUpgradeBonusEntries ?? 0;
-      // Garage bonus: +5 per day user tapped to open their garage this month
+      // Garage bonus: +10 per day user tapped to open their garage this month
       const garageDaysThisMonth = (u.garageBonusDays ?? [])
         .filter((d: string) => d.startsWith(prefix)).length;
-      const garageBonusEntries  = garageDaysThisMonth * 5;
+      const garageBonusEntries         = garageDaysThisMonth * 10;
+      const verifyReminderBonusEntries = u.verifyReminderBonusEntries ?? 0;
       return {
         userId:          u.id,
         name:            u.name,
@@ -254,7 +257,8 @@ export async function getEligibleEntrants(month: string): Promise<EntrantRow[]> 
         streakBonus,
         earlyUpgradeBonusEntries: bonusEntries,
         garageBonusEntries,
-        entryCount:      baseEntries + streakBonus + bonusEntries + garageBonusEntries,
+        verifyReminderBonusEntries,
+        entryCount:      baseEntries + streakBonus + bonusEntries + garageBonusEntries + verifyReminderBonusEntries,
         alwaysEligible:  isAlwaysEligible(refCount),
       };
     })

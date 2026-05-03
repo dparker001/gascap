@@ -415,17 +415,52 @@ export function verificationEmailHtml(
   name: string,
   verifyUrl: string,
   locale: 'en' | 'es' = 'en',
+  isReminder: boolean = false,
 ): string {
-  const es = locale === 'es';
-  const heading  = es ? 'Verifica tu correo'               : 'Verify your email';
-  const body     = es
-    ? `Hola ${name}, confirma tu dirección de correo para activar tu cuenta de GasCap™.`
-    : `Hi ${name}, confirm your email address to activate your GasCap™ account.`;
-  const btnLabel = es ? '✓ Verificar correo electrónico'   : '✓ Verify Email Address';
-  const expiry   = es
-    ? 'Este enlace expira en 24 horas. Si no creaste una cuenta de GasCap™, ignora este mensaje.'
-    : 'This link expires in 24 hours. If you didn\'t create a GasCap™ account, you can ignore this email.';
-  const copyLink = es ? 'O copia este enlace:'             : 'Or copy this link:';
+  const es       = locale === 'es';
+  const first    = name.split(' ')[0];
+
+  const heading  = isReminder
+    ? (es ? `${first}, todavía no has verificado tu correo` : `${first}, your email is still unverified`)
+    : (es ? 'Verifica tu correo' : 'Verify your email');
+
+  const body = isReminder
+    ? (es
+        ? `Te registraste en GasCap™ Pro pero tu dirección de correo aún no ha sido verificada. Solo toma 5 segundos — y mantiene tu cuenta segura.`
+        : `You signed up for GasCap™ Pro, but your email address still hasn't been verified. It takes about 5 seconds — and it keeps your account secure so we can send billing confirmations and help you recover access if you're ever locked out.`)
+    : (es
+        ? `Hola ${first}, confirma tu dirección de correo para activar tu cuenta de GasCap™.`
+        : `Hi ${first}, confirm your email address to activate your GasCap™ account.`);
+
+  const btnLabel = es ? '✓ Verificar mi cuenta de GasCap™' : '✓ Verify My GasCap™ Account';
+
+  const expiryDays = isReminder ? 7 : 1;
+  const expiry = es
+    ? `Este enlace expira en ${expiryDays === 7 ? '7 días' : '24 horas'}. Si no creaste una cuenta de GasCap™, ignora este mensaje.`
+    : `This link expires in ${expiryDays === 7 ? '7 days' : '24 hours'}. If you didn't create a GasCap™ account, you can ignore this email.`;
+
+  const copyLink = es ? 'O copia este enlace:' : 'Or copy this link:';
+
+  const bonusBlock = isReminder ? `
+        <!-- 25-entry bonus callout -->
+        <tr><td style="padding:0 32px 24px;">
+          <div style="background:#fef9f0;border:2px solid #f59e0b;border-radius:12px;padding:18px 20px;">
+            <p style="margin:0 0 6px;font-size:14px;font-weight:900;color:#92400e;">
+              🎁 Bonus: 25 free draw entries — just for verifying
+            </p>
+            <p style="margin:0;font-size:13px;color:#78350f;line-height:1.65;">
+              Verify your email within <strong>7 days</strong> of receiving this message and we'll
+              automatically credit <strong>25 bonus entries</strong> toward the monthly
+              gas card drawing — no extra steps needed. The sooner you verify, the sooner
+              your entries are in.
+            </p>
+          </div>
+        </td></tr>` : '';
+
+  const signature = `
+        <p style="margin:24px 0 0;font-size:13px;color:#475569;">
+          — The GasCap™ Team
+        </p>`;
 
   return `
 <!DOCTYPE html>
@@ -437,18 +472,20 @@ export function verificationEmailHtml(
       <table width="100%" style="max-width:480px;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,.08);">
 ${brandHeader()}
         <!-- Body -->
-        <tr><td style="padding:32px;">
+        <tr><td style="padding:32px 32px 20px;">
           <p style="margin:0 0 8px;font-size:22px;font-weight:900;color:#1e2d4a;">${heading}</p>
-          <p style="margin:0 0 24px;font-size:15px;color:#475569;">${body}</p>
+          <p style="margin:0 0 24px;font-size:15px;color:#475569;line-height:1.65;">${body}</p>
           <a href="${verifyUrl}" style="display:inline-block;background:#f59e0b;color:#fff;font-weight:900;font-size:15px;padding:14px 32px;border-radius:12px;text-decoration:none;">
             ${btnLabel}
           </a>
-          <p style="margin:24px 0 0;font-size:12px;color:#94a3b8;">${expiry}</p>
-          <p style="margin:12px 0 0;font-size:11px;color:#cbd5e1;word-break:break-all;">${copyLink} ${verifyUrl}</p>
+          <p style="margin:20px 0 0;font-size:12px;color:#94a3b8;">${expiry}</p>
+          <p style="margin:10px 0 0;font-size:11px;color:#cbd5e1;word-break:break-all;">${copyLink} ${verifyUrl}</p>
+          ${signature}
         </td></tr>
+${bonusBlock}
         <!-- Footer -->
         <tr><td style="background:#f8fafc;padding:16px 32px;border-top:1px solid #e2e8f0;">
-          <p style="margin:0;font-size:11px;color:#94a3b8;">GasCap™ · Know before you go · <a href="https://gascap.app" style="color:#f59e0b;">gascap.app</a></p>
+          <p style="margin:0;font-size:11px;color:#94a3b8;">GasCap™ · Know Before You Go · <a href="https://gascap.app" style="color:#f59e0b;">gascap.app</a></p>
         </td></tr>
       </table>
     </td></tr>

@@ -14,113 +14,65 @@ model User {
   passwordHash             String
   plan                     String    @default("free")
   createdAt                String
-
-  // Stripe billing
   stripeCustomerId         String?
   stripeSubscriptionId     String?   @unique
-
-  // Activity tracking
   calcCount                Int       @default(0)
   budgetCalcCount          Int       @default(0)
   locationLookups          Int       @default(0)
   activeDays               String[]  @default([])
   streak                   Int       @default(0)
   badges                   String[]  @default([])
-
-  // Referral system
   referralCode             String?   @unique
   referredBy               String?
   referralCount            Int       @default(0)
   referralProMonthsEarned  Int       @default(0)
   referralRewardCredited   Boolean   @default(false)
   referralCredits          Json      @default("[]")
-
-  // Beta / Pro trial
   isBetaTester             Boolean   @default(false)
   isProTrial               Boolean   @default(false)
   betaProExpiry            String?
-
-  // Email verification
   emailVerified            Boolean   @default(false)
   emailVerifyToken         String?
   emailVerifyExpires       String?
-
-  // Password reset
   passwordResetToken       String?
   passwordResetExpires     String?
-
-  // Profile
   phone                    String?
   displayName              String?
-  smsOptIn                 Boolean   @default(false)
-  smsOptInDate             String?   // ISO timestamp when SMS consent was recorded (A2P audit trail)
-
-  // Gas price alerts
   priceAlertThreshold      Float?
   lastPriceAlertSentAt     String?
-
-  // Login tracking
   loginCount               Int       @default(0)
   lastLoginAt              String?
-
-  // Fill-up reminders
   fillupReminderDays       Int?
   lastFillupReminderSentAt String?
-
-  // Streak rewards
   streakMilestonesHit      Int[]     @default([])
   streakCredits            Json      @default("[]")
-
-  // Signup locale
   locale                   String?
-
-  // Email campaign drip — trial sequence (5 steps, day 0/3/10/21/28)
   emailCampaignStep        Int?
   emailCampaignEnrolledAt  String?
   emailOptOut              Boolean   @default(false)
-
-  // Paid user drip — post-upgrade sequence (P1 immediate, P2 day30, P3 day60, P4 day330 annual only)
-  paidCampaignStep         Int?      // 0=not enrolled, 1=P1 sent, 2=P2 sent, 3=P3 sent, 4=P4 sent
-  paidCampaignEnrolledAt   String?   // ISO timestamp of first upgrade — used to schedule P2/P3/P4
-  stripeInterval           String?   // 'monthly' | 'annual' — P4 only fires for annual
-
-  // Email verification reminder
-  verifyReminderSentAt     String?   // ISO timestamp of last verification reminder email
-
-  // Ambassador Program
-  ambassadorProForLife     Boolean   @default(false)
-
-  // Comp Ambassador drip — 5-email sequence for comped members (C1 sent immediately on comp grant)
-  compCampaignStep         Int?      // 0=not enrolled, 1=C1 sent, 2=C2 sent … 5=C5 sent (done)
-  compCampaignEnrolledAt   String?   // ISO timestamp of comp grant — used to schedule C2–C5
-
-  // Engagement campaign — paying Pro/Fleet subscribers
-  engagementStep         Int?      // 0=enrolled(unsent), 1=S1/F1 sent, 2=S2/F2 sent, etc.
-  engagementEnrolledAt   String?   // ISO timestamp of enrollment
-  engagementTrack        String?   // 'pro' | 'fleet'
-
-  // Early-upgrade bonus — +10 draw entries/month for trial-to-paid conversions
-  earlyUpgradeBonusEntries  Int  @default(0)
-
-  // Milestone emails (one-time, behavior-triggered)
-  milestoneFillup10Sent  Boolean   @default(false)
-  milestoneMpgSent       Boolean   @default(false)
-  milestoneReferral1Sent Boolean   @default(false)
-
-  // Garage-door daily bonus draw entries (+5/day when tapping to open)
-  garageLastOpenedDate     String?              // YYYY-MM-DD — daily dedup gate
-  garageBonusDays          String[] @default([]) // dates bonus was earned, e.g. ["2026-05-01"]
-
-  // Internal / testing
   isTestAccount            Boolean   @default(false)
-
-  // Fleet Phase 1 — driver roster (names only; no sub-accounts yet)
   fleetDrivers             String[]  @default([])
-
-  // Fleet White Label
-  fleetCompanyName         String?   // Company display name for white-label header
-  fleetLogoUrl             String?   // HTTPS URL to company logo image
-
+  paidCampaignEnrolledAt   String?
+  paidCampaignStep         Int?
+  stripeInterval           String?
+  verifyReminderSentAt           String?
+  verifyReminderBonusEntries     Int       @default(0)
+  ambassadorProForLife     Boolean   @default(false)
+  compCampaignEnrolledAt   String?
+  compCampaignStep         Int?
+  smsOptIn                 Boolean   @default(false)
+  engagementEnrolledAt     String?
+  engagementStep           Int?
+  engagementTrack          String?
+  milestoneFillup10Sent    Boolean   @default(false)
+  milestoneMpgSent         Boolean   @default(false)
+  milestoneReferral1Sent   Boolean   @default(false)
+  earlyUpgradeBonusEntries Int       @default(0)
+  smsOptInDate             String?
+  garageBonusDays          String[]  @default([])
+  garageLastOpenedDate     String?
+  fleetCompanyName         String?
+  fleetLogoUrl             String?
   vehicles                 Vehicle[]
 }
 
@@ -139,7 +91,6 @@ model Vehicle {
   currentOdometer Float?
   vehicleSpecs    Json?
   createdAt       String
-
   user            User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
@@ -148,11 +99,11 @@ model EmailLog {
   userId    String
   userEmail String
   userName  String
-  type      String  // e.g. 'trial-d1', 'referral-credit', 'milestone-fillup10', 'paid-p1'
+  type      String
   subject   String
-  sentAt    String  // ISO timestamp
-  status    String  @default("sent")  // "sent" | "failed"
-  error     String?                   // error detail when status = "failed"
+  sentAt    String
+  error     String?
+  status    String  @default("sent")
 
   @@index([userId])
   @@index([sentAt])
@@ -162,14 +113,12 @@ model EmailLog {
 
 model GiveawayDraw {
   id           String  @id
-  month        String  // "YYYY-MM" — one draw per month
+  month        String  @unique
   winnerId     String
   winnerName   String
   winnerEmail  String
-  entryCount   Int     // winner's entries at draw time
-  totalEntries Int     // full pool size at draw time
-  drawnAt      String  // ISO timestamp
+  entryCount   Int
+  totalEntries Int
+  drawnAt      String
   notes        String?
-
-  @@unique([month])
 }

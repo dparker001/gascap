@@ -51,7 +51,7 @@ export async function GET(req: Request) {
       await sendMail({
         to:      user.email,
         subject,
-        html:    verificationEmailHtml(user.name, verifyUrl, locale),
+        html:    verificationEmailHtml(user.name, verifyUrl, locale, true),
         text:    locale === 'es'
           ? `Hola ${user.name}, todavía no has verificado tu cuenta de GasCap™. Haz clic aquí: ${verifyUrl}`
           : `Hi ${user.name}, you haven't verified your GasCap™ email yet. Click here: ${verifyUrl}`,

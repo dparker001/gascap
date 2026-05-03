@@ -916,12 +916,24 @@ export async function verifyEmailToken(token: string): Promise<{ ok: boolean; us
   if (user.emailVerifyExpires && new Date(user.emailVerifyExpires) < new Date()) {
     return { ok: false, error: 'Verification link has expired. Please request a new one.' };
   }
+
+  // Award 25 bonus draw entries if user verifies within 7 days of receiving a reminder
+  const verifyBonusEntries = (() => {
+    if (!user.verifyReminderSentAt) return 0;
+    const sent         = new Date(user.verifyReminderSentAt);
+    const sevenDaysMs  = 7 * 24 * 60 * 60 * 1000;
+    return Date.now() <= sent.getTime() + sevenDaysMs ? 25 : 0;
+  })();
+
   await prisma.user.update({
     where: { id: user.id },
     data: {
       emailVerified:      true,
       emailVerifyToken:   null,
       emailVerifyExpires: null,
+      ...(verifyBonusEntries > 0
+        ? { verifyReminderBonusEntries: { increment: verifyBonusEntries } }
+        : {}),
     },
   });
   return { ok: true, userId: user.id };
