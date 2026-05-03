@@ -42,13 +42,13 @@ export default function TipsTicker() {
     <div
       className="mt-3 flex items-center justify-center gap-2
                  bg-white/8 border border-white/15 rounded-2xl px-3.5
-                 h-9 overflow-hidden cursor-default"
+                 py-2 md:py-0 md:h-9 overflow-hidden cursor-default"
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      <span className="text-amber-400 text-xs flex-shrink-0" aria-hidden="true">💡</span>
+      <span className="text-amber-400 text-xs flex-shrink-0 self-start md:self-auto pt-px md:pt-0" aria-hidden="true">💡</span>
       <p
-        className="text-white/75 text-xs leading-none truncate"
+        className="text-white/75 text-xs leading-snug md:leading-none md:truncate"
         style={{ opacity: visible ? 1 : 0, transition: `opacity ${FADE_MS}ms ease` }}
         aria-live="polite"
         aria-atomic="true"
