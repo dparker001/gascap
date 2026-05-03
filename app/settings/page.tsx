@@ -664,6 +664,17 @@ export default function SettingsPage() {
               <span className="text-slate-300">→</span>
             </Link>
 
+            {/* GasCaptains™ community link */}
+            <a
+              href={process.env.NEXT_PUBLIC_GASCAPTAINS_URL ?? 'https://www.facebook.com/groups/gascaptains'}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-between text-xs font-bold text-slate-500 hover:text-[#005F4A] transition-colors py-1"
+            >
+              <span>🏴 Join GasCaptains™ — Members Community</span>
+              <span className="text-slate-300">→</span>
+            </a>
+
             {/* QR code share */}
             <div>
               <button

@@ -48,6 +48,27 @@ function SuccessContent() {
         </p>
       )}
 
+      {/* GasCaptains™ community invite — Pro only */}
+      {!isFleet && (
+        <a
+          href={process.env.NEXT_PUBLIC_GASCAPTAINS_URL ?? 'https://www.facebook.com/groups/gascaptains'}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block w-full rounded-2xl border-2 border-[#1EB68F] bg-[#f0fdf9] px-4 py-3.5
+                     text-left hover:bg-[#e6faf5] transition-colors"
+        >
+          <p className="text-[10px] font-black uppercase tracking-widest text-[#1EB68F] mb-0.5">
+            🏴 Members Only
+          </p>
+          <p className="text-sm font-black text-[#005F4A] leading-tight">
+            Join GasCaptains™ →
+          </p>
+          <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">
+            The official private community for GasCap™ Pro members.
+          </p>
+        </a>
+      )}
+
       {ready ? (
         <button
           onClick={() => router.push('/')}

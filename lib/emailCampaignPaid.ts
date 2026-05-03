@@ -129,6 +129,33 @@ export function upgradeConfirmEmailHtml(
 
       ${ctaButton('Open GasCap™ →', BASE_URL)}
 
+      ${tier === 'pro' ? `
+      <!-- GasCaptains™ community invite — Pro only -->
+      <table cellpadding="0" cellspacing="0" width="100%"
+             style="background:#f0fdf9;border:2px solid #1EB68F;border-radius:14px;
+                    margin:26px 0 0;padding:0;">
+        <tr><td style="padding:18px 20px;">
+          <p style="margin:0 0 4px;font-size:10px;font-weight:900;color:#1EB68F;
+                     text-transform:uppercase;letter-spacing:.08em;">🏴 Members Only</p>
+          <p style="margin:0 0 6px;font-size:16px;font-weight:900;color:#005F4A;">
+            You're a GasCaptain™
+          </p>
+          <p style="margin:0 0 14px;font-size:13px;color:#475569;line-height:1.6;">
+            As a GasCap™ Pro member, you're invited to join <strong>GasCaptains™</strong> — our
+            private community for Pro members. Get app tips, fuel-saving strategies, referral
+            support, and monthly giveaway updates.
+          </p>
+          <a href="${process.env.NEXT_PUBLIC_GASCAPTAINS_URL ?? 'https://www.facebook.com/groups/gascaptains'}"
+             style="display:inline-block;background:#005F4A;color:#fff;font-weight:900;
+                    font-size:13px;padding:11px 22px;border-radius:10px;text-decoration:none;">
+            Join GasCaptains™ →
+          </a>
+          <p style="margin:10px 0 0;font-size:11px;color:#94a3b8;font-style:italic;">
+            Members Only. Stronger Together. Driven Further.
+          </p>
+        </td></tr>
+      </table>` : ''}
+
       <p style="margin:26px 0 0;font-size:13px;color:#64748b;line-height:1.65;">
         Questions about your subscription? Email
         <a href="mailto:support@gascap.app" style="color:#005f4a;font-weight:600;">support@gascap.app</a>
