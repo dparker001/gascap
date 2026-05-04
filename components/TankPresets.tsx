@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { VEHICLE_PRESETS } from '@/lib/calculations';
 import { useTranslation } from '@/contexts/LanguageContext';
 
@@ -16,13 +17,51 @@ const RENTAL_PRESETS = [
 ];
 
 interface TankPresetsProps {
-  value:         string;
-  onChange:      (gallons: string) => void;
-  rentalMode?:   boolean;
+  value:             string;
+  onChange:          (gallons: string) => void;
+  /** Fired when the user picks from the dropdown (not when typing or garage-selecting). */
+  onPresetSelect?:   (gallons: string, label: string) => void;
+  rentalMode?:       boolean;
+  /**
+   * Badge shown below the tank-size field to clarify where the value came from.
+   * Pass the garage vehicle name or the preset label — the component chooses the icon.
+   * Pass '' or undefined to hide the badge.
+   */
+  vehicleSourceLabel?: string;
+  /** When 'garage', uses a green badge; when 'preset', uses a slate badge. */
+  vehicleSourceType?:  'garage' | 'preset';
 }
 
-export default function TankPresets({ value, onChange, rentalMode }: TankPresetsProps) {
+export default function TankPresets({
+  value,
+  onChange,
+  onPresetSelect,
+  rentalMode,
+  vehicleSourceLabel,
+  vehicleSourceType,
+}: TankPresetsProps) {
   const { t } = useTranslation();
+
+  // Track which preset option is currently selected so the dropdown shows it
+  const [selectedPreset, setSelectedPreset] = useState('');
+
+  // When a garage vehicle is loaded externally, reset the dropdown selection
+  // (the parent clears vehicleSourceType to 'garage' at that point)
+
+  function handleDropdownChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    const val = e.target.value;
+    if (!val) return;
+
+    // Find the full label text
+    const allPresets = [...VEHICLE_PRESETS, ...RENTAL_PRESETS];
+    const found = allPresets.find((p) => String(p.gallons) === val);
+    const label = found ? found.label : val;
+
+    setSelectedPreset(val);
+    onChange(val);
+    onPresetSelect?.(val, label);
+  }
+
   return (
     <div>
       <label className="field-label">
@@ -30,11 +69,11 @@ export default function TankPresets({ value, onChange, rentalMode }: TankPresets
         <span className="font-normal text-slate-400 ml-1">{t.tankPresets.unit}</span>
       </label>
 
-      {/* Vehicle quick-select */}
+      {/* Vehicle quick-select — controlled so the selected option stays visible */}
       <select
         className="input-field text-sm text-slate-600 mb-2"
-        defaultValue=""
-        onChange={(e) => { if (e.target.value) onChange(e.target.value); }}
+        value={vehicleSourceType === 'garage' ? '' : selectedPreset}
+        onChange={handleDropdownChange}
         aria-label="Select a common vehicle to auto-fill tank size"
       >
         <option value="" disabled>{t.tankPresets.selectPlaceholder}</option>
@@ -77,9 +116,26 @@ export default function TankPresets({ value, onChange, rentalMode }: TankPresets
         placeholder={t.tankPresets.typePlaceholder}
         value={value}
         min="1" max="200" step="0.1"
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e) => {
+          setSelectedPreset(''); // typing clears the dropdown selection
+          onChange(e.target.value);
+        }}
         aria-label="Tank capacity in gallons"
       />
+
+      {/* Source badge — clarifies whether the tank size came from the garage or a preset */}
+      {vehicleSourceLabel && (
+        <p className={[
+          'mt-1.5 text-[10px] font-semibold leading-snug px-2.5 py-1 rounded-lg inline-flex items-center gap-1.5',
+          vehicleSourceType === 'garage'
+            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+            : 'bg-slate-100 text-slate-500 border border-slate-200',
+        ].join(' ')}>
+          <span aria-hidden="true">{vehicleSourceType === 'garage' ? '🚗' : '📋'}</span>
+          {vehicleSourceType === 'garage' ? 'From garage: ' : 'From list: '}
+          <span className="font-bold truncate max-w-[200px]">{vehicleSourceLabel}</span>
+        </p>
+      )}
     </div>
   );
 }

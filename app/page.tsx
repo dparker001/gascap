@@ -7,7 +7,6 @@ import { useTranslation }      from '@/contexts/LanguageContext';
 import AdSenseBanner           from '@/components/AdSenseBanner';
 import Header                  from '@/components/Header';
 import CalculatorTabs          from '@/components/CalculatorTabs';
-import SavedVehicles, { type Vehicle } from '@/components/SavedVehicles';
 import ToolsPanel              from '@/components/ToolsPanel';
 import PricingSection          from '@/components/PricingSection';
 import TrialExpiryBanner      from '@/components/TrialExpiryBanner';
@@ -513,10 +512,6 @@ export default function Home() {
   const userPlan = (session?.user as { plan?: string })?.plan ?? 'free';
   const isGuest  = !session;
 
-  // Desktop right-panel: track which vehicle is highlighted + surface it in left column
-  const [desktopSelectedId,      setDesktopSelectedId]      = useState('');
-  const [desktopSelectedVehicle, setDesktopSelectedVehicle] = useState<Vehicle | null>(null);
-
   // Auto-expand pricing for guests once session is resolved
   useEffect(() => {
     if (status !== 'loading' && isGuest) setShowPricing(true);
@@ -607,25 +602,7 @@ export default function Home() {
             {/* Daily Fuel Pulse — national avg + trend + today's tip */}
             <DailyFuelPulse />
 
-            {/* Desktop active-vehicle badge — shows which vehicle is loaded into the calc */}
-            {desktopSelectedVehicle && (
-              <div className="hidden lg:flex items-center gap-2.5 px-4 py-2.5 mx-auto
-                              bg-amber-50 border border-amber-200 rounded-xl mb-0 mt-4 text-xs
-                              max-w-lg lg:max-w-none">
-                <span className="text-base" aria-hidden="true">🚗</span>
-                <div className="flex-1 min-w-0">
-                  <span className="font-bold text-amber-800 truncate block">{desktopSelectedVehicle.name}</span>
-                  <span className="text-amber-600/70">{desktopSelectedVehicle.gallons} gal tank — loaded into calculator</span>
-                </div>
-                <button
-                  onClick={() => { setDesktopSelectedId(''); setDesktopSelectedVehicle(null); }}
-                  className="flex-shrink-0 text-amber-400 hover:text-amber-600 transition-colors"
-                  aria-label="Clear selected vehicle"
-                >✕</button>
-              </div>
-            )}
-
-            {/* Calculator — SavedVehicles inside is hidden at lg+ via lg:hidden wrapper */}
+            {/* Calculator — SavedVehicles is visible on both mobile and desktop */}
             <section id="gascap-calculator" className="flex-1 px-4 lg:px-0 pt-5 pb-4 max-w-lg lg:max-w-none mx-auto w-full">
               <CalculatorTabs />
             </section>
@@ -711,39 +688,6 @@ export default function Home() {
                   </div>
                 </div>
               )}
-
-              {/* ── Garage panel header ── */}
-              <div className="flex items-center gap-2 px-1 pt-4">
-                <span className="text-base">🚗</span>
-                <h2 className="text-sm font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider">
-                  My Garage
-                </h2>
-                <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
-                <a href="/settings"
-                   className="text-[11px] font-bold text-brand-teal hover:text-brand-orange
-                              transition-colors flex items-center gap-1">
-                  Manage
-                  <svg viewBox="0 0 12 12" className="w-2.5 h-2.5" fill="none"
-                       stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-                    <path d="M2 6h8M6 2l4 4-4 4"/>
-                  </svg>
-                </a>
-              </div>
-
-              {/* Standalone SavedVehicles — selectedVehicleId keeps highlight in sync */}
-              <SavedVehicles
-                currentGallons={desktopSelectedVehicle ? String(desktopSelectedVehicle.gallons) : ''}
-                onSelect={(gallons, vehicle) => {
-                  setDesktopSelectedId(vehicle?.id ?? '');
-                  setDesktopSelectedVehicle(vehicle ?? null);
-                  window.dispatchEvent(
-                    new CustomEvent<{ gallons: string; vehicle?: Vehicle }>('gascap:vehicle-select', {
-                      detail: { gallons, vehicle },
-                    })
-                  );
-                }}
-                selectedVehicleId={desktopSelectedId}
-              />
 
               {/* Tools & Insights */}
               <section id="gascap-tools">

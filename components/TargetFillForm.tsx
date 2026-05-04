@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import FuelGauge     from './FuelGauge';
 import TankPresets   from './TankPresets';
-import SavedVehicles, { type Vehicle } from './SavedVehicles';
+import SavedVehicles from './SavedVehicles';
 import GasPriceLookup from './GasPriceLookup';
 import { TargetResultCard } from './ResultCard';
 import {
@@ -92,6 +92,8 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
   // EPA/AI tank estimate for the currently-selected vehicle (used for validation warning)
   const [vehicleTankEst,   setVehicleTankEst]   = useState<number | undefined>(undefined);
   const [vehicleBodyClass, setVehicleBodyClass] = useState<string | undefined>(undefined);
+  // Tank-size source tracking — drives the "From garage / From list" badge in TankPresets
+  const [presetLabel, setPresetLabel] = useState('');
   const gaugeCamRef     = useRef<HTMLInputElement>(null);
   const gaugeGalleryRef = useRef<HTMLInputElement>(null);
   const calcStartFired  = useRef(false);
@@ -111,19 +113,6 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
       if (isLoggedIn && !isPro) setShowLiveNudge(true);
     }
   }
-
-  // Desktop right-panel bridge — listens for vehicle selection from the sticky garage panel
-  useEffect(() => {
-    function onDesktopVehicleSelect(e: Event) {
-      const { gallons, vehicle } = (e as CustomEvent<{ gallons: string; vehicle?: Vehicle }>).detail;
-      patch({ tankCapacity: gallons, vehicleName: vehicle?.name ?? '', vehicleId: vehicle?.id ?? '', vehicleOdometer: vehicle?.currentOdometer });
-      setVehicleTankEst(vehicle?.vehicleSpecs?.tankEstGallons);
-      setVehicleBodyClass(vehicle?.vehicleSpecs?.bodyClass);
-    }
-    window.addEventListener('gascap:vehicle-select', onDesktopVehicleSelect);
-    return () => window.removeEventListener('gascap:vehicle-select', onDesktopVehicleSelect);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [calculated, isLoggedIn, isPro]);
 
   // Live recalc — Pro only. Merges update and immediately recalculates.
   function liveRecalc(p: Partial<FormState>) {
@@ -223,6 +212,7 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
     setShowLiveNudge(false);
     setVehicleTankEst(undefined);
     setVehicleBodyClass(undefined);
+    setPresetLabel('');
   }
 
   const isCustom    = form.targetPreset === null;
@@ -324,7 +314,22 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
       <div className="card">
         <TankPresets
           value={form.tankCapacity}
-          onChange={(v) => patch({ tankCapacity: v })}
+          onChange={(v) => {
+            // Manual typing — clear both garage and preset selections
+            patch({ tankCapacity: v, vehicleId: '', vehicleName: '', vehicleOdometer: undefined });
+            setVehicleTankEst(undefined);
+            setVehicleBodyClass(undefined);
+            setPresetLabel('');
+          }}
+          onPresetSelect={(v, label) => {
+            // Dropdown selection — clear garage, set preset label
+            patch({ tankCapacity: v, vehicleId: '', vehicleName: '', vehicleOdometer: undefined });
+            setVehicleTankEst(undefined);
+            setVehicleBodyClass(undefined);
+            setPresetLabel(label);
+          }}
+          vehicleSourceLabel={form.vehicleId ? form.vehicleName : presetLabel}
+          vehicleSourceType={form.vehicleId ? 'garage' : presetLabel ? 'preset' : undefined}
           rentalMode={rentalMode}
         />
         {errors.tankCapacity && <FieldError msg={errors.tankCapacity} />}
@@ -336,18 +341,17 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
             </p>
           </div>
         ) : (
-          <div className="lg:hidden">
-            <SavedVehicles
-              currentGallons={form.tankCapacity}
-              onSelect={(g, v) => {
-                patch({ tankCapacity: g, vehicleName: v?.name ?? '', vehicleId: v?.id ?? '', vehicleOdometer: v?.currentOdometer });
-                setVehicleTankEst(v?.vehicleSpecs?.tankEstGallons);
-                setVehicleBodyClass(v?.vehicleSpecs?.bodyClass);
-              }}
-              selectedVehicleId={form.vehicleId}
-              calcKey={calcKey}
-            />
-          </div>
+          <SavedVehicles
+            currentGallons={form.tankCapacity}
+            onSelect={(g, v) => {
+              patch({ tankCapacity: g, vehicleName: v?.name ?? '', vehicleId: v?.id ?? '', vehicleOdometer: v?.currentOdometer });
+              setVehicleTankEst(v?.vehicleSpecs?.tankEstGallons);
+              setVehicleBodyClass(v?.vehicleSpecs?.bodyClass);
+              setPresetLabel('');
+            }}
+            selectedVehicleId={form.vehicleId}
+            calcKey={calcKey}
+          />
         )}
       </div>
 
