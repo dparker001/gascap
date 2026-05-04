@@ -122,3 +122,21 @@ model GiveawayDraw {
   drawnAt      String
   notes        String?
 }
+
+model DeletedAccountLog {
+  id          String  @id
+  // Snapshot of user info captured before deletion
+  userId      String
+  name        String
+  email       String
+  plan        String
+  // Metadata
+  deletedAt   String
+  reason      String? // "user_request" | "admin_action" | "violation" etc.
+  notes       String? // optional free-text from admin
+  // Was a confirmation email sent?
+  emailSent   Boolean @default(false)
+
+  @@index([email])
+  @@index([deletedAt])
+}

@@ -411,6 +411,73 @@ ${brandHeader(plan)}
 </html>`.trim();
 }
 
+/**
+ * Account deletion confirmation email — sent automatically when an admin
+ * deletes a user account (or when a user requests self-deletion in future).
+ */
+export function accountDeletedEmailHtml(name: string): string {
+  const first = name.split(' ')[0];
+  return `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#eef1f7;font-family:system-ui,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#eef1f7;padding:40px 16px;">
+    <tr><td align="center">
+      <table width="100%" style="max-width:480px;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,.08);">
+${brandHeader()}
+        <tr><td style="padding:32px;">
+          <p style="margin:0 0 8px;font-size:22px;font-weight:900;color:#1e2d4a;">Your account has been deleted</p>
+          <p style="margin:0 0 20px;font-size:15px;color:#475569;line-height:1.65;">
+            Hi ${first}, this email confirms that your GasCap™ account has been permanently deleted as requested.
+          </p>
+
+          <!-- What was removed -->
+          <table width="100%" cellpadding="0" cellspacing="0"
+                 style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;margin:0 0 24px;">
+            <tr><td style="padding:18px 20px;">
+              <p style="margin:0 0 10px;font-size:12px;font-weight:800;color:#64748b;
+                         text-transform:uppercase;letter-spacing:.06em;">What was removed</p>
+              ${[
+                'Your account and login credentials',
+                'Saved vehicles and garage data',
+                'Fill-up history and fuel logs',
+                'Personal profile information on file',
+              ].map(item => `
+              <table cellpadding="0" cellspacing="0" style="margin-bottom:6px;">
+                <tr>
+                  <td style="width:20px;vertical-align:top;font-size:13px;color:#15a680;padding-top:1px;">✓</td>
+                  <td style="font-size:13px;color:#475569;line-height:1.5;">${item}</td>
+                </tr>
+              </table>`).join('')}
+            </td></tr>
+          </table>
+
+          <p style="margin:0 0 16px;font-size:14px;color:#475569;line-height:1.65;">
+            This action is permanent and cannot be undone. If you had an active Pro trial, it has been cancelled and no charges were or will be applied.
+          </p>
+          <p style="margin:0 0 24px;font-size:14px;color:#475569;line-height:1.65;">
+            If you ever want to start fresh, you're always welcome to create a new account at
+            <a href="https://www.gascap.app" style="color:#15a680;font-weight:600;">gascap.app</a> — no hard feelings.
+          </p>
+          <p style="margin:0 0 0;font-size:13px;color:#94a3b8;">
+            If you didn't request this deletion or believe this was done in error, please reply to this email immediately.
+          </p>
+          <p style="margin:20px 0 0;font-size:13px;color:#475569;">— The GasCap™ Team</p>
+        </td></tr>
+        <tr><td style="background:#f8fafc;padding:16px 32px;border-top:1px solid #e2e8f0;">
+          <p style="margin:0;font-size:11px;color:#94a3b8;">
+            GasCap™ · Know before you go ·
+            <a href="https://gascap.app" style="color:#f59e0b;">gascap.app</a>
+          </p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`.trim();
+}
+
 export function verificationEmailHtml(
   name: string,
   verifyUrl: string,

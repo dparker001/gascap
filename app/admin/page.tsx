@@ -176,6 +176,21 @@ export default function AdminPage() {
   const [annEditing,   setAnnEditing]   = useState<AnnItem | null>(null);
   const [annNew,       setAnnNew]       = useState(false);
 
+  // ── Deleted Accounts Log ──────────────────────────────────────────────
+  interface DeletedAccountEntry {
+    id: string; userId: string; name: string; email: string;
+    plan: string; deletedAt: string; reason: string | null;
+    notes: string | null; emailSent: boolean;
+  }
+  const [deletedOpen,    setDeletedOpen]    = useState(false);
+  const [deletedAccounts, setDeletedAccounts] = useState<DeletedAccountEntry[]>([]);
+  const [deletedLoading, setDeletedLoading] = useState(false);
+
+  // ── Delete dialog state ───────────────────────────────────────────────
+  const [deleteDialog,     setDeleteDialog]     = useState<AdminUser | null>(null);
+  const [deleteReason,     setDeleteReason]     = useState('user_request');
+  const [deleteNotes,      setDeleteNotes]      = useState('');
+
   const load = useCallback(async (pw: string) => {
     setLoading(true);
     const [usersRes, fbRes, emailMapRes] = await Promise.all([
@@ -228,14 +243,30 @@ export default function AdminPage() {
     setUsers([]);
   }
 
-  async function handleDelete(user: AdminUser) {
-    if (!confirm(`Delete ${user.name} (${user.email})? This cannot be undone.`)) return;
-    await fetch(`/api/admin/users?id=${user.id}`, {
-      method: 'DELETE',
-      headers: { 'x-admin-password': savedPw },
+  function handleDelete(user: AdminUser) {
+    setDeleteReason('user_request');
+    setDeleteNotes('');
+    setDeleteDialog(user);
+  }
+
+  async function confirmDelete() {
+    if (!deleteDialog) return;
+    await fetch(`/api/admin/users?id=${deleteDialog.id}`, {
+      method:  'DELETE',
+      headers: { 'x-admin-password': savedPw, 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ reason: deleteReason, notes: deleteNotes || undefined }),
     });
-    setMsg(`Deleted ${user.email}`);
+    setMsg(`✅ ${deleteDialog.email} deleted — confirmation email sent`);
+    setDeleteDialog(null);
     await load(savedPw);
+  }
+
+  async function loadDeletedAccounts() {
+    setDeletedLoading(true);
+    const res = await fetch('/api/admin/deleted-accounts', { headers: { 'x-admin-password': savedPw } });
+    const data = await res.json() as { deleted: { id: string; userId: string; name: string; email: string; plan: string; deletedAt: string; reason: string | null; notes: string | null; emailSent: boolean }[] };
+    setDeletedAccounts(data.deleted ?? []);
+    setDeletedLoading(false);
   }
 
   async function handlePlan(user: AdminUser, plan: string) {
@@ -1506,6 +1537,83 @@ export default function AdminPage() {
           )}
         </div>
 
+        {/* ── Deleted Accounts Log ───────────────────────────────────────────── */}
+        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+          <button
+            onClick={() => {
+              setDeletedOpen((o) => !o);
+              if (!deletedOpen) loadDeletedAccounts();
+            }}
+            className="w-full px-5 py-4 flex items-center justify-between hover:bg-slate-50 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-base">🗑️</span>
+              <div className="text-left">
+                <p className="text-sm font-black text-navy-700">Deleted Accounts</p>
+                <p className="text-xs text-slate-600">Audit log of every deleted account with reason and email status</p>
+              </div>
+            </div>
+            <svg className={`w-4 h-4 text-slate-400 transition-transform ${deletedOpen ? 'rotate-180' : ''}`}
+              fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+
+          {deletedOpen && (
+            <div className="border-t border-slate-100 p-4">
+              {deletedLoading ? (
+                <p className="text-sm text-slate-500 text-center py-4">Loading…</p>
+              ) : deletedAccounts.length === 0 ? (
+                <p className="text-sm text-slate-500 text-center py-4">No deleted accounts on record.</p>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">
+                    {deletedAccounts.length} account{deletedAccounts.length !== 1 ? 's' : ''} deleted
+                  </p>
+                  <div className="divide-y divide-slate-50">
+                    {deletedAccounts.map((d) => (
+                      <div key={d.id} className="py-3">
+                        <div className="flex items-start justify-between gap-2 flex-wrap">
+                          <div>
+                            <p className="text-sm font-bold text-slate-700">{d.name}</p>
+                            <p className="text-xs text-slate-500">{d.email}</p>
+                            <div className="flex flex-wrap gap-1.5 mt-1">
+                              <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                                {d.plan.toUpperCase()}
+                              </span>
+                              <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-red-50 text-red-600">
+                                {d.reason === 'user_request'  ? '👤 User Request'   :
+                                 d.reason === 'admin_action'  ? '🔧 Admin Action'   :
+                                 d.reason === 'violation'     ? '🚫 Policy Violation' :
+                                 d.reason ?? 'Unknown'}
+                              </span>
+                              {d.emailSent ? (
+                                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-green-50 text-green-600">
+                                  ✉️ Email sent
+                                </span>
+                              ) : (
+                                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-50 text-amber-600">
+                                  ⚠️ No email
+                                </span>
+                              )}
+                            </div>
+                            {d.notes && (
+                              <p className="text-xs text-slate-500 italic mt-1">"{d.notes}"</p>
+                            )}
+                          </div>
+                          <p className="text-[10px] text-slate-400 whitespace-nowrap">
+                            {new Date(d.deletedAt).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
         {/* Search + Filters */}
         <div className="bg-white rounded-2xl shadow-sm p-4 space-y-3">
 
@@ -1895,6 +2003,66 @@ export default function AdminPage() {
           GasCap™ Admin · {users.length} total users
         </p>
       </div>
+
+      {/* ── Delete confirmation dialog ──────────────────────────────────────── */}
+      {deleteDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 space-y-4">
+            <div>
+              <p className="text-base font-black text-slate-800">Delete account?</p>
+              <p className="text-sm text-slate-500 mt-1">
+                <span className="font-semibold">{deleteDialog.name}</span> · {deleteDialog.email}
+              </p>
+              <p className="text-xs text-slate-400 mt-1">
+                This is permanent and cannot be undone. A confirmation email will be sent automatically.
+              </p>
+            </div>
+
+            {/* Reason */}
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wide">Reason for deletion</label>
+              <select
+                value={deleteReason}
+                onChange={(e) => setDeleteReason(e.target.value)}
+                className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-300"
+              >
+                <option value="user_request">User requested deletion</option>
+                <option value="admin_action">Admin action</option>
+                <option value="violation">Policy violation</option>
+                <option value="duplicate">Duplicate account</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+
+            {/* Optional notes */}
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wide">Notes (optional)</label>
+              <textarea
+                value={deleteNotes}
+                onChange={(e) => setDeleteNotes(e.target.value)}
+                placeholder="e.g. User emailed support@gascap.app on May 4"
+                rows={2}
+                className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-300 resize-none"
+              />
+            </div>
+
+            <div className="flex gap-2 pt-1">
+              <button
+                onClick={confirmDelete}
+                className="flex-1 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-black transition-colors"
+              >
+                Delete & send email
+              </button>
+              <button
+                onClick={() => setDeleteDialog(null)}
+                className="px-4 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-500 hover:bg-slate-50 font-semibold transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

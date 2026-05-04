@@ -1,16 +1,18 @@
 /**
  * Admin API — protected by ADMIN_PASSWORD env var
  * GET    /api/admin/users              — list all users
- * DELETE /api/admin/users?id=xxx       — delete a user
+ * DELETE /api/admin/users?id=xxx       — delete a user (logs to DeletedAccountLog + sends confirmation email)
  * PATCH  /api/admin/users?id=xxx       — update plan, emailVerified, betaProExpiry, isTestAccount,
  *                                        compProForLife, revokeCompProForLife
  */
 import { NextResponse } from 'next/server';
+import { randomUUID } from 'crypto';
 import { prisma } from '@/lib/prisma';
 import { grantBetaTrial, revokeBetaTrial, findById, enrollCompCampaign } from '@/lib/users';
 import { upsertGhlContact, removeGhlTags } from '@/lib/ghl';
 import { getFillups } from '@/lib/fillups';
 import { sendCompProForLifeEmail } from '@/lib/emailCampaign';
+import { sendMail, accountDeletedEmailHtml } from '@/lib/email';
 
 function auth(req: Request): 'ok' | 'no-env' | 'wrong' {
   const pw = process.env.ADMIN_PASSWORD;
@@ -118,9 +120,56 @@ export async function DELETE(req: Request) {
   const _auth = auth(req);
   if (_auth === 'no-env') return NextResponse.json({ error: 'Misconfigured' }, { status: 503 });
   if (_auth === 'wrong')  return NextResponse.json({ error: 'Unauthorized' },   { status: 401 });
-  const id = new URL(req.url).searchParams.get('id');
+
+  const { searchParams } = new URL(req.url);
+  const id = searchParams.get('id');
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
+
+  // Body may include reason + notes from the admin panel dialog
+  let reason = 'user_request';
+  let notes: string | undefined;
+  try {
+    const body = await req.json() as { reason?: string; notes?: string };
+    if (body.reason) reason = body.reason;
+    if (body.notes)  notes  = body.notes;
+  } catch (_e) { /* no body — use defaults */ }
+
+  // Capture user info BEFORE deletion so we can log + email them
+  const user = await prisma.user.findUnique({ where: { id } });
+
+  // Delete the user
   await prisma.user.delete({ where: { id } }).catch(() => null);
+
+  if (user) {
+    // Log to DeletedAccountLog
+    let emailSent = false;
+    try {
+      await sendMail({
+        to:      user.email,
+        subject: 'Your GasCap™ account has been deleted',
+        html:    accountDeletedEmailHtml(user.name),
+        text:    `Hi ${user.name.split(' ')[0]}, your GasCap™ account has been permanently deleted as requested. If this was in error, reply to this email immediately. — The GasCap™ Team`,
+      });
+      emailSent = true;
+    } catch (err) {
+      console.error('[Admin] Account deletion email failed for', user.email, err);
+    }
+
+    await prisma.deletedAccountLog.create({
+      data: {
+        id:        randomUUID(),
+        userId:    user.id,
+        name:      user.name,
+        email:     user.email,
+        plan:      user.plan,
+        deletedAt: new Date().toISOString(),
+        reason,
+        notes,
+        emailSent,
+      },
+    }).catch((err: unknown) => console.error('[Admin] DeletedAccountLog write failed:', err));
+  }
+
   return NextResponse.json({ ok: true });
 }
 
