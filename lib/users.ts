@@ -809,10 +809,10 @@ export async function creditVerifiedReferral(userId: string): Promise<boolean> {
 
 export async function updateUserProfile(
   userId: string,
-  fields: { displayName?: string; phone?: string; smsOptIn?: boolean },
+  fields: { displayName?: string; phone?: string; smsOptIn?: boolean; avatarUrl?: string | null },
 ): Promise<StoredUser | null> {
   // `undefined` → field not included in the request; leave as-is.
-  // `''` (empty string) → user explicitly cleared the field; store null.
+  // `''` / `null` → user explicitly cleared the field; store null.
   // Any other string → trim and save.
   const user = await prisma.user.update({
     where: { id: userId },
@@ -829,6 +829,9 @@ export async function updateUserProfile(
             // Stamp the opt-in date only when toggling ON; clear it on opt-out
             smsOptInDate: fields.smsOptIn ? new Date().toISOString() : null,
           }
+        : {}),
+      ...(fields.avatarUrl !== undefined
+        ? { avatarUrl: fields.avatarUrl || null }
         : {}),
     },
   }).catch(() => null);

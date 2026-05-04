@@ -1,7 +1,7 @@
 'use client';
 
 import { useSession, signOut } from 'next-auth/react';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { setThemePreference, getThemePreference, isDarkMode, type ThemePreference } from '@/components/DarkModeProvider';
 import { DoorMiniPreview, DOOR_STYLE_LABELS, DOOR_DIRECTION_LABELS } from '@/components/GarageDoor';
@@ -22,6 +22,8 @@ interface GiveawayEntries {
   entryCount: number;
   eligible:   boolean;
 }
+
+const AVATAR_URL_KEY = 'gascap_avatar_url';
 
 const AVATAR_COLORS = [
   { bg: 'bg-amber-500',  label: 'Amber'  },
@@ -61,6 +63,8 @@ export default function SettingsPage() {
     setDarkMode(isDarkMode());
     setThemePref(getThemePreference());
   }, []);
+  const [avatarUrl,      setAvatarUrl]      = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [displayName,    setDisplayName]    = useState('');
   const [phone,          setPhone]          = useState('');
   const [smsOptIn,       setSmsOptIn]       = useState(false);
@@ -118,10 +122,18 @@ export default function SettingsPage() {
     // blank on every visit and so saving never accidentally wipes saved data.
     fetch('/api/user/profile')
       .then((r) => r.json())
-      .then((d: { displayName?: string; phone?: string; smsOptIn?: boolean }) => {
-        if (d.displayName)        setDisplayName(d.displayName);
-        if (d.phone)              setPhone(d.phone);
+      .then((d: { displayName?: string; phone?: string; smsOptIn?: boolean; avatarUrl?: string }) => {
+        if (d.displayName)            setDisplayName(d.displayName);
+        if (d.phone)                  setPhone(d.phone);
         if (d.smsOptIn !== undefined) setSmsOptIn(d.smsOptIn);
+        // Seed localStorage from DB so AuthButton picks it up without its own fetch
+        if (d.avatarUrl) {
+          setAvatarUrl(d.avatarUrl);
+          localStorage.setItem(AVATAR_URL_KEY, d.avatarUrl);
+        } else {
+          // Clear stale localStorage if DB has no photo
+          localStorage.removeItem(AVATAR_URL_KEY);
+        }
       })
       .catch(() => {});
   }, [session]);
@@ -256,13 +268,50 @@ export default function SettingsPage() {
       await fetch('/api/user/profile', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ displayName, phone, smsOptIn }),
+        body: JSON.stringify({ displayName, phone, smsOptIn, avatarUrl: avatarUrl || null }),
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } finally {
       setSaving(false);
     }
+  }
+
+  /** Resize the selected image to 128×128 JPEG and store as base64. */
+  const handlePhotoUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = ''; // allow re-selecting the same file
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width  = 128;
+        canvas.height = 128;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        // Centre-crop to a square before scaling
+        const size = Math.min(img.width, img.height);
+        const sx   = (img.width  - size) / 2;
+        const sy   = (img.height - size) / 2;
+        ctx.drawImage(img, sx, sy, size, size, 0, 0, 128, 128);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+        setAvatarUrl(dataUrl);
+        localStorage.setItem(AVATAR_URL_KEY, dataUrl);
+        // Notify other tabs (e.g. AuthButton)
+        window.dispatchEvent(new StorageEvent('storage', { key: AVATAR_URL_KEY, newValue: dataUrl }));
+      };
+      img.src = ev.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  }, []);
+
+  function removePhoto() {
+    setAvatarUrl('');
+    localStorage.removeItem(AVATAR_URL_KEY);
+    window.dispatchEvent(new StorageEvent('storage', { key: AVATAR_URL_KEY, newValue: null }));
   }
 
   function handleThemeChange(pref: ThemePreference) {
@@ -332,21 +381,71 @@ export default function SettingsPage() {
           <SectionBanner icon="👤" title="Profile" />
           <div className="bg-white rounded-b-2xl border border-t-0 border-slate-100 shadow-sm p-5 space-y-5">
 
-          {/* Avatar preview + color picker */}
-          <div className="flex flex-col items-center gap-4">
-            <Avatar name={name} color={avatarColor} />
-            <div className="flex gap-2">
-              {AVATAR_COLORS.map((c) => (
-                <button
-                  key={c.bg}
-                  onClick={() => { setAvatarColor(c.bg); localStorage.setItem(AVATAR_COLOR_KEY, c.bg); }}
-                  className={`w-7 h-7 rounded-full ${c.bg} transition-all ${
-                    avatarColor === c.bg ? 'ring-2 ring-offset-2 ring-slate-400 scale-110' : 'opacity-70 hover:opacity-100'
-                  }`}
-                  aria-label={c.label}
+          {/* Avatar preview + photo upload + color picker */}
+          <div className="flex flex-col items-center gap-3">
+
+            {/* Photo or initials */}
+            <div className="relative group">
+              {avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={avatarUrl}
+                  alt="Profile photo"
+                  className="w-20 h-20 rounded-full object-cover shadow-md ring-2 ring-white"
                 />
-              ))}
+              ) : (
+                <Avatar name={name} color={avatarColor} />
+              )}
+              {/* Remove-photo X — appears on hover when photo is set */}
+              {avatarUrl && (
+                <button
+                  onClick={removePhoto}
+                  className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 hover:bg-red-600
+                             rounded-full text-white text-[10px] flex items-center justify-center
+                             opacity-0 group-hover:opacity-100 transition-opacity shadow"
+                  aria-label="Remove profile photo"
+                >
+                  ✕
+                </button>
+              )}
             </div>
+
+            {/* Hidden file input */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="sr-only"
+              onChange={handlePhotoUpload}
+            />
+
+            {/* Upload / change button */}
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="text-xs font-semibold text-brand-teal hover:text-brand-dark
+                         transition-colors flex items-center gap-1"
+            >
+              <span aria-hidden="true">📷</span>
+              {avatarUrl ? 'Change photo' : 'Upload a photo'}
+            </button>
+            <p className="text-[10px] text-slate-400 -mt-1">JPG or PNG · auto-cropped to square</p>
+
+            {/* Color picker — only shown when no photo is set */}
+            {!avatarUrl && (
+              <div className="flex gap-2">
+                {AVATAR_COLORS.map((c) => (
+                  <button
+                    key={c.bg}
+                    onClick={() => { setAvatarColor(c.bg); localStorage.setItem(AVATAR_COLOR_KEY, c.bg); }}
+                    className={`w-7 h-7 rounded-full ${c.bg} transition-all ${
+                      avatarColor === c.bg ? 'ring-2 ring-offset-2 ring-slate-400 scale-110' : 'opacity-70 hover:opacity-100'
+                    }`}
+                    aria-label={c.label}
+                  />
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Display name */}

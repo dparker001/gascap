@@ -6,10 +6,21 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from '@/contexts/LanguageContext';
 
 const AVATAR_COLOR_KEY = 'gascap_avatar_color';
+const AVATAR_URL_KEY   = 'gascap_avatar_url';
 const DEFAULT_COLOR    = 'bg-brand-orange';
 
-/** Initials avatar from a display name */
-function Avatar({ name, color }: { name: string; color: string }) {
+/** Avatar: shows uploaded photo if available, otherwise coloured initials circle */
+function Avatar({ name, color, photoUrl }: { name: string; color: string; photoUrl?: string }) {
+  if (photoUrl) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={photoUrl}
+        alt={name}
+        className="w-8 h-8 rounded-full object-cover flex-shrink-0 ring-1 ring-white/30"
+      />
+    );
+  }
   const initials = name
     .split(' ')
     .map((w) => w[0])
@@ -27,16 +38,21 @@ function Avatar({ name, color }: { name: string; color: string }) {
 export default function AuthButton() {
   const { data: session, status } = useSession();
   const { t } = useTranslation();
-  const [menuOpen,     setMenuOpen]     = useState(false);
-  const [avatarColor,  setAvatarColor]  = useState(DEFAULT_COLOR);
+  const [menuOpen,    setMenuOpen]    = useState(false);
+  const [avatarColor, setAvatarColor] = useState(DEFAULT_COLOR);
+  const [avatarPhoto, setAvatarPhoto] = useState('');
 
   useEffect(() => {
-    const saved = localStorage.getItem(AVATAR_COLOR_KEY);
-    if (saved) setAvatarColor(saved);
+    const savedColor = localStorage.getItem(AVATAR_COLOR_KEY);
+    if (savedColor) setAvatarColor(savedColor);
 
-    // Listen for color changes saved from Settings page
+    const savedPhoto = localStorage.getItem(AVATAR_URL_KEY);
+    if (savedPhoto) setAvatarPhoto(savedPhoto);
+
+    // Listen for changes saved from the Settings page
     const handler = (e: StorageEvent) => {
       if (e.key === AVATAR_COLOR_KEY && e.newValue) setAvatarColor(e.newValue);
+      if (e.key === AVATAR_URL_KEY) setAvatarPhoto(e.newValue ?? '');
     };
     window.addEventListener('storage', handler);
     return () => window.removeEventListener('storage', handler);
@@ -86,7 +102,7 @@ export default function AuthButton() {
         aria-expanded={menuOpen}
         aria-label={t.nav.userMenu}
       >
-        <Avatar name={name} color={avatarColor} />
+        <Avatar name={name} color={avatarColor} photoUrl={avatarPhoto || undefined} />
         <div className="hidden sm:flex items-center gap-1.5">
           <span className="text-white text-xs font-semibold max-w-[90px] truncate">
             {name}
