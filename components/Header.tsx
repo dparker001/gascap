@@ -149,6 +149,58 @@ export default function Header() {
             </span>
           </div>
 
+          {/* ── Desktop centre nav ── */}
+          {session ? (
+            <nav className="hidden lg:flex items-center gap-0.5" aria-label="Main navigation">
+              {[
+                { label: 'Calculator', href: '#gascap-calculator', scroll: 'gascap-calculator' },
+                { label: 'Fill-Up Log', href: '#log', scroll: 'gascap-tools', event: { name: 'gascap:switch-tools-tab', detail: { tab: 'log' } } },
+                { label: 'Giveaway', href: '/giveaway' },
+                { label: 'Help', href: '/help' },
+              ].map(({ label, href, scroll, event }) => (
+                <a
+                  key={label}
+                  href={href}
+                  onClick={scroll ? (e) => {
+                    e.preventDefault();
+                    if (event) window.dispatchEvent(new CustomEvent(event.name, { detail: event.detail }));
+                    document.getElementById(scroll)?.scrollIntoView({ behavior: 'smooth' });
+                  } : undefined}
+                  className="px-3.5 py-1.5 text-[13px] font-semibold text-white/55
+                             hover:text-white hover:bg-white/10
+                             transition-colors rounded-xl cursor-pointer"
+                >
+                  {label}
+                </a>
+              ))}
+            </nav>
+          ) : (
+            <nav className="hidden lg:flex items-center gap-0.5" aria-label="Main navigation">
+              {[
+                { label: 'Features', href: '#gascap-calculator' },
+                { label: 'Help', href: '/help' },
+              ].map(({ label, href }) => (
+                <a
+                  key={label}
+                  href={href}
+                  className="px-3.5 py-1.5 text-[13px] font-semibold text-white/55
+                             hover:text-white hover:bg-white/10
+                             transition-colors rounded-xl"
+                >
+                  {label}
+                </a>
+              ))}
+              <a
+                href="/signup"
+                className="ml-2 px-4 py-1.5 text-[13px] font-black text-white
+                           bg-brand-orange hover:bg-[#FF9A1A]
+                           transition-colors rounded-xl shadow-sm"
+              >
+                Get Started Free
+              </a>
+            </nav>
+          )}
+
           <div className="flex items-center gap-2">
             {/* Language toggle */}
             <button
