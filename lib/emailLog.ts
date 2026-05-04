@@ -84,6 +84,18 @@ export async function logEmailError(
   }
 }
 
+/**
+ * Returns true if a successful email of the given type has already been
+ * logged for this user. Used as an idempotency guard before sending.
+ */
+export async function hasEmailBeenSent(userId: string, type: string): Promise<boolean> {
+  const row = await prisma.emailLog.findFirst({
+    where: { userId, type, status: 'sent' },
+    select: { id: true },
+  });
+  return row !== null;
+}
+
 /** Known subjects for each campaign step — used when logging errors */
 export const CAMPAIGN_STEP_META: Record<number, { type: string; subject: string }> = {
   2: { type: 'trial-d2', subject: '4 Pro features worth trying this week ⚡' },

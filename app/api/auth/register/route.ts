@@ -11,6 +11,7 @@ import {
 } from '@/lib/users';
 import { sendMail, verificationEmailHtml } from '@/lib/email';
 import { sendCampaignEmail } from '@/lib/emailCampaign';
+import { hasEmailBeenSent }  from '@/lib/emailLog';
 import { upsertGhlContact, upsertGhlContactWithCampaign } from '@/lib/ghl';
 import { getPlacementByCode, logEvent } from '@/lib/campaigns';
 
@@ -106,10 +107,15 @@ export async function POST(req: Request) {
     }
 
     // Fire step-1 welcome email from the drip sequence (non-blocking).
-    // Passes verifyUrl so the welcome email includes a verification reminder
-    // — users have the link in two places, reducing the chance of missing it.
-    sendCampaignEmail(1, { id: user.id, name: user.name, email: user.email, verifyUrl })
-      .catch((err) => console.error('[GasCap] Welcome drip email failed:', err));
+    // Idempotency guard: skip if a sent trial-d1 row already exists in EmailLog
+    // (prevents a duplicate if this code path is ever re-entered for the same user).
+    (async () => {
+      if (await hasEmailBeenSent(user.id, 'trial-d1')) {
+        console.log('[GasCap] D1 already sent for', user.email, '— skipping duplicate');
+        return;
+      }
+      await sendCampaignEmail(1, { id: user.id, name: user.name, email: user.email, verifyUrl });
+    })().catch((err) => console.error('[GasCap] Welcome drip email failed:', err));
 
     // Notify admin of new signup (non-blocking)
     sendMail({

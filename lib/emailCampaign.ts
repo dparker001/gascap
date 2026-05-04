@@ -95,11 +95,21 @@ function wrap(body: string) {
 
 // ── Email 1 — Welcome + Pro Activated (Day 0, immediate) ──────────────────
 
-export function welcomeEmailHtml(name: string, userId: string, verifyUrl?: string): string {
+export function welcomeEmailHtml(name: string, userId: string, verifyUrl?: string, isDelayed = false): string {
   const first = name.split(' ')[0];
   return wrap(`
     ${header('trial')}
     <tr><td style="padding:32px;">
+      ${isDelayed ? `
+      <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:12px;padding:14px 18px;margin:0 0 22px;">
+        <p style="margin:0;font-size:13px;color:#0369a1;line-height:1.6;">
+          <strong>A quick note from Don:</strong> Due to a high volume of new GasCap™ signups,
+          our welcome email system experienced a brief delay. Your account has been active and
+          fully unlocked since you signed up — this is simply your welcome email arriving a
+          little late. We've resolved the issue and you won't experience any further delays.
+          Thank you for your patience, and welcome aboard! 🙏
+        </p>
+      </div>` : ''}
       ${trialBadge(30)}
 
       <p style="margin:0 0 6px;font-size:28px;font-weight:900;color:#1e2d4a;line-height:1.15;">
@@ -670,19 +680,20 @@ export const trialEndedEmailText = (name: string) =>
 // ── Campaign dispatch helper ───────────────────────────────────────────────
 
 export interface CampaignRecipient {
-  id:        string;
-  name:      string;
-  email:     string;
-  verifyUrl?: string;  // passed on step-1 so the welcome email can include a verification reminder
+  id:         string;
+  name:       string;
+  email:      string;
+  verifyUrl?: string;   // passed on step-1 so the welcome email can include a verification reminder
+  isDelayed?: boolean;  // step-1 only — prepends a "system delay" apology note when true
 }
 
 export async function sendCampaignEmail(step: number, user: CampaignRecipient): Promise<void> {
-  const { id, name, email, verifyUrl } = user;
+  const { id, name, email, verifyUrl, isDelayed } = user;
 
   const MAP: Record<number, { subject: string; html: string; text: string }> = {
     1: {
       subject: "Welcome to GasCap™ — your free Pro trial is live 🎉",
-      html:    welcomeEmailHtml(name, id, verifyUrl),
+      html:    welcomeEmailHtml(name, id, verifyUrl, isDelayed),
       text:    welcomeEmailText(name),
     },
     2: {
@@ -710,7 +721,8 @@ export async function sendCampaignEmail(step: number, user: CampaignRecipient): 
   const mail = MAP[step];
   if (!mail) throw new Error(`Unknown campaign step: ${step}`);
   await sendMail({ to: email, ...mail, unsubscribeUrl: unsubLink(id) });
-  logEmail({ userId: id, userEmail: email, userName: name, type: `trial-d${step}`, subject: mail.subject }).catch(() => {});
+  // Await so callers can rely on hasEmailBeenSent() returning true immediately after
+  await logEmail({ userId: id, userEmail: email, userName: name, type: `trial-d${step}`, subject: mail.subject });
 }
 
 // ── Referral credit earned notification ───────────────────────────────────────

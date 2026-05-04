@@ -16,7 +16,7 @@ import { NextResponse } from 'next/server';
 import { getUsersPendingCampaignStep, advanceEmailCampaignStep, getAllUsers } from '@/lib/users';
 import { sendCampaignEmail }  from '@/lib/emailCampaign';
 import { sendPushNotification } from '@/lib/oneSignal';
-import { logEmailError, CAMPAIGN_STEP_META } from '@/lib/emailLog';
+import { logEmailError, hasEmailBeenSent, CAMPAIGN_STEP_META } from '@/lib/emailLog';
 
 const STEPS: { step: number; minDays: number; label: string }[] = [
   { step: 2, minDays: 3,  label: 'Day-3 feature deep-dive'    },
@@ -35,7 +35,53 @@ export async function GET(req: Request) {
 
   const results: Record<string, { sent: number; errors: number }> = {};
 
-  // ── Email drip steps ──────────────────────────────────────────────────────
+  // ── D1 safety net ─────────────────────────────────────────────────────────
+  // Catches users who enrolled >1 day ago but never received trial-d1 (e.g.
+  // because the register route's non-blocking fire-and-forget silently failed).
+  // Sends D1 with an explanatory apology note; does NOT advance emailCampaignStep
+  // so the normal D2→D5 cadence continues from wherever the user already is.
+  // We also track which users receive D1 in this run so the D2 guard below can
+  // skip D2 for them in the same cron execution (avoiding a same-day D1+D2 flood).
+  const sentD1ThisRun = new Set<string>();
+
+  try {
+    // getUsersPendingCampaignStep(2, 1) → step=1 users enrolled ≥1 day ago
+    const d1Candidates = await getUsersPendingCampaignStep(2, 1);
+    let d1Sent = 0, d1Errors = 0;
+
+    for (const user of d1Candidates) {
+      const alreadySent = await hasEmailBeenSent(user.id, 'trial-d1');
+      if (alreadySent) continue;
+
+      try {
+        await sendCampaignEmail(1, {
+          id:        user.id,
+          name:      user.name,
+          email:     user.email,
+          isDelayed: true,
+        });
+        sentD1ThisRun.add(user.id);
+        d1Sent++;
+        console.log(`[Campaign] D1 safety net → sent delayed D1 to ${user.email}`);
+      } catch (err) {
+        console.error(`[Campaign] D1 safety net failed for ${user.email}:`, err);
+        d1Errors++;
+        await logEmailError(
+          { userId: user.id, userEmail: user.email, userName: user.name,
+            type: 'trial-d1', subject: 'Welcome to GasCap™ — your free Pro trial is live 🎉' },
+          err,
+        );
+      }
+    }
+
+    results['D1 safety net'] = { sent: d1Sent, errors: d1Errors };
+    console.log(`[Campaign] D1 safety net: sent=${d1Sent} skipped=${d1Candidates.length - d1Sent - d1Errors} errors=${d1Errors}`);
+  } catch (err) {
+    console.error('[Campaign] D1 safety net batch failed:', err);
+    results['D1 safety net'] = { sent: 0, errors: 1 };
+  }
+
+  // ── Email drip steps (D2–D5) ──────────────────────────────────────────────
   for (const { step, minDays, label } of STEPS) {
     let users;
     try {
@@ -48,6 +94,20 @@ export async function GET(req: Request) {
     let sent = 0, errors = 0;
 
     for (const user of users) {
+      // Guard: never send D2+ to someone who hasn't received D1 yet.
+      // Also skip if D1 was just sent this cron run (avoid same-day D1+D2).
+      if (step === 2) {
+        if (sentD1ThisRun.has(user.id)) {
+          console.log(`[Campaign] Skipping D2 for ${user.email} — D1 just sent this run`);
+          continue;
+        }
+        const d1Sent = await hasEmailBeenSent(user.id, 'trial-d1');
+        if (!d1Sent) {
+          console.log(`[Campaign] Skipping D2 for ${user.email} — trial-d1 not logged (safety net will handle)`);
+          continue;
+        }
+      }
+
       try {
         await sendCampaignEmail(step, { id: user.id, name: user.name, email: user.email });
         await advanceEmailCampaignStep(user.id, step);
