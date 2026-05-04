@@ -680,3 +680,107 @@ ${nextBlock}
 </body>
 </html>`.trim();
 }
+
+/**
+ * Gas Price Drop Alert email — sent by the price-alerts cron when the national
+ * average falls below a user's saved threshold.
+ *
+ * @param name          User's first name (or display name)
+ * @param currentPrice  Today's national average ($/gal)
+ * @param threshold     User's saved alert price ($/gal)
+ * @param plan          User's plan for the badge header ('pro' | 'fleet' | 'trial')
+ */
+export function priceAlertEmailHtml(
+  name:         string,
+  currentPrice: number,
+  threshold:    number,
+  plan:         string = 'pro',
+): string {
+  const savings = (threshold - currentPrice).toFixed(2);
+  const current = currentPrice.toFixed(3);
+  const thresh  = threshold.toFixed(2);
+
+  return `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#eef1f7;font-family:system-ui,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#eef1f7;padding:40px 16px;">
+    <tr><td align="center">
+      <table width="100%" style="max-width:480px;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,.08);">
+${brandHeader(plan)}
+
+        <!-- Hero -->
+        <tr><td style="padding:32px 32px 20px;text-align:center;">
+          <p style="margin:0 0 8px;font-size:48px;line-height:1;">⛽</p>
+          <p style="margin:0 0 8px;font-size:22px;font-weight:900;color:#1e2d4a;line-height:1.3;">
+            Gas prices just dropped<br>below your alert!
+          </p>
+          <p style="margin:0;font-size:15px;color:#475569;line-height:1.65;">
+            Hi ${name}, the US national average is now <strong>$${current}/gal</strong> —
+            that's below your $${thresh} alert price.
+          </p>
+        </td></tr>
+
+        <!-- Price badge -->
+        <tr><td style="padding:0 32px 20px;">
+          <table cellpadding="0" cellspacing="0" border="0" role="presentation" width="100%">
+            <tr>
+              <td style="background:linear-gradient(135deg,#005f4a 0%,#1eb68f 100%);border-radius:14px;padding:20px 24px;text-align:center;">
+                <p style="margin:0 0 4px;font-size:12px;font-weight:800;color:rgba(255,255,255,0.7);
+                           text-transform:uppercase;letter-spacing:0.08em;">Current price</p>
+                <p style="margin:0 0 6px;font-size:36px;font-weight:900;color:#ffffff;line-height:1.1;">
+                  $${current}<span style="font-size:18px;font-weight:700;color:rgba(255,255,255,0.7);"> /gal</span>
+                </p>
+                <p style="margin:0;font-size:13px;color:rgba(255,255,255,0.85);">
+                  ${savings}¢ below your $${thresh} alert threshold — now is a good time to fill up.
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td></tr>
+
+        <!-- Tip -->
+        <tr><td style="padding:0 32px 24px;">
+          <table cellpadding="0" cellspacing="0" border="0" role="presentation" width="100%">
+            <tr>
+              <td style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:16px 20px;">
+                <p style="margin:0;font-size:13px;color:#166534;line-height:1.6;">
+                  💡 <strong>Pro tip:</strong> Prices are based on the latest US national average from the
+                  EIA. Local prices at the pump may vary — check your nearest station before heading out.
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td></tr>
+
+        <!-- CTA -->
+        <tr><td style="padding:0 32px 28px;text-align:center;">
+          <a href="https://www.gascap.app"
+             style="display:inline-block;background:#fa7109;color:#fff;font-weight:900;
+                    font-size:15px;padding:14px 36px;border-radius:12px;text-decoration:none;">
+            Calculate my fill-up →
+          </a>
+          <p style="margin:16px 0 0;font-size:12px;color:#94a3b8;line-height:1.5;">
+            To update or remove your price alert, visit
+            <a href="https://www.gascap.app/settings?tab=alerts"
+               style="color:#fa7109;font-weight:700;text-decoration:none;">Settings → Price Alert</a>.
+          </p>
+        </td></tr>
+
+        <!-- Footer -->
+        <tr><td style="background:#f8fafc;padding:16px 32px;border-top:1px solid #e2e8f0;">
+          <p style="margin:0;font-size:11px;color:#94a3b8;">
+            GasCap™ · Know Before You Go ·
+            <a href="https://gascap.app" style="color:#f59e0b;">gascap.app</a><br>
+            Price data sourced from the US Energy Information Administration (EIA).<br>
+            <a href="https://www.gascap.app/settings?tab=alerts"
+               style="color:#cbd5e1;text-decoration:none;">Manage price alerts</a>
+          </p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`.trim();
+}

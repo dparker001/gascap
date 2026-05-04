@@ -21,6 +21,7 @@ import CampaignTracker         from '@/components/CampaignTracker';
 import FeaturedStation         from '@/components/FeaturedStation';
 import EngagementNudge        from '@/components/EngagementNudge';
 import EndorserMarquee        from '@/components/EndorserMarquee';
+import DailyFuelPulse         from '@/components/DailyFuelPulse';
 
 // ── JSON-LD Schema Markup ────────────────────────────────────────────────────
 
@@ -602,6 +603,9 @@ export default function Home() {
             <section className="px-4 lg:px-0 max-w-lg lg:max-w-none mx-auto w-full">
               <SetupChecklist />
             </section>
+
+            {/* Daily Fuel Pulse — national avg + trend + today's tip */}
+            <DailyFuelPulse />
 
             {/* Desktop active-vehicle badge — shows which vehicle is loaded into the calc */}
             {desktopSelectedVehicle && (
