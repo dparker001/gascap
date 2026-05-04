@@ -8,6 +8,8 @@ import { authOptions }     from '@/lib/auth';
 import { findById, recordActivity, calcStreak, STREAK_MILESTONES, type ActivityEvent } from '@/lib/users';
 import { BADGES, evaluateEarned, type BadgeDef } from '@/lib/badges';
 import { getVehiclesForUser }     from '@/lib/savedVehicles';
+import { streakBonusEntries }     from '@/lib/giveaway';
+import { sendMail, streakMilestoneEmailHtml } from '@/lib/email';
 
 // ── GET — current badge state ─────────────────────────────────────────────
 export async function GET(req: Request) {
@@ -72,6 +74,39 @@ export async function POST(req: Request) {
 
   // Resolve full badge objects for any newly earned badges
   const newBadgeDefs = result.newBadges.map((id) => BADGES.find((b) => b.id === id)).filter((b): b is BadgeDef => b !== undefined);
+
+  // ── Streak milestone celebration emails ─────────────────────────────────
+  // Fires non-blocking for each newly crossed milestone (rare — once per milestone per lifetime).
+  if (result.newMilestonesHit.length > 0 && !result.emailOptOut && result.userEmail) {
+    const milestoneDaysSorted = STREAK_MILESTONES.map((m) => m.days);
+    void (async () => {
+      for (const days of result.newMilestonesHit) {
+        try {
+          const bonusEntries      = streakBonusEntries(days);
+          const nextMilestoneDays = milestoneDaysSorted.find((d) => d > days) ?? null;
+          const nextBonusEntries  = nextMilestoneDays ? streakBonusEntries(nextMilestoneDays) : null;
+
+          const dayLabel = days >= 365 ? '1-year' : days >= 180 ? '6-month' : days >= 90 ? '90-day' : days >= 30 ? '30-day' : `${days}-day`;
+          await sendMail({
+            to:      result.userEmail,
+            subject: `${days >= 30 ? '🏆' : '🔥'} You hit a ${dayLabel} streak on GasCap™!`,
+            html:    streakMilestoneEmailHtml(
+              result.userName,
+              days,
+              bonusEntries,
+              nextMilestoneDays,
+              nextBonusEntries,
+              result.plan === 'free' ? 'trial' : result.plan,
+            ),
+            text: `Congrats on your ${dayLabel} streak, ${result.userName}! You now earn +${bonusEntries} bonus draw entries every month you keep the streak alive. Keep going — open GasCap™ daily to protect it. gascap.app`,
+          });
+          console.log(`[Activity] Milestone email sent → ${result.userEmail} (${days} days)`);
+        } catch (err) {
+          console.error(`[Activity] Milestone email failed for ${result.userEmail} (${days} days):`, err);
+        }
+      }
+    })();
+  }
 
   return NextResponse.json({
     newBadges:        newBadgeDefs,

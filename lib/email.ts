@@ -563,3 +563,120 @@ ${bonusBlock}
 </body>
 </html>`.trim();
 }
+
+/** ─────────────────────────────────────────────────────────────────────────
+ * Streak milestone celebration email — sent the first time a user crosses
+ * a streak milestone (7, 14, 30, 90, 180, 365 days).
+ *
+ * @param name               User's display name
+ * @param milestoneDays      The milestone just hit (e.g. 7, 30, 90)
+ * @param bonusEntries       Bonus draw entries now earned at this streak tier
+ * @param nextMilestoneDays  Next milestone to aim for, or null if at max
+ * @param nextBonusEntries   Bonus entries at the next milestone, or null
+ * @param plan               'trial' | 'pro' | 'fleet' | 'comp' — for header badge
+ */
+export function streakMilestoneEmailHtml(
+  name:               string,
+  milestoneDays:      number,
+  bonusEntries:       number,
+  nextMilestoneDays:  number | null,
+  nextBonusEntries:   number | null,
+  plan?:              string,
+): string {
+  // Choose emoji + headline based on milestone
+  const milestoneConfig: Record<number, { emoji: string; headline: string; subline: string }> = {
+    7:   { emoji: '🔥', headline: `${name}, you're on a 7-day streak!`,    subline: 'One week in — you\'re already building a great habit.' },
+    14:  { emoji: '⚡', headline: `${name}, 14 days straight!`,             subline: 'Two full weeks of smart fueling. Keep the momentum going.' },
+    30:  { emoji: '🏆', headline: `${name}, one full month!`,               subline: 'A 30-day streak is a serious commitment — and GasCap™ rewards it.' },
+    90:  { emoji: '🌟', headline: `${name}, 90 days on a streak!`,          subline: 'Three months of consistent fueling smarts. You\'re in rare company.' },
+    180: { emoji: '💎', headline: `${name}, 6 months straight!`,            subline: 'Half a year of daily streaks. That\'s seriously impressive.' },
+    365: { emoji: '👑', headline: `${name}, one full year on a streak!`,    subline: 'You\'ve done something almost no one does. This one\'s on us.' },
+  };
+  const cfg = milestoneConfig[milestoneDays] ?? {
+    emoji:    '🔥',
+    headline: `${name}, you hit a ${milestoneDays}-day streak!`,
+    subline:  'Keep the streak alive — it keeps paying off.',
+  };
+
+  // Bonus entries block
+  const bonusBlock = bonusEntries > 0 ? `
+        <tr><td style="padding:0 32px 24px;">
+          <table cellpadding="0" cellspacing="0" border="0" role="presentation" width="100%">
+            <tr>
+              <td style="background:linear-gradient(135deg,#005f4a 0%,#1eb68f 100%);border-radius:14px;padding:20px 24px;">
+                <p style="margin:0 0 4px;font-size:12px;font-weight:800;color:rgba(255,255,255,0.7);text-transform:uppercase;letter-spacing:0.08em;">Your reward</p>
+                <p style="margin:0 0 2px;font-size:28px;font-weight:900;color:#ffffff;line-height:1.1;">+${bonusEntries} bonus entries</p>
+                <p style="margin:0;font-size:13px;color:rgba(255,255,255,0.85);">added to your monthly gas card drawing — every single month you maintain this streak.</p>
+              </td>
+            </tr>
+          </table>
+        </td></tr>` : '';
+
+  // "Next milestone" teaser
+  const nextBlock = nextMilestoneDays ? `
+        <tr><td style="padding:0 32px 24px;">
+          <table cellpadding="0" cellspacing="0" border="0" role="presentation" width="100%">
+            <tr>
+              <td style="background:#fff8ed;border:1px solid #fde68a;border-radius:12px;padding:16px 20px;">
+                <p style="margin:0 0 4px;font-size:12px;font-weight:800;color:#92400e;text-transform:uppercase;letter-spacing:0.08em;">Next milestone</p>
+                <p style="margin:0;font-size:14px;color:#78350f;line-height:1.5;">
+                  Hit <strong>${nextMilestoneDays} days</strong> and earn
+                  ${nextBonusEntries ? `<strong>+${nextBonusEntries} bonus entries</strong>` : 'another reward'}.
+                  You're ${milestoneDays} of the way there — keep going!
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td></tr>` : `
+        <tr><td style="padding:0 32px 24px;">
+          <table cellpadding="0" cellspacing="0" border="0" role="presentation" width="100%">
+            <tr>
+              <td style="background:#fef3c7;border:1px solid #fde68a;border-radius:12px;padding:16px 20px;">
+                <p style="margin:0;font-size:14px;color:#78350f;line-height:1.5;">
+                  <strong>You've reached the top tier — +20 bonus entries every month.</strong> There's no higher streak level. You've earned maximum rewards for life. 🏆
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td></tr>`;
+
+  return `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#eef1f7;font-family:system-ui,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#eef1f7;padding:40px 16px;">
+    <tr><td align="center">
+      <table width="100%" style="max-width:480px;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,.08);">
+${brandHeader(plan)}
+        <!-- Hero -->
+        <tr><td style="padding:32px 32px 20px;text-align:center;">
+          <p style="margin:0 0 8px;font-size:48px;line-height:1;">${cfg.emoji}</p>
+          <p style="margin:0 0 8px;font-size:22px;font-weight:900;color:#1e2d4a;line-height:1.3;">${cfg.headline}</p>
+          <p style="margin:0;font-size:15px;color:#475569;line-height:1.65;">${cfg.subline}</p>
+        </td></tr>
+${bonusBlock}
+${nextBlock}
+        <!-- CTA -->
+        <tr><td style="padding:0 32px 28px;text-align:center;">
+          <a href="https://www.gascap.app" style="display:inline-block;background:#fa7109;color:#fff;font-weight:900;font-size:15px;padding:14px 36px;border-radius:12px;text-decoration:none;">
+            Open GasCap™ →
+          </a>
+          <p style="margin:16px 0 0;font-size:12px;color:#94a3b8;line-height:1.5;">
+            Your streak resets if you miss a day — open the app daily to protect it.<br>
+            <a href="https://www.gascap.app/giveaway" style="color:#fa7109;font-weight:700;text-decoration:none;">View your drawing entries →</a>
+          </p>
+        </td></tr>
+        <!-- Footer -->
+        <tr><td style="background:#f8fafc;padding:16px 32px;border-top:1px solid #e2e8f0;">
+          <p style="margin:0;font-size:11px;color:#94a3b8;">
+            GasCap™ · Know Before You Go · <a href="https://gascap.app" style="color:#f59e0b;">gascap.app</a><br>
+            <a href="https://www.gascap.app/settings?optout=email" style="color:#cbd5e1;text-decoration:none;">Unsubscribe from streak notifications</a>
+          </p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`.trim();
+}

@@ -96,10 +96,12 @@ export interface StreakCredit {
 }
 
 export const STREAK_MILESTONES: { days: number; months: number }[] = [
-  { days: 30,  months: 1 },
-  { days: 90,  months: 1 },
-  { days: 180, months: 1 },
-  { days: 365, months: 1 },
+  { days: 7,   months: 0 },  // entry bonus tier: +2 draw entries — sends celebration email
+  { days: 14,  months: 0 },  // momentum nudge email — "halfway to +5 entries!"
+  { days: 30,  months: 1 },  // entry bonus tier: +5 draw entries + 1 free Pro month credit
+  { days: 90,  months: 1 },  // entry bonus tier: +10 draw entries + 1 free Pro month credit
+  { days: 180, months: 1 },  // entry bonus tier: +15 draw entries + 1 free Pro month credit
+  { days: 365, months: 1 },  // entry bonus tier: +20 draw entries + 1 free Pro month credit
 ];
 
 export type ActivityEvent = 'calc' | 'budget_calc' | 'location_lookup' | 'visit';
@@ -577,6 +579,11 @@ export interface ActivityResult {
   badges:           string[];
   streak:           number;
   newMilestonesHit: number[];
+  /** Convenience fields for the activity route to send milestone emails without a second DB query */
+  userEmail:        string;
+  userName:         string;
+  emailOptOut:      boolean;
+  plan:             string;
 }
 
 export async function recordActivity(
@@ -585,7 +592,7 @@ export async function recordActivity(
   localDate?: string,
 ): Promise<ActivityResult> {
   const user = await prisma.user.findUnique({ where: { id: userId } });
-  if (!user) return { newBadges: [], badges: [], streak: 0, newMilestonesHit: [] };
+  if (!user) return { newBadges: [], badges: [], streak: 0, newMilestonesHit: [], userEmail: '', userName: '', emailOptOut: false, plan: 'free' };
 
   // Use the client's local date when provided and sane; fall back to server UTC.
   const today      = (localDate && isValidLocalDate(localDate)) ? localDate : todayStr();
@@ -636,7 +643,16 @@ export async function recordActivity(
     },
   });
 
-  return { newBadges, badges: updatedBadges, streak, newMilestonesHit: newlyHit };
+  return {
+    newBadges,
+    badges:           updatedBadges,
+    streak,
+    newMilestonesHit: newlyHit,
+    userEmail:        user.email,
+    userName:         user.name,
+    emailOptOut:      user.emailOptOut ?? false,
+    plan:             user.plan ?? 'free',
+  };
 }
 
 // ── Referral system ─────────────────────────────────────────────────────────
