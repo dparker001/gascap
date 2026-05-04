@@ -193,9 +193,10 @@ export async function GET(req: Request) {
     const epa = await epaLookup(year, make, model);
 
     // ── AI fallback for tank capacity ─────────────────────────────────────
-    const tankEst: number | null =
-      epa?.tankEst ??
-      (await aiFallbackTankSize(year, make, model, trim ?? ''));
+    const epaHasTank = (epa?.tankEst ?? 0) > 0;
+    const aiTank     = epaHasTank ? null : await aiFallbackTankSize(year, make, model, trim ?? '');
+    const tankEst: number | null  = epa?.tankEst ?? aiTank;
+    const tankSource: 'epa' | 'ai' | null = epa?.tankEst ? 'epa' : aiTank ? 'ai' : null;
 
     // ── Build specs object ───────────────────────────────────────────────
     const specs: VehicleSpecs = {
@@ -245,6 +246,8 @@ export async function GET(req: Request) {
       trim, drive, transmission: trans,
       // Tank size from EPA (or AI fallback) for auto-fill
       tankEst: tankEst,
+      // Source of the tank estimate: 'epa' | 'ai' | null
+      tankSource,
       // Full specs object
       specs,
     });

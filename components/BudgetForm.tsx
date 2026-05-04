@@ -17,6 +17,7 @@ import { useLocalStorage } from '@/hooks/useLocalStorage';
 import type { CalcTab } from './CalculatorTabs';
 import { useTranslation } from '@/contexts/LanguageContext';
 import { trackCalculateBudget } from '@/lib/gtag';
+import { checkTankSize } from '@/lib/tankValidation';
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -71,6 +72,9 @@ export default function BudgetForm({ activeTab, setActiveTab }: Props) {
   const [showLiveNudge, setShowLiveNudge] = useState(false);
   const [validationAttempted, setValidationAttempted] = useState(false);
   const [gasCoords, setGasCoords] = useState<{ lat: number; lng: number } | null>(null);
+  // EPA/AI tank estimate for the currently-selected vehicle (used for validation warning)
+  const [vehicleTankEst,   setVehicleTankEst]   = useState<number | undefined>(undefined);
+  const [vehicleBodyClass, setVehicleBodyClass] = useState<string | undefined>(undefined);
 
   // Standard patch — clears result (free/guest behaviour)
   function patch(p: Partial<FormState>) {
@@ -87,6 +91,8 @@ export default function BudgetForm({ activeTab, setActiveTab }: Props) {
     function onDesktopVehicleSelect(e: Event) {
       const { gallons, vehicle } = (e as CustomEvent<{ gallons: string; vehicle?: Vehicle }>).detail;
       patch({ tankCapacity: gallons, vehicleName: vehicle?.name ?? '', vehicleId: vehicle?.id ?? '', vehicleOdometer: vehicle?.currentOdometer });
+      setVehicleTankEst(vehicle?.vehicleSpecs?.tankEstGallons);
+      setVehicleBodyClass(vehicle?.vehicleSpecs?.bodyClass);
     }
     window.addEventListener('gascap:vehicle-select', onDesktopVehicleSelect);
     return () => window.removeEventListener('gascap:vehicle-select', onDesktopVehicleSelect);
@@ -166,10 +172,13 @@ export default function BudgetForm({ activeTab, setActiveTab }: Props) {
     setCalculated(false);
     setShowLiveNudge(false);
     setValidationAttempted(false);
+    setVehicleTankEst(undefined);
+    setVehicleBodyClass(undefined);
   }
 
-  const tankNum = Number(form.tankCapacity) || undefined;
-  const isLive  = isPro && calculated;
+  const tankNum     = Number(form.tankCapacity) || undefined;
+  const isLive      = isPro && calculated;
+  const tankWarning = checkTankSize(Number(form.tankCapacity) || undefined, vehicleTankEst, vehicleBodyClass);
 
   return (
     <div className="pb-2">
@@ -205,7 +214,11 @@ export default function BudgetForm({ activeTab, setActiveTab }: Props) {
         <div className="lg:hidden">
           <SavedVehicles
             currentGallons={form.tankCapacity}
-            onSelect={(g, v) => patch({ tankCapacity: g, vehicleName: v?.name ?? '', vehicleId: v?.id ?? '', vehicleOdometer: v?.currentOdometer })}
+            onSelect={(g, v) => {
+              patch({ tankCapacity: g, vehicleName: v?.name ?? '', vehicleId: v?.id ?? '', vehicleOdometer: v?.currentOdometer });
+              setVehicleTankEst(v?.vehicleSpecs?.tankEstGallons);
+              setVehicleBodyClass(v?.vehicleSpecs?.bodyClass);
+            }}
             selectedVehicleId={form.vehicleId}
           />
         </div>
@@ -386,6 +399,25 @@ export default function BudgetForm({ activeTab, setActiveTab }: Props) {
           }}
         />
       </div>
+
+      {/* Tank size validation warning — shown when entered gallons diverges from EPA estimate */}
+      {tankWarning && (
+        <div className="flex items-start gap-2.5 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 mb-2">
+          <span className="text-sm flex-shrink-0 mt-0.5" aria-hidden="true">⚠️</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold text-amber-800 leading-snug">{tankWarning.message}</p>
+            {tankWarning.suggestion !== undefined && (
+              <button
+                type="button"
+                onClick={() => patch({ tankCapacity: String(tankWarning.suggestion) })}
+                className="mt-1.5 text-[11px] font-bold text-amber-900 underline underline-offset-2 hover:text-amber-700 transition-colors"
+              >
+                Use EPA estimate ({tankWarning.suggestion} gal)
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Validation summary — only shown after a failed calculate attempt */}
       {validationAttempted && Object.keys(errors).length > 0 && (

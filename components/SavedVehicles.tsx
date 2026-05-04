@@ -6,6 +6,7 @@ import VehiclePicker from './VehiclePicker';
 import BadgeShelf   from './BadgeShelf';
 import type { VehicleSpecs } from '@/lib/vehicleSpecs';
 import { useTranslation } from '@/contexts/LanguageContext';
+import { checkTankSize } from '@/lib/tankValidation';
 import { GarageDoor }                        from './GarageDoor';
 import { useGarageDoorPrefs }                from '@/hooks/useGarageDoorPrefs';
 
@@ -688,6 +689,36 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
                           {t.calc.unitGal}
                         </span>
                       </div>
+                      {/* Tank size validation hint */}
+                      {(() => {
+                        const cv   = vehicles.find((v) => v.id === editingId);
+                        const warn = checkTankSize(
+                          parseFloat(editGallons) || undefined,
+                          cv?.vehicleSpecs?.tankEstGallons,
+                          cv?.vehicleSpecs?.bodyClass,
+                        );
+                        if (!warn) return null;
+                        return (
+                          <p className="mt-1 text-[10px] leading-snug text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5 flex items-start gap-1">
+                            <span className="flex-shrink-0">⚠️</span>
+                            <span>
+                              {warn.message}
+                              {warn.suggestion !== undefined && (
+                                <>
+                                  {' '}
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditGallons(String(warn.suggestion))}
+                                    className="font-bold underline underline-offset-1 hover:text-amber-900"
+                                  >
+                                    Use {warn.suggestion} gal
+                                  </button>
+                                </>
+                              )}
+                            </span>
+                          </p>
+                        );
+                      })()}
 
                       {/* VIN */}
                       <div className="space-y-1">
