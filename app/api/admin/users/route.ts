@@ -96,6 +96,7 @@ export async function GET(req: Request) {
       pushSubscribed:   subscribedUserIds.has(u.id),
       isTestAccount:        u.isTestAccount,
       ambassadorProForLife: u.ambassadorProForLife,
+      emailOptOut:          u.emailOptOut ?? false,
       // Profile
       phone:            u.phone       ?? null,
       smsOptIn:         u.smsOptIn    ?? false,

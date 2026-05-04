@@ -42,6 +42,7 @@ interface AdminUser {
   pushSubscribed?:  boolean;
   isTestAccount?:        boolean;
   ambassadorProForLife?: boolean;
+  emailOptOut?:          boolean;
   // Profile
   phone?:       string | null;
   smsOptIn?:    boolean;
@@ -133,6 +134,7 @@ export default function AdminPage() {
   const [filterActivity, setFilterActivity] = useState<'all'|'today'|'has-fillups'|'no-logins'|'has-streak'>('all');
   const [filterStripe,   setFilterStripe]   = useState<'all'|'stripe'|'no-stripe'>('all');
   const [filterPush,     setFilterPush]     = useState<'all'|'subscribed'|'not-subscribed'>('all');
+  const [filterEmailSub, setFilterEmailSub] = useState<'all'|'opted-out'|'subscribed'>('all');
   const [sortBy,         setSortBy]         = useState<'joined-desc'|'joined-asc'|'logins'|'calcs'|'fillups'|'streak'>('joined-desc');
   const [savedPw,   setSavedPw]   = useState('');
   const [pushMsg,        setPushMsg]        = useState('');
@@ -591,6 +593,8 @@ export default function AdminPage() {
       if (filterActivity === 'has-streak'  && u.streak      === 0)  return false;
       if (filterPush === 'subscribed'     && !u.pushSubscribed) return false;
       if (filterPush === 'not-subscribed' &&  u.pushSubscribed) return false;
+      if (filterEmailSub === 'opted-out'  && !u.emailOptOut)    return false;
+      if (filterEmailSub === 'subscribed' &&  u.emailOptOut)    return false;
       return true;
     })
     .sort((a, b) => {
@@ -623,6 +627,9 @@ export default function AdminPage() {
     // Push
     push:         users.filter((u) =>  u.pushSubscribed).length,
     notPush:      users.filter((u) => !u.pushSubscribed).length,
+    // Email opt-out
+    emailOptOut:  users.filter((u) =>  u.emailOptOut).length,
+    emailSubbed:  users.filter((u) => !u.emailOptOut).length,
     // Totals
     totalFillups: users.reduce((s, u) => s + u.fillupCount, 0),
   };
@@ -1614,6 +1621,27 @@ export default function AdminPage() {
             </div>
           </div>
 
+          {/* Email subscription filter */}
+          <div className="space-y-1">
+            <p className="text-[10px] font-bold text-slate-600 uppercase tracking-wide">Email Subscription</p>
+            <div className="flex flex-wrap gap-1.5">
+              {([
+                { val: 'all',        label: `All (${users.length})` },
+                { val: 'subscribed', label: `✅ Subscribed (${stats.emailSubbed})` },
+                { val: 'opted-out',  label: `🚫 Unsubscribed (${stats.emailOptOut})` },
+              ] as const).map(({ val, label }) => (
+                <button key={val} onClick={() => setFilterEmailSub(val)}
+                  className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${
+                    filterEmailSub === val
+                      ? 'bg-navy-700 text-white'
+                      : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                  }`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Sort + result count row */}
           <div className="flex items-center justify-between gap-3 pt-1 border-t border-slate-100">
             <p className="text-[11px] text-slate-600 font-semibold">
@@ -1638,9 +1666,9 @@ export default function AdminPage() {
           </div>
 
           {/* Clear filters */}
-          {(filterPlan !== 'all' || filterStatus !== 'all' || filterActivity !== 'all' || filterStripe !== 'all' || filterPush !== 'all' || search) && (
+          {(filterPlan !== 'all' || filterStatus !== 'all' || filterActivity !== 'all' || filterStripe !== 'all' || filterPush !== 'all' || filterEmailSub !== 'all' || search) && (
             <button
-              onClick={() => { setFilterPlan('all'); setFilterStatus('all'); setFilterActivity('all'); setFilterStripe('all'); setFilterPush('all'); setSearch(''); }}
+              onClick={() => { setFilterPlan('all'); setFilterStatus('all'); setFilterActivity('all'); setFilterStripe('all'); setFilterPush('all'); setFilterEmailSub('all'); setSearch(''); }}
               className="text-[11px] font-bold text-amber-600 hover:text-amber-500 transition-colors"
             >
               × Clear all filters
@@ -1688,6 +1716,11 @@ export default function AdminPage() {
                       {u.ambassadorProForLife && (
                         <span title="Complimentary Pro for Life — Stripe-proof" className="text-[10px] font-black px-2 py-0.5 rounded-full bg-teal-100 text-teal-700">
                           🎁 COMPED
+                        </span>
+                      )}
+                      {u.emailOptOut && (
+                        <span title="User unsubscribed — no marketing emails will be sent" className="text-[10px] font-black px-2 py-0.5 rounded-full bg-red-100 text-red-700">
+                          🚫 UNSUB
                         </span>
                       )}
                     </div>
