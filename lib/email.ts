@@ -463,7 +463,10 @@ ${brandHeader()}
           <p style="margin:0 0 0;font-size:13px;color:#94a3b8;">
             If you didn't request this deletion or believe this was done in error, please reply to this email immediately.
           </p>
-          <p style="margin:20px 0 0;font-size:13px;color:#475569;">— The GasCap™ Team</p>
+          <p style="margin:20px 0 16px;font-size:13px;color:#475569;line-height:1.65;">
+            Before you go — mind sharing why you decided to delete your account? Just hit reply and let us know. We read every response and use your feedback to improve GasCap™.
+          </p>
+          <p style="margin:0;font-size:13px;color:#475569;">— The GasCap™ Team</p>
         </td></tr>
         <tr><td style="background:#f8fafc;padding:16px 32px;border-top:1px solid #e2e8f0;">
           <p style="margin:0;font-size:11px;color:#94a3b8;">
