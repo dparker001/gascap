@@ -96,6 +96,8 @@ export default function SettingsPage() {
   const [giveaway,         setGiveaway]         = useState<GiveawayEntries | null>(null);
   const [preferredFillLevel, setPreferredFillLevel] = useState<number | null>(null);
   const [monthlyFuelBudget,  setMonthlyFuelBudget]  = useState('');
+  const [budgetHighlight,    setBudgetHighlight]    = useState(false);
+  const budgetSectionRef = useRef<HTMLDivElement>(null);
   const [fleetCompanyName, setFleetCompanyName] = useState('');
   const [fleetLogoUrl,     setFleetLogoUrl]     = useState('');
   const [fleetSaved,       setFleetSaved]       = useState(false);
@@ -214,6 +216,37 @@ export default function SettingsPage() {
     }
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  // Auto-scroll to preferences + flash the budget section when arriving via ?tab=preferences
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('tab') !== 'preferences') return;
+
+    // Wait for session + refs to settle before scrolling
+    const scrollTimer = setTimeout(() => {
+      const el = sectionRefs.current['preferences'];
+      if (!el) return;
+      const headerH = (fixedHeaderRef.current?.offsetHeight ?? 112) + 8;
+      const top = el.getBoundingClientRect().top + window.scrollY - headerH;
+      window.scrollTo({ top, behavior: 'smooth' });
+      setActiveTab('preferences');
+
+      // Flash the budget section 3× after the scroll lands
+      const flashTimer = setTimeout(() => {
+        let count = 0;
+        const interval = setInterval(() => {
+          setBudgetHighlight((v) => !v);
+          count++;
+          if (count >= 6) clearInterval(interval); // 3 on + 3 off = 6 toggles
+        }, 380);
+      }, 700);
+      return () => clearTimeout(flashTimer);
+    }, 300);
+
+    return () => clearTimeout(scrollTimer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   /** Render the positioned image to a 128×128 canvas and save. */
@@ -1264,9 +1297,16 @@ export default function SettingsPage() {
           </div>
 
           {/* Monthly fuel budget */}
-          <div className="space-y-2 pt-3 border-t border-slate-100 dark:border-slate-700">
+          <div
+            ref={budgetSectionRef}
+            className={`space-y-2 pt-3 border-t border-slate-100 dark:border-slate-700 rounded-xl
+                        transition-all duration-300
+                        ${budgetHighlight ? 'bg-teal-50 dark:bg-teal-900/20 ring-2 ring-brand-teal ring-offset-2 px-3 -mx-3' : ''}`}
+          >
             <div>
-              <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Monthly fuel budget</p>
+              <p className={`text-sm font-semibold transition-colors duration-300
+                             ${budgetHighlight ? 'text-brand-teal' : 'text-slate-700 dark:text-slate-200'}`}>
+                Monthly Fuel Budget</p>
               <p className="text-xs text-slate-400 mt-0.5">
                 Track your spend against a monthly target. Shown on your home screen.
               </p>
