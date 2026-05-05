@@ -25,8 +25,9 @@ yarn-error.log*
 
 # Data — local JSON store (never commit real user data)
 data/*.json
-# But announcements.json is config, not user data — keep it in git
+# Config/seed data (not user data) — keep in git so Railway deploys have them
 !data/announcements.json
+!data/campaign-placements.json
 
 # OS
 Thumbs.db
