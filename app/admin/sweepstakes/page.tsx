@@ -23,6 +23,7 @@ interface DrawRecord {
   totalEntries: number;
   drawnAt:      string;
   notes:        string | null;
+  claimedAt:    string | null;
 }
 
 interface PrizeTier {
@@ -469,16 +470,37 @@ export default function SweepstakesAdminPage() {
             </p>
             <div className="divide-y divide-slate-50">
               {history.map((d) => (
-                <div key={d.id} className="px-5 py-3 flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-bold text-slate-700">{fmtMonth(d.month)}</p>
-                    <p className="text-xs text-slate-600">{d.winnerName} · {d.winnerEmail}</p>
-                    {d.notes && <p className="text-[10px] text-slate-500 italic mt-0.5">{d.notes}</p>}
+                <div key={d.id} className="px-5 py-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-bold text-slate-700">{fmtMonth(d.month)}</p>
+                      <p className="text-xs text-slate-600">{d.winnerName} · {d.winnerEmail}</p>
+                      {d.notes && <p className="text-[10px] text-slate-500 italic mt-0.5">{d.notes}</p>}
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] text-slate-400">{new Date(d.drawnAt).toLocaleDateString()}</p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-[11px] font-bold text-amber-600">{d.entryCount} / {d.totalEntries}</p>
-                    <p className="text-[10px] text-slate-400">{new Date(d.drawnAt).toLocaleDateString()}</p>
-                  </div>
+                  {d.claimedAt ? (
+                    <p className="text-[10px] font-bold text-green-600">
+                      ✓ Confirmed receipt {new Date(d.claimedAt).toLocaleDateString()}
+                    </p>
+                  ) : (
+                    <button
+                      onClick={async () => {
+                        if (!confirm(`Mark ${d.winnerName} as having confirmed receipt for ${fmtMonth(d.month)}?`)) return;
+                        await fetch(`/api/admin/sweepstakes?month=${d.month}`, {
+                          method: 'PATCH',
+                          headers: { 'x-admin-password': savedPw },
+                        });
+                        await loadHistory(savedPw);
+                      }}
+                      className="text-[10px] font-bold text-amber-600 border border-amber-300
+                                 bg-amber-50 hover:bg-amber-100 rounded-lg px-2.5 py-1 transition-colors"
+                    >
+                      ⚠️ Awaiting confirmation — Mark Confirmed
+                    </button>
+                  )}
                 </div>
               ))}
             </div>

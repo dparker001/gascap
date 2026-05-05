@@ -342,6 +342,26 @@ export async function getDrawHistory() {
   return prisma.giveawayDraw.findMany({ orderBy: { drawnAt: 'desc' } });
 }
 
+/** Mark winner as having confirmed receipt of their prize */
+export async function markWinnerClaimed(month: string) {
+  return prisma.giveawayDraw.update({
+    where: { month },
+    data:  { claimedAt: new Date().toISOString() },
+  });
+}
+
+/**
+ * Return draws older than 14 days that have not been confirmed by the winner.
+ * Used by the daily cron to alert admin.
+ */
+export async function getUnclaimedDraws(): Promise<typeof draws> {
+  const cutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+  const draws  = await prisma.giveawayDraw.findMany({
+    where: { claimedAt: null, drawnAt: { lt: cutoff } },
+  });
+  return draws;
+}
+
 /** Entry count for a single user in the given month */
 export function entryCountForMonth(activeDays: string[], month: string): number {
   const prefix = `${month}-`;

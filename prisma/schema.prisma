@@ -124,6 +124,7 @@ model GiveawayDraw {
   totalEntries Int
   drawnAt      String
   notes        String?
+  claimedAt    String?  // set when winner confirms receipt; null = unclaimed
 }
 
 model DeletedAccountLog {

@@ -22,6 +22,7 @@ import {
   getDrawHistory,
   currentMonth,
   getCurrentPrizeTier,
+  markWinnerClaimed,
 } from '@/lib/giveaway';
 import { sendMail, winnerNotificationEmailHtml, nonWinnerNotificationEmailHtml } from '@/lib/email';
 
@@ -290,5 +291,24 @@ export async function POST(req: Request) {
     }
     console.error('[sweepstakes] draw error:', err);
     return NextResponse.json({ error: 'Draw failed.' }, { status: 500 });
+  }
+}
+
+/** PATCH /api/admin/sweepstakes?month=YYYY-MM — mark winner as confirmed */
+export async function PATCH(req: Request) {
+  const _auth = auth(req);
+  if (_auth === 'no-env') return NextResponse.json({ error: 'Misconfigured' }, { status: 503 });
+  if (_auth === 'wrong')  return NextResponse.json({ error: 'Unauthorized'  }, { status: 401 });
+
+  const month = new URL(req.url).searchParams.get('month');
+  if (!month || !/^\d{4}-\d{2}$/.test(month)) {
+    return NextResponse.json({ error: 'Valid month required (YYYY-MM)' }, { status: 400 });
+  }
+
+  try {
+    const draw = await markWinnerClaimed(month);
+    return NextResponse.json({ ok: true, claimedAt: draw.claimedAt });
+  } catch {
+    return NextResponse.json({ error: 'Draw not found' }, { status: 404 });
   }
 }

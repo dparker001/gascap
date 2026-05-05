@@ -56,6 +56,7 @@ function field(body: Record<string, unknown>, key: string): string {
 
 export async function POST(req: NextRequest) {
   if (!isAuthorized(req)) {
+    console.warn('[ghl-placement] 401 — missing or wrong WEBHOOK_SECRET. Check Railway env var and GHL webhook URL.');
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -63,21 +64,29 @@ export async function POST(req: NextRequest) {
   try {
     body = await req.json();
   } catch {
+    console.error('[ghl-placement] 400 — could not parse JSON body');
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
+
+  console.log('[ghl-placement] received body keys:', Object.keys(body).join(', '));
 
   const placardCode = field(body, 'placard_code');
   const stationName = field(body, 'station_name');
 
+  console.log(`[ghl-placement] placard_code="${placardCode}" station_name="${stationName}"`);
+
   if (!placardCode) {
+    console.error('[ghl-placement] 400 — placard_code missing. Check GHL field name mapping.');
     return NextResponse.json({ error: 'placard_code is required' }, { status: 400 });
   }
   if (!stationName) {
+    console.error('[ghl-placement] 400 — station_name missing. Check GHL field name mapping.');
     return NextResponse.json({ error: 'station_name is required' }, { status: 400 });
   }
 
   const placement = getPlacementByCode(placardCode);
   if (!placement) {
+    console.error(`[ghl-placement] 404 — no placement found for code: ${placardCode}`);
     return NextResponse.json(
       { error: `No placement found for code: ${placardCode}` },
       { status: 404 },
