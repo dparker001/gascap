@@ -236,10 +236,17 @@ ${brandHeader()}
 
           <!-- Body copy -->
           <p style="margin:0 0 16px;font-size:14px;color:#475569;line-height:1.65;">
-            A GasCap™ team member will reach out within&nbsp;<strong>7&nbsp;days</strong> with your
-            Visa prepaid card — use it at the pump or anywhere Visa is accepted — or a link to claim it digitally. Please reply to this email to confirm
-            you received it — if we don't hear back within&nbsp;<strong>14&nbsp;days</strong> we
-            may need to select an alternate winner per our official rules.
+            Your&nbsp;<strong>${prize} Visa prepaid card</strong> is on its way — check this inbox
+            for a separate email from our rewards partner with your digital claim link. It may take
+            up to&nbsp;<strong>24&nbsp;hours</strong> to arrive. Check your spam folder if you
+            don&apos;t see it.
+          </p>
+          <p style="margin:0 0 16px;font-size:14px;color:#475569;line-height:1.65;">
+            Please reply to this email to confirm you received your card. If we don&apos;t hear
+            back within&nbsp;<strong>14&nbsp;days</strong> we may need to select an alternate
+            winner per our
+            <a href="https://gascap.app/sweepstakes-rules"
+               style="color:#15a680;font-weight:600;">official rules</a>.
           </p>
           <p style="margin:0 0 24px;font-size:14px;color:#475569;line-height:1.65;">
             Questions? Email us any time at
