@@ -244,7 +244,7 @@ export default function GiveawayPage() {
           <p className="text-white font-black text-sm">How entries work</p>
           <div className="space-y-2.5">
             {[
-              { emoji: '📅', text: 'Each day you open GasCap™ earns 1 entry (up to 31/month)' },
+              { emoji: '📅', text: 'Each day you open GasCap™ or log a fill-up earns 1 entry (up to 31/month)' },
               { emoji: '⚡', text: '7-day streak = +2 · 30-day = +5 · 90-day = +10 · 180-day = +15 · 1-year = +20' },
               { emoji: '📈', text: 'More entries = better odds — streaks compound your edge' },
               { emoji: '🏆', text: 'One winner drawn on the 5th of each month' },

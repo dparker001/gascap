@@ -353,7 +353,7 @@ ${brandHeader(plan)}
           </p>
           <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
             ${[
-              ['📅', '<strong>Open GasCap™ every day</strong> — each active day earns 1 entry (up to 31/month)'],
+              ['📅', '<strong>Open GasCap™ or log a fill-up every day</strong> — each active day earns 1 entry (up to 31/month)'],
               ['⚡', '<strong>Build your streak</strong> — 7 days = +2 bonus · 30 days = +5 · 90 days = +10 · 180 days = +15 · 1 year = +20'],
               ['📈', '<strong>More entries = better odds</strong> — a full month of daily opens plus a streak can put you well ahead of the pool'],
             ].map(([emoji, text]) => `

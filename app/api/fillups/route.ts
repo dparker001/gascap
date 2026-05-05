@@ -19,7 +19,7 @@ import {
   type Fillup,
   type FillupPatch,
 } from '@/lib/fillups';
-import { findById, markMilestoneSent } from '@/lib/users';
+import { findById, markMilestoneSent, recordActivity } from '@/lib/users';
 import { sendMilestoneEmail }          from '@/lib/emailEngagement';
 
 function userId(session: Session | null) {
@@ -79,6 +79,10 @@ export async function POST(req: Request) {
   const { force: _force, ...saveBody } = body;
   const uid   = userId(session);
   const entry = addFillup(uid, saveBody);
+
+  // Mark today as an active day — ensures fill-up days count toward giveaway entries
+  // even if this is the only action the user takes. Fire-and-forget, non-blocking.
+  void recordActivity(uid, 'visit').catch(() => {});
 
   // Milestone checks — non-blocking so the 201 response is instant
   ;(async () => {
