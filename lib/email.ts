@@ -230,9 +230,7 @@ ${brandHeader()}
               <p style="margin:0 0 4px;font-size:11px;font-weight:800;color:#b45309;
                          text-transform:uppercase;letter-spacing:.08em;">Your Prize</p>
               <p style="margin:0;font-size:36px;font-weight:900;color:#1e2d4a;">${prize} Visa Prepaid Card</p>
-              <p style="margin:6px 0 0;font-size:12px;color:#92400e;">
-                ${entryCount}&nbsp;${entryCount === 1 ? 'entry' : 'entries'}&nbsp;·&nbsp;${monthLabel}
-              </p>
+              <p style="margin:6px 0 0;font-size:12px;color:#92400e;">${monthLabel}</p>
             </td></tr>
           </table>
 
@@ -334,25 +332,6 @@ ${brandHeader(plan)}
               <p style="margin:6px 0 0;font-size:12px;color:#166534;">
                 ${prize} Visa prepaid card
               </p>
-            </td></tr>
-          </table>
-
-          <!-- Personal stats -->
-          <table width="100%" cellpadding="0" cellspacing="0"
-                 style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;margin:0 0 24px;">
-            <tr><td style="padding:16px 20px;">
-              <p style="margin:0 0 10px;font-size:12px;font-weight:800;color:#64748b;
-                         text-transform:uppercase;letter-spacing:.06em;">Your ${monthLabel} Stats</p>
-              <table width="100%" cellpadding="0" cellspacing="0">
-                <tr>
-                  <td style="text-align:center;padding:8px;">
-                    <p style="margin:0;font-size:28px;font-weight:900;color:#1e2d4a;">${entryCount}</p>
-                    <p style="margin:2px 0 0;font-size:11px;color:#94a3b8;">
-                      ${entryCount === 1 ? 'entry' : 'entries'} this month
-                    </p>
-                  </td>
-                </tr>
-              </table>
             </td></tr>
           </table>
 
