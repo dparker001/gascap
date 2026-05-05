@@ -6,6 +6,29 @@ Versions follow **Semantic Versioning**: MAJOR.MINOR.PATCH
 
 ---
 
+## [v0.9.0] 2026-05-05 — Settings Polish + Gating Fixes + Branding
+
+### Changed
+- **Garage door directions** — Options simplified to **Roll Up** and **Open from Center** only. Legacy `slide-left` / `slide-right` values in localStorage are auto-migrated to `roll-up` on first load.
+- **Result card label** — Tank level banner on the calculation result card renamed from "Tank Level" to **"New Tank Level"** for clarity.
+- **"Powered by" branding** — Footer pill and all vNetCard Studio references updated to **"Powered by VNetCard™ - a SDVOSB"**.
+- **Referral QR code** — Button renamed from "Show QR Code" to **"Show referral QR code"** and moved to sit directly below the referral link in the Perks section, above the Ambassador link.
+- **Rotating tips setting removed** — The non-functional "Rotating tips" toggle in Preferences (which showed a static "On" badge with no handler) has been removed.
+
+### Fixed
+- **Settings scroll — budget deep-link** — Navigating to `/settings?tab=preferences` from the "Set Budget" quick-action now scrolls precisely to the Monthly Fuel Budget field using `requestAnimationFrame` + an 800 ms delay (was 300 ms), fixing incorrect positioning on mobile.
+- **Settings scroll — Preferences tab highlight** — Clicking the Preferences tab in the sticky header no longer loses its highlight mid-scroll. A `isProgrammaticScrollRef` lock suppresses the `onScroll` handler during smooth-scroll animation on desktop.
+
+### Gating
+- **Profile photo upload** — Crop/pan/zoom photo upload is now restricted to paid Pro, Fleet, and Pro trial members. Free users see the color avatar picker only.
+- **Fuel summaries** — Fuel summary stats widget is now shown to Pro and Fleet members only.
+- **GasCaptains™ community link** — Gated to **paid Pro and Fleet** members only (Pro trial explicitly excluded). Non-qualifying users see a locked row with a "⭐ Pro & Fleet" badge. Paid members see an active link plus a 🚧 "community actively being built" note.
+
+### Ops / Infrastructure
+- **verify-reminder cron** — Now logs every send and failure to the `EmailLog` table (`type: 'verify-reminder'`), matching the pattern used by all other cron routes. "Verify Reminder" label and sky-blue badge added to the admin email log panel.
+
+---
+
 ## [v0.8.0] 2026-04-19 — MPG Insight Card + Referral Hardening + Onboarding
 
 ### Added

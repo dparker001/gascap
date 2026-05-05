@@ -32,8 +32,8 @@ A: Yes — the core calculators are free forever, no credit card required. There
 **Q: Who built GasCap™?**
 A: GasCap™ is owned and operated by Gas Capacity LLC, a registered Florida LLC. For business or legal inquiries, contact admin@gascap.app.
 
-**Q: What does "Powered by VNetCard™" mean?**
-A: GasCap™ is built by the same team behind VNetCard™, a digital business card platform. The badge is just a credit to the parent product. VNetCard™ has no access to your GasCap™ account or data.
+**Q: What does "Powered by VNetCard™ - a SDVOSB" mean?**
+A: GasCap™ is built by the same team behind VNetCard™, a Service-Disabled Veteran-Owned Small Business (SDVOSB) and digital business card platform. The badge in the footer is a credit to the parent product. VNetCard™ has no access to your GasCap™ account or data.
 
 ---
 

@@ -433,8 +433,8 @@ const SECTIONS = [
     title: 'ℹ️ About',
     items: [
       {
-        q: 'What does "Powered by VNetCard™" mean in the footer?',
-        a: 'GasCap™ is built and operated by the same team behind VNetCard™ — a digital business card platform. The "Powered by VNetCard™" badge in the footer is simply a nod to the parent product. VNetCard™ has no access to your GasCap™ account or data. If you\'re curious about VNetCard™, visit vnetcard.com.',
+        q: 'What does "Powered by VNetCard™ - a SDVOSB" mean in the footer?',
+        a: 'GasCap™ is built and operated by the same team behind VNetCard™ — a Service-Disabled Veteran-Owned Small Business (SDVOSB) and digital business card platform. The badge in the footer is simply a nod to the parent product. VNetCard™ has no access to your GasCap™ account or data. If you\'re curious about VNetCard™, visit vnetcard.com.',
       },
       {
         q: 'Who is Gas Capacity LLC?',
