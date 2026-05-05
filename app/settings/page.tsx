@@ -277,8 +277,10 @@ export default function SettingsPage() {
     </div>;
   }
 
-  const name = displayName || session.user?.name || 'User';
-  const plan = livePlan ?? session.user?.plan ?? 'free';
+  const name         = displayName || session.user?.name || 'User';
+  const plan         = livePlan ?? session.user?.plan ?? 'free';
+  const isProTrial   = (session.user as { isProTrial?: boolean })?.isProTrial ?? false;
+  const canUploadPhoto = plan === 'pro' || plan === 'fleet' || isProTrial;
 
   const planConfig = {
     free:  { label: 'Free',  bg: 'bg-slate-100',   text: 'text-slate-600', border: 'border-slate-200' },
@@ -626,8 +628,8 @@ export default function SettingsPage() {
               ) : (
                 <Avatar name={name} color={avatarColor} />
               )}
-              {/* Remove-photo X — appears on hover when photo is set */}
-              {avatarUrl && (
+              {/* Remove-photo X — Pro/Fleet only, appears on hover when photo is set */}
+              {avatarUrl && canUploadPhoto && (
                 <button
                   onClick={removePhoto}
                   className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 hover:bg-red-600
@@ -640,26 +642,46 @@ export default function SettingsPage() {
               )}
             </div>
 
-            {/* Hidden file input */}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              className="sr-only"
-              onChange={handlePhotoUpload}
-            />
-
-            {/* Upload / change button */}
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="text-xs font-semibold text-brand-teal hover:text-brand-dark
-                         transition-colors flex items-center gap-1"
-            >
-              <span aria-hidden="true">📷</span>
-              {avatarUrl ? 'Change photo' : 'Upload a photo'}
-            </button>
-            <p className="text-[10px] text-slate-400 -mt-1">JPG or PNG · drag &amp; pinch to position</p>
+            {canUploadPhoto ? (
+              <>
+                {/* Hidden file input */}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="sr-only"
+                  onChange={handlePhotoUpload}
+                />
+                {/* Upload / change button */}
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="text-xs font-semibold text-brand-teal hover:text-brand-dark
+                             transition-colors flex items-center gap-1"
+                >
+                  <span aria-hidden="true">📷</span>
+                  {avatarUrl ? 'Change photo' : 'Upload a photo'}
+                </button>
+                <p className="text-[10px] text-slate-400 -mt-1">JPG or PNG · drag &amp; pinch to position</p>
+              </>
+            ) : (
+              /* Free-user locked nudge */
+              <a
+                href="/upgrade"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full
+                           bg-amber-50 border border-amber-200 hover:border-amber-300
+                           transition-colors group/photo"
+              >
+                <span className="text-[11px]" aria-hidden="true">🔒</span>
+                <span className="text-[11px] font-bold text-amber-700 group-hover/photo:text-amber-800">
+                  Photo upload · Pro
+                </span>
+                <svg viewBox="0 0 12 12" className="w-2.5 h-2.5 text-amber-500 flex-shrink-0"
+                     fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <path d="M2 6h8M6 2l4 4-4 4"/>
+                </svg>
+              </a>
+            )}
 
             {/* Color picker — only shown when no photo is set */}
             {!avatarUrl && (
