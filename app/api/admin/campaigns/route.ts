@@ -99,7 +99,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const created = createPlacement({
-      campaign:        (body.campaign as string)        || 'Know Before You Fill Up',
+      campaign:        (body.campaign as string)        || 'Know Before You Go',
       station,
       address:         body.address         as string | undefined,
       city:            body.city            as string | undefined,

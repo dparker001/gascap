@@ -3,7 +3,7 @@
 /**
  * Admin → Campaigns dashboard
  *
- * Tracks the "Know Before You Fill Up" QR pilot:
+ * Tracks the "Know Before You Go" QR pilot:
  *   - Per-placement scan/funnel/conversion stats
  *   - Grouped views (by station, placement, headline variant, city)
  *   - Daily time-series for the last 30 days
@@ -124,7 +124,7 @@ const date = (s?: string) => (s ? new Date(s).toLocaleString() : '—');
 // ── Page ─────────────────────────────────────────────────────────────────
 
 const HEADLINES = [
-  { value: 'A-KnowBefore',   label: 'A · Know Before You Fill Up™' },
+  { value: 'A-KnowBefore',   label: 'A · Know Before You Go™' },
   { value: 'B-DontGuess',    label: 'B · Don\u2019t Guess at the Pump' },
   { value: 'C-StretchBudget',label: 'C · Stretch Your Fuel Budget Smarter' },
 ];
@@ -367,7 +367,7 @@ export default function CampaignsAdminPage() {
           <div>
             <h1 className="text-2xl font-bold text-slate-900">Campaign Analytics</h1>
             <p className="text-sm text-slate-500">
-              Know Before You Fill Up&trade; — QR placard pilot
+              Know Before You Go&trade; — QR placard pilot
             </p>
           </div>
           <div className="flex gap-2">

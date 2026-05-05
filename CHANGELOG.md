@@ -54,7 +54,7 @@ Versions follow **Semantic Versioning**: MAJOR.MINOR.PATCH
 - **Driver attribution** — `driverLabel` field on every fillup. Fleet users see a driver picker in the Log a Fill-Up form.
 - **Driver roster API** (`/api/fleet/drivers` GET/POST/DELETE) — manage up to 10 drivers. Removing a driver preserves historical fillup labels (audit trail).
 - **Fleet Dashboard link** in Settings for Fleet plan users.
-- **Fleet trial logic** in Stripe checkout — carries over remaining Pro trial days when upgrading mid-trial; gives 14-day trial to new Fleet signups; no trial for paid Pro upgraders.
+- **Fleet trial logic** in Stripe checkout — carries over remaining Pro trial days when upgrading mid-trial; gives 30-day trial to new Fleet signups; no trial for paid Pro upgraders.
 - FillupHistory: driver filter pill row + driver badge on each fillup row.
 - `fleetDrivers String[]` field added to Prisma User model and pushed to Railway PostgreSQL.
 

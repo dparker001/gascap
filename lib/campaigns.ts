@@ -1,5 +1,5 @@
 /**
- * Campaign analytics store — "Know Before You Fill Up" pilot
+ * Campaign analytics store — "Know Before You Go" pilot
  *
  * Tracks the full QR → scan → visit → usage → conversion funnel for the
  * gas-station placard marketing campaign.
@@ -27,7 +27,7 @@ const EVENTS_FILE     = path.join(DATA_DIR, 'campaign-events.json');
 export interface Placement {
   id:              string;          // internal uuid
   code:            string;          // short code in the QR URL (e.g. "ORL001C")
-  campaign:        string;          // e.g. "Know Before You Fill Up"
+  campaign:        string;          // e.g. "Know Before You Go"
   station:         string;          // station name
   address?:        string;
   city?:           string;
@@ -178,7 +178,7 @@ export function createPlacement(input: Omit<Placement, 'id' | 'code' | 'createdA
   const row: Placement = {
     id:              uuid('plc'),
     code,
-    campaign:        input.campaign || 'Know Before You Fill Up',
+    campaign:        input.campaign || 'Know Before You Go',
     station:         input.station,
     address:         input.address,
     city:            input.city,
