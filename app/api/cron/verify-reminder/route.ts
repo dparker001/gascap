@@ -17,6 +17,7 @@ import { NextResponse }           from 'next/server';
 import { getUnverifiedUsersForReminder, markVerifyReminderSent } from '@/lib/users';
 import { createEmailVerifyToken }  from '@/lib/users';
 import { sendMail, verificationEmailHtml } from '@/lib/email';
+import { logEmail, logEmailError } from '@/lib/emailLog';
 
 const BASE_URL = process.env.NEXTAUTH_URL?.replace(/\/$/, '') ?? 'https://www.gascap.app';
 
@@ -48,6 +49,14 @@ export async function GET(req: Request) {
         ? 'Recuerda verificar tu correo de GasCap™'
         : 'Reminder: please verify your GasCap™ email';
 
+      const logEntry = {
+        userId:    user.id,
+        userEmail: user.email,
+        userName:  user.name,
+        type:      'verify-reminder',
+        subject,
+      };
+
       await sendMail({
         to:      user.email,
         subject,
@@ -58,9 +67,14 @@ export async function GET(req: Request) {
       });
 
       await markVerifyReminderSent(user.id);
+      await logEmail(logEntry);
       sent++;
     } catch (err) {
       console.error(`[verify-reminder] Failed for ${user.email}:`, err);
+      await logEmailError(
+        { userId: user.id, userEmail: user.email, userName: user.name, type: 'verify-reminder', subject: '' },
+        err,
+      ).catch(() => {});
       errors++;
     }
   }

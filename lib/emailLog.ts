@@ -138,6 +138,7 @@ export function emailTypeLabel(type: string): string {
     'trial-ended':         'Trial Ended',
     'early-upgrade-offer': 'Early Upgrade',
     'comp-pro-for-life':   'Comp Pro Life',
+    'verify-reminder':     'Verify Reminder',
   };
   return labels[type] ?? type;
 }
@@ -153,5 +154,6 @@ export function emailTypeBadgeColor(type: string): string {
   if (type === 'trial-ended')          return 'bg-red-100 text-red-600';
   if (type === 'early-upgrade-offer')  return 'bg-orange-100 text-orange-700';
   if (type === 'comp-pro-for-life')    return 'bg-teal-100 text-teal-800';
+  if (type === 'verify-reminder')      return 'bg-sky-100 text-sky-700';
   return 'bg-slate-100 text-slate-600';
 }
