@@ -1058,16 +1058,29 @@ export default function SettingsPage() {
               <span className="text-slate-300">→</span>
             </Link>
 
-            {/* GasCaptains™ community link */}
-            <a
-              href={process.env.NEXT_PUBLIC_GASCAPTAINS_URL ?? 'https://www.facebook.com/groups/gascaptains'}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-between text-xs font-bold text-slate-500 hover:text-[#005F4A] transition-colors py-1"
-            >
-              <span>🏴 Join GasCaptains™ — Members Community</span>
-              <span className="text-slate-300">→</span>
-            </a>
+            {/* GasCaptains™ community link — paid Pro & Fleet only */}
+            {(plan === 'pro' || plan === 'fleet') ? (
+              <div className="space-y-1">
+                <a
+                  href={process.env.NEXT_PUBLIC_GASCAPTAINS_URL ?? 'https://www.facebook.com/groups/gascaptains'}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-between text-xs font-bold text-slate-500 hover:text-[#005F4A] transition-colors py-1"
+                >
+                  <span>🏴 Join GasCaptains™ — Members Community</span>
+                  <span className="text-slate-300">→</span>
+                </a>
+                <p className="text-[10px] text-amber-600 font-semibold">🚧 Community is actively being built — more coming soon</p>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between py-1">
+                <div>
+                  <p className="text-xs font-bold text-slate-400">🏴 GasCaptains™ — Members Community</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">Exclusive community for paid Pro &amp; Fleet members</p>
+                </div>
+                <span className="text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full whitespace-nowrap ml-2">⭐ Pro &amp; Fleet</span>
+              </div>
+            )}
 
             {/* QR code share */}
             <div>
