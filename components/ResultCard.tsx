@@ -256,7 +256,7 @@ export function TargetResultCard({ result, vehicleName, vehicleId, vehicleOdomet
 
       {/* ── Visual tank gauge ── */}
       <div className="card-bordered">
-        <p className="section-eyebrow">Tank Level</p>
+        <p className="section-eyebrow">New Tank Level</p>
         <TankGauge currentPercent={currentPercent} targetPercent={targetPercent} />
       </div>
 
@@ -394,7 +394,7 @@ export function BudgetResultCard({ result, pricePerGallon, vehicleName, vehicleI
 
       {/* ── Visual tank gauge ── */}
       <div className="card-bordered">
-        <p className="section-eyebrow">Tank Level</p>
+        <p className="section-eyebrow">New Tank Level</p>
         <TankGauge currentPercent={currentPercent} targetPercent={resultingPercent} />
       </div>
 
