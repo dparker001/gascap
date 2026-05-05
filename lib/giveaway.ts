@@ -114,12 +114,17 @@ export function nextTierForCount(count: number): PrizeTier | null {
  */
 export async function getCurrentPrizeTier(): Promise<{
   subscriberCount: number;
+  trialCount:      number;
   currentTier:     PrizeTier;
   nextTier:        PrizeTier | null;
 }> {
-  const subscriberCount = await countPayingSubscribers();
+  const [subscriberCount, trialCount] = await Promise.all([
+    countPayingSubscribers(),
+    prisma.user.count({ where: { plan: 'trial' } }),
+  ]);
   return {
     subscriberCount,
+    trialCount,
     currentTier: tierForCount(subscriberCount),
     nextTier:    nextTierForCount(subscriberCount),
   };

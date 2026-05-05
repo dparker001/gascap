@@ -72,6 +72,7 @@ export async function GET(req: Request) {
     entrantCount:    entrants.length,
     prize:           tierInfo.currentTier.prize,
     subscriberCount: tierInfo.subscriberCount,
+    trialCount:      tierInfo.trialCount,
     currentTier:     tierInfo.currentTier,
     nextTier:        tierInfo.nextTier,
   });

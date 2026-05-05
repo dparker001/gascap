@@ -84,6 +84,7 @@ export default function SweepstakesAdminPage() {
 
   const [prize,           setPrize]           = useState('$25');
   const [subscriberCount, setSubscriberCount] = useState<number | null>(null);
+  const [trialCount,      setTrialCount]      = useState<number | null>(null);
   const [currentTier,     setCurrentTier]     = useState<PrizeTier | null>(null);
   const [nextTier,        setNextTier]        = useState<PrizeTier | null>(null);
 
@@ -127,6 +128,7 @@ export default function SweepstakesAdminPage() {
       totalEntries:    number;
       prize?:          string;
       subscriberCount?: number;
+      trialCount?:     number;
       currentTier?:    PrizeTier;
       nextTier?:       PrizeTier | null;
     };
@@ -134,6 +136,7 @@ export default function SweepstakesAdminPage() {
     setTotalEntries(data.totalEntries ?? 0);
     if (data.prize)           setPrize(data.prize);
     if (data.subscriberCount !== undefined) setSubscriberCount(data.subscriberCount);
+    if (data.trialCount      !== undefined) setTrialCount(data.trialCount);
     if (data.currentTier)     setCurrentTier(data.currentTier);
     setNextTier(data.nextTier ?? null);
     setPreviewed(true);
@@ -291,8 +294,13 @@ export default function SweepstakesAdminPage() {
               {nextTier && subscriberCount !== null && (
                 <div className="space-y-1">
                   <div className="flex justify-between text-[10px] text-slate-500">
-                    <span>{subscriberCount} paying member{subscriberCount !== 1 ? 's' : ''}</span>
-                    <span>{nextTier.minSubscribers - subscriberCount} to go → {nextTier.prize}</span>
+                    <span>
+                      {subscriberCount} paying
+                      {trialCount !== null && (
+                        <span className="text-amber-600"> · {trialCount} trial</span>
+                      )}
+                    </span>
+                    <span>{nextTier.minSubscribers - subscriberCount} paying to go → {nextTier.prize}</span>
                   </div>
                   <div className="h-2 bg-amber-100 rounded-full overflow-hidden">
                     <div
