@@ -621,7 +621,7 @@
       + '</div>'
       // Powered by line
       + '<p style="font-family:Inter,sans-serif;font-size:10px;color:rgba(255,255,255,0.35);margin:0;">'
-      + 'Powered By vNetCard\u2122 - a SDVOSB</p>'
+      + 'Powered by vNetCard\u2122 - a SDVOSB</p>'
       + '<p style="font-family:Inter,sans-serif;font-size:10px;color:rgba(255,255,255,0.25);margin:4px 0 0;">&copy; ' + year + ' All rights reserved.</p>'
       + '</div>';
   }
