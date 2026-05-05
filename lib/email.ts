@@ -301,7 +301,12 @@ export function nonWinnerNotificationEmailHtml(
     'January','February','March','April','May','June',
     'July','August','September','October','November','December',
   ];
-  const monthLabel = `${MONTH_NAMES[parseInt(mo, 10) - 1]} ${y}`;
+  const monthLabel  = `${MONTH_NAMES[parseInt(mo, 10) - 1]} ${y}`;
+  const mMoN        = parseInt(mo, 10);
+  const mYearN      = parseInt(y, 10);
+  const eMo         = mMoN === 12 ? 1 : mMoN + 1;
+  const eYear       = mMoN === 12 ? mYearN + 1 : mYearN;
+  const nextEntryMonth = `${MONTH_NAMES[eMo - 1]} ${eYear}`;
 
   return `
 <!DOCTYPE html>
@@ -337,7 +342,7 @@ ${brandHeader(plan)}
 
           <!-- How to earn more -->
           <p style="margin:0 0 12px;font-size:14px;font-weight:900;color:#1e2d4a;">
-            Stack more entries for ${nextDrawMonth} →
+            Stack more entries in ${nextEntryMonth} →
           </p>
           <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
             ${[
