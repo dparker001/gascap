@@ -1456,7 +1456,7 @@ export default function SettingsPage() {
               <div className="space-y-2">
                 <p className="text-xs font-semibold text-slate-600">Opening Direction</p>
                 <div className="flex rounded-xl overflow-hidden border border-slate-200">
-                  {(['roll-up', 'slide-left', 'slide-right'] as DoorDirection[]).map((dir) => (
+                  {(['roll-up', 'center'] as DoorDirection[]).map((dir) => (
                     <button
                       key={dir}
                       onClick={() => setDoorDirection(dir)}

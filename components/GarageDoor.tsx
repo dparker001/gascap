@@ -10,7 +10,7 @@
  * automatically the next day — giving every daily visit a fresh personalized reveal.
  *
  * Door styles:  Classic · Modern · Wood · Steel
- * Open directions: Roll Up · Slide Left · Slide Right
+ * Open directions: Roll Up · Open from Center (split)
  *
  * Vehicle silhouettes: up to 3 body-type-matched SVG silhouettes etched onto
  * the closed door, inferred from each vehicle's name / make / model.
@@ -32,9 +32,8 @@ export const DOOR_STYLE_LABELS: Record<DoorStyle, string> = {
 };
 
 export const DOOR_DIRECTION_LABELS: Record<DoorDirection, string> = {
-  'roll-up':    '↑ Roll Up',
-  'slide-left': '← Slide Left',
-  'slide-right': '→ Slide Right',
+  'roll-up': '↑ Roll Up',
+  'center':  '↔ Open from Center',
 };
 
 // ── Style configs ─────────────────────────────────────────────────────────────
@@ -105,11 +104,7 @@ const STYLE_CONFIGS: Record<DoorStyle, StyleConfig> = {
   },
 };
 
-const OPEN_TRANSFORMS: Record<DoorDirection, string> = {
-  'roll-up':    'translateY(-102%)',
-  'slide-left': 'translateX(-102%)',
-  'slide-right': 'translateX(102%)',
-};
+const ROLL_UP_TRANSFORM = 'translateY(-102%)';
 
 const PANEL_COUNT = 5;
 
@@ -383,30 +378,81 @@ export function GarageDoor({
 
   if (!isPro || !mounted) return <>{children}</>;
 
-  const openTransform = OPEN_TRANSFORMS[doorDirection];
+  const transition    = isOpen ? 'transform 1.6s cubic-bezier(0.22, 1, 0.36, 1)' : 'none';
+  const pointerEvents = (isOpen || locked) ? 'none' : 'auto';
+  const clickHandler  = locked ? undefined : handleOpen;
+  const keyHandler    = locked ? undefined : (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') handleOpen();
+  };
 
   return (
     <div ref={wrapperRef} className="relative overflow-hidden rounded-xl">
       {children}
       <BonusToast show={showToast} bonusEntries={bonusEntries} totalDays={totalDays} />
 
-      {/* Door overlay — click to open (disabled when locked) */}
-      <div
-        role={locked ? 'img' : 'button'}
-        aria-label={locked ? 'Garage locked — save a vehicle to unlock' : 'Open garage'}
-        tabIndex={locked ? -1 : 0}
-        className="absolute inset-0 z-10"
-        onClick={locked ? undefined : handleOpen}
-        onKeyDown={locked ? undefined : (e) => { if (e.key === 'Enter' || e.key === ' ') handleOpen(); }}
-        style={{
-          transform:     isOpen ? openTransform : 'translate(0, 0)',
-          transition:    isOpen ? 'transform 1.6s cubic-bezier(0.22, 1, 0.36, 1)' : 'none',
-          willChange:    'transform',
-          pointerEvents: isOpen || locked ? 'none' : 'auto',
-        }}
-      >
-        <DoorFace style={doorStyle} nameLabel={nameLabel} locked={locked} />
-      </div>
+      {doorDirection === 'center' ? (
+        /* ── Open from center: two half-panels slide apart ── */
+        <>
+          {/* Left half */}
+          <div
+            role={locked ? 'img' : 'button'}
+            aria-label={locked ? 'Garage locked — save a vehicle to unlock' : 'Open garage'}
+            tabIndex={locked ? -1 : 0}
+            onClick={clickHandler}
+            onKeyDown={keyHandler}
+            style={{
+              position: 'absolute', left: 0, top: 0, bottom: 0, width: '50%',
+              overflow: 'hidden', zIndex: 10,
+              transform:     isOpen ? 'translateX(-102%)' : 'none',
+              transition,
+              willChange:    'transform',
+              pointerEvents,
+            }}
+          >
+            {/* Inner div is full door width; overflow:hidden clips to left half */}
+            <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '200%' }}>
+              <DoorFace style={doorStyle} nameLabel={nameLabel} locked={locked} />
+            </div>
+          </div>
+
+          {/* Right half */}
+          <div
+            aria-hidden="true"
+            onClick={clickHandler}
+            style={{
+              position: 'absolute', right: 0, top: 0, bottom: 0, width: '50%',
+              overflow: 'hidden', zIndex: 10,
+              transform:     isOpen ? 'translateX(102%)' : 'none',
+              transition,
+              willChange:    'transform',
+              pointerEvents,
+            }}
+          >
+            {/* Inner div is full door width, right-anchored; overflow:hidden clips to right half */}
+            <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: '200%' }}>
+              <DoorFace style={doorStyle} nameLabel={nameLabel} locked={locked} />
+            </div>
+          </div>
+        </>
+      ) : (
+        /* ── Roll up: single panel slides upward ── */
+        <div
+          role={locked ? 'img' : 'button'}
+          aria-label={locked ? 'Garage locked — save a vehicle to unlock' : 'Open garage'}
+          tabIndex={locked ? -1 : 0}
+          className="absolute inset-0 z-10"
+          onClick={clickHandler}
+          onKeyDown={keyHandler}
+          style={{
+            transform:     isOpen ? ROLL_UP_TRANSFORM : 'translate(0,0)',
+            transition,
+            willChange:    'transform',
+            pointerEvents,
+          }}
+        >
+          <DoorFace style={doorStyle} nameLabel={nameLabel} locked={locked} />
+        </div>
+      )}
     </div>
   );
 }
