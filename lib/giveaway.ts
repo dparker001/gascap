@@ -226,6 +226,7 @@ export async function getEligibleEntrants(month: string): Promise<EntrantRow[]> 
     where: {
       plan:          { in: ['pro', 'fleet'] },
       isTestAccount: { not: true },   // exclude test/internal accounts from draws
+      emailVerified: true,            // only verified emails are eligible to win
     },
     select: {
       id: true, name: true, email: true, plan: true,

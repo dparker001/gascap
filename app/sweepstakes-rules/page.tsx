@@ -62,6 +62,11 @@ export default function SweepstakesRulesPage() {
               Void where prohibited by law.
             </p>
             <p className="text-sm text-slate-600 leading-relaxed">
+              <strong>Verified Email Requirement:</strong> Entrants must have a verified GasCap™
+              account email address to be eligible to win. Entries accumulated by accounts with
+              unverified email addresses will be excluded from the drawing pool.
+            </p>
+            <p className="text-sm text-slate-600 leading-relaxed">
               <strong>Winner Frequency Restriction:</strong> A person who has won a prize in the
               immediately preceding calendar month is not eligible to win again in the current Entry
               Month. Additionally, a person may not win more than once per calendar quarter
