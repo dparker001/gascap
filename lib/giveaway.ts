@@ -87,10 +87,10 @@ export function nextStreakTier(streak: number): StreakBonusTier | null {
   return STREAK_BONUS_TIERS.find((t) => t.minStreak > streak) ?? null;
 }
 
-/** Count of currently active paying Pro + Fleet subscribers */
+/** Count of currently active paying Pro + Fleet subscribers (excludes trial members) */
 export async function countPayingSubscribers(): Promise<number> {
   return prisma.user.count({
-    where: { plan: { in: ['pro', 'fleet'] } },
+    where: { plan: { in: ['pro', 'fleet'] }, isProTrial: false },
   });
 }
 
@@ -120,7 +120,7 @@ export async function getCurrentPrizeTier(): Promise<{
 }> {
   const [subscriberCount, trialCount] = await Promise.all([
     countPayingSubscribers(),
-    prisma.user.count({ where: { plan: 'trial' } }),
+    prisma.user.count({ where: { plan: 'pro', isProTrial: true } }),
   ]);
   return {
     subscriberCount,
