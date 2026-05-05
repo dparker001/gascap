@@ -31,19 +31,39 @@ function isAuthorized(req: NextRequest): boolean {
   return fromQuery === secret || fromHeader === secret;
 }
 
-/** Pull a field from either a flat JSON body or GHL's nested customData array. */
+/**
+ * GHL sends form field display labels as keys (e.g. "Placard Code" not "placard_code").
+ * This map lets us find values regardless of which key format GHL uses.
+ */
+const LABEL_ALIASES: Record<string, string[]> = {
+  placard_code:  ['Placard Code'],
+  station_name:  ['Station Name'],
+  address:       ['address1', 'Address'],
+  city:          ['city', 'City'],
+  contact_name:  ['full_name', 'Full Name'],
+  contact_email: ['email', 'Email'],
+  contact_phone: ['phone', 'Phone'],
+  notes:         ['Notes / Any extra details', 'Notes'],
+};
+
+/** Pull a field from GHL's webhook body — handles label keys, snake_case, customData array, and nested contact. */
 function field(body: Record<string, unknown>, key: string): string {
-  // Flat format: { placard_code: "...", station_name: "..." }
+  // Exact snake_case key (flat format)
   if (typeof body[key] === 'string') return (body[key] as string).trim();
 
-  // GHL webhook format: { customData: [{ name: "placard_code", value: "..." }] }
+  // GHL label aliases (display name as key)
+  for (const alias of LABEL_ALIASES[key] ?? []) {
+    if (typeof body[alias] === 'string') return (body[alias] as string).trim();
+  }
+
+  // GHL customData array: [{ name: "placard_code", value: "..." }]
   const custom = body.customData as Array<{ name: string; value: string }> | undefined;
   if (Array.isArray(custom)) {
     const entry = custom.find((c) => c.name === key);
     if (entry?.value) return String(entry.value).trim();
   }
 
-  // GHL contact field format: { contact: { customField: { placard_code: "..." } } }
+  // GHL nested contact: { contact: { customField: { placard_code: "..." } } }
   const contact = body.contact as Record<string, unknown> | undefined;
   if (contact) {
     const cf = contact.customField as Record<string, string> | undefined;
