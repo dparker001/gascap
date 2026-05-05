@@ -852,7 +852,7 @@ export default function Home() {
                          bg-white dark:bg-slate-900 py-8 pb-24 px-4 text-center space-y-3">
         <div className="flex items-center justify-center gap-2">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/icon-base.svg" alt="" aria-hidden="true" className="w-8 h-8" />
+          <img src="/gascap-icon-raw.png" alt="" aria-hidden="true" className="h-9 w-auto object-contain" />
           <p className="font-black text-slate-700 dark:text-slate-200 text-lg">
             GasCap<sup className="text-brand-orange text-[10px] font-bold">™</sup>
           </p>

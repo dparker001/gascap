@@ -189,20 +189,22 @@ export default function SettingsPage() {
   const TABS = ALL_TABS.filter((t) => t.id !== 'fleet' || currentPlanForTabs === 'fleet');
 
   const [activeTab, setActiveTab] = useState<TabId>('profile');
-  const sectionRefs = useRef<Partial<Record<TabId, HTMLElement | null>>>({});
+  const sectionRefs    = useRef<Partial<Record<TabId, HTMLElement | null>>>({});
+  const fixedHeaderRef = useRef<HTMLDivElement>(null);
 
   function scrollToSection(id: TabId) {
-    const el = sectionRefs.current[id];
+    const el      = sectionRefs.current[id];
     if (!el) return;
-    const offset = 120; // sticky header (nav + tab bar) ≈ 112px + 8px breathing room
-    const top = el.getBoundingClientRect().top + window.scrollY - offset;
+    const headerH = (fixedHeaderRef.current?.offsetHeight ?? 112) + 8;
+    const top     = el.getBoundingClientRect().top + window.scrollY - headerH;
     window.scrollTo({ top, behavior: 'smooth' });
     setActiveTab(id);
   }
 
   useEffect(() => {
     function onScroll() {
-      const scrollY = window.scrollY + 120;
+      const headerH = (fixedHeaderRef.current?.offsetHeight ?? 112) + 8;
+      const scrollY = window.scrollY + headerH;
       let current: TabId = 'profile';
       for (const { id } of TABS) {
         const el = sectionRefs.current[id];
@@ -263,6 +265,29 @@ export default function SettingsPage() {
     el.addEventListener('wheel', handler, { passive: false });
     return () => el.removeEventListener('wheel', handler);
   }, [cropModalOpen, cropScale, cropOffset, cropImgSize]);
+
+  /** Open crop modal instead of auto-cropping. */
+  const handlePhotoUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const src = ev.target?.result as string;
+      const img = new Image();
+      img.onload = () => {
+        const CONTAINER = 280;
+        const minScale  = Math.max(CONTAINER / img.width, CONTAINER / img.height);
+        setCropSrc(src);
+        setCropImgSize({ w: img.width, h: img.height });
+        setCropScale(minScale);
+        setCropOffset({ x: 0, y: 0 });
+        setCropModalOpen(true);
+      };
+      img.src = src;
+    };
+    reader.readAsDataURL(file);
+  }, []);
 
   if (status === 'loading') {
     return <div className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -373,30 +398,6 @@ export default function SettingsPage() {
     };
   }
 
-  /** Open crop modal instead of auto-cropping. */
-  const handlePhotoUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    e.target.value = '';
-
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const src = ev.target?.result as string;
-      const img = new Image();
-      img.onload = () => {
-        const CONTAINER = 280;
-        // Start at minimum scale that fully covers the circle
-        const minScale = Math.max(CONTAINER / img.width, CONTAINER / img.height);
-        setCropSrc(src);
-        setCropImgSize({ w: img.width, h: img.height });
-        setCropScale(minScale);
-        setCropOffset({ x: 0, y: 0 });
-        setCropModalOpen(true);
-      };
-      img.src = src;
-    };
-    reader.readAsDataURL(file);
-  }, []);
 
   function removePhoto() {
     setAvatarUrl('');
@@ -571,7 +572,7 @@ export default function SettingsPage() {
       {/* ─────────────────────────────────────────────────────────────────── */}
 
       {/* Fixed header + tab bar — position:fixed guarantees it never scrolls away */}
-      <div className="fixed inset-x-0 top-0 z-20 shadow-md">
+      <div ref={fixedHeaderRef} className="fixed inset-x-0 top-0 z-20 shadow-md">
         {/* Header */}
         <div className="bg-navy-700 px-5 pt-4 pb-3">
           <div className="max-w-lg mx-auto flex items-center gap-4">

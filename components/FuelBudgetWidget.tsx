@@ -92,8 +92,8 @@ export default function FuelBudgetWidget() {
   }, [session]);
 
   if (!session || loading) return null;
-  // Hide the widget entirely if there's no data at all and not a Pro user
-  if (!showFull && (!stats || stats.fillupCount === 0)) return null;
+  // Fuel summary is a Pro/Fleet feature — hide entirely for free users
+  if (!showFull) return null;
 
   const hasBudget = budget !== null && budget > 0;
   const pct       = hasBudget ? clamp((monthSpend / budget) * 100) : 0;
@@ -234,27 +234,6 @@ export default function FuelBudgetWidget() {
             </div>
           )}
 
-          {/* ── Free-user upsell (only shown if no full access) ── */}
-          {!showFull && stats && stats.fillupCount > 0 && (
-            <a href="/upgrade"
-               className="mt-3 flex items-center gap-2 bg-amber-50 dark:bg-amber-900/20
-                          border border-amber-200 dark:border-amber-800
-                          rounded-xl px-3 py-2.5 hover:border-amber-300 transition-colors">
-              <span className="text-base flex-shrink-0" aria-hidden="true">⭐</span>
-              <div className="flex-1 min-w-0">
-                <p className="text-[11px] font-black text-amber-800 dark:text-amber-300 leading-tight">
-                  Unlock fuel budget tracking
-                </p>
-                <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-0.5">
-                  Set monthly spending goals and get alerts — Pro from $4.99/mo
-                </p>
-              </div>
-              <svg viewBox="0 0 12 12" className="w-3 h-3 flex-shrink-0 text-amber-500"
-                   fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <path d="M2 6h8M6 2l4 4-4 4"/>
-              </svg>
-            </a>
-          )}
 
         </div>
       </div>
