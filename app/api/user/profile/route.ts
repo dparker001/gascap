@@ -15,10 +15,12 @@ export async function GET(_req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
   return NextResponse.json({
-    displayName: user.displayName ?? '',
-    phone:       user.phone       ?? '',
-    smsOptIn:    user.smsOptIn    ?? false,
-    avatarUrl:   (user as { avatarUrl?: string | null }).avatarUrl ?? '',
+    displayName:        user.displayName ?? '',
+    phone:              user.phone       ?? '',
+    smsOptIn:           user.smsOptIn    ?? false,
+    avatarUrl:          (user as { avatarUrl?: string | null }).avatarUrl ?? '',
+    preferredFillLevel: (user as { preferredFillLevel?: number | null }).preferredFillLevel ?? null,
+    monthlyFuelBudget:  (user as { monthlyFuelBudget?: number | null }).monthlyFuelBudget   ?? null,
   });
 }
 
@@ -30,10 +32,12 @@ export async function PATCH(req: NextRequest) {
   }
 
   const body = await req.json() as {
-    displayName?: string;
-    phone?:       string;
-    smsOptIn?:    boolean;
-    avatarUrl?:   string | null;
+    displayName?:        string;
+    phone?:              string;
+    smsOptIn?:           boolean;
+    avatarUrl?:          string | null;
+    preferredFillLevel?: number | null;
+    monthlyFuelBudget?:  number | null;
   };
 
   // Guard against oversized avatar payloads (base64 128×128 JPEG ≈ 10KB; 100KB is very generous)
@@ -43,10 +47,12 @@ export async function PATCH(req: NextRequest) {
 
   const userId  = (session.user as { id?: string })?.id ?? '';
   const updated = await updateUserProfile(userId, {
-    displayName: body.displayName,
-    phone:       body.phone,
-    smsOptIn:    body.smsOptIn,
-    avatarUrl:   body.avatarUrl,
+    displayName:        body.displayName,
+    phone:              body.phone,
+    smsOptIn:           body.smsOptIn,
+    avatarUrl:          body.avatarUrl,
+    preferredFillLevel: body.preferredFillLevel,
+    monthlyFuelBudget:  body.monthlyFuelBudget,
   });
 
   if (!updated) {

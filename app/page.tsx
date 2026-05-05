@@ -22,6 +22,7 @@ import EngagementNudge        from '@/components/EngagementNudge';
 import EndorserMarquee        from '@/components/EndorserMarquee';
 import DailyFuelPulse         from '@/components/DailyFuelPulse';
 import WelcomeBanner          from '@/components/WelcomeBanner';
+import FuelBudgetWidget       from '@/components/FuelBudgetWidget';
 
 // ── JSON-LD Schema Markup ────────────────────────────────────────────────────
 
@@ -605,6 +606,9 @@ export default function Home() {
 
             {/* Daily Fuel Pulse — national avg + trend + today's tip */}
             <DailyFuelPulse />
+
+            {/* Fuel budget ring + all-time stats */}
+            <FuelBudgetWidget />
 
             {/* Calculator — SavedVehicles is visible on both mobile and desktop */}
             <section id="gascap-calculator" className="flex-1 px-4 lg:px-0 pt-5 pb-4 max-w-lg lg:max-w-none mx-auto w-full">

@@ -809,7 +809,14 @@ export async function creditVerifiedReferral(userId: string): Promise<boolean> {
 
 export async function updateUserProfile(
   userId: string,
-  fields: { displayName?: string; phone?: string; smsOptIn?: boolean; avatarUrl?: string | null },
+  fields: {
+    displayName?:       string;
+    phone?:             string;
+    smsOptIn?:          boolean;
+    avatarUrl?:         string | null;
+    preferredFillLevel?: number | null;
+    monthlyFuelBudget?:  number | null;
+  },
 ): Promise<StoredUser | null> {
   // `undefined` → field not included in the request; leave as-is.
   // `''` / `null` → user explicitly cleared the field; store null.
@@ -832,6 +839,12 @@ export async function updateUserProfile(
         : {}),
       ...(fields.avatarUrl !== undefined
         ? { avatarUrl: fields.avatarUrl || null }
+        : {}),
+      ...(fields.preferredFillLevel !== undefined
+        ? { preferredFillLevel: fields.preferredFillLevel ?? null }
+        : {}),
+      ...(fields.monthlyFuelBudget !== undefined
+        ? { monthlyFuelBudget: fields.monthlyFuelBudget ?? null }
         : {}),
     },
   }).catch(() => null);

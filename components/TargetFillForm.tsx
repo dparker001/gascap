@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import FuelGauge     from './FuelGauge';
 import TankPresets   from './TankPresets';
@@ -97,6 +97,20 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
   const gaugeCamRef     = useRef<HTMLInputElement>(null);
   const gaugeGalleryRef = useRef<HTMLInputElement>(null);
   const calcStartFired  = useRef(false);
+
+  // Apply the user's preferred fill level on first mount if the form is still at the system default
+  useEffect(() => {
+    const stored = localStorage.getItem('gascap_fill_pref');
+    if (!stored) return;
+    const pref = parseInt(stored, 10);
+    if (isNaN(pref) || pref < 1 || pref > 100) return;
+    // Only override when the form is still at the hardcoded default (haven't been customised yet)
+    setForm((prev) => {
+      if (prev.targetPreset !== DEFAULTS.targetPreset) return prev; // user changed it — leave alone
+      return { ...prev, targetPreset: pref, customTarget: '' };
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Standard patch — clears result (free/guest behaviour)
   function patch(p: Partial<FormState>) {

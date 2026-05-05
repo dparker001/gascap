@@ -81,6 +81,8 @@ export default function SettingsPage() {
   const [alertSaving,      setAlertSaving]      = useState(false);
   const [livePlan,         setLivePlan]         = useState<string | null>(null);
   const [giveaway,         setGiveaway]         = useState<GiveawayEntries | null>(null);
+  const [preferredFillLevel, setPreferredFillLevel] = useState<number | null>(null);
+  const [monthlyFuelBudget,  setMonthlyFuelBudget]  = useState('');
   const [fleetCompanyName, setFleetCompanyName] = useState('');
   const [fleetLogoUrl,     setFleetLogoUrl]     = useState('');
   const [fleetSaved,       setFleetSaved]       = useState(false);
@@ -122,10 +124,15 @@ export default function SettingsPage() {
     // blank on every visit and so saving never accidentally wipes saved data.
     fetch('/api/user/profile')
       .then((r) => r.json())
-      .then((d: { displayName?: string; phone?: string; smsOptIn?: boolean; avatarUrl?: string }) => {
+      .then((d: { displayName?: string; phone?: string; smsOptIn?: boolean; avatarUrl?: string; preferredFillLevel?: number | null; monthlyFuelBudget?: number | null }) => {
         if (d.displayName)            setDisplayName(d.displayName);
         if (d.phone)                  setPhone(d.phone);
         if (d.smsOptIn !== undefined) setSmsOptIn(d.smsOptIn);
+        if (d.preferredFillLevel != null) {
+          setPreferredFillLevel(d.preferredFillLevel);
+          localStorage.setItem('gascap_fill_pref', String(d.preferredFillLevel));
+        }
+        if (d.monthlyFuelBudget  != null) setMonthlyFuelBudget(String(d.monthlyFuelBudget));
         // Seed localStorage from DB so AuthButton picks it up without its own fetch
         if (d.avatarUrl) {
           setAvatarUrl(d.avatarUrl);
@@ -268,8 +275,21 @@ export default function SettingsPage() {
       await fetch('/api/user/profile', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ displayName, phone, smsOptIn, avatarUrl: avatarUrl || null }),
+        body: JSON.stringify({
+          displayName,
+          phone,
+          smsOptIn,
+          avatarUrl:          avatarUrl || null,
+          preferredFillLevel: preferredFillLevel ?? null,
+          monthlyFuelBudget:  monthlyFuelBudget ? parseFloat(monthlyFuelBudget) : null,
+        }),
       });
+      // Keep fill preference in localStorage so calculators can read it without an API call
+      if (preferredFillLevel != null) {
+        localStorage.setItem('gascap_fill_pref', String(preferredFillLevel));
+      } else {
+        localStorage.removeItem('gascap_fill_pref');
+      }
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } finally {
@@ -965,6 +985,85 @@ export default function SettingsPage() {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* ── Calculator defaults ── */}
+        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm p-5 space-y-5">
+          <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400">Calculator Defaults</h2>
+
+          {/* Preferred fill level */}
+          <div className="space-y-2">
+            <div>
+              <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Default target fill level</p>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Pre-fills the &ldquo;fill to&rdquo; field every time you open the calculator.
+              </p>
+            </div>
+            <div className="flex rounded-xl overflow-hidden border border-slate-200 dark:border-slate-600">
+              {([
+                { label: '¼ Tank', value: 25  },
+                { label: '½ Tank', value: 50  },
+                { label: '¾ Tank', value: 75  },
+                { label: 'Full',   value: 100 },
+              ] as const).map(({ label, value }) => {
+                const active = preferredFillLevel === value;
+                return (
+                  <button
+                    key={value}
+                    onClick={() => setPreferredFillLevel(active ? null : value)}
+                    className={`flex-1 py-2 text-xs font-bold transition-colors
+                      ${active
+                        ? 'bg-brand-dark text-white'
+                        : 'bg-white dark:bg-slate-700 text-slate-500 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-600'
+                      }`}
+                    aria-pressed={active}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+            {preferredFillLevel !== null && (
+              <p className="text-[10px] text-brand-teal font-semibold">
+                ✓ Calculator will default to {preferredFillLevel}% — tap again to clear
+              </p>
+            )}
+          </div>
+
+          {/* Monthly fuel budget */}
+          <div className="space-y-2 pt-3 border-t border-slate-100 dark:border-slate-700">
+            <div>
+              <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Monthly fuel budget</p>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Track your spend against a monthly target. Shown on your home screen.
+              </p>
+            </div>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400 pointer-events-none">$</span>
+              <input
+                type="number"
+                inputMode="decimal"
+                value={monthlyFuelBudget}
+                onChange={(e) => setMonthlyFuelBudget(e.target.value)}
+                placeholder="e.g. 150"
+                min="0" max="10000" step="5"
+                className="w-full pl-7 pr-4 py-2.5 border border-slate-200 dark:border-slate-600
+                           rounded-xl text-sm text-slate-800 dark:text-slate-100
+                           bg-white dark:bg-slate-700
+                           focus:outline-none focus:ring-2 focus:ring-brand-teal/40"
+              />
+            </div>
+            <p className="text-[10px] text-slate-400">Leave blank to disable the budget tracker.</p>
+          </div>
+
+          {/* Save — reuses the same profile save handler */}
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="w-full py-2.5 rounded-xl bg-brand-dark hover:bg-[#1a3a5c] text-white font-bold text-sm transition-colors disabled:opacity-60"
+          >
+            {saved ? '✓ Saved!' : saving ? 'Saving…' : 'Save Defaults'}
+          </button>
         </div>
 
         {/* Gas price alert — Pro only */}

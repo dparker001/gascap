@@ -70,6 +70,8 @@ model User {
   earlyUpgradeBonusEntries Int       @default(0)
   smsOptInDate             String?
   avatarUrl                String?
+  preferredFillLevel       Int?     // % 0-100 — default target fill for calculators
+  monthlyFuelBudget        Float?   // $ amount — monthly spending target
   garageBonusDays          String[]  @default([])
   garageLastOpenedDate     String?
   fleetCompanyName         String?
