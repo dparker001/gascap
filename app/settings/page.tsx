@@ -1049,40 +1049,7 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            {/* Ambassador program link */}
-            <Link
-              href="/ambassador"
-              className="flex items-center justify-between text-xs font-bold text-slate-500 hover:text-navy-700 transition-colors py-1"
-            >
-              <span>🏆 Become a GasCap™ Ambassador</span>
-              <span className="text-slate-300">→</span>
-            </Link>
-
-            {/* GasCaptains™ community link — paid Pro & Fleet only */}
-            {(plan === 'pro' || plan === 'fleet') ? (
-              <div className="space-y-1">
-                <a
-                  href={process.env.NEXT_PUBLIC_GASCAPTAINS_URL ?? 'https://www.facebook.com/groups/gascaptains'}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-between text-xs font-bold text-slate-500 hover:text-[#005F4A] transition-colors py-1"
-                >
-                  <span>🏴 Join GasCaptains™ — Members Community</span>
-                  <span className="text-slate-300">→</span>
-                </a>
-                <p className="text-[10px] text-amber-600 font-semibold">🚧 Community is actively being built — more coming soon</p>
-              </div>
-            ) : (
-              <div className="flex items-center justify-between py-1">
-                <div>
-                  <p className="text-xs font-bold text-slate-400">🏴 GasCaptains™ — Members Community</p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">Exclusive community for paid Pro &amp; Fleet members</p>
-                </div>
-                <span className="text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full whitespace-nowrap ml-2">⭐ Pro &amp; Fleet</span>
-              </div>
-            )}
-
-            {/* QR code share */}
+            {/* QR code share — moved here so it sits right next to the referral link */}
             <div>
               <button
                 type="button"
@@ -1090,7 +1057,7 @@ export default function SettingsPage() {
                 className="flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-amber-600 transition-colors"
               >
                 <span className="text-base">📱</span>
-                <span>{showQR ? 'Hide QR Code' : 'Show QR Code'}</span>
+                <span>{showQR ? 'Hide referral QR code' : 'Show referral QR code'}</span>
                 <svg viewBox="0 0 16 16" className={`w-3 h-3 transition-transform ${showQR ? 'rotate-180' : ''}`} fill="currentColor" aria-hidden="true">
                   <path d="M8 10.5L2.5 5h11L8 10.5z" />
                 </svg>
@@ -1154,6 +1121,39 @@ export default function SettingsPage() {
                 </div>
               )}
             </div>
+
+            {/* Ambassador program link */}
+            <Link
+              href="/ambassador"
+              className="flex items-center justify-between text-xs font-bold text-slate-500 hover:text-navy-700 transition-colors py-1"
+            >
+              <span>🏆 Become a GasCap™ Ambassador</span>
+              <span className="text-slate-300">→</span>
+            </Link>
+
+            {/* GasCaptains™ community link — paid Pro & Fleet only */}
+            {(plan === 'pro' || plan === 'fleet') ? (
+              <div className="space-y-1">
+                <a
+                  href={process.env.NEXT_PUBLIC_GASCAPTAINS_URL ?? 'https://www.facebook.com/groups/gascaptains'}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-between text-xs font-bold text-slate-500 hover:text-[#005F4A] transition-colors py-1"
+                >
+                  <span>🏴 Join GasCaptains™ — Members Community</span>
+                  <span className="text-slate-300">→</span>
+                </a>
+                <p className="text-[10px] text-amber-600 font-semibold">🚧 Community is actively being built — more coming soon</p>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between py-1">
+                <div>
+                  <p className="text-xs font-bold text-slate-400">🏴 GasCaptains™ — Members Community</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">Exclusive community for paid Pro &amp; Fleet members</p>
+                </div>
+                <span className="text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full whitespace-nowrap ml-2">⭐ Pro &amp; Fleet</span>
+              </div>
+            )}
 
           </div>
         )}
