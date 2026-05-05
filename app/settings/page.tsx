@@ -191,20 +191,27 @@ export default function SettingsPage() {
   const TABS = ALL_TABS.filter((t) => t.id !== 'fleet' || currentPlanForTabs === 'fleet');
 
   const [activeTab, setActiveTab] = useState<TabId>('profile');
-  const sectionRefs    = useRef<Partial<Record<TabId, HTMLElement | null>>>({});
-  const fixedHeaderRef = useRef<HTMLDivElement>(null);
+  const sectionRefs             = useRef<Partial<Record<TabId, HTMLElement | null>>>({});
+  const fixedHeaderRef          = useRef<HTMLDivElement>(null);
+  // Prevents the scroll listener from overriding activeTab during a programmatic scroll
+  const isProgrammaticScrollRef = useRef(false);
 
   function scrollToSection(id: TabId) {
     const el      = sectionRefs.current[id];
     if (!el) return;
     const headerH = (fixedHeaderRef.current?.offsetHeight ?? 112) + 8;
     const top     = el.getBoundingClientRect().top + window.scrollY - headerH;
+    isProgrammaticScrollRef.current = true;
     window.scrollTo({ top, behavior: 'smooth' });
     setActiveTab(id);
+    // Release lock after smooth scroll completes (~600 ms typical)
+    setTimeout(() => { isProgrammaticScrollRef.current = false; }, 800);
   }
 
   useEffect(() => {
     function onScroll() {
+      // Don't let user-scroll events clobber a tab we just set programmatically
+      if (isProgrammaticScrollRef.current) return;
       const headerH = (fixedHeaderRef.current?.offsetHeight ?? 112) + 8;
       const scrollY = window.scrollY + headerH;
       let current: TabId = 'profile';
@@ -224,22 +231,28 @@ export default function SettingsPage() {
     const params = new URLSearchParams(window.location.search);
     if (params.get('tab') !== 'preferences') return;
 
-    // Wait for session + refs to settle before scrolling
+    // Wait for session + refs to settle before scrolling.
+    // 800 ms gives mobile browsers time to fully paint the layout before
+    // we read getBoundingClientRect — 300 ms was too short on mobile.
     const scrollTimer = setTimeout(() => {
-      // Use the same function as clicking the Preferences tab — identical position
-      scrollToSection('preferences');
+      // rAF ensures we read element positions after the browser's next paint
+      requestAnimationFrame(() => {
+        // Use the same function as clicking the Preferences tab — identical position
+        scrollToSection('preferences');
 
-      // Flash the budget section 3× after the scroll lands
-      const flashTimer = setTimeout(() => {
-        let count = 0;
-        const interval = setInterval(() => {
-          setBudgetHighlight((v) => !v);
-          count++;
-          if (count >= 6) clearInterval(interval); // 3 on + 3 off = 6 toggles
-        }, 380);
-      }, 700);
-      return () => clearTimeout(flashTimer);
-    }, 300);
+        // Flash the budget section 3× after the scroll lands
+        const flashTimer = setTimeout(() => {
+          let count = 0;
+          const interval = setInterval(() => {
+            setBudgetHighlight((v) => !v);
+            count++;
+            if (count >= 6) clearInterval(interval); // 3 on + 3 off = 6 toggles
+          }, 380);
+        }, 700);
+        // Note: flashTimer cleanup is best-effort; the component will unmount cleanly
+        void flashTimer;
+      });
+    }, 800);
 
     return () => clearTimeout(scrollTimer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
