@@ -872,6 +872,7 @@ export default function Home() {
           <span className="text-[11px] font-black text-white group-hover:text-brand-orange transition-colors">
             VNetCard™
           </span>
+          <span className="text-[10px] text-white/60 font-medium">- a SDVOSB</span>
           <svg viewBox="0 0 12 12" className="w-2.5 h-2.5 text-white/30 group-hover:text-white/50 transition-colors"
                fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
             <path d="M2 6h8M6 2l4 4-4 4"/>
