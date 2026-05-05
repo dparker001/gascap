@@ -64,7 +64,20 @@ export default function SettingsPage() {
     setThemePref(getThemePreference());
   }, []);
   const [avatarUrl,      setAvatarUrl]      = useState('');
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef     = useRef<HTMLInputElement>(null);
+
+  // ── Crop modal state ─────────────────────────────────────────────────────
+  const [cropSrc,       setCropSrc]       = useState('');
+  const [cropScale,     setCropScale]     = useState(1);
+  const [cropOffset,    setCropOffset]    = useState({ x: 0, y: 0 });
+  const [cropImgSize,   setCropImgSize]   = useState({ w: 1, h: 1 });
+  const [cropModalOpen, setCropModalOpen] = useState(false);
+  const cropContainerRef = useRef<HTMLDivElement>(null);
+  const isDraggingRef    = useRef(false);
+  const dragStartRef     = useRef({ x: 0, y: 0, ox: 0, oy: 0 });
+  const lastPinchRef     = useRef<number | null>(null);
+  // ─────────────────────────────────────────────────────────────────────────
+
   const [displayName,    setDisplayName]    = useState('');
   const [phone,          setPhone]          = useState('');
   const [smsOptIn,       setSmsOptIn]       = useState(false);
@@ -181,7 +194,7 @@ export default function SettingsPage() {
   function scrollToSection(id: TabId) {
     const el = sectionRefs.current[id];
     if (!el) return;
-    const offset = 90; // height of sticky header + tab bar + breathing room
+    const offset = 120; // sticky header (nav + tab bar) ≈ 112px + 8px breathing room
     const top = el.getBoundingClientRect().top + window.scrollY - offset;
     window.scrollTo({ top, behavior: 'smooth' });
     setActiveTab(id);
@@ -189,7 +202,7 @@ export default function SettingsPage() {
 
   useEffect(() => {
     function onScroll() {
-      const scrollY = window.scrollY + 80;
+      const scrollY = window.scrollY + 120;
       let current: TabId = 'profile';
       for (const { id } of TABS) {
         const el = sectionRefs.current[id];
@@ -200,6 +213,56 @@ export default function SettingsPage() {
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
+
+  /** Render the positioned image to a 128×128 canvas and save. */
+  const handleCropConfirm = useCallback(() => {
+    if (!cropSrc) return;
+    const CONTAINER = 280;
+    const OUTPUT    = 128;
+    const img = new Image();
+    img.onload = () => {
+      const imgLeft = CONTAINER / 2 + cropOffset.x - img.width  * cropScale / 2;
+      const imgTop  = CONTAINER / 2 + cropOffset.y - img.height * cropScale / 2;
+      const sx    = -imgLeft / cropScale;
+      const sy    = -imgTop  / cropScale;
+      const sSize = CONTAINER / cropScale;
+      const canvas = document.createElement('canvas');
+      canvas.width  = OUTPUT;
+      canvas.height = OUTPUT;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      ctx.drawImage(img, sx, sy, sSize, sSize, 0, 0, OUTPUT, OUTPUT);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+      setAvatarUrl(dataUrl);
+      localStorage.setItem(AVATAR_URL_KEY, dataUrl);
+      window.dispatchEvent(new StorageEvent('storage', { key: AVATAR_URL_KEY, newValue: dataUrl }));
+      setCropModalOpen(false);
+    };
+    img.src = cropSrc;
+  }, [cropSrc, cropOffset, cropScale]);
+
+  // Non-passive wheel listener so we can preventDefault inside the crop modal
+  useEffect(() => {
+    const el = cropContainerRef.current;
+    if (!el) return;
+    const CONTAINER = 280;
+    const handler = (e: WheelEvent) => {
+      e.preventDefault();
+      const minScale = Math.max(CONTAINER / cropImgSize.w, CONTAINER / cropImgSize.h);
+      const delta    = e.deltaY > 0 ? 0.9 : 1.1;
+      const newScale = Math.max(minScale, Math.min(cropScale * delta, minScale * 5));
+      // Inline clamp — image must always cover the 280px container
+      const maxX = Math.max(0, (cropImgSize.w * newScale - CONTAINER) / 2);
+      const maxY = Math.max(0, (cropImgSize.h * newScale - CONTAINER) / 2);
+      setCropScale(newScale);
+      setCropOffset({
+        x: Math.max(-maxX, Math.min(maxX, cropOffset.x)),
+        y: Math.max(-maxY, Math.min(maxY, cropOffset.y)),
+      });
+    };
+    el.addEventListener('wheel', handler, { passive: false });
+    return () => el.removeEventListener('wheel', handler);
+  }, [cropModalOpen, cropScale, cropOffset, cropImgSize]);
 
   if (status === 'loading') {
     return <div className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -297,33 +360,38 @@ export default function SettingsPage() {
     }
   }
 
-  /** Resize the selected image to 128×128 JPEG and store as base64. */
+  /** Clamp crop pan offset so the image always covers the full 280×280 container. */
+  function clampCropOffset(ox: number, oy: number, scale: number, imgW: number, imgH: number) {
+    const CONTAINER = 280;
+    const maxX = Math.max(0, (imgW * scale - CONTAINER) / 2);
+    const maxY = Math.max(0, (imgH * scale - CONTAINER) / 2);
+    return {
+      x: Math.max(-maxX, Math.min(maxX, ox)),
+      y: Math.max(-maxY, Math.min(maxY, oy)),
+    };
+  }
+
+  /** Open crop modal instead of auto-cropping. */
   const handlePhotoUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    e.target.value = ''; // allow re-selecting the same file
+    e.target.value = '';
 
     const reader = new FileReader();
     reader.onload = (ev) => {
+      const src = ev.target?.result as string;
       const img = new Image();
       img.onload = () => {
-        const canvas = document.createElement('canvas');
-        canvas.width  = 128;
-        canvas.height = 128;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return;
-        // Centre-crop to a square before scaling
-        const size = Math.min(img.width, img.height);
-        const sx   = (img.width  - size) / 2;
-        const sy   = (img.height - size) / 2;
-        ctx.drawImage(img, sx, sy, size, size, 0, 0, 128, 128);
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
-        setAvatarUrl(dataUrl);
-        localStorage.setItem(AVATAR_URL_KEY, dataUrl);
-        // Notify other tabs (e.g. AuthButton)
-        window.dispatchEvent(new StorageEvent('storage', { key: AVATAR_URL_KEY, newValue: dataUrl }));
+        const CONTAINER = 280;
+        // Start at minimum scale that fully covers the circle
+        const minScale = Math.max(CONTAINER / img.width, CONTAINER / img.height);
+        setCropSrc(src);
+        setCropImgSize({ w: img.width, h: img.height });
+        setCropScale(minScale);
+        setCropOffset({ x: 0, y: 0 });
+        setCropModalOpen(true);
       };
-      img.src = ev.target?.result as string;
+      img.src = src;
     };
     reader.readAsDataURL(file);
   }, []);
@@ -358,6 +426,148 @@ export default function SettingsPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
+
+      {/* ── Photo Crop Modal ──────────────────────────────────────────────── */}
+      {cropModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden">
+
+            {/* Modal header */}
+            <div className="px-5 pt-5 pb-3 flex items-center justify-between">
+              <h3 className="text-base font-black text-slate-800 dark:text-slate-100">Position Your Photo</h3>
+              <button
+                onClick={() => setCropModalOpen(false)}
+                className="w-7 h-7 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center
+                           text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors text-sm"
+                aria-label="Cancel"
+              >✕</button>
+            </div>
+
+            {/* Hint text */}
+            <p className="text-center text-[11px] text-slate-400 -mt-1 mb-2">
+              Drag to reposition · scroll or pinch to zoom
+            </p>
+
+            {/* 280×280 crop canvas */}
+            <div className="flex justify-center px-5">
+              <div
+                ref={cropContainerRef}
+                className="relative overflow-hidden rounded-full cursor-grab active:cursor-grabbing select-none touch-none"
+                style={{ width: 280, height: 280 }}
+                onPointerDown={(e) => {
+                  // Ignore if it's a second finger (handled by touch handlers)
+                  isDraggingRef.current = true;
+                  dragStartRef.current = {
+                    x: e.clientX, y: e.clientY,
+                    ox: cropOffset.x, oy: cropOffset.y,
+                  };
+                  (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
+                }}
+                onPointerMove={(e) => {
+                  if (!isDraggingRef.current) return;
+                  const dx = e.clientX - dragStartRef.current.x;
+                  const dy = e.clientY - dragStartRef.current.y;
+                  const clamped = clampCropOffset(
+                    dragStartRef.current.ox + dx,
+                    dragStartRef.current.oy + dy,
+                    cropScale, cropImgSize.w, cropImgSize.h,
+                  );
+                  setCropOffset(clamped);
+                }}
+                onPointerUp={() => { isDraggingRef.current = false; }}
+                onPointerCancel={() => { isDraggingRef.current = false; }}
+                onTouchStart={(e) => {
+                  if (e.touches.length === 2) {
+                    isDraggingRef.current = false; // disable pan during pinch
+                    const dx = e.touches[0].clientX - e.touches[1].clientX;
+                    const dy = e.touches[0].clientY - e.touches[1].clientY;
+                    lastPinchRef.current = Math.sqrt(dx * dx + dy * dy);
+                  }
+                }}
+                onTouchMove={(e) => {
+                  if (e.touches.length !== 2 || lastPinchRef.current === null) return;
+                  const dx   = e.touches[0].clientX - e.touches[1].clientX;
+                  const dy   = e.touches[0].clientY - e.touches[1].clientY;
+                  const dist = Math.sqrt(dx * dx + dy * dy);
+                  const CONTAINER = 280;
+                  const minScale  = Math.max(CONTAINER / cropImgSize.w, CONTAINER / cropImgSize.h);
+                  const ratio     = dist / lastPinchRef.current;
+                  const newScale  = Math.max(minScale, Math.min(cropScale * ratio, minScale * 5));
+                  const clamped   = clampCropOffset(cropOffset.x, cropOffset.y, newScale, cropImgSize.w, cropImgSize.h);
+                  setCropScale(newScale);
+                  setCropOffset(clamped);
+                  lastPinchRef.current = dist;
+                }}
+                onTouchEnd={() => { lastPinchRef.current = null; }}
+              >
+                {/* The source image — positioned by scale + offset */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={cropSrc}
+                  alt=""
+                  draggable={false}
+                  style={{
+                    position:  'absolute',
+                    width:     cropImgSize.w * cropScale,
+                    height:    cropImgSize.h * cropScale,
+                    left:      140 + cropOffset.x - (cropImgSize.w * cropScale) / 2,
+                    top:       140 + cropOffset.y - (cropImgSize.h * cropScale) / 2,
+                    userSelect: 'none',
+                    pointerEvents: 'none',
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Zoom slider */}
+            <div className="px-8 pt-4 pb-1">
+              <div className="flex items-center gap-3">
+                <svg viewBox="0 0 20 20" className="w-4 h-4 flex-shrink-0 text-slate-400" fill="currentColor">
+                  <path fillRule="evenodd" d="M9 3a6 6 0 100 12A6 6 0 009 3zM1 9a8 8 0 1114.32 4.906l3.387 3.387a1 1 0 01-1.414 1.414l-3.387-3.387A8 8 0 011 9z" clipRule="evenodd"/>
+                </svg>
+                <input
+                  type="range"
+                  className="flex-1 accent-brand-teal"
+                  min={Math.max(280 / cropImgSize.w, 280 / cropImgSize.h)}
+                  max={Math.max(280 / cropImgSize.w, 280 / cropImgSize.h) * 5}
+                  step={0.01}
+                  value={cropScale}
+                  onChange={(e) => {
+                    const newScale = parseFloat(e.target.value);
+                    const clamped  = clampCropOffset(cropOffset.x, cropOffset.y, newScale, cropImgSize.w, cropImgSize.h);
+                    setCropScale(newScale);
+                    setCropOffset(clamped);
+                  }}
+                />
+                <svg viewBox="0 0 20 20" className="w-5 h-5 flex-shrink-0 text-slate-400" fill="currentColor">
+                  <path fillRule="evenodd" d="M9 3a6 6 0 100 12A6 6 0 009 3zM1 9a8 8 0 1114.32 4.906l3.387 3.387a1 1 0 01-1.414 1.414l-3.387-3.387A8 8 0 011 9z" clipRule="evenodd"/>
+                </svg>
+              </div>
+            </div>
+
+            {/* Action buttons */}
+            <div className="px-5 pt-3 pb-5 flex gap-3">
+              <button
+                onClick={() => setCropModalOpen(false)}
+                className="flex-1 py-3 rounded-2xl border border-slate-200 text-sm font-bold
+                           text-slate-500 hover:bg-slate-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCropConfirm}
+                className="flex-1 py-3 rounded-2xl bg-brand-teal text-white text-sm font-black
+                           hover:bg-brand-dark transition-colors shadow-sm"
+              >
+                Use This Photo
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+      {/* ─────────────────────────────────────────────────────────────────── */}
+
       {/* Fixed header + tab bar — position:fixed guarantees it never scrolls away */}
       <div className="fixed inset-x-0 top-0 z-20 shadow-md">
         {/* Header */}
@@ -449,7 +659,7 @@ export default function SettingsPage() {
               <span aria-hidden="true">📷</span>
               {avatarUrl ? 'Change photo' : 'Upload a photo'}
             </button>
-            <p className="text-[10px] text-slate-400 -mt-1">JPG or PNG · auto-cropped to square</p>
+            <p className="text-[10px] text-slate-400 -mt-1">JPG or PNG · drag &amp; pinch to position</p>
 
             {/* Color picker — only shown when no photo is set */}
             {!avatarUrl && (
