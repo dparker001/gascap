@@ -21,6 +21,7 @@ import FeaturedStation         from '@/components/FeaturedStation';
 import EngagementNudge        from '@/components/EngagementNudge';
 import EndorserMarquee        from '@/components/EndorserMarquee';
 import DailyFuelPulse         from '@/components/DailyFuelPulse';
+import WelcomeBanner          from '@/components/WelcomeBanner';
 
 // ── JSON-LD Schema Markup ────────────────────────────────────────────────────
 
@@ -571,6 +572,9 @@ export default function Home() {
 
           {/* ── LEFT COLUMN ── */}
           <div className="min-w-0 overflow-hidden lg:pr-6">
+
+            {/* Personalized greeting — time-aware + first-login welcome card */}
+            <WelcomeBanner />
 
             {/* Streak counter */}
             <StreakCounter />
