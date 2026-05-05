@@ -202,9 +202,6 @@ export function winnerNotificationEmailHtml(
     'July','August','September','October','November','December',
   ];
   const monthLabel = `${MONTH_NAMES[parseInt(mo, 10) - 1]} ${y}`;
-  const odds = totalEntries > 0
-    ? `${((entryCount / totalEntries) * 100).toFixed(1)}%`
-    : '—';
 
   return `
 <!DOCTYPE html>
@@ -234,7 +231,7 @@ ${brandHeader()}
                          text-transform:uppercase;letter-spacing:.08em;">Your Prize</p>
               <p style="margin:0;font-size:36px;font-weight:900;color:#1e2d4a;">${prize} Visa Prepaid Card</p>
               <p style="margin:6px 0 0;font-size:12px;color:#92400e;">
-                ${entryCount}&nbsp;${entryCount === 1 ? 'entry' : 'entries'}&nbsp;·&nbsp;${odds}&nbsp;odds&nbsp;·&nbsp;${monthLabel}
+                ${entryCount}&nbsp;${entryCount === 1 ? 'entry' : 'entries'}&nbsp;·&nbsp;${monthLabel}
               </p>
             </td></tr>
           </table>
@@ -307,9 +304,6 @@ export function nonWinnerNotificationEmailHtml(
     'July','August','September','October','November','December',
   ];
   const monthLabel = `${MONTH_NAMES[parseInt(mo, 10) - 1]} ${y}`;
-  const odds = totalEntries > 0
-    ? `${((entryCount / totalEntries) * 100).toFixed(1)}%`
-    : '—';
 
   return `
 <!DOCTYPE html>
@@ -338,7 +332,7 @@ ${brandHeader(plan)}
                          text-transform:uppercase;letter-spacing:.08em;">${monthLabel} Winner 🏆</p>
               <p style="margin:0;font-size:20px;font-weight:900;color:#1e2d4a;">${winnerLabel}</p>
               <p style="margin:6px 0 0;font-size:12px;color:#166534;">
-                ${prize} Visa prepaid card · ${totalEntries} total entries in the pool
+                ${prize} Visa prepaid card
               </p>
             </td></tr>
           </table>
@@ -354,12 +348,8 @@ ${brandHeader(plan)}
                   <td style="text-align:center;padding:8px;">
                     <p style="margin:0;font-size:28px;font-weight:900;color:#1e2d4a;">${entryCount}</p>
                     <p style="margin:2px 0 0;font-size:11px;color:#94a3b8;">
-                      ${entryCount === 1 ? 'entry' : 'entries'}
+                      ${entryCount === 1 ? 'entry' : 'entries'} this month
                     </p>
-                  </td>
-                  <td style="text-align:center;padding:8px;border-left:1px solid #e2e8f0;">
-                    <p style="margin:0;font-size:28px;font-weight:900;color:#1e2d4a;">${odds}</p>
-                    <p style="margin:2px 0 0;font-size:11px;color:#94a3b8;">your odds</p>
                   </td>
                 </tr>
               </table>
