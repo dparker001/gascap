@@ -226,10 +226,11 @@ export default function SettingsPage() {
 
     // Wait for session + refs to settle before scrolling
     const scrollTimer = setTimeout(() => {
-      const el = sectionRefs.current['preferences'];
+      const el = budgetSectionRef.current;
       if (!el) return;
       const headerH = (fixedHeaderRef.current?.offsetHeight ?? 112) + 8;
-      const top = el.getBoundingClientRect().top + window.scrollY - headerH;
+      // Extra offset so the label sits a comfortable distance below the sticky header
+      const top = el.getBoundingClientRect().top + window.scrollY - headerH - 12;
       window.scrollTo({ top, behavior: 'smooth' });
       setActiveTab('preferences');
 
