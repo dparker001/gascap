@@ -1215,14 +1215,6 @@ export default function SettingsPage() {
               </div>
               <span className="text-xs font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded-lg">Gallons</span>
             </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-semibold text-slate-700">Rotating tips</p>
-                <p className="text-xs text-slate-400">Fuel & maintenance tips in the header</p>
-              </div>
-              <span className="text-xs font-bold text-green-600 bg-green-50 px-2 py-1 rounded-lg">On</span>
-            </div>
-
             {/* Dark mode — 3-way: Auto / Light / Dark */}
             <div className="pt-1 border-t border-slate-100 space-y-2">
               <div>
