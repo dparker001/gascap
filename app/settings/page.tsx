@@ -226,13 +226,8 @@ export default function SettingsPage() {
 
     // Wait for session + refs to settle before scrolling
     const scrollTimer = setTimeout(() => {
-      const el = budgetSectionRef.current;
-      if (!el) return;
-      const headerH = (fixedHeaderRef.current?.offsetHeight ?? 112) + 8;
-      // Extra offset so the label sits a comfortable distance below the sticky header
-      const top = el.getBoundingClientRect().top + window.scrollY - headerH - 12;
-      window.scrollTo({ top, behavior: 'smooth' });
-      setActiveTab('preferences');
+      // Use the same function as clicking the Preferences tab — identical position
+      scrollToSection('preferences');
 
       // Flash the budget section 3× after the scroll lands
       const flashTimer = setTimeout(() => {
