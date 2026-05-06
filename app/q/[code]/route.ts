@@ -45,7 +45,7 @@ export async function GET(
   { params }: { params: { code: string } },
 ) {
   const rawCode = params.code ?? '';
-  const placement = getPlacementByCode(rawCode);
+  const placement = await getPlacementByCode(rawCode);
 
   // Unknown code: log it as an "unknown scan" under a sentinel so we can
   // still see that a QR was scanned, but don't crash.

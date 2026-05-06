@@ -137,7 +137,7 @@ export async function POST(req: Request) {
     // the signup back to the right placard.
     const cookieHeader = req.headers.get('cookie') ?? '';
     const placementCode = /(?:^|;\s*)gc_src=([^;]+)/.exec(cookieHeader)?.[1];
-    const placement     = placementCode ? getPlacementByCode(decodeURIComponent(placementCode)) : undefined;
+    const placement     = placementCode ? await getPlacementByCode(decodeURIComponent(placementCode)) : undefined;
 
     // Log a campaign signup event so the dashboard funnel updates.
     // Include the signup locale so the admin dashboard can show EN vs ES

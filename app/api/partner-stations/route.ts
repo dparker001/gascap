@@ -14,7 +14,7 @@ export async function GET(req: Request) {
   const city  = (searchParams.get('city')  ?? '').trim().toLowerCase();
   const state = (searchParams.get('state') ?? '').trim().toLowerCase();
 
-  const all = listPlacements().filter((p) => p.active && p.featured);
+  const all = (await listPlacements()).filter((p) => p.active && p.featured);
 
   // Filter by city if provided, fall back to state, fall back to all featured
   let matches = all;

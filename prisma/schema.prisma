@@ -127,6 +127,27 @@ model GiveawayDraw {
   claimedAt    String?  // set when winner confirms receipt; null = unclaimed
 }
 
+model CampaignPlacement {
+  id              String  @id
+  code            String  @unique
+  campaign        String
+  station         String  @default("")
+  address         String?
+  city            String?
+  contactName     String?
+  contactEmail    String?
+  contactPhone    String?
+  placement       String
+  headlineVariant String
+  landingPath     String
+  notes           String?
+  createdAt       String
+  active          Boolean @default(true)
+  featured        Boolean @default(false)
+
+  @@index([code])
+}
+
 model DeletedAccountLog {
   id          String  @id
   // Snapshot of user info captured before deletion

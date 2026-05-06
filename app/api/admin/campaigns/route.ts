@@ -50,7 +50,7 @@ export async function GET(req: NextRequest) {
   const days  = searchParams.get('days');
 
   if (group) {
-    return NextResponse.json({ grouped: groupStatsBy(group) });
+    return NextResponse.json({ grouped: await groupStatsBy(group) });
   }
 
   if (days) {
@@ -59,9 +59,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ daily: getDailyBuckets(n, code) });
   }
 
-  const placements = listPlacements();
-  const stats      = getStatsForAllPlacements();
-  const overview   = getOverview();
+  const [placements, stats, overview] = await Promise.all([
+    listPlacements(),
+    getStatsForAllPlacements(),
+    getOverview(),
+  ]);
   const origin     = baseUrl(req);
 
   // Attach the QR URLs to each placement so the dashboard can render
@@ -98,7 +100,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const created = createPlacement({
+    const created = await createPlacement({
       campaign:        (body.campaign as string)        || 'Know Before You Go',
       station,
       address:         body.address         as string | undefined,
@@ -132,7 +134,7 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: 'invalid body' }, { status: 400 });
   }
 
-  const updated = updatePlacement(id, patch);
+  const updated = await updatePlacement(id, patch);
   if (!updated) return NextResponse.json({ error: 'not found' }, { status: 404 });
   return NextResponse.json({ placement: updated });
 }
@@ -151,7 +153,7 @@ export async function DELETE(req: NextRequest) {
 
   const id = searchParams.get('id');
   if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 });
-  const ok = deletePlacement(id);
+  const ok = await deletePlacement(id);
   if (!ok) return NextResponse.json({ error: 'not found' }, { status: 404 });
   return NextResponse.json({ ok: true });
 }

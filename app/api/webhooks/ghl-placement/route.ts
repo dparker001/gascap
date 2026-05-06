@@ -104,7 +104,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'station_name is required' }, { status: 400 });
   }
 
-  const placement = getPlacementByCode(placardCode);
+  const placement = await getPlacementByCode(placardCode);
   if (!placement) {
     console.error(`[ghl-placement] 404 — no placement found for code: ${placardCode}`);
     return NextResponse.json(
@@ -119,7 +119,7 @@ export async function POST(req: NextRequest) {
     ? `${baseNotes}\nAmbassador update: ${ambassadorNotes}`.trim()
     : baseNotes;
 
-  const updated = updatePlacement(placement.id, {
+  const updated = await updatePlacement(placement.id, {
     station:      stationName,
     address:      field(body, 'address')       || placement.address,
     city:         field(body, 'city')          || placement.city || 'Orlando',

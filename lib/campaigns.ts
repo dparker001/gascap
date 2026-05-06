@@ -4,16 +4,16 @@
  * Tracks the full QR → scan → visit → usage → conversion funnel for the
  * gas-station placard marketing campaign.
  *
- * Persistence: JSON file (same pattern as users.ts, vehicles.ts, feedback.ts).
- * For production scale, swap read/write to a real DB later.
+ * Placements: persisted in PostgreSQL via Prisma (Railway-safe, survives deploys).
+ * Events:     persisted in campaign-events.json (append-only, lower stakes).
  */
 import fs   from 'fs';
 import path from 'path';
+import { prisma } from '@/lib/prisma';
 
-// ── Paths ────────────────────────────────────────────────────────────────
-const DATA_DIR       = path.join(process.cwd(), 'data');
-const PLACEMENTS_FILE = path.join(DATA_DIR, 'campaign-placements.json');
-const EVENTS_FILE     = path.join(DATA_DIR, 'campaign-events.json');
+// ── Paths (events only) ────────────────────────────────────────────────────
+const DATA_DIR    = path.join(process.cwd(), 'data');
+const EVENTS_FILE = path.join(DATA_DIR, 'campaign-events.json');
 
 // ── Types ────────────────────────────────────────────────────────────────
 
@@ -85,22 +85,41 @@ export interface CampaignEvent {
   meta?:       Record<string, unknown>;
 }
 
-// ── Low-level IO ─────────────────────────────────────────────────────────
+// ── DB → interface mapping ────────────────────────────────────────────────
+
+type DbPlacement = {
+  id: string; code: string; campaign: string; station: string;
+  address: string | null; city: string | null; contactName: string | null;
+  contactEmail: string | null; contactPhone: string | null; placement: string;
+  headlineVariant: string; landingPath: string; notes: string | null;
+  createdAt: string; active: boolean; featured: boolean;
+};
+
+function dbToPlacement(row: DbPlacement): Placement {
+  return {
+    id:              row.id,
+    code:            row.code,
+    campaign:        row.campaign,
+    station:         row.station,
+    address:         row.address      ?? undefined,
+    city:            row.city         ?? undefined,
+    contactName:     row.contactName  ?? undefined,
+    contactEmail:    row.contactEmail ?? undefined,
+    contactPhone:    row.contactPhone ?? undefined,
+    placement:       row.placement,
+    headlineVariant: row.headlineVariant,
+    landingPath:     row.landingPath,
+    notes:           row.notes ?? undefined,
+    createdAt:       row.createdAt,
+    active:          row.active,
+    featured:        row.featured,
+  };
+}
+
+// ── Low-level IO (events only) ─────────────────────────────────────────────
 
 function ensureDir() {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-}
-
-function readPlacements(): Placement[] {
-  try {
-    if (!fs.existsSync(PLACEMENTS_FILE)) return [];
-    return JSON.parse(fs.readFileSync(PLACEMENTS_FILE, 'utf8')) as Placement[];
-  } catch { return []; }
-}
-
-function writePlacements(rows: Placement[]) {
-  ensureDir();
-  fs.writeFileSync(PLACEMENTS_FILE, JSON.stringify(rows, null, 2));
 }
 
 function readEvents(): CampaignEvent[] {
@@ -125,11 +144,10 @@ function uuid(prefix: string): string {
  * Generate a short, human-readable, URL-safe placement code.
  * Format: <city3><num3><placement1> — e.g. ORL001C
  */
-function generateCode(city: string | undefined, placement: string, existing: Placement[]): string {
+function generateCode(city: string | undefined, placement: string, existing: { code: string }[]): string {
   const cityPart = (city ?? 'LOC').slice(0, 3).toUpperCase().padEnd(3, 'X');
   const placementLetter = (placement[0] ?? 'G').toUpperCase();
 
-  // Find the next sequential number for this city
   const prefix = cityPart;
   const usedNums = new Set<number>();
   for (const p of existing) {
@@ -145,7 +163,6 @@ function generateCode(city: string | undefined, placement: string, existing: Pla
   const numStr = next.toString().padStart(3, '0');
   let code = `${cityPart}${numStr}${placementLetter}`;
 
-  // Safety: ensure uniqueness even if two placements share city+placement at same station
   let suffix = 0;
   while (existing.some((p) => p.code === code)) {
     suffix++;
@@ -154,67 +171,85 @@ function generateCode(city: string | undefined, placement: string, existing: Pla
   return code;
 }
 
-// ── Placement CRUD ───────────────────────────────────────────────────────
+// ── Placement CRUD (Prisma) ───────────────────────────────────────────────
 
-export function listPlacements(): Placement[] {
-  return readPlacements();
+export async function listPlacements(): Promise<Placement[]> {
+  const rows = await prisma.campaignPlacement.findMany({ orderBy: { createdAt: 'asc' } });
+  return rows.map(dbToPlacement);
 }
 
-export function getPlacementByCode(code: string): Placement | undefined {
-  return readPlacements().find((p) => p.code.toUpperCase() === code.toUpperCase());
+export async function getPlacementByCode(code: string): Promise<Placement | undefined> {
+  const row = await prisma.campaignPlacement.findFirst({
+    where: { code: { equals: code, mode: 'insensitive' } },
+  });
+  return row ? dbToPlacement(row) : undefined;
 }
 
-export function createPlacement(input: Omit<Placement, 'id' | 'code' | 'createdAt' | 'active'> & {
+export async function createPlacement(input: Omit<Placement, 'id' | 'code' | 'createdAt' | 'active'> & {
   code?: string;
   active?: boolean;
-}): Placement {
-  const all = readPlacements();
-  const code = input.code?.trim() || generateCode(input.city, input.placement, all);
+}): Promise<Placement> {
+  const existingCodes = await prisma.campaignPlacement.findMany({ select: { code: true } });
+  const code = input.code?.trim() || generateCode(input.city, input.placement, existingCodes);
 
-  if (all.some((p) => p.code.toUpperCase() === code.toUpperCase())) {
+  if (existingCodes.some((r) => r.code.toUpperCase() === code.toUpperCase())) {
     throw new Error(`Placement code "${code}" already exists`);
   }
 
-  const row: Placement = {
-    id:              uuid('plc'),
-    code,
-    campaign:        input.campaign || 'Know Before You Go',
-    station:         input.station,
-    address:         input.address,
-    city:            input.city,
-    contactName:     input.contactName,
-    contactEmail:    input.contactEmail,
-    contactPhone:    input.contactPhone,
-    placement:       input.placement,
-    headlineVariant: input.headlineVariant || 'A-KnowBefore',
-    landingPath:     input.landingPath || '/',
-    notes:           input.notes,
-    createdAt:       new Date().toISOString(),
-    active:          input.active ?? true,
-  };
-  all.push(row);
-  writePlacements(all);
-  return row;
+  const row = await prisma.campaignPlacement.create({
+    data: {
+      id:              uuid('plc'),
+      code,
+      campaign:        input.campaign        || 'Know Before You Go',
+      station:         input.station         || '',
+      address:         input.address         || null,
+      city:            input.city            || null,
+      contactName:     input.contactName     || null,
+      contactEmail:    input.contactEmail    || null,
+      contactPhone:    input.contactPhone    || null,
+      placement:       input.placement,
+      headlineVariant: input.headlineVariant || 'A-KnowBefore',
+      landingPath:     input.landingPath     || '/',
+      notes:           input.notes           || null,
+      createdAt:       new Date().toISOString(),
+      active:          input.active          ?? true,
+      featured:        input.featured        ?? false,
+    },
+  });
+  return dbToPlacement(row);
 }
 
-export function updatePlacement(id: string, patch: Partial<Omit<Placement, 'id' | 'createdAt'>>): Placement | null {
-  const all = readPlacements();
-  const idx = all.findIndex((p) => p.id === id);
-  if (idx === -1) return null;
-  all[idx] = { ...all[idx], ...patch };
-  writePlacements(all);
-  return all[idx];
+export async function updatePlacement(id: string, patch: Partial<Omit<Placement, 'id' | 'createdAt'>>): Promise<Placement | null> {
+  const data: Record<string, unknown> = {};
+  if (patch.code            !== undefined) data.code            = patch.code;
+  if (patch.campaign        !== undefined) data.campaign        = patch.campaign;
+  if (patch.station         !== undefined) data.station         = patch.station;
+  if (patch.address         !== undefined) data.address         = patch.address         || null;
+  if (patch.city            !== undefined) data.city            = patch.city            || null;
+  if (patch.contactName     !== undefined) data.contactName     = patch.contactName     || null;
+  if (patch.contactEmail    !== undefined) data.contactEmail    = patch.contactEmail    || null;
+  if (patch.contactPhone    !== undefined) data.contactPhone    = patch.contactPhone    || null;
+  if (patch.placement       !== undefined) data.placement       = patch.placement;
+  if (patch.headlineVariant !== undefined) data.headlineVariant = patch.headlineVariant;
+  if (patch.landingPath     !== undefined) data.landingPath     = patch.landingPath;
+  if (patch.notes           !== undefined) data.notes           = patch.notes           || null;
+  if (patch.active          !== undefined) data.active          = patch.active;
+  if (patch.featured        !== undefined) data.featured        = patch.featured;
+
+  try {
+    const row = await prisma.campaignPlacement.update({ where: { id }, data });
+    return dbToPlacement(row);
+  } catch { return null; }
 }
 
-export function deletePlacement(id: string): boolean {
-  const all = readPlacements();
-  const next = all.filter((p) => p.id !== id);
-  if (next.length === all.length) return false;
-  writePlacements(next);
-  return true;
+export async function deletePlacement(id: string): Promise<boolean> {
+  try {
+    await prisma.campaignPlacement.delete({ where: { id } });
+    return true;
+  } catch { return false; }
 }
 
-// ── Event logging ────────────────────────────────────────────────────────
+// ── Event logging (JSON file) ─────────────────────────────────────────────
 
 export function logEvent(ev: Omit<CampaignEvent, 'id' | 'ts'>): CampaignEvent {
   const all = readEvents();
@@ -273,11 +308,6 @@ export interface PlacementStats {
   calcToComplete: number;
   visitToSignup:  number;
   lastEventAt?:   string;
-  // Bilingual QR pilot — EN vs ES split read from event.meta.locale.
-  // scansEn + scansEs should equal scans (unknown-locale events from before
-  // the bilingual rollout are counted as EN). signupsEn + signupsEs likewise.
-  // Used by the admin dashboard to A/B test Spanish placards against English
-  // ones at the same station.
   scansEn:        number;
   scansEs:        number;
   signupsEn:      number;
@@ -307,7 +337,6 @@ function emptyStats(code: string): PlacementStats {
   };
 }
 
-/** Read the locale recorded in event.meta, defaulting to 'en' for backfill. */
 function eventLocale(e: CampaignEvent): 'en' | 'es' {
   const raw = (e.meta?.locale as string | undefined)?.toLowerCase();
   return raw === 'es' ? 'es' : 'en';
@@ -349,13 +378,13 @@ function computeStats(events: CampaignEvent[], code: string): PlacementStats {
   return s;
 }
 
-export function getStatsForPlacement(code: string): PlacementStats {
+export async function getStatsForPlacement(code: string): Promise<PlacementStats> {
   const events = readEvents().filter((e) => e.placementCode.toUpperCase() === code.toUpperCase());
   return computeStats(events, code);
 }
 
-export function getStatsForAllPlacements(): PlacementStats[] {
-  const placements = readPlacements();
+export async function getStatsForAllPlacements(): Promise<PlacementStats[]> {
+  const placements = await listPlacements();
   const events     = readEvents();
   const byCode = new Map<string, CampaignEvent[]>();
 
@@ -375,26 +404,22 @@ export interface GroupedStats {
   placementCount: number;
 }
 
-/** Aggregate stats across placements grouped by a dimension. */
-export function groupStatsBy(dimension: 'station' | 'placement' | 'headlineVariant' | 'city'): GroupedStats[] {
-  const placements = readPlacements();
+export async function groupStatsBy(dimension: 'station' | 'placement' | 'headlineVariant' | 'city'): Promise<GroupedStats[]> {
+  const placements = await listPlacements();
   const events     = readEvents();
 
-  // code -> group key
   const codeToGroup = new Map<string, { key: string; label: string }>();
   for (const p of placements) {
     let key = '';
-    let label = '';
     switch (dimension) {
-      case 'station':         key = p.station;                    label = p.station;                    break;
-      case 'placement':       key = p.placement;                  label = p.placement;                  break;
-      case 'headlineVariant': key = p.headlineVariant;            label = p.headlineVariant;            break;
-      case 'city':            key = (p.city ?? 'Unknown');        label = (p.city ?? 'Unknown');        break;
+      case 'station':         key = p.station;             break;
+      case 'placement':       key = p.placement;           break;
+      case 'headlineVariant': key = p.headlineVariant;     break;
+      case 'city':            key = (p.city ?? 'Unknown'); break;
     }
-    codeToGroup.set(p.code.toUpperCase(), { key, label });
+    codeToGroup.set(p.code.toUpperCase(), { key, label: key });
   }
 
-  // Group events
   const eventsByGroup = new Map<string, CampaignEvent[]>();
   for (const e of events) {
     const g = codeToGroup.get(e.placementCode.toUpperCase());
@@ -403,7 +428,6 @@ export function groupStatsBy(dimension: 'station' | 'placement' | 'headlineVaria
     eventsByGroup.get(g.key)!.push(e);
   }
 
-  // Count placements per group
   const placementCountByGroup = new Map<string, number>();
   for (const p of placements) {
     const g = codeToGroup.get(p.code.toUpperCase())!;
@@ -420,7 +444,6 @@ export function groupStatsBy(dimension: 'station' | 'placement' | 'headlineVaria
     });
   }
 
-  // Also include groups with zero events
   for (const [key, count] of placementCountByGroup.entries()) {
     if (!eventsByGroup.has(key)) {
       results.push({ key, label: key, stats: emptyStats(key), placementCount: count });
@@ -437,12 +460,12 @@ export interface CampaignOverview {
   topPlacements:   { code: string; station: string; scans: number; signups: number }[];
 }
 
-export function getOverview(): CampaignOverview {
-  const placements = readPlacements();
-  const events     = readEvents();
-  const totals     = computeStats(events, '__ALL__');
+export async function getOverview(): Promise<CampaignOverview> {
+  const placements   = await listPlacements();
+  const events       = readEvents();
+  const totals       = computeStats(events, '__ALL__');
+  const perPlacement = await getStatsForAllPlacements();
 
-  const perPlacement = getStatsForAllPlacements();
   const top = [...perPlacement]
     .sort((a, b) => b.scans - a.scans)
     .slice(0, 5)

@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
   }
 
   const sessionId = req.cookies.get('gc_ssn')?.value ?? `ssn_${Date.now().toString(36)}`;
-  const placement = placementCode ? getPlacementByCode(placementCode) : undefined;
+  const placement = placementCode ? await getPlacementByCode(placementCode) : undefined;
 
   // Log the campaign event (only if we have an attribution cookie)
   if (placementCode) {
