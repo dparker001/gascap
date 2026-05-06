@@ -158,8 +158,9 @@ export default function AdminPage() {
   // ── Per-user email history map (userId → sent emails) ────────────────
   const [userEmailMap, setUserEmailMap] = useState<Record<string, { type: string; status: string; sentAt: string }[]>>({});
   // ── GHL Backfill ──────────────────────────────────────────────────────
-  const [backfillLoading, setBackfillLoading] = useState(false);
-  const [backfillMsg,     setBackfillMsg]     = useState('');
+  const [backfillLoading,  setBackfillLoading]  = useState(false);
+  const [backfillMsg,      setBackfillMsg]      = useState('');
+  const [backfillProgress, setBackfillProgress] = useState(0);
 
   // ── Email Preview ─────────────────────────────────────────────────────
   const [emailPreviewOpen,     setEmailPreviewOpen]     = useState(false);
@@ -437,18 +438,34 @@ export default function AdminPage() {
     if (!confirm('Sync all users to GHL? Safe to run multiple times — upsert is idempotent.')) return;
     setBackfillLoading(true);
     setBackfillMsg('');
+    setBackfillProgress(0);
+
+    // Animate progress: accelerates quickly then decelerates as it nears 85%
+    const timer = setInterval(() => {
+      setBackfillProgress((prev) => {
+        if (prev >= 85) return prev;
+        const step = Math.max(0.4, (85 - prev) * 0.06);
+        return Math.min(85, prev + step);
+      });
+    }, 200);
+
     try {
       const res  = await fetch('/api/admin/ghl-backfill', { method: 'POST', headers: { 'x-admin-password': savedPw } });
       const data = await res.json() as { total: number; synced: number; skipped: number; errors: string[] };
+      clearInterval(timer);
+      setBackfillProgress(100);
       if (res.ok) {
         setBackfillMsg(`✅ Synced ${data.synced} of ${data.total} users to GHL${data.errors.length > 0 ? ` (${data.errors.length} errors — check logs)` : ''}`);
       } else {
         setBackfillMsg('❌ Backfill failed — check logs');
       }
     } catch {
+      clearInterval(timer);
+      setBackfillProgress(0);
       setBackfillMsg('❌ Network error');
     }
     setBackfillLoading(false);
+    setTimeout(() => setBackfillProgress(0), 1500);
   }
 
   // ── Announcements helpers ──────────────────────────────────────────────
@@ -881,6 +898,16 @@ export default function AdminPage() {
               Backfill all app users into GHL. Safe to run multiple times.
             </p>
           </div>
+
+          {/* Progress bar */}
+          {backfillProgress > 0 && (
+            <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+              <div
+                className="h-2 rounded-full bg-teal-500 transition-all duration-300 ease-out"
+                style={{ width: `${backfillProgress}%` }}
+              />
+            </div>
+          )}
 
           {backfillMsg && (
             <div className={`rounded-xl px-4 py-2 text-sm flex justify-between ${
