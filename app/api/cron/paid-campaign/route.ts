@@ -63,6 +63,7 @@ export async function GET(req: Request) {
         });
         await advancePaidCampaignStep(fresh.id, step);
         sent++;
+        await new Promise((r) => setTimeout(r, 250)); // stay under Resend 5 req/sec limit
       } catch (err) {
         console.error(`[paid-campaign] ${pStep} failed for ${user.email}:`, err);
         errors++;
