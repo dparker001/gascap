@@ -163,12 +163,15 @@ export async function POST(req: Request) {
     // subscribers.
     const newSignupTags = ['gascap-new-signup', 'gascap-trial-30day'];
 
+    const ghlPhone = phone?.trim() || undefined;
+
     if (placement) {
       upsertGhlContactWithCampaign(
         {
           name:      user.name,
           email:     user.email,
           plan:      'pro',
+          phone:     ghlPhone,
           locale:    userLocale,
           source:    `GasCap QR — ${placement.station}`,
           extraTags: newSignupTags,
@@ -187,6 +190,7 @@ export async function POST(req: Request) {
         name:      user.name,
         email:     user.email,
         plan:      'pro',
+        phone:     ghlPhone,
         locale:    userLocale,
         source:    'GasCap Signup',
         extraTags: newSignupTags,

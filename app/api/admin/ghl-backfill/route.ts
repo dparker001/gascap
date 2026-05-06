@@ -43,6 +43,7 @@ export async function POST(req: Request) {
         name:      user.name,
         email:     user.email,
         plan:      plan as 'free' | 'pro' | 'fleet',
+        phone:     user.phone || undefined,
         locale:    (user.locale as 'en' | 'es' | undefined) ?? 'en',
         source:    'GasCap Admin Backfill',
         extraTags: [
