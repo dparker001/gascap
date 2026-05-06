@@ -20,16 +20,26 @@ export default function ManualFillupLogger() {
   const [selId,    setSelId]    = useState<string>('');
   const [drivers,  setDrivers]  = useState<string[]>([]);
 
-  // Fetch saved vehicles once when opened
+  // Keyed by the signed-in user's ID so the list always belongs to the current account.
+  // If the user switches accounts the vehicles reset and refetch automatically.
+  const sessionUserId = (session?.user as { id?: string } | undefined)?.id ?? session?.user?.email ?? null;
+
   useEffect(() => {
-    if (!session || vehicles.length > 0) return;
+    if (!sessionUserId) {
+      setVehicles([]);
+      setSelId('');
+      setDrivers([]);
+      return;
+    }
+    setVehicles([]);
+    setSelId('');
+    setDrivers([]);
     fetch('/api/vehicles')
       .then((r) => r.json())
       .then((d: { vehicles?: Vehicle[]; plan?: string }) => {
         const list = d.vehicles ?? [];
         setVehicles(list);
         if (list.length > 0) setSelId(list[0].id);
-        // Fetch driver roster for fleet users
         if (d.plan === 'fleet') {
           fetch('/api/fleet/drivers')
             .then((r) => r.json())
@@ -38,7 +48,8 @@ export default function ManualFillupLogger() {
         }
       })
       .catch(() => {});
-  }, [session, vehicles.length]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionUserId]);
 
   if (!session) return null;
 
