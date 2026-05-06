@@ -19,7 +19,7 @@ import { usePathname } from 'next/navigation';
  */
 
 // Pages excluded from chat widget (have their own phone/SMS opt-in forms)
-const EXCLUDED_PATHS = ['/contact', '/settings'];
+const EXCLUDED_PATHS = ['/contact', '/settings', '/signup'];
 
 const GHL_SELECTORS = [
   '#chat-widget-container',
