@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { getToken } from 'next-auth/jwt';
 
 // Paths that never require verification
 const BYPASS = [
@@ -12,6 +13,8 @@ const BYPASS = [
   '/terms',
   '/privacy',
   '/help',
+  '/amoe',
+  '/sweepstakes-rules',
   '/api/',
   '/_next/',
   '/favicon',
@@ -24,15 +27,26 @@ const BYPASS = [
   '/public',
 ];
 
+const GRACE_PERIOD_MS = 48 * 60 * 60 * 1000; // 48 hours
+
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   // Always allow bypass paths
   if (BYPASS.some((p) => pathname.startsWith(p))) return NextResponse.next();
 
-  // All routes are accessible — email verification is handled via an inline
-  // banner on the homepage rather than a hard redirect, so users can use the
-  // app while their email is pending verification.
+  // Enforce email verification for signed-in users past the 48-hour grace period
+  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+  if (token && !token.emailVerified && token.createdAt) {
+    const age = Date.now() - new Date(token.createdAt as string).getTime();
+    if (age > GRACE_PERIOD_MS) {
+      const url = req.nextUrl.clone();
+      url.pathname = '/verify-email';
+      url.search = '?locked=1';
+      return NextResponse.redirect(url);
+    }
+  }
+
   return NextResponse.next();
 }
 

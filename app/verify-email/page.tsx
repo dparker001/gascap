@@ -10,6 +10,7 @@ function VerifyEmailContent() {
   const params  = useSearchParams();
   const token   = params.get('token') ?? '';
   const lang    = params.get('lang') ?? '';
+  const locked  = params.get('locked') === '1';
   const { data: session } = useSession();
   const { t } = useTranslation();
   const vp = t.verifyPage;
@@ -60,14 +61,18 @@ function VerifyEmailContent() {
     );
   }
 
-  // No token — user was redirected here after signup (unverified)
+  // No token — user was redirected here after signup or due to 48-hour lock
   return (
     <div className="min-h-screen bg-[#eef1f7] flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-card p-8 text-center max-w-sm w-full space-y-4">
-        <p className="text-4xl">📬</p>
-        <p className="text-xl font-black text-navy-700">{vp.checkInbox}</p>
+        <p className="text-4xl">{locked ? '🔒' : '📬'}</p>
+        <p className="text-xl font-black text-navy-700">
+          {locked ? 'Your account is on hold' : vp.checkInbox}
+        </p>
         <p className="text-sm text-slate-500 leading-relaxed">
-          {vp.checkBody(session?.user?.email ?? 'your email address')}
+          {locked
+            ? `To keep your free Pro trial active, please verify the email address we sent to ${session?.user?.email ?? 'your inbox'}. It only takes one click.`
+            : vp.checkBody(session?.user?.email ?? 'your email address')}
         </p>
 
         {resent ? (
