@@ -41,7 +41,6 @@ export interface GhlContactInput {
   name:         string;
   email:        string;
   plan?:        'free' | 'pro' | 'fleet';
-  isBeta?:      boolean;
   source?:      string;
   phone?:       string;
   locale?:      'en' | 'es';  // signup language — used for workflow branching in GHL
@@ -51,8 +50,8 @@ export interface GhlContactInput {
 /**
  * Create or update a GasCap contact in GHL.
  * - Looks up by email first; creates if not found, updates if found.
- * - Applies plan tag + beta tag automatically.
- * - Tags: gascap-free | gascap-pro | gascap-fleet, gascap-beta-tester, gascap
+ * - Applies plan tag automatically.
+ * - Tags: gascap-free | gascap-pro | gascap-fleet, gascap
  */
 export async function upsertGhlContact(input: GhlContactInput): Promise<boolean> {
   if (!isConfigured()) {
@@ -70,7 +69,6 @@ export async function upsertGhlContact(input: GhlContactInput): Promise<boolean>
       'gascap',
       langTag,
       ...(input.plan ? [PLAN_TAGS[input.plan] ?? 'gascap-free'] : []),
-      ...(input.isBeta ? ['gascap-beta-tester'] : []),
       ...(input.extraTags ?? []),
     ];
 

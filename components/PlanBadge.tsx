@@ -17,9 +17,9 @@ import { useTranslation } from '@/contexts/LanguageContext';
  */
 
 interface LivePlanData {
-  plan:          string;
-  isProTrial:    boolean;
-  betaProExpiry: string | null;
+  plan:           string;
+  isProTrial:     boolean;
+  trialExpiresAt: string | null;
 }
 
 export default function PlanBadge() {
@@ -40,14 +40,14 @@ export default function PlanBadge() {
   }
 
   // Live server data takes priority over JWT — always reflects current billing state
-  const jwtUser      = session?.user as { plan?: string; isProTrial?: boolean; betaProExpiry?: string | null } | undefined;
-  const plan         = liveData?.plan         ?? jwtUser?.plan         ?? null;
-  const isProTrial   = liveData?.isProTrial   ?? jwtUser?.isProTrial   ?? false;
-  const betaProExpiry = liveData?.betaProExpiry ?? jwtUser?.betaProExpiry ?? null;
+  const jwtUser       = session?.user as { plan?: string; isProTrial?: boolean; trialExpiresAt?: string | null } | undefined;
+  const plan          = liveData?.plan          ?? jwtUser?.plan          ?? null;
+  const isProTrial    = liveData?.isProTrial    ?? jwtUser?.isProTrial    ?? false;
+  const trialExpiresAt = liveData?.trialExpiresAt ?? jwtUser?.trialExpiresAt ?? null;
 
   /* ── Pro Trial ── */
-  if (plan === 'pro' && isProTrial && betaProExpiry) {
-    const msRemaining = new Date(betaProExpiry).getTime() - Date.now();
+  if (plan === 'pro' && isProTrial && trialExpiresAt) {
+    const msRemaining = new Date(trialExpiresAt).getTime() - Date.now();
     const daysLeft    = Math.max(0, Math.ceil(msRemaining / 86_400_000));
 
     const isUrgent  = daysLeft <= 2;

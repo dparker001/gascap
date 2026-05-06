@@ -37,8 +37,7 @@ interface AdminUser {
   referredByName:   string | null;
   referredUsers:    { name: string; email: string; joinedAt: string }[];
   stripeCustomerId: string | null;
-  isBetaTester?:    boolean;
-  betaProExpiry?:   string | null;
+  trialExpiresAt?:  string | null;
   pushSubscribed?:  boolean;
   isTestAccount?:        boolean;
   ambassadorProForLife?: boolean;
@@ -315,27 +314,6 @@ export default function AdminPage() {
       else { setPushMsg(`✅ Digest sent to ${user.email}.`); }
     } catch { setPushMsg('❌ Network error.'); }
     finally { setPushLoading(null); }
-  }
-
-  async function handleBetaGrant(user: AdminUser) {
-    await fetch(`/api/admin/users?id=${user.id}`, {
-      method:  'PATCH',
-      headers: { 'x-admin-password': savedPw, 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ grantBetaTrial: 30 }),
-    });
-    setMsg(`✅ 30-day Pro trial granted to ${user.email}`);
-    await load(savedPw);
-  }
-
-  async function handleBetaRevoke(user: AdminUser) {
-    if (!confirm(`Revoke beta trial for ${user.name}? They will revert to Free.`)) return;
-    await fetch(`/api/admin/users?id=${user.id}`, {
-      method:  'PATCH',
-      headers: { 'x-admin-password': savedPw, 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ revokeBetaTrial: true }),
-    });
-    setMsg(`Revoked beta trial for ${user.email}`);
-    await load(savedPw);
   }
 
   async function handleTestAccount(user: AdminUser, enable: boolean) {
@@ -901,7 +879,6 @@ export default function AdminPage() {
             <p className="text-sm font-black text-navy-700">🔗 GHL Contact Sync</p>
             <p className="text-xs text-slate-500 mt-0.5">
               Backfill all app users into GHL. Safe to run multiple times.
-              Backfilled contacts get the <code className="bg-slate-100 px-1 rounded">gascap-original-beta</code> tag.
             </p>
           </div>
 
@@ -1927,24 +1904,6 @@ export default function AdminPage() {
                       >
                         ✓ Verify
                       </button>
-                    )}
-
-                    {/* Beta trial status — display only for existing testers (no new grants) */}
-                    {u.isBetaTester && (
-                      <span className="text-[10px] px-2 py-1 rounded-lg bg-purple-50 text-purple-600 font-semibold border border-purple-200 whitespace-nowrap">
-                        🧪 {u.betaProExpiry
-                          ? (() => {
-                              const days = Math.ceil((new Date(u.betaProExpiry).getTime() - Date.now()) / 86400_000);
-                              return days > 0 ? `Beta · ${days}d left` : 'Beta · Expired';
-                            })()
-                          : 'Beta'}
-                        {' '}
-                        <button
-                          onClick={() => handleBetaRevoke(u)}
-                          className="text-purple-400 hover:text-red-500 ml-0.5"
-                          title="Revoke trial early"
-                        >×</button>
-                      </span>
                     )}
 
                     {/* Test account toggle */}

@@ -20,7 +20,7 @@ export async function GET() {
     plan,
     limit:            PLAN_LIMITS[plan],
     isProTrial:       user?.isProTrial       ?? false,
-    betaProExpiry:    user?.betaProExpiry    ?? null,
+    trialExpiresAt:   user?.trialExpiresAt   ?? null,
     fleetCompanyName: user?.fleetCompanyName ?? null,
     fleetLogoUrl:     user?.fleetLogoUrl     ?? null,
     userName:         user?.displayName || user?.name || null,

@@ -44,9 +44,6 @@ export async function GET() {
     ? activeCredits.sort((a, b) => new Date(a.expiresAt).getTime() - new Date(b.expiresAt).getTime())[0].expiresAt
     : null;
 
-  const isBeta = user?.isBetaTester ?? false;
-  const betaReferralUrl = isBeta ? `${baseUrl}/signup?ref=${code}&beta=1` : null;
-
   // Look up the name of whoever referred this user (via their referral code)
   const referrer = user?.referredBy
     ? await findByReferralCode(user.referredBy)
@@ -70,8 +67,6 @@ export async function GET() {
   return NextResponse.json({
     code,
     referralUrl,
-    betaReferralUrl,
-    isBeta,
     referralCount:       refCount,
     proMonthsEarned:     monthsEarned,
     referredBy:          user?.referredBy   ?? null,

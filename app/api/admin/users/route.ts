@@ -2,14 +2,14 @@
  * Admin API — protected by ADMIN_PASSWORD env var
  * GET    /api/admin/users              — list all users
  * DELETE /api/admin/users?id=xxx       — delete a user (logs to DeletedAccountLog + sends confirmation email)
- * PATCH  /api/admin/users?id=xxx       — update plan, emailVerified, betaProExpiry, isTestAccount,
+ * PATCH  /api/admin/users?id=xxx       — update plan, emailVerified, isTestAccount,
  *                                        compProForLife, revokeCompProForLife
  */
 import { NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
 import { prisma } from '@/lib/prisma';
-import { grantBetaTrial, revokeBetaTrial, findById, enrollCompCampaign } from '@/lib/users';
-import { upsertGhlContact, removeGhlTags } from '@/lib/ghl';
+import { findById, enrollCompCampaign } from '@/lib/users';
+import { upsertGhlContact } from '@/lib/ghl';
 import { getFillups } from '@/lib/fillups';
 import { sendCompProForLifeEmail } from '@/lib/emailCampaign';
 import { sendMail, accountDeletedEmailHtml } from '@/lib/email';
@@ -93,8 +93,7 @@ export async function GET(req: Request) {
       referredByName:   u.referredBy ? (codeToName.get(u.referredBy.toUpperCase()) ?? u.referredBy) : null,
       referredUsers,
       stripeCustomerId: u.stripeCustomerId ?? null,
-      isBetaTester:     u.isBetaTester,
-      betaProExpiry:    u.betaProExpiry   ?? null,
+      trialExpiresAt:   u.trialExpiresAt  ?? null,
       pushSubscribed:   subscribedUserIds.has(u.id),
       isTestAccount:        u.isTestAccount,
       ambassadorProForLife: u.ambassadorProForLife,
@@ -181,8 +180,6 @@ export async function PATCH(req: Request) {
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
   const body = await req.json() as {
     plan?: string; emailVerified?: boolean;
-    grantBetaTrial?: number;  // days (default 30)
-    revokeBetaTrial?: boolean;
     isTestAccount?: boolean;
     compProForLife?: boolean;
     revokeCompProForLife?: boolean;
@@ -190,21 +187,6 @@ export async function PATCH(req: Request) {
 
   const user = await findById(id);
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
-
-  if (body.grantBetaTrial !== undefined) {
-    await grantBetaTrial(id, body.grantBetaTrial || 30);
-    upsertGhlContact({ name: user.name, email: user.email, plan: 'pro', isBeta: true, source: 'GasCap Beta Grant' })
-      .catch((e) => console.error('[GHL] beta grant sync failed:', e));
-    return NextResponse.json({ ok: true });
-  }
-  if (body.revokeBetaTrial) {
-    await revokeBetaTrial(id);
-    upsertGhlContact({ name: user.name, email: user.email, plan: 'free', source: 'GasCap Beta Revoked' })
-      .catch((e) => console.error('[GHL] beta revoke sync failed:', e));
-    removeGhlTags(user.email, ['gascap-beta-tester'])
-      .catch((e) => console.error('[GHL] beta tag remove failed:', e));
-    return NextResponse.json({ ok: true });
-  }
 
   if (body.compProForLife) {
     // Grant complimentary Pro for Life — Stripe-proof, stops trial drip, starts comp drip

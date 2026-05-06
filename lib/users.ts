@@ -36,9 +36,8 @@ export interface StoredUser {
   referralProMonthsEarned?: number;
   referralRewardCredited?:  boolean;
   referralCredits?:         ReferralCredit[];
-  isBetaTester?:   boolean;
   isProTrial?:     boolean;
-  betaProExpiry?:  string;
+  trialExpiresAt?: string;
   emailVerified?:      boolean;
   emailVerifyToken?:   string;
   emailVerifyExpires?: string;
@@ -117,7 +116,7 @@ function toStoredUser(u: PrismaUser): StoredUser {
     streakCredits:      (u.streakCredits   as unknown as StreakCredit[])   ?? [],
     stripeCustomerId:   u.stripeCustomerId    ?? undefined,
     stripeSubscriptionId: u.stripeSubscriptionId ?? undefined,
-    betaProExpiry:      u.betaProExpiry       ?? undefined,
+    trialExpiresAt:     u.trialExpiresAt      ?? undefined,
     emailVerifyToken:   u.emailVerifyToken    ?? undefined,
     emailVerifyExpires: u.emailVerifyExpires  ?? undefined,
     passwordResetToken: u.passwordResetToken  ?? undefined,
@@ -260,34 +259,13 @@ export async function findByStripeCustomer(customerId: string): Promise<StoredUs
   return user ? toStoredUser(user) : undefined;
 }
 
-// ── Beta / Pro trial ────────────────────────────────────────────────────────
-
-export async function grantBetaTrial(userId: string, days = 30): Promise<StoredUser | null> {
-  const expiry = new Date();
-  expiry.setDate(expiry.getDate() + days);
-  const user = await prisma.user.update({
-    where: { id: userId },
-    data: {
-      plan:          'pro',
-      isBetaTester:  true,
-      betaProExpiry: expiry.toISOString(),
-    },
-  }).catch(() => null);
-  return user ? toStoredUser(user) : null;
-}
-
-export async function revokeBetaTrial(userId: string): Promise<void> {
-  await prisma.user.update({
-    where: { id: userId },
-    data: { plan: 'free', isProTrial: false, betaProExpiry: null },
-  });
-}
+// ── Pro trial ────────────────────────────────────────────────────────────────
 
 /** Expires a free Pro trial — downgrades to free and clears all trial flags. */
 export async function expireTrial(userId: string): Promise<void> {
   await prisma.user.update({
     where: { id: userId },
-    data: { plan: 'free', isProTrial: false, betaProExpiry: null },
+    data: { plan: 'free', isProTrial: false, trialExpiresAt: null },
   });
 }
 
@@ -296,10 +274,10 @@ export async function getExpiredTrialUsers(): Promise<StoredUser[]> {
   const now = new Date().toISOString();
   const users = await prisma.user.findMany({
     where: {
-      isProTrial:    true,
-      betaProExpiry: { lt: now },
-      emailOptOut:   false,
-      isTestAccount: false,
+      isProTrial:     true,
+      trialExpiresAt: { lt: now },
+      emailOptOut:    false,
+      isTestAccount:  false,
     },
   });
   return users.map(toStoredUser);
@@ -311,9 +289,9 @@ export async function grantNewSignupProTrial(userId: string, days = 30): Promise
   const user = await prisma.user.update({
     where: { id: userId },
     data: {
-      plan:          'pro',
-      isProTrial:    true,
-      betaProExpiry: expiry.toISOString(),
+      plan:           'pro',
+      isProTrial:     true,
+      trialExpiresAt: expiry.toISOString(),
     },
   }).catch(() => null);
   return user ? toStoredUser(user) : null;
@@ -479,26 +457,13 @@ export async function getUsersPendingCompCampaignStep(
   return users.map(toStoredUser);
 }
 
-export async function getExpiredBetaUsers(): Promise<StoredUser[]> {
+export async function getActiveTrialUsers(): Promise<StoredUser[]> {
   const now = new Date().toISOString();
   const users = await prisma.user.findMany({
     where: {
-      OR: [{ isBetaTester: true }, { isProTrial: true }],
-      plan:                 'pro',
-      stripeSubscriptionId: null,
-      betaProExpiry:        { not: null, lt: now },
-    },
-  });
-  return users.map(toStoredUser);
-}
-
-export async function getActiveBetaUsers(): Promise<StoredUser[]> {
-  const now = new Date().toISOString();
-  const users = await prisma.user.findMany({
-    where: {
-      OR: [{ isBetaTester: true }, { isProTrial: true }],
-      plan:         'pro',
-      betaProExpiry: { not: null, gte: now },
+      isProTrial:     true,
+      plan:           'pro',
+      trialExpiresAt: { not: null, gte: now },
     },
   });
   return users.map(toStoredUser);

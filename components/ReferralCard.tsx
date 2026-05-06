@@ -17,8 +17,6 @@ interface Thresholds { SUPPORTER: number; AMBASSADOR: number; ELITE: number }
 interface ReferralData {
   code:                string;
   referralUrl:         string;
-  betaReferralUrl:     string | null;
-  isBeta:              boolean;
   referralCount:       number;
   proMonthsEarned:     number;
   referredBy:          string | null;

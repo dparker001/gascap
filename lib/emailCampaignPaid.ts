@@ -405,7 +405,7 @@ export const renewalReminderEmailText = (name: string, tier: 'pro' | 'fleet' = '
 export function cancellationEmailHtml(name: string, userId: string, tier: 'pro' | 'fleet' = 'pro'): string {
   const first         = name.split(' ')[0];
   const planLabel     = tier === 'fleet' ? 'Fleet' : 'Pro';
-  const couponCode    = tier === 'fleet' ? 'BETA30'           : 'TRIAL30';
+  const couponCode    = 'TRIAL30';
   const reactivateCta = tier === 'fleet' ? 'Reactivate Fleet →' : 'Reactivate Pro →';
   return wrap(`
     ${header(tier)}
@@ -464,7 +464,7 @@ export function cancellationEmailHtml(name: string, userId: string, tier: 'pro' 
 
 export const cancellationEmailText = (name: string, tier: 'pro' | 'fleet' = 'pro') => {
   const planLabel  = tier === 'fleet' ? 'Fleet' : 'Pro';
-  const couponCode = tier === 'fleet' ? 'BETA30' : 'TRIAL30';
+  const couponCode = 'TRIAL30';
   return `Hi ${name.split(' ')[0]}, your GasCap™ ${planLabel} subscription has ended. Your free account keeps the calculator, live gas prices, 1 saved vehicle, and all your badges. Want to come back? Use code ${couponCode} for your first month back free: ${BASE_URL}/upgrade. Hit reply if there's anything we could improve.`;
 };
 

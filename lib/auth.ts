@@ -36,30 +36,30 @@ export const authOptions: NextAuthOptions = {
         token.plan            = (user as { plan?: string }).plan ?? 'free';
         token.emailVerified   = (user as { emailVerified?: boolean }).emailVerified ?? false;
         token.isProTrial      = (user as { isProTrial?: boolean }).isProTrial ?? false;
-        token.betaProExpiry   = (user as { betaProExpiry?: string }).betaProExpiry ?? null;
+        token.trialExpiresAt  = (user as { trialExpiresAt?: string }).trialExpiresAt ?? null;
         token.createdAt       = (user as { createdAt?: string }).createdAt ?? null;
       }
       // Re-fetch plan on session refresh so upgrades are reflected immediately
       if (trigger === 'update' || (!user && token.id)) {
         const fresh = await findById(token.id as string);
         if (fresh) {
-          token.plan          = fresh.plan;
-          token.emailVerified = fresh.emailVerified ?? false;
-          token.isProTrial    = fresh.isProTrial    ?? false;
-          token.betaProExpiry = fresh.betaProExpiry ?? null;
-          token.createdAt     = fresh.createdAt     ?? null;
+          token.plan           = fresh.plan;
+          token.emailVerified  = fresh.emailVerified  ?? false;
+          token.isProTrial     = fresh.isProTrial     ?? false;
+          token.trialExpiresAt = fresh.trialExpiresAt ?? null;
+          token.createdAt      = fresh.createdAt      ?? null;
         }
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
-        (session.user as { id?: string; plan?: string }).id             = token.id           as string;
-        (session.user as { id?: string; plan?: string }).plan           = token.plan         as string ?? 'free';
-        (session.user as { emailVerified?: boolean }).emailVerified     = token.emailVerified as boolean ?? false;
-        (session.user as { isProTrial?: boolean }).isProTrial             = token.isProTrial   as boolean ?? false;
-        (session.user as { betaProExpiry?: string | null }).betaProExpiry = token.betaProExpiry as string | null ?? null;
-        (session.user as { createdAt?: string | null }).createdAt         = token.createdAt    as string | null ?? null;
+        (session.user as { id?: string; plan?: string }).id              = token.id            as string;
+        (session.user as { id?: string; plan?: string }).plan            = token.plan          as string ?? 'free';
+        (session.user as { emailVerified?: boolean }).emailVerified      = token.emailVerified  as boolean ?? false;
+        (session.user as { isProTrial?: boolean }).isProTrial            = token.isProTrial     as boolean ?? false;
+        (session.user as { trialExpiresAt?: string | null }).trialExpiresAt = token.trialExpiresAt as string | null ?? null;
+        (session.user as { createdAt?: string | null }).createdAt        = token.createdAt     as string | null ?? null;
       }
       return session;
     },

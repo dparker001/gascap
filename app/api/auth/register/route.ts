@@ -66,7 +66,7 @@ export async function POST(req: Request) {
     }
 
     // Auto-enroll every new signup in a 30-day GasCap™ Pro trial. Sets
-    // plan='pro', isProTrial=true, betaProExpiry=+30d. The beta-expire cron
+    // plan='pro', isProTrial=true, trialExpiresAt=+30d. The trial-expire cron
     // will revert them to free automatically if they don't upgrade.
     await grantNewSignupProTrial(user.id, 30);
 
@@ -169,7 +169,6 @@ export async function POST(req: Request) {
           name:      user.name,
           email:     user.email,
           plan:      'pro',
-          isBeta:    false,
           locale:    userLocale,
           source:    `GasCap QR — ${placement.station}`,
           extraTags: newSignupTags,
@@ -188,7 +187,6 @@ export async function POST(req: Request) {
         name:      user.name,
         email:     user.email,
         plan:      'pro',
-        isBeta:    false,
         locale:    userLocale,
         source:    'GasCap Signup',
         extraTags: newSignupTags,

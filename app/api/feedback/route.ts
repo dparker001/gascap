@@ -17,7 +17,7 @@ export async function POST(req: Request) {
 
   const session = await getServerSession(authOptions);
   const from    = session?.user?.email ?? email ?? 'Anonymous';
-  const name    = session?.user?.name  ?? 'Beta Tester';
+  const name    = session?.user?.name  ?? 'GasCap User';
 
   // Always save to local store (available in admin panel regardless of email config)
   try {
@@ -33,7 +33,7 @@ export async function POST(req: Request) {
       html: `
         <div style="font-family:system-ui,sans-serif;max-width:600px;margin:0 auto;">
           <div style="background:#1e2d4a;padding:20px 24px;border-radius:12px 12px 0 0;">
-            <span style="color:#fff;font-size:18px;font-weight:900;">GasCap™ Beta Feedback</span>
+            <span style="color:#fff;font-size:18px;font-weight:900;">GasCap™ Feedback</span>
           </div>
           <div style="background:#fff;padding:24px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 12px 12px;">
             <p style="margin:0 0 4px;font-size:13px;color:#94a3b8;">From</p>

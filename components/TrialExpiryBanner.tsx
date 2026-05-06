@@ -10,7 +10,7 @@
  * Visible only to:
  *  - Signed-in users
  *  - Whose plan is 'pro' AND isProTrial is true
- *  - Whose betaProExpiry is within WARN_DAYS days from now
+ *  - Whose trialExpiresAt is within WARN_DAYS days from now
  */
 
 import { useSession } from 'next-auth/react';
@@ -35,15 +35,15 @@ export default function TrialExpiryBanner() {
   if (status === 'loading' || dismissed) return null;
 
   const user = session?.user as {
-    plan?:          string;
-    isProTrial?:    boolean;
-    betaProExpiry?: string | null;
+    plan?:           string;
+    isProTrial?:     boolean;
+    trialExpiresAt?: string | null;
   } | undefined;
 
   if (!user) return null;
-  if (user.plan !== 'pro' || !user.isProTrial || !user.betaProExpiry) return null;
+  if (user.plan !== 'pro' || !user.isProTrial || !user.trialExpiresAt) return null;
 
-  const msRemaining  = new Date(user.betaProExpiry).getTime() - Date.now();
+  const msRemaining  = new Date(user.trialExpiresAt).getTime() - Date.now();
   const daysLeft     = Math.ceil(msRemaining / 86_400_000);
 
   // Only show when trial is active and expiry is within the warning window

@@ -28,9 +28,8 @@ model User {
   referralProMonthsEarned  Int       @default(0)
   referralRewardCredited   Boolean   @default(false)
   referralCredits          Json      @default("[]")
-  isBetaTester             Boolean   @default(false)
   isProTrial               Boolean   @default(false)
-  betaProExpiry            String?
+  trialExpiresAt           String?
   emailVerified            Boolean   @default(false)
   emailVerifyToken         String?
   emailVerifyExpires       String?

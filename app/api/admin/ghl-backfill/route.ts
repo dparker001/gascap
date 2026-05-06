@@ -5,7 +5,7 @@
  * into GHL as contacts. Users who are already in GHL are safely updated
  * (upsert by email). New-to-GHL users are created.
  *
- * All backfilled contacts receive the `gascap-original-beta` tag so they
+ * All backfilled contacts receive a trial tag if applicable so they
  * are distinguishable from users who sign up after the fix.
  *
  * Auth: x-admin-password header required.
@@ -43,12 +43,10 @@ export async function POST(req: Request) {
         name:      user.name,
         email:     user.email,
         plan:      plan as 'free' | 'pro' | 'fleet',
-        isBeta:    !!user.isBetaTester,
         locale:    (user.locale as 'en' | 'es' | undefined) ?? 'en',
         source:    'GasCap Admin Backfill',
         extraTags: [
-          ...(user.isProTrial    ? ['gascap-trial-30day'] : []),
-          ...(user.isBetaTester  ? ['gascap-original-beta'] : []),
+          ...(user.isProTrial ? ['gascap-trial-30day'] : []),
         ],
       });
 
