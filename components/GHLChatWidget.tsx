@@ -7,7 +7,7 @@ import { usePathname } from 'next/navigation';
 /**
  * GHL Chat Widget — desktop only (≥ 768px).
  *
- * Widget ID: 69f213df829cb9710742418d (updated Apr 29 2026)
+ * Widget ID: 69fb1e47cb443e5efc6f191d (updated May 6 2026 — A2P compliance review)
  *
  * Excluded from pages that collect phone numbers / SMS consent to satisfy
  * A2P compliance checklist item 6 (no duplicate opt-in forms on widget pages).
@@ -69,7 +69,7 @@ export default function GHLChatWidget() {
       id="ghl-chat-widget"
       src="https://widgets.leadconnectorhq.com/loader.js"
       data-resources-url="https://widgets.leadconnectorhq.com/chat-widget/loader.js"
-      data-widget-id="69f213df829cb9710742418d"
+      data-widget-id="69fb1e47cb443e5efc6f191d"
       data-source="WEB_USER"
       strategy="lazyOnload"
     />
