@@ -355,7 +355,7 @@ interface ConversionMeta {
 const CONVERSION_META: Record<number, ConversionMeta> = {
   1: {
     subject: "What GasCap™ Pro is doing for you — and what's next",
-    preview: 'A quick look at what you've unlocked this month.',
+    preview: "A quick look at what you've unlocked this month.",
     htmlFn:  conversionC1Html,
     textFn:  conversionC1Text,
     type:    'trial-c1',
