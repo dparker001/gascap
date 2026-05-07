@@ -338,6 +338,116 @@ export function conversionC3Text(name: string): string {
 
 // ── Dispatcher ────────────────────────────────────────────────────────────────
 
+// ── C4: Special offer — $2.99/mo for first 3 months ─────────────────────────
+// Sent May 26 to engaged trial users (calcCount ≥ 2 OR streak ≥ 3) only.
+// Pre-applies Stripe coupon WELCOME299 via the upgrade URL.
+
+const OFFER_URL = `${BASE_URL}/upgrade?coupon=WELCOME299`;
+
+export function conversionC4Html(name: string, userId: string): string {
+  const first = name.split(' ')[0];
+  return wrap(`
+    ${brandHeader('trial')}
+    <tr><td style="padding:32px;">
+
+      <!-- Special offer banner -->
+      <div style="background:linear-gradient(135deg,#005F4A,#1EB68F);border-radius:14px;padding:22px 24px;margin:0 0 24px;text-align:center;">
+        <p style="margin:0 0 4px;font-size:12px;font-weight:800;color:rgba(255,255,255,0.8);text-transform:uppercase;letter-spacing:1px;">
+          Special Offer — 48 Hours Only
+        </p>
+        <p style="margin:0;font-size:32px;font-weight:900;color:#fff;line-height:1.1;">
+          $2.99<span style="font-size:16px;font-weight:600;">/mo</span>
+        </p>
+        <p style="margin:6px 0 0;font-size:14px;color:rgba(255,255,255,0.85);">
+          First 3 months · Then $4.99/mo · Cancel anytime
+        </p>
+      </div>
+
+      <p style="margin:0 0 6px;font-size:22px;font-weight:900;color:#1e2d4a;line-height:1.2;">
+        ${first}, we'd like to keep you.
+      </p>
+      <p style="margin:0 0 22px;font-size:15px;color:#475569;line-height:1.6;">
+        You've been one of our most active trial members — and we don't want to lose you
+        over price. So here's a one-time offer, just for you:
+      </p>
+
+      <!-- Offer detail -->
+      <div style="background:#f0fdf4;border:2px solid #16a34a;border-radius:14px;padding:22px 24px;margin:0 0 22px;">
+        <table cellpadding="0" cellspacing="0" width="100%">
+          <tr>
+            <td style="padding:8px 0;border-bottom:1px solid #dcfce7;">
+              <p style="margin:0;font-size:15px;font-weight:700;color:#1e2d4a;">First 3 months</p>
+              <p style="margin:2px 0 0;font-size:13px;color:#64748b;">Discounted introductory rate — auto-applied at checkout</p>
+            </td>
+            <td style="padding:8px 0;border-bottom:1px solid #dcfce7;text-align:right;white-space:nowrap;">
+              <span style="font-size:22px;font-weight:900;color:#16a34a;">$2.99<span style="font-size:13px;">/mo</span></span>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:8px 0;">
+              <p style="margin:0;font-size:15px;font-weight:700;color:#1e2d4a;">After month 3</p>
+              <p style="margin:2px 0 0;font-size:13px;color:#64748b;">Standard Pro rate — cancel anytime before then</p>
+            </td>
+            <td style="padding:8px 0;text-align:right;white-space:nowrap;">
+              <span style="font-size:22px;font-weight:900;color:#1e2d4a;">$4.99<span style="font-size:13px;">/mo</span></span>
+            </td>
+          </tr>
+        </table>
+        <div style="margin-top:14px;padding-top:14px;border-top:1px solid #dcfce7;">
+          <p style="margin:0;font-size:13px;color:#16a34a;font-weight:700;">
+            💰 You save $6.00 over the first 3 months vs. standard pricing.
+          </p>
+        </div>
+      </div>
+
+      <!-- What's included reminder -->
+      <p style="margin:0 0 12px;font-size:14px;font-weight:700;color:#1e2d4a;">Everything you've been using, plus:</p>
+      <table cellpadding="0" cellspacing="0" width="100%" style="margin:0 0 22px;">
+        <tr>
+          <td style="padding:5px 0;vertical-align:top;width:22px;font-size:15px;color:#16a34a;">✓</td>
+          <td style="padding:5px 0 5px 8px;font-size:14px;color:#475569;">Monthly gas card giveaway — entries keep building</td>
+        </tr>
+        <tr>
+          <td style="padding:5px 0;vertical-align:top;font-size:15px;color:#16a34a;">✓</td>
+          <td style="padding:5px 0 5px 8px;font-size:14px;color:#475569;">Your login streak and bonus entries preserved</td>
+        </tr>
+        <tr>
+          <td style="padding:5px 0;vertical-align:top;font-size:15px;color:#16a34a;">✓</td>
+          <td style="padding:5px 0 5px 8px;font-size:14px;color:#475569;">Rental Car Return Mode, MPG charts, fill-up reminders</td>
+        </tr>
+        <tr>
+          <td style="padding:5px 0;vertical-align:top;font-size:15px;color:#16a34a;">✓</td>
+          <td style="padding:5px 0 5px 8px;font-size:14px;color:#475569;">Discount auto-applied — no code needed at checkout</td>
+        </tr>
+      </table>
+
+      <!-- Expiry -->
+      <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:14px 18px;margin:0 0 22px;">
+        <p style="margin:0;font-size:13px;color:#9a3412;font-weight:700;">
+          ⏰ This offer expires in 48 hours — it will not be extended.
+        </p>
+      </div>
+
+      <div style="text-align:center;padding:8px 0;">
+        <a href="${OFFER_URL}" style="display:inline-block;background:#16a34a;color:#fff;font-weight:900;
+           font-size:16px;padding:16px 36px;border-radius:12px;text-decoration:none;">
+          Claim My $2.99 Offer →
+        </a>
+        <p style="margin:14px 0 0;font-size:12px;color:#94a3b8;">
+          Discount auto-applied at checkout. No code needed. Cancel anytime.
+        </p>
+      </div>
+
+    </td></tr>
+    ${footer(userId)}
+  `);
+}
+
+export function conversionC4Text(name: string): string {
+  const first = name.split(' ')[0];
+  return `Hi ${first}, we'd like to keep you as a GasCap™ Pro member. Here's a one-time offer just for you: $2.99/month for your first 3 months, then $4.99/month after that. That's $6 in savings, no code needed — the discount is applied automatically at checkout. This offer expires in 48 hours. Claim it here: ${OFFER_URL}`;
+}
+
 export interface ConversionRecipient {
   id:    string;
   name:  string;
@@ -374,9 +484,16 @@ const CONVERSION_META: Record<number, ConversionMeta> = {
     textFn:  conversionC3Text,
     type:    'trial-c3',
   },
+  4: {
+    subject: "We'd like to keep you — here's a special offer",
+    preview: '$2.99/month for your first 3 months. 48 hours only.',
+    htmlFn:  conversionC4Html,
+    textFn:  conversionC4Text,
+    type:    'trial-c4',
+  },
 };
 
-export async function sendConversionEmail(step: 1 | 2 | 3, user: ConversionRecipient): Promise<void> {
+export async function sendConversionEmail(step: 1 | 2 | 3 | 4, user: ConversionRecipient): Promise<void> {
   const meta = CONVERSION_META[step];
   if (!meta) throw new Error(`Unknown conversion step: ${step}`);
 

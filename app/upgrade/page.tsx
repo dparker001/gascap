@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { PRICING } from '@/lib/stripe';
 import { useTranslation } from '@/contexts/LanguageContext';
 import BrandBar from '@/components/BrandBar';
@@ -75,7 +76,9 @@ function GasPumpIcon() {
 export default function UpgradePage() {
   const { data: session } = useSession();
   const { t } = useTranslation();
-  const [billing, setBilling] = useState<'monthly' | 'annual'>('annual');
+  const searchParams = useSearchParams();
+  const coupon = searchParams.get('coupon') ?? undefined;
+  const [billing, setBilling] = useState<'monthly' | 'annual'>('monthly');
   const [loading, setLoading] = useState<'pro' | 'fleet' | null>(null);
   const [error,   setError]   = useState('');
 
@@ -87,7 +90,7 @@ export default function UpgradePage() {
       const res  = await fetch('/api/stripe/checkout', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ tier, billing }),
+        body:    JSON.stringify({ tier, billing, ...(coupon ? { coupon } : {}) }),
       });
       const data = await res.json() as { url?: string; error?: string };
       if (data.url) { window.location.href = data.url; }

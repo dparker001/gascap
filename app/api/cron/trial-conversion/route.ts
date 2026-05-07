@@ -27,21 +27,33 @@ export async function GET(req: Request) {
 
   // Step validation
   const stepParam = searchParams.get('step');
-  const step = Number(stepParam) as 1 | 2 | 3;
-  if (![1, 2, 3].includes(step)) {
-    return NextResponse.json({ error: 'Invalid step — must be 1, 2, or 3' }, { status: 400 });
+  const step = Number(stepParam) as 1 | 2 | 3 | 4;
+  if (![1, 2, 3, 4].includes(step)) {
+    return NextResponse.json({ error: 'Invalid step — must be 1, 2, 3, or 4' }, { status: 400 });
   }
 
   const emailType = `trial-c${step}`;
 
-  // Fetch all active Pro trial users
+  // C4 targets only engaged users (≥2 calcs OR streak ≥3) — soft offer to likely converters.
+  // Steps 1–3 go to all active trial users.
+  const where = step === 4
+    ? {
+        plan:          'pro' as const,
+        isProTrial:    true,
+        emailOptOut:   false,
+        isTestAccount: { not: true },
+        OR: [{ calcCount: { gte: 2 } }, { streak: { gte: 3 } }],
+      }
+    : {
+        plan:          'pro' as const,
+        isProTrial:    true,
+        emailOptOut:   false,
+        isTestAccount: { not: true },
+      };
+
+  // Fetch qualifying trial users
   const users = await prisma.user.findMany({
-    where: {
-      plan:          'pro',
-      isProTrial:    true,
-      emailOptOut:   false,
-      isTestAccount: { not: true },
-    },
+    where,
     select: { id: true, name: true, email: true },
   });
 

@@ -40,10 +40,12 @@ export async function POST(req: Request) {
     tier?:    'pro' | 'fleet';
     billing?: 'monthly' | 'annual';
     priceId?: string; // legacy direct price ID override
+    coupon?:  string; // Stripe coupon ID to pre-apply (e.g. from C4 promo email)
   };
 
   const tier    = body.tier    ?? 'pro';
   const billing = body.billing ?? 'monthly';
+  const coupon  = body.coupon  ?? null;
 
   // Resolve price ID
   let priceId = body.priceId ?? '';
@@ -88,7 +90,11 @@ export async function POST(req: Request) {
   const checkoutSession = await stripe.checkout.sessions.create({
     mode:                    'subscription',
     payment_method_types:    ['card'],
-    allow_promotion_codes:   true,
+    // If a coupon is pre-applied (e.g. from C4 promo email), apply it directly
+    // and hide the manual promo code field — otherwise show the field.
+    ...(coupon
+      ? { discounts: [{ coupon }] }
+      : { allow_promotion_codes: true }),
     phone_number_collection: { enabled: true },   // Collect phone for billing; saved to user record via webhook
     line_items:              [{ price: priceId, quantity: 1 }],
     customer_email:          user.stripeCustomerId ? undefined : user.email,

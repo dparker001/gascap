@@ -607,7 +607,7 @@ export default function CampaignsAdminPage() {
           <div className="px-5 py-3 border-b">
             <h2 className="text-lg font-semibold">Placements ({placements.length})</h2>
           </div>
-          <div className="overflow-x-auto">
+          <div className="overflow-auto max-h-[75vh]">
             <table className="w-full text-sm">
               <thead className="bg-slate-50 text-slate-600 text-left sticky top-0 z-10 shadow-sm">
                 <tr>

@@ -1,8 +1,13 @@
 name: Trial Conversion Emails
 
-# Fires daily at 13:00 UTC (9 AM EDT) May 19–25.
+# Fires daily at 13:00 UTC (9 AM EDT) May 19–26.
 # The job checks today's date and calls the right step — exits cleanly on non-target days.
-# After May 25 this workflow is inert; delete it once the campaign is over.
+# After May 26 this workflow is inert; delete it once the campaign is over.
+#
+#   C1 May 19 — soft value reminder ("what you're getting")
+#   C2 May 23 — savings math + price anchor
+#   C3 May 25 — hard deadline urgency
+#   C4 May 26 — $2.99/mo for 3 months offer (engaged users only)
 
 on:
   schedule:
@@ -10,10 +15,10 @@ on:
   workflow_dispatch:
     inputs:
       step:
-        description: 'Conversion step to send (1, 2, or 3)'
+        description: 'Conversion step to send (1, 2, 3, or 4)'
         required: true
         type: choice
-        options: ['1', '2', '3']
+        options: ['1', '2', '3', '4']
 
 jobs:
   trial-conversion:
@@ -32,6 +37,7 @@ jobs:
               "2026-05-19") STEP="1" ;;
               "2026-05-23") STEP="2" ;;
               "2026-05-25") STEP="3" ;;
+              "2026-05-26") STEP="4" ;;
               *)            echo "No conversion email scheduled for $TODAY — exiting." && exit 0 ;;
             esac
           fi
