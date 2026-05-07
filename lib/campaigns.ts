@@ -274,6 +274,13 @@ export function clearAllEvents(): number {
   return n;
 }
 
+export function clearEventsForPlacement(code: string): number {
+  const all = readEvents();
+  const keep = all.filter((e) => e.placementCode.toUpperCase() !== code.toUpperCase());
+  writeEvents(keep);
+  return all.length - keep.length;
+}
+
 export function listEvents(filter?: { placementCode?: string; type?: CampaignEventType; since?: string }): CampaignEvent[] {
   let rows = readEvents();
   if (filter?.placementCode) {

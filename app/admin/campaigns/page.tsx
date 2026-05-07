@@ -311,6 +311,24 @@ export default function CampaignsAdminPage() {
     setTimeout(() => setMsg(''), 2500);
   };
 
+  const handleResetEventsForPlacement = async (code: string) => {
+    if (!confirm(
+      `Reset scan events for ${code}?\n\n` +
+      'This clears all scans, views, and calc events attributed to this placement. ' +
+      'The placement and its QR URL are preserved.\n\n' +
+      'This cannot be undone.',
+    )) return;
+
+    const res = await fetch(`/api/admin/campaigns?clear=events&code=${encodeURIComponent(code)}`, { method: 'DELETE', headers });
+    const data = await res.json();
+    if (res.ok) {
+      setMsg(`Cleared ${data.removed} events for ${code}`);
+      void fetchAll(pw);
+    } else {
+      setMsg(data.error ?? 'Failed to reset events');
+    }
+  };
+
   const handleResetEvents = async () => {
     if (!confirm(
       'Reset ALL campaign events?\n\n' +
@@ -591,7 +609,7 @@ export default function CampaignsAdminPage() {
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-slate-600 text-left">
+              <thead className="bg-slate-50 text-slate-600 text-left sticky top-0 z-10 shadow-sm">
                 <tr>
                   <th className="px-3 py-2">Code</th>
                   <th className="px-3 py-2">Station</th>
@@ -742,6 +760,13 @@ export default function CampaignsAdminPage() {
                           }`}
                         >
                           {editingId === p.id ? 'editing…' : 'edit'}
+                        </button>
+                        <button
+                          onClick={() => handleResetEventsForPlacement(p.code)}
+                          className="text-xs text-amber-600 hover:text-amber-800 mr-2"
+                          title="Reset scan/event data for this placement only"
+                        >
+                          reset
                         </button>
                         <button
                           onClick={() => handleDelete(p.id, p.code)}

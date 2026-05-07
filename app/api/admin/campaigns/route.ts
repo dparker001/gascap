@@ -19,6 +19,7 @@ import {
   groupStatsBy,
   getDailyBuckets,
   clearAllEvents,
+  clearEventsForPlacement,
 } from '@/lib/campaigns';
 import { getBaseUrl as resolveBaseUrl } from '@/lib/getBaseUrl';
 
@@ -147,6 +148,12 @@ export async function DELETE(req: NextRequest) {
   // DELETE /api/admin/campaigns?clear=events — wipe the events log
   // (placements are preserved so QR URLs keep working)
   if (searchParams.get('clear') === 'events') {
+    const code = searchParams.get('code');
+    if (code) {
+      // Per-placement reset — only removes events for the given code
+      const removed = clearEventsForPlacement(code);
+      return NextResponse.json({ ok: true, removed, code });
+    }
     const removed = clearAllEvents();
     return NextResponse.json({ ok: true, removed });
   }
