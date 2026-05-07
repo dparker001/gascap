@@ -502,6 +502,10 @@ export async function sendConversionEmail(step: 1 | 2 | 3 | 4, user: ConversionR
     subject: meta.subject,
     html:    meta.htmlFn(user.name, user.id),
     text:    meta.textFn(user.name),
+    tags:    [
+      { name: 'campaign', value: 'trial-conversion' },
+      { name: 'step',     value: meta.type },          // e.g. trial-c1, trial-c2
+    ],
   });
 
   await logEmail({

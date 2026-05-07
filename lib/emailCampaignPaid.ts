@@ -514,6 +514,13 @@ export async function sendPaidCampaignEmail(
 
   const mail = MAP[step];
   if (!mail) throw new Error(`Unknown paid campaign step: ${step}`);
-  await sendMail({ to: email, ...mail, unsubscribeUrl: unsubLink(id) });
+  await sendMail({
+    to: email, ...mail,
+    unsubscribeUrl: unsubLink(id),
+    tags: [
+      { name: 'campaign', value: 'paid-sequence' },
+      { name: 'step',     value: `paid-${step.toLowerCase()}` },
+    ],
+  });
   logEmail({ userId: id, userEmail: email, userName: name, type: `paid-${step.toLowerCase()}`, subject: mail.subject }).catch(() => {});
 }

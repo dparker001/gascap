@@ -13,6 +13,12 @@ interface MailOptions {
   text?:           string;
   /** One-click unsubscribe URL — sets List-Unsubscribe headers for better inbox placement. */
   unsubscribeUrl?: string;
+  /**
+   * Resend tags for dashboard filtering and open/click segmentation.
+   * Each tag: { name: string; value: string }
+   * Example: [{ name: 'campaign', value: 'trial-c1' }]
+   */
+  tags?: { name: string; value: string }[];
 }
 
 export async function sendMail(opts: MailOptions): Promise<void> {
@@ -61,6 +67,7 @@ export async function sendMail(opts: MailOptions): Promise<void> {
         subject: opts.subject,
         html:    opts.html,
         text:    opts.text,
+        ...(opts.tags?.length ? { tags: opts.tags } : {}),
         ...(opts.unsubscribeUrl ? {
           headers: {
             'List-Unsubscribe':      `<${opts.unsubscribeUrl}>`,

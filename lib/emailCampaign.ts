@@ -720,7 +720,14 @@ export async function sendCampaignEmail(step: number, user: CampaignRecipient): 
 
   const mail = MAP[step];
   if (!mail) throw new Error(`Unknown campaign step: ${step}`);
-  await sendMail({ to: email, ...mail, unsubscribeUrl: unsubLink(id) });
+  await sendMail({
+    to: email, ...mail,
+    unsubscribeUrl: unsubLink(id),
+    tags: [
+      { name: 'campaign', value: 'trial-drip' },
+      { name: 'step',     value: `trial-d${step}` },
+    ],
+  });
   // Await so callers can rely on hasEmailBeenSent() returning true immediately after
   await logEmail({ userId: id, userEmail: email, userName: name, type: `trial-d${step}`, subject: mail.subject });
 }
