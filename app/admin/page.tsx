@@ -2062,7 +2062,7 @@ export default function AdminPage() {
       {showScrollTop && (
         <button
           onClick={() => topRef.current?.scrollIntoView({ behavior: 'smooth' })}
-          className="fixed bottom-6 right-6 z-50 w-11 h-11 rounded-full bg-[#005F4A] hover:bg-[#1EB68F]
+          className="fixed bottom-24 right-6 z-50 w-11 h-11 rounded-full bg-[#005F4A] hover:bg-[#1EB68F]
                      text-white shadow-lg flex items-center justify-center transition-all duration-200
                      hover:scale-110 active:scale-95"
           title="Back to top"
