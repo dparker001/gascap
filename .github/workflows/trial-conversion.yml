@@ -1,0 +1,49 @@
+name: Trial Conversion Emails
+
+# Fires daily at 13:00 UTC (9 AM EDT) May 19–25.
+# The job checks today's date and calls the right step — exits cleanly on non-target days.
+# After May 25 this workflow is inert; delete it once the campaign is over.
+
+on:
+  schedule:
+    - cron: '0 13 * * *'
+  workflow_dispatch:
+    inputs:
+      step:
+        description: 'Conversion step to send (1, 2, or 3)'
+        required: true
+        type: choice
+        options: ['1', '2', '3']
+
+jobs:
+  trial-conversion:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Determine step by date
+        id: resolve
+        run: |
+          TODAY=$(date -u +%Y-%m-%d)
+          STEP=""
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            STEP="${{ inputs.step }}"
+          else
+            case "$TODAY" in
+              "2026-05-19") STEP="1" ;;
+              "2026-05-23") STEP="2" ;;
+              "2026-05-25") STEP="3" ;;
+              *)            echo "No conversion email scheduled for $TODAY — exiting." && exit 0 ;;
+            esac
+          fi
+
+          echo "step=$STEP" >> "$GITHUB_OUTPUT"
+          echo "Sending conversion C$STEP for $TODAY"
+
+      - name: Send conversion email
+        if: steps.resolve.outputs.step != ''
+        run: |
+          STEP="${{ steps.resolve.outputs.step }}"
+          echo "Calling /api/cron/trial-conversion?step=$STEP"
+          curl -sf --max-time 60 \
+            "https://www.gascap.app/api/cron/trial-conversion?secret=${{ secrets.CRON_SECRET }}&step=$STEP"
+          echo "✓ Conversion C$STEP sent successfully"
