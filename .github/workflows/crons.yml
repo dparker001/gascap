@@ -1,0 +1,54 @@
+name: GasCap Cron Jobs
+
+on:
+  schedule:
+    - cron: '0 12 * * *'   # engagement-campaign  (12:00 UTC)
+    - cron: '0 13 * * *'   # trial-expire          (13:00 UTC)
+    - cron: '0 14 * * *'   # email-campaign        (14:00 UTC)
+    - cron: '0 15 * * *'   # verify-reminder       (15:00 UTC)
+    - cron: '30 15 * * *'  # paid-campaign         (15:30 UTC)
+    - cron: '0 16 * * *'   # comp-campaign         (16:00 UTC)
+    - cron: '0 18 * * *'   # fillup-reminder       (18:00 UTC)
+    - cron: '0 20 * * *'   # price-alerts          (20:00 UTC)
+  workflow_dispatch:
+    inputs:
+      endpoint:
+        description: 'Endpoint to run manually'
+        required: true
+        type: choice
+        options:
+          - engagement-campaign
+          - trial-expire
+          - email-campaign
+          - verify-reminder
+          - paid-campaign
+          - comp-campaign
+          - fillup-reminder
+          - price-alerts
+
+jobs:
+  cron:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve endpoint
+        id: resolve
+        run: |
+          case "${{ github.event.schedule }}" in
+            "0 12 * * *")  echo "endpoint=engagement-campaign" >> "$GITHUB_OUTPUT" ;;
+            "0 13 * * *")  echo "endpoint=trial-expire"        >> "$GITHUB_OUTPUT" ;;
+            "0 14 * * *")  echo "endpoint=email-campaign"      >> "$GITHUB_OUTPUT" ;;
+            "0 15 * * *")  echo "endpoint=verify-reminder"     >> "$GITHUB_OUTPUT" ;;
+            "30 15 * * *") echo "endpoint=paid-campaign"       >> "$GITHUB_OUTPUT" ;;
+            "0 16 * * *")  echo "endpoint=comp-campaign"       >> "$GITHUB_OUTPUT" ;;
+            "0 18 * * *")  echo "endpoint=fillup-reminder"     >> "$GITHUB_OUTPUT" ;;
+            "0 20 * * *")  echo "endpoint=price-alerts"        >> "$GITHUB_OUTPUT" ;;
+            *)             echo "endpoint=${{ inputs.endpoint }}" >> "$GITHUB_OUTPUT" ;;
+          esac
+
+      - name: Call cron endpoint
+        run: |
+          ENDPOINT="${{ steps.resolve.outputs.endpoint }}"
+          echo "Running: /api/cron/$ENDPOINT"
+          curl -sf --max-time 30 \
+            "https://www.gascap.app/api/cron/$ENDPOINT?secret=${{ secrets.CRON_SECRET }}"
+          echo "✓ $ENDPOINT completed successfully"
