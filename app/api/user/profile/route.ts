@@ -45,7 +45,19 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: 'Avatar image too large' }, { status: 413 });
   }
 
-  const userId  = (session.user as { id?: string })?.id ?? '';
+  const userId = (session.user as { id?: string })?.id ?? '';
+
+  // Detect first-time phone save to award 25 bonus giveaway entries.
+  // Only granted once: phoneBonusEntries must still be 0 and the user
+  // must be adding a non-empty phone number where none existed before.
+  let phoneBonusEntries: number | undefined;
+  if (body.phone && body.phone.trim()) {
+    const existing = await findById(userId);
+    if (existing && !existing.phone && (existing.phoneBonusEntries ?? 0) === 0) {
+      phoneBonusEntries = 25;
+    }
+  }
+
   const updated = await updateUserProfile(userId, {
     displayName:        body.displayName,
     phone:              body.phone,
@@ -53,6 +65,7 @@ export async function PATCH(req: NextRequest) {
     avatarUrl:          body.avatarUrl,
     preferredFillLevel: body.preferredFillLevel,
     monthlyFuelBudget:  body.monthlyFuelBudget,
+    phoneBonusEntries,
   });
 
   if (!updated) {

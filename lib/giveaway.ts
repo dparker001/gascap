@@ -144,7 +144,8 @@ export interface EntrantRow {
   earlyUpgradeBonusEntries:    number; // +10 bonus for trial-to-paid conversions
   garageBonusEntries:          number; // +10/day for tapping to open garage (Pro+)
   verifyReminderBonusEntries:  number; // +25 one-time for verifying email within 7 days of reminder
-  entryCount:      number;        // baseEntries + streakBonus + earlyUpgrade + garageBonus + verifyReminderBonus
+  phoneBonusEntries:           number; // +25 one-time for adding phone number in settings
+  entryCount:      number;        // baseEntries + streakBonus + earlyUpgrade + garageBonus + verifyReminderBonus + phoneBonus
   alwaysEligible:  boolean;       // true for Ambassador tier holders — skip win restrictions
 }
 
@@ -234,6 +235,7 @@ export async function getEligibleEntrants(month: string): Promise<EntrantRow[]> 
       earlyUpgradeBonusEntries: true,
       garageBonusDays: true,
       verifyReminderBonusEntries: true,
+      phoneBonusEntries: true,
     },
   });
 
@@ -250,6 +252,7 @@ export async function getEligibleEntrants(month: string): Promise<EntrantRow[]> 
         .filter((d: string) => d.startsWith(prefix)).length;
       const garageBonusEntries         = garageDaysThisMonth * 10;
       const verifyReminderBonusEntries = u.verifyReminderBonusEntries ?? 0;
+      const phoneBonusEntries          = u.phoneBonusEntries          ?? 0;
       return {
         userId:          u.id,
         name:            u.name,
@@ -264,7 +267,8 @@ export async function getEligibleEntrants(month: string): Promise<EntrantRow[]> 
         earlyUpgradeBonusEntries: bonusEntries,
         garageBonusEntries,
         verifyReminderBonusEntries,
-        entryCount:      baseEntries + streakBonus + bonusEntries + garageBonusEntries + verifyReminderBonusEntries,
+        phoneBonusEntries,
+        entryCount:      baseEntries + streakBonus + bonusEntries + garageBonusEntries + verifyReminderBonusEntries + phoneBonusEntries,
         alwaysEligible:  isAlwaysEligible(refCount),
       };
     })

@@ -77,6 +77,7 @@ export interface StoredUser {
   milestoneMpgSent?:       boolean;
   milestoneReferral1Sent?: boolean;
   earlyUpgradeBonusEntries?: number;
+  phoneBonusEntries?:        number;
 }
 
 export interface ReferralCredit {
@@ -159,6 +160,7 @@ function toStoredUser(u: PrismaUser): StoredUser {
     milestoneMpgSent:       u.milestoneMpgSent       ?? false,
     milestoneReferral1Sent: u.milestoneReferral1Sent ?? false,
     earlyUpgradeBonusEntries: u.earlyUpgradeBonusEntries ?? 0,
+    phoneBonusEntries:        u.phoneBonusEntries        ?? 0,
   };
 }
 
@@ -775,12 +777,13 @@ export async function creditVerifiedReferral(userId: string): Promise<boolean> {
 export async function updateUserProfile(
   userId: string,
   fields: {
-    displayName?:       string;
-    phone?:             string;
-    smsOptIn?:          boolean;
-    avatarUrl?:         string | null;
+    displayName?:        string;
+    phone?:              string;
+    smsOptIn?:           boolean;
+    avatarUrl?:          string | null;
     preferredFillLevel?: number | null;
     monthlyFuelBudget?:  number | null;
+    phoneBonusEntries?:  number;   // set once when user adds phone for first time
   },
 ): Promise<StoredUser | null> {
   // `undefined` → field not included in the request; leave as-is.
@@ -810,6 +813,9 @@ export async function updateUserProfile(
         : {}),
       ...(fields.monthlyFuelBudget !== undefined
         ? { monthlyFuelBudget: fields.monthlyFuelBudget ?? null }
+        : {}),
+      ...(fields.phoneBonusEntries !== undefined
+        ? { phoneBonusEntries: fields.phoneBonusEntries }
         : {}),
     },
   }).catch(() => null);
