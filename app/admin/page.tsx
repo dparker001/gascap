@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 interface EmailLogEntry {
   id:        string;
@@ -161,6 +161,8 @@ export default function AdminPage() {
   const [backfillLoading,  setBackfillLoading]  = useState(false);
   const [backfillMsg,      setBackfillMsg]      = useState('');
   const [backfillProgress, setBackfillProgress] = useState(0);
+  const [showScrollTop,    setShowScrollTop]    = useState(false);
+  const topRef = useRef<HTMLDivElement>(null);
 
   // ── Email Preview ─────────────────────────────────────────────────────
   const [emailPreviewOpen,     setEmailPreviewOpen]     = useState(false);
@@ -229,6 +231,12 @@ export default function AdminPage() {
     const pw = loadSession();
     if (pw) load(pw);
   }, [load]);
+
+  useEffect(() => {
+    const onScroll = () => setShowScrollTop(window.scrollY > 400);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -694,7 +702,7 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-[#eef1f7] p-4">
-      <div className="max-w-5xl mx-auto space-y-4">
+      <div ref={topRef} className="max-w-5xl mx-auto space-y-4">
 
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -2048,6 +2056,19 @@ export default function AdminPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Scroll-to-top button */}
+      {showScrollTop && (
+        <button
+          onClick={() => topRef.current?.scrollIntoView({ behavior: 'smooth' })}
+          className="fixed bottom-6 right-6 z-50 w-11 h-11 rounded-full bg-[#005F4A] hover:bg-[#1EB68F]
+                     text-white shadow-lg flex items-center justify-center transition-all duration-200
+                     hover:scale-110 active:scale-95"
+          title="Back to top"
+        >
+          ↑
+        </button>
       )}
     </div>
   );
