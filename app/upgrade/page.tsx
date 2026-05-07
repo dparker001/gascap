@@ -87,10 +87,14 @@ export default function UpgradePage() {
     setLoading(tier);
     setError('');
     try {
+      // Only apply the promo coupon on monthly billing — the "$2.99/mo for 3 months"
+      // offer doesn't translate to annual (which bills once/yr; only 1 invoice would
+      // get a $2 discount, misrepresenting the email promise).
+      const applyCoupon = coupon && billing === 'monthly' ? { coupon } : {};
       const res  = await fetch('/api/stripe/checkout', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ tier, billing, ...(coupon ? { coupon } : {}) }),
+        body:    JSON.stringify({ tier, billing, ...applyCoupon }),
       });
       const data = await res.json() as { url?: string; error?: string };
       if (data.url) { window.location.href = data.url; }
@@ -187,25 +191,33 @@ export default function UpgradePage() {
           </div>
         )}
 
-        {/* Billing toggle */}
-        <div className="flex items-center justify-center gap-3 mb-8">
-          <button onClick={() => setBilling('monthly')}
-            className={`px-5 py-2 rounded-xl text-sm font-bold transition-all ${
-              billing === 'monthly' ? 'bg-navy-700 text-white shadow' : 'bg-white text-slate-500 hover:bg-slate-50'
-            }`}>
-            {t.upgrade.monthly}
-          </button>
-          <button onClick={() => setBilling('annual')}
-            className={`px-5 py-2 rounded-xl text-sm font-bold transition-all relative ${
-              billing === 'annual' ? 'bg-navy-700 text-white shadow' : 'bg-white text-slate-500 hover:bg-slate-50'
-            }`}>
-            {t.upgrade.annual}
-            <span className="absolute -top-2 -right-2 bg-green-500 text-white text-[9px]
-                             font-black px-1.5 py-0.5 rounded-full leading-none">
-              {t.upgrade.saveBadge}
-            </span>
-          </button>
-        </div>
+        {/* Billing toggle — hidden when a promo coupon is active (offer is monthly-only) */}
+        {coupon ? (
+          <div className="flex items-center justify-center mb-8">
+            <div className="bg-amber-50 border border-amber-300 rounded-xl px-5 py-2 text-sm font-bold text-amber-800">
+              🏷️ Promo applied — monthly billing
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center justify-center gap-3 mb-8">
+            <button onClick={() => setBilling('monthly')}
+              className={`px-5 py-2 rounded-xl text-sm font-bold transition-all ${
+                billing === 'monthly' ? 'bg-navy-700 text-white shadow' : 'bg-white text-slate-500 hover:bg-slate-50'
+              }`}>
+              {t.upgrade.monthly}
+            </button>
+            <button onClick={() => setBilling('annual')}
+              className={`px-5 py-2 rounded-xl text-sm font-bold transition-all relative ${
+                billing === 'annual' ? 'bg-navy-700 text-white shadow' : 'bg-white text-slate-500 hover:bg-slate-50'
+              }`}>
+              {t.upgrade.annual}
+              <span className="absolute -top-2 -right-2 bg-green-500 text-white text-[9px]
+                               font-black px-1.5 py-0.5 rounded-full leading-none">
+                {t.upgrade.saveBadge}
+              </span>
+            </button>
+          </div>
+        )}
 
         {error && (
           <p className="text-center text-sm text-red-500 mb-4">{error}</p>
