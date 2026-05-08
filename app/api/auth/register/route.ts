@@ -9,6 +9,7 @@ import {
   enrollEmailCampaign,
   updateUserProfile,
 } from '@/lib/users';
+import { checkRateLimit } from '@/lib/rateLimit';
 import { sendMail, verificationEmailHtml } from '@/lib/email';
 import { sendCampaignEmail } from '@/lib/emailCampaign';
 import { hasEmailBeenSent }  from '@/lib/emailLog';
@@ -29,6 +30,25 @@ function getBaseUrl(req: Request): string {
 
 export async function POST(req: Request) {
   try {
+    // ── Rate limit: 10 registrations per IP per hour ──────────────────────────
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+            ?? req.headers.get('x-real-ip')
+            ?? 'unknown';
+    const rl = checkRateLimit(`register:${ip}`, 10, 60 * 60 * 1000);
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: 'Too many registration attempts. Please try again later.' },
+        {
+          status: 429,
+          headers: {
+            'Retry-After':          String(rl.resetInSeconds),
+            'X-RateLimit-Limit':    '10',
+            'X-RateLimit-Remaining': '0',
+          },
+        }
+      );
+    }
+
     const { name, email, password, referralCode, locale, phone, smsOptIn } = await req.json() as {
       name?: string; email?: string; password?: string; referralCode?: string; locale?: string;
       phone?: string; smsOptIn?: boolean;

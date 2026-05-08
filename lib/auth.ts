@@ -1,6 +1,7 @@
 import type { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import { findByEmail, findById, verifyPassword, recordLogin } from './users';
+import { checkRateLimit } from './rateLimit';
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -10,7 +11,17 @@ export const authOptions: NextAuthOptions = {
         email:    { label: 'Email',    type: 'email'    },
         password: { label: 'Password', type: 'password' },
       },
-      async authorize(credentials) {
+      async authorize(credentials, req) {
+        // ── Rate limit: 15 sign-in attempts per IP per 15 minutes ────────────
+        const forwarded = (req?.headers?.['x-forwarded-for'] as string | undefined)
+          ?.split(',')[0]?.trim();
+        const realIp = req?.headers?.['x-real-ip'] as string | undefined;
+        const ip = forwarded ?? realIp ?? 'unknown';
+        const rl = checkRateLimit(`signin:${ip}`, 15, 15 * 60 * 1000);
+        if (!rl.allowed) {
+          throw new Error('Too many sign-in attempts. Please wait before trying again.');
+        }
+
         if (!credentials?.email || !credentials?.password) return null;
         const user = await findByEmail(credentials.email);
         if (!user) return null;
