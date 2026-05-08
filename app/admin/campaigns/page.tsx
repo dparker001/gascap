@@ -144,6 +144,50 @@ export default function CampaignsAdminPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [editingId,  setEditingId]  = useState<string | null>(null);
   const [editDraft,  setEditDraft]  = useState<Partial<Placement>>({});
+  const [sortCol,  setSortCol]    = useState<string>('code');
+  const [sortDir,  setSortDir]    = useState<'asc' | 'desc'>('asc');
+
+  // ── Sorted placements ──────────────────────────────────────────────────────
+  const sortedPlacements = useMemo(() => {
+    const arr = [...placements];
+    const dir = sortDir === 'asc' ? 1 : -1;
+
+    // Extract the trailing numeric suffix from a placement code (e.g. "GC-...-1003" → 1003)
+    const codeNum = (code: string) => {
+      const m = code.match(/-(\d+)$/);
+      return m ? parseInt(m[1], 10) : 0;
+    };
+
+    arr.sort((a, b) => {
+      let va: number | string = 0;
+      let vb: number | string = 0;
+      switch (sortCol) {
+        case 'code':      va = codeNum(a.code);                  vb = codeNum(b.code);         break;
+        case 'station':   va = (a.station ?? '').toLowerCase();  vb = (b.station ?? '').toLowerCase(); break;
+        case 'scans':     va = a.stats?.scans     ?? 0;          vb = b.stats?.scans     ?? 0; break;
+        case 'views':     va = a.stats?.pageViews ?? 0;          vb = b.stats?.pageViews ?? 0; break;
+        case 'calcs':     va = a.stats?.calcStarts ?? 0;         vb = b.stats?.calcStarts ?? 0; break;
+        case 'signups':   va = a.stats?.signups   ?? 0;          vb = b.stats?.signups   ?? 0; break;
+        case 'cvr':       va = a.stats?.visitToSignup ?? 0;      vb = b.stats?.visitToSignup ?? 0; break;
+        case 'lastEvent': va = a.stats?.lastEventAt ?? '';       vb = b.stats?.lastEventAt ?? ''; break;
+        default:          va = codeNum(a.code);                  vb = codeNum(b.code);
+      }
+      if (va < vb) return -dir;
+      if (va > vb) return  dir;
+      return 0;
+    });
+    return arr;
+  }, [placements, sortCol, sortDir]);
+
+  // Toggle sort: same column flips direction; new column resets to asc
+  const handleSort = (col: string) => {
+    if (col === sortCol) setSortDir((d) => d === 'asc' ? 'desc' : 'asc');
+    else { setSortCol(col); setSortDir('asc'); }
+  };
+
+  // Sort indicator shown on the active column header
+  const sortIcon = (col: string) =>
+    sortCol !== col ? ' ↕' : sortDir === 'asc' ? ' ↑' : ' ↓';
 
   const headers = useMemo(() => ({ 'x-admin-password': pw, 'Content-Type': 'application/json' }), [pw]);
 
@@ -507,19 +551,32 @@ export default function CampaignsAdminPage() {
             <table className="w-full text-sm min-w-[1500px]">
               <thead className="text-slate-600 text-left">
                 <tr>
-                  <th className="px-3 py-2 sticky top-0 bg-slate-50 z-10 border-b border-slate-200">Code</th>
-                  <th className="px-3 py-2 sticky top-0 bg-slate-50 z-10 border-b border-slate-200">Station</th>
+                  {/* Sortable headers — click to sort, click again to reverse */}
+                  {([ ['code','Code'], ['station','Station'] ] as [string,string][]).map(([col,label]) => (
+                    <th key={col} onClick={() => handleSort(col)}
+                        className="px-3 py-2 sticky top-0 bg-slate-50 z-10 border-b border-slate-200 cursor-pointer select-none hover:bg-slate-100 whitespace-nowrap">
+                      {label}<span className="text-slate-400 text-[10px]">{sortIcon(col)}</span>
+                    </th>
+                  ))}
                   <th className="px-3 py-2 sticky top-0 bg-slate-50 z-10 border-b border-slate-200">Partner Tier</th>
                   <th className="px-3 py-2 sticky top-0 bg-slate-50 z-10 border-b border-slate-200 text-center" title="Show this station as a featured partner in the app for nearby users">Featured</th>
                   <th className="px-3 py-2 sticky top-0 bg-slate-50 z-10 border-b border-slate-200">Placement</th>
                   <th className="px-3 py-2 sticky top-0 bg-slate-50 z-10 border-b border-slate-200">Headline</th>
-                  <th className="px-3 py-2 sticky top-0 bg-slate-50 z-10 border-b border-slate-200 text-right">Scans</th>
+                  {([ ['scans','Scans'], ['views','Views'], ['calcs','Calcs'], ['signups','Signups'] ] as [string,string][]).map(([col,label]) => (
+                    <th key={col} onClick={() => handleSort(col)}
+                        className="px-3 py-2 sticky top-0 bg-slate-50 z-10 border-b border-slate-200 text-right cursor-pointer select-none hover:bg-slate-100 whitespace-nowrap">
+                      {label}<span className="text-slate-400 text-[10px]">{sortIcon(col)}</span>
+                    </th>
+                  ))}
+                  <th onClick={() => handleSort('cvr')}
+                      className="px-3 py-2 sticky top-0 bg-slate-50 z-10 border-b border-slate-200 text-right cursor-pointer select-none hover:bg-slate-100 whitespace-nowrap">
+                    Visit→Signup<span className="text-slate-400 text-[10px]">{sortIcon('cvr')}</span>
+                  </th>
                   <th className="px-3 py-2 sticky top-0 bg-slate-50 z-10 border-b border-slate-200 text-right" title="Scan split — English vs Spanish QR">EN / ES</th>
-                  <th className="px-3 py-2 sticky top-0 bg-slate-50 z-10 border-b border-slate-200 text-right">Views</th>
-                  <th className="px-3 py-2 sticky top-0 bg-slate-50 z-10 border-b border-slate-200 text-right">Calcs</th>
-                  <th className="px-3 py-2 sticky top-0 bg-slate-50 z-10 border-b border-slate-200 text-right">Signups</th>
-                  <th className="px-3 py-2 sticky top-0 bg-slate-50 z-10 border-b border-slate-200 text-right">Visit→Signup</th>
-                  <th className="px-3 py-2 sticky top-0 bg-slate-50 z-10 border-b border-slate-200">Last event</th>
+                  <th onClick={() => handleSort('lastEvent')}
+                      className="px-3 py-2 sticky top-0 bg-slate-50 z-10 border-b border-slate-200 cursor-pointer select-none hover:bg-slate-100 whitespace-nowrap">
+                    Last event<span className="text-slate-400 text-[10px]">{sortIcon('lastEvent')}</span>
+                  </th>
                   <th className="px-3 py-2 sticky top-0 bg-slate-50 z-10 border-b border-slate-200">QR (EN)</th>
                   <th className="px-3 py-2 sticky top-0 bg-slate-50 z-10 border-b border-slate-200">QR (ES)</th>
                   <th className="sticky top-0 bg-slate-50 z-10 border-b border-slate-200" />
@@ -531,7 +588,7 @@ export default function CampaignsAdminPage() {
                     No placements yet. Click <strong>+ New placement</strong> to create your first one.
                   </td></tr>
                 )}
-                {placements.map((p) => {
+                {sortedPlacements.map((p) => {
                   const s = p.stats;
                   const signups = s?.signups ?? 0;
                   const tier = getMilestoneTier(signups);
