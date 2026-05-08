@@ -16,7 +16,7 @@ import {
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import type { CalcTab } from './CalculatorTabs';
 import { useTranslation } from '@/contexts/LanguageContext';
-import { trackCalculateTarget } from '@/lib/gtag';
+import { trackCalculateTarget, trackRentalReturnToggled } from '@/lib/gtag';
 import { checkTankSize } from '@/lib/tankValidation';
 
 // ── Types ──────────────────────────────────────────────────────────────
@@ -261,6 +261,7 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
         onClick={() => {
           const next = !rentalMode;
           setRentalMode(next);
+          trackRentalReturnToggled(next);
           // Auto-set target to Full when entering rental mode
           if (next) liveRecalc({ targetPreset: 100, customTarget: '' });
         }}

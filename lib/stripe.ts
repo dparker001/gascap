@@ -27,7 +27,7 @@ export const PRICING = {
     monthly:         4.99,
     annual:          49,      // flat $49/yr (≈2 months free)
     annualPerMonth:  4.08,    // $49 / 12, rounded
-    vehicles:        5,
+    vehicles:        3,
     drivers:         1,
   },
   fleet: {

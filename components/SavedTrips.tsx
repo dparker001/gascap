@@ -12,6 +12,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useSession }                       from 'next-auth/react';
 import Link                                 from 'next/link';
 import { getPlanTier }                      from '@/lib/featureAccess';
+import { trackLockedFeatureShown }          from '@/lib/gtag';
 import type { SavedTrip }                   from '@/lib/savedTrips';
 
 export default function SavedTrips() {
@@ -191,7 +192,11 @@ export default function SavedTrips() {
         <div className="px-4 py-3 bg-amber-50 border-t border-amber-100">
           <p className="text-xs text-amber-700 font-medium leading-snug">
             Your saved trips are locked.{' '}
-            <Link href="/upgrade" className="font-black underline">
+            <Link
+              href="/upgrade"
+              className="font-black underline"
+              onClick={() => trackLockedFeatureShown('save_trip', plan)}
+            >
               Upgrade to Pro
             </Link>{' '}
             to access your full trip history.

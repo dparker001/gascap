@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useSession } from 'next-auth/react';
+import { trackFillupOptimizerRun } from '@/lib/gtag';
 
 interface OptimizerResult {
   state:             string;
@@ -113,7 +114,9 @@ export default function SmartFillUpOptimizer() {
         const err = await res.json() as { error?: string };
         throw new Error(err.error ?? 'Lookup failed');
       }
-      setResult(await res.json() as OptimizerResult);
+      const optimizerResult = await res.json() as OptimizerResult;
+      setResult(optimizerResult);
+      trackFillupOptimizerRun(state);
       setStatus('done');
     } catch (err: unknown) {
       setErrMsg(err instanceof Error ? err.message : 'Could not load price data.');

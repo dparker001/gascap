@@ -8,6 +8,7 @@ import GasPriceLookup                        from './GasPriceLookup';
 import GoogleMapsHandoffButton               from './GoogleMapsHandoffButton';
 import WazeDeepLinkButton                    from './WazeDeepLinkButton';
 import { canAccessFeature, getPlanTier, UPGRADE_COPY } from '@/lib/featureAccess';
+import { trackLockedFeatureShown }           from '@/lib/gtag';
 import { metersToMiles }                     from '@/lib/tripFuelPlanner';
 import type { RouteResult, FuelStop }        from '@/lib/mapsProvider/types';
 import type { Vehicle }                      from './SavedVehicles';
@@ -652,6 +653,7 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
                     </div>
                     <Link
                       href="/upgrade"
+                      onClick={() => trackLockedFeatureShown('route_based_trip_planner', userPlan)}
                       className="block w-full text-center px-4 py-2.5 rounded-xl
                                  bg-[#005F4A] text-white text-xs font-bold
                                  hover:bg-[#004d3b] transition-colors"
@@ -1345,6 +1347,7 @@ function TripResultCard({
           /* Free user — show locked save button */
           <Link
             href="/upgrade"
+            onClick={() => trackLockedFeatureShown('save_trip', planTier)}
             className="w-full flex items-center justify-center gap-2 py-2.5 rounded-2xl text-sm font-bold
                        border-2 border-amber-200 bg-amber-50 text-amber-700
                        hover:bg-amber-100 transition-all"

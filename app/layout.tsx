@@ -11,6 +11,7 @@ import { LanguageProvider }  from '@/contexts/LanguageContext';
 import OneSignalProvider          from '@/components/OneSignalProvider';
 import GiveawayEntryToast         from '@/components/GiveawayEntryToast';
 import EmailVerificationBanner    from '@/components/EmailVerificationBanner';
+import CookieConsentBanner        from '@/components/CookieConsentBanner';
 import './globals.css';
 
 const APP_URL = 'https://www.gascap.app';
@@ -122,6 +123,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <PullToRefresh />
               {children}
               <FeedbackButton />
+              <CookieConsentBanner />
             </ErrorBoundary>
           </AuthProvider>
         </LanguageProvider>

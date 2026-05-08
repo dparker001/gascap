@@ -75,3 +75,15 @@ export const trackQrScan = (code: string) =>
 /** User opened Google Maps from a calculation result or trip planner */
 export const trackGoogleMapsOpen = (mode: string, userPlan: string) =>
   gtagEvent('google_maps_open', { mode, user_plan: userPlan });
+
+/** User hit a Pro/Fleet feature gate (upsell prompt shown) */
+export const trackLockedFeatureShown = (feature: string, userPlan: string) =>
+  gtagEvent('locked_feature_shown', { feature, user_plan: userPlan });
+
+/** User toggled rental return mode on or off */
+export const trackRentalReturnToggled = (isRental: boolean) =>
+  gtagEvent('rental_return_mode_toggled', { enabled: isRental });
+
+/** User ran the Smart Fill-Up Optimizer */
+export const trackFillupOptimizerRun = (state: string) =>
+  gtagEvent('fillup_optimizer_run', { state });
