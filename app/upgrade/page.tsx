@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
@@ -73,7 +73,9 @@ function GasPumpIcon() {
 
 // ── Main page ─────────────────────────────────────────────────────────────
 
-export default function UpgradePage() {
+// useSearchParams() requires a Suspense boundary in Next.js 14 App Router.
+// The inner component holds all the logic; the default export wraps it.
+function UpgradePageInner() {
   const { data: session } = useSession();
   const { t } = useTranslation();
   const searchParams = useSearchParams();
@@ -333,5 +335,13 @@ export default function UpgradePage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function UpgradePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#eef1f7]" />}>
+      <UpgradePageInner />
+    </Suspense>
   );
 }
