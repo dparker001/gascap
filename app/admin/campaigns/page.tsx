@@ -377,8 +377,8 @@ export default function CampaignsAdminPage() {
   const maxDaily = Math.max(1, ...daily.map((d) => Math.max(d.scans, d.pageViews, d.signups)));
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 md:p-8">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="min-h-screen bg-slate-50 p-4 md:p-6">
+      <div className="max-w-[1800px] mx-auto space-y-6">
 
         {/* Header */}
         <header className="flex flex-wrap items-center justify-between gap-3">
@@ -603,30 +603,30 @@ export default function CampaignsAdminPage() {
         </div>
 
         {/* Placements table */}
-        <div className="bg-white rounded-2xl shadow overflow-hidden">
+        <div className="bg-white rounded-2xl shadow">
           <div className="px-5 py-3 border-b">
             <h2 className="text-lg font-semibold">Placements ({placements.length})</h2>
           </div>
           <div className="overflow-auto max-h-[75vh]">
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-slate-600 text-left sticky top-0 z-10 shadow-sm">
+            <table className="w-full text-sm min-w-[1500px]">
+              <thead className="text-slate-600 text-left">
                 <tr>
-                  <th className="px-3 py-2">Code</th>
-                  <th className="px-3 py-2">Station</th>
-                  <th className="px-3 py-2">Partner Tier</th>
-                  <th className="px-3 py-2 text-center" title="Show this station as a featured partner in the app for nearby users">Featured</th>
-                  <th className="px-3 py-2">Placement</th>
-                  <th className="px-3 py-2">Headline</th>
-                  <th className="px-3 py-2 text-right">Scans</th>
-                  <th className="px-3 py-2 text-right" title="Scan split — English vs Spanish QR">EN / ES</th>
-                  <th className="px-3 py-2 text-right">Views</th>
-                  <th className="px-3 py-2 text-right">Calcs</th>
-                  <th className="px-3 py-2 text-right">Signups</th>
-                  <th className="px-3 py-2 text-right">Visit→Signup</th>
-                  <th className="px-3 py-2">Last event</th>
-                  <th className="px-3 py-2">QR (EN)</th>
-                  <th className="px-3 py-2">QR (ES)</th>
-                  <th />
+                  <th className="px-3 py-2 sticky top-0 bg-slate-50 z-10 border-b border-slate-200">Code</th>
+                  <th className="px-3 py-2 sticky top-0 bg-slate-50 z-10 border-b border-slate-200">Station</th>
+                  <th className="px-3 py-2 sticky top-0 bg-slate-50 z-10 border-b border-slate-200">Partner Tier</th>
+                  <th className="px-3 py-2 sticky top-0 bg-slate-50 z-10 border-b border-slate-200 text-center" title="Show this station as a featured partner in the app for nearby users">Featured</th>
+                  <th className="px-3 py-2 sticky top-0 bg-slate-50 z-10 border-b border-slate-200">Placement</th>
+                  <th className="px-3 py-2 sticky top-0 bg-slate-50 z-10 border-b border-slate-200">Headline</th>
+                  <th className="px-3 py-2 sticky top-0 bg-slate-50 z-10 border-b border-slate-200 text-right">Scans</th>
+                  <th className="px-3 py-2 sticky top-0 bg-slate-50 z-10 border-b border-slate-200 text-right" title="Scan split — English vs Spanish QR">EN / ES</th>
+                  <th className="px-3 py-2 sticky top-0 bg-slate-50 z-10 border-b border-slate-200 text-right">Views</th>
+                  <th className="px-3 py-2 sticky top-0 bg-slate-50 z-10 border-b border-slate-200 text-right">Calcs</th>
+                  <th className="px-3 py-2 sticky top-0 bg-slate-50 z-10 border-b border-slate-200 text-right">Signups</th>
+                  <th className="px-3 py-2 sticky top-0 bg-slate-50 z-10 border-b border-slate-200 text-right">Visit→Signup</th>
+                  <th className="px-3 py-2 sticky top-0 bg-slate-50 z-10 border-b border-slate-200">Last event</th>
+                  <th className="px-3 py-2 sticky top-0 bg-slate-50 z-10 border-b border-slate-200">QR (EN)</th>
+                  <th className="px-3 py-2 sticky top-0 bg-slate-50 z-10 border-b border-slate-200">QR (ES)</th>
+                  <th className="sticky top-0 bg-slate-50 z-10 border-b border-slate-200" />
                 </tr>
               </thead>
               <tbody>
