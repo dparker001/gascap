@@ -11,7 +11,7 @@
  *
  * Auth: same admin password as /admin (stored in sessionStorage for 15min).
  */
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 // ── Types mirrored from lib/campaigns.ts ─────────────────────────────────
 
@@ -453,110 +453,6 @@ export default function CampaignsAdminPage() {
           </div>
         )}
 
-        {/* Edit placement panel */}
-        {editingId && (
-          <div className="bg-white rounded-2xl shadow p-5 border-l-4 border-emerald-500">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-lg font-semibold">
-                Edit placement —{' '}
-                <span className="font-mono text-sm text-slate-500">
-                  {placements.find((p) => p.id === editingId)?.code}
-                </span>
-              </h2>
-              <button
-                onClick={() => { setEditingId(null); setEditDraft({}); }}
-                className="text-slate-400 hover:text-slate-600 text-xl leading-none"
-              >
-                ×
-              </button>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <input
-                placeholder="Station name *"
-                required
-                value={editDraft.station ?? ''}
-                onChange={(e) => setEditDraft((d) => ({ ...d, station: e.target.value }))}
-                className="border rounded-lg px-3 py-2"
-              />
-              <input
-                placeholder="City (e.g. Orlando)"
-                value={editDraft.city ?? ''}
-                onChange={(e) => setEditDraft((d) => ({ ...d, city: e.target.value }))}
-                className="border rounded-lg px-3 py-2"
-              />
-              <input
-                placeholder="Address"
-                value={editDraft.address ?? ''}
-                onChange={(e) => setEditDraft((d) => ({ ...d, address: e.target.value }))}
-                className="border rounded-lg px-3 py-2 md:col-span-2"
-              />
-              <input
-                placeholder="Owner / contact name"
-                value={editDraft.contactName ?? ''}
-                onChange={(e) => setEditDraft((d) => ({ ...d, contactName: e.target.value }))}
-                className="border rounded-lg px-3 py-2"
-              />
-              <input
-                placeholder="Owner email"
-                value={editDraft.contactEmail ?? ''}
-                onChange={(e) => setEditDraft((d) => ({ ...d, contactEmail: e.target.value }))}
-                className="border rounded-lg px-3 py-2"
-              />
-              <input
-                placeholder="Owner phone"
-                value={editDraft.contactPhone ?? ''}
-                onChange={(e) => setEditDraft((d) => ({ ...d, contactPhone: e.target.value }))}
-                className="border rounded-lg px-3 py-2"
-              />
-              <select
-                value={editDraft.placement ?? 'counter'}
-                onChange={(e) => setEditDraft((d) => ({ ...d, placement: e.target.value }))}
-                className="border rounded-lg px-3 py-2"
-              >
-                {PLACEMENT_TYPES.map((p) => <option key={p} value={p}>{p}</option>)}
-              </select>
-              <select
-                value={editDraft.headlineVariant ?? 'A-KnowBefore'}
-                onChange={(e) => setEditDraft((d) => ({ ...d, headlineVariant: e.target.value }))}
-                className="border rounded-lg px-3 py-2"
-              >
-                {HEADLINES.map((h) => <option key={h.value} value={h.value}>{h.label}</option>)}
-              </select>
-              <textarea
-                placeholder="Notes"
-                value={editDraft.notes ?? ''}
-                onChange={(e) => setEditDraft((d) => ({ ...d, notes: e.target.value }))}
-                className="border rounded-lg px-3 py-2 md:col-span-2"
-                rows={2}
-              />
-              {/* Active toggle */}
-              <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={editDraft.active ?? true}
-                  onChange={(e) => setEditDraft((d) => ({ ...d, active: e.target.checked }))}
-                  className="w-4 h-4 rounded accent-emerald-600"
-                />
-                Placement active
-              </label>
-            </div>
-            <div className="flex gap-2 mt-4">
-              <button
-                onClick={() => void handleEditSave()}
-                className="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 font-medium"
-              >
-                Save changes
-              </button>
-              <button
-                onClick={() => { setEditingId(null); setEditDraft({}); }}
-                className="px-4 py-2 rounded-lg border text-slate-600 hover:bg-slate-50"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        )}
-
         {/* Overview cards */}
         {totals && overview && (
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
@@ -645,7 +541,8 @@ export default function CampaignsAdminPage() {
                     ? Math.min(100, Math.round(((signups - prevAt) / (tier.nextAt - prevAt)) * 100))
                     : 100;
                   return (
-                    <tr key={p.id} className="border-t hover:bg-slate-50">
+                    <React.Fragment key={p.id}>
+                    <tr className="border-t hover:bg-slate-50">
                       <td className="px-3 py-2 font-mono text-xs">{p.code}</td>
                       <td className="px-3 py-2">
                         <div className="font-medium">{p.station}</div>
@@ -782,6 +679,98 @@ export default function CampaignsAdminPage() {
                         </button>
                       </td>
                     </tr>
+
+                    {/* Inline edit row — expands directly below the placement row */}
+                    {editingId === p.id && (
+                      <tr className="border-t-0">
+                        <td colSpan={16} className="px-4 py-4 bg-emerald-50 border-b-2 border-emerald-300">
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 max-w-4xl">
+                            <input
+                              placeholder="Station name *"
+                              required
+                              value={editDraft.station ?? ''}
+                              onChange={(e) => setEditDraft((d) => ({ ...d, station: e.target.value }))}
+                              className="border rounded-lg px-3 py-2 text-sm bg-white"
+                            />
+                            <input
+                              placeholder="City (e.g. Orlando)"
+                              value={editDraft.city ?? ''}
+                              onChange={(e) => setEditDraft((d) => ({ ...d, city: e.target.value }))}
+                              className="border rounded-lg px-3 py-2 text-sm bg-white"
+                            />
+                            <input
+                              placeholder="Address"
+                              value={editDraft.address ?? ''}
+                              onChange={(e) => setEditDraft((d) => ({ ...d, address: e.target.value }))}
+                              className="border rounded-lg px-3 py-2 text-sm bg-white"
+                            />
+                            <input
+                              placeholder="Contact name"
+                              value={editDraft.contactName ?? ''}
+                              onChange={(e) => setEditDraft((d) => ({ ...d, contactName: e.target.value }))}
+                              className="border rounded-lg px-3 py-2 text-sm bg-white"
+                            />
+                            <input
+                              placeholder="Contact email"
+                              value={editDraft.contactEmail ?? ''}
+                              onChange={(e) => setEditDraft((d) => ({ ...d, contactEmail: e.target.value }))}
+                              className="border rounded-lg px-3 py-2 text-sm bg-white"
+                            />
+                            <input
+                              placeholder="Contact phone"
+                              value={editDraft.contactPhone ?? ''}
+                              onChange={(e) => setEditDraft((d) => ({ ...d, contactPhone: e.target.value }))}
+                              className="border rounded-lg px-3 py-2 text-sm bg-white"
+                            />
+                            <select
+                              value={editDraft.placement ?? 'counter'}
+                              onChange={(e) => setEditDraft((d) => ({ ...d, placement: e.target.value }))}
+                              className="border rounded-lg px-3 py-2 text-sm bg-white"
+                            >
+                              {PLACEMENT_TYPES.map((pt) => <option key={pt} value={pt}>{pt}</option>)}
+                            </select>
+                            <select
+                              value={editDraft.headlineVariant ?? 'A-KnowBefore'}
+                              onChange={(e) => setEditDraft((d) => ({ ...d, headlineVariant: e.target.value }))}
+                              className="border rounded-lg px-3 py-2 text-sm bg-white"
+                            >
+                              {HEADLINES.map((h) => <option key={h.value} value={h.value}>{h.label}</option>)}
+                            </select>
+                            <textarea
+                              placeholder="Notes"
+                              value={editDraft.notes ?? ''}
+                              onChange={(e) => setEditDraft((d) => ({ ...d, notes: e.target.value }))}
+                              className="border rounded-lg px-3 py-2 text-sm bg-white"
+                              rows={1}
+                            />
+                          </div>
+                          <div className="flex items-center gap-3 mt-3">
+                            <button
+                              onClick={() => void handleEditSave()}
+                              className="px-4 py-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 text-sm font-medium"
+                            >
+                              Save
+                            </button>
+                            <button
+                              onClick={() => { setEditingId(null); setEditDraft({}); }}
+                              className="px-4 py-1.5 rounded-lg border text-slate-600 hover:bg-slate-100 text-sm"
+                            >
+                              Cancel
+                            </button>
+                            <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer ml-2">
+                              <input
+                                type="checkbox"
+                                checked={editDraft.active ?? true}
+                                onChange={(e) => setEditDraft((d) => ({ ...d, active: e.target.checked }))}
+                                className="w-4 h-4 rounded accent-emerald-600"
+                              />
+                              Active
+                            </label>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                    </React.Fragment>
                   );
                 })}
               </tbody>
