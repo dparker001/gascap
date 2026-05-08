@@ -1,12 +1,15 @@
 /**
  * POST /api/admin/ghl-backfill
  *
- * One-time utility: reads every user in data/users.json and upserts them
- * into GHL as contacts. Users who are already in GHL are safely updated
- * (upsert by email). New-to-GHL users are created.
+ * One-time utility: reads every user and upserts them into GHL as contacts.
+ * Users who are already in GHL are safely updated (upsert by email).
  *
- * All backfilled contacts receive a trial tag if applicable so they
- * are distinguishable from users who sign up after the fix.
+ * Query params:
+ *   ?smsOnly=true  — process only users with smsOptIn=true (fast, ~5s for 100 users)
+ *   (no param)     — process all users (may be slow for large user counts)
+ *
+ * Processes users in concurrent batches of 5 to stay under GHL's 10 req/s limit
+ * while completing quickly enough to avoid Railway's 30-second proxy timeout.
  *
  * Auth: x-admin-password header required.
  * Safe to run multiple times — upsert is idempotent.
@@ -22,50 +25,63 @@ function auth(req: Request): boolean {
   return Boolean(adminPw && header === adminPw);
 }
 
+const BATCH_SIZE = 5; // concurrent GHL requests per batch
+
 export async function POST(req: Request) {
   if (!auth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const users = await getAllUsers();
+  const { searchParams } = new URL(req.url);
+  const smsOnly = searchParams.get('smsOnly') === 'true';
+
+  const allUsers = await getAllUsers();
+  const users = smsOnly
+    ? allUsers.filter((u) => u.smsOptIn === true && u.email?.includes('@'))
+    : allUsers.filter((u) => u.email?.includes('@'));
+
   if (users.length === 0) return NextResponse.json({ synced: 0, skipped: 0, errors: [] });
 
   let synced  = 0;
   let skipped = 0;
   const errors: string[] = [];
 
-  for (const user of users) {
-    // Skip placeholder / test users with no real email
-    if (!user.email || !user.email.includes('@')) { skipped++; continue; }
+  // Process in parallel batches
+  for (let i = 0; i < users.length; i += BATCH_SIZE) {
+    const batch = users.slice(i, i + BATCH_SIZE);
 
-    const plan = (user.plan === 'pro' || user.plan === 'fleet') ? user.plan : 'free';
+    await Promise.all(batch.map(async (user) => {
+      const plan = (user.plan === 'pro' || user.plan === 'fleet') ? user.plan : 'free';
 
-    try {
-      const ok = await upsertGhlContact({
-        name:      user.name,
-        email:     user.email,
-        plan:      plan as 'free' | 'pro' | 'fleet',
-        phone:     user.phone || undefined,
-        locale:    (user.locale as 'en' | 'es' | undefined) ?? 'en',
-        source:    'GasCap Admin Backfill',
-        extraTags: [
-          ...(user.isProTrial ? ['gascap-trial-30day'] : []),
-          ...(user.smsOptIn   ? ['gascap-sms-optin']   : []),
-        ],
-      });
+      try {
+        const ok = await upsertGhlContact({
+          name:      user.name,
+          email:     user.email,
+          plan:      plan as 'free' | 'pro' | 'fleet',
+          phone:     user.phone || undefined,
+          locale:    (user.locale as 'en' | 'es' | undefined) ?? 'en',
+          source:    'GasCap Admin Backfill',
+          extraTags: [
+            ...(user.isProTrial ? ['gascap-trial-30day'] : []),
+            ...(user.smsOptIn   ? ['gascap-sms-optin']   : []),
+          ],
+        });
 
-      if (ok) {
-        synced++;
-        console.info(`[GHL backfill] ✓ ${user.email}`);
-      } else {
-        errors.push(`${user.email}: upsert returned false`);
+        if (ok) {
+          synced++;
+          console.info(`[GHL backfill] ✓ ${user.email}`);
+        } else {
+          errors.push(`${user.email}: upsert returned false`);
+        }
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        errors.push(`${user.email}: ${msg}`);
+        console.error(`[GHL backfill] ✗ ${user.email}:`, e);
       }
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      errors.push(`${user.email}: ${msg}`);
-      console.error(`[GHL backfill] ✗ ${user.email}:`, e);
-    }
+    }));
 
-    // Small delay to avoid GHL rate limits (10 req/s)
-    await new Promise((r) => setTimeout(r, 120));
+    // Brief pause between batches to respect GHL's 10 req/s rate limit
+    if (i + BATCH_SIZE < users.length) {
+      await new Promise((r) => setTimeout(r, 600));
+    }
   }
 
   return NextResponse.json({
