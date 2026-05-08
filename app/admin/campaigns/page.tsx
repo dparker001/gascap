@@ -754,12 +754,18 @@ export default function CampaignsAdminPage() {
                       </td>
                       <td className="px-3 py-2 whitespace-nowrap">
                         <button
-                          onClick={() => handleEditOpen(p)}
-                          className={`text-xs font-medium hover:text-emerald-800 mr-2 ${
-                            editingId === p.id ? 'text-emerald-700 underline' : 'text-emerald-600'
+                          onClick={() => {
+                            if (editingId === p.id) { setEditingId(null); setEditDraft({}); }
+                            else { handleEditOpen(p); }
+                          }}
+                          className={`text-xs font-medium mr-2 ${
+                            editingId === p.id
+                              ? 'text-red-500 hover:text-red-700'
+                              : 'text-emerald-600 hover:text-emerald-800'
                           }`}
+                          title={editingId === p.id ? 'Click to cancel editing' : 'Edit this placement'}
                         >
-                          {editingId === p.id ? 'editing…' : 'edit'}
+                          {editingId === p.id ? '✕ cancel' : 'edit'}
                         </button>
                         <button
                           onClick={() => handleResetEventsForPlacement(p.code)}
