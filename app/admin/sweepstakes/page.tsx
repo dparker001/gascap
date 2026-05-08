@@ -33,7 +33,7 @@ interface PrizeTier {
 }
 
 const SESSION_KEY = 'gascap_admin_session';
-const SESSION_TTL = 15 * 60 * 1000;
+const SESSION_TTL = 8 * 60 * 60 * 1000; // 8 hours — matches /admin session lifetime
 
 function loadSession(): string | null {
   try {

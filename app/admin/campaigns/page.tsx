@@ -99,7 +99,7 @@ interface DailyBucket {
 // ── Session storage helpers (match /admin pattern) ───────────────────────
 
 const SESSION_KEY = 'gascap_admin_session';
-const SESSION_TTL = 15 * 60 * 1000;
+const SESSION_TTL = 8 * 60 * 60 * 1000; // 8 hours — matches /admin session lifetime
 
 function loadPw(): string | null {
   try {
