@@ -45,15 +45,25 @@ export async function GET(req: Request) {
 
     if (now < nextDueMs) { skipped++; continue; }
 
+    // Skip test accounts
+    if ((user as { isTestAccount?: boolean }).isTestAccount) { skipped++; continue; }
+
     // ── Send push notification ──────────────────────────────────────────────
     const firstName = (user.displayName || user.name || 'there').split(' ')[0];
     try {
-      await sendPushNotification({
+      const result = await sendPushNotification({
         title:       '⛽ Time to fill up?',
         body:        `Hey ${firstName} — it's been ${intervalDays} day${intervalDays === 1 ? '' : 's'}. Open GasCap™ to plan your fill-up.`,
         url:         '/',
         externalIds: [user.id],
       });
+
+      // Only stamp and count if OneSignal actually accepted the request
+      if (result.errors) {
+        console.warn(`[FillupReminder] OneSignal skipped for ${user.email}:`, result.errors);
+        skipped++;
+        continue;
+      }
 
       // Stamp sent time in Prisma
       await prisma.user.update({
