@@ -63,13 +63,13 @@ This roadmap provides a series of milestones that — when reached — put GasCa
 | Monthly partner report (at least informal) to top 3 partners | Partner | Goal |
 
 ### Development Priorities (0–90 Days)
-1. Activate route-based trip planner in production (set env vars on Railway)
+1. ~~Activate route-based trip planner in production~~ ✅ Done — both env vars confirmed in Railway (May 2026)
 2. Add unit tests for `lib/calculations.ts`
 3. Implement rate limiting on `/api/auth/register` and `/api/auth/[...nextauth]`
-4. Add `locked_feature_shown` GA4 event to all Pro feature gates
-5. Add `rental_return_mode_toggled` GA4 event
-6. Add `fillup_optimizer_run` GA4 event
-7. Verify vehicle limit consistency (Pro: 3 or 5?)
+4. ~~Add `locked_feature_shown` GA4 event to all Pro feature gates~~ ✅ Done (May 2026)
+5. ~~Add `rental_return_mode_toggled` GA4 event~~ ✅ Done (May 2026)
+6. ~~Add `fillup_optimizer_run` GA4 event~~ ✅ Done (May 2026)
+7. ~~Verify vehicle limit consistency (Pro: 3 or 5?)~~ ✅ Fixed — Pro = 3 vehicles (May 2026)
 8. Fix campaign events to write to PostgreSQL (replace JSON file)
 9. Create root README.md
 

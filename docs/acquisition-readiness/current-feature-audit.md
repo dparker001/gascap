@@ -48,7 +48,7 @@
 | Feature | Location | Status | Plan | User | Biz | Buyer | Data | Rev | Ret | Partner | Def | BvB | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | Manual Trip Estimator | `components/TripCostEstimator.tsx` | Implemented | Free | 4 | 3 | 3 | 3 | 3 | 4 | 3 | 2 | 2 | Distance + MPG → fuel cost. No API required. |
-| Route-Based Trip Planner | `app/api/maps/route/route.ts`, `lib/mapsProvider/` | Implemented (env-gated) | Pro | 5 | 5 | 5 | 4 | 5 | 5 | 4 | 4 | 4 | Google Routes API. Requires GOOGLE_MAPS_API_KEY + GOOGLE_MAPS_TRIP_PLANNER_ENABLED=true. Gated by env flag — not yet fully activated in production. |
+| Route-Based Trip Planner | `app/api/maps/route/route.ts`, `lib/mapsProvider/` | Implemented (active) | Pro | 5 | 5 | 5 | 4 | 5 | 5 | 4 | 4 | 4 | Google Routes API. Requires GOOGLE_MAPS_API_KEY + GOOGLE_MAPS_TRIP_PLANNER_ENABLED=true. Both env vars confirmed set in Railway production (May 2026). |
 | Fuel Stops Along Route | `app/api/maps/search-fuel-stops/route.ts` | Implemented (env-gated) | Pro | 5 | 5 | 5 | 4 | 5 | 5 | 5 | 4 | 4 | Google Places API. Finds gas stations near route midpoints. Same env gate as route planner. |
 | Trip Fuel Plan Math | `lib/tripFuelPlanner.ts` | Implemented | Pro | 5 | 4 | 4 | 3 | 4 | 4 | 4 | 3 | 3 | Pure math: gallons needed, recommended refuel window, range on current tank |
 | Saved Trips | `lib/savedTrips.ts`, `components/SavedTrips.tsx` | Implemented | Pro | 4 | 3 | 3 | 3 | 3 | 4 | 3 | 2 | 2 | Save/recall trip plans |
@@ -70,7 +70,7 @@
 
 | Feature | Location | Status | Plan | User | Biz | Buyer | Data | Rev | Ret | Partner | Def | BvB | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| Vehicle Garage | `lib/savedVehicles.ts`, `components/SavedVehicles.tsx` | Implemented | Free(1), Pro(3/5), Fleet(∞) | 5 | 5 | 4 | 3 | 5 | 5 | 3 | 3 | 3 | Note: stripe.ts shows Pro allows 5 vehicles; upgrade page shows 3. Verify which is live. |
+| Vehicle Garage | `lib/savedVehicles.ts`, `components/SavedVehicles.tsx` | Implemented | Free(1), Pro(3), Fleet(∞) | 5 | 5 | 4 | 3 | 5 | 5 | 3 | 3 | 3 | Limits: Free=1, Pro=3, Fleet=unlimited. Confirmed in stripe.ts + upgrade page (May 2026). |
 | VIN Lookup | `app/api/vin/route.ts` | Implemented | Pro | 4 | 4 | 3 | 3 | 4 | 4 | 2 | 2 | 2 | Looks up vehicle specs by VIN from external data source |
 | VIN Photo Scan | `app/api/vin/scan/route.ts` | Implemented | Pro | 4 | 4 | 3 | 3 | 4 | 3 | 2 | 3 | 3 | Camera/photo upload → VIN decode via AI vision |
 | EPA Vehicle Database Search | `app/api/fueleconomy/route.ts`, `app/api/mpg-lookup/route.ts` | Implemented | Free | 5 | 4 | 3 | 3 | 4 | 4 | 2 | 2 | 2 | EPA fuel economy data for tank sizes and MPG estimates |
@@ -204,8 +204,8 @@
 
 ## Features Flagged for Verification
 
-- **Vehicle limit for Pro plan** — `lib/stripe.ts` PRICING.pro.vehicles = 5, but upgrade page shows "Up to 3 saved vehicles." Needs reconciliation. TODO: verify which limit is enforced in `app/api/vehicles/route.ts`.
-- **Route-Based Trip Planner** — Code is implemented and gated by `GOOGLE_MAPS_TRIP_PLANNER_ENABLED=true` env var. TODO: confirm whether this is set in production on Railway.
+- **Vehicle limit for Pro plan** — ✅ Resolved May 2026. `lib/stripe.ts` corrected to `vehicles: 3`. Matches upgrade page ("Up to 3 saved vehicles"). Limit enforced in `app/api/vehicles/route.ts` via `PRICING.pro.vehicles`.
+- **Route-Based Trip Planner** — ✅ Resolved May 2026. Both `GOOGLE_MAPS_API_KEY` and `GOOGLE_MAPS_TRIP_PLANNER_ENABLED=true` confirmed set in Railway production (33 service variables verified).
 - **Multi-driver sub-accounts** — Listed as "coming soon" on upgrade page. No implementation found in codebase beyond the `fleetDrivers` array field on the User model and `app/api/fleet/drivers/route.ts`. TODO: determine scope of "coming soon" before positioning as an existing feature.
 - **Receipt scan AI provider** — Comment in email says "GPT-4o Vision" for receipt scan. AI Chat uses Claude (Anthropic). Confirm which AI provider is used for `app/api/fillups/scan/route.ts`.
 
