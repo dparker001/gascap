@@ -48,6 +48,7 @@ export async function POST(req: Request) {
         source:    'GasCap Admin Backfill',
         extraTags: [
           ...(user.isProTrial ? ['gascap-trial-30day'] : []),
+          ...(user.smsOptIn   ? ['gascap-sms-optin']   : []),
         ],
       });
 

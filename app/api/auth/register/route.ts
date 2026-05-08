@@ -181,7 +181,11 @@ export async function POST(req: Request) {
     // automatically by PLAN_TAGS. We also attach `gascap-trial-30day` so
     // marketing automations can distinguish trial users from paying Pro
     // subscribers.
-    const newSignupTags = ['gascap-new-signup', 'gascap-trial-30day'];
+    const newSignupTags = [
+      'gascap-new-signup',
+      'gascap-trial-30day',
+      ...(smsOptIn ? ['gascap-sms-optin'] : []),
+    ];
 
     const ghlPhone = phone?.trim() || undefined;
 
