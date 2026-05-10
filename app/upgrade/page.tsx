@@ -118,7 +118,7 @@ function UpgradePageInner() {
 
       <BrandBar />
 
-      <div className="flex-1 px-4 py-10 max-w-2xl mx-auto w-full">
+      <div className="flex-1 px-4 py-10 max-w-2xl md:max-w-5xl mx-auto w-full">
 
         {/* Heading */}
         <div className="text-center mb-6">
@@ -226,7 +226,7 @@ function UpgradePageInner() {
         )}
 
         {/* Plan cards */}
-        <div className="space-y-4">
+        <div className="space-y-4 md:space-y-0 md:grid md:grid-cols-3 md:gap-6 md:items-start">
 
           {/* ── Pro ── */}
           <div id="pro" className="bg-white rounded-3xl shadow-card border-2 border-amber-400 p-6">

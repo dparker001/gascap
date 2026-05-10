@@ -43,7 +43,7 @@ export async function GET() {
   const bonusEntries   = user.earlyUpgradeBonusEntries ?? 0;
   const garageDaysThisMonth = (user.garageBonusDays ?? [])
     .filter((d: string) => d.startsWith(month)).length;
-  const garageBonusEntries  = garageDaysThisMonth * 5;
+  const garageBonusEntries  = garageDaysThisMonth * 10;
   const entryCount     = baseEntries + streakBonus + bonusEntries + garageBonusEntries;
   const eligible       = user.plan === 'pro' || user.plan === 'fleet';
 
