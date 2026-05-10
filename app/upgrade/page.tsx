@@ -33,7 +33,7 @@ const PRO_FEATURES = [
 
 const FLEET_FEATURES = [
   'Unlimited vehicles',
-  'Household & multi-vehicle use',
+  'Businesses, contractors & multi-vehicle households',
   'Fleet-wide fuel dashboard',
   'Per-vehicle spending breakdown',
   'Annual tax report (PDF)',
@@ -293,7 +293,7 @@ function UpgradePageInner() {
 
             <p className="text-center text-[11px] text-slate-400 mt-2">
               {t.upgrade.enterprise}{' '}
-              <a href="mailto:support@gascap.app" className="text-blue-500 hover:underline font-semibold">
+              <a href="mailto:don@gascap.app" className="text-blue-500 hover:underline font-semibold">
                 {t.upgrade.contactUs}
               </a>
             </p>
