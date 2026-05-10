@@ -10,6 +10,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions }      from '@/lib/auth';
 import { findById, verifyEmailToken, createEmailVerifyToken } from '@/lib/users';
 import { sendMail, verificationEmailHtml } from '@/lib/email';
+import { removeGhlTags } from '@/lib/ghl';
 
 function getBaseUrl(req: Request): string {
   if (process.env.NEXTAUTH_URL) return process.env.NEXTAUTH_URL.replace(/\/$/, '');
@@ -37,6 +38,12 @@ export async function GET(req: Request) {
   // Referral credit is NOT awarded here. It fires in the Stripe webhook on
   // invoice.payment_succeeded (first real payment > $0) so trial cancellers
   // never earn a referrer a free month.
+
+  // Remove the GHL email-unverified tag so SMS workflows stop targeting this user.
+  if (result.userEmail) {
+    removeGhlTags(result.userEmail, ['gascap-email-unverified'])
+      .catch((e) => console.error('[verify-email] GHL tag removal failed:', e));
+  }
 
   // Send the user to the sign-in page with a success banner.
   // They sign in fresh here, which creates a JWT with emailVerified:true.

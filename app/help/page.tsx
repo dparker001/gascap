@@ -248,7 +248,7 @@ const SECTIONS = [
       },
       {
         q: 'Who is eligible to enter?',
-        a: 'Legal residents of the United States who are 18 years of age or older. Employees of Gas Capacity LLC and their immediate family members are not eligible. Void where prohibited by law.',
+        a: 'Legal residents of the United States who are 18 years of age or older with a verified GasCap™ email address. Employees of Gas Capacity LLC and their immediate family members are not eligible. Void where prohibited by law. If your email is not verified, your entries will accumulate but will not be included in the drawing pool — verify your email to make them count.',
       },
       {
         q: 'How do I earn entries as a Pro or Fleet member?',
@@ -362,7 +362,7 @@ const SECTIONS = [
       },
       {
         q: 'Why do I need to verify my email?',
-        a: 'Email verification protects your account and ensures we can reach you for important notices. Check your inbox and spam folder for a verification email from support@gascap.app.',
+        a: 'Email verification protects your account, ensures we can notify you if you win the monthly giveaway, and unlocks your bonus drawing entries. Verify within 48 hours of signing up to earn +25 bonus entries — verify any time after to earn +10 bonus entries. Check your inbox and spam folder for the verification email from support@gascap.app. Unverified accounts cannot win the monthly drawing.',
       },
       {
         q: 'What data does GasCap™ collect?',

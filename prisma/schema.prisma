@@ -68,6 +68,7 @@ model User {
   milestoneReferral1Sent   Boolean   @default(false)
   earlyUpgradeBonusEntries Int       @default(0)
   phoneBonusEntries        Int       @default(0)
+  emailVerifyBonusGranted  Boolean   @default(false)
   smsOptInDate             String?
   avatarUrl                String?
   preferredFillLevel       Int?     // % 0-100 — default target fill for calculators

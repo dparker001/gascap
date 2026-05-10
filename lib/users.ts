@@ -913,33 +913,40 @@ export async function createEmailVerifyToken(userId: string): Promise<string> {
   return token;
 }
 
-export async function verifyEmailToken(token: string): Promise<{ ok: boolean; userId?: string; error?: string }> {
+export async function verifyEmailToken(token: string): Promise<{ ok: boolean; userId?: string; userEmail?: string; error?: string }> {
   const user = await prisma.user.findFirst({ where: { emailVerifyToken: token } });
   if (!user) return { ok: false, error: 'Invalid or already used verification link.' };
   if (user.emailVerifyExpires && new Date(user.emailVerifyExpires) < new Date()) {
     return { ok: false, error: 'Verification link has expired. Please request a new one.' };
   }
 
-  // Award 25 bonus draw entries if user verifies within 7 days of receiving a reminder
+  // Award bonus draw entries for verifying email:
+  //   +25 if verified within 48 hours of account creation (urgency reward)
+  //   +10 if verified after 48 hours
+  // Guard: emailVerifyBonusGranted prevents a double-grant if the token is
+  // somehow reused or this function is called twice for the same user.
   const verifyBonusEntries = (() => {
-    if (!user.verifyReminderSentAt) return 0;
-    const sent         = new Date(user.verifyReminderSentAt);
-    const sevenDaysMs  = 7 * 24 * 60 * 60 * 1000;
-    return Date.now() <= sent.getTime() + sevenDaysMs ? 25 : 0;
+    if (user.emailVerifyBonusGranted) return 0;
+    const createdAt       = new Date(user.createdAt);
+    const fortyEightHours = 48 * 60 * 60 * 1000;
+    return Date.now() <= createdAt.getTime() + fortyEightHours ? 25 : 10;
   })();
 
   await prisma.user.update({
     where: { id: user.id },
     data: {
-      emailVerified:      true,
-      emailVerifyToken:   null,
-      emailVerifyExpires: null,
+      emailVerified:          true,
+      emailVerifyToken:       null,
+      emailVerifyExpires:     null,
       ...(verifyBonusEntries > 0
-        ? { verifyReminderBonusEntries: { increment: verifyBonusEntries } }
+        ? {
+            verifyReminderBonusEntries: { increment: verifyBonusEntries },
+            emailVerifyBonusGranted:    true,
+          }
         : {}),
     },
   });
-  return { ok: true, userId: user.id };
+  return { ok: true, userId: user.id, userEmail: user.email };
 }
 
 export async function resendVerificationToken(userId: string): Promise<string> {

@@ -60,8 +60,9 @@ export async function POST(req: Request) {
           locale:    (user.locale as 'en' | 'es' | undefined) ?? 'en',
           source:    'GasCap Admin Backfill',
           extraTags: [
-            ...(user.isProTrial ? ['gascap-trial-30day'] : []),
-            ...(user.smsOptIn   ? ['gascap-sms-optin']   : []),
+            ...(user.isProTrial          ? ['gascap-trial-30day']      : []),
+            ...(user.smsOptIn            ? ['gascap-sms-optin']        : []),
+            ...(!user.emailVerified      ? ['gascap-email-unverified'] : []),
           ],
         });
 

@@ -184,6 +184,7 @@ export async function POST(req: Request) {
     const newSignupTags = [
       'gascap-new-signup',
       'gascap-trial-30day',
+      'gascap-email-unverified',   // removed by verify-email route on successful verification
       ...(smsOptIn ? ['gascap-sms-optin'] : []),
     ];
 

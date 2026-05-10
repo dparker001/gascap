@@ -29,7 +29,17 @@ export async function GET() {
 
   const user = await prisma.user.findUnique({
     where:  { id: userId },
-    select: { activeDays: true, plan: true, streak: true, referralCount: true, earlyUpgradeBonusEntries: true, garageBonusDays: true },
+    select: {
+      activeDays: true,
+      plan: true,
+      streak: true,
+      referralCount: true,
+      earlyUpgradeBonusEntries: true,
+      garageBonusDays: true,
+      verifyReminderBonusEntries: true,
+      phoneBonusEntries: true,
+      emailVerified: true,
+    },
   });
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
@@ -40,12 +50,16 @@ export async function GET() {
   const baseEntries    = activeDayCount * multiplier;   // multiplier on active days
   const streak         = user.streak ?? 0;
   const streakBonus    = streakBonusEntries(streak);
-  const bonusEntries   = user.earlyUpgradeBonusEntries ?? 0;
+  const bonusEntries           = user.earlyUpgradeBonusEntries   ?? 0;
+  const verifyBonusEntries     = user.verifyReminderBonusEntries ?? 0;
+  const phoneBonusEntries      = user.phoneBonusEntries          ?? 0;
   const garageDaysThisMonth = (user.garageBonusDays ?? [])
     .filter((d: string) => d.startsWith(month)).length;
   const garageBonusEntries  = garageDaysThisMonth * 10;
-  const entryCount     = baseEntries + streakBonus + bonusEntries + garageBonusEntries;
+  const entryCount     = baseEntries + streakBonus + bonusEntries + garageBonusEntries
+                         + verifyBonusEntries + phoneBonusEntries;
   const eligible       = user.plan === 'pro' || user.plan === 'fleet';
+  const emailVerified  = user.emailVerified ?? false;
 
   return NextResponse.json({
     month,
@@ -58,10 +72,13 @@ export async function GET() {
     streakTier:       streakTierForStreak(streak),
     nextStreakTier:   nextStreakTier(streak),
     eligible,
+    emailVerified,                // false = entries won't count in the draw
     ambassadorTier:   getAmbassadorTier(refCount),
     alwaysEligible:   isAlwaysEligible(refCount),
     referralCount:    refCount,
     earlyUpgradeBonusEntries: bonusEntries,
+    verifyBonusEntries,
+    phoneBonusEntries,
     garageBonusEntries,
     garageDaysThisMonth,
   });
