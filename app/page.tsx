@@ -198,6 +198,14 @@ function GuestHero() {
             <p className="text-orange-100 text-[10px] mt-0.5">{t.hero.offerStripSub}</p>
           </div>
         </a>
+
+        {/* Pricing teaser — visible above the fold so no one misses it */}
+        <p className="mt-3 text-[11px] text-white/50 text-center">
+          Free forever &nbsp;·&nbsp; Pro $4.99/mo &nbsp;·&nbsp; Fleet $19.99/mo &nbsp;·&nbsp;
+          <a href="#pricing" className="text-white/70 underline underline-offset-2 hover:text-white transition-colors">
+            See all plans ↓
+          </a>
+        </p>
       </div>
     </section>
   );
@@ -514,11 +522,6 @@ export default function Home() {
   const userPlan = (session?.user as { plan?: string })?.plan ?? 'free';
   const isGuest  = !session;
 
-  // Auto-expand pricing for guests once session is resolved
-  useEffect(() => {
-    if (status !== 'loading' && isGuest) setShowPricing(true);
-  }, [status, isGuest]);
-
   // Scroll to top when session loads
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' });
@@ -817,33 +820,13 @@ export default function Home() {
           <StatsBar />
           <ReviewsMarquee />
           <FaqSection />
-          <GuestCtaBanner />
 
-          {/* Pricing */}
-          <section className="px-4 pb-12 max-w-2xl mx-auto w-full">
-            <button
-              onClick={() => setShowPricing((v) => !v)}
-              className="w-full flex items-center justify-between py-3 px-4 bg-white dark:bg-slate-800
-                         rounded-2xl border border-slate-100 dark:border-slate-700
-                         shadow-sm hover:border-brand-teal/30 transition-colors mb-2"
-            >
-              <div className="flex items-center gap-2.5">
-                <span className="text-lg">⭐</span>
-                <div className="text-left">
-                  <p className="text-sm font-black text-slate-700 dark:text-slate-200">{t.pricing.toggleLabel}</p>
-                  <p className="text-[10px] text-slate-400">{t.pricing.toggleSub}</p>
-                </div>
-              </div>
-              <svg
-                className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${showPricing ? 'rotate-180' : ''}`}
-                viewBox="0 0 16 16" fill="none" stroke="currentColor"
-                strokeWidth="2" strokeLinecap="round" aria-hidden="true"
-              >
-                <path d="M 4 6l4 4 4-4" />
-              </svg>
-            </button>
-            {showPricing && <PricingSection />}
+          {/* Pricing — always visible, anchored so hero "See all plans ↓" scrolls here */}
+          <section id="pricing" className="px-4 pb-8 max-w-2xl mx-auto w-full">
+            <PricingSection />
           </section>
+
+          <GuestCtaBanner />
         </>
       )}
 
