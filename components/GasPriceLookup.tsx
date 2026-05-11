@@ -203,7 +203,14 @@ export default function GasPriceLookup({ onApply }: GasPriceLookupProps) {
                   <p className="text-lg font-black text-emerald-700">
                     ${result.price.toFixed(2)}<span className="text-xs font-normal text-emerald-600 ml-0.5">/gal</span>
                   </p>
-                  <p className="text-[10px] text-emerald-600 mt-0.5">{t.gasPrice.source}</p>
+                  <p className="mt-1 flex items-center gap-1.5">
+                    <span className="inline-flex items-center gap-0.5 bg-emerald-100 text-emerald-700
+                                     text-[9px] font-black px-1.5 py-0.5 rounded-full leading-none
+                                     border border-emerald-200">
+                      📊 U.S. EIA Official
+                    </span>
+                    <span className="text-[10px] text-emerald-500">regular unleaded</span>
+                  </p>
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <button

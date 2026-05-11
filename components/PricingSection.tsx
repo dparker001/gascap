@@ -335,10 +335,31 @@ export default function PricingSection() {
         </div>
       )}
 
+      {/* 30-day money-back guarantee */}
+      <div className="mt-6 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3.5
+                      flex items-start gap-3">
+        <span className="text-2xl flex-shrink-0" aria-hidden="true">🎯</span>
+        <div>
+          <p className="text-xs font-black text-amber-800">30-Day Satisfaction Guarantee</p>
+          <p className="text-xs text-amber-700 mt-0.5 leading-relaxed">
+            If GasCap Pro doesn&apos;t help you save more than $4.99 in your first month,
+            contact us and we&apos;ll refund your first payment — no questions asked.
+          </p>
+        </div>
+      </div>
+
       {/* Trust footnote */}
-      <p className="text-center text-xs text-slate-400 mt-6 leading-relaxed">
-        {t.pricing.trustNote}
-      </p>
+      <div className="mt-4 flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
+        <span className="text-xs text-slate-400 flex items-center gap-1">
+          <span>🔒</span> We never sell your data
+        </span>
+        <span className="text-xs text-slate-400 flex items-center gap-1">
+          <span>💳</span> Secured by Stripe
+        </span>
+        <span className="text-xs text-slate-400 flex items-center gap-1">
+          <span>✓</span> Cancel anytime
+        </span>
+      </div>
     </section>
   );
 }

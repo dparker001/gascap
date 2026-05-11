@@ -63,6 +63,7 @@ export default function BudgetForm({ activeTab, setActiveTab }: Props) {
   const GOAL_TABS: { id: CalcTab; emoji: string; label: string; sub: string }[] = [
     { id: 'target', emoji: '⛽', label: t.calc.targetFillLabel, sub: t.calc.targetFillSub },
     { id: 'budget', emoji: '💵', label: t.calc.byBudgetLabel,   sub: t.calc.byBudgetSub  },
+    { id: 'ev',     emoji: '⚡', label: t.calc.evLabel,         sub: t.calc.evSub         },
   ];
 
   const [form, setForm]     = useLocalStorage<FormState>('gc_budget_v2', DEFAULTS);

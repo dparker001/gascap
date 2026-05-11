@@ -204,6 +204,58 @@ export interface VehiclePreset {
   gallons: number;
 }
 
+// ── EV Charge Calculator ──────────────────────
+
+export interface EvChargeInput {
+  batteryKwh:       number;   // total usable battery capacity (kWh)
+  currentPct:       number;   // current state of charge 0–100
+  targetPct:        number;   // desired state of charge 0–100
+  pricePerKwh:      number;   // electricity cost (USD/kWh)
+  efficiencyMiKwh?: number;   // optional: miles per kWh (EPA or user-measured)
+}
+
+export interface EvChargeResult {
+  kWhNeeded:       number;
+  estimatedCost:   number;
+  rangeAdded:      number | null;  // null when efficiency not provided
+  chargeAdded:     number;         // percentage points added
+  chargeTimesHours: {
+    level1: number;   // 120V / 1.4 kW
+    level2: number;   // 240V / 7.2 kW home charger
+    dcFast: number;   // 50 kW DC fast charger
+  };
+  summary: string;
+}
+
+export function calcEvCharge(input: EvChargeInput): EvChargeResult {
+  const { batteryKwh, currentPct, targetPct, pricePerKwh, efficiencyMiKwh } = input;
+
+  const chargeAdded  = Math.max(0, targetPct - currentPct);
+  const kWhNeeded    = round(batteryKwh * (chargeAdded / 100), 2);
+  const estimatedCost = round(kWhNeeded * pricePerKwh, 2);
+  const rangeAdded   =
+    efficiencyMiKwh != null && efficiencyMiKwh > 0
+      ? Math.round(kWhNeeded * efficiencyMiKwh)
+      : null;
+
+  // Charging time: kWh ÷ charger power (hours)
+  const chargeTimesHours = {
+    level1: round(kWhNeeded / 1.4,  1),  // 120V standard outlet
+    level2: round(kWhNeeded / 7.2,  1),  // 240V Level 2 home charger
+    dcFast: round(kWhNeeded / 50.0, 2),  // 50 kW public DCFC
+  };
+
+  const rangeStr = rangeAdded != null ? ` (~${rangeAdded} miles of range)` : '';
+  const summary =
+    kWhNeeded === 0
+      ? `Battery is already at or above ${targetPct}%. No charging needed!`
+      : `Charging from ${currentPct}% to ${targetPct}% needs ${kWhNeeded} kWh — about $${estimatedCost.toFixed(2)} at $${pricePerKwh.toFixed(4)}/kWh${rangeStr}.`;
+
+  return { kWhNeeded, estimatedCost, rangeAdded, chargeAdded, chargeTimesHours, summary };
+}
+
+// ── Vehicle presets (gasoline) ────────────────
+
 export const VEHICLE_PRESETS: VehiclePreset[] = [
   { label: 'Compact (e.g. Honda Civic)', gallons: 12.4 },
   { label: 'Mid-size Sedan (e.g. Camry)', gallons: 15.9 },

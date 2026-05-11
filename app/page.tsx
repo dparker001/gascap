@@ -5,6 +5,7 @@ import { useSession }                    from 'next-auth/react';
 import { useSearchParams, useRouter }    from 'next/navigation';
 import { useTranslation }      from '@/contexts/LanguageContext';
 import AdSenseBanner           from '@/components/AdSenseBanner';
+import TrustStrip              from '@/components/TrustStrip';
 import Header                  from '@/components/Header';
 import CalculatorTabs          from '@/components/CalculatorTabs';
 import ToolsPanel              from '@/components/ToolsPanel';
@@ -818,6 +819,7 @@ export default function Home() {
           <ProblemSolution />
           <Features />
           <UseCases />
+          <TrustStrip />
           <StatsBar />
           <ReviewsMarquee />
           <FaqSection />
