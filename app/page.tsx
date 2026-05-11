@@ -201,9 +201,9 @@ function GuestHero() {
 
         {/* Pricing teaser — visible above the fold so no one misses it */}
         <p className="mt-3 text-[11px] text-white/50 text-center">
-          Free forever &nbsp;·&nbsp; Pro $4.99/mo &nbsp;·&nbsp; Fleet $19.99/mo &nbsp;·&nbsp;
+          {t.heroPricingTeaser.line} &nbsp;·&nbsp;
           <a href="#pricing" className="text-white/70 underline underline-offset-2 hover:text-white transition-colors">
-            See all plans ↓
+            {t.heroPricingTeaser.seeAllPlans}
           </a>
         </p>
       </div>
@@ -463,6 +463,7 @@ function GuestCtaBanner() {
 function VerifiedSuccessToast() {
   const params  = useSearchParams();
   const router  = useRouter();
+  const { t }   = useTranslation();
 
   const verified = params.get('verified');
   const errMsg   = params.get('msg') ?? '';
@@ -489,12 +490,12 @@ function VerifiedSuccessToast() {
                       animate-fade-in">
         <span className="text-lg flex-shrink-0">❌</span>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-black">Verification failed</p>
+          <p className="text-sm font-black">{t.verifiedToast.errorTitle}</p>
           <p className="text-xs text-red-100 mt-0.5">
-            {decodeURIComponent(errMsg) || 'The link may be invalid or expired. Use the banner below to resend.'}
+            {decodeURIComponent(errMsg) || t.verifiedToast.errorBody}
           </p>
         </div>
-        <button onClick={() => setShow(false)} className="flex-shrink-0 text-red-200 hover:text-white" aria-label="Dismiss">✕</button>
+        <button onClick={() => setShow(false)} className="flex-shrink-0 text-red-200 hover:text-white" aria-label={t.verifiedToast.dismiss}>✕</button>
       </div>
     );
   }
@@ -505,10 +506,10 @@ function VerifiedSuccessToast() {
                     animate-fade-in">
       <span className="text-lg flex-shrink-0">✅</span>
       <div>
-        <p className="text-sm font-black">Email verified!</p>
-        <p className="text-xs text-green-100 mt-0.5">You're all set. Welcome to GasCap™.</p>
+        <p className="text-sm font-black">{t.verifiedToast.successTitle}</p>
+        <p className="text-xs text-green-100 mt-0.5">{t.verifiedToast.successBody}</p>
       </div>
-      <button onClick={() => setShow(false)} className="ml-auto text-green-200 hover:text-white" aria-label="Dismiss">✕</button>
+      <button onClick={() => setShow(false)} className="ml-auto text-green-200 hover:text-white" aria-label={t.verifiedToast.dismiss}>✕</button>
     </div>
   );
 }
@@ -591,8 +592,8 @@ export default function Home() {
                               hover:bg-[#253d5e] transition-colors">
                   <span className="text-2xl flex-shrink-0">🚛</span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-white text-sm font-black leading-tight">Fleet Dashboard</p>
-                    <p className="text-white/50 text-[10px] mt-0.5">Manage drivers, vehicles &amp; fuel reports</p>
+                    <p className="text-white text-sm font-black leading-tight">{t.fleetBanner.mobileTitle}</p>
+                    <p className="text-white/50 text-[10px] mt-0.5">{t.fleetBanner.mobileSub}</p>
                   </div>
                   <svg viewBox="0 0 12 12" className="w-4 h-4 flex-shrink-0 text-white/40" fill="none"
                        stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
@@ -638,7 +639,7 @@ export default function Home() {
               <div className="flex items-center gap-3">
                 <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
                 <span className="text-[10px] font-black uppercase tracking-widest
-                                 text-slate-300 dark:text-slate-600">More</span>
+                                 text-slate-300 dark:text-slate-600">{t.misc.more}</span>
                 <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
               </div>
             </div>
@@ -679,7 +680,7 @@ export default function Home() {
                     <span className="text-2xl">🚛</span>
                     <div>
                       <p className="text-white text-sm font-black">GasCap™ Fleet</p>
-                      <p className="text-white/50 text-[10px]">Vehicles · Drivers · Fuel analytics</p>
+                      <p className="text-white/50 text-[10px]">{t.fleetBanner.rightPanelSub}</p>
                     </div>
                   </div>
                   <div className="bg-white dark:bg-slate-800 px-4 py-3 flex flex-col gap-2">
@@ -687,14 +688,14 @@ export default function Home() {
                        className="flex items-center justify-between w-full text-xs font-black
                                   text-white bg-[#1E2D4A] hover:bg-[#253d5e]
                                   rounded-xl px-3 py-2 transition-colors">
-                      Open Fleet Dashboard
+                      {t.fleetBanner.openDash}
                       <svg viewBox="0 0 12 12" className="w-3 h-3 flex-shrink-0" fill="none"
                            stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                         <path d="M2 6h8M6 2l4 4-4 4"/>
                       </svg>
                     </a>
                     <a href="/settings#fleet" className="text-[11px] text-slate-400 hover:text-brand-teal transition-colors text-center">
-                      Configure branding →
+                      {t.fleetBanner.configureBranding}
                     </a>
                   </div>
                 </div>
@@ -709,7 +710,7 @@ export default function Home() {
               <div className="flex items-center gap-2 px-1">
                 <span className="text-base">🔗</span>
                 <h2 className="text-sm font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider">
-                  Quick Links
+                  {t.quickLinks.heading}
                 </h2>
                 <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
               </div>
@@ -721,8 +722,8 @@ export default function Home() {
                                 border border-[#1E2D4A] p-3
                                 hover:bg-[#253d5e] transition-colors group shadow-sm">
                     <span className="text-lg">🚛</span>
-                    <p className="text-[11px] font-black text-white leading-tight">Fleet Dashboard</p>
-                    <p className="text-[10px] text-white/50 leading-snug">Drivers, fill-ups &amp; tax</p>
+                    <p className="text-[11px] font-black text-white leading-tight">{t.quickLinks.fleetDash}</p>
+                    <p className="text-[10px] text-white/50 leading-snug">{t.quickLinks.fleetDashSub}</p>
                   </a>
                 ) : (
                   <a href="#share"
@@ -735,8 +736,8 @@ export default function Home() {
                                 border border-slate-100 dark:border-slate-700 p-3
                                 hover:border-brand-teal/40 transition-colors group shadow-sm cursor-pointer">
                     <span className="text-lg">🤝</span>
-                    <p className="text-[11px] font-black text-slate-700 dark:text-slate-200 group-hover:text-brand-teal transition-colors leading-tight">Refer &amp; Earn</p>
-                    <p className="text-[10px] text-slate-400 leading-snug">Free Pro months</p>
+                    <p className="text-[11px] font-black text-slate-700 dark:text-slate-200 group-hover:text-brand-teal transition-colors leading-tight">{t.quickLinks.referEarn}</p>
+                    <p className="text-[10px] text-slate-400 leading-snug">{t.quickLinks.referEarnSub}</p>
                   </a>
                 )}
                 <a href="/giveaway"
@@ -744,8 +745,8 @@ export default function Home() {
                               border border-slate-100 dark:border-slate-700 p-3
                               hover:border-amber-300/60 transition-colors group shadow-sm">
                   <span className="text-lg">🎁</span>
-                  <p className="text-[11px] font-black text-slate-700 dark:text-slate-200 group-hover:text-amber-600 transition-colors leading-tight">Gas Card</p>
-                  <p className="text-[10px] text-slate-400 leading-snug">Monthly giveaway</p>
+                  <p className="text-[11px] font-black text-slate-700 dark:text-slate-200 group-hover:text-amber-600 transition-colors leading-tight">{t.quickLinks.gasCard}</p>
+                  <p className="text-[10px] text-slate-400 leading-snug">{t.quickLinks.gasCardSub}</p>
                 </a>
                 <a href="#log"
                    onClick={(e) => {
@@ -757,16 +758,16 @@ export default function Home() {
                               border border-slate-100 dark:border-slate-700 p-3
                               hover:border-brand-teal/40 transition-colors group shadow-sm cursor-pointer">
                   <span className="text-lg">📋</span>
-                  <p className="text-[11px] font-black text-slate-700 dark:text-slate-200 group-hover:text-brand-teal transition-colors leading-tight">Fill-Up Log</p>
-                  <p className="text-[10px] text-slate-400 leading-snug">MPG &amp; spending history</p>
+                  <p className="text-[11px] font-black text-slate-700 dark:text-slate-200 group-hover:text-brand-teal transition-colors leading-tight">{t.quickLinks.fillupLog}</p>
+                  <p className="text-[10px] text-slate-400 leading-snug">{t.quickLinks.fillupLogSub}</p>
                 </a>
                 <a href="/settings"
                    className="flex flex-col gap-1 bg-white dark:bg-slate-800 rounded-xl
                               border border-slate-100 dark:border-slate-700 p-3
                               hover:border-slate-300 transition-colors group shadow-sm">
                   <span className="text-lg">⚙️</span>
-                  <p className="text-[11px] font-black text-slate-700 dark:text-slate-200 group-hover:text-slate-600 transition-colors leading-tight">Settings</p>
-                  <p className="text-[10px] text-slate-400 leading-snug">Plan &amp; account</p>
+                  <p className="text-[11px] font-black text-slate-700 dark:text-slate-200 group-hover:text-slate-600 transition-colors leading-tight">{t.quickLinks.settings}</p>
+                  <p className="text-[10px] text-slate-400 leading-snug">{t.quickLinks.settingsSub}</p>
                 </a>
               </div>
 

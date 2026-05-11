@@ -15,6 +15,7 @@
 
 import { useSession } from 'next-auth/react';
 import { useEffect, useState } from 'react';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 interface ProfileData {
   monthlyFuelBudget: number | null;
@@ -61,6 +62,7 @@ function arcPath(pct: number, r = 38, cx = 44, cy = 44) {
 
 export default function FuelBudgetWidget() {
   const { data: session }  = useSession();
+  const { t, locale }      = useTranslation();
   const plan               = (session?.user as { plan?: string })?.plan ?? 'free';
   const isPro              = plan === 'pro' || plan === 'fleet';
   const isProTrial         = (session?.user as { isProTrial?: boolean })?.isProTrial ?? false;
@@ -98,7 +100,7 @@ export default function FuelBudgetWidget() {
   const hasBudget = budget !== null && budget > 0;
   const pct       = hasBudget ? clamp((monthSpend / budget) * 100) : 0;
   const over      = hasBudget && monthSpend > budget;
-  const monthName = new Date().toLocaleString('default', { month: 'long' });
+  const monthName = new Date().toLocaleString(locale === 'es' ? 'es-MX' : 'en-US', { month: 'long' });
 
   // Colour theme based on budget usage
   const ringColor =
@@ -117,13 +119,13 @@ export default function FuelBudgetWidget() {
           <div className="flex items-center gap-2">
             <span className="text-base" aria-hidden="true">📊</span>
             <h2 className="text-sm font-black text-slate-700 dark:text-slate-200">
-              Your Fuel Summary
+              {t.fuelBudget.heading}
             </h2>
           </div>
           {showFull && (
             <a href="/settings?tab=preferences"
                className="text-[10px] font-semibold text-brand-teal hover:text-brand-dark transition-colors">
-              {hasBudget ? 'Edit budget →' : 'Set budget →'}
+              {hasBudget ? t.fuelBudget.editBudget : t.fuelBudget.setBudget}
             </a>
           )}
         </div>
@@ -164,11 +166,11 @@ export default function FuelBudgetWidget() {
                             style={{ color: ringColor }}>
                         {Math.round(pct)}%
                       </span>
-                      <span className="text-[9px] text-slate-400 leading-none mt-0.5">used</span>
+                      <span className="text-[9px] text-slate-400 leading-none mt-0.5">{t.fuelBudget.used}</span>
                     </>
                   ) : (
                     <span className="text-[10px] text-slate-400 font-semibold text-center leading-tight px-2">
-                      No budget set
+                      {t.fuelBudget.noBudgetSet}
                     </span>
                   )}
                 </div>
@@ -176,21 +178,21 @@ export default function FuelBudgetWidget() {
 
               {/* Month spend breakdown */}
               <div className="flex-1 min-w-0">
-                <p className="text-xs text-slate-400 mb-1">{monthName} spend</p>
+                <p className="text-xs text-slate-400 mb-1">{t.fuelBudget.monthSpend(monthName)}</p>
                 <p className="text-2xl font-black text-slate-800 dark:text-slate-100 leading-none">
                   ${monthSpend.toFixed(2)}
                 </p>
                 {hasBudget && (
                   <p className={`text-[11px] font-semibold mt-1 ${over ? 'text-red-500' : 'text-slate-400'}`}>
                     {over
-                      ? `$${(monthSpend - budget).toFixed(2)} over budget`
-                      : `$${(budget - monthSpend).toFixed(2)} remaining`}
+                      ? t.fuelBudget.overBudget(`$${(monthSpend - budget).toFixed(2)}`)
+                      : t.fuelBudget.remaining(`$${(budget - monthSpend).toFixed(2)}`)}
                   </p>
                 )}
                 {!hasBudget && (
                   <a href="/settings?tab=preferences"
                      className="inline-block mt-1 text-[11px] font-bold text-brand-teal hover:text-brand-dark transition-colors">
-                    + Set a monthly budget
+                    {t.fuelBudget.addBudget}
                   </a>
                 )}
               </div>
@@ -204,19 +206,19 @@ export default function FuelBudgetWidget() {
                 <p className="text-base font-black text-slate-800 dark:text-slate-100">
                   {stats.fillupCount}
                 </p>
-                <p className="text-[10px] text-slate-400 mt-0.5">fill-ups logged</p>
+                <p className="text-[10px] text-slate-400 mt-0.5">{t.fuelBudget.fillupsLogged}</p>
               </div>
               <div className="text-center border-x border-slate-100 dark:border-slate-700">
                 <p className="text-base font-black text-slate-800 dark:text-slate-100">
                   {stats.totalGallons.toFixed(0)} <span className="text-xs font-semibold text-slate-400">gal</span>
                 </p>
-                <p className="text-[10px] text-slate-400 mt-0.5">total pumped</p>
+                <p className="text-[10px] text-slate-400 mt-0.5">{t.fuelBudget.totalPumped}</p>
               </div>
               <div className="text-center">
                 <p className="text-base font-black text-slate-800 dark:text-slate-100">
                   ${stats.totalSpent.toFixed(0)}
                 </p>
-                <p className="text-[10px] text-slate-400 mt-0.5">total spent</p>
+                <p className="text-[10px] text-slate-400 mt-0.5">{t.fuelBudget.totalSpent}</p>
               </div>
             </div>
           ) : (
@@ -225,10 +227,10 @@ export default function FuelBudgetWidget() {
               <span className="text-xl" aria-hidden="true">📋</span>
               <div>
                 <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">
-                  No fill-ups logged yet
+                  {t.fuelBudget.noFillupsTitle}
                 </p>
                 <p className="text-[11px] text-slate-400 mt-0.5">
-                  Log your first fill-up to start tracking spend &amp; MPG.
+                  {t.fuelBudget.noFillupsSub}
                 </p>
               </div>
             </div>

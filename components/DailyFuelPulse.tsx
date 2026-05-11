@@ -15,6 +15,7 @@
 import { useEffect, useState } from 'react';
 import { useSession }          from 'next-auth/react';
 import Link                    from 'next/link';
+import { useTranslation }      from '@/contexts/LanguageContext';
 
 interface PulseData {
   available:  boolean;
@@ -31,6 +32,7 @@ const DISMISSED_KEY = 'gascap_pulse_dismissed';
 
 export default function DailyFuelPulse() {
   const { data: session } = useSession();
+  const { t } = useTranslation();
   const [pulse,     setPulse]     = useState<PulseData | null>(null);
   const [loading,   setLoading]   = useState(true);
   const [dismissed, setDismissed] = useState(false);
@@ -88,10 +90,10 @@ export default function DailyFuelPulse() {
 
   // Trend display
   const trendConfig: Record<string, { arrow: string; color: string; label: string }> = {
-    up:      { arrow: '↑', color: 'text-rose-500',    label: 'up from last week'   },
-    down:    { arrow: '↓', color: 'text-emerald-500', label: 'down from last week' },
-    flat:    { arrow: '→', color: 'text-slate-400',   label: 'same as last week'   },
-    unknown: { arrow: '—', color: 'text-slate-400',   label: ''                    },
+    up:      { arrow: '↑', color: 'text-rose-500',    label: t.dailyFuelPulse.upFromLastWeek   },
+    down:    { arrow: '↓', color: 'text-emerald-500', label: t.dailyFuelPulse.downFromLastWeek },
+    flat:    { arrow: '→', color: 'text-slate-400',   label: t.dailyFuelPulse.sameAsLastWeek   },
+    unknown: { arrow: '—', color: 'text-slate-400',   label: ''                                },
   };
   const tc = trendConfig[trend ?? 'unknown'];
 
@@ -101,7 +103,7 @@ export default function DailyFuelPulse() {
     <div
       className="mx-auto w-full max-w-lg lg:max-w-none px-4 lg:px-0 mt-3 mb-1"
       role="region"
-      aria-label="Daily Fuel Pulse"
+      aria-label={t.dailyFuelPulse.regionAria}
     >
       <div className="relative rounded-2xl border border-[#1EB68F]/30 bg-gradient-to-br
                       from-[#005F4A]/5 via-white to-[#1EB68F]/5
@@ -113,7 +115,7 @@ export default function DailyFuelPulse() {
           onClick={dismiss}
           className="absolute top-2.5 right-2.5 text-slate-300 hover:text-slate-500
                      dark:text-slate-600 dark:hover:text-slate-400 transition-colors p-0.5 z-10"
-          aria-label="Dismiss fuel pulse"
+          aria-label={t.dailyFuelPulse.dismissAria}
         >
           <svg viewBox="0 0 12 12" className="w-3.5 h-3.5" fill="none"
                stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -127,7 +129,7 @@ export default function DailyFuelPulse() {
             <span className="text-base flex-shrink-0" aria-hidden="true">⛽</span>
             <p className="text-[10px] font-black uppercase tracking-widest text-[#005F4A]
                           dark:text-[#1EB68F]">
-              Daily Fuel Pulse
+              {t.dailyFuelPulse.heading}
             </p>
           </div>
 
@@ -138,7 +140,7 @@ export default function DailyFuelPulse() {
                 ${current?.toFixed(3)}
                 <span className="text-sm font-semibold text-slate-400 ml-1">/gal</span>
               </p>
-              <p className="text-[10px] text-slate-400 mt-0.5">US national average</p>
+              <p className="text-[10px] text-slate-400 mt-0.5">{t.dailyFuelPulse.national}</p>
             </div>
 
             {trend && trend !== 'unknown' && delta !== null && delta !== undefined && (
@@ -167,7 +169,7 @@ export default function DailyFuelPulse() {
           {showAlertNudge && (
             <div className="flex items-center gap-2 mt-1">
               <p className="text-[10px] text-slate-400 dark:text-slate-500 flex-1">
-                Get emailed when prices drop below your target.
+                {t.dailyFuelPulse.alertNudge}
               </p>
               <Link
                 href="/settings?tab=alerts"
@@ -175,7 +177,7 @@ export default function DailyFuelPulse() {
                            px-2.5 py-1 rounded-lg hover:bg-[#17a07e] transition-colors
                            whitespace-nowrap"
               >
-                Set alert →
+                {t.dailyFuelPulse.setAlert}
               </Link>
             </div>
           )}

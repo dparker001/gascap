@@ -811,6 +811,108 @@ const en = {
     submissionFailed:       'Submission failed. Please try again.',
     errorFallback:          'Something went wrong. Please try again.',
   },
+
+  // ── Email verified toast ───────────────────────────────────────────────────
+  verifiedToast: {
+    successTitle: 'Email verified!',
+    successBody:  "You're all set. Welcome to GasCap™.",
+    errorTitle:   'Verification failed',
+    errorBody:    'The link may be invalid or expired. Use the banner below to resend.',
+    dismiss:      'Dismiss',
+  },
+
+  // ── Pricing teaser (hero strip) ────────────────────────────────────────────
+  heroPricingTeaser: {
+    line:       'Free forever · Pro $4.99/mo · Fleet $19.99/mo',
+    seeAllPlans: 'See all plans ↓',
+  },
+
+  // ── Quick Links (right sidebar — logged-in) ────────────────────────────────
+  quickLinks: {
+    heading:       'Quick Links',
+    fleetDash:     'Fleet Dashboard',
+    fleetDashSub:  'Drivers, fill-ups & tax',
+    referEarn:     'Refer & Earn',
+    referEarnSub:  'Free Pro months',
+    gasCard:       'Gas Card',
+    gasCardSub:    'Monthly giveaway',
+    fillupLog:     'Fill-Up Log',
+    fillupLogSub:  'MPG & spending history',
+    settings:      'Settings',
+    settingsSub:   'Plan & account',
+  },
+
+  // ── Fleet banner (mobile strip + right panel) ──────────────────────────────
+  fleetBanner: {
+    mobileTitle:        'Fleet Dashboard',
+    mobileSub:          'Manage drivers, vehicles & fuel reports',
+    rightPanelSub:      'Vehicles · Drivers · Fuel analytics',
+    openDash:           'Open Fleet Dashboard',
+    configureBranding:  'Configure branding →',
+  },
+
+  // ── Misc labels ────────────────────────────────────────────────────────────
+  misc: {
+    more: 'More',
+  },
+
+  // ── Welcome banner ─────────────────────────────────────────────────────────
+  welcomeBanner: {
+    goodMorning:    'Good morning',
+    goodAfternoon:  'Good afternoon',
+    goodEvening:    'Good evening',
+    greeting:       (name: string) => `🎉 Welcome to GasCap™, ${name}!`,
+    verifiedSub:    "Your email is verified and you're all set.",
+    gotIt:          "Got it, let's calculate →",
+    dismissAria:    'Dismiss welcome message',
+    tip1:           "Tap \"Look up my state's average price\" to auto-fill today's gas price.",
+    tip2:           'Pick your vehicle (or enter tank size) so the calculator knows your capacity.',
+    tip3:           'Log fill-ups after each trip to start tracking your MPG and spending.',
+  },
+
+  // ── Daily Fuel Pulse widget ────────────────────────────────────────────────
+  dailyFuelPulse: {
+    regionAria:       'Daily Fuel Pulse',
+    heading:          'Daily Fuel Pulse',
+    national:         'US national average',
+    upFromLastWeek:   'up from last week',
+    downFromLastWeek: 'down from last week',
+    sameAsLastWeek:   'same as last week',
+    alertNudge:       'Get emailed when prices drop below your target.',
+    setAlert:         'Set alert →',
+    dismissAria:      'Dismiss fuel pulse',
+  },
+
+  // ── Fuel Budget Widget ─────────────────────────────────────────────────────
+  fuelBudget: {
+    heading:        'Your Fuel Summary',
+    editBudget:     'Edit budget →',
+    setBudget:      'Set budget →',
+    noBudgetSet:    'No budget set',
+    used:           'used',
+    monthSpend:     (month: string) => `${month} spend`,
+    overBudget:     (amount: string) => `${amount} over budget`,
+    remaining:      (amount: string) => `${amount} remaining`,
+    addBudget:      '+ Set a monthly budget',
+    fillupsLogged:  'fill-ups logged',
+    totalPumped:    'total pumped',
+    totalSpent:     'total spent',
+    noFillupsTitle: 'No fill-ups logged yet',
+    noFillupsSub:   'Log your first fill-up to start tracking spend & MPG.',
+  },
+
+  // ── Tools panel headers ────────────────────────────────────────────────────
+  toolsPanelHeaders: {
+    ai:          { title: 'AI Fuel Advisor',        description: 'Get personalized fuel-saving tips, trip estimates, and smart driving advice.' },
+    trip:        { title: 'Trip Cost Estimator',    description: 'Calculate fuel costs and find gas stations for your road trip.' },
+    station:     { title: 'Station Comparison',     description: 'Compare gas prices at nearby stations to find the best deal before you pull in.' },
+    log:         { title: 'Fill-Up Log',            description: 'Track every fill-up, monitor your fuel spending, and build your MPG history.' },
+    charts:      { title: 'Fuel Charts',            description: 'Visualize your MPG trends, fuel spending patterns, and vehicle efficiency over time.' },
+    stats:       { title: 'Fuel Stats',             description: 'Your personal fuel efficiency insights, savings summary, and spending breakdown.' },
+    maintenance: { title: 'Maintenance Reminders',  description: 'Stay ahead of oil changes, tire rotations, and other service intervals.' },
+    refer:       { title: 'Refer & Earn',           description: 'Share GasCap with friends and family — earn rewards for every sign-up you bring in.' },
+    review:      { title: 'Leave a Review',         description: 'Enjoying GasCap? Share your experience and help other drivers find it.' },
+  },
 };
 
 // ── Spanish ───────────────────────────────────────────────────────────────────
@@ -1581,6 +1683,108 @@ const es: typeof en = {
     submit:                 'Completar y enviar',
     submissionFailed:       'Error al enviar. Por favor intenta de nuevo.',
     errorFallback:          'Algo salió mal. Por favor intenta de nuevo.',
+  },
+
+  // ── Email verified toast ───────────────────────────────────────────────────
+  verifiedToast: {
+    successTitle: '¡Correo verificado!',
+    successBody:  'Todo listo. Bienvenido a GasCap™.',
+    errorTitle:   'Verificación fallida',
+    errorBody:    'El enlace puede ser inválido o haber expirado. Usa el banner de abajo para reenviar.',
+    dismiss:      'Cerrar',
+  },
+
+  // ── Pricing teaser (hero strip) ────────────────────────────────────────────
+  heroPricingTeaser: {
+    line:        'Gratis para siempre · Pro $4.99/mes · Flota $19.99/mes',
+    seeAllPlans: 'Ver todos los planes ↓',
+  },
+
+  // ── Quick Links (right sidebar — logged-in) ────────────────────────────────
+  quickLinks: {
+    heading:      'Accesos rápidos',
+    fleetDash:    'Panel de flota',
+    fleetDashSub: 'Conductores, recargas e impuestos',
+    referEarn:    'Recomienda y gana',
+    referEarnSub: 'Meses gratuitos de Pro',
+    gasCard:      'Tarjeta de gasolina',
+    gasCardSub:   'Sorteo mensual',
+    fillupLog:    'Registro de recargas',
+    fillupLogSub: 'Historial de MPG y gastos',
+    settings:     'Configuración',
+    settingsSub:  'Plan y cuenta',
+  },
+
+  // ── Fleet banner (mobile strip + right panel) ──────────────────────────────
+  fleetBanner: {
+    mobileTitle:       'Panel de flota',
+    mobileSub:         'Gestiona conductores, vehículos e informes de combustible',
+    rightPanelSub:     'Vehículos · Conductores · Análisis de combustible',
+    openDash:          'Abrir panel de flota',
+    configureBranding: 'Configurar marca →',
+  },
+
+  // ── Misc labels ────────────────────────────────────────────────────────────
+  misc: {
+    more: 'Más',
+  },
+
+  // ── Welcome banner ─────────────────────────────────────────────────────────
+  welcomeBanner: {
+    goodMorning:   'Buenos días',
+    goodAfternoon: 'Buenas tardes',
+    goodEvening:   'Buenas noches',
+    greeting:      (name: string) => `🎉 ¡Bienvenido a GasCap™, ${name}!`,
+    verifiedSub:   'Tu correo está verificado y todo está listo.',
+    gotIt:         '¡Entendido, vamos a calcular! →',
+    dismissAria:   'Cerrar mensaje de bienvenida',
+    tip1:          'Toca "Buscar el precio promedio de mi estado" para autocompletar el precio de hoy.',
+    tip2:          'Selecciona tu vehículo (o ingresa el tamaño del tanque) para que la calculadora conozca tu capacidad.',
+    tip3:          'Registra recargas después de cada viaje para comenzar a rastrear tu MPG y gastos.',
+  },
+
+  // ── Daily Fuel Pulse widget ────────────────────────────────────────────────
+  dailyFuelPulse: {
+    regionAria:       'Pulso diario de combustible',
+    heading:          'Pulso diario de combustible',
+    national:         'Promedio nacional de EE. UU.',
+    upFromLastWeek:   'más que la semana pasada',
+    downFromLastWeek: 'menos que la semana pasada',
+    sameAsLastWeek:   'igual que la semana pasada',
+    alertNudge:       'Recibe un correo cuando los precios bajen de tu objetivo.',
+    setAlert:         'Configurar alerta →',
+    dismissAria:      'Cerrar pulso de combustible',
+  },
+
+  // ── Fuel Budget Widget ─────────────────────────────────────────────────────
+  fuelBudget: {
+    heading:        'Tu resumen de combustible',
+    editBudget:     'Editar presupuesto →',
+    setBudget:      'Establecer presupuesto →',
+    noBudgetSet:    'Sin presupuesto',
+    used:           'usado',
+    monthSpend:     (month: string) => `Gasto de ${month}`,
+    overBudget:     (amount: string) => `${amount} sobre el presupuesto`,
+    remaining:      (amount: string) => `${amount} restantes`,
+    addBudget:      '+ Establecer presupuesto mensual',
+    fillupsLogged:  'recargas registradas',
+    totalPumped:    'total bombeado',
+    totalSpent:     'total gastado',
+    noFillupsTitle: 'Sin recargas registradas',
+    noFillupsSub:   'Registra tu primera recarga para comenzar a rastrear gastos y MPG.',
+  },
+
+  // ── Tools panel headers ────────────────────────────────────────────────────
+  toolsPanelHeaders: {
+    ai:          { title: 'Asesor de combustible IA',       description: 'Obtén consejos personalizados para ahorrar combustible, estimaciones de viaje y consejos de conducción inteligente.' },
+    trip:        { title: 'Estimador de costo de viaje',    description: 'Calcula costos de combustible y encuentra gasolineras para tu viaje.' },
+    station:     { title: 'Comparación de gasolineras',     description: 'Compara precios en gasolineras cercanas para encontrar la mejor oferta antes de llegar.' },
+    log:         { title: 'Registro de recargas',           description: 'Registra cada recarga, monitorea tu gasto y construye tu historial de MPG.' },
+    charts:      { title: 'Gráficas de combustible',        description: 'Visualiza tus tendencias de MPG, patrones de gasto y eficiencia del vehículo a lo largo del tiempo.' },
+    stats:       { title: 'Estadísticas de combustible',    description: 'Tus datos personales de eficiencia de combustible, resumen de ahorros y desglose de gastos.' },
+    maintenance: { title: 'Recordatorios de mantenimiento', description: 'Mantente al día con cambios de aceite, rotación de llantas y otros intervalos de servicio.' },
+    refer:       { title: 'Recomienda y gana',              description: 'Comparte GasCap con amigos y familia — gana recompensas por cada registro que traigas.' },
+    review:      { title: 'Deja una reseña',                description: '¿Disfrutas GasCap? Comparte tu experiencia y ayuda a otros conductores a encontrarlo.' },
   },
 };
 

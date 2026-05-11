@@ -194,8 +194,8 @@ export default function ToolsPanel() {
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-4 py-3.5 overflow-hidden">
               <ToolHeader
                 emoji="🤖"
-                title="AI Fuel Advisor"
-                description="Get personalized fuel-saving tips, trip estimates, and smart driving advice."
+                title={t.toolsPanelHeaders.ai.title}
+                description={t.toolsPanelHeaders.ai.description}
                 withDivider={false}
               />
             </div>
@@ -210,8 +210,8 @@ export default function ToolsPanel() {
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 overflow-hidden">
             <ToolHeader
               emoji="🗺️"
-              title="Trip Cost Estimator"
-              description="Calculate fuel costs and find gas stations for your road trip."
+              title={t.toolsPanelHeaders.trip.title}
+              description={t.toolsPanelHeaders.trip.description}
             />
             <TripCostEstimator embedded />
           </div>
@@ -226,8 +226,8 @@ export default function ToolsPanel() {
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-4 py-3.5 overflow-hidden">
               <ToolHeader
                 emoji="🏪"
-                title="Station Comparison"
-                description="Compare gas prices at nearby stations to find the best deal before you pull in."
+                title={t.toolsPanelHeaders.station.title}
+                description={t.toolsPanelHeaders.station.description}
                 withDivider={false}
               />
             </div>
@@ -243,8 +243,8 @@ export default function ToolsPanel() {
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 overflow-hidden">
               <ToolHeader
                 emoji="⛽"
-                title="Fill-Up Log"
-                description="Track every fill-up, monitor your fuel spending, and build your MPG history."
+                title={t.toolsPanelHeaders.log.title}
+                description={t.toolsPanelHeaders.log.description}
               />
               <ManualFillupLogger />
             </div>
@@ -262,8 +262,8 @@ export default function ToolsPanel() {
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-4 py-3.5 overflow-hidden">
               <ToolHeader
                 emoji="📊"
-                title="Fuel Charts"
-                description="Visualize your MPG trends, fuel spending patterns, and vehicle efficiency over time."
+                title={t.toolsPanelHeaders.charts.title}
+                description={t.toolsPanelHeaders.charts.description}
                 withDivider={false}
               />
             </div>
@@ -288,8 +288,8 @@ export default function ToolsPanel() {
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-4 py-3.5 overflow-hidden">
               <ToolHeader
                 emoji="📈"
-                title="Fuel Stats"
-                description="Your personal fuel efficiency insights, savings summary, and spending breakdown."
+                title={t.toolsPanelHeaders.stats.title}
+                description={t.toolsPanelHeaders.stats.description}
                 withDivider={false}
               />
             </div>
@@ -308,8 +308,8 @@ export default function ToolsPanel() {
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 overflow-hidden">
             <ToolHeader
               emoji="🔧"
-              title="Maintenance Reminders"
-              description="Stay ahead of oil changes, tire rotations, and other service intervals."
+              title={t.toolsPanelHeaders.maintenance.title}
+              description={t.toolsPanelHeaders.maintenance.description}
             />
             <MaintenanceReminders />
           </div>
@@ -325,8 +325,8 @@ export default function ToolsPanel() {
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-4 py-3.5 overflow-hidden">
               <ToolHeader
                 emoji="🔗"
-                title="Refer & Earn"
-                description="Share GasCap with friends and family — earn rewards for every sign-up you bring in."
+                title={t.toolsPanelHeaders.refer.title}
+                description={t.toolsPanelHeaders.refer.description}
                 withDivider={false}
               />
             </div>
@@ -345,8 +345,8 @@ export default function ToolsPanel() {
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 overflow-hidden">
             <ToolHeader
               emoji="⭐"
-              title="Leave a Review"
-              description="Enjoying GasCap? Share your experience and help other drivers find it."
+              title={t.toolsPanelHeaders.review.title}
+              description={t.toolsPanelHeaders.review.description}
             />
             <ReviewWidget mode="submit" />
           </div>

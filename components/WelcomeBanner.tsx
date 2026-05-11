@@ -2,37 +2,24 @@
 
 import { useSession } from 'next-auth/react';
 import { useState, useEffect } from 'react';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
-
-function getGreeting(): string {
-  const h = new Date().getHours();
-  if (h < 12) return 'Good morning';
-  if (h < 17) return 'Good afternoon';
-  return 'Good evening';
-}
 
 /** localStorage key — per user, so clearing one account doesn't affect another */
 function welcomeKey(userId: string) {
   return `gascap_welcome_shown_${userId}`;
 }
 
-// ── Tips shown in the first-time welcome card ──────────────────────────────
-
-const FIRST_TIPS = [
-  { icon: '⛽', text: 'Tap "Look up my state\'s average price" to auto-fill today\'s gas price.' },
-  { icon: '🚗', text: 'Pick your vehicle (or enter tank size) so the calculator knows your capacity.' },
-  { icon: '📋', text: 'Log fill-ups after each trip to start tracking your MPG and spending.' },
-];
-
 // ── Component ──────────────────────────────────────────────────────────────
 
 export default function WelcomeBanner() {
   const { data: session, status } = useSession();
+  const { t, locale } = useTranslation();
 
-  const [mounted,        setMounted]        = useState(false);
-  const [showWelcome,    setShowWelcome]    = useState(false);   // first-time card
-  const [cardDismissed,  setCardDismissed]  = useState(false);
+  const [mounted,       setMounted]       = useState(false);
+  const [showWelcome,   setShowWelcome]   = useState(false);   // first-time card
+  const [cardDismissed, setCardDismissed] = useState(false);
 
   const userId        = (session?.user as { id?: string })?.id ?? '';
   const emailVerified = (session?.user as { emailVerified?: boolean })?.emailVerified ?? false;
@@ -40,7 +27,20 @@ export default function WelcomeBanner() {
   const isProTrial    = (session?.user as { isProTrial?: boolean })?.isProTrial ?? false;
   const rawName       = session?.user?.name ?? '';
   const firstName     = rawName.split(' ')[0] || 'there';
-  const greeting      = getGreeting();
+
+  // Time-aware greeting using translations
+  const greeting = (() => {
+    const h = new Date().getHours();
+    if (h < 12) return t.welcomeBanner.goodMorning;
+    if (h < 17) return t.welcomeBanner.goodAfternoon;
+    return t.welcomeBanner.goodEvening;
+  })();
+
+  const tips = [
+    { icon: '⛽', text: t.welcomeBanner.tip1 },
+    { icon: '🚗', text: t.welcomeBanner.tip2 },
+    { icon: '📋', text: t.welcomeBanner.tip3 },
+  ];
 
   useEffect(() => {
     if (!userId) return;
@@ -82,10 +82,10 @@ export default function WelcomeBanner() {
             <div className="flex items-start justify-between gap-3 mb-3">
               <div>
                 <p className="text-base font-black text-white leading-tight">
-                  🎉 Welcome to GasCap™, {firstName}!
+                  {t.welcomeBanner.greeting(firstName)}
                 </p>
                 <p className="text-white/55 text-[11px] mt-0.5">
-                  Your email is verified and you&apos;re all set.
+                  {t.welcomeBanner.verifiedSub}
                   {planLabel && (
                     <span className="ml-1.5 bg-white/10 text-white/80 text-[10px]
                                      font-bold px-1.5 py-0.5 rounded-full">
@@ -98,7 +98,7 @@ export default function WelcomeBanner() {
                 onClick={() => setCardDismissed(true)}
                 className="flex-shrink-0 text-white/30 hover:text-white/70
                            transition-colors mt-0.5 p-0.5"
-                aria-label="Dismiss welcome message"
+                aria-label={t.welcomeBanner.dismissAria}
               >
                 <svg viewBox="0 0 12 12" className="w-3.5 h-3.5" fill="none"
                      stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
@@ -109,7 +109,7 @@ export default function WelcomeBanner() {
 
             {/* Quick-start tips */}
             <ul className="space-y-1.5 mb-3.5">
-              {FIRST_TIPS.map(({ icon, text }) => (
+              {tips.map(({ icon, text }) => (
                 <li key={icon} className="flex items-start gap-2 text-[11px] text-white/65 leading-snug">
                   <span className="flex-shrink-0 mt-px" aria-hidden="true">{icon}</span>
                   {text}
@@ -121,7 +121,7 @@ export default function WelcomeBanner() {
               onClick={() => setCardDismissed(true)}
               className="text-[11px] font-black text-brand-orange hover:text-[#FF9A1A] transition-colors"
             >
-              Got it, let&apos;s calculate →
+              {t.welcomeBanner.gotIt}
             </button>
           </div>
         </div>
@@ -134,7 +134,7 @@ export default function WelcomeBanner() {
           <span className="text-slate-700 dark:text-slate-200 font-black">{firstName}</span>
           <span className="text-slate-400 dark:text-slate-500"> ·</span>{' '}
           <span className="text-slate-400 dark:text-slate-500 font-normal">
-            {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+            {new Date().toLocaleDateString(locale === 'es' ? 'es-MX' : 'en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
           </span>
         </p>
       </div>
