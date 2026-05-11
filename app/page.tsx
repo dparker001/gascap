@@ -24,6 +24,8 @@ import EndorserMarquee        from '@/components/EndorserMarquee';
 import DailyFuelPulse         from '@/components/DailyFuelPulse';
 import WelcomeBanner          from '@/components/WelcomeBanner';
 import FuelBudgetWidget       from '@/components/FuelBudgetWidget';
+import SavingsSummary         from '@/components/SavingsSummary';
+import PastWinners            from '@/components/PastWinners';
 
 // ── JSON-LD Schema Markup ────────────────────────────────────────────────────
 
@@ -612,6 +614,9 @@ export default function Home() {
             {/* Daily Fuel Pulse — national avg + trend + today's tip */}
             <DailyFuelPulse />
 
+            {/* Savings & spend tracker */}
+            <SavingsSummary />
+
             {/* Fuel budget ring + all-time stats */}
             <FuelBudgetWidget />
 
@@ -822,6 +827,7 @@ export default function Home() {
           <TrustStrip />
           <StatsBar />
           <ReviewsMarquee />
+          <PastWinners />
           <FaqSection />
 
           {/* Pricing — always visible, anchored so hero "See all plans ↓" scrolls here */}

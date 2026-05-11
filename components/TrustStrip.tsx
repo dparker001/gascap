@@ -1,28 +1,7 @@
-'use client';
-
-import { useEffect, useState } from 'react';
-
-/** Live community counter + trust signals — shown on the landing page. */
+/** Trust signals — shown on the landing page guest section. */
 export default function TrustStrip() {
-  const [userCount, setUserCount] = useState<number | null>(null);
-
-  useEffect(() => {
-    fetch('/api/user-count')
-      .then((r) => r.json())
-      .then((d: { count?: number }) => {
-        if (typeof d.count === 'number') setUserCount(d.count);
-      })
-      .catch(() => {});
-  }, []);
-
-  // Round down to nearest 25 and show "X+" — feels honest at any scale
-  const countDisplay =
-    userCount != null && userCount > 0
-      ? `${Math.floor(userCount / 25) * 25}+`
-      : '100+';
-
   const signals = [
-    { icon: '👥', text: `${countDisplay} drivers saving on fuel` },
+    { icon: '📱', text: 'Works offline — no signal needed' },
     { icon: '🔒', text: 'We never sell your data' },
     { icon: '📊', text: 'Powered by U.S. EIA official data' },
     { icon: '✓',  text: 'No credit card to start — ever' },

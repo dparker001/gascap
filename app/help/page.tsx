@@ -67,8 +67,12 @@ const SECTIONS = [
         a: 'Live gas price lookup requires a free GasCap™ account. Once signed in, tap "Use Local Price" and allow location access. GasCap™ fetches the current average price in your state from the U.S. Energy Information Administration (EIA). If you deny location access, it falls back to the national average. Prices are averages — actual pump prices may vary. Guests can always enter a price manually.',
       },
       {
+        q: 'What is the EV Charge calculator?',
+        a: 'The EV Charge calculator (⚡) helps electric vehicle and plug-in hybrid owners calculate the exact cost to charge from their current battery level to a target level. Select your vehicle from 40+ EV and PHEV presets to auto-fill battery capacity, use the sliders to set your current and target charge percentages, then enter your electricity rate. The rate pre-fills with the U.S. national average ($0.16/kWh) so you can calculate immediately — or tap "Look Up My Rate" (free account required) to auto-detect your state\'s average directly from the U.S. EIA. Results include total kWh needed, estimated charging cost, estimated miles of range added (if you enter your efficiency), and estimated charging times for Level 1, Level 2, and DC Fast chargers. Plug-in hybrids (PHEVs) are supported with a separate preset group.',
+      },
+      {
         q: 'Can I use GasCap™ without internet?',
-        a: 'Yes. Once installed as a PWA, the calculators work fully offline using the last-known gas price. Gas price lookup, gauge scan, VIN scan, and AI features require an internet connection.',
+        a: 'Yes. Once installed as a PWA, the calculators work fully offline using the last-known gas price. Gas price lookup, electricity rate lookup, gauge scan, VIN scan, and AI features require an internet connection.',
       },
     ],
   },
@@ -210,7 +214,7 @@ const SECTIONS = [
     items: [
       {
         q: 'What\'s included in the free plan?',
-        a: 'The free plan includes 1 saved vehicle, both calculators (Target Fill & By Budget), Trip Cost Estimator, Station Comparison, EPA vehicle database search, live local gas price lookup (free account required), dark mode, and offline use. Creating an account is free — no credit card ever required.',
+        a: 'The free plan includes 1 saved vehicle, all three calculators (Target Fill, By Budget, and EV Charge), Trip Cost Estimator, Station Comparison, EPA vehicle database search, live local gas price and electricity rate lookup (free account required), dark mode, and offline use. Creating an account is free — no credit card ever required.',
       },
       {
         q: 'How do I get 30 days of Pro free?',
