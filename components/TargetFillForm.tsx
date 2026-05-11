@@ -63,7 +63,7 @@ interface Props {
 // ── Component ──────────────────────────────────────────────────────────
 
 export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
-  const { data: session }   = useSession();
+  const { data: session, status } = useSession();
   const { t }               = useTranslation();
   const isPro      = ['pro', 'fleet'].includes((session?.user as { plan?: string })?.plan ?? '');
   const isLoggedIn = !!session;
@@ -97,6 +97,20 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
   const gaugeCamRef     = useRef<HTMLInputElement>(null);
   const gaugeGalleryRef = useRef<HTMLInputElement>(null);
   const calcStartFired  = useRef(false);
+
+  // Clear stale garage-vehicle data when the user is confirmed logged out.
+  // useLocalStorage hydrates from the previous session's JSON, so a logged-in
+  // user's vehicleId/vehicleName can persist in localStorage after sign-out and
+  // show "From garage: Don's vehicle" to a guest. Keep tankCapacity (still useful).
+  useEffect(() => {
+    if (status !== 'unauthenticated') return;
+    setForm((prev) =>
+      prev.vehicleId || prev.vehicleName
+        ? { ...prev, vehicleId: '', vehicleName: '', vehicleOdometer: undefined }
+        : prev
+    );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status]);
 
   // Apply the user's preferred fill level on first mount if the form is still at the system default
   useEffect(() => {
