@@ -26,6 +26,7 @@ import WelcomeBanner          from '@/components/WelcomeBanner';
 import FuelBudgetWidget       from '@/components/FuelBudgetWidget';
 import SavingsSummary         from '@/components/SavingsSummary';
 import PastWinners            from '@/components/PastWinners';
+import WinnerBanner           from '@/components/WinnerBanner';
 
 // ── JSON-LD Schema Markup ────────────────────────────────────────────────────
 
@@ -562,6 +563,9 @@ export default function Home() {
 
       {/* Brand header */}
       <Header />
+
+      {/* ── Prize claim banner — shown to logged-in winners until claimed ── */}
+      {session && <WinnerBanner />}
 
       {/* ── Guest hero — SEO headline above the calculator ────────────── */}
       {isGuest && <GuestHero />}
