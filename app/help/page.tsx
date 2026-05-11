@@ -145,6 +145,14 @@ const SECTIONS = [
         a: 'The Savings Dashboard shows your total fuel spending, total gallons filled, average price per gallon, and estimated savings vs. the live EIA national average (updated weekly). You\'ll also see savings milestones — $25, $50, $100, $250, and $500 — with a progress bar to your next achievement. Each fill-up row in your history shows whether you paid above or below the national average that week.',
       },
       {
+        q: 'What is the Annual Fuel Cost Projection?',
+        a: 'After logging 3 or more fill-ups spanning at least a week, GasCap™ extrapolates your pace to show your projected annual, monthly, and weekly fuel cost. The card appears automatically on your dashboard and updates every time you log a new fill-up.',
+      },
+      {
+        q: 'What is the price intelligence hint when logging a fill-up?',
+        a: 'When you enter a price per gallon in the fill-up logger, GasCap™ instantly compares it to the live EIA national average and shows whether you\'re getting a deal (below avg 🎉) or paying a premium (above avg 📈). This uses the same weekly EIA data that powers the Savings Dashboard.',
+      },
+      {
         q: 'What is the Monthly Report Card?',
         a: 'The Monthly Report Card compares this month\'s fill-ups, gallons, spending, and average gas price to last month — with color-coded arrows showing whether each metric improved or worsened.',
       },

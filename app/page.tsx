@@ -25,6 +25,7 @@ import DailyFuelPulse         from '@/components/DailyFuelPulse';
 import WelcomeBanner          from '@/components/WelcomeBanner';
 import FuelBudgetWidget       from '@/components/FuelBudgetWidget';
 import SavingsSummary         from '@/components/SavingsSummary';
+import AnnualProjection       from '@/components/AnnualProjection';
 import PastWinners            from '@/components/PastWinners';
 import WinnerBanner           from '@/components/WinnerBanner';
 
@@ -620,6 +621,9 @@ export default function Home() {
 
             {/* Savings & spend tracker */}
             <SavingsSummary />
+
+            {/* Annual fuel cost projection — shown after 3+ fill-ups */}
+            <AnnualProjection />
 
             {/* Fuel budget ring + all-time stats */}
             <FuelBudgetWidget />

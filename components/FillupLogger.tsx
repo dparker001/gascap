@@ -40,8 +40,17 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
   const [forceConfirm, setForceConfirm] = useState(false);
   const [scanning,     setScanning]     = useState(false);
   const [scanError,    setScanError]    = useState('');
+  const [nationalAvg,  setNationalAvg]  = useState<number | null>(null);
   const fileInputRef        = useRef<HTMLInputElement>(null);
   const galleryInputRef     = useRef<HTMLInputElement>(null);
+
+  // Fetch national average once for inline price intelligence card
+  useEffect(() => {
+    fetch('/api/gas-price/national')
+      .then((r) => r.ok ? r.json() as Promise<{ price: number | null }> : Promise.reject())
+      .then((d) => { if (d.price !== null) setNationalAvg(d.price); })
+      .catch(() => {});
+  }, []);
 
   // Fetch live plan from server — session JWT can be stale after an upgrade
   const [livePlan, setLivePlan] = useState<string | null>(null);
@@ -304,6 +313,40 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
           </div>
         </div>
       </div>
+
+      {/* Price intelligence card — shows when user has entered a price + national avg loaded */}
+      {nationalAvg !== null && (() => {
+        const entered = parseFloat(price);
+        if (!entered || entered <= 0) return null;
+        const delta = nationalAvg - entered;
+        if (Math.abs(delta) < 0.005) return (
+          <p className="text-[10px] text-slate-400 text-center -mt-1">
+            📊 Right at the national average (${nationalAvg.toFixed(3)}/gal)
+          </p>
+        );
+        const saved = delta > 0;
+        return (
+          <div className={[
+            'rounded-xl px-3 py-2.5 flex items-center gap-2.5 -mt-1',
+            saved ? 'bg-emerald-50 border border-emerald-100' : 'bg-amber-50 border border-amber-100',
+          ].join(' ')}>
+            <span className="text-base flex-shrink-0" aria-hidden="true">{saved ? '🎉' : '📈'}</span>
+            <div className="min-w-0">
+              <p className={[
+                'text-[11px] font-black leading-tight',
+                saved ? 'text-emerald-700' : 'text-amber-700',
+              ].join(' ')}>
+                {saved
+                  ? `$${delta.toFixed(3)}/gal below national avg — great deal!`
+                  : `$${Math.abs(delta).toFixed(3)}/gal above national avg`}
+              </p>
+              <p className="text-[9px] text-slate-400 mt-0.5">
+                EIA national avg: ${nationalAvg.toFixed(3)}/gal (updated weekly)
+              </p>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Odometer row — full width */}
       <div>
