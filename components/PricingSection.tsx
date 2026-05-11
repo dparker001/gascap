@@ -156,7 +156,7 @@ export default function PricingSection() {
   const { data: session } = useSession();
   const router            = useRouter();
   const { t }             = useTranslation();
-  const [billing, setBilling] = useState<Billing>('annual');
+  const [billing, setBilling] = useState<Billing>('monthly');
   const [loading, setLoading] = useState<string | null>(null);
 
   // Read the user's current plan from the JWT-enriched session
