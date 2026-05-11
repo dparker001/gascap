@@ -1,5 +1,21 @@
 [
   {
+    "id": "ev-calculator-launch-2026",
+    "emoji": "⚡",
+    "title": "New: EV Charge Calculator",
+    "message": "GasCap™ now supports electric vehicles! Calculate your exact charging cost, kWh needed, range added, and Level 1 / Level 2 / DC Fast charge times — for 40+ EV and PHEV models.",
+    "link": "/help#calculators",
+    "linkText": "See how it works",
+    "startDate": "2026-05-11",
+    "endDate": "2026-06-30",
+    "targetPlans": [],
+    "verifiedOnly": false,
+    "trialOnly": false,
+    "newUserDays": 0,
+    "dismissible": true,
+    "active": true
+  },
+  {
     "id": "welcome-trial-2026",
     "emoji": "🎉",
     "title": "Welcome to GasCap™ Pro!",
