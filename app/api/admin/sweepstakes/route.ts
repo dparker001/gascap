@@ -2,7 +2,7 @@
  * Admin Sweepstakes API — protected by ADMIN_PASSWORD
  * GET  /api/admin/sweepstakes?month=YYYY-MM  — preview entrants
  * GET  /api/admin/sweepstakes?history=1      — past draw results
- * POST /api/admin/sweepstakes                — run draw { month, notes?, dryRun?, suppressWinnerEmail? }
+ * POST /api/admin/sweepstakes                — run draw { month, notes?, dryRun?, suppressWinnerEmail?, suppressSms? }
  *
  * After a successful draw the route fires four fire-and-forget side-effects:
  *  1. Winner notification email  (via lib/email.ts → SMTP or Resend)
@@ -84,10 +84,11 @@ export async function POST(req: Request) {
   if (_auth === 'no-env') return NextResponse.json({ error: 'Misconfigured' }, { status: 503 });
   if (_auth === 'wrong')  return NextResponse.json({ error: 'Unauthorized'  }, { status: 401 });
 
-  const body                = await req.json() as { month?: string; notes?: string; dryRun?: boolean; suppressWinnerEmail?: boolean };
+  const body                = await req.json() as { month?: string; notes?: string; dryRun?: boolean; suppressWinnerEmail?: boolean; suppressSms?: boolean };
   const month               = body.month ?? currentMonth();
   const dryRun              = body.dryRun === true;
   const suppressWinnerEmail = body.suppressWinnerEmail === true;
+  const suppressSms         = body.suppressSms === true;
 
   if (!/^\d{4}-\d{2}$/.test(month)) {
     return NextResponse.json({ error: 'Invalid month format. Use YYYY-MM.' }, { status: 400 });
@@ -268,6 +269,8 @@ export async function POST(req: Request) {
               winnerTag:    `gascap-sweepstakes-winner-${monthLabel.toLowerCase().replace(' ', '-')}`,
               // Alternate winner tag if primary forfeits within 14 days
               alternateTag: `gascap-sweepstakes-alternate-${monthLabel.toLowerCase().replace(' ', '-')}`,
+              // SMS flag — GHL workflow should only send winner SMS when this is true
+              sendSms:      !suppressSms,
             }),
           }).catch((err) => console.error('[sweepstakes] GHL webhook failed:', err))
         : Promise.resolve(),

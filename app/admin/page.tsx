@@ -161,6 +161,7 @@ export default function AdminPage() {
   const [backfillLoading,  setBackfillLoading]  = useState(false);
   const [backfillMsg,      setBackfillMsg]      = useState('');
   const [backfillProgress, setBackfillProgress] = useState(0);
+  const [lastGhlSync,      setLastGhlSync]      = useState<string | null>(null);
   const [showScrollTop,    setShowScrollTop]    = useState(false);
   const topRef = useRef<HTMLDivElement>(null);
 
@@ -236,6 +237,14 @@ export default function AdminPage() {
     const onScroll = () => setShowScrollTop(window.scrollY > 400);
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  // Read last GHL sync timestamp from localStorage on mount
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('gascap_admin_last_ghl_sync');
+      if (stored) setLastGhlSync(stored);
+    } catch {}
   }, []);
 
   async function handleLogin(e: React.FormEvent) {
@@ -464,6 +473,10 @@ export default function AdminPage() {
       setBackfillProgress(100);
       if (res.ok) {
         setBackfillMsg(`✅ Synced ${data.synced} of ${data.total} users to GHL${data.errors.length > 0 ? ` (${data.errors.length} errors — check logs)` : ''}`);
+        // Record sync time so the pulse clears
+        const syncedAt = new Date().toISOString();
+        setLastGhlSync(syncedAt);
+        try { localStorage.setItem('gascap_admin_last_ghl_sync', syncedAt); } catch {}
       } else {
         setBackfillMsg('❌ Backfill failed — check logs');
       }
@@ -899,43 +912,69 @@ export default function AdminPage() {
         </div>
 
         {/* GHL Sync */}
-        <div className="bg-white rounded-2xl shadow-sm p-5 space-y-3">
-          <div>
-            <p className="text-sm font-black text-navy-700">🔗 GHL Contact Sync</p>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Backfill all app users into GHL. Safe to run multiple times.
-            </p>
-          </div>
+        {(() => {
+          // Pulsate when there are users created after the last sync (or sync never run)
+          const newestUserAt = users.length > 0
+            ? users.reduce((latest, u) => u.createdAt > latest ? u.createdAt : latest, users[0].createdAt)
+            : null;
+          const needsSync = !backfillLoading && (
+            !lastGhlSync || (newestUserAt != null && newestUserAt > lastGhlSync)
+          );
+          return (
+            <div className="bg-white rounded-2xl shadow-sm p-5 space-y-3">
+              <div>
+                <p className="text-sm font-black text-navy-700">🔗 GHL Contact Sync</p>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Backfill all app users into GHL. Safe to run multiple times.
+                  {needsSync && (
+                    <span className="ml-1.5 text-amber-600 font-semibold">
+                      ⚠ New users need syncing
+                    </span>
+                  )}
+                </p>
+              </div>
 
-          {/* Progress bar */}
-          {backfillProgress > 0 && (
-            <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
-              <div
-                className="h-2 rounded-full bg-teal-500 transition-all duration-300 ease-out"
-                style={{ width: `${backfillProgress}%` }}
-              />
+              {/* Progress bar */}
+              {backfillProgress > 0 && (
+                <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                  <div
+                    className="h-2 rounded-full bg-teal-500 transition-all duration-300 ease-out"
+                    style={{ width: `${backfillProgress}%` }}
+                  />
+                </div>
+              )}
+
+              {backfillMsg && (
+                <div className={`rounded-xl px-4 py-2 text-sm flex justify-between ${
+                  backfillMsg.startsWith('✅') ? 'bg-green-50 border border-green-200 text-green-700'
+                  : 'bg-red-50 border border-red-200 text-red-600'
+                }`}>
+                  <span>{backfillMsg}</span>
+                  <button onClick={() => setBackfillMsg('')} className="ml-2 opacity-50 hover:opacity-100">×</button>
+                </div>
+              )}
+
+              <div className="relative">
+                {needsSync && (
+                  <span className="absolute inset-0 rounded-xl bg-teal-400 animate-ping opacity-25 pointer-events-none" />
+                )}
+                <button
+                  onClick={handleGhlBackfill}
+                  disabled={backfillLoading}
+                  className={[
+                    'relative w-full py-2.5 px-4 rounded-xl text-white text-sm font-bold transition-colors disabled:opacity-50',
+                    needsSync
+                      ? 'bg-teal-500 hover:bg-teal-400 ring-2 ring-teal-400 ring-offset-1'
+                      : 'bg-teal-600 hover:bg-teal-500',
+                  ].join(' ')}
+                >
+                  {backfillLoading ? 'Syncing…' : '↑ Sync all users → GHL'}
+                </button>
+              </div>
             </div>
-          )}
+          );
+        })()}
 
-          {backfillMsg && (
-            <div className={`rounded-xl px-4 py-2 text-sm flex justify-between ${
-              backfillMsg.startsWith('✅') ? 'bg-green-50 border border-green-200 text-green-700'
-              : 'bg-red-50 border border-red-200 text-red-600'
-            }`}>
-              <span>{backfillMsg}</span>
-              <button onClick={() => setBackfillMsg('')} className="ml-2 opacity-50 hover:opacity-100">×</button>
-            </div>
-          )}
-
-          <button
-            onClick={handleGhlBackfill}
-            disabled={backfillLoading}
-            className="w-full py-2.5 px-4 rounded-xl bg-teal-600 hover:bg-teal-500 text-white
-                       text-sm font-bold transition-colors disabled:opacity-50"
-          >
-            {backfillLoading ? 'Syncing…' : '↑ Sync all users → GHL'}
-          </button>
-        </div>
 
         {/* ── Email Preview ─────────────────────────────────────────────── */}
         <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
