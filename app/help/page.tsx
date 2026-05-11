@@ -142,7 +142,7 @@ const SECTIONS = [
       },
       {
         q: 'What is the Savings Dashboard?',
-        a: 'The Savings Dashboard shows your total fuel spending, total gallons filled, average price per gallon, and estimated savings compared to the national average price. It updates automatically as you log fill-ups.',
+        a: 'The Savings Dashboard shows your total fuel spending, total gallons filled, average price per gallon, and estimated savings vs. the live EIA national average (updated weekly). You\'ll also see savings milestones — $25, $50, $100, $250, and $500 — with a progress bar to your next achievement. Each fill-up row in your history shows whether you paid above or below the national average that week.',
       },
       {
         q: 'What is the Monthly Report Card?',

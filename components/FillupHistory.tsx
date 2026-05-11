@@ -16,6 +16,10 @@ interface HistoryResponse {
   };
 }
 
+interface NationalAvgResponse {
+  price: number | null;
+}
+
 interface FillupHistoryProps {
   refreshKey?: number;  // increment to force a reload
 }
@@ -94,7 +98,8 @@ function applyFilter(
 
 export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
   const { data: session, status } = useSession();
-  const [data,       setData]      = useState<HistoryResponse | null>(null);
+  const [data,        setData]       = useState<HistoryResponse | null>(null);
+  const [nationalAvg, setNationalAvg] = useState<number | null>(null);
   const [loading,    setLoading]   = useState(false);
   const [open,       setOpen]      = useState(false);
   const [editingId,       setEditingId]       = useState<string | null>(null);
@@ -139,8 +144,15 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/fillups');
-      if (res.ok) setData(await res.json() as HistoryResponse);
+      const [fillupRes, avgRes] = await Promise.all([
+        fetch('/api/fillups'),
+        fetch('/api/gas-price/national').catch(() => null),
+      ]);
+      if (fillupRes.ok) setData(await fillupRes.json() as HistoryResponse);
+      if (avgRes?.ok) {
+        const avgData = await avgRes.json() as NationalAvgResponse;
+        if (avgData.price !== null) setNationalAvg(avgData.price);
+      }
     } finally {
       setLoading(false);
     }
@@ -677,6 +689,22 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
                                   {f.gallonsPumped} gal · ${f.pricePerGallon}/gal
                                   {f.odometerReading != null && ` · ${f.odometerReading.toLocaleString()} mi`}
                                 </p>
+                                {/* Price vs. national avg badge */}
+                                {nationalAvg !== null && (() => {
+                                  const delta = nationalAvg - f.pricePerGallon;
+                                  if (Math.abs(delta) < 0.005) return null;
+                                  const saved = delta > 0;
+                                  return (
+                                    <span className={[
+                                      'inline-flex items-center gap-0.5 mt-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full',
+                                      saved
+                                        ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
+                                        : 'bg-amber-50 text-amber-600 border border-amber-100',
+                                    ].join(' ')}>
+                                      {saved ? '↓' : '↑'} ${Math.abs(delta).toFixed(3)}/gal {saved ? 'below avg' : 'above avg'}
+                                    </span>
+                                  );
+                                })()}
                                 {f.stationName && (
                                   <p className="text-[10px] text-slate-500 mt-0.5 truncate">⛽ {f.stationName}</p>
                                 )}
