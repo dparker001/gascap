@@ -36,6 +36,7 @@ const en = {
     sub:            'Calculate fuel & cost before you pull up to the pump.',
     realTimePrices: 'Real-time prices',
     worksOffline:   'Works offline',
+    pricingPill:    'Free · Pro $4.99/mo',
   },
 
   // ── Tips ticker ────────────────────────────────────────────────────────────
@@ -941,6 +942,7 @@ const es: typeof en = {
     sub:            'Calcula combustible y costo antes de llegar a la gasolinera.',
     realTimePrices: 'Precios en tiempo real',
     worksOffline:   'Funciona sin internet',
+    pricingPill:    'Gratis · Pro $4.99/mes',
   },
 
   tips: [

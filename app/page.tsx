@@ -195,7 +195,7 @@ function GuestHero() {
           <span className="text-xl flex-shrink-0">🎁</span>
           <div>
             <p className="text-sm font-bold text-white leading-tight">{t.hero.offerStrip}</p>
-            <p className="text-orange-100 text-[10px] mt-0.5">{t.hero.offerStripSub}</p>
+            <p className="text-white text-[11px] mt-0.5">{t.hero.offerStripSub}</p>
           </div>
         </a>
 

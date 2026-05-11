@@ -178,6 +178,7 @@ export default function Header() {
             <nav className="hidden lg:flex items-center gap-0.5" aria-label="Main navigation">
               {[
                 { label: 'Features', href: '#gascap-calculator' },
+                { label: 'Pricing', href: '#pricing' },
                 { label: 'Help', href: '/help' },
               ].map(({ label, href }) => (
                 <a
@@ -258,6 +259,16 @@ export default function Header() {
               <span className="text-brand-teal text-xs">✓</span>
               <span className="text-white/70 text-[10px] font-semibold">{t.header.worksOffline}</span>
             </div>
+            {!session && (
+              <a
+                href="#pricing"
+                className="flex items-center gap-1.5 bg-brand-orange/20 hover:bg-brand-orange/30
+                           transition-colors rounded-xl px-2.5 py-1.5"
+              >
+                <span className="text-brand-orange text-xs">💰</span>
+                <span className="text-brand-orange text-[10px] font-black">{t.header.pricingPill}</span>
+              </a>
+            )}
           </div>
         </div>
 
