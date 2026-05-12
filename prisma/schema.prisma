@@ -78,9 +78,12 @@ model User {
   fleetCompanyName         String?
   fleetLogoUrl             String?
   // Smartcar OAuth — stored per-user (covers all their authorized vehicles)
-  smartcarAccessToken      String?   // short-lived; refresh before use
-  smartcarRefreshToken     String?   // long-lived; use to get new access token
-  smartcarTokenExpiry      String?   // ISO timestamp of access token expiry
+  smartcarAccessToken        String?   // short-lived; refresh before use
+  smartcarRefreshToken       String?   // long-lived; use to get new access token
+  smartcarTokenExpiry        String?   // ISO timestamp of access token expiry
+  // Smartcar add-on subscription (user-paid, $2.99/mo — covers Smartcar's $1.99 API cost)
+  smartcarAddonActive        Boolean   @default(false)
+  smartcarAddonSubscriptionId String?  // Stripe subscription ID for the add-on
   vehicles                 Vehicle[]
 }
 

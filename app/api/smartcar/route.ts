@@ -1,7 +1,7 @@
 /**
  * GET /api/smartcar
  * Returns the Smartcar OAuth connect URL for the current user.
- * Pro/Fleet only. Redirects to Smartcar Connect.
+ * Requires: Pro/Fleet plan AND active Vehicle Sync add-on ($2.99/mo, user-paid).
  */
 import { NextResponse }     from 'next/server';
 import { getServerSession } from 'next-auth';
@@ -17,8 +17,22 @@ export async function GET() {
   const user = await findById(uid);
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
+  // Must be Pro or Fleet
   const isPro = user.plan === 'pro' || user.plan === 'fleet' || user.isProTrial;
-  if (!isPro) return NextResponse.json({ error: 'Pro plan required for vehicle sync.' }, { status: 403 });
+  if (!isPro) {
+    return NextResponse.json(
+      { error: 'Vehicle Sync requires a Pro or Fleet plan.', requiresPro: true },
+      { status: 403 }
+    );
+  }
+
+  // Must have purchased the Vehicle Sync add-on
+  if (!user.smartcarAddonActive) {
+    return NextResponse.json(
+      { error: 'Vehicle Sync add-on not active. Add it from your garage.', requiresAddon: true },
+      { status: 403 }
+    );
+  }
 
   try {
     const url = getAuthUrl(uid);

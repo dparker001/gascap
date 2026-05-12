@@ -377,11 +377,16 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
   // Smartcar connect panel
   const [showSmartcar, setShowSmartcar] = useState(false);
 
-  // Auto-open the Smartcar connect panel if the user just returned from OAuth callback
+  // Auto-open the Smartcar connect panel if the user just returned from OAuth or addon checkout
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
-    if (params.get('smartcarConnected') === '1' || params.get('smartcarError')) {
+    if (
+      params.get('smartcarConnected') === '1' ||
+      params.get('smartcarError')              ||
+      params.get('smartcarAddonSuccess') === '1' ||
+      params.get('smartcarAddonCancelled') === '1'
+    ) {
       setShowSmartcar(true);
     }
   }, []);
