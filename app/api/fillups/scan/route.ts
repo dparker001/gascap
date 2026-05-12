@@ -51,7 +51,7 @@ export async function POST(req: Request) {
   try {
     const message = await anthropic.messages.create({
       model:      'claude-opus-4-5',
-      max_tokens: 400,
+      max_tokens: 500,
       messages: [{
         role: 'user',
         content: [
@@ -68,7 +68,9 @@ export async function POST(req: Request) {
   "pricePerGallon": <number | null>,
   "totalCost": <number | null>,
   "date": <"YYYY-MM-DD" string | null>,
-  "stationName": <string | null>
+  "stationName": <string | null>,
+  "address": <full station address string | null>,
+  "fuelGrade": <"regular" | "midgrade" | "premium" | "diesel" | "e85" | null>
 }
 
 Rules:
@@ -76,7 +78,9 @@ Rules:
 - pricePerGallon: price per gallon in USD (convert per-litre prices if needed)
 - totalCost: total dollar amount charged
 - date: the transaction date in YYYY-MM-DD format
-- stationName: the gas station or brand name if visible
+- stationName: the gas station brand or name (e.g. "Shell", "Chevron", "BP")
+- address: the full station address including street, city, state if visible on the receipt
+- fuelGrade: classify the fuel type — "regular" (87 octane / unleaded), "midgrade" (89), "premium" (91-93), "diesel", or "e85"; null if not determinable
 - Return ONLY the JSON object. No explanation, no markdown, no extra text.`,
           },
         ],
@@ -94,11 +98,13 @@ Rules:
     }
 
     const data = JSON.parse(jsonMatch[0]) as {
-      gallons:       number | null;
+      gallons:        number | null;
       pricePerGallon: number | null;
-      totalCost:     number | null;
-      date:          string | null;
-      stationName:   string | null;
+      totalCost:      number | null;
+      date:           string | null;
+      stationName:    string | null;
+      address:        string | null;
+      fuelGrade:      string | null;
     };
 
     return NextResponse.json(data);

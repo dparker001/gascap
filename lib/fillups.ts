@@ -19,6 +19,8 @@ export interface Fillup {
   stationName?:   string;
   notes?:         string;
   driverLabel?:   string;   // Fleet Phase 1 — driver attribution
+  fuelGrade?:     string;   // "regular" | "midgrade" | "premium" | "diesel" | "e85"
+  receiptThumb?:  string;   // base64 data URL of compressed receipt thumbnail
   createdAt:      string;   // ISO timestamp
 }
 
@@ -33,12 +35,13 @@ function fromPrisma(r: {
   date: string; gallonsPumped: number; pricePerGallon: number; totalCost: number;
   odometerReading: number | null; fuelLevelBefore: number | null;
   stationName: string | null; notes: string | null; driverLabel: string | null;
+  fuelGrade: string | null; receiptThumb: string | null;
   createdAt: string;
 }): Fillup {
   return {
     id:              r.id,
     userId:          r.userId,
-    vehicleId:       r.vehicleId   ?? undefined,
+    vehicleId:       r.vehicleId    ?? undefined,
     vehicleName:     r.vehicleName,
     date:            r.date,
     gallonsPumped:   r.gallonsPumped,
@@ -46,9 +49,11 @@ function fromPrisma(r: {
     totalCost:       r.totalCost,
     odometerReading: r.odometerReading ?? undefined,
     fuelLevelBefore: r.fuelLevelBefore ?? undefined,
-    stationName:     r.stationName    ?? undefined,
-    notes:           r.notes          ?? undefined,
-    driverLabel:     r.driverLabel    ?? undefined,
+    stationName:     r.stationName     ?? undefined,
+    notes:           r.notes           ?? undefined,
+    driverLabel:     r.driverLabel     ?? undefined,
+    fuelGrade:       r.fuelGrade       ?? undefined,
+    receiptThumb:    r.receiptThumb    ?? undefined,
     createdAt:       r.createdAt,
   };
 }
@@ -211,6 +216,8 @@ export async function addFillup(
       stationName:     data.stationName      ?? null,
       notes:           data.notes            ?? null,
       driverLabel:     data.driverLabel      ?? null,
+      fuelGrade:       data.fuelGrade        ?? null,
+      receiptThumb:    data.receiptThumb     ?? null,
       createdAt:       new Date().toISOString(),
     },
   });
@@ -219,7 +226,7 @@ export async function addFillup(
 
 /** Fields that users are allowed to edit after logging */
 export type FillupPatch = Partial<Pick<Fillup,
-  'date' | 'gallonsPumped' | 'pricePerGallon' | 'odometerReading' | 'stationName' | 'notes' | 'driverLabel'
+  'date' | 'gallonsPumped' | 'pricePerGallon' | 'odometerReading' | 'stationName' | 'notes' | 'driverLabel' | 'fuelGrade'
 >>;
 
 /** Update an existing fillup (only if it belongs to the user). Returns updated record or null. */
@@ -244,6 +251,7 @@ export async function updateFillup(
       ...(patch.stationName     !== undefined && { stationName:     patch.stationName     ?? null }),
       ...(patch.notes           !== undefined && { notes:           patch.notes           ?? null }),
       ...(patch.driverLabel     !== undefined && { driverLabel:     patch.driverLabel     ?? null }),
+      ...(patch.fuelGrade       !== undefined && { fuelGrade:       patch.fuelGrade       ?? null }),
       totalCost: Math.round(gallons * price * 100) / 100,
     },
   });

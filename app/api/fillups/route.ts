@@ -75,6 +75,11 @@ export async function POST(req: Request) {
     }
   }
 
+  // Guard — receiptThumb is a base64 JPEG; reject anything unreasonably large (> 200 KB encoded)
+  if (body.receiptThumb && body.receiptThumb.length > 275_000) {
+    return NextResponse.json({ error: 'Receipt image is too large. Please try again.' }, { status: 413 });
+  }
+
   // Remove `force` before storing
   const { force: _force, ...saveBody } = body;
   const uid   = userId(session);

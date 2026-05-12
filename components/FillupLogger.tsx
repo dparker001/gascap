@@ -19,6 +19,39 @@ interface FillupLoggerProps {
   drivers?: string[];
 }
 
+type FuelGrade = 'regular' | 'midgrade' | 'premium' | 'diesel' | 'e85' | '';
+
+const FUEL_GRADES: { value: FuelGrade; label: string; sub: string }[] = [
+  { value: 'regular',  label: 'Regular',   sub: '87'      },
+  { value: 'midgrade', label: 'Mid-Grade',  sub: '89'      },
+  { value: 'premium',  label: 'Premium',    sub: '91–93'   },
+  { value: 'diesel',   label: 'Diesel',     sub: 'diesel'  },
+];
+
+/** Compress an image File to a small JPEG thumbnail (max 320px wide, 0.55 quality) */
+async function compressImage(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const MAX = 320;
+      const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+      const w = Math.round(img.width  * scale);
+      const h = Math.round(img.height * scale);
+      const canvas = document.createElement('canvas');
+      canvas.width  = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) { reject(new Error('canvas unavailable')); return; }
+      ctx.drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL('image/jpeg', 0.55));
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
 export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] }: FillupLoggerProps) {
   const { data: session } = useSession();
 
@@ -34,6 +67,8 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
   const [recentStations, setRecentStations] = useState<string[]>([]);
   const [notes,          setNotes]          = useState('');
   const [driverLabel,    setDriverLabel]    = useState('');
+  const [fuelGrade,      setFuelGrade]      = useState<FuelGrade>('');
+  const [receiptThumb,   setReceiptThumb]   = useState('');   // base64 data URL
   const [saving,         setSaving]         = useState(false);
   const [error,          setError]          = useState('');
   const [warnings,     setWarnings]     = useState<string[]>([]);
@@ -41,8 +76,8 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
   const [scanning,     setScanning]     = useState(false);
   const [scanError,    setScanError]    = useState('');
   const [nationalAvg,  setNationalAvg]  = useState<number | null>(null);
-  const fileInputRef        = useRef<HTMLInputElement>(null);
-  const galleryInputRef     = useRef<HTMLInputElement>(null);
+  const fileInputRef    = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch national average once for inline price intelligence card
   useEffect(() => {
@@ -80,18 +115,27 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
   async function handleScan(file: File) {
     setScanning(true);
     setScanError('');
+    // Compress first so we have a thumbnail regardless of scan outcome
+    let thumb = '';
+    try {
+      thumb = await compressImage(file);
+      setReceiptThumb(thumb);
+    } catch { /* canvas not available — continue without thumbnail */ }
+
     try {
       const fd = new FormData();
       fd.append('image', file);
       const res = await fetch('/api/fillups/scan', { method: 'POST', body: fd });
       const data = await res.json() as {
-        gallons?:       number | null;
+        gallons?:        number | null;
         pricePerGallon?: number | null;
-        totalCost?:     number | null;
-        date?:          string | null;
-        stationName?:   string | null;
-        error?:         string;
-        upgrade?:       boolean;
+        totalCost?:      number | null;
+        date?:           string | null;
+        stationName?:    string | null;
+        address?:        string | null;
+        fuelGrade?:      string | null;
+        error?:          string;
+        upgrade?:        boolean;
       };
       if (!res.ok) {
         if (res.status === 403 && data.upgrade) {
@@ -101,10 +145,19 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
         }
         return;
       }
-      if (data.gallons       != null) setGallons(String(data.gallons));
+      if (data.gallons        != null) setGallons(String(data.gallons));
       if (data.pricePerGallon != null) setPrice(String(data.pricePerGallon));
       if (data.date           != null) setDate(data.date);
       if (data.stationName    != null) setStationName(data.stationName);
+      // Address → pre-fill notes (prefix so user knows it came from the receipt)
+      if (data.address        != null && data.address.trim()) {
+        setNotes((prev) => prev ? prev : `📍 ${data.address!.trim()}`);
+      }
+      // Fuel grade — map to our enum
+      if (data.fuelGrade != null) {
+        const g = data.fuelGrade as FuelGrade;
+        if (['regular','midgrade','premium','diesel','e85'].includes(g)) setFuelGrade(g);
+      }
     } catch {
       setScanError('Network error — try again.');
     } finally {
@@ -135,6 +188,8 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
           stationName:     stationName.trim() || undefined,
           notes:           notes.trim() || undefined,
           driverLabel:     driverLabel.trim() || undefined,
+          fuelGrade:       fuelGrade || undefined,
+          receiptThumb:    receiptThumb || undefined,
           force,
         }),
       });
@@ -203,7 +258,7 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
         }}
       />
 
-      {/* Scan receipt section */}
+      {/* ── Scan receipt section ───────────────────────────────────── */}
       <div className="rounded-xl bg-white border border-slate-200 p-3 space-y-2">
         {/* Header row */}
         <div className="flex items-center justify-between">
@@ -212,8 +267,7 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
               ✨ Auto-fill from your receipt
             </p>
             <p className="text-[10px] text-slate-400 leading-snug mt-0.5">
-              For pay-at-the-pump receipts or final store receipts.<br />
-              AI reads gallons, price &amp; date — review before saving.
+              AI reads gallons, price, station &amp; fuel grade — review before saving.
             </p>
           </div>
           <span className={`text-[10px] font-bold border rounded-full px-2 py-0.5 flex-shrink-0 ${isPro ? 'text-blue-600 bg-blue-50 border-blue-200' : 'text-amber-600 bg-amber-50 border-amber-200'}`}>
@@ -221,29 +275,59 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
           </span>
         </div>
 
-        {/* Buttons */}
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={saving || scanning}
-            className="flex items-center gap-1.5 text-xs font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 hover:border-amber-300 hover:text-amber-700 transition-colors disabled:opacity-50"
-          >
-            <span>{scanning ? '🔄' : '📷'}</span>
-            <span>{scanning ? 'Reading receipt…' : 'Use Camera'}</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => galleryInputRef.current?.click()}
-            disabled={saving || scanning}
-            className="flex items-center gap-1.5 text-xs font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 hover:border-amber-300 hover:text-amber-700 transition-colors disabled:opacity-50"
-          >
-            <span>🖼️</span>
-            <span>Upload from Photos</span>
-          </button>
-        </div>
+        {/* Scan buttons + receipt thumbnail */}
+        <div className="flex items-start gap-3">
+          <div className="flex-1 flex flex-col gap-2">
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={saving || scanning}
+                className="flex items-center gap-1.5 text-xs font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 hover:border-amber-300 hover:text-amber-700 transition-colors disabled:opacity-50"
+              >
+                <span>{scanning ? '🔄' : '📷'}</span>
+                <span>{scanning ? 'Reading receipt…' : 'Use Camera'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => galleryInputRef.current?.click()}
+                disabled={saving || scanning}
+                className="flex items-center gap-1.5 text-xs font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 hover:border-amber-300 hover:text-amber-700 transition-colors disabled:opacity-50"
+              >
+                <span>🖼️</span>
+                <span>Upload from Photos</span>
+              </button>
+            </div>
+            {scanError && <p className="text-[11px] text-red-500 font-medium">{scanError}</p>}
+            {receiptThumb && !scanning && (
+              <p className="text-[10px] text-emerald-600 font-semibold">
+                ✓ Receipt photo saved with this fill-up
+              </p>
+            )}
+          </div>
 
-        {scanError && <p className="text-[11px] text-red-500 font-medium">{scanError}</p>}
+          {/* Receipt thumbnail preview */}
+          {receiptThumb && (
+            <div className="flex-shrink-0 relative">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={receiptThumb}
+                alt="Receipt preview"
+                className="w-14 h-20 object-cover rounded-lg border border-slate-200 shadow-sm"
+              />
+              <button
+                type="button"
+                onClick={() => setReceiptThumb('')}
+                className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-slate-600 text-white flex items-center justify-center"
+                aria-label="Remove receipt photo"
+              >
+                <svg viewBox="0 0 10 10" className="w-2.5 h-2.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                  <path d="M2 2l6 6M8 2l-6 6" />
+                </svg>
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       <p className="text-[10px] text-slate-400 -mt-1 px-0.5">
@@ -272,8 +356,8 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
         </div>
       )}
 
-      {/* Date row — full width to avoid iOS date-input overflow */}
-      <div>
+      {/* Date — full width, explicit bottom margin to prevent overlap with gallons grid */}
+      <div className="mb-1">
         <label className="field-label">Date</label>
         <input
           type="date"
@@ -314,7 +398,7 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
         </div>
       </div>
 
-      {/* Price intelligence card — shows when user has entered a price + national avg loaded */}
+      {/* Price intelligence card */}
       {nationalAvg !== null && (() => {
         const entered = parseFloat(price);
         if (!entered || entered <= 0) return null;
@@ -348,7 +432,37 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
         );
       })()}
 
-      {/* Odometer row — full width */}
+      {/* ── Fuel Grade picker ───────────────────────────────────────── */}
+      <div>
+        <label className="field-label">
+          Fuel Grade <span className="text-slate-400 font-normal">(optional)</span>
+          {fuelGrade && (
+            <span className="ml-1.5 text-[9px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-full border border-blue-100">
+              from receipt
+            </span>
+          )}
+        </label>
+        <div className="grid grid-cols-4 gap-1.5 mt-1">
+          {FUEL_GRADES.map((g) => (
+            <button
+              key={g.value}
+              type="button"
+              onClick={() => setFuelGrade((prev) => prev === g.value ? '' : g.value)}
+              className={[
+                'flex flex-col items-center justify-center rounded-xl border-2 py-2 transition-all',
+                fuelGrade === g.value
+                  ? 'border-amber-500 bg-amber-50 text-amber-700'
+                  : 'border-slate-200 bg-white text-slate-500 hover:border-amber-300',
+              ].join(' ')}
+            >
+              <span className="text-[11px] font-black leading-tight">{g.label}</span>
+              <span className="text-[9px] text-slate-400 leading-tight">{g.sub}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Odometer */}
       <div>
         <label className="field-label">
           Odometer{' '}
@@ -409,17 +523,22 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
         )}
       </div>
 
-      {/* Notes */}
+      {/* Notes — also used for address from receipt scan */}
       <div>
-        <label className="field-label">Notes <span className="text-slate-400 font-normal">(optional)</span></label>
+        <label className="field-label">
+          Notes <span className="text-slate-400 font-normal">(optional)</span>
+        </label>
         <input
           type="text"
           className="input-field text-sm"
-          placeholder="Any other notes…"
+          placeholder="Address, notes, anything else…"
           value={notes}
-          maxLength={100}
+          maxLength={160}
           onChange={(e) => setNotes(e.target.value)}
         />
+        {notes.startsWith('📍') && (
+          <p className="text-[10px] text-blue-500 mt-0.5 px-0.5">📋 Station address captured from receipt</p>
+        )}
       </div>
 
       {/* Odometer tip */}

@@ -112,6 +112,8 @@ model Fillup {
   stationName     String?
   notes           String?
   driverLabel     String?
+  fuelGrade       String?  // "regular" | "midgrade" | "premium" | "diesel" | "e85"
+  receiptThumb    String?  // base64-compressed JPEG thumbnail of receipt (data URL)
   createdAt       String
 
   @@index([userId])
