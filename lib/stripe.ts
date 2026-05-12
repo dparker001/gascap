@@ -14,13 +14,10 @@ export const stripe = process.env.STRIPE_SECRET_KEY
 
 /** Price IDs — set in .env.local after creating in Stripe Dashboard */
 export const PRICES = {
-  proMonthly:      process.env.STRIPE_PRICE_PRO_MONTHLY      ?? '',
-  proAnnual:       process.env.STRIPE_PRICE_PRO_ANNUAL       ?? '',
-  fleetMonthly:    process.env.STRIPE_PRICE_FLEET_MONTHLY    ?? '',
-  fleetAnnual:     process.env.STRIPE_PRICE_FLEET_ANNUAL     ?? '',
-  // Vehicle Sync add-on — $2.99/month, user-paid
-  // Create in Stripe Dashboard: Products → Add product → "Vehicle Sync" → $2.99/month recurring
-  smartcarAddon:   process.env.STRIPE_PRICE_SMARTCAR_ADDON   ?? '',
+  proMonthly:    process.env.STRIPE_PRICE_PRO_MONTHLY    ?? '',
+  proAnnual:     process.env.STRIPE_PRICE_PRO_ANNUAL     ?? '',
+  fleetMonthly:  process.env.STRIPE_PRICE_FLEET_MONTHLY  ?? '',
+  fleetAnnual:   process.env.STRIPE_PRICE_FLEET_ANNUAL   ?? '',
 } as const;
 
 // ── Display pricing — update these when you create prices in Stripe Dashboard
@@ -41,9 +38,6 @@ export const PRICING = {
     drivers:         10,
   },
 } as const;
-
-// Vehicle Sync add-on pricing
-export const SMARTCAR_ADDON_PRICE = 2.99;
 
 // Legacy exports kept for backward compatibility
 export const PRO_PRICE_MONTHLY_DISPLAY = `$${PRICING.pro.monthly}`;

@@ -77,13 +77,6 @@ model User {
   garageLastOpenedDate     String?
   fleetCompanyName         String?
   fleetLogoUrl             String?
-  // Smartcar OAuth — stored per-user (covers all their authorized vehicles)
-  smartcarAccessToken        String?   // short-lived; refresh before use
-  smartcarRefreshToken       String?   // long-lived; use to get new access token
-  smartcarTokenExpiry        String?   // ISO timestamp of access token expiry
-  // Smartcar add-on subscription (user-paid, $2.99/mo — covers Smartcar's $1.99 API cost)
-  smartcarAddonActive        Boolean   @default(false)
-  smartcarAddonSubscriptionId String?  // Stripe subscription ID for the add-on
   vehicles                 Vehicle[]
 }
 
@@ -102,8 +95,6 @@ model Vehicle {
   currentOdometer   Float?
   vehicleSpecs      Json?
   createdAt         String
-  // Smartcar integration — links this GasCap vehicle to a Smartcar vehicle ID
-  smartcarVehicleId String?   // Smartcar vehicle UUID (from OAuth vehicle list)
   user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 

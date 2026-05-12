@@ -78,13 +78,6 @@ export interface StoredUser {
   milestoneReferral1Sent?: boolean;
   earlyUpgradeBonusEntries?: number;
   phoneBonusEntries?:        number;
-  // Smartcar OAuth tokens
-  smartcarAccessToken?:          string;
-  smartcarRefreshToken?:         string;
-  smartcarTokenExpiry?:          string;
-  // Smartcar add-on
-  smartcarAddonActive?:          boolean;
-  smartcarAddonSubscriptionId?:  string;
 }
 
 export interface ReferralCredit {
@@ -168,12 +161,6 @@ function toStoredUser(u: PrismaUser): StoredUser {
     milestoneReferral1Sent: u.milestoneReferral1Sent ?? false,
     earlyUpgradeBonusEntries: u.earlyUpgradeBonusEntries ?? 0,
     phoneBonusEntries:        u.phoneBonusEntries        ?? 0,
-    // Smartcar
-    smartcarAccessToken:         u.smartcarAccessToken         ?? undefined,
-    smartcarRefreshToken:        u.smartcarRefreshToken        ?? undefined,
-    smartcarTokenExpiry:         u.smartcarTokenExpiry         ?? undefined,
-    smartcarAddonActive:         u.smartcarAddonActive         ?? false,
-    smartcarAddonSubscriptionId: u.smartcarAddonSubscriptionId ?? undefined,
   };
 }
 
@@ -1081,28 +1068,3 @@ export async function setEarlyUpgradeBonus(userId: string, bonus: number): Promi
   await prisma.user.update({ where: { id: userId }, data: { earlyUpgradeBonusEntries: bonus } });
 }
 
-// ── Smartcar add-on ──────────────────────────────────────────────────────────
-
-/**
- * Activate or deactivate the Vehicle Sync add-on for a user.
- * Called from the Stripe webhook on checkout.session.completed and customer.subscription.deleted.
- */
-export async function setSmartcarAddon(
-  userId:         string,
-  active:         boolean,
-  subscriptionId?: string,
-): Promise<void> {
-  await prisma.user.update({
-    where: { id: userId },
-    data: {
-      smartcarAddonActive:         active,
-      smartcarAddonSubscriptionId: active ? (subscriptionId ?? null) : null,
-      // When deactivating, also clear OAuth tokens so stale connections are cleaned up
-      ...(!active ? {
-        smartcarAccessToken:  null,
-        smartcarRefreshToken: null,
-        smartcarTokenExpiry:  null,
-      } : {}),
-    },
-  });
-}

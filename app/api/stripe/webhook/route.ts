@@ -9,7 +9,7 @@
 import { NextResponse }                     from 'next/server';
 import type Stripe                          from 'stripe';
 import { stripe }                           from '@/lib/stripe';
-import { setUserPlan, findByStripeCustomer, findById, findByReferralCode, creditVerifiedReferral, getActiveCredits, enrollPaidCampaign, enrollEngagementCampaign, setEarlyUpgradeBonus, markMilestoneSent, updateUserProfile, setSmartcarAddon } from '@/lib/users';
+import { setUserPlan, findByStripeCustomer, findById, findByReferralCode, creditVerifiedReferral, getActiveCredits, enrollPaidCampaign, enrollEngagementCampaign, setEarlyUpgradeBonus, markMilestoneSent, updateUserProfile } from '@/lib/users';
 import { updateGhlContactPlan }            from '@/lib/ghl';
 import { sendMail }                        from '@/lib/email';
 import { sendReferralCreditEmail }         from '@/lib/emailCampaign';
@@ -51,7 +51,7 @@ export async function POST(req: Request) {
 
   switch (event.type) {
 
-    // Checkout completed → activate Pro OR activate smartcar add-on
+    // Checkout completed → activate Pro
     case 'checkout.session.completed': {
       const session = event.data.object as Stripe.Checkout.Session;
       const userId  = session.metadata?.userId;
@@ -59,16 +59,9 @@ export async function POST(req: Request) {
 
       const customerId     = typeof session.customer     === 'string' ? session.customer     : null;
       const subscriptionId = typeof session.subscription === 'string' ? session.subscription : null;
-      const tier           = session.metadata?.tier ?? 'pro';
+      const planTier       = (session.metadata?.tier ?? 'pro') as 'pro' | 'fleet';
 
-      // ── Smartcar add-on purchase ─────────────────────────────────────────
-      if (tier === 'smartcar-addon') {
-        await setSmartcarAddon(userId, true, subscriptionId ?? undefined);
-        console.info(`[GasCap webhook] Smartcar add-on activated for user ${userId}`);
-        break;
-      }
-
-      await setUserPlan(userId, tier as 'pro' | 'fleet', {
+      await setUserPlan(userId, planTier, {
         customerId:     customerId     ?? undefined,
         subscriptionId: subscriptionId ?? undefined,
       });
@@ -85,9 +78,6 @@ export async function POST(req: Request) {
             .catch((e) => console.error('[GasCap] Stripe phone backfill failed:', e));
         }
       }
-
-      // At this point tier is guaranteed 'pro' | 'fleet' (smartcar-addon already broke out above)
-      const planTier = tier as 'pro' | 'fleet';
 
       // Sync plan change to GHL CRM + notify admin
       const upgradedUser = await findById(userId);
@@ -232,21 +222,6 @@ export async function POST(req: Request) {
       const obj        = event.data.object as Stripe.Subscription | Stripe.Invoice;
       const customerId = typeof obj.customer === 'string' ? obj.customer : null;
       if (!customerId) break;
-
-      // ── Smartcar add-on cancellation ─────────────────────────────────────
-      // Check if this subscription is the smartcar addon (not the main plan)
-      if (event.type === 'customer.subscription.deleted') {
-        const cancelledSub = event.data.object as Stripe.Subscription;
-        const subTier      = cancelledSub.metadata?.tier;
-        if (subTier === 'smartcar-addon') {
-          const addonUserId = cancelledSub.metadata?.userId;
-          if (addonUserId) {
-            await setSmartcarAddon(addonUserId, false);
-            console.info(`[GasCap webhook] Smartcar add-on deactivated for user ${addonUserId}`);
-          }
-          break;  // Don't run the main plan revert for addon cancellations
-        }
-      }
 
       const user = await findByStripeCustomer(customerId);
       if (user) {

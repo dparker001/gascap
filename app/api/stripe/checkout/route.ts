@@ -37,7 +37,7 @@ export async function POST(req: Request) {
   }
 
   const body = await req.json() as {
-    tier?:    'pro' | 'fleet' | 'smartcar-addon';
+    tier?:    'pro' | 'fleet';
     billing?: 'monthly' | 'annual';
     priceId?: string; // legacy direct price ID override
     coupon?:  string; // Stripe coupon ID to pre-apply (e.g. from C4 promo email)
@@ -46,50 +46,6 @@ export async function POST(req: Request) {
   const tier    = body.tier    ?? 'pro';
   const billing = body.billing ?? 'monthly';
   const coupon  = body.coupon  ?? null;
-
-  // ── Smartcar add-on — special path ──────────────────────────────────────
-  if (tier === 'smartcar-addon') {
-    const isPro = user.plan === 'pro' || user.plan === 'fleet' || user.isProTrial;
-    if (!isPro) {
-      return NextResponse.json(
-        { error: 'Vehicle Sync requires a Pro or Fleet plan. Upgrade first.' },
-        { status: 403 },
-      );
-    }
-    if (user.smartcarAddonActive) {
-      return NextResponse.json(
-        { error: 'Vehicle Sync is already active on your account.' },
-        { status: 409 },
-      );
-    }
-    const addonPriceId = PRICES.smartcarAddon;
-    if (!addonPriceId) {
-      return NextResponse.json(
-        { error: 'Vehicle Sync pricing not yet configured. Contact support.' },
-        { status: 503 },
-      );
-    }
-    const origin = getBaseUrl(req);
-    const addonSession = await stripe.checkout.sessions.create({
-      mode:                 'subscription',
-      payment_method_types: ['card'],
-      allow_promotion_codes: false,
-      line_items:           [{ price: addonPriceId, quantity: 1 }],
-      customer_email:       user.stripeCustomerId ? undefined : user.email,
-      customer:             user.stripeCustomerId ?? undefined,
-      success_url:          `${origin}/?smartcarAddonSuccess=1`,
-      cancel_url:           `${origin}/?smartcarAddonCancelled=1`,
-      metadata: {
-        userId,
-        userEmail: user.email,
-        tier:      'smartcar-addon',
-      },
-      subscription_data: {
-        metadata: { userId, tier: 'smartcar-addon' },
-      },
-    });
-    return NextResponse.json({ url: addonSession.url });
-  }
 
   // Resolve price ID
   let priceId = body.priceId ?? '';

@@ -22,8 +22,6 @@ export interface SavedVehicle {
   currentOdometer?:   number;
   vehicleSpecs?:      VehicleSpecs;
   createdAt:          string;
-  // Smartcar — set when user has linked this vehicle via OAuth
-  smartcarVehicleId?: string;
 }
 
 function toSavedVehicle(v: {
@@ -41,7 +39,6 @@ function toSavedVehicle(v: {
   currentOdometer: number | null;
   vehicleSpecs: unknown;
   createdAt: string;
-  smartcarVehicleId?: string | null;
 }): SavedVehicle {
   return {
     id:                 v.id,
@@ -58,7 +55,6 @@ function toSavedVehicle(v: {
     currentOdometer:    v.currentOdometer ?? undefined,
     vehicleSpecs:       v.vehicleSpecs    != null ? (v.vehicleSpecs as VehicleSpecs) : undefined,
     createdAt:          v.createdAt,
-    smartcarVehicleId:  v.smartcarVehicleId ?? undefined,
   };
 }
 
