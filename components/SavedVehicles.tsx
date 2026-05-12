@@ -4,6 +4,7 @@ import { useSession } from 'next-auth/react';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import VehiclePicker from './VehiclePicker';
 import BadgeShelf   from './BadgeShelf';
+import SmartcarConnect from './SmartcarConnect';
 import type { VehicleSpecs } from '@/lib/vehicleSpecs';
 import { useTranslation } from '@/contexts/LanguageContext';
 import { checkTankSize } from '@/lib/tankValidation';
@@ -12,18 +13,19 @@ import { useGarageDoorPrefs }                from '@/hooks/useGarageDoorPrefs';
 
 
 export interface Vehicle {
-  id:               string;
-  name:             string;
-  gallons:          number;
-  vin?:             string;
-  year?:            string;
-  make?:            string;
-  model?:           string;
-  trim?:            string;
-  fuelType?:        string;
-  epaId?:           string;
-  currentOdometer?: number;
-  vehicleSpecs?:    VehicleSpecs;
+  id:                 string;
+  name:               string;
+  gallons:            number;
+  vin?:               string;
+  year?:              string;
+  make?:              string;
+  model?:             string;
+  trim?:              string;
+  fuelType?:          string;
+  epaId?:             string;
+  currentOdometer?:   number;
+  vehicleSpecs?:      VehicleSpecs;
+  smartcarVehicleId?: string;   // set when user has linked this vehicle via Smartcar OAuth
 }
 
 interface GarageResponse {
@@ -372,6 +374,18 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
   const [searchQuery,     setSearchQuery]     = useState('');
   const [showAllVehicles, setShowAllVehicles] = useState(false);
 
+  // Smartcar connect panel
+  const [showSmartcar, setShowSmartcar] = useState(false);
+
+  // Auto-open the Smartcar connect panel if the user just returned from OAuth callback
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('smartcarConnected') === '1' || params.get('smartcarError')) {
+      setShowSmartcar(true);
+    }
+  }, []);
+
   const load = useCallback(async () => {
     const res = await fetch('/api/vehicles');
     if (res.ok) setData(await res.json() as GarageResponse);
@@ -428,6 +442,11 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
 
   async function handleDelete(id: string) {
     await fetch(`/api/vehicles?id=${id}`, { method: 'DELETE' });
+    load();
+  }
+
+  async function handleSmartcarUnlink(vehicleId: string) {
+    await fetch(`/api/smartcar/link?vehicleId=${vehicleId}`, { method: 'DELETE' });
     load();
   }
 
@@ -557,22 +576,49 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
             </span>
           )}
         </div>
-        {!showPicker && (
-          <button
-            onClick={() => {
-              if (atLimit) return; // handled by slot UI
-              setShowPicker(true);
-              setSaveError('');
-            }}
-            disabled={atLimit}
-            className="text-xs font-bold text-amber-600 hover:text-amber-700 disabled:opacity-40
-                       disabled:cursor-not-allowed transition-colors"
-            title={atLimit ? t.garage.vehicleLimitReached : t.garage.addVehicleTitle}
-          >
-            {t.garage.addVehicle}
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {/* Smartcar connect button — Pro only, not shown when picker is open */}
+          {isPro && !showPicker && vehicles.length > 0 && (
+            <button
+              onClick={() => setShowSmartcar((s) => !s)}
+              className={[
+                'text-[10px] font-bold px-2 py-1 rounded-lg border transition-colors',
+                showSmartcar
+                  ? 'bg-teal-600 text-white border-teal-600'
+                  : 'text-teal-700 border-teal-300 hover:bg-teal-50',
+              ].join(' ')}
+              title="Connect your car via Smartcar to auto-sync fuel level &amp; odometer"
+            >
+              ⚡ Connect Car
+            </button>
+          )}
+          {!showPicker && (
+            <button
+              onClick={() => {
+                if (atLimit) return; // handled by slot UI
+                setShowPicker(true);
+                setSaveError('');
+              }}
+              disabled={atLimit}
+              className="text-xs font-bold text-amber-600 hover:text-amber-700 disabled:opacity-40
+                         disabled:cursor-not-allowed transition-colors"
+              title={atLimit ? t.garage.vehicleLimitReached : t.garage.addVehicleTitle}
+            >
+              {t.garage.addVehicle}
+            </button>
+          )}
+        </div>
       </div>
+
+      {/* Smartcar connect panel — shown when user clicks ⚡ Connect Car */}
+      {isPro && showSmartcar && !showPicker && (
+        <div className="mb-3">
+          <SmartcarConnect
+            garageVehicles={vehicles}
+            onDone={() => { load(); setShowSmartcar(false); }}
+          />
+        </div>
+      )}
 
       {/* Vehicle picker */}
       {showPicker && (
@@ -838,10 +884,16 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
                         className="flex-1 min-w-0 text-left"
                         title={t.garage.loadTitle(v.name, v.gallons)}
                       >
-                        <p className="text-sm font-semibold text-slate-700 group-hover:text-amber-700
-                                      transition-colors leading-tight">
-                          {v.name}
-                        </p>
+                        <div className="flex items-center gap-1.5 leading-tight">
+                          <p className="text-sm font-semibold text-slate-700 group-hover:text-amber-700
+                                        transition-colors">
+                            {v.name}
+                          </p>
+                          {v.smartcarVehicleId && (
+                            <span className="text-[9px] font-black bg-teal-100 text-teal-700 px-1 py-0.5 rounded shrink-0"
+                                  title="Connected via Smartcar">⚡ synced</span>
+                          )}
+                        </div>
                         <p className="text-xs text-slate-400 mt-0.5 leading-tight">
                           {[v.year, v.make, v.model].filter(Boolean).join(' ') || t.garage.tankFallback(v.gallons)}
                           {v.year && <span className="ml-1">· {v.gallons} {t.calc.unitGal}</span>}
@@ -896,6 +948,18 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
                         </div>
                       ) : (
                         <>
+                          {/* Smartcar unlink — only visible on connected vehicles */}
+                          {v.smartcarVehicleId && (
+                            <button
+                              onClick={() => handleSmartcarUnlink(v.id)}
+                              className="flex-shrink-0 text-teal-400 hover:text-teal-600 transition-colors p-1"
+                              title="Disconnect Smartcar link"
+                              aria-label={`Disconnect Smartcar from ${v.name}`}
+                            >
+                              <span className="text-[11px] font-bold">⚡✕</span>
+                            </button>
+                          )}
+
                           {/* Edit */}
                           <button
                             onClick={() => startEdit(v)}

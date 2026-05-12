@@ -77,6 +77,10 @@ model User {
   garageLastOpenedDate     String?
   fleetCompanyName         String?
   fleetLogoUrl             String?
+  // Smartcar OAuth — stored per-user (covers all their authorized vehicles)
+  smartcarAccessToken      String?   // short-lived; refresh before use
+  smartcarRefreshToken     String?   // long-lived; use to get new access token
+  smartcarTokenExpiry      String?   // ISO timestamp of access token expiry
   vehicles                 Vehicle[]
 }
 
@@ -92,10 +96,12 @@ model Vehicle {
   trim            String?
   fuelType        String?
   epaId           String?
-  currentOdometer Float?
-  vehicleSpecs    Json?
-  createdAt       String
-  user            User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  currentOdometer   Float?
+  vehicleSpecs      Json?
+  createdAt         String
+  // Smartcar integration — links this GasCap vehicle to a Smartcar vehicle ID
+  smartcarVehicleId String?   // Smartcar vehicle UUID (from OAuth vehicle list)
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Fillup {

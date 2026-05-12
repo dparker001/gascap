@@ -87,15 +87,46 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
       .catch(() => {});
   }, []);
 
-  // Fetch live plan from server — session JWT can be stale after an upgrade
-  const [livePlan, setLivePlan] = useState<string | null>(null);
+  // Fetch live plan + smartcar link from server — session JWT can be stale after an upgrade
+  const [livePlan,          setLivePlan]          = useState<string | null>(null);
+  const [smartcarVehicleId, setSmartcarVehicleId] = useState<string | null>(null);
+  const [syncing,           setSyncing]           = useState(false);
+  const [syncError,         setSyncError]         = useState('');
+  const [syncSuccess,       setSyncSuccess]       = useState(false);
+
   useEffect(() => {
     if (!session) return;
     fetch('/api/vehicles')
       .then((r) => r.json())
-      .then((d: { plan?: string }) => { if (d.plan) setLivePlan(d.plan); })
+      .then((d: { plan?: string; vehicles?: Array<{ id: string; smartcarVehicleId?: string | null }> }) => {
+        if (d.plan) setLivePlan(d.plan);
+        if (prefill.vehicleId && d.vehicles) {
+          const v = d.vehicles.find((v) => v.id === prefill.vehicleId);
+          setSmartcarVehicleId(v?.smartcarVehicleId ?? null);
+        }
+      })
       .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session]);
+
+  async function handleSmartcarSync() {
+    if (!prefill.vehicleId || !smartcarVehicleId) return;
+    setSyncing(true);
+    setSyncError('');
+    setSyncSuccess(false);
+    try {
+      const res  = await fetch(`/api/smartcar/sync?vehicleId=${prefill.vehicleId}`);
+      const data = await res.json() as { fuelPercent?: number | null; odometer?: number | null; error?: string };
+      if (!res.ok) throw new Error(data.error ?? 'Sync failed');
+      if (data.odometer != null) setOdometer(String(Math.round(data.odometer)));
+      setSyncSuccess(true);
+      setTimeout(() => setSyncSuccess(false), 4000);
+    } catch (e) {
+      setSyncError(e instanceof Error ? e.message : 'Sync failed');
+    } finally {
+      setSyncing(false);
+    }
+  }
 
   // Fetch recent station names for the picker
   useEffect(() => {
@@ -464,12 +495,31 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
 
       {/* Odometer */}
       <div>
-        <label className="field-label">
-          Odometer{' '}
-          <span className="text-slate-400 font-normal">(optional)</span>
-          {' '}
-          <span className="text-[10px] font-bold text-green-600 bg-green-50 rounded px-1 py-0.5">MPG tracking</span>
-        </label>
+        <div className="flex items-center justify-between mb-0.5">
+          <label className="field-label mb-0">
+            Odometer{' '}
+            <span className="text-slate-400 font-normal">(optional)</span>
+            {' '}
+            <span className="text-[10px] font-bold text-green-600 bg-green-50 rounded px-1 py-0.5">MPG tracking</span>
+          </label>
+          {/* Smartcar sync button — only when vehicle is connected */}
+          {smartcarVehicleId && (
+            <button
+              type="button"
+              onClick={handleSmartcarSync}
+              disabled={syncing}
+              className={[
+                'text-[10px] font-bold px-2 py-1 rounded-lg border transition-colors flex-shrink-0',
+                syncSuccess
+                  ? 'bg-teal-100 text-teal-700 border-teal-300'
+                  : 'bg-white text-teal-700 border-teal-300 hover:bg-teal-50',
+              ].join(' ')}
+              title="Pull current odometer from your connected car"
+            >
+              {syncing ? '⚙️ Syncing…' : syncSuccess ? '✓ Synced!' : '⚡ Sync from Car'}
+            </button>
+          )}
+        </div>
         <div className="relative">
           <input
             type="number" inputMode="numeric"
@@ -481,6 +531,12 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
           />
           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">mi</span>
         </div>
+        {syncError && <p className="text-[10px] text-red-500 mt-0.5">{syncError}</p>}
+        {syncSuccess && (
+          <p className="text-[10px] text-teal-600 mt-0.5">
+            ⚡ Odometer synced from your connected car.
+          </p>
+        )}
       </div>
 
       {/* Gas Station */}

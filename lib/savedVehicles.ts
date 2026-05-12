@@ -5,23 +5,25 @@ import { prisma } from './prisma';
 import type { VehicleSpecs } from './vehicleSpecs';
 
 export interface SavedVehicle {
-  id:               string;
-  userId:           string;
-  name:             string;    // custom nickname or auto "2022 Toyota Camry"
-  gallons:          number;    // tank capacity (confirmed by user)
+  id:                 string;
+  userId:             string;
+  name:               string;    // custom nickname or auto "2022 Toyota Camry"
+  gallons:            number;    // tank capacity (confirmed by user)
   // Raw VIN — stored so specs can be re-fetched later
-  vin?:             string;
+  vin?:               string;
   // Rich vehicle data from EPA fueleconomy.gov
-  year?:            string;
-  make?:            string;
-  model?:           string;
-  trim?:            string;
-  fuelType?:        string;
-  epaId?:           string;
+  year?:              string;
+  make?:              string;
+  model?:             string;
+  trim?:              string;
+  fuelType?:          string;
+  epaId?:             string;
   // Baseline odometer when vehicle was added to garage
-  currentOdometer?: number;
-  vehicleSpecs?:    VehicleSpecs;
-  createdAt:        string;
+  currentOdometer?:   number;
+  vehicleSpecs?:      VehicleSpecs;
+  createdAt:          string;
+  // Smartcar — set when user has linked this vehicle via OAuth
+  smartcarVehicleId?: string;
 }
 
 function toSavedVehicle(v: {
@@ -39,22 +41,24 @@ function toSavedVehicle(v: {
   currentOdometer: number | null;
   vehicleSpecs: unknown;
   createdAt: string;
+  smartcarVehicleId?: string | null;
 }): SavedVehicle {
   return {
-    id:              v.id,
-    userId:          v.userId,
-    name:            v.name,
-    gallons:         v.gallons,
-    vin:             v.vin             ?? undefined,
-    year:            v.year            ?? undefined,
-    make:            v.make            ?? undefined,
-    model:           v.model           ?? undefined,
-    trim:            v.trim            ?? undefined,
-    fuelType:        v.fuelType        ?? undefined,
-    epaId:           v.epaId           ?? undefined,
-    currentOdometer: v.currentOdometer ?? undefined,
-    vehicleSpecs:    v.vehicleSpecs    != null ? (v.vehicleSpecs as VehicleSpecs) : undefined,
-    createdAt:       v.createdAt,
+    id:                 v.id,
+    userId:             v.userId,
+    name:               v.name,
+    gallons:            v.gallons,
+    vin:                v.vin             ?? undefined,
+    year:               v.year            ?? undefined,
+    make:               v.make            ?? undefined,
+    model:              v.model           ?? undefined,
+    trim:               v.trim            ?? undefined,
+    fuelType:           v.fuelType        ?? undefined,
+    epaId:              v.epaId           ?? undefined,
+    currentOdometer:    v.currentOdometer ?? undefined,
+    vehicleSpecs:       v.vehicleSpecs    != null ? (v.vehicleSpecs as VehicleSpecs) : undefined,
+    createdAt:          v.createdAt,
+    smartcarVehicleId:  v.smartcarVehicleId ?? undefined,
   };
 }
 

@@ -38,6 +38,7 @@
     "react-dom": "^18",
     "react-onesignal": "^3.5.1",
     "resend": "^6.9.4",
+    "smartcar": "^10.4.0",
     "stripe": "^21.0.1",
     "web-push": "^3.6.7"
   },
