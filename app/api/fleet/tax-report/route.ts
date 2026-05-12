@@ -53,7 +53,7 @@ export async function GET(req: Request) {
   }
 
   const yearStr  = String(year);
-  const allFillups = getFillups(userId).filter((f) => f.date.startsWith(yearStr));
+  const allFillups = (await getFillups(userId)).filter((f) => f.date.startsWith(yearStr));
 
   if (allFillups.length === 0) {
     return NextResponse.json(

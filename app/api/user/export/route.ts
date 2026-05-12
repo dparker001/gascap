@@ -31,7 +31,7 @@ export async function GET(_req: NextRequest) {
   // ── Gather data ───────────────────────────────────────────────────────────
 
   const vehicles = await getVehiclesForUser(userId);
-  const fillups  = getFillups(userId);
+  const fillups  = await getFillups(userId);
   const trips    = getTripsForUser(userId);
 
   // ── Scrub internal-only fields from profile ───────────────────────────────

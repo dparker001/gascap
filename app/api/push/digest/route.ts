@@ -6,10 +6,10 @@ import { getFillups }            from '@/lib/fillups';
 import { getBudgetGoal }         from '@/lib/budgetGoals';
 import { sendPushNotification }  from '@/lib/oneSignal';
 
-function buildDigestBody(userId: string): string {
+async function buildDigestBody(userId: string): Promise<string> {
   const now       = new Date();
   const month     = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  const fillups   = getFillups(userId);
+  const fillups   = await getFillups(userId);
   const thisMonth = fillups.filter((f) => f.date.startsWith(month));
   const spent     = thisMonth.reduce((s, f) => s + f.totalCost, 0);
   const goal      = getBudgetGoal(userId);
@@ -41,7 +41,7 @@ export async function POST(req: Request) {
     const users = await getAllUsers();
     let sent = 0;
     for (const user of users) {
-      const body = buildDigestBody(user.id);
+      const body = await buildDigestBody(user.id);
       const result = await sendPushNotification({
         title:       '⛽ GasCap Weekly Digest',
         body,
@@ -54,7 +54,7 @@ export async function POST(req: Request) {
   }
 
   // Single user digest
-  const body = buildDigestBody(userId);
+  const body = await buildDigestBody(userId);
   const result = await sendPushNotification({
     title:       '⛽ GasCap Weekly Digest',
     body,

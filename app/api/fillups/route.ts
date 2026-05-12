@@ -30,7 +30,7 @@ export async function GET(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const fillups = getFillups(userId(session));
+  const fillups = await getFillups(userId(session));
   const mpgMap  = computeMpg(fillups);
   const stats   = getFillupStats(fillups, mpgMap);
 
@@ -58,7 +58,7 @@ export async function POST(req: Request) {
 
   // Smart validation — skip when user explicitly overrides
   if (!body.force) {
-    const { errors, warnings, canOverride } = validateNewFillup(userId(session), body);
+    const { errors, warnings, canOverride } = await validateNewFillup(userId(session), body);
 
     if (errors.length > 0) {
       return NextResponse.json(
@@ -78,7 +78,7 @@ export async function POST(req: Request) {
   // Remove `force` before storing
   const { force: _force, ...saveBody } = body;
   const uid   = userId(session);
-  const entry = addFillup(uid, saveBody);
+  const entry = await addFillup(uid, saveBody);
 
   // Mark today as an active day — ensures fill-up days count toward giveaway entries
   // even if this is the only action the user takes. Fire-and-forget, non-blocking.
@@ -87,7 +87,7 @@ export async function POST(req: Request) {
   // Milestone checks — non-blocking so the 201 response is instant
   ;(async () => {
     try {
-      const allFillups = getFillups(uid);
+      const allFillups = await getFillups(uid);
       const mpgMap     = computeMpg(allFillups);
       const user       = await findById(uid);
       if (!user || user.emailOptOut) return;
@@ -127,7 +127,7 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: 'Price must be greater than zero.' }, { status: 400 });
 
   const { id, ...patch } = body;
-  const updated = updateFillup(userId(session), id, patch);
+  const updated = await updateFillup(userId(session), id, patch);
   if (!updated) return NextResponse.json({ error: 'Not found.' }, { status: 404 });
   return NextResponse.json(updated);
 }
@@ -140,7 +140,7 @@ export async function DELETE(req: Request) {
   const id = searchParams.get('id');
   if (!id) return NextResponse.json({ error: 'Missing id.' }, { status: 400 });
 
-  const ok = deleteFillup(userId(session), id);
+  const ok = await deleteFillup(userId(session), id);
   if (!ok) return NextResponse.json({ error: 'Not found.' }, { status: 404 });
   return NextResponse.json({ ok: true });
 }

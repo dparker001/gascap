@@ -32,7 +32,7 @@ async function checkAccess() {
 export async function HEAD() {
   const { ok, status, userId } = await checkAccess();
   if (!ok) return new NextResponse(null, { status });
-  const count = getFillups(userId).length;
+  const count = (await getFillups(userId)).length;
   return new NextResponse(null, { status: count > 0 ? 200 : 404 });
 }
 
@@ -52,7 +52,7 @@ export async function GET(req: Request) {
   const toDate   = searchParams.get('to')   ?? undefined;
 
   // Fetch data — use the same userId key that was stored when fillups were saved
-  let fillups = getFillups(userId);
+  let fillups = await getFillups(userId);
   if (fromDate) fillups = fillups.filter((f) => f.date >= fromDate);
   if (toDate)   fillups = fillups.filter((f) => f.date <= toDate);
   // Sort oldest-first for the table

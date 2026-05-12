@@ -13,14 +13,14 @@ import {
   computeStatus,
   type MaintenanceReminder,
 } from '@/lib/maintenance';
-import { getFillups } from '@/lib/fillups';
+import { getFillups, type Fillup } from '@/lib/fillups';
 
 function userId(session: Session | null) {
   return session?.user?.id ?? session?.user?.email ?? null;
 }
 
 /** Latest odometer across all fillups for a given vehicle */
-function latestOdometer(fillups: ReturnType<typeof getFillups>, vehicleKey: string) {
+function latestOdometer(fillups: Fillup[], vehicleKey: string) {
   const vFills = fillups
     .filter((f) => (f.vehicleId ?? f.vehicleName) === vehicleKey && f.odometerReading != null)
     .sort((a, b) => b.date.localeCompare(a.date));
@@ -33,7 +33,7 @@ export async function GET(req: Request) {
   if (!uid) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const reminders = getReminders(uid);
-  const fillups   = getFillups(uid);
+  const fillups   = await getFillups(uid);
 
   const withStatus = reminders.map((r) => {
     const vKey         = r.vehicleId ?? r.vehicleName;

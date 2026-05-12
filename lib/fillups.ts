@@ -1,12 +1,9 @@
 /**
- * Fillup Log — JSON file store.
- * Each record represents one pump visit logged by a user.
+ * Fillup Log — PostgreSQL via Prisma.
+ * Migrated from JSON file store so fill-up data survives Railway deployments.
  */
-import fs   from 'fs';
-import path from 'path';
 import { randomUUID } from 'crypto';
-
-const FILE = path.join(process.cwd(), 'data', 'fillups.json');
+import { prisma }     from './prisma';
 
 export interface Fillup {
   id:             string;
@@ -19,44 +16,68 @@ export interface Fillup {
   totalCost:      number;   // gallonsPumped × pricePerGallon
   odometerReading?: number; // optional — enables MPG calculation
   fuelLevelBefore?: number; // 0–100 %
-  stationName?:   string;   // gas station name (for recall/history)
+  stationName?:   string;
   notes?:         string;
-  driverLabel?:   string;   // Fleet Phase 1 — who drove (attribution only)
+  driverLabel?:   string;   // Fleet Phase 1 — driver attribution
   createdAt:      string;   // ISO timestamp
 }
 
-function read(): Fillup[] {
-  try {
-    return JSON.parse(fs.readFileSync(FILE, 'utf8')) as Fillup[];
-  } catch {
-    return [];
-  }
+// ── Type adapter ────────────────────────────────────────────────────────────
+
+/**
+ * Prisma returns nullable fields as `null`; our Fillup interface uses
+ * optional (undefined). This adapter normalises the two.
+ */
+function fromPrisma(r: {
+  id: string; userId: string; vehicleId: string | null; vehicleName: string;
+  date: string; gallonsPumped: number; pricePerGallon: number; totalCost: number;
+  odometerReading: number | null; fuelLevelBefore: number | null;
+  stationName: string | null; notes: string | null; driverLabel: string | null;
+  createdAt: string;
+}): Fillup {
+  return {
+    id:              r.id,
+    userId:          r.userId,
+    vehicleId:       r.vehicleId   ?? undefined,
+    vehicleName:     r.vehicleName,
+    date:            r.date,
+    gallonsPumped:   r.gallonsPumped,
+    pricePerGallon:  r.pricePerGallon,
+    totalCost:       r.totalCost,
+    odometerReading: r.odometerReading ?? undefined,
+    fuelLevelBefore: r.fuelLevelBefore ?? undefined,
+    stationName:     r.stationName    ?? undefined,
+    notes:           r.notes          ?? undefined,
+    driverLabel:     r.driverLabel    ?? undefined,
+    createdAt:       r.createdAt,
+  };
 }
 
-function write(data: Fillup[]): void {
-  fs.writeFileSync(FILE, JSON.stringify(data, null, 2));
-}
+// ── Read ────────────────────────────────────────────────────────────────────
 
 /** All fillups for a user, newest first */
-export function getFillups(userId: string): Fillup[] {
-  return read()
-    .filter((f) => f.userId === userId)
-    .sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt));
+export async function getFillups(userId: string): Promise<Fillup[]> {
+  const rows = await prisma.fillup.findMany({
+    where:   { userId },
+    orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
+  });
+  return rows.map(fromPrisma);
 }
 
-// ── Fillup validation ──────────────────────────────────────────────────────
+// ── Validation ──────────────────────────────────────────────────────────────
 
 export interface FillupValidationResult {
-  errors:      string[];   // hard blocks — cannot save
-  warnings:    string[];   // soft — can override with force:true
-  canOverride: boolean;    // true when only warnings, no hard errors
+  errors:      string[];
+  warnings:    string[];
+  canOverride: boolean;
 }
 
 /**
  * Validate a candidate fillup against existing history for this user.
  * Call BEFORE addFillup. Returns hard errors and soft warnings.
+ * Now async because getFillups is async.
  */
-export function validateNewFillup(
+export async function validateNewFillup(
   userId: string,
   incoming: {
     vehicleId?:      string;
@@ -66,14 +87,13 @@ export function validateNewFillup(
     pricePerGallon:  number;
     odometerReading?: number;
   },
-): FillupValidationResult {
+): Promise<FillupValidationResult> {
   const errors:   string[] = [];
   const warnings: string[] = [];
 
-  const all       = getFillups(userId);
+  const all        = await getFillups(userId);
   const vehicleKey = incoming.vehicleId ?? incoming.vehicleName;
 
-  // Get all fillups for this specific vehicle, sorted oldest→newest
   const vehicleFillups = all
     .filter((f) => (f.vehicleId ?? f.vehicleName) === vehicleKey)
     .sort((a, b) => a.date.localeCompare(b.date) || a.createdAt.localeCompare(b.createdAt));
@@ -82,15 +102,13 @@ export function validateNewFillup(
     ? vehicleFillups[vehicleFillups.length - 1]
     : null;
 
-  // ── Hard errors ────────────────────────────────────────────────
-
-  // Future date
+  // ── Hard errors ──────────────────────────────────────────────────
   const today = new Date().toISOString().split('T')[0];
   if (incoming.date > today) {
     errors.push('Fill-up date cannot be in the future.');
   }
 
-  // ── Same-day duplicate ─────────────────────────────────────────
+  // ── Same-day duplicate ───────────────────────────────────────────
   const sameDayExists = vehicleFillups.some((f) => f.date === incoming.date);
   if (sameDayExists) {
     warnings.push(
@@ -99,11 +117,10 @@ export function validateNewFillup(
     );
   }
 
-  // ── Odometer checks ───────────────────────────────────────────
+  // ── Odometer checks ──────────────────────────────────────────────
   if (incoming.odometerReading != null && lastFillup?.odometerReading != null) {
     const miles = incoming.odometerReading - lastFillup.odometerReading;
 
-    // Odometer went backwards — hard error
     if (miles < 0) {
       errors.push(
         `Odometer reading (${incoming.odometerReading.toLocaleString()} mi) is lower than the ` +
@@ -112,7 +129,6 @@ export function validateNewFillup(
       );
     }
 
-    // Suspiciously small miles since last fill-up on a different date
     if (miles >= 0 && miles < 15 && incoming.date !== lastFillup.date) {
       warnings.push(
         `Only ${miles} mile${miles !== 1 ? 's' : ''} since the last fill-up — that seems too short for a separate visit. ` +
@@ -120,7 +136,6 @@ export function validateNewFillup(
       );
     }
 
-    // Suspiciously large jump
     if (miles > 6000) {
       warnings.push(
         `${miles.toLocaleString()} miles since the last fill-up is unusually high. ` +
@@ -128,7 +143,6 @@ export function validateNewFillup(
       );
     }
 
-    // Would-be MPG sanity check
     const wouldBeMpg = miles > 0 && lastFillup.gallonsPumped > 0
       ? miles / incoming.gallonsPumped
       : null;
@@ -147,7 +161,7 @@ export function validateNewFillup(
     }
   }
 
-  // ── Gallons sanity ────────────────────────────────────────────
+  // ── Gallons sanity ────────────────────────────────────────────────
   if (incoming.gallonsPumped > 60) {
     warnings.push(
       `${incoming.gallonsPumped} gallons is more than most personal vehicle tanks hold. ` +
@@ -155,7 +169,7 @@ export function validateNewFillup(
     );
   }
 
-  // ── Price sanity ─────────────────────────────────────────────
+  // ── Price sanity ──────────────────────────────────────────────────
   if (incoming.pricePerGallon < 1.5) {
     warnings.push(
       `$${incoming.pricePerGallon.toFixed(2)}/gal is unusually low for US fuel prices. ` +
@@ -175,22 +189,32 @@ export function validateNewFillup(
   };
 }
 
+// ── Write ───────────────────────────────────────────────────────────────────
+
 /** Add a new fillup record */
-export function addFillup(
+export async function addFillup(
   userId: string,
   data: Omit<Fillup, 'id' | 'userId' | 'totalCost' | 'createdAt'>,
-): Fillup {
-  const all = read();
-  const entry: Fillup = {
-    ...data,
-    id:        randomUUID(),
-    userId,
-    totalCost: Math.round(data.gallonsPumped * data.pricePerGallon * 100) / 100,
-    createdAt: new Date().toISOString(),
-  };
-  all.push(entry);
-  write(all);
-  return entry;
+): Promise<Fillup> {
+  const entry = await prisma.fillup.create({
+    data: {
+      id:              randomUUID(),
+      userId,
+      vehicleId:       data.vehicleId       ?? null,
+      vehicleName:     data.vehicleName,
+      date:            data.date,
+      gallonsPumped:   data.gallonsPumped,
+      pricePerGallon:  data.pricePerGallon,
+      totalCost:       Math.round(data.gallonsPumped * data.pricePerGallon * 100) / 100,
+      odometerReading: data.odometerReading  ?? null,
+      fuelLevelBefore: data.fuelLevelBefore  ?? null,
+      stationName:     data.stationName      ?? null,
+      notes:           data.notes            ?? null,
+      driverLabel:     data.driverLabel      ?? null,
+      createdAt:       new Date().toISOString(),
+    },
+  });
+  return fromPrisma(entry);
 }
 
 /** Fields that users are allowed to edit after logging */
@@ -198,52 +222,67 @@ export type FillupPatch = Partial<Pick<Fillup,
   'date' | 'gallonsPumped' | 'pricePerGallon' | 'odometerReading' | 'stationName' | 'notes' | 'driverLabel'
 >>;
 
-/**
- * Return the user's recently used station names, newest-first, deduplicated.
- * Used to power the "recent stations" picker in the fill-up logger.
- */
-export function getRecentStations(userId: string, limit = 10): string[] {
-  const fillups = getFillups(userId); // already sorted newest → oldest
-  const seen    = new Set<string>();
+/** Update an existing fillup (only if it belongs to the user). Returns updated record or null. */
+export async function updateFillup(
+  userId: string,
+  fillupId: string,
+  patch: FillupPatch,
+): Promise<Fillup | null> {
+  // Verify ownership
+  const existing = await prisma.fillup.findFirst({ where: { id: fillupId, userId } });
+  if (!existing) return null;
+
+  const gallons = patch.gallonsPumped ?? existing.gallonsPumped;
+  const price   = patch.pricePerGallon ?? existing.pricePerGallon;
+  const updated = await prisma.fillup.update({
+    where: { id: fillupId },
+    data: {
+      ...(patch.date            !== undefined && { date:            patch.date }),
+      ...(patch.gallonsPumped   !== undefined && { gallonsPumped:   patch.gallonsPumped }),
+      ...(patch.pricePerGallon  !== undefined && { pricePerGallon:  patch.pricePerGallon }),
+      ...(patch.odometerReading !== undefined && { odometerReading: patch.odometerReading ?? null }),
+      ...(patch.stationName     !== undefined && { stationName:     patch.stationName     ?? null }),
+      ...(patch.notes           !== undefined && { notes:           patch.notes           ?? null }),
+      ...(patch.driverLabel     !== undefined && { driverLabel:     patch.driverLabel     ?? null }),
+      totalCost: Math.round(gallons * price * 100) / 100,
+    },
+  });
+  return fromPrisma(updated);
+}
+
+/** Delete a fillup by id (only if it belongs to the user) */
+export async function deleteFillup(userId: string, fillupId: string): Promise<boolean> {
+  const result = await prisma.fillup.deleteMany({
+    where: { id: fillupId, userId },
+  });
+  return result.count > 0;
+}
+
+/** Return the user's recently used station names, newest-first, deduplicated. */
+export async function getRecentStations(userId: string, limit = 10): Promise<string[]> {
+  const rows = await prisma.fillup.findMany({
+    where:   { userId, stationName: { not: null } },
+    select:  { stationName: true, createdAt: true },
+    orderBy: { createdAt: 'desc' },
+  });
+  const seen   = new Set<string>();
   const result: string[] = [];
-  for (const f of fillups) {
-    if (f.stationName && !seen.has(f.stationName)) {
-      seen.add(f.stationName);
-      result.push(f.stationName);
-      if (result.length >= limit) break;
-    }
+  for (const r of rows) {
+    if (!r.stationName || seen.has(r.stationName)) continue;
+    seen.add(r.stationName);
+    result.push(r.stationName);
+    if (result.length >= limit) break;
   }
   return result;
 }
 
-/** Update an existing fillup (only if it belongs to the user). Returns the updated record or null. */
-export function updateFillup(userId: string, fillupId: string, patch: FillupPatch): Fillup | null {
-  const all = read();
-  const idx = all.findIndex((f) => f.id === fillupId && f.userId === userId);
-  if (idx === -1) return null;
-  const updated: Fillup = { ...all[idx], ...patch };
-  // Always recalculate totalCost from the (possibly updated) gallons and price
-  updated.totalCost = Math.round(updated.gallonsPumped * updated.pricePerGallon * 100) / 100;
-  all[idx] = updated;
-  write(all);
-  return updated;
-}
-
-/** Delete a fillup by id (only if it belongs to the user) */
-export function deleteFillup(userId: string, fillupId: string): boolean {
-  const all = read();
-  const next = all.filter((f) => !(f.id === fillupId && f.userId === userId));
-  if (next.length === all.length) return false;
-  write(next);
-  return true;
-}
+// ── Pure computation helpers (synchronous — work on already-fetched data) ──
 
 /**
  * Compute MPG for each fillup that has consecutive odometer readings.
  * Returns a map of fillupId → mpg (null if not calculable).
  */
 export function computeMpg(fillups: Fillup[]): Record<string, number | null> {
-  // Sort oldest→newest per vehicle to find consecutive pairs
   const byVehicle: Record<string, Fillup[]> = {};
   for (const f of fillups) {
     const key = f.vehicleId ?? f.vehicleName;

@@ -74,7 +74,7 @@ export async function GET(req: Request) {
   }
 
   // User's average fill-up size (personalized savings calc)
-  const fillups    = getFillups(userId(session));
+  const fillups    = await getFillups(userId(session));
   const avgGallons = fillups.length > 0
     ? Math.round((fillups.reduce((s, f) => s + f.gallonsPumped, 0) / fillups.length) * 10) / 10
     : 12;

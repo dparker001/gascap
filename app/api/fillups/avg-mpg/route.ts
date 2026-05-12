@@ -25,7 +25,7 @@ export async function GET() {
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const userId  = (session.user as { id?: string }).id ?? session.user?.email ?? '';
-  const fillups = getFillups(userId);
+  const fillups = await getFillups(userId);
   const mpgMap  = computeMpg(fillups);
 
   // Bucket valid MPG values by vehicleId

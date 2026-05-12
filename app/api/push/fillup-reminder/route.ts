@@ -73,7 +73,7 @@ export async function POST(req: Request) {
     }
 
     // Check last fill-up date
-    const fillups = getFillups(user.id).sort(
+    const fillups = (await getFillups(user.id)).sort(
       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
     );
     if (fillups.length === 0) { skipped++; continue; }

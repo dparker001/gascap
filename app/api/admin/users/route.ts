@@ -66,7 +66,10 @@ export async function GET(req: Request) {
     if (u.referralCode) codeToName.set(u.referralCode.toUpperCase(), u.name);
   }
 
-  const users = allUsers.map((u) => {
+  // Fetch fillup counts for all users in parallel
+  const fillupsByUser = await Promise.all(allUsers.map((u) => getFillups(u.id)));
+
+  const users = allUsers.map((u, idx) => {
     // Find users this person referred
     const referredUsers = u.referralCode
       ? allUsers
@@ -74,7 +77,7 @@ export async function GET(req: Request) {
           .map((r) => ({ name: r.name, email: r.email, joinedAt: r.createdAt }))
       : [];
 
-    const fillups     = getFillups(u.id);
+    const fillups     = fillupsByUser[idx];
     const fillupCount = fillups.length;
     const lastFillup  = fillups.length > 0
       ? fillups.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0].date

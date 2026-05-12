@@ -98,6 +98,26 @@ model Vehicle {
   user            User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+model Fillup {
+  id              String  @id
+  userId          String
+  vehicleId       String?
+  vehicleName     String
+  date            String   // YYYY-MM-DD
+  gallonsPumped   Float
+  pricePerGallon  Float
+  totalCost       Float
+  odometerReading Float?
+  fuelLevelBefore Float?
+  stationName     String?
+  notes           String?
+  driverLabel     String?
+  createdAt       String
+
+  @@index([userId])
+  @@index([userId, date])
+}
+
 model EmailLog {
   id        String  @id
   userId    String

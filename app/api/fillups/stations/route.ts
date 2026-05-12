@@ -18,6 +18,6 @@ export async function GET() {
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const stations = getRecentStations(userId(session));
+  const stations = await getRecentStations(userId(session));
   return NextResponse.json({ stations });
 }

@@ -35,7 +35,7 @@ export async function GET() {
   const isTrialUser        = user.isProTrial === true || user.plan === 'free';
 
   // ── Fill-up engagement ────────────────────────────────────────────────────
-  const fillups    = getFillups(uid);
+  const fillups    = await getFillups(uid);
   const fillupCount = fillups.length;
 
   let daysSinceLastFillup: number | null = null;

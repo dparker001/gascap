@@ -20,7 +20,7 @@ export async function GET() {
   // Calculate this month's spending from fillups
   const now   = new Date();
   const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  const fillups = getFillups(uid);
+  const fillups = await getFillups(uid);
   const spent = fillups
     .filter((f) => f.date.startsWith(month))
     .reduce((s, f) => s + f.totalCost, 0);

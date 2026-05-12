@@ -71,7 +71,7 @@ export async function POST(req: Request) {
   let contextBlock = '';
 
   if (userId) {
-    const fillups  = getFillups(userId);
+    const fillups  = await getFillups(userId);
     const mpgMap   = computeMpg(fillups);
     const stats    = getFillupStats(fillups, mpgMap);
     const goal     = getBudgetGoal(userId);
