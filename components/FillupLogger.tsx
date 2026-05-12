@@ -63,6 +63,14 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
   const [odometer,       setOdometer]       = useState(
     prefill.vehicleOdometer != null ? String(prefill.vehicleOdometer) : ''
   );
+  // Smart odometer estimate — computed from fill-up history
+  const [odomEst,        setOdomEst]        = useState<{
+    value:          number;
+    avgMilesPerDay: number;
+    confidence:     'high' | 'low';
+  } | null>(null);
+  // True while the odometer field still shows the auto-estimated value
+  const [odomIsEst,      setOdomIsEst]      = useState(false);
   const [stationName,    setStationName]    = useState('');
   const [recentStations, setRecentStations] = useState<string[]>([]);
   const [notes,          setNotes]          = useState('');
@@ -96,6 +104,39 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
       .then((r) => r.json())
       .then((d: { plan?: string }) => {
         if (d.plan) setLivePlan(d.plan);
+      })
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session]);
+
+  // Fetch smart odometer estimate from fill-up history
+  useEffect(() => {
+    if (!session || !prefill.vehicleId) return;
+    fetch(`/api/vehicles/odometer-estimate?vehicleId=${prefill.vehicleId}`)
+      .then((r) => r.json())
+      .then((d: {
+        confidence:       'none' | 'low' | 'high';
+        estimatedOdometer?: number;
+        avgMilesPerDay?:    number;
+      }) => {
+        if ((d.confidence === 'high' || d.confidence === 'low') && d.estimatedOdometer) {
+          setOdomEst({
+            value:          d.estimatedOdometer,
+            avgMilesPerDay: d.avgMilesPerDay ?? 0,
+            confidence:     d.confidence,
+          });
+          // Pre-fill the field only if user hasn't already typed something
+          setOdometer((prev) => {
+            // Don't overwrite a value the user may have entered manually;
+            // only set if still blank or equal to the vehicle baseline
+            const baseline = prefill.vehicleOdometer != null ? String(prefill.vehicleOdometer) : '';
+            if (prev === '' || prev === baseline) {
+              setOdomIsEst(true);
+              return String(d.estimatedOdometer);
+            }
+            return prev;
+          });
+        }
       })
       .catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -477,14 +518,42 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
         <div className="relative">
           <input
             type="number" inputMode="numeric"
-            className="input-field text-sm pr-10"
+            className={[
+              'input-field text-sm pr-10',
+              odomIsEst ? 'border-blue-300 bg-blue-50/40' : '',
+            ].join(' ')}
             placeholder="e.g. 42500 — skip if you don't track every fill-up"
             value={odometer}
             min="0" step="1"
-            onChange={(e) => setOdometer(e.target.value)}
+            onChange={(e) => {
+              setOdometer(e.target.value);
+              setOdomIsEst(false);   // user took over — clear the estimate flag
+            }}
           />
           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">mi</span>
         </div>
+        {/* Smart estimate hint — shown while the field holds the auto-filled value */}
+        {odomIsEst && odomEst && (
+          <div className="mt-1.5 flex items-center justify-between gap-2">
+            <p className="text-[10px] text-blue-600 leading-snug">
+              {odomEst.confidence === 'high' ? '🔮' : '〜'}{' '}
+              <span className="font-semibold">Smart estimate</span>{' '}
+              based on your avg{' '}
+              <span className="font-semibold">{odomEst.avgMilesPerDay.toLocaleString()} mi/day</span>
+              {odomEst.confidence === 'low' && (
+                <span className="text-blue-400"> · limited history</span>
+              )}
+            </p>
+            <button
+              type="button"
+              onClick={() => { setOdometer(''); setOdomIsEst(false); }}
+              className="text-[10px] font-bold text-slate-400 hover:text-red-400 transition-colors flex-shrink-0"
+              title="Clear estimate and enter manually"
+            >
+              Clear
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Gas Station */}
