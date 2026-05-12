@@ -28,6 +28,7 @@ import SavingsSummary         from '@/components/SavingsSummary';
 import AnnualProjection       from '@/components/AnnualProjection';
 import PastWinners            from '@/components/PastWinners';
 import WinnerBanner           from '@/components/WinnerBanner';
+import MigrationNotice        from '@/components/MigrationNotice';
 
 // ── JSON-LD Schema Markup ────────────────────────────────────────────────────
 
@@ -558,6 +559,9 @@ export default function Home() {
 
       {/* Gas price drop alert — Pro users */}
       <GasPriceAlertBanner />
+
+      {/* One-time notice for the May 12 JSON→PostgreSQL migration */}
+      <MigrationNotice />
 
       {/* Engagement nudge — fixed bottom toast, contextual, dismissible */}
       <EngagementNudge />
