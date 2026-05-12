@@ -1118,6 +1118,10 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
                 isSignedIn={!!session}
                 onSave={() => handleSaveTrip(result)}
                 planTier={planTier}
+                tankGalNum={parseFloat(tankGal) || 0}
+                mpgNum={parseFloat(mpg) || 0}
+                priceNum={parseFloat(pricePerGallon) || 0}
+                fuelPctNum={parseFloat(fuelPct) || 0}
               />
             )}
           </div>
@@ -1137,12 +1141,16 @@ function TripResultCard({
   routeDest,
   fuelStops = [],
   stopsLoading = false,
-  canSave     = false,
-  isSaved     = false,
-  isSaving    = false,
-  isSignedIn  = false,
+  canSave      = false,
+  isSaved      = false,
+  isSaving     = false,
+  isSignedIn   = false,
   onSave,
-  planTier    = 'free',
+  planTier     = 'free',
+  tankGalNum   = 0,
+  mpgNum       = 0,
+  priceNum     = 0,
+  fuelPctNum   = 0,
 }: {
   result:        TripResult;
   latitude?:     number;
@@ -1157,27 +1165,50 @@ function TripResultCard({
   isSignedIn?:   boolean;
   onSave?:       () => void;
   planTier?:     string;
+  tankGalNum?:   number;
+  mpgNum?:       number;
+  priceNum?:     number;
+  fuelPctNum?:   number;
 }) {
   const {
     totalMiles, totalGallons, totalTripCost,
-    currentGalOffset, currentCostOffset,
+    currentGalOffset,
     gallonsNeeded, fuelCost,
-    stops, stopsIfFull, tankRange, costPerPerson, milesPerDollar, tankfulls, summary,
+    stops, stopsIfFull, tankRange, costPerPerson, milesPerDollar,
   } = result;
-  const noFuelNeeded       = gallonsNeeded === 0;
-  const hasCurrentFuel     = currentGalOffset > 0;
-  // Warn if tank range is suspiciously short — likely a bad MPG or tank-size entry
-  const shortRangeWarning  = tankRange > 0 && tankRange < 150;
+
+  const noFuelNeeded      = gallonsNeeded === 0;
+  const shortRangeWarning = tankRange > 0 && tankRange < 150;
+
+  // ── Pre-trip top-off math ─────────────────────────────────────────────────
+  // How much to add at a station near home to reach a full tank
+  const currentGal       = tankGalNum * (fuelPctNum / 100);
+  const galToTopOff      = Math.max(0, tankGalNum - currentGal);
+  const costToTopOff     = Math.round(galToTopOff * priceNum * 100) / 100;
+  const pctDisplay       = fuelPctNum <= 0 ? 'Empty (0%)' : `${Math.round(fuelPctNum)}%`;
+  const needsPreTripFill = !noFuelNeeded && galToTopOff > 0.05; // >0.05 to skip rounding noise
+
+  // ── En-route refuel math ──────────────────────────────────────────────────
+  // After topping off at home, first road stop is ~tankRange miles out
+  const firstStopMile    = tankRange; // miles from origin after a full home fill
+  // Gallons needed at the road stop(s) vs. home fill
+  const galAtRoadStops   = Math.max(0, gallonsNeeded - galToTopOff);
+  const costAtRoadStops  = Math.round(galAtRoadStops * priceNum * 100) / 100;
+
+  // Origin city label for buttons / text
+  const originCity = routeOrigin
+    ? routeOrigin.split(',')[0].trim()
+    : 'your starting point';
 
   return (
     <div className="animate-result space-y-3 pt-1">
 
-      {/* Route badge — shown when origin/destination were used */}
+      {/* ── Route badge ──────────────────────────────────────────────────── */}
       {routeOrigin && routeDest && (
         <div className="flex items-center gap-2 bg-[#005F4A]/10 border border-[#005F4A]/20 rounded-2xl px-4 py-3">
           <span className="text-base flex-shrink-0">🗺️</span>
           <div className="min-w-0">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-[#005F4A]/70">Route</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-[#005F4A]/70">Your Route</p>
             <p className="text-sm font-black text-[#005F4A] truncate">
               {routeOrigin} → {routeDest}
             </p>
@@ -1185,140 +1216,284 @@ function TripResultCard({
         </div>
       )}
 
-      {/* Summary */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-4 py-3.5 flex items-start gap-3">
-        <span className="text-xl flex-shrink-0 mt-0.5">{noFuelNeeded ? '✅' : '🗺️'}</span>
-        <p className="text-sm text-slate-700 font-medium leading-relaxed">{summary}</p>
-      </div>
-
-      {/* Hero stats */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="bg-amber-500 rounded-2xl p-4">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-white/60">
-            {hasCurrentFuel ? 'Gas to Buy' : 'Total Fuel Cost'}
-          </p>
-          <p className="text-3xl font-black text-white leading-none mt-1">${fuelCost.toFixed(2)}</p>
-          {hasCurrentFuel && (
-            <p className="text-[10px] text-white/60 mt-1">of ${totalTripCost.toFixed(2)} full trip cost</p>
-          )}
-        </div>
-        <div className="bg-navy-700 rounded-2xl p-4">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-white/60">
-            {hasCurrentFuel ? 'Gallons to Buy' : 'Gallons Needed'}
-          </p>
-          <p className="text-3xl font-black text-white leading-none mt-1">
-            {gallonsNeeded.toFixed(2)}
-            <span className="text-base font-semibold text-white/60 ml-1">gal</span>
-          </p>
-          {hasCurrentFuel && (
-            <p className="text-[10px] text-white/60 mt-1">of {totalGallons.toFixed(2)} gal total</p>
-          )}
-        </div>
-      </div>
-
-      {/* Fuel breakdown (only shown when current fuel offsets the total) */}
-      {hasCurrentFuel && (
-        <div className="bg-slate-50 rounded-2xl border border-slate-100 px-4 py-3 space-y-2">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Fuel Breakdown</p>
-          <div className="flex justify-between text-sm">
-            <span className="text-slate-500">Total fuel for trip</span>
-            <span className="font-bold text-slate-700">{totalGallons.toFixed(2)} gal · ${totalTripCost.toFixed(2)}</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-slate-500">Fuel already in tank</span>
-            <span className="font-bold text-green-600">− {currentGalOffset.toFixed(2)} gal · ${currentCostOffset.toFixed(2)}</span>
-          </div>
-          <div className="border-t border-slate-200 pt-2 flex justify-between text-sm">
-            <span className="font-black text-slate-700">Gas to buy</span>
-            <span className="font-black text-amber-600">{gallonsNeeded.toFixed(2)} gal · ${fuelCost.toFixed(2)}</span>
+      {/* ── Already-have-enough-fuel case ────────────────────────────────── */}
+      {noFuelNeeded && (
+        <div className="bg-emerald-50 border border-emerald-200 rounded-2xl px-4 py-4 flex items-start gap-3">
+          <span className="text-2xl flex-shrink-0">✅</span>
+          <div>
+            <p className="text-sm font-black text-emerald-800 leading-snug">
+              You have enough fuel for the whole trip!
+            </p>
+            <p className="text-xs text-emerald-700 mt-1 leading-relaxed">
+              This {totalMiles.toLocaleString()}-mile trip uses {totalGallons.toFixed(2)} gal total —
+              you already have that covered. No fill-ups needed.
+            </p>
           </div>
         </div>
       )}
 
-      {/* Secondary stats grid */}
-      <div className="grid grid-cols-2 gap-3">
-        <SecStat
-          label="Refuel stops"
-          value={stops === 0 ? 'None needed' : `${stops} on the road`}
-          hint={stops > 0 ? 'stops while driving (not pre-trip)' : undefined}
-        />
-        <SecStat label="Tank range"      value={`${tankRange} mi`}           hint="per full tank" />
-        <SecStat label="Miles per $1"    value={`${milesPerDollar} mi`} />
-        <SecStat label="Tank fill-ups"   value={`${tankfulls}×`} />
-        {costPerPerson != null && (
-          <SecStat label="Per person"    value={`$${costPerPerson.toFixed(2)}`} accent />
-        )}
-      </div>
+      {/* ── TRIP OVERVIEW BANNER (shown when fuel is needed) ─────────────── */}
+      {!noFuelNeeded && (
+        <div className="rounded-2xl bg-[#1E2D4A] px-4 py-4">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-white/40 mb-2">
+            Total Trip Fuel Usage
+          </p>
+          <div className="flex items-end gap-3">
+            <div>
+              <p className="text-2xl font-black text-amber-400 leading-none">
+                {totalGallons.toFixed(2)} gal
+              </p>
+              <p className="text-[10px] text-white/40 mt-0.5">
+                full trip · {totalMiles.toLocaleString()} miles
+              </p>
+            </div>
+            <div className="text-white/30 text-xl font-light pb-0.5">=</div>
+            <div>
+              <p className="text-2xl font-black text-white leading-none">
+                ${totalTripCost.toFixed(2)}
+              </p>
+              <p className="text-[10px] text-white/40 mt-0.5">
+                at ${priceNum.toFixed(3)}/gal
+              </p>
+            </div>
+          </div>
+          {currentGalOffset > 0 && (
+            <p className="text-[10px] text-white/30 mt-2 leading-relaxed">
+              Your tank already has {currentGalOffset.toFixed(2)} gal (~${(currentGalOffset * priceNum).toFixed(2)}) covered.
+            </p>
+          )}
+        </div>
+      )}
 
-      {/* Short tank-range warning — suggests user verify MPG / tank size */}
+      {/* ── SHORT RANGE WARNING ──────────────────────────────────────────── */}
       {shortRangeWarning && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 flex items-start gap-2">
           <span className="text-sm flex-shrink-0">⚠️</span>
           <p className="text-xs text-amber-800 font-medium leading-snug">
             <span className="font-black">Check your inputs:</span>{' '}
-            Your vehicle's calculated range is only {tankRange} mi per full tank —
-            that's unusually short. Please verify your <span className="font-bold">MPG</span> and{' '}
-            <span className="font-bold">tank size</span> values are correct.
+            Your vehicle's full-tank range is only {tankRange} miles — that's unusually short.
+            Please verify your <span className="font-bold">MPG</span> and{' '}
+            <span className="font-bold">tank size</span> are correct.
           </p>
         </div>
       )}
 
-      {/* Pre-trip top-off tip */}
-      {stops > 0 && !shortRangeWarning && (
-        <div className="bg-blue-50 border border-blue-100 rounded-xl px-3 py-2.5 flex items-start gap-2">
-          <span className="text-sm flex-shrink-0">⛽</span>
-          <p className="text-xs text-blue-700 font-medium leading-snug">
-            <span className="font-black">Pre-trip tip:</span>{' '}
-            {stopsIfFull < stops
-              ? `Topping off at your local station before leaving reduces your road stops from ${stops} to ${stopsIfFull}. That's fewer interruptions on the highway.`
-              : 'Top off at your local station before leaving to start with maximum range and minimize highway stops.'}
+      {/* ── STEP-BY-STEP FUEL PLAN ───────────────────────────────────────── */}
+      {!noFuelNeeded && !shortRangeWarning && (
+        <div className="space-y-2">
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">
+            Your Fuel Plan — Step by Step
           </p>
-        </div>
-      )}
 
-      {/* Fuel stops from Google Places — shown when route-based search returned results */}
-      {(stopsLoading || fuelStops.length > 0) && stops > 0 && (
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-4 py-4">
-          <p className="section-eyebrow">⛽ Gas Stations Near Your Refuel Stop</p>
-          {stopsLoading ? (
-            <div className="flex items-center gap-2 text-xs text-slate-400 py-2">
-              <span className="inline-block w-3 h-3 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
-              Searching for stations…
-            </div>
-          ) : (
-            <div className="space-y-2 mt-2">
-              {fuelStops.map((stop, i) => (
-                <div key={stop.placeId ?? i}
-                  className="flex items-start justify-between gap-3 py-2 border-b border-slate-50 last:border-0">
-                  <div className="min-w-0">
-                    <p className="text-sm font-bold text-slate-700 truncate">{stop.name}</p>
-                    {stop.address && (
-                      <p className="text-[10px] text-slate-400 truncate">{stop.address}</p>
+          {/* STEP 1 — Pre-trip fill-up near home */}
+          {needsPreTripFill && (
+            <div className="rounded-2xl border-2 border-blue-200 bg-blue-50 overflow-hidden">
+              {/* Step header */}
+              <div className="flex items-center gap-2.5 px-4 py-2.5 bg-blue-600">
+                <span className="flex-shrink-0 w-5 h-5 rounded-full bg-white text-blue-600 text-[10px] font-black flex items-center justify-center leading-none">
+                  1
+                </span>
+                <p className="text-xs font-black text-white">Before You Leave — Fill Up Near Home</p>
+              </div>
+              {/* Step body */}
+              <div className="px-4 py-3 space-y-2.5">
+                {/* Current tank status */}
+                <div className="flex items-center gap-2">
+                  <span className="text-base flex-shrink-0">🔋</span>
+                  <p className="text-xs text-blue-800 leading-relaxed">
+                    <span className="font-black">Your tank is at {pctDisplay}</span>
+                    {tankGalNum > 0 && (
+                      <> (~{currentGal.toFixed(1)} gal of {tankGalNum} gal tank)</>
                     )}
-                    {stop.rating && (
-                      <p className="text-[10px] text-amber-600 font-medium">★ {stop.rating.toFixed(1)}</p>
-                    )}
-                  </div>
-                  <a
-                    href={`https://www.google.com/maps/dir/?api=1&destination=${stop.latitude},${stop.longitude}&travelmode=driving`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={() => {
-                      try { sessionStorage.setItem('gc_trip_nav_away', '1'); } catch { /* ignore */ }
-                    }}
-                    className="flex-shrink-0 text-[11px] font-bold text-[#1a73e8] hover:underline whitespace-nowrap"
-                    aria-label={`Navigate to ${stop.name} in Google Maps`}
-                  >
-                    Navigate →
-                  </a>
+                    {' '}— not enough to complete the trip without stopping.
+                  </p>
                 </div>
-              ))}
+                {/* Action */}
+                <div className="bg-white rounded-xl border border-blue-100 px-3 py-3">
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-1.5">
+                    ⛽ Stop at a station near {originCity} and add:
+                  </p>
+                  <div className="flex items-center gap-4">
+                    <div>
+                      <p className="text-xl font-black text-blue-700 leading-none">
+                        {galToTopOff.toFixed(2)} gal
+                      </p>
+                      <p className="text-[9px] text-slate-400 mt-0.5">to top off your tank</p>
+                    </div>
+                    <div className="text-slate-300 text-lg font-light">≈</div>
+                    <div>
+                      <p className="text-xl font-black text-slate-700 leading-none">
+                        ${costToTopOff.toFixed(2)}
+                      </p>
+                      <p className="text-[9px] text-slate-400 mt-0.5">at ${priceNum.toFixed(3)}/gal</p>
+                    </div>
+                  </div>
+                </div>
+                {stopsIfFull < stops && (
+                  <p className="text-[10px] text-blue-700 leading-relaxed">
+                    💡 Topping off now reduces your road stops from{' '}
+                    <span className="font-black">{stops}</span> to{' '}
+                    <span className="font-black">{stopsIfFull}</span> — fewer interruptions on the highway.
+                  </p>
+                )}
+                <p className="text-[10px] text-blue-600 leading-relaxed">
+                  After this fill, your full tank gives you a range of{' '}
+                  <span className="font-black">{tankRange.toLocaleString()} miles</span> — enough to reach{' '}
+                  {stopsIfFull === 0 ? 'your destination' : `mile ${firstStopMile.toLocaleString()} before your next stop`}.
+                </p>
+              </div>
             </div>
           )}
+
+          {/* STEP 2+ — En-route refuel stop(s) */}
+          {stopsIfFull > 0 && (
+            <div className="rounded-2xl border-2 border-amber-200 bg-amber-50 overflow-hidden">
+              {/* Step header */}
+              <div className="flex items-center gap-2.5 px-4 py-2.5 bg-amber-500">
+                <span className="flex-shrink-0 w-5 h-5 rounded-full bg-white text-amber-600 text-[10px] font-black flex items-center justify-center leading-none">
+                  {needsPreTripFill ? '2' : '1'}
+                </span>
+                <p className="text-xs font-black text-white">
+                  On the Road — {stopsIfFull === 1 ? '1 Refuel Stop' : `${stopsIfFull} Refuel Stops`}
+                </p>
+              </div>
+              {/* Step body */}
+              <div className="px-4 py-3 space-y-2.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-base flex-shrink-0">📍</span>
+                  <p className="text-xs text-amber-900 leading-relaxed">
+                    <span className="font-black">
+                      Plan to stop around mile {firstStopMile.toLocaleString()}
+                    </span>{' '}
+                    from your starting point
+                    {mpgNum > 0 && tankGalNum > 0 && (
+                      <> (roughly {Math.round(firstStopMile / (mpgNum * 55 / 60))} hours into your drive)</>
+                    )}
+                    .
+                  </p>
+                </div>
+                {galAtRoadStops > 0.1 && priceNum > 0 && (
+                  <div className="bg-white rounded-xl border border-amber-100 px-3 py-3">
+                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-1.5">
+                      ⛽ Add at your highway stop{stopsIfFull > 1 ? 's' : ''}:
+                    </p>
+                    <div className="flex items-center gap-4">
+                      <div>
+                        <p className="text-xl font-black text-amber-700 leading-none">
+                          {galAtRoadStops.toFixed(2)} gal
+                        </p>
+                        <p className="text-[9px] text-slate-400 mt-0.5">to reach your destination</p>
+                      </div>
+                      <div className="text-slate-300 text-lg font-light">≈</div>
+                      <div>
+                        <p className="text-xl font-black text-slate-700 leading-none">
+                          ${costAtRoadStops.toFixed(2)}
+                        </p>
+                        <p className="text-[9px] text-slate-400 mt-0.5">at ${priceNum.toFixed(3)}/gal</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Gas stations for road stop */}
+                {(stopsLoading || fuelStops.length > 0) && (
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-black text-amber-800 uppercase tracking-wide">
+                      ⛽ Gas Stations Around Mile {firstStopMile.toLocaleString()}
+                      {routeOrigin && (
+                        <span className="font-normal normal-case text-amber-600">
+                          {' '}· approx. {firstStopMile.toLocaleString()} mi from {originCity}
+                        </span>
+                      )}
+                    </p>
+                    {stopsLoading ? (
+                      <div className="flex items-center gap-2 text-xs text-amber-700 py-1">
+                        <span className="inline-block w-3 h-3 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+                        Searching for nearby stations…
+                      </div>
+                    ) : (
+                      <div className="space-y-1">
+                        {fuelStops.map((stop, i) => (
+                          <div
+                            key={stop.placeId ?? i}
+                            className="bg-white rounded-xl border border-amber-100 px-3 py-2.5 flex items-start justify-between gap-3"
+                          >
+                            <div className="min-w-0">
+                              <p className="text-xs font-bold text-slate-700 truncate">{stop.name}</p>
+                              {stop.address && (
+                                <p className="text-[10px] text-slate-400 truncate mt-0.5">{stop.address}</p>
+                              )}
+                              <div className="flex items-center gap-2 mt-0.5">
+                                {stop.rating && (
+                                  <p className="text-[10px] text-amber-600 font-bold">★ {stop.rating.toFixed(1)}</p>
+                                )}
+                                <p className="text-[10px] text-slate-400">
+                                  ~{firstStopMile.toLocaleString()} mi from {originCity}
+                                </p>
+                              </div>
+                            </div>
+                            <a
+                              href={`https://www.google.com/maps/dir/?api=1&destination=${stop.latitude},${stop.longitude}&travelmode=driving`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={() => {
+                                try { sessionStorage.setItem('gc_trip_nav_away', '1'); } catch { /* ignore */ }
+                              }}
+                              className="flex-shrink-0 text-[11px] font-bold text-[#1a73e8] hover:underline whitespace-nowrap mt-0.5"
+                              aria-label={`Navigate to ${stop.name} in Google Maps`}
+                            >
+                              Navigate →
+                            </a>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* TOTAL COST SUMMARY */}
+          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3.5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-wide">Total Gas to Buy</p>
+                <p className="text-2xl font-black text-amber-600 leading-none mt-0.5">
+                  ${fuelCost.toFixed(2)}
+                </p>
+                <p className="text-[10px] text-slate-400 mt-0.5">
+                  {gallonsNeeded.toFixed(2)} gal across all stops · ${priceNum.toFixed(3)}/gal
+                </p>
+              </div>
+              {costPerPerson != null && (
+                <div className="text-right border-l border-slate-100 pl-4">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-wide">Per Person</p>
+                  <p className="text-xl font-black text-slate-700 leading-none mt-0.5">
+                    ${costPerPerson.toFixed(2)}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
-      {/* Save this trip */}
+      {/* ── QUICK STATS row (range + efficiency) ─────────────────────────── */}
+      {!noFuelNeeded && (
+        <div className="grid grid-cols-2 gap-2">
+          <div className="bg-slate-50 rounded-xl border border-slate-100 px-3 py-2.5 text-center">
+            <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Full-Tank Range</p>
+            <p className="text-base font-black text-navy-700 mt-0.5">{tankRange} mi</p>
+          </div>
+          <div className="bg-slate-50 rounded-xl border border-slate-100 px-3 py-2.5 text-center">
+            <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Miles per $1</p>
+            <p className="text-base font-black text-navy-700 mt-0.5">{milesPerDollar} mi</p>
+          </div>
+        </div>
+      )}
+
+      {/* ── Save this trip ────────────────────────────────────────────────── */}
       {isSignedIn && (
         canSave ? (
           <button
@@ -1344,7 +1519,6 @@ function TripResultCard({
             )}
           </button>
         ) : (
-          /* Free user — show locked save button */
           <Link
             href="/upgrade"
             onClick={() => trackLockedFeatureShown('save_trip', planTier)}
@@ -1357,7 +1531,7 @@ function TripResultCard({
         )
       )}
 
-      {/* Navigation handoffs — clicking any link here sets the scroll-restore flag */}
+      {/* ── Navigation handoffs ───────────────────────────────────────────── */}
       {!noFuelNeeded && (
         // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
         <div
@@ -1381,18 +1555,6 @@ function TripResultCard({
           />
         </div>
       )}
-    </div>
-  );
-}
-
-function SecStat({ label, value, accent, hint }: { label: string; value: string; accent?: boolean; hint?: string }) {
-  return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
-      <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{label}</p>
-      <p className={`text-xl font-bold leading-tight mt-0.5 ${accent ? 'text-amber-600' : 'text-navy-700'}`}>
-        {value}
-      </p>
-      {hint && <p className="text-[9px] text-slate-400 mt-0.5 leading-tight">{hint}</p>}
     </div>
   );
 }
