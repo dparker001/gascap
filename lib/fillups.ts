@@ -226,7 +226,7 @@ export async function addFillup(
 
 /** Fields that users are allowed to edit after logging */
 export type FillupPatch = Partial<Pick<Fillup,
-  'date' | 'gallonsPumped' | 'pricePerGallon' | 'odometerReading' | 'stationName' | 'notes' | 'driverLabel' | 'fuelGrade'
+  'date' | 'gallonsPumped' | 'pricePerGallon' | 'odometerReading' | 'stationName' | 'notes' | 'driverLabel' | 'fuelGrade' | 'receiptThumb'
 >>;
 
 /** Update an existing fillup (only if it belongs to the user). Returns updated record or null. */
@@ -252,6 +252,7 @@ export async function updateFillup(
       ...(patch.notes           !== undefined && { notes:           patch.notes           ?? null }),
       ...(patch.driverLabel     !== undefined && { driverLabel:     patch.driverLabel     ?? null }),
       ...(patch.fuelGrade       !== undefined && { fuelGrade:       patch.fuelGrade       ?? null }),
+      ...(patch.receiptThumb    !== undefined && { receiptThumb:    patch.receiptThumb    ?? null }),
       totalCost: Math.round(gallons * price * 100) / 100,
     },
   });

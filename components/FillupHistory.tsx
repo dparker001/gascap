@@ -1,7 +1,7 @@
 'use client';
 
 import { useSession } from 'next-auth/react';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import type { Fillup } from '@/lib/fillups';
 import UpgradeNudge from './UpgradeNudge';
 
@@ -24,6 +24,8 @@ interface FillupHistoryProps {
   refreshKey?: number;  // increment to force a reload
 }
 
+type EditFuelGrade = 'regular' | 'midgrade' | 'premium' | 'diesel' | 'e85' | '';
+
 interface EditDraft {
   date:            string;
   gallonsPumped:   string;
@@ -31,6 +33,39 @@ interface EditDraft {
   odometerReading: string;
   stationName:     string;
   notes:           string;
+  fuelGrade:       EditFuelGrade;
+  receiptThumb:    string;   // base64 data URL or ''
+}
+
+const EDIT_FUEL_GRADES: { value: EditFuelGrade; label: string; sub: string }[] = [
+  { value: 'regular',  label: 'Regular',  sub: '87'     },
+  { value: 'midgrade', label: 'Mid-Grade', sub: '89'     },
+  { value: 'premium',  label: 'Premium',   sub: '91–93'  },
+  { value: 'diesel',   label: 'Diesel',    sub: 'diesel' },
+];
+
+/** Compress an image File to a small JPEG thumbnail (max 320px, 0.55q) */
+async function compressEditImage(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const MAX = 320;
+      const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+      const w = Math.round(img.width  * scale);
+      const h = Math.round(img.height * scale);
+      const canvas = document.createElement('canvas');
+      canvas.width  = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) { reject(new Error('canvas unavailable')); return; }
+      ctx.drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL('image/jpeg', 0.55));
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
 }
 
 type FilterMode = 'all' | 'this-month' | 'last-3' | 'this-year' | 'custom';
@@ -106,7 +141,10 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
   const [editDraft,       setEditDraft]       = useState<EditDraft | null>(null);
   const [editSaving,      setEditSaving]      = useState(false);
   const [editError,       setEditError]       = useState('');
+  const [editImgLoading,  setEditImgLoading]  = useState(false);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const editCameraRef  = useRef<HTMLInputElement>(null);
+  const editGalleryRef = useRef<HTMLInputElement>(null);
 
   // ── Filter + month expansion state ─────────────────────────────────────────
   const [filterMode,     setFilterMode]     = useState<FilterMode>('all');
@@ -222,6 +260,8 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
       odometerReading: f.odometerReading != null ? String(f.odometerReading) : '',
       stationName:     f.stationName ?? '',
       notes:           f.notes ?? '',
+      fuelGrade:       (f.fuelGrade ?? '') as EditFuelGrade,
+      receiptThumb:    f.receiptThumb ?? '',
     });
   }
 
@@ -244,9 +284,11 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
     if (editDraft.odometerReading !== '')
       body.odometerReading = parseInt(editDraft.odometerReading, 10);
     // Send stationName: include even when empty so the user can clear it
-    body.stationName = editDraft.stationName.trim() || undefined;
+    body.stationName  = editDraft.stationName.trim() || undefined;
     if (editDraft.notes !== '')
       body.notes = editDraft.notes;
+    body.fuelGrade    = editDraft.fuelGrade    || undefined;
+    body.receiptThumb = editDraft.receiptThumb || undefined;
     try {
       const res = await fetch('/api/fillups', {
         method:  'PATCH',
@@ -628,13 +670,136 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
                                 Notes <span className="font-normal text-slate-300">(opt)</span>
                               </label>
                               <input
-                                type="text" maxLength={100}
+                                type="text" maxLength={160}
                                 value={editDraft.notes}
-                                placeholder="Any other notes…"
+                                placeholder="Address, notes, anything else…"
                                 onChange={(e) => setEditDraft((d) => d ? { ...d, notes: e.target.value } : d)}
                                 className="w-full text-xs px-2.5 py-2 border border-slate-200 rounded-xl
                                            focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white"
                               />
+                            </div>
+
+                            {/* Fuel Grade */}
+                            <div>
+                              <label className="block text-[10px] font-semibold text-slate-500 mb-1">
+                                Fuel Grade <span className="font-normal text-slate-300">(opt)</span>
+                              </label>
+                              <div className="grid grid-cols-4 gap-1.5">
+                                {EDIT_FUEL_GRADES.map((g) => (
+                                  <button
+                                    key={g.value}
+                                    type="button"
+                                    onClick={() => setEditDraft((d) => d ? { ...d, fuelGrade: d.fuelGrade === g.value ? '' : g.value } : d)}
+                                    className={[
+                                      'flex flex-col items-center justify-center rounded-xl border-2 py-1.5 transition-all',
+                                      editDraft.fuelGrade === g.value
+                                        ? 'border-amber-500 bg-amber-50 text-amber-700'
+                                        : 'border-slate-200 bg-white text-slate-500 hover:border-amber-300',
+                                    ].join(' ')}
+                                  >
+                                    <span className="text-[10px] font-black leading-tight">{g.label}</span>
+                                    <span className="text-[9px] text-slate-400 leading-tight">{g.sub}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Receipt Photo */}
+                            <div>
+                              <label className="block text-[10px] font-semibold text-slate-500 mb-1.5">
+                                Receipt Photo <span className="font-normal text-slate-300">(opt)</span>
+                              </label>
+
+                              {/* Hidden file inputs */}
+                              <input
+                                type="file" accept="image/*" capture="environment"
+                                ref={editCameraRef} className="hidden"
+                                onChange={async (e) => {
+                                  const file = e.target.files?.[0];
+                                  if (!file) return;
+                                  e.target.value = '';
+                                  setEditImgLoading(true);
+                                  try {
+                                    const thumb = await compressEditImage(file);
+                                    setEditDraft((d) => d ? { ...d, receiptThumb: thumb } : d);
+                                  } catch { /* ignore */ }
+                                  finally { setEditImgLoading(false); }
+                                }}
+                              />
+                              <input
+                                type="file" accept="image/*"
+                                ref={editGalleryRef} className="hidden"
+                                onChange={async (e) => {
+                                  const file = e.target.files?.[0];
+                                  if (!file) return;
+                                  e.target.value = '';
+                                  setEditImgLoading(true);
+                                  try {
+                                    const thumb = await compressEditImage(file);
+                                    setEditDraft((d) => d ? { ...d, receiptThumb: thumb } : d);
+                                  } catch { /* ignore */ }
+                                  finally { setEditImgLoading(false); }
+                                }}
+                              />
+
+                              {editDraft.receiptThumb ? (
+                                /* Existing or newly-added thumbnail */
+                                <div className="flex items-start gap-3">
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img
+                                    src={editDraft.receiptThumb}
+                                    alt="Receipt"
+                                    className="w-14 h-20 object-cover rounded-lg border border-slate-200 shadow-sm flex-shrink-0"
+                                  />
+                                  <div className="flex flex-col gap-1.5 pt-0.5">
+                                    <button
+                                      type="button"
+                                      onClick={() => editCameraRef.current?.click()}
+                                      disabled={editImgLoading}
+                                      className="text-[10px] font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 hover:border-amber-300 hover:text-amber-700 transition-colors disabled:opacity-50"
+                                    >
+                                      📷 {editImgLoading ? 'Loading…' : 'Replace (Camera)'}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => editGalleryRef.current?.click()}
+                                      disabled={editImgLoading}
+                                      className="text-[10px] font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 hover:border-amber-300 hover:text-amber-700 transition-colors disabled:opacity-50"
+                                    >
+                                      🖼️ Replace (Photos)
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setEditDraft((d) => d ? { ...d, receiptThumb: '' } : d)}
+                                      className="text-[10px] font-bold text-red-500 bg-red-50 border border-red-100 rounded-lg px-2.5 py-1.5 hover:bg-red-100 transition-colors"
+                                    >
+                                      🗑️ Remove
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : (
+                                /* No receipt yet */
+                                <div className="flex gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => editCameraRef.current?.click()}
+                                    disabled={editImgLoading}
+                                    className="flex items-center gap-1.5 text-[10px] font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 hover:border-amber-300 hover:text-amber-700 transition-colors disabled:opacity-50"
+                                  >
+                                    <span>{editImgLoading ? '🔄' : '📷'}</span>
+                                    <span>{editImgLoading ? 'Loading…' : 'Use Camera'}</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => editGalleryRef.current?.click()}
+                                    disabled={editImgLoading}
+                                    className="flex items-center gap-1.5 text-[10px] font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 hover:border-amber-300 hover:text-amber-700 transition-colors disabled:opacity-50"
+                                  >
+                                    <span>🖼️</span>
+                                    <span>Upload from Photos</span>
+                                  </button>
+                                </div>
+                              )}
                             </div>
 
                             {editError && (
