@@ -77,6 +77,9 @@ model User {
   garageLastOpenedDate     String?
   fleetCompanyName         String?
   fleetLogoUrl             String?
+  // Daily bonus gift box — awarded once per calendar day (3–15 entries, random)
+  dailyBonusDays           String[]  @default([])   // YYYY-MM-DD dates claimed (idempotency)
+  dailyBonusEntries        Int       @default(0)     // running total across all time
   vehicles                 Vehicle[]
 }
 

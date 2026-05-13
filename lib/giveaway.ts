@@ -145,7 +145,8 @@ export interface EntrantRow {
   garageBonusEntries:          number; // +10/day for tapping to open garage (Pro+)
   verifyReminderBonusEntries:  number; // +25 one-time for verifying email within 7 days of reminder
   phoneBonusEntries:           number; // +25 one-time for adding phone number in settings
-  entryCount:      number;        // baseEntries + streakBonus + earlyUpgrade + garageBonus + verifyReminderBonus + phoneBonus
+  dailyBonusEntries:           number; // 3–15/day from the daily gift box badge
+  entryCount:      number;        // baseEntries + streakBonus + earlyUpgrade + garageBonus + verifyReminderBonus + phoneBonus + dailyBonus
   alwaysEligible:  boolean;       // true for Ambassador tier holders — skip win restrictions
 }
 
@@ -236,6 +237,7 @@ export async function getEligibleEntrants(month: string): Promise<EntrantRow[]> 
       garageBonusDays: true,
       verifyReminderBonusEntries: true,
       phoneBonusEntries: true,
+      dailyBonusEntries: true,
     },
   });
 
@@ -253,6 +255,7 @@ export async function getEligibleEntrants(month: string): Promise<EntrantRow[]> 
       const garageBonusEntries         = garageDaysThisMonth * 10;
       const verifyReminderBonusEntries = u.verifyReminderBonusEntries ?? 0;
       const phoneBonusEntries          = u.phoneBonusEntries          ?? 0;
+      const dailyBonusEntries          = u.dailyBonusEntries          ?? 0;
       return {
         userId:          u.id,
         name:            u.name,
@@ -268,7 +271,8 @@ export async function getEligibleEntrants(month: string): Promise<EntrantRow[]> 
         garageBonusEntries,
         verifyReminderBonusEntries,
         phoneBonusEntries,
-        entryCount:      baseEntries + streakBonus + bonusEntries + garageBonusEntries + verifyReminderBonusEntries + phoneBonusEntries,
+        dailyBonusEntries,
+        entryCount:      baseEntries + streakBonus + bonusEntries + garageBonusEntries + verifyReminderBonusEntries + phoneBonusEntries + dailyBonusEntries,
         alwaysEligible:  isAlwaysEligible(refCount),
       };
     })
