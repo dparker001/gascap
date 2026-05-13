@@ -8,6 +8,7 @@ import { NextResponse }     from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions }      from '@/lib/auth';
 import { prisma }           from '@/lib/prisma';
+import { maskWinnerName }   from '@/lib/giveaway';
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -23,11 +24,11 @@ export async function GET() {
 
   if (!draw) return NextResponse.json({ draw: null });
 
-  // Return safe subset — no full email or internal IDs needed client-side
+  // Return safe subset — name masked to "First L.", no email or internal IDs
   return NextResponse.json({
     draw: {
       month:      draw.month,
-      winnerName: draw.winnerName,
+      winnerName: maskWinnerName(draw.winnerName),
       drawnAt:    draw.drawnAt,
     },
   });

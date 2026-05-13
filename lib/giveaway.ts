@@ -15,6 +15,17 @@ import { randomUUID } from 'crypto';
 import { prisma } from '@/lib/prisma';
 import { getAmbassadorTier, ambassadorEntryMultiplier, isAlwaysEligible, type AmbassadorTier } from '@/lib/ambassador';
 
+/**
+ * Mask a winner's full name to "First L." for all user-facing surfaces.
+ * Admin routes should use the raw name from the DB directly.
+ * e.g. "John Doe" → "John D."  |  "Maria Garcia Lopez" → "Maria L."
+ */
+export function maskWinnerName(fullName: string): string {
+  const parts = fullName.trim().split(/\s+/);
+  if (parts.length < 2) return parts[0] ?? fullName;
+  return `${parts[0]} ${parts[parts.length - 1].charAt(0).toUpperCase()}.`;
+}
+
 // ─── Prize Tiers ─────────────────────────────────────────────────────────────
 
 export interface PrizeTier {

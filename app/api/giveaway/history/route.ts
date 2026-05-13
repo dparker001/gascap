@@ -6,7 +6,7 @@
 import { NextResponse }  from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions }   from '@/lib/auth';
-import { getDrawHistory } from '@/lib/giveaway';
+import { getDrawHistory, maskWinnerName } from '@/lib/giveaway';
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -14,19 +14,13 @@ export async function GET() {
 
   const draws = await getDrawHistory();
 
-  // Strip email and truncate name to "First L." — protects winner privacy
-  const safe = draws.map((d) => {
-    const parts = d.winnerName.trim().split(/\s+/);
-    const masked = parts.length >= 2
-      ? `${parts[0]} ${parts[parts.length - 1].charAt(0).toUpperCase()}.`
-      : parts[0] ?? d.winnerName;
-    return {
-      id:         d.id,
-      month:      d.month,
-      winnerName: masked,
-      drawnAt:    d.drawnAt,
-    };
-  });
+  // Strip email and mask name to "First L." — protects winner privacy
+  const safe = draws.map((d) => ({
+    id:         d.id,
+    month:      d.month,
+    winnerName: maskWinnerName(d.winnerName),
+    drawnAt:    d.drawnAt,
+  }));
 
   return NextResponse.json({ draws: safe });
 }
