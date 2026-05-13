@@ -115,12 +115,13 @@ export const authOptions: NextAuthOptions = {
 
           // Override NextAuth's Google user ID with our DB user ID so the JWT
           // callback picks it up correctly in its `if (user)` branch.
-          user.id                                          = dbUser.id;
-          (user as Record<string, unknown>).plan           = dbUser.plan;
-          (user as Record<string, unknown>).emailVerified  = true;
-          (user as Record<string, unknown>).isProTrial     = dbUser.isProTrial ?? false;
-          (user as Record<string, unknown>).trialExpiresAt = dbUser.trialExpiresAt ?? null;
-          (user as Record<string, unknown>).createdAt      = dbUser.createdAt;
+          user.id = dbUser.id;
+          const u = user as unknown as Record<string, unknown>;
+          u.plan           = dbUser.plan;
+          u.emailVerified  = true;
+          u.isProTrial     = dbUser.isProTrial ?? false;
+          u.trialExpiresAt = dbUser.trialExpiresAt ?? null;
+          u.createdAt      = dbUser.createdAt;
         } catch (err) {
           console.error('[GasCap] Google signIn callback error:', err);
           return false;
