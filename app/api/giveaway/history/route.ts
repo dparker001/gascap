@@ -14,13 +14,19 @@ export async function GET() {
 
   const draws = await getDrawHistory();
 
-  // Strip email — only expose name, month, and drawnAt for the user-facing view
-  const safe = draws.map((d) => ({
-    id:         d.id,
-    month:      d.month,
-    winnerName: d.winnerName,
-    drawnAt:    d.drawnAt,
-  }));
+  // Strip email and truncate name to "First L." — protects winner privacy
+  const safe = draws.map((d) => {
+    const parts = d.winnerName.trim().split(/\s+/);
+    const masked = parts.length >= 2
+      ? `${parts[0]} ${parts[parts.length - 1].charAt(0).toUpperCase()}.`
+      : parts[0] ?? d.winnerName;
+    return {
+      id:         d.id,
+      month:      d.month,
+      winnerName: masked,
+      drawnAt:    d.drawnAt,
+    };
+  });
 
   return NextResponse.json({ draws: safe });
 }

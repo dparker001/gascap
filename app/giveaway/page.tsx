@@ -23,6 +23,13 @@ interface DrawRecord {
   drawnAt:      string;
 }
 
+/** "John Doe" → "John D." — protects winner privacy on public-facing UI */
+function firstLastInitial(fullName: string): string {
+  const parts = fullName.trim().split(/\s+/);
+  if (parts.length < 2) return parts[0] ?? fullName;
+  return `${parts[0]} ${parts[parts.length - 1].charAt(0).toUpperCase()}.`;
+}
+
 function fmtMonth(m: string): string {
   const [y, mo] = m.split('-');
   const names = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -264,7 +271,7 @@ export default function GiveawayPage() {
             <p className="text-amber-300 text-[10px] font-black uppercase tracking-wider">
               {fmtMonth(recentWinner.month)} Winner
             </p>
-            <p className="text-white font-black">{recentWinner.winnerName}</p>
+            <p className="text-white font-black">{firstLastInitial(recentWinner.winnerName)}</p>
             <p className="text-white/50 text-xs">
               Drawn {new Date(recentWinner.drawnAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}
             </p>
