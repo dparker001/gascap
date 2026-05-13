@@ -24,6 +24,7 @@ import EndorserMarquee        from '@/components/EndorserMarquee';
 import DailyFuelPulse         from '@/components/DailyFuelPulse';
 import WelcomeBanner          from '@/components/WelcomeBanner';
 import FreshSignupBanner      from '@/components/FreshSignupBanner';
+import GiveawayNudge          from '@/components/GiveawayNudge';
 import FuelBudgetWidget       from '@/components/FuelBudgetWidget';
 import SavingsSummary         from '@/components/SavingsSummary';
 import AnnualProjection       from '@/components/AnnualProjection';
@@ -601,6 +602,9 @@ export default function Home() {
 
             {/* Streak counter */}
             <StreakCounter />
+
+            {/* Giveaway entry nudge — surfaces monthly drawing to all users */}
+            <GiveawayNudge />
 
             {/* Fleet Dashboard banner — mobile only (desktop sees it in right panel) */}
             {userPlan === 'fleet' && (
