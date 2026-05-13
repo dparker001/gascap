@@ -23,6 +23,7 @@ import EngagementNudge        from '@/components/EngagementNudge';
 import EndorserMarquee        from '@/components/EndorserMarquee';
 import DailyFuelPulse         from '@/components/DailyFuelPulse';
 import WelcomeBanner          from '@/components/WelcomeBanner';
+import FreshSignupBanner      from '@/components/FreshSignupBanner';
 import FuelBudgetWidget       from '@/components/FuelBudgetWidget';
 import SavingsSummary         from '@/components/SavingsSummary';
 import AnnualProjection       from '@/components/AnnualProjection';
@@ -589,6 +590,11 @@ export default function Home() {
 
           {/* ── LEFT COLUMN ── */}
           <div className="min-w-0 overflow-hidden lg:pr-6">
+
+            {/* Post-signup welcome banner — fires once via ?welcome=1 */}
+            <Suspense fallback={null}>
+              <FreshSignupBanner />
+            </Suspense>
 
             {/* Personalized greeting — time-aware + first-login welcome card */}
             <WelcomeBanner />

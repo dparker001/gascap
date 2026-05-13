@@ -27,7 +27,7 @@ function SignUpForm() {
   async function handleGoogleSignUp() {
     setGoogleLoading(true);
     await signIn('google', {
-      callbackUrl: refCode ? `/?ref=${refCode}` : '/',
+      callbackUrl: refCode ? `/?welcome=1&ref=${refCode}` : '/?welcome=1',
     });
   }
 
@@ -79,10 +79,9 @@ function SignUpForm() {
       // Auto sign-in failed — send to sign-in page
       router.push('/signin');
     } else {
-      // Signed in — send to the "check your inbox" screen.
-      // User stays here until they click the verification link in their email,
-      // which redirects them to /signin?verified=success.
-      router.push('/verify-email');
+      // Signed in — drop them straight into the calculator with the welcome banner.
+      // The FreshSignupBanner will remind them to verify their email.
+      router.push('/?welcome=1');
     }
   }
 

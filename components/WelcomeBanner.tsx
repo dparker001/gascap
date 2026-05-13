@@ -46,8 +46,10 @@ export default function WelcomeBanner() {
     if (!userId) return;
     setMounted(true);
 
-    // Show the welcome card exactly once — the first time we see an emailVerified session
-    if (emailVerified && !localStorage.getItem(welcomeKey(userId))) {
+    // Show the welcome card exactly once — the first time we see an emailVerified session.
+    // Skip if FreshSignupBanner already handled this session (avoids double-stacking).
+    const freshSignup = (() => { try { return sessionStorage.getItem('gascap_fresh_signup') === '1'; } catch { return false; } })();
+    if (emailVerified && !localStorage.getItem(welcomeKey(userId)) && !freshSignup) {
       setShowWelcome(true);
       localStorage.setItem(welcomeKey(userId), '1');
     }
