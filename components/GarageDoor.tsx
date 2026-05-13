@@ -344,18 +344,28 @@ export function GarageDoor({
   // Nameplate label: "DON'S FLEET" for fleet, "DON'S GARAGE" for pro, fallback variants
   const suffix    = isFleet ? 'FLEET' : 'GARAGE';
   const nameLabel = userName ? `${toFirstName(userName)}'S ${suffix}` : `MY ${suffix}`;
+  const alreadyOpenToday = typeof window !== 'undefined' &&
+    localStorage.getItem('gascap:garage-open-date') === getToday();
   const [isOpen,       setIsOpen]       = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
-    // Option C: open for the rest of the calendar day, reset each morning
+    // Open for the rest of the calendar day, reset each morning
     return localStorage.getItem('gascap:garage-open-date') === getToday();
   });
   const [mounted,      setMounted]      = useState(false);
   const [showToast,    setShowToast]    = useState(false);
   const [bonusEntries, setBonusEntries] = useState(10);
   const [totalDays,    setTotalDays]    = useState(1);
+  // True when the door was already open on mount (bonus earned in a prior session today)
+  const [earnedEarlier, setEarnedEarlier] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => {
+    setMounted(true);
+    // If the door was already open when we mounted, the bonus was earned earlier today.
+    // Show a quiet indicator so users know their entries were credited.
+    if (alreadyOpenToday) setEarnedEarlier(true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleOpen = useCallback(async () => {
     if (isOpen) return;
@@ -389,6 +399,16 @@ export function GarageDoor({
     <div ref={wrapperRef} className="relative overflow-hidden rounded-xl">
       {children}
       <BonusToast show={showToast} bonusEntries={bonusEntries} totalDays={totalDays} />
+
+      {/* Quiet "already earned" pill — visible when bonus was credited in a prior session today */}
+      {isOpen && earnedEarlier && !showToast && (
+        <div className="absolute top-2 right-2 z-20 pointer-events-none">
+          <span className="flex items-center gap-1 bg-amber-500/90 text-white text-[10px]
+                           font-black px-2 py-1 rounded-full shadow-sm">
+            🎟️ +10 entries earned today
+          </span>
+        </div>
+      )}
 
       {doorDirection === 'center' ? (
         /* ── Open from center: two half-panels slide apart ── */

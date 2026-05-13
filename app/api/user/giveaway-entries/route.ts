@@ -38,6 +38,7 @@ export async function GET() {
       garageBonusDays: true,
       verifyReminderBonusEntries: true,
       phoneBonusEntries: true,
+      dailyBonusEntries: true,
       emailVerified: true,
     },
   });
@@ -53,11 +54,12 @@ export async function GET() {
   const bonusEntries           = user.earlyUpgradeBonusEntries   ?? 0;
   const verifyBonusEntries     = user.verifyReminderBonusEntries ?? 0;
   const phoneBonusEntries      = user.phoneBonusEntries          ?? 0;
+  const dailyBonusEntries      = user.dailyBonusEntries          ?? 0;
   const garageDaysThisMonth = (user.garageBonusDays ?? [])
     .filter((d: string) => d.startsWith(month)).length;
   const garageBonusEntries  = garageDaysThisMonth * 10;
   const entryCount     = baseEntries + streakBonus + bonusEntries + garageBonusEntries
-                         + verifyBonusEntries + phoneBonusEntries;
+                         + verifyBonusEntries + phoneBonusEntries + dailyBonusEntries;
   const eligible       = user.plan === 'pro' || user.plan === 'fleet';
   const emailVerified  = user.emailVerified ?? false;
 
@@ -79,6 +81,7 @@ export async function GET() {
     earlyUpgradeBonusEntries: bonusEntries,
     verifyBonusEntries,
     phoneBonusEntries,
+    dailyBonusEntries,
     garageBonusEntries,
     garageDaysThisMonth,
   });
