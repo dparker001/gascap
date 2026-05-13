@@ -1,10 +1,29 @@
 import type { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
-import { findByEmail, findById, verifyPassword, recordLogin } from './users';
+import GoogleProvider        from 'next-auth/providers/google';
+import {
+  findByEmail, findById, verifyPassword, recordLogin,
+  createGoogleUser, nameFromEmail,
+  grantNewSignupProTrial, enrollEmailCampaign,
+} from './users';
+import { upsertGhlContact } from './ghl';
+import { sendMail }         from './email';
+import { sendCampaignEmail } from './emailCampaign';
+import { hasEmailBeenSent }  from './emailLog';
 import { checkRateLimit } from './rateLimit';
 
 export const authOptions: NextAuthOptions = {
   providers: [
+    // ── Google OAuth ────────────────────────────────────────────────────────
+    // Requires GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET in Railway env vars.
+    // Redirect URI to register in Google Cloud Console:
+    //   https://www.gascap.app/api/auth/callback/google
+    //   http://localhost:3000/api/auth/callback/google  (local dev)
+    GoogleProvider({
+      clientId:     process.env.GOOGLE_CLIENT_ID     ?? '',
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? '',
+    }),
+
     CredentialsProvider({
       name: 'credentials',
       credentials: {
@@ -25,6 +44,10 @@ export const authOptions: NextAuthOptions = {
         if (!credentials?.email || !credentials?.password) return null;
         const user = await findByEmail(credentials.email);
         if (!user) return null;
+        // Google-only accounts have no passwordHash — block credential sign-in
+        if (!user.passwordHash) {
+          throw new Error('This account uses Google Sign-In. Please continue with Google.');
+        }
         const valid = await verifyPassword(credentials.password, user.passwordHash);
         if (!valid) return null;
         await recordLogin(user.id);
@@ -40,6 +63,72 @@ export const authOptions: NextAuthOptions = {
   },
 
   callbacks: {
+    // ── Google OAuth: find-or-create user in our DB ──────────────────────
+    async signIn({ user, account, profile }) {
+      if (account?.provider === 'google') {
+        try {
+          const email = user.email!;
+          let dbUser  = await findByEmail(email);
+
+          if (dbUser) {
+            // Existing account — link Google to it (trust Google's verified email)
+            await recordLogin(dbUser.id);
+          } else {
+            // New Google user — create account, grant Pro trial, start drip
+            const googleName = user.name ?? nameFromEmail(email);
+            const avatarUrl  = (profile as { picture?: string })?.picture ?? null;
+            dbUser = await createGoogleUser(email, googleName, avatarUrl);
+            await grantNewSignupProTrial(dbUser.id, 30);
+            await enrollEmailCampaign(dbUser.id);
+            await recordLogin(dbUser.id);
+
+            // Welcome drip email (fire-and-forget)
+            const verifyUrl = `${process.env.NEXTAUTH_URL ?? 'https://www.gascap.app'}/`;
+            ;(async () => {
+              if (await hasEmailBeenSent(dbUser!.id, 'trial-d1')) return;
+              await sendCampaignEmail(1, {
+                id:        dbUser!.id,
+                name:      dbUser!.name,
+                email:     dbUser!.email,
+                verifyUrl,
+              });
+            })().catch((e) => console.error('[GasCap] Google welcome drip failed:', e));
+
+            // Admin notify (fire-and-forget)
+            sendMail({
+              to:      'info@gascap.app',
+              subject: `🎉 New GasCap™ signup via Google: ${dbUser.name} (Pro trial activated)`,
+              html:    `<p><strong>${dbUser.name}</strong> (${dbUser.email}) signed up with Google — Pro trial active.</p>`,
+              text:    `New Google signup: ${dbUser.name} <${dbUser.email}> — Pro trial (30 days)`,
+            }).catch(() => {});
+
+            // GHL sync (fire-and-forget)
+            upsertGhlContact({
+              name:      dbUser.name,
+              email:     dbUser.email,
+              plan:      'pro',
+              locale:    'en',
+              source:    'GasCap Google Signup',
+              extraTags: ['gascap-new-signup', 'gascap-trial-30day', 'gascap-google-auth'],
+            }).catch(() => {});
+          }
+
+          // Override NextAuth's Google user ID with our DB user ID so the JWT
+          // callback picks it up correctly in its `if (user)` branch.
+          user.id                                          = dbUser.id;
+          (user as Record<string, unknown>).plan           = dbUser.plan;
+          (user as Record<string, unknown>).emailVerified  = true;
+          (user as Record<string, unknown>).isProTrial     = dbUser.isProTrial ?? false;
+          (user as Record<string, unknown>).trialExpiresAt = dbUser.trialExpiresAt ?? null;
+          (user as Record<string, unknown>).createdAt      = dbUser.createdAt;
+        } catch (err) {
+          console.error('[GasCap] Google signIn callback error:', err);
+          return false;
+        }
+      }
+      return true;
+    },
+
     // Expose user id in the JWT token and session
     async jwt({ token, user, trigger }) {
       if (user) {

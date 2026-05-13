@@ -19,7 +19,7 @@ export interface StoredUser {
   id:              string;
   email:           string;
   name:            string;
-  passwordHash:    string;
+  passwordHash?:   string;   // undefined for Google OAuth users
   plan:            'free' | 'pro' | 'fleet';
   createdAt:       string;
   stripeCustomerId?:     string;
@@ -111,6 +111,7 @@ export type ActivityEvent = 'calc' | 'budget_calc' | 'location_lookup' | 'visit'
 function toStoredUser(u: PrismaUser): StoredUser {
   return {
     ...u,
+    passwordHash:       u.passwordHash ?? undefined,
     plan:               u.plan as 'free' | 'pro' | 'fleet',
     locale:             u.locale as 'en' | 'es' | undefined,
     referralCredits:    (u.referralCredits as unknown as ReferralCredit[]) ?? [],
@@ -207,7 +208,47 @@ export async function createUser(
   return toStoredUser(user);
 }
 
-export async function verifyPassword(plain: string, hash: string): Promise<boolean> {
+/** Derive a reasonable first name from an email address. */
+export function nameFromEmail(email: string): string {
+  const prefix  = email.split('@')[0];
+  const first   = prefix.split(/[._+]/)[0];
+  const letters = first.replace(/[^a-zA-Z]/g, '');
+  return letters.charAt(0).toUpperCase() + letters.slice(1) || 'Driver';
+}
+
+/**
+ * Create a new user who signed in via Google OAuth.
+ * - No password hash (passwordHash = null)
+ * - emailVerified = true (Google already verified it)
+ * - Idempotent: returns existing user if the email is already in the DB
+ */
+export async function createGoogleUser(
+  email:     string,
+  name:      string,
+  avatarUrl: string | null = null,
+  locale:    'en' | 'es'  = 'en',
+): Promise<StoredUser> {
+  const existing = await findByEmail(email);
+  if (existing) return existing;
+
+  const user = await prisma.user.create({
+    data: {
+      id:            crypto.randomUUID(),
+      email:         email.toLowerCase().trim(),
+      name:          name.trim() || nameFromEmail(email),
+      passwordHash:  null,
+      plan:          'free',
+      createdAt:     new Date().toISOString(),
+      emailVerified: true,
+      locale,
+      ...(avatarUrl ? { avatarUrl } : {}),
+    },
+  });
+  return toStoredUser(user);
+}
+
+export async function verifyPassword(plain: string, hash: string | undefined): Promise<boolean> {
+  if (!hash) return false; // Google OAuth accounts have no password
   return bcrypt.compare(plain, hash);
 }
 

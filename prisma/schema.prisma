@@ -11,7 +11,7 @@ model User {
   id                       String    @id
   email                    String    @unique
   name                     String
-  passwordHash             String
+  passwordHash             String?   // null for Google OAuth users
   plan                     String    @default("free")
   createdAt                String
   stripeCustomerId         String?

@@ -8,6 +8,7 @@ import {
   grantNewSignupProTrial,
   enrollEmailCampaign,
   updateUserProfile,
+  nameFromEmail,
 } from '@/lib/users';
 import { checkRateLimit } from '@/lib/rateLimit';
 import { sendMail, verificationEmailHtml } from '@/lib/email';
@@ -49,8 +50,8 @@ export async function POST(req: Request) {
       );
     }
 
-    const { name, email, password, referralCode, locale, phone, smsOptIn } = await req.json() as {
-      name?: string; email?: string; password?: string; referralCode?: string; locale?: string;
+    const { email, password, referralCode, locale, phone, smsOptIn } = await req.json() as {
+      email?: string; password?: string; referralCode?: string; locale?: string;
       phone?: string; smsOptIn?: boolean;
     };
 
@@ -59,13 +60,13 @@ export async function POST(req: Request) {
     // can't override the user's actual signup language.
     const userLocale: 'en' | 'es' = locale === 'es' ? 'es' : 'en';
 
-    if (!name?.trim())   return NextResponse.json({ error: 'Name is required.' },            { status: 400 });
-    if (!email?.trim())  return NextResponse.json({ error: 'Email is required.' },           { status: 400 });
-    if (!password) return NextResponse.json({ error: 'Password is required.' }, { status: 400 });
-    if (password.length < 8)         return NextResponse.json({ error: 'Password must be at least 8 characters.' },        { status: 400 });
-    if (!/[A-Z]/.test(password))     return NextResponse.json({ error: 'Password must contain an uppercase letter.' },     { status: 400 });
-    if (!/[0-9]/.test(password))     return NextResponse.json({ error: 'Password must contain a number.' },                { status: 400 });
-    if (!/[^A-Za-z0-9]/.test(password)) return NextResponse.json({ error: 'Password must contain a special character.' }, { status: 400 });
+    if (!email?.trim())  return NextResponse.json({ error: 'Email is required.' },  { status: 400 });
+    if (!password)       return NextResponse.json({ error: 'Password is required.' }, { status: 400 });
+    if (password.length < 8) return NextResponse.json({ error: 'Password must be at least 8 characters.' }, { status: 400 });
+
+    // Derive a display name from the email address (e.g. john.doe@gmail.com → "John").
+    // The user can update this in their profile after signup.
+    const name = nameFromEmail(email);
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email))
