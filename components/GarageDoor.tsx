@@ -356,7 +356,8 @@ export function GarageDoor({
   const [bonusEntries, setBonusEntries] = useState(10);
   const [totalDays,    setTotalDays]    = useState(1);
   // True when the door was already open on mount (bonus earned in a prior session today)
-  const [earnedEarlier, setEarnedEarlier] = useState(false);
+  const [earnedEarlier,   setEarnedEarlier]   = useState(false);
+  const [earnedDismissed, setEarnedDismissed] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -396,19 +397,9 @@ export function GarageDoor({
   };
 
   return (
+    <>
     <div ref={wrapperRef} className="relative overflow-hidden rounded-xl">
       {children}
-      <BonusToast show={showToast} bonusEntries={bonusEntries} totalDays={totalDays} />
-
-      {/* Quiet "already earned" pill — visible when bonus was credited in a prior session today */}
-      {isOpen && earnedEarlier && !showToast && (
-        <div className="absolute top-2 right-2 z-20 pointer-events-none">
-          <span className="flex items-center gap-1 bg-amber-500/90 text-white text-[10px]
-                           font-black px-2 py-1 rounded-full shadow-sm">
-            🎟️ +10 entries earned today
-          </span>
-        </div>
-      )}
 
       {doorDirection === 'center' ? (
         /* ── Open from center: two half-panels slide apart ── */
@@ -474,5 +465,26 @@ export function GarageDoor({
         </div>
       )}
     </div>
+
+    {/* Bonus-entries toast — rendered BELOW the overflow-hidden wrapper so it
+        never clips or overlaps the vehicle cards. */}
+    <BonusToast show={showToast} bonusEntries={bonusEntries} totalDays={totalDays} />
+
+    {/* Quiet "already earned" pill — rendered BELOW the garage wrapper so it never
+        overlaps vehicles. Tap the × to dismiss. */}
+    {isOpen && earnedEarlier && !showToast && !earnedDismissed && (
+      <div className="flex justify-center mt-2">
+        <button
+          onClick={() => setEarnedDismissed(true)}
+          className="flex items-center gap-1.5 bg-amber-500/90 hover:bg-amber-500
+                     text-white text-[10px] font-black px-3 py-1.5 rounded-full
+                     shadow-sm transition-colors"
+        >
+          🎟️ +10 entries earned today
+          <span className="text-white/60 text-[9px] ml-0.5">✕</span>
+        </button>
+      </div>
+    )}
+    </>
   );
 }

@@ -28,20 +28,19 @@ interface EntryData {
 
 // ── Date helpers ───────────────────────────────────────────────────────────
 
-/** Last calendar day of the current month — "Jun 1" style label */
+/** 5th of next month — the actual drawing date — e.g. "Jun 5" */
 function drawDateLabel(): string {
-  const now  = new Date();
-  // First day of NEXT month = last day of this month + 1
-  const last = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-  return last.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const now   = new Date();
+  const fifth = new Date(now.getFullYear(), now.getMonth() + 1, 5);
+  return fifth.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-/** Full days remaining until midnight on the last day of the month */
+/** Full days remaining until the 5th of next month at midnight */
 function daysUntilDraw(): number {
-  const now  = new Date();
-  const last = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-  last.setHours(23, 59, 59, 999);
-  return Math.max(0, Math.ceil((last.getTime() - now.getTime()) / 86_400_000));
+  const now   = new Date();
+  const fifth = new Date(now.getFullYear(), now.getMonth() + 1, 5);
+  fifth.setHours(23, 59, 59, 999);
+  return Math.max(0, Math.ceil((fifth.getTime() - now.getTime()) / 86_400_000));
 }
 
 // ── Component ──────────────────────────────────────────────────────────────

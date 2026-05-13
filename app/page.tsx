@@ -586,6 +586,7 @@ export default function Home() {
           Desktop (lg+): left 520px calc column + right sticky garage panel
       ══════════════════════════════════════════════════════════════════ */}
       {session && (
+        <>
         <div className="lg:grid lg:grid-cols-2 lg:gap-0
                         lg:max-w-5xl lg:mx-auto lg:px-6 lg:pt-4 lg:items-start">
 
@@ -662,39 +663,6 @@ export default function Home() {
               <ToolsPanel />
             </section>
 
-            {/* Separator + Pricing */}
-            <div className="max-w-lg lg:max-w-none mx-auto w-full px-4 lg:px-0 pb-2">
-              <div className="flex items-center gap-3">
-                <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
-                <span className="text-[10px] font-black uppercase tracking-widest
-                                 text-slate-300 dark:text-slate-600">{t.misc.more}</span>
-                <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
-              </div>
-            </div>
-            <section className="px-4 lg:px-0 pb-12 max-w-2xl lg:max-w-none mx-auto w-full">
-              <button
-                onClick={() => setShowPricing((v) => !v)}
-                className="w-full flex items-center justify-between py-3 px-4 bg-white dark:bg-slate-800
-                           rounded-2xl border border-slate-100 dark:border-slate-700
-                           shadow-sm hover:border-brand-teal/30 transition-colors mb-2"
-              >
-                <div className="flex items-center gap-2.5">
-                  <span className="text-lg">⭐</span>
-                  <div className="text-left">
-                    <p className="text-sm font-black text-slate-700 dark:text-slate-200">{t.pricing.toggleLabel}</p>
-                    <p className="text-[10px] text-slate-400">{t.pricing.toggleSub}</p>
-                  </div>
-                </div>
-                <svg
-                  className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${showPricing ? 'rotate-180' : ''}`}
-                  viewBox="0 0 16 16" fill="none" stroke="currentColor"
-                  strokeWidth="2" strokeLinecap="round" aria-hidden="true"
-                >
-                  <path d="M 4 6l4 4 4-4" />
-                </svg>
-              </button>
-              {showPricing && <PricingSection />}
-            </section>
           </div>
 
           {/* ── RIGHT COLUMN — desktop only ── */}
@@ -802,6 +770,41 @@ export default function Home() {
             </div>
           </div>
         </div>
+
+        {/* ── Separator + Pricing — full-width, centered below both columns ── */}
+        <div className="max-w-5xl mx-auto w-full px-4 lg:px-6 pb-2 mt-2">
+          <div className="flex items-center gap-3">
+            <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
+            <span className="text-[10px] font-black uppercase tracking-widest
+                             text-slate-300 dark:text-slate-600">{t.misc.more}</span>
+            <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
+          </div>
+        </div>
+        <section className="max-w-5xl mx-auto w-full px-4 lg:px-6 pb-12">
+          <button
+            onClick={() => setShowPricing((v) => !v)}
+            className="w-full flex items-center justify-between py-3 px-4 bg-white dark:bg-slate-800
+                       rounded-2xl border border-slate-100 dark:border-slate-700
+                       shadow-sm hover:border-brand-teal/30 transition-colors mb-2"
+          >
+            <div className="flex items-center gap-2.5">
+              <span className="text-lg">⭐</span>
+              <div className="text-left">
+                <p className="text-sm font-black text-slate-700 dark:text-slate-200">{t.pricing.toggleLabel}</p>
+                <p className="text-[10px] text-slate-400">{t.pricing.toggleSub}</p>
+              </div>
+            </div>
+            <svg
+              className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${showPricing ? 'rotate-180' : ''}`}
+              viewBox="0 0 16 16" fill="none" stroke="currentColor"
+              strokeWidth="2" strokeLinecap="round" aria-hidden="true"
+            >
+              <path d="M 4 6l4 4 4-4" />
+            </svg>
+          </button>
+          {showPricing && <PricingSection />}
+        </section>
+        </>
       )}
 
       {/* ── Guest single-column content ─────────────────────────────────── */}
