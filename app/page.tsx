@@ -577,7 +577,7 @@ export default function Home() {
       {/* ── Guest hero — SEO headline above the calculator ────────────── */}
       {isGuest && <GuestHero />}
 
-      {/* ── Endorser / partner logo marquee — guests only ─────────────── */}
+      {/* ── Endorser / partner logo marquee — landing page (guests) only ── */}
       {isGuest && <EndorserMarquee />}
 
       {/* ══════════════════════════════════════════════════════════════════
@@ -601,11 +601,15 @@ export default function Home() {
             {/* Personalized greeting — time-aware + first-login welcome card */}
             <WelcomeBanner />
 
-            {/* Streak counter */}
-            <StreakCounter />
+            {/* Streak counter — hidden on desktop (shown in header center panel) */}
+            <div className="lg:hidden">
+              <StreakCounter />
+            </div>
 
-            {/* Giveaway entry nudge — surfaces monthly drawing to all users */}
-            <GiveawayNudge />
+            {/* Giveaway entry nudge — hidden on desktop (shown in header center panel) */}
+            <div className="lg:hidden">
+              <GiveawayNudge />
+            </div>
 
             {/* Fleet Dashboard banner — mobile only (desktop sees it in right panel) */}
             {userPlan === 'fleet' && (

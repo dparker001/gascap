@@ -6,6 +6,7 @@ import { useSession }       from 'next-auth/react';
 import AuthButton           from './AuthButton';
 import PlanBadge            from './PlanBadge';
 import TipsTicker           from './TipsTicker';
+import HeroEngagementPanel  from './HeroEngagementPanel';
 import { useTranslation }   from '@/contexts/LanguageContext';
 
 interface LiveVehiclesData {
@@ -237,9 +238,11 @@ export default function Header() {
         {/* ── Divider ── */}
         <div className="h-px bg-gradient-to-r from-white/0 via-white/10 to-white/0 mb-4 mt-1" />
 
-        {/* ── Tagline + plan badge row ── */}
-        <div className="flex items-start justify-between gap-3 mb-3">
-          <div>
+        {/* ── Tagline + engagement panel + stats row ── */}
+        <div className="flex items-start gap-3 mb-3">
+
+          {/* Left: tagline text */}
+          <div className="flex-shrink-0">
             <p className="text-white text-[22px] font-black leading-tight tracking-tight">
               {t.header.tagline.split('\n').map((line, i, arr) => (
                 <span key={i}>{line}{i < arr.length - 1 && <br />}</span>
@@ -249,8 +252,12 @@ export default function Header() {
               {t.header.sub}
             </p>
           </div>
-          {/* Stats pills */}
-          <div className="flex flex-col gap-1.5 flex-shrink-0 mt-1">
+
+          {/* Center: streak + giveaway — desktop logged-in only */}
+          <HeroEngagementPanel />
+
+          {/* Right: stats pills */}
+          <div className="flex flex-col gap-1.5 flex-shrink-0 mt-1 ml-auto">
             <div className="flex items-center gap-1.5 bg-white/8 rounded-xl px-2.5 py-1.5">
               <span className="text-brand-orange text-xs">⛽</span>
               <span className="text-white/70 text-[10px] font-semibold">{t.header.realTimePrices}</span>
@@ -270,6 +277,7 @@ export default function Header() {
               </a>
             )}
           </div>
+
         </div>
 
         {/* ── Plan badge ── */}
