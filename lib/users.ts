@@ -240,6 +240,10 @@ export async function createGoogleUser(
       plan:          'free',
       createdAt:     new Date().toISOString(),
       emailVerified: true,
+      // Google has already verified the email — award the same bonus
+      // that email/password users earn for verifying within 48 hours.
+      verifyReminderBonusEntries: 25,
+      emailVerifyBonusGranted:    true,   // prevents double-grant if flow ever changes
       locale,
       ...(avatarUrl ? { avatarUrl } : {}),
     },
