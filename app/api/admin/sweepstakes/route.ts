@@ -4,14 +4,17 @@
  * GET  /api/admin/sweepstakes?history=1      — past draw results
  * POST /api/admin/sweepstakes                — run draw { month, notes?, dryRun?, suppressWinnerEmail?, suppressSms? }
  *
- * After a successful draw the route fires four fire-and-forget side-effects:
+ * After a successful draw the route fires five fire-and-forget side-effects:
  *  1. Winner notification email  (via lib/email.ts → SMTP or Resend)
  *     Skipped if suppressWinnerEmail = true
  *  2. Non-winner results email   (sent to all eligible entrants who didn't win)
  *  3. Tremendous API             (TREMENDOUS_API_KEY + TREMENDOUS_CAMPAIGN_ID env vars)
  *     → delivers a Visa prepaid card directly to the winner's email
  *     Skipped if suppressWinnerEmail = true
- *  4. GHL webhook POST           (GHL_WINNER_WEBHOOK_URL env var)
+ *  4. GHL contact upsert         (GHL_API_KEY env var)
+ *     → creates/updates the winner as a GHL contact with winner tags
+ *     → ensures GHL workflows and VA follow-up can fire automatically
+ *  5. GHL webhook POST           (GHL_WINNER_WEBHOOK_URL env var)
  *     → triggers a GHL workflow for any additional VA follow-up tasks
  */
 import { NextResponse } from 'next/server';
@@ -247,7 +250,46 @@ export async function POST(req: Request) {
           .catch((err) => console.error('[sweepstakes] Tremendous fetch failed:', err));
       })(),
 
-      // 4. GHL webhook → VA follow-up workflow
+      // 4. GHL — upsert winner as a contact so workflows & follow-up can fire
+      //    Uses the same PIT token stored in GHL_API_KEY.
+      //    Idempotent: if the contact already exists it is updated, not duplicated.
+      (() => {
+        const ghlKey    = process.env.GHL_API_KEY;
+        const locationId = process.env.GHL_LOCATION_ID ?? 'CvoeirX6lIeXP021VqmY';
+        if (!ghlKey) {
+          console.warn('[sweepstakes] GHL_API_KEY not set — skipping GHL contact upsert');
+          return Promise.resolve();
+        }
+        const [wFn, ...wLn] = result.winner.name.trim().split(' ');
+        const winnerTagName = `gascap-sweepstakes-winner-${monthLabel.toLowerCase().replace(/\s+/g, '-')}`;
+        return fetch('https://services.leadconnectorhq.com/contacts/upsert', {
+          method:  'POST',
+          headers: {
+            'Authorization': `Bearer ${ghlKey}`,
+            'Content-Type':  'application/json',
+            'Version':       '2021-07-28',
+          },
+          body: JSON.stringify({
+            locationId,
+            email:     result.winner.email,
+            firstName: wFn,
+            lastName:  wLn.join(' '),
+            tags:      ['giveaway-winner', winnerTagName],
+            source:    'GasCap Sweepstakes',
+          }),
+        })
+          .then(async (r) => {
+            if (!r.ok) {
+              const err = await r.text();
+              console.error('[sweepstakes] GHL contact upsert failed:', err);
+            } else {
+              console.log(`[sweepstakes] GHL contact upserted for winner ${result.winner.email}`);
+            }
+          })
+          .catch((err) => console.error('[sweepstakes] GHL contact upsert fetch failed:', err));
+      })(),
+
+      // 5. GHL webhook → VA follow-up workflow
       webhookUrl
         ? fetch(webhookUrl, {
             method:  'POST',
