@@ -386,3 +386,79 @@ export function entryCountForMonth(activeDays: string[], month: string): number 
   const prefix = `${month}-`;
   return activeDays.filter((d) => d.startsWith(prefix)).length;
 }
+
+/**
+ * Re-draw from the remaining pool after a winner forfeiture.
+ * Excludes the forfeited winner's userId and re-applies the standard
+ * ineligibility rules (consecutive-month + quarterly restrictions).
+ * Ambassador tier holders remain always-eligible per program rules.
+ */
+export async function runAlternateWeightedDraw(
+  month: string,
+  excludeUserId: string,
+): Promise<DrawResult> {
+  const [allEntrants, history] = await Promise.all([
+    getEligibleEntrants(month),
+    getDrawHistory(),
+  ]);
+
+  // Remove the forfeited winner from the pool entirely
+  const remaining = allEntrants.filter((e) => e.userId !== excludeUserId);
+  if (remaining.length === 0) {
+    throw new Error('No remaining entrants after excluding the forfeited winner.');
+  }
+
+  // Re-apply ineligibility rules — exclude the forfeited winner's prior draw
+  // from history so it doesn't block others unfairly
+  const historyWithoutForfeited = history.filter((d) => d.winnerId !== excludeUserId);
+  const ineligible = ineligibleWinners(month, historyWithoutForfeited);
+
+  const pool = remaining.filter((e) => e.alwaysEligible || !ineligible.has(e.userId));
+  if (pool.length === 0) {
+    throw new Error('No eligible alternate entrants for this month after applying winner restrictions.');
+  }
+
+  const totalEntries    = allEntrants.reduce((s, e) => s + e.entryCount, 0);
+  const eligibleEntries = pool.reduce((s, e) => s + e.entryCount, 0);
+
+  let pick = Math.floor(Math.random() * eligibleEntries);
+  let winner: EntrantRow | null = null;
+  for (const e of pool) {
+    pick -= e.entryCount;
+    if (pick < 0) { winner = e; break; }
+  }
+  winner ??= pool[pool.length - 1];
+
+  return { winner, totalEntries, entrantCount: allEntrants.length, month };
+}
+
+/**
+ * Replace the winner on an existing draw record (alternate selection).
+ * Preserves the original draw's id and month; updates all winner fields
+ * and appends a forfeit note for the audit trail.
+ */
+export async function updateDrawWinner(
+  month: string,
+  result: DrawResult,
+  forfeited: { name: string; email: string },
+  notes?: string,
+) {
+  const forfeitNote =
+    `Alternate draw ${new Date().toISOString().slice(0, 10)}: ` +
+    `original winner ${forfeited.name} (${forfeited.email}) forfeited — ` +
+    `did not claim within 14 days of notification.`;
+
+  return prisma.giveawayDraw.update({
+    where: { month },
+    data: {
+      winnerId:     result.winner.userId,
+      winnerName:   result.winner.name,
+      winnerEmail:  result.winner.email,
+      entryCount:   result.winner.entryCount,
+      totalEntries: result.totalEntries,
+      drawnAt:      new Date().toISOString(),
+      claimedAt:    null,   // reset — new winner must claim
+      notes:        [forfeitNote, notes ?? ''].filter(Boolean).join(' '),
+    },
+  });
+}
