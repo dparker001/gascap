@@ -880,6 +880,7 @@ export default function Home() {
         </div>
         <p className="text-xs text-slate-400">{t.footer.tagline}</p>
         <p className="text-[10px] text-slate-500">{t.footer.copyright(new Date().getFullYear())}</p>
+        <p className="text-[10px] text-slate-400">🌍 Currently optimized for US drivers — metric support coming soon.</p>
 
         {/* VNetCard lead magnet */}
         <a
