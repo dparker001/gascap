@@ -8,7 +8,7 @@ interface Winner {
 
 // Add new winners here each month — newest first
 const WINNERS: Winner[] = [
-  { name: 'Matt B.', month: 'April 2026', prize: '$25 Visa Prepaid Card' },
+  { name: 'Luis L.', month: 'April 2026', prize: '$25 Visa Prepaid Card' },
 ];
 
 /** Past giveaway winners — displayed on the landing page guest section. */
