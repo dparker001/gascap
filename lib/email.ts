@@ -772,3 +772,119 @@ ${brandHeader(plan)}
 </body>
 </html>`.trim();
 }
+
+/** ─────────────────────────────────────────────────────────────────────────
+ * Founding Member blast — one-time offer email sent to active trial users.
+ * @param firstName      Recipient's first name
+ * @param trialEndDate   Formatted end date, e.g. "May 26"
+ * @param daysLeft       Integer days remaining (≥ 1)
+ */
+export function foundingMemberBlastHtml(
+  firstName:    string,
+  trialEndDate: string,
+  daysLeft:     number,
+): string {
+  const urgencyLabel = daysLeft === 1
+    ? '⏰ Your trial ends <strong>tomorrow</strong>'
+    : `Your trial ends <strong>${trialEndDate}</strong> — ${daysLeft} days left`;
+
+  return `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#eef1f7;font-family:system-ui,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#eef1f7;padding:40px 16px;">
+    <tr><td align="center">
+      <table width="100%" style="max-width:480px;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,.08);">
+${brandHeader('trial')}
+        <tr><td style="padding:32px;">
+
+          <!-- Urgency ribbon -->
+          <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;
+                      padding:10px 16px;margin-bottom:24px;text-align:center;">
+            <p style="margin:0;font-size:13px;color:#c2410c;">${urgencyLabel}</p>
+          </div>
+
+          <p style="margin:0 0 6px;font-size:22px;font-weight:900;color:#1e2d4a;">
+            You're one of our first 200 members, ${firstName}.
+          </p>
+          <p style="margin:0 0 20px;font-size:15px;color:#475569;line-height:1.6;">
+            That means something. As a thank-you for being here from the start,
+            we're giving Founding Members a permanent perk that future subscribers
+            won't have access to.
+          </p>
+
+          <!-- Perk card -->
+          <div style="background:#f0fdf9;border:1.5px solid #1eb68f;border-radius:14px;
+                      padding:20px 24px;margin-bottom:24px;">
+            <p style="margin:0 0 6px;font-size:13px;font-weight:800;color:#1eb68f;
+                       text-transform:uppercase;letter-spacing:0.05em;">
+              ⭐ Founding Member Perk
+            </p>
+            <p style="margin:0 0 4px;font-size:18px;font-weight:900;color:#1e2d4a;">
+              2× Giveaway Entries — Every Month, Forever
+            </p>
+            <p style="margin:0;font-size:14px;color:#475569;line-height:1.5;">
+              Convert to Pro before your trial ends and earn double entries in
+              every monthly $25 gas card giveaway — permanently. Regular Pro
+              members get 1× entries. Founding Members get 2×.
+            </p>
+          </div>
+
+          <p style="margin:0 0 24px;font-size:14px;color:#475569;line-height:1.6;">
+            This offer is only available to the first 200 trial members and
+            expires when your trial ends on <strong>${trialEndDate}</strong>.
+            After that, it's gone.
+          </p>
+
+          <!-- CTA -->
+          <div style="text-align:center;margin-bottom:24px;">
+            <a href="https://www.gascap.app/settings"
+               style="display:inline-block;background:#fa7109;color:#fff;font-weight:900;
+                      font-size:16px;padding:16px 40px;border-radius:12px;
+                      text-decoration:none;letter-spacing:-0.2px;">
+              Claim My Founding Member Status →
+            </a>
+          </div>
+
+          <!-- What's included -->
+          <div style="background:#f8fafc;border-radius:12px;padding:16px 20px;margin-bottom:20px;">
+            <p style="margin:0 0 10px;font-size:12px;font-weight:800;color:#1e2d4a;
+                       text-transform:uppercase;letter-spacing:0.05em;">What's included with Pro</p>
+            <table cellpadding="0" cellspacing="0" width="100%">
+              ${[
+                'Unlimited fill-up tracking &amp; history',
+                'Live local gas prices',
+                'MPG trends &amp; fuel insights',
+                '2× monthly giveaway entries (Founding Member)',
+                'AI fuel advisor',
+              ].map(item => `
+              <tr>
+                <td style="padding:3px 0;font-size:13px;color:#475569;">
+                  <span style="color:#1eb68f;font-weight:900;margin-right:8px;">✓</span>${item}
+                </td>
+              </tr>`).join('')}
+            </table>
+          </div>
+
+          <p style="margin:0;font-size:13px;color:#94a3b8;line-height:1.6;">
+            Questions? Reply to this email or reach us at
+            <a href="mailto:admin@gascap.app" style="color:#fa7109;">admin@gascap.app</a>
+          </p>
+        </td></tr>
+
+        <tr><td style="background:#f8fafc;padding:16px 32px;border-top:1px solid #e2e8f0;">
+          <p style="margin:0;font-size:11px;color:#94a3b8;text-align:center;">
+            GasCap™ · Know Before You Go ·
+            <a href="https://gascap.app" style="color:#f59e0b;">gascap.app</a><br>
+            Gas Capacity LLC · 16260 Bristol Lake Circle, Orlando FL 32828<br>
+            <a href="https://www.gascap.app/settings?optout=email"
+               style="color:#cbd5e1;text-decoration:none;">Unsubscribe</a>
+          </p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`.trim();
+}
