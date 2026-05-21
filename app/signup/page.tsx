@@ -199,27 +199,6 @@ function SignUpForm() {
               />
             </div>
 
-            {/* Phone + SMS opt-in */}
-            <div>
-              <label className="field-label" htmlFor="phone">{t.signUp.phoneLabel}</label>
-              <input
-                id="phone" type="tel" autoComplete="tel"
-                className="input-field" placeholder={t.signUp.phoneHolder}
-                value={phone} onChange={(e) => setPhone(e.target.value)}
-              />
-              {phone.trim() && (
-                <label className="flex items-start gap-2.5 mt-2 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={smsOptIn}
-                    onChange={(e) => setSmsOptIn(e.target.checked)}
-                    className="mt-0.5 h-4 w-4 rounded border-slate-300 accent-amber-500 flex-shrink-0"
-                  />
-                  <span className="text-xs text-slate-500 leading-snug">{t.signUp.smsOptIn}</span>
-                </label>
-              )}
-            </div>
-
             <div>
               <label className="field-label" htmlFor="password">{t.signUp.passwordLabel}</label>
               <div className="relative">
@@ -248,6 +227,25 @@ function SignUpForm() {
                   {pwValid ? '✓ Good to go' : '8 characters minimum'}
                 </p>
               )}
+            </div>
+
+            {/* Phone + SMS opt-in — always visible, always at the bottom */}
+            <div>
+              <label className="field-label" htmlFor="phone">{t.signUp.phoneLabel}</label>
+              <input
+                id="phone" type="tel" autoComplete="tel"
+                className="input-field" placeholder={t.signUp.phoneHolder}
+                value={phone} onChange={(e) => setPhone(e.target.value)}
+              />
+              <label className="flex items-start gap-2.5 mt-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={smsOptIn}
+                  onChange={(e) => setSmsOptIn(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-slate-300 accent-amber-500 flex-shrink-0"
+                />
+                <span className="text-xs text-slate-500 leading-snug">{t.signUp.smsOptIn}</span>
+              </label>
             </div>
 
             {error && (
