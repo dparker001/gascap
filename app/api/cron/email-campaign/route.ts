@@ -63,7 +63,7 @@ export async function GET(req: Request) {
         sentD1ThisRun.add(user.id);
         d1Sent++;
         console.log(`[Campaign] D1 safety net → sent delayed D1 to ${user.email}`);
-        await new Promise((r) => setTimeout(r, 250)); // stay under Resend 5 req/sec limit
+        await new Promise((r) => setTimeout(r, 500)); // stay under Resend 2 req/sec free-tier limit
       } catch (err) {
         console.error(`[Campaign] D1 safety net failed for ${user.email}:`, err);
         d1Errors++;
@@ -113,7 +113,7 @@ export async function GET(req: Request) {
         await sendCampaignEmail(step, { id: user.id, name: user.name, email: user.email });
         await advanceEmailCampaignStep(user.id, step);
         sent++;
-        await new Promise((r) => setTimeout(r, 250)); // stay under Resend 5 req/sec limit
+        await new Promise((r) => setTimeout(r, 500)); // stay under Resend 2 req/sec free-tier limit
       } catch (err) {
         console.error(`[Campaign] Step ${step} failed for ${user.email}:`, err);
         errors++;
