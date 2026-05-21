@@ -15,7 +15,11 @@ function SignUpForm() {
   const refCode      = searchParams.get('ref') ?? '';
   const { t, locale } = useTranslation();
 
+  const [firstName, setFirstName] = useState('');
+  const [lastName,  setLastName]  = useState('');
   const [email,     setEmail]     = useState('');
+  const [phone,     setPhone]     = useState('');
+  const [smsOptIn,  setSmsOptIn]  = useState(false);
   const [password,  setPassword]  = useState('');
   const [showPw,    setShowPw]    = useState(false);
   const [error,     setError]     = useState('');
@@ -35,7 +39,9 @@ function SignUpForm() {
     e.preventDefault();
     setError('');
 
-    if (!pwValid) return setError(t.signUp.errors.pwReqs);
+    if (!firstName.trim()) return setError(t.signUp.errors.noFirstName);
+    if (!lastName.trim())  return setError(t.signUp.errors.noLastName);
+    if (!pwValid)          return setError(t.signUp.errors.pwReqs);
 
     setLoading(true);
 
@@ -45,10 +51,14 @@ function SignUpForm() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        firstName: firstName.trim(),
+        lastName:  lastName.trim(),
         email,
         password,
         locale,
-        ...(refCode ? { referralCode: refCode } : {}),
+        ...(phone.trim()  ? { phone: phone.trim() } : {}),
+        ...(smsOptIn      ? { smsOptIn: true }       : {}),
+        ...(refCode       ? { referralCode: refCode } : {}),
       }),
     });
 
@@ -156,6 +166,29 @@ function SignUpForm() {
 
           {/* ── Email / Password form ────────────────────────────────── */}
           <form onSubmit={handleSubmit} noValidate className="space-y-4">
+
+            {/* First + Last name — side by side */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="field-label" htmlFor="firstName">{t.signUp.firstNameLabel}</label>
+                <input
+                  id="firstName" type="text" autoComplete="given-name"
+                  className="input-field" placeholder={t.signUp.firstNamePlaceholder}
+                  value={firstName} onChange={(e) => setFirstName(e.target.value)}
+                  required
+                />
+              </div>
+              <div>
+                <label className="field-label" htmlFor="lastName">{t.signUp.lastNameLabel}</label>
+                <input
+                  id="lastName" type="text" autoComplete="family-name"
+                  className="input-field" placeholder={t.signUp.lastNamePlaceholder}
+                  value={lastName} onChange={(e) => setLastName(e.target.value)}
+                  required
+                />
+              </div>
+            </div>
+
             <div>
               <label className="field-label" htmlFor="email">{t.signUp.emailLabel}</label>
               <input
@@ -164,6 +197,27 @@ function SignUpForm() {
                 value={email} onChange={(e) => setEmail(e.target.value)}
                 required
               />
+            </div>
+
+            {/* Phone + SMS opt-in */}
+            <div>
+              <label className="field-label" htmlFor="phone">{t.signUp.phoneLabel}</label>
+              <input
+                id="phone" type="tel" autoComplete="tel"
+                className="input-field" placeholder={t.signUp.phoneHolder}
+                value={phone} onChange={(e) => setPhone(e.target.value)}
+              />
+              {phone.trim() && (
+                <label className="flex items-start gap-2.5 mt-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={smsOptIn}
+                    onChange={(e) => setSmsOptIn(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 rounded border-slate-300 accent-amber-500 flex-shrink-0"
+                  />
+                  <span className="text-xs text-slate-500 leading-snug">{t.signUp.smsOptIn}</span>
+                </label>
+              )}
             </div>
 
             <div>
@@ -189,7 +243,6 @@ function SignUpForm() {
                   <EyeIcon open={showPw} />
                 </button>
               </div>
-              {/* Simple 8-char hint — only show once they start typing */}
               {password.length > 0 && (
                 <p className={`mt-1.5 text-xs font-medium ${pwValid ? 'text-green-600' : 'text-slate-400'}`}>
                   {pwValid ? '✓ Good to go' : '8 characters minimum'}

@@ -50,9 +50,9 @@ export async function POST(req: Request) {
       );
     }
 
-    const { email, password, referralCode, locale, phone, smsOptIn } = await req.json() as {
+    const { email, password, referralCode, locale, phone, smsOptIn, firstName, lastName } = await req.json() as {
       email?: string; password?: string; referralCode?: string; locale?: string;
-      phone?: string; smsOptIn?: boolean;
+      phone?: string; smsOptIn?: boolean; firstName?: string; lastName?: string;
     };
 
     // Normalize — only 'en' / 'es' are supported. Default to English so a
@@ -64,9 +64,11 @@ export async function POST(req: Request) {
     if (!password)       return NextResponse.json({ error: 'Password is required.' }, { status: 400 });
     if (password.length < 8) return NextResponse.json({ error: 'Password must be at least 8 characters.' }, { status: 400 });
 
-    // Derive a display name from the email address (e.g. john.doe@gmail.com → "John").
-    // The user can update this in their profile after signup.
-    const name = nameFromEmail(email);
+    // Build display name from firstName + lastName if provided; fall back to
+    // deriving from the email prefix for API/Google sign-ups that omit the fields.
+    const name = (firstName?.trim() && lastName?.trim())
+      ? `${firstName.trim()} ${lastName.trim()}`
+      : firstName?.trim() || nameFromEmail(email);
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email))
