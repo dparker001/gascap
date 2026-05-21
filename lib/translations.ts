@@ -240,7 +240,7 @@ const en = {
   signUp: {
     title:            'Create your account',
     sub:              'Join free · No credit card required',
-    proTrial:         '🎁 Your first 30 days are Pro — free. Then $4.99/mo, cancel anytime.',
+    proTrial:         'Your first 30 days are Pro — free. Then $4.99/mo, cancel anytime.',
     firstNameLabel:       'First name',
     firstNamePlaceholder: 'Alex',
     lastNameLabel:        'Last name',
@@ -1175,7 +1175,7 @@ const es: typeof en = {
   signUp: {
     title:            'Crea tu cuenta',
     sub:              'Únete gratis · Sin tarjeta de crédito',
-    proTrial:         '🎁 Tus primeros 30 días son Pro — gratis. Luego $4.99/mes, cancela cuando quieras.',
+    proTrial:         'Tus primeros 30 días son Pro — gratis. Luego $4.99/mes, cancela cuando quieras.',
     firstNameLabel:       'Nombre',
     firstNamePlaceholder: 'Alex',
     lastNameLabel:        'Apellido',
