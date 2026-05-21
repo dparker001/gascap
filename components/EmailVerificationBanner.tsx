@@ -12,6 +12,7 @@ export default function EmailVerificationBanner() {
   const [sending, setSending]     = useState(false);
   const [sent,    setSent]        = useState(false);
   const [error,   setError]       = useState('');
+  const [dismissed, setDismissed] = useState(false);
 
   const isVerified = (session?.user as { emailVerified?: boolean })?.emailVerified ?? true;
 
@@ -22,8 +23,13 @@ export default function EmailVerificationBanner() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Don't show if: not signed in, already verified, or on the verify-email page itself
-  if (!session || isVerified || pathname.startsWith('/verify-email')) return null;
+  // Don't show if: not signed in, on the verify-email page, or dismissed
+  if (!session || pathname.startsWith('/verify-email') || dismissed) return null;
+
+  // Verified users: auto-hide (handles normal case + stale-session edge case
+  // where the banner briefly shows after verification in another tab).
+  // Unverified users: always show — no dismiss option.
+  if (isVerified) return null;
 
   async function handleResend() {
     setSending(true);
@@ -62,8 +68,8 @@ export default function EmailVerificationBanner() {
           </div>
         </div>
 
-        {/* CTA */}
-        <div className="flex-shrink-0">
+        {/* CTA + optional dismiss */}
+        <div className="flex items-center gap-2 flex-shrink-0">
           {sent ? (
             <span className="text-[11px] font-bold text-white bg-amber-600 px-3 py-2 rounded-xl">
               {t.verifyBanner.sent}
@@ -77,6 +83,23 @@ export default function EmailVerificationBanner() {
                          whitespace-nowrap shadow-sm"
             >
               {sending ? t.verifyBanner.sending : t.verifyBanner.resend}
+            </button>
+          )}
+
+          {/* X button — only available once email is verified (handles stale-session
+              edge case where banner lingers after verification in another tab).
+              Unverified users cannot dismiss the banner. */}
+          {isVerified && (
+            <button
+              onClick={() => setDismissed(true)}
+              aria-label="Dismiss"
+              className="text-white/70 hover:text-white transition-colors p-1 rounded-lg
+                         hover:bg-amber-600"
+            >
+              <svg viewBox="0 0 14 14" className="w-4 h-4" fill="none"
+                   stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <path d="M1 1l12 12M13 1L1 13"/>
+              </svg>
             </button>
           )}
         </div>

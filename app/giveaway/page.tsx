@@ -6,14 +6,23 @@ import { useRouter }           from 'next/navigation';
 import Link                    from 'next/link';
 
 interface GiveawayEntries {
-  month:          string;
-  entryCount:     number;
-  baseEntries:    number;
-  streakBonus:    number;
-  streak:         number;
-  streakTier:     { minStreak: number; bonus: number; label: string };
-  nextStreakTier: { minStreak: number; bonus: number; label: string } | null;
-  eligible:       boolean;
+  month:                    string;
+  entryCount:               number;
+  baseEntries:              number;
+  activeDayCount:           number;
+  entryMultiplier:          number;
+  streakBonus:              number;
+  streak:                   number;
+  streakTier:               { minStreak: number; bonus: number; label: string };
+  nextStreakTier:           { minStreak: number; bonus: number; label: string } | null;
+  eligible:                 boolean;
+  earlyUpgradeBonusEntries: number;
+  verifyBonusEntries:       number;
+  phoneBonusEntries:        number;
+  dailyBonusEntries:        number;
+  garageBonusEntries:       number;
+  garageDaysThisMonth:      number;
+  referralCount:            number;
 }
 
 interface DrawRecord {
@@ -68,15 +77,41 @@ export default function GiveawayPage() {
     );
   }
 
-  const month          = entries?.month ?? currentMonthStr();
-  const entryCount     = entries?.entryCount ?? 0;
-  const baseEntries    = entries?.baseEntries ?? 0;
-  const streakBonus    = entries?.streakBonus ?? 0;
-  const streak         = entries?.streak ?? 0;
-  const nextStreakTier = entries?.nextStreakTier ?? null;
-  const eligible       = entries?.eligible ?? false;
-  const maxDays        = 31;
-  const progressPct    = Math.min(100, Math.round((baseEntries / maxDays) * 100));
+  const month                    = entries?.month ?? currentMonthStr();
+  const entryCount               = entries?.entryCount ?? 0;
+  const baseEntries              = entries?.baseEntries ?? 0;
+  const activeDayCount           = entries?.activeDayCount ?? 0;
+  const entryMultiplier          = entries?.entryMultiplier ?? 1;
+  const streakBonus              = entries?.streakBonus ?? 0;
+  const streak                   = entries?.streak ?? 0;
+  const nextStreakTier           = entries?.nextStreakTier ?? null;
+  const eligible                 = entries?.eligible ?? false;
+  const earlyUpgradeBonusEntries = entries?.earlyUpgradeBonusEntries ?? 0;
+  const verifyBonusEntries       = entries?.verifyBonusEntries ?? 0;
+  const phoneBonusEntries        = entries?.phoneBonusEntries ?? 0;
+  const dailyBonusEntries        = entries?.dailyBonusEntries ?? 0;
+  const garageBonusEntries       = entries?.garageBonusEntries ?? 0;
+  const garageDaysThisMonth      = entries?.garageDaysThisMonth ?? 0;
+  const maxDays                  = 31;
+  const progressPct              = Math.min(100, Math.round((activeDayCount / maxDays) * 100));
+
+  // Build the entry breakdown rows — only show rows where entries > 0
+  const breakdownRows = [
+    {
+      key:   'active',
+      emoji: '📅',
+      label: entryMultiplier > 1
+        ? `Active days (${activeDayCount} days × ${entryMultiplier}x ambassador)`
+        : `Active days this month`,
+      entries: baseEntries,
+    },
+    { key: 'streak',   emoji: '⚡', label: `Streak bonus (${streak}-day streak)`,          entries: streakBonus              },
+    { key: 'daily',    emoji: '🎁', label: 'Daily gift box bonuses',                        entries: dailyBonusEntries        },
+    { key: 'garage',   emoji: '🚗', label: `Garage opens (${garageDaysThisMonth} days)`,   entries: garageBonusEntries       },
+    { key: 'verify',   emoji: '✉️', label: 'Email verification bonus',                     entries: verifyBonusEntries       },
+    { key: 'phone',    emoji: '📱', label: 'Phone number bonus',                            entries: phoneBonusEntries        },
+    { key: 'upgrade',  emoji: '⭐', label: 'Early upgrade bonus',                           entries: earlyUpgradeBonusEntries },
+  ].filter((r) => r.entries > 0);
 
   return (
     <div className="min-h-screen bg-[#005F4A]">
@@ -235,6 +270,31 @@ export default function GiveawayPage() {
               >
                 ⭐ Upgrade to Pro — $4.99/mo
               </Link>
+            </div>
+          </div>
+        )}
+
+        {/* Entry breakdown — only shown when eligible and has entries */}
+        {eligible && entryCount > 0 && breakdownRows.length > 0 && (
+          <div className="bg-white/8 rounded-3xl p-5 space-y-3 border border-white/10">
+            <p className="text-white font-black text-sm">Where your entries came from</p>
+            <div className="space-y-2">
+              {breakdownRows.map((row) => (
+                <div key={row.key} className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span className="text-base flex-shrink-0">{row.emoji}</span>
+                    <p className="text-white/70 text-xs leading-snug truncate">{row.label}</p>
+                  </div>
+                  <span className="text-white font-black text-sm flex-shrink-0 tabular-nums">
+                    +{row.entries}
+                  </span>
+                </div>
+              ))}
+              {/* Divider + total */}
+              <div className="border-t border-white/10 pt-2 flex items-center justify-between">
+                <p className="text-white/50 text-xs font-bold uppercase tracking-wider">Total</p>
+                <p className="text-[#1EB68F] font-black text-sm tabular-nums">{entryCount} entries</p>
+              </div>
             </div>
           </div>
         )}
