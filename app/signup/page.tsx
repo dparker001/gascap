@@ -235,16 +235,37 @@ function SignUpForm() {
               <input
                 id="phone" type="tel" autoComplete="tel"
                 className="input-field" placeholder={t.signUp.phoneHolder}
-                value={phone} onChange={(e) => setPhone(e.target.value)}
+                value={phone}
+                onChange={(e) => {
+                  setPhone(e.target.value);
+                  if (!e.target.value.trim()) setSmsOptIn(false);
+                }}
               />
-              <label className="flex items-start gap-2.5 mt-2 cursor-pointer select-none">
+            </div>
+
+            {/* SMS consent panel — teal highlight when opted in */}
+            <div className={`rounded-xl border p-3.5 transition-all ${smsOptIn ? 'border-teal-300 bg-teal-50' : 'border-slate-200 bg-slate-50'}`}>
+              <label className="flex items-start gap-3 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={smsOptIn}
                   onChange={(e) => setSmsOptIn(e.target.checked)}
-                  className="mt-0.5 h-4 w-4 rounded border-slate-300 accent-amber-500 flex-shrink-0"
+                  className="mt-0.5 h-4 w-4 rounded border-slate-300 text-teal-600
+                             focus:ring-teal-500 cursor-pointer flex-shrink-0"
                 />
-                <span className="text-xs text-slate-500 leading-snug">{t.signUp.smsOptIn}</span>
+                <div>
+                  <p className={`text-sm font-semibold ${smsOptIn ? 'text-teal-800' : 'text-slate-600'}`}>
+                    Send me SMS alerts
+                  </p>
+                  <p className="text-[11px] text-slate-500 leading-relaxed mt-0.5">
+                    Gas price drops, fill-up reminders, and account notifications.
+                    Msg &amp; data rates may apply. Reply STOP to opt out at any time.
+                    Must be 18+ to receive SMS. See our{' '}
+                    <a href="/terms#sms" className="text-amber-600 hover:underline" target="_blank" rel="noopener noreferrer">
+                      SMS Terms
+                    </a>.
+                  </p>
+                </div>
               </label>
             </div>
 
