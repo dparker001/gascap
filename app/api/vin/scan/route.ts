@@ -4,16 +4,18 @@
  * Accepts: multipart/form-data with field "image" (JPEG/PNG/WebP/GIF)
  * Returns: { vin: string | null }
  */
-import { NextResponse }     from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions }      from '@/lib/auth';
-import Anthropic            from '@anthropic-ai/sdk';
+import { NextResponse } from 'next/server';
+import { getToken }    from 'next-auth/jwt';
+import Anthropic       from '@anthropic-ai/sdk';
 
 const anthropic = new Anthropic({ apiKey: process.env.GASCAP_ANTHROPIC_KEY });
 
 export async function POST(req: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  // Use getToken (reads JWT cookie directly from the request) instead of
+  // getServerSession — the latter requires a req/res pair in App Router and
+  // silently returns null on mobile when called without one, causing 401s.
+  const token = await getToken({ req: req as Parameters<typeof getToken>[0]['req'], secret: process.env.NEXTAUTH_SECRET });
+  if (!token?.sub && !token?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   if (!process.env.GASCAP_ANTHROPIC_KEY) {
     return NextResponse.json({ error: 'AI not configured.' }, { status: 503 });

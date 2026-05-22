@@ -170,7 +170,7 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
     try {
       const fd = new FormData();
       fd.append('image', file);
-      const res = await fetch('/api/fillups/scan', { method: 'POST', body: fd });
+      const res = await fetch('/api/fillups/scan', { method: 'POST', body: fd, credentials: 'include' });
       const data = await res.json() as {
         gallons?:        number | null;
         pricePerGallon?: number | null;

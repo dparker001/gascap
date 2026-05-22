@@ -15,11 +15,10 @@
  * Returns:
  *   { created: number, skipped: number, rows: ImportRow[] }
  */
-import { NextResponse }     from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions }      from '@/lib/auth';
-import { findById }         from '@/lib/users';
-import { addVehicle }       from '@/lib/savedVehicles';
+import { NextResponse } from 'next/server';
+import { getToken }    from 'next-auth/jwt';
+import { findById }    from '@/lib/users';
+import { addVehicle }  from '@/lib/savedVehicles';
 
 const MAX_ROWS    = 200; // hard cap per import
 const MAX_FILE_MB = 1;
@@ -92,11 +91,13 @@ export interface ImportRow {
 // ── Route handler ─────────────────────────────────────────────────────────────
 
 export async function POST(req: Request) {
-  // Auth
-  const session = await getServerSession(authOptions);
-  if (!session?.user) return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
+  // Use getToken (reads JWT cookie directly from the request) instead of
+  // getServerSession — the latter requires a req/res pair in App Router and
+  // silently returns null on mobile when called without one, causing 401s.
+  const token = await getToken({ req: req as Parameters<typeof getToken>[0]['req'], secret: process.env.NEXTAUTH_SECRET });
+  if (!token?.sub && !token?.id) return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
 
-  const userId = (session.user as { id?: string }).id ?? session.user.email ?? '';
+  const userId = (token.id ?? token.sub ?? '') as string;
   const user   = await findById(userId);
 
   if (!user || user.plan !== 'fleet') {
