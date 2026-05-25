@@ -186,7 +186,7 @@ export default function SweepstakesRulesPage() {
             <p className="text-sm text-slate-600 leading-relaxed">
               The potential winner will be notified by email at the address associated with their
               GasCap™ account (or the email provided on the mail-in entry) within 7 days of the
-              drawing. The potential winner must respond within 14 days of notification or the prize
+              drawing. The potential winner must respond within 3 days of notification or the prize
               may be forfeited and an alternate winner selected. The Sponsor is not responsible for
               undeliverable email.
             </p>

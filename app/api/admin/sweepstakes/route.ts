@@ -169,7 +169,7 @@ export async function POST(req: Request) {
           `You won the ${monthLabel} GasCap™ Gas Card Giveaway (${prize}).`,
           `Your ${prize} Visa prepaid card — use it at the pump or anywhere Visa is accepted — will be sent within 7 days.`,
           `Reply to confirm receipt or email support@gascap.app with questions.`,
-          `You must respond within 14 days to claim your prize.`,
+          `You must respond within 3 days to claim your prize.`,
         ].join('\n\n'),
       }).catch((err) => console.error('[sweepstakes] winner email failed:', err)),
 
@@ -311,7 +311,7 @@ export async function POST(req: Request) {
               // GHL tag fields — use these directly in your workflow
               // Primary winner tag, e.g. "gascap-sweepstakes-winner-april-2026"
               winnerTag:    `gascap-sweepstakes-winner-${monthLabel.toLowerCase().replace(' ', '-')}`,
-              // Alternate winner tag if primary forfeits within 14 days
+              // Alternate winner tag if primary forfeits within 3 days
               alternateTag: `gascap-sweepstakes-alternate-${monthLabel.toLowerCase().replace(' ', '-')}`,
               // SMS flag — GHL workflow should only send winner SMS when this is true
               sendSms:      !suppressSms,
@@ -344,7 +344,7 @@ export async function POST(req: Request) {
 /**
  * PUT /api/admin/sweepstakes?month=YYYY-MM — alternate winner draw after forfeiture
  *
- * Fires when the original winner fails to claim within 14 days.
+ * Fires when the original winner fails to claim within 3 days.
  * Excludes the forfeited winner, re-draws from remaining eligible entrants,
  * updates the DB record, and fires all standard notifications for the new winner.
  *
@@ -437,7 +437,7 @@ export async function PUT(req: Request) {
               `You won the ${monthLabel} GasCap™ Gas Card Giveaway (${prize}).`,
               `Your ${prize} Visa prepaid card will be sent within 7 days.`,
               `Reply to confirm receipt or email support@gascap.app with questions.`,
-              `You must respond within 14 days to claim your prize.`,
+              `You must respond within 3 days to claim your prize.`,
             ].join('\n\n'),
           }).catch((err) => console.error('[sweepstakes/alternate] winner email failed:', err)),
 

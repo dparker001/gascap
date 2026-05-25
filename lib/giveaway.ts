@@ -370,11 +370,11 @@ export async function markWinnerClaimed(month: string) {
 }
 
 /**
- * Return draws older than 14 days that have not been confirmed by the winner.
+ * Return draws older than 3 days that have not been confirmed by the winner.
  * Used by the daily cron to alert admin.
  */
 export async function getUnclaimedDraws(): Promise<typeof draws> {
-  const cutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+  const cutoff = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
   const draws  = await prisma.giveawayDraw.findMany({
     where: { claimedAt: null, drawnAt: { lt: cutoff } },
   });
@@ -446,7 +446,7 @@ export async function updateDrawWinner(
   const forfeitNote =
     `Alternate draw ${new Date().toISOString().slice(0, 10)}: ` +
     `original winner ${forfeited.name} (${forfeited.email}) forfeited — ` +
-    `did not claim within 14 days of notification.`;
+    `did not claim within 3 days of notification.`;
 
   return prisma.giveawayDraw.update({
     where: { month },

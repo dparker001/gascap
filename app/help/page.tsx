@@ -284,7 +284,7 @@ const SECTIONS = [
       },
       {
         q: 'How will I know if I won?',
-        a: 'Winners are notified by email within 7 days of the drawing. You must respond within 14 days or the prize may be forfeited and an alternate winner selected.',
+        a: 'Winners are notified by email within 7 days of the drawing. You must respond within 3 days or the prize may be forfeited and an alternate winner selected.',
       },
       {
         q: 'Where are the full official rules?',

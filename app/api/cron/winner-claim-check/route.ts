@@ -3,7 +3,7 @@
  *
  * Runs daily. Finds any draw where:
  *   - The winner has not confirmed receipt (claimedAt is null)
- *   - The draw was more than 14 days ago
+ *   - The draw was more than 3 days ago
  *
  * Sends a single admin alert email listing all unclaimed draws so
  * the admin can follow up or select an alternate winner.
@@ -39,7 +39,7 @@ export async function GET(req: Request) {
 
   const rows = unclaimed.map((d) => {
     const daysSince = Math.floor((Date.now() - new Date(d.drawnAt).getTime()) / (1000 * 60 * 60 * 24));
-    const deadline  = new Date(new Date(d.drawnAt).getTime() + 14 * 24 * 60 * 60 * 1000)
+    const deadline  = new Date(new Date(d.drawnAt).getTime() + 3 * 24 * 60 * 60 * 1000)
       .toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
     return { draw: d, daysSince, deadline };
   });
@@ -61,7 +61,7 @@ export async function GET(req: Request) {
         <p style="font-size:14px;color:#475569;margin:0 0 20px;">
           The following winner${unclaimed.length > 1 ? 's have' : ' has'} not confirmed receipt of
           their GasCap™ Visa prepaid card. Per the official rules, you may select an alternate
-          winner if no response is received within 14 days of the drawing.
+          winner if no response is received within 3 days of the drawing.
         </p>
         ${rows.map(({ draw, daysSince, deadline }) => `
         <div style="background:#fef3c7;border:2px solid #f59e0b;border-radius:12px;padding:16px;margin:0 0 12px;">
