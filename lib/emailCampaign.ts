@@ -9,7 +9,7 @@
  *   Step 1 — Welcome + Pro activated   (immediate, fired from register route)
  *   Step 2 — Feature deep-dive         (day 3   — 27 days of Pro left)
  *   Step 3 — Mid-trial value check-in  (day 10  — 20 days of Pro left)
- *   Step 4 — 9 days left, annual deal  (day 21  — lock in annual pricing)
+ *   Step 4 — 9 days left              (day 21  — $4.99/mo primary, $49/yr secondary)
  *   Step 5 — Final 48 hours            (day 28  — last-call offer)
  *
  * Users who already have a Stripe subscription are skipped automatically
@@ -442,7 +442,7 @@ export function proUpsellEmailHtml(name: string, userId: string): string {
 export const proUpsellEmailText = (name: string) =>
   `Hi ${name.split(' ')[0]}, you're 10 days into your GasCap™ Pro trial — 20 days left. Power-user features to try: AI trip planner, MPG drop detection, cost-per-mile tracking, unlimited badges, PDF reports. BONUS: Share your referral link (in the Share tab) — earn a free Pro month every time a friend upgrades, plus bonus drawing entries. Refer 15 and Pro is yours for life. Open the app: ${BASE_URL}`;
 
-// ── Email 4 — 9 Days Left + Annual Deal (Day 21) ──────────────────────────
+// ── Email 4 — 9 Days Left (Day 21) ────────────────────────────────────────
 
 export function annualDealEmailHtml(name: string, userId: string): string {
   const first = name.split(' ')[0];
@@ -498,22 +498,28 @@ export function annualDealEmailHtml(name: string, userId: string): string {
         </a>
       </div>
 
-      <div style="text-align:center;padding:24px 20px;background:linear-gradient(135deg,#1e2d4a,#2d4a6e);border-radius:14px;margin-bottom:22px;">
-        <p style="margin:0 0 4px;color:rgba(255,255,255,.7);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;">Best value — most popular</p>
-        <p style="margin:0;color:#fff;font-size:36px;font-weight:900;line-height:1;">$49<span style="font-size:16px;font-weight:400;color:rgba(255,255,255,.6)">/year</span></p>
-        <p style="margin:6px 0 4px;color:#fbbf24;font-size:14px;font-weight:700;">That's just $4.08/mo</p>
-        <p style="margin:0 0 18px;color:rgba(255,255,255,.6);font-size:12px;">2 months FREE vs monthly · cancel anytime</p>
-        <a href="${BASE_URL}/upgrade" style="display:inline-block;background:#f59e0b;color:#fff;font-weight:900;
-           font-size:15px;padding:14px 36px;border-radius:12px;text-decoration:none;">
-          Upgrade to Pro Annual →
+      <div style="text-align:center;background:linear-gradient(135deg,#fefce8,#fef3c7);
+                  border:2px solid #fde68a;border-radius:16px;padding:28px 24px;margin-bottom:24px;">
+        <p style="margin:0 0 6px;font-size:12px;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:1px;">
+          ⏰ 9 days left on your trial
+        </p>
+        <p style="margin:0 0 8px;font-size:26px;font-weight:900;color:#1e2d4a;">
+          GasCap™ Pro
+        </p>
+        <p style="margin:0 0 4px;font-size:40px;font-weight:900;color:#d97706;line-height:1;">
+          $4.99<span style="font-size:16px;font-weight:400;color:#92400e;">/month</span>
+        </p>
+        <p style="margin:6px 0 18px;font-size:13px;color:#92400e;">
+          Cancel anytime — no long-term commitment required
+        </p>
+        <a href="${BASE_URL}/upgrade" style="display:inline-block;background:#1e2d4a;color:#fff;font-weight:900;
+           font-size:16px;padding:15px 40px;border-radius:14px;text-decoration:none;">
+          Upgrade Now →
         </a>
-        <p style="margin:14px 0 0;color:rgba(255,255,255,.5);font-size:11px;">Secure checkout via Stripe</p>
+        <p style="margin:14px 0 0;font-size:12px;color:#92400e;">
+          Prefer to save? <strong>$49/year</strong> = 2 months free · Secure checkout via Stripe
+        </p>
       </div>
-
-      <p style="margin:0 0 10px;font-size:14px;color:#475569;line-height:1.65;">
-        Prefer monthly? <a href="${BASE_URL}/upgrade" style="color:#f59e0b;font-weight:700;">GasCap™ Pro Monthly is $4.99/mo</a> —
-        no contract, cancel anytime.
-      </p>
 
       <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:16px 20px;margin-top:24px;">
         <p style="margin:0 0 4px;font-size:13px;font-weight:700;color:#15803d;">🚐 Multiple vehicles or a family?</p>
@@ -536,7 +542,7 @@ export function annualDealEmailHtml(name: string, userId: string): string {
 }
 
 export const annualDealEmailText = (name: string) =>
-  `Hi ${name.split(' ')[0]}, your free GasCap™ Pro trial ends in 9 days. Quick tip: share your referral link now (in the Share tab) — if a friend signs up, we bank 1 free Pro month for you, making your first month $0. Lock in Pro Annual at $49/yr (just $4.08/mo — 2 months free) or monthly at $4.99. Upgrade: ${BASE_URL}/upgrade`;
+  `Hi ${name.split(' ')[0]}, your free GasCap™ Pro trial ends in 9 days. Keep everything you've been using for just $4.99/month — cancel anytime, no commitment. Or save 2 months with $49/year. Quick tip: share your referral link now (in the Share tab) — if a friend signs up, we bank 1 free Pro month for you. Upgrade: ${BASE_URL}/upgrade`;
 
 // ── Email 5 — Final 48 Hours (Day 28) ─────────────────────────────────────
 
