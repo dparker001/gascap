@@ -118,7 +118,10 @@ export default function DailyBonus() {
   const PopoverCard = () => (
     <div
       className={[
-        'absolute bottom-14 right-0 w-52 rounded-2xl shadow-xl border',
+        // Mobile (bottom-right): anchor to right edge of button → popover opens leftward ✓
+        // Desktop (bottom-left): anchor to left edge of button → popover opens rightward ✓
+        'absolute w-52 rounded-2xl shadow-xl border',
+        'right-0 md:right-auto md:left-0',
         'bg-white p-4 text-center animate-fade-in-up z-50',
         isRevealed
           ? 'border-green-200'
@@ -157,9 +160,12 @@ export default function DailyBonus() {
         </div>
       )}
 
-      {/* Caret pointing down to the button */}
+      {/* Caret pointing down to the button.
+          Mobile (right-anchored): caret on the right side of the popover.
+          Desktop (left-anchored): caret on the left side of the popover. */}
       <div
-        className="absolute -bottom-2 right-4 w-4 h-4 rotate-45 bg-white border-r border-b border-slate-100"
+        className="absolute -bottom-2 w-4 h-4 rotate-45 bg-white border-r border-b border-slate-100
+                   right-4 md:right-auto md:left-4"
         style={{ borderColor: isRevealed ? '#bbf7d0' : '#f1f5f9' }}
       />
     </div>
