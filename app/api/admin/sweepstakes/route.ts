@@ -1,21 +1,24 @@
 /**
  * Admin Sweepstakes API — protected by ADMIN_PASSWORD
- * GET  /api/admin/sweepstakes?month=YYYY-MM  — preview entrants
- * GET  /api/admin/sweepstakes?history=1      — past draw results
- * POST /api/admin/sweepstakes                — run draw { month, notes?, dryRun?, suppressWinnerEmail?, suppressSms? }
+ * GET   /api/admin/sweepstakes?month=YYYY-MM  — preview entrants
+ * GET   /api/admin/sweepstakes?history=1      — past draw results
+ * POST  /api/admin/sweepstakes                — run draw { month, notes?, dryRun?, suppressWinnerEmail?, suppressSms? }
+ * PUT   /api/admin/sweepstakes?month=YYYY-MM  — alternate draw after forfeiture
+ * PATCH /api/admin/sweepstakes?month=YYYY-MM  — mark winner confirmed → fires Tremendous card delivery
  *
- * After a successful draw the route fires five fire-and-forget side-effects:
+ * After a successful draw (POST/PUT) the route fires four fire-and-forget side-effects:
  *  1. Winner notification email  (via lib/email.ts → SMTP or Resend)
  *     Skipped if suppressWinnerEmail = true
  *  2. Non-winner results email   (sent to all eligible entrants who didn't win)
- *  3. Tremendous API             (TREMENDOUS_API_KEY + TREMENDOUS_CAMPAIGN_ID env vars)
- *     → delivers a Visa prepaid card directly to the winner's email
- *     Skipped if suppressWinnerEmail = true
- *  4. GHL contact upsert         (GHL_API_KEY env var)
+ *  3. GHL contact upsert         (GHL_API_KEY env var)
  *     → creates/updates the winner as a GHL contact with winner tags
  *     → ensures GHL workflows and VA follow-up can fire automatically
- *  5. GHL webhook POST           (GHL_WINNER_WEBHOOK_URL env var)
+ *  4. GHL webhook POST           (GHL_WINNER_WEBHOOK_URL env var)
  *     → triggers a GHL workflow for any additional VA follow-up tasks
+ *
+ * Tremendous card delivery fires on PATCH (mark winner confirmed), NOT at draw time.
+ * This prevents unredeemed rewards from being issued to winners who forfeit or are
+ * unreachable — cancellation within Tremendous is not guaranteed once a reward is sent.
  */
 import { NextResponse } from 'next/server';
 import {
@@ -204,53 +207,11 @@ export async function POST(req: Request) {
         }
       })(),
 
-      // 3. Tremendous API — deliver Visa prepaid card directly to winner
-      //    Skipped if suppressWinnerEmail is true (manual fulfillment mode)
-      //    Prize string is "$25", "$50", etc. — parse the number for the API
-      (() => {
-        if (suppressWinnerEmail) return Promise.resolve();
-        const tremendousKey        = process.env.TREMENDOUS_API_KEY;
-        const tremendousCampaignId = process.env.TREMENDOUS_CAMPAIGN_ID;
-        if (!tremendousKey || !tremendousCampaignId) {
-          console.warn('[sweepstakes] Tremendous env vars not set — skipping reward delivery');
-          return Promise.resolve();
-        }
-        const denomination = parseFloat(prize.replace(/[^0-9.]/g, ''));
-        if (isNaN(denomination) || denomination <= 0) {
-          console.warn('[sweepstakes] Could not parse prize amount from:', prize);
-          return Promise.resolve();
-        }
-        return fetch('https://www.tremendous.com/api/v2/orders', {
-          method:  'POST',
-          headers: {
-            'Authorization': `Bearer ${tremendousKey}`,
-            'Content-Type':  'application/json',
-          },
-          body: JSON.stringify({
-            payment: { funding_source_id: 'BALANCE' },
-            rewards: [{
-              campaign_id: tremendousCampaignId,
-              recipient: {
-                name:  result.winner.name,
-                email: result.winner.email,
-              },
-              value: {
-                denomination,
-                currency_code: 'USD',
-              },
-            }],
-          }),
-        })
-          .then(async (r) => {
-            if (!r.ok) {
-              const err = await r.text();
-              console.error('[sweepstakes] Tremendous API error:', err);
-            } else {
-              console.log(`[sweepstakes] Tremendous reward sent to ${result.winner.email} (${prize})`);
-            }
-          })
-          .catch((err) => console.error('[sweepstakes] Tremendous fetch failed:', err));
-      })(),
+      // 3. Tremendous — intentionally NOT fired here.
+      //    Card delivery is deferred to PATCH (mark winner confirmed) so we never
+      //    issue a reward to a winner who forfeits or cannot be reached.
+      //    See PATCH handler below.
+      Promise.resolve(),
 
       // 4. GHL — upsert winner as a contact so workflows & follow-up can fire
       //    Uses the same PIT token stored in GHL_API_KEY.
@@ -470,35 +431,10 @@ export async function PUT(req: Request) {
         }
       })(),
 
-      // 3. Tremendous — deliver card to new winner
-      (() => {
-        if (suppressWinnerEmail) return Promise.resolve();
-        const tremendousKey        = process.env.TREMENDOUS_API_KEY;
-        const tremendousCampaignId = process.env.TREMENDOUS_CAMPAIGN_ID;
-        if (!tremendousKey || !tremendousCampaignId) return Promise.resolve();
-        const denomination = parseFloat(prize.replace(/[^0-9.]/g, ''));
-        if (isNaN(denomination) || denomination <= 0) return Promise.resolve();
-        return fetch('https://www.tremendous.com/api/v2/orders', {
-          method:  'POST',
-          headers: {
-            'Authorization': `Bearer ${tremendousKey}`,
-            'Content-Type':  'application/json',
-          },
-          body: JSON.stringify({
-            payment: { funding_source_id: 'BALANCE' },
-            rewards: [{
-              campaign_id: tremendousCampaignId,
-              recipient:   { name: result.winner.name, email: result.winner.email },
-              value:       { denomination, currency_code: 'USD' },
-            }],
-          }),
-        })
-          .then(async (r) => {
-            if (!r.ok) console.error('[sweepstakes/alternate] Tremendous error:', await r.text());
-            else console.log(`[sweepstakes/alternate] Tremendous reward sent to ${result.winner.email}`);
-          })
-          .catch((err) => console.error('[sweepstakes/alternate] Tremendous fetch failed:', err));
-      })(),
+      // 3. Tremendous — intentionally NOT fired here.
+      //    Card delivery is deferred to PATCH (mark winner confirmed).
+      //    See PATCH handler below.
+      Promise.resolve(),
 
       // 4. GHL contact upsert for new winner
       (() => {
@@ -581,7 +517,18 @@ export async function PUT(req: Request) {
   }
 }
 
-/** PATCH /api/admin/sweepstakes?month=YYYY-MM — mark winner as confirmed */
+/**
+ * PATCH /api/admin/sweepstakes?month=YYYY-MM — mark winner confirmed + fire Tremendous card
+ *
+ * Two things happen when the admin clicks "Mark Confirmed":
+ *  1. The draw record is stamped with claimedAt (idempotent — safe to call again).
+ *  2. Tremendous order is created to deliver the Visa prepaid card to the winner's email.
+ *     Fired here (not at draw time) so we never issue a reward before confirmation —
+ *     unredeemed Tremendous rewards can only be cancelled within 7 days and are not
+ *     guaranteed reversible (learned from Matt Beals incident, May 2026).
+ *
+ * Returns: { ok, claimedAt, tremendousSent, tremendousOrderId? }
+ */
 export async function PATCH(req: Request) {
   const _auth = auth(req);
   if (_auth === 'no-env') return NextResponse.json({ error: 'Misconfigured' }, { status: 503 });
@@ -594,8 +541,80 @@ export async function PATCH(req: Request) {
 
   try {
     const draw = await markWinnerClaimed(month);
-    return NextResponse.json({ ok: true, claimedAt: draw.claimedAt });
+
+    // ── Tremendous card delivery ─────────────────────────────────────────────
+    // Fetch the prize amount from the tier engine (not stored on the draw record).
+    let tremendousSent    = false;
+    let tremendousOrderId: string | undefined;
+    let tremendousError:   string | undefined;
+
+    const tremendousKey        = process.env.TREMENDOUS_API_KEY;
+    const tremendousCampaignId = process.env.TREMENDOUS_CAMPAIGN_ID;
+
+    if (!tremendousKey || !tremendousCampaignId) {
+      console.warn('[sweepstakes/confirm] Tremendous env vars not set — skipping card delivery');
+      tremendousError = 'TREMENDOUS_API_KEY or TREMENDOUS_CAMPAIGN_ID not configured';
+    } else {
+      try {
+        const { currentTier } = await getCurrentPrizeTier();
+        const prize       = currentTier.prize;   // e.g. "$25"
+        const denomination = parseFloat(prize.replace(/[^0-9.]/g, ''));
+
+        if (isNaN(denomination) || denomination <= 0) {
+          console.warn('[sweepstakes/confirm] Could not parse prize amount from:', prize);
+          tremendousError = `Could not parse prize amount: ${prize}`;
+        } else {
+          const tRes = await fetch('https://www.tremendous.com/api/v2/orders', {
+            method:  'POST',
+            headers: {
+              'Authorization': `Bearer ${tremendousKey}`,
+              'Content-Type':  'application/json',
+            },
+            body: JSON.stringify({
+              payment: { funding_source_id: 'BALANCE' },
+              rewards: [{
+                campaign_id: tremendousCampaignId,
+                recipient: {
+                  name:  draw.winnerName,
+                  email: draw.winnerEmail,
+                },
+                value: {
+                  denomination,
+                  currency_code: 'USD',
+                },
+              }],
+            }),
+          });
+
+          if (!tRes.ok) {
+            const errText = await tRes.text();
+            console.error('[sweepstakes/confirm] Tremendous API error:', tRes.status, errText);
+            tremendousError = `Tremendous API ${tRes.status}: ${errText}`;
+          } else {
+            const tData = await tRes.json() as { order?: { id?: string } };
+            tremendousOrderId = tData.order?.id;
+            tremendousSent    = true;
+            console.log(
+              `[sweepstakes/confirm] Tremendous card sent to ${draw.winnerEmail}` +
+              ` (${prize}) — order ${tremendousOrderId ?? 'unknown'}`,
+            );
+          }
+        }
+      } catch (tErr) {
+        console.error('[sweepstakes/confirm] Tremendous fetch threw:', tErr);
+        tremendousError = String(tErr);
+      }
+    }
+    // ────────────────────────────────────────────────────────────────────────
+
+    return NextResponse.json({
+      ok:              true,
+      claimedAt:       draw.claimedAt,
+      tremendousSent,
+      ...(tremendousOrderId ? { tremendousOrderId }       : {}),
+      ...(tremendousError   ? { tremendousError }         : {}),
+    });
   } catch {
-    return NextResponse.json({ error: 'Draw not found' }, { status: 404 });
+    return NextResponse.json({ error: 'Draw not found or already confirmed' }, { status: 404 });
   }
 }
