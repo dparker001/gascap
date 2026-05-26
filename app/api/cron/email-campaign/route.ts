@@ -17,6 +17,15 @@ import { getUsersPendingCampaignStep, advanceEmailCampaignStep, getAllUsers } fr
 import { sendCampaignEmail }  from '@/lib/emailCampaign';
 import { sendPushNotification } from '@/lib/oneSignal';
 import { logEmailError, hasEmailBeenSent, CAMPAIGN_STEP_META } from '@/lib/emailLog';
+import { sendGhlSms } from '@/lib/ghl';
+
+// SMS copy for D4 (day 21 — 9 days left) and D5 (day 28 — 48 hours left)
+function d4SmsText(firstName: string): string {
+  return `Hi ${firstName}! ⏰ Your GasCap™ Pro trial ends in 9 days. Keep all your features for just $4.99/mo — cancel anytime. Upgrade → gascap.app/upgrade\n\nReply STOP to opt out.`;
+}
+function d5SmsText(firstName: string): string {
+  return `Hi ${firstName}! ⏰ Your GasCap™ Pro trial ends in 48 hours. Keep all your features for just $4.99/mo — cancel anytime. Upgrade now → gascap.app/upgrade\n\nReply STOP to opt out.`;
+}
 
 const STEPS: { step: number; minDays: number; label: string }[] = [
   { step: 2, minDays: 3,  label: 'Day-3 feature deep-dive'    },
@@ -113,6 +122,20 @@ export async function GET(req: Request) {
         await sendCampaignEmail(step, { id: user.id, name: user.name, email: user.email });
         await advanceEmailCampaignStep(user.id, step);
         sent++;
+
+        // ── SMS supplement for D4 and D5 ──────────────────────────────────
+        // Only fires when the user has provided a phone number and opted in to
+        // SMS at sign-up. Fire-and-forget: SMS failure never blocks the email
+        // drip from advancing or throws to the outer catch.
+        if ((step === 4 || step === 5) && user.phone && user.smsOptIn) {
+          const firstName = user.name.split(' ')[0];
+          const smsText   = step === 4 ? d4SmsText(firstName) : d5SmsText(firstName);
+          // Don't await — fire-and-forget to avoid slowing the cron
+          sendGhlSms(user.email, smsText).catch((smsErr) =>
+            console.error(`[Campaign] SMS step ${step} failed for ${user.email}:`, smsErr),
+          );
+        }
+
         await new Promise((r) => setTimeout(r, 500)); // stay under Resend 2 req/sec free-tier limit
       } catch (err) {
         console.error(`[Campaign] Step ${step} failed for ${user.email}:`, err);

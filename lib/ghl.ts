@@ -184,6 +184,69 @@ export async function upsertGhlContactWithCampaign(
   });
 }
 
+// ── SMS sending ───────────────────────────────────────────────────────────
+
+/**
+ * Send an SMS to a GasCap user via GHL Conversations API.
+ *
+ * Looks up the GHL contact by email, then sends an SMS message from the
+ * A2P-approved GasCap number (+13215131321).
+ *
+ * Returns true on success, false on any failure (non-throwing — safe to
+ * call fire-and-forget style from the cron).
+ */
+export async function sendGhlSms(email: string, message: string): Promise<boolean> {
+  if (!isConfigured()) {
+    console.warn('[GHL SMS] Skipping — GHL_API_KEY or GHL_LOCATION_ID not set.');
+    return false;
+  }
+
+  try {
+    // 1. Look up the GHL contact by email to get their contactId
+    const searchRes = await fetch(
+      `${GHL_BASE}/contacts/search/duplicate?locationId=${GHL_LOCATION_ID}&email=${encodeURIComponent(email)}`,
+      { headers: ghlHeaders() },
+    );
+
+    if (!searchRes.ok) {
+      console.error(`[GHL SMS] Contact lookup failed for ${email}:`, searchRes.status, await searchRes.text());
+      return false;
+    }
+
+    const searchData = await searchRes.json() as { contact?: { id?: string } };
+    const contactId  = searchData.contact?.id;
+
+    if (!contactId) {
+      console.warn(`[GHL SMS] No GHL contact found for ${email} — skipping SMS`);
+      return false;
+    }
+
+    // 2. Send SMS via GHL Conversations API
+    const msgRes = await fetch(`${GHL_BASE}/conversations/messages`, {
+      method:  'POST',
+      headers: ghlHeaders(),
+      body:    JSON.stringify({
+        type:       'SMS',
+        contactId,
+        locationId: GHL_LOCATION_ID,
+        message,
+      }),
+    });
+
+    if (!msgRes.ok) {
+      const errText = await msgRes.text();
+      console.error(`[GHL SMS] Send failed for ${email} (contactId=${contactId}):`, msgRes.status, errText);
+      return false;
+    }
+
+    console.log(`[GHL SMS] Sent to ${email} (contactId=${contactId})`);
+    return true;
+  } catch (err) {
+    console.error(`[GHL SMS] Unexpected error for ${email}:`, err);
+    return false;
+  }
+}
+
 // ── Plan tag update ───────────────────────────────────────────────────────
 
 /**
