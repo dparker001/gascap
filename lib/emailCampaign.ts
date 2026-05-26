@@ -562,19 +562,21 @@ export function lastCallEmailHtml(name: string, userId: string): string {
           🎁 Trial-ending offer
         </p>
         <p style="margin:0 0 8px;font-size:26px;font-weight:900;color:#1e2d4a;">
-          GasCap™ Pro Annual
+          GasCap™ Pro
         </p>
         <p style="margin:0 0 4px;font-size:40px;font-weight:900;color:#d97706;line-height:1;">
-          $49<span style="font-size:16px;font-weight:400;color:#92400e;">/year</span>
+          $4.99<span style="font-size:16px;font-weight:400;color:#92400e;">/month</span>
         </p>
         <p style="margin:6px 0 18px;font-size:13px;color:#92400e;">
-          That's <strong>$4.08/mo</strong> — less than a car wash, less than a latte
+          Cancel anytime — no long-term commitment required
         </p>
         <a href="${BASE_URL}/upgrade" style="display:inline-block;background:#1e2d4a;color:#fff;font-weight:900;
            font-size:16px;padding:15px 40px;border-radius:14px;text-decoration:none;">
           Upgrade Now →
         </a>
-        <p style="margin:14px 0 0;font-size:11px;color:#92400e;">Secure checkout via Stripe · Cancel anytime</p>
+        <p style="margin:14px 0 0;font-size:12px;color:#92400e;">
+          Prefer to save? <strong>$49/year</strong> = 2 months free · Secure checkout via Stripe
+        </p>
       </div>
 
       <p style="margin:0 0 12px;font-size:15px;font-weight:700;color:#1e2d4a;">
@@ -607,7 +609,7 @@ export function lastCallEmailHtml(name: string, userId: string): string {
 }
 
 export const lastCallEmailText = (name: string) =>
-  `Hi ${name.split(' ')[0]}, your GasCap™ Pro trial ends in 48 hours. Lock in Pro Annual at $49/yr ($4.08/mo) before your account reverts to free. Upgrade: ${BASE_URL}/upgrade`;
+  `Hi ${name.split(' ')[0]}, your GasCap™ Pro trial ends in 48 hours. Keep everything you've been using for just $4.99/month — cancel anytime, no commitment. Or save 2 months with $49/year. Upgrade before your account reverts to free: ${BASE_URL}/upgrade`;
 
 // ── Email 6 — Trial Ended (fires from expiry cron on downgrade) ────────────
 
