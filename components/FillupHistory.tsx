@@ -35,6 +35,7 @@ interface EditDraft {
   notes:           string;
   fuelGrade:       EditFuelGrade;
   receiptThumb:    string;   // base64 data URL or ''
+  driverLabel:     string;   // Fleet Phase 1 — empty string = unassigned
 }
 
 const EDIT_FUEL_GRADES: { value: EditFuelGrade; label: string; sub: string }[] = [
@@ -143,6 +144,7 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
   const [editError,       setEditError]       = useState('');
   const [editImgLoading,  setEditImgLoading]  = useState(false);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [drivers,         setDrivers]         = useState<string[]>([]);
   const editCameraRef  = useRef<HTMLInputElement>(null);
   const editGalleryRef = useRef<HTMLInputElement>(null);
 
@@ -200,6 +202,16 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
   useEffect(() => {
     if (session) load();
   }, [session, load, refreshKey]);
+
+  // Fetch driver roster for fleet accounts so the edit form can show the picker
+  useEffect(() => {
+    const plan = (session?.user as { plan?: string } | undefined)?.plan ?? 'free';
+    if (!session || plan !== 'fleet') return;
+    fetch('/api/fleet/drivers')
+      .then((r) => r.json())
+      .then((d: { drivers?: string[] }) => setDrivers(d.drivers ?? []))
+      .catch(() => {});
+  }, [session]);
 
   // Auto-open when refreshKey changes (new fillup logged)
   useEffect(() => {
@@ -262,6 +274,7 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
       notes:           f.notes ?? '',
       fuelGrade:       (f.fuelGrade ?? '') as EditFuelGrade,
       receiptThumb:    f.receiptThumb ?? '',
+      driverLabel:     f.driverLabel ?? '',
     });
   }
 
@@ -289,6 +302,7 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
       body.notes = editDraft.notes;
     body.fuelGrade    = editDraft.fuelGrade    || undefined;
     body.receiptThumb = editDraft.receiptThumb || undefined;
+    body.driverLabel  = editDraft.driverLabel  || undefined;
     try {
       const res = await fetch('/api/fillups', {
         method:  'PATCH',
@@ -663,6 +677,27 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
                                            focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white"
                               />
                             </div>
+
+                            {/* Driver — fleet accounts with a roster only */}
+                            {isFleet && drivers.length > 0 && (
+                              <div>
+                                <label className="block text-[10px] font-semibold text-slate-500 mb-1">
+                                  Driver
+                                  <span className="ml-1 text-[9px] font-bold bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full">FLEET</span>
+                                </label>
+                                <select
+                                  value={editDraft.driverLabel}
+                                  onChange={(e) => setEditDraft((d) => d ? { ...d, driverLabel: e.target.value } : d)}
+                                  className="w-full text-xs px-2.5 py-2 border border-slate-200 rounded-xl
+                                             focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white"
+                                >
+                                  <option value="">— Unassigned —</option>
+                                  {drivers.map((driver) => (
+                                    <option key={driver} value={driver}>{driver}</option>
+                                  ))}
+                                </select>
+                              </div>
+                            )}
 
                             {/* Notes */}
                             <div>
