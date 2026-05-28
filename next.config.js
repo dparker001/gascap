@@ -23,6 +23,16 @@ const nextConfig = {
       },
     ],
   },
+  // Canonical redirect: gascap.app → www.gascap.app (apex sub-routes return 404 without this)
+  redirects: async () => [
+    {
+      source:      '/:path*',
+      has:         [{ type: 'host', value: 'gascap.app' }],
+      destination: 'https://www.gascap.app/:path*',
+      permanent:   true,
+    },
+  ],
+
   headers: async () => [
     {
       source: '/(.*)',
