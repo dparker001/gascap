@@ -572,6 +572,8 @@ export default function AdminPage() {
     const labels: Record<string, string> = {
       'trial-d1': 'Trial D1', 'trial-d2': 'Trial D2', 'trial-d3': 'Trial D3',
       'trial-d4': 'Trial D4', 'trial-d5': 'Trial D5',
+      'trial-c1': 'Conv C1',  'trial-c2': 'Conv C2',  'trial-c3': 'Conv C3',
+      'trial-c4': 'Conv C4',
       'paid-p1': 'Paid P1', 'paid-p2': 'Paid P2', 'paid-p3': 'Paid P3',
       'paid-p4': 'Paid P4', 'paid-p5': 'Paid P5',
       'comp-c1': 'Comp C1', 'comp-c2': 'Comp C2', 'comp-c3': 'Comp C3',
@@ -603,6 +605,7 @@ export default function AdminPage() {
   // ── Email badge helpers ──────────────────────────────────────────────────
   function emailBadgeLabel(type: string): string {
     if (type.startsWith('trial-d'))   return 'D' + type.slice(-1);
+    if (type.startsWith('trial-c'))   return 'C' + type.slice(-1);
     if (type.startsWith('paid-p'))    return 'P' + type.slice(-1).toUpperCase();
     if (type.startsWith('comp-c'))    return 'C' + type.slice(-1);
     if (type.startsWith('eng-s'))     return 'ES' + type.slice(-1);
@@ -616,6 +619,7 @@ export default function AdminPage() {
     if (status === 'failed')          return 'bg-red-100 text-red-700 border border-red-200';
     if (status === 'retried')         return 'bg-orange-100 text-orange-700 border border-orange-200';
     if (type.startsWith('trial-d'))   return 'bg-amber-100 text-amber-700 border border-amber-200';
+    if (type.startsWith('trial-c'))   return 'bg-orange-100 text-orange-700 border border-orange-200';
     if (type.startsWith('paid-p'))    return 'bg-green-100 text-green-700 border border-green-200';
     if (type.startsWith('comp-c'))    return 'bg-teal-100 text-teal-700 border border-teal-200';
     if (type.startsWith('eng-'))      return 'bg-blue-100 text-blue-700 border border-blue-200';
@@ -1054,6 +1058,28 @@ export default function AdminPage() {
                 </div>
 
                 <div className="space-y-1.5">
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">🔥 Trial Conversion Burst</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      { id: 'trial-c1', label: 'C1 — Value Recap' },
+                      { id: 'trial-c2', label: 'C2 — The Math' },
+                      { id: 'trial-c3', label: 'C3 — 48 Hours Left' },
+                      { id: 'trial-c4', label: 'C4 — Special Offer' },
+                    ].map(({ id, label }) => (
+                      <button
+                        key={id}
+                        onClick={() => { setEmailPreviewTemplate(id); loadEmailPreview(id); }}
+                        className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${
+                          emailPreviewTemplate === id
+                            ? 'bg-orange-500 text-white'
+                            : 'bg-slate-100 text-slate-500 hover:bg-orange-50 hover:text-orange-700'
+                        }`}
+                      >{label}</button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
                   <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">💳 Paid Subscriber Drip</p>
                   <div className="flex flex-wrap gap-1.5">
                     {[
@@ -1098,27 +1124,7 @@ export default function AdminPage() {
                   </div>
                 </div>
 
-                <div className="space-y-1.5">
-                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">🚗 Fleet Engagement Drip</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {[
-                      { id: 'eng-f1', label: 'F1 — Quick-Start (Day 14)' },
-                      { id: 'eng-f2', label: 'F2 — Tax Report (Day 45)' },
-                      { id: 'eng-f3', label: 'F3 — Referral Nudge (Day 105)' },
-                      { id: 'eng-f4', label: 'F4 — ROI Summary (Day 180)' },
-                    ].map(({ id, label }) => (
-                      <button
-                        key={id}
-                        onClick={() => { setEmailPreviewTemplate(id); loadEmailPreview(id); }}
-                        className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${
-                          emailPreviewTemplate === id
-                            ? 'bg-teal-700 text-white'
-                            : 'bg-slate-100 text-slate-500 hover:bg-teal-50 hover:text-teal-700'
-                        }`}
-                      >{label}</button>
-                    ))}
-                  </div>
-                </div>
+                {/* Fleet Engagement Drip — hidden; paused until Fleet plan relaunches */}
 
                 <div className="space-y-1.5">
                   <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">🎉 Milestone Emails</p>
@@ -1325,7 +1331,7 @@ export default function AdminPage() {
                   </optgroup>
                   <optgroup label="Engagement">
                     <option value="eng-s">Pro S1–S5</option>
-                    <option value="eng-f">Fleet F1–F4</option>
+                    <option value="eng-f">Fleet F1–F4 (paused)</option>
                   </optgroup>
                   <optgroup label="Milestones">
                     <option value="milestone-fillup10">M1 Fill-ups</option>

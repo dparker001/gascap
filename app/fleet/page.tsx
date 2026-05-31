@@ -311,7 +311,37 @@ export default function FleetPage() {
     URL.revokeObjectURL(url);
   }
 
-  // ── Render ──────────────────────────────────────────────────────────────────��─
+  // ── Fleet plan is currently inactive — show "coming soon" landing ──────────
+  // Fleet features are preserved in this file for future relaunch.
+  // Pro plan now includes unlimited vehicles — see /upgrade.
+  return (
+    <div className="min-h-screen bg-[#1E2D4A] flex flex-col items-center justify-center px-5 py-16">
+      <div className="max-w-sm w-full text-center space-y-6">
+        <div className="text-6xl">🚛</div>
+        <h1 className="text-white font-black text-2xl leading-tight">
+          Fleet Features Coming Soon
+        </h1>
+        <p className="text-white/70 text-sm leading-relaxed">
+          We're rebuilding GasCap™ Fleet with a better experience. In the meantime,
+          <strong className="text-white"> Pro now includes unlimited vehicles</strong> — perfect
+          for households and small fleets.
+        </p>
+        <Link
+          href="/upgrade"
+          className="block w-full py-4 rounded-2xl bg-amber-500 hover:bg-amber-400
+                     text-white font-black text-sm transition-colors"
+        >
+          ⭐ Upgrade to Pro — Unlimited Vehicles
+        </Link>
+        <Link href="/" className="block text-white/40 hover:text-white/70 text-xs transition-colors">
+          ← Back to GasCap™
+        </Link>
+      </div>
+    </div>
+  );
+
+  // ── Render (preserved for Fleet relaunch) ──────────────────────────────────
+  // eslint-disable-next-line no-unreachable��─
   return (
     <div className="min-h-screen bg-slate-50">
 
@@ -447,8 +477,8 @@ export default function FleetPage() {
                   <div className="flex-1 min-w-0">
                     {importFile ? (
                       <>
-                        <p className="text-xs font-bold text-teal-700 truncate">{importFile.name}</p>
-                        <p className="text-[10px] text-teal-500">{(importFile.size / 1024).toFixed(1)} KB</p>
+                        <p className="text-xs font-bold text-teal-700 truncate">{importFile!.name}</p>
+                        <p className="text-[10px] text-teal-500">{(importFile!.size / 1024).toFixed(1)} KB</p>
                       </>
                     ) : (
                       <p className="text-xs text-slate-400">Choose a .csv file…</p>
@@ -493,15 +523,15 @@ export default function FleetPage() {
                   <div className="space-y-2">
                     <div className="flex gap-2">
                       <span className="text-[11px] font-black text-green-600 bg-green-50 rounded-full px-2.5 py-1">
-                        ✓ {importResults.created} imported
+                        ✓ {importResults!.created} imported
                       </span>
-                      {importResults.skipped > 0 && (
+                      {importResults!.skipped > 0 && (
                         <span className="text-[11px] font-black text-amber-600 bg-amber-50 rounded-full px-2.5 py-1">
-                          ⚠ {importResults.skipped} skipped
+                          ⚠ {importResults!.skipped} skipped
                         </span>
                       )}
                     </div>
-                    {importResults.rows.filter((r) => r.status === 'skipped').map((r) => (
+                    {importResults!.rows.filter((r) => r.status === 'skipped').map((r) => (
                       <div key={r.row} className="text-[10px] text-slate-500 bg-slate-50 rounded-lg px-3 py-1.5">
                         <span className="font-bold">Row {r.row} — {r.name}:</span> {r.error}
                       </div>

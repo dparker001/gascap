@@ -910,16 +910,7 @@ export default function SettingsPage() {
                            bg-amber-500 hover:bg-amber-400 text-white font-bold text-sm transition-colors disabled:opacity-50"
               >
                 <span>⭐ Upgrade to Pro</span>
-                <span>$4.99/mo →</span>
-              </button>
-              <button
-                onClick={() => handleUpgrade('fleet')}
-                disabled={portalLoading}
-                className="flex items-center justify-between w-full py-3 px-4 rounded-2xl
-                           bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm transition-colors disabled:opacity-50"
-              >
-                <span>🚛 Upgrade to Fleet</span>
-                <span>$19.99/mo →</span>
+                <span>$2.99/mo →</span>
               </button>
             </>
           )}
@@ -927,17 +918,8 @@ export default function SettingsPage() {
           {plan === 'pro' && (
             <>
               <p className="text-sm text-slate-500">
-                GasCap™ Pro — up to 3 vehicles, manual entry, spec lookup &amp; more.
+                GasCap™ Pro — unlimited vehicles, manual entry, spec lookup &amp; more.
               </p>
-              <button
-                onClick={() => handleUpgrade('fleet')}
-                disabled={portalLoading}
-                className="flex items-center justify-between w-full py-3 px-4 rounded-2xl
-                           bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm transition-colors disabled:opacity-50"
-              >
-                <span>🚛 Upgrade to Fleet</span>
-                <span>$19.99/mo →</span>
-              </button>
               <button
                 onClick={openPortal}
                 disabled={portalLoading}

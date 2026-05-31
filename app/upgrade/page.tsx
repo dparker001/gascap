@@ -21,7 +21,7 @@ const FREE_FEATURES = [
 ];
 
 const PRO_FEATURES = [
-  'Up to 3 saved vehicles',
+  'Unlimited saved vehicles',
   'VIN photo scan — auto-decode vehicle',
   'Manual entry + auto spec lookup',
   'Fill-up history & MPG tracking',
@@ -29,20 +29,6 @@ const PRO_FEATURES = [
   'Referral rewards',
   'All Free features included',
   'Priority support',
-];
-
-const FLEET_FEATURES = [
-  'Unlimited vehicles',
-  'Businesses, contractors & multi-vehicle households',
-  'Fleet-wide fuel dashboard',
-  'Per-vehicle spending breakdown',
-  'Annual tax report (PDF)',
-  'Bulk vehicle import',
-  'CSV export for accounting',
-  'Referral rewards',
-  'All Pro features included',
-  'Multi-driver sub-accounts (coming soon)',
-  'Dedicated fleet support',
 ];
 
 // ── Helpers ───────────────────────────────────────────────────────────────
@@ -80,18 +66,15 @@ function UpgradePageInner() {
   const { t } = useTranslation();
   const searchParams = useSearchParams();
   const coupon = searchParams.get('coupon') ?? undefined;
-  const [billing, setBilling] = useState<'monthly' | 'annual'>('monthly');
-  const [loading, setLoading] = useState<'pro' | 'fleet' | null>(null);
+  const [billingType, setBillingType] = useState<'monthly' | 'lifetime'>('monthly');
+  const [loading, setLoading] = useState<'pro-monthly' | 'pro-lifetime' | null>(null);
   const [error,   setError]   = useState('');
 
-  async function handleUpgrade(tier: 'pro' | 'fleet') {
+  async function handleUpgrade(tier: 'pro', billing: 'monthly' | 'lifetime') {
     if (!session) { window.location.href = '/signin?next=/upgrade'; return; }
-    setLoading(tier);
+    setLoading(billing === 'lifetime' ? 'pro-lifetime' : 'pro-monthly');
     setError('');
     try {
-      // Only apply the promo coupon on monthly billing — the "$2.99/mo for 3 months"
-      // offer doesn't translate to annual (which bills once/yr; only 1 invoice would
-      // get a $2 discount, misrepresenting the email promise).
       const applyCoupon = coupon && billing === 'monthly' ? { coupon } : {};
       const res  = await fetch('/api/stripe/checkout', {
         method:  'POST',
@@ -108,10 +91,8 @@ function UpgradePageInner() {
     }
   }
 
-  const proPrice   = billing === 'annual' ? `$${PRICING.pro.annual}/yr`   : `$${PRICING.pro.monthly}/mo`;
-  const fleetPrice = billing === 'annual' ? `$${PRICING.fleet.annual}/yr` : `$${PRICING.fleet.monthly}/mo`;
-  const proSub     = billing === 'annual' ? `$${PRICING.pro.annualPerMonth}/mo billed annually` : '';
-  const fleetSub   = billing === 'annual' ? `$${PRICING.fleet.annualPerMonth}/mo billed annually` : '';
+  const proPrice = billingType === 'lifetime' ? `$${PRICING.pro.lifetime}` : `$${PRICING.pro.monthly}/mo`;
+  const proSub   = billingType === 'lifetime' ? 'one-time payment — own Pro forever' : 'less than a dime a day — cancel anytime';
 
   return (
     <div className="min-h-screen bg-[#eef1f7] flex flex-col">
@@ -202,20 +183,20 @@ function UpgradePageInner() {
           </div>
         ) : (
           <div className="flex items-center justify-center gap-3 mb-8">
-            <button onClick={() => setBilling('monthly')}
+            <button onClick={() => setBillingType('monthly')}
               className={`px-5 py-2 rounded-xl text-sm font-bold transition-all ${
-                billing === 'monthly' ? 'bg-navy-700 text-white shadow' : 'bg-white text-slate-500 hover:bg-slate-50'
+                billingType === 'monthly' ? 'bg-navy-700 text-white shadow' : 'bg-white text-slate-500 hover:bg-slate-50'
               }`}>
               {t.upgrade.monthly}
             </button>
-            <button onClick={() => setBilling('annual')}
+            <button onClick={() => setBillingType('lifetime')}
               className={`px-5 py-2 rounded-xl text-sm font-bold transition-all relative ${
-                billing === 'annual' ? 'bg-navy-700 text-white shadow' : 'bg-white text-slate-500 hover:bg-slate-50'
+                billingType === 'lifetime' ? 'bg-navy-700 text-white shadow' : 'bg-white text-slate-500 hover:bg-slate-50'
               }`}>
-              {t.upgrade.annual}
+              Lifetime
               <span className="absolute -top-2 -right-2 bg-green-500 text-white text-[9px]
                                font-black px-1.5 py-0.5 rounded-full leading-none">
-                {t.upgrade.saveBadge}
+                BEST VALUE
               </span>
             </button>
           </div>
@@ -226,7 +207,7 @@ function UpgradePageInner() {
         )}
 
         {/* Plan cards */}
-        <div className="space-y-4 md:space-y-0 md:grid md:grid-cols-3 md:gap-6 md:items-start">
+        <div className="space-y-4 md:space-y-0 md:grid md:grid-cols-2 md:gap-6 md:items-start max-w-2xl mx-auto w-full">
 
           {/* ── Pro ── */}
           <div id="pro" className="bg-white rounded-3xl shadow-card border-2 border-amber-400 p-6">
@@ -253,50 +234,17 @@ function UpgradePageInner() {
               ))}
             </ul>
 
-            <button onClick={() => handleUpgrade('pro')} disabled={loading !== null}
+            <button
+              onClick={() => handleUpgrade('pro', billingType === 'lifetime' ? 'lifetime' : 'monthly')}
+              disabled={loading !== null}
               className="w-full py-3 rounded-2xl bg-amber-500 hover:bg-amber-400 text-white
                          font-black text-sm disabled:opacity-50 transition-colors">
-              {loading === 'pro' ? t.upgrade.redirecting : session ? `${t.upgrade.upgradeBtn} Pro — ${proPrice}` : t.upgrade.signInToUp}
+              {(loading === 'pro-monthly' || loading === 'pro-lifetime')
+                ? t.upgrade.redirecting
+                : session
+                  ? `${t.upgrade.upgradeBtn} Pro — ${proPrice}`
+                  : t.upgrade.signInToUp}
             </button>
-          </div>
-
-          {/* ── Fleet ── */}
-          <div id="fleet" className="bg-white rounded-3xl shadow-card border-2 border-blue-400 p-6">
-            <div className="flex items-start justify-between mb-4">
-              <div>
-                <span className="inline-block bg-blue-100 text-blue-700 text-[10px] font-black
-                                 px-2 py-0.5 rounded-full uppercase tracking-wider mb-1">
-                  {t.upgrade.houseAndBiz}
-                </span>
-                <h2 className="text-xl font-black text-navy-700">Fleet</h2>
-                <p className="text-xs text-slate-400 mt-0.5">{t.upgrade.fleetFor}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-2xl font-black text-navy-700">{fleetPrice}</p>
-                {fleetSub && <p className="text-[11px] text-green-600 font-semibold">{fleetSub}</p>}
-              </div>
-            </div>
-
-            <ul className="space-y-2 mb-5">
-              {FLEET_FEATURES.map((f) => (
-                <li key={f} className="flex items-start gap-2 text-sm text-slate-700">
-                  <Check color="blue" /> {f}
-                </li>
-              ))}
-            </ul>
-
-            <button onClick={() => handleUpgrade('fleet')} disabled={loading !== null}
-              className="w-full py-3 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white
-                         font-black text-sm disabled:opacity-50 transition-colors">
-              {loading === 'fleet' ? t.upgrade.redirecting : session ? `${t.upgrade.upgradeBtn} Fleet — ${fleetPrice}` : t.upgrade.signInToUp}
-            </button>
-
-            <p className="text-center text-[11px] text-slate-400 mt-2">
-              {t.upgrade.enterprise}{' '}
-              <a href="mailto:don@gascap.app" className="text-blue-500 hover:underline font-semibold">
-                {t.upgrade.contactUs}
-              </a>
-            </p>
           </div>
 
           {/* ── Free ── */}

@@ -7,12 +7,13 @@
  * Protected by ADMIN_PASSWORD header (same auth as other admin routes).
  *
  * Templates available:
- *   trial-d1, trial-d2, trial-d3, trial-d4, trial-d5
+ *   trial-d1, trial-d2, trial-d3, trial-d4, trial-d5  (Free trial drip)
+ *   trial-c1, trial-c2, trial-c3, trial-c4             (Trial conversion burst)
  *   comp-c1, comp-c2, comp-c3, comp-c4, comp-c5
  *   paid-p1, paid-p2, paid-p3, paid-p5
  *   eng-s1, eng-s2, eng-s3, eng-s4, eng-s5  (Pro engagement drip)
- *   eng-f1, eng-f2, eng-f3, eng-f4           (Fleet engagement drip)
  *   eng-m1, eng-m2, eng-m3                   (Milestone emails)
+ *   eng-f1, eng-f2, eng-f3, eng-f4           (Fleet engagement drip — paused until Fleet relaunch)
  */
 import { NextResponse } from 'next/server';
 import {
@@ -27,6 +28,12 @@ import {
   compC4EmailHtml,
   compC5EmailHtml,
 } from '@/lib/emailCampaign';
+import {
+  conversionC1Html,
+  conversionC2Html,
+  conversionC3Html,
+  conversionC4Html,
+} from '@/lib/emailTrialConversion';
 import {
   upgradeConfirmEmailHtml,
   paidCheckInEmailHtml,
@@ -84,6 +91,20 @@ export async function GET(req: Request) {
       break;
     case 'trial-d5':
       html = lastCallEmailHtml(PREVIEW_USER.name, PREVIEW_USER.id);
+      break;
+
+    // ── Trial conversion burst ───────────────────────────────────────────────
+    case 'trial-c1':
+      html = conversionC1Html(PREVIEW_USER.name, PREVIEW_USER.id);
+      break;
+    case 'trial-c2':
+      html = conversionC2Html(PREVIEW_USER.name, PREVIEW_USER.id);
+      break;
+    case 'trial-c3':
+      html = conversionC3Html(PREVIEW_USER.name, PREVIEW_USER.id);
+      break;
+    case 'trial-c4':
+      html = conversionC4Html(PREVIEW_USER.name, PREVIEW_USER.id);
       break;
 
     // ── Comp Ambassador drip ────────────────────────────────────────────────

@@ -21,10 +21,10 @@ import { sendGhlSms } from '@/lib/ghl';
 
 // SMS copy for D4 (day 21 — 9 days left) and D5 (day 28 — 48 hours left)
 function d4SmsText(firstName: string): string {
-  return `Hi ${firstName}! ⏰ Your GasCap™ Pro trial ends in 9 days. Keep all your features for just $4.99/mo — cancel anytime. Upgrade → gascap.app/upgrade\n\nReply STOP to opt out.`;
+  return `Hi ${firstName}! ⏰ Your GasCap™ Pro trial ends in 9 days. Keep all your features for just $2.99/mo — less than a dime a day. Upgrade → gascap.app/upgrade\n\nReply STOP to opt out.`;
 }
 function d5SmsText(firstName: string): string {
-  return `Hi ${firstName}! ⏰ Your GasCap™ Pro trial ends in 48 hours. Keep all your features for just $4.99/mo — cancel anytime. Upgrade now → gascap.app/upgrade\n\nReply STOP to opt out.`;
+  return `Hi ${firstName}! ⏰ Your GasCap™ Pro trial ends in 48 hours. Keep all your features for just $2.99/mo — or own Pro forever for $19.99 (Lifetime). Upgrade now → gascap.app/upgrade\n\nReply STOP to opt out.`;
 }
 
 const STEPS: { step: number; minDays: number; label: string }[] = [

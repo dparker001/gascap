@@ -8,14 +8,14 @@ import { useTranslation } from '@/contexts/LanguageContext';
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
-type Billing  = 'monthly' | 'annual';
+type Billing  = 'monthly' | 'lifetime';
 type PlanTier = 'free' | 'pro' | 'fleet';
 
 // Highlight flags (order matches translation feature arrays)
 const PRO_HIGHLIGHTS   = [false, true,  true,  false, true,  true,  false, false, false, false];
-//                         every  3veh   manual auto   mpg    pdf    budget push   referral prio
-const FLEET_HIGHLIGHTS = [false, true,  true,  true,  true,  true,  true,  false, false, false, false, false];
-//                         every  unlim  house  garage dash   tax    import spend  csv    referral multi  supp
+//                         every  unlim  manual auto   mpg    pdf    budget push   referral prio
+// Fleet highlights preserved for future relaunch
+// const FLEET_HIGHLIGHTS = [false, true,  true,  true,  true,  true,  true,  false, false, false, false, false];
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -163,16 +163,15 @@ export default function PricingSection() {
   const userPlan = (session?.user as { plan?: string })?.plan as PlanTier | undefined ?? 'free';
 
   // Build translated feature arrays with highlight flags
-  const FREE_FEATURES  = t.pricing.freeFeatures.map((text) => ({ text }));
-  const PRO_FEATURES   = t.pricing.proFeatures.map((text, i) => ({ text, highlight: PRO_HIGHLIGHTS[i] }));
-  const FLEET_FEATURES = t.pricing.fleetFeatures.map((text, i) => ({ text, highlight: FLEET_HIGHLIGHTS[i] }));
+  const FREE_FEATURES = t.pricing.freeFeatures.map((text) => ({ text }));
+  const PRO_FEATURES  = t.pricing.proFeatures.map((text, i) => ({ text, highlight: PRO_HIGHLIGHTS[i] }));
 
-  async function handleUpgrade(tier: 'pro' | 'fleet') {
+  async function handleUpgrade(tier: 'pro') {
     if (!session) {
       router.push('/signin?next=/upgrade');
       return;
     }
-    setLoading(tier);
+    setLoading(`${tier}-${billing}`);
     try {
       const res  = await fetch('/api/stripe/checkout', {
         method:  'POST',
@@ -187,31 +186,21 @@ export default function PricingSection() {
   }
 
   // Computed prices
-  const proPrice   = billing === 'annual' ? fmt(PRICING.pro.annualPerMonth)   : fmt(PRICING.pro.monthly);
-  const fleetPrice = billing === 'annual' ? fmt(PRICING.fleet.annualPerMonth) : fmt(PRICING.fleet.monthly);
+  const proPrice   = billing === 'lifetime' ? `$${PRICING.pro.lifetime}` : fmt(PRICING.pro.monthly);
 
-  const proSubline = billing === 'annual'
-    ? t.pricing.billedAnnual(fmt(PRICING.pro.annual))
-    : t.pricing.billedMonthly;
-
-  const fleetSubline = billing === 'annual'
-    ? t.pricing.billedAnnual(fmt(PRICING.fleet.annual))
+  const proSubline = billing === 'lifetime'
+    ? t.pricing.billedOnce
     : t.pricing.billedMonthly;
 
   // Per-card CTA text based on user's current plan
-  function freeCta()  {
+  function freeCta() {
     if (!session)            return t.pricing.getStartedFree;
     if (userPlan === 'free') return t.pricing.yourCurrentPlan;
     return t.pricing.downgradeToFree;
   }
-  function proCta()  {
-    if (userPlan === 'pro')   return t.pricing.yourCurrentPlan;
-    if (userPlan === 'fleet') return t.pricing.downgradeFromFleet;
+  function proCta() {
+    if (userPlan === 'pro') return t.pricing.yourCurrentPlan;
     return t.pricing.upgradeToPro;
-  }
-  function fleetCta() {
-    if (userPlan === 'fleet') return t.pricing.yourCurrentPlan;
-    return t.pricing.startFleetPlan;
   }
 
   return (
@@ -237,23 +226,23 @@ export default function PricingSection() {
           {t.pricing.monthly}
         </button>
         <button
-          onClick={() => setBilling('annual')}
+          onClick={() => setBilling('lifetime')}
           className={[
             'flex-1 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5',
-            billing === 'annual'
+            billing === 'lifetime'
               ? 'bg-white text-navy-700 shadow-sm'
               : 'text-slate-400 hover:text-slate-600',
           ].join(' ')}
         >
-          {t.pricing.annual}
+          {t.pricing.lifetime ?? 'Lifetime'}
           <span className="bg-green-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full leading-none">
-            {t.pricing.twoMonthsFree}
+            BEST VALUE
           </span>
         </button>
       </div>
 
-      {/* Cards — stacked on mobile, 3-col on md+ */}
-      <div className="grid gap-4 md:grid-cols-3 md:items-start">
+      {/* Cards — stacked on mobile, 2-col on md+ */}
+      <div className="grid gap-4 md:grid-cols-2 md:items-start max-w-2xl mx-auto">
 
         {/* Free */}
         <PlanCard
@@ -284,6 +273,7 @@ export default function PricingSection() {
           badge={t.pricing.individuals}
           badgeColor="bg-amber-100 text-amber-700"
           price={proPrice}
+          priceUnit={billing === 'lifetime' ? '' : undefined}
           subline={proSubline}
           cta={proCta()}
           ctaStyle={
@@ -295,30 +285,7 @@ export default function PricingSection() {
           popular
           isCurrent={!!session && userPlan === 'pro'}
           onCta={() => userPlan !== 'pro' && handleUpgrade('pro')}
-          loading={loading === 'pro'}
-          currentPlanRibbon={t.pricing.currentPlanRibbon}
-          mostPopular={t.pricing.mostPopular}
-          loadingLabel={t.pricing.loading}
-          moLabel={t.pricing.mo}
-        />
-
-        {/* Fleet */}
-        <PlanCard
-          name="Fleet"
-          badge={t.pricing.householdBiz}
-          badgeColor="bg-blue-100 text-blue-700"
-          price={fleetPrice}
-          subline={fleetSubline}
-          cta={fleetCta()}
-          ctaStyle={
-            userPlan === 'fleet'
-              ? 'bg-green-500 text-white cursor-default border-2 border-green-500'
-              : 'bg-navy-700 text-white hover:bg-navy-600 disabled:opacity-50 border-2 border-navy-700'
-          }
-          features={FLEET_FEATURES}
-          isCurrent={!!session && userPlan === 'fleet'}
-          onCta={() => userPlan !== 'fleet' && handleUpgrade('fleet')}
-          loading={loading === 'fleet'}
+          loading={loading === 'pro-monthly' || loading === 'pro-lifetime'}
           currentPlanRibbon={t.pricing.currentPlanRibbon}
           mostPopular={t.pricing.mostPopular}
           loadingLabel={t.pricing.loading}
@@ -326,11 +293,11 @@ export default function PricingSection() {
         />
       </div>
 
-      {/* Annual savings callout */}
-      {billing === 'annual' && (
+      {/* Lifetime savings callout */}
+      {billing === 'lifetime' && (
         <div className="mt-5 text-center animate-fade-in">
           <p className="text-xs text-green-600 font-semibold">
-            {t.pricing.annualSavings(fmt(PRICING.pro.monthly * 2), fmt(PRICING.fleet.monthly * 2))}
+            🎉 Own GasCap™ Pro forever — one payment of ${PRICING.pro.lifetime}, no recurring charges.
           </p>
         </div>
       )}
@@ -342,7 +309,7 @@ export default function PricingSection() {
         <div>
           <p className="text-xs font-black text-amber-800">30-Day Satisfaction Guarantee</p>
           <p className="text-xs text-amber-700 mt-0.5 leading-relaxed">
-            If GasCap Pro doesn&apos;t help you save more than $4.99 in your first month,
+            If GasCap Pro doesn&apos;t help you save more than $2.99 in your first month,
             contact us and we&apos;ll refund your first payment — no questions asked.
           </p>
         </div>

@@ -67,14 +67,14 @@ export function upgradeConfirmEmailHtml(
   name: string,
   userId: string,
   tier: 'pro' | 'fleet' = 'pro',
-  interval: 'monthly' | 'annual' = 'monthly',
+  interval: 'monthly' | 'annual' | 'lifetime' = 'monthly',
 ): string {
   const first      = name.split(' ')[0];
   const planLabel  = tier === 'fleet' ? 'GasCap™ Fleet' : 'GasCap™ Pro';
-  const priceLabel = tier === 'fleet'
-    ? (interval === 'annual' ? '$199/year' : '$19.99/month')
-    : (interval === 'annual' ? '$49/year'  : '$4.99/month');
-  const renewLabel = interval === 'annual' ? 'annually' : 'monthly';
+  const priceLabel = interval === 'lifetime'
+    ? '$19.99 one-time'
+    : '$2.99/month';
+  const renewLabel = interval === 'lifetime' ? 'never — lifetime access' : 'monthly';
 
   return wrap(`
     ${header(tier)}
@@ -169,8 +169,8 @@ export function upgradeConfirmEmailHtml(
   `);
 }
 
-export const upgradeConfirmEmailText = (name: string, tier: 'pro' | 'fleet', interval: 'monthly' | 'annual') =>
-  `Hi ${name.split(' ')[0]}, your GasCap™ ${tier === 'fleet' ? 'Fleet' : 'Pro'} subscription is active (${interval}). Everything is unlocked — no trial countdown. Open the app: ${BASE_URL}`;
+export const upgradeConfirmEmailText = (name: string, _tier: 'pro' | 'fleet', interval: 'monthly' | 'annual' | 'lifetime') =>
+  `Hi ${name.split(' ')[0]}, your GasCap™ Pro subscription is active (${interval === 'lifetime' ? 'lifetime — no renewals ever' : interval}). Everything is unlocked — no trial countdown. Open the app: ${BASE_URL}`;
 
 // ── P2 — 30-Day Check-In ─────────────────────────────────────────────────────
 
@@ -326,14 +326,14 @@ export const paidSpotlightEmailText = (name: string) =>
 
 // ── P4 — Annual Renewal Reminder (annual only, day 330) ──────────────────────
 
-export function renewalReminderEmailHtml(name: string, userId: string, tier: 'pro' | 'fleet' = 'pro'): string {
+export function renewalReminderEmailHtml(name: string, userId: string, _tier: 'pro' | 'fleet' = 'pro'): string {
   const first      = name.split(' ')[0];
-  const planLabel  = tier === 'fleet' ? 'GasCap™ Fleet' : 'GasCap™ Pro';
-  const price      = tier === 'fleet' ? '$199' : '$49';
-  const perMonth   = tier === 'fleet' ? '$16.58/mo' : '$4.08/mo';
-  const valueNote  = tier === 'fleet' ? 'less than 4 tanks of gas per year' : 'less than a single gallon of gas';
+  const planLabel  = 'GasCap™ Pro';
+  const price      = '$35.88';    // $2.99 × 12 — annual total for display
+  const perMonth   = '$2.99/mo';
+  const valueNote  = 'less than a dime a day';
   return wrap(`
-    ${header(tier)}
+    ${header(_tier)}
     <tr><td style="padding:32px;">
 
       <p style="margin:0 0 6px;font-size:24px;font-weight:900;color:#1e2d4a;line-height:1.2;">
@@ -394,10 +394,8 @@ export function renewalReminderEmailHtml(name: string, userId: string, tier: 'pr
   `);
 }
 
-export const renewalReminderEmailText = (name: string, tier: 'pro' | 'fleet' = 'pro') => {
-  const planLabel = tier === 'fleet' ? 'GasCap™ Fleet' : 'GasCap™ Pro';
-  const price     = tier === 'fleet' ? '$199 ($16.58/mo)' : '$49 ($4.08/mo)';
-  return `Hi ${name.split(' ')[0]}, your ${planLabel} annual subscription renews in ~30 days at ${price}. To manage or cancel, visit: ${BASE_URL}/settings. Thanks for a great year with us.`;
+export const renewalReminderEmailText = (name: string, _tier: 'pro' | 'fleet' = 'pro') => {
+  return `Hi ${name.split(' ')[0]}, your GasCap™ Pro monthly subscription renews in ~30 days at $2.99/mo. To manage or cancel, visit: ${BASE_URL}/settings. Thanks for being a Pro member!`;
 };
 
 // ── P5 — Cancellation / Win-Back (immediate on subscription.deleted) ─────────
@@ -475,7 +473,7 @@ export interface PaidCampaignRecipient {
   name:     string;
   email:    string;
   tier?:    'pro' | 'fleet';
-  interval?: 'monthly' | 'annual';
+  interval?: 'monthly' | 'annual' | 'lifetime';
 }
 
 export async function sendPaidCampaignEmail(

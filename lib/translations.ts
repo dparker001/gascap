@@ -36,7 +36,7 @@ const en = {
     sub:            'Calculate fuel & cost before you pull up to the pump.',
     realTimePrices: 'Real-time prices',
     worksOffline:   'Works offline',
-    pricingPill:    'Free · Pro $4.99/mo',
+    pricingPill:    'Free · Pro $2.99/mo',
   },
 
   // ── Tips ticker ────────────────────────────────────────────────────────────
@@ -66,7 +66,7 @@ const en = {
     pill_garage:    'Vehicle Garage',
     pill_fillups:   'Fill-up History',
     offerStrip:     'Sign up today — first 30 days of Pro FREE',
-    offerStripSub:  '$4.99/mo after trial · No credit card · Cancel anytime',
+    offerStripSub:  '$2.99/mo after trial · No credit card · Cancel anytime',
   },
 
   // ── Problem / Solution ─────────────────────────────────────────────────────
@@ -169,7 +169,7 @@ const en = {
       },
       {
         q: 'Is GasCap™ free?',
-        a: 'Yes — the core calculator, live gas prices, and offline access are free forever with no credit card required. Pro ($4.99/mo) adds fill-up history, MPG charts, AI advisor, and PDF export. Fleet ($19.99/mo) adds unlimited vehicles and fleet reporting.',
+        a: 'Yes — the core calculator, live gas prices, and offline access are free forever with no credit card required. Pro ($2.99/mo or $19.99 Lifetime) adds fill-up history, MPG charts, unlimited vehicles, AI advisor, and PDF export.',
       },
       {
         q: 'Do I need to download it from the App Store?',
@@ -202,7 +202,7 @@ const en = {
   cta: {
     badge:          '30 days of Pro free — no credit card ever',
     headline:       'Know before\nyou pull up.',
-    sub:            'Start with 30 free days of Pro — then $4.99/mo, cancel anytime. Save your vehicles, track your MPG, and stop over-paying at the pump.',
+    sub:            'Start with 30 free days of Pro — then $2.99/mo, cancel anytime. Save your vehicles, track your MPG, and stop over-paying at the pump.',
     createAccount:  'Start free — 30 days Pro included →',
     alreadyHave:    'Already have an account?',
     signIn:         'Sign in',
@@ -240,7 +240,7 @@ const en = {
   signUp: {
     title:            'Create your account',
     sub:              'Join free · No credit card required',
-    proTrial:         'Your first 30 days are Pro — free. Then $4.99/mo, cancel anytime.',
+    proTrial:         'Your first 30 days are Pro — free. Then $2.99/mo, cancel anytime.',
     firstNameLabel:       'First name',
     firstNamePlaceholder: 'Alex',
     lastNameLabel:        'Last name',
@@ -289,19 +289,19 @@ const en = {
     sub:           'Cancel anytime. No hidden fees.',
     monthly:       'Monthly',
     annual:        'Annual',
-    saveBadge:     'SAVE 2 MO',
+    saveBadge:     'BEST VALUE',
     mostPopular:   'Most Popular',
-    proFor:        'For individuals & couples',
+    proFor:        'For individuals, couples & households',
     houseAndBiz:   'Household & Business',
-    fleetFor:      'For businesses, contractors & small-to-medium fleets',
+    fleetFor:      'Fleet features coming soon',
     upgradeBtn:    'Upgrade to',
     signInToUp:    'Sign in to upgrade',
     redirecting:   'Redirecting…',
-    enterprise:    'Municipality, government agency, or large fleet?',
-    contactUs:     'Contact us for custom Enterprise pricing →',
+    enterprise:    'Need multi-driver fleet features?',
+    contactUs:     'Join the fleet waitlist →',
     freeForever:   '$0 / forever',
     safeguardTitle:'🔒 Plan limits enforced automatically',
-    safeguardBody: 'Free accounts are limited to 1 vehicle. Pro accounts are limited to 3 vehicles — perfect for individuals and couples. When you reach your limit, you\'ll be prompted to upgrade — no surprises. Fleet is designed for households and businesses that need more than 3 vehicles.',
+    safeguardBody: 'Free accounts are limited to 1 vehicle. Pro accounts include unlimited vehicles — perfect for individuals, couples, and multi-car households. When you reach your limit on free, you\'ll be prompted to upgrade — no surprises.',
     backLink:      '← Back to calculator',
     help:          'Help',
     terms:         'Terms',
@@ -351,11 +351,12 @@ const en = {
   // ── Pricing section ────────────────────────────────────────────────────────
   pricing: {
     toggleLabel:       'Plans & Pricing',
-    toggleSub:         'Free · Pro $4.99/mo · Fleet $19.99/mo',
+    toggleSub:         'Free · Pro $2.99/mo · Lifetime $19.99',
     heading:           'Plans & Pricing',
     sub:               "Start free. Upgrade when you're ready. No surprises.",
     monthly:           'Monthly',
     annual:            'Annual',
+    lifetime:          'Lifetime',
     twoMonthsFree:     '2 MO FREE',
     mo:                'mo',
     forever:           'forever',
@@ -369,8 +370,9 @@ const en = {
     downgradeFromFleet:'Downgrade to Pro',
     startFleetPlan:    'Start Fleet Plan →',
     billedAnnual:      (price: string) => `Billed ${price}/yr — 2 months FREE`,
+    billedOnce:        'One-time payment — own Pro forever',
     billedMonthly:     'Billed monthly · cancel anytime',
-    annualSavings:     (pro: string, fleet: string) => `🎉 You save ${pro} on Pro and ${fleet} on Fleet by paying annually`,
+    annualSavings:     (_pro: string, _fleet: string) => '',
     trustNote:         'Payments processed securely by Stripe · Cancel anytime · No hidden fees',
     noCCEver:          'No CC Ever',
     individuals:       'Individuals & Couples',
@@ -387,7 +389,7 @@ const en = {
     ],
     proFeatures: [
       'Everything in Free',
-      'Up to 3 saved vehicles',
+      'Unlimited saved vehicles',
       'Manual entry + auto spec lookup',
       'Engine type & tank size auto-detected',
       'MPG trending chart',
@@ -397,20 +399,8 @@ const en = {
       'Referral rewards',
       'Priority support',
     ],
-    fleetFeatures: [
-      'Everything in Pro',
-      'Unlimited vehicles',
-      'Household & multi-vehicle use',
-      'Shared fleet garage',
-      'Fleet cost dashboard',
-      'Annual tax report (PDF)',
-      'Bulk vehicle import',
-      'Per-vehicle spending breakdown',
-      'CSV export for accounting',
-      'Referral rewards',
-      'Multi-driver sub-accounts (coming soon)',
-      'Dedicated support',
-    ],
+    // Fleet features preserved for future relaunch
+    fleetFeatures: [] as string[],
   },
 
   // ── EV Calculator ─────────────────────────────────────────────────────────
@@ -677,12 +667,12 @@ const en = {
     vehicleInfoAria:     'Vehicle info',
     couldNotSave:        'Could not save vehicle.',
     // Slot / plan prompts
-    upgradeProTitle:     'Upgrade to Pro — save up to 3 vehicles',
-    upgradeProSub:       '$4.99/mo · Manual entry · Auto spec lookup →',
-    upgradeFleetTitle:   'Upgrade to Fleet — unlimited vehicles',
-    upgradeFleetSub:     '$19.99/mo · Unlimited vehicles · Up to 25 drivers →',
+    upgradeProTitle:     'Upgrade to Pro — unlimited vehicles',
+    upgradeProSub:       '$2.99/mo · Manual entry · Auto spec lookup →',
+    upgradeFleetTitle:   'Fleet features coming soon',
+    upgradeFleetSub:     'Pro now includes unlimited vehicles →',
     oneSlotWarning:      '1 vehicle slot remaining — ',
-    oneSlotWarningLink:  'upgrade to Fleet for unlimited',
+    oneSlotWarningLink:  'upgrade to Pro for unlimited',
     freePlanSlot:        'Free plan · 1 vehicle slot',
     manageBilling1:      'Manage billing & subscription in',
     manageBillingLink:   'Settings',
@@ -760,7 +750,7 @@ const en = {
   trialBanner: {
     endsToday:    'Your Pro trial ends today',
     endsDays:     (days: number) => `Your Pro trial ends in ${days} day${days === 1 ? '' : 's'}`,
-    keepFeatures: 'Keep fill-up tracking, MPG insights, and AI advisor — just $4.99/mo.',
+    keepFeatures: 'Keep fill-up tracking, MPG insights, and AI advisor — just $2.99/mo.',
     lockInRate:   'Enjoying Pro? Lock in your rate before the trial ends.',
     bonusEntries: '🎰 Upgrade now → earn +10 bonus draw entries every month',
     upgradeNow:   'Upgrade now →',
@@ -864,7 +854,7 @@ const en = {
 
   // ── Pricing teaser (hero strip) ────────────────────────────────────────────
   heroPricingTeaser: {
-    line:       'Free forever · Pro $4.99/mo · Fleet $19.99/mo',
+    line:       'Free forever · Pro $2.99/mo · Lifetime $19.99',
     seeAllPlans: 'See all plans ↓',
   },
 
@@ -982,7 +972,7 @@ const es: typeof en = {
     sub:            'Calcula combustible y costo antes de llegar a la gasolinera.',
     realTimePrices: 'Precios en tiempo real',
     worksOffline:   'Funciona sin internet',
-    pricingPill:    'Gratis · Pro $4.99/mes',
+    pricingPill:    'Gratis · Pro $2.99/mes',
   },
 
   tips: [
@@ -1010,7 +1000,7 @@ const es: typeof en = {
     pill_garage:    'Garaje de vehículos',
     pill_fillups:   'Historial de llenados',
     offerStrip:     'Regístrate hoy — primeros 30 días de Pro GRATIS',
-    offerStripSub:  '$4.99/mes después del período de prueba · Sin tarjeta · Cancela cuando quieras',
+    offerStripSub:  '$2.99/mes después del período de prueba · Sin tarjeta · Cancela cuando quieras',
   },
 
   problem: {
@@ -1108,7 +1098,7 @@ const es: typeof en = {
       },
       {
         q: '¿GasCap™ es gratuito?',
-        a: 'Sí — la calculadora básica, los precios de gasolina en tiempo real y el acceso sin conexión son gratuitos para siempre sin tarjeta de crédito. Pro ($4.99/mes) agrega historial de llenados, gráficas de MPG, asesor IA y exportación PDF. Fleet ($19.99/mes) agrega vehículos ilimitados e informes de flota.',
+        a: 'Sí — la calculadora básica, los precios de gasolina en tiempo real y el acceso sin conexión son gratuitos para siempre sin tarjeta de crédito. Pro ($2.99/mes o $19.99 de por vida) agrega historial de llenados, gráficas de MPG, vehículos ilimitados, asesor IA y exportación PDF.',
       },
       {
         q: '¿Necesito descargarlo de la App Store?',
@@ -1140,7 +1130,7 @@ const es: typeof en = {
   cta: {
     badge:          '30 días de Pro gratis — sin tarjeta de crédito nunca',
     headline:       'Sabe antes\nde llegar.',
-    sub:            'Empieza con 30 días de Pro gratis — luego $4.99/mes, cancela cuando quieras. Guarda tus vehículos, rastrea tu MPG y deja de pagar de más en la gasolinera.',
+    sub:            'Empieza con 30 días de Pro gratis — luego $2.99/mes, cancela cuando quieras. Guarda tus vehículos, rastrea tu MPG y deja de pagar de más en la gasolinera.',
     createAccount:  'Empezar gratis — 30 días Pro incluidos →',
     alreadyHave:    '¿Ya tienes una cuenta?',
     signIn:         'Iniciar sesión',
@@ -1175,7 +1165,7 @@ const es: typeof en = {
   signUp: {
     title:            'Crea tu cuenta',
     sub:              'Únete gratis · Sin tarjeta de crédito',
-    proTrial:         'Tus primeros 30 días son Pro — gratis. Luego $4.99/mes, cancela cuando quieras.',
+    proTrial:         'Tus primeros 30 días son Pro — gratis. Luego $2.99/mes, cancela cuando quieras.',
     firstNameLabel:       'Nombre',
     firstNamePlaceholder: 'Alex',
     lastNameLabel:        'Apellido',
@@ -1223,19 +1213,19 @@ const es: typeof en = {
     sub:           'Cancela cuando quieras. Sin cargos ocultos.',
     monthly:       'Mensual',
     annual:        'Anual',
-    saveBadge:     'AHORRA 2 MES',
+    saveBadge:     'MEJOR PRECIO',
     mostPopular:   'Más Popular',
-    proFor:        'Para individuos y parejas',
+    proFor:        'Para individuos, parejas y hogares',
     houseAndBiz:   'Hogar y Negocios',
-    fleetFor:      'Para negocios, contratistas y flotas pequeñas a medianas',
+    fleetFor:      'Funciones de flota próximamente',
     upgradeBtn:    'Mejorar a',
     signInToUp:    'Inicia sesión para mejorar',
     redirecting:   'Redirigiendo…',
-    enterprise:    '¿Municipio, gobierno o flota grande?',
-    contactUs:     'Contáctanos para precios Enterprise personalizados →',
+    enterprise:    '¿Necesitas funciones de flota con varios conductores?',
+    contactUs:     'Únete a la lista de espera de flota →',
     freeForever:   '$0 / para siempre',
     safeguardTitle:'🔒 Límites de plan aplicados automáticamente',
-    safeguardBody: 'Las cuentas gratuitas tienen límite de 1 vehículo. Las cuentas Pro tienen límite de 3 vehículos — perfecto para individuos y parejas. Cuando alcances tu límite, se te pedirá que mejores — sin sorpresas. Fleet está diseñado para hogares y empresas que necesitan más de 3 vehículos.',
+    safeguardBody: 'Las cuentas gratuitas tienen límite de 1 vehículo. Las cuentas Pro incluyen vehículos ilimitados — perfecto para individuos, parejas y hogares con varios autos. Cuando alcances tu límite en el plan gratuito, se te pedirá que mejores — sin sorpresas.',
     backLink:      '← Volver a la calculadora',
     help:          'Ayuda',
     terms:         'Términos',
@@ -1281,11 +1271,12 @@ const es: typeof en = {
 
   pricing: {
     toggleLabel:       'Planes y Precios',
-    toggleSub:         'Gratis · Pro $4.99/mes · Fleet $19.99/mes',
+    toggleSub:         'Gratis · Pro $2.99/mes · De por vida $19.99',
     heading:           'Planes y Precios',
     sub:               'Empieza gratis. Mejora cuando estés listo. Sin sorpresas.',
     monthly:           'Mensual',
     annual:            'Anual',
+    lifetime:          'De por vida',
     twoMonthsFree:     '2 MES GRATIS',
     mo:                'mes',
     forever:           'siempre',
@@ -1299,8 +1290,9 @@ const es: typeof en = {
     downgradeFromFleet:'Cambiar a Pro',
     startFleetPlan:    'Comenzar Plan Fleet →',
     billedAnnual:      (price: string) => `Facturado ${price}/año — 2 meses GRATIS`,
+    billedOnce:        'Pago único — Pro para siempre',
     billedMonthly:     'Facturado mensualmente · cancela cuando quieras',
-    annualSavings:     (pro: string, fleet: string) => `🎉 Ahorras ${pro} en Pro y ${fleet} en Fleet pagando anualmente`,
+    annualSavings:     (_pro: string, _fleet: string) => '',
     trustNote:         'Pagos procesados de forma segura por Stripe · Cancela cuando quieras · Sin tarifas ocultas',
     noCCEver:          'Sin tarjeta de crédito',
     individuals:       'Individuos y Parejas',
@@ -1317,7 +1309,7 @@ const es: typeof en = {
     ],
     proFeatures: [
       'Todo en Gratis',
-      'Hasta 3 vehículos guardados',
+      'Vehículos ilimitados',
       'Entrada manual + búsqueda automática de especificaciones',
       'Tipo de motor y tamaño del tanque detectados automáticamente',
       'Gráfica de tendencia de MPG',
@@ -1327,20 +1319,8 @@ const es: typeof en = {
       'Recompensas por referidos',
       'Soporte prioritario',
     ],
-    fleetFeatures: [
-      'Todo en Pro',
-      'Vehículos ilimitados',
-      'Uso para hogar y múltiples vehículos',
-      'Garaje de flota compartido',
-      'Panel de costos de flota',
-      'Informe fiscal anual (PDF)',
-      'Importación masiva de vehículos',
-      'Desglose de gastos por vehículo',
-      'Exportación CSV para contabilidad',
-      'Recompensas por referidos',
-      'Sub-cuentas multi-conductor (próximamente)',
-      'Soporte dedicado',
-    ],
+    // Fleet features preserved for future relaunch
+    fleetFeatures: [] as string[],
   },
 
   ev: {
@@ -1592,12 +1572,12 @@ const es: typeof en = {
     vehicleInfoTitle:    'Información del vehículo',
     vehicleInfoAria:     'Información del vehículo',
     couldNotSave:        'No se pudo guardar el vehículo.',
-    upgradeProTitle:     'Mejora a Pro — guarda hasta 3 vehículos',
-    upgradeProSub:       '$4.99/mes · Entrada manual · Búsqueda automática de specs →',
-    upgradeFleetTitle:   'Mejora a Flota — vehículos ilimitados',
-    upgradeFleetSub:     '$19.99/mes · Vehículos ilimitados · Hasta 25 conductores →',
+    upgradeProTitle:     'Mejora a Pro — vehículos ilimitados',
+    upgradeProSub:       '$2.99/mes · Entrada manual · Búsqueda automática de specs →',
+    upgradeFleetTitle:   'Funciones de flota próximamente',
+    upgradeFleetSub:     'Pro incluye vehículos ilimitados →',
     oneSlotWarning:      'Queda 1 espacio de vehículo — ',
-    oneSlotWarningLink:  'mejora a Flota para ilimitados',
+    oneSlotWarningLink:  'mejora a Pro para ilimitados',
     freePlanSlot:        'Plan gratuito · 1 espacio de vehículo',
     manageBilling1:      'Administra facturación y suscripción en',
     manageBillingLink:   'Configuración',
@@ -1673,7 +1653,7 @@ const es: typeof en = {
   trialBanner: {
     endsToday:    'Tu prueba Pro termina hoy',
     endsDays:     (days: number) => `Tu prueba Pro termina en ${days} día${days === 1 ? '' : 's'}`,
-    keepFeatures: 'Conserva el registro de recargas, análisis de MPG y asesor de IA — solo $4.99/mes.',
+    keepFeatures: 'Conserva el registro de recargas, análisis de MPG y asesor de IA — solo $2.99/mes.',
     lockInRate:   '¿Disfrutando Pro? Fija tu tarifa antes de que termine la prueba.',
     bonusEntries: '🎰 Mejora ahora → gana +10 entradas de sorteo extra cada mes',
     upgradeNow:   'Mejorar ahora →',
@@ -1777,7 +1757,7 @@ const es: typeof en = {
 
   // ── Pricing teaser (hero strip) ────────────────────────────────────────────
   heroPricingTeaser: {
-    line:        'Gratis para siempre · Pro $4.99/mes · Flota $19.99/mes',
+    line:        'Gratis para siempre · Pro $2.99/mes · De por vida $19.99',
     seeAllPlans: 'Ver todos los planes ↓',
   },
 

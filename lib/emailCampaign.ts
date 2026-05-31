@@ -9,7 +9,7 @@
  *   Step 1 — Welcome + Pro activated   (immediate, fired from register route)
  *   Step 2 — Feature deep-dive         (day 3   — 27 days of Pro left)
  *   Step 3 — Mid-trial value check-in  (day 10  — 20 days of Pro left)
- *   Step 4 — 9 days left              (day 21  — $4.99/mo primary, $49/yr secondary)
+ *   Step 4 — 9 days left              (day 21  — $2.99/mo primary, lifetime secondary)
  *   Step 5 — Final 48 hours            (day 28  — last-call offer)
  *
  * Users who already have a Stripe subscription are skipped automatically
@@ -417,8 +417,8 @@ export function proUpsellEmailHtml(name: string, userId: string): string {
 
       <p style="margin:0 0 16px;font-size:14px;color:#475569;line-height:1.65;">
         Twenty days still to go on your trial — use them. And if you love what you see,
-        you can lock in Pro permanently starting at <strong>$4.99/month</strong> (or
-        <strong>$49/year — 2 months free</strong>).
+        you can lock in Pro for just <strong>$2.99/month</strong> — or own it forever
+        with the <strong>$19.99 Lifetime plan</strong> (one payment, no subscription ever).
       </p>
 
       ${ctaButton('Open GasCap™ →', BASE_URL)}
@@ -507,26 +507,24 @@ export function annualDealEmailHtml(name: string, userId: string): string {
           GasCap™ Pro
         </p>
         <p style="margin:0 0 4px;font-size:40px;font-weight:900;color:#d97706;line-height:1;">
-          $4.99<span style="font-size:16px;font-weight:400;color:#92400e;">/month</span>
+          $2.99<span style="font-size:16px;font-weight:400;color:#92400e;">/month</span>
         </p>
-        <p style="margin:6px 0 18px;font-size:13px;color:#92400e;">
-          Cancel anytime — no long-term commitment required
+        <p style="margin:6px 0 4px;font-size:13px;color:#92400e;">
+          Cancel anytime — less than a dime a day
         </p>
         <a href="${BASE_URL}/upgrade" style="display:inline-block;background:#1e2d4a;color:#fff;font-weight:900;
-           font-size:16px;padding:15px 40px;border-radius:14px;text-decoration:none;">
+           font-size:16px;padding:15px 40px;border-radius:14px;text-decoration:none;margin-top:14px;">
           Upgrade Now →
         </a>
         <p style="margin:14px 0 0;font-size:12px;color:#92400e;">
-          Prefer to save? <strong>$49/year</strong> = 2 months free · Secure checkout via Stripe
+          Or own Pro forever — <strong>$19.99 Lifetime</strong> (one payment, no subscription) · Secure checkout via Stripe
         </p>
       </div>
 
       <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:16px 20px;margin-top:24px;">
-        <p style="margin:0 0 4px;font-size:13px;font-weight:700;color:#15803d;">🚐 Multiple vehicles or a family?</p>
+        <p style="margin:0 0 4px;font-size:13px;font-weight:700;color:#15803d;">🚗 Pro now includes unlimited vehicles</p>
         <p style="margin:0;font-size:13px;color:#166534;line-height:1.5;">
-          <strong>GasCap™ Fleet ($199/yr)</strong> covers unlimited vehicles, shared garage access,
-          and per-vehicle spending breakdowns — ideal for households with 3+ cars or small business fleets.
-          <a href="${BASE_URL}/upgrade" style="color:#16a34a;font-weight:700;">See Fleet →</a>
+          Add every car you drive — no per-vehicle cap on Pro. Perfect for multi-car households.
         </p>
       </div>
 
@@ -542,7 +540,7 @@ export function annualDealEmailHtml(name: string, userId: string): string {
 }
 
 export const annualDealEmailText = (name: string) =>
-  `Hi ${name.split(' ')[0]}, your free GasCap™ Pro trial ends in 9 days. Keep everything you've been using for just $4.99/month — cancel anytime, no commitment. Or save 2 months with $49/year. Quick tip: share your referral link now (in the Share tab) — if a friend signs up, we bank 1 free Pro month for you. Upgrade: ${BASE_URL}/upgrade`;
+  `Hi ${name.split(' ')[0]}, your free GasCap™ Pro trial ends in 9 days. Keep everything you've been using for just $2.99/month — cancel anytime, less than a dime a day. Or own Pro forever with the $19.99 Lifetime plan (one payment, no subscription). Quick tip: share your referral link now (in the Share tab) — if a friend signs up, we bank 1 free Pro month for you. Upgrade: ${BASE_URL}/upgrade`;
 
 // ── Email 5 — Final 48 Hours (Day 28) ─────────────────────────────────────
 
@@ -571,17 +569,17 @@ export function lastCallEmailHtml(name: string, userId: string): string {
           GasCap™ Pro
         </p>
         <p style="margin:0 0 4px;font-size:40px;font-weight:900;color:#d97706;line-height:1;">
-          $4.99<span style="font-size:16px;font-weight:400;color:#92400e;">/month</span>
+          $2.99<span style="font-size:16px;font-weight:400;color:#92400e;">/month</span>
         </p>
-        <p style="margin:6px 0 18px;font-size:13px;color:#92400e;">
-          Cancel anytime — no long-term commitment required
+        <p style="margin:6px 0 4px;font-size:13px;color:#92400e;">
+          Cancel anytime — less than a dime a day
         </p>
         <a href="${BASE_URL}/upgrade" style="display:inline-block;background:#1e2d4a;color:#fff;font-weight:900;
-           font-size:16px;padding:15px 40px;border-radius:14px;text-decoration:none;">
+           font-size:16px;padding:15px 40px;border-radius:14px;text-decoration:none;margin-top:14px;">
           Upgrade Now →
         </a>
         <p style="margin:14px 0 0;font-size:12px;color:#92400e;">
-          Prefer to save? <strong>$49/year</strong> = 2 months free · Secure checkout via Stripe
+          Or own Pro forever — <strong>$19.99 Lifetime</strong> (one payment, no subscription ever) · Secure via Stripe
         </p>
       </div>
 
@@ -615,7 +613,7 @@ export function lastCallEmailHtml(name: string, userId: string): string {
 }
 
 export const lastCallEmailText = (name: string) =>
-  `Hi ${name.split(' ')[0]}, your GasCap™ Pro trial ends in 48 hours. Keep everything you've been using for just $4.99/month — cancel anytime, no commitment. Or save 2 months with $49/year. Upgrade before your account reverts to free: ${BASE_URL}/upgrade`;
+  `Hi ${name.split(' ')[0]}, your GasCap™ Pro trial ends in 48 hours. Keep everything you've been using for just $2.99/month — cancel anytime, less than a dime a day. Or own Pro forever with the $19.99 Lifetime plan (one payment, no subscription). Upgrade before your account reverts to free: ${BASE_URL}/upgrade`;
 
 // ── Email 6 — Trial Ended (fires from expiry cron on downgrade) ────────────
 
@@ -655,7 +653,7 @@ export function trialEndedEmailHtml(name: string, userId: string): string {
           Still want Pro?
         </p>
         <p style="margin:0 0 16px;font-size:14px;color:#92400e;">
-          <strong>$4.99/mo</strong> or save 2 months with <strong>$49/yr</strong>
+          <strong>$2.99/mo</strong> — or own Pro forever with <strong>$19.99 Lifetime</strong>
         </p>
         ${ctaButton('Upgrade to Pro →', `${BASE_URL}/upgrade`)}
         <p style="margin:14px 0 0;font-size:12px;color:#b45309;">
@@ -683,7 +681,7 @@ export function trialEndedEmailHtml(name: string, userId: string): string {
 }
 
 export const trialEndedEmailText = (name: string) =>
-  `Hi ${name.split(' ')[0]}, your GasCap™ Pro trial has ended and your account is now on the free plan. Your data is safe. Want to keep Pro? Upgrade at ${BASE_URL}/upgrade — $4.99/mo or $49/yr. Free plan keeps unlimited calculations, gas price lookup, and one vehicle. — Don, GasCap™`;
+  `Hi ${name.split(' ')[0]}, your GasCap™ Pro trial has ended and your account is now on the free plan. Your data is safe. Want to keep Pro? Upgrade at ${BASE_URL}/upgrade — $2.99/mo or own it forever for $19.99 (Lifetime). Free plan keeps unlimited calculations, gas price lookup, and one vehicle. — Don, GasCap™`;
 
 // ── Campaign dispatch helper ───────────────────────────────────────────────
 
@@ -784,7 +782,7 @@ export function referralCreditEmailHtml(
           <tr>
             <td style="padding:6px 0;vertical-align:top;width:20px;color:#f59e0b;font-size:14px;font-weight:900;">✓</td>
             <td style="padding:6px 0 6px 10px;font-size:13px;color:#475569;line-height:1.5;">
-              Each credit = 1 free month of GasCap™ Pro ($4.99 value)
+              Each credit = 1 free month of GasCap™ Pro ($2.99 value)
             </td>
           </tr>
           <tr>
@@ -829,7 +827,7 @@ export function referralCreditEmailText(
   totalCredits: number,
 ): string {
   const first = referrerName.split(' ')[0];
-  return `Hi ${first}, someone you referred just became a paying GasCap™ subscriber! You've earned 1 free month of Pro. You now have ${totalCredits} credit${totalCredits === 1 ? '' : 's'} banked (each = 1 free month, $4.99 value). Credits apply on your next billing cycle (up to 3 at once) and expire after 12 months. You can earn up to 6 free months total — at 15 paying referrals, Pro is yours for life. View your credits: ${BASE_URL}/settings`;
+  return `Hi ${first}, someone you referred just became a paying GasCap™ subscriber! You've earned 1 free month of Pro. You now have ${totalCredits} credit${totalCredits === 1 ? '' : 's'} banked (each = 1 free month, $2.99 value). Credits apply on your next billing cycle (up to 3 at once) and expire after 12 months. You can earn up to 6 free months total — at 15 paying referrals, Pro is yours for life. View your credits: ${BASE_URL}/settings`;
 }
 
 export async function sendReferralCreditEmail(

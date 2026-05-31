@@ -28,7 +28,7 @@ GasCap™ is a free, installable Progressive Web App (PWA) that tells drivers ex
 - **Calculators** — Target Fill (pump exactly X gallons to reach Y%) and Budget (how far does $Z go?)
 - **Rental Car Return Mode** — fill to a specific level before returning a rental
 - **Live Gas Prices** — real-time EIA data, located by browser geolocation (Nominatim)
-- **Saved Vehicles** — Free tier: 1 vehicle; Pro: 3; Fleet: unlimited
+- **Saved Vehicles** — Free tier: 1 vehicle; Pro: unlimited
 - **Fill-Up History & MPG Tracking** — log every fill-up, track miles per gallon over time
 - **Smart Fill-Up Optimizer** — recommends when and how much to fill based on price trends
 - **Route-Based Trip Planner** — estimate fuel cost for a trip with Google Maps routing (Pro)
@@ -80,10 +80,9 @@ npm run dev
 | `NEXTAUTH_URL` | App base URL, e.g. `http://localhost:3000` |
 | `EIA_API_KEY` | Free key from [eia.gov/opendata](https://www.eia.gov/opendata/) |
 | `STRIPE_SECRET_KEY` | Stripe secret key (test or live) |
-| `STRIPE_PRICE_PRO_MONTHLY` | Stripe Price ID for Pro monthly plan |
-| `STRIPE_PRICE_PRO_ANNUAL` | Stripe Price ID for Pro annual plan |
-| `STRIPE_PRICE_FLEET_MONTHLY` | Stripe Price ID for Fleet monthly plan |
-| `STRIPE_PRICE_FLEET_ANNUAL` | Stripe Price ID for Fleet annual plan |
+| `STRIPE_PRICE_PRO_MONTHLY` | Stripe Price ID for Pro monthly plan ($2.99/mo) |
+| `STRIPE_PRICE_PRO_LIFETIME` | Stripe Price ID for Pro Lifetime plan ($19.99 one-time) |
+| `STRIPE_PRICE_FLEET_MONTHLY` | Stripe Price ID for Fleet monthly (shelved — Fleet inactive) |
 | `RESEND_API_KEY` | Resend API key for transactional email |
 | `NEXT_PUBLIC_GA_MEASUREMENT_ID` | Google Analytics 4 Measurement ID |
 | `GOOGLE_MAPS_API_KEY` | Google Maps API key (Routes API enabled) |
@@ -132,11 +131,12 @@ User data is stored in flat JSON files in the `data/` directory:
 
 ## Pricing
 
-| Plan | Monthly | Annual |
+| Plan | Price | Notes |
 |---|---|---|
-| Free | Free forever | — |
-| Pro | $4.99/mo | $49/yr |
-| Fleet | $19.99/mo | $199/yr |
+| Free | Free forever | 1 vehicle, all calculators |
+| Pro | $2.99/mo | Unlimited vehicles, all Pro features |
+| Pro Lifetime | $19.99 one-time | Own Pro forever — no subscription |
+| Fleet | Coming soon | Shelved — Pro now includes unlimited vehicles |
 
 All new signups receive a 30-day Pro trial automatically.
 

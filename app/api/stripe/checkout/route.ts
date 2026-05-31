@@ -38,7 +38,7 @@ export async function POST(req: Request) {
 
   const body = await req.json() as {
     tier?:    'pro' | 'fleet';
-    billing?: 'monthly' | 'annual';
+    billing?: 'monthly' | 'annual' | 'lifetime';
     priceId?: string; // legacy direct price ID override
     coupon?:  string; // Stripe coupon ID to pre-apply (e.g. from C4 promo email)
   };
@@ -50,8 +50,11 @@ export async function POST(req: Request) {
   // Resolve price ID
   let priceId = body.priceId ?? '';
   if (!priceId) {
-    if (tier === 'pro')   priceId = billing === 'annual' ? PRICES.proAnnual    : PRICES.proMonthly;
-    if (tier === 'fleet') priceId = billing === 'annual' ? PRICES.fleetAnnual  : PRICES.fleetMonthly;
+    if (tier === 'pro') {
+      if (billing === 'lifetime') priceId = PRICES.proLifetime;
+      else                        priceId = PRICES.proMonthly;
+    }
+    // Fleet plan is shelved — no active price IDs
   }
 
   if (!priceId) {

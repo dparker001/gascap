@@ -268,7 +268,7 @@ export default function GiveawayPage() {
                 className="block w-full py-3 rounded-2xl bg-amber-500 hover:bg-amber-400
                            text-white font-black text-sm transition-colors"
               >
-                ⭐ Upgrade to Pro — $4.99/mo
+                ⭐ Upgrade to Pro — $2.99/mo
               </Link>
             </div>
           </div>

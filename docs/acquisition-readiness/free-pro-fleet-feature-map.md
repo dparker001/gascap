@@ -9,9 +9,9 @@
 
 | Attribute | Free | Pro | Fleet |
 |---|---|---|---|
-| **Price** | $0/forever | $4.99/mo or $49/yr | $19.99/mo or $199/yr |
-| **Trial** | N/A | 30-day free trial (all new signups) | 30-day free trial |
-| **Saved Vehicles** | 1 | Up to 3 (verify: stripe.ts shows 5) | Unlimited |
+| **Price** | $0/forever | $2.99/mo or $19.99 Lifetime | Fleet: coming soon (shelved) |
+| **Trial** | N/A | 30-day free trial (all new signups) | N/A (shelved) |
+| **Saved Vehicles** | 1 | Unlimited | Unlimited |
 | **Drivers** | 1 | 1 | Up to 10 |
 | **Target Audience** | Casual drivers, occasional use | Regular commuters, road trippers, rental car users | Small business fleets, households with 3+ vehicles |
 

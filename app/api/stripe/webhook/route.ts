@@ -85,7 +85,7 @@ export async function POST(req: Request) {
         updateGhlContactPlan(upgradedUser.email, planTier)
           .catch((err) => console.error('[GHL] plan sync failed:', err));
 
-        const tierLabel = planTier === 'fleet' ? 'Fleet ($19.99/mo)' : 'Pro ($4.99/mo)';
+        const tierLabel = planTier === 'fleet' ? 'Fleet (coming soon)' : 'Pro ($2.99/mo)';
         sendAdminMail({
           subject: `⬆️ GasCap™ upgrade: ${upgradedUser.name} → ${planTier.toUpperCase()}`,
           html: `<div style="font-family:system-ui,sans-serif;max-width:480px;">
@@ -101,16 +101,18 @@ export async function POST(req: Request) {
         // Determine billing interval from the checkout session billing param
         // (stored in metadata) or fall back to price ID matching.
         const billingMeta = session.metadata?.billing as string | undefined;
-        let interval: 'monthly' | 'annual' = 'monthly';
+        let interval: 'monthly' | 'annual' | 'lifetime' = 'monthly';
         if (billingMeta === 'annual') {
           interval = 'annual';
+        } else if (billingMeta === 'lifetime') {
+          interval = 'lifetime';
         } else {
-          const annualPrices = [PRICES.proAnnual, PRICES.fleetAnnual].filter(Boolean);
+          // No annual prices active — skip the annual price check
           if (subscriptionId && stripe) {
             try {
               const sub     = await stripe.subscriptions.retrieve(subscriptionId);
               const priceId = sub.items.data[0]?.price?.id ?? '';
-              if (annualPrices.includes(priceId)) interval = 'annual';
+              if (priceId === PRICES.proLifetime) interval = 'lifetime';
             } catch { /* non-fatal: default stays monthly */ }
           }
         }

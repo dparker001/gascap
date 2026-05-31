@@ -14,7 +14,7 @@ const SECTIONS = [
     items: [
       {
         q: 'Do I need an account to use GasCap™?',
-        a: 'No — the fuel calculators work right away without signing up. Creating a free account lets you save 1 vehicle and sync your data across devices. Upgrading to Pro ($4.99/mo) unlocks fill-up tracking, MPG insights, receipt scanning, and up to 3 saved vehicles. Fleet ($19.99/mo) supports unlimited vehicles and up to 25 drivers. New users get 30 days of Pro free — no credit card required. After the trial, your account automatically reverts to the free plan.',
+        a: 'No — the fuel calculators work right away without signing up. Creating a free account lets you save 1 vehicle and sync your data across devices. Upgrading to Pro ($2.99/mo) unlocks fill-up tracking, MPG insights, receipt scanning, and unlimited saved vehicles. New users get 30 days of Pro free — no credit card required. After the trial, your account automatically reverts to the free plan.',
       },
       {
         q: 'I just signed up — what should I do first?',
@@ -212,7 +212,7 @@ const SECTIONS = [
       },
       {
         q: 'Is there a free trial for Fleet?',
-        a: 'Yes — new users receive 30 days of Fleet features free with no credit card required. After the trial, your account automatically downgrades to the free plan. To continue with Fleet, upgrade at $19.99/month or $199/year.',
+        a: 'Fleet features are currently coming soon — we\'re rebuilding the Fleet experience. In the meantime, the Pro plan includes unlimited vehicles ($2.99/mo or $19.99 Lifetime), which covers most multi-vehicle households.',
       },
     ],
   },
@@ -226,19 +226,19 @@ const SECTIONS = [
       },
       {
         q: 'How do I get 30 days of Pro free?',
-        a: 'All new users who create a GasCap™ account automatically receive 30 days of Pro features — no credit card required. Your free trial gives full access to fill-up tracking, MPG insights, receipt scanning, AI Fuel Advisor, Gas Price Alert, stats, streak rewards, referral program, and daily gas card giveaway entries. When there are 15 days left in your trial, a banner appears in the app to remind you. After the 30-day trial ends, your account automatically downgrades to the free plan — you are never charged. To keep Pro features, upgrade before the trial expires at $4.99/month (or $49/year).',
+        a: 'All new users who create a GasCap™ account automatically receive 30 days of Pro features — no credit card required. Your free trial gives full access to fill-up tracking, MPG insights, receipt scanning, AI Fuel Advisor, Gas Price Alert, stats, streak rewards, referral program, and daily gas card giveaway entries. When there are 15 days left in your trial, a banner appears in the app to remind you. After the 30-day trial ends, your account automatically downgrades to the free plan — you are never charged. To keep Pro features, upgrade before the trial expires at $2.99/month or own Pro forever with the $19.99 Lifetime plan (one payment, no subscription).',
       },
       {
         q: 'What does Pro add?',
-        a: 'Pro ($4.99/mo or $49/yr) adds up to 3 saved vehicles, VIN photo scan, fill-up history & MPG tracking, receipt scanning, MPG Insight Card, AI Fuel Advisor, Gas Price Alert, fuel savings dashboard, streak counter, monthly report card, gas price trend predictions, vehicle health alerts, Annual Wrapped, referral rewards, Route Trip Planner with Google Maps, and daily gas card giveaway entries.',
+        a: 'Pro ($2.99/mo or $19.99 Lifetime) adds unlimited saved vehicles, VIN photo scan, fill-up history & MPG tracking, receipt scanning, MPG Insight Card, AI Fuel Advisor, Gas Price Alert, fuel savings dashboard, streak counter, monthly report card, gas price trend predictions, vehicle health alerts, Annual Wrapped, referral rewards, Route Trip Planner with Google Maps, and daily gas card giveaway entries.',
       },
       {
         q: 'What does Fleet add over Pro?',
-        a: 'Fleet ($19.99/mo or $199/yr) adds unlimited vehicles (vs. 3), up to 25 drivers, driver attribution on fill-ups, fleet-wide fuel dashboard, per-driver reporting, annual tax report (PDF), bulk vehicle import, and driver roster management. Everything in Pro is included.',
+        a: 'Fleet features (multi-driver tracking, fleet dashboard, tax reports) are coming soon. Pro now includes unlimited vehicles — ideal for households and owner-operators with multiple cars. Visit gascap.app/fleet to learn more.',
       },
       {
         q: 'How do I upgrade my plan?',
-        a: 'Tap your profile icon or visit Settings → "Upgrade to Pro" or "Upgrade to Fleet." You can also visit gascap.app/upgrade. You\'ll be taken to a secure Stripe checkout page.',
+        a: 'Tap your profile icon or visit Settings → "Upgrade to Pro." You can also visit gascap.app/upgrade. You\'ll be taken to a secure Stripe checkout page.',
       },
       {
         q: 'How do I cancel my subscription?',
@@ -428,7 +428,7 @@ const SECTIONS = [
       },
       {
         q: 'My Pro features disappeared after my trial ended.',
-        a: 'At the end of the 30-day free trial, your account automatically reverts to the free plan. No charge is ever applied — you simply lose access to Pro-only features (fill-up tracking, MPG charts, AI Advisor, etc.). To restore Pro access, go to Settings → Plan → "Upgrade to Pro." A reminder banner appears in the app starting 15 days before your trial expires so you have plenty of notice.',
+        a: 'At the end of the 30-day free trial, your account automatically reverts to the free plan. No charge is ever applied — you simply lose access to Pro-only features (fill-up tracking, MPG charts, AI Advisor, etc.). To restore Pro access, go to Settings → Plan → "Upgrade to Pro" ($2.99/mo or $19.99 Lifetime). A reminder banner appears in the app starting 15 days before your trial expires so you have plenty of notice.',
       },
       {
         q: 'The AI Fuel Advisor isn\'t responding.',

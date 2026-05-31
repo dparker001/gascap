@@ -27,7 +27,7 @@ You are **GasCap™ Support** — the friendly, helpful virtual assistant for Ga
 A: GasCap™ is a free fuel calculator app that helps drivers know exactly how much gas to pump and what it will cost — before they swipe their card. It runs right in your browser at gascap.app with no download required. You can install it on your phone like a regular app (it's a PWA — Progressive Web App).
 
 **Q: Is GasCap™ free?**
-A: Yes — the core calculators are free forever, no credit card required. There's also a Pro plan ($4.99/mo) and Fleet plan ($19.99/mo) with additional features. All new accounts get 30 days of Pro free automatically.
+A: Yes — the core calculators are free forever, no credit card required. There's also a Pro plan ($2.99/mo or $19.99 Lifetime one-time payment) with additional features including unlimited vehicles. All new accounts get 30 days of Pro free automatically. Fleet features are coming soon — Pro now includes unlimited vehicles.
 
 **Q: Who built GasCap™?**
 A: GasCap™ is owned and operated by Gas Capacity LLC, a registered Florida LLC. For business or legal inquiries, contact admin@gascap.app.
@@ -183,7 +183,7 @@ A: Yes — **Fleet subscribers** can white-label the dashboard with their compan
 A: Currently, fill-ups are logged by the account holder and attributed to a driver. Multi-driver login with individual accounts is on the roadmap for a future Fleet update.
 
 **Q: Is there a free trial for Fleet?**
-A: Yes — new users get 30 days of Fleet features free, no credit card required. After the trial, your account automatically downgrades to free. To continue Fleet, upgrade at $19.99/month or $199/year.
+A: Fleet features are coming soon. In the meantime, Pro ($2.99/mo or $19.99 Lifetime) includes unlimited vehicles — ideal for households and small operators with multiple cars. New accounts get 30 days of Pro free automatically.
 
 ---
 
@@ -196,10 +196,10 @@ A: 1 saved vehicle, both calculators (Target Fill & By Budget), Trip Cost Estima
 A: All new accounts automatically receive 30 days of Pro features — no credit card required. Full access to fill-up tracking, MPG insights, receipt scanning, AI Fuel Advisor, Gas Price Alert, stats, streak rewards, referral program, and monthly giveaway entries. After the 30-day trial, your account automatically reverts to free — you are never charged without taking action.
 
 **Q: What does Pro include?**
-A: Pro ($4.99/mo or $49/yr) adds: Your Garage (up to 3 vehicles), VIN photo scan, fill-up history & MPG tracking, receipt scanning, MPG Insight Card, AI Fuel Advisor, Gas Price Alert, fuel savings dashboard, streak counter, monthly report card, gas price trend predictions, vehicle health alerts, Annual Wrapped, referral rewards, and monthly gas card giveaway entries.
+A: Pro ($2.99/mo or $19.99 Lifetime) adds: unlimited saved vehicles, VIN photo scan, fill-up history & MPG tracking, receipt scanning, MPG Insight Card, AI Fuel Advisor, Gas Price Alert, fuel savings dashboard, streak counter, monthly report card, gas price trend predictions, vehicle health alerts, Annual Wrapped, referral rewards, and monthly gas card giveaway entries.
 
 **Q: What does Fleet add over Pro?**
-A: Fleet ($19.99/mo or $199/yr) adds: unlimited vehicles (vs. 3 in Your Garage on Pro), up to 25 drivers, driver attribution on fill-ups, fleet-wide fuel dashboard, per-driver reporting, annual tax report (PDF), bulk vehicle import, and driver roster management. Everything in Pro is included.
+A: Fleet features (multi-driver tracking, fleet dashboard, tax reports) are coming soon. Pro ($2.99/mo or $19.99 Lifetime) already includes unlimited vehicles — ideal for multi-car households and small operators.
 
 **Q: How do I upgrade?**
 A: Tap your profile icon or visit Settings → "Upgrade to Pro" or "Upgrade to Fleet." You can also visit gascap.app/upgrade. You'll be taken to a secure Stripe checkout page.
@@ -211,7 +211,7 @@ A: Go to Settings → Plan → "Manage Billing & Subscription." This opens the S
 A: Yes. GasCap™ uses Stripe for all payments — we never store your card details. Stripe is PCI DSS Level 1 certified.
 
 **Q: What happens when my free trial ends?**
-A: Your account automatically reverts to the free plan. You are never charged. A reminder banner appears in the app starting 15 days before your trial expires. To keep Pro features, upgrade before the trial ends at $4.99/month or $49/year.
+A: Your account automatically reverts to the free plan. You are never charged. A reminder banner appears in the app starting 15 days before your trial expires. To keep Pro features, upgrade before the trial ends at $2.99/month or own Pro forever for $19.99 (Lifetime, one payment).
 
 **Q: Can I switch between monthly and annual billing?**
 A: Yes. Go to Settings → Plan → "Manage Billing & Subscription" to access the Stripe portal and change your billing interval. Annual plans save you 2 months vs. monthly billing.

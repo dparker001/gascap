@@ -236,10 +236,9 @@ export function engS4EmailHtml(name: string, userId: string, isMonthly = true): 
 
       ${isMonthly ? `
       <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:16px 20px;margin-bottom:24px;">
-        <p style="margin:0;font-size:14px;font-weight:700;color:#166534;">Save 17% — switch to annual</p>
+        <p style="margin:0;font-size:14px;font-weight:700;color:#166534;">Own Pro forever — skip the subscription</p>
         <p style="margin:4px 0 0;font-size:13px;color:#15803d;line-height:1.5;">
-          At $49/year, annual Pro works out to just $4.08/month — less than a single gallon of gas.
-          Switch anytime in Settings → Plan.
+          The Lifetime plan is $19.99 — one payment, Pro access forever. Switch anytime in Settings → Plan.
         </p>
       </div>` : ''}
 
@@ -267,8 +266,8 @@ export function engS5EmailHtml(name: string, userId: string): string {
         Your year with GasCap™ — renewal is coming up
       </h1>
       <p style="margin:0 0 20px;font-size:15px;color:#475569;line-height:1.65;">
-        Hi ${first}, your annual GasCap™ Pro subscription renews in about 30 days at $49 — that's
-        $4.08/month for a full year of smarter fueling. Here's what that year looked like.
+        Hi ${first}, your GasCap™ Pro subscription renews in about 30 days at $2.99 —
+        that's less than a dime a day for a full year of smarter fueling. Here's what that year looked like.
       </p>
 
       <table style="width:100%;border-collapse:collapse;margin-bottom:20px;">
@@ -297,6 +296,8 @@ export function engS5EmailHtml(name: string, userId: string): string {
 }
 
 // ── FLEET TRACK ──────────────────────────────────────────────────────────────
+// Fleet drip — paused until Fleet plan relaunches.
+// Functions are preserved below but should NOT be called from active cron runs.
 
 /** F1 — Day 14: Fleet quick-start checklist */
 export function engF1EmailHtml(name: string, userId: string): string {

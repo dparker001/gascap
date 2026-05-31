@@ -61,7 +61,7 @@ This documentation package exists to ensure that GasCap™ is operationally and 
 ## Key Facts (Verified from Codebase, May 2026)
 
 - **Product:** Live at www.gascap.app — Next.js 14 App Router + TypeScript + PostgreSQL + Prisma
-- **Plans:** Free / Pro ($4.99/mo or $49/yr) / Fleet ($19.99/mo or $199/yr)
+- **Plans:** Free / Pro ($2.99/mo or $19.99 Lifetime) / Fleet (coming soon — shelved)
 - **Trial:** All new signups receive 30-day Pro trial automatically
 - **Analytics:** GA4 + Meta Pixel + custom GA4 named events (gtag)
 - **Email:** Resend — 10-email drip sequence (D1-D5 trial, P1-P5 paid) + engagement + comp ambassador

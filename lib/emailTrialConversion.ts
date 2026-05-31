@@ -122,7 +122,7 @@ export function conversionC1Html(name: string, userId: string): string {
       <p style="margin:0 0 22px;font-size:15px;color:#475569;line-height:1.6;">
         When it does, your account drops to the free plan — and you'll lose access to
         the features above, your streak bonus entries, and your spot in the monthly draw.
-        Pro is <strong>$4.99/month</strong> or <strong>$49/year</strong> (2 months free).
+        Pro is <strong>$2.99/month</strong> — or own it forever with <strong>$19.99 Lifetime</strong> (one payment, no subscription).
       </p>
 
       <div style="text-align:center;padding:22px 0 8px;">
@@ -137,7 +137,7 @@ export function conversionC1Html(name: string, userId: string): string {
 
 export function conversionC1Text(name: string): string {
   const first = name.split(' ')[0];
-  return `Hi ${first}, your GasCap™ Pro trial is winding down — here's what you've had access to: exact fill-up calculator, monthly gas card giveaway entries, MPG trending charts, Rental Car Return Mode, and streak bonus entries. Your trial ends at the end of the month. When it does, you'll lose these features and your giveaway spot. Keep Pro at $4.99/mo or $49/yr: ${BASE_URL}/upgrade`;
+  return `Hi ${first}, your GasCap™ Pro trial is winding down — here's what you've had access to: exact fill-up calculator, monthly gas card giveaway entries, MPG trending charts, Rental Car Return Mode, and streak bonus entries. Your trial ends at the end of the month. When it does, you'll lose these features and your giveaway spot. Keep Pro at $2.99/mo or own it forever for $19.99 (Lifetime): ${BASE_URL}/upgrade`;
 }
 
 // ── C2: "The math" — savings proof, price anchoring ──────────────────────────
@@ -188,22 +188,18 @@ export function conversionC2Html(name: string, userId: string): string {
         </p>
         <table cellpadding="0" cellspacing="0" width="100%">
           <tr>
-            <td style="padding:6px 0;font-size:14px;color:#475569;">GasCap™ Pro Annual</td>
-            <td style="padding:6px 0;font-size:14px;font-weight:700;color:#1e2d4a;text-align:right;">$49/year</td>
-          </tr>
-          <tr>
-            <td style="padding:6px 0;font-size:14px;color:#475569;">That's per month</td>
-            <td style="padding:6px 0;font-size:14px;font-weight:700;color:#1e2d4a;text-align:right;">$4.08/mo</td>
+            <td style="padding:6px 0;font-size:14px;color:#475569;">GasCap™ Pro Monthly</td>
+            <td style="padding:6px 0;font-size:14px;font-weight:700;color:#1e2d4a;text-align:right;">$2.99/mo</td>
           </tr>
           <tr>
             <td style="padding:6px 0;font-size:14px;color:#475569;">That's per day</td>
-            <td style="padding:6px 0;font-size:14px;font-weight:700;color:#1e2d4a;text-align:right;">$0.13/day</td>
+            <td style="padding:6px 0;font-size:14px;font-weight:700;color:#1e2d4a;text-align:right;">$0.10/day</td>
           </tr>
           <tr>
             <td colspan="2" style="padding:12px 0 0;border-top:1px solid #fde68a;">
               <p style="margin:0;font-size:13px;color:#92400e;line-height:1.5;">
-                Less than a pack of gum per day. If GasCap™ saves you even <strong>$5 on your next fill-up</strong>,
-                it's already paid for itself — with 11 months of Pro left to go.
+                Less than a dime a day. If GasCap™ saves you even <strong>$3 on your next fill-up</strong>,
+                it's already paid for itself — with the rest of the month to go.
               </p>
             </td>
           </tr>
@@ -221,9 +217,9 @@ export function conversionC2Html(name: string, userId: string): string {
       </div>
 
       <div style="text-align:center;padding:18px 0 8px;">
-        ${ctaButton('Upgrade to Pro — $49/yr →', `${BASE_URL}/upgrade`)}
+        ${ctaButton('Upgrade to Pro — $2.99/mo →', `${BASE_URL}/upgrade`)}
         <p style="margin:12px 0 0;font-size:13px;color:#64748b;">
-          Prefer monthly? <a href="${BASE_URL}/upgrade" style="color:#f59e0b;font-weight:700;">$4.99/mo</a> — cancel anytime.
+          Want to own Pro forever? <a href="${BASE_URL}/upgrade" style="color:#f59e0b;font-weight:700;">$19.99 Lifetime</a> — one payment, no subscription.
         </p>
       </div>
 
@@ -234,7 +230,7 @@ export function conversionC2Html(name: string, userId: string): string {
 
 export function conversionC2Text(name: string): string {
   const first = name.split(' ')[0];
-  return `Hi ${first}, here's the math: most drivers overpay $5–10 per fill-up by guessing. GasCap™ tells you exactly what to pump. At 2 fill-ups a week, that adds up fast. Pro costs $4.08/mo on the annual plan ($49/yr) — less than $0.13/day. If it saves you $5 on your next fill-up, it's already paid for itself. Plus: staying Pro keeps your giveaway entries active every month. Upgrade now: ${BASE_URL}/upgrade`;
+  return `Hi ${first}, here's the math: most drivers overpay $5–10 per fill-up by guessing. GasCap™ tells you exactly what to pump. At 2 fill-ups a week, that adds up fast. Pro costs $2.99/mo — less than $0.10/day. If it saves you $3 on your next fill-up, it's already paid for itself. Plus: staying Pro keeps your giveaway entries active every month. Upgrade now: ${BASE_URL}/upgrade`;
 }
 
 // ── C3: "48 hours left" — hard deadline, urgency ─────────────────────────────
@@ -300,20 +296,20 @@ export function conversionC3Html(name: string, userId: string): string {
         <table cellpadding="0" cellspacing="0" width="100%">
           <tr>
             <td style="padding:8px 0;border-bottom:1px solid #dcfce7;">
-              <p style="margin:0;font-size:15px;font-weight:700;color:#1e2d4a;">GasCap™ Pro Annual</p>
-              <p style="margin:2px 0 0;font-size:13px;color:#64748b;">$49/year — just $4.08/month. 2 months free vs monthly.</p>
+              <p style="margin:0;font-size:15px;font-weight:700;color:#1e2d4a;">GasCap™ Pro Lifetime</p>
+              <p style="margin:2px 0 0;font-size:13px;color:#64748b;">One payment — own Pro forever, no subscription ever.</p>
             </td>
             <td style="padding:8px 0;border-bottom:1px solid #dcfce7;text-align:right;white-space:nowrap;">
-              <span style="font-size:20px;font-weight:900;color:#16a34a;">$49/yr</span>
+              <span style="font-size:20px;font-weight:900;color:#16a34a;">$19.99</span>
             </td>
           </tr>
           <tr>
             <td style="padding:8px 0;">
               <p style="margin:0;font-size:15px;font-weight:700;color:#1e2d4a;">GasCap™ Pro Monthly</p>
-              <p style="margin:2px 0 0;font-size:13px;color:#64748b;">$4.99/month — cancel anytime, no commitment.</p>
+              <p style="margin:2px 0 0;font-size:13px;color:#64748b;">$2.99/month — cancel anytime, no commitment.</p>
             </td>
             <td style="padding:8px 0;text-align:right;white-space:nowrap;">
-              <span style="font-size:20px;font-weight:900;color:#1e2d4a;">$4.99/mo</span>
+              <span style="font-size:20px;font-weight:900;color:#1e2d4a;">$2.99/mo</span>
             </td>
           </tr>
         </table>
@@ -333,16 +329,16 @@ export function conversionC3Html(name: string, userId: string): string {
 
 export function conversionC3Text(name: string): string {
   const first = name.split(' ')[0];
-  return `Hi ${first}, your GasCap™ Pro trial ends very soon. When it does, you'll lose: your login streak and giveaway entries, your spot in the monthly gas card draw, MPG charts, Rental Car Return Mode, fill-up reminders, and unlimited garage vehicles. Keep Pro at $4.99/mo or $49/yr ($4.08/mo, 2 months free). Upgrade now before it expires: ${BASE_URL}/upgrade — reply to this email with any questions.`;
+  return `Hi ${first}, your GasCap™ Pro trial ends very soon. When it does, you'll lose: your login streak and giveaway entries, your spot in the monthly gas card draw, MPG charts, Rental Car Return Mode, fill-up reminders, and unlimited garage vehicles. Keep Pro at $2.99/mo or own it forever for $19.99 (Lifetime, one payment). Upgrade now before it expires: ${BASE_URL}/upgrade — reply to this email with any questions.`;
 }
 
 // ── Dispatcher ────────────────────────────────────────────────────────────────
 
-// ── C4: Special offer — $2.99/mo for first 3 months ─────────────────────────
-// Sent May 26 to engaged trial users (calcCount ≥ 2 OR streak ≥ 3) only.
-// Pre-applies Stripe coupon WELCOME299 via the upgrade URL.
+// ── C4: Special offer — $19.99 Lifetime (own Pro forever) ───────────────────
+// Sent to engaged trial users (calcCount ≥ 2 OR streak ≥ 3) only.
+// 48-hour urgency. Links to upgrade page with lifetime billing pre-selected.
 
-const OFFER_URL = `${BASE_URL}/upgrade?coupon=WELCOME299`;
+const OFFER_URL = `${BASE_URL}/upgrade?coupon=LIFETIME19`;
 
 export function conversionC4Html(name: string, userId: string): string {
   const first = name.split(' ')[0];
@@ -356,19 +352,21 @@ export function conversionC4Html(name: string, userId: string): string {
           Special Offer — 48 Hours Only
         </p>
         <p style="margin:0;font-size:32px;font-weight:900;color:#fff;line-height:1.1;">
-          $2.99<span style="font-size:16px;font-weight:600;">/mo</span>
+          $19.99
         </p>
         <p style="margin:6px 0 0;font-size:14px;color:rgba(255,255,255,0.85);">
-          First 3 months · Then $4.99/mo · Cancel anytime
+          One-time payment · Own GasCap™ Pro forever · No subscription ever
         </p>
       </div>
 
       <p style="margin:0 0 6px;font-size:22px;font-weight:900;color:#1e2d4a;line-height:1.2;">
-        ${first}, we'd like to keep you.
+        ${first}, we'd like to keep you — forever.
       </p>
       <p style="margin:0 0 22px;font-size:15px;color:#475569;line-height:1.6;">
-        You've been one of our most active trial members — and we don't want to lose you
-        over price. So here's a one-time offer, just for you:
+        You've been one of our most active trial members. We don't want to lose you — so
+        here's a one-time offer reserved for engaged users like you:
+        <strong>own GasCap™ Pro forever</strong> for a single payment of $19.99.
+        No monthly bill. No annual renewal. Just Pro — for life.
       </p>
 
       <!-- Offer detail -->
@@ -376,32 +374,32 @@ export function conversionC4Html(name: string, userId: string): string {
         <table cellpadding="0" cellspacing="0" width="100%">
           <tr>
             <td style="padding:8px 0;border-bottom:1px solid #dcfce7;">
-              <p style="margin:0;font-size:15px;font-weight:700;color:#1e2d4a;">First 3 months</p>
-              <p style="margin:2px 0 0;font-size:13px;color:#64748b;">Discounted introductory rate — auto-applied at checkout</p>
+              <p style="margin:0;font-size:15px;font-weight:700;color:#1e2d4a;">GasCap™ Pro — Lifetime Access</p>
+              <p style="margin:2px 0 0;font-size:13px;color:#64748b;">One payment — Pro access on your account forever</p>
             </td>
             <td style="padding:8px 0;border-bottom:1px solid #dcfce7;text-align:right;white-space:nowrap;">
-              <span style="font-size:22px;font-weight:900;color:#16a34a;">$2.99<span style="font-size:13px;">/mo</span></span>
+              <span style="font-size:22px;font-weight:900;color:#16a34a;">$19.99</span>
             </td>
           </tr>
           <tr>
             <td style="padding:8px 0;">
-              <p style="margin:0;font-size:15px;font-weight:700;color:#1e2d4a;">After month 3</p>
-              <p style="margin:2px 0 0;font-size:13px;color:#64748b;">Standard Pro rate — cancel anytime before then</p>
+              <p style="margin:0;font-size:15px;font-weight:700;color:#1e2d4a;">vs. Monthly (cancel anytime)</p>
+              <p style="margin:2px 0 0;font-size:13px;color:#64748b;">$2.99/mo ongoing — Lifetime breaks even in ~7 months</p>
             </td>
             <td style="padding:8px 0;text-align:right;white-space:nowrap;">
-              <span style="font-size:22px;font-weight:900;color:#1e2d4a;">$4.99<span style="font-size:13px;">/mo</span></span>
+              <span style="font-size:22px;font-weight:900;color:#64748b;">$2.99<span style="font-size:13px;">/mo</span></span>
             </td>
           </tr>
         </table>
         <div style="margin-top:14px;padding-top:14px;border-top:1px solid #dcfce7;">
           <p style="margin:0;font-size:13px;color:#16a34a;font-weight:700;">
-            💰 You save $6.00 over the first 3 months vs. standard pricing.
+            💰 Break even in 7 months. After that — you pay nothing, ever.
           </p>
         </div>
       </div>
 
       <!-- What's included reminder -->
-      <p style="margin:0 0 12px;font-size:14px;font-weight:700;color:#1e2d4a;">Everything you've been using, plus:</p>
+      <p style="margin:0 0 12px;font-size:14px;font-weight:700;color:#1e2d4a;">Everything you've been using, forever:</p>
       <table cellpadding="0" cellspacing="0" width="100%" style="margin:0 0 22px;">
         <tr>
           <td style="padding:5px 0;vertical-align:top;width:22px;font-size:15px;color:#16a34a;">✓</td>
@@ -417,7 +415,11 @@ export function conversionC4Html(name: string, userId: string): string {
         </tr>
         <tr>
           <td style="padding:5px 0;vertical-align:top;font-size:15px;color:#16a34a;">✓</td>
-          <td style="padding:5px 0 5px 8px;font-size:14px;color:#475569;">Discount auto-applied — no code needed at checkout</td>
+          <td style="padding:5px 0 5px 8px;font-size:14px;color:#475569;">Unlimited saved vehicles — no per-vehicle cap</td>
+        </tr>
+        <tr>
+          <td style="padding:5px 0;vertical-align:top;font-size:15px;color:#16a34a;">✓</td>
+          <td style="padding:5px 0 5px 8px;font-size:14px;color:#475569;">No future price increases — you're locked in for life</td>
         </tr>
       </table>
 
@@ -431,10 +433,10 @@ export function conversionC4Html(name: string, userId: string): string {
       <div style="text-align:center;padding:8px 0;">
         <a href="${OFFER_URL}" style="display:inline-block;background:#16a34a;color:#fff;font-weight:900;
            font-size:16px;padding:16px 36px;border-radius:12px;text-decoration:none;">
-          Claim My $2.99 Offer →
+          Own GasCap™ Forever — $19.99 →
         </a>
         <p style="margin:14px 0 0;font-size:12px;color:#94a3b8;">
-          Discount auto-applied at checkout. No code needed. Cancel anytime.
+          Use code <strong>LIFETIME19</strong> at checkout. One-time payment. No subscription, no renewals.
         </p>
       </div>
 
@@ -445,7 +447,7 @@ export function conversionC4Html(name: string, userId: string): string {
 
 export function conversionC4Text(name: string): string {
   const first = name.split(' ')[0];
-  return `Hi ${first}, we'd like to keep you as a GasCap™ Pro member. Here's a one-time offer just for you: $2.99/month for your first 3 months, then $4.99/month after that. That's $6 in savings, no code needed — the discount is applied automatically at checkout. This offer expires in 48 hours. Claim it here: ${OFFER_URL}`;
+  return `Hi ${first}, we'd like to keep you as a GasCap™ Pro member — forever. Here's a one-time offer just for you: own GasCap™ Pro for life with a single payment of $19.99. No monthly bill, no renewals. Break even in 7 months vs. the $2.99/mo plan — after that, you pay nothing ever. Use code LIFETIME19 at checkout. This offer expires in 48 hours. Claim it here: ${OFFER_URL}`;
 }
 
 export interface ConversionRecipient {
@@ -485,8 +487,8 @@ const CONVERSION_META: Record<number, ConversionMeta> = {
     type:    'trial-c3',
   },
   4: {
-    subject: "We'd like to keep you — here's a special offer",
-    preview: '$2.99/month for your first 3 months. 48 hours only.',
+    subject: "Own GasCap™ Pro forever — one payment, no subscription",
+    preview: '$19.99 Lifetime offer. 48 hours only.',
     htmlFn:  conversionC4Html,
     textFn:  conversionC4Text,
     type:    'trial-c4',

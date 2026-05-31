@@ -73,36 +73,10 @@ export async function GET(req: Request) {
   }
 
   // ── Fleet track ────────────────────────────────────────────────────────────
-  for (const { step, minDays, label } of FLEET_STEPS) {
-    let users;
-    try {
-      users = await getUsersPendingEngagementStep(step, minDays, 'fleet', false);
-    } catch (err) {
-      console.error(`[engagement] DB query failed for ${label}:`, err);
-      results[label] = { sent: 0, errors: 1 };
-      continue;
-    }
-
-    let sent = 0, errors = 0;
-    for (const user of users) {
-      try {
-        await sendEngagementEmail(step, 'fleet', {
-          id:             user.id,
-          name:           user.name,
-          email:          user.email,
-          plan:           user.plan,
-          stripeInterval: user.stripeInterval,
-          referralCode:   user.referralCode,
-        });
-        await advanceEngagementStep(user.id, step);
-        sent++;
-      } catch (err) {
-        console.error(`[engagement] ${label} failed for ${user.email}:`, err);
-        errors++;
-      }
-    }
-    results[label] = { sent, errors };
-    console.log(`[engagement] ${label}: sent=${sent} errors=${errors}`);
+  // Fleet drip is paused until the Fleet plan relaunches. Skipping all F1–F4 steps.
+  for (const { label } of FLEET_STEPS) {
+    results[label] = { sent: 0, errors: 0 };
+    console.log(`[engagement] ${label}: skipped — Fleet plan is inactive`);
   }
 
   return NextResponse.json({ ok: true, ran: new Date().toISOString(), results });

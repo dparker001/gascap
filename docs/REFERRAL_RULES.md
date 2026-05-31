@@ -19,7 +19,7 @@ Share your link. When a friend signs up **and makes their first payment**, you e
 | Rule | Value |
 |---|---|
 | Credits earned per paying referral | 1 |
-| Dollar value per credit | $4.99 (1 month of Pro) |
+| Dollar value per credit | $2.99 (1 month of Pro) |
 | Maximum credits earned lifetime | 10 |
 | Maximum credits redeemable at once | 3 |
 | Credit expiry | 6 months from earned date |
@@ -96,7 +96,7 @@ This enforcement logic is **not yet implemented in code** as of 2026-05-02 — t
 | Credits hoarded indefinitely | `CREDIT_EXPIRY_MONTHS = 6` — expire after 6 months |
 | Changing referral code after signup | `setReferredBy` only callable from the register route; no user-facing API |
 | Fake referral codes | Code must exist in DB — `findByReferralCode` validates |
-| Two-email self-referral | Economically neutral — costs $4.99 to earn $4.99; not worth addressing |
+| Two-email self-referral | Economically neutral — costs $2.99 to earn $2.99; not worth addressing |
 
 ### Ambassador Active-Referral Floor Enforcement
 Ambassadors and Elite Ambassadors must maintain 5+ currently active paying referrals to keep the complimentary Pro subscription. When a referred user's subscription cancels or lapses, the system should re-evaluate the Ambassador's active count. If the count drops below 5, the complimentary Pro is paused; it is reinstated automatically when the count recovers. Admin can review borderline cases manually. See the "Ambassador Tier Sustainability Rule" section above for full policy details and the enforcement implementation spec.

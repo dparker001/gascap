@@ -52,7 +52,7 @@ function SchemaMarkup() {
         name: 'Is GasCap™ free to use?',
         acceptedAnswer: {
           '@type': 'Answer',
-          text: 'Yes — GasCap™ is free forever with no credit card required. The free plan includes the full fuel calculator, live gas prices, and offline access. Pro ($4.99/mo) and Fleet ($19.99/mo) plans add fill-up history, MPG tracking, AI advisor, PDF export, and more.',
+          text: 'Yes — GasCap™ is free forever with no credit card required. The free plan includes the full fuel calculator, live gas prices, and offline access. Pro ($2.99/mo or $19.99 Lifetime) adds fill-up history, MPG tracking, unlimited vehicles, AI advisor, PDF export, and more.',
         },
       },
       {
@@ -92,7 +92,7 @@ function SchemaMarkup() {
         name: 'What vehicles does GasCap™ support?',
         acceptedAnswer: {
           '@type': 'Answer',
-          text: 'GasCap™ supports any gasoline or diesel vehicle. You can manually enter your tank size, or choose from hundreds of presets including economy cars, midsize sedans, SUVs, trucks, minivans, and rental car classes. Pro users can save up to 3 vehicles; Fleet users can save unlimited vehicles.',
+          text: 'GasCap™ supports any gasoline or diesel vehicle. You can manually enter your tank size, or choose from hundreds of presets including economy cars, midsize sedans, SUVs, trucks, minivans, and rental car classes. Free users can save 1 vehicle; Pro users can save unlimited vehicles.',
         },
       },
       {
@@ -116,8 +116,8 @@ function SchemaMarkup() {
     url: 'https://gascap.app',
     offers: [
       { '@type': 'Offer', price: '0', priceCurrency: 'USD', name: 'Free Plan' },
-      { '@type': 'Offer', price: '4.99', priceCurrency: 'USD', name: 'Pro Plan', billingPeriod: 'Monthly' },
-      { '@type': 'Offer', price: '19.99', priceCurrency: 'USD', name: 'Fleet Plan', billingPeriod: 'Monthly' },
+      { '@type': 'Offer', price: '2.99', priceCurrency: 'USD', name: 'Pro Plan', billingPeriod: 'Monthly' },
+      { '@type': 'Offer', price: '19.99', priceCurrency: 'USD', name: 'Pro Plan Lifetime' },
     ],
     aggregateRating: {
       '@type': 'AggregateRating',

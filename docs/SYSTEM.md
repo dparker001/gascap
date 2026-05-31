@@ -122,8 +122,8 @@ Stores fill-up records. Managed entirely by `lib/fillups.ts`.
 | Plan | Price | Vehicle Slots | Fill-up Log | Receipt Scan | MPG Charts | Fleet Features |
 |---|---|---|---|---|---|---|
 | Free | $0 | 1 | ✅ | ❌ | ❌ | ❌ |
-| Pro | $4.99/mo | 3 | ✅ | ✅ | ✅ | ❌ |
-| Fleet | $19.99/mo | Unlimited | ✅ | ✅ | ✅ | ✅ |
+| Pro | $2.99/mo or $19.99 Lifetime | Unlimited | ✅ | ✅ | ✅ | ❌ |
+| Fleet | Coming soon (shelved) | Unlimited | ✅ | ✅ | ✅ | ✅ |
 
 Every new signup gets a **30-day Pro trial** automatically (`grantNewSignupProTrial` in `lib/users.ts`). This sets `plan='pro'`, `isProTrial=true`, `betaProExpiry=+30d`. A cron job (or the beta-expire endpoint) reverts them to free if they don't upgrade.
 
@@ -168,7 +168,7 @@ All email goes through `lib/email.ts` → `sendMail()`:
 | `sendCampaignEmail(1, ...)` | Registration | New user — welcome + trial activated |
 | `sendCampaignEmail(2, ...)` | Day 3 cron | Trial users — feature deep-dive |
 | `sendCampaignEmail(3, ...)` | Day 10 cron | Trial users — mid-trial check-in |
-| `sendCampaignEmail(4, ...)` | Day 21 cron | Trial users — annual deal |
+| `sendCampaignEmail(4, ...)` | Day 21 cron | Trial users — $2.99/mo upgrade offer |
 | `sendCampaignEmail(5, ...)` | Day 28 cron | Trial users — final 48 hours |
 | `sendReferralCreditEmail()` | Stripe webhook | Referrer — credit earned notification |
 
@@ -221,8 +221,9 @@ Components communicate across the component tree via `window.dispatchEvent`:
 | `RESEND_API_KEY` | Recommended | Fallback email provider |
 | `STRIPE_SECRET_KEY` | ✅ | Stripe API key |
 | `STRIPE_WEBHOOK_SECRET` | ✅ | Stripe webhook signing secret |
-| `STRIPE_PRICE_PRO_MONTHLY` | ✅ | Stripe Price ID for Pro monthly |
-| `STRIPE_PRICE_FLEET_MONTHLY` | ✅ | Stripe Price ID for Fleet monthly |
+| `STRIPE_PRICE_PRO_MONTHLY` | ✅ | Stripe Price ID for Pro monthly ($2.99/mo) |
+| `STRIPE_PRICE_PRO_LIFETIME` | ✅ | Stripe Price ID for Pro Lifetime ($19.99 one-time) |
+| `STRIPE_PRICE_FLEET_MONTHLY` | (shelved) | Stripe Price ID for Fleet monthly — Fleet plan inactive |
 | `EIA_API_KEY` | ✅ | EIA Open Data API key (free at eia.gov/opendata) |
 | `OPENAI_API_KEY` | ✅ | OpenAI API key (AI Advisor + receipt scanning) |
 | `GHL_API_KEY` | ✅ | GoHighLevel API key |

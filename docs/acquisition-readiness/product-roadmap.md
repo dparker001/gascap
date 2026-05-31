@@ -10,7 +10,7 @@
 GasCap™'s product strategy follows three principles:
 
 1. **Free features that drive habit** — The free tier must be genuinely useful to drive daily active use. A free user who calculates every fill-up is more valuable than one who signs up and churns.
-2. **Pro features that are worth $4.99/month** — Pro must save the user more than its cost, or feel indispensable. The rental return calculator, AI advisor, and Smart Fill-Up Optimizer are the strongest examples.
+2. **Pro features that are worth $2.99/month** — Pro must save the user more than its cost, or feel indispensable. The rental return calculator, AI advisor, and Smart Fill-Up Optimizer are the strongest examples.
 3. **Partner features that make GasCap™ defensible** — The QR campaign network, station attribution system, and partner dashboard are what a buyer cannot easily replicate — they require time, physical relationships, and behavioral data.
 
 ---

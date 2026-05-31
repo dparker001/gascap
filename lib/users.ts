@@ -391,7 +391,7 @@ export async function getUsersPendingCampaignStep(step: number, minDays: number)
  */
 export async function enrollPaidCampaign(
   userId: string,
-  interval: 'monthly' | 'annual',
+  interval: 'monthly' | 'annual' | 'lifetime',
 ): Promise<void> {
   await prisma.user.update({
     where: { id: userId },
