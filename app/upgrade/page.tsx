@@ -23,12 +23,20 @@ const FREE_FEATURES = [
 const PRO_FEATURES = [
   'Unlimited saved vehicles',
   'VIN photo scan — auto-decode vehicle',
-  'Manual entry + auto spec lookup',
   'Fill-up history & MPG tracking',
   'Receipt photo scan (AI-powered)',
+  'Smart Fill-Up Optimizer',
+  'Gas Price Drop Alerts',
   'Referral rewards',
+  'Monthly gas card giveaway entries',
   'All Free features included',
   'Priority support',
+];
+
+const LIFETIME_EXCLUSIVES = [
+  { icon: '⭐', text: '2× giveaway entries every month' },
+  { icon: '🛡️', text: 'Streak Shield — 1 grace day/month' },
+  { icon: '🏅', text: 'Founding Member badge (limited)' },
 ];
 
 // ── Helpers ───────────────────────────────────────────────────────────────
@@ -82,7 +90,7 @@ function UpgradePageInner() {
 
       <BrandBar />
 
-      <div className="flex-1 px-4 py-10 max-w-5xl mx-auto w-full">
+      <div className="flex-1 px-4 py-10 max-w-6xl mx-auto w-full">
 
         {/* Heading */}
         <div className="text-center mb-6">
@@ -272,10 +280,29 @@ function UpgradePageInner() {
                 : session ? `Get Lifetime — $${PRICING.pro.lifetime}` : t.upgrade.signInToUp}
             </button>
             <div className="border-t border-white/10 mb-5" />
-            <ul className="space-y-2 flex-1">
+            {/* All Pro features */}
+            <ul className="space-y-2">
               {PRO_FEATURES.map((f) => (
                 <li key={f} className="flex items-start gap-2 text-sm text-white/80">
                   <Check color="teal" /> {f}
+                </li>
+              ))}
+            </ul>
+            {/* Lifetime-exclusive perks */}
+            <div className="mt-5 mb-2">
+              <div className="flex items-center gap-2">
+                <div className="flex-1 border-t border-teal-400/30" />
+                <span className="text-[10px] font-black text-teal-300 uppercase tracking-widest whitespace-nowrap">
+                  Lifetime exclusives
+                </span>
+                <div className="flex-1 border-t border-teal-400/30" />
+              </div>
+            </div>
+            <ul className="space-y-2 flex-1">
+              {LIFETIME_EXCLUSIVES.map((f) => (
+                <li key={f.text} className="flex items-start gap-2 text-sm">
+                  <span className="flex-shrink-0 mt-0.5">{f.icon}</span>
+                  <span className="text-teal-200 font-semibold">{f.text}</span>
                 </li>
               ))}
             </ul>

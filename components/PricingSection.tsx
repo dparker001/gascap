@@ -13,6 +13,12 @@ type PlanTier = 'free' | 'pro';
 // Highlight flags (order matches translation feature arrays)
 const PRO_HIGHLIGHTS = [false, true, true, false, true, true, false, false, false, false];
 
+const LIFETIME_EXCLUSIVES = [
+  { icon: '⭐', text: '2× giveaway entries every month' },
+  { icon: '🛡️', text: 'Streak Shield — 1 grace day/month' },
+  { icon: '🏅', text: 'Founding Member badge (limited)' },
+];
+
 // ── Helpers ───────────────────────────────────────────────────────────────
 
 function Check({ highlight, dark }: { highlight?: boolean; dark?: boolean }) {
@@ -80,7 +86,7 @@ export default function PricingSection() {
       </p>
 
       {/* ── 3-panel cards ──────────────────────────────────────────────── */}
-      <div className="grid gap-4 md:grid-cols-3 md:items-stretch max-w-4xl mx-auto">
+      <div className="grid gap-4 md:grid-cols-3 md:items-stretch max-w-5xl mx-auto">
 
         {/* Free */}
         <div className={[
@@ -239,13 +245,32 @@ export default function PricingSection() {
           </button>
 
           <div className="border-t border-slate-100 mb-5" />
-          <ul className="space-y-2.5 flex-1">
+          {/* All Pro features */}
+          <ul className="space-y-2.5">
             {PRO_FEATURES.map((f) => (
               <li key={f.text} className="flex items-start gap-2.5">
                 <Check highlight={f.highlight} />
                 <span className={`text-sm leading-snug ${
                   f.highlight ? 'text-slate-800 font-semibold' : 'text-slate-500'
                 }`}>{f.text}</span>
+              </li>
+            ))}
+          </ul>
+          {/* Lifetime-exclusive perks */}
+          <div className="mt-5 mb-2">
+            <div className="flex items-center gap-2">
+              <div className="flex-1 border-t border-teal-200" />
+              <span className="text-[10px] font-black text-teal-600 uppercase tracking-widest whitespace-nowrap">
+                Lifetime exclusives
+              </span>
+              <div className="flex-1 border-t border-teal-200" />
+            </div>
+          </div>
+          <ul className="space-y-2.5 flex-1">
+            {LIFETIME_EXCLUSIVES.map((f) => (
+              <li key={f.text} className="flex items-start gap-2.5">
+                <span className="flex-shrink-0 mt-0.5 text-base">{f.icon}</span>
+                <span className="text-sm leading-snug text-teal-700 font-semibold">{f.text}</span>
               </li>
             ))}
           </ul>
@@ -258,7 +283,7 @@ export default function PricingSection() {
 
       {/* 30-day money-back guarantee */}
       <div className="mt-6 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3.5
-                      flex items-start gap-3 max-w-4xl mx-auto">
+                      flex items-start gap-3 max-w-5xl mx-auto">
         <span className="text-2xl flex-shrink-0" aria-hidden="true">🎯</span>
         <div>
           <p className="text-xs font-black text-amber-800">30-Day Satisfaction Guarantee</p>
