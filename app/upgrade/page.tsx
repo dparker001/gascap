@@ -36,7 +36,7 @@ const PRO_FEATURES = [
 const LIFETIME_EXCLUSIVES = [
   { icon: '⭐', text: '2× giveaway entries every month' },
   { icon: '🛡️', text: 'Streak Shield — 1 grace day/month' },
-  { icon: '🏅', text: 'Founding Member badge (limited)' },
+  { icon: '🏅', text: 'Lifetime Member badge' },
 ];
 
 // ── Helpers ───────────────────────────────────────────────────────────────
