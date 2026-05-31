@@ -241,6 +241,8 @@ const en = {
     title:            'Create your account',
     sub:              'Join free · No credit card required',
     proTrial:         'Your first 30 days are Pro — free. Then $2.99/mo, cancel anytime.',
+    fullNameLabel:        'Full name',
+    fullNamePlaceholder:  'Alex Johnson',
     firstNameLabel:       'First name',
     firstNamePlaceholder: 'Alex',
     lastNameLabel:        'Last name',
@@ -276,6 +278,7 @@ const en = {
       body2: "applied. Sign up and your friend earns a free month of Pro.",
     },
     errors: {
+      noName:      'Please enter your name.',
       noFirstName: 'Please enter your first name.',
       noLastName:  'Please enter your last name.',
       pwReqs:      'Password must be at least 8 characters.',
@@ -1166,6 +1169,8 @@ const es: typeof en = {
     title:            'Crea tu cuenta',
     sub:              'Únete gratis · Sin tarjeta de crédito',
     proTrial:         'Tus primeros 30 días son Pro — gratis. Luego $2.99/mes, cancela cuando quieras.',
+    fullNameLabel:        'Nombre completo',
+    fullNamePlaceholder:  'Alex Johnson',
     firstNameLabel:       'Nombre',
     firstNamePlaceholder: 'Alex',
     lastNameLabel:        'Apellido',
@@ -1201,6 +1206,7 @@ const es: typeof en = {
       body2: 'aplicado. Regístrate y tu amigo gana un mes gratis de Pro.',
     },
     errors: {
+      noName:      'Por favor ingresa tu nombre.',
       noFirstName: 'Por favor ingresa tu nombre.',
       noLastName:  'Por favor ingresa tu apellido.',
       pwReqs:      'La contraseña debe tener al menos 8 caracteres.',

@@ -15,8 +15,7 @@ function SignUpForm() {
   const refCode      = searchParams.get('ref') ?? '';
   const { t, locale } = useTranslation();
 
-  const [firstName, setFirstName] = useState('');
-  const [lastName,  setLastName]  = useState('');
+  const [fullName,  setFullName]  = useState('');
   const [email,     setEmail]     = useState('');
   const [phone,     setPhone]     = useState('');
   const [smsOptIn,  setSmsOptIn]  = useState(false);
@@ -27,6 +26,12 @@ function SignUpForm() {
   const [googleLoading, setGoogleLoading] = useState(false);
 
   const pwValid = password.length >= 8;
+
+  // Capitalize the first letter of each word as the user types
+  function handleNameChange(val: string) {
+    const capitalized = val.replace(/(?:^|\s)\S/g, (c) => c.toUpperCase());
+    setFullName(capitalized);
+  }
 
   async function handleGoogleSignUp() {
     setGoogleLoading(true);
@@ -39,11 +44,15 @@ function SignUpForm() {
     e.preventDefault();
     setError('');
 
-    if (!firstName.trim()) return setError(t.signUp.errors.noFirstName);
-    if (!lastName.trim())  return setError(t.signUp.errors.noLastName);
-    if (!pwValid)          return setError(t.signUp.errors.pwReqs);
+    if (!fullName.trim()) return setError(t.signUp.errors.noName ?? 'Please enter your name.');
+    if (!pwValid)         return setError(t.signUp.errors.pwReqs);
 
     setLoading(true);
+
+    // Split full name into first / last for the API
+    const nameParts = fullName.trim().split(/\s+/);
+    const firstName = nameParts[0] ?? '';
+    const lastName  = nameParts.slice(1).join(' ');
 
     // Register via API — include referral code + active locale so the
     // verification email link can bring the user back to the correct language.
@@ -51,8 +60,8 @@ function SignUpForm() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        firstName: firstName.trim(),
-        lastName:  lastName.trim(),
+        firstName,
+        lastName,
         email,
         password,
         locale,
@@ -167,26 +176,20 @@ function SignUpForm() {
           {/* ── Email / Password form ────────────────────────────────── */}
           <form onSubmit={handleSubmit} noValidate className="space-y-4">
 
-            {/* First + Last name — side by side */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="field-label" htmlFor="firstName">{t.signUp.firstNameLabel}</label>
-                <input
-                  id="firstName" type="text" autoComplete="given-name"
-                  className="input-field" placeholder={t.signUp.firstNamePlaceholder}
-                  value={firstName} onChange={(e) => setFirstName(e.target.value)}
-                  required
-                />
-              </div>
-              <div>
-                <label className="field-label" htmlFor="lastName">{t.signUp.lastNameLabel}</label>
-                <input
-                  id="lastName" type="text" autoComplete="family-name"
-                  className="input-field" placeholder={t.signUp.lastNamePlaceholder}
-                  value={lastName} onChange={(e) => setLastName(e.target.value)}
-                  required
-                />
-              </div>
+            {/* Full name — single field */}
+            <div>
+              <label className="field-label" htmlFor="fullName">
+                {t.signUp.fullNameLabel ?? 'Full name'}
+              </label>
+              <input
+                id="fullName" type="text" autoComplete="name"
+                autoCapitalize="words"
+                className="input-field"
+                placeholder={t.signUp.fullNamePlaceholder ?? 'Alex Johnson'}
+                value={fullName}
+                onChange={(e) => handleNameChange(e.target.value)}
+                required
+              />
             </div>
 
             <div>
