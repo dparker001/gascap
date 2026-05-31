@@ -8,21 +8,21 @@ import { useTranslation } from '@/contexts/LanguageContext';
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
-type Billing  = 'monthly' | 'lifetime';
-type PlanTier = 'free' | 'pro' | 'fleet';
+type PlanTier = 'free' | 'pro';
 
 // Highlight flags (order matches translation feature arrays)
-const PRO_HIGHLIGHTS   = [false, true,  true,  false, true,  true,  false, false, false, false];
-//                         every  unlim  manual auto   mpg    pdf    budget push   referral prio
-// Fleet highlights preserved for future relaunch
-// const FLEET_HIGHLIGHTS = [false, true,  true,  true,  true,  true,  true,  false, false, false, false, false];
+const PRO_HIGHLIGHTS = [false, true, true, false, true, true, false, false, false, false];
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
-function Check({ highlight }: { highlight?: boolean }) {
+function Check({ highlight, dark }: { highlight?: boolean; dark?: boolean }) {
   return (
     <svg
-      className={`w-4 h-4 flex-shrink-0 mt-0.5 ${highlight ? 'text-amber-500' : 'text-green-500'}`}
+      className={`w-4 h-4 flex-shrink-0 mt-0.5 ${
+        dark
+          ? highlight ? 'text-teal-400' : 'text-white/50'
+          : highlight ? 'text-amber-500' : 'text-green-500'
+      }`}
       viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"
     >
       <path fillRule="evenodd"
@@ -36,147 +36,30 @@ function fmt(n: number) {
   return n % 1 === 0 ? `$${n}` : `$${n.toFixed(2)}`;
 }
 
-// ── Plan card ─────────────────────────────────────────────────────────────
-
-interface PlanCardProps {
-  name:               string;
-  badge?:             string;
-  badgeColor?:        string;
-  price:              string;
-  priceUnit?:         string;
-  subline:            string;
-  cta:                string;
-  ctaStyle:           string;
-  features:           { text: string; highlight?: boolean }[];
-  popular?:           boolean;
-  isCurrent?:         boolean;
-  onCta:              () => void;
-  loading?:           boolean;
-  currentPlanRibbon:  string;
-  mostPopular:        string;
-  loadingLabel:       string;
-  moLabel:            string;
-}
-
-function PlanCard({
-  name, badge, badgeColor, price, priceUnit, subline, cta, ctaStyle,
-  features, popular, isCurrent, onCta, loading,
-  currentPlanRibbon, mostPopular, loadingLabel, moLabel,
-}: PlanCardProps) {
-  return (
-    <div className={[
-      'relative flex flex-col rounded-3xl p-6 transition-all duration-200',
-      popular
-        ? 'bg-navy-700 text-white shadow-2xl scale-[1.02] border-2 border-amber-400'
-        : 'bg-white border-2 border-slate-200 shadow-card',
-      isCurrent && !popular ? 'ring-2 ring-green-400 border-green-300' : '',
-    ].join(' ')}>
-
-      {/* Current plan ribbon */}
-      {isCurrent && (
-        <div className={[
-          'absolute -top-3.5 left-1/2 -translate-x-1/2 text-[11px] font-black px-4 py-1',
-          'rounded-full uppercase tracking-wider whitespace-nowrap shadow-md',
-          popular
-            ? 'bg-green-400 text-navy-900'
-            : 'bg-green-500 text-white',
-        ].join(' ')}>
-          {currentPlanRibbon}
-        </div>
-      )}
-
-      {/* Most Popular ribbon — only when not showing current plan ribbon */}
-      {popular && !isCurrent && (
-        <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-amber-400 text-navy-900
-                        text-[11px] font-black px-4 py-1 rounded-full uppercase tracking-wider
-                        whitespace-nowrap shadow-md">
-          {mostPopular}
-        </div>
-      )}
-
-      {/* Plan name + badge */}
-      <div className="mb-4">
-        <h3 className={`font-black text-lg ${popular ? 'text-white' : 'text-navy-700'}`}>
-          {name}
-        </h3>
-        {badge && (
-          <span className={`inline-block mt-1 text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${badgeColor}`}>
-            {badge}
-          </span>
-        )}
-      </div>
-
-      {/* Price */}
-      <div className="mb-1 flex items-end gap-1">
-        <span className={`text-4xl font-black ${popular ? 'text-white' : 'text-navy-700'}`}>
-          {price}
-        </span>
-        <span className={`text-sm mb-1 ${popular ? 'text-white/60' : 'text-slate-400'}`}>
-          /{priceUnit ?? moLabel}
-        </span>
-      </div>
-      <p className={`text-xs mb-6 leading-relaxed ${popular ? 'text-white/60' : 'text-slate-400'}`}>
-        {subline}
-      </p>
-
-      {/* CTA */}
-      <button
-        onClick={onCta}
-        disabled={loading || isCurrent}
-        className={`w-full py-3 rounded-2xl text-sm font-black transition-colors mb-6 ${ctaStyle}`}
-      >
-        {loading ? loadingLabel : cta}
-      </button>
-
-      {/* Divider */}
-      <div className={`border-t mb-5 ${popular ? 'border-white/20' : 'border-slate-100'}`} />
-
-      {/* Features */}
-      <ul className="space-y-2.5 flex-1">
-        {features.map((f) => (
-          <li key={f.text} className="flex items-start gap-2.5">
-            <Check highlight={f.highlight} />
-            <span className={`text-sm leading-snug ${
-              popular
-                ? f.highlight ? 'text-amber-300 font-semibold' : 'text-white/80'
-                : f.highlight ? 'text-slate-800 font-semibold' : 'text-slate-500'
-            }`}>
-              {f.text}
-            </span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
 // ── Main section ──────────────────────────────────────────────────────────
 
 export default function PricingSection() {
   const { data: session } = useSession();
   const router            = useRouter();
   const { t }             = useTranslation();
-  const [billing, setBilling] = useState<Billing>('monthly');
   const [loading, setLoading] = useState<string | null>(null);
 
-  // Read the user's current plan from the JWT-enriched session
   const userPlan = (session?.user as { plan?: string })?.plan as PlanTier | undefined ?? 'free';
 
-  // Build translated feature arrays with highlight flags
   const FREE_FEATURES = t.pricing.freeFeatures.map((text) => ({ text }));
   const PRO_FEATURES  = t.pricing.proFeatures.map((text, i) => ({ text, highlight: PRO_HIGHLIGHTS[i] }));
 
-  async function handleUpgrade(tier: 'pro') {
+  async function handleUpgrade(billing: 'monthly' | 'lifetime') {
     if (!session) {
       router.push('/signin?next=/upgrade');
       return;
     }
-    setLoading(`${tier}-${billing}`);
+    setLoading(billing);
     try {
       const res  = await fetch('/api/stripe/checkout', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ tier, billing }),
+        body:    JSON.stringify({ tier: 'pro', billing }),
       });
       const data = await res.json() as { url?: string; error?: string };
       if (data.url) window.location.href = data.url;
@@ -185,126 +68,197 @@ export default function PricingSection() {
     }
   }
 
-  // Computed prices
-  const proPrice   = billing === 'lifetime' ? `$${PRICING.pro.lifetime}` : fmt(PRICING.pro.monthly);
-
-  const proSubline = billing === 'lifetime'
-    ? t.pricing.billedOnce
-    : t.pricing.billedMonthly;
-
-  // Per-card CTA text based on user's current plan
-  function freeCta() {
-    if (!session)            return t.pricing.getStartedFree;
-    if (userPlan === 'free') return t.pricing.yourCurrentPlan;
-    return t.pricing.downgradeToFree;
-  }
-  function proCta() {
-    if (userPlan === 'pro') return t.pricing.yourCurrentPlan;
-    return t.pricing.upgradeToPro;
-  }
+  const isPro = !!session && userPlan === 'pro';
 
   return (
     <section aria-labelledby="pricing-heading" className="mt-10">
 
       {/* Heading */}
       <h2 id="pricing-heading" className="section-eyebrow">{t.pricing.heading}</h2>
-      <p className="text-center text-slate-500 text-sm mb-6 -mt-2 leading-relaxed">
+      <p className="text-center text-slate-500 text-sm mb-8 -mt-2 leading-relaxed">
         {t.pricing.sub}
       </p>
 
-      {/* Billing toggle */}
-      <div className="flex items-center justify-center gap-1 bg-slate-100 rounded-2xl p-1 mb-8 max-w-xs mx-auto">
-        <button
-          onClick={() => setBilling('monthly')}
-          className={[
-            'flex-1 py-2 rounded-xl text-xs font-bold transition-all',
-            billing === 'monthly'
-              ? 'bg-white text-navy-700 shadow-sm'
-              : 'text-slate-400 hover:text-slate-600',
-          ].join(' ')}
-        >
-          {t.pricing.monthly}
-        </button>
-        <button
-          onClick={() => setBilling('lifetime')}
-          className={[
-            'flex-1 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5',
-            billing === 'lifetime'
-              ? 'bg-white text-navy-700 shadow-sm'
-              : 'text-slate-400 hover:text-slate-600',
-          ].join(' ')}
-        >
-          {t.pricing.lifetime ?? 'Lifetime'}
-          <span className="bg-green-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full leading-none">
-            BEST VALUE
-          </span>
-        </button>
-      </div>
-
-      {/* Cards — stacked on mobile, 2-col on md+ */}
-      <div className="grid gap-4 md:grid-cols-2 md:items-start max-w-2xl mx-auto">
+      {/* ── 3-panel cards ──────────────────────────────────────────────── */}
+      <div className="grid gap-4 md:grid-cols-3 md:items-stretch max-w-4xl mx-auto">
 
         {/* Free */}
-        <PlanCard
-          name="Free"
-          badge={t.pricing.noCCEver}
-          badgeColor="bg-green-100 text-green-700"
-          price="$0"
-          priceUnit={t.pricing.forever}
-          subline={t.pricing.freeSub}
-          cta={freeCta()}
-          ctaStyle={
-            userPlan === 'free' && session
-              ? 'bg-green-100 text-green-700 cursor-default'
-              : 'bg-slate-100 text-slate-600 hover:bg-slate-200 disabled:opacity-60'
-          }
-          features={FREE_FEATURES}
-          isCurrent={!!session && userPlan === 'free'}
-          onCta={() => !session && router.push('/signup')}
-          currentPlanRibbon={t.pricing.currentPlanRibbon}
-          mostPopular={t.pricing.mostPopular}
-          loadingLabel={t.pricing.loading}
-          moLabel={t.pricing.mo}
-        />
+        <div className={[
+          'relative flex flex-col rounded-3xl p-6 border-2 transition-all',
+          !!session && userPlan === 'free'
+            ? 'bg-white border-green-300 ring-2 ring-green-400 shadow-card'
+            : 'bg-white border-slate-200 shadow-sm',
+        ].join(' ')}>
 
-        {/* Pro */}
-        <PlanCard
-          name="Pro"
-          badge={t.pricing.individuals}
-          badgeColor="bg-amber-100 text-amber-700"
-          price={proPrice}
-          priceUnit={billing === 'lifetime' ? '' : undefined}
-          subline={proSubline}
-          cta={proCta()}
-          ctaStyle={
-            userPlan === 'pro'
-              ? 'bg-green-400 text-white cursor-default'
-              : 'bg-amber-500 text-white hover:bg-amber-400 disabled:opacity-50'
-          }
-          features={PRO_FEATURES}
-          popular
-          isCurrent={!!session && userPlan === 'pro'}
-          onCta={() => userPlan !== 'pro' && handleUpgrade('pro')}
-          loading={loading === 'pro-monthly' || loading === 'pro-lifetime'}
-          currentPlanRibbon={t.pricing.currentPlanRibbon}
-          mostPopular={t.pricing.mostPopular}
-          loadingLabel={t.pricing.loading}
-          moLabel={t.pricing.mo}
-        />
-      </div>
+          {!!session && userPlan === 'free' && (
+            <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-green-500 text-white
+                            text-[11px] font-black px-4 py-1 rounded-full uppercase tracking-wider
+                            whitespace-nowrap shadow-md">
+              {t.pricing.currentPlanRibbon}
+            </div>
+          )}
 
-      {/* Lifetime savings callout */}
-      {billing === 'lifetime' && (
-        <div className="mt-5 text-center animate-fade-in">
-          <p className="text-xs text-green-600 font-semibold">
-            🎉 Own GasCap™ Pro forever — one payment of ${PRICING.pro.lifetime}, no recurring charges.
+          <div className="mb-4">
+            <h3 className="font-black text-lg text-navy-700">Free</h3>
+            <span className="inline-block mt-1 text-[10px] font-bold px-2 py-0.5 rounded-full
+                             bg-green-100 text-green-700 whitespace-nowrap">
+              {t.pricing.noCCEver}
+            </span>
+          </div>
+
+          <div className="mb-1 flex items-end gap-1">
+            <span className="text-4xl font-black text-navy-700">$0</span>
+            <span className="text-sm mb-1 text-slate-400">/{t.pricing.forever}</span>
+          </div>
+          <p className="text-xs mb-6 leading-relaxed text-slate-400">{t.pricing.freeSub}</p>
+
+          <button
+            onClick={() => !session && router.push('/signup')}
+            disabled={!!session && userPlan === 'free'}
+            className={`w-full py-3 rounded-2xl text-sm font-black transition-colors mb-6 ${
+              !!session && userPlan === 'free'
+                ? 'bg-green-100 text-green-700 cursor-default'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
+          >
+            {!!session && userPlan === 'free'
+              ? t.pricing.yourCurrentPlan
+              : !session
+                ? t.pricing.getStartedFree
+                : t.pricing.downgradeToFree}
+          </button>
+
+          <div className="border-t border-slate-100 mb-5" />
+          <ul className="space-y-2.5 flex-1">
+            {FREE_FEATURES.map((f) => (
+              <li key={f.text} className="flex items-start gap-2.5">
+                <Check />
+                <span className="text-sm leading-snug text-slate-500">{f.text}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* Pro Monthly */}
+        <div className={[
+          'relative flex flex-col rounded-3xl p-6 border-2 transition-all shadow-2xl',
+          isPro
+            ? 'bg-navy-700 border-green-400 ring-2 ring-green-400'
+            : 'bg-navy-700 border-amber-400 scale-[1.02]',
+        ].join(' ')}>
+
+          <div className={[
+            'absolute -top-3.5 left-1/2 -translate-x-1/2 text-[11px] font-black px-4 py-1',
+            'rounded-full uppercase tracking-wider whitespace-nowrap shadow-md',
+            isPro ? 'bg-green-400 text-navy-900' : 'bg-amber-400 text-navy-900',
+          ].join(' ')}>
+            {isPro ? t.pricing.currentPlanRibbon : t.pricing.mostPopular}
+          </div>
+
+          <div className="mb-4 mt-1">
+            <h3 className="font-black text-lg text-white">Pro</h3>
+            <span className="inline-block mt-1 text-[10px] font-bold px-2 py-0.5 rounded-full
+                             bg-amber-400/20 text-amber-300 whitespace-nowrap">
+              {t.pricing.individuals ?? 'Monthly'}
+            </span>
+          </div>
+
+          <div className="mb-1 flex items-end gap-1">
+            <span className="text-4xl font-black text-white">{fmt(PRICING.pro.monthly)}</span>
+            <span className="text-sm mb-1 text-white/60">/{t.pricing.mo}</span>
+          </div>
+          <p className="text-xs mb-6 leading-relaxed text-white/60">{t.pricing.billedMonthly}</p>
+
+          <button
+            onClick={() => !isPro && handleUpgrade('monthly')}
+            disabled={loading !== null || isPro}
+            className={`w-full py-3 rounded-2xl text-sm font-black transition-colors mb-6 ${
+              isPro
+                ? 'bg-green-400 text-navy-900 cursor-default'
+                : 'bg-amber-500 text-white hover:bg-amber-400 disabled:opacity-50'
+            }`}
+          >
+            {loading === 'monthly'
+              ? t.pricing.loading
+              : isPro
+                ? t.pricing.yourCurrentPlan
+                : t.pricing.upgradeToPro}
+          </button>
+
+          <div className="border-t border-white/20 mb-5" />
+          <ul className="space-y-2.5 flex-1">
+            {PRO_FEATURES.map((f) => (
+              <li key={f.text} className="flex items-start gap-2.5">
+                <Check highlight={f.highlight} dark />
+                <span className={`text-sm leading-snug ${
+                  f.highlight ? 'text-amber-300 font-semibold' : 'text-white/80'
+                }`}>{f.text}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* Pro Lifetime */}
+        <div className="relative flex flex-col rounded-3xl p-6 border-2 border-teal-400 bg-white shadow-card transition-all">
+
+          <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-teal-400 text-navy-900
+                          text-[11px] font-black px-4 py-1 rounded-full uppercase tracking-wider
+                          whitespace-nowrap shadow-md">
+            ★ Best Value
+          </div>
+
+          <div className="mb-4 mt-1">
+            <h3 className="font-black text-lg text-navy-700">Pro Lifetime</h3>
+            <span className="inline-block mt-1 text-[10px] font-bold px-2 py-0.5 rounded-full
+                             bg-teal-100 text-teal-700 whitespace-nowrap">
+              {t.pricing.billedOnce ?? 'One-time payment'}
+            </span>
+          </div>
+
+          <div className="mb-1 flex items-end gap-1">
+            <span className="text-4xl font-black text-navy-700">${PRICING.pro.lifetime}</span>
+          </div>
+          <p className="text-xs mb-6 leading-relaxed text-teal-600 font-semibold">
+            Own GasCap™ Pro forever — no recurring charges
+          </p>
+
+          <button
+            onClick={() => !isPro && handleUpgrade('lifetime')}
+            disabled={loading !== null || isPro}
+            className={`w-full py-3 rounded-2xl text-sm font-black transition-colors mb-6 ${
+              isPro
+                ? 'bg-green-100 text-green-700 cursor-default'
+                : 'bg-teal-500 text-white hover:bg-teal-400 disabled:opacity-50'
+            }`}
+          >
+            {loading === 'lifetime'
+              ? t.pricing.loading
+              : isPro
+                ? t.pricing.yourCurrentPlan
+                : `Get Lifetime — $${PRICING.pro.lifetime}`}
+          </button>
+
+          <div className="border-t border-slate-100 mb-5" />
+          <ul className="space-y-2.5 flex-1">
+            {PRO_FEATURES.map((f) => (
+              <li key={f.text} className="flex items-start gap-2.5">
+                <Check highlight={f.highlight} />
+                <span className={`text-sm leading-snug ${
+                  f.highlight ? 'text-slate-800 font-semibold' : 'text-slate-500'
+                }`}>{f.text}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-4 text-center text-[11px] text-slate-400 leading-relaxed">
+            Less than 7 months of monthly — break even instantly.
           </p>
         </div>
-      )}
+
+      </div>
 
       {/* 30-day money-back guarantee */}
       <div className="mt-6 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3.5
-                      flex items-start gap-3">
+                      flex items-start gap-3 max-w-4xl mx-auto">
         <span className="text-2xl flex-shrink-0" aria-hidden="true">🎯</span>
         <div>
           <p className="text-xs font-black text-amber-800">30-Day Satisfaction Guarantee</p>

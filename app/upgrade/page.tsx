@@ -33,8 +33,8 @@ const PRO_FEATURES = [
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
-function Check({ color = 'green' }: { color?: 'green' | 'amber' | 'blue' }) {
-  const colors = { green: 'text-green-500', amber: 'text-amber-500', blue: 'text-blue-500' };
+function Check({ color = 'green' }: { color?: 'green' | 'amber' | 'teal' }) {
+  const colors = { green: 'text-green-500', amber: 'text-amber-500', teal: 'text-teal-400' };
   return (
     <svg className={`w-4 h-4 flex-shrink-0 mt-0.5 ${colors[color]}`}
          viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
@@ -45,41 +45,27 @@ function Check({ color = 'green' }: { color?: 'green' | 'amber' | 'blue' }) {
   );
 }
 
-function GasPumpIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"
-         strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5" aria-hidden="true">
-      <rect x="2" y="6" width="11" height="16" rx="1.5" />
-      <rect x="4" y="9" width="7" height="4" rx="0.75" />
-      <path d="M13 8 L18 8 Q21 8 21 11 L21 16 Q21 18 19 18" />
-      <circle cx="18.5" cy="18.5" r="1.5" />
-    </svg>
-  );
-}
-
 // ── Main page ─────────────────────────────────────────────────────────────
 
-// useSearchParams() requires a Suspense boundary in Next.js 14 App Router.
-// The inner component holds all the logic; the default export wraps it.
 function UpgradePageInner() {
   const { data: session } = useSession();
   const { t } = useTranslation();
   const searchParams = useSearchParams();
   const coupon = searchParams.get('coupon') ?? undefined;
-  const [billingType, setBillingType] = useState<'monthly' | 'lifetime'>('monthly');
   const [loading, setLoading] = useState<'pro-monthly' | 'pro-lifetime' | null>(null);
   const [error,   setError]   = useState('');
 
-  async function handleUpgrade(tier: 'pro', billing: 'monthly' | 'lifetime') {
+  async function handleUpgrade(billing: 'monthly' | 'lifetime') {
     if (!session) { window.location.href = '/signin?next=/upgrade'; return; }
     setLoading(billing === 'lifetime' ? 'pro-lifetime' : 'pro-monthly');
     setError('');
     try {
+      // Only apply promo coupon on monthly — lifetime is already a one-time deal
       const applyCoupon = coupon && billing === 'monthly' ? { coupon } : {};
       const res  = await fetch('/api/stripe/checkout', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ tier, billing, ...applyCoupon }),
+        body:    JSON.stringify({ tier: 'pro', billing, ...applyCoupon }),
       });
       const data = await res.json() as { url?: string; error?: string };
       if (data.url) { window.location.href = data.url; }
@@ -91,15 +77,12 @@ function UpgradePageInner() {
     }
   }
 
-  const proPrice = billingType === 'lifetime' ? `$${PRICING.pro.lifetime}` : `$${PRICING.pro.monthly}/mo`;
-  const proSub   = billingType === 'lifetime' ? 'one-time payment — own Pro forever' : 'less than a dime a day — cancel anytime';
-
   return (
     <div className="min-h-screen bg-[#eef1f7] flex flex-col">
 
       <BrandBar />
 
-      <div className="flex-1 px-4 py-10 max-w-2xl md:max-w-5xl mx-auto w-full">
+      <div className="flex-1 px-4 py-10 max-w-5xl mx-auto w-full">
 
         {/* Heading */}
         <div className="text-center mb-6">
@@ -111,9 +94,8 @@ function UpgradePageInner() {
           </p>
         </div>
 
-        {/* Pro hero features — visual upsell before pricing cards */}
-        <div className="grid grid-cols-1 gap-3 mb-8">
-          {/* Smart Fill-Up Optimizer */}
+        {/* Pro hero features */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-8">
           <div className="bg-white rounded-2xl border-2 border-amber-300 shadow-sm px-5 py-4 flex items-start gap-4">
             <div className="w-10 h-10 rounded-xl bg-amber-500 flex items-center justify-center flex-shrink-0">
               <span className="text-xl">🔮</span>
@@ -124,12 +106,10 @@ function UpgradePageInner() {
                 <span className="text-[9px] font-black bg-amber-500 text-white px-2 py-0.5 rounded-full">NEW</span>
               </div>
               <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                Uses live EIA government data for your state to tell you the best time to fill up this week —
-                with an exact dollar amount you could save. Personalized to your actual fill-up size.
+                Uses live EIA data for your state to tell you the best time to fill up — with exact dollar savings.
               </p>
             </div>
           </div>
-          {/* Gas Price Alerts */}
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-5 py-4 flex items-start gap-4">
             <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center flex-shrink-0">
               <span className="text-xl">🔔</span>
@@ -137,12 +117,10 @@ function UpgradePageInner() {
             <div className="flex-1 min-w-0">
               <p className="text-sm font-black text-slate-800">Gas Price Drop Alerts</p>
               <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                Set a target price per gallon. Get a push notification the moment your state average
-                drops below it — so you never miss a cheap fill-up window.
+                Set a target price per gallon. Get notified the moment your state drops below it.
               </p>
             </div>
           </div>
-          {/* Charts */}
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-5 py-4 flex items-start gap-4">
             <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0">
               <span className="text-xl">📊</span>
@@ -150,14 +128,13 @@ function UpgradePageInner() {
             <div className="flex-1 min-w-0">
               <p className="text-sm font-black text-slate-800">MPG Trends & Spending Analytics</p>
               <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                Visual charts of your MPG over time, monthly spend comparisons, per-vehicle breakdowns,
-                and national price context — all in one place.
+                Visual charts of your MPG, monthly spend, and national price context.
               </p>
             </div>
           </div>
         </div>
 
-        {/* Early-upgrade bonus callout — shown only during trial */}
+        {/* Early-upgrade bonus */}
         {(session?.user as { isProTrial?: boolean } | undefined)?.isProTrial && (
           <div className="bg-teal-50 border border-teal-300 rounded-2xl px-5 py-4 mb-6 flex items-start gap-3">
             <span className="text-2xl flex-shrink-0" aria-hidden="true">🎰</span>
@@ -167,38 +144,19 @@ function UpgradePageInner() {
               </p>
               <p className="text-xs text-teal-700 mt-1 leading-relaxed">
                 Upgrade before your 30-day trial expires and earn 10 extra entries into the
-                monthly gas card giveaway <em>every</em> month you stay on Pro or Fleet.
-                These stack on top of your regular entries from app activity and streaks.
+                monthly gas card giveaway every month you stay on Pro. These stack on top of
+                your regular entries from app activity and streaks.
               </p>
             </div>
           </div>
         )}
 
-        {/* Billing toggle — hidden when a promo coupon is active (offer is monthly-only) */}
-        {coupon ? (
-          <div className="flex items-center justify-center mb-8">
+        {/* Promo notice */}
+        {coupon && (
+          <div className="flex items-center justify-center mb-6">
             <div className="bg-amber-50 border border-amber-300 rounded-xl px-5 py-2 text-sm font-bold text-amber-800">
-              🏷️ Promo applied — monthly billing
+              🏷️ Promo applied — discount on monthly plan
             </div>
-          </div>
-        ) : (
-          <div className="flex items-center justify-center gap-3 mb-8">
-            <button onClick={() => setBillingType('monthly')}
-              className={`px-5 py-2 rounded-xl text-sm font-bold transition-all ${
-                billingType === 'monthly' ? 'bg-navy-700 text-white shadow' : 'bg-white text-slate-500 hover:bg-slate-50'
-              }`}>
-              {t.upgrade.monthly}
-            </button>
-            <button onClick={() => setBillingType('lifetime')}
-              className={`px-5 py-2 rounded-xl text-sm font-bold transition-all relative ${
-                billingType === 'lifetime' ? 'bg-navy-700 text-white shadow' : 'bg-white text-slate-500 hover:bg-slate-50'
-              }`}>
-              Lifetime
-              <span className="absolute -top-2 -right-2 bg-green-500 text-white text-[9px]
-                               font-black px-1.5 py-0.5 rounded-full leading-none">
-                BEST VALUE
-              </span>
-            </button>
           </div>
         )}
 
@@ -206,60 +164,124 @@ function UpgradePageInner() {
           <p className="text-center text-sm text-red-500 mb-4">{error}</p>
         )}
 
-        {/* Plan cards */}
-        <div className="space-y-4 md:space-y-0 md:grid md:grid-cols-2 md:gap-6 md:items-start max-w-2xl mx-auto w-full">
+        {/* ── 3-panel pricing cards ─────────────────────────────────────── */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 items-stretch">
 
-          {/* ── Pro ── */}
-          <div id="pro" className="bg-white rounded-3xl shadow-card border-2 border-amber-400 p-6">
-            <div className="flex items-start justify-between mb-4">
-              <div>
-                <span className="inline-block bg-amber-100 text-amber-700 text-[10px] font-black
-                                 px-2 py-0.5 rounded-full uppercase tracking-wider mb-1">
-                  {t.upgrade.mostPopular}
-                </span>
-                <h2 className="text-xl font-black text-navy-700">Pro</h2>
-                <p className="text-xs text-slate-400 mt-0.5">{t.upgrade.proFor}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-2xl font-black text-navy-700">{proPrice}</p>
-                {proSub && <p className="text-[11px] text-green-600 font-semibold">{proSub}</p>}
-              </div>
+          {/* Free */}
+          <div className="bg-white rounded-3xl border-2 border-slate-200 shadow-sm p-6 flex flex-col">
+            <div className="mb-4">
+              <span className="inline-block bg-green-100 text-green-700 text-[10px] font-black
+                               px-2 py-0.5 rounded-full uppercase tracking-wider mb-2">
+                No credit card ever
+              </span>
+              <h2 className="text-xl font-black text-navy-700">Free</h2>
+              <p className="text-xs text-slate-400 mt-0.5">Forever</p>
             </div>
-
-            <ul className="space-y-2 mb-5">
-              {PRO_FEATURES.map((f) => (
-                <li key={f} className="flex items-start gap-2 text-sm text-slate-700">
-                  <Check color="amber" /> {f}
-                </li>
-              ))}
-            </ul>
-
-            <button
-              onClick={() => handleUpgrade('pro', billingType === 'lifetime' ? 'lifetime' : 'monthly')}
-              disabled={loading !== null}
-              className="w-full py-3 rounded-2xl bg-amber-500 hover:bg-amber-400 text-white
-                         font-black text-sm disabled:opacity-50 transition-colors">
-              {(loading === 'pro-monthly' || loading === 'pro-lifetime')
-                ? t.upgrade.redirecting
-                : session
-                  ? `${t.upgrade.upgradeBtn} Pro — ${proPrice}`
-                  : t.upgrade.signInToUp}
-            </button>
-          </div>
-
-          {/* ── Free ── */}
-          <div className="bg-white rounded-2xl p-5 border border-slate-200">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-base font-black text-navy-700">Free</h2>
-              <span className="text-sm font-black text-slate-400">{t.upgrade.freeForever}</span>
+            <div className="mb-1">
+              <span className="text-4xl font-black text-navy-700">$0</span>
             </div>
-            <ul className="space-y-2">
+            <p className="text-xs text-slate-400 mb-6 leading-relaxed">
+              The essential fuel calculator — always free.
+            </p>
+            <div className="border-t border-slate-100 mb-5" />
+            <ul className="space-y-2 flex-1">
               {FREE_FEATURES.map((f) => (
                 <li key={f} className="flex items-start gap-2 text-sm text-slate-600">
                   <Check color="green" /> {f}
                 </li>
               ))}
             </ul>
+            {!session && (
+              <Link href="/signup"
+                className="mt-6 block w-full py-3 rounded-2xl bg-slate-100 text-slate-600
+                           font-black text-sm text-center hover:bg-slate-200 transition-colors">
+                Get started free
+              </Link>
+            )}
+          </div>
+
+          {/* Pro Monthly */}
+          <div className="relative bg-white rounded-3xl border-2 border-amber-400 shadow-card p-6 flex flex-col">
+            <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-amber-400 text-navy-900
+                            text-[11px] font-black px-4 py-1 rounded-full uppercase tracking-wider
+                            whitespace-nowrap shadow-md">
+              Most Popular
+            </div>
+            <div className="mb-4 mt-1">
+              <span className="inline-block bg-amber-100 text-amber-700 text-[10px] font-black
+                               px-2 py-0.5 rounded-full uppercase tracking-wider mb-2">
+                Monthly
+              </span>
+              <h2 className="text-xl font-black text-navy-700">Pro</h2>
+              <p className="text-xs text-slate-400 mt-0.5">Cancel anytime</p>
+            </div>
+            <div className="mb-1 flex items-end gap-1">
+              <span className="text-4xl font-black text-navy-700">${PRICING.pro.monthly}</span>
+              <span className="text-sm mb-1 text-slate-400">/mo</span>
+            </div>
+            <p className="text-xs text-green-600 font-semibold mb-6 leading-relaxed">
+              Less than a dime a day — cancel anytime
+            </p>
+            <button
+              onClick={() => handleUpgrade('monthly')}
+              disabled={loading !== null}
+              className="w-full py-3 rounded-2xl bg-amber-500 hover:bg-amber-400 text-white
+                         font-black text-sm disabled:opacity-50 transition-colors mb-5">
+              {loading === 'pro-monthly'
+                ? t.upgrade.redirecting
+                : session ? `Upgrade to Pro — $${PRICING.pro.monthly}/mo` : t.upgrade.signInToUp}
+            </button>
+            <div className="border-t border-slate-100 mb-5" />
+            <ul className="space-y-2 flex-1">
+              {PRO_FEATURES.map((f) => (
+                <li key={f} className="flex items-start gap-2 text-sm text-slate-700">
+                  <Check color="amber" /> {f}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Pro Lifetime */}
+          <div className="relative bg-navy-700 rounded-3xl border-2 border-teal-400 shadow-card p-6 flex flex-col">
+            <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-teal-400 text-navy-900
+                            text-[11px] font-black px-4 py-1 rounded-full uppercase tracking-wider
+                            whitespace-nowrap shadow-md">
+              ★ Best Value
+            </div>
+            <div className="mb-4 mt-1">
+              <span className="inline-block bg-teal-400/20 text-teal-300 text-[10px] font-black
+                               px-2 py-0.5 rounded-full uppercase tracking-wider mb-2">
+                One-Time
+              </span>
+              <h2 className="text-xl font-black text-white">Pro Lifetime</h2>
+              <p className="text-xs text-white/50 mt-0.5">No subscription, ever</p>
+            </div>
+            <div className="mb-1 flex items-end gap-1">
+              <span className="text-4xl font-black text-white">${PRICING.pro.lifetime}</span>
+            </div>
+            <p className="text-xs text-teal-300 font-semibold mb-6 leading-relaxed">
+              One payment — own GasCap™ Pro forever
+            </p>
+            <button
+              onClick={() => handleUpgrade('lifetime')}
+              disabled={loading !== null}
+              className="w-full py-3 rounded-2xl bg-teal-400 hover:bg-teal-300 text-navy-900
+                         font-black text-sm disabled:opacity-50 transition-colors mb-5">
+              {loading === 'pro-lifetime'
+                ? t.upgrade.redirecting
+                : session ? `Get Lifetime — $${PRICING.pro.lifetime}` : t.upgrade.signInToUp}
+            </button>
+            <div className="border-t border-white/10 mb-5" />
+            <ul className="space-y-2 flex-1">
+              {PRO_FEATURES.map((f) => (
+                <li key={f} className="flex items-start gap-2 text-sm text-white/80">
+                  <Check color="teal" /> {f}
+                </li>
+              ))}
+            </ul>
+            <p className="mt-4 text-center text-[11px] text-white/40 leading-relaxed">
+              Less than 7 months of monthly — break even instantly.
+            </p>
           </div>
 
         </div>
