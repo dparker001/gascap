@@ -17,6 +17,10 @@ const SECTIONS = [
         a: 'No — the fuel calculators work right away without signing up. Creating a free account lets you save 1 vehicle and sync your data across devices. Upgrading to Pro ($2.99/mo) unlocks fill-up tracking, MPG insights, receipt scanning, and unlimited saved vehicles. New users get 30 days of Pro free — no credit card required. After the trial, your account automatically reverts to the free plan.',
       },
       {
+        q: 'How do I create an account?',
+        a: 'Visit gascap.app and tap "Sign Up." You can sign up with Google (one tap) or with email. For email sign-up, enter your full name, email address, and a password (8+ characters). A phone number is optional — if you enter one, an SMS opt-in checkbox appears. You\'ll receive a verification email — click the link to activate your account. All new accounts automatically start with 30 days of Pro free, no credit card required.',
+      },
+      {
         q: 'I just signed up — what should I do first?',
         a: 'After signing up, GasCap™ shows a setup checklist on the main screen. It walks you through adding your first vehicle, logging your first fill-up, and (for Fleet) adding a driver. Each step fires automatically when completed. You can dismiss the checklist at any time — it won\'t reappear.',
       },
@@ -233,16 +237,20 @@ const SECTIONS = [
         a: 'Pro ($2.99/mo or $19.99 Lifetime) adds unlimited saved vehicles, VIN photo scan, fill-up history & MPG tracking, receipt scanning, MPG Insight Card, AI Fuel Advisor, Gas Price Alert, fuel savings dashboard, streak counter, monthly report card, gas price trend predictions, vehicle health alerts, Annual Wrapped, referral rewards, Route Trip Planner with Google Maps, and daily gas card giveaway entries.',
       },
       {
+        q: 'What is the difference between Pro monthly and Pro Lifetime?',
+        a: 'Both plans include every Pro feature. Pro Lifetime ($19.99, one-time payment) adds three exclusive perks not available on the monthly plan: (1) 2× giveaway entries every month — your daily streak entries count double, giving you twice the chances in the monthly gas card draw; (2) Streak Shield — one grace day per month that automatically preserves your streak if you miss a day; and (3) a permanent Lifetime Member badge shown in your profile. With Lifetime there are no recurring charges — you pay once and keep Pro forever.',
+      },
+      {
         q: 'What does Fleet add over Pro?',
-        a: 'Fleet features (multi-driver tracking, fleet dashboard, tax reports) are coming soon. Pro now includes unlimited vehicles — ideal for households and owner-operators with multiple cars. Visit gascap.app/fleet to learn more.',
+        a: 'Fleet features (multi-driver tracking, fleet dashboard, tax reports) are coming soon. Pro now includes unlimited vehicles — ideal for households and owner-operators with multiple cars.',
       },
       {
         q: 'How do I upgrade my plan?',
-        a: 'Tap your profile icon or visit Settings → "Upgrade to Pro." You can also visit gascap.app/upgrade. You\'ll be taken to a secure Stripe checkout page.',
+        a: 'Visit gascap.app/upgrade or tap Settings → "Upgrade to Pro." The upgrade page shows all three options side by side: Free, Pro ($2.99/mo), and Pro Lifetime ($19.99 one-time). You\'ll be taken to a secure Stripe checkout page.',
       },
       {
         q: 'How do I cancel my subscription?',
-        a: 'Go to Settings → Plan → "Manage Billing & Subscription." This opens the Stripe self-serve portal where you can cancel, change your plan, or update your payment method at any time. You can also email support@gascap.app and we\'ll take care of it for you.',
+        a: 'Go to Settings → Plan → "Manage Billing & Subscription." This opens the Stripe self-serve portal where you can cancel or update your payment method at any time. You can also email support@gascap.app and we\'ll take care of it for you. Lifetime members have no subscription to cancel.',
       },
       {
         q: 'Is my payment information secure?',
@@ -263,8 +271,8 @@ const SECTIONS = [
         a: 'Legal residents of the United States who are 18 years of age or older with a verified GasCap™ email address. Employees of Gas Capacity LLC and their immediate family members are not eligible. Void where prohibited by law. If your email is not verified, your entries will accumulate but will not be included in the drawing pool — verify your email to make them count.',
       },
       {
-        q: 'How do I earn entries as a Pro or Fleet member?',
-        a: 'Pro and Fleet subscribers automatically earn entries for each calendar day they use the app. Your daily entry count depends on your Ambassador Program tier: standard users earn 1 entry/day (up to 31/month); Supporters (5+ paying referrals) earn 2 entries/day (up to 62/month); Ambassadors (15+ paying referrals) earn 3 entries/day (up to 93/month); Elite Ambassadors (30+ paying referrals) earn 5 entries/day (up to 155/month). Tier status is based on your cumulative paying referral count as of the last day of the previous month. On top of daily entries, streak bonuses apply as a flat addition: a 7-day streak adds +2 bonus entries, 30-day adds +5, 90-day adds +10, 180-day adds +15, and a full 365-day streak adds +20 bonus entries per month.',
+        q: 'How do I earn entries as a Pro member?',
+        a: 'Pro subscribers automatically earn entries for each calendar day they use the app. Your daily entry count depends on your Ambassador Program tier: standard users earn 1 entry/day (up to 31/month); Supporters (5+ paying referrals) earn 2 entries/day (up to 62/month); Ambassadors (15+ paying referrals) earn 3 entries/day (up to 93/month); Elite Ambassadors (30+ paying referrals) earn 5 entries/day (up to 155/month). Pro Lifetime members earn 2× entries — their daily count is doubled before tier multipliers apply. Tier status is based on your cumulative paying referral count as of the last day of the previous month. On top of daily entries, streak bonuses apply as a flat addition: a 7-day streak adds +2 bonus entries, 30-day adds +5, 90-day adds +10, 180-day adds +15, and a full 365-day streak adds +20 bonus entries per month.',
       },
       {
         q: 'Can I enter without a paid subscription?',

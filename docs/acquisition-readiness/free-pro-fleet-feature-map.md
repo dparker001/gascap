@@ -7,13 +7,16 @@
 
 ## Plan Overview
 
-| Attribute | Free | Pro | Fleet |
-|---|---|---|---|
-| **Price** | $0/forever | $2.99/mo or $19.99 Lifetime | Fleet: coming soon (shelved) |
-| **Trial** | N/A | 30-day free trial (all new signups) | N/A (shelved) |
-| **Saved Vehicles** | 1 | Unlimited | Unlimited |
-| **Drivers** | 1 | 1 | Up to 10 |
-| **Target Audience** | Casual drivers, occasional use | Regular commuters, road trippers, rental car users | Small business fleets, households with 3+ vehicles |
+| Attribute | Free | Pro Monthly | Pro Lifetime | Fleet |
+|---|---|---|---|---|
+| **Price** | $0/forever | $2.99/mo | $19.99 one-time | Coming soon (shelved) |
+| **Trial** | N/A | 30-day free trial | 30-day free trial | N/A |
+| **Saved Vehicles** | 1 | Unlimited | Unlimited | Unlimited |
+| **Drivers** | 1 | 1 | 1 | Up to 10 |
+| **Giveaway Entries** | — | 1×/day | 2×/day (doubled) | — |
+| **Streak Shield** | ❌ | ❌ | ✅ (1 grace day/mo) | — |
+| **Lifetime Member Badge** | ❌ | ❌ | ✅ | — |
+| **Target Audience** | Casual drivers | Regular commuters, road trippers | Committed users who want the best deal + max giveaway odds | Small business fleets |
 
 ---
 

@@ -198,23 +198,26 @@ A: All new accounts automatically receive 30 days of Pro features — no credit 
 **Q: What does Pro include?**
 A: Pro ($2.99/mo or $19.99 Lifetime) adds: unlimited saved vehicles, VIN photo scan, fill-up history & MPG tracking, receipt scanning, MPG Insight Card, AI Fuel Advisor, Gas Price Alert, fuel savings dashboard, streak counter, monthly report card, gas price trend predictions, vehicle health alerts, Annual Wrapped, referral rewards, and monthly gas card giveaway entries.
 
+**Q: What is the difference between Pro monthly and Pro Lifetime?**
+A: Both plans include all the same Pro features. Pro Lifetime ($19.99, one-time payment) additionally includes three exclusive perks: (1) 2× giveaway entries every month — double the standard daily streak entries into the monthly gas card draw; (2) Streak Shield — one grace day per month that preserves your streak if you miss a day; and (3) a permanent Lifetime Member badge displayed in your profile. Pro Lifetime has no recurring charges — you pay once and own it forever.
+
 **Q: What does Fleet add over Pro?**
 A: Fleet features (multi-driver tracking, fleet dashboard, tax reports) are coming soon. Pro ($2.99/mo or $19.99 Lifetime) already includes unlimited vehicles — ideal for multi-car households and small operators.
 
 **Q: How do I upgrade?**
-A: Tap your profile icon or visit Settings → "Upgrade to Pro" or "Upgrade to Fleet." You can also visit gascap.app/upgrade. You'll be taken to a secure Stripe checkout page.
+A: Visit gascap.app/upgrade or tap Settings → "Upgrade to Pro." Choose monthly ($2.99/mo) or Lifetime ($19.99, one-time). You'll be taken to a secure Stripe checkout page.
 
 **Q: How do I cancel?**
-A: Go to Settings → Plan → "Manage Billing & Subscription." This opens the Stripe self-serve portal where you can cancel, change your plan, or update your payment method. You can also email support@gascap.app and we'll handle it for you. Access continues until the end of your current billing period.
+A: Go to Settings → Plan → "Manage Billing & Subscription." This opens the Stripe self-serve portal where you can cancel or update your payment method. You can also email support@gascap.app and we'll handle it for you. Access continues until the end of your current billing period. Lifetime members are not affected by cancellation — there is no subscription to cancel.
 
 **Q: Is my payment information secure?**
 A: Yes. GasCap™ uses Stripe for all payments — we never store your card details. Stripe is PCI DSS Level 1 certified.
 
 **Q: What happens when my free trial ends?**
-A: Your account automatically reverts to the free plan. You are never charged. A reminder banner appears in the app starting 15 days before your trial expires. To keep Pro features, upgrade before the trial ends at $2.99/month or own Pro forever for $19.99 (Lifetime, one payment).
+A: Your account automatically reverts to the free plan. You are never charged. A reminder banner appears in the app starting 15 days before your trial expires. To keep Pro features, upgrade before the trial ends — $2.99/month or $19.99 Lifetime (one payment, no subscription ever).
 
-**Q: Can I switch between monthly and annual billing?**
-A: Yes. Go to Settings → Plan → "Manage Billing & Subscription" to access the Stripe portal and change your billing interval. Annual plans save you 2 months vs. monthly billing.
+**Q: Can I switch between monthly and Lifetime?**
+A: You can upgrade from monthly to Lifetime at any time through Settings → Plan → "Manage Billing & Subscription." Contact support@gascap.app if you need assistance with the transition.
 
 ---
 

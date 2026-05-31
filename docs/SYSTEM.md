@@ -119,11 +119,17 @@ Stores fill-up records. Managed entirely by `lib/fillups.ts`.
 
 ## Plans & Gating
 
-| Plan | Price | Vehicle Slots | Fill-up Log | Receipt Scan | MPG Charts | Fleet Features |
+| Plan | Price | Vehicle Slots | Fill-up Log | Receipt Scan | MPG Charts | Lifetime Exclusives |
 |---|---|---|---|---|---|---|
 | Free | $0 | 1 | ✅ | ❌ | ❌ | ❌ |
-| Pro | $2.99/mo or $19.99 Lifetime | Unlimited | ✅ | ✅ | ✅ | ❌ |
-| Fleet | Coming soon (shelved) | Unlimited | ✅ | ✅ | ✅ | ✅ |
+| Pro Monthly | $2.99/mo | Unlimited | ✅ | ✅ | ✅ | ❌ |
+| Pro Lifetime | $19.99 one-time | Unlimited | ✅ | ✅ | ✅ | ✅ |
+| Fleet | Coming soon (shelved) | Unlimited | ✅ | ✅ | ✅ | — |
+
+**Pro Lifetime exclusives** (not available on monthly):
+- 2× giveaway entries every month (double daily streak entries)
+- Streak Shield — 1 grace day per month preserves streak on a missed day
+- Lifetime Member badge — permanent profile badge
 
 Every new signup gets a **30-day Pro trial** automatically (`grantNewSignupProTrial` in `lib/users.ts`). This sets `plan='pro'`, `isProTrial=true`, `betaProExpiry=+30d`. A cron job (or the beta-expire endpoint) reverts them to free if they don't upgrade.
 
