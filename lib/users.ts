@@ -287,6 +287,9 @@ export async function setUserPlan(
     where: { id: userId },
     data: {
       plan,
+      // A real Stripe payment ends the trial — clear trial flags regardless
+      // of whether the user was on a trial or not.
+      ...(plan !== 'free' ? { isProTrial: false, trialExpiresAt: null } : {}),
       ...(stripe?.customerId     ? { stripeCustomerId:     stripe.customerId }     : {}),
       ...(stripe?.subscriptionId ? { stripeSubscriptionId: stripe.subscriptionId } : {}),
     },

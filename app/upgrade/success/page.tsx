@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 
 // ── Per-plan content ────────────────────────────────────────────────────────
 
@@ -98,16 +99,21 @@ function labelColorClass(color: string) {
 function SuccessContent() {
   const params    = useSearchParams();
   const router    = useRouter();
+  const { update: refreshSession } = useSession();
   const sessionId = params.get('session_id');
   const tier      = params.get('tier') ?? 'pro';
   const billing   = params.get('billing') ?? 'monthly';
   const [ready, setReady] = useState(false);
 
-  // Small delay so webhook has time to fire before we reload session
+  // Wait for webhook to fire, then refresh the JWT so the session reflects
+  // the upgraded plan (clears isProTrial, sets stripeInterval, etc.)
   useEffect(() => {
-    const t = setTimeout(() => setReady(true), 2000);
+    const t = setTimeout(async () => {
+      await refreshSession(); // pulls fresh user data from DB into JWT
+      setReady(true);
+    }, 2500);
     return () => clearTimeout(t);
-  }, []);
+  }, [refreshSession]);
 
   // Resolve which plan content to show
   let planKey: PlanKey;
