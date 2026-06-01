@@ -59,7 +59,8 @@ export default function PricingSection() {
 
   async function handleUpgrade(billing: 'monthly' | 'lifetime') {
     if (!session) {
-      router.push('/signin?next=/upgrade');
+      // New visitors sign up first (free trial auto-activates), then return to upgrade
+      router.push('/signup?next=/upgrade');
       return;
     }
     setLoading(billing);
@@ -200,7 +201,9 @@ export default function PricingSection() {
                   ? 'Included in Lifetime'
                   : isOnTrial
                     ? 'Upgrade from trial — $2.99/mo'
-                    : t.pricing.upgradeToPro}
+                    : !session
+                      ? 'Start free trial →'
+                      : t.pricing.upgradeToPro}
           </button>
 
           <div className="border-t border-white/20 mb-5" />
@@ -257,7 +260,9 @@ export default function PricingSection() {
                   ? `Upgrade to Lifetime — $${PRICING.pro.lifetime}`
                   : isOnTrial
                     ? `Upgrade from trial — $${PRICING.pro.lifetime}`
-                    : `Get Lifetime — $${PRICING.pro.lifetime}`}
+                    : !session
+                      ? `Get Lifetime — $${PRICING.pro.lifetime}`
+                      : `Get Lifetime — $${PRICING.pro.lifetime}`}
           </button>
 
           <div className="border-t border-slate-100 mb-5" />

@@ -70,7 +70,7 @@ function UpgradePageInner() {
   const isProLifetime = !!session && userPlan === 'pro' && userInterval === 'lifetime' && !isOnTrial;
 
   async function handleUpgrade(billing: 'monthly' | 'lifetime') {
-    if (!session) { window.location.href = '/signin?next=/upgrade'; return; }
+    if (!session) { window.location.href = '/signup?next=/upgrade'; return; }
     setLoading(billing === 'lifetime' ? 'pro-lifetime' : 'pro-monthly');
     setError('');
     try {
@@ -254,7 +254,7 @@ function UpgradePageInner() {
                     ? 'Included in Lifetime'
                     : isOnTrial
                       ? `Upgrade from trial — $${PRICING.pro.monthly}/mo`
-                      : session ? `Upgrade to Pro — $${PRICING.pro.monthly}/mo` : t.upgrade.signInToUp}
+                      : session ? `Upgrade to Pro — $${PRICING.pro.monthly}/mo` : 'Start free trial →'}
             </button>
             <div className="border-t border-slate-100 mb-5" />
             <ul className="space-y-2 flex-1">
@@ -303,7 +303,7 @@ function UpgradePageInner() {
                     ? `Upgrade to Lifetime — $${PRICING.pro.lifetime}`
                     : isOnTrial
                       ? `Upgrade from trial — $${PRICING.pro.lifetime}`
-                      : session ? `Get Lifetime — $${PRICING.pro.lifetime}` : t.upgrade.signInToUp}
+                      : `Get Lifetime — $${PRICING.pro.lifetime}`}
             </button>
             <div className="border-t border-white/10 mb-5" />
             {/* Everything in Pro */}
