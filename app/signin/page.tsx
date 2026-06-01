@@ -85,7 +85,7 @@ function SignInForm() {
                        text-slate-700 font-semibold text-sm disabled:opacity-60"
           >
             <GoogleIcon />
-            {googleLoading ? 'Redirecting…' : 'Continue with Google'}
+            {googleLoading ? t.signIn.redirecting : t.signIn.continueWithGoogle}
           </button>
 
           {/* Divider */}

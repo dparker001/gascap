@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 // ── Per-plan content ────────────────────────────────────────────────────────
 
@@ -100,6 +101,7 @@ function SuccessContent() {
   const params    = useSearchParams();
   const router    = useRouter();
   const { update: refreshSession } = useSession();
+  const { t } = useTranslation();
   const sessionId = params.get('session_id');
   const tier      = params.get('tier') ?? 'pro';
   const billing   = params.get('billing') ?? 'monthly';
@@ -204,7 +206,7 @@ function SuccessContent() {
           onClick={() => router.push('/')}
           className={`block w-full py-3.5 rounded-2xl font-black text-base transition-colors text-center ${ctaClass(plan.color)}`}
         >
-          Go to Calculator →
+          {t.upgrade.goToCalculator}
         </button>
       ) : (
         <div className="flex items-center justify-center gap-2 text-sm text-slate-400">
@@ -213,7 +215,7 @@ function SuccessContent() {
             <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" strokeOpacity=".25"/>
             <path d="M21 12a9 9 0 00-9-9" />
           </svg>
-          Activating your account…
+          {t.upgrade.activatingAccount}
         </div>
       )}
     </div>

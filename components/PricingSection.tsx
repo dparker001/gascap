@@ -13,12 +13,6 @@ type PlanTier = 'free' | 'pro';
 // Highlight flags (order matches translation feature arrays)
 const PRO_HIGHLIGHTS = [false, true, true, false, true, true, false, false, false, false];
 
-const LIFETIME_EXCLUSIVES = [
-  { icon: '⭐', text: '2× giveaway entries every month' },
-  { icon: '🛡️', text: 'Streak Shield — 1 grace day/month' },
-  { icon: '🏅', text: 'Lifetime Member badge' },
-];
-
 // ── Helpers ───────────────────────────────────────────────────────────────
 
 function Check({ highlight, dark }: { highlight?: boolean; dark?: boolean }) {
@@ -56,6 +50,12 @@ export default function PricingSection() {
 
   const FREE_FEATURES = t.pricing.freeFeatures.map((text) => ({ text }));
   const PRO_FEATURES  = t.pricing.proFeatures.map((text, i) => ({ text, highlight: PRO_HIGHLIGHTS[i] }));
+
+  const LIFETIME_EXCLUSIVES = [
+    { icon: '⭐', text: '2× giveaway entries every month' },
+    { icon: '🛡️', text: 'Streak Shield — 1 grace day/month' },
+    { icon: '🏅', text: 'Lifetime Member badge' },
+  ];
 
   async function handleUpgrade(billing: 'monthly' | 'lifetime') {
     if (!session) {
@@ -198,11 +198,11 @@ export default function PricingSection() {
               : isProMonthly
                 ? t.pricing.yourCurrentPlan
                 : isProLifetime
-                  ? 'Included in Lifetime'
+                  ? t.pricing.includedInLifetime
                   : isOnTrial
-                    ? 'Upgrade from trial — $2.99/mo'
+                    ? `${t.pricing.upgradeFromTrial} — $${PRICING.pro.monthly}/mo`
                     : !session
-                      ? 'Start free trial →'
+                      ? t.pricing.startFreeTrial
                       : t.pricing.upgradeToPro}
           </button>
 
@@ -225,14 +225,14 @@ export default function PricingSection() {
           <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-teal-400 text-navy-900
                           text-[11px] font-black px-4 py-1 rounded-full uppercase tracking-wider
                           whitespace-nowrap shadow-md">
-            ★ Best Value
+            ★ {t.pricing.lifetimeRibbon}
           </div>
 
           <div className="mb-4 mt-1">
             <h3 className="font-black text-lg text-navy-700">Pro Lifetime</h3>
             <span className="inline-block mt-1 text-[10px] font-bold px-2 py-0.5 rounded-full
                              bg-teal-100 text-teal-700 whitespace-nowrap">
-              One-time payment
+              {t.pricing.lifetimeBadge}
             </span>
           </div>
 
@@ -240,7 +240,7 @@ export default function PricingSection() {
             <span className="text-4xl font-black text-navy-700">${PRICING.pro.lifetime}</span>
           </div>
           <p className="text-xs mb-6 leading-relaxed text-teal-600 font-semibold">
-            Own GasCap™ Pro forever — no recurring charges
+            {t.pricing.lifetimeSubline}
           </p>
 
           <button
@@ -257,12 +257,10 @@ export default function PricingSection() {
               : isProLifetime
                 ? t.pricing.yourCurrentPlan
                 : isProMonthly
-                  ? `Upgrade to Lifetime — $${PRICING.pro.lifetime}`
+                  ? `${t.pricing.upgradeToLifetime} — $${PRICING.pro.lifetime}`
                   : isOnTrial
-                    ? `Upgrade from trial — $${PRICING.pro.lifetime}`
-                    : !session
-                      ? `Get Lifetime — $${PRICING.pro.lifetime}`
-                      : `Get Lifetime — $${PRICING.pro.lifetime}`}
+                    ? `${t.pricing.upgradeFromTrial} — $${PRICING.pro.lifetime}`
+                    : `${t.pricing.getLifetime} — $${PRICING.pro.lifetime}`}
           </button>
 
           <div className="border-t border-slate-100 mb-5" />
@@ -270,7 +268,7 @@ export default function PricingSection() {
           <ul className="space-y-2.5">
             <li className="flex items-start gap-2.5">
               <Check />
-              <span className="text-sm leading-snug text-slate-500">Everything in Pro</span>
+              <span className="text-sm leading-snug text-slate-500">{t.pricing.everythingInPro}</span>
             </li>
           </ul>
           {/* Lifetime-exclusive perks */}
@@ -278,7 +276,7 @@ export default function PricingSection() {
             <div className="flex items-center gap-2">
               <div className="flex-1 border-t border-teal-200" />
               <span className="text-[10px] font-black text-teal-600 uppercase tracking-widest whitespace-nowrap">
-                Lifetime exclusives
+                {t.pricing.lifetimeExclusives}
               </span>
               <div className="flex-1 border-t border-teal-200" />
             </div>
@@ -292,7 +290,7 @@ export default function PricingSection() {
             ))}
           </ul>
           <p className="mt-4 text-center text-[11px] text-slate-400 leading-relaxed">
-            Less than 7 months of monthly — break even instantly.
+            {t.pricing.breakEven}
           </p>
         </div>
 
@@ -303,19 +301,18 @@ export default function PricingSection() {
         <div className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3.5 flex items-start gap-3">
           <span className="text-xl flex-shrink-0" aria-hidden="true">🎯</span>
           <div>
-            <p className="text-xs font-black text-amber-800">30-Day Money-Back Guarantee <span className="font-normal">(Monthly plan)</span></p>
+            <p className="text-xs font-black text-amber-800">{t.pricing.guaranteeTitle} <span className="font-normal">{t.pricing.guaranteeMonthly}</span></p>
             <p className="text-xs text-amber-700 mt-0.5 leading-relaxed">
-              If Pro doesn&apos;t save you more than $2.99 in your first month, email us and we&apos;ll refund your first payment — no questions asked.
+              {t.pricing.guaranteeBody}
             </p>
           </div>
         </div>
         <div className="bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3.5 flex items-start gap-3">
           <span className="text-xl flex-shrink-0" aria-hidden="true">🏅</span>
           <div>
-            <p className="text-xs font-black text-slate-700">Lifetime purchase is final</p>
+            <p className="text-xs font-black text-slate-700">{t.pricing.lifetimeFinal}</p>
             <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
-              The $19.99 Lifetime plan is a one-time, non-refundable purchase. See our{' '}
-              <a href="/terms#billing" className="underline hover:text-slate-700">Terms of Service</a>.
+              {t.pricing.lifetimeFinalBody}
             </p>
           </div>
         </div>
@@ -324,13 +321,13 @@ export default function PricingSection() {
       {/* Trust footnote */}
       <div className="mt-4 flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
         <span className="text-xs text-slate-400 flex items-center gap-1">
-          <span>🔒</span> We never sell your data
+          <span>🔒</span> {t.pricing.trustNoSell}
         </span>
         <span className="text-xs text-slate-400 flex items-center gap-1">
-          <span>💳</span> Secured by Stripe
+          <span>💳</span> {t.pricing.trustStripe}
         </span>
         <span className="text-xs text-slate-400 flex items-center gap-1">
-          <span>✓</span> Cancel anytime
+          <span>✓</span> {t.pricing.trustCancel}
         </span>
       </div>
     </section>

@@ -8,36 +8,7 @@ import { PRICING } from '@/lib/stripe';
 import { useTranslation } from '@/contexts/LanguageContext';
 import BrandBar from '@/components/BrandBar';
 
-// ── Feature lists ─────────────────────────────────────────────────────────
-
-const FREE_FEATURES = [
-  '1 saved vehicle',
-  'Target Fill calculator',
-  'By Budget calculator',
-  'EPA vehicle database search',
-  'Live local gas price lookup',
-  'Works offline (PWA)',
-  'Badge achievements',
-];
-
-const PRO_FEATURES = [
-  'Unlimited saved vehicles',
-  'VIN photo scan — auto-decode vehicle',
-  'Fill-up history & MPG tracking',
-  'Receipt photo scan (AI-powered)',
-  'Smart Fill-Up Optimizer',
-  'Gas Price Drop Alerts',
-  'Referral rewards',
-  'Monthly gas card giveaway entries',
-  'All Free features included',
-  'Priority support',
-];
-
-const LIFETIME_EXCLUSIVES = [
-  { icon: '⭐', text: '2× giveaway entries every month' },
-  { icon: '🛡️', text: 'Streak Shield — 1 grace day/month' },
-  { icon: '🏅', text: 'Lifetime Member badge' },
-];
+// ── Feature lists are defined inside UpgradePageInner (need t)
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -58,6 +29,15 @@ function Check({ color = 'green' }: { color?: 'green' | 'amber' | 'teal' }) {
 function UpgradePageInner() {
   const { data: session } = useSession();
   const { t } = useTranslation();
+
+  const FREE_FEATURES = t.pricing.freeFeatures;
+  const PRO_FEATURES  = t.pricing.proFeatures;
+  const LIFETIME_EXCLUSIVES = [
+    { icon: '⭐', text: '2× giveaway entries every month' },
+    { icon: '🛡️', text: 'Streak Shield — 1 grace day/month' },
+    { icon: '🏅', text: 'Lifetime Member badge' },
+  ];
+
   const searchParams = useSearchParams();
   const coupon = searchParams.get('coupon') ?? undefined;
   const [loading, setLoading] = useState<'pro-monthly' | 'pro-lifetime' | null>(null);
@@ -154,7 +134,7 @@ function UpgradePageInner() {
             <span className="text-2xl flex-shrink-0" aria-hidden="true">🎰</span>
             <div>
               <p className="text-sm font-black text-teal-800">
-                Upgrade during your trial → +10 bonus draw entries/month, forever
+                {t.upgrade.trialBonusTitle}
               </p>
               <p className="text-xs text-teal-700 mt-1 leading-relaxed">
                 Upgrade before your 30-day trial expires and earn 10 extra entries into the
@@ -169,7 +149,7 @@ function UpgradePageInner() {
         {coupon && (
           <div className="flex items-center justify-center mb-6">
             <div className="bg-amber-50 border border-amber-300 rounded-xl px-5 py-2 text-sm font-bold text-amber-800">
-              🏷️ Promo applied — discount on monthly plan
+              {t.upgrade.promoApplied}
             </div>
           </div>
         )}
@@ -186,16 +166,16 @@ function UpgradePageInner() {
             <div className="mb-4">
               <span className="inline-block bg-green-100 text-green-700 text-[10px] font-black
                                px-2 py-0.5 rounded-full uppercase tracking-wider mb-2">
-                No credit card ever
+                {t.upgrade.noCC}
               </span>
               <h2 className="text-xl font-black text-navy-700">Free</h2>
-              <p className="text-xs text-slate-400 mt-0.5">Forever</p>
+              <p className="text-xs text-slate-400 mt-0.5">{t.upgrade.foreverSub}</p>
             </div>
             <div className="mb-1">
               <span className="text-4xl font-black text-navy-700">$0</span>
             </div>
             <p className="text-xs text-slate-400 mb-6 leading-relaxed">
-              The essential fuel calculator — always free.
+              {t.upgrade.freeDesc}
             </p>
             <div className="border-t border-slate-100 mb-5" />
             <ul className="space-y-2 flex-1">
@@ -209,7 +189,7 @@ function UpgradePageInner() {
               <Link href="/signup"
                 className="mt-6 block w-full py-3 rounded-2xl bg-slate-100 text-slate-600
                            font-black text-sm text-center hover:bg-slate-200 transition-colors">
-                Get started free
+                {t.upgrade.getStartedFreeBtn}
               </Link>
             )}
           </div>
@@ -219,22 +199,22 @@ function UpgradePageInner() {
             <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-amber-400 text-navy-900
                             text-[11px] font-black px-4 py-1 rounded-full uppercase tracking-wider
                             whitespace-nowrap shadow-md">
-              Most Popular
+              {t.pricing.mostPopular}
             </div>
             <div className="mb-4 mt-1">
               <span className="inline-block bg-amber-100 text-amber-700 text-[10px] font-black
                                px-2 py-0.5 rounded-full uppercase tracking-wider mb-2">
-                Monthly
+                {t.upgrade.monthly}
               </span>
               <h2 className="text-xl font-black text-navy-700">Pro</h2>
-              <p className="text-xs text-slate-400 mt-0.5">Cancel anytime</p>
+              <p className="text-xs text-slate-400 mt-0.5">{t.upgrade.cancelAnytime}</p>
             </div>
             <div className="mb-1 flex items-end gap-1">
               <span className="text-4xl font-black text-navy-700">${PRICING.pro.monthly}</span>
               <span className="text-sm mb-1 text-slate-400">/mo</span>
             </div>
             <p className="text-xs text-green-600 font-semibold mb-6 leading-relaxed">
-              Less than a dime a day — cancel anytime
+              {t.upgrade.lessThanDime}
             </p>
             <button
               onClick={() => !isProMonthly && !isProLifetime && handleUpgrade('monthly')}
@@ -249,12 +229,12 @@ function UpgradePageInner() {
               {loading === 'pro-monthly'
                 ? t.upgrade.redirecting
                 : isProMonthly
-                  ? '✓ Your current plan'
+                  ? t.upgrade.currentPlan
                   : isProLifetime
-                    ? 'Included in Lifetime'
+                    ? t.pricing.includedInLifetime
                     : isOnTrial
-                      ? `Upgrade from trial — $${PRICING.pro.monthly}/mo`
-                      : session ? `Upgrade to Pro — $${PRICING.pro.monthly}/mo` : 'Start free trial →'}
+                      ? `${t.pricing.upgradeFromTrial} — $${PRICING.pro.monthly}/mo`
+                      : session ? `${t.upgrade.upgradeBtn} Pro — $${PRICING.pro.monthly}/mo` : t.pricing.startFreeTrial}
             </button>
             <div className="border-t border-slate-100 mb-5" />
             <ul className="space-y-2 flex-1">
@@ -271,21 +251,21 @@ function UpgradePageInner() {
             <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-teal-400 text-navy-900
                             text-[11px] font-black px-4 py-1 rounded-full uppercase tracking-wider
                             whitespace-nowrap shadow-md">
-              ★ Best Value
+              ★ {t.pricing.lifetimeRibbon}
             </div>
             <div className="mb-4 mt-1">
               <span className="inline-block bg-teal-400/20 text-teal-300 text-[10px] font-black
                                px-2 py-0.5 rounded-full uppercase tracking-wider mb-2">
-                One-Time
+                {t.pricing.lifetimeBadge}
               </span>
               <h2 className="text-xl font-black text-white">Pro Lifetime</h2>
-              <p className="text-xs text-white/50 mt-0.5">No subscription, ever</p>
+              <p className="text-xs text-white/50 mt-0.5">{t.upgrade.noSubscription}</p>
             </div>
             <div className="mb-1 flex items-end gap-1">
               <span className="text-4xl font-black text-white">${PRICING.pro.lifetime}</span>
             </div>
             <p className="text-xs text-teal-300 font-semibold mb-6 leading-relaxed">
-              One payment — own GasCap™ Pro forever
+              {t.upgrade.onePaymentForever}
             </p>
             <button
               onClick={() => !isProLifetime && handleUpgrade('lifetime')}
@@ -298,18 +278,18 @@ function UpgradePageInner() {
               {loading === 'pro-lifetime'
                 ? t.upgrade.redirecting
                 : isProLifetime
-                  ? '✓ Your current plan'
+                  ? t.upgrade.currentPlan
                   : isProMonthly
-                    ? `Upgrade to Lifetime — $${PRICING.pro.lifetime}`
+                    ? `${t.pricing.upgradeToLifetime} — $${PRICING.pro.lifetime}`
                     : isOnTrial
-                      ? `Upgrade from trial — $${PRICING.pro.lifetime}`
-                      : `Get Lifetime — $${PRICING.pro.lifetime}`}
+                      ? `${t.pricing.upgradeFromTrial} — $${PRICING.pro.lifetime}`
+                      : `${t.pricing.getLifetime} — $${PRICING.pro.lifetime}`}
             </button>
             <div className="border-t border-white/10 mb-5" />
             {/* Everything in Pro */}
             <ul className="space-y-2">
               <li className="flex items-start gap-2 text-sm text-white/80">
-                <Check color="teal" /> Everything in Pro
+                <Check color="teal" /> {t.pricing.everythingInPro}
               </li>
             </ul>
             {/* Lifetime-exclusive perks */}
@@ -317,7 +297,7 @@ function UpgradePageInner() {
               <div className="flex items-center gap-2">
                 <div className="flex-1 border-t border-teal-400/30" />
                 <span className="text-[10px] font-black text-teal-300 uppercase tracking-widest whitespace-nowrap">
-                  Lifetime exclusives
+                  {t.pricing.lifetimeExclusives}
                 </span>
                 <div className="flex-1 border-t border-teal-400/30" />
               </div>
@@ -331,7 +311,7 @@ function UpgradePageInner() {
               ))}
             </ul>
             <p className="mt-4 text-center text-[11px] text-white/40 leading-relaxed">
-              Less than 7 months of monthly — break even instantly.
+              {t.pricing.breakEven}
             </p>
           </div>
 
@@ -342,19 +322,18 @@ function UpgradePageInner() {
           <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3">
             <span className="text-xl flex-shrink-0">🎯</span>
             <div>
-              <p className="text-xs font-black text-amber-800">30-Day Money-Back Guarantee <span className="font-normal">(Monthly plan)</span></p>
+              <p className="text-xs font-black text-amber-800">{t.pricing.guaranteeTitle} <span className="font-normal">{t.pricing.guaranteeMonthly}</span></p>
               <p className="text-xs text-amber-700 mt-0.5 leading-relaxed">
-                If Pro doesn&apos;t save you more than $2.99 in your first month, email us and we&apos;ll refund your first payment — no questions asked.
+                {t.pricing.guaranteeBody}
               </p>
             </div>
           </div>
           <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex items-start gap-3">
             <span className="text-xl flex-shrink-0">🏅</span>
             <div>
-              <p className="text-xs font-black text-slate-700">Lifetime purchase is final</p>
+              <p className="text-xs font-black text-slate-700">{t.pricing.lifetimeFinal}</p>
               <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
-                The $19.99 Lifetime plan is a one-time, non-refundable purchase. See our{' '}
-                <a href="/terms#billing" className="underline hover:text-slate-700">Terms of Service</a> for details.
+                {t.pricing.lifetimeFinalBody}
               </p>
             </div>
           </div>

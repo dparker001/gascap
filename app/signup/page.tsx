@@ -163,7 +163,7 @@ function SignUpForm() {
                        text-slate-700 font-semibold text-sm disabled:opacity-60"
           >
             <GoogleIcon />
-            {googleLoading ? 'Redirecting…' : 'Continue with Google'}
+            {googleLoading ? t.signUp.redirecting : t.signUp.continueWithGoogle}
           </button>
 
           {/* Divider */}

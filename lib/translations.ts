@@ -228,8 +228,10 @@ const en = {
     loading:        'Signing in…',
     noAccount:      "Don't have an account?",
     signUpFree:     'Sign up free',
-    continueGuest:  '← Continue without an account',
-    errorDefault:   'Incorrect email or password. Please try again.',
+    continueGuest:       '← Continue without an account',
+    errorDefault:        'Incorrect email or password. Please try again.',
+    continueWithGoogle:  'Continue with Google',
+    redirecting:         'Redirecting…',
     verifiedBanner: {
       title:  "Email verified — you're all set!",
       body:   'Your account is active. Sign in below to go to the calculator.',
@@ -265,13 +267,15 @@ const en = {
     trustFree:      '✓ 30 days Pro free',
     trustNoCard:    '✓ No credit card',
     trustCancel:    '✓ Cancel anytime',
-    haveAccount:    'Already have an account?',
-    signIn:         'Sign in',
-    continueGuest:  '← Continue without an account',
-    termsNote:      'By signing up you agree to our',
-    terms:          'Terms of Service',
-    and:            'and',
-    privacy:        'Privacy Policy',
+    haveAccount:         'Already have an account?',
+    signIn:              'Sign in',
+    continueGuest:       '← Continue without an account',
+    termsNote:           'By signing up you agree to our',
+    terms:               'Terms of Service',
+    and:                 'and',
+    privacy:             'Privacy Policy',
+    continueWithGoogle:  'Continue with Google',
+    redirecting:         'Redirecting…',
     referralBanner: {
       title: 'You were invited!',
       body1: 'Referral code',
@@ -309,18 +313,33 @@ const en = {
     help:          'Help',
     terms:         'Terms',
     privacy:       'Privacy',
+    // upgrade page
+    noCC:                'No credit card ever',
+    foreverSub:          'Forever',
+    freeDesc:            'The essential fuel calculator — always free.',
+    getStartedFreeBtn:   'Get started free',
+    cancelAnytime:       'Cancel anytime',
+    lessThanDime:        'Less than a dime a day — cancel anytime',
+    noSubscription:      'No subscription, ever',
+    onePaymentForever:   'One payment — own GasCap™ Pro forever',
+    currentPlan:         '✓ Your current plan',
+    promoApplied:        '🏷️ Promo applied — discount on monthly plan',
+    trialBonusTitle:     'Upgrade during your trial → +10 bonus draw entries/month, forever',
+    goToCalculator:      'Go to Calculator →',
+    activatingAccount:   'Activating your account…',
   },
 
   // ── Footer ─────────────────────────────────────────────────────────────────
   footer: {
-    tagline:      'Gas Capacity LLC — Know Before You Go',
-    poweredBy:    'Powered by',
-    vnetCardDesc: 'Share your digital business card with anyone, anywhere.',
-    copyright:    (year: number) => `© ${year} GasCap™ — All rights reserved.`,
-    help:         'Help & Support',
-    terms:        'Terms of Service',
-    privacy:      'Privacy Policy',
-    contact:      'Contact Us',
+    tagline:          'Gas Capacity LLC — Know Before You Go',
+    poweredBy:        'Powered by',
+    vnetCardDesc:     'Share your digital business card with anyone, anywhere.',
+    copyright:        (year: number) => `© ${year} GasCap™ — All rights reserved.`,
+    help:             'Help & Support',
+    terms:            'Terms of Service',
+    privacy:          'Privacy Policy',
+    contact:          'Contact Us',
+    metricComingSoon: '🌍 Currently optimized for US drivers — metric support coming soon.',
   },
 
   // ── Gas price lookup ───────────────────────────────────────────────────────
@@ -404,6 +423,33 @@ const en = {
     ],
     // Fleet features preserved for future relaunch
     fleetFeatures: [] as string[],
+
+    // Lifetime card
+    lifetimeRibbon:      'Best Value',
+    lifetimeBadge:       'One-time payment',
+    lifetimeSubline:     'Own GasCap™ Pro forever — no recurring charges',
+    lifetimeExclusives:  'Lifetime exclusives',
+    breakEven:           'Less than 7 months of monthly — break even instantly.',
+
+    // Button states
+    includedInLifetime:  'Included in Lifetime',
+    upgradeFromTrial:    'Upgrade from trial',
+    startFreeTrial:      'Start free trial →',
+    upgradeToLifetime:   'Upgrade to Lifetime',
+    getLifetime:         'Get Lifetime',
+    everythingInPro:     'Everything in Pro',
+
+    // Guarantee & refund
+    guaranteeTitle:      '30-Day Money-Back Guarantee',
+    guaranteeMonthly:    '(Monthly plan)',
+    guaranteeBody:       "If Pro doesn't save you more than $2.99 in your first month, email us and we'll refund your first payment — no questions asked.",
+    lifetimeFinal:       'Lifetime purchase is final',
+    lifetimeFinalBody:   "The $19.99 Lifetime plan is a one-time, non-refundable purchase. See our Terms of Service for details.",
+
+    // Trust footer
+    trustNoSell:         'We never sell your data',
+    trustStripe:         'Secured by Stripe',
+    trustCancel:         'Cancel anytime',
   },
 
   // ── EV Calculator ─────────────────────────────────────────────────────────
@@ -1157,8 +1203,10 @@ const es: typeof en = {
     loading:        'Iniciando sesión…',
     noAccount:      '¿No tienes una cuenta?',
     signUpFree:     'Regístrate gratis',
-    continueGuest:  '← Continuar sin cuenta',
-    errorDefault:   'Correo o contraseña incorrectos. Inténtalo de nuevo.',
+    continueGuest:       '← Continuar sin cuenta',
+    errorDefault:        'Correo o contraseña incorrectos. Inténtalo de nuevo.',
+    continueWithGoogle:  'Continuar con Google',
+    redirecting:         'Redirigiendo…',
     verifiedBanner: {
       title:  '¡Correo verificado — todo listo!',
       body:   'Tu cuenta está activa. Inicia sesión abajo para ir a la calculadora.',
@@ -1193,13 +1241,15 @@ const es: typeof en = {
     trustFree:      '✓ 30 días Pro gratis',
     trustNoCard:    '✓ Sin tarjeta de crédito',
     trustCancel:    '✓ Cancela cuando quieras',
-    haveAccount:    '¿Ya tienes una cuenta?',
-    signIn:         'Iniciar sesión',
-    continueGuest:  '← Continuar sin cuenta',
-    termsNote:      'Al registrarte aceptas nuestros',
-    terms:          'Términos de Servicio',
-    and:            'y la',
-    privacy:        'Política de Privacidad',
+    haveAccount:         '¿Ya tienes una cuenta?',
+    signIn:              'Iniciar sesión',
+    continueGuest:       '← Continuar sin cuenta',
+    termsNote:           'Al registrarte aceptas nuestros',
+    terms:               'Términos de Servicio',
+    and:                 'y la',
+    privacy:             'Política de Privacidad',
+    continueWithGoogle:  'Continuar con Google',
+    redirecting:         'Redirigiendo…',
     referralBanner: {
       title: '¡Fuiste invitado!',
       body1: 'Código de referido',
@@ -1236,17 +1286,32 @@ const es: typeof en = {
     help:          'Ayuda',
     terms:         'Términos',
     privacy:       'Privacidad',
+    // upgrade page
+    noCC:                'Sin tarjeta de crédito',
+    foreverSub:          'Para siempre',
+    freeDesc:            'La calculadora de combustible esencial — siempre gratis.',
+    getStartedFreeBtn:   'Comenzar gratis',
+    cancelAnytime:       'Cancela cuando quieras',
+    lessThanDime:        'Menos de 10 centavos al día — cancela cuando quieras',
+    noSubscription:      'Sin suscripción, nunca',
+    onePaymentForever:   'Un pago — posee GasCap™ Pro para siempre',
+    currentPlan:         '✓ Tu plan actual',
+    promoApplied:        '🏷️ Promo aplicada — descuento en plan mensual',
+    trialBonusTitle:     'Mejora durante tu prueba → +10 entradas de sorteo mensuales, para siempre',
+    goToCalculator:      'Ir a la calculadora →',
+    activatingAccount:   'Activando tu cuenta…',
   },
 
   footer: {
-    tagline:      'Gas Capacity LLC — Sabe antes de llegar.',
-    poweredBy:    'Desarrollado por',
-    vnetCardDesc: 'Comparte tu tarjeta de presentación digital con cualquiera, en cualquier lugar.',
-    copyright:    (year: number) => `© ${year} GasCap™ — Todos los derechos reservados.`,
-    help:         'Ayuda y Soporte',
-    terms:        'Términos de Servicio',
-    privacy:      'Política de Privacidad',
-    contact:      'Contáctenos',
+    tagline:          'Gas Capacity LLC — Sabe antes de llegar.',
+    poweredBy:        'Desarrollado por',
+    vnetCardDesc:     'Comparte tu tarjeta de presentación digital con cualquiera, en cualquier lugar.',
+    copyright:        (year: number) => `© ${year} GasCap™ — Todos los derechos reservados.`,
+    help:             'Ayuda y Soporte',
+    terms:            'Términos de Servicio',
+    privacy:          'Política de Privacidad',
+    contact:          'Contáctenos',
+    metricComingSoon: '🌍 Actualmente optimizado para conductores en EE.UU. — soporte métrico próximamente.',
   },
 
   gasPrice: {
@@ -1327,6 +1392,33 @@ const es: typeof en = {
     ],
     // Fleet features preserved for future relaunch
     fleetFeatures: [] as string[],
+
+    // Lifetime card
+    lifetimeRibbon:      'Mejor Valor',
+    lifetimeBadge:       'Pago único',
+    lifetimeSubline:     'Posee GasCap™ Pro para siempre — sin cargos recurrentes',
+    lifetimeExclusives:  'Exclusivos de por vida',
+    breakEven:           'Menos de 7 meses del plan mensual — amortiza al instante.',
+
+    // Button states
+    includedInLifetime:  'Incluido en de por vida',
+    upgradeFromTrial:    'Mejorar desde prueba',
+    startFreeTrial:      'Comenzar prueba gratis →',
+    upgradeToLifetime:   'Mejorar a de por vida',
+    getLifetime:         'Obtener de por vida',
+    everythingInPro:     'Todo en Pro',
+
+    // Guarantee & refund
+    guaranteeTitle:      'Garantía de devolución de 30 días',
+    guaranteeMonthly:    '(Plan mensual)',
+    guaranteeBody:       'Si Pro no te ahorra más de $2.99 en tu primer mes, escríbenos y te reembolsaremos tu primer pago, sin preguntas.',
+    lifetimeFinal:       'La compra de por vida es definitiva',
+    lifetimeFinalBody:   'El plan de por vida por $19.99 es una compra única y no reembolsable. Consulta nuestros Términos de Servicio para más detalles.',
+
+    // Trust footer
+    trustNoSell:         'Nunca vendemos tus datos',
+    trustStripe:         'Seguro con Stripe',
+    trustCancel:         'Cancela cuando quieras',
   },
 
   ev: {
