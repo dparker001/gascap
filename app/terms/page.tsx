@@ -49,8 +49,10 @@ export default function TermsPage() {
 
           {/* 4 */}
           <section>
-            <h2 className="text-lg font-black text-navy-700 mb-2">4. Paid Subscriptions</h2>
-            <p>Pro and Fleet plan subscriptions are billed monthly or annually through Stripe. You may cancel at any time; your access continues until the end of the current billing period. You can upgrade your plan directly from the Settings page within the app or by visiting{' '}<Link href="/upgrade" className="text-amber-600 hover:underline">gascap.app/upgrade</Link>. We reserve the right to change pricing with 30 days&apos; notice.</p>
+            <h2 className="text-lg font-black text-navy-700 mb-2">4. Paid Subscriptions &amp; Refund Policy</h2>
+            <p><strong>Pro Monthly ($2.99/mo):</strong> Billed monthly through Stripe. You may cancel at any time; your access continues until the end of the current billing period. If GasCap™ Pro does not help you save more than $2.99 in your first 30 days, contact us at support@gascap.app within 30 days of your first charge and we will issue a full refund of your first payment — no questions asked.</p>
+            <p className="mt-2"><strong>Pro Lifetime ($19.99 one-time):</strong> A one-time, non-refundable purchase. By completing the Lifetime purchase you acknowledge that you are acquiring a permanent license to GasCap™ Pro features and that the payment is final. All sales of Lifetime plans are final — no refunds will be issued except where required by applicable law.</p>
+            <p className="mt-2">You can upgrade your plan directly from the Settings page or by visiting{' '}<Link href="/upgrade" className="text-amber-600 hover:underline">gascap.app/upgrade</Link>. We reserve the right to change pricing with 30 days&apos; notice to existing subscribers.</p>
           </section>
 
           {/* 5 */}

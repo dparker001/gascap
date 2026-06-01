@@ -37,6 +37,8 @@ interface AdminUser {
   referredByName:   string | null;
   referredUsers:    { name: string; email: string; joinedAt: string }[];
   stripeCustomerId: string | null;
+  stripeInterval:   string | null;
+  isProTrial:       boolean;
   trialExpiresAt?:  string | null;
   pushSubscribed?:  boolean;
   isTestAccount?:        boolean;
@@ -100,6 +102,16 @@ const PLAN_COLORS = {
   fleet: 'bg-blue-100 text-blue-700',
 };
 
+/** Returns badge label + color for a user's actual plan state */
+function planBadge(u: AdminUser): { label: string; cls: string } {
+  if (u.plan === 'free')  return { label: 'FREE',     cls: 'bg-slate-100 text-slate-600' };
+  if (u.plan === 'fleet') return { label: 'FLEET',    cls: 'bg-blue-100 text-blue-700' };
+  if (u.isProTrial)       return { label: 'TRIAL',    cls: 'bg-amber-100 text-amber-700' };
+  if (u.stripeInterval === 'lifetime')
+                          return { label: 'LIFETIME', cls: 'bg-teal-100 text-teal-700' };
+  return                         { label: 'PRO',      cls: 'bg-green-100 text-green-700' };
+}
+
 const SESSION_KEY = 'gascap_admin_session';
 const SESSION_TTL = 8 * 60 * 60 * 1000; // 8 hours — survives tab closes, expires after a full work day
 
@@ -128,7 +140,7 @@ export default function AdminPage() {
   const [search,    setSearch]    = useState('');
   const [msg,       setMsg]       = useState('');
   // ── Filters & sort ────────────────────────────────────────────────────
-  const [filterPlan,     setFilterPlan]     = useState<'all'|'free'|'pro'|'fleet'>('all');
+  const [filterPlan,     setFilterPlan]     = useState<'all'|'free'|'pro'|'trial'|'paid-pro'|'lifetime'|'fleet'>('all');
   const [filterStatus,   setFilterStatus]   = useState<'all'|'verified'|'unverified'>('all');
   const [filterActivity, setFilterActivity] = useState<'all'|'today'|'has-fillups'|'no-logins'|'has-streak'>('all');
   const [filterStripe,   setFilterStripe]   = useState<'all'|'stripe'|'no-stripe'>('all');
@@ -631,7 +643,12 @@ export default function AdminPage() {
     .filter((u) => {
       const q = search.toLowerCase();
       if (q && !u.name.toLowerCase().includes(q) && !u.email.toLowerCase().includes(q)) return false;
-      if (filterPlan !== 'all' && u.plan !== filterPlan) return false;
+      if (filterPlan === 'trial'    && !(u.plan === 'pro' &&  u.isProTrial))                                    return false;
+      if (filterPlan === 'paid-pro' && !(u.plan === 'pro' && !u.isProTrial && u.stripeInterval !== 'lifetime')) return false;
+      if (filterPlan === 'lifetime' && !(u.plan === 'pro' && !u.isProTrial && u.stripeInterval === 'lifetime')) return false;
+      if (filterPlan === 'pro'      &&   u.plan !== 'pro')                                                      return false;
+      if (filterPlan === 'free'     &&   u.plan !== 'free')                                                     return false;
+      if (filterPlan === 'fleet'    &&   u.plan !== 'fleet')                                                    return false;
       if (filterStatus === 'verified'   && !u.emailVerified) return false;
       if (filterStatus === 'unverified' && u.emailVerified)  return false;
       if (filterStripe === 'stripe'    && !u.stripeCustomerId) return false;
@@ -663,6 +680,9 @@ export default function AdminPage() {
     // Plan
     free:         users.filter((u) => u.plan === 'free').length,
     pro:          users.filter((u) => u.plan === 'pro').length,
+    trial:        users.filter((u) => u.plan === 'pro' &&  u.isProTrial).length,
+    paidPro:      users.filter((u) => u.plan === 'pro' && !u.isProTrial && u.stripeInterval !== 'lifetime').length,
+    lifetime:     users.filter((u) => u.plan === 'pro' && !u.isProTrial && u.stripeInterval === 'lifetime').length,
     fleet:        users.filter((u) => u.plan === 'fleet').length,
     // Email status
     verified:     users.filter((u) =>  u.emailVerified).length,
@@ -751,7 +771,9 @@ export default function AdminPage() {
           {[
             { label: 'Total Users',   value: stats.total,        color: 'text-navy-700' },
             { label: 'Free',          value: stats.free,         color: 'text-slate-600' },
-            { label: 'Pro',           value: stats.pro,          color: 'text-amber-600' },
+            { label: 'Trial',         value: stats.trial,        color: 'text-amber-600' },
+            { label: 'Pro (paid)',    value: stats.paidPro,      color: 'text-green-600' },
+            { label: 'Lifetime',      value: stats.lifetime,     color: 'text-teal-600' },
             { label: 'Fleet',         value: stats.fleet,        color: 'text-blue-600' },
             { label: 'Unverified',    value: stats.unverified,   color: 'text-red-500' },
             { label: '🔔 Push',       value: stats.push,         color: 'text-blue-600' },
@@ -1687,14 +1709,19 @@ export default function AdminPage() {
           <div className="space-y-1">
             <p className="text-[10px] font-bold text-slate-600 uppercase tracking-wide">Plan</p>
             <div className="flex flex-wrap gap-1.5">
-              {(['all','free','pro','fleet'] as const).map((p) => (
-                <button key={p} onClick={() => setFilterPlan(p)}
+              {([
+                { key: 'all',      label: `All (${users.length})`,         active: 'bg-navy-700 text-white' },
+                { key: 'free',     label: `Free (${stats.free})`,          active: 'bg-slate-600 text-white' },
+                { key: 'trial',    label: `Trial (${stats.trial})`,        active: 'bg-amber-500 text-white' },
+                { key: 'paid-pro', label: `Pro paid (${stats.paidPro})`,   active: 'bg-green-600 text-white' },
+                { key: 'lifetime', label: `Lifetime (${stats.lifetime})`,  active: 'bg-teal-600 text-white' },
+                { key: 'fleet',    label: `Fleet (${stats.fleet})`,        active: 'bg-blue-600 text-white' },
+              ] as const).map(({ key, label, active }) => (
+                <button key={key} onClick={() => setFilterPlan(key)}
                   className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${
-                    filterPlan === p
-                      ? 'bg-navy-700 text-white'
-                      : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                    filterPlan === key ? active : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
                   }`}>
-                  {p === 'all' ? `All (${users.length})` : p === 'free' ? `Free (${stats.free})` : p === 'pro' ? `Pro (${stats.pro})` : `Fleet (${stats.fleet})`}
+                  {label}
                 </button>
               ))}
             </div>
@@ -1855,8 +1882,8 @@ export default function AdminPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="text-sm font-bold text-slate-700 truncate">{u.name}</p>
-                      <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${PLAN_COLORS[u.plan]}`}>
-                        {u.plan.toUpperCase()}
+                      <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${planBadge(u).cls}`}>
+                        {planBadge(u).label}
                       </span>
                       {!u.emailVerified && (
                         <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-red-100 text-red-600">

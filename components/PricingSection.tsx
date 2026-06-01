@@ -293,16 +293,26 @@ export default function PricingSection() {
 
       </div>
 
-      {/* 30-day money-back guarantee */}
-      <div className="mt-6 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3.5
-                      flex items-start gap-3 max-w-7xl mx-auto">
-        <span className="text-2xl flex-shrink-0" aria-hidden="true">🎯</span>
-        <div>
-          <p className="text-xs font-black text-amber-800">30-Day Satisfaction Guarantee</p>
-          <p className="text-xs text-amber-700 mt-0.5 leading-relaxed">
-            If GasCap Pro doesn&apos;t help you save more than $2.99 in your first month,
-            contact us and we&apos;ll refund your first payment — no questions asked.
-          </p>
+      {/* Guarantee + refund notes */}
+      <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4 max-w-7xl mx-auto">
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3.5 flex items-start gap-3">
+          <span className="text-xl flex-shrink-0" aria-hidden="true">🎯</span>
+          <div>
+            <p className="text-xs font-black text-amber-800">30-Day Money-Back Guarantee <span className="font-normal">(Monthly plan)</span></p>
+            <p className="text-xs text-amber-700 mt-0.5 leading-relaxed">
+              If Pro doesn&apos;t save you more than $2.99 in your first month, email us and we&apos;ll refund your first payment — no questions asked.
+            </p>
+          </div>
+        </div>
+        <div className="bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3.5 flex items-start gap-3">
+          <span className="text-xl flex-shrink-0" aria-hidden="true">🏅</span>
+          <div>
+            <p className="text-xs font-black text-slate-700">Lifetime purchase is final</p>
+            <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
+              The $19.99 Lifetime plan is a one-time, non-refundable purchase. See our{' '}
+              <a href="/terms#billing" className="underline hover:text-slate-700">Terms of Service</a>.
+            </p>
+          </div>
         </div>
       </div>
 

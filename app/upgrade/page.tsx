@@ -337,12 +337,27 @@ function UpgradePageInner() {
 
         </div>
 
-        {/* Safeguard note */}
-        <div className="mt-6 bg-slate-50 border border-slate-200 rounded-2xl p-4">
-          <p className="text-xs font-bold text-slate-600 mb-1">{t.upgrade.safeguardTitle}</p>
-          <p className="text-xs text-slate-500 leading-relaxed">
-            {t.upgrade.safeguardBody}
-          </p>
+        {/* Guarantee + refund notes */}
+        <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3">
+            <span className="text-xl flex-shrink-0">🎯</span>
+            <div>
+              <p className="text-xs font-black text-amber-800">30-Day Money-Back Guarantee <span className="font-normal">(Monthly plan)</span></p>
+              <p className="text-xs text-amber-700 mt-0.5 leading-relaxed">
+                If Pro doesn&apos;t save you more than $2.99 in your first month, email us and we&apos;ll refund your first payment — no questions asked.
+              </p>
+            </div>
+          </div>
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex items-start gap-3">
+            <span className="text-xl flex-shrink-0">🏅</span>
+            <div>
+              <p className="text-xs font-black text-slate-700">Lifetime purchase is final</p>
+              <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
+                The $19.99 Lifetime plan is a one-time, non-refundable purchase. See our{' '}
+                <a href="/terms#billing" className="underline hover:text-slate-700">Terms of Service</a> for details.
+              </p>
+            </div>
+          </div>
         </div>
 
         <p className="text-center text-xs text-slate-400 mt-6">

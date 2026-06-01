@@ -96,6 +96,8 @@ export async function GET(req: Request) {
       referredByName:   u.referredBy ? (codeToName.get(u.referredBy.toUpperCase()) ?? u.referredBy) : null,
       referredUsers,
       stripeCustomerId: u.stripeCustomerId ?? null,
+      stripeInterval:   u.stripeInterval  ?? null,
+      isProTrial:       u.isProTrial      ?? false,
       trialExpiresAt:   u.trialExpiresAt  ?? null,
       pushSubscribed:   subscribedUserIds.has(u.id),
       isTestAccount:        u.isTestAccount,
