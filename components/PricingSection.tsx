@@ -50,7 +50,8 @@ export default function PricingSection() {
   const { t }             = useTranslation();
   const [loading, setLoading] = useState<string | null>(null);
 
-  const userPlan = (session?.user as { plan?: string })?.plan as PlanTier | undefined ?? 'free';
+  const userPlan     = (session?.user as { plan?: string })?.plan as PlanTier | undefined ?? 'free';
+  const userInterval = (session?.user as { stripeInterval?: string | null })?.stripeInterval ?? null;
 
   const FREE_FEATURES = t.pricing.freeFeatures.map((text) => ({ text }));
   const PRO_FEATURES  = t.pricing.proFeatures.map((text, i) => ({ text, highlight: PRO_HIGHLIGHTS[i] }));
@@ -74,7 +75,9 @@ export default function PricingSection() {
     }
   }
 
-  const isPro = !!session && userPlan === 'pro';
+  const isProMonthly  = !!session && userPlan === 'pro' && userInterval !== 'lifetime';
+  const isProLifetime = !!session && userPlan === 'pro' && userInterval === 'lifetime';
+  const isPro         = isProMonthly || isProLifetime; // either paid Pro tier
 
   return (
     <section aria-labelledby="pricing-heading" className="mt-10">
@@ -150,7 +153,7 @@ export default function PricingSection() {
         {/* Pro Monthly */}
         <div className={[
           'relative flex flex-col rounded-3xl p-6 border-2 transition-all shadow-2xl',
-          isPro
+          isProMonthly
             ? 'bg-navy-700 border-green-400 ring-2 ring-green-400'
             : 'bg-navy-700 border-amber-400 scale-[1.02]',
         ].join(' ')}>
@@ -158,9 +161,9 @@ export default function PricingSection() {
           <div className={[
             'absolute -top-3.5 left-1/2 -translate-x-1/2 text-[11px] font-black px-4 py-1',
             'rounded-full uppercase tracking-wider whitespace-nowrap shadow-md',
-            isPro ? 'bg-green-400 text-navy-900' : 'bg-amber-400 text-navy-900',
+            isProMonthly ? 'bg-green-400 text-navy-900' : 'bg-amber-400 text-navy-900',
           ].join(' ')}>
-            {isPro ? t.pricing.currentPlanRibbon : t.pricing.mostPopular}
+            {isProMonthly ? t.pricing.currentPlanRibbon : t.pricing.mostPopular}
           </div>
 
           <div className="mb-4 mt-1">
@@ -178,19 +181,23 @@ export default function PricingSection() {
           <p className="text-xs mb-6 leading-relaxed text-white/60">{t.pricing.billedMonthly}</p>
 
           <button
-            onClick={() => !isPro && handleUpgrade('monthly')}
-            disabled={loading !== null || isPro}
+            onClick={() => !isProMonthly && !isProLifetime && handleUpgrade('monthly')}
+            disabled={loading !== null || isProMonthly || isProLifetime}
             className={`w-full py-3 rounded-2xl text-sm font-black transition-colors mb-6 ${
-              isPro
+              isProMonthly
                 ? 'bg-green-400 text-navy-900 cursor-default'
-                : 'bg-amber-500 text-white hover:bg-amber-400 disabled:opacity-50'
+                : isProLifetime
+                  ? 'bg-white/20 text-white/50 cursor-default'
+                  : 'bg-amber-500 text-white hover:bg-amber-400 disabled:opacity-50'
             }`}
           >
             {loading === 'monthly'
               ? t.pricing.loading
-              : isPro
+              : isProMonthly
                 ? t.pricing.yourCurrentPlan
-                : t.pricing.upgradeToPro}
+                : isProLifetime
+                  ? 'Included in Lifetime'
+                  : t.pricing.upgradeToPro}
           </button>
 
           <div className="border-t border-white/20 mb-5" />
@@ -231,19 +238,21 @@ export default function PricingSection() {
           </p>
 
           <button
-            onClick={() => !isPro && handleUpgrade('lifetime')}
-            disabled={loading !== null || isPro}
+            onClick={() => !isProLifetime && handleUpgrade('lifetime')}
+            disabled={loading !== null || isProLifetime}
             className={`w-full py-3 rounded-2xl text-sm font-black transition-colors mb-6 ${
-              isPro
+              isProLifetime
                 ? 'bg-green-100 text-green-700 cursor-default'
                 : 'bg-teal-500 text-white hover:bg-teal-400 disabled:opacity-50'
             }`}
           >
             {loading === 'lifetime'
               ? t.pricing.loading
-              : isPro
+              : isProLifetime
                 ? t.pricing.yourCurrentPlan
-                : `Get Lifetime — $${PRICING.pro.lifetime}`}
+                : isProMonthly
+                  ? `Upgrade to Lifetime — $${PRICING.pro.lifetime}`
+                  : `Get Lifetime — $${PRICING.pro.lifetime}`}
           </button>
 
           <div className="border-t border-slate-100 mb-5" />

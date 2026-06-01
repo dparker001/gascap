@@ -63,6 +63,11 @@ function UpgradePageInner() {
   const [loading, setLoading] = useState<'pro-monthly' | 'pro-lifetime' | null>(null);
   const [error,   setError]   = useState('');
 
+  const userPlan     = (session?.user as { plan?: string })?.plan ?? 'free';
+  const userInterval = (session?.user as { stripeInterval?: string | null })?.stripeInterval ?? null;
+  const isProMonthly  = !!session && userPlan === 'pro' && userInterval !== 'lifetime';
+  const isProLifetime = !!session && userPlan === 'pro' && userInterval === 'lifetime';
+
   async function handleUpgrade(billing: 'monthly' | 'lifetime') {
     if (!session) { window.location.href = '/signin?next=/upgrade'; return; }
     setLoading(billing === 'lifetime' ? 'pro-lifetime' : 'pro-monthly');
@@ -231,13 +236,22 @@ function UpgradePageInner() {
               Less than a dime a day — cancel anytime
             </p>
             <button
-              onClick={() => handleUpgrade('monthly')}
-              disabled={loading !== null}
-              className="w-full py-3 rounded-2xl bg-amber-500 hover:bg-amber-400 text-white
-                         font-black text-sm disabled:opacity-50 transition-colors mb-5">
+              onClick={() => !isProMonthly && !isProLifetime && handleUpgrade('monthly')}
+              disabled={loading !== null || isProMonthly || isProLifetime}
+              className={`w-full py-3 rounded-2xl font-black text-sm transition-colors mb-5 ${
+                isProMonthly
+                  ? 'bg-green-500 text-white cursor-default'
+                  : isProLifetime
+                    ? 'bg-slate-200 text-slate-400 cursor-default'
+                    : 'bg-amber-500 hover:bg-amber-400 text-white disabled:opacity-50'
+              }`}>
               {loading === 'pro-monthly'
                 ? t.upgrade.redirecting
-                : session ? `Upgrade to Pro — $${PRICING.pro.monthly}/mo` : t.upgrade.signInToUp}
+                : isProMonthly
+                  ? '✓ Your current plan'
+                  : isProLifetime
+                    ? 'Included in Lifetime'
+                    : session ? `Upgrade to Pro — $${PRICING.pro.monthly}/mo` : t.upgrade.signInToUp}
             </button>
             <div className="border-t border-slate-100 mb-5" />
             <ul className="space-y-2 flex-1">
@@ -271,13 +285,20 @@ function UpgradePageInner() {
               One payment — own GasCap™ Pro forever
             </p>
             <button
-              onClick={() => handleUpgrade('lifetime')}
-              disabled={loading !== null}
-              className="w-full py-3 rounded-2xl bg-teal-400 hover:bg-teal-300 text-navy-900
-                         font-black text-sm disabled:opacity-50 transition-colors mb-5">
+              onClick={() => !isProLifetime && handleUpgrade('lifetime')}
+              disabled={loading !== null || isProLifetime}
+              className={`w-full py-3 rounded-2xl font-black text-sm transition-colors mb-5 ${
+                isProLifetime
+                  ? 'bg-green-400 text-navy-900 cursor-default'
+                  : 'bg-teal-400 hover:bg-teal-300 text-navy-900 disabled:opacity-50'
+              }`}>
               {loading === 'pro-lifetime'
                 ? t.upgrade.redirecting
-                : session ? `Get Lifetime — $${PRICING.pro.lifetime}` : t.upgrade.signInToUp}
+                : isProLifetime
+                  ? '✓ Your current plan'
+                  : isProMonthly
+                    ? `Upgrade to Lifetime — $${PRICING.pro.lifetime}`
+                    : session ? `Get Lifetime — $${PRICING.pro.lifetime}` : t.upgrade.signInToUp}
             </button>
             <div className="border-t border-white/10 mb-5" />
             {/* Everything in Pro */}

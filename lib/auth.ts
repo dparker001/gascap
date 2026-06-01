@@ -139,6 +139,7 @@ export const authOptions: NextAuthOptions = {
         token.isProTrial      = (user as { isProTrial?: boolean }).isProTrial ?? false;
         token.trialExpiresAt  = (user as { trialExpiresAt?: string }).trialExpiresAt ?? null;
         token.createdAt       = (user as { createdAt?: string }).createdAt ?? null;
+        token.stripeInterval  = (user as { stripeInterval?: string }).stripeInterval ?? null;
       }
       // Re-fetch plan on session refresh so upgrades are reflected immediately
       if (trigger === 'update' || (!user && token.id)) {
@@ -149,18 +150,20 @@ export const authOptions: NextAuthOptions = {
           token.isProTrial     = fresh.isProTrial     ?? false;
           token.trialExpiresAt = fresh.trialExpiresAt ?? null;
           token.createdAt      = fresh.createdAt      ?? null;
+          token.stripeInterval = fresh.stripeInterval ?? null;
         }
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
-        (session.user as { id?: string; plan?: string }).id              = token.id            as string;
-        (session.user as { id?: string; plan?: string }).plan            = token.plan          as string ?? 'free';
-        (session.user as { emailVerified?: boolean }).emailVerified      = token.emailVerified  as boolean ?? false;
-        (session.user as { isProTrial?: boolean }).isProTrial            = token.isProTrial     as boolean ?? false;
-        (session.user as { trialExpiresAt?: string | null }).trialExpiresAt = token.trialExpiresAt as string | null ?? null;
-        (session.user as { createdAt?: string | null }).createdAt        = token.createdAt     as string | null ?? null;
+        (session.user as { id?: string; plan?: string }).id                    = token.id            as string;
+        (session.user as { id?: string; plan?: string }).plan                  = token.plan          as string ?? 'free';
+        (session.user as { emailVerified?: boolean }).emailVerified            = token.emailVerified  as boolean ?? false;
+        (session.user as { isProTrial?: boolean }).isProTrial                  = token.isProTrial     as boolean ?? false;
+        (session.user as { trialExpiresAt?: string | null }).trialExpiresAt   = token.trialExpiresAt as string | null ?? null;
+        (session.user as { createdAt?: string | null }).createdAt             = token.createdAt     as string | null ?? null;
+        (session.user as { stripeInterval?: string | null }).stripeInterval   = token.stripeInterval as string | null ?? null;
       }
       return session;
     },
