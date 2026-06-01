@@ -80,13 +80,15 @@ export default function PricingSection() {
     <section aria-labelledby="pricing-heading" className="mt-10">
 
       {/* Heading */}
-      <h2 id="pricing-heading" className="section-eyebrow">{t.pricing.heading}</h2>
-      <p className="text-center text-slate-500 text-sm mb-8 -mt-2 leading-relaxed">
+      <h2 id="pricing-heading" className="text-center text-2xl font-black text-navy-700 mb-2">
+        {t.pricing.heading}
+      </h2>
+      <p className="text-center text-slate-500 text-sm mb-8 leading-relaxed">
         {t.pricing.sub}
       </p>
 
       {/* ── 3-panel cards ──────────────────────────────────────────────── */}
-      <div className="grid gap-4 md:grid-cols-3 md:items-stretch max-w-6xl mx-auto">
+      <div className="grid gap-4 md:grid-cols-3 md:items-stretch max-w-7xl mx-auto">
 
         {/* Free */}
         <div className={[
@@ -217,7 +219,7 @@ export default function PricingSection() {
             <h3 className="font-black text-lg text-navy-700">Pro Lifetime</h3>
             <span className="inline-block mt-1 text-[10px] font-bold px-2 py-0.5 rounded-full
                              bg-teal-100 text-teal-700 whitespace-nowrap">
-              {t.pricing.billedOnce ?? 'One-time payment'}
+              One-time payment
             </span>
           </div>
 
@@ -279,7 +281,7 @@ export default function PricingSection() {
 
       {/* 30-day money-back guarantee */}
       <div className="mt-6 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3.5
-                      flex items-start gap-3 max-w-6xl mx-auto">
+                      flex items-start gap-3 max-w-7xl mx-auto">
         <span className="text-2xl flex-shrink-0" aria-hidden="true">🎯</span>
         <div>
           <p className="text-xs font-black text-amber-800">30-Day Satisfaction Guarantee</p>
