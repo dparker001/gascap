@@ -5,40 +5,39 @@ import { useSearchParams, useRouter } from 'next/navigation';
 
 // ── Per-plan content ────────────────────────────────────────────────────────
 
+const PRO_FEATURES = [
+  '🚗  Unlimited saved vehicles',
+  '🔍  VIN photo scan — auto-decode any vehicle',
+  '📊  Fill-up history & MPG tracking',
+  '🧾  Receipt photo scan (AI-powered)',
+  '🔮  Smart Fill-Up Optimizer',
+  '🔔  Gas Price Drop Alerts',
+  '🎁  Monthly gas card giveaway entries',
+  '🤖  AI Fuel Advisor',
+];
+
+const LIFETIME_EXCLUSIVES = [
+  '⭐  2× giveaway entries every month',
+  '🛡️  Streak Shield — 1 grace day/month',
+  '🏅  Lifetime Member badge',
+];
+
 const PLANS = {
   'pro-monthly': {
     headline:   "You're Pro! 🎉",
     label:      'GasCap™ Pro',
     color:      'amber',
     intro:      'Your Pro subscription is active. Here\'s what\'s now unlocked:',
-    perks: [
-      '🚗  Unlimited saved vehicles',
-      '🔍  VIN photo scan — auto-decode any vehicle',
-      '📊  Fill-up history & MPG tracking',
-      '🧾  Receipt photo scan (AI-powered)',
-      '🔮  Smart Fill-Up Optimizer',
-      '🔔  Gas Price Drop Alerts',
-      '🎁  Monthly gas card giveaway entries',
-      '🤖  AI Fuel Advisor',
-    ],
+    perks:      PRO_FEATURES,
+    exclusives: null,
   },
   'pro-lifetime': {
     headline:   "You're a Lifetime Member! 🏅",
     label:      'GasCap™ Pro Lifetime',
     color:      'teal',
-    intro:      'One payment. Pro forever. Here\'s everything you\'ve unlocked:',
-    perks: [
-      '🚗  Unlimited saved vehicles',
-      '🔍  VIN photo scan — auto-decode any vehicle',
-      '📊  Fill-up history & MPG tracking',
-      '🧾  Receipt photo scan (AI-powered)',
-      '🔮  Smart Fill-Up Optimizer',
-      '🔔  Gas Price Drop Alerts',
-      '🤖  AI Fuel Advisor',
-      '⭐  2× giveaway entries every month',
-      '🛡️  Streak Shield — 1 grace day/month',
-      '🏅  Lifetime Member badge',
-    ],
+    intro:      'One payment. Pro forever. Everything below is now unlocked:',
+    perks:      PRO_FEATURES,
+    exclusives: LIFETIME_EXCLUSIVES,
   },
   'fleet': {
     headline:   "You're Fleet! 🎉",
@@ -53,6 +52,7 @@ const PLANS = {
       '📥  Bulk vehicle import',
       '🎁  Monthly gas card giveaway entries',
     ],
+    exclusives: null,
   },
 } as const;
 
@@ -129,14 +129,30 @@ function SuccessContent() {
         {' '}{plan.intro}
       </p>
 
-      {/* Perk list */}
+      {/* Pro features */}
       <ul className="text-left space-y-2">
         {plan.perks.map((perk) => (
-          <li key={perk} className="flex items-start gap-2 text-sm text-slate-700 leading-snug">
-            {perk}
-          </li>
+          <li key={perk} className="text-sm text-slate-700 leading-snug">{perk}</li>
         ))}
       </ul>
+
+      {/* Lifetime exclusives — visually distinct section */}
+      {plan.exclusives && (
+        <>
+          <div className="flex items-center gap-2 py-1">
+            <div className="flex-1 border-t border-teal-200" />
+            <span className="text-[10px] font-black text-teal-600 uppercase tracking-widest whitespace-nowrap">
+              Lifetime exclusives
+            </span>
+            <div className="flex-1 border-t border-teal-200" />
+          </div>
+          <ul className="text-left space-y-2">
+            {plan.exclusives.map((perk) => (
+              <li key={perk} className="text-sm text-teal-700 font-semibold leading-snug">{perk}</li>
+            ))}
+          </ul>
+        </>
+      )}
 
       {sessionId && (
         <p className="text-[11px] text-slate-300 font-mono break-all">
