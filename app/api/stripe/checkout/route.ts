@@ -40,7 +40,7 @@ export async function POST(req: Request) {
 
   const body = await req.json() as {
     tier?:    'pro' | 'fleet';
-    billing?: 'monthly' | 'annual' | 'lifetime';
+    billing?: 'monthly' | 'lifetime';
     priceId?: string; // legacy direct price ID override
     coupon?:  string; // Stripe coupon ID to pre-apply (e.g. from C4 promo email)
   };

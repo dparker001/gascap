@@ -115,7 +115,7 @@ export function upgradeConfirmEmailHtml(
           ['📊', 'MPG + spending charts', 'Full history, trends, and predictive drop alerts.'],
           ['🎯', 'Budget + alerts',        'Monthly fuel budget tracker with overspend notifications.'],
           ['🔧', 'Maintenance reminders', 'Oil changes, tire rotations, and service intervals.'],
-          ['🚗', 'Your Garage — up to 3 vehicles','Save every car you drive. Switch between them in one tap.'],
+          ['🚗', 'Your Garage — Unlimited Vehicles','Save every car you drive. Switch between them in one tap.'],
           ['📄', 'Monthly PDF reports',   'Expense-report ready fuel summaries in one tap.'],
         ]).map(([icon, title, body]) => `
           <tr>
@@ -325,6 +325,7 @@ export const paidSpotlightEmailText = (name: string) =>
   `Hi ${name.split(' ')[0]}, two months in. The most underused Pro feature: the AI Fuel Advisor knows your vehicle, fill-up history, MPG trend, and budget — ask it anything. "Why did my MPG drop?" "How much to drive to Atlanta?" "Am I on track this month?" Open the app: ${BASE_URL}`;
 
 // ── P4 — Annual Renewal Reminder (annual only, day 330) ──────────────────────
+// P4 — Annual renewal reminder (DEAD CODE — no annual plan exists; safe to leave as-is or remove later)
 
 export function renewalReminderEmailHtml(name: string, userId: string, _tier: 'pro' | 'fleet' = 'pro'): string {
   const first      = name.split(' ')[0];

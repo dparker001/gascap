@@ -83,14 +83,15 @@ export const authOptions: NextAuthOptions = {
             await recordLogin(dbUser.id);
 
             // Welcome drip email (fire-and-forget)
-            const verifyUrl = `${process.env.NEXTAUTH_URL ?? 'https://www.gascap.app'}/`;
+            // Google users have verified emails — omit verifyUrl so the verify
+            // block does not render in the D1 email.
             ;(async () => {
               if (await hasEmailBeenSent(dbUser!.id, 'trial-d1')) return;
               await sendCampaignEmail(1, {
-                id:        dbUser!.id,
-                name:      dbUser!.name,
-                email:     dbUser!.email,
-                verifyUrl,
+                id:    dbUser!.id,
+                name:  dbUser!.name,
+                email: dbUser!.email,
+                // verifyUrl intentionally omitted: Google accounts are pre-verified
               });
             })().catch((e) => console.error('[GasCap] Google welcome drip failed:', e));
 

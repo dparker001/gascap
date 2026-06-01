@@ -3,7 +3,7 @@
  *
  * Daily cron that fires engagement emails for paying Pro and Fleet subscribers.
  *
- * Pro track:   S1 day 45 · S2 day 75 · S3 day 105 · S4 day 165 · S5 day 335 (annual only)
+ * Pro track:   S1 day 45 · S2 day 75 · S3 day 105 · S4 day 165 · S5 day 335 (all paid Pro)
  * Fleet track: F1 day 14 · F2 day 45 · F3 day 105 · F4 day 180
  *
  * Secured with CRON_SECRET. Run once daily.
@@ -20,7 +20,8 @@ const PRO_STEPS = [
   { step: 2, minDays: 75,  annualOnly: false, label: 'S2 day-75 habit reinforcement' },
   { step: 3, minDays: 105, annualOnly: false, label: 'S3 day-105 referral nudge'     },
   { step: 4, minDays: 165, annualOnly: false, label: 'S4 day-165 loyalty milestone'  },
-  { step: 5, minDays: 335, annualOnly: true,  label: 'S5 day-335 annual renewal prep'},
+  // annualOnly removed: no annual plan exists; S5 fires for all paid Pro users (monthly + lifetime)
+  { step: 5, minDays: 335, annualOnly: false, label: 'S5 day-335 loyalty milestone'  },
 ];
 
 const FLEET_STEPS = [

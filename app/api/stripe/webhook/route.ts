@@ -61,6 +61,10 @@ export async function POST(req: Request) {
       const subscriptionId = typeof session.subscription === 'string' ? session.subscription : null;
       const planTier       = (session.metadata?.tier ?? 'pro') as 'pro' | 'fleet';
 
+      // Fetch BEFORE setUserPlan so we can check isProTrial before it's cleared
+      const userBeforeUpgrade = await findById(userId);
+      const wasOnTrial = userBeforeUpgrade?.isProTrial ?? false;
+
       await setUserPlan(userId, planTier, {
         customerId:     customerId     ?? undefined,
         subscriptionId: subscriptionId ?? undefined,
@@ -72,8 +76,7 @@ export async function POST(req: Request) {
       const stripePhone = (session as Stripe.Checkout.Session & { customer_details?: { phone?: string | null } })
         ?.customer_details?.phone;
       if (stripePhone) {
-        const existingUser = await findById(userId);
-        if (existingUser && !existingUser.phone) {
+        if (userBeforeUpgrade && !userBeforeUpgrade.phone) {
           updateUserProfile(userId, { phone: stripePhone })
             .catch((e) => console.error('[GasCap] Stripe phone backfill failed:', e));
         }
@@ -109,8 +112,9 @@ export async function POST(req: Request) {
           text: `GasCap upgrade: ${upgradedUser.name} <${upgradedUser.email}> → ${tierLabel}`,
         });
 
-        // Credit early-upgrade bonus if they were on a Pro trial at upgrade time
-        if (upgradedUser.isProTrial) {
+        // Credit early-upgrade bonus if they were on a Pro trial at upgrade time.
+        // Use wasOnTrial (captured before setUserPlan cleared isProTrial).
+        if (wasOnTrial) {
           await setEarlyUpgradeBonus(userId, 10);
         }
 
@@ -269,7 +273,7 @@ export async function POST(req: Request) {
             name:     user.name,
             email:    user.email,
             tier:     'pro', // already reverted; tier label is cosmetic
-            interval: (user.stripeInterval ?? 'monthly') as 'monthly' | 'annual',
+            interval: (user.stripeInterval ?? 'monthly') as 'monthly' | 'annual' | 'lifetime',
           }).catch((err) => console.error('[paid-campaign] P5 send failed:', err));
         }
 

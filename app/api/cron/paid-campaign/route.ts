@@ -59,7 +59,7 @@ export async function GET(req: Request) {
           name:     fresh.name,
           email:    fresh.email,
           tier:     fresh.plan === 'fleet' ? 'fleet' : 'pro',
-          interval: (fresh.stripeInterval ?? 'monthly') as 'monthly' | 'annual',
+          interval: (fresh.stripeInterval ?? 'monthly') as 'monthly' | 'annual' | 'lifetime',
         });
         await advancePaidCampaignStep(fresh.id, step);
         sent++;

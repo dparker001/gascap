@@ -170,8 +170,8 @@ export function welcomeEmailHtml(name: string, userId: string, verifyUrl?: strin
           <tr>
             <td style="padding:6px 0;vertical-align:top;width:28px;font-size:16px;">🚗</td>
             <td style="padding:6px 0 6px 10px;vertical-align:top;color:#fff;">
-              <p style="margin:0;font-size:13px;font-weight:700;">Your Garage — Up to 3 Vehicles</p>
-              <p style="margin:0;font-size:12px;color:rgba(255,255,255,.65);line-height:1.5;">Save up to 3 cars in your personal garage. Switch between them in one tap.</p>
+              <p style="margin:0;font-size:13px;font-weight:700;">Your Garage — Unlimited Vehicles</p>
+              <p style="margin:0;font-size:12px;color:rgba(255,255,255,.65);line-height:1.5;">Save all your vehicles in your personal garage. Switch between them in one tap.</p>
             </td>
           </tr>
           <tr>
@@ -591,7 +591,7 @@ export function lastCallEmailHtml(name: string, userId: string): string {
         ${featureRow('📊', 'Full MPG + spending charts', 'Trends, history, and predictive alerts across every vehicle.')}
         ${featureRow('🎯', 'Budget + overspend alerts', 'Know when you\'re about to blow your fuel budget before it happens.')}
         ${featureRow('🔧', 'Maintenance reminders', 'Oil change, tire rotation, and service intervals — never forget one.')}
-        ${featureRow('🚗', 'Your Garage — up to 3 vehicles', 'Save every car you drive. Switch between them in one tap.')}
+        ${featureRow('🚗', 'Your Garage — Unlimited Vehicles', 'Save every car you drive. Switch between them in one tap.')}
         ${featureRow('📄', 'Monthly PDF fuel reports', 'Expense-report ready in one tap.')}
       </table>
 

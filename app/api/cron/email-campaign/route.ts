@@ -30,7 +30,7 @@ function d5SmsText(firstName: string): string {
 const STEPS: { step: number; minDays: number; label: string }[] = [
   { step: 2, minDays: 3,  label: 'Day-3 feature deep-dive'    },
   { step: 3, minDays: 10, label: 'Day-10 power user check-in' },
-  { step: 4, minDays: 21, label: 'Day-21 annual deal offer'   },
+  { step: 4, minDays: 21, label: 'Day-21 upgrade nudge'        },
   { step: 5, minDays: 28, label: 'Day-28 final 48 hours'      },
 ];
 

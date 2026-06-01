@@ -1337,6 +1337,12 @@ export default function AdminPage() {
                     <option value="trial-d4">Trial D4</option>
                     <option value="trial-d5">Trial D5</option>
                   </optgroup>
+                  <optgroup label="Conversion Burst">
+                    <option value="trial-c1">Conv C1</option>
+                    <option value="trial-c2">Conv C2</option>
+                    <option value="trial-c3">Conv C3</option>
+                    <option value="trial-c4">Conv C4</option>
+                  </optgroup>
                   <optgroup label="Paid Drip">
                     <option value="paid-p1">Paid P1</option>
                     <option value="paid-p2">Paid P2</option>
