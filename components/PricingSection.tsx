@@ -86,7 +86,7 @@ export default function PricingSection() {
       </p>
 
       {/* ── 3-panel cards ──────────────────────────────────────────────── */}
-      <div className="grid gap-4 md:grid-cols-3 md:items-stretch max-w-5xl mx-auto">
+      <div className="grid gap-4 md:grid-cols-3 md:items-stretch max-w-6xl mx-auto">
 
         {/* Free */}
         <div className={[
@@ -245,16 +245,12 @@ export default function PricingSection() {
           </button>
 
           <div className="border-t border-slate-100 mb-5" />
-          {/* All Pro features */}
+          {/* Everything in Pro */}
           <ul className="space-y-2.5">
-            {PRO_FEATURES.map((f) => (
-              <li key={f.text} className="flex items-start gap-2.5">
-                <Check highlight={f.highlight} />
-                <span className={`text-sm leading-snug ${
-                  f.highlight ? 'text-slate-800 font-semibold' : 'text-slate-500'
-                }`}>{f.text}</span>
-              </li>
-            ))}
+            <li className="flex items-start gap-2.5">
+              <Check />
+              <span className="text-sm leading-snug text-slate-500">Everything in Pro</span>
+            </li>
           </ul>
           {/* Lifetime-exclusive perks */}
           <div className="mt-5 mb-2">
@@ -283,7 +279,7 @@ export default function PricingSection() {
 
       {/* 30-day money-back guarantee */}
       <div className="mt-6 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3.5
-                      flex items-start gap-3 max-w-5xl mx-auto">
+                      flex items-start gap-3 max-w-6xl mx-auto">
         <span className="text-2xl flex-shrink-0" aria-hidden="true">🎯</span>
         <div>
           <p className="text-xs font-black text-amber-800">30-Day Satisfaction Guarantee</p>

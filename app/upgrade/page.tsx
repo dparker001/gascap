@@ -90,7 +90,7 @@ function UpgradePageInner() {
 
       <BrandBar />
 
-      <div className="flex-1 px-4 py-10 max-w-6xl mx-auto w-full">
+      <div className="flex-1 px-4 py-10 max-w-7xl mx-auto w-full">
 
         {/* Heading */}
         <div className="text-center mb-6">
@@ -280,13 +280,11 @@ function UpgradePageInner() {
                 : session ? `Get Lifetime — $${PRICING.pro.lifetime}` : t.upgrade.signInToUp}
             </button>
             <div className="border-t border-white/10 mb-5" />
-            {/* All Pro features */}
+            {/* Everything in Pro */}
             <ul className="space-y-2">
-              {PRO_FEATURES.map((f) => (
-                <li key={f} className="flex items-start gap-2 text-sm text-white/80">
-                  <Check color="teal" /> {f}
-                </li>
-              ))}
+              <li className="flex items-start gap-2 text-sm text-white/80">
+                <Check color="teal" /> Everything in Pro
+              </li>
             </ul>
             {/* Lifetime-exclusive perks */}
             <div className="mt-5 mb-2">
