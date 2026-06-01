@@ -3,11 +3,92 @@
 import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 
+// ── Per-plan content ────────────────────────────────────────────────────────
+
+const PLANS = {
+  'pro-monthly': {
+    headline:   "You're Pro! 🎉",
+    label:      'GasCap™ Pro',
+    color:      'amber',
+    intro:      'Your Pro subscription is active. Here\'s what\'s now unlocked:',
+    perks: [
+      '🚗  Unlimited saved vehicles',
+      '🔍  VIN photo scan — auto-decode any vehicle',
+      '📊  Fill-up history & MPG tracking',
+      '🧾  Receipt photo scan (AI-powered)',
+      '🔮  Smart Fill-Up Optimizer',
+      '🔔  Gas Price Drop Alerts',
+      '🎁  Monthly gas card giveaway entries',
+      '🤖  AI Fuel Advisor',
+    ],
+  },
+  'pro-lifetime': {
+    headline:   "You're a Lifetime Member! 🏅",
+    label:      'GasCap™ Pro Lifetime',
+    color:      'teal',
+    intro:      'One payment. Pro forever. Here\'s everything you\'ve unlocked:',
+    perks: [
+      '🚗  Unlimited saved vehicles',
+      '🔍  VIN photo scan — auto-decode any vehicle',
+      '📊  Fill-up history & MPG tracking',
+      '🧾  Receipt photo scan (AI-powered)',
+      '🔮  Smart Fill-Up Optimizer',
+      '🔔  Gas Price Drop Alerts',
+      '🤖  AI Fuel Advisor',
+      '⭐  2× giveaway entries every month',
+      '🛡️  Streak Shield — 1 grace day/month',
+      '🏅  Lifetime Member badge',
+    ],
+  },
+  'fleet': {
+    headline:   "You're Fleet! 🎉",
+    label:      'GasCap™ Fleet',
+    color:      'blue',
+    intro:      'Your Fleet plan is active. Here\'s what\'s now unlocked:',
+    perks: [
+      '🚗  Unlimited vehicles',
+      '👥  Multi-driver access (up to 10 drivers)',
+      '📊  Fleet cost dashboard',
+      '📄  Annual tax report (PDF)',
+      '📥  Bulk vehicle import',
+      '🎁  Monthly gas card giveaway entries',
+    ],
+  },
+} as const;
+
+type PlanKey = keyof typeof PLANS;
+
+// ── Color helpers ────────────────────────────────────────────────────────────
+
+function ctaClass(color: string) {
+  if (color === 'teal') return 'bg-teal-500 hover:bg-teal-400 text-white';
+  if (color === 'blue') return 'bg-blue-600 hover:bg-blue-500 text-white';
+  return 'bg-amber-500 hover:bg-amber-400 text-white';
+}
+function iconBgClass(color: string) {
+  if (color === 'teal') return 'bg-teal-100';
+  if (color === 'blue') return 'bg-blue-100';
+  return 'bg-amber-100';
+}
+function iconColorClass(color: string) {
+  if (color === 'teal') return 'text-teal-500';
+  if (color === 'blue') return 'text-blue-600';
+  return 'text-amber-500';
+}
+function labelColorClass(color: string) {
+  if (color === 'teal') return 'text-teal-600';
+  if (color === 'blue') return 'text-blue-700';
+  return 'text-amber-600';
+}
+
+// ── Main content ─────────────────────────────────────────────────────────────
+
 function SuccessContent() {
   const params    = useSearchParams();
   const router    = useRouter();
   const sessionId = params.get('session_id');
-  const tier      = params.get('tier') === 'fleet' ? 'fleet' : 'pro';
+  const tier      = params.get('tier') ?? 'pro';
+  const billing   = params.get('billing') ?? 'monthly';
   const [ready, setReady] = useState(false);
 
   // Small delay so webhook has time to fire before we reload session
@@ -16,31 +97,46 @@ function SuccessContent() {
     return () => clearTimeout(t);
   }, []);
 
-  const isFleet   = tier === 'fleet';
-  const planLabel = isFleet ? 'GasCap™ Fleet' : 'GasCap™ Pro';
-  const headline  = isFleet ? "You're Fleet! 🎉" : "You're Pro! 🎉";
-  const perks     = isFleet
-    ? 'Unlimited vehicles, multi-driver access, fleet cost dashboard, and all Fleet features are now unlocked.'
-    : 'Manual vehicle entry, up to 3 saved vehicles, MPG tracking, AI advisor, and all Pro features are now unlocked.';
+  // Resolve which plan content to show
+  let planKey: PlanKey;
+  if (tier === 'fleet') {
+    planKey = 'fleet';
+  } else if (billing === 'lifetime') {
+    planKey = 'pro-lifetime';
+  } else {
+    planKey = 'pro-monthly';
+  }
+
+  const plan = PLANS[planKey];
 
   return (
-    <div className="bg-white rounded-3xl shadow-card p-8 max-w-sm w-full text-center space-y-4">
+    <div className="bg-white rounded-3xl shadow-card p-8 max-w-sm w-full text-center space-y-5">
 
       {/* Animated checkmark */}
-      <div className="w-20 h-20 rounded-full bg-amber-100 flex items-center justify-center mx-auto">
-        <svg className="w-10 h-10 text-amber-500" viewBox="0 0 24 24"
+      <div className={`w-20 h-20 rounded-full ${iconBgClass(plan.color)} flex items-center justify-center mx-auto`}>
+        <svg className={`w-10 h-10 ${iconColorClass(plan.color)}`} viewBox="0 0 24 24"
              fill="none" stroke="currentColor" strokeWidth="2.5"
              strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <polyline points="20 6 9 17 4 12" />
         </svg>
       </div>
 
-      <h1 className="text-2xl font-black text-navy-700">{headline}</h1>
+      <h1 className="text-2xl font-black text-navy-700">{plan.headline}</h1>
 
       <p className="text-slate-500 text-sm leading-relaxed">
-        Welcome to <span className="font-bold text-amber-600">{planLabel}</span>.
-        Your account has been upgraded — {perks}
+        Welcome to{' '}
+        <span className={`font-bold ${labelColorClass(plan.color)}`}>{plan.label}</span>.
+        {' '}{plan.intro}
       </p>
+
+      {/* Perk list */}
+      <ul className="text-left space-y-2">
+        {plan.perks.map((perk) => (
+          <li key={perk} className="flex items-start gap-2 text-sm text-slate-700 leading-snug">
+            {perk}
+          </li>
+        ))}
+      </ul>
 
       {sessionId && (
         <p className="text-[11px] text-slate-300 font-mono break-all">
@@ -49,7 +145,7 @@ function SuccessContent() {
       )}
 
       {/* GasCaptains™ community invite — Pro only */}
-      {!isFleet && (
+      {tier !== 'fleet' && (
         <a
           href={process.env.NEXT_PUBLIC_GASCAPTAINS_URL ?? 'https://www.facebook.com/groups/gascaptains'}
           target="_blank"
@@ -72,8 +168,7 @@ function SuccessContent() {
       {ready ? (
         <button
           onClick={() => router.push('/')}
-          className="block w-full py-3.5 rounded-2xl bg-amber-500 text-white font-black
-                     text-base hover:bg-amber-400 transition-colors text-center"
+          className={`block w-full py-3.5 rounded-2xl font-black text-base transition-colors text-center ${ctaClass(plan.color)}`}
         >
           Go to Calculator →
         </button>
