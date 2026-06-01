@@ -63,10 +63,11 @@ function UpgradePageInner() {
   const [loading, setLoading] = useState<'pro-monthly' | 'pro-lifetime' | null>(null);
   const [error,   setError]   = useState('');
 
-  const userPlan     = (session?.user as { plan?: string })?.plan ?? 'free';
-  const userInterval = (session?.user as { stripeInterval?: string | null })?.stripeInterval ?? null;
-  const isProMonthly  = !!session && userPlan === 'pro' && userInterval !== 'lifetime';
-  const isProLifetime = !!session && userPlan === 'pro' && userInterval === 'lifetime';
+  const userPlan      = (session?.user as { plan?: string })?.plan ?? 'free';
+  const userInterval  = (session?.user as { stripeInterval?: string | null })?.stripeInterval ?? null;
+  const isOnTrial     = !!(session?.user as { isProTrial?: boolean })?.isProTrial;
+  const isProMonthly  = !!session && userPlan === 'pro' && userInterval !== 'lifetime' && !isOnTrial;
+  const isProLifetime = !!session && userPlan === 'pro' && userInterval === 'lifetime' && !isOnTrial;
 
   async function handleUpgrade(billing: 'monthly' | 'lifetime') {
     if (!session) { window.location.href = '/signin?next=/upgrade'; return; }
@@ -251,7 +252,9 @@ function UpgradePageInner() {
                   ? '✓ Your current plan'
                   : isProLifetime
                     ? 'Included in Lifetime'
-                    : session ? `Upgrade to Pro — $${PRICING.pro.monthly}/mo` : t.upgrade.signInToUp}
+                    : isOnTrial
+                      ? `Upgrade from trial — $${PRICING.pro.monthly}/mo`
+                      : session ? `Upgrade to Pro — $${PRICING.pro.monthly}/mo` : t.upgrade.signInToUp}
             </button>
             <div className="border-t border-slate-100 mb-5" />
             <ul className="space-y-2 flex-1">
@@ -298,7 +301,9 @@ function UpgradePageInner() {
                   ? '✓ Your current plan'
                   : isProMonthly
                     ? `Upgrade to Lifetime — $${PRICING.pro.lifetime}`
-                    : session ? `Get Lifetime — $${PRICING.pro.lifetime}` : t.upgrade.signInToUp}
+                    : isOnTrial
+                      ? `Upgrade from trial — $${PRICING.pro.lifetime}`
+                      : session ? `Get Lifetime — $${PRICING.pro.lifetime}` : t.upgrade.signInToUp}
             </button>
             <div className="border-t border-white/10 mb-5" />
             {/* Everything in Pro */}

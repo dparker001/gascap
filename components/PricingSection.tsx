@@ -52,6 +52,7 @@ export default function PricingSection() {
 
   const userPlan     = (session?.user as { plan?: string })?.plan as PlanTier | undefined ?? 'free';
   const userInterval = (session?.user as { stripeInterval?: string | null })?.stripeInterval ?? null;
+  const isOnTrial    = !!(session?.user as { isProTrial?: boolean })?.isProTrial;
 
   const FREE_FEATURES = t.pricing.freeFeatures.map((text) => ({ text }));
   const PRO_FEATURES  = t.pricing.proFeatures.map((text, i) => ({ text, highlight: PRO_HIGHLIGHTS[i] }));
@@ -75,9 +76,9 @@ export default function PricingSection() {
     }
   }
 
-  const isProMonthly  = !!session && userPlan === 'pro' && userInterval !== 'lifetime';
-  const isProLifetime = !!session && userPlan === 'pro' && userInterval === 'lifetime';
-  const isPro         = isProMonthly || isProLifetime; // either paid Pro tier
+  const isProMonthly  = !!session && userPlan === 'pro' && userInterval !== 'lifetime' && !isOnTrial;
+  const isProLifetime = !!session && userPlan === 'pro' && userInterval === 'lifetime' && !isOnTrial;
+  const isPro         = isProMonthly || isProLifetime; // paid Pro (not trial)
 
   return (
     <section aria-labelledby="pricing-heading" className="mt-10">
@@ -197,7 +198,9 @@ export default function PricingSection() {
                 ? t.pricing.yourCurrentPlan
                 : isProLifetime
                   ? 'Included in Lifetime'
-                  : t.pricing.upgradeToPro}
+                  : isOnTrial
+                    ? 'Upgrade from trial — $2.99/mo'
+                    : t.pricing.upgradeToPro}
           </button>
 
           <div className="border-t border-white/20 mb-5" />
@@ -252,7 +255,9 @@ export default function PricingSection() {
                 ? t.pricing.yourCurrentPlan
                 : isProMonthly
                   ? `Upgrade to Lifetime — $${PRICING.pro.lifetime}`
-                  : `Get Lifetime — $${PRICING.pro.lifetime}`}
+                  : isOnTrial
+                    ? `Upgrade from trial — $${PRICING.pro.lifetime}`
+                    : `Get Lifetime — $${PRICING.pro.lifetime}`}
           </button>
 
           <div className="border-t border-slate-100 mb-5" />
