@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 
 // ── Per-plan content ────────────────────────────────────────────────────────
 
+// Full Pro feature list — used on the monthly success page
 const PRO_FEATURES = [
   '🚗  Unlimited saved vehicles',
   '🔍  VIN photo scan — auto-decode any vehicle',
@@ -13,6 +14,17 @@ const PRO_FEATURES = [
   '🔮  Smart Fill-Up Optimizer',
   '🔔  Gas Price Drop Alerts',
   '🎁  Monthly gas card giveaway entries',
+  '🤖  AI Fuel Advisor',
+];
+
+// Lifetime Pro section — giveaway entry omitted since 2× version is in exclusives
+const PRO_FEATURES_LIFETIME = [
+  '🚗  Unlimited saved vehicles',
+  '🔍  VIN photo scan — auto-decode any vehicle',
+  '📊  Fill-up history & MPG tracking',
+  '🧾  Receipt photo scan (AI-powered)',
+  '🔮  Smart Fill-Up Optimizer',
+  '🔔  Gas Price Drop Alerts',
   '🤖  AI Fuel Advisor',
 ];
 
@@ -36,7 +48,7 @@ const PLANS = {
     label:      'GasCap™ Pro Lifetime',
     color:      'teal',
     intro:      'One payment. Pro forever. Everything below is now unlocked:',
-    perks:      PRO_FEATURES,
+    perks:      PRO_FEATURES_LIFETIME,
     exclusives: LIFETIME_EXCLUSIVES,
   },
   'fleet': {
