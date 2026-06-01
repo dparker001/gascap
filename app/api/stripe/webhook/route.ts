@@ -85,9 +85,21 @@ export async function POST(req: Request) {
         updateGhlContactPlan(upgradedUser.email, planTier)
           .catch((err) => console.error('[GHL] plan sync failed:', err));
 
-        const tierLabel = planTier === 'fleet' ? 'Fleet (coming soon)' : 'Pro ($2.99/mo)';
+        // Determine billing interval from metadata
+        const billingMeta = session.metadata?.billing as string | undefined;
+        let interval: 'monthly' | 'annual' | 'lifetime' = 'monthly';
+        if (billingMeta === 'lifetime') {
+          interval = 'lifetime';
+        } else if (billingMeta === 'annual') {
+          interval = 'annual';
+        }
+
+        const tierLabel = interval === 'lifetime'
+          ? 'Pro Lifetime ($19.99 one-time)'
+          : planTier === 'fleet' ? 'Fleet (coming soon)' : 'Pro ($2.99/mo)';
+
         sendAdminMail({
-          subject: `⬆️ GasCap™ upgrade: ${upgradedUser.name} → ${planTier.toUpperCase()}`,
+          subject: `⬆️ GasCap™ upgrade: ${upgradedUser.name} → ${interval === 'lifetime' ? 'PRO LIFETIME' : planTier.toUpperCase()}`,
           html: `<div style="font-family:system-ui,sans-serif;max-width:480px;">
             <p style="font-size:22px;margin:0 0 8px;">⬆️ Plan upgrade</p>
             <p style="font-size:15px;color:#334155;margin:0 0 4px;"><strong>${upgradedUser.name}</strong> upgraded to <strong>${tierLabel}</strong></p>
@@ -96,26 +108,6 @@ export async function POST(req: Request) {
           </div>`,
           text: `GasCap upgrade: ${upgradedUser.name} <${upgradedUser.email}> → ${tierLabel}`,
         });
-
-        // ── P1: Upgrade confirmation email ──────────────────────────────────
-        // Determine billing interval from the checkout session billing param
-        // (stored in metadata) or fall back to price ID matching.
-        const billingMeta = session.metadata?.billing as string | undefined;
-        let interval: 'monthly' | 'annual' | 'lifetime' = 'monthly';
-        if (billingMeta === 'annual') {
-          interval = 'annual';
-        } else if (billingMeta === 'lifetime') {
-          interval = 'lifetime';
-        } else {
-          // No annual prices active — skip the annual price check
-          if (subscriptionId && stripe) {
-            try {
-              const sub     = await stripe.subscriptions.retrieve(subscriptionId);
-              const priceId = sub.items.data[0]?.price?.id ?? '';
-              if (priceId === PRICES.proLifetime) interval = 'lifetime';
-            } catch { /* non-fatal: default stays monthly */ }
-          }
-        }
 
         // Credit early-upgrade bonus if they were on a Pro trial at upgrade time
         if (upgradedUser.isProTrial) {
@@ -138,6 +130,32 @@ export async function POST(req: Request) {
           tier:     planTier,
           interval,
         }).catch((err) => console.error('[paid-campaign] P1 send failed:', err));
+
+        // ── Referral credit for lifetime purchases ─────────────────────────
+        // For subscriptions, referral credit fires on invoice.payment_succeeded.
+        // For lifetime (mode:'payment'), no invoice event fires — handle it here.
+        if (
+          interval === 'lifetime' &&
+          session.payment_status === 'paid' &&
+          upgradedUser.referredBy &&
+          !upgradedUser.referralRewardCredited
+        ) {
+          const credited = await creditVerifiedReferral(upgradedUser.id);
+          if (credited && upgradedUser.referredBy) {
+            const referrer = await findByReferralCode(upgradedUser.referredBy);
+            if (referrer && !referrer.isTestAccount) {
+              const fresh = await findById(referrer.id);
+              const totalCredits = fresh ? getActiveCredits(fresh).length : 1;
+              sendReferralCreditEmail(
+                referrer.id,
+                referrer.email,
+                referrer.name,
+                totalCredits,
+              ).catch((e) => console.error('[GasCap] Lifetime referral credit email failed:', e));
+              console.info(`[GasCap webhook] Lifetime referral credit → ${referrer.email}`);
+            }
+          }
+        }
       }
 
       console.info(`[GasCap webhook] Upgraded user ${userId} to ${planTier}`);

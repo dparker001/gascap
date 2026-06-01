@@ -1,7 +1,9 @@
 /**
  * POST /api/stripe/checkout
  * Creates a Stripe Checkout Session for upgrading to Pro or Fleet.
- * Body: { tier: 'pro' | 'fleet', billing: 'monthly' | 'annual' }
+ * Body: { tier: 'pro' | 'fleet', billing: 'monthly' | 'lifetime' }
+ *
+ * Lifetime uses mode:'payment' (one-time); monthly uses mode:'subscription'.
  */
 import { NextResponse }    from 'next/server';
 import { getServerSession } from 'next-auth';
@@ -90,30 +92,40 @@ export async function POST(req: Request) {
     // hasActiveSub (paid pro) → trialDays stays 0; Stripe handles proration
   }
 
+  const isLifetime = billing === 'lifetime';
+
   const checkoutSession = await stripe.checkout.sessions.create({
-    mode:                    'subscription',
-    payment_method_types:    ['card'],
-    // If a coupon is pre-applied (e.g. from C4 promo email), apply it directly
-    // and hide the manual promo code field — otherwise show the field.
+    // One-time payment for lifetime; recurring subscription for monthly
+    mode:                 isLifetime ? 'payment' : 'subscription',
+    payment_method_types: ['card'],
+    // Coupon / promo codes
     ...(coupon
       ? { discounts: [{ coupon }] }
       : { allow_promotion_codes: true }),
-    phone_number_collection: { enabled: true },   // Collect phone for billing; saved to user record via webhook
-    line_items:              [{ price: priceId, quantity: 1 }],
-    customer_email:          user.stripeCustomerId ? undefined : user.email,
-    customer:                user.stripeCustomerId ?? undefined,
-    success_url:             `${origin}/upgrade/success?session_id={CHECKOUT_SESSION_ID}&tier=${tier}`,
-    cancel_url:              `${origin}/upgrade`,
+    phone_number_collection: { enabled: true },
+    line_items:  [{ price: priceId, quantity: 1 }],
+    customer_email: user.stripeCustomerId ? undefined : user.email,
+    customer:       user.stripeCustomerId ?? undefined,
+    success_url: `${origin}/upgrade/success?session_id={CHECKOUT_SESSION_ID}&tier=${tier}`,
+    cancel_url:  `${origin}/upgrade`,
     metadata: {
       userId,
       userEmail: user.email,
       tier,
       billing,
     },
-    subscription_data: {
-      metadata:                    { userId, tier },
-      ...(trialDays > 0 ? { trial_period_days: trialDays } : {}),
-    },
+    // subscription_data only valid for mode:'subscription'
+    ...(!isLifetime ? {
+      subscription_data: {
+        metadata: { userId, tier },
+        ...(trialDays > 0 ? { trial_period_days: trialDays } : {}),
+      },
+    } : {
+      // payment_intent_data carries metadata for one-time payments
+      payment_intent_data: {
+        metadata: { userId, tier, billing },
+      },
+    }),
   });
 
   return NextResponse.json({ url: checkoutSession.url });
