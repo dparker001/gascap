@@ -1,0 +1,1277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>GasCap™ EV Tab — Layout Preview</title>
+<style>
+  /* ── Reset & base ── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:          #eef1f7;
+    --card:        #ffffff;
+    --border:      #e2e8f0;
+    --text:        #1e293b;
+    --muted:       #64748b;
+    --subtle:      #94a3b8;
+    --amber:       #f59e0b;
+    --amber-lt:    #fef3c7;
+    --amber-dk:    #d97706;
+    --teal:        #1EB68F;
+    --teal-lt:     #d1fae5;
+    --teal-dk:     #005F4A;
+    --navy:        #1e3a5f;
+    --orange:      #FA7109;
+    --shadow:      0 2px 14px rgba(30,58,95,0.08);
+    --shadow-lift: 0 8px 28px rgba(30,58,95,0.13);
+    --r-xl:        1rem;
+    --r-2xl:       1.25rem;
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #0f1f34;
+    color: var(--text);
+    min-height: 100vh;
+    padding: 2rem 1.5rem;
+  }
+
+  /* ── Preview frame layout ── */
+  .preview-wrapper {
+    max-width: 1300px;
+    margin: 0 auto;
+  }
+  .preview-header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+    color: #e2e8f0;
+  }
+  .preview-header h1 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 0.375rem;
+    color: #fff;
+  }
+  .preview-header p {
+    font-size: 0.875rem;
+    color: #94a3b8;
+    margin-bottom: 1rem;
+  }
+  .view-toggle {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+    margin-bottom: 2rem;
+  }
+  .view-btn {
+    padding: 0.5rem 1.25rem;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.15s;
+  }
+  .view-btn.active { background: var(--teal); color: #fff; }
+  .view-btn:not(.active) { background: #253d5a; color: #94a3b8; }
+
+  .views-container {
+    display: flex;
+    gap: 3rem;
+    align-items: flex-start;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  /* ── Device frames ── */
+  .device-frame {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  .device-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #64748b;
+  }
+  .device-shell {
+    border-radius: 2rem;
+    overflow: hidden;
+    box-shadow: 0 0 0 3px #253d5a, 0 20px 60px rgba(0,0,0,0.5);
+  }
+  .device-shell.mobile {
+    width: 390px;
+  }
+  .device-shell.desktop {
+    width: 880px;
+    border-radius: 1rem;
+  }
+
+  /* ── App chrome ── */
+  .app-header {
+    background: var(--teal-dk);
+    color: #fff;
+    padding: 0.875rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .app-logo {
+    font-size: 1.1rem;
+    font-weight: 900;
+    letter-spacing: -0.5px;
+    color: #fff;
+  }
+  .app-logo span { color: var(--orange); }
+  .app-header-right {
+    font-size: 0.75rem;
+    color: rgba(255,255,255,0.65);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  .app-page { background: var(--bg); }
+
+  /* ── Tab bar ── */
+  .tab-bar {
+    display: flex;
+    gap: 0.5rem;
+    padding: 1rem 1rem 0;
+    background: var(--bg);
+  }
+  .tab {
+    flex: 1;
+    padding: 0.65rem 0.5rem;
+    border-radius: 0.875rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-align: center;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.3rem;
+  }
+  .tab.inactive {
+    background: #fff;
+    border-color: var(--border);
+    color: var(--muted);
+  }
+  .tab.ev-active {
+    background: var(--teal-lt);
+    border-color: var(--teal);
+    color: var(--teal-dk);
+  }
+
+  /* ── Form body ── */
+  .form-body {
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.875rem;
+  }
+  .desktop-cols {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    align-items: start;
+  }
+  .desktop-left, .desktop-right {
+    display: flex;
+    flex-direction: column;
+    gap: 0.875rem;
+  }
+
+  /* ── Card ── */
+  .card {
+    background: var(--card);
+    border-radius: var(--r-xl);
+    box-shadow: var(--shadow);
+    padding: 1rem;
+  }
+  .card-section { display: flex; flex-direction: column; gap: 0.875rem; }
+
+  /* ── Field ── */
+  .field { display: flex; flex-direction: column; gap: 0.375rem; }
+  .field-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #475569;
+  }
+  .field-label .unit { font-weight: 400; color: var(--subtle); margin-left: 0.25rem; }
+  .input-field {
+    width: 100%;
+    padding: 0.8rem 1rem;
+    border-radius: 0.75rem;
+    border: 1.5px solid var(--border);
+    background: #fff;
+    font-size: 0.9rem;
+    color: var(--text);
+    appearance: none;
+    -webkit-appearance: none;
+    outline: none;
+  }
+  .input-field:focus { border-color: var(--amber); box-shadow: 0 0 0 3px rgba(245,158,11,0.15); }
+  .input-field::placeholder { color: var(--subtle); }
+
+  /* Vehicle preset dropdown with EV badge */
+  .dropdown-wrap { position: relative; }
+  .dropdown-wrap .badge {
+    position: absolute;
+    right: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: var(--teal);
+    color: #fff;
+    font-size: 0.6rem;
+    font-weight: 700;
+    padding: 0.15rem 0.4rem;
+    border-radius: 999px;
+    pointer-events: none;
+    letter-spacing: 0.04em;
+  }
+  select.input-field { padding-right: 3rem; }
+
+  /* ── Charge range slider row ── */
+  .charge-row {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 0.5rem;
+    align-items: center;
+  }
+  .charge-box {
+    background: #f8fafc;
+    border: 1.5px solid var(--border);
+    border-radius: 0.75rem;
+    padding: 0.7rem 0.875rem;
+    text-align: center;
+  }
+  .charge-box .pct-label {
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: var(--subtle);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 0.2rem;
+  }
+  .charge-box .pct-value {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--text);
+    line-height: 1;
+  }
+  .charge-box .pct-value span { font-size: 0.9rem; font-weight: 600; color: var(--muted); }
+  .charge-box.target .pct-value { color: var(--teal-dk); }
+  .charge-arrow {
+    color: var(--teal);
+    font-size: 1.25rem;
+    text-align: center;
+  }
+
+  /* Range sliders */
+  .slider-row { display: flex; flex-direction: column; gap: 0.25rem; }
+  .slider-labels { display: flex; justify-content: space-between; font-size: 0.65rem; color: var(--subtle); }
+  input[type=range] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 6px;
+    border-radius: 999px;
+    outline: none;
+    cursor: pointer;
+  }
+  input[type=range].from-slider {
+    background: linear-gradient(to right, var(--teal) 35%, #e2e8f0 35%);
+  }
+  input[type=range].to-slider {
+    background: linear-gradient(to right, var(--teal) 80%, #e2e8f0 80%);
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--teal-dk);
+    border: 2px solid #fff;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+  }
+
+  /* Rate row */
+  .rate-row { display: flex; gap: 0.5rem; }
+  .rate-input-wrap { position: relative; flex: 1; }
+  .rate-prefix {
+    position: absolute;
+    left: 0.875rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--muted);
+    pointer-events: none;
+  }
+  .rate-input-wrap .input-field { padding-left: 1.75rem; }
+  .rate-lookup-btn {
+    white-space: nowrap;
+    padding: 0 0.875rem;
+    border-radius: 0.75rem;
+    background: #eff6ff;
+    border: 1.5px solid #bfdbfe;
+    color: #1d4ed8;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+
+  /* Efficiency optional */
+  .optional-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .optional-label .opt-badge {
+    font-size: 0.6rem;
+    font-weight: 700;
+    background: #f1f5f9;
+    color: var(--subtle);
+    border-radius: 999px;
+    padding: 0.1rem 0.45rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  /* Source badge */
+  .source-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-top: 0.4rem;
+    padding: 0.3rem 0.65rem;
+    border-radius: 0.6rem;
+    font-size: 0.68rem;
+    font-weight: 600;
+  }
+  .source-badge.ev {
+    background: var(--teal-lt);
+    color: var(--teal-dk);
+    border: 1px solid #6ee7b7;
+  }
+
+  /* ── Calculate button ── */
+  .btn-calc {
+    width: 100%;
+    padding: 1rem;
+    border-radius: var(--r-xl);
+    background: var(--amber);
+    color: #fff;
+    font-size: 1.05rem;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 4px 16px rgba(245,158,11,0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+
+  /* ── Results card ── */
+  .results-card {
+    background: var(--card);
+    border-radius: var(--r-xl);
+    box-shadow: var(--shadow-lift);
+    overflow: hidden;
+  }
+  .results-header {
+    background: linear-gradient(135deg, var(--teal-dk) 0%, var(--teal) 100%);
+    color: #fff;
+    padding: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .results-header .title {
+    font-size: 0.8rem;
+    font-weight: 700;
+    opacity: 0.85;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+  }
+  .results-header .vehicle-name {
+    font-size: 0.75rem;
+    opacity: 0.7;
+    margin-top: 0.15rem;
+  }
+  .results-header .ev-icon { font-size: 1.5rem; }
+
+  .results-body { padding: 1rem; }
+  .results-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+    margin-bottom: 0.875rem;
+  }
+  .result-tile {
+    background: #f8fafc;
+    border-radius: 0.875rem;
+    padding: 0.875rem;
+    text-align: center;
+  }
+  .result-tile .tile-label {
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: var(--subtle);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 0.3rem;
+  }
+  .result-tile .tile-value {
+    font-size: 1.7rem;
+    font-weight: 800;
+    color: var(--text);
+    line-height: 1;
+  }
+  .result-tile .tile-value.cost { color: var(--teal-dk); }
+  .result-tile .tile-unit {
+    font-size: 0.72rem;
+    font-weight: 500;
+    color: var(--muted);
+    margin-top: 0.2rem;
+  }
+  .result-tile.full-width { grid-column: 1 / -1; }
+
+  /* Charge bar */
+  .charge-bar-wrap { margin-bottom: 0.875rem; }
+  .charge-bar-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--muted);
+    margin-bottom: 0.35rem;
+  }
+  .charge-bar-track {
+    height: 10px;
+    background: #e2e8f0;
+    border-radius: 999px;
+    overflow: hidden;
+    position: relative;
+  }
+  .charge-bar-fill-existing {
+    position: absolute;
+    left: 0; top: 0; height: 100%;
+    width: 35%;
+    background: #94a3b8;
+    border-radius: 999px 0 0 999px;
+  }
+  .charge-bar-fill-added {
+    position: absolute;
+    left: 35%; top: 0; height: 100%;
+    width: 45%;
+    background: linear-gradient(to right, var(--teal), #34d399);
+    border-radius: 0 999px 999px 0;
+  }
+  .charge-bar-markers {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.62rem;
+    color: var(--subtle);
+    margin-top: 0.3rem;
+  }
+
+  /* Charging time estimates */
+  .charge-times {
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: 0.875rem;
+    padding: 0.875rem;
+  }
+  .charge-times .ct-title {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--teal-dk);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 0.6rem;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+  .charge-time-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.8rem;
+    padding: 0.3rem 0;
+    border-bottom: 1px solid #d1fae5;
+  }
+  .charge-time-row:last-child { border-bottom: none; }
+  .charge-time-row .ct-type { color: var(--muted); font-weight: 500; }
+  .charge-time-row .ct-val { font-weight: 700; color: var(--teal-dk); }
+
+  /* PHEV banner */
+  .phev-banner {
+    background: linear-gradient(135deg, #fef3c7, #fde68a);
+    border: 1px solid #fcd34d;
+    border-radius: 0.875rem;
+    padding: 0.75rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    font-size: 0.78rem;
+    color: #78350f;
+    font-weight: 500;
+  }
+  .phev-banner .phev-icon { font-size: 1.1rem; }
+
+  /* ── Annotation callouts ── */
+  .annotations {
+    margin-top: 2.5rem;
+    background: #0f1f34;
+  }
+  .annotation-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1rem;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+  .annotation {
+    background: #1a2d47;
+    border: 1px solid #253d5a;
+    border-radius: 1rem;
+    padding: 1rem 1.125rem;
+  }
+  .annotation .ann-num {
+    width: 1.5rem; height: 1.5rem;
+    background: var(--teal);
+    color: #fff;
+    border-radius: 50%;
+    font-size: 0.75rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 0.5rem;
+  }
+  .annotation h3 {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #e2e8f0;
+    margin-bottom: 0.35rem;
+  }
+  .annotation p {
+    font-size: 0.78rem;
+    color: #64748b;
+    line-height: 1.5;
+  }
+
+  /* Roadmap section */
+  .roadmap {
+    max-width: 900px;
+    margin: 3rem auto 0;
+  }
+  .roadmap h2 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 1.25rem;
+    text-align: center;
+  }
+  .roadmap-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+  }
+  .phase {
+    background: #1a2d47;
+    border: 1px solid #253d5a;
+    border-radius: 1rem;
+    padding: 1.125rem;
+  }
+  .phase-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+  }
+  .phase-num {
+    font-size: 0.7rem;
+    font-weight: 800;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .phase-num.p1 { background: #1d4ed8; color: #fff; }
+  .phase-num.p2 { background: var(--teal); color: #fff; }
+  .phase-num.p3 { background: var(--amber); color: #fff; }
+  .phase-num.p4 { background: var(--orange); color: #fff; }
+  .phase h3 { font-size: 0.875rem; font-weight: 700; color: #e2e8f0; }
+  .phase ul { list-style: none; display: flex; flex-direction: column; gap: 0.35rem; }
+  .phase ul li {
+    font-size: 0.78rem;
+    color: #94a3b8;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.4rem;
+    line-height: 1.4;
+  }
+  .phase ul li::before { content: '→'; color: var(--teal); flex-shrink: 0; font-weight: 700; }
+  .phase .file-tag {
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 0.7rem;
+    background: #0f1f34;
+    color: #7dd3fc;
+    padding: 0.15rem 0.4rem;
+    border-radius: 0.3rem;
+  }
+  .phase .est {
+    margin-top: 0.875rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid #253d5a;
+    font-size: 0.72rem;
+    color: var(--subtle);
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  /* Separator */
+  .section-sep {
+    text-align: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: #334155;
+    margin: 2.5rem 0 1.5rem;
+    position: relative;
+  }
+  .section-sep::before, .section-sep::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    width: 35%;
+    height: 1px;
+    background: #1e3254;
+  }
+  .section-sep::before { left: 0; }
+  .section-sep::after { right: 0; }
+</style>
+</head>
+<body>
+
+<div class="preview-wrapper">
+
+  <div class="preview-header">
+    <h1>⚡ GasCap™ EV Tab — Layout Preview</h1>
+    <p>Exact visual representation of the proposed EV Charge Calculator tab — matching existing GasCap UI patterns</p>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════
+       VIEWS: MOBILE + DESKTOP SIDE BY SIDE
+  ══════════════════════════════════════════════════ -->
+  <div class="views-container">
+
+    <!-- ── MOBILE ── -->
+    <div class="device-frame">
+      <div class="device-label">📱 Mobile — 390px</div>
+      <div class="device-shell mobile">
+
+        <!-- App Header -->
+        <div class="app-header">
+          <div class="app-logo">Gas<span>Cap</span>™</div>
+          <div class="app-header-right">
+            <span>⚡ EV Charge</span>
+          </div>
+        </div>
+
+        <!-- App Page -->
+        <div class="app-page">
+
+          <!-- Tab Bar -->
+          <div class="tab-bar">
+            <div class="tab inactive">🎯 Target Fill</div>
+            <div class="tab inactive">💰 Budget</div>
+            <div class="tab ev-active">⚡ EV</div>
+          </div>
+
+          <!-- Form Body -->
+          <div class="form-body">
+
+            <!-- Vehicle Preset -->
+            <div class="card">
+              <div class="card-section">
+                <div class="field">
+                  <label class="field-label">EV / PHEV Vehicle Preset</label>
+                  <div class="dropdown-wrap">
+                    <select class="input-field">
+                      <option>— Select your vehicle —</option>
+                      <optgroup label="Tesla">
+                        <option selected>Tesla Model 3 Long Range (82 kWh)</option>
+                        <option>Tesla Model 3 Standard (57.5 kWh)</option>
+                        <option>Tesla Model Y Long Range (75 kWh)</option>
+                        <option>Tesla Model S (100 kWh)</option>
+                      </optgroup>
+                      <optgroup label="Other EVs">
+                        <option>Chevy Bolt EV (65 kWh)</option>
+                        <option>Hyundai Ioniq 6 (77.4 kWh)</option>
+                        <option>Kia EV6 (77.4 kWh)</option>
+                        <option>Ford Mustang Mach-E (91 kWh)</option>
+                        <option>VW ID.4 (82 kWh)</option>
+                        <option>Rivian R1T (135 kWh)</option>
+                        <option>Nissan Leaf (40 kWh)</option>
+                      </optgroup>
+                      <optgroup label="Plug-in Hybrids (PHEV)">
+                        <option>Toyota RAV4 Prime (18.1 kWh)</option>
+                        <option>Toyota Prius Prime (8.8 kWh)</option>
+                        <option>Chevy Volt (18.4 kWh)</option>
+                        <option>Ford Escape PHEV (14.4 kWh)</option>
+                        <option>Jeep Wrangler 4xe (17 kWh)</option>
+                      </optgroup>
+                    </select>
+                    <span class="badge">EV</span>
+                  </div>
+                  <span class="source-badge ev">⚡ From preset: Tesla Model 3 Long Range</span>
+                </div>
+
+                <!-- Battery Capacity -->
+                <div class="field">
+                  <label class="field-label">Battery Capacity <span class="unit">(kWh)</span></label>
+                  <input class="input-field" type="number" value="82" placeholder="e.g. 75" />
+                </div>
+              </div>
+            </div>
+
+            <!-- Charge Range -->
+            <div class="card">
+              <div class="card-section">
+                <div class="field-label">Charge Range</div>
+
+                <!-- From / To boxes -->
+                <div class="charge-row">
+                  <div class="charge-box">
+                    <div class="pct-label">Current</div>
+                    <div class="pct-value">35<span>%</span></div>
+                  </div>
+                  <div class="charge-arrow">→</div>
+                  <div class="charge-box target">
+                    <div class="pct-label">Target</div>
+                    <div class="pct-value">80<span>%</span></div>
+                  </div>
+                </div>
+
+                <!-- Sliders -->
+                <div class="slider-row">
+                  <div class="slider-labels"><span>Current charge</span><span>35%</span></div>
+                  <input type="range" class="from-slider" min="0" max="100" value="35" />
+                  <div class="slider-labels" style="margin-top:0.6rem"><span>Target charge</span><span>80%</span></div>
+                  <input type="range" class="to-slider" min="0" max="100" value="80" />
+                </div>
+              </div>
+            </div>
+
+            <!-- Electricity Rate -->
+            <div class="card">
+              <div class="card-section">
+                <div class="field">
+                  <label class="field-label">Electricity Rate <span class="unit">($/kWh)</span></label>
+                  <div class="rate-row">
+                    <div class="rate-input-wrap">
+                      <span class="rate-prefix">$</span>
+                      <input class="input-field" type="number" value="0.15" placeholder="0.15" />
+                    </div>
+                    <button class="rate-lookup-btn">📍 Look Up My Rate</button>
+                  </div>
+                  <div style="font-size:0.68rem;color:#94a3b8;margin-top:0.35rem">Florida avg: $0.13/kWh · US avg: $0.16/kWh</div>
+                </div>
+
+                <!-- Efficiency (optional) -->
+                <div class="field">
+                  <label class="field-label">
+                    <span class="optional-label">
+                      Efficiency
+                      <span class="opt-badge">Optional</span>
+                    </span>
+                    <span class="unit">(mi/kWh — for range estimate)</span>
+                  </label>
+                  <input class="input-field" type="number" value="3.8" placeholder="e.g. 3.8" />
+                </div>
+              </div>
+            </div>
+
+            <!-- Calculate Button -->
+            <button class="btn-calc">⚡ Calculate EV Cost</button>
+
+            <!-- Results Card -->
+            <div class="results-card">
+              <div class="results-header">
+                <div>
+                  <div class="title">⚡ Charge Cost Estimate</div>
+                  <div class="vehicle-name">Tesla Model 3 Long Range · 35% → 80%</div>
+                </div>
+                <div class="ev-icon">🔋</div>
+              </div>
+              <div class="results-body">
+
+                <!-- Main metrics -->
+                <div class="results-grid">
+                  <div class="result-tile">
+                    <div class="tile-label">Energy Needed</div>
+                    <div class="tile-value">36.9</div>
+                    <div class="tile-unit">kilowatt-hours (kWh)</div>
+                  </div>
+                  <div class="result-tile">
+                    <div class="tile-label">Estimated Cost</div>
+                    <div class="tile-value cost">$5.54</div>
+                    <div class="tile-unit">at $0.15/kWh</div>
+                  </div>
+                  <div class="result-tile full-width">
+                    <div class="tile-label">Range Added</div>
+                    <div class="tile-value" style="font-size:1.4rem">~140 miles</div>
+                    <div class="tile-unit">at 3.8 mi/kWh efficiency</div>
+                  </div>
+                </div>
+
+                <!-- Charge bar -->
+                <div class="charge-bar-wrap">
+                  <div class="charge-bar-label">
+                    <span>Battery level</span>
+                    <span style="color:var(--teal-dk);font-weight:700">+45% added</span>
+                  </div>
+                  <div class="charge-bar-track">
+                    <div class="charge-bar-fill-existing"></div>
+                    <div class="charge-bar-fill-added"></div>
+                  </div>
+                  <div class="charge-bar-markers">
+                    <span>0%</span>
+                    <span style="color:#94a3b8">35% (start)</span>
+                    <span style="color:var(--teal-dk)">80% (target)</span>
+                    <span>100%</span>
+                  </div>
+                </div>
+
+                <!-- Charging time estimates -->
+                <div class="charge-times">
+                  <div class="ct-title">⏱ Estimated Charge Time</div>
+                  <div class="charge-time-row">
+                    <span class="ct-type">🏠 Level 1 (120V / 1.4 kW)</span>
+                    <span class="ct-val">~26 hrs</span>
+                  </div>
+                  <div class="charge-time-row">
+                    <span class="ct-type">🔌 Level 2 (240V / 7.2 kW)</span>
+                    <span class="ct-val">~5.1 hrs</span>
+                  </div>
+                  <div class="charge-time-row">
+                    <span class="ct-type">⚡ DC Fast (50 kW)</span>
+                    <span class="ct-val">~44 min</span>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+          </div><!-- /form-body -->
+        </div><!-- /app-page -->
+      </div><!-- /device-shell mobile -->
+    </div><!-- /device-frame mobile -->
+
+    <!-- ── DESKTOP ── -->
+    <div class="device-frame">
+      <div class="device-label">🖥 Desktop — 880px</div>
+      <div class="device-shell desktop">
+
+        <!-- App Header -->
+        <div class="app-header">
+          <div class="app-logo">Gas<span>Cap</span>™</div>
+          <div class="app-header-right">
+            <span>Home</span>
+            <span>My Garage</span>
+            <span>History</span>
+            <span style="color:#fff;font-weight:700">Calculator</span>
+            <span>Help</span>
+          </div>
+        </div>
+
+        <!-- Tab Bar -->
+        <div class="tab-bar" style="padding: 1.25rem 1.25rem 0; gap:0.75rem;">
+          <div class="tab inactive" style="font-size:0.85rem;">🎯 Target Fill</div>
+          <div class="tab inactive" style="font-size:0.85rem;">💰 Budget Fill</div>
+          <div class="tab ev-active" style="font-size:0.85rem;">⚡ EV Charge</div>
+        </div>
+
+        <!-- Two-column form -->
+        <div class="form-body" style="padding:1.25rem;">
+          <div class="desktop-cols">
+
+            <!-- LEFT: Inputs -->
+            <div class="desktop-left">
+
+              <!-- Vehicle Preset -->
+              <div class="card">
+                <div class="card-section">
+                  <div class="field">
+                    <label class="field-label">EV / PHEV Vehicle Preset</label>
+                    <div class="dropdown-wrap">
+                      <select class="input-field" style="font-size:0.85rem">
+                        <option>— Select your vehicle —</option>
+                        <optgroup label="Tesla">
+                          <option selected>Tesla Model 3 Long Range (82 kWh)</option>
+                          <option>Tesla Model Y Long Range (75 kWh)</option>
+                          <option>Tesla Model S (100 kWh)</option>
+                        </optgroup>
+                        <optgroup label="Other EVs">
+                          <option>Chevy Bolt EV (65 kWh)</option>
+                          <option>Hyundai Ioniq 6 (77.4 kWh)</option>
+                          <option>Ford Mustang Mach-E (91 kWh)</option>
+                          <option>Rivian R1T (135 kWh)</option>
+                        </optgroup>
+                        <optgroup label="Plug-in Hybrids (PHEV)">
+                          <option>Toyota RAV4 Prime (18.1 kWh)</option>
+                          <option>Toyota Prius Prime (8.8 kWh)</option>
+                          <option>Chevy Volt (18.4 kWh)</option>
+                        </optgroup>
+                      </select>
+                      <span class="badge">EV</span>
+                    </div>
+                    <span class="source-badge ev">⚡ From preset: Tesla Model 3 Long Range</span>
+                  </div>
+                  <div class="field">
+                    <label class="field-label">Battery Capacity <span class="unit">(kWh)</span></label>
+                    <input class="input-field" type="number" value="82" />
+                  </div>
+                </div>
+              </div>
+
+              <!-- Charge Range -->
+              <div class="card">
+                <div class="card-section">
+                  <div class="field-label">Charge Range</div>
+                  <div class="charge-row">
+                    <div class="charge-box">
+                      <div class="pct-label">Current</div>
+                      <div class="pct-value">35<span>%</span></div>
+                    </div>
+                    <div class="charge-arrow">→</div>
+                    <div class="charge-box target">
+                      <div class="pct-label">Target</div>
+                      <div class="pct-value">80<span>%</span></div>
+                    </div>
+                  </div>
+                  <div class="slider-row">
+                    <div class="slider-labels"><span>Current charge</span><span>35%</span></div>
+                    <input type="range" class="from-slider" min="0" max="100" value="35" />
+                    <div class="slider-labels" style="margin-top:0.6rem"><span>Target charge</span><span>80%</span></div>
+                    <input type="range" class="to-slider" min="0" max="100" value="80" />
+                  </div>
+                </div>
+              </div>
+
+              <!-- Rate + Efficiency -->
+              <div class="card">
+                <div class="card-section">
+                  <div class="field">
+                    <label class="field-label">Electricity Rate <span class="unit">($/kWh)</span></label>
+                    <div class="rate-row">
+                      <div class="rate-input-wrap">
+                        <span class="rate-prefix">$</span>
+                        <input class="input-field" type="number" value="0.15" />
+                      </div>
+                      <button class="rate-lookup-btn">📍 Look Up My Rate</button>
+                    </div>
+                    <div style="font-size:0.68rem;color:#94a3b8;margin-top:0.35rem">Florida avg: $0.13/kWh · US avg: $0.16/kWh</div>
+                  </div>
+                  <div class="field">
+                    <label class="field-label">
+                      <span class="optional-label">Efficiency <span class="opt-badge">Optional</span></span>
+                      <span class="unit">(mi/kWh)</span>
+                    </label>
+                    <input class="input-field" type="number" value="3.8" />
+                  </div>
+                  <button class="btn-calc">⚡ Calculate EV Cost</button>
+                </div>
+              </div>
+
+            </div><!-- /desktop-left -->
+
+            <!-- RIGHT: Results -->
+            <div class="desktop-right">
+              <div class="results-card">
+                <div class="results-header">
+                  <div>
+                    <div class="title">⚡ Charge Cost Estimate</div>
+                    <div class="vehicle-name">Tesla Model 3 Long Range · 35% → 80%</div>
+                  </div>
+                  <div class="ev-icon">🔋</div>
+                </div>
+                <div class="results-body">
+                  <div class="results-grid">
+                    <div class="result-tile">
+                      <div class="tile-label">Energy Needed</div>
+                      <div class="tile-value">36.9</div>
+                      <div class="tile-unit">kilowatt-hours</div>
+                    </div>
+                    <div class="result-tile">
+                      <div class="tile-label">Estimated Cost</div>
+                      <div class="tile-value cost">$5.54</div>
+                      <div class="tile-unit">at $0.15/kWh</div>
+                    </div>
+                    <div class="result-tile full-width">
+                      <div class="tile-label">Range Added</div>
+                      <div class="tile-value" style="font-size:1.4rem">~140 miles</div>
+                      <div class="tile-unit">at 3.8 mi/kWh efficiency</div>
+                    </div>
+                  </div>
+
+                  <div class="charge-bar-wrap">
+                    <div class="charge-bar-label">
+                      <span>Battery level</span>
+                      <span style="color:var(--teal-dk);font-weight:700">+45% added</span>
+                    </div>
+                    <div class="charge-bar-track">
+                      <div class="charge-bar-fill-existing"></div>
+                      <div class="charge-bar-fill-added"></div>
+                    </div>
+                    <div class="charge-bar-markers">
+                      <span>0%</span>
+                      <span style="color:#94a3b8">35%</span>
+                      <span style="color:var(--teal-dk)">80%</span>
+                      <span>100%</span>
+                    </div>
+                  </div>
+
+                  <div class="charge-times">
+                    <div class="ct-title">⏱ Estimated Charge Time</div>
+                    <div class="charge-time-row">
+                      <span class="ct-type">🏠 Level 1 (120V / 1.4 kW)</span>
+                      <span class="ct-val">~26 hrs</span>
+                    </div>
+                    <div class="charge-time-row">
+                      <span class="ct-type">🔌 Level 2 (240V / 7.2 kW)</span>
+                      <span class="ct-val">~5.1 hrs</span>
+                    </div>
+                    <div class="charge-time-row">
+                      <span class="ct-type">⚡ DC Fast (50 kW)</span>
+                      <span class="ct-val">~44 min</span>
+                    </div>
+                  </div>
+
+                  <!-- Comparison footnote on desktop -->
+                  <div style="margin-top:0.875rem;padding:0.75rem;background:#f8fafc;border-radius:0.75rem;font-size:0.75rem;color:#64748b;line-height:1.5;">
+                    💡 <strong style="color:#1e293b">vs. equivalent gasoline trip:</strong> A 140-mile gasoline trip in a 30 MPG car at $3.40/gal costs ~<strong style="color:#dc2626">$15.87</strong>. EV cost is <strong style="color:var(--teal-dk)">65% cheaper</strong> at $0.15/kWh.
+                  </div>
+                </div>
+              </div>
+
+              <!-- PHEV notice (shown when PHEV preset selected) -->
+              <div class="phev-banner" style="margin-top:0.875rem;">
+                <span class="phev-icon">⚡🛢</span>
+                <div>
+                  <strong>Plug-in Hybrid selected.</strong> Use this tab for electric range cost — switch to Target Fill for gasoline cost.
+                </div>
+              </div>
+
+            </div><!-- /desktop-right -->
+          </div><!-- /desktop-cols -->
+        </div><!-- /form-body desktop -->
+
+      </div><!-- /device-shell desktop -->
+    </div><!-- /device-frame desktop -->
+
+  </div><!-- /views-container -->
+
+
+  <!-- ══════════════════════════════════════════════════
+       ANNOTATIONS
+  ══════════════════════════════════════════════════ -->
+  <div class="section-sep">Design Decisions</div>
+
+  <div class="annotation-grid">
+    <div class="annotation">
+      <div class="ann-num">1</div>
+      <h3>EV/PHEV Preset Dropdown</h3>
+      <p>Grouped by Tesla, Other EVs, and PHEVs. Selecting a preset auto-fills battery kWh — identical pattern to the existing TankPresets component. Garage vehicles with a saved kWh field will also appear here.</p>
+    </div>
+    <div class="annotation">
+      <div class="ann-num">2</div>
+      <h3>Dual-Slider Charge Range</h3>
+      <p>"Current %" and "Target %" sliders replace the single fuel-level gauge. Matches how EV drivers naturally think: "I'm at 35%, I want to get to 80%." Number boxes show live values above sliders.</p>
+    </div>
+    <div class="annotation">
+      <div class="ann-num">3</div>
+      <h3>Electricity Rate + Auto-Lookup</h3>
+      <p>Calls the same EIA API used for gas prices but hits the electricity retail endpoint. Shows state average as a hint below the field. User can override manually.</p>
+    </div>
+    <div class="annotation">
+      <div class="ann-num">4</div>
+      <h3>Efficiency Field (Optional)</h3>
+      <p>If the user enters mi/kWh, the results card shows "Range Added." If skipped, only kWh needed + cost are shown. Keeps the form lightweight for users who just want cost.</p>
+    </div>
+    <div class="annotation">
+      <div class="ann-num">5</div>
+      <h3>Charging Time Estimates</h3>
+      <p>Three tiers: Level 1 (1.4 kW), Level 2 (7.2 kW default), and DC Fast (50 kW). Calculated from kWh needed ÷ charger power. Level 2 kW is user-adjustable in a future iteration.</p>
+    </div>
+    <div class="annotation">
+      <div class="ann-num">6</div>
+      <h3>Gasoline Comparison (Desktop)</h3>
+      <p>Desktop results card includes an inline comparison: same distance in a 30 MPG gasoline car at current local gas price. Quantifies EV savings in dollars — great for social sharing.</p>
+    </div>
+    <div class="annotation">
+      <div class="ann-num">7</div>
+      <h3>PHEV Smart Banner</h3>
+      <p>When a PHEV preset is selected (RAV4 Prime, Volt, etc.), a banner appears prompting the user to use Target Fill for gasoline cost. Prevents confusion about partial EV range.</p>
+    </div>
+    <div class="annotation">
+      <div class="ann-num">8</div>
+      <h3>Teal Accent = Electric</h3>
+      <p>All EV-specific UI uses the existing brand teal (#1EB68F / #005F4A) instead of amber. This creates an instant visual language: amber = gas, teal = electric. No new colors needed.</p>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════════════
+       EXACT BUILD ROADMAP
+  ══════════════════════════════════════════════════ -->
+  <div class="section-sep" style="margin-top:3rem;">Exact Build Roadmap</div>
+
+  <div class="roadmap">
+    <div class="roadmap-grid">
+
+      <div class="phase">
+        <div class="phase-header">
+          <span class="phase-num p1">Phase 1</span>
+          <h3>Math Engine</h3>
+        </div>
+        <ul>
+          <li><span class="file-tag">lib/calculations.ts</span> — add <code style="color:#7dd3fc;font-size:0.72rem">calcEvCharge()</code> and <code style="color:#7dd3fc;font-size:0.72rem">calcEvBudget()</code></li>
+          <li>Inputs: batteryKwh, currentPct, targetPct, pricePerKwh, efficiencyMiKwh?</li>
+          <li>Outputs: kWhNeeded, cost, rangeAdded?, chargeTimesObj</li>
+          <li>Pure functions, no side effects — same pattern as calcTargetFill()</li>
+        </ul>
+        <div class="est">⏱ ~1 hour</div>
+      </div>
+
+      <div class="phase">
+        <div class="phase-header">
+          <span class="phase-num p1">Phase 2</span>
+          <h3>EV Presets</h3>
+        </div>
+        <ul>
+          <li><span class="file-tag">lib/evPresets.ts</span> — new file with typed preset array</li>
+          <li>Tesla (3, Y, S, X, Cybertruck), Bolt, Leaf, Mach-E, ID.4, Ioniq 6, EV6, Rivian R1T/R1S, BMW i4</li>
+          <li>PHEV section: RAV4 Prime, Prius Prime, Volt, Escape PHEV, Wrangler 4xe</li>
+          <li>Each entry: label, batteryKwh, defaultEfficiency, isPHEV boolean</li>
+        </ul>
+        <div class="est">⏱ ~30 min</div>
+      </div>
+
+      <div class="phase">
+        <div class="phase-header">
+          <span class="phase-num p2">Phase 3</span>
+          <h3>Electricity Rate API</h3>
+        </div>
+        <ul>
+          <li><span class="file-tag">app/api/electricity-price/route.ts</span> — new route</li>
+          <li>EIA v2 electricity endpoint: <code style="color:#7dd3fc;font-size:0.65rem">api.eia.gov/v2/electricity/retail-sales/data/</code></li>
+          <li>Same EIA_API_KEY env var (no new keys needed)</li>
+          <li>Returns state avg + US avg $/kWh</li>
+          <li>Caches result for 24 hrs to stay under EIA rate limits</li>
+        </ul>
+        <div class="est">⏱ ~1 hour</div>
+      </div>
+
+      <div class="phase">
+        <div class="phase-header">
+          <span class="phase-num p2">Phase 4</span>
+          <h3>EV Form Component</h3>
+        </div>
+        <ul>
+          <li><span class="file-tag">components/EvCalculatorForm.tsx</span> — new component</li>
+          <li>Vehicle preset dropdown (EV + PHEV groups)</li>
+          <li>Battery kWh input with preset auto-fill</li>
+          <li>Dual charge sliders: currentPct + targetPct</li>
+          <li>Electricity rate input + 📍 lookup button</li>
+          <li>Efficiency field (optional)</li>
+          <li>PHEV banner (conditional on isPHEV preset)</li>
+        </ul>
+        <div class="est">⏱ ~3 hours</div>
+      </div>
+
+      <div class="phase">
+        <div class="phase-header">
+          <span class="phase-num p3">Phase 5</span>
+          <h3>Results Display</h3>
+        </div>
+        <ul>
+          <li>Results card inside EvCalculatorForm</li>
+          <li>kWh needed, cost, range added (if efficiency provided)</li>
+          <li>Animated charge bar (existing → target fill)</li>
+          <li>Charging time grid: L1 / L2 / DC Fast</li>
+          <li>Desktop: gasoline comparison footnote</li>
+          <li>Results use teal palette (not amber) for EV branding</li>
+        </ul>
+        <div class="est">⏱ ~2 hours</div>
+      </div>
+
+      <div class="phase">
+        <div class="phase-header">
+          <span class="phase-num p3">Phase 6</span>
+          <h3>Tab Integration</h3>
+        </div>
+        <ul>
+          <li><span class="file-tag">components/CalculatorTabs.tsx</span> — add 'ev' to CalcTab type</li>
+          <li>Add ⚡ EV tab pill between Budget and existing tabs</li>
+          <li>Conditionally render EvCalculatorForm when tab === 'ev'</li>
+          <li>Persist selected tab to localStorage (existing pattern)</li>
+          <li>EV tab uses teal active state instead of amber</li>
+        </ul>
+        <div class="est">⏱ ~1 hour</div>
+      </div>
+
+      <div class="phase">
+        <div class="phase-header">
+          <span class="phase-num p4">Phase 7</span>
+          <h3>Translations</h3>
+        </div>
+        <ul>
+          <li><span class="file-tag">lib/translations.ts</span> — new ev block</li>
+          <li>All label strings in EN + ES</li>
+          <li>Spanish: "Tasa de electricidad", "Carga actual", "Carga objetivo", etc.</li>
+          <li>Follow existing t.xxx pattern used in TankPresets, TargetFillForm</li>
+        </ul>
+        <div class="est">⏱ ~30 min</div>
+      </div>
+
+      <div class="phase">
+        <div class="phase-header">
+          <span class="phase-num p4">Phase 8</span>
+          <h3>Help Page + Memory</h3>
+        </div>
+        <ul>
+          <li><span class="file-tag">app/help/page.tsx</span> — add EV Calculator FAQ section</li>
+          <li>Standing rule: audit help page after every major feature</li>
+          <li><span class="file-tag">MEMORY.md</span> — add EV tab to completed features</li>
+          <li>Smoke test: mobile + desktop, preset auto-fill, rate lookup, PHEV banner</li>
+        </ul>
+        <div class="est">⏱ ~30 min</div>
+      </div>
+
+    </div>
+
+    <div style="text-align:center;margin-top:1.5rem;padding:1rem;background:#1a2d47;border-radius:1rem;border:1px solid #253d5a;">
+      <div style="font-size:0.8rem;color:#94a3b8;margin-bottom:0.35rem">Total Estimated Build Time</div>
+      <div style="font-size:1.5rem;font-weight:800;color:#fff;">~9–10 hours</div>
+      <div style="font-size:0.75rem;color:#64748b;margin-top:0.25rem">Broken into 8 phases — can ship after Phase 6 (Translations + Help are polish)</div>
+    </div>
+
+  </div>
+
+</div><!-- /preview-wrapper -->
+</body>
+</html>
