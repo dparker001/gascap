@@ -1,38 +1,38 @@
 /**
- * TEMP DIAGNOSTIC — remove after debugging the gift webhook.
- * GET /api/_debug/giftcheck
- * Reports whether the DEPLOYED app can query the Gift table and which DB host it's on.
- * No secrets exposed (DB host only, credentials stripped).
+ * TEMP DIAGNOSTIC — remove after debugging. GET /api/giftdiag
+ * Reports DB connectivity from the DEPLOYED runtime. No secrets exposed
+ * (only presence/length/scheme of DATABASE_URL, never the value).
  */
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
-  const result: Record<string, unknown> = {};
+  const out: Record<string, unknown> = {};
 
-  // Which DB host is the deployed app connected to? (host only, no creds)
-  try {
-    const url = process.env.DATABASE_URL ?? '';
-    const m = url.match(/@([^/:?]+)/);
-    result.dbHost = m ? m[1] : '(unparsed)';
-  } catch { result.dbHost = '(error)'; }
+  // Env presence (no secret value)
+  const url = process.env.DATABASE_URL;
+  out.hasDatabaseUrl = typeof url === 'string' && url.length > 0;
+  out.databaseUrlLength = typeof url === 'string' ? url.length : 0;
+  out.databaseUrlScheme = typeof url === 'string' ? url.split('://')[0] : null;
+  out.nodeEnv = process.env.NODE_ENV ?? null;
+  // Which DB-ish env vars exist (names only)
+  out.dbEnvVarsPresent = Object.keys(process.env).filter((k) =>
+    /DATABASE|POSTGRES|PG/i.test(k),
+  );
 
-  // Can the deployed Prisma client see the Gift model/table?
+  // Try a trivial query and capture the FULL error
   try {
-    const count = await prisma.gift.count();
-    result.giftTableOk = true;
-    result.giftCount = count;
+    out.userCount = await prisma.user.count();
+    out.dbOk = true;
   } catch (e) {
-    result.giftTableOk = false;
-    result.giftError = e instanceof Error ? e.message : String(e);
+    out.dbOk = false;
+    out.errorName = e instanceof Error ? e.name : typeof e;
+    out.errorMessage = e instanceof Error ? e.message : String(e);
+    out.errorStack = e instanceof Error ? (e.stack ?? '').split('\n').slice(0, 4).join(' | ') : null;
   }
 
-  // Sanity: can it read an existing table (User)?
-  try {
-    result.userCount = await prisma.user.count();
-  } catch (e) {
-    result.userError = e instanceof Error ? e.message : String(e);
-  }
-
-  return NextResponse.json(result);
+  return NextResponse.json(out);
 }
