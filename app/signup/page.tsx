@@ -20,8 +20,11 @@ function SignUpForm() {
   const nextPath = nextRaw && nextRaw.startsWith('/') ? nextRaw : null;
   const sep      = (path: string) => (path.includes('?') ? '&' : '?');
 
+  // Optional pre-filled email (e.g. a gift recipient claiming their gift).
+  const prefillEmail = searchParams.get('email') ?? '';
+
   const [fullName,  setFullName]  = useState('');
-  const [email,     setEmail]     = useState('');
+  const [email,     setEmail]     = useState(prefillEmail);
   const [phone,     setPhone]     = useState('');
   const [smsOptIn,  setSmsOptIn]  = useState(false);
   const [password,  setPassword]  = useState('');

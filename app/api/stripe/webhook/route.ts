@@ -81,7 +81,9 @@ export async function POST(req: Request) {
           });
 
           const baseUrl   = (process.env.NEXTAUTH_URL ?? 'https://www.gascap.app').replace(/\/$/, '');
-          const redeemUrl = `${baseUrl}/redeem?code=${gift.code}`;
+          // Include the recipient email so the claim page can pre-fill it on sign-up.
+          const emailQs   = deliverToRecipient && recipientEmail ? `&email=${encodeURIComponent(recipientEmail)}` : '';
+          const redeemUrl = `${baseUrl}/redeem?code=${gift.code}${emailQs}`;
           const sendTo    = deliverToRecipient && recipientEmail ? recipientEmail : purchaserEmail;
 
           if (sendTo) {

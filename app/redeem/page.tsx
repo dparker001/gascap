@@ -21,6 +21,9 @@ function RedeemContent() {
   const signedIn = status === 'authenticated' && !!session?.user;
   // Preserve the code through the sign-in/up round-trip
   const nextUrl = `/redeem${code ? `?code=${encodeURIComponent(code)}` : ''}`;
+  // Pre-fill the recipient's email on sign-up (passed from the gift email link).
+  const recipientEmail = params.get('email') ?? '';
+  const emailQs = recipientEmail ? `&email=${encodeURIComponent(recipientEmail)}` : '';
 
   async function handleClaim() {
     setError('');
@@ -96,7 +99,7 @@ function RedeemContent() {
             <div className="space-y-2.5">
               <p className="text-xs text-slate-500">Sign in or create a free account to claim your gift.</p>
               <Link
-                href={`/signup?next=${encodeURIComponent(nextUrl)}`}
+                href={`/signup?next=${encodeURIComponent(nextUrl)}${emailQs}`}
                 className="block w-full py-3.5 rounded-2xl bg-teal-500 hover:bg-teal-400 text-white font-black text-base transition-colors">
                 Create account &amp; claim →
               </Link>
