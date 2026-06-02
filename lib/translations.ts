@@ -437,6 +437,7 @@ const en = {
     startFreeTrial:      'Start free trial →',
     upgradeToLifetime:   'Upgrade to Lifetime',
     getLifetime:         'Get Lifetime',
+    giftThis:            'Gift this to someone',
     everythingInPro:     'Everything in Pro',
 
     // Guarantee & refund
@@ -1406,6 +1407,7 @@ const es: typeof en = {
     startFreeTrial:      'Comenzar prueba gratis →',
     upgradeToLifetime:   'Mejorar a de por vida',
     getLifetime:         'Obtener de por vida',
+    giftThis:            'Regala esto a alguien',
     everythingInPro:     'Todo en Pro',
 
     // Guarantee & refund

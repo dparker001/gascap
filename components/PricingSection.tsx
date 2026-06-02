@@ -262,6 +262,9 @@ export default function PricingSection() {
                     ? `${t.pricing.upgradeFromTrial} — $${PRICING.pro.lifetime}`
                     : `${t.pricing.getLifetime} — $${PRICING.pro.lifetime}`}
           </button>
+          <a href="/gift" className="block text-center text-xs font-semibold text-teal-600 hover:text-teal-500 -mt-4 mb-4">
+            🎁 {t.pricing.giftThis ?? 'Gift this to someone'}
+          </a>
 
           <div className="border-t border-slate-100 mb-5" />
           {/* Everything in Pro */}

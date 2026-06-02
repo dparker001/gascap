@@ -13,6 +13,10 @@ function SignInForm() {
   const verified     = searchParams.get('verified') === 'success';
   const { t }        = useTranslation();
 
+  // Safe internal redirect target (e.g. /redeem?code=…, /upgrade). Ignores external URLs.
+  const nextRaw  = searchParams.get('next');
+  const nextPath = nextRaw && nextRaw.startsWith('/') ? nextRaw : '/';
+
   const [email,         setEmail]         = useState('');
   const [password,      setPassword]      = useState('');
   const [showPw,        setShowPw]        = useState(false);
@@ -22,7 +26,7 @@ function SignInForm() {
 
   async function handleGoogleSignIn() {
     setGoogleLoading(true);
-    await signIn('google', { callbackUrl: '/' });
+    await signIn('google', { callbackUrl: nextPath });
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -46,7 +50,7 @@ function SignInForm() {
         setError(t.signIn.errorDefault);
       }
     } else {
-      router.push('/');
+      router.push(nextPath);
       router.refresh();
     }
   }

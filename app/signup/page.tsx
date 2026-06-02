@@ -15,6 +15,11 @@ function SignUpForm() {
   const refCode      = searchParams.get('ref') ?? '';
   const { t, locale } = useTranslation();
 
+  // Safe internal redirect target after signup (e.g. /redeem?code=…, /upgrade).
+  const nextRaw  = searchParams.get('next');
+  const nextPath = nextRaw && nextRaw.startsWith('/') ? nextRaw : null;
+  const sep      = (path: string) => (path.includes('?') ? '&' : '?');
+
   const [fullName,  setFullName]  = useState('');
   const [email,     setEmail]     = useState('');
   const [phone,     setPhone]     = useState('');
@@ -35,9 +40,11 @@ function SignUpForm() {
 
   async function handleGoogleSignUp() {
     setGoogleLoading(true);
-    await signIn('google', {
-      callbackUrl: refCode ? `/?welcome=1&ref=${refCode}` : '/?welcome=1',
-    });
+    // If a redirect target is set (e.g. gift redemption), honor it; else welcome flow.
+    const callbackUrl = nextPath
+      ? `${nextPath}${sep(nextPath)}welcome=1`
+      : (refCode ? `/?welcome=1&ref=${refCode}` : '/?welcome=1');
+    await signIn('google', { callbackUrl });
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -95,8 +102,11 @@ function SignUpForm() {
     setLoading(false);
 
     if (signInRes?.error) {
-      // Auto sign-in failed — send to sign-in page
-      router.push('/signin');
+      // Auto sign-in failed — send to sign-in page (preserve redirect target)
+      router.push(nextPath ? `/signin?next=${encodeURIComponent(nextPath)}` : '/signin');
+    } else if (nextPath) {
+      // Redirect target set (e.g. claim a gift) — go there with the welcome flag.
+      router.push(`${nextPath}${sep(nextPath)}welcome=1`);
     } else {
       // Signed in — drop them straight into the calculator with the welcome banner.
       // The FreshSignupBanner will remind them to verify their email.

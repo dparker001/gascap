@@ -285,6 +285,9 @@ function UpgradePageInner() {
                       ? `${t.pricing.upgradeFromTrial} — $${PRICING.pro.lifetime}`
                       : `${t.pricing.getLifetime} — $${PRICING.pro.lifetime}`}
             </button>
+            <a href="/gift" className="block text-center text-xs font-semibold text-teal-300 hover:text-teal-200 -mt-3 mb-4">
+              🎁 {t.pricing.giftThis ?? 'Gift this to someone'}
+            </a>
             <div className="border-t border-white/10 mb-5" />
             {/* Everything in Pro */}
             <ul className="space-y-2">

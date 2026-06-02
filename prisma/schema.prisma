@@ -191,3 +191,28 @@ model DeletedAccountLog {
   @@index([email])
   @@index([deletedAt])
 }
+
+model Gift {
+  id                 String  @id            // gift_xxxxxxxx
+  code               String  @unique        // redemption code, e.g. GASCAP-7K2P-9QX4
+  occasion           String  @default("gift") // gift | fathers-day | birthday | holiday
+  plan               String  @default("pro")
+  interval           String  @default("lifetime")
+  amountPaid         Int                    // cents actually charged
+  purchaserEmail     String
+  purchaserUserId    String?
+  recipientEmail     String?                // null = buyer keeps the code
+  recipientName      String?
+  giftMessage        String?
+  deliverToRecipient Boolean @default(false)
+  stripeSessionId    String?
+  stripePaymentId    String?
+  status             String  @default("paid") // paid | redeemed | refunded
+  redeemedByUserId   String?
+  redeemedAt         String?
+  createdAt          String
+
+  @@index([code])
+  @@index([purchaserEmail])
+  @@index([status])
+}

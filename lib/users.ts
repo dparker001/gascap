@@ -288,10 +288,27 @@ export async function setUserPlan(
     data: {
       plan,
       // A real Stripe payment ends the trial — clear trial flags regardless
-      // of whether the user was on a trial or not.
+      // of whether the user was or not.
       ...(plan !== 'free' ? { isProTrial: false, trialExpiresAt: null } : {}),
       ...(stripe?.customerId     ? { stripeCustomerId:     stripe.customerId }     : {}),
       ...(stripe?.subscriptionId ? { stripeSubscriptionId: stripe.subscriptionId } : {}),
+    },
+  });
+}
+
+/**
+ * Grant a recipient a gifted Pro Lifetime (redeemed from a gift code).
+ * Sets plan=pro + stripeInterval=lifetime and clears any trial flags.
+ * No Stripe customer/subscription is attached — this is a one-time gifted license.
+ */
+export async function grantGiftedLifetime(userId: string): Promise<void> {
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      plan:           'pro',
+      stripeInterval: 'lifetime',
+      isProTrial:     false,
+      trialExpiresAt: null,
     },
   });
 }

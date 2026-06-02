@@ -779,6 +779,101 @@ ${brandHeader(plan)}
  * @param trialEndDate   Formatted end date, e.g. "May 26"
  * @param daysLeft       Integer days remaining (≥ 1)
  */
+/** ─────────────────────────────────────────────────────────────────────────
+ * Gift email — sent when someone buys GasCap™ Pro Lifetime as a gift.
+ * Goes to the recipient (if delivered directly) or the buyer (to hand over).
+ *
+ * @param opts.code           Redemption code, e.g. GASCAP-7K2P-9QX4
+ * @param opts.redeemUrl      Full claim link, e.g. https://www.gascap.app/redeem?code=...
+ * @param opts.occasion       gift | fathers-day | birthday | holiday — drives theming
+ * @param opts.toRecipient    true = email is addressed to the recipient; false = to the buyer
+ * @param opts.recipientName  Recipient's name (optional)
+ * @param opts.purchaserName  Buyer's name/email (optional, shown to recipient as "from")
+ * @param opts.giftMessage    Optional personal note from the buyer
+ */
+export function giftEmailHtml(opts: {
+  code:          string;
+  redeemUrl:     string;
+  occasion?:     string;
+  toRecipient:   boolean;
+  recipientName?: string | null;
+  purchaserName?: string | null;
+  giftMessage?:  string | null;
+}): string {
+  const { code, redeemUrl, occasion = 'gift', toRecipient } = opts;
+  const recipientName = opts.recipientName?.trim();
+  const purchaserName = opts.purchaserName?.trim();
+  const giftMessage   = opts.giftMessage?.trim();
+
+  const themes: Record<string, { emoji: string; label: string }> = {
+    'fathers-day': { emoji: '👔', label: "a Father's Day gift" },
+    'birthday':    { emoji: '🎂', label: 'a birthday gift' },
+    'holiday':     { emoji: '🎁', label: 'a holiday gift' },
+    'gift':        { emoji: '🎁', label: 'a gift' },
+  };
+  const theme = themes[occasion] ?? themes.gift;
+
+  const heading = toRecipient
+    ? `${theme.emoji} You've been gifted GasCap™ Pro Lifetime!`
+    : `${theme.emoji} Your GasCap™ Pro Lifetime gift is ready`;
+
+  const intro = toRecipient
+    ? `${recipientName ? `Hi ${recipientName}, ` : ''}${purchaserName ? `<strong>${purchaserName}</strong> sent you` : 'You\'ve been sent'} ${theme.label}: <strong>GasCap™ Pro Lifetime</strong> — every Pro feature, forever, with no subscription. 🎉`
+    : `Thank you! Your gift of <strong>GasCap™ Pro Lifetime</strong> is ready to give. Forward this email or share the code below with ${recipientName ? recipientName : 'the lucky recipient'} so they can claim it.`;
+
+  const messageBlock = giftMessage ? `
+        <tr><td style="padding:0 32px 20px;">
+          <div style="background:#f8fafc;border-left:4px solid #1eb68f;border-radius:8px;padding:14px 18px;">
+            <p style="margin:0 0 4px;font-size:11px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.06em;">Personal note</p>
+            <p style="margin:0;font-size:14px;color:#334155;line-height:1.6;font-style:italic;">"${giftMessage}"</p>
+          </div>
+        </td></tr>` : '';
+
+  const ctaLabel = toRecipient ? '🎁 Claim My Pro Lifetime' : 'View the gift &amp; claim link';
+
+  return `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#eef1f7;font-family:system-ui,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#eef1f7;padding:40px 16px;">
+    <tr><td align="center">
+      <table width="100%" style="max-width:480px;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,.08);">
+${brandHeader()}
+        <tr><td style="padding:32px 32px 16px;">
+          <p style="margin:0 0 8px;font-size:22px;font-weight:900;color:#1e2d4a;line-height:1.3;">${heading}</p>
+          <p style="margin:0 0 8px;font-size:15px;color:#475569;line-height:1.65;">${intro}</p>
+        </td></tr>
+${messageBlock}
+        <!-- Code block -->
+        <tr><td style="padding:0 32px 8px;">
+          <div style="background:linear-gradient(135deg,#005f4a 0%,#1eb68f 100%);border-radius:14px;padding:22px 24px;text-align:center;">
+            <p style="margin:0 0 6px;font-size:12px;font-weight:800;color:rgba(255,255,255,.75);text-transform:uppercase;letter-spacing:.08em;">Your gift code</p>
+            <p style="margin:0;font-size:26px;font-weight:900;color:#ffffff;letter-spacing:2px;font-family:'Courier New',monospace;">${code}</p>
+          </div>
+        </td></tr>
+        <!-- CTA -->
+        <tr><td style="padding:20px 32px 8px;text-align:center;">
+          <a href="${redeemUrl}" style="display:inline-block;background:#fa7109;color:#fff;font-weight:900;font-size:15px;padding:14px 36px;border-radius:12px;text-decoration:none;">
+            ${ctaLabel}
+          </a>
+          <p style="margin:14px 0 0;font-size:12px;color:#94a3b8;line-height:1.5;">
+            ${toRecipient
+              ? 'Sign in or create a free GasCap™ account, then your Lifetime access activates instantly.'
+              : 'The recipient signs in or creates a free account, enters the code, and Lifetime activates instantly.'}
+          </p>
+          <p style="margin:8px 0 0;font-size:11px;color:#cbd5e1;word-break:break-all;">Or copy this link: ${redeemUrl}</p>
+        </td></tr>
+        <tr><td style="background:#f8fafc;padding:16px 32px;border-top:1px solid #e2e8f0;margin-top:16px;">
+          <p style="margin:0;font-size:11px;color:#94a3b8;">GasCap™ · Know before you go · <a href="https://gascap.app" style="color:#f59e0b;">gascap.app</a></p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`.trim();
+}
+
 export function foundingMemberBlastHtml(
   firstName:    string,
   trialEndDate: string,

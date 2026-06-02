@@ -96,6 +96,21 @@ function blankAnn(): AnnItem {
   };
 }
 
+interface AdminGift {
+  id:                 string;
+  code:               string;
+  occasion:           string;
+  amountPaid:         number;
+  purchaserEmail:     string;
+  recipientEmail:     string | null;
+  recipientName:      string | null;
+  deliverToRecipient: boolean;
+  status:             string;
+  redeemedByUserId:   string | null;
+  redeemedAt:         string | null;
+  createdAt:          string;
+}
+
 const PLAN_COLORS = {
   free:  'bg-slate-100 text-slate-600',
   pro:   'bg-amber-100 text-amber-700',
@@ -136,6 +151,7 @@ export default function AdminPage() {
   const [authed,    setAuthed]    = useState(false);
   const [authErr,   setAuthErr]   = useState('');
   const [users,     setUsers]     = useState<AdminUser[]>([]);
+  const [gifts,     setGifts]     = useState<AdminGift[]>([]);
   const [loading,   setLoading]   = useState(false);
   const [search,    setSearch]    = useState('');
   const [msg,       setMsg]       = useState('');
@@ -208,15 +224,20 @@ export default function AdminPage() {
 
   const load = useCallback(async (pw: string) => {
     setLoading(true);
-    const [usersRes, fbRes, emailMapRes] = await Promise.all([
+    const [usersRes, fbRes, emailMapRes, giftsRes] = await Promise.all([
       fetch('/api/admin/users',                       { headers: { 'x-admin-password': pw } }),
       fetch('/api/admin/feedback',                    { headers: { 'x-admin-password': pw } }),
       fetch('/api/admin/email-log?limit=500',         { headers: { 'x-admin-password': pw } }),
+      fetch('/api/admin/gifts',                       { headers: { 'x-admin-password': pw } }),
     ]);
     setLoading(false);
     if (usersRes.status === 401) { setAuthErr('Wrong password.'); clearSession(); return; }
     const usersData = await usersRes.json() as { users: AdminUser[] };
     setUsers(usersData.users);
+    if (giftsRes.ok) {
+      const giftsData = await giftsRes.json() as { gifts: AdminGift[] };
+      setGifts(giftsData.gifts);
+    }
     if (fbRes.ok) {
       const fbData = await fbRes.json() as { feedback: FeedbackItem[] };
       setFeedback(fbData.feedback);
@@ -1001,6 +1022,52 @@ export default function AdminPage() {
           );
         })()}
 
+
+        {/* ── Gifts ─────────────────────────────────────────────────────── */}
+        <div className="bg-white rounded-2xl shadow-sm overflow-hidden mb-4">
+          <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+            <p className="text-sm font-black text-navy-700">🎁 Gifts ({gifts.length})</p>
+            <p className="text-[11px] text-slate-400">
+              {gifts.filter((g) => g.status === 'redeemed').length} redeemed · {gifts.filter((g) => g.status === 'paid').length} unredeemed
+            </p>
+          </div>
+          {gifts.length === 0 ? (
+            <p className="px-4 py-6 text-sm text-slate-400 text-center">No gifts purchased yet.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-left text-slate-400 border-b border-slate-100">
+                    <th className="px-3 py-2 font-bold">Code</th>
+                    <th className="px-3 py-2 font-bold">Occasion</th>
+                    <th className="px-3 py-2 font-bold">Buyer</th>
+                    <th className="px-3 py-2 font-bold">Recipient</th>
+                    <th className="px-3 py-2 font-bold">Status</th>
+                    <th className="px-3 py-2 font-bold">Purchased</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {gifts.map((g) => (
+                    <tr key={g.id} className="border-b border-slate-50">
+                      <td className="px-3 py-2 font-mono font-bold text-navy-700 whitespace-nowrap">{g.code}</td>
+                      <td className="px-3 py-2 text-slate-500 whitespace-nowrap">{g.occasion}</td>
+                      <td className="px-3 py-2 text-slate-500">{g.purchaserEmail}</td>
+                      <td className="px-3 py-2 text-slate-500">{g.deliverToRecipient ? (g.recipientEmail ?? '—') : '(buyer-held)'}</td>
+                      <td className="px-3 py-2 whitespace-nowrap">
+                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                          g.status === 'redeemed' ? 'bg-green-100 text-green-700'
+                          : g.status === 'refunded' ? 'bg-red-100 text-red-600'
+                          : 'bg-amber-100 text-amber-700'
+                        }`}>{g.status.toUpperCase()}</span>
+                      </td>
+                      <td className="px-3 py-2 text-slate-400 whitespace-nowrap">{new Date(g.createdAt).toLocaleDateString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
 
         {/* ── Email Preview ─────────────────────────────────────────────── */}
         <div className="bg-white rounded-2xl shadow-sm overflow-hidden">

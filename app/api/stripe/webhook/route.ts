@@ -11,7 +11,8 @@ import type Stripe                          from 'stripe';
 import { stripe }                           from '@/lib/stripe';
 import { setUserPlan, findByStripeCustomer, findById, findByReferralCode, creditVerifiedReferral, getActiveCredits, enrollPaidCampaign, enrollEngagementCampaign, setEarlyUpgradeBonus, markMilestoneSent, updateUserProfile } from '@/lib/users';
 import { updateGhlContactPlan }            from '@/lib/ghl';
-import { sendMail }                        from '@/lib/email';
+import { sendMail, giftEmailHtml }         from '@/lib/email';
+import { createGift }                      from '@/lib/gifts';
 import { sendReferralCreditEmail }         from '@/lib/emailCampaign';
 import { sendPaidCampaignEmail }           from '@/lib/emailCampaignPaid';
 import { sendMilestoneEmail }              from '@/lib/emailEngagement';
@@ -54,6 +55,91 @@ export async function POST(req: Request) {
     // Checkout completed → activate Pro
     case 'checkout.session.completed': {
       const session = event.data.object as Stripe.Checkout.Session;
+
+      // ── GIFT purchase branch ───────────────────────────────────────────
+      // A gift has no buyer userId — it activates Pro on the RECIPIENT's
+      // account later, via a redemption code. Handle it and return early so
+      // the normal upgrade logic below never mis-grants the buyer.
+      if (session.metadata?.isGift === 'true') {
+        const m = session.metadata;
+        const deliverToRecipient = m.deliverToRecipient === 'true';
+        const purchaserEmail = m.purchaserEmail ?? (session.customer_details?.email ?? '');
+        const recipientEmail = m.recipientEmail || null;
+        const paymentId = typeof session.payment_intent === 'string' ? session.payment_intent : null;
+
+        try {
+          const gift = await createGift({
+            occasion:           m.occasion ?? 'gift',
+            amountPaid:         session.amount_total ?? 1999,
+            purchaserEmail,
+            recipientEmail:     deliverToRecipient ? recipientEmail : null,
+            recipientName:      m.recipientName || null,
+            giftMessage:        m.giftMessage || null,
+            deliverToRecipient,
+            stripeSessionId:    session.id,
+            stripePaymentId:    paymentId,
+          });
+
+          const baseUrl   = (process.env.NEXTAUTH_URL ?? 'https://www.gascap.app').replace(/\/$/, '');
+          const redeemUrl = `${baseUrl}/redeem?code=${gift.code}`;
+          const sendTo    = deliverToRecipient && recipientEmail ? recipientEmail : purchaserEmail;
+
+          if (sendTo) {
+            sendMail({
+              to:      sendTo,
+              subject: deliverToRecipient
+                ? `🎁 You've been gifted GasCap™ Pro Lifetime!`
+                : `🎁 Your GasCap™ Pro Lifetime gift code (${gift.code})`,
+              html: giftEmailHtml({
+                code:          gift.code,
+                redeemUrl,
+                occasion:      gift.occasion,
+                toRecipient:   deliverToRecipient,
+                recipientName: gift.recipientName,
+                purchaserName: purchaserEmail,
+                giftMessage:   gift.giftMessage,
+              }),
+              text: `Your GasCap Pro Lifetime gift code: ${gift.code}. Redeem at ${redeemUrl}`,
+            }).catch((e) => console.error('[GasCap] Gift email failed:', e));
+          }
+
+          // If delivered to the recipient, also confirm to the buyer.
+          if (deliverToRecipient && purchaserEmail && purchaserEmail !== recipientEmail) {
+            sendMail({
+              to:      purchaserEmail,
+              subject: `Your GasCap™ gift is on its way 🎁`,
+              html: giftEmailHtml({
+                code:          gift.code,
+                redeemUrl,
+                occasion:      gift.occasion,
+                toRecipient:   false,
+                recipientName: gift.recipientName,
+                purchaserName: purchaserEmail,
+                giftMessage:   gift.giftMessage,
+              }),
+              text: `Thanks! Your gift code ${gift.code} was sent to ${recipientEmail}. Backup link: ${redeemUrl}`,
+            }).catch((e) => console.error('[GasCap] Gift buyer confirmation failed:', e));
+          }
+
+          sendAdminMail({
+            subject: `🎁 GasCap™ gift purchased — ${gift.code}`,
+            html: `<div style="font-family:system-ui,sans-serif;max-width:480px;">
+              <p style="font-size:20px;margin:0 0 8px;">🎁 Gift purchased</p>
+              <p style="font-size:14px;color:#334155;margin:0 0 4px;">Code: <strong>${gift.code}</strong> · Occasion: ${gift.occasion}</p>
+              <p style="font-size:14px;color:#64748b;margin:0 0 4px;">Buyer: ${purchaserEmail}</p>
+              <p style="font-size:14px;color:#64748b;margin:0 0 4px;">Recipient: ${deliverToRecipient ? recipientEmail : '(buyer will hand over)'}</p>
+              <p style="font-size:12px;color:#94a3b8;">${new Date().toLocaleString('en-US',{timeZone:'America/New_York'})} ET</p>
+            </div>`,
+            text: `Gift purchased: ${gift.code} (${gift.occasion}) — buyer ${purchaserEmail}, recipient ${deliverToRecipient ? recipientEmail : 'buyer-held'}`,
+          });
+
+          console.info(`[GasCap webhook] Gift created ${gift.code} (buyer ${purchaserEmail})`);
+        } catch (e) {
+          console.error('[GasCap webhook] Gift creation failed:', e);
+        }
+        break;
+      }
+
       const userId  = session.metadata?.userId;
       if (!userId) break;
 
