@@ -249,6 +249,14 @@ const SECTIONS = [
         a: 'Visit gascap.app/upgrade or tap Settings → "Upgrade to Pro." The upgrade page shows all three options side by side: Free, Pro ($2.99/mo), and Pro Lifetime ($19.99 one-time). You\'ll be taken to a secure Stripe checkout page.',
       },
       {
+        q: 'Can I give GasCap™ Pro as a gift?',
+        a: 'Yes! Visit gascap.app/gift to give Pro Lifetime ($19.99, one-time) as a gift — perfect for Father\'s Day, birthdays, or the holidays. You don\'t need an account to buy a gift. Choose to email the gift code directly to the recipient, or get the code yourself to hand over or print. You can also add a personal note. The recipient redeems it on their own account — no subscription, Pro forever.',
+      },
+      {
+        q: 'How do I redeem a gift I received?',
+        a: 'Open the claim link in your gift email (or go to gascap.app/redeem and enter your gift code). Sign in — or create a free account if you\'re new (your name and email are pre-filled from the gift) — then tap "Claim My Pro Lifetime." Pro Lifetime activates on your account instantly. If you already have Lifetime, the code stays unused so you can pass it on to someone else.',
+      },
+      {
         q: 'How do I cancel my subscription?',
         a: 'Go to Settings → Plan → "Manage Billing & Subscription." This opens the Stripe self-serve portal where you can cancel or update your payment method at any time. You can also email support@gascap.app and we\'ll take care of it for you. Lifetime members have no subscription to cancel.',
       },

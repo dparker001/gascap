@@ -1,9 +1,32 @@
 # GasCap™ Chatbot — Content Update (June 2026)
 > Purpose: ready-to-paste Q&A blocks for the GHL Conversation AI knowledge base.
 > The main file `CHATBOT_TRAINING.md` was already updated for the $2.99/$19.99
-> pricing, Pro Lifetime, and unlimited vehicles. This file adds the THREE topics
-> still missing: (1) Refund Policy, (2) Early-Upgrade Bonus, (3) Spanish/Language.
-> Source of truth: app/help, app/terms, app/upgrade, lib/translations.ts.
+> pricing, Pro Lifetime, and unlimited vehicles. This file adds: (1) Refund Policy,
+> (2) Early-Upgrade Bonus, (3) Spanish/Language, (4) GIFTING (NEW — Section D).
+> Source of truth: app/help, app/terms, app/upgrade, app/gift, lib/translations.ts.
+
+---
+
+## 🆕 NEW SECTION D — GIFTING (paste into SECTION 8 — Plans & Billing)
+> Gifting Pro Lifetime is LIVE as of June 2026.
+
+**Q: Can I give GasCap™ Pro as a gift?**
+A: Yes! Go to **gascap.app/gift** to give **Pro Lifetime** ($19.99, one-time) as a gift — great for Father's Day, birthdays, or the holidays. You don't need an account to buy a gift. You can either email the gift code directly to the recipient, or get the code yourself to hand over or print, and you can add a personal note. The recipient redeems it on their own account and gets Pro forever — no subscription.
+
+**Q: How does the recipient claim their gift?**
+A: They open the claim link in the gift email (or go to **gascap.app/redeem** and enter the code). They sign in — or create a free account if new (name and email are pre-filled from the gift) — then tap "Claim My Pro Lifetime." Lifetime activates instantly.
+
+**Q: Is the gift a subscription?**
+A: No — a gifted Pro Lifetime is a one-time purchase. The recipient owns Pro forever with no recurring charges.
+
+**Q: What if the recipient already has Pro Lifetime?**
+A: The gift code stays unused so they can pass it along to someone else. It's only consumed when claimed by an account that isn't already Lifetime.
+
+**Q: Can I buy gifts for several people?**
+A: Each gift purchase is one Pro Lifetime. To gift multiple people, complete a separate gift purchase for each, or email support@gascap.app and we'll help arrange it.
+
+**Q: Are gifts refundable?**
+A: Like the regular Pro Lifetime plan, gift purchases are one-time and non-refundable. If something went wrong with a purchase, email support@gascap.app within a reasonable time and we'll help.
 
 ---
 

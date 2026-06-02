@@ -1,7 +1,8 @@
 # GasCap™ Father's Day Pro Lifetime Promo — 2026
 > Father's Day: Sunday, June 21, 2026 · Promo window: Jun 14–21 (code valid thru Jun 23)
 > Offer: Pro Lifetime $19.99 → **$14.99** ($5 off) with code **DADSDAY**
-> Gifting: A (discount self-purchase) + B (manual gift fulfillment via support)
+> Gifting: ✅ REAL gift flow is now LIVE at gascap.app/gift (buy → emailed code → recipient claims).
+> This supersedes the old manual "email support" workaround. Coupon DADSDAY also applies on the gift checkout.
 
 ---
 
@@ -54,7 +55,7 @@ He gets: unlimited vehicles · fill-up & MPG tracking · gas price alerts · AI 
 
 [ Gift GasCap™ Pro Lifetime — $14.99 ]  (button → https://www.gascap.app/upgrade?coupon=OkX39d5O  — discount pre-applies)
 
-🎁 Gifting it to someone else? After you check out, email support@gascap.app with their email and we'll set up their account.
+🎁 Want to send it straight to Dad? Use **gascap.app/gift** — we'll email him the gift + a claim link (add a personal note too). Apply code DADSDAY at checkout for the $5 Father's Day discount.
 
 P.S. Are you the dad? Treat yourself. You've earned it.
 
@@ -108,4 +109,5 @@ Happy Father's Day! 👔⛽ Give Dad the gift that keeps saving — GasCap™ Pr
 - [ ] Schedule/send email Jun 14 + Jun 19
 - [ ] Send SMS Jun 18–19
 - [ ] Publish in-app announcement Jun 14–21
-- [ ] Confirm gifting (Option B) handoff: support@gascap.app monitored for gift requests
+- [ ] Gifting is now self-serve at gascap.app/gift (no manual handoff needed). Still monitor support@gascap.app for any gift questions.
+- [ ] Optional: add a "🎁 Send it straight to Dad → gascap.app/gift" line to the email/in-app banner CTA (real gift flow is live).
