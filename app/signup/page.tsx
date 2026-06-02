@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, FormEvent, Suspense } from 'react';
+import { useState, useEffect, FormEvent, Suspense } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
@@ -34,6 +34,13 @@ function SignUpForm() {
   const [error,     setError]     = useState('');
   const [loading,   setLoading]   = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+
+  // Robustly apply pre-fill once the URL params are available (handles the case
+  // where useSearchParams resolves after first render). Never overwrites typed input.
+  useEffect(() => {
+    if (prefillEmail) setEmail((cur) => cur || prefillEmail);
+    if (prefillName)  setFullName((cur) => cur || prefillName);
+  }, [prefillEmail, prefillName]);
 
   const pwValid = password.length >= 8;
 
