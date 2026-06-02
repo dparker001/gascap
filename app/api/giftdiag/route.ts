@@ -23,15 +23,25 @@ export async function GET() {
     /DATABASE|POSTGRES|PG/i.test(k),
   );
 
-  // Try a trivial query and capture the FULL error
+  // 1) Trivial existing-table query (connection sanity)
   try {
     out.userCount = await prisma.user.count();
     out.dbOk = true;
   } catch (e) {
     out.dbOk = false;
-    out.errorName = e instanceof Error ? e.name : typeof e;
-    out.errorMessage = e instanceof Error ? e.message : String(e);
-    out.errorStack = e instanceof Error ? (e.stack ?? '').split('\n').slice(0, 4).join(' | ') : null;
+    out.userError = e instanceof Error ? e.message : String(e);
+  }
+
+  // 2) Does the deployed client have the Gift model + can it read the table?
+  try {
+    out.giftCount = await prisma.gift.count();
+    out.giftTableOk = true;
+    const test = await prisma.gift.findUnique({ where: { code: 'GASCAP-TEST-DEMO' } });
+    out.testCodeFound = !!test;
+  } catch (e) {
+    out.giftTableOk = false;
+    out.giftErrorName = e instanceof Error ? e.name : typeof e;
+    out.giftError = e instanceof Error ? e.message.slice(0, 300) : String(e);
   }
 
   return NextResponse.json(out);
