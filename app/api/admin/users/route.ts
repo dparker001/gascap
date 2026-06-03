@@ -188,6 +188,8 @@ export async function PATCH(req: Request) {
     isTestAccount?: boolean;
     compProForLife?: boolean;
     revokeCompProForLife?: boolean;
+    stripeInterval?: string | null;
+    isProTrial?: boolean;
   };
 
   const user = await findById(id);
@@ -224,9 +226,11 @@ export async function PATCH(req: Request) {
   }
 
   const data: Record<string, unknown> = {};
-  if (body.plan          !== undefined) data.plan          = body.plan;
-  if (body.emailVerified !== undefined) data.emailVerified = body.emailVerified;
-  if (body.isTestAccount !== undefined) data.isTestAccount = body.isTestAccount;
+  if (body.plan           !== undefined) data.plan           = body.plan;
+  if (body.stripeInterval !== undefined) data.stripeInterval = body.stripeInterval;
+  if (body.isProTrial     !== undefined) data.isProTrial     = body.isProTrial;
+  if (body.emailVerified  !== undefined) data.emailVerified  = body.emailVerified;
+  if (body.isTestAccount  !== undefined) data.isTestAccount  = body.isTestAccount;
 
   await prisma.user.update({ where: { id }, data });
   return NextResponse.json({ ok: true });

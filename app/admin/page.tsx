@@ -319,13 +319,21 @@ export default function AdminPage() {
     setDeletedLoading(false);
   }
 
-  async function handlePlan(user: AdminUser, plan: string) {
+  async function handlePlan(user: AdminUser, value: string) {
+    // Dropdown values: 'free' | 'pro-monthly' | 'pro-lifetime' | 'fleet' (legacy).
+    // "Pro Lifetime" isn't a plan value — it's plan='pro' + stripeInterval='lifetime'.
+    // Paid selections also clear any leftover trial flag so they read as real members.
+    const payload: { plan: string; stripeInterval?: string | null; isProTrial?: boolean } =
+      value === 'pro-lifetime' ? { plan: 'pro',  stripeInterval: 'lifetime', isProTrial: false }
+      : value === 'pro-monthly' ? { plan: 'pro',  stripeInterval: 'month',    isProTrial: false }
+      : value === 'free'        ? { plan: 'free', stripeInterval: null }
+      :                           { plan: value }; // legacy 'fleet' passthrough
     await fetch(`/api/admin/users?id=${user.id}`, {
       method:  'PATCH',
       headers: { 'x-admin-password': savedPw, 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ plan }),
+      body:    JSON.stringify(payload),
     });
-    setMsg(`Updated ${user.email} → ${plan}`);
+    setMsg(`Updated ${user.email} → ${value}`);
     await load(savedPw);
   }
 
@@ -2067,13 +2075,17 @@ export default function AdminPage() {
                   <div className="flex items-center gap-2 flex-wrap">
                     {/* Plan selector */}
                     <select
-                      value={u.plan}
+                      value={u.plan === 'pro'
+                        ? (u.stripeInterval === 'lifetime' ? 'pro-lifetime' : 'pro-monthly')
+                        : u.plan}
                       onChange={(e) => handlePlan(u, e.target.value)}
                       className="text-xs border border-slate-200 rounded-lg px-2 py-1 bg-white focus:outline-none"
                     >
                       <option value="free">Free</option>
-                      <option value="pro">Pro</option>
-                      <option value="fleet">Fleet</option>
+                      <option value="pro-monthly">Pro (Monthly)</option>
+                      <option value="pro-lifetime">Pro Lifetime</option>
+                      {/* Fleet is shelved — only shown if an account is still on the legacy plan */}
+                      {u.plan === 'fleet' && <option value="fleet">Fleet (legacy)</option>}
                     </select>
 
                     {/* Verify button */}
