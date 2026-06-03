@@ -16,7 +16,6 @@ import ReviewsMarquee          from '@/components/ReviewsMarquee';
 import OnboardingModal         from '@/components/OnboardingModal';
 import SetupChecklist          from '@/components/SetupChecklist';
 import GasPriceAlertBanner     from '@/components/GasPriceAlertBanner';
-import StreakCounter           from '@/components/StreakCounter';
 import CampaignTracker         from '@/components/CampaignTracker';
 import FeaturedStation         from '@/components/FeaturedStation';
 import EngagementNudge        from '@/components/EngagementNudge';
@@ -25,7 +24,7 @@ import DailyFuelPulse         from '@/components/DailyFuelPulse';
 import WelcomeBanner          from '@/components/WelcomeBanner';
 import NewMemberOfferBanner   from '@/components/NewMemberOfferBanner';
 import FreshSignupBanner      from '@/components/FreshSignupBanner';
-import GiveawayNudge          from '@/components/GiveawayNudge';
+import MobileEngagementRow    from '@/components/MobileEngagementRow';
 import FuelBudgetWidget       from '@/components/FuelBudgetWidget';
 import SavingsSummary         from '@/components/SavingsSummary';
 import AnnualProjection       from '@/components/AnnualProjection';
@@ -605,15 +604,10 @@ export default function Home() {
             {/* New-member 7-day Lifetime offer ($14.99) — self-hides unless eligible */}
             <NewMemberOfferBanner />
 
-            {/* Streak counter — hidden on desktop (shown in header center panel) */}
-            <div className="lg:hidden">
-              <StreakCounter />
-            </div>
-
-            {/* Giveaway entry nudge — hidden on desktop (shown in header center panel) */}
-            <div className="lg:hidden">
-              <GiveawayNudge />
-            </div>
+            {/* Streak + giveaway — compact side-by-side row on mobile so the
+                calculator sits near the top. Desktop shows these in the header
+                (HeroEngagementPanel). */}
+            <MobileEngagementRow />
 
             {/* Calculator — lifted to the top of the content (above the insight widgets,
                 which are mostly empty for brand-new users) so the core action is the
