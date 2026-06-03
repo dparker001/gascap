@@ -785,7 +785,7 @@ export default function Home() {
         </div>
 
         {/* ── Separator + Pricing — full-width, centered below both columns ── */}
-        <div className="max-w-5xl mx-auto w-full px-4 lg:px-6 pb-2 mt-2">
+        <div className="max-w-6xl mx-auto w-full px-4 lg:px-6 pb-2 mt-2">
           <div className="flex items-center gap-3">
             <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
             <span className="text-[10px] font-black uppercase tracking-widest
@@ -793,7 +793,7 @@ export default function Home() {
             <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
           </div>
         </div>
-        <section className="max-w-5xl mx-auto w-full px-4 lg:px-6 pb-12">
+        <section className="max-w-6xl mx-auto w-full px-4 lg:px-6 pb-12">
           <button
             onClick={() => setShowPricing((v) => !v)}
             className="w-full flex items-center justify-between py-3 px-4 bg-white dark:bg-slate-800
@@ -869,7 +869,7 @@ export default function Home() {
           <FaqSection />
 
           {/* Pricing — always visible, anchored so hero "See all plans ↓" scrolls here */}
-          <section id="pricing" className="px-4 pb-8 max-w-2xl mx-auto w-full">
+          <section id="pricing" className="px-4 pb-8 max-w-6xl mx-auto w-full">
             <PricingSection />
           </section>
 
