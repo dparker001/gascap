@@ -261,7 +261,7 @@ export async function verifyPassword(plain: string, hash: string | undefined): P
 export async function setUserPlan(
   userId: string,
   plan: 'free' | 'pro' | 'fleet',
-  stripe?: { customerId?: string; subscriptionId?: string },
+  stripe?: { customerId?: string; subscriptionId?: string; interval?: 'monthly' | 'annual' | 'lifetime' },
 ): Promise<void> {
   // Ambassador Pro-for-life protection: if a Stripe subscription cancels and
   // the caller tries to revert this user to free, check whether they hold the
@@ -292,6 +292,11 @@ export async function setUserPlan(
       ...(plan !== 'free' ? { isProTrial: false, trialExpiresAt: null } : {}),
       ...(stripe?.customerId     ? { stripeCustomerId:     stripe.customerId }     : {}),
       ...(stripe?.subscriptionId ? { stripeSubscriptionId: stripe.subscriptionId } : {}),
+      // Persist the billing interval authoritatively on every paid upgrade so
+      // stripeInterval is always correct — even for repeat upgraders where the
+      // paid-campaign enrollment (which also writes it) is skipped. This gates
+      // the Lifetime-only getaway promo, so it must never be stale.
+      ...(stripe?.interval ? { stripeInterval: stripe.interval } : {}),
     },
   });
 }

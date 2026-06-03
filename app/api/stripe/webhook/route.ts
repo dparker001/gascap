@@ -151,6 +151,13 @@ export async function POST(req: Request) {
       const subscriptionId = typeof session.subscription === 'string' ? session.subscription : null;
       const planTier       = (session.metadata?.tier ?? 'pro') as 'pro' | 'fleet';
 
+      // Billing interval from checkout metadata — persisted authoritatively below
+      // so stripeInterval is correct even for repeat upgraders (gates the
+      // Lifetime-only getaway promo).
+      const billingMeta = session.metadata?.billing as string | undefined;
+      const interval: 'monthly' | 'annual' | 'lifetime' =
+        billingMeta === 'lifetime' ? 'lifetime' : billingMeta === 'annual' ? 'annual' : 'monthly';
+
       // Fetch BEFORE setUserPlan so we can check isProTrial before it's cleared
       const userBeforeUpgrade = await findById(userId);
       const wasOnTrial = userBeforeUpgrade?.isProTrial ?? false;
@@ -158,6 +165,7 @@ export async function POST(req: Request) {
       await setUserPlan(userId, planTier, {
         customerId:     customerId     ?? undefined,
         subscriptionId: subscriptionId ?? undefined,
+        interval,
       });
 
       // Backfill phone from Stripe checkout if user didn't provide one at signup.
@@ -177,15 +185,6 @@ export async function POST(req: Request) {
       if (upgradedUser) {
         updateGhlContactPlan(upgradedUser.email, planTier)
           .catch((err) => console.error('[GHL] plan sync failed:', err));
-
-        // Determine billing interval from metadata
-        const billingMeta = session.metadata?.billing as string | undefined;
-        let interval: 'monthly' | 'annual' | 'lifetime' = 'monthly';
-        if (billingMeta === 'lifetime') {
-          interval = 'lifetime';
-        } else if (billingMeta === 'annual') {
-          interval = 'annual';
-        }
 
         const tierLabel = interval === 'lifetime'
           ? 'Pro Lifetime ($19.99 one-time)'
