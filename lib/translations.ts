@@ -344,7 +344,7 @@ const en = {
 
   // ── Gas price lookup ───────────────────────────────────────────────────────
   gasPrice: {
-    trigger:       'Look up my state\'s average price (via EIA)',
+    trigger:       'Use my local price',
     locating:      'Getting your location…',
     fetching:      'Looking up gas prices…',
     errorDenied:   'Location access denied. Please enter the price manually.',
@@ -1325,7 +1325,7 @@ const es: typeof en = {
   },
 
   gasPrice: {
-    trigger:       'Buscar el precio promedio de mi estado (vía EIA)',
+    trigger:       'Usar el precio de mi zona',
     locating:      'Obteniendo tu ubicación…',
     fetching:      'Buscando precios de gasolina…',
     errorDenied:   'Acceso a ubicación denegado. Por favor ingresa el precio manualmente.',

@@ -110,13 +110,11 @@ export default function GasPriceLookup({ onApply }: GasPriceLookupProps) {
               handleLookup();
             }
           }}
-          className="flex items-center gap-2 text-xs font-bold text-amber-600
-                     hover:text-amber-700 transition-colors mt-2"
+          className="inline-flex items-center gap-1.5 mt-2.5 px-3.5 py-2 rounded-xl
+                     border border-amber-300 bg-amber-50 text-sm font-black text-amber-700
+                     hover:bg-amber-100 hover:border-amber-400 transition-colors"
         >
-          <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-            <path fillRule="evenodd" clipRule="evenodd"
-              d="M8 1a5 5 0 100 10A5 5 0 008 1zM0 8a8 8 0 1116 0A8 8 0 010 8zm8-3a1 1 0 011 1v2h2a1 1 0 110 2H8a1 1 0 01-1-1V6a1 1 0 011-1z"/>
-          </svg>
+          <span className="text-base leading-none" aria-hidden="true">📍</span>
           {t.gasPrice.trigger}
         </button>
       )}
