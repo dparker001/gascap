@@ -18,6 +18,7 @@
 import Link       from 'next/link';
 import { useEffect, useState } from 'react';
 import { useSession }          from 'next-auth/react';
+import { useEntryCountUp }     from '@/hooks/useEntryCountUp';
 
 interface StreakData { streak: number; }
 interface EntryData  { entryCount: number; eligible: boolean; alwaysEligible: boolean; }
@@ -57,11 +58,14 @@ export default function HeroEngagementPanel() {
       .catch(() => {});
   }, [session]);
 
+  // Animated entry count — ticks up when the daily gift box is opened.
+  const { count: liveCount, flash } = useEntryCountUp(entries?.entryCount ?? null);
+
   // Only renders on desktop — if no session, nothing to show
   if (!session?.user) return null;
 
   const canEnter   = entries ? (entries.eligible || entries.alwaysEligible || isProTrial) : false;
-  const entryCount = entries?.entryCount ?? 0;
+  const entryCount = liveCount ?? entries?.entryCount ?? 0;
   const hasStreak  = streak !== null && streak >= 2;
   const draw       = drawDate();
 
@@ -100,10 +104,11 @@ export default function HeroEngagementPanel() {
         href="/giveaway"
         aria-label={`${entryCount} giveaway entries. View monthly drawing.`}
         className={[
-          'flex-1 basis-0 min-w-0 rounded-xl px-3.5 py-2.5 flex items-center gap-2.5 transition-colors group',
+          'flex-1 basis-0 min-w-0 rounded-xl px-3.5 py-2.5 flex items-center gap-2.5 transition-all group',
           canEnter && entryCount > 0
             ? 'bg-gradient-to-r from-amber-500 to-[#FA7109] hover:from-amber-600 hover:to-[#e06508]'
             : 'bg-white/10 hover:bg-white/15',
+          flash ? 'ring-2 ring-yellow-300 scale-[1.03]' : '',
         ].join(' ')}
       >
         <span className="text-lg flex-shrink-0" aria-hidden="true">🎟️</span>
@@ -113,7 +118,7 @@ export default function HeroEngagementPanel() {
             <div className="h-3 bg-white/10 rounded animate-pulse w-24 mb-1" />
           ) : canEnter && entryCount > 0 ? (
             <p className="text-white text-xs font-black leading-none">
-              <span className="text-sm">{entryCount.toLocaleString()}</span>{' '}
+              <span className={`text-sm inline-block transition-transform duration-300 ${flash ? 'scale-125 text-yellow-100' : ''}`}>{entryCount.toLocaleString()}</span>{' '}
               {entryCount === 1 ? 'entry' : 'entries'} this month
             </p>
           ) : canEnter ? (

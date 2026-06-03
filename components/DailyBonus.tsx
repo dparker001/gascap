@@ -97,7 +97,12 @@ export default function DailyBonus() {
     try {
       const res  = await fetch('/api/giveaway/daily-bonus', { method: 'POST' });
       const data = await res.json() as ClaimResponse;
-      setEntriesWon(data.entriesWon ?? 0);
+      const won  = data.entriesWon ?? 0;
+      setEntriesWon(won);
+      // Broadcast so the "entries this month" banner(s) tick up in real time
+      if (won > 0 && typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('gascap:entries-earned', { detail: { entriesWon: won } }));
+      }
       setPhase('revealed');
       // Auto-dismiss popover after 4 s, leave badge in muted "done" state
       setTimeout(() => {

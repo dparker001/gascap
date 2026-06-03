@@ -16,6 +16,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useSession }         from 'next-auth/react';
+import { useEntryCountUp }    from '@/hooks/useEntryCountUp';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -61,6 +62,9 @@ export default function GiveawayNudge() {
       .catch(() => setLoading(false));
   }, [session]);
 
+  // Animated entry count — ticks up when the daily gift box is opened.
+  const { count: liveCount, flash } = useEntryCountUp(data?.entryCount ?? null);
+
   // Don't render until we have data
   if (!session?.user || loading || !data) return null;
 
@@ -68,7 +72,7 @@ export default function GiveawayNudge() {
   const daysLeft    = daysUntilDraw();
   const isUrgent    = daysLeft <= 7;
   const canEnter    = data.eligible || data.alwaysEligible || isProTrial;
-  const entryCount  = data.entryCount;
+  const entryCount  = liveCount ?? data.entryCount;
 
   // ── State 3: Free user — upgrade pitch ──────────────────────────────────
   if (!canEnter) {
@@ -138,17 +142,19 @@ export default function GiveawayNudge() {
   return (
     <Link
       href="/giveaway"
-      className="group flex items-center gap-3 mx-4 lg:mx-0 mb-3
+      className={`group flex items-center gap-3 mx-4 lg:mx-0 mb-3
                  bg-gradient-to-r from-amber-500 to-[#FA7109]
                  hover:from-amber-600 hover:to-[#e06508]
-                 transition-colors rounded-2xl px-4 py-3 shadow-sm"
+                 transition-all rounded-2xl px-4 py-3 shadow-sm ${
+                   flash ? 'ring-2 ring-yellow-300 scale-[1.02]' : ''
+                 }`}
       aria-label={`You have ${entryCount} giveaway entries. View the monthly drawing.`}
     >
       <span className="text-xl flex-shrink-0" aria-hidden="true">🎟️</span>
 
       <div className="flex-1 min-w-0">
         <p className="text-white text-[13px] font-black leading-tight">
-          <span className="text-lg">{entryCount.toLocaleString()}</span>
+          <span className={`text-lg inline-block transition-transform duration-300 ${flash ? 'scale-125 text-yellow-100' : ''}`}>{entryCount.toLocaleString()}</span>
           {' '}
           {entryCount === 1 ? 'entry' : 'entries'} this month
         </p>
