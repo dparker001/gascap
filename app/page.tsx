@@ -611,6 +611,13 @@ export default function Home() {
               <GiveawayNudge />
             </div>
 
+            {/* Calculator — lifted to the top of the content (above the insight widgets,
+                which are mostly empty for brand-new users) so the core action is the
+                first thing users reach. SavedVehicles renders on mobile and desktop. */}
+            <section id="gascap-calculator" className="flex-1 px-4 lg:px-0 pt-5 pb-4 max-w-lg lg:max-w-none mx-auto w-full">
+              <CalculatorTabs />
+            </section>
+
             {/* Fleet Dashboard banner — mobile only (desktop sees it in right panel) */}
             {userPlan === 'fleet' && (
               <section className="px-4 lg:hidden max-w-lg mx-auto w-full pt-3">
@@ -646,11 +653,6 @@ export default function Home() {
 
             {/* Fuel budget ring + all-time stats */}
             <FuelBudgetWidget />
-
-            {/* Calculator — SavedVehicles is visible on both mobile and desktop */}
-            <section id="gascap-calculator" className="flex-1 px-4 lg:px-0 pt-5 pb-4 max-w-lg lg:max-w-none mx-auto w-full">
-              <CalculatorTabs />
-            </section>
 
             {/* AdSense — free users */}
             {userPlan === 'free' && (

@@ -338,7 +338,7 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
       )}
 
       {/* ══════════════════════════════════════════════════════════════
-          STEP 1 — Pick a vehicle
+          STEP 1 — Tank size (pick a vehicle or enter gallons)
       ══════════════════════════════════════════════════════════════ */}
       <StepLabel n={1} title={t.calc.step1} />
       <div className="card">
