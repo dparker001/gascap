@@ -19,13 +19,6 @@ import { useEntryCountUp }     from '@/hooks/useEntryCountUp';
 
 interface EntryData { entryCount: number; eligible: boolean; alwaysEligible: boolean; }
 
-/** 5th of next month — the drawing date — e.g. "Jul 5" */
-function drawDateLabel(): string {
-  const now   = new Date();
-  const fifth = new Date(now.getFullYear(), now.getMonth() + 1, 5);
-  return fifth.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-}
-
 export default function MobileEngagementRow() {
   const { data: session } = useSession();
   const { t } = useTranslation();
@@ -61,7 +54,6 @@ export default function MobileEngagementRow() {
   const canEnter   = entries ? (entries.eligible || entries.alwaysEligible || isProTrial) : false;
   const entryCount = liveCount ?? entries?.entryCount ?? 0;
   const hasEntries = canEnter && entryCount > 0;
-  const draw       = drawDateLabel();
 
   return (
     <div className="lg:hidden flex gap-2 px-4 pt-3 pb-1 max-w-lg mx-auto w-full">
@@ -73,13 +65,10 @@ export default function MobileEngagementRow() {
           {streak === null ? (
             <div className="h-3 bg-white/10 rounded animate-pulse w-16" />
           ) : hasStreak ? (
-            <p className="text-amber-400 text-[12px] font-black leading-tight truncate">{t.streak.active(streak)}</p>
+            <p className="text-amber-400 text-[12px] font-black leading-tight">{t.streak.active(streak)}</p>
           ) : (
-            <p className="text-white text-[12px] font-black leading-tight truncate">{t.streak.start}</p>
+            <p className="text-white text-[12px] font-black leading-tight">{t.streak.start}</p>
           )}
-          <p className="text-white/40 text-[9px] mt-0.5 leading-tight truncate">
-            {hasStreak ? t.streak.activeSub : t.streak.startSub}
-          </p>
         </div>
       </div>
 
@@ -96,18 +85,17 @@ export default function MobileEngagementRow() {
           {entries === null ? (
             <div className="h-3 bg-white/10 rounded animate-pulse w-16" />
           ) : hasEntries ? (
-            <p className="text-white text-[12px] font-black leading-tight truncate">
+            <p className="text-white text-[12px] font-black leading-tight">
               <span className={`inline-block transition-transform duration-300 ${flash ? 'scale-125 text-yellow-100' : ''}`}>
                 {entryCount.toLocaleString()}
               </span>{' '}
               {entryCount === 1 ? 'entry' : 'entries'}
             </p>
           ) : canEnter ? (
-            <p className="text-white text-[12px] font-black leading-tight truncate">Earn entries today</p>
+            <p className="text-white text-[12px] font-black leading-tight">Earn entries</p>
           ) : (
-            <p className="text-white text-[12px] font-black leading-tight truncate">$100 Giveaway</p>
+            <p className="text-white text-[12px] font-black leading-tight">$100 Giveaway</p>
           )}
-          <p className="text-white/50 text-[9px] mt-0.5 leading-tight truncate">Drawing {draw}</p>
         </div>
       </Link>
 
