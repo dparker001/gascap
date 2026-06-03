@@ -13,6 +13,7 @@ import { useEffect, useState } from 'react';
 import { useSession }          from 'next-auth/react';
 import { useTranslation }      from '@/contexts/LanguageContext';
 import { PRICING }             from '@/lib/stripe';
+import { NEW_MEMBER_DISCOUNT_USD } from '@/lib/newMemberOffer';
 import { trackUpgradeClick }   from '@/lib/gtag';
 
 export default function NewMemberOfferBanner() {
@@ -33,8 +34,9 @@ export default function NewMemberOfferBanner() {
 
   if (!session?.user || daysLeft === null) return null;
 
-  const price    = (PRICING.pro.lifetime - 5).toFixed(2);
+  const price    = (PRICING.pro.lifetime - NEW_MEMBER_DISCOUNT_USD).toFixed(2);
   const original = PRICING.pro.lifetime.toFixed(2);
+  const pctOff   = Math.round((NEW_MEMBER_DISCOUNT_USD / PRICING.pro.lifetime) * 100);
   const daysWord = daysLeft === 1 ? t.pricing.newMemberDayLeft : t.pricing.newMemberDaysLeft;
 
   async function handleClaim() {
@@ -61,15 +63,18 @@ export default function NewMemberOfferBanner() {
         <div className="flex items-start gap-3 flex-1 min-w-0">
           <span className="text-2xl flex-shrink-0" aria-hidden="true">🎁</span>
           <div className="min-w-0">
-            <p className="text-[10px] font-black uppercase tracking-widest text-amber-300">
+            <p className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-amber-300">
               {t.pricing.newMemberTitle}
+              <span className="bg-amber-400 text-navy-900 px-1.5 py-0.5 rounded-full tracking-normal">
+                {pctOff}% {t.pricing.newMemberOff}
+              </span>
             </p>
             <p className="text-white text-[13px] font-bold leading-snug">
               {t.pricing.newMemberMsg} — <span className="text-amber-300">${price}</span>{' '}
               <span className="text-white/40 line-through">${original}</span>
             </p>
             <p className="text-[11px] text-white/60 mt-0.5 font-semibold">
-              ⏳ {daysLeft} {daysWord} · {t.pricing.newMemberSave} $5
+              ⏳ {daysLeft} {daysWord}
             </p>
           </div>
         </div>

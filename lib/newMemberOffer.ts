@@ -10,11 +10,12 @@
 // Stripe coupon: "$5 off, once". Applied server-side ONLY, on the Lifetime
 // checkout, and ONLY for eligible users (see app/api/stripe/checkout/route.ts).
 // Not secret; overridable via env if the coupon is ever recreated.
+// "$10 off, once" → $19.99 Lifetime becomes $9.99 (50% off).
 export const NEW_MEMBER_LIFETIME_COUPON =
-  process.env.STRIPE_NEW_MEMBER_COUPON ?? '08QK8PYs';
+  process.env.STRIPE_NEW_MEMBER_COUPON ?? 'BrVUrcM7';
 
 export const NEW_MEMBER_OFFER_DAYS  = 7;
-export const NEW_MEMBER_DISCOUNT_USD = 5;
+export const NEW_MEMBER_DISCOUNT_USD = 10;
 
 export interface NewMemberOfferStatus {
   eligible: boolean;
