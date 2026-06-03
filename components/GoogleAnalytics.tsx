@@ -1,15 +1,16 @@
 'use client';
 
 /**
- * GoogleAnalytics — loads GA4 and tracks SPA route changes.
- * Only renders when NEXT_PUBLIC_GA_MEASUREMENT_ID is set.
+ * GoogleAnalytics — loads the shared gtag.js library and configures both
+ * Google Analytics 4 (GA_ID) and Google Ads (GADS_ID) on a single load.
+ * GA4 also tracks SPA route changes. Renders whenever either ID is present.
  * Placed in the root layout so every page is covered.
  */
 
 import Script        from 'next/script';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useEffect, Suspense }          from 'react';
-import { GA_ID }     from '@/lib/gtag';
+import { GA_ID, GADS_ID } from '@/lib/gtag';
 
 // Inner component that reads searchParams (must be wrapped in Suspense)
 function PageViewTracker() {
@@ -26,19 +27,24 @@ function PageViewTracker() {
 }
 
 export default function GoogleAnalytics() {
-  if (!GA_ID) return null; // silently skip until ID is configured
+  // Render if EITHER product is configured. The Ads tag (GADS_ID) has a
+  // hardcoded default, so conversion tracking works even without GA4.
+  if (!GA_ID && !GADS_ID) return null;
+
+  // Load the shared library once, using whichever ID is available.
+  const loaderId = GA_ID || GADS_ID;
 
   return (
     <>
-      {/* Load the GA4 tag */}
+      {/* Load the shared gtag.js library (covers GA4 + Google Ads) */}
       <Script
-        id="ga4-script"
-        src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}
+        id="gtag-script"
+        src={`https://www.googletagmanager.com/gtag/js?id=${loaderId}`}
         strategy="afterInteractive"
       />
-      {/* Initialize gtag */}
+      {/* Initialize gtag and configure each product */}
       <Script
-        id="ga4-init"
+        id="gtag-init"
         strategy="afterInteractive"
         dangerouslySetInnerHTML={{
           __html: `
@@ -46,11 +52,12 @@ export default function GoogleAnalytics() {
             function gtag(){dataLayer.push(arguments);}
             window.gtag = gtag;
             gtag('js', new Date());
-            gtag('config', '${GA_ID}', {
+            ${GA_ID ? `gtag('config', '${GA_ID}', {
               page_location: window.location.href,
               page_title:    document.title,
               send_page_view: true,
-            });
+            });` : ''}
+            ${GADS_ID ? `gtag('config', '${GADS_ID}');` : ''}
           `,
         }}
       />

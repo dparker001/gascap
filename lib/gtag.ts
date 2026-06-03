@@ -8,6 +8,16 @@
 // NEXT_PUBLIC_* vars are baked in at build time by Next.js
 export const GA_ID: string = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID ?? '';
 
+// ── Google Ads conversion tracking ────────────────────────────────────────────
+// GADS_ID is the Google Ads tag (AW-XXXXXXXXX). Defaults to the live GasCap tag,
+// overridable via env. GADS_SIGNUP_LABEL is the conversion-action label — set it
+// in Railway (NEXT_PUBLIC_GOOGLE_ADS_SIGNUP_LABEL) after creating the "Sign-up"
+// conversion action in Google Ads. Until it's set, the conversion is a safe no-op.
+export const GADS_ID: string =
+  process.env.NEXT_PUBLIC_GOOGLE_ADS_ID ?? 'AW-18207815390';
+export const GADS_SIGNUP_LABEL: string =
+  process.env.NEXT_PUBLIC_GOOGLE_ADS_SIGNUP_LABEL ?? '';
+
 declare global {
   interface Window {
     gtag: (...args: unknown[]) => void;
@@ -51,6 +61,18 @@ export const trackGasPriceLookup = () =>
 /** User successfully created an account */
 export const trackSignUp = () =>
   gtagEvent('sign_up', { method: 'credentials' });
+
+/**
+ * Fire the Google Ads "Sign-up" conversion.
+ * Safe no-op until GADS_SIGNUP_LABEL is configured (env), or if gtag isn't loaded.
+ */
+export function trackGoogleAdsSignup() {
+  if (typeof window === 'undefined' || !window.gtag) return;
+  if (!GADS_ID || !GADS_SIGNUP_LABEL) return;
+  window.gtag('event', 'conversion', {
+    send_to: `${GADS_ID}/${GADS_SIGNUP_LABEL}`,
+  });
+}
 
 /** User clicked any "Upgrade to Pro" CTA */
 export const trackUpgradeClick = (source: string) =>

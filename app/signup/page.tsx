@@ -5,7 +5,7 @@ import { signIn } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useTranslation } from '@/contexts/LanguageContext';
-import { trackSignUp, fbTrack } from '@/lib/gtag';
+import { trackSignUp, fbTrack, trackGoogleAdsSignup } from '@/lib/gtag';
 import SignUpExitIntent from '@/components/SignUpExitIntent';
 import BrandBar        from '@/components/BrandBar';
 
@@ -102,6 +102,7 @@ function SignUpForm() {
     // Both events run client-side so the pixel/gtag scripts are available.
     trackSignUp();                          // GA4: sign_up event
     fbTrack('CompleteRegistration');        // Meta Pixel: CompleteRegistration
+    trackGoogleAdsSignup();                 // Google Ads: Sign-up conversion
     // ─────────────────────────────────────────────────────────────────────
 
     // Auto sign-in after registration
