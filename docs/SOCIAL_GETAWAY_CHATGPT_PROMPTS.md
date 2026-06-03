@@ -46,3 +46,13 @@ Create a vertical 4:5 social media graphic for "GasCap™," a fuel cost calculat
 - #4 "Fuel Your Getaway" road trip → Facebook + LinkedIn (most on-brand)
 - #5 "What's Included" honest card → Facebook / wherever questions come up
 - #6 "Limited Time" urgency → X/Twitter + last-call reuse
+
+## 🗂️ Generated image filenames (use .jpg — photo-heavy)
+Prefix `gascap-getaway-` groups them in the media library; theme slug = identify at a glance.
+Append `-1080x1350` if you want dimensions baked in.
+- "Limited Time" + WHILE IT LASTS (#6) → `gascap-getaway-limited-time.jpg`
+- "Your Lifetime Bonus Getaway" checklist (#5) → `gascap-getaway-whats-included.jpg`
+- "Fuel Your Getaway" car/road (#4) → `gascap-getaway-fuel-your-getaway.jpg`
+- "Go Lifetime. Then Go On Vacation" pool (#3) → `gascap-getaway-go-on-vacation.jpg`
+- "Pick Your Getaway" 6 cities (#2) → `gascap-getaway-pick-destination.jpg`
+- (Hero #1, if generated later) → `gascap-getaway-hero.jpg`
