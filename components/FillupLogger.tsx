@@ -406,7 +406,7 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
         <label className="field-label">Date</label>
         <input
           type="date"
-          className="input-field text-base min-w-0 block box-border"
+          className="input-field text-base appearance-none min-w-0 w-full [&::-webkit-date-and-time-value]:text-left [&::-webkit-date-and-time-value]:min-w-0"
           value={date}
           max={today}
           onChange={(e) => setDate(e.target.value)}
