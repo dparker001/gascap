@@ -603,8 +603,11 @@ export default function Home() {
             {/* Personalized greeting — time-aware + first-login welcome card */}
             <WelcomeBanner />
 
-            {/* Pro Lifetime + complimentary getaway promo — self-hides unless active */}
-            <GetawayPromoBanner />
+            {/* Pro Lifetime + complimentary getaway promo — full banner on MOBILE only;
+                desktop shows a slim strip in the header hero (Header → variant="hero"). */}
+            <div className="lg:hidden">
+              <GetawayPromoBanner />
+            </div>
 
             {/* New-member 7-day Lifetime offer ($14.99) — self-hides unless eligible
                 (also auto-pauses while the getaway promo above is active) */}

@@ -19,7 +19,7 @@ import { useTranslation }      from '@/contexts/LanguageContext';
 import { PRICING }             from '@/lib/stripe';
 import { trackUpgradeClick }   from '@/lib/gtag';
 
-export default function GetawayPromoBanner() {
+export default function GetawayPromoBanner({ variant = 'banner' }: { variant?: 'banner' | 'hero' }) {
   const { data: session } = useSession();
   const { t } = useTranslation();
   const [show,        setShow]        = useState(false);
@@ -76,6 +76,46 @@ export default function GetawayPromoBanner() {
     } finally {
       setResending(false);
     }
+  }
+
+  // ── Hero variant: slim strip for the desktop header (less vertical space) ──
+  if (variant === 'hero') {
+    return (
+      <div className="hidden lg:block mb-3">
+        <div className="flex items-center gap-3 rounded-xl px-4 py-2 bg-gradient-to-r from-[#005F4A] to-[#1EB68F] border border-white/10">
+          <span className="text-lg flex-shrink-0" aria-hidden="true">🏝️</span>
+          <div className="flex-1 min-w-0 leading-tight">
+            <p className="text-white text-[13px] font-bold truncate">
+              <span className="text-amber-300 text-[10px] font-black uppercase tracking-widest mr-1.5">{t.pricing.getawayTitle}</span>
+              {t.pricing.getawayHeroLine} — <span className="text-amber-300">${price}</span>
+            </p>
+            <p className="text-white/55 text-[10px] leading-tight truncate">
+              {needsVerify ? `⚠️ ${t.pricing.newMemberVerify}` : t.pricing.getawayMini}
+              {!needsVerify && daysLeft !== null && (
+                <span className="text-white/80 font-semibold"> · ⏳ {daysLeft} {daysWord}</span>
+              )}
+            </p>
+          </div>
+          {needsVerify ? (
+            <button
+              onClick={handleResend}
+              disabled={resending || resent}
+              className="flex-shrink-0 bg-white/15 hover:bg-white/25 disabled:opacity-70 text-white text-[13px] font-black px-4 py-2 rounded-lg whitespace-nowrap"
+            >
+              {resent ? `✓ ${t.pricing.newMemberSent}` : resending ? t.pricing.loading : t.pricing.newMemberResend}
+            </button>
+          ) : (
+            <button
+              onClick={handleClaim}
+              disabled={loading}
+              className="flex-shrink-0 bg-amber-400 hover:bg-amber-300 disabled:opacity-60 text-navy-900 text-[13px] font-black px-4 py-2 rounded-lg whitespace-nowrap"
+            >
+              {loading ? t.pricing.loading : `${t.pricing.getawayCta} — $${price}`}
+            </button>
+          )}
+        </div>
+      </div>
+    );
   }
 
   return (
