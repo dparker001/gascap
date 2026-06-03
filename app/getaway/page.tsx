@@ -28,7 +28,7 @@ export default function GetawayPage() {
         <div className="bg-white rounded-3xl shadow-card p-7 max-w-md w-full space-y-4">
           <div className="text-center">
             <div className="text-4xl mb-1" aria-hidden="true">🏝️</div>
-            <h1 className="text-xl font-black text-navy-700">{t.pricing.getawayPickerHeadline}</h1>
+            <h1 className="text-xl font-black text-navy-700">{t.pricing.getawayPageTitle}</h1>
           </div>
 
           {status === 'loading' ? (
