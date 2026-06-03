@@ -7,7 +7,6 @@ import AuthButton           from './AuthButton';
 import PlanBadge            from './PlanBadge';
 import TipsTicker           from './TipsTicker';
 import HeroEngagementPanel  from './HeroEngagementPanel';
-import GetawayPromoBanner   from './GetawayPromoBanner';
 import { useTranslation }   from '@/contexts/LanguageContext';
 
 interface LiveVehiclesData {
@@ -280,9 +279,6 @@ export default function Header() {
           </div>
 
         </div>
-
-        {/* ── Getaway promo — slim hero strip (desktop only; self-hides unless active) ── */}
-        <GetawayPromoBanner variant="hero" />
 
         {/* ── Plan badge ── */}
         <PlanBadge />

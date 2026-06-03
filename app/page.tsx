@@ -24,7 +24,6 @@ import EndorserMarquee        from '@/components/EndorserMarquee';
 import DailyFuelPulse         from '@/components/DailyFuelPulse';
 import WelcomeBanner          from '@/components/WelcomeBanner';
 import NewMemberOfferBanner   from '@/components/NewMemberOfferBanner';
-import GetawayPromoBanner      from '@/components/GetawayPromoBanner';
 import FreshSignupBanner      from '@/components/FreshSignupBanner';
 import MobileEngagementRow    from '@/components/MobileEngagementRow';
 import FuelBudgetWidget       from '@/components/FuelBudgetWidget';
@@ -603,14 +602,12 @@ export default function Home() {
             {/* Personalized greeting — time-aware + first-login welcome card */}
             <WelcomeBanner />
 
-            {/* Pro Lifetime + complimentary getaway promo — full banner on MOBILE only;
-                desktop shows a slim strip in the header hero (Header → variant="hero"). */}
-            <div className="lg:hidden">
-              <GetawayPromoBanner />
-            </div>
+            {/* Getaway promo lives on the Pro Lifetime card in the pricing panel
+                (PricingSection) + /upgrade — kept out of the top so the sample
+                fill-up nudge owns the above-the-fold space. */}
 
             {/* New-member 7-day Lifetime offer ($14.99) — self-hides unless eligible
-                (also auto-pauses while the getaway promo above is active) */}
+                (also auto-pauses while the getaway promo is active) */}
             <NewMemberOfferBanner />
 
             {/* Streak + giveaway — compact side-by-side row on mobile so the
