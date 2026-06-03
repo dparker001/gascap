@@ -26,7 +26,7 @@
  */
 
 // ── Flip this to true to launch the promo ────────────────────────────────────
-const GETAWAY_ACTIVE = false;
+const GETAWAY_ACTIVE = true;
 
 // Optional hard deadline (ISO date) for urgency — null = no deadline / standing.
 // Example: '2026-06-30T23:59:59-04:00'
