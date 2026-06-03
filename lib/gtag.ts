@@ -9,14 +9,15 @@
 export const GA_ID: string = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID ?? '';
 
 // ── Google Ads conversion tracking ────────────────────────────────────────────
-// GADS_ID is the Google Ads tag (AW-XXXXXXXXX). Defaults to the live GasCap tag,
-// overridable via env. GADS_SIGNUP_LABEL is the conversion-action label — set it
-// in Railway (NEXT_PUBLIC_GOOGLE_ADS_SIGNUP_LABEL) after creating the "Sign-up"
-// conversion action in Google Ads. Until it's set, the conversion is a safe no-op.
+// GADS_ID is the Google Ads tag (AW-XXXXXXXXX); GADS_SIGNUP_LABEL is the "Sign-up"
+// conversion-action label. Both default to the live GasCap values (neither is
+// secret — they ship to the client anyway) so conversion tracking works with no
+// env config. Either can still be overridden via NEXT_PUBLIC_GOOGLE_ADS_ID /
+// NEXT_PUBLIC_GOOGLE_ADS_SIGNUP_LABEL if the conversion action is ever recreated.
 export const GADS_ID: string =
   process.env.NEXT_PUBLIC_GOOGLE_ADS_ID ?? 'AW-18207815390';
 export const GADS_SIGNUP_LABEL: string =
-  process.env.NEXT_PUBLIC_GOOGLE_ADS_SIGNUP_LABEL ?? '';
+  process.env.NEXT_PUBLIC_GOOGLE_ADS_SIGNUP_LABEL ?? 'VJTjCKyqhrgcEN7tlOpD';
 
 declare global {
   interface Window {
