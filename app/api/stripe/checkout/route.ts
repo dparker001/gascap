@@ -11,6 +11,7 @@ import { authOptions }     from '@/lib/auth';
 import { findById }        from '@/lib/users';
 import { stripe, PRICES }  from '@/lib/stripe';
 import { getBaseUrl }      from '@/lib/getBaseUrl';
+import { newMemberOfferStatus, NEW_MEMBER_LIFETIME_COUPON } from '@/lib/newMemberOffer';
 
 export async function POST(req: Request) {
   if (!stripe) {
@@ -43,11 +44,19 @@ export async function POST(req: Request) {
     billing?: 'monthly' | 'lifetime';
     priceId?: string; // legacy direct price ID override
     coupon?:  string; // Stripe coupon ID to pre-apply (e.g. from C4 promo email)
+    newMemberOffer?: boolean; // request the 7-day new-member Lifetime discount
   };
 
   const tier    = body.tier    ?? 'pro';
   const billing = body.billing ?? 'monthly';
-  const coupon  = body.coupon  ?? null;
+  let   coupon  = body.coupon  ?? null;
+
+  // New-member 7-day Lifetime discount ($5 off). Server-validates eligibility
+  // (createdAt within 7 days, not already Lifetime) so the discount can't be
+  // claimed by a copied link or an ineligible account.
+  if (body.newMemberOffer && billing === 'lifetime' && newMemberOfferStatus(user).eligible) {
+    coupon = NEW_MEMBER_LIFETIME_COUPON;
+  }
 
   // Resolve price ID
   let priceId = body.priceId ?? '';

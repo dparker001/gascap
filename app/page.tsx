@@ -23,6 +23,7 @@ import EngagementNudge        from '@/components/EngagementNudge';
 import EndorserMarquee        from '@/components/EndorserMarquee';
 import DailyFuelPulse         from '@/components/DailyFuelPulse';
 import WelcomeBanner          from '@/components/WelcomeBanner';
+import NewMemberOfferBanner   from '@/components/NewMemberOfferBanner';
 import FreshSignupBanner      from '@/components/FreshSignupBanner';
 import GiveawayNudge          from '@/components/GiveawayNudge';
 import FuelBudgetWidget       from '@/components/FuelBudgetWidget';
@@ -600,6 +601,9 @@ export default function Home() {
 
             {/* Personalized greeting — time-aware + first-login welcome card */}
             <WelcomeBanner />
+
+            {/* New-member 7-day Lifetime offer ($14.99) — self-hides unless eligible */}
+            <NewMemberOfferBanner />
 
             {/* Streak counter — hidden on desktop (shown in header center panel) */}
             <div className="lg:hidden">
