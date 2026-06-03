@@ -5,7 +5,7 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { PRICING } from '@/lib/stripe';
 import { useTranslation } from '@/contexts/LanguageContext';
-import { getawayPromoActive } from '@/lib/getawayPromo';
+import { getawayPromoActive, getawayDaysLeft } from '@/lib/getawayPromo';
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -85,6 +85,7 @@ export default function PricingSection() {
   // Getaway promo: Lifetime buyers get a complimentary resort getaway. Show the
   // bonus callout on the Lifetime card (hidden once you already own Lifetime).
   const showGetaway   = getawayPromoActive() && !isProLifetime;
+  const getawayDays   = getawayDaysLeft();
 
   return (
     <section aria-labelledby="pricing-heading" className="mt-10">
@@ -252,8 +253,13 @@ export default function PricingSection() {
 
           {showGetaway && (
             <div className="mb-5 rounded-2xl bg-gradient-to-r from-[#005F4A] to-[#1EB68F] px-3.5 py-3">
-              <p className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-amber-300">
+              <p className="flex items-center flex-wrap gap-1.5 text-[10px] font-black uppercase tracking-widest text-amber-300">
                 🏝️ {t.pricing.getawayPill}
+                {getawayDays !== null && (
+                  <span className="bg-amber-400 text-navy-900 px-1.5 py-0.5 rounded-full tracking-normal whitespace-nowrap">
+                    ⏳ {getawayDays} {getawayDays === 1 ? t.pricing.getawayDayLeft : t.pricing.getawayDaysLeft}
+                  </span>
+                )}
               </p>
               <p className="text-white text-[12px] font-bold leading-snug mt-1">
                 {t.pricing.getawayCardMsg}

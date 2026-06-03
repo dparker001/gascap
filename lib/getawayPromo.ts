@@ -29,8 +29,8 @@
 const GETAWAY_ACTIVE = true;
 
 // Optional hard deadline (ISO date) for urgency — null = no deadline / standing.
-// Example: '2026-06-30T23:59:59-04:00'
-const GETAWAY_END_DATE: string | null = null;
+// Active THROUGH June 30, 2026 (EDT); auto-pauses July 1.
+const GETAWAY_END_DATE: string | null = '2026-06-30T23:59:59-04:00';
 
 /**
  * Honest disclosure facts (sourced from the Marketing Boost / RedeemVacations
