@@ -164,7 +164,7 @@ function UpgradePageInner() {
           {/* Free */}
           <div className="bg-white rounded-3xl border-2 border-slate-200 shadow-sm p-6 flex flex-col">
             <div className="mb-4">
-              <span className="inline-block bg-green-100 text-green-700 text-[10px] font-black
+              <span className="inline-block bg-slate-100 text-slate-600 text-[10px] font-black
                                px-2 py-0.5 rounded-full uppercase tracking-wider mb-2">
                 {t.upgrade.noCC}
               </span>

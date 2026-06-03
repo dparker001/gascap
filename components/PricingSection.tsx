@@ -114,7 +114,7 @@ export default function PricingSection() {
           <div className="mb-4">
             <h3 className="font-black text-lg text-navy-700">Free</h3>
             <span className="inline-block mt-1 text-[10px] font-bold px-2 py-0.5 rounded-full
-                             bg-green-100 text-green-700 whitespace-nowrap">
+                             bg-slate-100 text-slate-600 whitespace-nowrap">
               {t.pricing.noCCEver}
             </span>
           </div>
@@ -170,8 +170,8 @@ export default function PricingSection() {
 
           <div className="mb-4 mt-1">
             <h3 className="font-black text-lg text-white">Pro</h3>
-            <span className="inline-block mt-1 text-[10px] font-bold px-2 py-0.5 rounded-full
-                             bg-amber-400/20 text-amber-300 whitespace-nowrap">
+            <span className={`inline-block mt-1 text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${
+                             isProMonthly ? 'bg-green-400/20 text-green-300' : 'bg-amber-400/20 text-amber-300'}`}>
               {t.pricing.individuals ?? 'Monthly'}
             </span>
           </div>
@@ -212,7 +212,9 @@ export default function PricingSection() {
               <li key={f.text} className="flex items-start gap-2.5">
                 <Check highlight={f.highlight} dark />
                 <span className={`text-sm leading-snug ${
-                  f.highlight ? 'text-amber-300 font-semibold' : 'text-white/80'
+                  f.highlight
+                    ? (isProMonthly ? 'text-green-300 font-semibold' : 'text-amber-300 font-semibold')
+                    : 'text-white/80'
                 }`}>{f.text}</span>
               </li>
             ))}
