@@ -45,7 +45,10 @@ A: During our limited-time promotion, yes — anyone who buys **Pro Lifetime** (
 A: After your Lifetime purchase, go to the success page or **gascap.app/getaway**, pick one of the six destinations, and confirm. We'll email your certificate within 24 hours — it comes from our travel partner, Marketing Boost / RedeemVacations, so check your spam folder too.
 
 **Q: What does the getaway cost me?**
-A: The hotel room rate (valued up to $350/night) is free. You cover only the destination's nightly taxes and fees — they vary by destination and are shown before you choose — plus your own airfare, food, and any resort fees the hotel charges. There's no timeshare presentation. Activation fees are non-refundable.
+A: This is a hotel stay only — flights are NOT included. The hotel room rate (valued up to $350/night) is free. You cover the destination's nightly taxes and fees — they vary by destination and are shown before you choose — plus your own airfare, food, and any resort fees the hotel charges. There's no timeshare presentation. Activation fees are non-refundable.
+
+**Q: Are flights included in the getaway?**
+A: No — the getaway covers the hotel room rate only. Your airfare/flights, transfers, food, and any resort fees are your own responsibility. You can fly or drive to your destination (you must live at least 100 miles away to use it).
 
 **Q: What are the getaway rules / eligibility?**
 A: Activate the certificate within 7 days, travel any time within 18 months, and book at least 30 days ahead (major holidays excluded). It's for up to 2 adults (at least one age 21+), with up to 2 children under 12 allowed at some hotels. No group travel — one stay per household. You must live at least 100 miles from your chosen destination and present a government-issued ID and a major credit/debit card at check-in. Full terms come with the certificate at RedeemVacations.com.

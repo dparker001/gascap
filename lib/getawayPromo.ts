@@ -38,10 +38,10 @@ const GETAWAY_END_DATE: string | null = null;
  * offer never feels like bait-and-switch.
  */
 export const GETAWAY_DISCLOSURE = {
-  short: 'Complimentary resort stay (no timeshare) — you cover only the taxes & fees, which vary by destination. Must be 21+, live 100+ miles from your destination, and book 30+ days ahead. Full terms at RedeemVacations.com.',
+  short: 'Hotel stay only — flights not included. Room rate is complimentary (no timeshare); you cover the nightly taxes & fees (vary by destination) plus your own travel. Must be 21+, live 100+ miles from your destination, and book 30+ days ahead. Full terms at RedeemVacations.com.',
   full: [
     'No timeshare presentation and no hoops — activate online by prepaying your destination\'s hotel taxes & fees, then choose your resort and travel dates.',
-    'The hotel room rate is free (valued up to $350/night). You cover only the nightly taxes & fees (vary by destination), plus airfare, food, and any resort fees the hotel may charge at check-in.',
+    'This is a hotel stay only — flights/airfare are NOT included. The hotel room rate is free (valued up to $350/night); you cover the nightly taxes & fees (vary by destination), plus your own airfare, food, and any resort fees the hotel may charge at check-in.',
     'Activate within 7 days of receiving it; travel any time within 18 months. Book at least 30 days ahead — excludes major holidays; weekends may add a small surcharge.',
     'For up to 2 adults (at least one age 21+); some hotels allow up to 2 children under 12. No group travel — one stay per household.',
     'You must live at least 100 miles from your chosen destination, and present a major credit/debit card + government ID at check-in.',

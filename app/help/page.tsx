@@ -262,7 +262,7 @@ const SECTIONS = [
       },
       {
         q: 'What does the getaway cover, and what do I pay?',
-        a: 'Your complimentary certificate covers the hotel room rate (valued up to $350/night) for a multi-night stay. You cover only the destination\'s nightly taxes and fees — which vary by destination and are shown before you choose — plus your own airfare, food, and any resort fees the hotel charges. There is no timeshare presentation. You activate the certificate within 7 days, can travel any time within 18 months, and book at least 30 days ahead (major holidays excluded). Activation fees are non-refundable.',
+        a: 'This is a hotel stay only — flights are NOT included. Your complimentary certificate covers the hotel room rate (valued up to $350/night) for a multi-night stay. You cover the destination\'s nightly taxes and fees — which vary by destination and are shown before you choose — plus your own airfare, food, and any resort fees the hotel charges. There is no timeshare presentation. You activate the certificate within 7 days, can travel any time within 18 months, and book at least 30 days ahead (major holidays excluded). Activation fees are non-refundable.',
       },
       {
         q: 'Who can use the getaway, and how is it delivered?',
