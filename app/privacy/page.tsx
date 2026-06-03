@@ -19,7 +19,7 @@ export default function PrivacyPage() {
           {' · '}
           <a href="tel:+13215131321" className="text-amber-600 hover:underline">(321) 513-1321</a>
         </p>
-        <p className="text-sm text-slate-400 mb-8">Last updated: April 29, 2026 (rev. 4)</p>
+        <p className="text-sm text-slate-400 mb-8">Last updated: June 3, 2026 (rev. 5)</p>
 
         <div className="space-y-8 text-slate-700 text-sm leading-relaxed">
 
@@ -46,6 +46,7 @@ export default function PrivacyPage() {
               <li>To send SMS text messages if you have opted in (see Section 5a)</li>
               <li>To process payments through Stripe</li>
               <li>To administer the referral and Ambassador programs</li>
+              <li>To fulfill a complimentary promotional getaway through our travel partner, if you choose to claim one (see Section 6c)</li>
               <li>To sync your contact information with our CRM (GoHighLevel) for marketing communications — you may opt out at any time</li>
               <li>To improve features and fix issues</li>
             </ul>
@@ -74,6 +75,7 @@ export default function PrivacyPage() {
               <li><strong>Resend</strong> — transactional email delivery. Your email address is shared solely for delivery purposes.</li>
               <li><strong>Anthropic Claude</strong> — AI-powered fuel advisor, receipt scanning, VIN scanning, and fuel gauge scanning (Pro feature). Images and text are processed transiently and not stored beyond the duration of the request.</li>
               <li><strong>GoHighLevel (GHL)</strong> — CRM and marketing automation. Your name, email, phone (if provided), and plan status may be synced to GHL to manage communications. No payment data is shared.</li>
+            <li><strong>Marketing Boost / RedeemVacations</strong> — complimentary getaway fulfillment. If you claim a promotional getaway, your name and email are shared with our travel partner solely to issue your vacation certificate. No payment data is shared, and your information is not used by the partner for its own marketing (see Section 6c).</li>
               <li><strong>OneSignal</strong> — push notification delivery. A device token is associated with your account if you enable push notifications.</li>
               <li><strong>Google Analytics</strong> — aggregate website usage analytics. No personally identifiable information is shared with Google Analytics.</li>
               <li><strong>Meta (Facebook) Pixel</strong> — conversion tracking and ad performance measurement. See Section 8 for details.</li>
@@ -136,6 +138,12 @@ export default function PrivacyPage() {
           <section>
             <h2 className="text-lg font-black text-navy-700 mb-2">6b. Streak Reward Credits</h2>
             <p>When you earn a streak milestone reward (free Pro month credit), the milestone, date earned, and expiry date are stored with your account. These credits are used solely to apply billing discounts upon request and are never shared with third parties.</p>
+          </section>
+
+          {/* 6c — Promotional Getaway */}
+          <section>
+            <h2 className="text-lg font-black text-navy-700 mb-2">6c. Promotional Getaway Offer</h2>
+            <p>If you purchase Pro Lifetime during a getaway promotion and choose to claim your complimentary getaway, we share your <strong>name and email address</strong> with our travel partner (Marketing Boost / RedeemVacations.com) for the sole purpose of issuing your vacation certificate. We share this information only after you actively select a destination, and only what is necessary to deliver the certificate. No payment information is shared. The travel partner&apos;s handling of your information is governed by its own privacy policy, and we do not authorize the partner to use your information for its own marketing.</p>
           </section>
 
           {/* 7 */}

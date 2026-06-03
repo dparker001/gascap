@@ -19,7 +19,7 @@ export default function TermsPage() {
           {' · '}
           <a href="tel:+13215131321" className="text-amber-600 hover:underline">(321) 513-1321</a>
         </p>
-        <p className="text-sm text-slate-400 mb-8">Last updated: April 29, 2026</p>
+        <p className="text-sm text-slate-400 mb-8">Last updated: June 3, 2026</p>
 
         <div className="space-y-8 text-slate-700 text-sm leading-relaxed">
 
@@ -53,6 +53,22 @@ export default function TermsPage() {
             <p><strong>Pro Monthly ($2.99/mo):</strong> Billed monthly through Stripe. You may cancel at any time; your access continues until the end of the current billing period. If GasCap™ Pro does not help you save more than $2.99 in your first 30 days, contact us at support@gascap.app within 30 days of your first charge and we will issue a full refund of your first payment — no questions asked.</p>
             <p className="mt-2"><strong>Pro Lifetime ($19.99 one-time):</strong> A one-time, non-refundable purchase. By completing the Lifetime purchase you acknowledge that you are acquiring a permanent license to GasCap™ Pro features and that the payment is final. All sales of Lifetime plans are final — no refunds will be issued except where required by applicable law.</p>
             <p className="mt-2">You can upgrade your plan directly from the Settings page or by visiting{' '}<Link href="/upgrade" className="text-amber-600 hover:underline">gascap.app/upgrade</Link>. We reserve the right to change pricing with 30 days&apos; notice to existing subscribers.</p>
+          </section>
+
+          {/* 4b — Promotional Getaway Offer */}
+          <section>
+            <h2 className="text-lg font-black text-navy-700 mb-2">4b. Promotional Getaway Offer</h2>
+            <p>From time to time, GasCap™ may run a limited-time promotion in which customers who purchase the <strong>Pro Lifetime</strong> plan receive a <strong>complimentary vacation getaway certificate</strong> as a free promotional bonus. The following terms apply:</p>
+            <ul className="list-disc pl-5 space-y-1 mt-2">
+              <li><strong>The getaway is a bonus, not the product purchased.</strong> Your payment is for the GasCap™ Pro Lifetime license; the getaway certificate is provided at no additional charge as a thank-you. The certificate has no cash value and is non-transferable.</li>
+              <li><strong>Fulfilled by a third party.</strong> Getaway certificates are issued and fulfilled by our travel partner (Marketing Boost / RedeemVacations.com). The certificate, its activation, redemption, hotel availability, and all travel arrangements are governed by that provider&apos;s own terms and conditions, available at RedeemVacations.com.</li>
+              <li><strong>You cover travel costs.</strong> The complimentary hotel room rate (valued up to $350 per night) is provided free of charge; you are responsible for the destination&apos;s nightly taxes and fees (which vary by destination), plus airfare, transfers, food, gratuities, and any resort fees charged by the hotel. Activation fees are non-refundable.</li>
+              <li><strong>Eligibility &amp; redemption.</strong> You must activate the certificate within 7 days of receipt and may travel within 18 months of activation. Reservations require at least 30 days&apos; advance notice, are subject to availability, and exclude major holidays. The certificate accommodates up to two adults (at least one aged 21 or older), with up to two children under 12 permitted at some properties. Group travel is not permitted (one stay per household). You must reside at least 100 miles from your chosen destination and present a valid government-issued ID and a major credit or debit card at check-in.</li>
+              <li><strong>Void if resold.</strong> The certificate is void if bartered, sold, or otherwise transferred by the recipient.</li>
+              <li><strong>Third-party travel service.</strong> Gas Capacity LLC is not the travel provider and makes no warranties regarding the getaway. To the maximum extent permitted by law, we are not liable for the acts, omissions, availability, or performance of the third-party travel provider. The getaway is provided &quot;as is.&quot;</li>
+              <li><strong>Lifetime purchase remains final.</strong> Your Pro Lifetime purchase is non-refundable (see Section 4) regardless of whether you claim or redeem the getaway certificate.</li>
+              <li>GasCap™ may modify, suspend, or discontinue this promotion at any time. Offer void where prohibited by law.</li>
+            </ul>
           </section>
 
           {/* 5 */}

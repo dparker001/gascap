@@ -257,6 +257,18 @@ const SECTIONS = [
         a: 'Open the claim link in your gift email (or go to gascap.app/redeem and enter your gift code). Sign in — or create a free account if you\'re new (your name and email are pre-filled from the gift) — then tap "Claim My Pro Lifetime." Pro Lifetime activates on your account instantly. If you already have Lifetime, the code stays unused so you can pass it on to someone else.',
       },
       {
+        q: 'How do I get a free vacation getaway with Pro Lifetime?',
+        a: 'During our limited-time getaway promotion, anyone who buys Pro Lifetime ($19.99, one-time) receives a complimentary resort getaway as a free bonus — the getaway is a thank-you for going Lifetime, not something you\'re purchasing. Right after you upgrade, you\'ll choose your destination from a curated list (Las Vegas, Denver, Miami, San Antonio, Orlando, or Nashville), and your certificate is sent by email within 24 hours. You can also choose later anytime at gascap.app/getaway.',
+      },
+      {
+        q: 'What does the getaway cover, and what do I pay?',
+        a: 'Your complimentary certificate covers the hotel room rate (valued up to $350/night) for a multi-night stay. You cover only the destination\'s nightly taxes and fees — which vary by destination and are shown before you choose — plus your own airfare, food, and any resort fees the hotel charges. There is no timeshare presentation. You activate the certificate within 7 days, can travel any time within 18 months, and book at least 30 days ahead (major holidays excluded). Activation fees are non-refundable.',
+      },
+      {
+        q: 'Who can use the getaway, and how is it delivered?',
+        a: 'The getaway is issued and fulfilled by our travel partner, Marketing Boost / RedeemVacations — watch for an email from them (check spam too). It accommodates up to 2 adults (at least one age 21+), with up to 2 children under 12 allowed at some hotels. You must reside at least 100 miles from your chosen destination and present a valid government-issued ID and a major credit or debit card at check-in. Full terms come with your certificate at RedeemVacations.com.',
+      },
+      {
         q: 'How do I cancel my subscription?',
         a: 'Go to Settings → Plan → "Manage Billing & Subscription." This opens the Stripe self-serve portal where you can cancel or update your payment method at any time. You can also email support@gascap.app and we\'ll take care of it for you. Lifetime members have no subscription to cancel.',
       },

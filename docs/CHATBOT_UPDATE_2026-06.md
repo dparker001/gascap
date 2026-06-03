@@ -2,8 +2,9 @@
 > Purpose: ready-to-paste Q&A blocks for the GHL Conversation AI knowledge base.
 > The main file `CHATBOT_TRAINING.md` was already updated for the $2.99/$19.99
 > pricing, Pro Lifetime, and unlimited vehicles. This file adds: (1) Refund Policy,
-> (2) Early-Upgrade Bonus, (3) Spanish/Language, (4) GIFTING (NEW — Section D).
-> Source of truth: app/help, app/terms, app/upgrade, app/gift, lib/translations.ts.
+> (2) Early-Upgrade Bonus, (3) Spanish/Language, (4) GIFTING (NEW — Section D),
+> (5) GETAWAY PROMO (NEW — Section E, GATED — add only when the promo is live).
+> Source of truth: app/help, app/terms, app/upgrade, app/gift, app/getaway, lib/getawayPromo.ts.
 
 ---
 
@@ -27,6 +28,33 @@ A: Each gift purchase is one Pro Lifetime. To gift multiple people, complete a s
 
 **Q: Are gifts refundable?**
 A: Like the regular Pro Lifetime plan, gift purchases are one-time and non-refundable. If something went wrong with a purchase, email support@gascap.app within a reasonable time and we'll help.
+
+---
+
+## 🆕 NEW SECTION E — GETAWAY PROMO (paste into SECTION 8 — Plans & Billing)
+> ⚠️ GATED: add this to the live bot ONLY when the Lifetime + getaway promo is turned
+> ON (GETAWAY_ACTIVE in lib/getawayPromo.ts). Until then, the bot must NOT mention it.
+> ⚠️ CRITICAL FRAMING: the getaway is a FREE BONUS for buying Pro Lifetime. NEVER say a
+> customer is "buying a vacation" or present the vacation's $ value as the offer — Pro
+> Lifetime is the product; the getaway is an extra thank-you on top.
+
+**Q: Do I get a free vacation with Pro Lifetime?**
+A: During our limited-time promotion, yes — anyone who buys **Pro Lifetime** ($19.99, one-time) gets a complimentary resort getaway as a free thank-you bonus. Pro Lifetime is what you're purchasing; the getaway is an extra on top. Right after you upgrade you'll choose your destination (Las Vegas, Denver, Miami, San Antonio, Orlando, or Nashville), and your certificate is emailed within 24 hours. You can also choose later at **gascap.app/getaway**.
+
+**Q: How do I pick or claim my getaway destination?**
+A: After your Lifetime purchase, go to the success page or **gascap.app/getaway**, pick one of the six destinations, and confirm. We'll email your certificate within 24 hours — it comes from our travel partner, Marketing Boost / RedeemVacations, so check your spam folder too.
+
+**Q: What does the getaway cost me?**
+A: The hotel room rate (valued up to $350/night) is free. You cover only the destination's nightly taxes and fees — they vary by destination and are shown before you choose — plus your own airfare, food, and any resort fees the hotel charges. There's no timeshare presentation. Activation fees are non-refundable.
+
+**Q: What are the getaway rules / eligibility?**
+A: Activate the certificate within 7 days, travel any time within 18 months, and book at least 30 days ahead (major holidays excluded). It's for up to 2 adults (at least one age 21+), with up to 2 children under 12 allowed at some hotels. No group travel — one stay per household. You must live at least 100 miles from your chosen destination and present a government-issued ID and a major credit/debit card at check-in. Full terms come with the certificate at RedeemVacations.com.
+
+**Q: Am I paying $19.99 for the vacation?**
+A: No — you're purchasing the GasCap™ Pro Lifetime license (all Pro features, forever). The getaway is a free promotional bonus we add as a thank-you during the promo; it isn't the product, and it has no separate cost or cash value.
+
+**Q: Is the getaway refundable, or does it change the Lifetime refund policy?**
+A: Pro Lifetime remains a one-time, non-refundable purchase whether or not you claim the getaway. The certificate has no cash value, and once you pay the activation taxes/fees to the travel partner those are non-refundable (per their terms).
 
 ---
 
