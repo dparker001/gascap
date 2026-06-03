@@ -4,6 +4,8 @@ import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { useTranslation } from '@/contexts/LanguageContext';
+import { getawayPromoActive } from '@/lib/getawayPromo';
+import GetawayDestinationPicker from '@/components/GetawayDestinationPicker';
 
 // ── Per-plan content ────────────────────────────────────────────────────────
 
@@ -172,6 +174,11 @@ function SuccessContent() {
             ))}
           </ul>
         </>
+      )}
+
+      {/* Getaway promo — Lifetime buyers choose their complimentary getaway */}
+      {billing === 'lifetime' && getawayPromoActive() && (
+        <GetawayDestinationPicker />
       )}
 
       {sessionId && (

@@ -24,6 +24,7 @@ import EndorserMarquee        from '@/components/EndorserMarquee';
 import DailyFuelPulse         from '@/components/DailyFuelPulse';
 import WelcomeBanner          from '@/components/WelcomeBanner';
 import NewMemberOfferBanner   from '@/components/NewMemberOfferBanner';
+import GetawayPromoBanner      from '@/components/GetawayPromoBanner';
 import FreshSignupBanner      from '@/components/FreshSignupBanner';
 import MobileEngagementRow    from '@/components/MobileEngagementRow';
 import FuelBudgetWidget       from '@/components/FuelBudgetWidget';
@@ -602,7 +603,11 @@ export default function Home() {
             {/* Personalized greeting — time-aware + first-login welcome card */}
             <WelcomeBanner />
 
-            {/* New-member 7-day Lifetime offer ($14.99) — self-hides unless eligible */}
+            {/* Pro Lifetime + complimentary getaway promo — self-hides unless active */}
+            <GetawayPromoBanner />
+
+            {/* New-member 7-day Lifetime offer ($14.99) — self-hides unless eligible
+                (also auto-pauses while the getaway promo above is active) */}
             <NewMemberOfferBanner />
 
             {/* Streak + giveaway — compact side-by-side row on mobile so the

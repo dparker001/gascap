@@ -13,6 +13,7 @@ import { setUserPlan, findByStripeCustomer, findById, findByReferralCode, credit
 import { updateGhlContactPlan }            from '@/lib/ghl';
 import { sendMail, giftEmailHtml }         from '@/lib/email';
 import { createGift }                      from '@/lib/gifts';
+import { getawayPromoActive, GETAWAY_DISCLOSURE } from '@/lib/getawayPromo';
 import { sendReferralCreditEmail }         from '@/lib/emailCampaign';
 import { sendPaidCampaignEmail }           from '@/lib/emailCampaignPaid';
 import { sendMilestoneEmail }              from '@/lib/emailEngagement';
@@ -205,6 +206,53 @@ export async function POST(req: Request) {
         // Use wasOnTrial (captured before setUserPlan cleared isProTrial).
         if (wasOnTrial) {
           await setEarlyUpgradeBonus(userId, 10);
+        }
+
+        // ── Getaway promo (Option B: buyer picks destination, admin issues) ────
+        // Any Lifetime purchase made while the getaway promo is active earns a
+        // complimentary resort getaway. The buyer chooses their destination at
+        // /getaway; that choice fires the actionable "ISSUE" email to the admin
+        // (see app/api/getaway/choose). Here we just invite them to choose and
+        // give the admin a heads-up.
+        if (interval === 'lifetime' && getawayPromoActive()) {
+          const baseUrl   = (process.env.NEXTAUTH_URL ?? 'https://www.gascap.app').replace(/\/$/, '');
+          const chooseUrl = `${baseUrl}/getaway`;
+
+          sendAdminMail({
+            subject: `🏝️ Getaway sale — ${upgradedUser.email} will choose a destination`,
+            html: `<div style="font-family:system-ui,sans-serif;max-width:480px;">
+              <p style="font-size:20px;margin:0 0 8px;">🏝️ Getaway promo sale</p>
+              <p style="font-size:15px;color:#334155;margin:0 0 4px;"><strong>${upgradedUser.name}</strong> bought Pro Lifetime during the getaway promo.</p>
+              <p style="font-size:14px;color:#64748b;margin:0 0 12px;">They'll pick a destination at /getaway — you'll get a separate <strong>"ISSUE GETAWAY CERT"</strong> email with the exact destination once they choose. No action needed yet.</p>
+              <p style="font-size:13px;color:#64748b;margin:0 0 4px;">Buyer: <strong>${upgradedUser.email}</strong></p>
+              <p style="font-size:12px;color:#94a3b8;">${new Date().toLocaleString('en-US',{timeZone:'America/New_York'})} ET</p>
+            </div>`,
+            text: `Getaway promo sale: ${upgradedUser.name} <${upgradedUser.email}> — awaiting destination choice (separate ISSUE email to follow).`,
+          });
+
+          sendMail({
+            to:      upgradedUser.email,
+            subject: `🏝️ Choose your complimentary getaway`,
+            html: `<div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;">
+              <div style="background:linear-gradient(135deg,#005F4A,#1EB68F);border-radius:16px 16px 0 0;padding:24px;text-align:center;">
+                <p style="font-size:26px;margin:0;color:#fff;font-weight:800;">🏝️ You've earned a getaway!</p>
+              </div>
+              <div style="background:#fff;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 16px 16px;padding:24px;">
+                <p style="font-size:15px;color:#334155;margin:0 0 12px;">Hi ${upgradedUser.name}, thanks for going Lifetime with GasCap™ Pro! 🎉 As a thank-you, pick the complimentary resort getaway you'd like:</p>
+                <p style="text-align:center;margin:0 0 16px;">
+                  <a href="${chooseUrl}" style="display:inline-block;background:#1EB68F;color:#fff;font-weight:800;font-size:15px;text-decoration:none;padding:12px 28px;border-radius:12px;">Choose my destination →</a>
+                </p>
+                <div style="background:#f0fdf9;border:1px solid #99f6e4;border-radius:12px;padding:14px 16px;margin:0 0 12px;">
+                  <p style="font-size:12px;color:#0f766e;font-weight:800;text-transform:uppercase;letter-spacing:.05em;margin:0 0 6px;">Good to know</p>
+                  ${GETAWAY_DISCLOSURE.full.map((l) => `<p style="font-size:13px;color:#334155;margin:0 0 4px;">• ${l}</p>`).join('')}
+                </div>
+                <p style="font-size:13px;color:#64748b;margin:0;">Questions? Just reply to this email.</p>
+              </div>
+            </div>`,
+            text: `You've earned a complimentary getaway! Choose your destination: ${chooseUrl}. ${GETAWAY_DISCLOSURE.short}`,
+          }).catch((e) => console.error('[GasCap] Getaway choose email failed:', e));
+
+          console.info(`[GasCap webhook] Getaway promo — choose-destination email sent to ${upgradedUser.email}`);
         }
 
         // Only enroll if not already in the paid campaign (idempotent guard)

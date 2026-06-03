@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { PRICING } from '@/lib/stripe';
 import { useTranslation } from '@/contexts/LanguageContext';
+import { getawayPromoActive } from '@/lib/getawayPromo';
 import BrandBar from '@/components/BrandBar';
 
 // ── Feature lists are defined inside UpgradePageInner (need t)
@@ -48,6 +49,7 @@ function UpgradePageInner() {
   const isOnTrial     = !!(session?.user as { isProTrial?: boolean })?.isProTrial;
   const isProMonthly  = !!session && userPlan === 'pro' && userInterval !== 'lifetime' && !isOnTrial;
   const isProLifetime = !!session && userPlan === 'pro' && userInterval === 'lifetime' && !isOnTrial;
+  const showGetaway   = getawayPromoActive() && !isProLifetime;
 
   async function handleUpgrade(billing: 'monthly' | 'lifetime') {
     if (!session) { window.location.href = '/signup?next=/upgrade'; return; }
@@ -264,9 +266,22 @@ function UpgradePageInner() {
             <div className="mb-1 flex items-end gap-1">
               <span className="text-4xl font-black text-white">${PRICING.pro.lifetime}</span>
             </div>
-            <p className="text-xs text-teal-300 font-semibold mb-6 leading-relaxed">
+            <p className="text-xs text-teal-300 font-semibold mb-4 leading-relaxed">
               {t.upgrade.onePaymentForever}
             </p>
+            {showGetaway && (
+              <div className="mb-5 rounded-2xl bg-gradient-to-r from-[#005F4A] to-[#1EB68F] px-3.5 py-3">
+                <p className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-amber-300">
+                  🏝️ {t.pricing.getawayPill}
+                </p>
+                <p className="text-white text-[12px] font-bold leading-snug mt-1">
+                  {t.pricing.getawayCardMsg}
+                </p>
+                <p className="text-white/55 text-[9px] leading-snug mt-1">
+                  {t.pricing.getawayDisclosure}
+                </p>
+              </div>
+            )}
             <button
               onClick={() => !isProLifetime && handleUpgrade('lifetime')}
               disabled={loading !== null || isProLifetime}

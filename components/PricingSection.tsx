@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { PRICING } from '@/lib/stripe';
 import { useTranslation } from '@/contexts/LanguageContext';
+import { getawayPromoActive } from '@/lib/getawayPromo';
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -80,6 +81,10 @@ export default function PricingSection() {
   const isProMonthly  = !!session && userPlan === 'pro' && userInterval !== 'lifetime' && !isOnTrial;
   const isProLifetime = !!session && userPlan === 'pro' && userInterval === 'lifetime' && !isOnTrial;
   const isPro         = isProMonthly || isProLifetime; // paid Pro (not trial)
+
+  // Getaway promo: Lifetime buyers get a complimentary resort getaway. Show the
+  // bonus callout on the Lifetime card (hidden once you already own Lifetime).
+  const showGetaway   = getawayPromoActive() && !isProLifetime;
 
   return (
     <section aria-labelledby="pricing-heading" className="mt-10">
@@ -241,9 +246,23 @@ export default function PricingSection() {
           <div className="mb-1 flex items-end gap-1">
             <span className="text-4xl font-black text-navy-700">${PRICING.pro.lifetime}</span>
           </div>
-          <p className="text-xs mb-6 leading-relaxed text-teal-600 font-semibold">
+          <p className="text-xs mb-4 leading-relaxed text-teal-600 font-semibold">
             {t.pricing.lifetimeSubline}
           </p>
+
+          {showGetaway && (
+            <div className="mb-5 rounded-2xl bg-gradient-to-r from-[#005F4A] to-[#1EB68F] px-3.5 py-3">
+              <p className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-amber-300">
+                🏝️ {t.pricing.getawayPill}
+              </p>
+              <p className="text-white text-[12px] font-bold leading-snug mt-1">
+                {t.pricing.getawayCardMsg}
+              </p>
+              <p className="text-white/55 text-[9px] leading-snug mt-1">
+                {t.pricing.getawayDisclosure}
+              </p>
+            </div>
+          )}
 
           <button
             onClick={() => !isProLifetime && handleUpgrade('lifetime')}

@@ -1,29 +1,28 @@
 'use client';
 
 /**
- * NewMemberOfferBanner — hero strip shown to brand-new users (within 7 days of
- * signup, not already Lifetime) offering Pro Lifetime at 50% off ($9.99).
+ * GetawayPromoBanner — hero strip promoting Pro Lifetime ($19.99) + a
+ * complimentary resort getaway. Shown to any signed-in user who isn't already on
+ * Lifetime, while the getaway promo is active (see lib/getawayPromo.ts).
  *
- * Eligibility + days-left come from /api/user/new-member-offer (server-side, from
- * the account's createdAt). Clicking starts a Lifetime checkout with the discount
- * auto-applied server-side — there's no code to type and nothing to abuse.
+ * There is NO discount — Lifetime stays $19.99 and the getaway is the incentive.
+ * Clicking starts a normal Lifetime checkout; the webhook detects the active
+ * promo on completion and triggers certificate fulfillment (admin-issued).
  *
- * If the account's email isn't verified yet, checkout returns 403 (so the receipt
- * and Lifetime confirmation can actually reach the buyer). We catch that and prompt
- * the user to verify — with a one-tap resend — instead of failing silently.
+ * Email-not-verified (403) is handled the same way as the new-member banner:
+ * prompt to verify with a one-tap resend, so the cert + receipt can reach them.
  */
 
 import { useEffect, useState } from 'react';
 import { useSession }          from 'next-auth/react';
 import { useTranslation }      from '@/contexts/LanguageContext';
 import { PRICING }             from '@/lib/stripe';
-import { NEW_MEMBER_DISCOUNT_USD } from '@/lib/newMemberOffer';
-import { getawayPromoActive }  from '@/lib/getawayPromo';
 import { trackUpgradeClick }   from '@/lib/gtag';
 
-export default function NewMemberOfferBanner() {
+export default function GetawayPromoBanner() {
   const { data: session } = useSession();
   const { t } = useTranslation();
+  const [show,        setShow]        = useState(false);
   const [daysLeft,    setDaysLeft]    = useState<number | null>(null);
   const [loading,     setLoading]     = useState(false);
   const [needsVerify, setNeedsVerify] = useState(false);
@@ -32,34 +31,32 @@ export default function NewMemberOfferBanner() {
 
   useEffect(() => {
     if (!session?.user) return;
-    // While the Lifetime + getaway promo is live, the getaway is the headline
-    // Lifetime offer — pause this standalone 50%-off discount so they don't compete.
-    if (getawayPromoActive()) return;
-    fetch('/api/user/new-member-offer')
+    fetch('/api/user/getaway-offer')
       .then((r) => r.json())
-      .then((d: { eligible?: boolean; daysLeft?: number }) => {
-        if (d.eligible && typeof d.daysLeft === 'number') setDaysLeft(d.daysLeft);
+      .then((d: { active?: boolean; eligible?: boolean; daysLeft?: number | null }) => {
+        if (d.active && d.eligible) {
+          setShow(true);
+          setDaysLeft(typeof d.daysLeft === 'number' ? d.daysLeft : null);
+        }
       })
       .catch(() => {});
   }, [session]);
 
-  if (!session?.user || daysLeft === null) return null;
+  if (!session?.user || !show) return null;
 
-  const price    = (PRICING.pro.lifetime - NEW_MEMBER_DISCOUNT_USD).toFixed(2);
-  const original = PRICING.pro.lifetime.toFixed(2);
-  const pctOff   = Math.round((NEW_MEMBER_DISCOUNT_USD / PRICING.pro.lifetime) * 100);
-  const daysWord = daysLeft === 1 ? t.pricing.newMemberDayLeft : t.pricing.newMemberDaysLeft;
+  const price    = PRICING.pro.lifetime.toFixed(2);
+  const daysWord = daysLeft === 1 ? t.pricing.getawayDayLeft : t.pricing.getawayDaysLeft;
 
   async function handleClaim() {
     setLoading(true);
-    trackUpgradeClick('new_member_offer');
+    trackUpgradeClick('getaway_promo');
     try {
-      const res  = await fetch('/api/stripe/checkout', {
+      const res = await fetch('/api/stripe/checkout', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ tier: 'pro', billing: 'lifetime', newMemberOffer: true }),
+        body:    JSON.stringify({ tier: 'pro', billing: 'lifetime' }),
       });
-      // 403 = email not verified (checkout requires it so receipts reach the buyer)
+      // 403 = email not verified (checkout requires it so the cert + receipt reach the buyer)
       if (res.status === 403) { setNeedsVerify(true); setLoading(false); return; }
       const data = await res.json() as { url?: string; error?: string };
       if (data.url) { window.location.href = data.url; return; }
@@ -84,27 +81,29 @@ export default function NewMemberOfferBanner() {
   return (
     <div className="px-4 lg:px-0 pt-3 max-w-lg lg:max-w-none mx-auto w-full">
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 rounded-2xl px-4 py-3
-                      bg-gradient-to-r from-[#1E2D4A] to-[#005F4A] shadow-md border border-white/10">
+                      bg-gradient-to-r from-[#005F4A] to-[#1EB68F] shadow-md border border-white/10">
         <div className="flex items-start gap-3 flex-1 min-w-0">
-          <span className="text-2xl flex-shrink-0" aria-hidden="true">🎁</span>
+          <span className="text-2xl flex-shrink-0" aria-hidden="true">🏝️</span>
           <div className="min-w-0">
             <p className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-amber-300">
-              {t.pricing.newMemberTitle}
+              {t.pricing.getawayTitle}
               <span className="bg-amber-400 text-navy-900 px-1.5 py-0.5 rounded-full tracking-normal whitespace-nowrap">
-                {pctOff}% {t.pricing.newMemberOff}
+                {t.pricing.getawayPill}
               </span>
             </p>
             <p className="text-white text-[13px] font-bold leading-snug">
-              {t.pricing.newMemberMsg} — <span className="text-amber-300">${price}</span>{' '}
-              <span className="text-white/40 line-through">${original}</span>
+              {t.pricing.getawayMsg} — <span className="text-amber-300">${price}</span>
             </p>
             {needsVerify ? (
               <p className="text-[11px] text-amber-200 mt-1 font-semibold leading-snug">
                 ⚠️ {t.pricing.newMemberVerify}
               </p>
             ) : (
-              <p className="text-[11px] text-white/60 mt-0.5 font-semibold">
-                ⏳ {daysLeft} {daysWord}
+              <p className="text-[10px] text-white/60 mt-1 leading-snug">
+                {t.pricing.getawayDisclosure}
+                {daysLeft !== null && (
+                  <span className="text-white/80 font-semibold"> · ⏳ {daysLeft} {daysWord}</span>
+                )}
               </p>
             )}
           </div>
@@ -126,7 +125,7 @@ export default function NewMemberOfferBanner() {
             className="flex-shrink-0 w-full sm:w-auto bg-amber-400 hover:bg-amber-300 disabled:opacity-60
                        text-navy-900 text-sm font-black px-5 py-2.5 rounded-xl transition-colors whitespace-nowrap"
           >
-            {loading ? t.pricing.loading : `${t.pricing.getLifetime} — $${price}`}
+            {loading ? t.pricing.loading : `${t.pricing.getawayCta} — $${price}`}
           </button>
         )}
       </div>
