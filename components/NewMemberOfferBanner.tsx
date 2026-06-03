@@ -86,7 +86,7 @@ export default function NewMemberOfferBanner() {
           <div className="min-w-0">
             <p className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-amber-300">
               {t.pricing.newMemberTitle}
-              <span className="bg-amber-400 text-navy-900 px-1.5 py-0.5 rounded-full tracking-normal">
+              <span className="bg-amber-400 text-navy-900 px-1.5 py-0.5 rounded-full tracking-normal whitespace-nowrap">
                 {pctOff}% {t.pricing.newMemberOff}
               </span>
             </p>
