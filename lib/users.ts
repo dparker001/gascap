@@ -616,6 +616,7 @@ export interface ActivityResult {
   userName:         string;
   emailOptOut:      boolean;
   plan:             string;
+  firstCalcBonusGranted?: boolean;
 }
 
 export async function recordActivity(
@@ -638,6 +639,13 @@ export async function recordActivity(
   if (event === 'calc')            calcCount++;
   if (event === 'budget_calc')     budgetCalcCount++;
   if (event === 'location_lookup') locationLookups++;
+
+  // Activation reward: +5 giveaway entries the first time a user ever calculates.
+  const FIRST_CALC_BONUS = 5;
+  const isFirstCalc =
+    (event === 'calc' || event === 'budget_calc') &&
+    (user.calcCount ?? 0) + (user.budgetCalcCount ?? 0) === 0 &&
+    (user.firstCalcBonusEntries ?? 0) === 0;
 
   const updatedDays = activeDays.includes(today) ? activeDays : [...activeDays, today];
   const streak      = calcStreak(updatedDays, today);
@@ -672,6 +680,7 @@ export async function recordActivity(
       badges:             updatedBadges,
       streakMilestonesHit: [...(user.streakMilestonesHit ?? []), ...newlyHit],
       streakCredits:      updatedCredits as unknown as Prisma.InputJsonValue,
+      ...(isFirstCalc ? { firstCalcBonusEntries: FIRST_CALC_BONUS } : {}),
     },
   });
 
@@ -684,6 +693,7 @@ export async function recordActivity(
     userName:         user.name,
     emailOptOut:      user.emailOptOut ?? false,
     plan:             user.plan ?? 'free',
+    firstCalcBonusGranted: isFirstCalc,
   };
 }
 

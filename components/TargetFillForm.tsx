@@ -224,7 +224,14 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ event: 'calc', localDate: new Date().toLocaleDateString('en-CA') }),
-    }).catch(() => {});
+    })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d?.firstCalcBonusGranted) {
+          window.dispatchEvent(new CustomEvent('gascap:entries-earned', { detail: { entriesWon: 5 } }));
+        }
+      })
+      .catch(() => {});
     // QR placard pilot — credit calc completion to attribution placement (no-op if not attributed)
     if (typeof window !== 'undefined' && typeof window.gcTrack === 'function') {
       window.gcTrack('calc_complete', { mode: 'target_fill' });

@@ -151,6 +151,19 @@ export default function BudgetForm({ activeTab, setActiveTab }: Props) {
     setValidationAttempted(false);
     trackCalculateBudget();
     if (typeof window !== 'undefined') window.dispatchEvent(new Event('gascap:calculated'));
+    // Record the calc server-side (also fixes budget-calc tracking) + first-calc reward
+    fetch('/api/activity', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ event: 'budget_calc', localDate: new Date().toLocaleDateString('en-CA') }),
+    })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d?.firstCalcBonusGranted && typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('gascap:entries-earned', { detail: { entriesWon: 5 } }));
+        }
+      })
+      .catch(() => {});
     setTimeout(() => {
       document.getElementById('bgt-result')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }, 80);

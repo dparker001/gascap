@@ -113,5 +113,6 @@ export async function POST(req: Request) {
     badges:           result.badges,
     streak:           result.streak,
     newMilestonesHit: result.newMilestonesHit,
+    firstCalcBonusGranted: result.firstCalcBonusGranted ?? false,
   });
 }

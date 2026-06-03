@@ -39,6 +39,7 @@ export async function GET() {
       verifyReminderBonusEntries: true,
       phoneBonusEntries: true,
       dailyBonusEntries: true,
+      firstCalcBonusEntries: true,
       emailVerified: true,
     },
   });
@@ -55,11 +56,13 @@ export async function GET() {
   const verifyBonusEntries     = user.verifyReminderBonusEntries ?? 0;
   const phoneBonusEntries      = user.phoneBonusEntries          ?? 0;
   const dailyBonusEntries      = user.dailyBonusEntries          ?? 0;
+  const firstCalcBonusEntries  = user.firstCalcBonusEntries      ?? 0;
   const garageDaysThisMonth = (user.garageBonusDays ?? [])
     .filter((d: string) => d.startsWith(month)).length;
   const garageBonusEntries  = garageDaysThisMonth * 10;
   const entryCount     = baseEntries + streakBonus + bonusEntries + garageBonusEntries
-                         + verifyBonusEntries + phoneBonusEntries + dailyBonusEntries;
+                         + verifyBonusEntries + phoneBonusEntries + dailyBonusEntries
+                         + firstCalcBonusEntries;
   const eligible       = user.plan === 'pro' || user.plan === 'fleet';
   const emailVerified  = user.emailVerified ?? false;
 
@@ -82,6 +85,7 @@ export async function GET() {
     verifyBonusEntries,
     phoneBonusEntries,
     dailyBonusEntries,
+    firstCalcBonusEntries,
     garageBonusEntries,
     garageDaysThisMonth,
   });
