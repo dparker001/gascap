@@ -2,11 +2,15 @@
 
 /**
  * NewMemberOfferBanner — hero strip shown to brand-new users (within 7 days of
- * signup, not already Lifetime) offering Pro Lifetime at $5 off ($14.99).
+ * signup, not already Lifetime) offering Pro Lifetime at 50% off ($9.99).
  *
  * Eligibility + days-left come from /api/user/new-member-offer (server-side, from
  * the account's createdAt). Clicking starts a Lifetime checkout with the discount
  * auto-applied server-side — there's no code to type and nothing to abuse.
+ *
+ * If the account's email isn't verified yet, checkout returns 403 (so the receipt
+ * and Lifetime confirmation can actually reach the buyer). We catch that and prompt
+ * the user to verify — with a one-tap resend — instead of failing silently.
  */
 
 import { useEffect, useState } from 'react';
@@ -19,8 +23,11 @@ import { trackUpgradeClick }   from '@/lib/gtag';
 export default function NewMemberOfferBanner() {
   const { data: session } = useSession();
   const { t } = useTranslation();
-  const [daysLeft, setDaysLeft] = useState<number | null>(null);
-  const [loading,  setLoading]  = useState(false);
+  const [daysLeft,    setDaysLeft]    = useState<number | null>(null);
+  const [loading,     setLoading]     = useState(false);
+  const [needsVerify, setNeedsVerify] = useState(false);
+  const [resending,   setResending]   = useState(false);
+  const [resent,      setResent]      = useState(false);
 
   useEffect(() => {
     if (!session?.user) return;
@@ -48,11 +55,25 @@ export default function NewMemberOfferBanner() {
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ tier: 'pro', billing: 'lifetime', newMemberOffer: true }),
       });
+      // 403 = email not verified (checkout requires it so receipts reach the buyer)
+      if (res.status === 403) { setNeedsVerify(true); setLoading(false); return; }
       const data = await res.json() as { url?: string; error?: string };
       if (data.url) { window.location.href = data.url; return; }
       setLoading(false);
     } catch {
       setLoading(false);
+    }
+  }
+
+  async function handleResend() {
+    setResending(true);
+    try {
+      await fetch('/api/auth/verify-email', { method: 'POST' });
+      setResent(true);
+    } catch {
+      /* ignore — user can retry */
+    } finally {
+      setResending(false);
     }
   }
 
@@ -73,21 +94,37 @@ export default function NewMemberOfferBanner() {
               {t.pricing.newMemberMsg} — <span className="text-amber-300">${price}</span>{' '}
               <span className="text-white/40 line-through">${original}</span>
             </p>
-            <p className="text-[11px] text-white/60 mt-0.5 font-semibold">
-              ⏳ {daysLeft} {daysWord}
-            </p>
+            {needsVerify ? (
+              <p className="text-[11px] text-amber-200 mt-1 font-semibold leading-snug">
+                ⚠️ {t.pricing.newMemberVerify}
+              </p>
+            ) : (
+              <p className="text-[11px] text-white/60 mt-0.5 font-semibold">
+                ⏳ {daysLeft} {daysWord}
+              </p>
+            )}
           </div>
         </div>
 
-        <button
-          onClick={handleClaim}
-          disabled={loading}
-          className="flex-shrink-0 w-full sm:w-auto bg-amber-400 hover:bg-amber-300 disabled:opacity-60
-                     text-navy-900 text-sm font-black px-5 py-2.5 rounded-xl transition-colors
-                     whitespace-nowrap"
-        >
-          {loading ? t.pricing.loading : `${t.pricing.getLifetime} — $${price}`}
-        </button>
+        {needsVerify ? (
+          <button
+            onClick={handleResend}
+            disabled={resending || resent}
+            className="flex-shrink-0 w-full sm:w-auto bg-white/15 hover:bg-white/25 disabled:opacity-70
+                       text-white text-sm font-black px-5 py-2.5 rounded-xl transition-colors whitespace-nowrap"
+          >
+            {resent ? `✓ ${t.pricing.newMemberSent}` : resending ? t.pricing.loading : t.pricing.newMemberResend}
+          </button>
+        ) : (
+          <button
+            onClick={handleClaim}
+            disabled={loading}
+            className="flex-shrink-0 w-full sm:w-auto bg-amber-400 hover:bg-amber-300 disabled:opacity-60
+                       text-navy-900 text-sm font-black px-5 py-2.5 rounded-xl transition-colors whitespace-nowrap"
+          >
+            {loading ? t.pricing.loading : `${t.pricing.getLifetime} — $${price}`}
+          </button>
+        )}
       </div>
     </div>
   );
