@@ -150,6 +150,7 @@ export default function BudgetForm({ activeTab, setActiveTab }: Props) {
     setShowLiveNudge(false);
     setValidationAttempted(false);
     trackCalculateBudget();
+    if (typeof window !== 'undefined') window.dispatchEvent(new Event('gascap:calculated'));
     setTimeout(() => {
       document.getElementById('bgt-result')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }, 80);

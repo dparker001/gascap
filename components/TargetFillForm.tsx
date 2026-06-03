@@ -219,6 +219,7 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
     setShowLiveNudge(false);
     setCalcKey((k) => k + 1);
     trackCalculateTarget();
+    if (typeof window !== 'undefined') window.dispatchEvent(new Event('gascap:calculated'));
     fetch('/api/activity', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },

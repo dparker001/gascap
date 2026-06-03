@@ -8,6 +8,7 @@ import AdSenseBanner           from '@/components/AdSenseBanner';
 import TrustStrip              from '@/components/TrustStrip';
 import Header                  from '@/components/Header';
 import CalculatorTabs          from '@/components/CalculatorTabs';
+import FirstCalcNudge          from '@/components/FirstCalcNudge';
 import ToolsPanel              from '@/components/ToolsPanel';
 import PricingSection          from '@/components/PricingSection';
 import TrialExpiryBanner      from '@/components/TrialExpiryBanner';
@@ -608,6 +609,9 @@ export default function Home() {
                 calculator sits near the top. Desktop shows these in the header
                 (HeroEngagementPanel). */}
             <MobileEngagementRow />
+
+            {/* First-calc activation nudge — instant value + CTA, self-hides on calc */}
+            <FirstCalcNudge />
 
             {/* Calculator — lifted to the top of the content (above the insight widgets,
                 which are mostly empty for brand-new users) so the core action is the
