@@ -459,12 +459,12 @@ export default function BudgetForm({ activeTab, setActiveTab }: Props) {
 
 function StepLabel({ n, title }: { n: number; title: string }) {
   return (
-    <div className="flex items-center gap-2.5 mt-5 mb-2">
-      <span className="w-6 h-6 rounded-full bg-navy-700 text-white text-[11px] font-black
+    <div className="flex items-center gap-3 mt-5 mb-2.5">
+      <span className="w-7 h-7 rounded-full bg-navy-700 text-white text-sm font-black
                        flex items-center justify-center flex-shrink-0 shadow-sm">
         {n}
       </span>
-      <span className="text-sm font-bold text-slate-600 dark:text-slate-100">{title}</span>
+      <span className="text-base font-black text-slate-700 dark:text-slate-100">{title}</span>
     </div>
   );
 }
