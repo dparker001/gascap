@@ -94,7 +94,7 @@ export default function MobileEngagementRow() {
           ) : canEnter ? (
             <p className="text-white text-[12px] font-black leading-tight">Earn entries</p>
           ) : (
-            <p className="text-white text-[12px] font-black leading-tight">$100 Giveaway</p>
+            <p className="text-white text-[12px] font-black leading-tight">$25 Giveaway</p>
           )}
         </div>
       </Link>

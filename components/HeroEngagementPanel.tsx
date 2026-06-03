@@ -127,7 +127,7 @@ export default function HeroEngagementPanel() {
             </p>
           ) : (
             <p className="text-white/80 text-xs font-black leading-none">
-              Monthly $100 Giveaway
+              Monthly $25 Giveaway
             </p>
           )}
           <p className="text-white/50 text-[10px] mt-0.5">Drawing {draw}</p>

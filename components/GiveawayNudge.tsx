@@ -88,7 +88,7 @@ export default function GiveawayNudge() {
 
         <div className="flex-1 min-w-0">
           <p className="text-white text-[13px] font-black leading-tight">
-            Monthly $100 Giveaway
+            Monthly $25 Giveaway
           </p>
           <p className="text-white/50 text-[11px] mt-0.5 leading-snug">
             {entryCount > 0
@@ -121,7 +121,7 @@ export default function GiveawayNudge() {
 
         <div className="flex-1 min-w-0">
           <p className="text-amber-900 text-[13px] font-black leading-tight">
-            Monthly $100 Drawing · {drawDate}
+            Monthly $25 Drawing · {drawDate}
           </p>
           <p className="text-amber-700/70 text-[11px] mt-0.5">
             Use the calculator today to earn your first entries
