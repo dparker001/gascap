@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import type { Review } from '@/lib/reviews';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 // ── Star display ──────────────────────────────────────────────────────────
 
@@ -156,6 +157,7 @@ function SubmitForm() {
 // ── Display grid ──────────────────────────────────────────────────────────
 
 function DisplayGrid({ limit = 6 }: { limit?: number }) {
+  const { t } = useTranslation();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -219,7 +221,10 @@ function DisplayGrid({ limit = 6 }: { limit?: number }) {
                 : r.plan === 'pro' ? 'bg-amber-100 text-amber-600'
                 : 'bg-slate-100 text-slate-500'
               }`}>
-                {r.plan === 'pro' && r.lifetime ? 'LIFETIME' : r.plan.toUpperCase()}
+                {r.plan === 'pro' && r.lifetime ? t.reviewBadge.lifetime
+                  : r.plan === 'fleet' ? t.reviewBadge.fleet
+                  : r.plan === 'pro' ? t.reviewBadge.pro
+                  : t.reviewBadge.free}
               </span>
               <span className="text-[10px] text-slate-300">
                 {new Date(r.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}

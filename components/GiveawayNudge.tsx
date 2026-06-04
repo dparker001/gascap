@@ -17,6 +17,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useSession }         from 'next-auth/react';
 import { useEntryCountUp }    from '@/hooks/useEntryCountUp';
+import { useTranslation }     from '@/contexts/LanguageContext';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -30,10 +31,10 @@ interface EntryData {
 // ── Date helpers ───────────────────────────────────────────────────────────
 
 /** 5th of next month — the actual drawing date — e.g. "Jun 5" */
-function drawDateLabel(): string {
+function drawDateLabel(intlLocale: string): string {
   const now   = new Date();
   const fifth = new Date(now.getFullYear(), now.getMonth() + 1, 5);
-  return fifth.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return fifth.toLocaleDateString(intlLocale, { month: 'short', day: 'numeric' });
 }
 
 /** Full days remaining until the 5th of next month at midnight */
@@ -48,6 +49,7 @@ function daysUntilDraw(): number {
 
 export default function GiveawayNudge() {
   const { data: session } = useSession();
+  const { t, locale } = useTranslation();
   const [data,    setData]    = useState<EntryData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -68,7 +70,8 @@ export default function GiveawayNudge() {
   // Don't render until we have data
   if (!session?.user || loading || !data) return null;
 
-  const drawDate    = drawDateLabel();
+  const intlLocale  = locale === 'es' ? 'es-ES' : 'en-US';
+  const drawDate    = drawDateLabel(intlLocale);
   const daysLeft    = daysUntilDraw();
   const isUrgent    = daysLeft <= 7;
   const canEnter    = data.eligible || data.alwaysEligible || isProTrial;
@@ -82,18 +85,18 @@ export default function GiveawayNudge() {
         className="group flex items-center gap-3 mx-4 lg:mx-0 mb-3
                    bg-[#1E2D4A] hover:bg-[#253d5e] transition-colors
                    rounded-2xl px-4 py-3"
-        aria-label="Learn about the monthly giveaway"
+        aria-label={t.giveawayNudge.learnAria}
       >
         <span className="text-xl flex-shrink-0" aria-hidden="true">🎟️</span>
 
         <div className="flex-1 min-w-0">
           <p className="text-white text-[13px] font-black leading-tight">
-            Monthly $25 Giveaway
+            {t.giveawayNudge.monthlyGiveaway}
           </p>
           <p className="text-white/50 text-[11px] mt-0.5 leading-snug">
             {entryCount > 0
-              ? `You've earned ${entryCount} ${entryCount === 1 ? 'entry' : 'entries'} — upgrade to Pro to enter`
-              : 'Upgrade to Pro and earn entries with every calculation'}
+              ? t.giveawayNudge.earnedUpgrade(entryCount)
+              : t.giveawayNudge.upgradeEarn}
           </p>
         </div>
 
@@ -115,16 +118,16 @@ export default function GiveawayNudge() {
         className="group flex items-center gap-3 mx-4 lg:mx-0 mb-3
                    bg-amber-50 border border-amber-200 hover:border-amber-300
                    transition-colors rounded-2xl px-4 py-3"
-        aria-label="View the monthly giveaway"
+        aria-label={t.giveawayNudge.viewAria}
       >
         <span className="text-xl flex-shrink-0" aria-hidden="true">🎟️</span>
 
         <div className="flex-1 min-w-0">
           <p className="text-amber-900 text-[13px] font-black leading-tight">
-            Monthly $25 Drawing · {drawDate}
+            {t.giveawayNudge.monthlyDrawing(drawDate)}
           </p>
           <p className="text-amber-700/70 text-[11px] mt-0.5">
-            Use the calculator today to earn your first entries
+            {t.giveawayNudge.earnFirst}
           </p>
         </div>
 
@@ -148,7 +151,7 @@ export default function GiveawayNudge() {
                  transition-all rounded-2xl px-4 py-3 shadow-sm ${
                    flash ? 'ring-2 ring-yellow-300 scale-[1.02]' : ''
                  }`}
-      aria-label={`You have ${entryCount} giveaway entries. View the monthly drawing.`}
+      aria-label={t.giveawayNudge.viewAria}
     >
       <span className="text-xl flex-shrink-0" aria-hidden="true">🎟️</span>
 
@@ -156,14 +159,14 @@ export default function GiveawayNudge() {
         <p className="text-white text-[13px] font-black leading-tight">
           <span className={`text-lg inline-block transition-transform duration-300 ${flash ? 'scale-125 text-yellow-100' : ''}`}>{entryCount.toLocaleString()}</span>
           {' '}
-          {entryCount === 1 ? 'entry' : 'entries'} this month
+          {t.giveawayNudge.entriesThisMonth('', entryCount === 1).trim()}
         </p>
         <p className="text-white/80 text-[11px] mt-0.5">
-          Drawing {drawDate}
+          {t.giveawayNudge.drawing(drawDate)}
           {isUrgent && (
             <span className="ml-1.5 bg-white/20 text-white text-[10px]
                              font-bold px-1.5 py-0.5 rounded-full">
-              {daysLeft === 0 ? 'Today!' : `${daysLeft}d left`}
+              {daysLeft === 0 ? t.giveawayNudge.today : t.giveawayNudge.daysLeft(daysLeft)}
             </span>
           )}
         </p>

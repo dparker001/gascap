@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 interface FillupLoggerProps {
   /** Pre-filled from the calculation result */
@@ -21,11 +22,12 @@ interface FillupLoggerProps {
 
 type FuelGrade = 'regular' | 'midgrade' | 'premium' | 'diesel' | 'e85' | '';
 
-const FUEL_GRADES: { value: FuelGrade; label: string; sub: string }[] = [
-  { value: 'regular',  label: 'Regular',   sub: '87'      },
-  { value: 'midgrade', label: 'Mid-Grade',  sub: '89'      },
-  { value: 'premium',  label: 'Premium',    sub: '91–93'   },
-  { value: 'diesel',   label: 'Diesel',     sub: 'diesel'  },
+type FuelGradeKey = 'gradeRegular' | 'gradeMidGrade' | 'gradePremium' | 'gradeDiesel';
+const FUEL_GRADES: { value: FuelGrade; labelKey: FuelGradeKey; sub: string }[] = [
+  { value: 'regular',  labelKey: 'gradeRegular',  sub: '87'      },
+  { value: 'midgrade', labelKey: 'gradeMidGrade', sub: '89'      },
+  { value: 'premium',  labelKey: 'gradePremium',  sub: '91–93'   },
+  { value: 'diesel',   labelKey: 'gradeDiesel',   sub: 'diesel'  },
 ];
 
 /** Compress an image File to a small JPEG thumbnail (max 320px wide, 0.55 quality) */
@@ -54,6 +56,7 @@ async function compressImage(file: File): Promise<string> {
 
 export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] }: FillupLoggerProps) {
   const { data: session } = useSession();
+  const { t } = useTranslation();
 
   const today = new Date().toISOString().split('T')[0];
 
@@ -184,9 +187,9 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
       };
       if (!res.ok) {
         if (res.status === 403 && data.upgrade) {
-          setScanError(`Receipt scanning requires Pro${plan === 'free' ? ' — upgrade to unlock' : ''}.`);
+          setScanError(t.fillup.receiptRequiresPro(plan === 'free' ? t.fillup.upgradeToUnlock : ''));
         } else {
-          setScanError(data.error ?? 'Scan failed.');
+          setScanError(data.error ?? t.fillup.scanFailed);
         }
         return;
       }
@@ -204,16 +207,16 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
         if (['regular','midgrade','premium','diesel','e85'].includes(g)) setFuelGrade(g);
       }
     } catch {
-      setScanError('Network error — try again.');
+      setScanError(t.fillup.networkError);
     } finally {
       setScanning(false);
     }
   }
 
   async function handleSave(force = false) {
-    if (!session) { setError('Sign in to log fill-ups.'); return; }
-    if (!gallons || parseFloat(gallons) <= 0) { setError('Enter valid gallons.'); return; }
-    if (!price   || parseFloat(price)   <= 0) { setError('Enter valid price.'); return; }
+    if (!session) { setError(t.fillup.errSignIn); return; }
+    if (!gallons || parseFloat(gallons) <= 0) { setError(t.fillup.errGallons); return; }
+    if (!price   || parseFloat(price)   <= 0) { setError(t.fillup.errPrice); return; }
 
     setSaving(true);
     setError('');
@@ -249,14 +252,14 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
 
       if (!res.ok) {
         const d = await res.json() as { error?: string };
-        setError(d.error ?? 'Save failed.');
+        setError(d.error ?? t.fillup.errSaveFailed);
         return;
       }
 
       window.dispatchEvent(new Event('fillup-saved'));
       onSaved();
     } catch {
-      setError('Network error — try again.');
+      setError(t.fillup.networkError);
     } finally {
       setSaving(false);
     }
@@ -268,13 +271,13 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
         <div className="flex items-center gap-2">
           <span className="text-lg">⛽</span>
           <div>
-            <p className="text-sm font-black text-slate-800">Log This Fill-Up</p>
+            <p className="text-sm font-black text-slate-800">{t.fillup.title}</p>
             <p className="text-[10px] text-slate-500">{prefill.vehicleName}</p>
           </div>
         </div>
         <div className="text-right">
           <p className="text-lg font-black text-amber-600">${totalCost.toFixed(2)}</p>
-          <p className="text-[10px] text-slate-400">estimated total</p>
+          <p className="text-[10px] text-slate-400">{t.fillup.estimatedTotal}</p>
         </div>
       </div>
 
@@ -309,10 +312,10 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
         <div className="flex items-center justify-between">
           <div>
             <p className="text-[11px] font-black text-slate-700">
-              ✨ Auto-fill from your receipt
+              {t.fillup.autoFillTitle}
             </p>
             <p className="text-[10px] text-slate-400 leading-snug mt-0.5">
-              AI reads gallons, price, station &amp; fuel grade — review before saving.
+              {t.fillup.autoFillSub}
             </p>
           </div>
           <span className={`text-[10px] font-bold border rounded-full px-2 py-0.5 flex-shrink-0 ${isPro ? 'text-blue-600 bg-blue-50 border-blue-200' : 'text-amber-600 bg-amber-50 border-amber-200'}`}>
@@ -331,7 +334,7 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
                 className="flex items-center gap-1.5 text-xs font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 hover:border-amber-300 hover:text-amber-700 transition-colors disabled:opacity-50"
               >
                 <span>{scanning ? '🔄' : '📷'}</span>
-                <span>{scanning ? 'Reading receipt…' : 'Use Camera'}</span>
+                <span>{scanning ? t.fillup.readingReceipt : t.fillup.useCamera}</span>
               </button>
               <button
                 type="button"
@@ -340,13 +343,13 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
                 className="flex items-center gap-1.5 text-xs font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 hover:border-amber-300 hover:text-amber-700 transition-colors disabled:opacity-50"
               >
                 <span>🖼️</span>
-                <span>Upload from Photos</span>
+                <span>{t.fillup.uploadFromPhotos}</span>
               </button>
             </div>
             {scanError && <p className="text-[11px] text-red-500 font-medium">{scanError}</p>}
             {receiptThumb && !scanning && (
               <p className="text-[10px] text-emerald-600 font-semibold">
-                ✓ Receipt photo saved with this fill-up
+                {t.fillup.receiptSaved}
               </p>
             )}
           </div>
@@ -376,7 +379,7 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
       </div>
 
       <p className="text-[10px] text-slate-400 -mt-1 px-0.5">
-        Or fill in the fields manually below ↓
+        {t.fillup.fillManually}
       </p>
 
       <div className="border-t border-amber-100" />
@@ -385,15 +388,15 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
       {drivers.length > 0 && (
         <div>
           <label className="field-label">
-            Driver
-            <span className="ml-1 text-[9px] font-bold bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full">FLEET</span>
+            {t.fillup.driverLabel}
+            <span className="ml-1 text-[9px] font-bold bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full">{t.garage.fleetBadge}</span>
           </label>
           <select
             value={driverLabel}
             onChange={(e) => setDriverLabel(e.target.value)}
             className="input-field text-sm"
           >
-            <option value="">— Unassigned —</option>
+            <option value="">{t.fillup.driverUnassigned}</option>
             {drivers.map((d) => (
               <option key={d} value={d}>{d}</option>
             ))}
@@ -403,7 +406,7 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
 
       {/* Date — full width, explicit bottom margin to prevent overlap with gallons grid */}
       <div className="mb-1">
-        <label className="field-label">Date</label>
+        <label className="field-label">{t.fillup.dateLabel}</label>
         <input
           type="date"
           className="input-field text-base appearance-none min-w-0 w-full [&::-webkit-date-and-time-value]:text-left [&::-webkit-date-and-time-value]:min-w-0"
@@ -416,7 +419,7 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
       {/* Gallons + Price row */}
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="field-label">Gallons</label>
+          <label className="field-label">{t.fillup.gallonsLabel}</label>
           <div className="relative">
             <input
               type="number" inputMode="decimal"
@@ -425,11 +428,11 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
               min="0.1" step="0.1"
               onChange={(e) => setGallons(e.target.value)}
             />
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">gal</span>
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">{t.calc.unitGal}</span>
           </div>
         </div>
         <div>
-          <label className="field-label">Price / gal</label>
+          <label className="field-label">{t.fillup.pricePerGalLabel}</label>
           <div className="relative">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-semibold pointer-events-none text-sm">$</span>
             <input
@@ -450,7 +453,7 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
         const delta = nationalAvg - entered;
         if (Math.abs(delta) < 0.005) return (
           <p className="text-[10px] text-slate-400 text-center -mt-1">
-            📊 Right at the national average (${nationalAvg.toFixed(3)}/gal)
+            {t.fillup.atNationalAvg(nationalAvg.toFixed(3))}
           </p>
         );
         const saved = delta > 0;
@@ -466,11 +469,11 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
                 saved ? 'text-emerald-700' : 'text-amber-700',
               ].join(' ')}>
                 {saved
-                  ? `$${delta.toFixed(3)}/gal below national avg — great deal!`
-                  : `$${Math.abs(delta).toFixed(3)}/gal above national avg`}
+                  ? t.fillup.belowNationalAvg(delta.toFixed(3))
+                  : t.fillup.aboveNationalAvg(Math.abs(delta).toFixed(3))}
               </p>
               <p className="text-[9px] text-slate-400 mt-0.5">
-                EIA national avg: ${nationalAvg.toFixed(3)}/gal (updated weekly)
+                {t.fillup.nationalAvgNote(nationalAvg.toFixed(3))}
               </p>
             </div>
           </div>
@@ -480,10 +483,10 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
       {/* ── Fuel Grade picker ───────────────────────────────────────── */}
       <div>
         <label className="field-label">
-          Fuel Grade <span className="text-slate-400 font-normal">(optional)</span>
+          {t.fillup.fuelGradeLabel} <span className="text-slate-400 font-normal">{t.fillup.optional}</span>
           {fuelGrade && (
             <span className="ml-1.5 text-[9px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-full border border-blue-100">
-              from receipt
+              {t.fillup.fromReceipt}
             </span>
           )}
         </label>
@@ -500,7 +503,7 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
                   : 'border-slate-200 bg-white text-slate-500 hover:border-amber-300',
               ].join(' ')}
             >
-              <span className="text-[11px] font-black leading-tight">{g.label}</span>
+              <span className="text-[11px] font-black leading-tight">{t.fillup[g.labelKey]}</span>
               <span className="text-[9px] text-slate-400 leading-tight">{g.sub}</span>
             </button>
           ))}
@@ -510,10 +513,10 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
       {/* Odometer */}
       <div>
         <label className="field-label">
-          Odometer{' '}
-          <span className="text-slate-400 font-normal">(optional)</span>
+          {t.fillup.odometerLabel}{' '}
+          <span className="text-slate-400 font-normal">{t.fillup.optional}</span>
           {' '}
-          <span className="text-[10px] font-bold text-green-600 bg-green-50 rounded px-1 py-0.5">MPG tracking</span>
+          <span className="text-[10px] font-bold text-green-600 bg-green-50 rounded px-1 py-0.5">{t.fillup.mpgTrackingTag}</span>
         </label>
         <div className="relative">
           <input
@@ -522,7 +525,7 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
               'input-field text-sm pr-10',
               odomIsEst ? 'border-blue-300 bg-blue-50/40' : '',
             ].join(' ')}
-            placeholder="e.g. 42500 — skip if you don't track every fill-up"
+            placeholder={t.fillup.odometerPlaceholder}
             value={odometer}
             min="0" step="1"
             onChange={(e) => {
@@ -537,20 +540,20 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
           <div className="mt-1.5 flex items-center justify-between gap-2">
             <p className="text-[10px] text-blue-600 leading-snug">
               {odomEst.confidence === 'high' ? '🔮' : '〜'}{' '}
-              <span className="font-semibold">Smart estimate</span>{' '}
-              based on your avg{' '}
-              <span className="font-semibold">{odomEst.avgMilesPerDay.toLocaleString()} mi/day</span>
+              <span className="font-semibold">{t.fillup.smartEstimate}</span>{' '}
+              {t.fillup.smartEstimateBasedOn}{' '}
+              <span className="font-semibold">{t.fillup.milesPerDay(odomEst.avgMilesPerDay.toLocaleString())}</span>
               {odomEst.confidence === 'low' && (
-                <span className="text-blue-400"> · limited history</span>
+                <span className="text-blue-400"> {t.fillup.limitedHistory}</span>
               )}
             </p>
             <button
               type="button"
               onClick={() => { setOdometer(''); setOdomIsEst(false); }}
               className="text-[10px] font-bold text-slate-400 hover:text-red-400 transition-colors flex-shrink-0"
-              title="Clear estimate and enter manually"
+              title={t.fillup.clearEstimateTitle}
             >
-              Clear
+              {t.fillup.clearEstimate}
             </button>
           </div>
         )}
@@ -558,13 +561,13 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
 
       {/* Gas Station */}
       <div>
-        <label className="field-label">⛽ Gas Station <span className="text-slate-400 font-normal">(optional)</span></label>
+        <label className="field-label">{t.fillup.gasStationLabel} <span className="text-slate-400 font-normal">{t.fillup.optional}</span></label>
         <input
           id="station-input"
           type="text"
           list="station-suggestions"
           className="input-field text-sm"
-          placeholder="e.g. Shell, Chevron, BP…"
+          placeholder={t.fillup.gasStationPlaceholder}
           value={stationName}
           maxLength={60}
           onChange={(e) => setStationName(e.target.value)}
@@ -599,27 +602,26 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
       {/* Notes — also used for address from receipt scan */}
       <div>
         <label className="field-label">
-          Notes <span className="text-slate-400 font-normal">(optional)</span>
+          {t.fillup.notesLabel} <span className="text-slate-400 font-normal">{t.fillup.optional}</span>
         </label>
         <input
           type="text"
           className="input-field text-sm"
-          placeholder="Address, notes, anything else…"
+          placeholder={t.fillup.notesPlaceholder}
           value={notes}
           maxLength={160}
           onChange={(e) => setNotes(e.target.value)}
         />
         {notes.startsWith('📍') && (
-          <p className="text-[10px] text-blue-500 mt-0.5 px-0.5">📋 Station address captured from receipt</p>
+          <p className="text-[10px] text-blue-500 mt-0.5 px-0.5">{t.fillup.addressCaptured}</p>
         )}
       </div>
 
       {/* Odometer tip */}
       <p className="text-[10px] text-slate-400 leading-relaxed">
-        💡 <span className="font-semibold text-slate-500">Optional:</span> Log your odometer on every fill-up to unlock{' '}
-        <span className="font-semibold text-amber-600">real-world MPG tracking</span>.{' '}
-        After 4 consecutive fill-ups with odometer readings, your personal avg MPG will appear in the Trip Planner.
-        Skip it if you don&apos;t track every fill-up — the app uses EPA estimates instead.
+        💡 <span className="font-semibold text-slate-500">{t.fillup.odometerTipLead}</span> {t.fillup.odometerTipBody1}{' '}
+        <span className="font-semibold text-amber-600">{t.fillup.odometerTipMpg}</span>.{' '}
+        {t.fillup.odometerTipBody2}
       </p>
 
       {warnings.length > 0 && (
@@ -628,13 +630,13 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
             <svg viewBox="0 0 16 16" className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" fill="currentColor" aria-hidden="true">
               <path d="M8 1.5a6.5 6.5 0 100 13 6.5 6.5 0 000-13zM0 8a8 8 0 1116 0A8 8 0 010 8zm8-3.5a.75.75 0 01.75.75v3a.75.75 0 01-1.5 0v-3A.75.75 0 018 4.5zm0 7a1 1 0 100-2 1 1 0 000 2z"/>
             </svg>
-            <p className="text-[11px] font-black text-amber-700 uppercase tracking-wide">Heads up</p>
+            <p className="text-[11px] font-black text-amber-700 uppercase tracking-wide">{t.fillup.headsUp}</p>
           </div>
           {warnings.map((w, i) => (
             <p key={i} className="text-xs text-amber-800 leading-snug">{w}</p>
           ))}
           <p className="text-[10px] text-amber-600 font-semibold mt-1">
-            Tap <strong>&quot;Save Anyway&quot;</strong> if this looks correct.
+            {t.fillup.saveAnywayHint1} <strong>{t.fillup.saveAnywayQuoted}</strong> {t.fillup.saveAnywayHint2}
           </p>
         </div>
       )}
@@ -645,14 +647,14 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
           onClick={onCancel}
           className="flex-1 py-2.5 rounded-xl border-2 border-slate-200 text-sm font-semibold text-slate-500 hover:border-slate-300 transition-colors bg-white"
         >
-          Cancel
+          {t.fillup.cancel}
         </button>
         <button
           onClick={() => handleSave(forceConfirm)}
           disabled={saving}
           className="flex-1 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-white text-sm font-bold disabled:opacity-50 transition-colors"
         >
-          {saving ? 'Saving…' : forceConfirm ? 'Save Anyway ✓' : 'Save Fill-Up ✓'}
+          {saving ? t.fillup.saving : forceConfirm ? t.fillup.saveAnyway : t.fillup.saveFillup}
         </button>
       </div>
     </div>

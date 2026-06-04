@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { setThemePreference, getThemePreference, isDarkMode, type ThemePreference } from '@/components/DarkModeProvider';
 import { DoorMiniPreview, DOOR_STYLE_LABELS, DOOR_DIRECTION_LABELS } from '@/components/GarageDoor';
 import { useGarageDoorPrefs, type DoorStyle, type DoorDirection } from '@/hooks/useGarageDoorPrefs';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 interface ReferralSummary {
   code:            string;
@@ -54,6 +55,8 @@ function Avatar({ name, color }: { name: string; color: string }) {
 
 export default function SettingsPage() {
   const { data: session, status } = useSession();
+  const { t, locale } = useTranslation();
+  const intlLocale = locale === 'es' ? 'es-ES' : 'en-US';
   const AVATAR_COLOR_KEY = 'gascap_avatar_color';
   const [avatarColor,    setAvatarColor]    = useState('bg-amber-500');
 
@@ -180,12 +183,12 @@ export default function SettingsPage() {
 
   /* ── Sticky tab bar ── */
   const ALL_TABS = [
-    { id: 'profile',     label: '👤 Profile'     },
-    { id: 'account',     label: '🔐 Account'      },
-    { id: 'plan',        label: '⭐ Plan'         },
-    { id: 'perks',       label: '🎁 Perks'        },
-    { id: 'preferences', label: '⚙️ Preferences'  },
-    { id: 'fleet',       label: '🚛 Fleet'        },
+    { id: 'profile',     label: t.settings.tabProfile     },
+    { id: 'account',     label: t.settings.tabAccount     },
+    { id: 'plan',        label: t.settings.tabPlan        },
+    { id: 'perks',       label: t.settings.tabPerks       },
+    { id: 'preferences', label: t.settings.tabPreferences },
+    { id: 'fleet',       label: t.settings.tabFleet       },
   ] as const;
 
   type TabId = (typeof ALL_TABS)[number]['id'];
@@ -343,12 +346,12 @@ export default function SettingsPage() {
 
   if (!session) {
     return <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center gap-4 px-6">
-      <p className="text-slate-600 font-semibold">Sign in to access settings</p>
-      <Link href="/signin" className="px-6 py-3 bg-amber-500 text-white font-bold rounded-2xl">Sign In</Link>
+      <p className="text-slate-600 font-semibold">{t.settings.signInPrompt}</p>
+      <Link href="/signin" className="px-6 py-3 bg-amber-500 text-white font-bold rounded-2xl">{t.settings.signInBtn}</Link>
     </div>;
   }
 
-  const name         = displayName || session.user?.name || 'User';
+  const name         = displayName || session.user?.name || t.settings.defaultName;
   const plan         = livePlan ?? session.user?.plan ?? 'free';
   const isProTrial   = (session.user as { isProTrial?: boolean })?.isProTrial ?? false;
   const stripeInterval = liveInterval ?? (session.user as { stripeInterval?: string | null })?.stripeInterval ?? null;
@@ -356,12 +359,12 @@ export default function SettingsPage() {
   const canUploadPhoto = plan === 'pro' || plan === 'fleet' || isProTrial;
 
   const planConfig = isProLifetime
-    ? { label: 'Pro Lifetime', bg: 'bg-teal-50', text: 'text-teal-700', border: 'border-teal-200' }
+    ? { label: t.settings.planProLifetimeLabel, bg: 'bg-teal-50', text: 'text-teal-700', border: 'border-teal-200' }
     : ({
-        free:  { label: 'Free',  bg: 'bg-slate-100',   text: 'text-slate-600', border: 'border-slate-200' },
-        pro:   { label: 'Pro',   bg: 'bg-amber-50',    text: 'text-amber-700', border: 'border-amber-200' },
-        fleet: { label: 'Fleet', bg: 'bg-blue-50',     text: 'text-blue-700',  border: 'border-blue-200'  },
-      }[plan] ?? { label: 'Free', bg: 'bg-slate-100', text: 'text-slate-600', border: 'border-slate-200' });
+        free:  { label: t.settings.planFreeLabel,  bg: 'bg-slate-100',   text: 'text-slate-600', border: 'border-slate-200' },
+        pro:   { label: t.settings.planProLabel,   bg: 'bg-amber-50',    text: 'text-amber-700', border: 'border-amber-200' },
+        fleet: { label: t.settings.planFleetLabel, bg: 'bg-blue-50',     text: 'text-blue-700',  border: 'border-blue-200'  },
+      }[plan] ?? { label: t.settings.planFreeLabel, bg: 'bg-slate-100', text: 'text-slate-600', border: 'border-slate-200' });
 
   async function openPortal() {
     setPortalLoading(true);
@@ -369,9 +372,9 @@ export default function SettingsPage() {
       const res  = await fetch('/api/stripe/portal', { method: 'POST' });
       const data = await res.json() as { url?: string; error?: string };
       if (data.url) window.location.href = data.url;
-      else alert(data.error ?? 'Could not open billing portal. Please try again or contact support@gascap.app.');
+      else alert(data.error ?? t.settings.portalError);
     } catch {
-      alert('Could not reach the billing portal. Please try again or contact support@gascap.app.');
+      alert(t.settings.portalReachError);
     } finally {
       setPortalLoading(false);
     }
@@ -388,7 +391,7 @@ export default function SettingsPage() {
       });
       const data = await res.json() as { url?: string; error?: string };
       if (data.url) window.location.href = data.url;
-      else alert(data.error ?? 'Could not open checkout.');
+      else alert(data.error ?? t.settings.checkoutError);
     } finally {
       setPortalLoading(false);
     }
@@ -487,18 +490,18 @@ export default function SettingsPage() {
 
             {/* Modal header */}
             <div className="px-5 pt-5 pb-3 flex items-center justify-between">
-              <h3 className="text-base font-black text-slate-800 dark:text-slate-100">Position Your Photo</h3>
+              <h3 className="text-base font-black text-slate-800 dark:text-slate-100">{t.settings.cropTitle}</h3>
               <button
                 onClick={() => setCropModalOpen(false)}
                 className="w-7 h-7 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center
                            text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors text-sm"
-                aria-label="Cancel"
+                aria-label={t.settings.cropCancelAria}
               >✕</button>
             </div>
 
             {/* Hint text */}
             <p className="text-center text-[11px] text-slate-400 -mt-1 mb-2">
-              Drag to reposition · scroll or pinch to zoom
+              {t.settings.cropHint}
             </p>
 
             {/* 280×280 crop canvas */}
@@ -605,14 +608,14 @@ export default function SettingsPage() {
                 className="flex-1 py-3 rounded-2xl border border-slate-200 text-sm font-bold
                            text-slate-500 hover:bg-slate-50 transition-colors"
               >
-                Cancel
+                {t.settings.cropCancel}
               </button>
               <button
                 onClick={handleCropConfirm}
                 className="flex-1 py-3 rounded-2xl bg-brand-teal text-white text-sm font-black
                            hover:bg-brand-dark transition-colors shadow-sm"
               >
-                Use This Photo
+                {t.settings.cropUse}
               </button>
             </div>
 
@@ -631,7 +634,7 @@ export default function SettingsPage() {
                 <path d="M19 12H5M12 5l-7 7 7 7" />
               </svg>
             </Link>
-            <h1 className="text-white font-black text-xl">Settings</h1>
+            <h1 className="text-white font-black text-xl">{t.settings.title}</h1>
           </div>
         </div>
 
@@ -661,7 +664,7 @@ export default function SettingsPage() {
 
         {/* Profile section */}
         <div ref={(el) => { sectionRefs.current['profile'] = el; }}>
-          <SectionBanner icon="👤" title="Profile" />
+          <SectionBanner icon="👤" title={t.settings.profileTitle} />
           <div className="bg-white rounded-b-2xl border border-t-0 border-slate-100 shadow-sm p-5 space-y-5">
 
           {/* Avatar preview + photo upload + color picker */}
@@ -673,7 +676,7 @@ export default function SettingsPage() {
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={avatarUrl}
-                  alt="Profile photo"
+                  alt={t.settings.profilePhotoAlt}
                   className="w-20 h-20 rounded-full object-cover shadow-md ring-2 ring-white"
                 />
               ) : (
@@ -686,7 +689,7 @@ export default function SettingsPage() {
                   className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 hover:bg-red-600
                              rounded-full text-white text-[10px] flex items-center justify-center
                              opacity-0 group-hover:opacity-100 transition-opacity shadow"
-                  aria-label="Remove profile photo"
+                  aria-label={t.settings.removePhotoAria}
                 >
                   ✕
                 </button>
@@ -711,9 +714,9 @@ export default function SettingsPage() {
                              transition-colors flex items-center gap-1"
                 >
                   <span aria-hidden="true">📷</span>
-                  {avatarUrl ? 'Change photo' : 'Upload a photo'}
+                  {avatarUrl ? t.settings.changePhoto : t.settings.uploadPhoto}
                 </button>
-                <p className="text-[10px] text-slate-400 -mt-1">JPG or PNG · drag &amp; pinch to position</p>
+                <p className="text-[10px] text-slate-400 -mt-1">{t.settings.photoHint}</p>
               </>
             ) : (
               /* Free-user locked nudge */
@@ -725,7 +728,7 @@ export default function SettingsPage() {
               >
                 <span className="text-[11px]" aria-hidden="true">🔒</span>
                 <span className="text-[11px] font-bold text-amber-700 group-hover/photo:text-amber-800">
-                  Photo upload · Pro
+                  {t.settings.photoLocked}
                 </span>
                 <svg viewBox="0 0 12 12" className="w-2.5 h-2.5 text-amber-500 flex-shrink-0"
                      fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -753,7 +756,7 @@ export default function SettingsPage() {
 
           {/* Display name */}
           <div>
-            <label className="block text-xs font-semibold text-slate-500 mb-1.5">Display Name</label>
+            <label className="block text-xs font-semibold text-slate-500 mb-1.5">{t.settings.displayNameLabel}</label>
             <input
               type="text"
               autoCapitalize="words"
@@ -761,14 +764,14 @@ export default function SettingsPage() {
                          focus:outline-none focus:ring-2 focus:ring-amber-400"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
-              placeholder={session.user?.name ?? 'Your name'}
+              placeholder={session.user?.name ?? t.settings.displayNamePlaceholder}
               maxLength={50}
             />
           </div>
 
           {/* Email (read-only) */}
           <div>
-            <label className="block text-xs font-semibold text-slate-500 mb-1.5">Email</label>
+            <label className="block text-xs font-semibold text-slate-500 mb-1.5">{t.settings.emailLabel}</label>
             <div className="w-full border border-slate-100 rounded-xl px-3 py-2.5 text-sm text-slate-400 bg-slate-50">
               {session.user?.email}
             </div>
@@ -777,7 +780,7 @@ export default function SettingsPage() {
           {/* Phone (optional) */}
           <div>
             <label className="block text-xs font-semibold text-slate-500 mb-1.5">
-              Phone <span className="text-slate-300 font-normal">(optional)</span>
+              {t.settings.phoneLabel} <span className="text-slate-300 font-normal">{t.settings.phoneOptional}</span>
             </label>
             <input
               type="tel"
@@ -785,7 +788,7 @@ export default function SettingsPage() {
                          focus:outline-none focus:ring-2 focus:ring-amber-400"
               value={phone}
               onChange={(e) => { setPhone(e.target.value); if (!e.target.value.trim()) setSmsOptIn(false); }}
-              placeholder="+1 (555) 000-0000"
+              placeholder={t.settings.phonePlaceholder}
               maxLength={20}
             />
           </div>
@@ -802,21 +805,19 @@ export default function SettingsPage() {
               />
               <div>
                 <p className={`text-sm font-semibold ${smsOptIn ? 'text-teal-800' : 'text-slate-600'}`}>
-                  📱 Receive SMS text messages from GasCap™
+                  {t.settings.smsTitle}
                 </p>
                 <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
-                  Get gas price alerts, fill-up reminders, and tips by text. Message &amp; data rates may apply.
-                  Reply STOP at any time to opt out.
+                  {t.settings.smsBody}
                   {!phone.trim() && (
-                    <span className="block mt-0.5 text-amber-600 font-medium">Add a phone number above to enable SMS.</span>
+                    <span className="block mt-0.5 text-amber-600 font-medium">{t.settings.smsAddPhone}</span>
                   )}
                 </p>
               </div>
             </label>
             {smsOptIn && (
               <p className="mt-2 text-[11px] text-teal-700 border-t border-teal-200 pt-2">
-                ✓ By checking this box you consent to receive recurring automated text messages from
-                Gas Capacity LLC at the number provided. Consent is not a condition of purchase.
+                {t.settings.smsConsent}
               </p>
             )}
           </div>
@@ -826,35 +827,35 @@ export default function SettingsPage() {
             disabled={saving}
             className="w-full py-3 rounded-2xl bg-amber-500 hover:bg-amber-400 text-white font-bold text-sm transition-colors disabled:opacity-60"
           >
-            {saved ? '✓ Saved!' : saving ? 'Saving…' : 'Save Changes'}
+            {saved ? t.settings.saved : saving ? t.settings.saving : t.settings.saveChanges}
           </button>
           </div>{/* end profile card */}
         </div>{/* end profile section */}
 
         {/* Account section */}
         <div ref={(el) => { sectionRefs.current['account'] = el; }}>
-          <SectionBanner icon="🔐" title="Account" />
+          <SectionBanner icon="🔐" title={t.settings.accountTitle} />
           <div className="bg-white rounded-b-2xl border border-t-0 border-slate-100 shadow-sm p-5 space-y-4">
 
             {/* Email + verification status */}
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-semibold text-slate-500">Email Address</p>
+                <p className="text-xs font-semibold text-slate-500">{t.settings.emailAddress}</p>
                 <p className="text-sm text-slate-800 mt-0.5">{session.user?.email}</p>
               </div>
               {(session.user as { emailVerified?: boolean }).emailVerified ? (
-                <span className="text-[10px] font-black bg-green-100 text-green-700 px-2 py-1 rounded-full">✓ Verified</span>
+                <span className="text-[10px] font-black bg-green-100 text-green-700 px-2 py-1 rounded-full">{t.settings.verified}</span>
               ) : (
-                <span className="text-[10px] font-black bg-amber-100 text-amber-700 px-2 py-1 rounded-full">⚠ Unverified</span>
+                <span className="text-[10px] font-black bg-amber-100 text-amber-700 px-2 py-1 rounded-full">{t.settings.unverified}</span>
               )}
             </div>
 
             {/* Member since */}
             {(session.user as { createdAt?: string | null }).createdAt && (
               <div>
-                <p className="text-xs font-semibold text-slate-500">Member Since</p>
+                <p className="text-xs font-semibold text-slate-500">{t.settings.memberSince}</p>
                 <p className="text-sm text-slate-700 mt-0.5">
-                  {new Date((session.user as unknown as { createdAt: string }).createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                  {new Date((session.user as unknown as { createdAt: string }).createdAt).toLocaleDateString(intlLocale, { month: 'long', day: 'numeric', year: 'numeric' })}
                 </p>
               </div>
             )}
@@ -864,22 +865,22 @@ export default function SettingsPage() {
                 href="/help"
                 className="flex items-center justify-between w-full py-2.5 px-3 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors"
               >
-                <span className="text-sm font-semibold text-slate-700">❓ Help & FAQ</span>
+                <span className="text-sm font-semibold text-slate-700">{t.settings.helpFaq}</span>
                 <span className="text-slate-400 text-xs">→</span>
               </Link>
               <Link
                 href="/contact"
                 className="flex items-center justify-between w-full py-2.5 px-3 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors"
               >
-                <span className="text-sm font-semibold text-slate-700">✉️ Contact Support</span>
+                <span className="text-sm font-semibold text-slate-700">{t.settings.contactSupport}</span>
                 <span className="text-slate-400 text-xs">→</span>
               </Link>
               <div className="flex gap-2">
                 <Link href="/privacy" className="flex-1 text-center text-[11px] font-bold text-slate-400 hover:text-slate-600 py-2">
-                  Privacy Policy
+                  {t.settings.privacyPolicy}
                 </Link>
                 <Link href="/terms" className="flex-1 text-center text-[11px] font-bold text-slate-400 hover:text-slate-600 py-2">
-                  Terms of Use
+                  {t.settings.termsOfUse}
                 </Link>
               </div>
             </div>
@@ -890,7 +891,7 @@ export default function SettingsPage() {
                 className="w-full py-3 rounded-2xl border-2 border-red-100 text-sm font-bold
                            text-red-500 hover:bg-red-50 transition-colors"
               >
-                Sign Out
+                {t.settings.signOut}
               </button>
             </div>
           </div>
@@ -898,7 +899,7 @@ export default function SettingsPage() {
 
         {/* Plan section */}
         <div ref={(el) => { sectionRefs.current['plan'] = el; }}>
-          <SectionBanner icon="⭐" title="Plan" />
+          <SectionBanner icon="⭐" title={t.settings.planTitle} />
           <div className={`bg-white rounded-b-2xl border border-t-0 shadow-sm p-5 space-y-4 ${planConfig.border}`}>
           <div className="flex items-center justify-between">
             <span className={`text-xs font-black px-2.5 py-1 rounded-full ${planConfig.bg} ${planConfig.text}`}>
@@ -909,7 +910,7 @@ export default function SettingsPage() {
           {plan === 'free' && (
             <>
               <p className="text-sm text-slate-500">
-                You&apos;re on the free plan — 1 vehicle slot, basic calculator.
+                {t.settings.freePlanDesc}
               </p>
               <button
                 onClick={() => handleUpgrade('pro')}
@@ -917,8 +918,8 @@ export default function SettingsPage() {
                 className="flex items-center justify-between w-full py-3 px-4 rounded-2xl
                            bg-amber-500 hover:bg-amber-400 text-white font-bold text-sm transition-colors disabled:opacity-50"
               >
-                <span>⭐ Upgrade to Pro</span>
-                <span>$2.99/mo →</span>
+                <span>{t.settings.upgradeToProBtn}</span>
+                <span>{t.settings.proPriceArrow}</span>
               </button>
             </>
           )}
@@ -926,10 +927,10 @@ export default function SettingsPage() {
           {isProLifetime && (
             <>
               <p className="text-sm text-slate-500">
-                🏅 <strong className="text-teal-700">Lifetime Member</strong> — you own GasCap™ Pro forever. One payment, no subscription, nothing to manage.
+                {t.settings.lifetimeDesc1Pre}<strong className="text-teal-700">{t.settings.lifetimeMember}</strong>{t.settings.lifetimeDesc1Post}
               </p>
               <p className="text-sm text-slate-500">
-                Your Lifetime exclusives: 2× monthly giveaway entries · Streak Shield (1 grace day/month) · this Lifetime Member badge.
+                {t.settings.lifetimeDesc2}
               </p>
             </>
           )}
@@ -937,7 +938,7 @@ export default function SettingsPage() {
           {plan === 'pro' && !isProLifetime && (
             <>
               <p className="text-sm text-slate-500">
-                GasCap™ Pro — unlimited vehicles, manual entry, spec lookup &amp; more.
+                {t.settings.proDesc}
               </p>
               <button
                 onClick={openPortal}
@@ -945,10 +946,10 @@ export default function SettingsPage() {
                 className="w-full py-3 rounded-2xl border-2 border-slate-200 text-sm font-bold
                            text-slate-600 hover:border-slate-300 hover:bg-slate-50 transition-colors disabled:opacity-50"
               >
-                {portalLoading ? 'Opening…' : 'Manage Billing & Subscription →'}
+                {portalLoading ? t.settings.opening : t.settings.manageBilling}
               </button>
               <p className="text-center text-[11px] text-slate-400">
-                Update payment method, view invoices, or cancel anytime.
+                {t.settings.manageBillingHint}
               </p>
             </>
           )}
@@ -956,15 +957,15 @@ export default function SettingsPage() {
           {plan === 'fleet' && (
             <>
               <p className="text-sm text-slate-500">
-                GasCap™ Fleet — unlimited vehicles, multi-driver, fleet reporting &amp; more.
+                {t.settings.fleetDesc}
               </p>
               <Link
                 href="/fleet"
                 className="flex items-center justify-between w-full py-3 px-4 rounded-2xl
                            bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm transition-colors"
               >
-                <span>🚛 Fleet Dashboard</span>
-                <span>Drivers &amp; Reports →</span>
+                <span>{t.settings.fleetDashboardBtn}</span>
+                <span>{t.settings.fleetDashboardArrow}</span>
               </Link>
               <button
                 onClick={openPortal}
@@ -972,10 +973,10 @@ export default function SettingsPage() {
                 className="w-full py-3 rounded-2xl border-2 border-slate-200 text-sm font-bold
                            text-slate-600 hover:border-slate-300 hover:bg-slate-50 transition-colors disabled:opacity-50"
               >
-                {portalLoading ? 'Opening…' : 'Manage Billing & Subscription →'}
+                {portalLoading ? t.settings.opening : t.settings.manageBilling}
               </button>
               <p className="text-center text-[11px] text-slate-400">
-                Update payment method, view invoices, or cancel anytime.
+                {t.settings.manageBillingHint}
               </p>
             </>
           )}
@@ -984,33 +985,33 @@ export default function SettingsPage() {
 
         {/* Perks section — wraps Referral + Giveaway */}
         <div ref={(el) => { sectionRefs.current['perks'] = el; }} className="space-y-4">
-          <SectionBanner icon="🎁" title="Perks" />
+          <SectionBanner icon="🎁" title={t.settings.perksTitle} />
 
         {/* Referral summary */}
         {referral && (
           <div className="bg-white rounded-b-2xl border border-t-0 border-slate-100 shadow-sm p-5 space-y-3">
             <div className="flex items-center justify-between">
               <Link href="/?tab=referral" className="text-[11px] text-amber-500 font-bold hover:underline">
-                Full details →
+                {t.settings.fullDetails}
               </Link>
             </div>
 
             {/* How credits are earned */}
             <p className="text-[11px] text-slate-500 leading-relaxed bg-slate-50 rounded-xl px-3 py-2.5">
-              💡 You earn <strong>1 free month</strong> for every friend who subscribes to a paid GasCap™ plan using your link — up to <strong>6 free months</strong> total. Trial sign-ups that never pay don&apos;t count. Credits are issued within 24 hours of their first payment.
+              {t.settings.referralExplain1}<strong>{t.settings.referralExplainBold1}</strong>{t.settings.referralExplain2}<strong>{t.settings.referralExplainBold2}</strong>{t.settings.referralExplain3}
             </p>
 
           {/* Stats */}
             <div className="flex gap-3">
               <div className="flex-1 bg-slate-50 rounded-xl px-3 py-2 text-center">
                 <p className="text-lg font-black text-slate-700">{referral.referralCount}</p>
-                <p className="text-[10px] text-slate-400">Paid Referrals</p>
+                <p className="text-[10px] text-slate-400">{t.settings.paidReferrals}</p>
               </div>
               <div className={`flex-1 rounded-xl px-3 py-2 text-center ${referral.activeCredits > 0 ? 'bg-amber-50' : 'bg-slate-50'}`}>
                 <p className={`text-lg font-black ${referral.activeCredits > 0 ? 'text-amber-600' : 'text-slate-400'}`}>
                   {referral.activeCredits}
                 </p>
-                <p className="text-[10px] text-slate-400">Credits Banked</p>
+                <p className="text-[10px] text-slate-400">{t.settings.creditsBanked}</p>
               </div>
             </div>
 
@@ -1022,11 +1023,11 @@ export default function SettingsPage() {
                   : 'bg-amber-50 text-amber-700'
               }`}>
                 {referral.isPaid
-                  ? `✅ ${referral.redeemableMonths} month${referral.redeemableMonths !== 1 ? 's' : ''} ready to redeem on next billing cycle`
-                  : `⏳ ${referral.activeCredits} month${referral.activeCredits !== 1 ? 's' : ''} banked — upgrade to Pro to redeem`}
+                  ? t.settings.creditsReady(referral.redeemableMonths)
+                  : t.settings.creditsBankedMsg(referral.activeCredits)}
                 {referral.nextExpiryDate && (
                   <span className="block text-[10px] text-slate-400 mt-0.5">
-                    Earliest expiry: {new Date(referral.nextExpiryDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    {t.settings.earliestExpiry(new Date(referral.nextExpiryDate).toLocaleDateString(intlLocale, { month: 'short', day: 'numeric', year: 'numeric' }))}
                   </span>
                 )}
               </p>
@@ -1034,7 +1035,7 @@ export default function SettingsPage() {
 
             {/* Referral link */}
             <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">Your referral link</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">{t.settings.yourReferralLink}</p>
               <div className="flex gap-1.5">
                 <div className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 overflow-hidden">
                   <p className="text-[11px] font-mono text-slate-500 truncate">{referral.referralUrl}</p>
@@ -1058,7 +1059,7 @@ export default function SettingsPage() {
                 className="flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-amber-600 transition-colors"
               >
                 <span className="text-base">📱</span>
-                <span>{showQR ? 'Hide referral QR code' : 'Show referral QR code'}</span>
+                <span>{showQR ? t.settings.hideQr : t.settings.showQr}</span>
                 <svg viewBox="0 0 16 16" className={`w-3 h-3 transition-transform ${showQR ? 'rotate-180' : ''}`} fill="currentColor" aria-hidden="true">
                   <path d="M8 10.5L2.5 5h11L8 10.5z" />
                 </svg>
@@ -1066,14 +1067,14 @@ export default function SettingsPage() {
 
               {showQR && (
                 <div className="mt-3 flex flex-col items-center gap-3 bg-slate-50 border border-slate-200 rounded-2xl p-4">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Scan to join GasCap™</p>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{t.settings.scanToJoin}</p>
 
                   {/* QR code image — generated by free api.qrserver.com */}
                   <div className="bg-white p-3 rounded-xl shadow-sm border border-slate-100">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=4&color=0f1f34&bgcolor=ffffff&data=${encodeURIComponent(referral.referralUrl)}`}
-                      alt="Referral QR code"
+                      alt={t.settings.qrAlt}
                       width={200}
                       height={200}
                       className="w-48 h-48 rounded-lg"
@@ -1081,7 +1082,7 @@ export default function SettingsPage() {
                   </div>
 
                   <p className="text-[10px] text-slate-400 text-center leading-relaxed max-w-[200px]">
-                    Anyone who scans this gets credit to your account when they sign up.
+                    {t.settings.qrExplain}
                   </p>
 
                   {/* Actions */}
@@ -1095,7 +1096,7 @@ export default function SettingsPage() {
                       className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-slate-200 text-slate-600 text-xs font-bold hover:bg-slate-300 transition-colors"
                     >
                       <span>⬇️</span>
-                      <span>Download</span>
+                      <span>{t.settings.download}</span>
                     </a>
 
                     {/* Share */}
@@ -1103,8 +1104,8 @@ export default function SettingsPage() {
                       type="button"
                       onClick={async () => {
                         const shareData = {
-                          title: 'GasCap™ — Know before you pull up',
-                          text:  'Track your gas spend, calculate fill costs, and never overpay at the pump. Free app:',
+                          title: t.settings.shareTitle,
+                          text:  t.settings.shareText,
                           url:   referral.referralUrl,
                         };
                         if (navigator.share && navigator.canShare?.(shareData)) {
@@ -1116,7 +1117,7 @@ export default function SettingsPage() {
                       className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-white text-xs font-bold transition-colors"
                     >
                       <span>🔗</span>
-                      <span>Share Link</span>
+                      <span>{t.settings.shareLink}</span>
                     </button>
                   </div>
                 </div>
@@ -1128,7 +1129,7 @@ export default function SettingsPage() {
               href="/ambassador"
               className="flex items-center justify-between text-xs font-bold text-slate-500 hover:text-navy-700 transition-colors py-1"
             >
-              <span>🏆 Become a GasCap™ Ambassador</span>
+              <span>{t.settings.becomeAmbassador}</span>
               <span className="text-slate-300">→</span>
             </Link>
 
@@ -1141,18 +1142,18 @@ export default function SettingsPage() {
                   rel="noopener noreferrer"
                   className="flex items-center justify-between text-xs font-bold text-slate-500 hover:text-[#005F4A] transition-colors py-1"
                 >
-                  <span>🏴 Join GasCaptains™ — Members Community</span>
+                  <span>{t.settings.joinGascaptains}</span>
                   <span className="text-slate-300">→</span>
                 </a>
-                <p className="text-[10px] text-amber-600 font-semibold">🚧 Community is actively being built — more coming soon</p>
+                <p className="text-[10px] text-amber-600 font-semibold">{t.settings.gascaptainsBuilding}</p>
               </div>
             ) : (
               <div className="flex items-center justify-between py-1 pointer-events-none select-none opacity-60">
                 <div>
-                  <p className="text-xs font-bold text-slate-400">🔒 GasCaptains™ — Members Community</p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">Exclusive community for paid Pro &amp; Fleet members</p>
+                  <p className="text-xs font-bold text-slate-400">{t.settings.gascaptainsLocked}</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">{t.settings.gascaptainsLockedSub}</p>
                 </div>
-                <span className="text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full whitespace-nowrap ml-2">⭐ Pro &amp; Fleet</span>
+                <span className="text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full whitespace-nowrap ml-2">{t.settings.gascaptainsBadge}</span>
               </div>
             )}
 
@@ -1163,8 +1164,8 @@ export default function SettingsPage() {
         {giveaway && (
           <div className="bg-white rounded-2xl border border-amber-200 shadow-sm p-5 space-y-3">
             <div className="flex items-center justify-between">
-              <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400">Monthly Gas Card</h2>
-              <span className="text-[10px] font-black bg-amber-400 text-white px-2 py-0.5 rounded-full">GIVEAWAY</span>
+              <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400">{t.settings.monthlyGasCard}</h2>
+              <span className="text-[10px] font-black bg-amber-400 text-white px-2 py-0.5 rounded-full">{t.settings.giveawayBadge}</span>
             </div>
 
             {/* Entry count */}
@@ -1172,17 +1173,17 @@ export default function SettingsPage() {
               <div className="text-center min-w-[48px]">
                 <p className="text-3xl font-black text-amber-600">{giveaway.entryCount}</p>
                 <p className="text-[10px] text-amber-500 font-bold leading-tight">
-                  {giveaway.entryCount === 1 ? 'entry' : 'entries'}
+                  {giveaway.entryCount === 1 ? t.settings.entrySingular : t.settings.entryPlural}
                 </p>
               </div>
               <div className="flex-1">
                 <p className="text-sm font-bold text-slate-700">
                   {giveaway.entryCount === 0
-                    ? 'No entries yet this month'
-                    : `You have ${giveaway.entryCount} entr${giveaway.entryCount === 1 ? 'y' : 'ies'} this month`}
+                    ? t.settings.noEntriesYet
+                    : t.settings.entriesThisMonth(giveaway.entryCount)}
                 </p>
                 <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">
-                  Each day you use GasCap™ earns 1 entry — up to 31 per month.
+                  {t.settings.dailyEntryNote}
                 </p>
               </div>
             </div>
@@ -1190,8 +1191,8 @@ export default function SettingsPage() {
             {/* Progress bar */}
             <div>
               <div className="flex justify-between text-[10px] text-slate-400 mb-1">
-                <span>This month&apos;s progress</span>
-                <span>{giveaway.entryCount} / 31 days</span>
+                <span>{t.settings.monthProgress}</span>
+                <span>{t.settings.daysProgress(giveaway.entryCount)}</span>
               </div>
               <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
                 <div
@@ -1202,15 +1203,14 @@ export default function SettingsPage() {
             </div>
 
             <p className="text-[11px] text-slate-500 leading-relaxed">
-              🎁 One winner drawn each month wins a <strong>$25 Visa prepaid card</strong>.
-              More active days = better odds!
+              {t.settings.giveawayPrizeNote1}<strong>{t.settings.giveawayPrizeBold}</strong>{t.settings.giveawayPrizeNote2}
             </p>
 
             <Link
               href="/sweepstakes-rules"
               className="block text-center text-[11px] text-[#1EB68F] font-bold hover:underline"
             >
-              Official Rules &amp; No-Purchase Entry →
+              {t.settings.officialRules}
             </Link>
           </div>
         )}
@@ -1219,35 +1219,35 @@ export default function SettingsPage() {
 
         {/* Preferences section */}
         <div ref={(el) => { sectionRefs.current['preferences'] = el; }}>
-          <SectionBanner icon="⚙️" title="Preferences" />
+          <SectionBanner icon="⚙️" title={t.settings.preferencesTitle} />
           <div className="bg-white rounded-b-2xl border border-t-0 border-slate-100 shadow-sm p-5 space-y-4">
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-semibold text-slate-700">Default fuel unit</p>
-                <p className="text-xs text-slate-400">Gallons (US) — more options coming soon</p>
+                <p className="text-sm font-semibold text-slate-700">{t.settings.defaultFuelUnit}</p>
+                <p className="text-xs text-slate-400">{t.settings.fuelUnitSub}</p>
               </div>
-              <span className="text-xs font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded-lg">Gallons</span>
+              <span className="text-xs font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded-lg">{t.settings.gallonsLabel}</span>
             </div>
             {/* Dark mode — 3-way: Auto / Light / Dark */}
             <div className="pt-1 border-t border-slate-100 space-y-2">
               <div>
                 <p className="text-sm font-semibold text-slate-700">
-                  Appearance
-                  {darkMode && <span className="ml-2 text-[10px] font-bold text-navy-700 bg-navy-50 px-1.5 py-0.5 rounded-full">🌙 Dark</span>}
-                  {!darkMode && <span className="ml-2 text-[10px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-full">☀️ Light</span>}
+                  {t.settings.appearance}
+                  {darkMode && <span className="ml-2 text-[10px] font-bold text-navy-700 bg-navy-50 px-1.5 py-0.5 rounded-full">{t.settings.darkBadge}</span>}
+                  {!darkMode && <span className="ml-2 text-[10px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-full">{t.settings.lightBadge}</span>}
                 </p>
                 <p className="text-xs text-slate-400">
                   {themePref === 'auto'
-                    ? 'Auto — follows your device (sunrise/sunset)'
+                    ? t.settings.appearanceAuto
                     : themePref === 'dark'
-                      ? 'Always dark'
-                      : 'Always light'}
+                      ? t.settings.appearanceDark
+                      : t.settings.appearanceLight}
                 </p>
               </div>
               <div className="flex rounded-xl overflow-hidden border border-slate-200">
                 {(['auto', 'light', 'dark'] as ThemePreference[]).map((pref) => {
-                  const labels: Record<ThemePreference, string> = { auto: '🌓 Auto', light: '☀️ Light', dark: '🌙 Dark' };
+                  const labels: Record<ThemePreference, string> = { auto: t.settings.themeAuto, light: t.settings.themeLight, dark: t.settings.themeDark };
                   const isActive = themePref === pref;
                   return (
                     <button
@@ -1270,22 +1270,22 @@ export default function SettingsPage() {
 
         {/* ── Calculator defaults ── */}
         <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm p-5 space-y-5">
-          <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400">Calculator Defaults</h2>
+          <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400">{t.settings.calcDefaults}</h2>
 
           {/* Preferred fill level */}
           <div className="space-y-2">
             <div>
-              <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Default target fill level</p>
+              <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{t.settings.defaultFillLevel}</p>
               <p className="text-xs text-slate-400 mt-0.5">
-                Pre-fills the &ldquo;fill to&rdquo; field every time you open the calculator.
+                {t.settings.defaultFillSub}
               </p>
             </div>
             <div className="flex rounded-xl overflow-hidden border border-slate-200 dark:border-slate-600">
               {([
-                { label: '¼ Tank', value: 25  },
-                { label: '½ Tank', value: 50  },
-                { label: '¾ Tank', value: 75  },
-                { label: 'Full',   value: 100 },
+                { label: t.settings.quarterTank,      value: 25  },
+                { label: t.settings.halfTank,         value: 50  },
+                { label: t.settings.threeQuarterTank, value: 75  },
+                { label: t.settings.fullTank,         value: 100 },
               ] as const).map(({ label, value }) => {
                 const active = preferredFillLevel === value;
                 return (
@@ -1306,7 +1306,7 @@ export default function SettingsPage() {
             </div>
             {preferredFillLevel !== null && (
               <p className="text-[10px] text-brand-teal font-semibold">
-                ✓ Calculator will default to {preferredFillLevel}% — tap again to clear
+                {t.settings.fillDefaultNote(preferredFillLevel)}
               </p>
             )}
           </div>
@@ -1321,9 +1321,9 @@ export default function SettingsPage() {
             <div>
               <p className={`text-sm font-semibold transition-colors duration-300
                              ${budgetHighlight ? 'text-brand-teal' : 'text-slate-700 dark:text-slate-200'}`}>
-                Monthly Fuel Budget</p>
+                {t.settings.monthlyFuelBudget}</p>
               <p className="text-xs text-slate-400 mt-0.5">
-                Track your spend against a monthly target. Shown on your home screen.
+                {t.settings.budgetSub}
               </p>
             </div>
             <div className="relative">
@@ -1333,7 +1333,7 @@ export default function SettingsPage() {
                 inputMode="decimal"
                 value={monthlyFuelBudget}
                 onChange={(e) => setMonthlyFuelBudget(e.target.value)}
-                placeholder="e.g. 150"
+                placeholder={t.settings.budgetPlaceholder}
                 min="0" max="10000" step="5"
                 className="w-full pl-7 pr-4 py-2.5 border border-slate-200 dark:border-slate-600
                            rounded-xl text-sm text-slate-800 dark:text-slate-100
@@ -1341,7 +1341,7 @@ export default function SettingsPage() {
                            focus:outline-none focus:ring-2 focus:ring-brand-teal/40"
               />
             </div>
-            <p className="text-[10px] text-slate-400">Leave blank to disable the budget tracker.</p>
+            <p className="text-[10px] text-slate-400">{t.settings.budgetDisableNote}</p>
           </div>
 
           {/* Save — reuses the same profile save handler */}
@@ -1350,7 +1350,7 @@ export default function SettingsPage() {
             disabled={saving}
             className="w-full py-2.5 rounded-xl bg-brand-dark hover:bg-[#1a3a5c] text-white font-bold text-sm transition-colors disabled:opacity-60"
           >
-            {saved ? '✓ Saved!' : saving ? 'Saving…' : 'Save Defaults'}
+            {saved ? t.settings.saved : saving ? t.settings.saving : t.settings.saveDefaults}
           </button>
         </div>
 
@@ -1360,30 +1360,29 @@ export default function SettingsPage() {
         }`}>
           <div className="flex items-center justify-between">
             <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400">
-              Gas Price Alert
+              {t.settings.gasPriceAlert}
             </h2>
             {plan === 'free' && (
-              <span className="text-[9px] font-black bg-amber-400 text-white px-2 py-0.5 rounded-full">PRO</span>
+              <span className="text-[9px] font-black bg-amber-400 text-white px-2 py-0.5 rounded-full">{t.settings.proBadge}</span>
             )}
           </div>
 
           {plan === 'free' ? (
             <div className="space-y-2">
               <p className="text-xs text-slate-500 leading-relaxed">
-                Get notified in-app when the national average gas price drops below your target threshold.
+                {t.settings.alertFreeBody}
               </p>
               <Link
                 href="/upgrade"
                 className="inline-block text-xs font-bold text-amber-600 hover:text-amber-700 transition-colors"
               >
-                Upgrade to Pro to unlock →
+                {t.settings.upgradeUnlock}
               </Link>
             </div>
           ) : (
             <div className="space-y-3">
               <p className="text-xs text-slate-500 leading-relaxed">
-                Show an alert when the national average drops below this price.
-                Leave blank to disable.
+                {t.settings.alertProBody}
               </p>
               <div className="flex gap-2">
                 <div className="relative flex-1">
@@ -1393,7 +1392,7 @@ export default function SettingsPage() {
                     inputMode="decimal"
                     value={alertThreshold}
                     onChange={(e) => setAlertThreshold(e.target.value)}
-                    placeholder="e.g. 3.50"
+                    placeholder={t.settings.alertPlaceholder}
                     className="w-full pl-7 pr-4 py-2.5 border border-slate-200 rounded-xl text-sm
                                focus:outline-none focus:ring-2 focus:ring-amber-400 text-slate-800"
                   />
@@ -1404,12 +1403,12 @@ export default function SettingsPage() {
                   className="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-50
                              text-white font-bold text-xs rounded-xl transition-colors"
                 >
-                  {alertSaved ? '✓ Saved' : alertSaving ? '…' : 'Save'}
+                  {alertSaved ? t.settings.alertSaved : alertSaving ? '…' : t.settings.saveBtn}
                 </button>
               </div>
               {alertThreshold && (
                 <p className="text-[11px] text-slate-400">
-                  Alert active at <span className="font-bold text-slate-600">${parseFloat(alertThreshold).toFixed(2)}/gal</span>
+                  {t.settings.alertActive(parseFloat(alertThreshold).toFixed(2))}
                 </p>
               )}
             </div>
@@ -1422,31 +1421,30 @@ export default function SettingsPage() {
         }`}>
           <div className="flex items-center justify-between">
             <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400">
-              Garage Door
+              {t.settings.garageDoor}
             </h2>
             {plan === 'free' && (
-              <span className="text-[9px] font-black bg-amber-400 text-white px-2 py-0.5 rounded-full">PRO</span>
+              <span className="text-[9px] font-black bg-amber-400 text-white px-2 py-0.5 rounded-full">{t.settings.proBadge}</span>
             )}
           </div>
 
           {plan === 'free' ? (
             <div className="space-y-2">
               <p className="text-xs text-slate-500 leading-relaxed">
-                Unlock an animated garage door that opens when you scroll to your
-                saved vehicles. Choose your door style and opening direction.
+                {t.settings.garageFreeBody}
               </p>
               <Link
                 href="/upgrade"
                 className="inline-block text-xs font-bold text-amber-600 hover:text-amber-700 transition-colors"
               >
-                Upgrade to Pro to unlock →
+                {t.settings.upgradeUnlock}
               </Link>
             </div>
           ) : (
             <div className="space-y-5">
               {/* Door style grid */}
               <div className="space-y-2">
-                <p className="text-xs font-semibold text-slate-600">Door Style</p>
+                <p className="text-xs font-semibold text-slate-600">{t.settings.doorStyle}</p>
                 <div className="grid grid-cols-4 gap-2">
                   {(['classic', 'modern', 'wood', 'steel'] as DoorStyle[]).map((style) => (
                     <button
@@ -1469,7 +1467,7 @@ export default function SettingsPage() {
 
               {/* Opening direction toggle */}
               <div className="space-y-2">
-                <p className="text-xs font-semibold text-slate-600">Opening Direction</p>
+                <p className="text-xs font-semibold text-slate-600">{t.settings.openingDirection}</p>
                 <div className="flex rounded-xl overflow-hidden border border-slate-200">
                   {(['roll-up', 'center'] as DoorDirection[]).map((dir) => (
                     <button
@@ -1488,8 +1486,7 @@ export default function SettingsPage() {
               </div>
 
               <p className="text-[11px] text-slate-400 leading-relaxed">
-                The door opens the first time you scroll to your garage each visit,
-                then stays open until you leave or sign out.
+                {t.settings.garageDoorNote}
               </p>
             </div>
           )}
@@ -1500,19 +1497,19 @@ export default function SettingsPage() {
         {/* Fleet branding section */}
         {(livePlan === 'fleet' || (session?.user as { plan?: string })?.plan === 'fleet') && (
           <section id="fleet" ref={(el) => { sectionRefs.current.fleet = el; }} className="space-y-3">
-            <SectionBanner icon="🚛" title="Fleet Branding" />
+            <SectionBanner icon="🚛" title={t.settings.fleetBranding} />
             <div className="bg-white dark:bg-slate-800 rounded-b-2xl border border-t-0 border-slate-100 dark:border-slate-700 p-5 space-y-4">
               <p className="text-xs text-slate-500 leading-relaxed">
-                White-label the GasCap™ dashboard for your fleet. Your company logo and name appear in the desktop header for all fleet users.
+                {t.settings.fleetBrandingBody}
               </p>
 
               {/* Company name */}
               <div>
-                <label className="field-label">Company Name</label>
+                <label className="field-label">{t.settings.companyName}</label>
                 <input
                   type="text"
                   className="input-field"
-                  placeholder="Acme Logistics LLC"
+                  placeholder={t.settings.companyNamePlaceholder}
                   value={fleetCompanyName}
                   onChange={(e) => setFleetCompanyName(e.target.value)}
                   maxLength={60}
@@ -1521,32 +1518,32 @@ export default function SettingsPage() {
 
               {/* Logo URL */}
               <div>
-                <label className="field-label">Logo URL <span className="text-slate-400 font-normal">(must start with https://)</span></label>
+                <label className="field-label">{t.settings.logoUrlLabel} <span className="text-slate-400 font-normal">{t.settings.logoUrlHttps}</span></label>
                 <input
                   type="url"
                   className="input-field"
-                  placeholder="https://yourcompany.com/logo.png"
+                  placeholder={t.settings.logoUrlPlaceholder}
                   value={fleetLogoUrl}
                   onChange={(e) => setFleetLogoUrl(e.target.value)}
                 />
-                <p className="field-hint">Use a PNG or SVG on a transparent or dark background for best results. Recommended size: 160×40px or similar.</p>
+                <p className="field-hint">{t.settings.logoUrlHint}</p>
               </div>
 
               {/* Logo preview */}
               {fleetLogoUrl && fleetLogoUrl.startsWith('https://') && (
                 <div>
-                  <p className="field-label">Preview</p>
+                  <p className="field-label">{t.settings.preview}</p>
                   <div className="rounded-xl bg-[#1E2D4A] p-4 inline-flex items-center gap-3">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={fleetLogoUrl}
-                      alt="Logo preview"
+                      alt={t.settings.logoPreviewAlt}
                       className="h-8 w-auto object-contain"
                       onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                     />
                     <div>
-                      <p className="text-white text-sm font-black">{fleetCompanyName || 'Your Company'}</p>
-                      <p className="text-white/40 text-[10px]">Powered by GasCap™ Fleet</p>
+                      <p className="text-white text-sm font-black">{fleetCompanyName || t.settings.yourCompany}</p>
+                      <p className="text-white/40 text-[10px]">{t.settings.poweredByFleet}</p>
                     </div>
                   </div>
                 </div>
@@ -1570,13 +1567,13 @@ export default function SettingsPage() {
                 disabled={fleetSaving}
                 className="btn-amber"
               >
-                {fleetSaving ? 'Saving…' : fleetSaved ? '✓ Saved!' : 'Save Fleet Branding'}
+                {fleetSaving ? t.settings.saving : fleetSaved ? t.settings.saved : t.settings.saveFleetBranding}
               </button>
             </div>
           </section>
         )}
 
-        <p className="text-center text-[11px] text-slate-300 pb-4">GasCap™ v0.1 · Gas Capacity</p>
+        <p className="text-center text-[11px] text-slate-300 pb-4">{t.settings.versionLine}</p>
       </div>
     </div>
   );

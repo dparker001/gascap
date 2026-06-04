@@ -3,6 +3,15 @@
 import { useEffect, useState } from 'react';
 import type { Review } from '@/lib/reviews';
 import { useTranslation } from '@/contexts/LanguageContext';
+import type { Translations } from '@/lib/translations';
+
+// Map a review's plan/lifetime status to the localized badge label
+function planBadgeLabel(review: Review, t: Translations): string {
+  if (review.plan === 'pro' && review.lifetime) return t.reviewBadge.lifetime;
+  if (review.plan === 'fleet') return t.reviewBadge.fleet;
+  if (review.plan === 'pro')   return t.reviewBadge.pro;
+  return t.reviewBadge.free;
+}
 
 // ── Star row ──────────────────────────────────────────────────────────────
 
@@ -20,7 +29,7 @@ function Stars({ rating, label }: { rating: number; label: string }) {
 
 // ── Single review card ────────────────────────────────────────────────────
 
-function ReviewCard({ review, starsLabel }: { review: Review; starsLabel: string }) {
+function ReviewCard({ review, starsLabel, planLabel }: { review: Review; starsLabel: string; planLabel: string }) {
   return (
     <div className="flex-shrink-0 w-72 bg-white rounded-2xl shadow-card border border-slate-100 p-4 mx-2">
       <Stars rating={review.rating} label={starsLabel} />
@@ -40,7 +49,7 @@ function ReviewCard({ review, starsLabel }: { review: Review; starsLabel: string
           : review.plan === 'pro' ? 'bg-amber-100 text-amber-600'
           : 'bg-slate-100 text-slate-500'
         }`}>
-          {review.plan === 'pro' && review.lifetime ? 'LIFETIME' : review.plan.toUpperCase()}
+          {planLabel}
         </span>
       </div>
     </div>
@@ -49,13 +58,13 @@ function ReviewCard({ review, starsLabel }: { review: Review; starsLabel: string
 
 // ── Marquee row ───────────────────────────────────────────────────────────
 
-function MarqueeRow({ reviews, starsLabelFor }: { reviews: Review[]; starsLabelFor: (rating: number) => string }) {
+function MarqueeRow({ reviews, starsLabelFor, planLabelFor }: { reviews: Review[]; starsLabelFor: (rating: number) => string; planLabelFor: (review: Review) => string }) {
   // Duplicate for seamless loop
   const doubled = [...reviews, ...reviews];
   return (
     <div className="flex marquee-track-left" style={{ width: 'max-content' }}>
       {doubled.map((r, i) => (
-        <ReviewCard key={`${r.id}-${i}`} review={r} starsLabel={starsLabelFor(r.rating)} />
+        <ReviewCard key={`${r.id}-${i}`} review={r} starsLabel={starsLabelFor(r.rating)} planLabel={planLabelFor(r)} />
       ))}
     </div>
   );
@@ -102,7 +111,7 @@ export default function ReviewsMarquee() {
       {/* Single scrolling row — clipped to content width */}
       <div className="max-w-lg mx-auto px-4">
         <div className="marquee-root select-none overflow-hidden rounded-2xl">
-          <MarqueeRow reviews={padded} starsLabelFor={(rating) => t.reviewsMarquee.stars(rating)} />
+          <MarqueeRow reviews={padded} starsLabelFor={(rating) => t.reviewsMarquee.stars(rating)} planLabelFor={(review) => planBadgeLabel(review, t)} />
         </div>
       </div>
     </section>
