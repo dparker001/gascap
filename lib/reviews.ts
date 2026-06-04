@@ -67,7 +67,7 @@ const SEED_REVIEWS: Review[] = [
     id: 'seed-006', userId: 'seed-user-006', userName: 'Aisha B.',
     rating: 5,
     text: "Shared this with my whole family. My teenage daughter uses it before every fill-up now. The AI advisor answered her question about gas grades and she saved money immediately. Love this app.",
-    vehicleName: '2018 Nissan Altima', plan: 'free', approved: true,
+    vehicleName: '2018 Nissan Altima', plan: 'pro', lifetime: true, approved: true,
     createdAt: '2026-03-27T13:10:00.000Z', updatedAt: '2026-03-27T13:10:00.000Z',
   },
 ];
