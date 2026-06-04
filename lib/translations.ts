@@ -166,7 +166,13 @@ const en = {
     items: [
       {
         q: 'How does GasCap™ calculate how much gas I need?',
-        a: 'Enter your current fuel level (or drag the gauge), pick your vehicle, and set your target fill level. GasCap™ multiplies the gallons needed by your live local gas price — fetched automatically from the U.S. EIA — and shows you the exact cost in seconds.',
+        a: 'Just four quick steps in the calculator:',
+        steps: [
+          'Pick your vehicle (or set your tank size).',
+          'Set your current fuel level — drag the gauge or scan it.',
+          'Choose your target fill level.',
+          'Enter your local gas price (or use the auto-detected EIA price) — GasCap™ instantly shows the exact gallons and cost.',
+        ],
       },
       {
         q: 'Is GasCap™ free?',
@@ -1197,7 +1203,13 @@ const es: typeof en = {
     items: [
       {
         q: '¿Cómo calcula GasCap™ cuánta gasolina necesito?',
-        a: 'Ingresa tu nivel de combustible actual (o arrastra el medidor), elige tu vehículo y establece tu nivel objetivo de llenado. GasCap™ multiplica los galones necesarios por el precio local en tiempo real — obtenido automáticamente de la EIA de EE.UU. — y te muestra el costo exacto en segundos.',
+        a: 'Solo cuatro pasos rápidos en la calculadora:',
+        steps: [
+          'Elige tu vehículo (o establece el tamaño de tu tanque).',
+          'Ajusta tu nivel de combustible actual — arrastra el medidor o escanéalo.',
+          'Elige tu nivel objetivo de llenado.',
+          'Ingresa el precio local de la gasolina (o usa el precio EIA detectado automáticamente) — GasCap™ muestra al instante los galones exactos y el costo.',
+        ],
       },
       {
         q: '¿GasCap™ es gratuito?',

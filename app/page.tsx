@@ -45,7 +45,7 @@ function SchemaMarkup() {
         name: 'How does GasCap™ calculate how much gas I need?',
         acceptedAnswer: {
           '@type': 'Answer',
-          text: 'GasCap™ uses your current fuel level, your vehicle\'s tank size, and your target fill level to calculate the exact number of gallons needed. It then multiplies that by your local gas price — fetched automatically using live EIA data — to show you the exact cost before you reach the pump.',
+          text: 'In the calculator you (1) pick your vehicle or tank size, (2) set your current fuel level, (3) choose your target fill level, and (4) enter your local gas price. GasCap™ calculates the exact gallons needed and multiplies by your local price — fetched automatically using live EIA data — to show the exact cost before you reach the pump.',
         },
       },
       {
@@ -411,6 +411,19 @@ function FaqSection() {
             {open === i && (
               <div className="px-4 pb-4">
                 <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{faq.a}</p>
+                {Array.isArray((faq as { steps?: string[] }).steps) && (
+                  <ol className="mt-2.5 space-y-2">
+                    {(faq as { steps: string[] }).steps.map((step, si) => (
+                      <li key={si} className="flex items-start gap-2.5">
+                        <span className="flex-shrink-0 w-5 h-5 rounded-full bg-teal-500 text-white
+                                         text-[10px] font-black flex items-center justify-center mt-px">
+                          {si + 1}
+                        </span>
+                        <span className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{step}</span>
+                      </li>
+                    ))}
+                  </ol>
+                )}
               </div>
             )}
           </div>
