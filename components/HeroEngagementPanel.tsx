@@ -18,6 +18,7 @@
 import Link       from 'next/link';
 import { useEffect, useState } from 'react';
 import { useSession }          from 'next-auth/react';
+import { useTranslation }      from '@/contexts/LanguageContext';
 import { useEntryCountUp }     from '@/hooks/useEntryCountUp';
 
 interface StreakData { streak: number; }
@@ -32,6 +33,7 @@ function drawDate(): string {
 
 export default function HeroEngagementPanel() {
   const { data: session } = useSession();
+  const { t } = useTranslation();
 
   const [streak,  setStreak]  = useState<number | null>(null);
   const [entries, setEntries] = useState<EntryData | null>(null);
@@ -81,20 +83,20 @@ export default function HeroEngagementPanel() {
             <div className="h-3 bg-white/10 rounded animate-pulse w-20 mb-1" />
           ) : hasStreak ? (
             <p className="text-amber-400 text-xs font-black leading-none">
-              {streak}-day streak! 🔥
+              {t.streak.activeFire(streak)}
             </p>
           ) : (
             <p className="text-white/60 text-xs font-semibold leading-none">
-              Start your streak today
+              {t.streak.startToday}
             </p>
           )}
-          <p className="text-white/35 text-[10px] mt-0.5">Open daily to keep it going</p>
+          <p className="text-white/35 text-[10px] mt-0.5">{t.streak.openDaily}</p>
         </div>
 
         {streak !== null && (
           <div className="flex-shrink-0 bg-white/15 rounded-lg px-2 py-1 text-center min-w-[36px]">
             <p className="text-white font-black text-sm leading-none">{streak}</p>
-            <p className="text-white/50 text-[8px] font-bold uppercase tracking-wide">days</p>
+            <p className="text-white/50 text-[8px] font-bold uppercase tracking-wide">{t.streak.daysLabel}</p>
           </div>
         )}
       </div>
@@ -119,18 +121,18 @@ export default function HeroEngagementPanel() {
           ) : canEnter && entryCount > 0 ? (
             <p className="text-white text-xs font-black leading-none">
               <span className={`text-sm inline-block transition-transform duration-300 ${flash ? 'scale-125 text-yellow-100' : ''}`}>{entryCount.toLocaleString()}</span>{' '}
-              {entryCount === 1 ? 'entry' : 'entries'} this month
+              {t.giveawayNudge.entryWordMonth(entryCount === 1)}
             </p>
           ) : canEnter ? (
             <p className="text-white/80 text-xs font-black leading-none">
-              Earn entries with the calculator
+              {t.giveawayNudge.earnEntries}
             </p>
           ) : (
             <p className="text-white/80 text-xs font-black leading-none">
-              Monthly $25 Giveaway
+              {t.giveawayNudge.monthlyGiveaway}
             </p>
           )}
-          <p className="text-white/50 text-[10px] mt-0.5">Drawing {draw}</p>
+          <p className="text-white/50 text-[10px] mt-0.5">{t.giveawayNudge.drawing(draw)}</p>
         </div>
 
         <svg viewBox="0 0 12 12"

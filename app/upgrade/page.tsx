@@ -34,9 +34,9 @@ function UpgradePageInner() {
   const FREE_FEATURES = t.pricing.freeFeatures;
   const PRO_FEATURES  = t.pricing.proFeatures;
   const LIFETIME_EXCLUSIVES = [
-    { icon: '⭐', text: '2× giveaway entries every month' },
-    { icon: '🛡️', text: 'Streak Shield — 1 grace day/month' },
-    { icon: '🏅', text: 'Lifetime Member badge' },
+    { icon: '⭐', text: t.pricing.exTwoXEntries },
+    { icon: '🛡️', text: t.pricing.exStreakShield },
+    { icon: '🏅', text: t.pricing.exLifetimeBadge },
   ];
 
   const searchParams = useSearchParams();

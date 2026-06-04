@@ -131,6 +131,15 @@ function SuccessContent() {
 
   const plan = PLANS[planKey];
 
+  // Localized Lifetime exclusives (module-level PLANS can't access `t`)
+  const exclusives = plan.exclusives
+    ? [
+        `⭐  ${t.pricing.exTwoXEntries}`,
+        `🛡️  ${t.pricing.exStreakShield}`,
+        `🏅  ${t.pricing.exLifetimeBadge}`,
+      ]
+    : null;
+
   return (
     <div className="bg-white rounded-3xl shadow-card p-8 max-w-sm w-full text-center space-y-5">
 
@@ -159,17 +168,17 @@ function SuccessContent() {
       </ul>
 
       {/* Lifetime exclusives — visually distinct section */}
-      {plan.exclusives && (
+      {exclusives && (
         <>
           <div className="flex items-center gap-2 py-1">
             <div className="flex-1 border-t border-teal-200" />
             <span className="text-[10px] font-black text-teal-600 uppercase tracking-widest whitespace-nowrap">
-              Lifetime exclusives
+              {t.pricing.lifetimeExclusives}
             </span>
             <div className="flex-1 border-t border-teal-200" />
           </div>
           <ul className="text-left space-y-2">
-            {plan.exclusives.map((perk) => (
+            {exclusives.map((perk) => (
               <li key={perk} className="text-sm text-teal-700 font-semibold leading-snug">{perk}</li>
             ))}
           </ul>

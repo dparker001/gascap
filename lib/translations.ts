@@ -19,6 +19,14 @@ const en = {
     upgradeToPro:   'Upgrade to Pro →',
     wrapped:        'Wrapped',
     userMenu:       'User menu',
+    calculator:     'Calculator',
+    fillUpLog:      'Fill-Up Log',
+    giveaway:       'Giveaway',
+    help:           'Help',
+    features:       'Features',
+    pricing:        'Pricing',
+    getStartedFree: 'Get Started Free',
+    gasCard:        'Gas Card',
   },
 
   // ── Plan badges ────────────────────────────────────────────────────────────
@@ -29,6 +37,14 @@ const en = {
     freePlan:       'Free plan · Works offline',
     upgrade:        'Upgrade →',
     freeGuest:      'Free · No account needed · Works offline',
+    proTrial:       'Pro Trial',
+    upgradeToKeepPro: 'Upgrade to keep Pro →',
+    expiresToday:   'Expires today',
+    oneDayLeft:     '1 day left',
+    daysLeft:       (n: number) => `${n} days left`,
+    lifetimeShort:  'Lifetime',
+    proShort:       'Pro',
+    fleetShort:     'Fleet',
   },
 
   // ── Header ─────────────────────────────────────────────────────────────────
@@ -482,6 +498,12 @@ const en = {
     lifetimeSubline:     'Own GasCap™ Pro forever — no recurring charges',
     lifetimeExclusives:  'Lifetime exclusives',
     breakEven:           'Less than 7 months of monthly — break even instantly.',
+    freeTitle:           'Free',
+    proTitle:            'Pro',
+    proLifetimeTitle:    'Pro Lifetime',
+    exTwoXEntries:       '2× giveaway entries every month',
+    exStreakShield:      'Streak Shield — 1 grace day/month',
+    exLifetimeBadge:     'Lifetime Member badge',
 
     // Button states
     includedInLifetime:  'Included in Lifetime',
@@ -539,6 +561,8 @@ const en = {
 
   // ── Calculator form ────────────────────────────────────────────────────────
   calc: {
+    introTitle:             'Fill-Up Calculator',
+    introSub:               "Set your tank, current level, and target fill — we'll tell you exactly what to pump and what it costs.",
     howToUse:               'How to use',
     rentalModeTitle:        'Rental Car Return Mode',
     rentalModeActive:       'Active — compare pump cost vs. rental company rate',
@@ -743,6 +767,16 @@ const en = {
     start:     'Start your streak — open GasCap™ daily!',
     startSub:  'Come back each day and watch your streak grow.',
     daysLabel: 'days',
+    activeFire: (streak: number) => `${streak}-day streak! 🔥`,
+    startToday: 'Start your streak today',
+    openDaily:  'Open daily to keep it going',
+  },
+
+  // ── Savings summary ────────────────────────────────────────────────────────
+  savings: {
+    emptyTitle: 'Start tracking your fuel spend',
+    emptySub:   'Log your first fill-up to see your running totals, average price paid, and MPG trends.',
+    logFillUp:  'Log fill-up',
   },
 
   // ── AdSense banner ─────────────────────────────────────────────────────────
@@ -1173,6 +1207,11 @@ const en = {
     daysLeft:         (n: number) => `${n}d left`,
     learnAria:        'Learn about the monthly giveaway',
     viewAria:         'View the monthly giveaway',
+    earnEntries:      'Earn entries with the calculator',
+    earnEntriesShort: 'Earn entries',
+    giveaway25:       '$25 Giveaway',
+    entryWord:        (isOne: boolean): string => isOne ? 'entry' : 'entries',
+    entryWordMonth:   (isOne: boolean): string => isOne ? 'entry this month' : 'entries this month',
   },
 
   // ── Settings page ──────────────────────────────────────────────────────────
@@ -1369,6 +1408,14 @@ const es: typeof en = {
     upgradeToPro:   'Mejorar a Pro →',
     wrapped:        'Resumen',
     userMenu:       'Menú de usuario',
+    calculator:     'Calculadora',
+    fillUpLog:      'Registro de recargas',
+    giveaway:       'Sorteo',
+    help:           'Ayuda',
+    features:       'Funciones',
+    pricing:        'Precios',
+    getStartedFree: 'Comenzar gratis',
+    gasCard:        'Tarjeta de gasolina',
   },
 
   plan: {
@@ -1378,6 +1425,14 @@ const es: typeof en = {
     freePlan:       'Plan gratuito · Funciona sin internet',
     upgrade:        'Mejorar →',
     freeGuest:      'Gratis · Sin cuenta · Funciona sin internet',
+    proTrial:       'Prueba Pro',
+    upgradeToKeepPro: 'Mejora para conservar Pro →',
+    expiresToday:   'Vence hoy',
+    oneDayLeft:     '1 día restante',
+    daysLeft:       (n: number) => `${n} días restantes`,
+    lifetimeShort:  'De por vida',
+    proShort:       'Pro',
+    fleetShort:     'Flota',
   },
 
   header: {
@@ -1814,6 +1869,12 @@ const es: typeof en = {
     lifetimeSubline:     'Posee GasCap™ Pro para siempre — sin cargos recurrentes',
     lifetimeExclusives:  'Exclusivos de por vida',
     breakEven:           'Menos de 7 meses del plan mensual — amortiza al instante.',
+    freeTitle:           'Gratis',
+    proTitle:            'Pro',
+    proLifetimeTitle:    'Pro De Por Vida',
+    exTwoXEntries:       '2× entradas al sorteo cada mes',
+    exStreakShield:      'Escudo de Racha — 1 día de gracia al mes',
+    exLifetimeBadge:     'Insignia de Miembro De Por Vida',
 
     // Button states
     includedInLifetime:  'Incluido en de por vida',
@@ -1869,6 +1930,8 @@ const es: typeof en = {
   },
 
   calc: {
+    introTitle:             'Calculadora de recarga',
+    introSub:               'Indica tu tanque, nivel actual y recarga objetivo — te diremos exactamente cuánto bombear y cuánto cuesta.',
     howToUse:               'Cómo usar',
     rentalModeTitle:        'Modo Devolución de Auto Rentado',
     rentalModeActive:       'Activo — compara costo en la bomba vs. tarifa de la rentadora',
@@ -2063,6 +2126,16 @@ const es: typeof en = {
     start:     '¡Empieza tu racha — abre GasCap™ diariamente!',
     startSub:  'Vuelve cada día y mira crecer tu racha.',
     daysLabel: 'días',
+    activeFire: (streak: number) => `¡Racha de ${streak} días! 🔥`,
+    startToday: 'Empieza tu racha hoy',
+    openDaily:  'Ábrelo a diario para mantenerla',
+  },
+
+  // ── Savings summary ────────────────────────────────────────────────────────
+  savings: {
+    emptyTitle: 'Empieza a controlar tu gasto en combustible',
+    emptySub:   'Registra tu primera recarga para ver tus totales acumulados, el precio promedio pagado y tendencias de MPG.',
+    logFillUp:  'Registrar recarga',
   },
 
   adSense: {
@@ -2488,6 +2561,11 @@ const es: typeof en = {
     daysLeft:         (n: number) => `${n}d restantes`,
     learnAria:        'Conoce el sorteo mensual',
     viewAria:         'Ver el sorteo mensual',
+    earnEntries:      'Gana entradas con la calculadora',
+    earnEntriesShort: 'Gana entradas',
+    giveaway25:       'Sorteo de $25',
+    entryWord:        (isOne: boolean) => isOne ? 'entrada' : 'entradas',
+    entryWordMonth:   (isOne: boolean) => isOne ? 'entrada este mes' : 'entradas este mes',
   },
 
   // ── Settings page ──────────────────────────────────────────────────────────

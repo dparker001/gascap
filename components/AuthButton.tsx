@@ -92,9 +92,9 @@ export default function AuthButton() {
   const isLifetime     = plan === 'pro' && !isProTrial && stripeInterval === 'lifetime';
 
   const planLabel =
-    isLifetime       ? { text: 'Lifetime', bg: 'bg-teal-600'   } :
-    plan === 'pro'   ? { text: 'Pro',      bg: 'bg-brand-orange' } :
-    plan === 'fleet' ? { text: 'Fleet',    bg: 'bg-blue-600'     } :
+    isLifetime       ? { text: t.plan.lifetimeShort, bg: 'bg-teal-600'   } :
+    plan === 'pro'   ? { text: t.plan.proShort,      bg: 'bg-brand-orange' } :
+    plan === 'fleet' ? { text: t.plan.fleetShort,    bg: 'bg-blue-600'     } :
     null;
 
   return (

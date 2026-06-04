@@ -154,10 +154,10 @@ export default function Header() {
           {session ? (
             <nav className="hidden lg:flex items-center gap-0.5" aria-label="Main navigation">
               {[
-                { label: 'Calculator', href: '#gascap-calculator', scroll: 'gascap-calculator' },
-                { label: 'Fill-Up Log', href: '#log', scroll: 'gascap-tools', event: { name: 'gascap:switch-tools-tab', detail: { tab: 'log' } } },
-                { label: 'Giveaway', href: '/giveaway' },
-                { label: 'Help', href: '/help' },
+                { label: t.nav.calculator, href: '#gascap-calculator', scroll: 'gascap-calculator' },
+                { label: t.nav.fillUpLog, href: '#log', scroll: 'gascap-tools', event: { name: 'gascap:switch-tools-tab', detail: { tab: 'log' } } },
+                { label: t.nav.giveaway, href: '/giveaway' },
+                { label: t.nav.help, href: '/help' },
               ].map(({ label, href, scroll, event }) => (
                 <a
                   key={label}
@@ -178,9 +178,9 @@ export default function Header() {
           ) : (
             <nav className="hidden lg:flex items-center gap-0.5" aria-label="Main navigation">
               {[
-                { label: 'Features', href: '#gascap-calculator' },
-                { label: 'Pricing', href: '#pricing' },
-                { label: 'Help', href: '/help' },
+                { label: t.nav.features, href: '#gascap-calculator' },
+                { label: t.nav.pricing, href: '#pricing' },
+                { label: t.nav.help, href: '/help' },
               ].map(({ label, href }) => (
                 <a
                   key={label}
@@ -198,7 +198,7 @@ export default function Header() {
                            bg-brand-orange hover:bg-[#FF9A1A]
                            transition-colors rounded-xl shadow-sm"
               >
-                Get Started Free
+                {t.nav.getStartedFree}
               </a>
             </nav>
           )}
@@ -227,7 +227,7 @@ export default function Header() {
                   className={`text-sm inline-block ${giftWiggle ? 'animate-gift-wiggle' : ''}`}
                   aria-hidden="true"
                 >🎁</span>
-                <span className="text-[10px] font-black text-white/80 hidden sm:inline">Gas Card</span>
+                <span className="text-[10px] font-black text-white/80 hidden sm:inline">{t.nav.gasCard}</span>
               </Link>
             )}
             <AuthButton />

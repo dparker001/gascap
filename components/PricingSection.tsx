@@ -55,9 +55,9 @@ export default function PricingSection() {
   const PRO_FEATURES  = t.pricing.proFeatures.map((text, i) => ({ text, highlight: PRO_HIGHLIGHTS[i] }));
 
   const LIFETIME_EXCLUSIVES = [
-    { icon: '⭐', text: '2× giveaway entries every month' },
-    { icon: '🛡️', text: 'Streak Shield — 1 grace day/month' },
-    { icon: '🏅', text: 'Lifetime Member badge' },
+    { icon: '⭐', text: t.pricing.exTwoXEntries },
+    { icon: '🛡️', text: t.pricing.exStreakShield },
+    { icon: '🏅', text: t.pricing.exLifetimeBadge },
   ];
 
   async function handleUpgrade(billing: 'monthly' | 'lifetime') {
@@ -120,7 +120,7 @@ export default function PricingSection() {
           )}
 
           <div className="mb-4">
-            <h3 className="font-black text-lg text-navy-700">Free</h3>
+            <h3 className="font-black text-lg text-navy-700">{t.pricing.freeTitle}</h3>
             <span className="inline-block mt-1 text-[10px] font-bold px-2 py-0.5 rounded-full
                              bg-slate-100 text-slate-600 whitespace-nowrap">
               {t.pricing.noCCEver}
@@ -177,7 +177,7 @@ export default function PricingSection() {
           </div>
 
           <div className="mb-4 mt-1">
-            <h3 className="font-black text-lg text-white">Pro</h3>
+            <h3 className="font-black text-lg text-white">{t.pricing.proTitle}</h3>
             <span className={`inline-block mt-1 text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${
                              isProMonthly ? 'bg-green-400/20 text-green-300' : 'bg-amber-400/20 text-amber-300'}`}>
               {t.pricing.individuals ?? 'Monthly'}
@@ -239,7 +239,7 @@ export default function PricingSection() {
           </div>
 
           <div className="mb-4 mt-1">
-            <h3 className="font-black text-lg text-navy-700">Pro Lifetime</h3>
+            <h3 className="font-black text-lg text-navy-700">{t.pricing.proLifetimeTitle}</h3>
             <span className="inline-block mt-1 text-[10px] font-bold px-2 py-0.5 rounded-full
                              bg-teal-100 text-teal-700 whitespace-nowrap">
               {t.pricing.lifetimeBadge}

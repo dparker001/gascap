@@ -89,12 +89,12 @@ export default function MobileEngagementRow() {
               <span className={`inline-block transition-transform duration-300 ${flash ? 'scale-125 text-yellow-100' : ''}`}>
                 {entryCount.toLocaleString()}
               </span>{' '}
-              {entryCount === 1 ? 'entry' : 'entries'}
+              {t.giveawayNudge.entryWord(entryCount === 1)}
             </p>
           ) : canEnter ? (
-            <p className="text-white text-[12px] font-black leading-tight">Earn entries</p>
+            <p className="text-white text-[12px] font-black leading-tight">{t.giveawayNudge.earnEntriesShort}</p>
           ) : (
-            <p className="text-white text-[12px] font-black leading-tight">$25 Giveaway</p>
+            <p className="text-white text-[12px] font-black leading-tight">{t.giveawayNudge.giveaway25}</p>
           )}
         </div>
       </Link>

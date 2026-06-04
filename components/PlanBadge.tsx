@@ -66,16 +66,16 @@ export default function PlanBadge() {
     const countColor = isUrgent ? 'text-red-300'     : isWarning ? 'text-orange-300' : 'text-amber-300';
     const icon       = isUrgent ? '⏰'               : isWarning ? '⚡' : '⭐';
 
-    const daysLabel  = daysLeft <= 0 ? 'Expires today'
-                     : daysLeft === 1 ? '1 day left'
-                     : `${daysLeft} days left`;
+    const daysLabel  = daysLeft <= 0 ? t.plan.expiresToday
+                     : daysLeft === 1 ? t.plan.oneDayLeft
+                     : t.plan.daysLeft(daysLeft);
 
     return (
       <div className="mt-4 flex flex-col items-center gap-1.5">
         {/* Main pill */}
         <div className={`inline-flex items-center gap-2 border rounded-full px-3.5 py-1.5 ${pillColors}`}>
           <span className="text-xs" aria-hidden="true">{icon}</span>
-          <span className={`text-xs font-bold tracking-wide ${textColor}`}>Pro Trial</span>
+          <span className={`text-xs font-bold tracking-wide ${textColor}`}>{t.plan.proTrial}</span>
           <span className="text-white/25 mx-0.5">·</span>
           <span className={`text-xs font-black ${countColor}`}>{daysLabel}</span>
         </div>
@@ -86,7 +86,7 @@ export default function PlanBadge() {
           className="text-amber-400/80 text-[11px] font-bold hover:text-amber-300
                      transition-colors underline-offset-2 hover:underline"
         >
-          Upgrade to keep Pro →
+          {t.plan.upgradeToKeepPro}
         </a>
       </div>
     );

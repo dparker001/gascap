@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 interface FillupStats {
   count:        number;
@@ -20,6 +21,7 @@ interface FillupResponse {
  * fuel spend at a glance. Hidden until the first fill-up is logged.
  */
 export default function SavingsSummary() {
+  const { t } = useTranslation();
   const [stats, setStats]     = useState<FillupStats | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -46,10 +48,10 @@ export default function SavingsSummary() {
           <span className="text-2xl flex-shrink-0" aria-hidden="true">💰</span>
           <div className="flex-1 min-w-0">
             <p className="text-xs font-black text-slate-700 dark:text-slate-200">
-              Start tracking your fuel spend
+              {t.savings.emptyTitle}
             </p>
             <p className="text-[11px] text-slate-400 mt-0.5 leading-relaxed">
-              Log your first fill-up to see your running totals, average price paid, and MPG trends.
+              {t.savings.emptySub}
             </p>
           </div>
           <Link
@@ -64,7 +66,7 @@ export default function SavingsSummary() {
             className="flex-shrink-0 px-3 py-1.5 bg-[#1EB68F] text-white text-xs font-bold
                        rounded-xl hover:bg-[#189b7a] transition-colors whitespace-nowrap"
           >
-            Log fill-up
+            {t.savings.logFillUp}
           </Link>
         </div>
       </section>
