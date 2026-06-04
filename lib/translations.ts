@@ -446,6 +446,7 @@ const en = {
     proFeatures: [
       'Everything in Free',
       'Unlimited saved vehicles',
+      'Fill-up logging & fuel history',
       'Manual entry + auto spec lookup',
       'Engine type & tank size auto-detected',
       'MPG trending chart',
@@ -1456,6 +1457,7 @@ const es: typeof en = {
     proFeatures: [
       'Todo en Gratis',
       'Vehículos ilimitados',
+      'Registro de cargas e historial de combustible',
       'Entrada manual + búsqueda automática de especificaciones',
       'Tipo de motor y tamaño del tanque detectados automáticamente',
       'Gráfica de tendencia de MPG',

@@ -12,7 +12,7 @@ import { getawayPromoActive, getawayDaysLeft } from '@/lib/getawayPromo';
 type PlanTier = 'free' | 'pro';
 
 // Highlight flags (order matches translation feature arrays)
-const PRO_HIGHLIGHTS = [false, true, true, false, true, true, false, false, false, false];
+const PRO_HIGHLIGHTS = [false, true, true, true, false, true, true, false, false, false, false];
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
