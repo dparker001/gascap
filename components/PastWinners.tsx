@@ -11,9 +11,27 @@ const WINNERS: Winner[] = [
   { name: 'Luis L.', month: 'April 2026', prize: '$25 Visa Prepaid Card' },
 ];
 
+/**
+ * Next drawing = the next occurrence of the 5th of a month. The 5th-of-month
+ * draw is for the PRIOR month's entries (e.g. June 5 draws May). Auto-advances
+ * each month: before the 5th → this month's 5th; on/after the 5th → next month's.
+ */
+function nextDrawing(): { dateLabel: string; forLabel: string } {
+  const now    = new Date();
+  const offset = now.getDate() < 5 ? 0 : 1;
+  const draw   = new Date(now.getFullYear(), now.getMonth() + offset, 5);
+  const entry  = new Date(draw.getFullYear(), draw.getMonth() - 1, 1);
+  return {
+    dateLabel: draw.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+    forLabel:  `$25 Visa · for ${entry.toLocaleDateString('en-US', { month: 'long' })}'s entries`,
+  };
+}
+
 /** Past giveaway winners — displayed on the landing page guest section. */
 export default function PastWinners() {
   if (WINNERS.length === 0) return null;
+
+  const nd = nextDrawing();
 
   return (
     <section className="px-4 pb-5 max-w-lg mx-auto w-full">
@@ -25,6 +43,13 @@ export default function PastWinners() {
             🎁 Recent Giveaway Winners
           </span>
           <div className="flex-1 h-px bg-amber-200" />
+        </div>
+
+        {/* Next drawing announcement — auto-updates to the next 5th-of-month */}
+        <div className="mb-3 rounded-xl bg-gradient-to-r from-amber-500 to-[#FA7109] px-3.5 py-2.5 text-center shadow-sm">
+          <p className="text-[10px] font-black text-white/90 uppercase tracking-widest">📅 Next Drawing</p>
+          <p className="text-sm font-black text-white mt-0.5">{nd.dateLabel}</p>
+          <p className="text-[11px] text-white/85 mt-0.5">{nd.forLabel}</p>
         </div>
 
         <div className="space-y-2">
