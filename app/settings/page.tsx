@@ -93,6 +93,7 @@ export default function SettingsPage() {
   const [alertSaved,       setAlertSaved]       = useState(false);
   const [alertSaving,      setAlertSaving]      = useState(false);
   const [livePlan,         setLivePlan]         = useState<string | null>(null);
+  const [liveInterval,     setLiveInterval]     = useState<string | null>(null);
   const [giveaway,         setGiveaway]         = useState<GiveawayEntries | null>(null);
   const [preferredFillLevel, setPreferredFillLevel] = useState<number | null>(null);
   const [monthlyFuelBudget,  setMonthlyFuelBudget]  = useState('');
@@ -108,7 +109,10 @@ export default function SettingsPage() {
     if (!session) return;
     fetch('/api/vehicles')
       .then((r) => r.json())
-      .then((d: { plan?: string }) => { if (d.plan) setLivePlan(d.plan); })
+      .then((d: { plan?: string; stripeInterval?: string | null }) => {
+        if (d.plan) setLivePlan(d.plan);
+        setLiveInterval(d.stripeInterval ?? null);
+      })
       .catch(() => {});
     // Fleet branding is fetched here when session plan is already 'fleet';
     // a second fetch is triggered below when livePlan resolves to 'fleet'.
@@ -347,13 +351,17 @@ export default function SettingsPage() {
   const name         = displayName || session.user?.name || 'User';
   const plan         = livePlan ?? session.user?.plan ?? 'free';
   const isProTrial   = (session.user as { isProTrial?: boolean })?.isProTrial ?? false;
+  const stripeInterval = liveInterval ?? (session.user as { stripeInterval?: string | null })?.stripeInterval ?? null;
+  const isProLifetime  = plan === 'pro' && !isProTrial && stripeInterval === 'lifetime';
   const canUploadPhoto = plan === 'pro' || plan === 'fleet' || isProTrial;
 
-  const planConfig = {
-    free:  { label: 'Free',  bg: 'bg-slate-100',   text: 'text-slate-600', border: 'border-slate-200' },
-    pro:   { label: 'Pro',   bg: 'bg-amber-50',    text: 'text-amber-700', border: 'border-amber-200' },
-    fleet: { label: 'Fleet', bg: 'bg-blue-50',     text: 'text-blue-700',  border: 'border-blue-200'  },
-  }[plan] ?? { label: 'Free', bg: 'bg-slate-100', text: 'text-slate-600', border: 'border-slate-200' };
+  const planConfig = isProLifetime
+    ? { label: 'Pro Lifetime', bg: 'bg-teal-50', text: 'text-teal-700', border: 'border-teal-200' }
+    : ({
+        free:  { label: 'Free',  bg: 'bg-slate-100',   text: 'text-slate-600', border: 'border-slate-200' },
+        pro:   { label: 'Pro',   bg: 'bg-amber-50',    text: 'text-amber-700', border: 'border-amber-200' },
+        fleet: { label: 'Fleet', bg: 'bg-blue-50',     text: 'text-blue-700',  border: 'border-blue-200'  },
+      }[plan] ?? { label: 'Free', bg: 'bg-slate-100', text: 'text-slate-600', border: 'border-slate-200' });
 
   async function openPortal() {
     setPortalLoading(true);
@@ -894,7 +902,7 @@ export default function SettingsPage() {
           <div className={`bg-white rounded-b-2xl border border-t-0 shadow-sm p-5 space-y-4 ${planConfig.border}`}>
           <div className="flex items-center justify-between">
             <span className={`text-xs font-black px-2.5 py-1 rounded-full ${planConfig.bg} ${planConfig.text}`}>
-              {planConfig.label.toUpperCase()}
+              {isProLifetime && '🏅 '}{planConfig.label.toUpperCase()}
             </span>
           </div>
 
@@ -915,7 +923,18 @@ export default function SettingsPage() {
             </>
           )}
 
-          {plan === 'pro' && (
+          {isProLifetime && (
+            <>
+              <p className="text-sm text-slate-500">
+                🏅 <strong className="text-teal-700">Lifetime Member</strong> — you own GasCap™ Pro forever. One payment, no subscription, nothing to manage.
+              </p>
+              <p className="text-sm text-slate-500">
+                Your Lifetime exclusives: 2× monthly giveaway entries · Streak Shield (1 grace day/month) · this Lifetime Member badge.
+              </p>
+            </>
+          )}
+
+          {plan === 'pro' && !isProLifetime && (
             <>
               <p className="text-sm text-slate-500">
                 GasCap™ Pro — unlimited vehicles, manual entry, spec lookup &amp; more.
