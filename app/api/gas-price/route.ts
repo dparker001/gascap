@@ -17,6 +17,11 @@ import { NextResponse } from 'next/server';
 
 const EIA_KEY = process.env.EIA_API_KEY ?? '';
 
+/** Approximate U.S. national regular-unleaded average — shown ONLY when the EIA
+ *  API is unreachable (outage), clearly flagged as an estimate in the UI so it's
+ *  never passed off as live data. Update periodically. */
+const FALLBACK_NATIONAL_PRICE = 3.15;
+
 /** AbortSignal that fires after `ms` — prevents a hung/slow upstream (Nominatim,
  *  EIA) from making the request hang forever (perpetual spinner on the client). */
 function timeoutSignal(ms: number): AbortSignal {
@@ -101,7 +106,17 @@ export async function GET(req: Request) {
     const price = statePrice ?? await getPriceForState('US');
 
     if (!price) {
-      return NextResponse.json({ price: null, state: stateCode, noApiKey: false });
+      // EIA unreachable — return an approximate national estimate so the
+      // calculator stays usable during EIA outages. `approximate` tells the UI
+      // to label it as an estimate (no "EIA Official" badge).
+      return NextResponse.json({
+        price:       FALLBACK_NATIONAL_PRICE,
+        state:       stateCode,
+        isState:     false,
+        isNational:  true,
+        approximate: true,
+        source:      'estimate',
+      });
     }
 
     return NextResponse.json({

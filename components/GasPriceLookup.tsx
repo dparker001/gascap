@@ -10,6 +10,7 @@ interface GasPriceLookupResult {
   state:      string;
   isState?:   boolean;
   isNational?:boolean;
+  approximate?: boolean;   // true = EIA outage fallback estimate (not live data)
   noApiKey?:  boolean;
   error?:     string;
 }
@@ -200,29 +201,38 @@ export default function GasPriceLookup({ onApply }: GasPriceLookupProps) {
           ) : result.price ? (
             /* Price found — offer to apply it */
             <div className="space-y-2">
-              <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-3
-                              flex items-center justify-between gap-3">
+              <div className={`border rounded-xl px-3 py-3 flex items-center justify-between gap-3 ${
+                result.approximate ? 'bg-amber-50 border-amber-200' : 'bg-emerald-50 border-emerald-200'
+              }`}>
                 <div>
-                  <p className="text-xs font-bold text-emerald-800">
-                    {result.isState ? t.gasPrice.stateAvg(stateName) : t.gasPrice.nationalAvg}
+                  <p className={`text-xs font-bold ${result.approximate ? 'text-amber-800' : 'text-emerald-800'}`}>
+                    {result.approximate
+                      ? t.gasPrice.estimateTitle
+                      : result.isState ? t.gasPrice.stateAvg(stateName) : t.gasPrice.nationalAvg}
                   </p>
-                  <p className="text-lg font-black text-emerald-700">
-                    ${result.price.toFixed(2)}<span className="text-xs font-normal text-emerald-600 ml-0.5">/gal</span>
+                  <p className={`text-lg font-black ${result.approximate ? 'text-amber-700' : 'text-emerald-700'}`}>
+                    {result.approximate ? '≈ ' : ''}${result.price.toFixed(2)}
+                    <span className={`text-xs font-normal ml-0.5 ${result.approximate ? 'text-amber-600' : 'text-emerald-600'}`}>/gal</span>
                   </p>
                   <p className="mt-1 flex items-center gap-1.5">
-                    <span className="inline-flex items-center gap-0.5 bg-emerald-100 text-emerald-700
-                                     text-[9px] font-black px-1.5 py-0.5 rounded-full leading-none
-                                     border border-emerald-200">
-                      📊 U.S. EIA Official
+                    <span className={`inline-flex items-center gap-0.5 text-[9px] font-black px-1.5 py-0.5 rounded-full leading-none border ${
+                      result.approximate
+                        ? 'bg-amber-100 text-amber-700 border-amber-200'
+                        : 'bg-emerald-100 text-emerald-700 border-emerald-200'
+                    }`}>
+                      {result.approximate ? '⚠️ Estimate' : '📊 U.S. EIA Official'}
                     </span>
-                    <span className="text-[10px] text-emerald-500">regular unleaded</span>
+                    <span className={`text-[10px] ${result.approximate ? 'text-amber-500' : 'text-emerald-500'}`}>
+                      {result.approximate ? t.gasPrice.estimateNote : 'regular unleaded'}
+                    </span>
                   </p>
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <button
                     onClick={handleApply}
-                    className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold
-                               hover:bg-emerald-500 transition-colors whitespace-nowrap"
+                    className={`px-4 py-2 rounded-xl text-white text-xs font-bold transition-colors whitespace-nowrap ${
+                      result.approximate ? 'bg-amber-600 hover:bg-amber-500' : 'bg-emerald-600 hover:bg-emerald-500'
+                    }`}
                   >
                     {t.gasPrice.useThisPrice}
                   </button>
