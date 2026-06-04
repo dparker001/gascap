@@ -87,10 +87,14 @@ export default function AuthButton() {
   /* ── Signed in ── */
   const name = session.user?.name ?? session.user?.email ?? 'User';
   const plan = (session.user as { plan?: string })?.plan ?? 'free';
+  const stripeInterval = (session.user as { stripeInterval?: string | null })?.stripeInterval ?? null;
+  const isProTrial     = (session.user as { isProTrial?: boolean })?.isProTrial ?? false;
+  const isLifetime     = plan === 'pro' && !isProTrial && stripeInterval === 'lifetime';
 
   const planLabel =
-    plan === 'pro'   ? { text: 'Pro',   bg: 'bg-brand-orange' } :
-    plan === 'fleet' ? { text: 'Fleet', bg: 'bg-blue-600'     } :
+    isLifetime       ? { text: 'Lifetime', bg: 'bg-teal-600'   } :
+    plan === 'pro'   ? { text: 'Pro',      bg: 'bg-brand-orange' } :
+    plan === 'fleet' ? { text: 'Fleet',    bg: 'bg-blue-600'     } :
     null;
 
   return (

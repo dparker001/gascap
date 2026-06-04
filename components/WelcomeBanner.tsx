@@ -25,6 +25,7 @@ export default function WelcomeBanner() {
   const emailVerified = (session?.user as { emailVerified?: boolean })?.emailVerified ?? false;
   const plan          = (session?.user as { plan?: string })?.plan ?? 'free';
   const isProTrial    = (session?.user as { isProTrial?: boolean })?.isProTrial ?? false;
+  const stripeInterval = (session?.user as { stripeInterval?: string | null })?.stripeInterval ?? null;
   const rawName       = session?.user?.name ?? '';
   const firstName     = rawName.split(' ')[0] || 'there';
 
@@ -61,6 +62,7 @@ export default function WelcomeBanner() {
   const planLabel =
     plan === 'fleet' ? '🚛 Fleet'
     : isProTrial     ? '⭐ Pro Trial'
+    : (plan === 'pro' && stripeInterval === 'lifetime') ? '🏅 Pro Lifetime'
     : plan === 'pro' ? '⭐ Pro'
     : null;
 
