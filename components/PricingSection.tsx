@@ -12,7 +12,9 @@ import { getawayPromoActive, getawayDaysLeft } from '@/lib/getawayPromo';
 type PlanTier = 'free' | 'pro';
 
 // Highlight flags (order matches translation feature arrays)
-const PRO_HIGHLIGHTS = [false, true, true, true, false, true, true, false, false, false, false];
+// Highlights the flagship Pro value props (unlimited, fill-up history, VIN scan,
+// receipt scan, AI advisor, price alerts, giveaway entries). Index-aligned to proFeatures.
+const PRO_HIGHLIGHTS = [false, true, true, true, true, true, true, true, false, false, false, false, false, false, false, false];
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
