@@ -21,6 +21,13 @@ interface GasPriceLookupProps {
 
 type Status = 'idle' | 'locating' | 'fetching' | 'done' | 'error';
 
+/** AbortSignal that fires after `ms` — so a slow/hung request can't spin forever. */
+function timeoutSignal(ms: number): AbortSignal {
+  const c = new AbortController();
+  setTimeout(() => c.abort(), ms);
+  return c.signal;
+}
+
 
 const STATE_NAMES: Record<string, string> = {
   AL:'Alabama',AK:'Alaska',AZ:'Arizona',AR:'Arkansas',CA:'California',
@@ -77,6 +84,7 @@ export default function GasPriceLookup({ onApply }: GasPriceLookupProps) {
     try {
       const res = await fetch(
         `/api/gas-price?lat=${position.latitude}&lng=${position.longitude}`,
+        { signal: timeoutSignal(15000) },
       );
       const data = await res.json() as GasPriceLookupResult;
       setResult(data);

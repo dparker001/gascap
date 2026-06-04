@@ -17,6 +17,14 @@ import { NextResponse } from 'next/server';
 
 const EIA_KEY = process.env.EIA_API_KEY ?? '';
 
+/** AbortSignal that fires after `ms` — prevents a hung/slow upstream (Nominatim,
+ *  EIA) from making the request hang forever (perpetual spinner on the client). */
+function timeoutSignal(ms: number): AbortSignal {
+  const c = new AbortController();
+  setTimeout(() => c.abort(), ms);
+  return c.signal;
+}
+
 /** Resolve lat/lng → 2-letter US state code via Nominatim */
 async function getStateFromCoords(lat: number, lng: number): Promise<string> {
   try {
@@ -24,6 +32,7 @@ async function getStateFromCoords(lat: number, lng: number): Promise<string> {
     const res  = await fetch(url, {
       headers: { 'User-Agent': 'GasCap/1.0 (info@gascap.app)' },
       next:    { revalidate: 3600 },
+      signal:  timeoutSignal(6000),
     });
     if (!res.ok) return 'US';
     const data = await res.json() as {
@@ -60,7 +69,7 @@ async function getPriceForState(stateCode: string): Promise<number | null> {
       `&length=1` +
       `&facets[duoarea][]=${duoarea}` +
       `&facets[product][]=EPMR`;
-    const res  = await fetch(url, { next: { revalidate: 3600 * 6 } });
+    const res  = await fetch(url, { next: { revalidate: 3600 * 6 }, signal: timeoutSignal(7000) });
     if (!res.ok) return null;
     const json  = await res.json() as { response?: { data?: { value?: string | number }[] } };
     const raw   = json.response?.data?.[0]?.value;
