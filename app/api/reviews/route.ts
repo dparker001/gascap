@@ -21,6 +21,7 @@ export async function POST(req: Request) {
   const user     = await findById(userId);
   const userName = session.user.name ?? user?.name ?? 'GasCap User';
   const plan     = (user?.plan ?? 'free') as 'free' | 'pro' | 'fleet';
+  const lifetime = user?.plan === 'pro' && user?.stripeInterval === 'lifetime' && !user?.isProTrial;
 
   const body = await req.json() as { rating?: number; text?: string; vehicleName?: string };
 
@@ -31,6 +32,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Review must be at least 10 characters.' }, { status: 400 });
   }
 
-  const review = upsertReview(userId, userName, body.rating, body.text, plan, body.vehicleName);
+  const review = upsertReview(userId, userName, body.rating, body.text, plan, body.vehicleName, lifetime);
   return NextResponse.json(review, { status: 201 });
 }

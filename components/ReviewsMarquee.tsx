@@ -35,11 +35,12 @@ function ReviewCard({ review, starsLabel }: { review: Review; starsLabel: string
           )}
         </div>
         <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
-          review.plan === 'fleet' ? 'bg-blue-100 text-blue-600'
+          review.plan === 'pro' && review.lifetime ? 'bg-teal-100 text-teal-700'
+          : review.plan === 'fleet' ? 'bg-blue-100 text-blue-600'
           : review.plan === 'pro' ? 'bg-amber-100 text-amber-600'
           : 'bg-slate-100 text-slate-500'
         }`}>
-          {review.plan.toUpperCase()}
+          {review.plan === 'pro' && review.lifetime ? 'LIFETIME' : review.plan.toUpperCase()}
         </span>
       </div>
     </div>

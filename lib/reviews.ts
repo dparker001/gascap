@@ -17,6 +17,7 @@ export interface Review {
   text:        string;
   vehicleName?: string;
   plan:        'free' | 'pro' | 'fleet';
+  lifetime?:   boolean;   // true = reviewer is a Pro Lifetime member → badge shows "LIFETIME"
   approved:    boolean;   // false = pending moderation, true = live on homepage
   createdAt:   string;
   updatedAt:   string;
@@ -31,7 +32,7 @@ const SEED_REVIEWS: Review[] = [
     id: 'seed-001', userId: 'seed-user-001', userName: 'Marcus T.',
     rating: 5,
     text: "Finally stopped guessing at the pump. Pulled up knowing exactly what I needed — saved $12 on my last fill-up just by not over-filling. The live gas price lookup is a game changer.",
-    vehicleName: '2021 Ford F-150', plan: 'pro', approved: true,
+    vehicleName: '2021 Ford F-150', plan: 'pro', lifetime: true, approved: true,
     createdAt: '2026-03-20T14:32:00.000Z', updatedAt: '2026-03-20T14:32:00.000Z',
   },
   {
@@ -45,7 +46,7 @@ const SEED_REVIEWS: Review[] = [
     id: 'seed-003', userId: 'seed-user-003', userName: 'Derek W.',
     rating: 5,
     text: "The monthly budget tracker keeps me honest. I set a goal and GasCap tells me exactly how I'm tracking week by week. Simple, clean, no fluff. This is what a gas app should be.",
-    vehicleName: '2019 Chevy Silverado', plan: 'pro', approved: true,
+    vehicleName: '2019 Chevy Silverado', plan: 'pro', lifetime: true, approved: true,
     createdAt: '2026-03-24T16:45:00.000Z', updatedAt: '2026-03-24T16:45:00.000Z',
   },
   {
@@ -125,6 +126,7 @@ export function upsertReview(
   text:        string,
   plan:        'free' | 'pro' | 'fleet',
   vehicleName?: string,
+  lifetime?:   boolean,
 ): Review {
   const all      = read();
   const existing = all.findIndex((r) => r.userId === userId);
@@ -138,6 +140,7 @@ export function upsertReview(
     text:        text.trim().slice(0, 500),
     vehicleName: vehicleName?.trim() || undefined,
     plan,
+    lifetime:    lifetime || undefined,
     // Preserve approval status on edit; new reviews start as pending
     approved:    existing >= 0 ? all[existing].approved : false,
     createdAt:   existing >= 0 ? all[existing].createdAt : now,

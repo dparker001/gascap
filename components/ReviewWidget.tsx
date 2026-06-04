@@ -214,11 +214,12 @@ function DisplayGrid({ limit = 6 }: { limit?: number }) {
             <p className="text-xs text-slate-600 leading-relaxed">&ldquo;{r.text}&rdquo;</p>
             <div className="flex items-center gap-2">
               <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
-                r.plan === 'fleet' ? 'bg-blue-100 text-blue-600'
+                r.plan === 'pro' && r.lifetime ? 'bg-teal-100 text-teal-700'
+                : r.plan === 'fleet' ? 'bg-blue-100 text-blue-600'
                 : r.plan === 'pro' ? 'bg-amber-100 text-amber-600'
                 : 'bg-slate-100 text-slate-500'
               }`}>
-                {r.plan.toUpperCase()}
+                {r.plan === 'pro' && r.lifetime ? 'LIFETIME' : r.plan.toUpperCase()}
               </span>
               <span className="text-[10px] text-slate-300">
                 {new Date(r.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}

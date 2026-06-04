@@ -170,11 +170,12 @@ export default function AdminReviewsPage() {
                       {r.approved ? 'LIVE' : 'PENDING'}
                     </span>
                     <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
-                      r.plan === 'fleet' ? 'bg-blue-100 text-blue-600'
+                      r.plan === 'pro' && r.lifetime ? 'bg-teal-100 text-teal-700'
+                      : r.plan === 'fleet' ? 'bg-blue-100 text-blue-600'
                       : r.plan === 'pro' ? 'bg-amber-100 text-amber-600'
                       : 'bg-slate-100 text-slate-500'
                     }`}>
-                      {r.plan.toUpperCase()}
+                      {r.plan === 'pro' && r.lifetime ? 'LIFETIME' : r.plan.toUpperCase()}
                     </span>
                   </div>
                   <p className="text-xs font-bold text-slate-700 mt-1">{r.userName}</p>
