@@ -24,6 +24,7 @@ const en = {
   // ── Plan badges ────────────────────────────────────────────────────────────
   plan: {
     gascapPro:      'GasCap™ Pro',
+    gascapProLifetime: 'GasCap™ Pro Lifetime',
     gascapFleet:    'GasCap™ Fleet',
     freePlan:       'Free plan · Works offline',
     upgrade:        'Upgrade →',
@@ -1050,6 +1051,7 @@ const es: typeof en = {
 
   plan: {
     gascapPro:      'GasCap™ Pro',
+    gascapProLifetime: 'GasCap™ Pro De Por Vida',
     gascapFleet:    'GasCap™ Flota',
     freePlan:       'Plan gratuito · Funciona sin internet',
     upgrade:        'Mejorar →',

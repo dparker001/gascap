@@ -21,6 +21,7 @@ export async function GET() {
     limit:            PLAN_LIMITS[plan],
     isProTrial:       user?.isProTrial       ?? false,
     trialExpiresAt:   user?.trialExpiresAt   ?? null,
+    stripeInterval:   user?.stripeInterval   ?? null,
     fleetCompanyName: user?.fleetCompanyName ?? null,
     fleetLogoUrl:     user?.fleetLogoUrl     ?? null,
     userName:         user?.displayName || user?.name || null,

@@ -20,6 +20,7 @@ interface LivePlanData {
   plan:           string;
   isProTrial:     boolean;
   trialExpiresAt: string | null;
+  stripeInterval: string | null;
 }
 
 export default function PlanBadge() {
@@ -40,10 +41,12 @@ export default function PlanBadge() {
   }
 
   // Live server data takes priority over JWT — always reflects current billing state
-  const jwtUser       = session?.user as { plan?: string; isProTrial?: boolean; trialExpiresAt?: string | null } | undefined;
+  const jwtUser       = session?.user as { plan?: string; isProTrial?: boolean; trialExpiresAt?: string | null; stripeInterval?: string | null } | undefined;
   const plan          = liveData?.plan          ?? jwtUser?.plan          ?? null;
   const isProTrial    = liveData?.isProTrial    ?? jwtUser?.isProTrial    ?? false;
   const trialExpiresAt = liveData?.trialExpiresAt ?? jwtUser?.trialExpiresAt ?? null;
+  const stripeInterval = liveData?.stripeInterval ?? jwtUser?.stripeInterval ?? null;
+  const isLifetime     = plan === 'pro' && !isProTrial && stripeInterval === 'lifetime';
 
   /* ── Pro Trial ── */
   if (plan === 'pro' && isProTrial && trialExpiresAt) {
@@ -85,6 +88,17 @@ export default function PlanBadge() {
         >
           Upgrade to keep Pro →
         </a>
+      </div>
+    );
+  }
+
+  /* ── Pro Lifetime (paid, not trial) ── */
+  if (isLifetime) {
+    return (
+      <div className="mt-4 inline-flex items-center gap-2 bg-teal-500/20 border border-teal-400/40
+                      rounded-full px-3.5 py-1.5">
+        <span className="text-teal-300 text-xs" aria-hidden="true">🏅</span>
+        <span className="text-teal-200 text-xs font-bold tracking-wide">{t.plan.gascapProLifetime}</span>
       </div>
     );
   }
