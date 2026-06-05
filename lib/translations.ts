@@ -29,6 +29,16 @@ const en = {
     gasCard:        'Gas Card',
   },
 
+  // ── Ad-landing banner (paid traffic) ───────────────────────────────────────
+  adBanner: {
+    eyebrow:      'Welcome — limited-time bonus',
+    headline:     'Own GasCap™ Pro for life + a complimentary resort getaway —',
+    disclosure:   'Hotel stay only · flights not included · terms apply.',
+    ctaFree:      'Start free — 30 days of Pro →',
+    ctaLifetime:  'Or go Lifetime + Getaway →',
+    dismiss:      'Dismiss',
+  },
+
   // ── Plan badges ────────────────────────────────────────────────────────────
   plan: {
     gascapPro:      'GasCap™ Pro',
@@ -1416,6 +1426,15 @@ const es: typeof en = {
     pricing:        'Precios',
     getStartedFree: 'Comenzar gratis',
     gasCard:        'Tarjeta de gasolina',
+  },
+
+  adBanner: {
+    eyebrow:      'Bienvenido — bono por tiempo limitado',
+    headline:     'Posee GasCap™ Pro de por vida + una escapada de cortesía a un resort —',
+    disclosure:   'Solo estancia de hotel · vuelos no incluidos · aplican términos.',
+    ctaFree:      'Empieza gratis — 30 días de Pro →',
+    ctaLifetime:  'O hazte De Por Vida + Escapada →',
+    dismiss:      'Descartar',
   },
 
   plan: {

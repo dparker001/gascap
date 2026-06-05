@@ -24,6 +24,7 @@ import EndorserMarquee        from '@/components/EndorserMarquee';
 import DailyFuelPulse         from '@/components/DailyFuelPulse';
 import WelcomeBanner          from '@/components/WelcomeBanner';
 import NewMemberOfferBanner   from '@/components/NewMemberOfferBanner';
+import AdLandingBanner        from '@/components/AdLandingBanner';
 import FreshSignupBanner      from '@/components/FreshSignupBanner';
 import MobileEngagementRow    from '@/components/MobileEngagementRow';
 import FuelBudgetWidget       from '@/components/FuelBudgetWidget';
@@ -584,6 +585,10 @@ export default function Home() {
 
       {/* Brand header */}
       <Header />
+
+      {/* Ad-landing banner — paid-traffic visitors get the Lifetime + getaway hook
+          (self-hides unless arriving from an ad and the getaway promo is active) */}
+      <AdLandingBanner />
 
       {/* ── Prize claim banner — shown to logged-in winners until claimed ── */}
       {session && <WinnerBanner />}
