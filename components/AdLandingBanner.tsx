@@ -49,8 +49,8 @@ export default function AdLandingBanner() {
   const price = PRICING.pro.lifetime.toFixed(2);
 
   return (
-    <div className="px-4 pt-3 max-w-3xl mx-auto w-full">
-      <div className="relative rounded-2xl bg-gradient-to-r from-[#005F4A] to-[#1EB68F] px-4 py-3.5 shadow-md border border-white/10">
+    <div className="w-full bg-gradient-to-r from-[#005F4A] to-[#1EB68F] border-b border-white/10 shadow-sm">
+      <div className="relative max-w-3xl mx-auto px-4 py-3.5">
         <button
           onClick={dismiss}
           aria-label={t.adBanner.dismiss}
