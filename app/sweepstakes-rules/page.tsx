@@ -67,6 +67,13 @@ export default function SweepstakesRulesPage() {
               unverified email addresses will be excluded from the drawing pool.
             </p>
             <p className="text-sm text-slate-600 leading-relaxed">
+              <strong>Membership Requirement (Method A):</strong> App-use entries (Method A, Section 4)
+              are available only to active GasCap™ Pro subscribers (including subscribers in a Pro
+              free-trial period), GasCap™ Pro Lifetime members, and GasCap™ Fleet subscribers. Free
+              accounts do not earn app-use entries; any person, including holders of free accounts,
+              may still enter at no cost using the No Purchase Necessary method (Method B, Section 4).
+            </p>
+            <p className="text-sm text-slate-600 leading-relaxed">
               <strong>Winner Frequency Restriction:</strong> A person who has won a prize in the
               immediately preceding calendar month is not eligible to win again in the current Entry
               Month. Additionally, a person may not win more than once per calendar quarter

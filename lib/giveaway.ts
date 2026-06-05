@@ -235,6 +235,19 @@ export function ineligibleWinners(
 }
 
 /** All Pro/Fleet users with ≥1 active day in the given month, excluding test accounts */
+/**
+ * Hard exclusion list — these accounts (the Sponsor and immediate family) can
+ * never be drawn or qualify, per Section 2 of the Official Rules. Keyed by email
+ * (lowercase) rather than name, since names are neither unique nor stable.
+ */
+const EXCLUDED_EMAILS = new Set<string>([
+  'dparker001@gmail.com',      // Don Parker (Sponsor)
+  'donwparker1969@gmail.com',  // Donald Parker
+  'servant4hire@gmail.com',    // Donovan Parker
+  'livetotravelnow@gmail.com', // Madlon T Parker
+  'green.bilena@yahoo.com',    // Bilena Green
+]);
+
 export async function getEligibleEntrants(month: string): Promise<EntrantRow[]> {
   const prefix = `${month}-`;
   const users  = await prisma.user.findMany({
@@ -242,6 +255,7 @@ export async function getEligibleEntrants(month: string): Promise<EntrantRow[]> 
       plan:          { in: ['pro', 'fleet'] },
       isTestAccount: { not: true },   // exclude test/internal accounts from draws
       emailVerified: true,            // only verified emails are eligible to win
+      email:         { notIn: Array.from(EXCLUDED_EMAILS) }, // Sponsor + family
     },
     select: {
       id: true, name: true, email: true, plan: true,
@@ -294,6 +308,8 @@ export async function getEligibleEntrants(month: string): Promise<EntrantRow[]> 
       };
     })
     .filter((u) => u.baseEntries > 0)  // must have used the app at least once this month
+    // Defensive exclusion (in case of any email casing drift past the DB query)
+    .filter((u) => !EXCLUDED_EMAILS.has(u.email.toLowerCase()))
     .sort((a, b) => b.entryCount - a.entryCount);
 }
 
