@@ -159,6 +159,8 @@ export interface EntrantRow {
   dailyBonusEntries:           number; // 3–15/day from the daily gift box badge
   entryCount:      number;        // baseEntries + streakBonus + earlyUpgrade + garageBonus + verifyReminderBonus + phoneBonus + dailyBonus
   alwaysEligible:  boolean;       // true for Ambassador tier holders — skip win restrictions
+  loginCount:      number;        // lifetime login count (engagement signal for draw review)
+  lastLoginAt:     string | null; // ISO timestamp of most recent login, or null if never recorded
 }
 
 export interface DrawResult {
@@ -249,6 +251,8 @@ export async function getEligibleEntrants(month: string): Promise<EntrantRow[]> 
       verifyReminderBonusEntries: true,
       phoneBonusEntries: true,
       dailyBonusEntries: true,
+      loginCount: true,
+      lastLoginAt: true,
     },
   });
 
@@ -285,6 +289,8 @@ export async function getEligibleEntrants(month: string): Promise<EntrantRow[]> 
         dailyBonusEntries,
         entryCount:      baseEntries + streakBonus + bonusEntries + garageBonusEntries + verifyReminderBonusEntries + phoneBonusEntries + dailyBonusEntries,
         alwaysEligible:  isAlwaysEligible(refCount),
+        loginCount:      u.loginCount ?? 0,
+        lastLoginAt:     u.lastLoginAt ?? null,
       };
     })
     .filter((u) => u.baseEntries > 0)  // must have used the app at least once this month

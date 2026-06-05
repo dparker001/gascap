@@ -116,6 +116,8 @@ export async function POST(req: Request) {
           email:        result.winner.email,
           entryCount:   result.winner.entryCount,
           totalEntries: result.totalEntries,
+          loginCount:   result.winner.loginCount,
+          lastLoginAt:  result.winner.lastLoginAt,
           prize:        currentTier.prize,
           month,
         },

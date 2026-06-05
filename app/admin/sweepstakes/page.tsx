@@ -76,7 +76,8 @@ export default function SweepstakesAdminPage() {
 
   const [dryRunning,   setDryRunning]   = useState(false);
   const [dryRunResult, setDryRunResult] = useState<{
-    name: string; email: string; entryCount: number; totalEntries: number; prize: string; month: string;
+    name: string; email: string; entryCount: number; totalEntries: number;
+    loginCount: number; lastLoginAt: string | null; prize: string; month: string;
   } | null>(null);
 
   const [history,         setHistory]         = useState<DrawRecord[]>([]);
@@ -156,7 +157,7 @@ export default function SweepstakesAdminPage() {
     });
     const data = await res.json() as {
       ok?: boolean; dryRun?: boolean;
-      winner?: { name: string; email: string; entryCount: number; totalEntries: number; prize: string; month: string };
+      winner?: { name: string; email: string; entryCount: number; totalEntries: number; loginCount: number; lastLoginAt: string | null; prize: string; month: string };
       error?: string;
     };
     setDryRunning(false);
@@ -376,6 +377,13 @@ export default function SweepstakesAdminPage() {
                   <p className="text-[10px] text-slate-400">
                     {dryRunResult.entryCount} {dryRunResult.entryCount === 1 ? 'entry' : 'entries'} of {dryRunResult.totalEntries} total
                     {' '}· {((dryRunResult.entryCount / dryRunResult.totalEntries) * 100).toFixed(1)}% odds
+                  </p>
+                  <p className="text-[10px] font-semibold text-slate-500">
+                    🔑 {dryRunResult.loginCount} {dryRunResult.loginCount === 1 ? 'login' : 'logins'}
+                    {' '}· last login{' '}
+                    {dryRunResult.lastLoginAt
+                      ? new Date(dryRunResult.lastLoginAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+                      : 'never'}
                   </p>
                   <p className="text-[9px] text-slate-400">Run again for a different simulation, or click Draw to make it official.</p>
                 </div>
