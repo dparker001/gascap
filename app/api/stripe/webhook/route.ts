@@ -9,7 +9,7 @@
 import { NextResponse }                     from 'next/server';
 import type Stripe                          from 'stripe';
 import { stripe }                           from '@/lib/stripe';
-import { setUserPlan, findByStripeCustomer, findById, findByReferralCode, creditVerifiedReferral, getActiveCredits, enrollPaidCampaign, enrollEngagementCampaign, setEarlyUpgradeBonus, markMilestoneSent, updateUserProfile } from '@/lib/users';
+import { setUserPlan, findByStripeCustomer, findById, findByReferralCode, creditVerifiedReferral, getActiveCredits, enrollPaidCampaign, enrollEngagementCampaign, setEarlyUpgradeBonus, markMilestoneSent, updateUserProfile, clearStripeSubscriptionId } from '@/lib/users';
 import { updateGhlContactPlan }            from '@/lib/ghl';
 import { sendMail, giftEmailHtml }         from '@/lib/email';
 import { createGift }                      from '@/lib/gifts';
@@ -167,6 +167,28 @@ export async function POST(req: Request) {
         subscriptionId: subscriptionId ?? undefined,
         interval,
       });
+
+      // Lifetime is a one-time payment (mode:'payment') with no subscription of
+      // its own. If this buyer was previously a recurring subscriber (monthly /
+      // annual Pro), their old subscription is still live and would keep billing
+      // them on top of the Lifetime charge. Cancel it now so they're never
+      // double-billed. The resulting customer.subscription.deleted event is
+      // safely ignored for Lifetime owners (see that handler below).
+      if (interval === 'lifetime' && userBeforeUpgrade?.stripeSubscriptionId) {
+        const oldSubId = userBeforeUpgrade.stripeSubscriptionId;
+        try {
+          await stripe.subscriptions.cancel(oldSubId);
+          await clearStripeSubscriptionId(userId);
+          console.info(`[GasCap webhook] Cancelled prior subscription ${oldSubId} after Lifetime upgrade for ${userId}`);
+        } catch (e) {
+          console.error(`[GasCap webhook] Failed to cancel prior subscription ${oldSubId} after Lifetime upgrade:`, e);
+          sendAdminMail({
+            subject: `⚠️ GasCap™: manual sub-cancel needed after Lifetime upgrade`,
+            html: `<p>User <strong>${userId}</strong> bought Pro Lifetime but their prior subscription <code>${oldSubId}</code> could not be cancelled automatically. Please cancel it in Stripe so they aren't double-billed.</p>`,
+            text: `User ${userId} bought Lifetime but prior subscription ${oldSubId} could not be auto-cancelled. Cancel it manually in Stripe.`,
+          }).catch(() => {});
+        }
+      }
 
       // Backfill phone from Stripe checkout if user didn't provide one at signup.
       // Note: Stripe phone is for billing only — SMS consent must come from the
@@ -385,6 +407,14 @@ export async function POST(req: Request) {
 
       const user = await findByStripeCustomer(customerId);
       if (user) {
+        // Lifetime owners hold a one-time purchase, not a subscription. When a
+        // recurring subscriber upgrades to Lifetime we cancel their old sub,
+        // which fires this event — but they must NOT be reverted to Free. Skip.
+        if (user.stripeInterval === 'lifetime') {
+          console.info(`[GasCap webhook] Ignored ${event.type} for Lifetime owner ${user.id} (no downgrade)`);
+          break;
+        }
+
         await setUserPlan(user.id, 'free');
         updateGhlContactPlan(user.email, 'free')
           .catch((err) => console.error('[GHL] plan revert sync failed:', err));

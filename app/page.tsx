@@ -25,6 +25,7 @@ import DailyFuelPulse         from '@/components/DailyFuelPulse';
 import WelcomeBanner          from '@/components/WelcomeBanner';
 import NewMemberOfferBanner   from '@/components/NewMemberOfferBanner';
 import AdLandingBanner        from '@/components/AdLandingBanner';
+import LifetimeUpgradeModal   from '@/components/LifetimeUpgradeModal';
 import FreshSignupBanner      from '@/components/FreshSignupBanner';
 import MobileEngagementRow    from '@/components/MobileEngagementRow';
 import FuelBudgetWidget       from '@/components/FuelBudgetWidget';
@@ -579,6 +580,9 @@ export default function Home() {
 
       {/* One-time notice for the May 12 JSON→PostgreSQL migration */}
       <MigrationNotice />
+
+      {/* Occasional Pro → Lifetime upgrade pop-up (paying Pro subscribers only) */}
+      <LifetimeUpgradeModal />
 
       {/* Engagement nudge — fixed bottom toast, contextual, dismissible */}
       <EngagementNudge />

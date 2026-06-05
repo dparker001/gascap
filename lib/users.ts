@@ -326,6 +326,18 @@ export async function clearStripeCustomerId(userId: string): Promise<void> {
   });
 }
 
+/**
+ * Clear the stored Stripe subscription ID — used when a recurring subscriber
+ * upgrades to Lifetime (one-time payment) and we cancel their old subscription,
+ * so the record no longer points at a dead/cancelled sub.
+ */
+export async function clearStripeSubscriptionId(userId: string): Promise<void> {
+  await prisma.user.update({
+    where: { id: userId },
+    data:  { stripeSubscriptionId: null },
+  });
+}
+
 export async function findByStripeCustomer(customerId: string): Promise<StoredUser | undefined> {
   const user = await prisma.user.findFirst({ where: { stripeCustomerId: customerId } });
   return user ? toStoredUser(user) : undefined;

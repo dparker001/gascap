@@ -39,6 +39,26 @@ const en = {
     dismiss:      'Dismiss',
   },
 
+  // ── Pro → Lifetime upgrade pop-up (paying Pro members) ──────────────────────
+  ltModal: {
+    eyebrow:          'Pro member perk',
+    headlinePromo:    'Make it Lifetime — and grab a free getaway',
+    headlinePlain:    'Make Pro yours forever',
+    bodyPromo:        'You’re already on Pro. Switch to Lifetime for one payment and never see another bill — and while this promo lasts, we’ll send you a complimentary resort getaway as our thanks.',
+    bodyPlain:        'You’re already on Pro. Switch to Lifetime for one payment and never see another bill — Pro stays yours for good.',
+    bulletOnePayment: 'One payment — no more renewals',
+    bulletEntries:    '2× monthly giveaway entries',
+    bulletGetaway:    'Complimentary resort getaway (limited time)',
+    bulletBadge:      'Lifetime Member badge',
+    cta:              'Upgrade to Lifetime',
+    later:            'Maybe later',
+    optOut:           'Don’t show this again',
+    verify:           'Please verify your email first to upgrade.',
+    verifyResend:     'Resend verification email',
+    verifySending:    'Sending…',
+    verifySent:       'Sent! Check your inbox.',
+  },
+
   // ── Plan badges ────────────────────────────────────────────────────────────
   plan: {
     gascapPro:      'GasCap™ Pro',
@@ -1435,6 +1455,26 @@ const es: typeof en = {
     ctaFree:      'Empieza gratis — 30 días de Pro →',
     ctaLifetime:  'O hazte De Por Vida + Escapada →',
     dismiss:      'Descartar',
+  },
+
+  // ── Ventana de mejora Pro → De Por Vida (miembros Pro de pago) ──────────────
+  ltModal: {
+    eyebrow:          'Beneficio para miembros Pro',
+    headlinePromo:    'Hazlo De Por Vida — y llévate una escapada gratis',
+    headlinePlain:    'Haz que Pro sea tuyo para siempre',
+    bodyPromo:        'Ya tienes Pro. Cambia a De Por Vida con un solo pago y no vuelvas a recibir una factura — y mientras dure esta promoción, te enviaremos una escapada de cortesía a un resort como agradecimiento.',
+    bodyPlain:        'Ya tienes Pro. Cambia a De Por Vida con un solo pago y no vuelvas a recibir una factura — Pro será tuyo para siempre.',
+    bulletOnePayment: 'Un solo pago — sin renovaciones',
+    bulletEntries:    '2× participaciones mensuales en el sorteo',
+    bulletGetaway:    'Escapada de cortesía a un resort (tiempo limitado)',
+    bulletBadge:      'Insignia de Miembro De Por Vida',
+    cta:              'Mejorar a De Por Vida',
+    later:            'Quizás más tarde',
+    optOut:           'No volver a mostrar',
+    verify:           'Verifica tu correo primero para mejorar.',
+    verifyResend:     'Reenviar correo de verificación',
+    verifySending:    'Enviando…',
+    verifySent:       '¡Enviado! Revisa tu bandeja de entrada.',
   },
 
   plan: {
