@@ -1,15 +1,16 @@
 'use client';
 
 /**
- * AdLandingBanner — shown to visitors arriving from a paid ad (Google Ads adds
- * `gclid`; we also accept `utm_source=google` or `?ad=1`). Leads with the
- * Lifetime + complimentary getaway hook to give cold ad traffic a reason to
- * convert, with a low-friction FREE signup as the primary action (the tracked
- * conversion) and the Lifetime+getaway purchase as the upsell.
+ * AdLandingBanner — shown to all non-members (logged-out visitors + free-tier
+ * users) while the getaway promo is active. Leads with the Lifetime +
+ * complimentary getaway hook to give unconverted traffic a reason to act, with
+ * a low-friction FREE signup as the primary action (the tracked conversion)
+ * and the Lifetime+getaway purchase as the upsell.
  *
  * - Only renders while the getaway promo is active.
- * - Remembers "came from ad" in sessionStorage so it persists across the visit.
- * - Dismissible (localStorage) and hidden for existing Lifetime owners.
+ * - Dismissible (localStorage).
+ * - Hidden for existing members (any active paid plan or Pro trial) — they're
+ *   already converted and the "start free" CTA wouldn't apply to them.
  */
 
 import { useEffect, useState } from 'react';
@@ -18,7 +19,6 @@ import { useTranslation }      from '@/contexts/LanguageContext';
 import { PRICING }             from '@/lib/stripe';
 import { getawayPromoActive }  from '@/lib/getawayPromo';
 
-const FROM_AD_KEY = 'gc_from_ad';
 const DISMISS_KEY = 'gc_ad_banner_dismissed';
 
 export default function AdLandingBanner() {
@@ -30,23 +30,16 @@ export default function AdLandingBanner() {
     if (!getawayPromoActive()) return;
     try {
       if (localStorage.getItem(DISMISS_KEY) === '1') return;
-
-      let fromAd = sessionStorage.getItem(FROM_AD_KEY) === '1';
-      if (!fromAd) {
-        const p = new URLSearchParams(window.location.search);
-        const utm = (p.get('utm_source') ?? '').toLowerCase();
-        if (p.has('gclid') || p.has('ad') || utm.includes('google') || utm.includes('cpc')) {
-          fromAd = true;
-          sessionStorage.setItem(FROM_AD_KEY, '1');
-        }
-      }
-      setShow(fromAd);
-    } catch { /* storage blocked — just don't show */ }
+    } catch { /* storage blocked — still show the banner */ }
+    setShow(true);
   }, []);
 
-  // Hide for existing Lifetime owners (nothing to upsell)
-  const interval = (session?.user as { stripeInterval?: string | null })?.stripeInterval ?? null;
-  if (!show || (session?.user && interval === 'lifetime')) return null;
+  // Hide for existing members — any active paid plan (Pro/Fleet/Lifetime) or an
+  // active Pro trial. Non-members = logged-out visitors + free-tier users.
+  const plan       = (session?.user as { plan?: string })?.plan ?? 'free';
+  const isProTrial = (session?.user as { isProTrial?: boolean })?.isProTrial ?? false;
+  const isMember   = !!session?.user && (plan === 'pro' || plan === 'fleet' || isProTrial);
+  if (!show || isMember) return null;
 
   function dismiss() {
     try { localStorage.setItem(DISMISS_KEY, '1'); } catch { /* ignore */ }
