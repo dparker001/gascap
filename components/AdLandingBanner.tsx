@@ -1,16 +1,21 @@
 'use client';
 
 /**
- * AdLandingBanner — shown to all non-members (logged-out visitors + free-tier
- * users) while the getaway promo is active. Leads with the Lifetime +
- * complimentary getaway hook to give unconverted traffic a reason to act, with
- * a low-friction FREE signup as the primary action (the tracked conversion)
- * and the Lifetime+getaway purchase as the upsell.
+ * AdLandingBanner — a pop-up (modal) shown to non-members (logged-out visitors +
+ * free-tier users) while the getaway promo is active. Leads with the Lifetime +
+ * complimentary getaway hook to give unconverted traffic a reason to act, with a
+ * low-friction FREE signup as the primary action and the Lifetime+getaway
+ * purchase as the upsell.
  *
- * - Only renders while the getaway promo is active.
- * - Dismissible (localStorage).
- * - Hidden for existing members (any active paid plan or Pro trial) — they're
- *   already converted and the "start free" CTA wouldn't apply to them.
+ * Behaviour (per product): pops up a couple seconds after the site loads, can be
+ * closed (✕ / backdrop / "Maybe later"), and auto-dismisses on a timer if the
+ * visitor doesn't interact.
+ *
+ * Politeness:
+ *   - shows at most once per browser session (sessionStorage),
+ *   - if manually dismissed, stays hidden for COOLDOWN_DAYS (localStorage),
+ *   - only while the getaway promo is active,
+ *   - hidden for existing members (any active paid plan or Pro trial).
  */
 
 import { useEffect, useState } from 'react';
@@ -18,79 +23,120 @@ import { useSession }          from 'next-auth/react';
 import { useTranslation }      from '@/contexts/LanguageContext';
 import { PRICING }             from '@/lib/stripe';
 import { getawayPromoActive }  from '@/lib/getawayPromo';
+import { trackUpgradeClick }   from '@/lib/gtag';
 
-const DISMISS_KEY = 'gc_ad_banner_dismissed';
+const SESSION_KEY  = 'gc_ad_popup_shown';      // shown once this session
+const DISMISS_KEY  = 'gc_ad_popup_dismissed';  // ms timestamp of last manual close
+
+const COOLDOWN_DAYS = 1;      // after a manual close, stay hidden this long
+const SHOW_DELAY_MS = 2500;   // wait after load before popping up
+const AUTO_HIDE_MS  = 12000;  // auto-dismiss if the visitor doesn't interact
 
 export default function AdLandingBanner() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const { t } = useTranslation();
   const [show, setShow] = useState(false);
 
+  // Decide whether to pop up (waits for the session to resolve first).
   useEffect(() => {
+    if (status === 'loading') return;
     if (!getawayPromoActive()) return;
+
+    const plan       = (session?.user as { plan?: string })?.plan ?? 'free';
+    const isProTrial = (session?.user as { isProTrial?: boolean })?.isProTrial ?? false;
+    const isMember   = !!session?.user && (plan === 'pro' || plan === 'fleet' || isProTrial);
+    if (isMember) return; // members are already converted — nothing to pitch
+
     try {
-      if (localStorage.getItem(DISMISS_KEY) === '1') return;
-    } catch { /* storage blocked — still show the banner */ }
-    setShow(true);
-  }, []);
+      if (sessionStorage.getItem(SESSION_KEY) === '1') return;
+      const last = parseInt(localStorage.getItem(DISMISS_KEY) ?? '0', 10) || 0;
+      if (Date.now() - last < COOLDOWN_DAYS * 86_400_000) return;
+    } catch { /* storage blocked — still show */ }
 
-  // Hide for existing members — any active paid plan (Pro/Fleet/Lifetime) or an
-  // active Pro trial. Non-members = logged-out visitors + free-tier users.
-  const plan       = (session?.user as { plan?: string })?.plan ?? 'free';
-  const isProTrial = (session?.user as { isProTrial?: boolean })?.isProTrial ?? false;
-  const isMember   = !!session?.user && (plan === 'pro' || plan === 'fleet' || isProTrial);
-  if (!show || isMember) return null;
+    const timer = setTimeout(() => {
+      setShow(true);
+      try { sessionStorage.setItem(SESSION_KEY, '1'); } catch { /* ignore */ }
+    }, SHOW_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [status, session]);
 
+  // Auto-dismiss on a timer once visible.
+  useEffect(() => {
+    if (!show) return;
+    const timer = setTimeout(() => setShow(false), AUTO_HIDE_MS);
+    return () => clearTimeout(timer);
+  }, [show]);
+
+  if (!show) return null;
+
+  // Soft close (backdrop / auto-hide / "Maybe later") — won't show again this
+  // session, but may return on a later visit.
+  function close() { setShow(false); }
+
+  // Hard close (✕) — also start the cooldown so they aren't pestered next visit.
   function dismiss() {
-    try { localStorage.setItem(DISMISS_KEY, '1'); } catch { /* ignore */ }
+    try { localStorage.setItem(DISMISS_KEY, String(Date.now())); } catch { /* ignore */ }
     setShow(false);
   }
 
   const price = PRICING.pro.lifetime.toFixed(2);
 
   return (
-    <div className="w-full bg-gradient-to-r from-[#005F4A] to-[#1EB68F] border-b border-white/10 shadow-sm">
-      <div className="relative max-w-3xl mx-auto px-4 py-3.5">
-        <button
-          onClick={dismiss}
-          aria-label={t.adBanner.dismiss}
-          className="absolute top-1.5 right-2.5 text-white/55 hover:text-white text-base leading-none"
-        >
-          ✕
-        </button>
+    <div
+      className="fixed inset-0 z-[60] flex items-center justify-center px-4 bg-black/50 backdrop-blur-sm animate-fade-in"
+      role="dialog"
+      aria-modal="true"
+      onClick={close}
+    >
+      <div
+        className="relative w-full max-w-md bg-white rounded-3xl shadow-lift overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Branded header */}
+        <div className="bg-gradient-to-r from-[#005F4A] to-[#1EB68F] px-6 pt-6 pb-5 text-center">
+          <button
+            onClick={dismiss}
+            aria-label={t.adBanner.dismiss}
+            className="absolute top-3 right-3.5 text-white/60 hover:text-white text-xl leading-none"
+          >
+            ✕
+          </button>
+          <p className="text-[10px] font-black uppercase tracking-widest text-amber-300">
+            {t.adBanner.eyebrow}
+          </p>
+          <p className="text-4xl mt-1" aria-hidden="true">🏝️</p>
+          <h2 className="text-white text-lg font-black leading-snug mt-2">
+            {t.adBanner.headline}{' '}
+            <span className="text-amber-300 whitespace-nowrap">${price}</span>
+          </h2>
+          <p className="text-white/60 text-[11px] leading-snug mt-2">
+            {t.adBanner.disclosure}
+          </p>
+        </div>
 
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3 pr-4">
-          <div className="flex items-start gap-3 flex-1 min-w-0">
-            <span className="text-2xl flex-shrink-0" aria-hidden="true">🏝️</span>
-            <div className="min-w-0">
-              <p className="text-[10px] font-black uppercase tracking-widest text-amber-300">
-                {t.adBanner.eyebrow}
-              </p>
-              <p className="text-white text-sm font-bold leading-snug">
-                {t.adBanner.headline} <span className="text-amber-300 whitespace-nowrap">${price}</span>
-              </p>
-              <p className="text-white/55 text-[10px] leading-snug mt-0.5">
-                {t.adBanner.disclosure}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-1.5 flex-shrink-0 w-full sm:w-auto">
-            <a
-              href="/signup"
-              className="bg-amber-400 hover:bg-amber-300 text-navy-900 text-sm font-black
-                         px-4 py-2.5 rounded-xl text-center whitespace-nowrap transition-colors"
-            >
-              {t.adBanner.ctaFree}
-            </a>
-            <a
-              href="/upgrade"
-              className="text-white/85 hover:text-white text-[11px] font-bold text-center
-                         underline underline-offset-2 transition-colors"
-            >
-              {t.adBanner.ctaLifetime}
-            </a>
-          </div>
+        {/* CTAs */}
+        <div className="px-6 py-5 space-y-3">
+          <a
+            href="/signup"
+            className="block w-full bg-amber-400 hover:bg-amber-300 text-navy-900 text-base font-black
+                       px-4 py-3.5 rounded-2xl text-center transition-colors"
+          >
+            {t.adBanner.ctaFree}
+          </a>
+          <a
+            href="/upgrade"
+            onClick={() => trackUpgradeClick('getaway_popup')}
+            className="block text-center text-slate-500 hover:text-slate-700 text-sm font-bold
+                       underline underline-offset-2 transition-colors"
+          >
+            {t.adBanner.ctaLifetime}
+          </a>
+          <button
+            onClick={close}
+            className="block w-full text-center text-xs font-bold text-slate-400 hover:text-slate-600 pt-0.5 transition-colors"
+          >
+            {t.adBanner.later}
+          </button>
         </div>
       </div>
     </div>

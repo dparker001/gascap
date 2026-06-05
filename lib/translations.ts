@@ -37,6 +37,7 @@ const en = {
     ctaFree:      'Start free — 30 days of Pro →',
     ctaLifetime:  'Or go Lifetime + Getaway →',
     dismiss:      'Dismiss',
+    later:        'Maybe later',
   },
 
   // ── Pro → Lifetime upgrade pop-up (paying Pro members) ──────────────────────
@@ -1455,6 +1456,7 @@ const es: typeof en = {
     ctaFree:      'Empieza gratis — 30 días de Pro →',
     ctaLifetime:  'O hazte De Por Vida + Escapada →',
     dismiss:      'Descartar',
+    later:        'Quizás más tarde',
   },
 
   // ── Ventana de mejora Pro → De Por Vida (miembros Pro de pago) ──────────────

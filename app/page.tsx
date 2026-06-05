@@ -590,8 +590,8 @@ export default function Home() {
       {/* Brand header */}
       <Header />
 
-      {/* Ad-landing banner — paid-traffic visitors get the Lifetime + getaway hook
-          (self-hides unless arriving from an ad and the getaway promo is active) */}
+      {/* Getaway promo pop-up — non-members get the Lifetime + getaway hook a few
+          seconds after load; closeable + auto-dismisses (gated by the promo) */}
       <AdLandingBanner />
 
       {/* ── Prize claim banner — shown to logged-in winners until claimed ── */}

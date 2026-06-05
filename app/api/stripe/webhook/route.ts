@@ -186,7 +186,7 @@ export async function POST(req: Request) {
             subject: `⚠️ GasCap™: manual sub-cancel needed after Lifetime upgrade`,
             html: `<p>User <strong>${userId}</strong> bought Pro Lifetime but their prior subscription <code>${oldSubId}</code> could not be cancelled automatically. Please cancel it in Stripe so they aren't double-billed.</p>`,
             text: `User ${userId} bought Lifetime but prior subscription ${oldSubId} could not be auto-cancelled. Cancel it manually in Stripe.`,
-          }).catch(() => {});
+          });
         }
       }
 
