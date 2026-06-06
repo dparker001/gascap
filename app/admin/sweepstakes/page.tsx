@@ -82,7 +82,12 @@ export default function SweepstakesAdminPage() {
 
   const [history,         setHistory]         = useState<DrawRecord[]>([]);
   const [notes,           setNotes]           = useState('');
-  const [sendWinnerEmail, setSendWinnerEmail] = useState(true);
+  // Hold-and-verify is the default: draw records the winner but sends nothing
+  // until the admin reviews and releases the emails. Check to auto-send instead.
+  const [sendWinnerEmail, setSendWinnerEmail] = useState(false);
+  const [emailsSent,      setEmailsSent]      = useState(false); // released for the current winner?
+  const [sending,         setSending]         = useState(false); // releasing emails now?
+  const [canRelease,      setCanRelease]      = useState(false); // a fresh held draw awaiting release?
 
   const [prize,           setPrize]           = useState('$25');
   const [subscriberCount, setSubscriberCount] = useState<number | null>(null);
@@ -167,18 +172,20 @@ export default function SweepstakesAdminPage() {
 
   async function handleDraw() {
     const emailWarning = sendWinnerEmail
-      ? 'Winner email + non-winner results emails will be sent immediately.'
-      : 'Winner email is suppressed — contact the winner manually. Non-winner results emails will still send.';
-    if (!confirm(`Run the weighted draw for ${fmtMonth(month)}? This cannot be undone.\n\n${emailWarning}`)) return;
+      ? 'Winner email + non-winner results emails will be sent IMMEDIATELY.'
+      : 'No emails will be sent yet — you can verify the winner, then release the emails with the button on the winner card.';
+    if (!confirm(`Run the weighted draw for ${fmtMonth(month)}? This records the winner and cannot be undone.\n\n${emailWarning}`)) return;
     setDrawing(true);
     setDrawErr('');
     setDryRunResult(null);
+    setEmailsSent(false);
+    setCanRelease(false);
     const res = await fetch('/api/admin/sweepstakes', {
       method:  'POST',
       headers: { 'x-admin-password': savedPw, 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ month, notes: notes.trim() || undefined, suppressWinnerEmail: !sendWinnerEmail }),
+      body:    JSON.stringify({ month, notes: notes.trim() || undefined, holdEmails: !sendWinnerEmail }),
     });
-    const data = await res.json() as { ok?: boolean; draw?: DrawRecord; error?: string; existing?: DrawRecord };
+    const data = await res.json() as { ok?: boolean; draw?: DrawRecord; error?: string; existing?: DrawRecord; held?: boolean };
     setDrawing(false);
     if (res.status === 409) {
       setDrawErr(`A draw for ${fmtMonth(month)} was already run.`);
@@ -190,7 +197,32 @@ export default function SweepstakesAdminPage() {
       return;
     }
     setWinner(data.draw);
+    // Auto-sent at draw time → already released. Held → offer the release button.
+    setEmailsSent(data.held === false);
+    setCanRelease(data.held !== false);
     await loadHistory(savedPw);
+  }
+
+  // Release the held winner + non-winner results emails after verifying the winner.
+  async function handleSendEmails() {
+    if (!winner) return;
+    if (!confirm(
+      `Send the winner email to ${winner.winnerName} (${winner.winnerEmail}) and the results emails to all non-winners for ${fmtMonth(winner.month)}?\n\nThis cannot be undone.`,
+    )) return;
+    setSending(true);
+    setDrawErr('');
+    const res = await fetch('/api/admin/sweepstakes', {
+      method:  'POST',
+      headers: { 'x-admin-password': savedPw, 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ month: winner.month, action: 'send-winner-email' }),
+    });
+    const data = await res.json() as { ok?: boolean; sent?: boolean; error?: string };
+    setSending(false);
+    if (!res.ok || !data.sent) {
+      setDrawErr(data.error ?? 'Failed to send emails.');
+      return;
+    }
+    setEmailsSent(true);
   }
 
   if (!authed) {
@@ -333,25 +365,25 @@ export default function SweepstakesAdminPage() {
                            focus:outline-none focus:ring-2 focus:ring-amber-400"
               />
 
-              {/* Send winner email toggle */}
+              {/* Auto-send toggle — default OFF (hold & verify) */}
               <label className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 cursor-pointer transition-colors
                 ${sendWinnerEmail
-                  ? 'border-green-200 bg-green-50'
-                  : 'border-amber-200 bg-amber-50'}`}>
+                  ? 'border-amber-200 bg-amber-50'
+                  : 'border-slate-200 bg-slate-50'}`}>
                 <input
                   type="checkbox"
                   checked={sendWinnerEmail}
                   onChange={(e) => setSendWinnerEmail(e.target.checked)}
-                  className="w-4 h-4 accent-green-600 cursor-pointer"
+                  className="w-4 h-4 accent-amber-600 cursor-pointer"
                 />
                 <div>
-                  <p className={`text-xs font-bold ${sendWinnerEmail ? 'text-green-700' : 'text-amber-700'}`}>
-                    {sendWinnerEmail ? '✉️ Send winner email immediately' : '🔕 Suppress winner email — contact manually'}
+                  <p className={`text-xs font-bold ${sendWinnerEmail ? 'text-amber-700' : 'text-slate-600'}`}>
+                    {sendWinnerEmail ? '⚡ Send all emails immediately (skip review)' : '🛡️ Hold & verify (recommended)'}
                   </p>
                   <p className="text-[10px] text-slate-400 mt-0.5">
                     {sendWinnerEmail
-                      ? 'Winner receives the congratulations email the moment you click Draw.'
-                      : 'Winner is selected and recorded — no email sent. Non-winner emails still go out.'}
+                      ? 'Winner + non-winner emails fire the instant you click Draw — no review step.'
+                      : 'Draw records the winner and sends nothing. You release the emails after verifying.'}
                   </p>
                 </div>
               </label>
@@ -397,7 +429,7 @@ export default function SweepstakesAdminPage() {
               >
                 {drawing
                   ? '🎲 Drawing…'
-                  : `🎰 Draw Winner for ${fmtMonth(month)}${sendWinnerEmail ? ' — Sends Email' : ' — Email Suppressed'}`}
+                  : `🎰 Draw Winner for ${fmtMonth(month)}${sendWinnerEmail ? ' — Auto-sends emails' : ' — Hold for review'}`}
               </button>
 
               {drawErr && <p className="text-sm text-red-500 text-center">{drawErr}</p>}
@@ -466,6 +498,31 @@ export default function SweepstakesAdminPage() {
               <p className="text-[10px] text-slate-400 mt-1">
                 Drawn {new Date(winner.drawnAt).toLocaleString()}
               </p>
+
+              {/* Release step — send the held winner + non-winner emails after verifying */}
+              {emailsSent ? (
+                <div className="mt-3 rounded-xl bg-green-50 border border-green-200 px-3 py-2.5">
+                  <p className="text-xs font-black text-green-700">✅ Emails released</p>
+                  <p className="text-[10px] text-green-600 mt-0.5">
+                    Winner notification + non-winner results emails are sending now.
+                  </p>
+                </div>
+              ) : canRelease && (
+                <div className="mt-3 space-y-1.5">
+                  <button
+                    onClick={handleSendEmails}
+                    disabled={sending}
+                    className="w-full py-3 rounded-xl bg-green-600 hover:bg-green-500 text-white font-black text-sm transition-colors disabled:opacity-50"
+                  >
+                    {sending ? '📧 Sending…' : '✅ Verify & Send Winner + Results Emails'}
+                  </button>
+                  <p className="text-[10px] text-slate-400">
+                    Winner is recorded but <strong>no emails have been sent</strong>. Review the winner
+                    above, then release the emails. Tremendous card delivery still happens later, on
+                    “mark winner confirmed.”
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </div>

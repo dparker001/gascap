@@ -2,13 +2,18 @@
  * Admin Sweepstakes API — protected by ADMIN_PASSWORD
  * GET   /api/admin/sweepstakes?month=YYYY-MM  — preview entrants
  * GET   /api/admin/sweepstakes?history=1      — past draw results
- * POST  /api/admin/sweepstakes                — run draw { month, notes?, dryRun?, suppressWinnerEmail?, suppressSms? }
+ * POST  /api/admin/sweepstakes                — run draw { month, notes?, dryRun?, holdEmails?, suppressSms? }
+ *                                              OR release held emails { month, action:'send-winner-email', suppressSms? }
  * PUT   /api/admin/sweepstakes?month=YYYY-MM  — alternate draw after forfeiture
  * PATCH /api/admin/sweepstakes?month=YYYY-MM  — mark winner confirmed → fires Tremendous card delivery
  *
- * After a successful draw (POST/PUT) the route fires four fire-and-forget side-effects:
+ * Hold-and-verify: by default a draw RECORDS the winner but sends nothing
+ * (holdEmails defaults true). The admin verifies the winner in the panel, then
+ * releases all emails via the `send-winner-email` action. Pass holdEmails:false
+ * to auto-send at draw time (legacy one-step behaviour).
+ *
+ * When emails are released, fireDrawNotifications() fires four side-effects:
  *  1. Winner notification email  (via lib/email.ts → SMTP or Resend)
- *     Skipped if suppressWinnerEmail = true
  *  2. Non-winner results email   (sent to all eligible entrants who didn't win)
  *  3. GHL contact upsert         (GHL_API_KEY env var)
  *     → creates/updates the winner as a GHL contact with winner tags
@@ -48,6 +53,148 @@ function auth(req: Request): 'ok' | 'no-env' | 'wrong' {
   const pw = process.env.ADMIN_PASSWORD;
   if (!pw) return 'no-env';
   return req.headers.get('x-admin-password') === pw ? 'ok' : 'wrong';
+}
+
+/**
+ * Fire all winner-related notifications for a recorded draw: the branded winner
+ * email, the non-winner results emails, the GHL contact upsert, and the GHL
+ * webhook (VA follow-up + SMS flag). Fire-and-forget — callers should `void` it.
+ *
+ * This is invoked either at draw time (when the admin chose to auto-send) OR
+ * later via the `send-winner-email` action, after the admin has verified the
+ * winner in the panel. Tremendous card delivery is intentionally NOT fired here
+ * — it stays deferred to the PATCH "mark winner confirmed" step.
+ */
+async function fireDrawNotifications(opts: {
+  month:        string;
+  winner:       { userId: string; name: string; email: string; entryCount: number };
+  totalEntries: number;
+  drawnAt:      string;
+  notes:        string | null;
+  suppressSms:  boolean;
+}): Promise<void> {
+  const { month, winner, totalEntries, drawnAt, notes, suppressSms } = opts;
+  const monthLabel      = fmtMonth(month);
+  const { currentTier } = await getCurrentPrizeTier();
+  const prize           = currentTier.prize;   // scales automatically with subscriber count
+  const webhookUrl      = process.env.GHL_WINNER_WEBHOOK_URL;
+
+  // Anonymised winner label for non-winner emails: "Madlon P."
+  const [wFirst, ...wRest] = winner.name.trim().split(' ');
+  const wLastInitial = wRest.length > 0 ? ` ${wRest[wRest.length - 1][0]}.` : '';
+  const winnerLabel  = `${wFirst}${wLastInitial}`;
+
+  // "May 2026" → next month label for the "next drawing" prompt
+  const [mYear, mMo] = month.split('-').map(Number);
+  const nextMo   = mMo === 12 ? 1 : mMo + 1;
+  const nextYear = mMo === 12 ? mYear + 1 : mYear;
+  const MONTH_NAMES = [
+    'January','February','March','April','May','June',
+    'July','August','September','October','November','December',
+  ];
+  const nextDrawMonth = `${MONTH_NAMES[nextMo - 1]} ${nextYear}`;
+
+  const allEntrants = await getEligibleEntrants(month);
+  const nonWinners  = allEntrants.filter((e) => e.userId !== winner.userId);
+
+  await Promise.allSettled([
+    // 1. Branded winner email
+    sendMail({
+      to:      winner.email,
+      subject: `🏆 You won the ${monthLabel} GasCap™ Gas Card!`,
+      html:    winnerNotificationEmailHtml(winner.name, month, winner.entryCount, totalEntries, prize),
+      text: [
+        `Congratulations ${winner.name}!`,
+        `You won the ${monthLabel} GasCap™ Gas Card Giveaway (${prize}).`,
+        `Your ${prize} Visa prepaid card — use it at the pump or anywhere Visa is accepted — will be sent within 7 days.`,
+        `Reply to confirm receipt or email support@gascap.app with questions.`,
+        `You must respond within 3 days to claim your prize.`,
+      ].join('\n\n'),
+    }).catch((err) => console.error('[sweepstakes] winner email failed:', err)),
+
+    // 2. Non-winner results emails — staggered 200 ms apart to avoid burst limits
+    (async () => {
+      for (const entrant of nonWinners) {
+        await sendMail({
+          to:      entrant.email,
+          subject: `${monthLabel} Drawing Results — GasCap™`,
+          html:    nonWinnerNotificationEmailHtml(
+                     entrant.name.split(' ')[0] ?? entrant.name,
+                     winnerLabel, month, entrant.entryCount, totalEntries,
+                     nextDrawMonth, entrant.plan, prize,
+                   ),
+          text: [
+            `Hi ${entrant.name.split(' ')[0] ?? entrant.name},`,
+            `The ${monthLabel} GasCap™ drawing just wrapped — congratulations to ${winnerLabel} who won the ${prize} Visa prepaid card!`,
+            `You had ${entrant.entryCount} ${entrant.entryCount === 1 ? 'entry' : 'entries'} this month.`,
+            `To earn more entries for ${nextDrawMonth}: open GasCap™ every day (1 entry/day, up to 31), and build your streak for bonus entries (7 days = +2, 30 days = +5, 90 days = +10).`,
+            `Next drawing is on or about the 5th of ${nextDrawMonth}.`,
+            `Open the app: https://gascap.app`,
+          ].join('\n\n'),
+        }).catch((err) =>
+          console.error(`[sweepstakes] non-winner email failed for ${entrant.email}:`, err),
+        );
+        await new Promise((r) => setTimeout(r, 200));
+      }
+    })(),
+
+    // 3. GHL — upsert winner as a contact so workflows & follow-up can fire
+    (() => {
+      const ghlKey     = process.env.GHL_API_KEY;
+      const locationId = process.env.GHL_LOCATION_ID ?? 'CvoeirX6lIeXP021VqmY';
+      if (!ghlKey) {
+        console.warn('[sweepstakes] GHL_API_KEY not set — skipping GHL contact upsert');
+        return Promise.resolve();
+      }
+      const [wFn, ...wLn] = winner.name.trim().split(' ');
+      const winnerTagName = `gascap-sweepstakes-winner-${monthLabel.toLowerCase().replace(/\s+/g, '-')}`;
+      return fetch('https://services.leadconnectorhq.com/contacts/upsert', {
+        method:  'POST',
+        headers: {
+          'Authorization': `Bearer ${ghlKey}`,
+          'Content-Type':  'application/json',
+          'Version':       '2021-07-28',
+        },
+        body: JSON.stringify({
+          locationId,
+          email:     winner.email,
+          firstName: wFn,
+          lastName:  wLn.join(' '),
+          tags:      ['giveaway-winner', winnerTagName],
+          source:    'GasCap Sweepstakes',
+        }),
+      })
+        .then(async (r) => {
+          if (!r.ok) console.error('[sweepstakes] GHL contact upsert failed:', await r.text());
+          else       console.log(`[sweepstakes] GHL contact upserted for winner ${winner.email}`);
+        })
+        .catch((err) => console.error('[sweepstakes] GHL contact upsert fetch failed:', err));
+    })(),
+
+    // 4. GHL webhook → VA follow-up workflow
+    webhookUrl
+      ? fetch(webhookUrl, {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            firstName:    winner.name.split(' ')[0] ?? winner.name,
+            lastName:     winner.name.split(' ').slice(1).join(' ') ?? '',
+            email:        winner.email,
+            phone:        '',
+            month,
+            monthLabel,
+            entryCount:   winner.entryCount,
+            totalEntries,
+            prize,
+            drawnAt,
+            notes:        notes ?? '',
+            winnerTag:    `gascap-sweepstakes-winner-${monthLabel.toLowerCase().replace(' ', '-')}`,
+            alternateTag: `gascap-sweepstakes-alternate-${monthLabel.toLowerCase().replace(' ', '-')}`,
+            sendSms:      !suppressSms,
+          }),
+        }).catch((err) => console.error('[sweepstakes] GHL webhook failed:', err))
+      : Promise.resolve(),
+  ]);
 }
 
 export async function GET(req: Request) {
@@ -92,14 +239,40 @@ export async function POST(req: Request) {
   if (_auth === 'no-env') return NextResponse.json({ error: 'Misconfigured' }, { status: 503 });
   if (_auth === 'wrong')  return NextResponse.json({ error: 'Unauthorized'  }, { status: 401 });
 
-  const body                = await req.json() as { month?: string; notes?: string; dryRun?: boolean; suppressWinnerEmail?: boolean; suppressSms?: boolean };
-  const month               = body.month ?? currentMonth();
-  const dryRun              = body.dryRun === true;
-  const suppressWinnerEmail = body.suppressWinnerEmail === true;
-  const suppressSms         = body.suppressSms === true;
+  const body        = await req.json() as {
+    month?: string; notes?: string; dryRun?: boolean;
+    holdEmails?: boolean; suppressWinnerEmail?: boolean; suppressSms?: boolean;
+    action?: 'send-winner-email';
+  };
+  const month       = body.month ?? currentMonth();
+  const dryRun      = body.dryRun === true;
+  const suppressSms = body.suppressSms === true;
+  // Hold-and-verify is the default: record the winner, send nothing, and wait
+  // for the admin to release the emails via the `send-winner-email` action.
+  // (suppressWinnerEmail kept for backward compatibility — it also holds.)
+  const holdEmails  = body.holdEmails !== false && body.suppressWinnerEmail !== false;
 
   if (!/^\d{4}-\d{2}$/.test(month)) {
     return NextResponse.json({ error: 'Invalid month format. Use YYYY-MM.' }, { status: 400 });
+  }
+
+  // ── Action: release the held winner + results emails for an already-recorded
+  //    draw, after the admin has verified the winner in the panel. ──────────────
+  if (body.action === 'send-winner-email') {
+    const history = await getDrawHistory();
+    const draw    = history.find((d) => d.month === month);
+    if (!draw) {
+      return NextResponse.json({ error: `No recorded draw for ${month}.` }, { status: 404 });
+    }
+    void fireDrawNotifications({
+      month,
+      winner:       { userId: draw.winnerId, name: draw.winnerName, email: draw.winnerEmail, entryCount: draw.entryCount },
+      totalEntries: draw.totalEntries,
+      drawnAt:      draw.drawnAt,
+      notes:        draw.notes ?? null,
+      suppressSms,
+    });
+    return NextResponse.json({ ok: true, sent: true });
   }
 
   try {
@@ -127,164 +300,21 @@ export async function POST(req: Request) {
 
     const draw   = await recordDraw(result, body.notes);
 
-    // ── Fire-and-forget notifications ────────────────────────────────────
-    // Neither failure should roll back or block the draw response.
-    const monthLabel  = fmtMonth(month);
-    const { currentTier } = await getCurrentPrizeTier();
-    const prize       = currentTier.prize;   // scales automatically with subscriber count
-    const webhookUrl  = process.env.GHL_WINNER_WEBHOOK_URL;
+    // Hold-and-verify (default): record the winner, send nothing, and wait for
+    // the admin to release the emails via the `send-winner-email` action after
+    // verifying the winner. Pass holdEmails:false to auto-send at draw time.
+    if (!holdEmails) {
+      void fireDrawNotifications({
+        month,
+        winner:       result.winner,
+        totalEntries: result.totalEntries,
+        drawnAt:      draw.drawnAt,
+        notes:        draw.notes ?? null,
+        suppressSms,
+      });
+    }
 
-    // Build the anonymised winner label for non-winner emails:
-    // "Madlon P. — Orlando, FL"  (first name + last initial — city comes from
-    // the notes field if provided, otherwise omitted)
-    const [wFirst, ...wRest] = result.winner.name.trim().split(' ');
-    const wLastInitial = wRest.length > 0 ? ` ${wRest[wRest.length - 1][0]}.` : '';
-    const winnerLabel = `${wFirst}${wLastInitial}`;
-
-    // "May 2026" → next month label for the "next drawing" prompt
-    const [mYear, mMo] = month.split('-').map(Number);
-    const nextMo   = mMo === 12 ? 1 : mMo + 1;
-    const nextYear = mMo === 12 ? mYear + 1 : mYear;
-    const MONTH_NAMES = [
-      'January','February','March','April','May','June',
-      'July','August','September','October','November','December',
-    ];
-    const nextDrawMonth = `${MONTH_NAMES[nextMo - 1]} ${nextYear}`;
-
-    // Fetch all entrants for the non-winner batch (already computed in draw)
-    const allEntrants = await getEligibleEntrants(month);
-    const nonWinners  = allEntrants.filter((e) => e.userId !== result.winner.userId);
-
-    void Promise.allSettled([
-      // 1. Branded winner email (skipped if suppressWinnerEmail is true)
-      suppressWinnerEmail
-        ? Promise.resolve()
-        : sendMail({
-        to:      result.winner.email,
-        subject: `🏆 You won the ${monthLabel} GasCap™ Gas Card!`,
-        html:    winnerNotificationEmailHtml(
-                   result.winner.name,
-                   month,
-                   result.winner.entryCount,
-                   result.totalEntries,
-                   prize,
-                 ),
-        text: [
-          `Congratulations ${result.winner.name}!`,
-          `You won the ${monthLabel} GasCap™ Gas Card Giveaway (${prize}).`,
-          `Your ${prize} Visa prepaid card — use it at the pump or anywhere Visa is accepted — will be sent within 7 days.`,
-          `Reply to confirm receipt or email support@gascap.app with questions.`,
-          `You must respond within 3 days to claim your prize.`,
-        ].join('\n\n'),
-      }).catch((err) => console.error('[sweepstakes] winner email failed:', err)),
-
-      // 2. Non-winner results emails — staggered 200 ms apart to avoid burst limits
-      (async () => {
-        for (const entrant of nonWinners) {
-          await sendMail({
-            to:      entrant.email,
-            subject: `${monthLabel} Drawing Results — GasCap™`,
-            html:    nonWinnerNotificationEmailHtml(
-                       entrant.name.split(' ')[0] ?? entrant.name,
-                       winnerLabel,
-                       month,
-                       entrant.entryCount,
-                       result.totalEntries,
-                       nextDrawMonth,
-                       entrant.plan,
-                       prize,
-                     ),
-            text: [
-              `Hi ${entrant.name.split(' ')[0] ?? entrant.name},`,
-              `The ${monthLabel} GasCap™ drawing just wrapped — congratulations to ${winnerLabel} who won the ${prize} Visa prepaid card!`,
-              `You had ${entrant.entryCount} ${entrant.entryCount === 1 ? 'entry' : 'entries'} this month.`,
-              `To earn more entries for ${nextDrawMonth}: open GasCap™ every day (1 entry/day, up to 31), and build your streak for bonus entries (7 days = +2, 30 days = +5, 90 days = +10).`,
-              `Next drawing is on or about the 5th of ${nextDrawMonth}.`,
-              `Open the app: https://gascap.app`,
-            ].join('\n\n'),
-          }).catch((err) =>
-            console.error(`[sweepstakes] non-winner email failed for ${entrant.email}:`, err),
-          );
-          await new Promise((r) => setTimeout(r, 200));
-        }
-      })(),
-
-      // 3. Tremendous — intentionally NOT fired here.
-      //    Card delivery is deferred to PATCH (mark winner confirmed) so we never
-      //    issue a reward to a winner who forfeits or cannot be reached.
-      //    See PATCH handler below.
-      Promise.resolve(),
-
-      // 4. GHL — upsert winner as a contact so workflows & follow-up can fire
-      //    Uses the same PIT token stored in GHL_API_KEY.
-      //    Idempotent: if the contact already exists it is updated, not duplicated.
-      (() => {
-        const ghlKey    = process.env.GHL_API_KEY;
-        const locationId = process.env.GHL_LOCATION_ID ?? 'CvoeirX6lIeXP021VqmY';
-        if (!ghlKey) {
-          console.warn('[sweepstakes] GHL_API_KEY not set — skipping GHL contact upsert');
-          return Promise.resolve();
-        }
-        const [wFn, ...wLn] = result.winner.name.trim().split(' ');
-        const winnerTagName = `gascap-sweepstakes-winner-${monthLabel.toLowerCase().replace(/\s+/g, '-')}`;
-        return fetch('https://services.leadconnectorhq.com/contacts/upsert', {
-          method:  'POST',
-          headers: {
-            'Authorization': `Bearer ${ghlKey}`,
-            'Content-Type':  'application/json',
-            'Version':       '2021-07-28',
-          },
-          body: JSON.stringify({
-            locationId,
-            email:     result.winner.email,
-            firstName: wFn,
-            lastName:  wLn.join(' '),
-            tags:      ['giveaway-winner', winnerTagName],
-            source:    'GasCap Sweepstakes',
-          }),
-        })
-          .then(async (r) => {
-            if (!r.ok) {
-              const err = await r.text();
-              console.error('[sweepstakes] GHL contact upsert failed:', err);
-            } else {
-              console.log(`[sweepstakes] GHL contact upserted for winner ${result.winner.email}`);
-            }
-          })
-          .catch((err) => console.error('[sweepstakes] GHL contact upsert fetch failed:', err));
-      })(),
-
-      // 5. GHL webhook → VA follow-up workflow
-      webhookUrl
-        ? fetch(webhookUrl, {
-            method:  'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              firstName:    result.winner.name.split(' ')[0] ?? result.winner.name,
-              lastName:     result.winner.name.split(' ').slice(1).join(' ') ?? '',
-              email:        result.winner.email,
-              phone:        '',        // not stored — VA can follow up
-              month,
-              monthLabel,
-              entryCount:   result.winner.entryCount,
-              totalEntries: result.totalEntries,
-              prize,
-              drawnAt:      draw.drawnAt,
-              notes:        draw.notes ?? '',
-              // GHL tag fields — use these directly in your workflow
-              // Primary winner tag, e.g. "gascap-sweepstakes-winner-april-2026"
-              winnerTag:    `gascap-sweepstakes-winner-${monthLabel.toLowerCase().replace(' ', '-')}`,
-              // Alternate winner tag if primary forfeits within 3 days
-              alternateTag: `gascap-sweepstakes-alternate-${monthLabel.toLowerCase().replace(' ', '-')}`,
-              // SMS flag — GHL workflow should only send winner SMS when this is true
-              sendSms:      !suppressSms,
-            }),
-          }).catch((err) => console.error('[sweepstakes] GHL webhook failed:', err))
-        : Promise.resolve(),
-    ]);
-    // ─────────────────────────────────────────────────────────────────────
-
-    return NextResponse.json({ ok: true, draw });
+    return NextResponse.json({ ok: true, draw, held: holdEmails });
   } catch (err) {
     const msg = String(err);
     // Unique constraint = draw already run for this month
