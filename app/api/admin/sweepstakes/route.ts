@@ -38,6 +38,7 @@ import {
   markWinnerClaimed,
 } from '@/lib/giveaway';
 import { sendMail, winnerNotificationEmailHtml, nonWinnerNotificationEmailHtml } from '@/lib/email';
+import { findById } from '@/lib/users';
 
 /** "YYYY-MM" → "April 2026" */
 function fmtMonth(m: string): string {
@@ -96,6 +97,13 @@ async function fireDrawNotifications(opts: {
 
   const allEntrants = await getEligibleEntrants(month);
   const nonWinners  = allEntrants.filter((e) => e.userId !== winner.userId);
+
+  // Pull the winner's phone + SMS consent so the GHL contact can drive an SMS
+  // workflow. Phone is pushed when present; sms-opt-in is tagged when granted so
+  // the GHL workflow can gate promotional sends on consent.
+  const winnerUser = await findById(winner.userId).catch(() => null);
+  const winnerPhone   = winnerUser?.phone?.trim() || '';
+  const winnerSmsOptIn = winnerUser?.smsOptIn === true;
 
   await Promise.allSettled([
     // 1. Branded winner email
@@ -160,7 +168,12 @@ async function fireDrawNotifications(opts: {
           email:     winner.email,
           firstName: wFn,
           lastName:  wLn.join(' '),
-          tags:      ['giveaway-winner', winnerTagName],
+          ...(winnerPhone ? { phone: winnerPhone } : {}),
+          tags:      [
+            'giveaway-winner',
+            winnerTagName,
+            ...(winnerSmsOptIn ? ['sms-opt-in'] : []),
+          ],
           source:    'GasCap Sweepstakes',
         }),
       })
@@ -180,7 +193,8 @@ async function fireDrawNotifications(opts: {
             firstName:    winner.name.split(' ')[0] ?? winner.name,
             lastName:     winner.name.split(' ').slice(1).join(' ') ?? '',
             email:        winner.email,
-            phone:        '',
+            phone:        winnerPhone,
+            smsOptIn:     winnerSmsOptIn,
             month,
             monthLabel,
             entryCount:   winner.entryCount,
@@ -572,7 +586,17 @@ export async function PATCH(req: Request) {
   }
 
   try {
-    const draw = await markWinnerClaimed(month);
+    // Load the draw WITHOUT marking it yet — we only mark it claimed if the card
+    // actually goes out (or Tremendous isn't configured / manual fulfillment).
+    const history  = await getDrawHistory();
+    const existing = history.find((d) => d.month === month);
+    if (!existing) {
+      return NextResponse.json({ error: `No recorded draw for ${month}.` }, { status: 404 });
+    }
+    // Idempotency guard: already confirmed → do NOT re-issue a card.
+    if (existing.claimedAt) {
+      return NextResponse.json({ ok: true, alreadyConfirmed: true, claimedAt: existing.claimedAt });
+    }
 
     // ── Tremendous card delivery ─────────────────────────────────────────────
     // Fetch the prize amount from the tier engine (not stored on the draw record).
@@ -582,9 +606,10 @@ export async function PATCH(req: Request) {
 
     const tremendousKey        = process.env.TREMENDOUS_API_KEY;
     const tremendousCampaignId = process.env.TREMENDOUS_CAMPAIGN_ID;
+    const tremendousConfigured = Boolean(tremendousKey && tremendousCampaignId);
 
-    if (!tremendousKey || !tremendousCampaignId) {
-      console.warn('[sweepstakes/confirm] Tremendous env vars not set — skipping card delivery');
+    if (!tremendousConfigured) {
+      console.warn('[sweepstakes/confirm] Tremendous env vars not set — skipping card delivery (manual fulfillment)');
       tremendousError = 'TREMENDOUS_API_KEY or TREMENDOUS_CAMPAIGN_ID not configured';
     } else {
       try {
@@ -607,8 +632,8 @@ export async function PATCH(req: Request) {
               rewards: [{
                 campaign_id: tremendousCampaignId,
                 recipient: {
-                  name:  draw.winnerName,
-                  email: draw.winnerEmail,
+                  name:  existing.winnerName,
+                  email: existing.winnerEmail,
                 },
                 value: {
                   denomination,
@@ -627,7 +652,7 @@ export async function PATCH(req: Request) {
             tremendousOrderId = tData.order?.id;
             tremendousSent    = true;
             console.log(
-              `[sweepstakes/confirm] Tremendous card sent to ${draw.winnerEmail}` +
+              `[sweepstakes/confirm] Tremendous card sent to ${existing.winnerEmail}` +
               ` (${prize}) — order ${tremendousOrderId ?? 'unknown'}`,
             );
           }
@@ -639,14 +664,26 @@ export async function PATCH(req: Request) {
     }
     // ────────────────────────────────────────────────────────────────────────
 
+    // Card failed while Tremendous IS configured → do NOT mark claimed, so the
+    // admin can fix the issue (e.g. funding/campaign) and retry the button.
+    if (tremendousConfigured && !tremendousSent) {
+      return NextResponse.json(
+        { ok: false, confirmed: false, tremendousSent: false, tremendousError },
+        { status: 502 },
+      );
+    }
+
+    // Card sent (or Tremendous not configured → manual fulfillment): mark claimed.
+    const draw = await markWinnerClaimed(month);
     return NextResponse.json({
-      ok:              true,
-      claimedAt:       draw.claimedAt,
+      ok:                  true,
+      claimedAt:           draw.claimedAt,
+      tremendousConfigured,
       tremendousSent,
-      ...(tremendousOrderId ? { tremendousOrderId }       : {}),
-      ...(tremendousError   ? { tremendousError }         : {}),
+      ...(tremendousOrderId ? { tremendousOrderId } : {}),
+      ...(tremendousError   ? { tremendousError }   : {}),
     });
   } catch {
-    return NextResponse.json({ error: 'Draw not found or already confirmed' }, { status: 404 });
+    return NextResponse.json({ error: 'Draw not found or update failed.' }, { status: 404 });
   }
 }

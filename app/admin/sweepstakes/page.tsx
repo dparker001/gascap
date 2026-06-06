@@ -553,11 +553,25 @@ export default function SweepstakesAdminPage() {
                   ) : (
                     <button
                       onClick={async () => {
-                        if (!confirm(`Mark ${d.winnerName} as having confirmed receipt for ${fmtMonth(d.month)}?`)) return;
-                        await fetch(`/api/admin/sweepstakes?month=${d.month}`, {
+                        if (!confirm(`Mark ${d.winnerName} as having confirmed receipt for ${fmtMonth(d.month)}?\n\nThis attempts to issue the prepaid card via Tremendous.`)) return;
+                        const res = await fetch(`/api/admin/sweepstakes?month=${d.month}`, {
                           method: 'PATCH',
                           headers: { 'x-admin-password': savedPw },
                         });
+                        const data = await res.json().catch(() => ({})) as {
+                          ok?: boolean; tremendousConfigured?: boolean; tremendousSent?: boolean;
+                          tremendousOrderId?: string; tremendousError?: string; error?: string; alreadyConfirmed?: boolean;
+                        };
+                        if (data.alreadyConfirmed) {
+                          alert('Already confirmed — no card re-issued.');
+                        } else if (!res.ok || data.ok === false) {
+                          // Card failed and the winner was NOT marked confirmed — safe to retry.
+                          alert(`⚠️ Card NOT sent — winner left as "awaiting confirmation" so you can retry.\n\nReason: ${data.tremendousError ?? data.error ?? res.status}`);
+                        } else if (data.tremendousSent) {
+                          alert(`✅ Confirmed. Prepaid card sent via Tremendous${data.tremendousOrderId ? ` (order ${data.tremendousOrderId})` : ''}.`);
+                        } else {
+                          alert('✅ Marked confirmed. Tremendous is not configured — issue the card manually.');
+                        }
                         await loadHistory(savedPw);
                       }}
                       className="text-[10px] font-bold text-amber-600 border border-amber-300
