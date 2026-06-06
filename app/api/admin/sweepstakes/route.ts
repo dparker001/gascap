@@ -99,7 +99,7 @@ async function fireDrawNotifications(opts: {
   const nonWinners  = allEntrants.filter((e) => e.userId !== winner.userId);
 
   // Pull the winner's phone + SMS consent so the GHL contact can drive an SMS
-  // workflow. Phone is pushed when present; sms-opt-in is tagged when granted so
+  // workflow. Phone is pushed when present; gascap-sms-optin is tagged when granted so
   // the GHL workflow can gate promotional sends on consent.
   const winnerUser = await findById(winner.userId).catch(() => null);
   const winnerPhone   = winnerUser?.phone?.trim() || '';
@@ -172,7 +172,7 @@ async function fireDrawNotifications(opts: {
           tags:      [
             'giveaway-winner',
             winnerTagName,
-            ...(winnerSmsOptIn ? ['sms-opt-in'] : []),
+            ...(winnerSmsOptIn ? ['gascap-sms-optin'] : []),
           ],
           source:    'GasCap Sweepstakes',
         }),
