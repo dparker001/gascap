@@ -14,10 +14,14 @@ export const GA_ID: string = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID ?? '';
 // secret — they ship to the client anyway) so conversion tracking works with no
 // env config. Either can still be overridden via NEXT_PUBLIC_GOOGLE_ADS_ID /
 // NEXT_PUBLIC_GOOGLE_ADS_SIGNUP_LABEL if the conversion action is ever recreated.
+// NOTE: use `||` (not `??`) so an empty-string env override still falls back to
+// the hardcoded default. `??` only catches null/undefined, so a blank
+// NEXT_PUBLIC_GOOGLE_ADS_ID in the deploy env left GADS_ID = '' — which silently
+// disabled the Ads tag + the sign-up conversion entirely.
 export const GADS_ID: string =
-  process.env.NEXT_PUBLIC_GOOGLE_ADS_ID ?? 'AW-18207815390';
+  process.env.NEXT_PUBLIC_GOOGLE_ADS_ID || 'AW-18207815390';
 export const GADS_SIGNUP_LABEL: string =
-  process.env.NEXT_PUBLIC_GOOGLE_ADS_SIGNUP_LABEL ?? 'VJTjCKyqhrgcEN7tlOpD';
+  process.env.NEXT_PUBLIC_GOOGLE_ADS_SIGNUP_LABEL || 'VJTjCKyqhrgcEN7tlOpD';
 
 declare global {
   interface Window {
