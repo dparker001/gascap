@@ -14,18 +14,20 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const publicDir = join(__dirname, '..', 'public');
 mkdirSync(publicDir, { recursive: true });
 
-function makeSvg(size) {
+function makeSvg(size, { rounded = true, padFactor = 0.07 } = {}) {
   const ART_W = 100;
   const ART_H = 118;
-  const pad   = size * 0.07;
+  const pad   = size * padFactor;
   const s     = Math.min((size - pad * 2) / ART_W, (size - pad * 2) / ART_H);
   const ox    = (size - ART_W * s) / 2;
   const oy    = (size - ART_H * s) / 2;
-  const r     = Math.round(size * 0.18);
+  // App Store icons must be square (Apple applies its own mask); PWA / maskable /
+  // Android adaptive sources keep the rounded look. rounded:false → square corners.
+  const r     = rounded ? Math.round(size * 0.18) : 0;
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}">
 
-  <!-- White rounded background -->
+  <!-- White background (opaque — App Store icons must have no transparency) -->
   <rect width="${size}" height="${size}" rx="${r}" fill="white"/>
 
   <g transform="translate(${ox.toFixed(2)},${oy.toFixed(2)}) scale(${s.toFixed(5)})">
@@ -85,15 +87,25 @@ function makeSvg(size) {
 }
 
 const sizes = [
-  { file: 'icon-192.png',         size: 192 },
-  { file: 'icon-512.png',         size: 512 },
-  { file: 'apple-touch-icon.png', size: 180 },
+  // PWA / web icons (rounded white bg)
+  { file: 'icon-192.png',          size: 192 },
+  { file: 'icon-512.png',          size: 512 },
+  { file: 'apple-touch-icon.png',  size: 180 },
+
+  // Store masters (generated into public/store-icons/ — used by PWABuilder for
+  // Android and @capacitor/assets for iOS; they derive every platform size + the
+  // Android adaptive icon from these).
+  { file: 'store-icons/icon-1024.png',          size: 1024, opts: { rounded: false } }, // App Store master (square, opaque)
+  { file: 'store-icons/icon-maskable-1024.png', size: 1024, opts: { padFactor: 0.18 } }, // maskable / adaptive source (safe zone)
+  { file: 'store-icons/icon-maskable-512.png',  size: 512,  opts: { padFactor: 0.18 } }, // PWA manifest maskable
 ];
 
-for (const { file, size } of sizes) {
-  const svg = Buffer.from(makeSvg(size));
+mkdirSync(join(publicDir, 'store-icons'), { recursive: true });
+
+for (const { file, size, opts } of sizes) {
+  const svg = Buffer.from(makeSvg(size, opts));
   await sharp(svg).png().toFile(join(publicDir, file));
   console.log(`✓ ${file}  (${size}×${size})`);
 }
 
-console.log('\nAll PWA icons generated successfully.');
+console.log('\nAll icons generated successfully (PWA + store masters).');
