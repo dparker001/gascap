@@ -6,12 +6,16 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useTranslation } from '@/contexts/LanguageContext';
 import BrandBar from '@/components/BrandBar';
+import { useNativePlatform } from '@/hooks/useIsNative';
 
 function SignInForm() {
   const router       = useRouter();
   const searchParams = useSearchParams();
   const verified     = searchParams.get('verified') === 'success';
   const { t }        = useTranslation();
+  // Apple requires "Sign in with Apple" if you offer other social logins. For v1
+  // we simply hide Google login inside the iOS app (email/password only there).
+  const hideGoogle   = useNativePlatform() === 'ios';
 
   // Safe internal redirect target (e.g. /redeem?code=…, /upgrade). Ignores external URLs.
   const nextRaw  = searchParams.get('next');
@@ -78,26 +82,30 @@ function SignInForm() {
             </div>
           )}
 
-          {/* ── Google Sign-In ──────────────────────────────────────── */}
-          <button
-            type="button"
-            onClick={handleGoogleSignIn}
-            disabled={googleLoading}
-            className="w-full flex items-center justify-center gap-3 py-3 px-4
-                       bg-white border border-slate-200 rounded-2xl shadow-sm
-                       hover:bg-slate-50 hover:border-slate-300 transition-all
-                       text-slate-700 font-semibold text-sm disabled:opacity-60"
-          >
-            <GoogleIcon />
-            {googleLoading ? t.signIn.redirecting : t.signIn.continueWithGoogle}
-          </button>
+          {/* ── Google Sign-In (hidden in the iOS app — see hideGoogle) ── */}
+          {!hideGoogle && (
+            <>
+              <button
+                type="button"
+                onClick={handleGoogleSignIn}
+                disabled={googleLoading}
+                className="w-full flex items-center justify-center gap-3 py-3 px-4
+                           bg-white border border-slate-200 rounded-2xl shadow-sm
+                           hover:bg-slate-50 hover:border-slate-300 transition-all
+                           text-slate-700 font-semibold text-sm disabled:opacity-60"
+              >
+                <GoogleIcon />
+                {googleLoading ? t.signIn.redirecting : t.signIn.continueWithGoogle}
+              </button>
 
-          {/* Divider */}
-          <div className="flex items-center gap-3">
-            <div className="flex-1 h-px bg-slate-200" />
-            <span className="text-xs text-slate-400 font-medium">or</span>
-            <div className="flex-1 h-px bg-slate-200" />
-          </div>
+              {/* Divider */}
+              <div className="flex items-center gap-3">
+                <div className="flex-1 h-px bg-slate-200" />
+                <span className="text-xs text-slate-400 font-medium">or</span>
+                <div className="flex-1 h-px bg-slate-200" />
+              </div>
+            </>
+          )}
 
           <form onSubmit={handleSubmit} noValidate className="space-y-4">
             <div>
