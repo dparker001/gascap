@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { PRICING } from '@/lib/stripe';
 import BrandBar from '@/components/BrandBar';
+import Link from 'next/link';
+import { useIsNative } from '@/hooks/useIsNative';
 
 const OCCASIONS = [
   { value: 'gift',        label: '🎁 Just because' },
@@ -20,6 +22,7 @@ const PERKS = [
 ];
 
 export default function GiftPage() {
+  const isNative = useIsNative();
   const [occasion, setOccasion]               = useState('gift');
   const [deliverToRecipient, setDeliver]       = useState(true);
   const [recipientName, setRecipientName]      = useState('');
@@ -53,6 +56,33 @@ export default function GiftPage() {
       setError('Something went wrong. Please try again.');
       setLoading(false);
     }
+  }
+
+  // Gifting a Lifetime is a digital-goods purchase — not allowed in-app under
+  // App Store / Play billing rules. Direct to the web instead.
+  if (isNative) {
+    return (
+      <div className="min-h-screen bg-[#eef1f7] flex flex-col">
+        <BrandBar />
+        <div className="flex-1 px-4 py-12 max-w-md mx-auto w-full flex flex-col items-center justify-center text-center">
+          <div className="bg-white rounded-3xl shadow-card p-8 space-y-4 w-full">
+            <p className="text-4xl" aria-hidden="true">🎁</p>
+            <h1 className="text-xl font-black text-navy-700">Gift GasCap™ Pro on the web</h1>
+            <p className="text-sm text-slate-500 leading-relaxed">
+              GasCap™ Pro gifts can be purchased on the web at{' '}
+              <span className="font-bold text-brand-dark">gascap.app</span> from your browser.
+            </p>
+            <Link
+              href="/"
+              className="block w-full py-3.5 rounded-2xl font-black text-base text-white text-center
+                         bg-gradient-to-r from-[#005F4A] to-[#1EB68F] hover:opacity-95 transition-opacity"
+            >
+              Back to the app
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (

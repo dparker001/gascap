@@ -8,6 +8,7 @@ import { PRICING } from '@/lib/stripe';
 import { useTranslation } from '@/contexts/LanguageContext';
 import { getawayPromoActive, getawayDaysLeft } from '@/lib/getawayPromo';
 import BrandBar from '@/components/BrandBar';
+import { useIsNative } from '@/hooks/useIsNative';
 
 // ── Feature lists are defined inside UpgradePageInner (need t)
 
@@ -41,6 +42,7 @@ function UpgradePageInner() {
 
   const searchParams = useSearchParams();
   const coupon = searchParams.get('coupon') ?? undefined;
+  const isNative = useIsNative();   // no in-app checkout in the native wrappers
   const [loading, setLoading] = useState<'pro-monthly' | 'pro-lifetime' | null>(null);
   const [error,   setError]   = useState('');
 
@@ -72,6 +74,34 @@ function UpgradePageInner() {
     } finally {
       setLoading(null);
     }
+  }
+
+  // In the native apps we don't run Stripe checkout (App Store / Play require
+  // their own billing for digital goods). Pro is managed on the web instead.
+  if (isNative) {
+    return (
+      <div className="min-h-screen bg-[#eef1f7] flex flex-col">
+        <BrandBar />
+        <div className="flex-1 px-4 py-12 max-w-md mx-auto w-full flex flex-col items-center justify-center text-center">
+          <div className="bg-white rounded-3xl shadow-card p-8 space-y-4 w-full">
+            <p className="text-4xl" aria-hidden="true">🌐</p>
+            <h1 className="text-xl font-black text-navy-700">Manage Pro on the web</h1>
+            <p className="text-sm text-slate-500 leading-relaxed">
+              GasCap™ Pro plans are managed on the web. Sign in at{' '}
+              <span className="font-bold text-brand-dark">gascap.app</span> from your browser to
+              start or change a plan — anything you unlock is instantly available here in the app.
+            </p>
+            <Link
+              href="/"
+              className="block w-full py-3.5 rounded-2xl font-black text-base text-white text-center
+                         bg-gradient-to-r from-[#005F4A] to-[#1EB68F] hover:opacity-95 transition-opacity"
+            >
+              Continue with the free app
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (

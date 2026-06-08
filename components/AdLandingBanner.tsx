@@ -24,6 +24,7 @@ import { useTranslation }      from '@/contexts/LanguageContext';
 import { PRICING }             from '@/lib/stripe';
 import { getawayPromoActive }  from '@/lib/getawayPromo';
 import { trackUpgradeClick }   from '@/lib/gtag';
+import { useIsNative }         from '@/hooks/useIsNative';
 
 const SESSION_KEY  = 'gc_ad_popup_shown';      // shown once this session
 const DISMISS_KEY  = 'gc_ad_popup_dismissed';  // ms timestamp of last manual close
@@ -35,6 +36,7 @@ const AUTO_HIDE_MS  = 12000;  // auto-dismiss if the visitor doesn't interact
 export default function AdLandingBanner() {
   const { data: session, status } = useSession();
   const { t } = useTranslation();
+  const isNative = useIsNative();   // suppress the upsell pop-up in native wrappers
   const [show, setShow] = useState(false);
 
   // Decide whether to pop up (waits for the session to resolve first).
@@ -67,7 +69,7 @@ export default function AdLandingBanner() {
     return () => clearTimeout(timer);
   }, [show]);
 
-  if (!show) return null;
+  if (!show || isNative) return null;
 
   // Soft close (backdrop / auto-hide / "Maybe later") — won't show again this
   // session, but may return on a later visit.

@@ -7,6 +7,7 @@ import { setThemePreference, getThemePreference, isDarkMode, type ThemePreferenc
 import { DoorMiniPreview, DOOR_STYLE_LABELS, DOOR_DIRECTION_LABELS } from '@/components/GarageDoor';
 import { useGarageDoorPrefs, type DoorStyle, type DoorDirection } from '@/hooks/useGarageDoorPrefs';
 import { useTranslation } from '@/contexts/LanguageContext';
+import { useIsNative } from '@/hooks/useIsNative';
 
 interface ReferralSummary {
   code:            string;
@@ -56,6 +57,7 @@ function Avatar({ name, color }: { name: string; color: string }) {
 export default function SettingsPage() {
   const { data: session, status } = useSession();
   const { t, locale } = useTranslation();
+  const isNative = useIsNative();   // hide in-app billing/checkout in native wrappers
   const intlLocale = locale === 'es' ? 'es-ES' : 'en-US';
   const AVATAR_COLOR_KEY = 'gascap_avatar_color';
   const [avatarColor,    setAvatarColor]    = useState('bg-amber-500');
@@ -912,15 +914,21 @@ export default function SettingsPage() {
               <p className="text-sm text-slate-500">
                 {t.settings.freePlanDesc}
               </p>
-              <button
-                onClick={() => handleUpgrade('pro')}
-                disabled={portalLoading}
-                className="flex items-center justify-between w-full py-3 px-4 rounded-2xl
-                           bg-amber-500 hover:bg-amber-400 text-white font-bold text-sm transition-colors disabled:opacity-50"
-              >
-                <span>{t.settings.upgradeToProBtn}</span>
-                <span>{t.settings.proPriceArrow}</span>
-              </button>
+              {isNative ? (
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Upgrade to GasCap™ Pro on the web at <span className="font-semibold text-slate-500">gascap.app</span>.
+                </p>
+              ) : (
+                <button
+                  onClick={() => handleUpgrade('pro')}
+                  disabled={portalLoading}
+                  className="flex items-center justify-between w-full py-3 px-4 rounded-2xl
+                             bg-amber-500 hover:bg-amber-400 text-white font-bold text-sm transition-colors disabled:opacity-50"
+                >
+                  <span>{t.settings.upgradeToProBtn}</span>
+                  <span>{t.settings.proPriceArrow}</span>
+                </button>
+              )}
             </>
           )}
 
@@ -940,17 +948,25 @@ export default function SettingsPage() {
               <p className="text-sm text-slate-500">
                 {t.settings.proDesc}
               </p>
-              <button
-                onClick={openPortal}
-                disabled={portalLoading}
-                className="w-full py-3 rounded-2xl border-2 border-slate-200 text-sm font-bold
-                           text-slate-600 hover:border-slate-300 hover:bg-slate-50 transition-colors disabled:opacity-50"
-              >
-                {portalLoading ? t.settings.opening : t.settings.manageBilling}
-              </button>
-              <p className="text-center text-[11px] text-slate-400">
-                {t.settings.manageBillingHint}
-              </p>
+              {isNative ? (
+                <p className="text-center text-[11px] text-slate-400">
+                  Manage your billing on the web at gascap.app.
+                </p>
+              ) : (
+                <>
+                  <button
+                    onClick={openPortal}
+                    disabled={portalLoading}
+                    className="w-full py-3 rounded-2xl border-2 border-slate-200 text-sm font-bold
+                               text-slate-600 hover:border-slate-300 hover:bg-slate-50 transition-colors disabled:opacity-50"
+                  >
+                    {portalLoading ? t.settings.opening : t.settings.manageBilling}
+                  </button>
+                  <p className="text-center text-[11px] text-slate-400">
+                    {t.settings.manageBillingHint}
+                  </p>
+                </>
+              )}
             </>
           )}
 
@@ -967,17 +983,25 @@ export default function SettingsPage() {
                 <span>{t.settings.fleetDashboardBtn}</span>
                 <span>{t.settings.fleetDashboardArrow}</span>
               </Link>
-              <button
-                onClick={openPortal}
-                disabled={portalLoading}
-                className="w-full py-3 rounded-2xl border-2 border-slate-200 text-sm font-bold
-                           text-slate-600 hover:border-slate-300 hover:bg-slate-50 transition-colors disabled:opacity-50"
-              >
-                {portalLoading ? t.settings.opening : t.settings.manageBilling}
-              </button>
-              <p className="text-center text-[11px] text-slate-400">
-                {t.settings.manageBillingHint}
-              </p>
+              {isNative ? (
+                <p className="text-center text-[11px] text-slate-400">
+                  Manage your billing on the web at gascap.app.
+                </p>
+              ) : (
+                <>
+                  <button
+                    onClick={openPortal}
+                    disabled={portalLoading}
+                    className="w-full py-3 rounded-2xl border-2 border-slate-200 text-sm font-bold
+                               text-slate-600 hover:border-slate-300 hover:bg-slate-50 transition-colors disabled:opacity-50"
+                  >
+                    {portalLoading ? t.settings.opening : t.settings.manageBilling}
+                  </button>
+                  <p className="text-center text-[11px] text-slate-400">
+                    {t.settings.manageBillingHint}
+                  </p>
+                </>
+              )}
             </>
           )}
           </div>{/* end plan card */}

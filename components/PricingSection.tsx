@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { PRICING } from '@/lib/stripe';
 import { useTranslation } from '@/contexts/LanguageContext';
 import { getawayPromoActive, getawayDaysLeft } from '@/lib/getawayPromo';
+import { useIsNative } from '@/hooks/useIsNative';
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -45,7 +46,11 @@ export default function PricingSection() {
   const { data: session } = useSession();
   const router            = useRouter();
   const { t }             = useTranslation();
+  const isNative          = useIsNative();
   const [loading, setLoading] = useState<string | null>(null);
+
+  // No in-app purchase in the native wrappers (App Store / Play billing rules).
+  if (isNative) return null;
 
   const userPlan     = (session?.user as { plan?: string })?.plan as PlanTier | undefined ?? 'free';
   const userInterval = (session?.user as { stripeInterval?: string | null })?.stripeInterval ?? null;

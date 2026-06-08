@@ -29,6 +29,7 @@ import { useTranslation }      from '@/contexts/LanguageContext';
 import { PRICING }             from '@/lib/stripe';
 import { getawayPromoActive }  from '@/lib/getawayPromo';
 import { trackUpgradeClick }   from '@/lib/gtag';
+import { useIsNative }         from '@/hooks/useIsNative';
 
 const LAST_KEY   = 'gc_lt_modal_last';   // ms timestamp of last impression
 const COUNT_KEY  = 'gc_lt_modal_count';  // total impressions so far
@@ -41,6 +42,7 @@ const DELAY_MS         = 6000;  // wait after load before popping up
 export default function LifetimeUpgradeModal() {
   const { data: session } = useSession();
   const { t } = useTranslation();
+  const isNative = useIsNative();   // hide in-app purchase in the native wrappers
   const [show,        setShow]        = useState(false);
   const [loading,     setLoading]     = useState(false);
   const [needsVerify, setNeedsVerify] = useState(false);
@@ -82,7 +84,8 @@ export default function LifetimeUpgradeModal() {
     return () => { if (timer) clearTimeout(timer); };
   }, [session]);
 
-  if (!show) return null;
+  // Never surface the in-app purchase prompt inside the native wrappers.
+  if (!show || isNative) return null;
 
   function close() { setShow(false); }
 

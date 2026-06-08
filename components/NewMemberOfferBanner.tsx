@@ -20,10 +20,12 @@ import { PRICING }             from '@/lib/stripe';
 import { NEW_MEMBER_DISCOUNT_USD } from '@/lib/newMemberOffer';
 import { getawayPromoActive }  from '@/lib/getawayPromo';
 import { trackUpgradeClick }   from '@/lib/gtag';
+import { useIsNative }         from '@/hooks/useIsNative';
 
 export default function NewMemberOfferBanner() {
   const { data: session } = useSession();
   const { t } = useTranslation();
+  const isNative = useIsNative();   // hide the in-app discount purchase in native wrappers
   const [daysLeft,    setDaysLeft]    = useState<number | null>(null);
   const [loading,     setLoading]     = useState(false);
   const [needsVerify, setNeedsVerify] = useState(false);
@@ -43,7 +45,7 @@ export default function NewMemberOfferBanner() {
       .catch(() => {});
   }, [session]);
 
-  if (!session?.user || daysLeft === null) return null;
+  if (!session?.user || daysLeft === null || isNative) return null;
 
   const price    = (PRICING.pro.lifetime - NEW_MEMBER_DISCOUNT_USD).toFixed(2);
   const original = PRICING.pro.lifetime.toFixed(2);
