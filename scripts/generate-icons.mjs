@@ -1,12 +1,17 @@
 /**
  * Generates ALL GasCap app icons from the official ORANGE nozzle+gauge brand mark.
- * Source: public/store-icons/source-orange.png (transparent PNG).
- * Background: solid white (opaque — required for the App Store icon).
+ * Source: public/store-icons/source-orange.png — a square neon-orange mark on a
+ * TRANSPARENT background.
+ *
+ * We flatten onto an opaque BLACK background (the chosen look) so the icon is
+ * fully opaque — the App Store rejects icons with any transparency.
  *
  * Run: node scripts/generate-icons.mjs
  *
  * NOTE: The old green/teal "P / pump" mark is retired — never regenerate it.
- * To change the icon, replace source-orange.png and re-run this script.
+ * To change the icon, replace source-orange.png (square) and re-run.
+ * (The in-app header logo public/gascap-icon-raw.png is a SEPARATE transparent
+ *  orange mark and is intentionally NOT regenerated here.)
  */
 import sharp from 'sharp';
 import { mkdirSync } from 'fs';
@@ -19,20 +24,10 @@ const SRC       = join(publicDir, 'store-icons', 'source-orange.png');
 
 mkdirSync(join(publicDir, 'store-icons'), { recursive: true });
 
-const WHITE = { r: 255, g: 255, b: 255, alpha: 1 };   // opaque white background
-
-/**
- * Composite the orange mark, centered with padding, onto a white square.
- * padFactor leaves margin around the mark (larger for maskable safe-zones).
- */
-async function writeIcon(file, size, padFactor) {
-  const pad   = Math.round(size * padFactor);
-  const inner = size - pad * 2;
-  const mark  = await sharp(SRC)
-    .resize(inner, inner, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
-    .toBuffer();
-  await sharp({ create: { width: size, height: size, channels: 4, background: WHITE } })
-    .composite([{ input: mark, gravity: 'center' }])
+async function writeIcon(file, size) {
+  await sharp(SRC)
+    .resize(size, size, { fit: 'cover', position: 'center' })
+    .flatten({ background: { r: 0, g: 0, b: 0 } })  // opaque black bg (no transparency)
     .png()
     .toFile(join(publicDir, file));
   console.log(`✓ ${file}  (${size}×${size})`);
@@ -41,19 +36,19 @@ async function writeIcon(file, size, padFactor) {
 const targets = [
   // Store masters — PWABuilder (Android) + @capacitor/assets (iOS) derive every
   // platform size, including the Android adaptive icon, from these.
-  { file: 'store-icons/icon-1024.png',          size: 1024, pad: 0.12 }, // App Store / Play master
-  { file: 'store-icons/icon-maskable-1024.png', size: 1024, pad: 0.20 }, // maskable / adaptive source (safe zone)
-  { file: 'store-icons/icon-maskable-512.png',  size: 512,  pad: 0.20 },
+  { file: 'store-icons/icon-1024.png',          size: 1024 }, // App Store / Play master
+  { file: 'store-icons/icon-maskable-1024.png', size: 1024 }, // maskable / adaptive source
+  { file: 'store-icons/icon-maskable-512.png',  size: 512  },
 
   // PWA / web icons (referenced by manifest + <head>)
-  { file: 'icon-192.png',          size: 192, pad: 0.16 },
-  { file: 'icon-512.png',          size: 512, pad: 0.16 },
-  { file: 'apple-touch-icon.png',  size: 180, pad: 0.12 },
-  { file: 'favicon.png',           size: 48,  pad: 0.10 },
+  { file: 'icon-192.png',          size: 192 },
+  { file: 'icon-512.png',          size: 512 },
+  { file: 'apple-touch-icon.png',  size: 180 },
+  { file: 'favicon.png',           size: 48  },
 ];
 
-for (const { file, size, pad } of targets) {
-  await writeIcon(file, size, pad);
+for (const { file, size } of targets) {
+  await writeIcon(file, size);
 }
 
-console.log('\nAll icons generated from the orange brand mark (white background).');
+console.log('\nAll icons generated from the orange-on-black brand mark.');
