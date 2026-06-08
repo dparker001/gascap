@@ -24,31 +24,33 @@ const SRC       = join(publicDir, 'store-icons', 'source-orange.png');
 
 mkdirSync(join(publicDir, 'store-icons'), { recursive: true });
 
-async function writeIcon(file, size) {
-  await sharp(SRC)
-    .resize(size, size, { fit: 'cover', position: 'center' })
-    .flatten({ background: { r: 0, g: 0, b: 0 } })  // opaque black bg (no transparency)
-    .png()
-    .toFile(join(publicDir, file));
-  console.log(`✓ ${file}  (${size}×${size})`);
+async function writeIcon(file, size, opaque = true) {
+  let img = sharp(SRC).resize(size, size, { fit: 'cover', position: 'center' });
+  // Opaque black for store/home-screen icons (the App Store rejects transparency).
+  // The browser-tab favicon stays transparent so it looks right on the tab strip.
+  if (opaque) img = img.flatten({ background: { r: 0, g: 0, b: 0 } });
+  await img.png().toFile(join(publicDir, file));
+  console.log(`✓ ${file}  (${size}×${size})${opaque ? '' : '  [transparent]'}`);
 }
 
 const targets = [
   // Store masters — PWABuilder (Android) + @capacitor/assets (iOS) derive every
-  // platform size, including the Android adaptive icon, from these.
+  // platform size, including the Android adaptive icon, from these. Opaque.
   { file: 'store-icons/icon-1024.png',          size: 1024 }, // App Store / Play master
   { file: 'store-icons/icon-maskable-1024.png', size: 1024 }, // maskable / adaptive source
   { file: 'store-icons/icon-maskable-512.png',  size: 512  },
 
-  // PWA / web icons (referenced by manifest + <head>)
+  // PWA / home-screen icons (opaque — these become home-screen app icons)
   { file: 'icon-192.png',          size: 192 },
   { file: 'icon-512.png',          size: 512 },
   { file: 'apple-touch-icon.png',  size: 180 },
-  { file: 'favicon.png',           size: 48  },
+
+  // Browser-tab favicon — TRANSPARENT (a black square looks wrong on the tab strip)
+  { file: 'favicon.png',           size: 48, opaque: false },
 ];
 
-for (const { file, size } of targets) {
-  await writeIcon(file, size);
+for (const { file, size, opaque } of targets) {
+  await writeIcon(file, size, opaque);
 }
 
 console.log('\nAll icons generated from the orange-on-black brand mark.');
