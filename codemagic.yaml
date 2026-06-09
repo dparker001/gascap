@@ -120,10 +120,11 @@ workflows:
     publishing:
       app_store_connect:
         auth: integration
-        # Upload the build to App Store Connect / TestFlight. INTERNAL testers get it
-        # immediately after processing (no beta review needed). We do NOT auto-submit to
-        # EXTERNAL TestFlight beta review (that needs Beta App Review test info filled in
-        # at App Store Connect → TestFlight → Test Information) or to App Store review.
-        # Flip submit_to_testflight back to true once that test info is filled for a public beta.
-        submit_to_testflight: false
+        # Upload to TestFlight AND auto-distribute to our INTERNAL group so the build
+        # lands on testers' phones with no manual "add build to group" step. Distributing
+        # to an INTERNAL group needs NO beta review (that's only for EXTERNAL groups, which
+        # require Beta App Review test info) — so the build stays green.
+        submit_to_testflight: true
+        beta_groups:
+          - GasCap App Testers   # must match the internal group name in App Store Connect exactly
         submit_to_app_store: false

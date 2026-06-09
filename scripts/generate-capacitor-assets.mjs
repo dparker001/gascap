@@ -11,7 +11,7 @@
  *   assets/icon-only.png       1024² — orange mark on OPAQUE GasCap green (iOS app icon; App Store needs opaque)
  *   assets/icon-foreground.png 1024² — transparent orange mark (Android adaptive fg, future)
  *   assets/icon-background.png 1024² — solid GasCap green (Android adaptive bg, future)
- *   assets/splash.png          2732² — orange mark centered on GasCap green (#005F4A)
+ *   assets/splash.png          2732² — lockup (orange mark + "GasCap™" + tagline) on green
  *   assets/splash-dark.png     2732² — same (dark mode identical)
  *
  * Run: node scripts/generate-capacitor-assets.mjs
@@ -49,18 +49,31 @@ await sharp({ create: { width: 1024, height: 1024, channels: 4, background: GREE
   .toFile(join(assetsDir, 'icon-background.png'));
 console.log('✓ assets/icon-foreground.png + icon-background.png');
 
-// Splash — orange mark (~1100²) centered on a 2732² green canvas.
-const logo = await sharp(SRC)
-  .resize(1100, 1100, { fit: 'inside' })
-  .png()
-  .toBuffer();
+// Splash — full brand lockup on a 2732² green canvas: orange mark on top, the
+// "GasCap™" wordmark, and the "Know before you go" tagline (matches the promo
+// video outro). Content is vertically centered so it survives the phone crop.
+const SPLASH = 2732;
+const MARK   = 760;
+const mark = await sharp(SRC).resize(MARK, MARK, { fit: 'inside' }).png().toBuffer();
+const lockupSvg = Buffer.from(`
+<svg width="${SPLASH}" height="${SPLASH}" xmlns="http://www.w3.org/2000/svg">
+  <text x="50%" y="1840" text-anchor="middle"
+        font-family="Helvetica, Arial, sans-serif" font-weight="bold"
+        font-size="240" letter-spacing="2" fill="#FFFFFF">GasCap™</text>
+  <text x="50%" y="1980" text-anchor="middle"
+        font-family="Helvetica, Arial, sans-serif" font-weight="600"
+        font-size="92" fill="#BFE6DB">Know before you go</text>
+</svg>`);
 
 for (const file of ['splash.png', 'splash-dark.png']) {
-  await sharp({ create: { width: 2732, height: 2732, channels: 4, background: GREEN } })
-    .composite([{ input: logo, gravity: 'center' }])
+  await sharp({ create: { width: SPLASH, height: SPLASH, channels: 4, background: GREEN } })
+    .composite([
+      { input: mark, top: 820, left: Math.round((SPLASH - MARK) / 2) },
+      { input: lockupSvg, top: 0, left: 0 },
+    ])
     .png()
     .toFile(join(assetsDir, file));
-  console.log(`✓ assets/${file} (2732² mark on green)`);
+  console.log(`✓ assets/${file} (2732² mark + GasCap™ wordmark + tagline on green)`);
 }
 
 console.log('\nCapacitor asset sources generated from the orange brand mark.');
