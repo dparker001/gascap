@@ -52,13 +52,18 @@ workflows:
           LATEST=$(app-store-connect get-latest-testflight-build-number "$BUNDLE_ID" 2>/dev/null || echo 0)
           agvtool new-version -all $((LATEST + 1))
 
-      - name: Set up code signing (fetch or CREATE cert + profile)
+      - name: Set up code signing (create cert + profile, then apply)
         script: |
-          # First build for this bundle id: no cert/profile exists yet, so --create
-          # makes the iOS distribution certificate + App Store profile via the API key.
+          # First build for this bundle id: no distribution certificate or profile
+          # exists yet. Creating a certificate requires a private key to sign the
+          # certificate request, so generate one and pass it to --create. This makes
+          # BOTH the iOS distribution certificate AND the App Store profile, saves the
+          # .p12 to the keychain, and use-profiles then applies it to the App target.
           keychain initialize
+          openssl genrsa -out /tmp/dist_cert_key.pem 2048
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
             --type IOS_APP_STORE \
+            --certificate-key @file:/tmp/dist_cert_key.pem \
             --create
           keychain add-certificates
           xcode-project use-profiles
