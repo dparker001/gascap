@@ -24,6 +24,7 @@ workflows:
         XCODE_WORKSPACE: "ios/App/App.xcworkspace"
         XCODE_SCHEME: "App"
         BUNDLE_ID: "app.gascap.ios"
+        APP_APPLE_ID: "6761315915"   # numeric App Store Connect app id (for build-number lookup)
       node: 20
       xcode: latest
       cocoapods: default
@@ -63,9 +64,16 @@ workflows:
           cd ios/App
           # Marketing version (CFBundleShortVersionString) — bump per public release
           agvtool new-marketing-version 1.0.0
-          # Build number (CFBundleVersion) — auto-increments from App Store Connect's latest
-          LATEST=$(app-store-connect get-latest-testflight-build-number "$BUNDLE_ID" 2>/dev/null || echo 0)
-          agvtool new-version -all $((LATEST + 1))
+          # Build number (CFBundleVersion) must be UNIQUE per upload. Look up the latest
+          # TestFlight build for the app (by NUMERIC app id, not bundle id) and +1, then
+          # floor at Codemagic's own ever-incrementing $BUILD_NUMBER as a safety net so we
+          # can never re-use a number ("attribute value already used" upload error).
+          LATEST=$(app-store-connect get-latest-testflight-build-number "$APP_APPLE_ID" 2>/dev/null || echo "")
+          [ -z "$LATEST" ] && LATEST=0
+          NEXT=$((LATEST + 1))
+          if [ "${BUILD_NUMBER:-0}" -gt "$NEXT" ]; then NEXT="$BUILD_NUMBER"; fi
+          echo "Latest TestFlight build: $LATEST → setting CFBundleVersion to $NEXT"
+          agvtool new-version -all "$NEXT"
 
       - name: Set up code signing (create cert + profile, then apply)
         script: |
