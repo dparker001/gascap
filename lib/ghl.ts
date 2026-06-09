@@ -76,12 +76,15 @@ export async function upsertGhlContact(input: GhlContactInput): Promise<boolean>
     if (input.plan)   customFields.push({ key: 'gascap_plan',   field_value: input.plan });
     if (input.locale) customFields.push({ key: 'gascap_locale', field_value: input.locale });
 
+    // NOTE: tags are added separately (below), NOT in this upsert body — passing
+    // `tags` to /contacts/upsert OVERWRITES all of a contact's existing tags,
+    // which would wipe new-signup, winner, campaign, and manually-added tags on
+    // every re-sync/backfill. We add tags additively via the tags endpoint.
     const body: Record<string, unknown> = {
       locationId: GHL_LOCATION_ID,
       firstName,
       lastName,
       email:      input.email,
-      tags,
       source:     input.source ?? 'GasCap App',
       ...(customFields.length > 0 ? { customFields } : {}),
       ...(input.phone ? { phone: input.phone } : {}),
@@ -101,7 +104,22 @@ export async function upsertGhlContact(input: GhlContactInput): Promise<boolean>
     }
 
     const data = await res.json() as { contact?: { id?: string } };
-    console.log(`[GHL] Contact upserted: ${input.email} → ${data.contact?.id}`);
+    const contactId = data.contact?.id;
+
+    // Additively ADD tags (does NOT remove existing ones), so backfills/re-syncs
+    // never strip tags applied by the live signup, sweepstakes, or workflows.
+    if (contactId && tags.length > 0) {
+      const tagRes = await fetch(`${GHL_BASE}/contacts/${contactId}/tags`, {
+        method:  'POST',
+        headers: ghlHeaders(),
+        body:    JSON.stringify({ tags }),
+      });
+      if (!tagRes.ok) {
+        console.error('[GHL] add-tags failed:', tagRes.status, await tagRes.text());
+      }
+    }
+
+    console.log(`[GHL] Contact upserted (additive tags): ${input.email} → ${contactId}`);
     return true;
   } catch (err) {
     console.error('[GHL] upsert error:', err);
