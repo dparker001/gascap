@@ -85,12 +85,18 @@ workflows:
           # "requires a provisioning profile". Revoke existing distribution certs first so
           # we always have a free slot. (Safe: revoking a cert does NOT invalidate builds
           # already uploaded to TestFlight; this app's only certs are CI-minted.)
+          # Apple has BOTH a modern "Apple Distribution" (DISTRIBUTION) and a legacy
+          # "iOS Distribution" (IOS_DISTRIBUTION) certificate type — revoke both so we
+          # never miss the ones counting toward the cap.
           echo "Revoking existing distribution certificates to stay under Apple's limit…"
-          app-store-connect certificates list --type IOS_DISTRIBUTION --json 2>/dev/null \
-            | python3 -c "import sys,json; print('\n'.join(c.get('id','') for c in (json.load(sys.stdin) or [])))" 2>/dev/null \
-            | while read -r CID; do
-                [ -n "$CID" ] && echo "  revoking $CID" && app-store-connect certificates delete "$CID" || true
-              done
+          for CTYPE in DISTRIBUTION IOS_DISTRIBUTION; do
+            echo "  checking type $CTYPE"
+            for CID in $(app-store-connect certificates list --type "$CTYPE" --json 2>/dev/null \
+                | python3 -c "import sys,json; print('\n'.join(c.get('id','') for c in (json.load(sys.stdin) or [])))" 2>/dev/null); do
+              echo "  revoking $CTYPE $CID"
+              app-store-connect certificates delete "$CID" || true
+            done
+          done
 
           # Now mint a fresh distribution cert (needs a private key to sign the CSR) +
           # the App Store profile, install to keychain, and apply to the App target.
