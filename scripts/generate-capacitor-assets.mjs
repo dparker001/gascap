@@ -6,10 +6,11 @@
  * mark on a TRANSPARENT background (the one brand icon; never the old green/teal P).
  *
  * Outputs (committed, consumed by `npx capacitor-assets generate` in CI). Filenames
- * follow the @capacitor/assets convention:
- *   assets/icon-only.png       1024² — orange mark on OPAQUE BLACK (iOS app icon; App Store needs opaque)
+ * follow the @capacitor/assets convention. Icon + splash share the GasCap green
+ * (#005F4A) background so the launch feels cohesive (orange-on-green = brand palette):
+ *   assets/icon-only.png       1024² — orange mark on OPAQUE GasCap green (iOS app icon; App Store needs opaque)
  *   assets/icon-foreground.png 1024² — transparent orange mark (Android adaptive fg, future)
- *   assets/icon-background.png 1024² — solid black (Android adaptive bg, future)
+ *   assets/icon-background.png 1024² — solid GasCap green (Android adaptive bg, future)
  *   assets/splash.png          2732² — orange mark centered on GasCap green (#005F4A)
  *   assets/splash-dark.png     2732² — same (dark mode identical)
  *
@@ -29,21 +30,21 @@ const BLACK      = { r: 0, g: 0, b: 0 };
 
 mkdirSync(assetsDir, { recursive: true });
 
-// iOS app icon — orange mark filling a 1024² opaque black square (matches the
-// App Store / Play master produced by generate-icons.mjs).
+// iOS app icon — orange mark filling a 1024² opaque GasCap-green square so it
+// matches the splash background (cohesive launch experience).
 await sharp(SRC)
   .resize(1024, 1024, { fit: 'cover', position: 'center' })
-  .flatten({ background: BLACK })
+  .flatten({ background: GREEN })
   .png()
   .toFile(join(assetsDir, 'icon-only.png'));
-console.log('✓ assets/icon-only.png (1024² orange on black)');
+console.log('✓ assets/icon-only.png (1024² orange on GasCap green)');
 
-// Android adaptive sources (future): transparent mark over solid black.
+// Android adaptive sources (future): transparent mark over solid GasCap green.
 await sharp(SRC)
   .resize(1024, 1024, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
   .png()
   .toFile(join(assetsDir, 'icon-foreground.png'));
-await sharp({ create: { width: 1024, height: 1024, channels: 4, background: BLACK } })
+await sharp({ create: { width: 1024, height: 1024, channels: 4, background: GREEN } })
   .png()
   .toFile(join(assetsDir, 'icon-background.png'));
 console.log('✓ assets/icon-foreground.png + icon-background.png');
