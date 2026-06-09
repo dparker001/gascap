@@ -45,6 +45,15 @@ workflows:
           # set + LaunchScreen (replaces the default Capacitor placeholder icon).
           npx capacitor-assets generate --ios
 
+      - name: Mark app as export-compliance exempt (HTTPS only)
+        script: |
+          # GasCap only uses standard HTTPS (exempt encryption). Setting this key
+          # auto-answers the TestFlight/App Store "export compliance" question so it
+          # never prompts on upload.
+          PLIST="ios/App/App/Info.plist"
+          /usr/libexec/PlistBuddy -c "Add :ITSAppUsesNonExemptEncryption bool false" "$PLIST" \
+            || /usr/libexec/PlistBuddy -c "Set :ITSAppUsesNonExemptEncryption false" "$PLIST"
+
       - name: Install CocoaPods dependencies
         script: |
           cd ios/App && pod install
