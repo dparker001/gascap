@@ -3,6 +3,13 @@ node_modules
 .pnp
 .pnp.js
 
+# Capacitor — the native iOS project is generated fresh in CI (codemagic.yaml),
+# so we don't commit it. (capacitor.config.json IS committed.)
+/ios
+/android
+.capacitor
+*.ipa
+
 # Next.js
 .next/
 out/

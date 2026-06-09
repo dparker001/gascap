@@ -1,0 +1,75 @@
+# Codemagic CI/CD — GasCap iOS (Capacitor shell → TestFlight)
+#
+# This builds the native iOS wrapper that loads the live site (https://www.gascap.app/?native=ios).
+# The iOS Xcode project is generated fresh in CI (`npx cap add ios`) so nothing
+# iOS-specific needs to live in the repo or on a local Mac.
+#
+# ── ONE-TIME SETUP (in the Codemagic web UI) ────────────────────────────────────
+# 1. Team settings → Integrations → App Store Connect → connect your API key
+#    (Issuer ID + Key ID + .p8). Name the integration EXACTLY:  GasCap_ASC
+# 2. App Store Connect → My Apps: "GasCap" app record bound to bundle id app.gascap.ios (already created)
+# 3. Connect this GitHub repo in Codemagic, pick the `ios-capacitor` workflow, Start build.
+# ────────────────────────────────────────────────────────────────────────────────
+
+workflows:
+  ios-capacitor:
+    name: GasCap iOS (Capacitor → TestFlight)
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    integrations:
+      app_store_connect: GasCap_ASC      # ← must match the integration name in Codemagic
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: app.gascap.ios
+      vars:
+        XCODE_WORKSPACE: "ios/App/App.xcworkspace"
+        XCODE_SCHEME: "App"
+        BUNDLE_ID: "app.gascap.ios"
+      node: 20
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: Install npm dependencies
+        script: npm ci
+
+      - name: Generate the iOS project (Capacitor)
+        script: |
+          # Idempotent: add the platform if missing, then sync web assets + plugins.
+          if [ ! -d "ios" ]; then
+            npx cap add ios
+          fi
+          npx cap sync ios
+
+      - name: Install CocoaPods dependencies
+        script: |
+          cd ios/App && pod install
+
+      - name: Set marketing + build number
+        script: |
+          cd ios/App
+          # Marketing version (CFBundleShortVersionString) — bump per public release
+          agvtool new-marketing-version 1.0.0
+          # Build number (CFBundleVersion) — auto-increments from App Store Connect's latest
+          LATEST=$(app-store-connect get-latest-testflight-build-number "$BUNDLE_ID" 2>/dev/null || echo 0)
+          agvtool new-version -all $((LATEST + 1))
+
+      - name: Set up code signing
+        script: |
+          xcode-project use-profiles
+
+      - name: Build the IPA
+        script: |
+          xcode-project build-ipa \
+            --workspace "$XCODE_WORKSPACE" \
+            --scheme "$XCODE_SCHEME"
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+      - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.app
+    publishing:
+      app_store_connect:
+        auth: integration
+        # Upload to TestFlight automatically; we do NOT auto-submit for App Store review.
+        submit_to_testflight: true
+        submit_to_app_store: false
