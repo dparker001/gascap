@@ -6,6 +6,7 @@ import GHLChatWidget         from '@/components/GHLChatWidget';
 import GoogleAnalytics       from '@/components/GoogleAnalytics';
 import DarkModeProvider      from '@/components/DarkModeProvider';
 import PullToRefresh         from '@/components/PullToRefresh';
+import ScrollRestore         from '@/components/ScrollRestore';
 import ErrorBoundary         from '@/components/ErrorBoundary';
 import { LanguageProvider }  from '@/contexts/LanguageContext';
 import OneSignalProvider          from '@/components/OneSignalProvider';
@@ -123,6 +124,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <EmailVerificationBanner />
             <ErrorBoundary>
               <PullToRefresh />
+              <ScrollRestore />
               {children}
               <DailyBonus />
               <CookieConsentBanner />
