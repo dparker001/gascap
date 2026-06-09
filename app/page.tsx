@@ -11,6 +11,7 @@ import CalculatorTabs          from '@/components/CalculatorTabs';
 import FirstCalcNudge          from '@/components/FirstCalcNudge';
 import ToolsPanel              from '@/components/ToolsPanel';
 import PricingSection          from '@/components/PricingSection';
+import { useIsNative }          from '@/hooks/useIsNative';
 import TrialExpiryBanner      from '@/components/TrialExpiryBanner';
 import AnnouncementToast      from '@/components/AnnouncementToast';
 import ReviewsMarquee          from '@/components/ReviewsMarquee';
@@ -148,6 +149,7 @@ function SchemaMarkup() {
 
 function GuestHero() {
   const { t } = useTranslation();
+  const isNative = useIsNative(); // hide the pricing teaser in native wrappers
   const pills = [
     { icon: '⛽', label: t.hero.pill_prices  },
     { icon: '🚗', label: t.hero.pill_rental  },
@@ -210,13 +212,16 @@ function GuestHero() {
           </div>
         </a>
 
-        {/* Pricing teaser — visible above the fold so no one misses it */}
+        {/* Pricing teaser — visible above the fold so no one misses it.
+            Hidden in native wrappers (no in-app purchase / no #pricing target). */}
+        {!isNative && (
         <p className="mt-3 text-[11px] text-white/50 text-center">
           {t.heroPricingTeaser.line} &nbsp;·&nbsp;
           <a href="#pricing" className="text-white/70 underline underline-offset-2 hover:text-white transition-colors">
             {t.heroPricingTeaser.seeAllPlans}
           </a>
         </p>
+        )}
       </div>
     </section>
   );
@@ -544,6 +549,10 @@ export default function Home() {
   const [showPricing, setShowPricing] = useState(false);
   const { data: session, status } = useSession();
   const { t } = useTranslation();
+  // In the native iOS/Android wrappers we hide all in-app purchase UI (App Store /
+  // Play billing rules). PricingSection already returns null on native, so the
+  // landing-page pricing toggles must be hidden too — otherwise they expand into nothing.
+  const isNative = useIsNative();
   const userPlan = (session?.user as { plan?: string })?.plan ?? 'free';
   const isGuest  = !session;
 
@@ -815,6 +824,7 @@ export default function Home() {
             <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
           </div>
         </div>
+        {!isNative && (
         <section className="max-w-6xl mx-auto w-full px-4 lg:px-6 pb-12">
           <button
             onClick={() => setShowPricing((v) => !v)}
@@ -839,6 +849,7 @@ export default function Home() {
           </button>
           {showPricing && <PricingSection />}
         </section>
+        )}
         </>
       )}
 
@@ -890,10 +901,13 @@ export default function Home() {
           <PastWinners />
           <FaqSection />
 
-          {/* Pricing — always visible, anchored so hero "See all plans ↓" scrolls here */}
+          {/* Pricing — always visible, anchored so hero "See all plans ↓" scrolls here.
+              Hidden in native wrappers (no in-app purchase). */}
+          {!isNative && (
           <section id="pricing" className="px-4 pb-8 max-w-6xl mx-auto w-full">
             <PricingSection />
           </section>
+          )}
 
           <GuestCtaBanner />
         </>
