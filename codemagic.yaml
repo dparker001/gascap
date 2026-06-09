@@ -75,14 +75,25 @@ workflows:
           echo "Latest TestFlight build: $LATEST → setting CFBundleVersion to $NEXT"
           agvtool new-version -all "$NEXT"
 
-      - name: Set up code signing (create cert + profile, then apply)
+      - name: Set up code signing (revoke stale certs, mint fresh, apply)
         script: |
-          # First build for this bundle id: no distribution certificate or profile
-          # exists yet. Creating a certificate requires a private key to sign the
-          # certificate request, so generate one and pass it to --create. This makes
-          # BOTH the iOS distribution certificate AND the App Store profile, saves the
-          # .p12 to the keychain, and use-profiles then applies it to the App target.
           keychain initialize
+
+          # Apple caps DISTRIBUTION certificates at ~2-3. We mint a fresh one each run
+          # (the private key is generated in-build and not persisted), so without cleanup
+          # we hit the cap after a couple of builds → "no certificate" → archive fails
+          # "requires a provisioning profile". Revoke existing distribution certs first so
+          # we always have a free slot. (Safe: revoking a cert does NOT invalidate builds
+          # already uploaded to TestFlight; this app's only certs are CI-minted.)
+          echo "Revoking existing distribution certificates to stay under Apple's limit…"
+          app-store-connect certificates list --type IOS_DISTRIBUTION --json 2>/dev/null \
+            | python3 -c "import sys,json; print('\n'.join(c.get('id','') for c in (json.load(sys.stdin) or [])))" 2>/dev/null \
+            | while read -r CID; do
+                [ -n "$CID" ] && echo "  revoking $CID" && app-store-connect certificates delete "$CID" || true
+              done
+
+          # Now mint a fresh distribution cert (needs a private key to sign the CSR) +
+          # the App Store profile, install to keychain, and apply to the App target.
           openssl genrsa -out /tmp/dist_cert_key.pem 2048
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
             --type IOS_APP_STORE \
