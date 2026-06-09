@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useTranslation } from '@/contexts/LanguageContext';
+import { useIsNative } from '@/hooks/useIsNative';
 
 interface UpgradeNudgeProps {
   emoji:    string;
@@ -17,7 +18,12 @@ export default function UpgradeNudge({
   ctaHref = '/#pricing',
 }: UpgradeNudgeProps) {
   const { t } = useTranslation();
+  const isNative = useIsNative();
   const resolvedCta = ctaText ?? t.upgradeNudge.defaultCta;
+
+  // No in-app purchase steering in the native wrappers (App Store / Play anti-steering).
+  // Pro is sold on the web; native users convert via the web + trial emails.
+  if (isNative) return null;
 
   return (
     <div data-nudge className="mt-3 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200

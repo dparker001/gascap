@@ -17,6 +17,7 @@ import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useTranslation } from '@/contexts/LanguageContext';
+import { useIsNative } from '@/hooks/useIsNative';
 
 const WARN_DAYS        = 15;  // show banner when ≤ this many days remain
 const DISMISS_KEY      = 'gc_trial_banner_dismissed';
@@ -24,6 +25,7 @@ const DISMISS_KEY      = 'gc_trial_banner_dismissed';
 export default function TrialExpiryBanner() {
   const { data: session, status } = useSession();
   const { t } = useTranslation();
+  const isNative = useIsNative();
   const [dismissed, setDismissed] = useState(true); // start hidden to avoid flash
 
   useEffect(() => {
@@ -33,6 +35,9 @@ export default function TrialExpiryBanner() {
   }, []);
 
   if (status === 'loading' || dismissed) return null;
+  // Hidden in the native wrappers — no in-app upgrade steering (App Store / Play
+  // anti-steering). Native trial users are nudged to upgrade via email + the web.
+  if (isNative) return null;
 
   const user = session?.user as {
     plan?:           string;
