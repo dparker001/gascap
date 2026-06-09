@@ -282,7 +282,7 @@ export default function AiAdvisor({ embedded = false }: { embedded?: boolean }) 
                       </svg>
                     </button>
                   </div>
-                  <p className="text-[9px] text-slate-300 text-center pb-2">
+                  <p className="text-[11px] text-slate-500 text-center pb-2 leading-snug">
                     AI responses are for informational purposes · Always verify safety-critical vehicle info
                   </p>
                 </>
