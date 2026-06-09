@@ -3,8 +3,9 @@
  * Source: public/store-icons/source-orange.png — a square neon-orange mark on a
  * TRANSPARENT background.
  *
- * We flatten onto an opaque BLACK background (the chosen look) so the icon is
- * fully opaque — the App Store rejects icons with any transparency.
+ * We flatten onto an opaque GasCap-green (#005F4A) background so the icon is
+ * fully opaque (the App Store rejects transparency) AND matches the native
+ * app icon + splash for a cohesive brand. The browser-tab favicon stays transparent.
  *
  * Run: node scripts/generate-icons.mjs
  *
@@ -26,9 +27,10 @@ mkdirSync(join(publicDir, 'store-icons'), { recursive: true });
 
 async function writeIcon(file, size, opaque = true) {
   let img = sharp(SRC).resize(size, size, { fit: 'cover', position: 'center' });
-  // Opaque black for store/home-screen icons (the App Store rejects transparency).
-  // The browser-tab favicon stays transparent so it looks right on the tab strip.
-  if (opaque) img = img.flatten({ background: { r: 0, g: 0, b: 0 } });
+  // Opaque GasCap green (#005F4A) for store/home-screen icons — matches the native
+  // app icon + splash. (App Store rejects transparency.) The browser-tab favicon
+  // stays transparent so it looks right on the tab strip.
+  if (opaque) img = img.flatten({ background: { r: 0, g: 95, b: 74 } });
   await img.png().toFile(join(publicDir, file));
   console.log(`✓ ${file}  (${size}×${size})${opaque ? '' : '  [transparent]'}`);
 }
@@ -53,4 +55,4 @@ for (const { file, size, opaque } of targets) {
   await writeIcon(file, size, opaque);
 }
 
-console.log('\nAll icons generated from the orange-on-black brand mark.');
+console.log('\nAll icons generated from the orange-on-green brand mark.');

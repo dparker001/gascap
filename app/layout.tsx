@@ -24,7 +24,7 @@ export const metadata: Metadata = {
   manifest: '/manifest.json',
   // Google Search Console ownership verification (for Play Console org website check)
   verification: { google: 'pq2eDCNBb57ylg6VfOf5rrusb6hlWMGx_Z-7Y-tu-h8' },
-  icons: { icon: '/favicon.png?v=5', apple: '/apple-touch-icon.png?v=5' },
+  icons: { icon: '/favicon.png?v=6', apple: '/apple-touch-icon.png?v=6' },
   appleWebApp: { capable: true, statusBarStyle: 'default', title: 'GasCap™' },
   alternates: {
     canonical: APP_URL,
