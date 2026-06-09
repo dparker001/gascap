@@ -1,0 +1,30 @@
+{
+  "appId": "app.gascap.ios",
+  "appName": "GasCap",
+  "webDir": "public",
+  "server": {
+    "url": "https://www.gascap.app/?native=ios",
+    "cleartext": false,
+    "allowNavigation": [
+      "www.gascap.app",
+      "gascap.app",
+      "*.gascap.app"
+    ]
+  },
+  "ios": {
+    "contentInset": "always",
+    "backgroundColor": "#005F4A",
+    "limitsNavigationsToAppBoundDomains": false
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 1500,
+      "launchAutoHide": true,
+      "backgroundColor": "#005F4A",
+      "showSpinner": false,
+      "iosSpinnerStyle": "large",
+      "splashFullScreen": true,
+      "splashImmersive": true
+    }
+  }
+}

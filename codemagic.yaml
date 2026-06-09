@@ -1,0 +1,130 @@
+# Codemagic CI/CD — GasCap iOS (Capacitor shell → TestFlight)
+#
+# This builds the native iOS wrapper that loads the live site (https://www.gascap.app/?native=ios).
+# The iOS Xcode project is generated fresh in CI (`npx cap add ios`) so nothing
+# iOS-specific needs to live in the repo or on a local Mac.
+#
+# ── ONE-TIME SETUP (in the Codemagic web UI) ────────────────────────────────────
+# 1. Team settings → Integrations → App Store Connect → connect your API key
+#    (Issuer ID + Key ID + .p8). Name the integration EXACTLY:  GasCap_ASC
+# 2. App Store Connect → My Apps: "GasCap" app record bound to bundle id app.gascap.ios (already created)
+# 3. Connect this GitHub repo in Codemagic, pick the `ios-capacitor` workflow, Start build.
+# ────────────────────────────────────────────────────────────────────────────────
+
+workflows:
+  ios-capacitor:
+    name: GasCap iOS (Capacitor → TestFlight)
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    integrations:
+      app_store_connect: GasCap_ASC      # ← must match the integration name in Codemagic
+                                         # (injects the ASC API creds the signing step uses)
+    environment:
+      vars:
+        XCODE_WORKSPACE: "ios/App/App.xcworkspace"
+        XCODE_SCHEME: "App"
+        BUNDLE_ID: "app.gascap.ios"
+        APP_APPLE_ID: "6761315915"   # numeric App Store Connect app id (for build-number lookup)
+      node: 20
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: Install npm dependencies
+        script: npm ci
+
+      - name: Generate the iOS project (Capacitor)
+        script: |
+          # Idempotent: add the platform if missing, then sync web assets + plugins.
+          if [ ! -d "ios" ]; then
+            npx cap add ios
+          fi
+          npx cap sync ios
+
+      - name: Generate app icon + splash from the orange brand mark
+        script: |
+          # Bakes assets/icon-only.png + assets/splash*.png into the iOS AppIcon
+          # set + LaunchScreen (replaces the default Capacitor placeholder icon).
+          npx capacitor-assets generate --ios
+
+      - name: Mark app as export-compliance exempt (HTTPS only)
+        script: |
+          # GasCap only uses standard HTTPS (exempt encryption). Setting this key
+          # auto-answers the TestFlight/App Store "export compliance" question so it
+          # never prompts on upload.
+          PLIST="ios/App/App/Info.plist"
+          /usr/libexec/PlistBuddy -c "Add :ITSAppUsesNonExemptEncryption bool false" "$PLIST" \
+            || /usr/libexec/PlistBuddy -c "Set :ITSAppUsesNonExemptEncryption false" "$PLIST"
+
+      - name: Install CocoaPods dependencies
+        script: |
+          cd ios/App && pod install
+
+      - name: Set marketing + build number
+        script: |
+          cd ios/App
+          # Marketing version (CFBundleShortVersionString) — bump per public release
+          agvtool new-marketing-version 1.0.0
+          # Build number (CFBundleVersion) must be UNIQUE per upload. Look up the latest
+          # TestFlight build for the app (by NUMERIC app id, not bundle id) and +1, then
+          # floor at Codemagic's own ever-incrementing $BUILD_NUMBER as a safety net so we
+          # can never re-use a number ("attribute value already used" upload error).
+          LATEST=$(app-store-connect get-latest-testflight-build-number "$APP_APPLE_ID" 2>/dev/null || echo "")
+          [ -z "$LATEST" ] && LATEST=0
+          NEXT=$((LATEST + 1))
+          if [ "${BUILD_NUMBER:-0}" -gt "$NEXT" ]; then NEXT="$BUILD_NUMBER"; fi
+          echo "Latest TestFlight build: $LATEST → setting CFBundleVersion to $NEXT"
+          agvtool new-version -all "$NEXT"
+
+      - name: Set up code signing (revoke stale certs, mint fresh, apply)
+        script: |
+          keychain initialize
+
+          # Apple caps DISTRIBUTION certificates at ~2-3. We mint a fresh one each run
+          # (the private key is generated in-build and not persisted), so without cleanup
+          # we hit the cap after a couple of builds → "no certificate" → archive fails
+          # "requires a provisioning profile". Revoke existing distribution certs first so
+          # we always have a free slot. (Safe: revoking a cert does NOT invalidate builds
+          # already uploaded to TestFlight; this app's only certs are CI-minted.)
+          # Apple has BOTH a modern "Apple Distribution" (DISTRIBUTION) and a legacy
+          # "iOS Distribution" (IOS_DISTRIBUTION) certificate type — revoke both so we
+          # never miss the ones counting toward the cap.
+          echo "Revoking existing distribution certificates to stay under Apple's limit…"
+          for CTYPE in DISTRIBUTION IOS_DISTRIBUTION; do
+            echo "  checking type $CTYPE"
+            for CID in $(app-store-connect certificates list --type "$CTYPE" --json 2>/dev/null \
+                | python3 -c "import sys,json; print('\n'.join(c.get('id','') for c in (json.load(sys.stdin) or [])))" 2>/dev/null); do
+              echo "  revoking $CTYPE $CID"
+              app-store-connect certificates delete "$CID" || true
+            done
+          done
+
+          # Now mint a fresh distribution cert (needs a private key to sign the CSR) +
+          # the App Store profile, install to keychain, and apply to the App target.
+          openssl genrsa -out /tmp/dist_cert_key.pem 2048
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE \
+            --certificate-key @file:/tmp/dist_cert_key.pem \
+            --create
+          keychain add-certificates
+          xcode-project use-profiles
+
+      - name: Build the IPA
+        script: |
+          xcode-project build-ipa \
+            --workspace "$XCODE_WORKSPACE" \
+            --scheme "$XCODE_SCHEME"
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+      - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.app
+    publishing:
+      app_store_connect:
+        auth: integration
+        # Upload to TestFlight AND auto-distribute to our INTERNAL group so the build
+        # lands on testers' phones with no manual "add build to group" step. Distributing
+        # to an INTERNAL group needs NO beta review (that's only for EXTERNAL groups, which
+        # require Beta App Review test info) — so the build stays green.
+        submit_to_testflight: true
+        beta_groups:
+          - GasCap App Testers   # must match the internal group name in App Store Connect exactly
+        submit_to_app_store: false
