@@ -39,6 +39,12 @@ workflows:
           fi
           npx cap sync ios
 
+      - name: Generate app icon + splash from the orange brand mark
+        script: |
+          # Bakes assets/icon-only.png + assets/splash*.png into the iOS AppIcon
+          # set + LaunchScreen (replaces the default Capacitor placeholder icon).
+          npx capacitor-assets generate --ios
+
       - name: Install CocoaPods dependencies
         script: |
           cd ios/App && pod install
