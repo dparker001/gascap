@@ -25,7 +25,9 @@ function auth(req: Request): boolean {
   return Boolean(adminPw && header === adminPw);
 }
 
-const BATCH_SIZE = 5; // concurrent GHL requests per batch — conservative to stay under GHL's rate limit
+// Each contact now makes TWO GHL calls (upsert + additive add-tags), so keep the
+// batch small + pause longer to stay under GHL's ~10 req/s limit.
+const BATCH_SIZE = 3; // 3 contacts × 2 calls = ~6 reqs per batch
 
 export async function POST(req: Request) {
   if (!auth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -79,9 +81,9 @@ export async function POST(req: Request) {
       }
     }));
 
-    // Pause between batches to stay under GHL's rate limit
+    // Pause between batches to stay under GHL's rate limit (~6 reqs/batch / 1.1s ≈ 5 req/s)
     if (i + BATCH_SIZE < users.length) {
-      await new Promise((r) => setTimeout(r, 300));
+      await new Promise((r) => setTimeout(r, 1100));
     }
   }
 
