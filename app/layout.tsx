@@ -22,6 +22,8 @@ export const metadata: Metadata = {
     'Free gas calculator that tells you exactly how much fuel you need and what it will cost before you reach the pump. Live local gas prices, rental car return mode, MPG tracking, and AI fuel advisor. No app store needed.',
   metadataBase: new URL(APP_URL),
   manifest: '/manifest.json',
+  // Google Search Console ownership verification (for Play Console org website check)
+  verification: { google: 'pq2eDCNBb57ylg6VfOf5rrusb6hlWMGx_Z-7Y-tu-h8' },
   icons: { icon: '/favicon.png?v=5', apple: '/apple-touch-icon.png?v=5' },
   appleWebApp: { capable: true, statusBarStyle: 'default', title: 'GasCap™' },
   alternates: {
