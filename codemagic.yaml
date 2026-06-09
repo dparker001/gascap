@@ -80,6 +80,10 @@ workflows:
     publishing:
       app_store_connect:
         auth: integration
-        # Upload to TestFlight automatically; we do NOT auto-submit for App Store review.
-        submit_to_testflight: true
+        # Upload the build to App Store Connect / TestFlight. INTERNAL testers get it
+        # immediately after processing (no beta review needed). We do NOT auto-submit to
+        # EXTERNAL TestFlight beta review (that needs Beta App Review test info filled in
+        # at App Store Connect → TestFlight → Test Information) or to App Store review.
+        # Flip submit_to_testflight back to true once that test info is filled for a public beta.
+        submit_to_testflight: false
         submit_to_app_store: false
