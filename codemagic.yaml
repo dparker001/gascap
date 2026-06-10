@@ -72,6 +72,11 @@ workflows:
           </plist>
           PLIST
           echo "Wrote App.entitlements:"; cat ios/App/App/App.entitlements
+          # RELIABLY point the App target at the entitlements file in BOTH build
+          # configs via the xcodeproj gem (shipped with CocoaPods). The earlier
+          # --archive-flags approach didn't stick, so the entitlement never made it
+          # into the signed binary → APNs never issued a token.
+          ruby -e "require 'xcodeproj'; p=Xcodeproj::Project.open('ios/App/App.xcodeproj'); t=p.targets.find{|x| x.name=='App'}; raise 'App target not found' unless t; t.build_configurations.each{|c| c.build_settings['CODE_SIGN_ENTITLEMENTS']='App/App.entitlements'}; p.save; puts '✓ Set CODE_SIGN_ENTITLEMENTS=App/App.entitlements on App target'"
 
       - name: Install CocoaPods dependencies
         script: |
@@ -128,12 +133,24 @@ workflows:
 
       - name: Build the IPA
         script: |
-          # CODE_SIGN_ENTITLEMENTS points the App target at the push entitlements
-          # file we wrote above (relative to the .xcodeproj dir, ios/App/).
           xcode-project build-ipa \
             --workspace "$XCODE_WORKSPACE" \
-            --scheme "$XCODE_SCHEME" \
-            --archive-flags "CODE_SIGN_ENTITLEMENTS=App/App.entitlements"
+            --scheme "$XCODE_SCHEME"
+
+      - name: Verify push entitlement made it into the binary
+        script: |
+          # Definitive check: unzip the signed IPA and print the embedded entitlements.
+          IPA=$(ls build/ios/ipa/*.ipa 2>/dev/null | head -1)
+          rm -rf /tmp/ipacheck && mkdir -p /tmp/ipacheck
+          unzip -q "$IPA" -d /tmp/ipacheck
+          APP=$(ls -d /tmp/ipacheck/Payload/*.app | head -1)
+          echo "── Embedded entitlements for $APP ──"
+          codesign -d --entitlements :- "$APP" 2>/dev/null || true
+          if codesign -d --entitlements :- "$APP" 2>/dev/null | grep -q "aps-environment"; then
+            echo "✅ aps-environment IS present — push entitlement is in the build."
+          else
+            echo "❌ aps-environment is MISSING — push will not work (entitlement not embedded)."
+          fi
     artifacts:
       - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
