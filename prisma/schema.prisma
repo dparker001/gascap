@@ -39,6 +39,9 @@ model User {
   displayName              String?
   priceAlertThreshold      Float?
   lastPriceAlertSentAt     String?
+  // True once we've alerted for the current below-threshold drop; reset when the
+  // price goes back above the threshold. Drives one-alert-per-drop (not daily).
+  priceAlertNotified       Boolean   @default(false)
   loginCount               Int       @default(0)
   lastLoginAt              String?
   fillupReminderDays       Int?

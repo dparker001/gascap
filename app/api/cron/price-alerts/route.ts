@@ -70,45 +70,51 @@ export async function GET(req: Request) {
 
   // ── Load all users ────────────────────────────────────────────────────────
   const allUsers = await getAllUsers();
-  const today    = new Date().toDateString(); // e.g. "Mon May 05 2026"
-
   let sent    = 0;
   let skipped = 0;
+  let rearmed = 0;
 
   for (const user of allUsers) {
-    // Only Pro / Fleet users with a threshold set
-    if (user.plan !== 'pro' && user.plan !== 'fleet') continue;
-    if (!user.priceAlertThreshold)                     continue;
-    if (user.emailOptOut)                              continue;
-    if (!user.email)                                   continue;
+    // Pro only (includes Pro Lifetime + trial — all plan='pro'). Free excluded.
+    if (user.plan !== 'pro')       continue;
+    if (!user.priceAlertThreshold) continue;
 
-    // Price must be below threshold
-    if (currentPrice >= user.priceAlertThreshold) { skipped++; continue; }
+    const below    = currentPrice < user.priceAlertThreshold;
+    const notified = (user as { priceAlertNotified?: boolean }).priceAlertNotified === true;
 
-    // Don't re-send the same calendar day
-    if (
-      user.lastPriceAlertSentAt &&
-      new Date(user.lastPriceAlertSentAt).toDateString() === today
-    ) {
+    // Price is at/above the threshold → re-arm so the NEXT drop alerts again.
+    if (!below) {
+      if (notified) {
+        await prisma.user.update({ where: { id: user.id }, data: { priceAlertNotified: false } });
+        rearmed++;
+      }
       skipped++;
       continue;
     }
 
-    // ── Send email ──────────────────────────────────────────────────────────
+    // Below threshold, but we already alerted for this drop → stay quiet (one per drop).
+    if (notified) { skipped++; continue; }
+
+    // ── New drop → alert on every channel the user is reachable on ───────────
+    const willEmail = !user.emailOptOut && !!user.email;
+    const iosToken  = (user as { iosPushToken?: string | null }).iosPushToken;
+    const willPush  = !!iosToken && apnsConfigured();
+    if (!willEmail && !willPush) { skipped++; continue; }
+
     const firstName = (user.displayName || user.name || 'there').split(' ')[0];
 
     try {
-      await sendMail({
-        to:      user.email,
-        subject: `⛽ Gas prices just dropped — $${currentPrice.toFixed(3)}/gal`,
-        html:    priceAlertEmailHtml(firstName, currentPrice, user.priceAlertThreshold, user.plan ?? 'pro'),
-        text:    `Hi ${firstName}, the US national average gas price is now $${currentPrice.toFixed(3)}/gal — below your $${user.priceAlertThreshold.toFixed(2)} alert. Open GasCap™ to calculate your fill-up: https://www.gascap.app`,
-        unsubscribeUrl: `https://www.gascap.app/settings?tab=alerts`,
-      });
+      if (willEmail) {
+        await sendMail({
+          to:      user.email,
+          subject: `⛽ Gas prices just dropped — $${currentPrice.toFixed(3)}/gal`,
+          html:    priceAlertEmailHtml(firstName, currentPrice, user.priceAlertThreshold, user.plan ?? 'pro'),
+          text:    `Hi ${firstName}, the US national average gas price is now $${currentPrice.toFixed(3)}/gal — below your $${user.priceAlertThreshold.toFixed(2)} alert. Open GasCap™ to calculate your fill-up: https://www.gascap.app`,
+          unsubscribeUrl: `https://www.gascap.app/settings?tab=alerts`,
+        });
+      }
 
-      // ── Native iOS push (in addition to the email) ─────────────────────────
-      const iosToken = (user as { iosPushToken?: string | null }).iosPushToken;
-      if (iosToken && apnsConfigured()) {
+      if (willPush && iosToken) {
         const r = await sendApns(
           iosToken,
           '⛽ Gas prices dropped',
@@ -117,14 +123,15 @@ export async function GET(req: Request) {
         if (!r.ok) console.warn(`[PriceAlerts] push failed for ${user.email}: ${r.status ?? ''} ${r.reason ?? ''}`);
       }
 
-      // Stamp the sent timestamp so we don't re-fire today
+      // Mark notified so we don't re-alert until the price recovers above the
+      // threshold and then drops again (one alert per drop, not daily).
       await prisma.user.update({
         where: { id: user.id },
-        data:  { lastPriceAlertSentAt: new Date().toISOString() },
+        data:  { priceAlertNotified: true, lastPriceAlertSentAt: new Date().toISOString() },
       });
 
       sent++;
-      console.log(`[PriceAlerts] Sent to ${user.email} (price $${currentPrice.toFixed(3)} < threshold $${user.priceAlertThreshold})`);
+      console.log(`[PriceAlerts] Alerted ${user.email} ($${currentPrice.toFixed(3)} < $${user.priceAlertThreshold}) email=${willEmail} push=${willPush}`);
     } catch (err) {
       console.error(`[PriceAlerts] Failed for ${user.email}:`, err);
     }
@@ -135,6 +142,7 @@ export async function GET(req: Request) {
     currentPrice: Math.round(currentPrice * 1000) / 1000,
     sent,
     skipped,
+    rearmed,
     checkedAt:    new Date().toISOString(),
   });
 }
