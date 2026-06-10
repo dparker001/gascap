@@ -57,7 +57,11 @@ export default function GoogleAnalytics() {
               page_title:    document.title,
               send_page_view: true,
             });` : ''}
-            ${GADS_ID ? `gtag('config', '${GADS_ID}');` : ''}
+            ${GADS_ID ? `if (!(!!window.Capacitor || /[?&]native=(ios|android)/.test(location.search) || (function(){try{var p=localStorage.getItem('gc_native_platform');return p==='ios'||p==='android';}catch(e){return false;}})())) {
+              /* Google Ads conversion tag — web only. Off in the native apps so the
+                 App Store privacy answer ("tracking = No") stays honest. GA4 stays on as Analytics. */
+              gtag('config', '${GADS_ID}');
+            }` : ''}
           `,
         }}
       />

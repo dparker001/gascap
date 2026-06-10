@@ -28,6 +28,24 @@ declare global {
     gtag: (...args: unknown[]) => void;
     dataLayer: unknown[];
     fbq:  (...args: unknown[]) => void;
+    Capacitor?: unknown;
+  }
+}
+
+/**
+ * True inside the native iOS/Android wrappers. Ad-tracking (Meta Pixel, Google
+ * Ads conversions) is suppressed there so the App Store / Play privacy answer
+ * ("tracking = No") stays honest. GA4 analytics still runs.
+ */
+function isNativeClient(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    if (window.Capacitor) return true;
+    if (/[?&]native=(ios|android)/.test(window.location.search)) return true;
+    const p = window.localStorage.getItem('gc_native_platform');
+    return p === 'ios' || p === 'android';
+  } catch {
+    return false;
   }
 }
 
@@ -37,6 +55,7 @@ export function fbTrack(
   params?: Record<string, string | number | boolean>
 ) {
   if (typeof window === 'undefined' || !window.fbq) return;
+  if (isNativeClient()) return; // no Meta Pixel tracking in the native apps
   window.fbq('track', event, params ?? {});
 }
 
@@ -73,6 +92,7 @@ export const trackSignUp = () =>
  */
 export function trackGoogleAdsSignup() {
   if (typeof window === 'undefined' || !window.gtag) return;
+  if (isNativeClient()) return; // no ad-tracking in the native apps
   if (!GADS_ID || !GADS_SIGNUP_LABEL) return;
   window.gtag('event', 'conversion', {
     send_to: `${GADS_ID}/${GADS_SIGNUP_LABEL}`,
