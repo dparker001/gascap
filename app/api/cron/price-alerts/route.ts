@@ -16,6 +16,7 @@ import { NextResponse }               from 'next/server';
 import { getAllUsers }                 from '@/lib/users';
 import { sendMail, priceAlertEmailHtml } from '@/lib/email';
 import { prisma }                       from '@/lib/prisma';
+import { sendApns, apnsConfigured }      from '@/lib/apns';
 
 const EIA_KEY = process.env.EIA_API_KEY ?? '';
 
@@ -104,6 +105,17 @@ export async function GET(req: Request) {
         text:    `Hi ${firstName}, the US national average gas price is now $${currentPrice.toFixed(3)}/gal — below your $${user.priceAlertThreshold.toFixed(2)} alert. Open GasCap™ to calculate your fill-up: https://www.gascap.app`,
         unsubscribeUrl: `https://www.gascap.app/settings?tab=alerts`,
       });
+
+      // ── Native iOS push (in addition to the email) ─────────────────────────
+      const iosToken = (user as { iosPushToken?: string | null }).iosPushToken;
+      if (iosToken && apnsConfigured()) {
+        const r = await sendApns(
+          iosToken,
+          '⛽ Gas prices dropped',
+          `National average is $${currentPrice.toFixed(3)}/gal — below your $${user.priceAlertThreshold.toFixed(2)} alert. Tap to calculate your fill-up.`,
+        );
+        if (!r.ok) console.warn(`[PriceAlerts] push failed for ${user.email}: ${r.status ?? ''} ${r.reason ?? ''}`);
+      }
 
       // Stamp the sent timestamp so we don't re-fire today
       await prisma.user.update({
