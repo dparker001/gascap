@@ -37,10 +37,16 @@ export default function NativePushRegistration() {
   useEffect(() => {
     const plat = detectNativePlatform();
     if (plat !== 'ios') return;
-    dbg('mounted', `platform=${plat}`);
     let cleanup: (() => void) | undefined;
 
     (async () => {
+      // Report the running native build number so we know exactly which build is live.
+      try {
+        const { App } = await import('@capacitor/app');
+        const info = await App.getInfo();
+        dbg('mounted', `platform=${plat} build=${info.build} ver=${info.version}`);
+      } catch { dbg('mounted', `platform=${plat} build=?`); }
+
       const { PushNotifications } = await import('@capacitor/push-notifications');
 
       let perm = await PushNotifications.checkPermissions();
