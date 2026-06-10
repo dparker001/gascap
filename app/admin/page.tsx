@@ -593,10 +593,11 @@ export default function AdminPage() {
         headers: { 'x-admin-password': savedPw, 'Content-Type': 'application/json' },
         body:    JSON.stringify({ title: bcastTitle, body: bcastBody, url: bcastUrl || '/', ...(bcastEmail.trim() ? { email: bcastEmail.trim() } : {}) }),
       });
-      const data = await res.json() as { sent?: number; skipped?: number; error?: string };
+      const data = await res.json() as { webRecipients?: number; iosSent?: number; iosFailed?: number; error?: string };
       if (data.error) { setBcastMsg(`❌ ${data.error}`); }
       else {
-        setBcastMsg(`✅ Sent to ${data.sent ?? 0} subscriber(s). ${data.skipped ?? 0} skipped.`);
+        const fail = data.iosFailed ? ` (${data.iosFailed} failed)` : '';
+        setBcastMsg(`✅ Web push: ${data.webRecipients ?? 0} · iOS app: ${data.iosSent ?? 0}${fail}`);
         setBcastTitle('');
         setBcastBody('');
         setBcastUrl('');

@@ -1,6 +1,8 @@
 import { NextResponse }          from 'next/server';
 import { findByEmail }            from '@/lib/users';
 import { sendPushNotification }   from '@/lib/oneSignal';
+import { prisma }                 from '@/lib/prisma';
+import { sendApns, apnsConfigured } from '@/lib/apns';
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? '';
 
@@ -21,16 +23,27 @@ export async function POST(req: Request) {
   if (!title?.trim()) return NextResponse.json({ error: 'Title is required.' }, { status: 400 });
   if (!body?.trim())  return NextResponse.json({ error: 'Message body is required.' }, { status: 400 });
 
-  // If targeting a specific user, resolve their external ID
+  // Resolve targets. externalIds → OneSignal (web push). iosTokens → APNs (native app).
   let externalIds: string[] | undefined;
+  let iosTokens:   string[]  = [];
   if (targetEmail?.trim()) {
     const user = await findByEmail(targetEmail.trim());
     if (!user) {
       return NextResponse.json({ error: `No user found with email: ${targetEmail}` }, { status: 404 });
     }
     externalIds = [user.id];
+    const u = await prisma.user.findUnique({ where: { id: user.id }, select: { iosPushToken: true } });
+    if (u?.iosPushToken) iosTokens = [u.iosPushToken];
+  } else {
+    // Broadcast: every user who has registered a native iOS push token.
+    const rows = await prisma.user.findMany({
+      where:  { iosPushToken: { not: null } },
+      select: { iosPushToken: true },
+    });
+    iosTokens = rows.map((r) => r.iosPushToken).filter((t): t is string => !!t);
   }
 
+  // ── Web push (OneSignal) ───────────────────────────────────────────────────
   const result = await sendPushNotification({
     title: title.trim(),
     body:  body.trim(),
@@ -38,8 +51,25 @@ export async function POST(req: Request) {
     externalIds,
   });
 
-  console.log('[Push] Broadcast result:', result);
-  return NextResponse.json({ recipients: result.recipients ?? 0, errors: result.errors });
+  // ── Native iOS push (APNs) ─────────────────────────────────────────────────
+  let iosSent = 0;
+  let iosFailed = 0;
+  if (apnsConfigured() && iosTokens.length > 0) {
+    const results = await Promise.allSettled(
+      iosTokens.map((t) => sendApns(t, title.trim(), body.trim())),
+    );
+    for (const r of results) {
+      if (r.status === 'fulfilled' && r.value.ok) iosSent++; else iosFailed++;
+    }
+  }
+
+  console.log(`[Push] Broadcast — web recipients: ${result.recipients ?? 0}, iOS sent: ${iosSent}, iOS failed: ${iosFailed}`);
+  return NextResponse.json({
+    webRecipients: result.recipients ?? 0,
+    iosSent,
+    iosFailed,
+    errors: result.errors,
+  });
 }
 
 /** GET /api/push/broadcast — subscriber count via OneSignal API */
