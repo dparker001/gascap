@@ -191,6 +191,7 @@ export default function AdminPage() {
   const [backfillProgress, setBackfillProgress] = useState(0);
   const [lastGhlSync,      setLastGhlSync]      = useState<string | null>(null);
   const [showScrollTop,    setShowScrollTop]    = useState(false);
+  const [showScrollBottom, setShowScrollBottom] = useState(false);
   const topRef = useRef<HTMLDivElement>(null);
 
   // ── Email Preview ─────────────────────────────────────────────────────
@@ -267,9 +268,19 @@ export default function AdminPage() {
   }, [load]);
 
   useEffect(() => {
-    const onScroll = () => setShowScrollTop(window.scrollY > 400);
+    const onScroll = () => {
+      const doc = document.documentElement;
+      setShowScrollTop(window.scrollY > 400);
+      // Show "jump to bottom" while there's still meaningful content below.
+      setShowScrollBottom(window.scrollY + window.innerHeight < doc.scrollHeight - 400);
+    };
+    onScroll(); // set initial state on mount
     window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
+    window.addEventListener('resize', onScroll);
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+    };
   }, []);
 
   // Read last GHL sync timestamp from localStorage on mount
@@ -2216,18 +2227,31 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* Scroll-to-top button */}
-      {showScrollTop && (
-        <button
-          onClick={() => topRef.current?.scrollIntoView({ behavior: 'smooth' })}
-          className="fixed bottom-24 right-6 z-50 w-11 h-11 rounded-full bg-[#005F4A] hover:bg-[#1EB68F]
-                     text-white shadow-lg flex items-center justify-center transition-all duration-200
-                     hover:scale-110 active:scale-95"
-          title="Back to top"
-        >
-          ↑
-        </button>
-      )}
+      {/* Scroll-to-top / scroll-to-bottom buttons */}
+      <div className="fixed bottom-24 right-6 z-50 flex flex-col gap-2">
+        {showScrollTop && (
+          <button
+            onClick={() => topRef.current?.scrollIntoView({ behavior: 'smooth' })}
+            className="w-11 h-11 rounded-full bg-[#005F4A] hover:bg-[#1EB68F]
+                       text-white shadow-lg flex items-center justify-center transition-all duration-200
+                       hover:scale-110 active:scale-95"
+            title="Back to top"
+          >
+            ↑
+          </button>
+        )}
+        {showScrollBottom && (
+          <button
+            onClick={() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' })}
+            className="w-11 h-11 rounded-full bg-[#005F4A] hover:bg-[#1EB68F]
+                       text-white shadow-lg flex items-center justify-center transition-all duration-200
+                       hover:scale-110 active:scale-95"
+            title="Jump to bottom"
+          >
+            ↓
+          </button>
+        )}
+      </div>
     </div>
   );
 }
