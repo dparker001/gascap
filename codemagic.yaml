@@ -78,6 +78,22 @@ workflows:
           # into the signed binary → APNs never issued a token.
           ruby -e "require 'xcodeproj'; p=Xcodeproj::Project.open('ios/App/App.xcodeproj'); t=p.targets.find{|x| x.name=='App'}; raise 'App target not found' unless t; t.build_configurations.each{|c| c.build_settings['CODE_SIGN_ENTITLEMENTS']='App/App.entitlements'}; p.save; puts '✓ Set CODE_SIGN_ENTITLEMENTS=App/App.entitlements on App target'"
 
+      - name: Make AppDelegate forward APNs registration to the push plugin
+        script: |
+          # The capacitor-generated AppDelegate doesn't forward the remote-notification
+          # registration callbacks, so @capacitor/push-notifications never receives the
+          # APNs token (register() succeeds, but no 'registration'/'registrationError'
+          # event ever fires). Inject the two forwarding methods before the class's
+          # final closing brace if they're missing.
+          AD="ios/App/App/AppDelegate.swift"
+          if grep -q "capacitorDidRegisterForRemoteNotifications" "$AD"; then
+            echo "AppDelegate already forwards APNs callbacks — nothing to do."
+          else
+            perl -0777 -pi -e 's/\}\s*\z/\n    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {\n        NotificationCenter.default.post(name: .capacitorDidRegisterForRemoteNotifications, object: deviceToken)\n    }\n\n    func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {\n        NotificationCenter.default.post(name: .capacitorDidFailToRegisterForRemoteNotifications, object: error)\n    }\n}\n/' "$AD"
+            echo "✓ Injected APNs forwarding methods into AppDelegate.swift"
+          fi
+          echo "── AppDelegate.swift ──"; cat "$AD"
+
       - name: Install CocoaPods dependencies
         script: |
           cd ios/App && pod install
