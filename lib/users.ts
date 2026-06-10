@@ -338,6 +338,14 @@ export async function clearStripeSubscriptionId(userId: string): Promise<void> {
   });
 }
 
+/** Store the native iOS (APNs) push token reported by the Capacitor wrapper. */
+export async function setIosPushToken(userId: string, token: string): Promise<void> {
+  await prisma.user.update({
+    where: { id: userId },
+    data:  { iosPushToken: token, iosPushTokenAt: new Date().toISOString() },
+  });
+}
+
 export async function findByStripeCustomer(customerId: string): Promise<StoredUser | undefined> {
   const user = await prisma.user.findFirst({ where: { stripeCustomerId: customerId } });
   return user ? toStoredUser(user) : undefined;

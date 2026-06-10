@@ -17,6 +17,7 @@
     "@anthropic-ai/sdk": "^0.80.0",
     "@capacitor/app": "^6.0.3",
     "@capacitor/core": "^6.2.1",
+    "@capacitor/push-notifications": "^6.0.5",
     "@capacitor/splash-screen": "^6.0.4",
     "@google-analytics/data": "^5.2.1",
     "@prisma/adapter-pg": "^7.7.0",

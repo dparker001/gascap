@@ -55,6 +55,24 @@ workflows:
           /usr/libexec/PlistBuddy -c "Add :ITSAppUsesNonExemptEncryption bool false" "$PLIST" \
             || /usr/libexec/PlistBuddy -c "Set :ITSAppUsesNonExemptEncryption false" "$PLIST"
 
+      - name: Add Push Notifications entitlement
+        script: |
+          # @capacitor/push-notifications needs the aps-environment entitlement.
+          # "production" is correct for App Store / TestFlight builds (they use the
+          # production APNs environment). The provisioning profile already includes
+          # push because the App ID app.gascap.ios has Push Notifications enabled.
+          cat > ios/App/App/App.entitlements <<'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>aps-environment</key>
+            <string>production</string>
+          </dict>
+          </plist>
+          PLIST
+          echo "Wrote App.entitlements:"; cat ios/App/App/App.entitlements
+
       - name: Install CocoaPods dependencies
         script: |
           cd ios/App && pod install
@@ -110,9 +128,12 @@ workflows:
 
       - name: Build the IPA
         script: |
+          # CODE_SIGN_ENTITLEMENTS points the App target at the push entitlements
+          # file we wrote above (relative to the .xcodeproj dir, ios/App/).
           xcode-project build-ipa \
             --workspace "$XCODE_WORKSPACE" \
-            --scheme "$XCODE_SCHEME"
+            --scheme "$XCODE_SCHEME" \
+            --archive-flags "CODE_SIGN_ENTITLEMENTS=App/App.entitlements"
     artifacts:
       - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
