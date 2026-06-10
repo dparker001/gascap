@@ -33,10 +33,12 @@ export default function NativePushRegistration() {
       }
       if (perm.receive !== 'granted') return;
 
-      await PushNotifications.register();
+      // Add the listeners BEFORE register() — iOS fires 'registration' almost
+      // immediately after register(), so a listener added afterwards misses the token.
       const reg = await PushNotifications.addListener('registration', (t) => setToken(t.value));
       const err = await PushNotifications.addListener('registrationError',
         (e) => console.warn('[NativePush] registration error:', e));
+      await PushNotifications.register();
       cleanup = () => { reg.remove(); err.remove(); };
     })().catch((e) => console.warn('[NativePush] setup failed:', e));
 
