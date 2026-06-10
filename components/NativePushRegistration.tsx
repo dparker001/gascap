@@ -38,8 +38,16 @@ export default function NativePushRegistration() {
       const reg = await PushNotifications.addListener('registration', (t) => setToken(t.value));
       const err = await PushNotifications.addListener('registrationError',
         (e) => console.warn('[NativePush] registration error:', e));
+
+      // Deep-link: when the user taps a notification that carries a `url`, navigate
+      // the webview there (use a gascap.app path like "/settings" or a full URL).
+      const act = await PushNotifications.addListener('pushNotificationActionPerformed', (a) => {
+        const url = (a.notification?.data as { url?: string } | undefined)?.url;
+        if (url) { try { window.location.href = url; } catch { /* ignore */ } }
+      });
+
       await PushNotifications.register();
-      cleanup = () => { reg.remove(); err.remove(); };
+      cleanup = () => { reg.remove(); err.remove(); act.remove(); };
     })().catch((e) => console.warn('[NativePush] setup failed:', e));
 
     return () => cleanup?.();

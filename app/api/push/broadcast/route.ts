@@ -55,8 +55,9 @@ export async function POST(req: Request) {
   let iosSent = 0;
   let iosFailed = 0;
   if (apnsConfigured() && iosTokens.length > 0) {
+    const deepLink = url?.trim() || undefined;
     const results = await Promise.allSettled(
-      iosTokens.map((t) => sendApns(t, title.trim(), body.trim())),
+      iosTokens.map((t) => sendApns(t, title.trim(), body.trim(), deepLink ? { url: deepLink } : undefined)),
     );
     for (const r of results) {
       if (r.status === 'fulfilled' && r.value.ok) iosSent++; else iosFailed++;
