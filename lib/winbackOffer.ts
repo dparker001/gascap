@@ -21,22 +21,26 @@ export const WINBACK_STEPS        = 3;     // number of emails in the sequence
 export const WINBACK_GAP_DAYS     = 4;     // days between sequence steps
 
 export interface WinbackUser {
-  plan?:           string | null;
-  stripeInterval?: string | null;
-  isProTrial?:     boolean;
-  trialExpiresAt?: string | null;
+  plan?:                    string | null;
+  stripeInterval?:          string | null;
+  emailCampaignEnrolledAt?: string | null;
+  emailCampaignStep?:       number | null;
 }
 
 /**
- * Is this a lapsed free user (had a Pro trial that has since expired)?
- * Excludes anyone already on Lifetime or an active trial.
+ * Is this a lapsed free user (completed the Pro trial, now on the free plan)?
+ *
+ * NOTE: trial expiry clears `trialExpiresAt`, so we CANNOT detect lapsed trials
+ * by that field — every expired-trial user has it nulled. Instead we use the
+ * trial-drip enrollment: anyone who was enrolled in the 5-step trial campaign
+ * (emailCampaignEnrolledAt set, or reached the final step) and is now on the
+ * free plan went through a Pro trial and lapsed. Active trials are plan='pro',
+ * so plan='free' already excludes them; Lifetime owners are excluded too.
  */
 export function winbackEligible(user: WinbackUser): boolean {
   if (user.stripeInterval === 'lifetime') return false; // already owns Lifetime
   if (user.plan !== 'free')               return false; // only lapsed free users
-  if (user.isProTrial)                    return false; // not an active trial
-  if (!user.trialExpiresAt)               return false; // must have had a trial
-  const ms = new Date(user.trialExpiresAt).getTime();
-  if (Number.isNaN(ms)) return false;
-  return ms < Date.now();                                // trial is in the past
+  const wentThroughTrial =
+    !!user.emailCampaignEnrolledAt || (user.emailCampaignStep ?? 0) >= 5;
+  return wentThroughTrial;
 }
