@@ -16,6 +16,8 @@ import { NextResponse }                  from 'next/server';
 import { getAllUsers }                    from '@/lib/users';
 import { sendMail, winbackEmailHtml }     from '@/lib/email';
 import { prisma }                         from '@/lib/prisma';
+import { sendGhlSms }                      from '@/lib/ghl';
+import { getawayPromoActive }              from '@/lib/getawayPromo';
 import { winbackEligible, winbackOfferActive, WINBACK_STEPS, WINBACK_GAP_DAYS } from '@/lib/winbackOffer';
 
 // Subjects are personalized with the recipient's first name and always name the
@@ -36,6 +38,9 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
   const dryRun = searchParams.get('dryRun') === 'true';
+  // Lifetime currently also earns a free resort getaway (auto-drops once the
+  // promo ends, so the email never promises a cert that won't be issued).
+  const withGetaway = getawayPromoActive();
 
   // ?testEmail=<addr>&step=<1-3> — send a single preview email to one address
   // (does NOT touch any user's winbackStep). For reviewing the email before a blast.
@@ -46,7 +51,7 @@ export async function GET(req: Request) {
       await sendMail({
         to:             testEmail,
         subject:        `[TEST] ${SUBJECTS[step]('Don')}`,
-        html:           winbackEmailHtml('Don', step),
+        html:           winbackEmailHtml('Don', step, withGetaway),
         text:           `Win-back test (step ${step}). Get Pro Lifetime for $9.99: https://www.gascap.app/upgrade?wb=1`,
         unsubscribeUrl: UNSUB,
       });
@@ -93,10 +98,20 @@ export async function GET(req: Request) {
       await sendMail({
         to:             user.email,
         subject:        SUBJECTS[nextStep](firstName),
-        html:           winbackEmailHtml(firstName, nextStep),
-        text:           `Hi ${firstName}, come back to GasCap™ Pro — get Pro Lifetime for $9.99 (50% off, limited time). The discount applies automatically at checkout: https://www.gascap.app/upgrade?wb=1`,
+        html:           winbackEmailHtml(firstName, nextStep, withGetaway),
+        text:           `Hi ${firstName}, come back to GasCap™ Pro — get Pro Lifetime for $9.99 (50% off)${withGetaway ? ' plus a FREE resort getaway' : ''}, 3 days only. The discount applies automatically at checkout: https://www.gascap.app/upgrade?wb=1`,
         unsubscribeUrl: UNSUB,
       });
+
+      // SMS companion for opted-in users — only on the announcement (1) and the
+      // last call (3), so we don't over-text. Requires smsOptIn + a phone number.
+      if ((nextStep === 1 || nextStep === 3) && user.smsOptIn && user.phone) {
+        const sms = nextStep === 1
+          ? `${firstName}, come back to GasCap™ Pro — Lifetime is 50% off ($9.99)${withGetaway ? ' + a FREE resort getaway' : ''}. 3 days only — claim: https://www.gascap.app/upgrade?wb=1\n\nReply STOP to opt out.`
+          : `Last call, ${firstName}! Your $9.99 GasCap™ Lifetime${withGetaway ? ' + free getaway' : ''} ends tomorrow → https://www.gascap.app/upgrade?wb=1\n\nReply STOP to opt out.`;
+        try { await sendGhlSms(user.email, sms); } catch (e) { console.warn(`[Winback] SMS failed for ${user.email}:`, e); }
+      }
+
       const nowIso = new Date().toISOString();
       await prisma.user.update({
         where: { id: user.id },
@@ -108,7 +123,7 @@ export async function GET(req: Request) {
         },
       });
       sent++;
-      console.log(`[Winback] ${user.email} → step ${nextStep}`);
+      console.log(`[Winback] ${user.email} → step ${nextStep}${withGetaway ? ' (+getaway)' : ''}`);
     } catch (err) {
       console.error(`[Winback] Failed for ${user.email}:`, err);
     }
@@ -116,7 +131,7 @@ export async function GET(req: Request) {
 
   return NextResponse.json({
     ok:        true,
-    version:   'wb-3day-v1',
+    version:   'wb-getaway-sms-v2',
     dryRun,
     audience:  byStep[1] + byStep[2] + byStep[3],
     byStep,

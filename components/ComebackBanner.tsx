@@ -24,6 +24,7 @@ export default function ComebackBanner() {
   const { data: session, status } = useSession();
   const isNative = useIsNative();
   const [eligible, setEligible]   = useState(false);
+  const [getaway, setGetaway]     = useState(false);
   const [dismissed, setDismissed] = useState(true); // start hidden to avoid flash
 
   useEffect(() => {
@@ -39,7 +40,11 @@ export default function ComebackBanner() {
     let active = true;
     fetch('/api/winback/status')
       .then((r) => r.json())
-      .then((d: { eligible?: boolean }) => { if (active) setEligible(!!d.eligible); })
+      .then((d: { eligible?: boolean; getaway?: boolean }) => {
+        if (!active) return;
+        setEligible(!!d.eligible);
+        setGetaway(!!d.getaway);
+      })
       .catch(() => { /* silent */ });
     return () => { active = false; };
   }, [status, plan, isNative]);
@@ -62,10 +67,10 @@ export default function ComebackBanner() {
 
       <div className="flex-1 min-w-0">
         <p className="text-xs font-black leading-snug text-teal-800">
-          Welcome back — get Pro Lifetime for $9.99 (50% off)
+          Welcome back — get Pro Lifetime for $9.99 (50% off){getaway ? ' + a free getaway 🏝️' : ''}
         </p>
         <p className="text-[11px] mt-0.5 leading-relaxed text-teal-700">
-          One payment, Pro forever. Your saved vehicles &amp; history unlock instantly.
+          One payment, Pro forever. Your saved vehicles &amp; history unlock instantly.{getaway ? ' Plus a complimentary resort getaway certificate.' : ''}
         </p>
 
         <div className="flex items-center gap-3 mt-2">

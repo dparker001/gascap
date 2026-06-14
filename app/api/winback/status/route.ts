@@ -10,6 +10,7 @@ import { getServerSession }  from 'next-auth';
 import { authOptions }       from '@/lib/auth';
 import { findById }          from '@/lib/users';
 import { winbackOfferAvailable, WINBACK_PRICE_USD } from '@/lib/winbackOffer';
+import { getawayPromoActive } from '@/lib/getawayPromo';
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -22,5 +23,6 @@ export async function GET() {
   return NextResponse.json({
     eligible: winbackOfferAvailable(user),
     price:    WINBACK_PRICE_USD,
+    getaway:  getawayPromoActive(),
   });
 }

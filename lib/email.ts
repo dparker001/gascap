@@ -779,8 +779,29 @@ ${brandHeader(plan)}
  * The CTA links to /upgrade?wb=1, which applies the win-back coupon server-side
  * (eligibility re-validated). `step` is 1 (warm), 2 (ROI/urgency), 3 (last call).
  */
-export function winbackEmailHtml(firstName: string, step: 1 | 2 | 3): string {
+export function winbackEmailHtml(firstName: string, step: 1 | 2 | 3, withGetaway = false): string {
   const cta = 'https://www.gascap.app/upgrade?wb=1';
+
+  // When the getaway promo is live, every Lifetime purchase (incl. the $9.99
+  // win-back price) also earns a complimentary resort getaway certificate. The
+  // caller passes withGetaway=getawayPromoActive() so this auto-drops once the
+  // promo ends and we never over-promise.
+  const getawayBlock = withGetaway ? `
+        <tr><td style="padding:0 32px 22px;">
+          <table cellpadding="0" cellspacing="0" border="0" role="presentation" width="100%">
+            <tr><td style="background:#f0fdf9;border:1px solid #99e1cb;border-radius:14px;padding:16px 20px;">
+              <p style="margin:0 0 4px;font-size:14px;font-weight:900;color:#005f4a;">
+                🏝️ Plus a FREE resort getaway
+              </p>
+              <p style="margin:0 0 6px;font-size:13px;color:#0f6e56;line-height:1.5;">
+                Grab Lifetime now and we'll include a complimentary resort getaway certificate — pick from Las Vegas, Miami, Orlando, Nashville &amp; more.
+              </p>
+              <p style="margin:0;font-size:10px;color:#64748b;line-height:1.5;">
+                Hotel stay only; flights not included. Room rate is complimentary — you cover the nightly taxes &amp; fees. Must be 21+, live 100+ miles away, book 30+ days ahead. Full terms at RedeemVacations.com.
+              </p>
+            </td></tr>
+          </table>
+        </td></tr>` : '';
 
   const byStep = {
     1: {
@@ -846,7 +867,7 @@ ${brandHeader()}
             </tr>
           </table>
         </td></tr>
-
+${getawayBlock}
         <!-- CTA -->
         <tr><td style="padding:0 32px 28px;text-align:center;">
           <a href="${cta}"
