@@ -91,6 +91,7 @@ model User {
   // winbackStep: 0 = not started, 1–3 = last email sent in the 3-step sequence.
   winbackStep              Int       @default(0)
   winbackLastSentAt        String?
+  winbackStartedAt         String?   // when the win-back sequence began (drives the 3-day offer deadline)
   vehicles                 Vehicle[]
 }
 

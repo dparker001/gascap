@@ -16,14 +16,15 @@ import { NextResponse }                  from 'next/server';
 import { getAllUsers }                    from '@/lib/users';
 import { sendMail, winbackEmailHtml }     from '@/lib/email';
 import { prisma }                         from '@/lib/prisma';
-import { winbackEligible, WINBACK_STEPS, WINBACK_GAP_DAYS } from '@/lib/winbackOffer';
+import { winbackEligible, winbackOfferActive, WINBACK_STEPS, WINBACK_GAP_DAYS } from '@/lib/winbackOffer';
 
 // Subjects are personalized with the recipient's first name and always name the
-// offer as "Lifetime" (so $9.99 is never mistaken for a monthly price).
+// offer as "Lifetime" (so $9.99 is never mistaken for a monthly price). Timing
+// matches the 3-day per-user deadline (emails on day 0, 1, 2).
 const SUBJECTS: Record<1 | 2 | 3, (firstName: string) => string> = {
-  1: (n) => `${n}, come back to GasCap™ Pro — $9.99 for Lifetime access`,
-  2: (n) => `${n}, your $9.99 GasCap™ Lifetime offer expires in 3 days ⏰`,
-  3: (n) => `Last call, ${n}: $9.99 GasCap™ Lifetime — ends tonight`,
+  1: (n) => `${n}, come back to GasCap™ Pro — $9.99 Lifetime (3 days only)`,
+  2: (n) => `${n}, your $9.99 GasCap™ Lifetime offer expires in 2 days ⏰`,
+  3: (n) => `Last call, ${n}: $9.99 GasCap™ Lifetime ends tomorrow`,
 };
 
 const UNSUB = 'https://www.gascap.app/settings';
@@ -70,6 +71,10 @@ export async function GET(req: Request) {
     const curStep = (user as { winbackStep?: number }).winbackStep ?? 0;
     if (curStep >= WINBACK_STEPS) { continue; } // sequence complete
 
+    // Once a user's 3-day deadline has passed, stop the sequence (don't send
+    // "still time!" emails after the offer they were promised has expired).
+    if (curStep > 0 && !winbackOfferActive(user)) { skipped++; continue; }
+
     // Respect the gap between steps (step 1 fires immediately for new entrants).
     const lastAt = (user as { winbackLastSentAt?: string | null }).winbackLastSentAt;
     if (curStep > 0 && lastAt) {
@@ -92,9 +97,15 @@ export async function GET(req: Request) {
         text:           `Hi ${firstName}, come back to GasCap™ Pro — get Pro Lifetime for $9.99 (50% off, limited time). The discount applies automatically at checkout: https://www.gascap.app/upgrade?wb=1`,
         unsubscribeUrl: UNSUB,
       });
+      const nowIso = new Date().toISOString();
       await prisma.user.update({
         where: { id: user.id },
-        data:  { winbackStep: nextStep, winbackLastSentAt: new Date().toISOString() },
+        // Stamp winbackStartedAt on the FIRST email — it starts the 3-day clock.
+        data:  {
+          winbackStep:       nextStep,
+          winbackLastSentAt: nowIso,
+          ...(nextStep === 1 ? { winbackStartedAt: nowIso } : {}),
+        },
       });
       sent++;
       console.log(`[Winback] ${user.email} → step ${nextStep}`);
@@ -105,6 +116,7 @@ export async function GET(req: Request) {
 
   return NextResponse.json({
     ok:        true,
+    version:   'wb-3day-v1',
     dryRun,
     audience:  byStep[1] + byStep[2] + byStep[3],
     byStep,

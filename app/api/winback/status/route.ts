@@ -9,7 +9,7 @@ import { NextResponse }      from 'next/server';
 import { getServerSession }  from 'next-auth';
 import { authOptions }       from '@/lib/auth';
 import { findById }          from '@/lib/users';
-import { winbackEligible, WINBACK_PRICE_USD } from '@/lib/winbackOffer';
+import { winbackOfferAvailable, WINBACK_PRICE_USD } from '@/lib/winbackOffer';
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -20,7 +20,7 @@ export async function GET() {
   if (!user) return NextResponse.json({ eligible: false });
 
   return NextResponse.json({
-    eligible: winbackEligible(user),
+    eligible: winbackOfferAvailable(user),
     price:    WINBACK_PRICE_USD,
   });
 }
