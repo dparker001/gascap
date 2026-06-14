@@ -34,6 +34,25 @@ export async function GET(req: Request) {
   }
   const dryRun = searchParams.get('dryRun') === 'true';
 
+  // ?testEmail=<addr>&step=<1-3> — send a single preview email to one address
+  // (does NOT touch any user's winbackStep). For reviewing the email before a blast.
+  const testEmail = searchParams.get('testEmail');
+  if (testEmail) {
+    const step = Math.min(3, Math.max(1, parseInt(searchParams.get('step') ?? '1', 10))) as 1 | 2 | 3;
+    try {
+      await sendMail({
+        to:             testEmail,
+        subject:        `[TEST] ${SUBJECTS[step]}`,
+        html:           winbackEmailHtml('there', step),
+        text:           `Win-back test (step ${step}). Get Pro Lifetime for $9.99: https://www.gascap.app/upgrade?wb=1`,
+        unsubscribeUrl: UNSUB,
+      });
+      return NextResponse.json({ ok: true, test: true, sentTo: testEmail, step });
+    } catch (err) {
+      return NextResponse.json({ ok: false, test: true, error: String(err) }, { status: 500 });
+    }
+  }
+
   const allUsers = await getAllUsers();
   const now = Date.now();
 
