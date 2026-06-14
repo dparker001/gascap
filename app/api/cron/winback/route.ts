@@ -18,10 +18,12 @@ import { sendMail, winbackEmailHtml }     from '@/lib/email';
 import { prisma }                         from '@/lib/prisma';
 import { winbackEligible, WINBACK_STEPS, WINBACK_GAP_DAYS } from '@/lib/winbackOffer';
 
-const SUBJECTS: Record<1 | 2 | 3, string> = {
-  1: 'Your GasCap™ garage is still here — come back for $9.99',
-  2: '⏰ Your $9.99 GasCap™ Lifetime offer expires in 3 days',
-  3: 'Last call: $9.99 GasCap™ Lifetime ends tonight',
+// Subjects are personalized with the recipient's first name and always name the
+// offer as "Lifetime" (so $9.99 is never mistaken for a monthly price).
+const SUBJECTS: Record<1 | 2 | 3, (firstName: string) => string> = {
+  1: (n) => `${n}, come back to GasCap™ Pro — $9.99 for Lifetime access`,
+  2: (n) => `${n}, your $9.99 GasCap™ Lifetime offer expires in 3 days ⏰`,
+  3: (n) => `Last call, ${n}: $9.99 GasCap™ Lifetime — ends tonight`,
 };
 
 const UNSUB = 'https://www.gascap.app/settings';
@@ -42,8 +44,8 @@ export async function GET(req: Request) {
     try {
       await sendMail({
         to:             testEmail,
-        subject:        `[TEST] ${SUBJECTS[step]}`,
-        html:           winbackEmailHtml('there', step),
+        subject:        `[TEST] ${SUBJECTS[step]('Don')}`,
+        html:           winbackEmailHtml('Don', step),
         text:           `Win-back test (step ${step}). Get Pro Lifetime for $9.99: https://www.gascap.app/upgrade?wb=1`,
         unsubscribeUrl: UNSUB,
       });
@@ -85,7 +87,7 @@ export async function GET(req: Request) {
     try {
       await sendMail({
         to:             user.email,
-        subject:        SUBJECTS[nextStep],
+        subject:        SUBJECTS[nextStep](firstName),
         html:           winbackEmailHtml(firstName, nextStep),
         text:           `Hi ${firstName}, come back to GasCap™ Pro — get Pro Lifetime for $9.99 (50% off, limited time). The discount applies automatically at checkout: https://www.gascap.app/upgrade?wb=1`,
         unsubscribeUrl: UNSUB,

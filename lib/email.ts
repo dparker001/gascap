@@ -785,20 +785,23 @@ export function winbackEmailHtml(firstName: string, step: 1 | 2 | 3): string {
   const byStep = {
     1: {
       emoji: '🚗',
-      headline: 'Your garage is still here —<br>come back to Pro for $9.99',
-      lead: `Hi ${firstName}, your saved vehicles and fill-up history didn't go anywhere. Unlock all of GasCap™ Pro again — this time <strong>forever</strong> — for half off.`,
-      button: 'Claim $9.99 Lifetime →',
+      preheader: 'Your saved vehicles & fill-up history are still here. Unlock Pro for life — $9.99, half off.',
+      headline: 'Your garage is still here —<br>come back for $9.99 Lifetime',
+      lead: `Hi ${firstName}, your saved vehicles and fill-up history didn't go anywhere. Unlock all of GasCap™ Pro again — this time <strong>for life</strong> — for half off.`,
+      button: 'Get $9.99 Lifetime access →',
       note: 'One payment. Pro forever. No subscription.',
     },
     2: {
       emoji: '⏰',
+      preheader: 'Pro saves drivers $150–$400 a year. Lock in Lifetime for $9.99 before it ends.',
       headline: 'Your $9.99 Lifetime offer<br>expires in 3 days',
-      lead: `Hi ${firstName}, GasCap™ Pro members save an estimated <strong>$150–$400 a year</strong> with price-drop alerts, the fill-up optimizer, and MPG tracking. Lock it in once for $9.99 — then it's free every year after.`,
+      lead: `Hi ${firstName}, GasCap™ Pro members save an estimated <strong>$150–$400 a year</strong> with price-drop alerts, the fill-up optimizer, and MPG tracking. Lock in Lifetime once for $9.99 — then it's free every year after.`,
       button: 'Lock in $9.99 Lifetime →',
       note: '$9.99 once vs. ~$36/year on monthly. The math is easy.',
     },
     3: {
       emoji: '🏁',
+      preheader: 'Final reminder — your 50%-off Lifetime offer ends today. $9.99 once, Pro forever.',
       headline: 'Last call: $9.99 Lifetime<br>ends tonight',
       lead: `Hi ${firstName}, this is the final reminder — your 50%-off Lifetime offer ends today. "The AI told me my MPG dropped 12% — GasCap™ paid for itself in a month." — Marcus J., Orlando.`,
       button: 'Get Lifetime before it ends →',
@@ -811,6 +814,7 @@ export function winbackEmailHtml(firstName: string, step: 1 | 2 | 3): string {
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;padding:0;background:#eef1f7;font-family:system-ui,sans-serif;">
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all;">${byStep.preheader}</div>
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#eef1f7;padding:40px 16px;">
     <tr><td align="center">
       <table width="100%" style="max-width:480px;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,.08);">
