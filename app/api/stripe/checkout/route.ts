@@ -30,14 +30,11 @@ export async function POST(req: Request) {
   const user   = await findById(userId);
   if (!user) return NextResponse.json({ error: 'User not found.' }, { status: 404 });
 
-  // Require email verification before allowing upgrade to paid plan.
-  // This ensures billing receipts and subscription emails reach the user.
-  if (!user.emailVerified) {
-    return NextResponse.json(
-      { error: 'Please verify your email address before upgrading. Check your inbox for a verification link.' },
-      { status: 403 },
-    );
-  }
+  // NOTE: We intentionally do NOT gate checkout on email verification. Most
+  // sign-ups never click the verification link, and a hard block here silently
+  // killed conversions (a ready-to-pay user hit a 403 dead-end). Stripe collects
+  // and verifies the buyer's email at checkout and sends its own receipts, so a
+  // deliverable address is guaranteed regardless of our app-side verified flag.
 
   const body = await req.json() as {
     tier?:    'pro' | 'fleet';

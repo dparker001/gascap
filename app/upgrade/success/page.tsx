@@ -109,15 +109,37 @@ function SuccessContent() {
   const billing   = params.get('billing') ?? 'monthly';
   const [ready, setReady] = useState(false);
 
-  // Wait for webhook to fire, then refresh the JWT so the session reflects
-  // the upgraded plan (clears isProTrial, sets stripeInterval, etc.)
+  // Poll the session until the webhook has applied the upgrade, instead of a
+  // single fixed wait. The Stripe webhook (checkout.session.completed) can take
+  // a few seconds — a one-shot 2.5s refresh often raced it, leaving the user on
+  // a "You're Pro!" page whose session still said trial/free. We refresh the JWT
+  // repeatedly until plan reflects the purchase (or we hit a safety timeout).
   useEffect(() => {
-    const t = setTimeout(async () => {
-      await refreshSession(); // pulls fresh user data from DB into JWT
-      setReady(true);
-    }, 2500);
-    return () => clearTimeout(t);
-  }, [refreshSession]);
+    let cancelled = false;
+    let attempts  = 0;
+    const MAX_ATTEMPTS = 8;     // ~1.2s + 8×1.8s ≈ 15s worst case
+    const isUpgraded = (s: Awaited<ReturnType<typeof refreshSession>>) => {
+      const u = s?.user as { plan?: string; isProTrial?: boolean } | undefined;
+      if (!u) return false;
+      if (tier === 'fleet') return u.plan === 'fleet';
+      return u.plan === 'pro' && !u.isProTrial; // trial cleared = upgrade applied
+    };
+
+    async function poll() {
+      if (cancelled) return;
+      attempts += 1;
+      const updated = await refreshSession(); // pulls fresh user data into the JWT
+      if (cancelled) return;
+      if (isUpgraded(updated) || attempts >= MAX_ATTEMPTS) {
+        setReady(true);                        // show success even if webhook is slow
+        return;
+      }
+      setTimeout(poll, 1800);
+    }
+
+    const first = setTimeout(poll, 1200);      // small head start for the webhook
+    return () => { cancelled = true; clearTimeout(first); };
+  }, [refreshSession, tier]);
 
   // Resolve which plan content to show
   let planKey: PlanKey;
