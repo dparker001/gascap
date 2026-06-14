@@ -12,6 +12,7 @@ import { findById }        from '@/lib/users';
 import { stripe, PRICES }  from '@/lib/stripe';
 import { getBaseUrl }      from '@/lib/getBaseUrl';
 import { newMemberOfferStatus, NEW_MEMBER_LIFETIME_COUPON } from '@/lib/newMemberOffer';
+import { winbackEligible, WINBACK_LIFETIME_COUPON } from '@/lib/winbackOffer';
 
 export async function POST(req: Request) {
   if (!stripe) {
@@ -42,6 +43,7 @@ export async function POST(req: Request) {
     priceId?: string; // legacy direct price ID override
     coupon?:  string; // Stripe coupon ID to pre-apply (e.g. from C4 promo email)
     newMemberOffer?: boolean; // request the 7-day new-member Lifetime discount
+    winbackOffer?:   boolean; // request the win-back Lifetime discount ($9.99)
   };
 
   const tier    = body.tier    ?? 'pro';
@@ -53,6 +55,13 @@ export async function POST(req: Request) {
   // claimed by a copied link or an ineligible account.
   if (body.newMemberOffer && billing === 'lifetime' && newMemberOfferStatus(user).eligible) {
     coupon = NEW_MEMBER_LIFETIME_COUPON;
+  }
+
+  // Win-back $9.99 Lifetime — only for lapsed free users (expired trial). Like
+  // the new-member offer, eligibility is re-validated server-side so the deal
+  // can't be claimed via a copied /upgrade?wb=1 link by an ineligible account.
+  if (body.winbackOffer && billing === 'lifetime' && winbackEligible(user)) {
+    coupon = WINBACK_LIFETIME_COUPON;
   }
 
   // Resolve price ID

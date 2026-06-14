@@ -42,6 +42,7 @@ function UpgradePageInner() {
 
   const searchParams = useSearchParams();
   const coupon = searchParams.get('coupon') ?? undefined;
+  const wb     = searchParams.get('wb') === '1'; // win-back $9.99 Lifetime offer
   const isNative = useIsNative();   // no in-app checkout in the native wrappers
   const [loading, setLoading] = useState<'pro-monthly' | 'pro-lifetime' | null>(null);
   const [error,   setError]   = useState('');
@@ -61,10 +62,12 @@ function UpgradePageInner() {
     try {
       // Only apply promo coupon on monthly — lifetime is already a one-time deal
       const applyCoupon = coupon && billing === 'monthly' ? { coupon } : {};
+      // Win-back $9.99 Lifetime — request the server-validated discount on lifetime
+      const applyWinback = wb && billing === 'lifetime' ? { winbackOffer: true } : {};
       const res  = await fetch('/api/stripe/checkout', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ tier: 'pro', billing, ...applyCoupon }),
+        body:    JSON.stringify({ tier: 'pro', billing, ...applyCoupon, ...applyWinback }),
       });
       const data = await res.json() as { url?: string; error?: string };
       if (data.url) { window.location.href = data.url; }
@@ -173,6 +176,20 @@ function UpgradePageInner() {
                 Upgrade before your 30-day trial expires and earn 10 extra entries into the
                 monthly gas card giveaway every month you stay on Pro. These stack on top of
                 your regular entries from app activity and streaks.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Win-back offer notice — $9.99 Lifetime applied at checkout */}
+        {wb && (
+          <div className="flex items-center justify-center mb-6">
+            <div className="bg-teal-50 border border-teal-300 rounded-xl px-5 py-2.5 text-center">
+              <p className="text-sm font-black text-teal-800">
+                👋 Welcome back! Your 50%-off Lifetime price is locked in.
+              </p>
+              <p className="text-xs text-teal-700 mt-0.5">
+                Choose <span className="font-bold">Pro Lifetime</span> below — $9.99 (reg. $19.99) is applied automatically at checkout.
               </p>
             </div>
           </div>

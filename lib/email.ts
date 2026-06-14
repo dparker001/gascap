@@ -774,6 +774,105 @@ ${brandHeader(plan)}
 }
 
 /** ─────────────────────────────────────────────────────────────────────────
+ * Win-back ("come back to Pro") email — sent to lapsed free users whose Pro
+ * trial expired. 3-step sequence offering Pro Lifetime at 50% off ($9.99).
+ * The CTA links to /upgrade?wb=1, which applies the win-back coupon server-side
+ * (eligibility re-validated). `step` is 1 (warm), 2 (ROI/urgency), 3 (last call).
+ */
+export function winbackEmailHtml(firstName: string, step: 1 | 2 | 3): string {
+  const cta = 'https://www.gascap.app/upgrade?wb=1';
+
+  const byStep = {
+    1: {
+      emoji: '🚗',
+      headline: 'Your garage is still here —<br>come back to Pro for $9.99',
+      lead: `Hi ${firstName}, your saved vehicles and fill-up history didn't go anywhere. Unlock all of GasCap™ Pro again — this time <strong>forever</strong> — for half off.`,
+      button: 'Claim $9.99 Lifetime →',
+      note: 'One payment. Pro forever. No subscription.',
+    },
+    2: {
+      emoji: '⏰',
+      headline: 'Your $9.99 Lifetime offer<br>expires in 3 days',
+      lead: `Hi ${firstName}, GasCap™ Pro members save an estimated <strong>$150–$400 a year</strong> with price-drop alerts, the fill-up optimizer, and MPG tracking. Lock it in once for $9.99 — then it's free every year after.`,
+      button: 'Lock in $9.99 Lifetime →',
+      note: '$9.99 once vs. ~$36/year on monthly. The math is easy.',
+    },
+    3: {
+      emoji: '🏁',
+      headline: 'Last call: $9.99 Lifetime<br>ends tonight',
+      lead: `Hi ${firstName}, this is the final reminder — your 50%-off Lifetime offer ends today. "The AI told me my MPG dropped 12% — GasCap™ paid for itself in a month." — Marcus J., Orlando.`,
+      button: 'Get Lifetime before it ends →',
+      note: 'After tonight, Lifetime returns to $19.99.',
+    },
+  }[step];
+
+  return `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#eef1f7;font-family:system-ui,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#eef1f7;padding:40px 16px;">
+    <tr><td align="center">
+      <table width="100%" style="max-width:480px;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,.08);">
+${brandHeader()}
+
+        <!-- Hero -->
+        <tr><td style="padding:32px 32px 16px;text-align:center;">
+          <p style="margin:0 0 8px;font-size:48px;line-height:1;">${byStep.emoji}</p>
+          <p style="margin:0 0 10px;font-size:22px;font-weight:900;color:#1e2d4a;line-height:1.3;">
+            ${byStep.headline}
+          </p>
+          <p style="margin:0;font-size:15px;color:#475569;line-height:1.65;">
+            ${byStep.lead}
+          </p>
+        </td></tr>
+
+        <!-- Price badge -->
+        <tr><td style="padding:0 32px 20px;">
+          <table cellpadding="0" cellspacing="0" border="0" role="presentation" width="100%">
+            <tr>
+              <td style="background:linear-gradient(135deg,#005f4a 0%,#1eb68f 100%);border-radius:14px;padding:20px 24px;text-align:center;">
+                <p style="margin:0 0 4px;font-size:12px;font-weight:800;color:rgba(255,255,255,0.7);
+                           text-transform:uppercase;letter-spacing:0.08em;">Pro Lifetime — 50% off</p>
+                <p style="margin:0 0 6px;font-size:36px;font-weight:900;color:#ffffff;line-height:1.1;">
+                  $9.99 <span style="font-size:18px;font-weight:700;color:rgba(255,255,255,0.55);text-decoration:line-through;">$19.99</span>
+                </p>
+                <p style="margin:0;font-size:13px;color:rgba(255,255,255,0.85);">${byStep.note}</p>
+              </td>
+            </tr>
+          </table>
+        </td></tr>
+
+        <!-- CTA -->
+        <tr><td style="padding:0 32px 28px;text-align:center;">
+          <a href="${cta}"
+             style="display:inline-block;background:#fa7109;color:#fff;font-weight:900;
+                    font-size:15px;padding:14px 36px;border-radius:12px;text-decoration:none;">
+            ${byStep.button}
+          </a>
+          <p style="margin:16px 0 0;font-size:12px;color:#94a3b8;line-height:1.5;">
+            The discount is applied automatically at checkout — no code needed.
+          </p>
+        </td></tr>
+
+        <!-- Footer -->
+        <tr><td style="background:#f8fafc;padding:16px 32px;border-top:1px solid #e2e8f0;">
+          <p style="margin:0;font-size:11px;color:#94a3b8;">
+            GasCap™ · Know Before You Go ·
+            <a href="https://gascap.app" style="color:#f59e0b;">gascap.app</a><br>
+            You're receiving this because you tried GasCap™ Pro.
+            <a href="https://www.gascap.app/settings"
+               style="color:#cbd5e1;text-decoration:none;">Unsubscribe</a>
+          </p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`.trim();
+}
+
+/** ─────────────────────────────────────────────────────────────────────────
  * Founding Member blast — one-time offer email sent to active trial users.
  * @param firstName      Recipient's first name
  * @param trialEndDate   Formatted end date, e.g. "May 26"
