@@ -441,6 +441,7 @@ const en = {
     forever:           'forever',
     currentPlanRibbon: '✓ Your Current Plan',
     mostPopular:       '⭐ Most Popular',
+    monthlyRibbon:     'Flexible',
     newMemberTitle:    'New-Member Offer',
     newMemberMsg:      'Own GasCap™ Pro for life',
     newMemberSave:     'save',
@@ -524,11 +525,11 @@ const en = {
     fleetFeatures: [] as string[],
 
     // Lifetime card
-    lifetimeRibbon:      'Best Value',
+    lifetimeRibbon:      'Most Popular',
     lifetimeBadge:       'One-time payment',
     lifetimeSubline:     'Own GasCap™ Pro forever — no recurring charges',
     lifetimeExclusives:  'Lifetime exclusives',
-    breakEven:           'Less than 7 months of monthly — break even instantly.',
+    breakEven:           'Just $19.99 once — about 7 months of monthly, then free forever. Most members choose Lifetime.',
     freeTitle:           'Free',
     proTitle:            'Pro',
     proLifetimeTitle:    'Pro Lifetime',
@@ -1842,6 +1843,7 @@ const es: typeof en = {
     forever:           'siempre',
     currentPlanRibbon: '✓ Tu Plan Actual',
     mostPopular:       '⭐ Más Popular',
+    monthlyRibbon:     'Flexible',
     newMemberTitle:    'Oferta para nuevos miembros',
     newMemberMsg:      'Obtén GasCap™ Pro de por vida',
     newMemberSave:     'ahorra',
@@ -1925,11 +1927,11 @@ const es: typeof en = {
     fleetFeatures: [] as string[],
 
     // Lifetime card
-    lifetimeRibbon:      'Mejor Valor',
+    lifetimeRibbon:      'Más Popular',
     lifetimeBadge:       'Pago único',
     lifetimeSubline:     'Posee GasCap™ Pro para siempre — sin cargos recurrentes',
     lifetimeExclusives:  'Exclusivos de por vida',
-    breakEven:           'Menos de 7 meses del plan mensual — amortiza al instante.',
+    breakEven:           'Solo $19.99 una vez — unos 7 meses del plan mensual, luego gratis para siempre. La mayoría elige De Por Vida.',
     freeTitle:           'Gratis',
     proTitle:            'Pro',
     proLifetimeTitle:    'Pro De Por Vida',

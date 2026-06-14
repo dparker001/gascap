@@ -13,6 +13,7 @@ import ToolsPanel              from '@/components/ToolsPanel';
 import PricingSection          from '@/components/PricingSection';
 import { useIsNative }          from '@/hooks/useIsNative';
 import TrialExpiryBanner      from '@/components/TrialExpiryBanner';
+import ComebackBanner         from '@/components/ComebackBanner';
 import AnnouncementToast      from '@/components/AnnouncementToast';
 import ReviewsMarquee          from '@/components/ReviewsMarquee';
 import OnboardingModal         from '@/components/OnboardingModal';
@@ -579,6 +580,9 @@ export default function Home() {
 
       {/* Trial expiry nudge — shown when ≤ 5 days remain on a Pro trial */}
       <TrialExpiryBanner />
+
+      {/* Comeback offer — lapsed free users (completed trial) get $9.99 Lifetime */}
+      <ComebackBanner />
 
       {/* Announcement toasts — driven by data/announcements.json */}
       <AnnouncementToast />

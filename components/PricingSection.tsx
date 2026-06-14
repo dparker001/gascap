@@ -170,7 +170,7 @@ export default function PricingSection() {
           'relative flex flex-col rounded-3xl p-6 border-2 transition-all shadow-2xl',
           isProMonthly
             ? 'bg-navy-700 border-green-400 ring-2 ring-green-400'
-            : 'bg-navy-700 border-amber-400 scale-[1.02]',
+            : 'bg-navy-700 border-amber-400',
         ].join(' ')}>
 
           <div className={[
@@ -178,7 +178,7 @@ export default function PricingSection() {
             'rounded-full uppercase tracking-wider whitespace-nowrap shadow-md',
             isProMonthly ? 'bg-green-400 text-navy-900' : 'bg-amber-400 text-navy-900',
           ].join(' ')}>
-            {isProMonthly ? t.pricing.currentPlanRibbon : t.pricing.mostPopular}
+            {isProMonthly ? t.pricing.currentPlanRibbon : t.pricing.monthlyRibbon}
           </div>
 
           <div className="mb-4 mt-1">
@@ -234,8 +234,8 @@ export default function PricingSection() {
           </ul>
         </div>
 
-        {/* Pro Lifetime */}
-        <div className="relative flex flex-col rounded-3xl p-6 border-2 border-teal-400 bg-white shadow-card transition-all">
+        {/* Pro Lifetime — visual hero (highest-value, most chosen) */}
+        <div className="relative flex flex-col rounded-3xl p-6 border-2 border-teal-400 bg-white shadow-2xl md:scale-[1.02] transition-all">
 
           <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-teal-400 text-navy-900
                           text-[11px] font-black px-4 py-1 rounded-full uppercase tracking-wider

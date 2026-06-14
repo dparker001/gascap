@@ -249,7 +249,7 @@ function UpgradePageInner() {
             <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-amber-400 text-navy-900
                             text-[11px] font-black px-4 py-1 rounded-full uppercase tracking-wider
                             whitespace-nowrap shadow-md">
-              {t.pricing.mostPopular}
+              {t.pricing.monthlyRibbon}
             </div>
             <div className="mb-4 mt-1">
               <span className="inline-block bg-amber-100 text-amber-700 text-[10px] font-black
