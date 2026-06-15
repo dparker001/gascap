@@ -7,6 +7,7 @@
 
 import { useState, FormEvent } from 'react';
 import Link from 'next/link';
+import { useIsNative } from '@/hooks/useIsNative';
 
 const MONTH_NAMES = [
   'January','February','March','April','May','June',
@@ -19,6 +20,8 @@ function currentMonthLabel(): string {
 }
 
 export default function AmoePage() {
+  // Hide Pro price / upgrade CTA inside the native apps (App Store 2.1(b)/3.1.1).
+  const isNative = useIsNative();
   const [firstName,     setFirstName]     = useState('');
   const [lastName,      setLastName]      = useState('');
   const [email,         setEmail]         = useState('');
@@ -88,19 +91,21 @@ export default function AmoePage() {
               </p>
             </div>
 
-            <div className="bg-white/10 border border-white/10 rounded-2xl p-4 text-center space-y-2">
-              <p className="text-white/80 text-xs leading-relaxed">
-                Want up to <strong className="text-amber-400">31× more entries</strong> every month?
-                Upgrade to Pro and earn one entry automatically every day you open the app.
-              </p>
-              <Link
-                href="/upgrade"
-                className="block w-full py-3 rounded-2xl bg-amber-500 hover:bg-amber-400
-                           text-white font-black text-sm transition-colors mt-2"
-              >
-                ⭐ Upgrade to Pro — $2.99/mo
-              </Link>
-            </div>
+            {!isNative && (
+              <div className="bg-white/10 border border-white/10 rounded-2xl p-4 text-center space-y-2">
+                <p className="text-white/80 text-xs leading-relaxed">
+                  Want up to <strong className="text-amber-400">31× more entries</strong> every month?
+                  Upgrade to Pro and earn one entry automatically every day you open the app.
+                </p>
+                <Link
+                  href="/upgrade"
+                  className="block w-full py-3 rounded-2xl bg-amber-500 hover:bg-amber-400
+                             text-white font-black text-sm transition-colors mt-2"
+                >
+                  ⭐ Upgrade to Pro — $2.99/mo
+                </Link>
+              </div>
+            )}
 
             <div className="text-center">
               <Link href="/" className="text-[11px] text-white/40 hover:text-white/70 transition-colors">
@@ -225,20 +230,22 @@ export default function AmoePage() {
             </form>
 
             {/* Upgrade nudge */}
-            <div className="bg-white/8 border border-white/10 rounded-2xl p-4 space-y-2">
-              <p className="text-white/70 text-xs font-bold">Want more entries?</p>
-              <p className="text-white/50 text-xs leading-relaxed">
-                Pro members earn 1 entry automatically every day they open the app —
-                up to <strong className="text-white/80">31 entries per month</strong> vs your 1 free entry.
-              </p>
-              <Link
-                href="/upgrade"
-                className="block text-center w-full py-2.5 rounded-xl bg-amber-500/90 hover:bg-amber-500
-                           text-white font-black text-xs transition-colors"
-              >
-                ⭐ Upgrade to Pro — $2.99/mo
-              </Link>
-            </div>
+            {!isNative && (
+              <div className="bg-white/8 border border-white/10 rounded-2xl p-4 space-y-2">
+                <p className="text-white/70 text-xs font-bold">Want more entries?</p>
+                <p className="text-white/50 text-xs leading-relaxed">
+                  Pro members earn 1 entry automatically every day they open the app —
+                  up to <strong className="text-white/80">31 entries per month</strong> vs your 1 free entry.
+                </p>
+                <Link
+                  href="/upgrade"
+                  className="block text-center w-full py-2.5 rounded-xl bg-amber-500/90 hover:bg-amber-500
+                             text-white font-black text-xs transition-colors"
+                >
+                  ⭐ Upgrade to Pro — $2.99/mo
+                </Link>
+              </div>
+            )}
 
             {/* Legal */}
             <div className="text-center space-y-1.5 pt-1">

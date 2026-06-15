@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useSession }          from 'next-auth/react';
 import { useRouter }           from 'next/navigation';
 import Link                    from 'next/link';
+import { useIsNative }         from '@/hooks/useIsNative';
 
 interface GiveawayEntries {
   month:                    string;
@@ -45,6 +46,8 @@ function currentMonthStr(): string {
 export default function GiveawayPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  // Hide Pro price / upgrade CTA inside the native apps (App Store 2.1(b)/3.1.1).
+  const isNative = useIsNative();
 
   const [entries,  setEntries]  = useState<GiveawayEntries | null>(null);
   const [loading,  setLoading]  = useState(true);
@@ -254,23 +257,25 @@ export default function GiveawayPage() {
               <div className="flex-1 h-px bg-white/10" />
             </div>
 
-            {/* Upgrade CTA */}
-            <div className="text-center space-y-1.5">
-              <p className="text-white/60 text-xs leading-relaxed">
-                Upgrade to Pro and earn up to{' '}
-                <strong className="text-amber-400">31 entries per month</strong>{' '}
-                automatically, plus{' '}
-                <strong className="text-amber-400">up to 20 bonus entries</strong>{' '}
-                for maintaining a daily streak.
-              </p>
-              <Link
-                href="/upgrade"
-                className="block w-full py-3 rounded-2xl bg-amber-500 hover:bg-amber-400
-                           text-white font-black text-sm transition-colors"
-              >
-                ⭐ Upgrade to Pro — $2.99/mo
-              </Link>
-            </div>
+            {/* Upgrade CTA — web only (no in-app purchase/price in native apps) */}
+            {!isNative && (
+              <div className="text-center space-y-1.5">
+                <p className="text-white/60 text-xs leading-relaxed">
+                  Upgrade to Pro and earn up to{' '}
+                  <strong className="text-amber-400">31 entries per month</strong>{' '}
+                  automatically, plus{' '}
+                  <strong className="text-amber-400">up to 20 bonus entries</strong>{' '}
+                  for maintaining a daily streak.
+                </p>
+                <Link
+                  href="/upgrade"
+                  className="block w-full py-3 rounded-2xl bg-amber-500 hover:bg-amber-400
+                             text-white font-black text-sm transition-colors"
+                >
+                  ⭐ Upgrade to Pro — $2.99/mo
+                </Link>
+              </div>
+            )}
           </div>
         )}
 

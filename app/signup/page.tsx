@@ -17,7 +17,11 @@ function SignUpForm() {
   const { t, locale } = useTranslation();
   // Apple requires Sign in with Apple if other social logins are offered — for v1
   // we hide Google login inside the iOS app (email/password only there).
-  const hideGoogle   = useNativePlatform() === 'ios';
+  const platform     = useNativePlatform();
+  const hideGoogle   = platform === 'ios';
+  // Inside the native apps the product is a pure free utility — hide every price
+  // reference and Pro/subscription framing (App Store 2.1(b) / 3.1.1, Play Billing).
+  const isNative     = platform !== null;
 
   // Safe internal redirect target after signup (e.g. /redeem?code=…, /upgrade).
   const nextRaw  = searchParams.get('next');
@@ -146,7 +150,11 @@ function SignUpForm() {
             {([
               { icon: '💰', label: 'Stop overspending' },
               { icon: '⚡', label: 'Know before you go' },
-              { icon: '📱', label: 'No app store needed' },
+              // "No app store needed" is web-only marketing — nonsensical inside
+              // the native apps, so show an offline benefit there instead.
+              isNative
+                ? { icon: '📴', label: 'Works offline' }
+                : { icon: '📱', label: 'No app store needed' },
             ] as { icon: string; label: string }[]).map(({ icon, label }) => (
               <div
                 key={label}
@@ -158,10 +166,13 @@ function SignUpForm() {
             ))}
           </div>
 
-          {/* Pro trial callout */}
+          {/* Pro trial callout — web only. The native version names no price /
+              subscription (App Store 2.1(b)/3.1.1); it shows a price-free welcome. */}
           <div className="mb-5 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 flex items-center gap-3">
             <span className="text-xl flex-shrink-0">🎁</span>
-            <p className="text-sm font-bold text-amber-800">{t.signUp.proTrial}</p>
+            <p className="text-sm font-bold text-amber-800">
+              {isNative ? t.signUp.proTrialNative : t.signUp.proTrial}
+            </p>
           </div>
 
           {/* Referral banner */}

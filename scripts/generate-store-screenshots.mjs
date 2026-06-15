@@ -21,7 +21,9 @@ const SHOTS = [
   { src: 'www.gascap.app_(iPhone 14 Pro Max) (1).png', name: '02-exact-cost',         lines: ['Know your cost', 'before you pump'], sub: 'No guessing. No overpaying.' },
   { src: 'www.gascap.app_(iPhone 14 Pro Max) (2).png', name: '03-rental-mode',        lines: ['Skip the rental', 'refuel fee'],     sub: 'Return it at the right fuel level.' },
   { src: 'www.gascap.app_(iPhone 14 Pro Max) (3).png', name: '04-track-fillups',      lines: ['Track every', 'fill-up & MPG'],      sub: 'See your real fuel costs over time.' },
-  { src: 'www.gascap.app_(iPhone 14 Pro Max) (4).png', name: '05-win-free-gas',       lines: ['Win free gas', 'every month'],       sub: 'Loved by drivers. 100% free.' },
+  // No price/"free" words in store captions — Apple 2.3.7 treats "free"/"discounted"
+  // as a price reference in metadata. Describe the feature, not the price.
+  { src: 'www.gascap.app_(iPhone 14 Pro Max) (4).png', name: '05-monthly-giveaway',   lines: ['Win a gas card', 'every month'],     sub: 'A monthly giveaway for drivers.' },
 ];
 
 const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -86,5 +88,8 @@ async function makeShot(shot, W, H, outDir) {
 for (const s of SHOTS) {
   await makeShot(s, 1290, 2796, join(dir, 'final', 'apple'));
   await makeShot(s, 1080, 2160, join(dir, 'final', 'play'));
+  // 13-inch iPad (App Store requires this set for universal builds). The phone-shaped
+  // app screen is centered on the brand canvas — standard for phone-first apps.
+  await makeShot(s, 2048, 2732, join(dir, 'final', 'ipad'));
 }
-console.log('\nStore screenshots generated (Apple 1290×2796 + Play 1080×2160).');
+console.log('\nStore screenshots generated (Apple 1290×2796 + Play 1080×2160 + iPad 2048×2732).');
