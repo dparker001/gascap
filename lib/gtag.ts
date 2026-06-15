@@ -42,6 +42,7 @@ function isNativeClient(): boolean {
   try {
     if (window.Capacitor) return true;
     if (/[?&]native=(ios|android)/.test(window.location.search)) return true;
+    if ((document.referrer || '').indexOf('android-app://') === 0) return true; // Android TWA
     const p = window.localStorage.getItem('gc_native_platform');
     return p === 'ios' || p === 'android';
   } catch {

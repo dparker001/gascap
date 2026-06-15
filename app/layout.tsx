@@ -90,6 +90,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               (function(){
                 var __isNative = !!window.Capacitor
                   || /[?&]native=(ios|android)/.test(location.search)
+                  || (document.referrer||'').indexOf('android-app://')===0
                   || (function(){try{var p=localStorage.getItem('gc_native_platform');return p==='ios'||p==='android';}catch(e){return false;}})();
                 if (__isNative) return; /* No Meta Pixel in the native apps (App Store privacy: no tracking) */
                 !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){
