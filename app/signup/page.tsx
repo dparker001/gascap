@@ -289,14 +289,20 @@ function SignUpForm() {
                 />
                 <div>
                   <p className={`text-sm font-semibold ${smsOptIn ? 'text-teal-800' : 'text-slate-600'}`}>
-                    Send me SMS alerts
+                    Text me GasCap offers &amp; alerts
                   </p>
                   <p className="text-[11px] text-slate-500 leading-relaxed mt-0.5">
-                    Gas price drops, fill-up reminders, and account notifications.
-                    Msg &amp; data rates may apply. Reply STOP to opt out at any time.
-                    Must be 18+ to receive SMS. See our{' '}
+                    By checking this box, you agree to receive recurring automated
+                    marketing &amp; informational texts from GasCap (price drops,
+                    reminders, offers &amp; winner alerts) at the number you provide.
+                    Consent is not a condition of purchase. Msg frequency varies;
+                    msg &amp; data rates may apply. Reply STOP to opt out, HELP for help.
+                    Must be 18+. See our{' '}
                     <a href="/terms#sms" className="text-amber-600 hover:underline" target="_blank" rel="noopener noreferrer">
                       SMS Terms
+                    </a>{' '}&amp;{' '}
+                    <a href="/privacy" className="text-amber-600 hover:underline" target="_blank" rel="noopener noreferrer">
+                      Privacy Policy
                     </a>.
                   </p>
                 </div>
