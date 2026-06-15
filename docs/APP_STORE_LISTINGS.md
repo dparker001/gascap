@@ -28,30 +28,36 @@ how much gas, gas money, fuel economy, tank calculator.
 
 ---
 
-## Full description (both stores)
+## Full description (both stores) — SEO version (~2,000 chars, limit 4,000)
 ```
-Stop guessing at the pump. GasCap tells you exactly how much fuel you need and
-what it'll cost — before you pull up.
+Stop guessing at the pump. GasCap is the free gas cost calculator that tells you exactly how much fuel you need and what it'll cost — before you pull up.
 
-Enter your tank size, current fuel level, and how full you want to go. GasCap
-instantly shows the gallons you'll add and the total cost using real local gas
-prices. No more overpaying, no more "fill it and hope."
+Just enter your tank size, your current fuel level, and how full you want to go. GasCap instantly shows the gallons you'll add and your total cost using real local gas prices. No more overpaying, no more "fill it and hope." It's the simplest way to know your fill-up cost in advance.
 
-WHY DRIVERS USE GASCAP
-• Know your exact fill-up cost before you swipe your card
-• Real-time local gas prices
-• Works offline — calculate anywhere, even with no signal
-• Rental Car mode — return it at the right fuel level, skip the refueling fee
-• Track every fill-up and your MPG over time
+WHY DRIVERS LOVE GASCAP
+• Gas cost calculator — know your exact fill-up cost before you swipe your card
+• Real-time local gas prices so your estimate matches the pump
+• A fuel calculator that works offline — calculate anywhere, even with no signal
+• Rental Car mode — return it at the right fuel level and skip the pricey refueling fee
+• MPG tracker — log every fill-up and watch your gas mileage and fuel economy over time
 • Save your vehicles for one-tap calculations
+
+POWERFUL TOOLS FOR EVERY DRIVER
+• Fill-up cost calculator: how much gas to add and what you'll pay
+• Budget calculator: enter a dollar amount and see how many gallons it buys
+• Road trip cost estimator: plan fuel costs before you hit the road
+• Tank calculator: figure your fuel needs for any tank size
+• Fuel tracker & history: see your gas money spending and MPG trends month to month
 
 PERFECT FOR
 • Anyone on a budget who's tired of overpaying for gas
-• Rideshare & delivery drivers watching every gallon
-• Road trips and rental cars
-• Commuters tracking fuel costs and mileage
+• Rideshare and delivery drivers watching every gallon and every dollar
+• Road trips, rental cars, and weekend getaways
+• Commuters tracking fuel costs, gas mileage, and monthly gas spending
 
-100% free to use. Know before you go.
+Whether you call it a gas calculator, fuel cost calculator, gas price checker, MPG tracker, or gas money planner — GasCap puts the numbers in your pocket so you always know before you go.
+
+100% free to use. No surprises at the pump.
 
 GasCap™ — gascap.app
 ```
