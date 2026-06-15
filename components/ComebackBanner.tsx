@@ -89,6 +89,12 @@ export default function ComebackBanner() {
             Not now
           </button>
         </div>
+
+        {getaway && (
+          <p className="text-[9px] mt-1.5 leading-snug text-teal-600/70">
+            *Resort getaway = hotel certificate; you cover taxes &amp; fees. Flights not included. Full terms on the upgrade page.
+          </p>
+        )}
       </div>
 
       <button
