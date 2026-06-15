@@ -109,7 +109,10 @@ export async function GET(req: Request) {
         const sms = nextStep === 1
           ? `${firstName}, come back to GasCap™ Pro — Lifetime is 50% off ($9.99)${withGetaway ? ' + a FREE resort getaway' : ''}. 3 days only — claim: https://www.gascap.app/upgrade?wb=1\n\nReply STOP to opt out.`
           : `Last call, ${firstName}! Your $9.99 GasCap™ Lifetime${withGetaway ? ' + free getaway' : ''} ends tomorrow → https://www.gascap.app/upgrade?wb=1\n\nReply STOP to opt out.`;
-        try { await sendGhlSms(user.email, sms); } catch (e) { console.warn(`[Winback] SMS failed for ${user.email}:`, e); }
+        // Attach the offer flyer as MMS — only while the getaway promo is live
+        // (the flyer features the free getaway; don't show it once that's off).
+        const media = withGetaway ? ['https://www.gascap.app/marketing/winback/portrait-mms.jpg'] : undefined;
+        try { await sendGhlSms(user.email, sms, media); } catch (e) { console.warn(`[Winback] SMS failed for ${user.email}:`, e); }
       }
 
       const nowIso = new Date().toISOString();
@@ -131,7 +134,7 @@ export async function GET(req: Request) {
 
   return NextResponse.json({
     ok:        true,
-    version:   'wb-getaway-sms-v2',
+    version:   'wb-mms-v3',
     dryRun,
     audience:  byStep[1] + byStep[2] + byStep[3],
     byStep,

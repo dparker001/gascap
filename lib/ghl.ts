@@ -213,7 +213,7 @@ export async function upsertGhlContactWithCampaign(
  * Returns true on success, false on any failure (non-throwing — safe to
  * call fire-and-forget style from the cron).
  */
-export async function sendGhlSms(email: string, message: string): Promise<boolean> {
+export async function sendGhlSms(email: string, message: string, mediaUrls?: string[]): Promise<boolean> {
   if (!isConfigured()) {
     console.warn('[GHL SMS] Skipping — GHL_API_KEY or GHL_LOCATION_ID not set.');
     return false;
@@ -248,6 +248,8 @@ export async function sendGhlSms(email: string, message: string): Promise<boolea
         contactId,
         locationId: GHL_LOCATION_ID,
         message,
+        // Including attachments turns the message into an MMS (picture text).
+        ...(mediaUrls?.length ? { attachments: mediaUrls } : {}),
       }),
     });
 
