@@ -77,14 +77,20 @@ export default function GasPriceLookup({ onApply }: GasPriceLookupProps) {
       return;
     }
 
+    // Round to ~1 decimal (~11 km) so we only ever transmit APPROXIMATE location,
+    // never precise GPS. State-level resolution for regional pricing is unaffected,
+    // and it keeps our "approximate location" privacy declaration honest.
+    const apxLat = Math.round(position.latitude  * 10) / 10;
+    const apxLng = Math.round(position.longitude * 10) / 10;
+
     // Store coords for use in onApply
-    setCoords({ lat: position.latitude, lng: position.longitude });
+    setCoords({ lat: apxLat, lng: apxLng });
 
     // 2. Fetch price from our API route
     setStatus('fetching');
     try {
       const res = await fetch(
-        `/api/gas-price?lat=${position.latitude}&lng=${position.longitude}`,
+        `/api/gas-price?lat=${apxLat}&lng=${apxLng}`,
         { signal: timeoutSignal(15000) },
       );
       const data = await res.json() as GasPriceLookupResult;
