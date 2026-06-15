@@ -16,7 +16,6 @@ import { NextResponse }                  from 'next/server';
 import { getAllUsers }                    from '@/lib/users';
 import { sendMail, winbackEmailHtml }     from '@/lib/email';
 import { prisma }                         from '@/lib/prisma';
-import { sendGhlSms }                      from '@/lib/ghl';
 import { getawayPromoActive }              from '@/lib/getawayPromo';
 import { winbackEligible, winbackOfferActive, WINBACK_STEPS, WINBACK_GAP_DAYS } from '@/lib/winbackOffer';
 
@@ -103,17 +102,9 @@ export async function GET(req: Request) {
         unsubscribeUrl: UNSUB,
       });
 
-      // SMS companion for opted-in users — only on the announcement (1) and the
-      // last call (3), so we don't over-text. Requires smsOptIn + a phone number.
-      if ((nextStep === 1 || nextStep === 3) && user.smsOptIn && user.phone) {
-        const sms = nextStep === 1
-          ? `${firstName}, come back to GasCap™ Pro — Lifetime is 50% off ($9.99)${withGetaway ? ' + a FREE resort getaway' : ''}. 3 days only — claim: https://www.gascap.app/upgrade?wb=1\n\nReply STOP to opt out.`
-          : `Last call, ${firstName}! Your $9.99 GasCap™ Lifetime${withGetaway ? ' + free getaway' : ''} ends tomorrow → https://www.gascap.app/upgrade?wb=1\n\nReply STOP to opt out.`;
-        // Attach the offer flyer as MMS — only while the getaway promo is live
-        // (the flyer features the free getaway; don't show it once that's off).
-        const media = withGetaway ? ['https://www.gascap.app/marketing/winback/portrait-mms.jpg'] : undefined;
-        try { await sendGhlSms(user.email, sms, media); } catch (e) { console.warn(`[Winback] SMS failed for ${user.email}:`, e); }
-      }
+      // SMS is handled by a GHL workflow now (throttled, respects the daily cap),
+      // NOT by this cron — so we don't double-send or burst into GHL's SMS limit.
+      // This cron sends EMAIL only; the GHL "gascap-winback" workflow does SMS.
 
       const nowIso = new Date().toISOString();
       await prisma.user.update({
@@ -134,7 +125,7 @@ export async function GET(req: Request) {
 
   return NextResponse.json({
     ok:        true,
-    version:   'wb-mms-v3',
+    version:   'wb-email-only-v4',
     dryRun,
     audience:  byStep[1] + byStep[2] + byStep[3],
     byStep,
