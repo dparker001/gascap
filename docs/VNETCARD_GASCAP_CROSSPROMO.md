@@ -16,7 +16,7 @@
 
 ## EMAIL (RECOMMENDED: styled HTML, paste into GHL HTML block)
 
-**Subject:** `🎁 Members-only: GasCap™ Pro for life + a free resort getaway`
+**Subject:** `vNetCard™ Members-Only: GasCap™ Pro for life + a free resort getaway 🎁`
 **Preheader:** `vNetCard™ partnered with GasCap™ — Pro for life, a free getaway, and earn free vNetCard™ months.`
 
 ```html
@@ -70,7 +70,7 @@
 ## EMAIL — plain-text fallback (if you'd rather not use HTML)
 
 ```
-Subject: 🎁 Members-only: GasCap™ Pro for life + a free resort getaway
+Subject: vNetCard™ Members-Only: GasCap™ Pro for life + a free resort getaway 🎁
 
 Hi {{contact.first_name}},
 
@@ -124,7 +124,7 @@ for separate attribution.
 **Full plain-text (annual):**
 
 ```
-Subject: 🎁 Members-only: GasCap™ Pro for life + a free resort getaway
+Subject: vNetCard™ Members-Only: GasCap™ Pro for life + a free resort getaway 🎁
 
 Hi {{contact.first_name}},
 
