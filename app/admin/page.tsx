@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import AdminAnalytics from '@/components/AdminAnalytics';
 
 interface EmailLogEntry {
   id:        string;
@@ -827,6 +828,9 @@ export default function AdminPage() {
             </div>
           ))}
         </div>
+
+        {/* Analytics — usage charts (custom SVG, computed from loaded users) */}
+        <AdminAnalytics users={users} />
 
         {/* Flash message */}
         {msg && (
