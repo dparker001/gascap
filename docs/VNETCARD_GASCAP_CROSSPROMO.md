@@ -257,16 +257,21 @@ Paste this into Workflow AI (run it once for MONTHLY, once for ANNUAL with the s
 > Create a workflow named **"vNetCard Insider — Monthly"**.
 > Trigger: **Contact Tag Added**, tag = **`vnetcard-insider-monthly`**.
 > Add these actions in order:
-> 1. **Send Email** — create a new email (I'll paste my own subject and HTML body afterward).
+> 1. **Send Email** — create a new email named "Initial offer" (I'll paste my own subject and HTML body afterward).
 > 2. **Wait 10 minutes.**
 > 3. **Send SMS** with this exact message: `vNetCard™ here 👋 Exclusive partner offer just for our members — check your email for GasCap™ Pro for life + a free resort getaway, and a way to earn free months of vNetCard™. Reply STOP to opt out.`
+> 4. **Wait 3 days.**
+> 5. **If/Else** — condition: the contact **did NOT click a link in the "Initial offer" email**.
+>    - **"Did NOT click" branch → Send Email** (the 3-day reminder — I'll paste it).
+>    - **"Clicked" branch → no action** (they already engaged).
 >
-> In workflow settings: turn **Re-Entry OFF** (one send per contact) and **respect DND / unsubscribe**. End the workflow after the SMS.
+> In workflow settings: turn **Re-Entry OFF** (one send per contact) and **respect DND / unsubscribe**. End the workflow after the reminder branch.
 
 **For the ANNUAL workflow**, paste the same prompt but change:
 - Name → **"vNetCard Insider — Annual"**
 - Trigger tag → **`vnetcard-insider-annual`**
 - SMS message → `vNetCard™ here 👋 Exclusive partner offer for our members — check your email for GasCap™ Pro for life + a free resort getaway, and a way to earn renewal credit on your vNetCard™. Reply STOP to opt out.`
+- 3-day reminder email → use the **ANNUAL reminder** (renewal-credit reward) below.
 
 ### Step 3 — Fill in the email content (the part the AI can't do)
 Open each workflow's **Send Email** action → email editor → use the **Code/HTML** option →
@@ -280,6 +285,73 @@ for the annual workflow). Set the **Subject** and **Preview text** fields from e
 4. (SMS) Both workflows only text contacts who can receive marketing SMS; GHL skips DND/opt-outs automatically.
 
 > Tip: test first — add the tag to **your own** contact record in each segment and confirm the email + SMS arrive correctly before bulk-enrolling.
+
+---
+
+### Step 5 — 3-day reminder email (sent only to non-clickers)
+
+Short nudge, **email only** (no second SMS). Paste into the reminder Send Email action.
+
+**Subject (both):** `Still open, {{contact.first_name}}: GasCap™ for life + a free getaway 🎁`
+**Preview text (monthly):** `Your vNetCard™ member offer — Pro for life, a free getaway, free vNetCard™ months.`
+**Preview text (annual):** `Your vNetCard™ member offer — Pro for life, a free getaway, $20–$40 renewal credit.`
+
+**MONTHLY reminder — HTML:**
+
+```html
+<div style="display:none;max-height:0;overflow:hidden;mso-hide:all;opacity:0;color:transparent;height:0;width:0;">Your vNetCard&trade; member offer is still open &mdash; Pro for life, a free getaway, free vNetCard&trade; months.&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;</div>
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#eef1f7;padding:32px 16px;font-family:system-ui,-apple-system,'Segoe UI',Arial,sans-serif;">
+  <tr><td align="center">
+    <table width="100%" style="max-width:480px;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,.08);">
+      <tr><td style="background:#1e2d4a;padding:18px 32px;text-align:center;">
+        <span style="font-size:15px;font-weight:900;color:#fff;">vNetCard&trade; <span style="color:#1EB68F;">&times;</span> GasCap&trade;</span>
+      </td></tr>
+      <tr><td style="padding:28px 32px;">
+        <p style="margin:0 0 12px;font-size:17px;font-weight:900;color:#1e2d4a;">Hi {{contact.first_name}}, did you catch this?</p>
+        <p style="margin:0 0 16px;font-size:14px;line-height:1.6;color:#475569;">Quick reminder &mdash; your exclusive vNetCard&trade; member offer is still open:</p>
+        <table width="100%" cellpadding="0" cellspacing="0" style="background:#fef3c7;border:2px solid #f59e0b;border-radius:14px;margin:0 0 20px;">
+          <tr><td style="padding:16px 20px;">
+            <p style="margin:0 0 6px;font-size:14px;color:#1e2d4a;">&#9989; <strong>GasCap&trade; Pro for life</strong> &mdash; one-time <strong>$19.99</strong></p>
+            <p style="margin:0 0 6px;font-size:14px;color:#1e2d4a;">&#127965;&#65039; <strong>A free resort getaway</strong></p>
+            <p style="margin:0;font-size:14px;color:#1e2d4a;">&#127873; Refer <strong>5 friends &rarr; 1 free month of vNetCard&trade;</strong> (10 &rarr; 2)</p>
+          </td></tr>
+        </table>
+        <p style="text-align:center;margin:0 0 16px;">
+          <a href="https://www.gascap.app/upgrade?utm_source=vnetcard&utm_medium=email&utm_campaign=insider-reminder" style="display:inline-block;background:#005f4a;color:#fff;font-weight:900;font-size:15px;padding:13px 30px;border-radius:12px;text-decoration:none;">Claim it &mdash; $19.99 &rarr;</a>
+        </p>
+        <p style="margin:0;font-size:13px;color:#475569;">Takes about 2 minutes. Thanks for being a vNetCard&trade; member!<br/>&mdash; The vNetCard&trade; + GasCap&trade; Team</p>
+      </td></tr>
+      <tr><td style="background:#f8fafc;padding:14px 32px;border-top:1px solid #e2e8f0;">
+        <p style="margin:0;font-size:10px;line-height:1.5;color:#94a3b8;">Getaway = complimentary hotel stay (flights not included; you cover nightly taxes &amp; fees). Referrals must be verified GasCap&trade; sign-ups; use the same email on GasCap&trade; as your vNetCard&trade; account. Full terms at RedeemVacations.com. GasCap&trade; &middot; gascap.app</p>
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
+```
+
+**ANNUAL reminder — HTML:** same as above with two swaps —
+- Preheader text → `Your vNetCard&trade; member offer is still open &mdash; Pro for life, a free getaway, $20&ndash;$40 renewal credit.`
+- Reward line → `<p style="margin:0;font-size:14px;color:#1e2d4a;">&#127873; Refer <strong>5 friends &rarr; $20 off your renewal</strong> (10 &rarr; $40)</p>`
+- CTA link → `utm_campaign=insider-reminder-annual`
+
+**Plain-text reminder (either cohort):**
+
+```
+Subject: Still open, {{contact.first_name}}: GasCap™ for life + a free getaway 🎁
+
+Hi {{contact.first_name}}, did you catch this? Quick reminder — your exclusive vNetCard™ member offer is still open:
+
+✅ GasCap™ Pro for life — one-time $19.99
+🏝️ A free resort getaway
+🎁 Refer 5 friends → 1 free month of vNetCard™ (10 → 2)   [ANNUAL: → $20 off your renewal (10 → $40)]
+
+Claim it → https://www.gascap.app/upgrade?utm_source=vnetcard&utm_medium=email&utm_campaign=insider-reminder
+
+Takes about 2 minutes. Thanks for being a vNetCard™ member!
+— The vNetCard™ + GasCap™ Team
+
+Getaway = complimentary hotel stay (flights not included; you cover nightly taxes & fees). Referrals must be verified GasCap™ sign-ups; use the same email on GasCap™ as your vNetCard™ account. Full terms at RedeemVacations.com.
+```
 
 ---
 
