@@ -50,7 +50,7 @@ export default function SavingsSummary() {
             <p className="text-xs font-black text-slate-700 dark:text-slate-200">
               {t.savings.emptyTitle}
             </p>
-            <p className="text-[11px] text-slate-400 mt-0.5 leading-relaxed">
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">
               {t.savings.emptySub}
             </p>
           </div>
@@ -81,21 +81,21 @@ export default function SavingsSummary() {
     {
       icon:  '💰',
       value: `$${stats.totalSpent.toFixed(2)}`,
-      label: 'Total tracked spend',
+      label: t.savingsSummary.totalSpend,
       color: 'text-[#005F4A]',
       bg:    'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-800',
     },
     {
       icon:  '⛽',
       value: `${stats.totalGallons.toFixed(1)}`,
-      label: 'Gallons logged',
+      label: t.savingsSummary.gallonsLogged,
       color: 'text-slate-700 dark:text-slate-200',
       bg:    'bg-slate-50 dark:bg-slate-800 border-slate-100 dark:border-slate-700',
     },
     {
       icon:  '📊',
       value: avgPrice > 0 ? `$${avgPrice.toFixed(3)}` : '—',
-      label: 'Avg price / gal',
+      label: t.savingsSummary.avgPrice,
       color: 'text-slate-700 dark:text-slate-200',
       bg:    'bg-slate-50 dark:bg-slate-800 border-slate-100 dark:border-slate-700',
     },
@@ -107,11 +107,11 @@ export default function SavingsSummary() {
       <div className="flex items-center gap-2 mb-2 px-1">
         <span className="text-sm" aria-hidden="true">💰</span>
         <h2 className="text-xs font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider">
-          Fuel Spend Tracker
+          {t.savingsSummary.title}
         </h2>
         <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
-        <span className="text-[10px] text-slate-400 font-semibold whitespace-nowrap">
-          {stats.count} fill-up{stats.count !== 1 ? 's' : ''} logged
+        <span className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold whitespace-nowrap">
+          {t.savingsSummary.fillUpsLogged(stats.count)}
         </span>
       </div>
 
@@ -125,7 +125,7 @@ export default function SavingsSummary() {
             <p className={`text-sm font-black leading-none mt-1 ${color}`}>
               {value}
             </p>
-            <p className="text-[10px] text-slate-400 mt-0.5 leading-tight">
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 leading-tight">
               {label}
             </p>
           </div>
@@ -133,8 +133,8 @@ export default function SavingsSummary() {
       </div>
 
       {stats.avgMpg && (
-        <p className="mt-2 text-center text-[11px] text-slate-400">
-          Avg MPG across tracked vehicles:{' '}
+        <p className="mt-2 text-center text-[11px] text-slate-500 dark:text-slate-400">
+          {t.savingsSummary.avgMpgLabel}{' '}
           <span className="font-bold text-slate-600 dark:text-slate-300">
             {stats.avgMpg} mpg
           </span>

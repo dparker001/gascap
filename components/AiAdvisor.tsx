@@ -147,7 +147,7 @@ export default function AiAdvisor({ embedded = false }: { embedded?: boolean }) 
             </div>
             <div className="text-left">
               <p className="text-sm font-black text-white">GasCap™ AI Advisor</p>
-              <p className="text-[10px] text-white/50">Ask anything about fuel, MPG, or your spending</p>
+              <p className="text-[10px] text-white/70">{t.aiAdvisor.headerSubtitle}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -155,7 +155,7 @@ export default function AiAdvisor({ embedded = false }: { embedded?: boolean }) 
               AI
             </span>
             <svg
-              className={`w-4 h-4 text-white/50 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+              className={`w-4 h-4 text-white/70 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
               viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
               aria-hidden="true"
             >
@@ -172,10 +172,13 @@ export default function AiAdvisor({ embedded = false }: { embedded?: boolean }) 
           {configured === false && (
             <div className="px-4 py-6 text-center space-y-2">
               <p className="text-2xl">🔑</p>
-              <p className="text-sm font-bold text-slate-700">AI Advisor needs setup</p>
+              <p className="text-sm font-bold text-slate-700">{t.aiAdvisor.setupTitle}</p>
               <p className="text-xs text-slate-500 leading-relaxed max-w-[260px] mx-auto">
-                Add your <code className="bg-slate-100 px-1 rounded text-[11px]">ANTHROPIC_API_KEY</code> to{' '}
-                <code className="bg-slate-100 px-1 rounded text-[11px]">.env.local</code> to enable AI-powered insights.
+                {t.aiAdvisor.setupBodyPre}{' '}
+                <code className="bg-slate-100 px-1 rounded text-[11px]">ANTHROPIC_API_KEY</code>{' '}
+                {t.aiAdvisor.setupBodyMid}{' '}
+                <code className="bg-slate-100 px-1 rounded text-[11px]">.env.local</code>{' '}
+                {t.aiAdvisor.setupBodyPost}
               </p>
             </div>
           )}
@@ -188,7 +191,7 @@ export default function AiAdvisor({ embedded = false }: { embedded?: boolean }) 
                   <div className="text-center py-3">
                     <p className="text-2xl mb-1.5">🤖</p>
                     <p className="text-sm font-bold text-slate-700">{t.ai.greeting}</p>
-                    <p className="text-xs text-slate-400 mt-1">
+                    <p className="text-xs text-slate-500 mt-1">
                       {isPro ? t.ai.greetingProSub : t.ai.greetingSub}
                     </p>
                   </div>
@@ -231,7 +234,7 @@ export default function AiAdvisor({ embedded = false }: { embedded?: boolean }) 
               {/* Prompt chips — only when empty */}
               {isEmpty && (
                 <div className="px-4 pb-3 pt-2">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-2">
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-2">
                     {t.ai.suggestedLabel}
                   </p>
                   <div className="flex flex-wrap gap-1.5">
@@ -267,14 +270,14 @@ export default function AiAdvisor({ embedded = false }: { embedded?: boolean }) 
                       onChange={(e) => setInput(e.target.value)}
                       onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(input); } }}
                       disabled={loading}
-                      aria-label="Ask GasCap AI"
+                      aria-label={t.aiAdvisor.inputAriaLabel}
                     />
                     <button
                       onClick={() => sendMessage(input)}
                       disabled={loading || !input.trim()}
                       className="w-9 h-9 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-40
                                  transition-colors flex items-center justify-center flex-shrink-0"
-                      aria-label="Send"
+                      aria-label={t.aiAdvisor.sendAriaLabel}
                     >
                       <svg viewBox="0 0 16 16" className="w-4 h-4 text-white" fill="none"
                            stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
@@ -282,14 +285,14 @@ export default function AiAdvisor({ embedded = false }: { embedded?: boolean }) 
                       </svg>
                     </button>
                   </div>
-                  <p className="text-[11px] text-slate-500 text-center pb-2 leading-snug">
-                    AI responses are for informational purposes · Always verify safety-critical vehicle info
+                  <p className="text-[11px] text-slate-600 text-center pb-2 leading-snug">
+                    {t.aiAdvisor.disclaimer}
                   </p>
                 </>
               ) : (
                 /* Upgrade nudge for free / guest */
                 <div className="border-t border-slate-100 px-4 py-3 flex items-center justify-between gap-3">
-                  <p className="text-xs text-slate-400 leading-snug">
+                  <p className="text-xs text-slate-500 leading-snug">
                     {t.ai.proUnlocks}
                   </p>
                   <Link
