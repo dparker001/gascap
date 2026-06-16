@@ -19,6 +19,8 @@
 **Subject:** `vNetCard™ Members-Only: GasCap™ Pro for life + a free resort getaway 🎁`
 **Preview text:** `vNetCard™ partnered with GasCap™ — Pro for life, a free getaway, and earn free vNetCard™ months.` (embedded as a hidden preheader at the top of the HTML below — also set it in GHL's preview-text field.)
 
+> ℹ️ The **subject** is set in GHL's Subject field — it is NOT part of the HTML body below. The HTML is the email body only; the hidden preheader `<div>` just embeds the preview text as a fallback.
+
 ```html
 <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;opacity:0;color:transparent;height:0;width:0;">vNetCard&trade; partnered with GasCap&trade; &mdash; Pro for life, a free getaway, and earn free vNetCard&trade; months.&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;</div>
 <table width="100%" cellpadding="0" cellspacing="0" style="background:#eef1f7;padding:32px 16px;font-family:system-ui,-apple-system,'Segoe UI',Arial,sans-serif;">
