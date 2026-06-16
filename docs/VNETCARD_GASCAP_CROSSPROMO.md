@@ -241,6 +241,48 @@ GasCap™ · Know before you go · gascap.app
 5. **Getaway fulfillment** is already automated-ish ("Option B"): each Lifetime purchase fires an admin notification to issue the Marketing Boost certificate to the buyer's email.
 6. **Cadence:** review qualifiers weekly; credit and notify the member ("🎉 Your free vNetCard month is applied").
 
+## Sending it via a GHL Workflow (automation)
+
+The contacts window can't attach an email template, but a **Workflow → "Send Email"
+action has a full editor where you paste the HTML.** Use TWO simple workflows (one
+per segment) — most reliable, no branching.
+
+### Step 1 — Create two tags
+- `vnetcard-insider-monthly` (enrolls monthly customers)
+- `vnetcard-insider-annual` (enrolls annual customers)
+
+### Step 2 — Build each workflow with GHL Workflow AI
+Paste this into Workflow AI (run it once for MONTHLY, once for ANNUAL with the swaps noted):
+
+> Create a workflow named **"vNetCard Insider — Monthly"**.
+> Trigger: **Contact Tag Added**, tag = **`vnetcard-insider-monthly`**.
+> Add these actions in order:
+> 1. **Send Email** — create a new email (I'll paste my own subject and HTML body afterward).
+> 2. **Wait 10 minutes.**
+> 3. **Send SMS** with this exact message: `vNetCard™ here 👋 Exclusive partner offer just for our members — check your email for GasCap™ Pro for life + a free resort getaway, and a way to earn free months of vNetCard™. Reply STOP to opt out.`
+>
+> In workflow settings: turn **Re-Entry OFF** (one send per contact) and **respect DND / unsubscribe**. End the workflow after the SMS.
+
+**For the ANNUAL workflow**, paste the same prompt but change:
+- Name → **"vNetCard Insider — Annual"**
+- Trigger tag → **`vnetcard-insider-annual`**
+- SMS message → `vNetCard™ here 👋 Exclusive partner offer for our members — check your email for GasCap™ Pro for life + a free resort getaway, and a way to earn renewal credit on your vNetCard™. Reply STOP to opt out.`
+
+### Step 3 — Fill in the email content (the part the AI can't do)
+Open each workflow's **Send Email** action → email editor → use the **Code/HTML** option →
+paste the matching HTML from this doc (MONTHLY email for the monthly workflow, ANNUAL email
+for the annual workflow). Set the **Subject** and **Preview text** fields from each section above.
+
+### Step 4 — Enroll the contacts (this is the "send")
+1. Build two smart lists in location `8oiEKtKPU1gvhSH5JF9p`: active paying **monthly** subs, and active **annual** subs.
+2. Bulk-select the monthly list → **Add Tag** `vnetcard-insider-monthly` → that fires the monthly workflow.
+3. Bulk-select the annual list → **Add Tag** `vnetcard-insider-annual` → fires the annual workflow.
+4. (SMS) Both workflows only text contacts who can receive marketing SMS; GHL skips DND/opt-outs automatically.
+
+> Tip: test first — add the tag to **your own** contact record in each segment and confirm the email + SMS arrive correctly before bulk-enrolling.
+
+---
+
 ## Notes / decisions
 - Email is the primary channel (deliverability + richer); SMS is a teaser only (A2P-safe).
 - Net cost per redeemer ≈ $0 (the $19.99 Lifetime offsets the free vNetCard month) → near-zero CAC for 5–10 new GasCap users + a converted Lifetime customer + an advocate.
