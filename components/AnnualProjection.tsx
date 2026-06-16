@@ -81,7 +81,7 @@ export default function AnnualProjection() {
         {/* Header */}
         <div className="flex items-center gap-2 mb-3">
           <span className="text-base" aria-hidden="true">📅</span>
-          <p className="text-[10px] font-black text-white/50 uppercase tracking-wider">
+          <p className="text-[10px] font-black text-white/70 uppercase tracking-wider">
             Annual Fuel Cost Projection
           </p>
         </div>
@@ -91,9 +91,9 @@ export default function AnnualProjection() {
           <p className="text-3xl font-black text-amber-400 leading-none">
             ${projection.toFixed(0)}
           </p>
-          <p className="text-sm font-semibold text-white/40 pb-0.5">/year</p>
+          <p className="text-sm font-semibold text-white/60 pb-0.5">/year</p>
         </div>
-        <p className="text-[10px] text-white/30 leading-relaxed">
+        <p className="text-[10px] text-white/55 leading-relaxed">
           Based on your last {fillupCount} fill-up{fillupCount !== 1 ? 's' : ''}
         </p>
 
@@ -101,15 +101,15 @@ export default function AnnualProjection() {
         <div className="flex gap-2 mt-3">
           <div className="flex-1 rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-center">
             <p className="text-sm font-black text-white">${monthly.toFixed(0)}</p>
-            <p className="text-[9px] text-white/30 font-semibold uppercase tracking-wide mt-0.5">/ month</p>
+            <p className="text-[9px] text-white/60 font-semibold uppercase tracking-wide mt-0.5">/ month</p>
           </div>
           <div className="flex-1 rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-center">
             <p className="text-sm font-black text-white">${weekly.toFixed(0)}</p>
-            <p className="text-[9px] text-white/30 font-semibold uppercase tracking-wide mt-0.5">/ week</p>
+            <p className="text-[9px] text-white/60 font-semibold uppercase tracking-wide mt-0.5">/ week</p>
           </div>
         </div>
 
-        <p className="text-[9px] text-white/20 text-center mt-2.5 leading-relaxed">
+        <p className="text-[9px] text-white/45 text-center mt-2.5 leading-relaxed">
           Projection extrapolated from your fill-up pace. Log consistently for accuracy.
         </p>
       </div>

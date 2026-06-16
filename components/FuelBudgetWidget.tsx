@@ -25,7 +25,7 @@ interface FillupStats {
   totalSpent:   number;
   totalGallons: number;
   avgMpg:       number | null;
-  fillupCount:  number;
+  count:        number;   // field name returned by /api/fillups (getFillupStats)
 }
 
 interface FillupEntry {
@@ -200,11 +200,11 @@ export default function FuelBudgetWidget() {
           )}
 
           {/* ── All-time stats row ── */}
-          {stats && stats.fillupCount > 0 ? (
+          {stats && stats.count > 0 ? (
             <div className="grid grid-cols-3 gap-2 pt-3 border-t border-slate-100 dark:border-slate-700">
               <div className="text-center">
                 <p className="text-base font-black text-slate-800 dark:text-slate-100">
-                  {stats.fillupCount}
+                  {stats.count}
                 </p>
                 <p className="text-[10px] text-slate-400 mt-0.5">{t.fuelBudget.fillupsLogged}</p>
               </div>
