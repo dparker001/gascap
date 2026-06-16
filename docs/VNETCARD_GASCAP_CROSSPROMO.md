@@ -17,9 +17,10 @@
 ## EMAIL (RECOMMENDED: styled HTML, paste into GHL HTML block)
 
 **Subject:** `vNetCard™ Members-Only: GasCap™ Pro for life + a free resort getaway 🎁`
-**Preheader:** `vNetCard™ partnered with GasCap™ — Pro for life, a free getaway, and earn free vNetCard™ months.`
+**Preview text:** `vNetCard™ partnered with GasCap™ — Pro for life, a free getaway, and earn free vNetCard™ months.` (embedded as a hidden preheader at the top of the HTML below — also set it in GHL's preview-text field.)
 
 ```html
+<div style="display:none;max-height:0;overflow:hidden;mso-hide:all;opacity:0;color:transparent;height:0;width:0;">vNetCard&trade; partnered with GasCap&trade; &mdash; Pro for life, a free getaway, and earn free vNetCard&trade; months.&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;</div>
 <table width="100%" cellpadding="0" cellspacing="0" style="background:#eef1f7;padding:32px 16px;font-family:system-ui,-apple-system,'Segoe UI',Arial,sans-serif;">
   <tr><td align="center">
     <table width="100%" style="max-width:480px;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,.08);">
@@ -68,6 +69,8 @@
 ```
 
 ## EMAIL — plain-text fallback (if you'd rather not use HTML)
+
+**Preview text** (paste into GHL's "preview text" field): `vNetCard™ partnered with GasCap™ — Pro for life, a free getaway, and earn free vNetCard™ months.`
 
 ```
 Subject: vNetCard™ Members-Only: GasCap™ Pro for life + a free resort getaway 🎁
@@ -118,8 +121,10 @@ GasCap™ · Know before you go · gascap.app
 ## EMAIL — Annual-customer variant
 
 Annual subscribers get **renewal credit** instead of free months (everything else
-is identical; subject + preheader stay the same). Note the UTM is `insider-annual`
-for separate attribution.
+is identical; the subject stays the same, but the preview text mentions the credit).
+Note the UTM is `insider-annual` for separate attribution.
+
+**Preview text (annual):** `vNetCard™ partnered with GasCap™ — Pro for life, a free getaway, and earn $20–$40 renewal credit.`
 
 **Full plain-text (annual):**
 
@@ -168,6 +173,7 @@ GasCap™ · Know before you go · gascap.app
   `&#9314; Share it &mdash; every <strong>5 verified sign-ups = $20 off your vNetCard&trade; renewal</strong> (10 = $40).`
 - Footer "Free-month details" → the **Credit details** text above.
 - CTA link `utm_campaign=insider` → `insider-annual`.
+- Hidden preheader (the `<div>` at the very top) → swap to the annual preview text above.
 
 **Annual SMS teaser:**
 
