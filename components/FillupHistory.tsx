@@ -420,7 +420,7 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
       </button>
 
       {open && (
-        <div className="bg-white p-3 space-y-3">
+        <div className="bg-slate-50 p-3 space-y-3">
 
           {/* ── All-time stats bar ───────────────────────────────────────── */}
           {stats && stats.count > 0 && (() => {
