@@ -170,15 +170,37 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
     return (totalSpent / daySpan) * 365;
   }
 
-  function calcCostPerMile(fillups: Fillup[], totalSpent: number): number | null {
-    const withOdo = fillups.filter((f) => f.odometerReading != null);
-    if (withOdo.length < 2) return null;
-    const sorted  = [...withOdo].sort((a, b) => a.odometerReading! - b.odometerReading!);
-    const minOdo  = sorted[0].odometerReading!;
-    const maxOdo  = sorted[sorted.length - 1].odometerReading!;
-    const miles   = maxOdo - minOdo;
-    if (miles < 1) return null;
-    return totalSpent / miles;
+  // Cost per mile, computed the same tank-to-tank way as MPG (see computeMpg):
+  // group by vehicle, walk consecutive odometer readings, and attribute each
+  // fill-up's cost to the miles it covered (the fuel added at fill-up N is what
+  // propelled the miles driven since fill-up N-1). The old version divided the
+  // cost of ALL fill-ups (including those with no odometer) by the miles spanned
+  // by only the odometer fill-ups, and ignored vehicle grouping — so it was
+  // inflated, and nonsensical for anyone with more than one vehicle.
+  function calcCostPerMile(fillups: Fillup[]): number | null {
+    const byVehicle: Record<string, Fillup[]> = {};
+    for (const f of fillups) {
+      const key = f.vehicleId ?? f.vehicleName;
+      (byVehicle[key] ??= []).push(f);
+    }
+
+    let totalMiles = 0;
+    let totalCost  = 0;
+    for (const group of Object.values(byVehicle)) {
+      const sorted = [...group]
+        .filter((f) => f.odometerReading != null)
+        .sort((a, b) => a.date.localeCompare(b.date));
+      for (let i = 1; i < sorted.length; i++) {
+        const miles = sorted[i].odometerReading! - sorted[i - 1].odometerReading!;
+        if (miles > 0) {
+          totalMiles += miles;
+          totalCost  += sorted[i].totalCost;
+        }
+      }
+    }
+
+    if (totalMiles < 1) return null;
+    return totalCost / totalMiles;
   }
 
   const load = useCallback(async () => {
@@ -403,7 +425,7 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
           {/* ── All-time stats bar ───────────────────────────────────────── */}
           {stats && stats.count > 0 && (() => {
             const annualProjection = calcAnnualProjection(fillups, stats.totalSpent);
-            const costPerMile      = calcCostPerMile(fillups, stats.totalSpent);
+            const costPerMile      = calcCostPerMile(fillups);
             return (
               <>
                 <div className="grid grid-cols-3 gap-2">
