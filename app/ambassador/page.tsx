@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { useEffect, useState } from 'react';
+import StreakRewards         from '@/components/StreakRewards';
+import CompAmbassadorTracker from '@/components/CompAmbassadorTracker';
 
 interface ReferralSummary {
   referralUrl:   string;
@@ -224,6 +226,10 @@ export default function AmbassadorPage() {
             </div>
           </div>
         </div>
+
+        {/* ── Live rewards (streak + comp tracker — moved here from the Tools share tab) ── */}
+        <StreakRewards />
+        <CompAmbassadorTracker />
 
         {/* ── CTA ──────────────────────────────────────────────────── */}
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-3 text-center">

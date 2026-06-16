@@ -22,10 +22,7 @@ import MonthlyReportCard      from './MonthlyReportCard';
 import SavedTrips             from './SavedTrips';
 import SavingsDashboard       from './SavingsDashboard';
 import WorstFillup            from './WorstFillup';
-import ReferralLeaderboard    from './ReferralLeaderboard';
 import VehicleHealthAlert     from './VehicleHealthAlert';
-import StreakRewards          from './StreakRewards';
-import CompAmbassadorTracker  from './CompAmbassadorTracker';
 import ManualFillupLogger     from './ManualFillupLogger';
 import { useTranslation }    from '@/contexts/LanguageContext';
 // ── Tab definitions ──────────────────────────────────────────────────────────
@@ -330,10 +327,18 @@ export default function ToolsPanel() {
                 withDivider={false}
               />
             </div>
-            <CompAmbassadorTracker />
-            <StreakRewards />
-            <ReferralLeaderboard />
             <ReferralCard />
+            {/* Full tiers / streak / program live on the dedicated page to keep this tab light */}
+            <a href="/ambassador"
+               className="flex items-center justify-between gap-3 bg-navy-700 rounded-2xl px-4 py-3.5 hover:opacity-95 transition-opacity">
+              <div className="min-w-0">
+                <p className="text-sm font-black text-white leading-tight">{t.tools.ambassadorLinkTitle}</p>
+                <p className="text-[11px] text-white/60 leading-snug mt-0.5">{t.tools.ambassadorLinkSub}</p>
+              </div>
+              <svg viewBox="0 0 12 12" className="w-4 h-4 flex-shrink-0 text-white/50" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                <path d="M2 6h8M6 2l4 4-4 4" />
+              </svg>
+            </a>
           </div>
         )}
         {effectiveTab === 'share' && !session && <SignInPrompt feature={t.toolsPrompts.featureReferral} />}

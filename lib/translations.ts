@@ -672,6 +672,8 @@ const en = {
   tools: {
     heading:     'Tools & Insights',
     signInHint:  'Sign in to access this feature',
+    ambassadorLinkTitle: 'Ambassador Program',
+    ambassadorLinkSub:   'See your tiers, streak & rewards →',
     tabs: {
       ai:      'AI',
       trip:    'Trip',
@@ -3080,6 +3082,8 @@ const es: typeof en = {
   tools: {
     heading:     'Herramientas e Insights',
     signInHint:  'Inicia sesión para acceder a esta función',
+    ambassadorLinkTitle: 'Programa de embajadores',
+    ambassadorLinkSub:   'Ve tus niveles, racha y recompensas →',
     tabs: {
       ai:      'IA',
       trip:    'Viaje',
