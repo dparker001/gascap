@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
+import { useTranslation } from '@/contexts/LanguageContext';
 import type { Fillup } from '@/lib/fillups';
 
 interface FillupResponse {
@@ -44,6 +45,7 @@ function Arrow({ current, prev, higherIsBad }: { current: number; prev: number; 
 }
 
 export default function MonthlyReportCard() {
+  const { t } = useTranslation();
   const { data: session } = useSession();
   const [fillups, setFillups] = useState<Fillup[] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -66,7 +68,7 @@ export default function MonthlyReportCard() {
       <div className="rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
         <div className="flex items-center gap-2 py-2.5 px-4 bg-navy-700">
           <span className="text-sm" aria-hidden="true">📅</span>
-          <p className="text-xs font-black text-white uppercase tracking-wider">Monthly Report Card</p>
+          <p className="text-xs font-black text-white uppercase tracking-wider">{t.monthlyReportCard.title}</p>
         </div>
         <div className="bg-white p-4 space-y-2">
           <div className="h-4 w-40 bg-slate-100 rounded animate-pulse" />
@@ -85,10 +87,10 @@ export default function MonthlyReportCard() {
       <div className="rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
         <div className="flex items-center gap-2 py-2.5 px-4 bg-navy-700">
           <span className="text-sm" aria-hidden="true">📅</span>
-          <p className="text-xs font-black text-white uppercase tracking-wider">Monthly Report Card</p>
+          <p className="text-xs font-black text-white uppercase tracking-wider">{t.monthlyReportCard.title}</p>
         </div>
         <div className="bg-white p-4 text-center">
-          <p className="text-xs text-slate-400">Could not load report data.</p>
+          <p className="text-xs text-slate-400">{t.monthlyReportCard.loadError}</p>
         </div>
       </div>
     );
@@ -110,30 +112,34 @@ export default function MonthlyReportCard() {
 
   const monthName = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
-  const rows: { label: string; curVal: string; rawCur: number; rawPrev: number; higherIsBad: boolean }[] = [
+  const rows: { id: string; label: string; curVal: string; rawCur: number; rawPrev: number; higherIsBad: boolean }[] = [
     {
-      label:      'Fill-ups',
+      id:         'fills',
+      label:      t.monthlyReportCard.fillUps,
       curVal:     String(cur.fills),
       rawCur:     cur.fills,
       rawPrev:    prev.fills,
       higherIsBad: false,
     },
     {
-      label:      'Gallons',
+      id:         'gallons',
+      label:      t.monthlyReportCard.gallons,
       curVal:     cur.gallons.toFixed(1),
       rawCur:     cur.gallons,
       rawPrev:    prev.gallons,
       higherIsBad: false,
     },
     {
-      label:      'Total Spent',
+      id:         'spent',
+      label:      t.monthlyReportCard.totalSpent,
       curVal:     cur.spent > 0 ? `$${cur.spent.toFixed(2)}` : '$0.00',
       rawCur:     cur.spent,
       rawPrev:    prev.spent,
       higherIsBad: true,
     },
     {
-      label:      'Avg $/gal',
+      id:         'avgPrice',
+      label:      t.monthlyReportCard.avgPerGal,
       curVal:     cur.avgPrice > 0 ? `$${cur.avgPrice.toFixed(3)}` : '—',
       rawCur:     cur.avgPrice,
       rawPrev:    prev.avgPrice,
@@ -147,15 +153,15 @@ export default function MonthlyReportCard() {
       <div className="flex items-center gap-2 py-2.5 px-4 bg-navy-700">
         <span className="text-sm" aria-hidden="true">📅</span>
         <div>
-          <p className="text-xs font-black text-white uppercase tracking-wider">Monthly Report Card</p>
+          <p className="text-xs font-black text-white uppercase tracking-wider">{t.monthlyReportCard.title}</p>
           <p className="text-[10px] text-white/50">{monthName}</p>
         </div>
       </div>
 
       <div className="bg-white p-4 space-y-3">
         <div className="grid grid-cols-2 gap-2">
-          {rows.map(({ label, curVal, rawCur, rawPrev, higherIsBad }) => (
-            <div key={label} className="bg-slate-50 rounded-xl px-3 py-2.5">
+          {rows.map(({ id, label, curVal, rawCur, rawPrev, higherIsBad }) => (
+            <div key={id} className="bg-slate-50 rounded-xl px-3 py-2.5">
               <div className="flex items-center gap-1.5">
                 <p className="text-base font-black text-slate-700 leading-tight">{curVal}</p>
                 {prev.fills > 0 && (
@@ -165,11 +171,11 @@ export default function MonthlyReportCard() {
               <p className="text-[10px] font-bold text-slate-500 mt-0.5 leading-tight">{label}</p>
               {prev.fills > 0 && (
                 <p className="text-[9px] text-slate-400 mt-0.5">
-                  vs {rawPrev > 0 ? (
-                    label === 'Total Spent' || label === 'Avg $/gal'
-                      ? `$${rawPrev.toFixed(label === 'Avg $/gal' ? 3 : 2)}`
-                      : rawPrev.toFixed(label === 'Gallons' ? 1 : 0)
-                  ) : '—'} last mo
+                  {t.monthlyReportCard.vsLastMonth(rawPrev > 0 ? (
+                    id === 'spent' || id === 'avgPrice'
+                      ? `$${rawPrev.toFixed(id === 'avgPrice' ? 3 : 2)}`
+                      : rawPrev.toFixed(id === 'gallons' ? 1 : 0)
+                  ) : '—')}
                 </p>
               )}
             </div>

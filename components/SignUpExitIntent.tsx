@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 /**
  * SignUpExitIntent — slide-up retention sheet for the /signup page.
@@ -17,38 +18,24 @@ import { useEffect, useRef, useState } from 'react';
  * Messages rotate randomly — one of five is chosen on mount.
  */
 
-const MESSAGES = [
-  {
-    headline: 'Still thinking?',
-    body: 'The average driver wastes $300+ a year at the pump. GasCap™ takes 30 seconds to set up.',
-  },
-  {
-    headline: 'Easier than you think.',
-    body: 'Takes less than a minute. No app store. No credit card. Just open and go.',
-  },
-  {
-    headline: 'Know before you go.',
-    body: 'Know exactly how much to pump — every time. It\'s free to start.',
-  },
-  {
-    headline: 'Join the community.',
-    body: 'Many drivers are already saving with GasCap™. Your account takes 30 seconds to create.',
-  },
-  {
-    headline: 'Almost there.',
-    body: "Don't leave your next fill-up to chance. Your free account is one tap away.",
-  },
-];
-
 const SESSION_KEY  = 'gascap_signup_exit_shown';
 const MIN_TIME_MS  = 8_000;   // must be on page ≥ 8 s before triggering
 const SCROLL_VEL   = 600;     // px/sec upward to count as exit gesture
 const SCROLL_Y_MAX = 120;     // must be near top when fast-scroll fires
 
 export default function SignUpExitIntent() {
+  const { t } = useTranslation();
   const [visible,  setVisible]  = useState(false);
   const triggered  = useRef(false);
   const entryTime  = useRef(Date.now());
+
+  const MESSAGES = [
+    { headline: t.signUpExitIntent.msg1Headline, body: t.signUpExitIntent.msg1Body },
+    { headline: t.signUpExitIntent.msg2Headline, body: t.signUpExitIntent.msg2Body },
+    { headline: t.signUpExitIntent.msg3Headline, body: t.signUpExitIntent.msg3Body },
+    { headline: t.signUpExitIntent.msg4Headline, body: t.signUpExitIntent.msg4Body },
+    { headline: t.signUpExitIntent.msg5Headline, body: t.signUpExitIntent.msg5Body },
+  ];
   // Pick message once on mount
   const msg = useRef(MESSAGES[Math.floor(Math.random() * MESSAGES.length)]).current;
 
@@ -119,7 +106,7 @@ export default function SignUpExitIntent() {
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Complete your free GasCap account"
+        aria-label={t.signUpExitIntent.dialogLabel}
         className="fixed bottom-0 inset-x-0 z-50 bg-white rounded-t-3xl px-6 pt-5 pb-10
                    shadow-2xl max-w-lg mx-auto animate-sheet-up"
       >
@@ -132,7 +119,7 @@ export default function SignUpExitIntent() {
           className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center
                      rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100
                      transition-colors"
-          aria-label="Close"
+          aria-label={t.signUpExitIntent.close}
         >
           <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor"
                strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
@@ -157,11 +144,11 @@ export default function SignUpExitIntent() {
         <p className="text-sm text-slate-600 leading-relaxed mb-5">{msg.body}</p>
 
         {/* Trust pills */}
-        <div className="flex flex-wrap gap-2 mb-6" aria-label="Why sign up">
+        <div className="flex flex-wrap gap-2 mb-6" aria-label={t.signUpExitIntent.whySignUp}>
           {[
-            '✓ 30 days Pro free',
-            '✓ No credit card',
-            '✓ 30-second setup',
+            t.signUpExitIntent.pillProFree,
+            t.signUpExitIntent.pillNoCard,
+            t.signUpExitIntent.pillSetup,
           ].map((label) => (
             <span
               key={label}
@@ -185,7 +172,7 @@ export default function SignUpExitIntent() {
                      active:bg-amber-600 text-white font-black text-[15px]
                      transition-colors shadow-sm"
         >
-          Create my free account →
+          {t.signUpExitIntent.primaryCta}
         </button>
 
         {/* Soft dismiss */}
@@ -194,7 +181,7 @@ export default function SignUpExitIntent() {
           className="w-full mt-3 py-1 text-sm text-slate-400 hover:text-slate-600
                      transition-colors"
         >
-          No thanks, I&apos;ll figure it out at the pump
+          {t.signUpExitIntent.softDismiss}
         </button>
       </div>
     </>

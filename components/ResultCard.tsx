@@ -2,6 +2,7 @@
 
 import { useSession } from 'next-auth/react';
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { useTranslation } from '@/contexts/LanguageContext';
 import TankGauge from './TankGauge';
 import FillupLogger from './FillupLogger';
 import WazeDeepLinkButton          from './WazeDeepLinkButton';
@@ -12,6 +13,7 @@ import type { TargetFillResult, BudgetResult } from '@/lib/calculations';
 
 function ShareButton({ text }: { text: string }) {
   const { data: session } = useSession();
+  const { t } = useTranslation();
   const [copied,  setCopied]  = useState(false);
   const [showQR,  setShowQR]  = useState(false);
   const [refUrl,  setRefUrl]  = useState('https://gascap.app');
@@ -29,7 +31,7 @@ function ShareButton({ text }: { text: string }) {
 
   const handleShare = useCallback(async () => {
     const shareData = {
-      title: 'GasCap™ — My Fill Calculation',
+      title: t.resultCard.shareTitle,
       text,
       url: refUrl,
     };
@@ -59,7 +61,7 @@ function ShareButton({ text }: { text: string }) {
                      text-xs font-bold transition-colors flex items-center justify-center gap-2"
         >
           {copied ? (
-            <><span>✓</span> Copied!</>
+            <><span>✓</span> {t.resultCard.copied}</>
           ) : (
             <>
               <svg viewBox="0 0 20 20" className="w-3.5 h-3.5" fill="none" stroke="currentColor"
@@ -67,7 +69,7 @@ function ShareButton({ text }: { text: string }) {
                 <path d="M13 4h3a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V6a2 2 0 012-2h3"/>
                 <path d="M7 2h6v4H7z"/>
               </svg>
-              Share this calculation
+              {t.resultCard.shareCalculation}
             </>
           )}
         </button>
@@ -75,13 +77,13 @@ function ShareButton({ text }: { text: string }) {
         {/* QR toggle button */}
         <button
           onClick={() => setShowQR((v) => !v)}
-          title={showQR ? 'Hide QR code' : 'Show QR code'}
+          title={showQR ? t.resultCard.hideQrCode : t.resultCard.showQrCode}
           className={`px-3 py-2.5 rounded-2xl border text-sm font-bold transition-colors ${
             showQR
               ? 'border-amber-400 bg-amber-50 text-amber-700'
               : 'border-slate-200 bg-white text-slate-500 hover:border-amber-300 hover:bg-amber-50 hover:text-amber-700'
           }`}
-          aria-label={showQR ? 'Hide QR code' : 'Show QR code'}
+          aria-label={showQR ? t.resultCard.hideQrCode : t.resultCard.showQrCode}
         >
           📱
         </button>
@@ -90,13 +92,13 @@ function ShareButton({ text }: { text: string }) {
       {/* QR panel — expands below */}
       {showQR && (
         <div className="flex flex-col items-center gap-2 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-4 animate-fade-in">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Share via QR</p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{t.resultCard.shareViaQr}</p>
           <div className="bg-white p-2.5 rounded-xl shadow-sm border border-slate-100">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={qrSrc} alt="Share QR code" width={180} height={180} className="w-44 h-44 rounded-lg" />
+            <img src={qrSrc} alt={t.resultCard.shareQrAlt} width={180} height={180} className="w-44 h-44 rounded-lg" />
           </div>
           <p className="text-[10px] text-slate-400 text-center leading-relaxed max-w-[200px]">
-            Scan to open GasCap™{session ? ' — your referral link is embedded' : ''}
+            {session ? t.resultCard.scanToOpenReferral : t.resultCard.scanToOpen}
           </p>
           <a
             href={`https://api.qrserver.com/v1/create-qr-code/?size=600x600&margin=20&color=0f1f34&bgcolor=ffffff&data=${encodeURIComponent(refUrl)}`}
@@ -105,7 +107,7 @@ function ShareButton({ text }: { text: string }) {
             rel="noopener noreferrer"
             className="text-[11px] font-bold text-amber-600 hover:text-amber-500 transition-colors"
           >
-            ⬇ Download QR
+            ⬇ {t.resultCard.downloadQr}
           </a>
         </div>
       )}
@@ -136,6 +138,7 @@ export function TargetResultCard({ result, vehicleName, vehicleId, vehicleOdomet
   const noFuelNeeded = gallonsNeeded === 0;
 
   const { data: session } = useSession();
+  const { t } = useTranslation();
   const [showLogger, setShowLogger] = useState(false);
   const [logKey, setLogKey] = useState(0);
 
@@ -148,13 +151,13 @@ export function TargetResultCard({ result, vehicleName, vehicleId, vehicleOdomet
       {/* ── Hero stat row ── */}
       <div className="grid grid-cols-2 gap-3">
         <HeroStat
-          label="Est. gallons to add"
+          label={t.resultCard.estGallonsToAdd}
           value={gallonsNeeded.toFixed(2)}
           unit="gal"
           accent={noFuelNeeded ? 'green' : 'amber'}
         />
         <HeroStat
-          label="Est. cost"
+          label={t.resultCard.estCost}
           value={`$${estimatedCost.toFixed(2)}`}
           accent={noFuelNeeded ? 'green' : 'navy'}
         />
@@ -170,8 +173,8 @@ export function TargetResultCard({ result, vehicleName, vehicleId, vehicleOdomet
 
       {/* ── Secondary stats ── */}
       <div className="grid grid-cols-2 gap-3">
-        <SecondaryStat label="Target level" value={`${targetPercent}%`} />
-        <SecondaryStat label="Tank after fill" value={`${targetGallons.toFixed(2)} gal`} />
+        <SecondaryStat label={t.resultCard.targetLevel} value={`${targetPercent}%`} />
+        <SecondaryStat label={t.resultCard.tankAfterFill} value={`${targetGallons.toFixed(2)} gal`} />
       </div>
 
       {/* ── Rental savings comparison ── */}
@@ -183,18 +186,18 @@ export function TargetResultCard({ result, vehicleName, vehicleId, vehicleOdomet
             {/* Header */}
             <div className="flex items-center gap-2">
               <span className="text-lg" aria-hidden="true">🚗</span>
-              <p className="text-xs font-black text-white/80 uppercase tracking-wide">Rental Return — Cost Comparison</p>
+              <p className="text-xs font-black text-white/80 uppercase tracking-wide">{t.resultCard.rentalReturnComparison}</p>
             </div>
 
             {/* Two columns: pump vs rental co */}
             <div className="grid grid-cols-2 gap-2">
               <div className="bg-white/10 rounded-xl px-3 py-2.5 text-center">
-                <p className="text-[9px] font-bold uppercase tracking-widest text-white/50 mb-1">⛽ At the pump</p>
+                <p className="text-[9px] font-bold uppercase tracking-widest text-white/50 mb-1">⛽ {t.resultCard.atThePump}</p>
                 <p className="text-2xl font-black text-amber-300 leading-none">${estimatedCost.toFixed(2)}</p>
                 <p className="text-[10px] text-white/40 mt-0.5">${pricePerGallon.toFixed(2)}/gal</p>
               </div>
               <div className="bg-white/10 rounded-xl px-3 py-2.5 text-center">
-                <p className="text-[9px] font-bold uppercase tracking-widest text-white/50 mb-1">🏢 Rental co. fills it</p>
+                <p className="text-[9px] font-bold uppercase tracking-widest text-white/50 mb-1">🏢 {t.resultCard.rentalCoFillsIt}</p>
                 <p className="text-2xl font-black text-red-300 leading-none">${rentalCost.toFixed(2)}</p>
                 <p className="text-[10px] text-white/40 mt-0.5">${rentalRate.toFixed(2)}/gal</p>
               </div>
@@ -206,16 +209,16 @@ export function TargetResultCard({ result, vehicleName, vehicleId, vehicleOdomet
                 <span className="text-lg flex-shrink-0" aria-hidden="true">💰</span>
                 <div>
                   <p className="text-xs font-black text-emerald-300 leading-none">
-                    You save ${savings.toFixed(2)} by filling up yourself!
+                    {t.resultCard.youSaveByFilling(savings.toFixed(2))}
                   </p>
                   <p className="text-[10px] text-white/40 mt-0.5">
-                    That's {Math.round((savings / rentalCost) * 100)}% less than the rental company's rate.
+                    {t.resultCard.percentLessThanRental(Math.round((savings / rentalCost) * 100))}
                   </p>
                 </div>
               </div>
             ) : (
               <div className="bg-white/10 rounded-xl px-3 py-2 text-center">
-                <p className="text-[11px] text-white/60">Pump price is competitive with the rental rate.</p>
+                <p className="text-[11px] text-white/60">{t.resultCard.pumpCompetitive}</p>
               </div>
             )}
           </div>
@@ -227,10 +230,9 @@ export function TargetResultCard({ result, vehicleName, vehicleId, vehicleOdomet
         <div className="bg-blue-50 border border-blue-200 rounded-2xl px-4 py-3 flex items-start gap-2.5">
           <span className="text-base flex-shrink-0 mt-0.5" aria-hidden="true">🚗</span>
           <div>
-            <p className="text-xs font-black text-blue-800 leading-none">Rental Car Drop-Off</p>
+            <p className="text-xs font-black text-blue-800 leading-none">{t.resultCard.rentalCarDropOff}</p>
             <p className="text-[11px] text-blue-600 mt-1 leading-snug">
-              You need <strong>{gallonsNeeded.toFixed(2)} gal</strong> — costs <strong>${estimatedCost.toFixed(2)}</strong> at the pump.
-              Add the rental company's rate above to see exactly how much you save vs. letting them fill it.
+              {t.resultCard.rentalNeedLead}{' '}<strong>{gallonsNeeded.toFixed(2)} gal</strong>{' '}{t.resultCard.rentalCostsMid}{' '}<strong>${estimatedCost.toFixed(2)}</strong>{' '}{t.resultCard.rentalAtPumpTrailing}
             </p>
           </div>
         </div>
@@ -250,13 +252,13 @@ export function TargetResultCard({ result, vehicleName, vehicleId, vehicleOdomet
         <WazeDeepLinkButton
           latitude={latitude}
           longitude={longitude}
-          label={isRental ? 'Find a Fuel Stop Before Return' : 'Find a Gas Station'}
+          label={isRental ? t.resultCard.findFuelStopBeforeReturn : t.resultCard.findGasStation}
         />
       </div>
 
       {/* ── Visual tank gauge ── */}
       <div className="card-bordered">
-        <p className="section-eyebrow">New Tank Level</p>
+        <p className="section-eyebrow">{t.resultCard.newTankLevel}</p>
         <TankGauge currentPercent={currentPercent} targetPercent={targetPercent} />
       </div>
 
@@ -268,7 +270,7 @@ export function TargetResultCard({ result, vehicleName, vehicleId, vehicleOdomet
                      hover:border-amber-300 text-slate-500 text-sm font-semibold transition-colors
                      flex items-center justify-center gap-2"
         >
-          <span>⛽</span> Sign in to log this fill-up →
+          <span>⛽</span> {t.resultCard.signInToLog} →
         </a>
       )}
       {session && !showLogger && (
@@ -278,7 +280,7 @@ export function TargetResultCard({ result, vehicleName, vehicleId, vehicleOdomet
                      hover:bg-amber-100 text-amber-700 text-sm font-bold transition-colors
                      flex items-center justify-center gap-2 shadow-sm"
         >
-          <span>⛽</span> Log This Fill-Up
+          <span>⛽</span> {t.resultCard.logThisFillUp}
         </button>
       )}
       {showLogger && (
@@ -286,7 +288,7 @@ export function TargetResultCard({ result, vehicleName, vehicleId, vehicleOdomet
           prefill={{
             gallonsPumped:   result.gallonsNeeded,
             pricePerGallon:  pricePerGallon,
-            vehicleName:     vehicleName ?? 'My Vehicle',
+            vehicleName:     vehicleName ?? t.resultCard.myVehicle,
             vehicleId,
             vehicleOdometer,
             fuelLevelBefore,
@@ -300,15 +302,15 @@ export function TargetResultCard({ result, vehicleName, vehicleId, vehicleOdomet
 
       {/* ── Disclaimer ── */}
       <p className="text-[10px] text-slate-400 text-center leading-relaxed">
-        * Estimates based on your saved tank size and current fuel level. Actual pump totals may vary slightly.
+        {t.resultCard.disclaimer}
       </p>
 
       {/* ── Share this calculation ── */}
       <ShareButton
         text={
           noFuelNeeded
-            ? `My tank is already at ${currentPercent}% — no fuel needed! 🎉 Calculated with GasCap™`
-            : `I need ${gallonsNeeded.toFixed(2)} gal to fill up to ${targetPercent}% — that's $${estimatedCost.toFixed(2)} at the pump. Calculated with GasCap™`
+            ? t.resultCard.shareTextNoFuel(currentPercent)
+            : t.resultCard.shareTextTarget(gallonsNeeded.toFixed(2), targetPercent, estimatedCost.toFixed(2))
         }
       />
     </div>
@@ -335,6 +337,7 @@ export function BudgetResultCard({ result, pricePerGallon, vehicleName, vehicleI
   } = result;
 
   const { data: session } = useSession();
+  const { t } = useTranslation();
   const [showLogger, setShowLogger] = useState(false);
   const [logKey, setLogKey] = useState(0);
 
@@ -350,15 +353,15 @@ export function BudgetResultCard({ result, pricePerGallon, vehicleName, vehicleI
         <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3.5">
           <span className="text-lg flex-shrink-0 mt-0.5" aria-hidden="true">⚠️</span>
           <p className="text-amber-800 text-sm font-semibold leading-snug">
-            Budget exceeds tank capacity — capped at full.
+            {t.resultCard.budgetExceedsCapacity}
           </p>
         </div>
       )}
 
       {/* ── Hero stat row ── */}
       <div className="grid grid-cols-2 gap-3">
-        <HeroStat label="Est. gallons to buy" value={gallonsAffordable.toFixed(2)} unit="gal" accent="amber" />
-        <HeroStat label="Est. pump cost" value={`$${actualCost.toFixed(2)}`} accent="navy" />
+        <HeroStat label={t.resultCard.estGallonsToBuy} value={gallonsAffordable.toFixed(2)} unit="gal" accent="amber" />
+        <HeroStat label={t.resultCard.estPumpCost} value={`$${actualCost.toFixed(2)}`} accent="navy" />
       </div>
 
       {/* ── Summary card ── */}
@@ -371,8 +374,8 @@ export function BudgetResultCard({ result, pricePerGallon, vehicleName, vehicleI
 
       {/* ── Secondary stats ── */}
       <div className="grid grid-cols-2 gap-3">
-        <SecondaryStat label="Resulting level" value={`${resultingPercent.toFixed(0)}%`} />
-        <SecondaryStat label="Gallons in tank" value={`${resultingGallons.toFixed(2)} gal`} />
+        <SecondaryStat label={t.resultCard.resultingLevel} value={`${resultingPercent.toFixed(0)}%`} />
+        <SecondaryStat label={t.resultCard.gallonsInTank} value={`${resultingGallons.toFixed(2)} gal`} />
       </div>
 
       {/* ── Navigation handoffs (Google Maps first, then Waze) ── */}
@@ -388,13 +391,13 @@ export function BudgetResultCard({ result, pricePerGallon, vehicleName, vehicleI
         <WazeDeepLinkButton
           latitude={latitude}
           longitude={longitude}
-          label="Find a Gas Station"
+          label={t.resultCard.findGasStation}
         />
       </div>
 
       {/* ── Visual tank gauge ── */}
       <div className="card-bordered">
-        <p className="section-eyebrow">New Tank Level</p>
+        <p className="section-eyebrow">{t.resultCard.newTankLevel}</p>
         <TankGauge currentPercent={currentPercent} targetPercent={resultingPercent} />
       </div>
 
@@ -406,7 +409,7 @@ export function BudgetResultCard({ result, pricePerGallon, vehicleName, vehicleI
                      hover:border-amber-300 text-slate-500 text-sm font-semibold transition-colors
                      flex items-center justify-center gap-2"
         >
-          <span>⛽</span> Sign in to log this fill-up →
+          <span>⛽</span> {t.resultCard.signInToLog} →
         </a>
       )}
       {session && !showLogger && (
@@ -416,7 +419,7 @@ export function BudgetResultCard({ result, pricePerGallon, vehicleName, vehicleI
                      hover:bg-amber-100 text-amber-700 text-sm font-bold transition-colors
                      flex items-center justify-center gap-2 shadow-sm"
         >
-          <span>⛽</span> Log This Fill-Up
+          <span>⛽</span> {t.resultCard.logThisFillUp}
         </button>
       )}
       {showLogger && (
@@ -424,7 +427,7 @@ export function BudgetResultCard({ result, pricePerGallon, vehicleName, vehicleI
           prefill={{
             gallonsPumped:   result.gallonsAffordable,
             pricePerGallon:  resolvedPrice,
-            vehicleName:     vehicleName ?? 'My Vehicle',
+            vehicleName:     vehicleName ?? t.resultCard.myVehicle,
             vehicleId,
             vehicleOdometer,
             fuelLevelBefore,
@@ -438,15 +441,15 @@ export function BudgetResultCard({ result, pricePerGallon, vehicleName, vehicleI
 
       {/* ── Disclaimer ── */}
       <p className="text-[10px] text-slate-400 text-center leading-relaxed">
-        * Estimates based on your saved tank size and current fuel level. Actual pump totals may vary slightly.
+        {t.resultCard.disclaimer}
       </p>
 
       {/* ── Share this calculation ── */}
       <ShareButton
         text={
           wouldOverfill
-            ? `With $${actualCost.toFixed(2)} I can fill my tank to 100% (${resultingGallons.toFixed(2)} gal). Calculated with GasCap™`
-            : `With $${actualCost.toFixed(2)} I can buy ${gallonsAffordable.toFixed(2)} gal — that puts my tank at ${resultingPercent.toFixed(0)}%. Calculated with GasCap™`
+            ? t.resultCard.shareTextBudgetFull(actualCost.toFixed(2), resultingGallons.toFixed(2))
+            : t.resultCard.shareTextBudget(actualCost.toFixed(2), gallonsAffordable.toFixed(2), resultingPercent.toFixed(0))
         }
       />
     </div>

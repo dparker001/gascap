@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 interface CompareResult {
   savings:  number;
@@ -12,6 +13,7 @@ interface CompareResult {
 }
 
 export default function StationComparison({ embedded }: { embedded?: boolean }) {
+  const { t } = useTranslation();
   const [tankSize, setTankSize] = useState('');
   const [price1,   setPrice1]   = useState('');
   const [price2,   setPrice2]   = useState('');
@@ -39,22 +41,22 @@ export default function StationComparison({ embedded }: { embedded?: boolean }) 
             <span className="text-lg">🏪</span>
           </div>
           <div>
-            <p className="text-sm font-black text-slate-700">Station Price Comparison</p>
-            <p className="text-[10px] text-slate-400">See exactly how much you save per tank</p>
+            <p className="text-sm font-black text-slate-700">{t.stationComparison.title}</p>
+            <p className="text-[10px] text-slate-400">{t.stationComparison.subtitle}</p>
           </div>
         </div>
 
         {/* Tank size */}
         <div>
           <label className="block text-xs font-semibold text-slate-500 mb-1.5">
-            Tank Size <span className="text-slate-400 font-normal">(gallons)</span>
+            {t.stationComparison.tankSizeLabel} <span className="text-slate-400 font-normal">{t.stationComparison.tankSizeUnit}</span>
           </label>
           <input
             type="number"
             inputMode="decimal"
             value={tankSize}
             onChange={(e) => { setTankSize(e.target.value); setResult(null); }}
-            placeholder="e.g. 14.5"
+            placeholder={t.stationComparison.tankSizePlaceholder}
             className="input-field"
           />
         </div>
@@ -63,7 +65,7 @@ export default function StationComparison({ embedded }: { embedded?: boolean }) 
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-xs font-semibold text-slate-500 mb-1.5">
-              Station A <span className="text-slate-400 font-normal">($/gal)</span>
+              {t.stationComparison.stationALabel} <span className="text-slate-400 font-normal">($/gal)</span>
             </label>
             <input
               type="number"
@@ -76,7 +78,7 @@ export default function StationComparison({ embedded }: { embedded?: boolean }) 
           </div>
           <div>
             <label className="block text-xs font-semibold text-slate-500 mb-1.5">
-              Station B <span className="text-slate-400 font-normal">($/gal)</span>
+              {t.stationComparison.stationBLabel} <span className="text-slate-400 font-normal">($/gal)</span>
             </label>
             <input
               type="number"
@@ -96,7 +98,7 @@ export default function StationComparison({ embedded }: { embedded?: boolean }) 
           className="w-full py-3 bg-amber-500 hover:bg-amber-400 disabled:opacity-40
                      text-white font-bold text-sm rounded-2xl transition-colors"
         >
-          Compare Stations
+          {t.stationComparison.compareButton}
         </button>
 
         {/* Result */}
@@ -110,16 +112,16 @@ export default function StationComparison({ embedded }: { embedded?: boolean }) 
             }`}>
               {result.savings < 0.01 ? (
                 <>
-                  <p className="text-sm font-black text-slate-600">Same price!</p>
-                  <p className="text-xs text-slate-400 mt-1">Both stations cost the same per fill.</p>
+                  <p className="text-sm font-black text-slate-600">{t.stationComparison.samePrice}</p>
+                  <p className="text-xs text-slate-400 mt-1">{t.stationComparison.samePriceSub}</p>
                 </>
               ) : (
                 <>
                   <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">
-                    Station {result.cheaper} saves you
+                    {t.stationComparison.savesYou(result.cheaper)}
                   </p>
                   <p className="text-4xl font-black text-amber-600">${result.savings.toFixed(2)}</p>
-                  <p className="text-xs text-slate-500 mt-1">per full tank</p>
+                  <p className="text-xs text-slate-500 mt-1">{t.stationComparison.perFullTank}</p>
                 </>
               )}
             </div>
@@ -136,11 +138,11 @@ export default function StationComparison({ embedded }: { embedded?: boolean }) 
                       win ? 'border-amber-300 bg-amber-50' : 'border-slate-100 bg-white'
                     }`}
                   >
-                    <p className="text-[10px] font-bold uppercase text-slate-400 mb-0.5">Station {n}</p>
+                    <p className="text-[10px] font-bold uppercase text-slate-400 mb-0.5">{t.stationComparison.stationLabel(n)}</p>
                     <p className="text-xl font-black text-navy-700">${cost.toFixed(2)}</p>
-                    <p className="text-[10px] text-slate-400">full tank</p>
+                    <p className="text-[10px] text-slate-400">{t.stationComparison.fullTank}</p>
                     {win && (
-                      <p className="text-[9px] font-black text-amber-600 mt-1">✓ CHEAPER</p>
+                      <p className="text-[9px] font-black text-amber-600 mt-1">{t.stationComparison.cheaperBadge}</p>
                     )}
                   </div>
                 );
@@ -151,13 +153,13 @@ export default function StationComparison({ embedded }: { embedded?: boolean }) 
             {result.savings >= 0.01 && (
               <div className="text-center space-y-0.5">
                 <p className="text-[11px] text-slate-500">
-                  That's{' '}
-                  <span className="font-black text-navy-700">{result.pctDiff.toFixed(1)}%</span> cheaper
+                  {t.stationComparison.thats}{' '}
+                  <span className="font-black text-navy-700">{result.pctDiff.toFixed(1)}%</span> {t.stationComparison.cheaperSuffix}
                 </p>
                 <p className="text-[11px] text-slate-400">
                   ≈{' '}
-                  <span className="font-bold text-slate-600">${result.annual.toFixed(0)}</span> saved/year
-                  <span className="text-slate-300 ml-0.5">(filling up weekly)</span>
+                  <span className="font-bold text-slate-600">${result.annual.toFixed(0)}</span> {t.stationComparison.savedPerYear}
+                  <span className="text-slate-300 ml-0.5">{t.stationComparison.fillingWeekly}</span>
                 </p>
               </div>
             )}

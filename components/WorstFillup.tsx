@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
+import { useTranslation } from '@/contexts/LanguageContext';
 import type { Fillup } from '@/lib/fillups';
 
 interface FillupResponse {
@@ -19,6 +20,7 @@ function fmtDate(d: string) {
 
 export default function WorstFillup() {
   const { data: session } = useSession();
+  const { t } = useTranslation();
   const [worst, setWorst] = useState<Fillup | null>(null);
   const [best,  setBest]  = useState<Fillup | null>(null);
   const [loading, setLoading] = useState(true);
@@ -47,8 +49,8 @@ export default function WorstFillup() {
       <div className="flex items-center gap-2 py-2.5 px-4 bg-navy-700">
         <span className="text-sm" aria-hidden="true">🏆</span>
         <div>
-          <p className="text-xs font-black text-white uppercase tracking-wider">Hall of Fame</p>
-          <p className="text-[10px] text-white/50">Your best deal &amp; biggest fill-up</p>
+          <p className="text-xs font-black text-white uppercase tracking-wider">{t.worstFillup.hallOfFame}</p>
+          <p className="text-[10px] text-white/50">{t.worstFillup.subtitle}</p>
         </div>
       </div>
 
@@ -58,13 +60,13 @@ export default function WorstFillup() {
         <div className="bg-red-50 border border-red-100 rounded-xl p-3 space-y-1">
           <p className="text-lg text-center">😬</p>
           <p className="text-[10px] font-black uppercase tracking-wide text-red-500 text-center">
-            Worst Day
+            {t.worstFillup.worstDay}
           </p>
           <p className="text-xl font-black text-red-600 text-center">
             {fmt(worst.totalCost)}
           </p>
           <p className="text-[10px] text-slate-500 text-center leading-tight">
-            {worst.gallonsPumped.toFixed(2)} gal @ {fmt(worst.pricePerGallon)}/gal
+            {t.worstFillup.gallonsAtPrice(worst.gallonsPumped.toFixed(2), fmt(worst.pricePerGallon))}
           </p>
           <p className="text-[10px] text-slate-400 text-center">{fmtDate(worst.date)}</p>
           <p className="text-[10px] text-slate-500 text-center truncate">{worst.vehicleName}</p>
@@ -74,13 +76,13 @@ export default function WorstFillup() {
         <div className="bg-green-50 border border-green-100 rounded-xl p-3 space-y-1">
           <p className="text-lg text-center">🎉</p>
           <p className="text-[10px] font-black uppercase tracking-wide text-green-600 text-center">
-            Best Deal
+            {t.worstFillup.bestDeal}
           </p>
           <p className="text-xl font-black text-green-600 text-center">
             {fmt(best.pricePerGallon)}<span className="text-sm font-semibold">/gal</span>
           </p>
           <p className="text-[10px] text-slate-500 text-center leading-tight">
-            {best.gallonsPumped.toFixed(2)} gal — {fmt(best.totalCost)} total
+            {t.worstFillup.gallonsTotal(best.gallonsPumped.toFixed(2), fmt(best.totalCost))}
           </p>
           <p className="text-[10px] text-slate-400 text-center">{fmtDate(best.date)}</p>
           <p className="text-[10px] text-slate-500 text-center truncate">{best.vehicleName}</p>
@@ -88,7 +90,7 @@ export default function WorstFillup() {
       </div>
 
       <p className="text-[10px] text-slate-300 text-center">
-        Based on your logged fill-ups
+        {t.worstFillup.basedOn}
       </p>
       </div>
     </div>

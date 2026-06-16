@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
+import { useTranslation } from '@/contexts/LanguageContext';
 import type { Fillup } from '@/lib/fillups';
 
 interface FillupStats {
@@ -23,15 +24,16 @@ interface NationalAvgResponse {
 
 const FALLBACK_PRICE = 3.45; // reasonable fallback if EIA unavailable
 
-const MILESTONES: { amount: number; emoji: string; label: string }[] = [
-  { amount: 25,  emoji: '🌱', label: '$25 saved' },
-  { amount: 50,  emoji: '💡', label: '$50 saved' },
-  { amount: 100, emoji: '🏅', label: '$100 saved' },
-  { amount: 250, emoji: '🎯', label: '$250 saved' },
-  { amount: 500, emoji: '🏆', label: '$500 saved' },
+const MILESTONES: { amount: number; emoji: string }[] = [
+  { amount: 25,  emoji: '🌱' },
+  { amount: 50,  emoji: '💡' },
+  { amount: 100, emoji: '🏅' },
+  { amount: 250, emoji: '🎯' },
+  { amount: 500, emoji: '🏆' },
 ];
 
 export default function SavingsDashboard() {
+  const { t } = useTranslation();
   const { data: session } = useSession();
   const [data,       setData]       = useState<FillupResponse | null>(null);
   const [nationalAvg, setNationalAvg] = useState<number | null>(null);
@@ -65,7 +67,7 @@ export default function SavingsDashboard() {
       <div className="rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
         <div className="flex items-center gap-2 py-2.5 px-4 bg-navy-700">
           <span className="text-sm" aria-hidden="true">💰</span>
-          <p className="text-xs font-black text-white uppercase tracking-wider">Savings Dashboard</p>
+          <p className="text-xs font-black text-white uppercase tracking-wider">{t.savingsDashboard.title}</p>
         </div>
         <div className="bg-white p-4 space-y-2">
           <div className="h-4 w-32 bg-slate-100 rounded animate-pulse" />
@@ -84,10 +86,10 @@ export default function SavingsDashboard() {
       <div className="rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
         <div className="flex items-center gap-2 py-2.5 px-4 bg-navy-700">
           <span className="text-sm" aria-hidden="true">💰</span>
-          <p className="text-xs font-black text-white uppercase tracking-wider">Savings Dashboard</p>
+          <p className="text-xs font-black text-white uppercase tracking-wider">{t.savingsDashboard.title}</p>
         </div>
         <div className="bg-white p-4 text-center">
-          <p className="text-xs text-slate-400">Could not load savings data.</p>
+          <p className="text-xs text-slate-400">{t.savingsDashboard.loadError}</p>
         </div>
       </div>
     );
@@ -111,30 +113,30 @@ export default function SavingsDashboard() {
     : null;
 
   const avgLabel = nationalAvg
-    ? `vs. $${nationalAvg.toFixed(3)} national avg (EIA)`
-    : `vs. $${FALLBACK_PRICE.toFixed(2)} est. avg`;
+    ? t.savingsDashboard.vsNationalAvgEia(nationalAvg.toFixed(3))
+    : t.savingsDashboard.vsEstAvg(FALLBACK_PRICE.toFixed(2));
 
   const statBoxes = [
     {
-      label: 'Total Spent',
+      label: t.savingsDashboard.totalSpent,
       value: `$${stats.totalSpent.toFixed(2)}`,
-      sub:   `across ${stats.count} fill-up${stats.count !== 1 ? 's' : ''}`,
+      sub:   t.savingsDashboard.acrossFillups(stats.count),
       accent: false,
     },
     {
-      label: 'Total Gallons',
+      label: t.savingsDashboard.totalGallons,
       value: stats.totalGallons.toFixed(1),
-      sub:   'gallons pumped',
+      sub:   t.savingsDashboard.gallonsPumped,
       accent: false,
     },
     {
-      label: 'Avg Price / Gal',
+      label: t.savingsDashboard.avgPricePerGal,
       value: `$${avgPricePerGal.toFixed(3)}`,
-      sub:   nationalAvg ? `national avg $${nationalAvg.toFixed(3)}` : 'your average',
+      sub:   nationalAvg ? t.savingsDashboard.nationalAvgValue(nationalAvg.toFixed(3)) : t.savingsDashboard.yourAverage,
       accent: isSaving,
     },
     {
-      label: isSaving ? 'Estimated Savings' : 'Above National Avg',
+      label: isSaving ? t.savingsDashboard.estimatedSavings : t.savingsDashboard.aboveNationalAvg,
       value: `$${Math.abs(totalSavedVsNational).toFixed(2)}`,
       sub:   avgLabel,
       accent: isSaving,
@@ -163,9 +165,9 @@ export default function SavingsDashboard() {
       <div className="flex items-center gap-2 py-2.5 px-4 bg-navy-700">
         <span className="text-sm" aria-hidden="true">💰</span>
         <div>
-          <p className="text-xs font-black text-white uppercase tracking-wider">Savings Dashboard</p>
+          <p className="text-xs font-black text-white uppercase tracking-wider">{t.savingsDashboard.title}</p>
           {oldestDate && (
-            <p className="text-[10px] text-white/50">Tracked since {oldestDate}</p>
+            <p className="text-[10px] text-white/50">{t.savingsDashboard.trackedSince(oldestDate)}</p>
           )}
         </div>
       </div>
@@ -179,10 +181,10 @@ export default function SavingsDashboard() {
             <div>
               <p className="text-xl font-black text-emerald-700 leading-tight">
                 ${totalSavedVsNational.toFixed(2)}
-                <span className="text-xs font-semibold text-emerald-500 ml-1">saved</span>
+                <span className="text-xs font-semibold text-emerald-500 ml-1">{t.savingsDashboard.savedLabel}</span>
               </p>
               <p className="text-[10px] text-emerald-600 leading-relaxed">
-                vs. {nationalAvg ? 'EIA national average' : 'estimated national average'}
+                {nationalAvg ? t.savingsDashboard.vsEiaNationalAverage : t.savingsDashboard.vsEstimatedNationalAverage}
                 {nationalAvg && <span className="text-emerald-400 ml-1">(${nationalAvg.toFixed(3)}/gal)</span>}
               </p>
             </div>
@@ -214,7 +216,7 @@ export default function SavingsDashboard() {
         {/* Milestone badges */}
         {isSaving && (
           <div className="space-y-2 pt-1">
-            <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide">Savings Milestones</p>
+            <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide">{t.savingsDashboard.savingsMilestones}</p>
 
             <div className="flex items-center gap-2 flex-wrap">
               {MILESTONES.map((m) => {
@@ -222,7 +224,7 @@ export default function SavingsDashboard() {
                 return (
                   <div
                     key={m.amount}
-                    title={m.label}
+                    title={t.savingsDashboard.milestoneSaved(m.amount)}
                     className={[
                       'flex flex-col items-center gap-0.5 rounded-xl px-2.5 py-2 min-w-[52px]',
                       earned
@@ -247,10 +249,10 @@ export default function SavingsDashboard() {
               <div className="space-y-1">
                 <div className="flex items-center justify-between">
                   <p className="text-[9px] text-slate-400">
-                    Next: <span className="font-bold text-slate-600">{nextMilestone.emoji} {nextMilestone.label}</span>
+                    {t.savingsDashboard.nextLabel} <span className="font-bold text-slate-600">{nextMilestone.emoji} {t.savingsDashboard.milestoneSaved(nextMilestone.amount)}</span>
                   </p>
                   <p className="text-[9px] font-bold text-amber-600">
-                    ${(nextMilestone.amount - totalSavedVsNational).toFixed(2)} to go
+                    {t.savingsDashboard.amountToGo((nextMilestone.amount - totalSavedVsNational).toFixed(2))}
                   </p>
                 </div>
                 <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
@@ -265,7 +267,7 @@ export default function SavingsDashboard() {
             {/* All milestones earned */}
             {!nextMilestone && earnedMilestones.length === MILESTONES.length && (
               <p className="text-[10px] text-center text-amber-600 font-bold">
-                🏆 All milestones earned — you&apos;re a GasCap™ champion!
+                🏆 {t.savingsDashboard.allMilestonesEarned}
               </p>
             )}
           </div>
@@ -273,9 +275,9 @@ export default function SavingsDashboard() {
 
         {oldestDate && (
           <p className="text-[10px] text-slate-400 text-center leading-relaxed">
-            You&apos;ve logged <span className="font-bold text-slate-600">{stats.count} fill-up{stats.count !== 1 ? 's' : ''}</span> since {oldestDate}
+            {t.savingsDashboard.loggedSincePrefix} <span className="font-bold text-slate-600">{t.savingsDashboard.fillupCount(stats.count)}</span> {t.savingsDashboard.loggedSinceSuffix(oldestDate)}
             {nationalAvg && (
-              <span className="text-slate-300"> · EIA data updated weekly</span>
+              <span className="text-slate-300"> {t.savingsDashboard.eiaUpdatedWeekly}</span>
             )}
           </p>
         )}

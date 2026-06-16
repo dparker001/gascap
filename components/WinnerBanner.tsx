@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 interface Draw {
   month:      string;
@@ -23,6 +24,7 @@ function formatMonth(m: string): string {
  * Expands inline to a shipping address form — no modal/overlay needed.
  */
 export default function WinnerBanner() {
+  const { t } = useTranslation();
   const [stage, setStage]   = useState<Stage>('loading');
   const [draw,  setDraw]    = useState<Draw | null>(null);
   const [error, setError]   = useState('');
@@ -50,7 +52,7 @@ export default function WinnerBanner() {
   async function handleClaim() {
     if (!draw) return;
     if (!street.trim() || !city.trim() || !state.trim() || !zip.trim()) {
-      setError('Please fill in all address fields.');
+      setError(t.winnerBanner.errorFillAll);
       return;
     }
     setError('');
@@ -66,7 +68,7 @@ export default function WinnerBanner() {
       });
       if (!res.ok) {
         const d = await res.json() as { error?: string };
-        setError(d.error ?? 'Something went wrong. Please try again.');
+        setError(d.error ?? t.winnerBanner.errorGeneric);
         setStage('form');
         return;
       }
@@ -74,7 +76,7 @@ export default function WinnerBanner() {
       // Auto-dismiss after 8 seconds
       setTimeout(() => setStage('none'), 8000);
     } catch {
-      setError('Network error — please try again.');
+      setError(t.winnerBanner.errorNetwork);
       setStage('form');
     }
   }
@@ -90,10 +92,9 @@ export default function WinnerBanner() {
                       flex items-center gap-3 animate-fade-in">
         <span className="text-2xl flex-shrink-0" aria-hidden="true">✅</span>
         <div>
-          <p className="text-sm font-black text-white">Prize claimed!</p>
+          <p className="text-sm font-black text-white">{t.winnerBanner.claimedTitle}</p>
           <p className="text-xs text-green-100 mt-0.5 leading-relaxed">
-            We have your shipping address and will get your $25 Visa card on its way.
-            Watch for an email from admin@gascap.app.
+            {t.winnerBanner.claimedBody}
           </p>
         </div>
       </div>
@@ -110,11 +111,10 @@ export default function WinnerBanner() {
         <span className="text-2xl flex-shrink-0" aria-hidden="true">🏆</span>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-black text-amber-900 leading-tight">
-            You won the {monthLabel} GasCap™ Giveaway!
+            {t.winnerBanner.headerTitle(monthLabel)}
           </p>
           <p className="text-[11px] text-amber-700 mt-0.5 leading-relaxed">
-            Congratulations, {draw?.winnerName.split(' ')[0]}! Your $25 Visa Prepaid Card
-            is waiting — claim it below.
+            {t.winnerBanner.headerSubtitle(draw?.winnerName.split(' ')[0] ?? '')}
           </p>
         </div>
         {stage === 'notify' && (
@@ -124,7 +124,7 @@ export default function WinnerBanner() {
                        text-white text-xs font-black rounded-xl transition-colors
                        whitespace-nowrap shadow-sm"
           >
-            Claim prize →
+            {t.winnerBanner.claimButton}
           </button>
         )}
       </div>
@@ -133,13 +133,13 @@ export default function WinnerBanner() {
       {(stage === 'form' || stage === 'submitting') && (
         <div className="border-t border-amber-200 bg-white px-4 py-4 space-y-3">
           <p className="text-xs font-black text-slate-700">
-            Ship my $25 Visa card to:
+            {t.winnerBanner.shipLabel}
           </p>
 
           <div className="space-y-2">
             <input
               type="text"
-              placeholder="Street address"
+              placeholder={t.winnerBanner.placeholderStreet}
               value={street}
               onChange={(e) => setStreet(e.target.value)}
               disabled={stage === 'submitting'}
@@ -151,7 +151,7 @@ export default function WinnerBanner() {
             <div className="grid grid-cols-3 gap-2">
               <input
                 type="text"
-                placeholder="City"
+                placeholder={t.winnerBanner.placeholderCity}
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
                 disabled={stage === 'submitting'}
@@ -162,7 +162,7 @@ export default function WinnerBanner() {
               />
               <input
                 type="text"
-                placeholder="State"
+                placeholder={t.winnerBanner.placeholderState}
                 maxLength={2}
                 value={state}
                 onChange={(e) => setState(e.target.value.toUpperCase())}
@@ -175,7 +175,7 @@ export default function WinnerBanner() {
               <input
                 type="text"
                 inputMode="numeric"
-                placeholder="ZIP"
+                placeholder={t.winnerBanner.placeholderZip}
                 maxLength={5}
                 value={zip}
                 onChange={(e) => setZip(e.target.value.replace(/\D/g, ''))}
@@ -200,20 +200,19 @@ export default function WinnerBanner() {
                          text-white text-sm font-black transition-colors
                          disabled:opacity-60 shadow-sm"
             >
-              {stage === 'submitting' ? 'Submitting…' : 'Confirm & claim prize'}
+              {stage === 'submitting' ? t.winnerBanner.submitting : t.winnerBanner.confirmButton}
             </button>
             <button
               onClick={() => setStage('notify')}
               disabled={stage === 'submitting'}
               className="text-xs text-slate-400 hover:text-slate-600 transition-colors"
             >
-              Cancel
+              {t.winnerBanner.cancelButton}
             </button>
           </div>
 
           <p className="text-[10px] text-slate-400 leading-relaxed text-center">
-            U.S. addresses only. Prize ships within 5–7 business days.
-            Questions? Email admin@gascap.app
+            {t.winnerBanner.disclaimer}
           </p>
         </div>
       )}

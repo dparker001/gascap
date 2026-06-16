@@ -19,6 +19,7 @@
 import { useRef, useState, useEffect, useCallback, type ReactNode } from 'react';
 import type { DoorStyle, DoorDirection } from '@/hooks/useGarageDoorPrefs';
 import { VEHICLE_PATHS } from '@/lib/vehicleSilhouette';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 export type { DoorStyle, DoorDirection };
 
@@ -118,13 +119,14 @@ function getToday(): string {
 
 /** Extracts and upper-cases the first word of a display name. */
 function toFirstName(name: string): string {
-  return (name.trim().split(/\s+/)[0] ?? '').toUpperCase() || 'MY GARAGE';
+  return (name.trim().split(/\s+/)[0] ?? '').toUpperCase();
 }
 
 // ── Door face ─────────────────────────────────────────────────────────────────
 
 function DoorFace({ style, nameLabel, locked }: { style: DoorStyle; nameLabel: string; locked?: boolean }) {
   const cfg = STYLE_CONFIGS[style];
+  const { t } = useTranslation();
 
   // Dark doors (modern) use a light-tinted plate; light doors use a dark-tinted plate
   const plateBg     = style === 'modern'
@@ -203,7 +205,7 @@ function DoorFace({ style, nameLabel, locked }: { style: DoorStyle; nameLabel: s
             </div>
             {/* Message */}
             <p className={`text-[10px] font-black text-center leading-relaxed tracking-wide uppercase opacity-45 ${cfg.labelColor}`}>
-              Save a vehicle to<br />unlock the garage door
+              {t.garageDoor.unlockLine1}<br />{t.garageDoor.unlockLine2}
             </p>
           </div>
         </div>
@@ -218,7 +220,7 @@ function DoorFace({ style, nameLabel, locked }: { style: DoorStyle; nameLabel: s
               <path d="M2 8l6-6 6 6" />
             </svg>
             <span className={`text-[9px] font-black tracking-widest uppercase opacity-70 ${cfg.hintColor}`}>
-              Tap to Open
+              {t.garageDoor.tapToOpen}
             </span>
           </div>
         </>
@@ -274,6 +276,7 @@ interface BonusToastProps {
 }
 
 function BonusToast({ show, bonusEntries, totalDays }: BonusToastProps) {
+  const { t } = useTranslation();
   return (
     <div
       className={`absolute inset-x-3 top-3 z-30 transition-all duration-500 ${
@@ -288,16 +291,16 @@ function BonusToast({ show, bonusEntries, totalDays }: BonusToastProps) {
           <span className="text-2xl flex-shrink-0">🎟️</span>
           <div className="flex-1 min-w-0">
             <p className="text-white text-sm font-black leading-tight">
-              +{bonusEntries} Daily Draw Entries!
+              {t.garageDoor.dailyDrawEntries(bonusEntries)}
             </p>
             <p className="text-white/75 text-[11px] font-semibold leading-tight mt-0.5">
-              Daily Garage Bonus
+              {t.garageDoor.dailyGarageBonus}
             </p>
           </div>
           {totalDays > 1 && (
             <div className="flex-shrink-0 text-right">
               <p className="text-white text-[10px] font-black leading-tight">🔥 {totalDays}</p>
-              <p className="text-white/60 text-[9px] leading-tight">day streak</p>
+              <p className="text-white/60 text-[9px] leading-tight">{t.garageDoor.dayStreak}</p>
             </div>
           )}
         </div>
@@ -305,8 +308,9 @@ function BonusToast({ show, bonusEntries, totalDays }: BonusToastProps) {
         {/* Explanation */}
         <div className="bg-black/10 px-4 py-2.5">
           <p className="text-white/90 text-[11px] leading-relaxed">
-            You earn <span className="font-black text-white">{bonusEntries} bonus entries</span> every
-            day you open your garage. Come back tomorrow to earn more!
+            {t.garageDoor.bonusExplainLead}{' '}
+            <span className="font-black text-white">{t.garageDoor.bonusExplainEntries(bonusEntries)}</span>{' '}
+            {t.garageDoor.bonusExplainTail}
           </p>
         </div>
       </div>
@@ -341,9 +345,14 @@ export function GarageDoor({
   isFleet  = false,
   locked   = false,
 }: GarageDoorProps) {
+  const { t } = useTranslation();
   // Nameplate label: "DON'S FLEET" for fleet, "DON'S GARAGE" for pro, fallback variants
-  const suffix    = isFleet ? 'FLEET' : 'GARAGE';
-  const nameLabel = userName ? `${toFirstName(userName)}'S ${suffix}` : `MY ${suffix}`;
+  const firstName = userName ? toFirstName(userName) : '';
+  const nameLabel = firstName
+    ? (isFleet
+        ? t.garageDoor.nameplateFleet(firstName)
+        : t.garageDoor.nameplateGarage(firstName))
+    : (isFleet ? t.garageDoor.nameplateMyFleet : t.garageDoor.nameplateMyGarage);
   const alreadyOpenToday = typeof window !== 'undefined' &&
     localStorage.getItem('gascap:garage-open-date') === getToday();
   const [isOpen,       setIsOpen]       = useState<boolean>(() => {
@@ -407,7 +416,7 @@ export function GarageDoor({
           {/* Left half */}
           <div
             role={locked ? 'img' : 'button'}
-            aria-label={locked ? 'Garage locked — save a vehicle to unlock' : 'Open garage'}
+            aria-label={locked ? t.garageDoor.ariaLocked : t.garageDoor.ariaOpen}
             tabIndex={locked ? -1 : 0}
             onClick={clickHandler}
             onKeyDown={keyHandler}
@@ -449,7 +458,7 @@ export function GarageDoor({
         /* ── Roll up: single panel slides upward ── */
         <div
           role={locked ? 'img' : 'button'}
-          aria-label={locked ? 'Garage locked — save a vehicle to unlock' : 'Open garage'}
+          aria-label={locked ? t.garageDoor.ariaLocked : t.garageDoor.ariaOpen}
           tabIndex={locked ? -1 : 0}
           className="absolute inset-0 z-10"
           onClick={clickHandler}
@@ -480,7 +489,7 @@ export function GarageDoor({
                      text-white text-[10px] font-black px-3 py-1.5 rounded-full
                      shadow-sm transition-colors"
         >
-          🎟️ +10 entries earned today
+          🎟️ {t.garageDoor.earnedToday(bonusEntries)}
           <span className="text-white/60 text-[9px] ml-0.5">✕</span>
         </button>
       </div>

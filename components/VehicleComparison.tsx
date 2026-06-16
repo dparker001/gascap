@@ -3,6 +3,7 @@
 import { useSession } from 'next-auth/react';
 import { useEffect, useState, useCallback } from 'react';
 import type { Fillup } from '@/lib/fillups';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 interface HistoryResponse {
   fillups: Fillup[];
@@ -36,6 +37,7 @@ const COLORS = ['#f59e0b', '#3b82f6', '#10b981', '#8b5cf6', '#ef4444', '#06b6d4'
 
 export default function VehicleComparison() {
   const { data: session, status } = useSession();
+  const { t } = useTranslation();
   const [data,    setData]    = useState<HistoryResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [open,    setOpen]    = useState(false);
@@ -136,14 +138,14 @@ export default function VehicleComparison() {
         <div className="flex items-center gap-2">
           <span className="text-sm" aria-hidden="true">⚖️</span>
           <div className="text-left">
-            <p className="text-xs font-black text-white uppercase tracking-wider">Vehicle Comparison</p>
+            <p className="text-xs font-black text-white uppercase tracking-wider">{t.vehicleComparison.title}</p>
             {loading
-              ? <p className="text-[10px] text-white/50">Loading…</p>
+              ? <p className="text-[10px] text-white/50">{t.vehicleComparison.loading}</p>
               : hasMultiple
-                ? <p className="text-[10px] text-white/50">{profiles.length} vehicles · side-by-side stats</p>
+                ? <p className="text-[10px] text-white/50">{t.vehicleComparison.subtitleMultiple(profiles.length)}</p>
                 : hasData
-                  ? <p className="text-[10px] text-white/50">{profiles[0].name} · add a 2nd vehicle to compare</p>
-                  : <p className="text-[10px] text-white/50">Log fill-ups to see vehicle stats</p>
+                  ? <p className="text-[10px] text-white/50">{t.vehicleComparison.subtitleSingle(profiles[0].name)}</p>
+                  : <p className="text-[10px] text-white/50">{t.vehicleComparison.subtitleEmpty}</p>
             }
           </div>
         </div>
@@ -160,23 +162,23 @@ export default function VehicleComparison() {
         <div className="border-t border-slate-100 bg-white p-4 space-y-4">
 
           {loading && (
-            <p className="text-xs text-slate-400 text-center py-6">Loading…</p>
+            <p className="text-xs text-slate-400 text-center py-6">{t.vehicleComparison.loading}</p>
           )}
 
           {!loading && !hasData && (
             <div className="text-center py-6">
               <p className="text-3xl mb-2">🚗</p>
-              <p className="text-sm font-bold text-slate-600">No fill-ups logged yet</p>
-              <p className="text-xs text-slate-400 mt-1">Log fill-ups for at least one vehicle to see comparison data.</p>
+              <p className="text-sm font-bold text-slate-600">{t.vehicleComparison.emptyTitle}</p>
+              <p className="text-xs text-slate-400 mt-1">{t.vehicleComparison.emptyBody}</p>
             </div>
           )}
 
           {!loading && hasData && !hasMultiple && (
             <div className="text-center py-4">
               <p className="text-3xl mb-2">➕</p>
-              <p className="text-sm font-bold text-slate-600">Only one vehicle tracked</p>
+              <p className="text-sm font-bold text-slate-600">{t.vehicleComparison.singleTitle}</p>
               <p className="text-xs text-slate-400 mt-1 leading-relaxed max-w-[220px] mx-auto">
-                Log fill-ups for a second vehicle to unlock side-by-side comparison.
+                {t.vehicleComparison.singleBody}
               </p>
               {/* Show single vehicle stats anyway */}
               <div className="mt-4">
@@ -204,10 +206,10 @@ export default function VehicleComparison() {
 
               {/* Comparison bar chart rows */}
               <div className="space-y-3 pt-2 border-t border-slate-100">
-                <p className="text-[10px] font-black uppercase tracking-wide text-slate-400">Head-to-Head</p>
+                <p className="text-[10px] font-black uppercase tracking-wide text-slate-400">{t.vehicleComparison.headToHead}</p>
 
                 <CompareBar
-                  label="Total Spent"
+                  label={t.vehicleComparison.totalSpent}
                   profiles={profiles}
                   colors={COLORS}
                   getValue={(p) => p.totalSpent}
@@ -215,25 +217,25 @@ export default function VehicleComparison() {
                   lowerIsBetter
                 />
                 <CompareBar
-                  label="Avg MPG"
+                  label={t.vehicleComparison.avgMpg}
                   profiles={profiles}
                   colors={COLORS}
                   getValue={(p) => p.avgMpg ?? 0}
-                  format={(v) => v > 0 ? `${v} mpg` : 'N/A'}
+                  format={(v) => v > 0 ? `${v} mpg` : t.vehicleComparison.notAvailable}
                   lowerIsBetter={false}
                   skipZero
                 />
                 <CompareBar
-                  label="Cost / Mile"
+                  label={t.vehicleComparison.costPerMile}
                   profiles={profiles}
                   colors={COLORS}
                   getValue={(p) => p.costPerMile ?? 0}
-                  format={(v) => v > 0 ? `$${v.toFixed(3)}` : 'N/A'}
+                  format={(v) => v > 0 ? `$${v.toFixed(3)}` : t.vehicleComparison.notAvailable}
                   lowerIsBetter
                   skipZero
                 />
                 <CompareBar
-                  label="Avg $/Gallon"
+                  label={t.vehicleComparison.avgPricePerGallon}
                   profiles={profiles}
                   colors={COLORS}
                   getValue={(p) => p.avgPrice}
@@ -252,6 +254,7 @@ export default function VehicleComparison() {
 // ── Winner Row ───────────────────────────────────────────────────────────────
 
 function WinnerRow({ profiles }: { profiles: VehicleProfile[] }) {
+  const { t } = useTranslation();
   const mpgProfiles  = profiles.filter((p) => p.avgMpg != null);
   const cpmProfiles  = profiles.filter((p) => p.costPerMile != null);
 
@@ -260,9 +263,9 @@ function WinnerRow({ profiles }: { profiles: VehicleProfile[] }) {
   const mostFill = [...profiles].sort((a, b) => b.fillupCount - a.fillupCount)[0];
 
   const badges = [
-    bestMpg  && { emoji: '🏆', label: 'Best MPG',       vehicle: bestMpg.name,   value: `${bestMpg.avgMpg} mpg`        },
-    cheapCpm && { emoji: '💰', label: 'Cheapest/Mile',  vehicle: cheapCpm.name,  value: `$${cheapCpm.costPerMile!.toFixed(3)}/mi` },
-    mostFill && { emoji: '⛽', label: 'Most Active',    vehicle: mostFill.name,  value: `${mostFill.fillupCount} fill-ups` },
+    bestMpg  && { emoji: '🏆', label: t.vehicleComparison.badgeBestMpg,      vehicle: bestMpg.name,   value: `${bestMpg.avgMpg} mpg`        },
+    cheapCpm && { emoji: '💰', label: t.vehicleComparison.badgeCheapestMile, vehicle: cheapCpm.name,  value: `$${cheapCpm.costPerMile!.toFixed(3)}/mi` },
+    mostFill && { emoji: '⛽', label: t.vehicleComparison.badgeMostActive,   vehicle: mostFill.name,  value: t.vehicleComparison.badgeFillupsValue(mostFill.fillupCount) },
   ].filter(Boolean) as { emoji: string; label: string; vehicle: string; value: string }[];
 
   if (badges.length === 0) return null;
@@ -284,6 +287,7 @@ function WinnerRow({ profiles }: { profiles: VehicleProfile[] }) {
 // ── Vehicle Card ─────────────────────────────────────────────────────────────
 
 function VehicleCard({ profile: p, color, rank }: { profile: VehicleProfile; color: string; rank: number }) {
+  const { t } = useTranslation();
   return (
     <div
       className="flex-1 min-w-[150px] rounded-2xl border-2 p-3 space-y-2"
@@ -296,27 +300,27 @@ function VehicleCard({ profile: p, color, rank }: { profile: VehicleProfile; col
       </div>
       {rank === 1 && (
         <span className="inline-block text-[9px] font-black bg-amber-100 text-amber-700 rounded px-1.5 py-0.5">
-          #1 Spend
+          {t.vehicleComparison.rankSpend}
         </span>
       )}
 
       {/* Stats */}
       <div className="space-y-1.5">
-        <StatRow label="Total spent"  value={`$${p.totalSpent.toFixed(2)}`}  bold />
-        <StatRow label="Fill-Ups"     value={String(p.fillupCount)} />
-        <StatRow label="Total gal"    value={`${p.totalGallons} gal`} />
-        <StatRow label="Avg $/gal"    value={`$${p.avgPrice.toFixed(2)}`} />
+        <StatRow label={t.vehicleComparison.statTotalSpent}  value={`$${p.totalSpent.toFixed(2)}`}  bold />
+        <StatRow label={t.vehicleComparison.statFillups}     value={String(p.fillupCount)} />
+        <StatRow label={t.vehicleComparison.statTotalGal}    value={`${p.totalGallons} gal`} />
+        <StatRow label={t.vehicleComparison.statAvgPricePerGal} value={`$${p.avgPrice.toFixed(2)}`} />
         {p.avgMpg != null && (
-          <StatRow label="Avg MPG"    value={`${p.avgMpg} mpg`}    green />
+          <StatRow label={t.vehicleComparison.statAvgMpg}    value={`${p.avgMpg} mpg`}    green />
         )}
         {p.bestMpg != null && (
-          <StatRow label="Best MPG"   value={`${p.bestMpg} mpg`}   small />
+          <StatRow label={t.vehicleComparison.statBestMpg}   value={`${p.bestMpg} mpg`}   small />
         )}
         {p.costPerMile != null && (
-          <StatRow label="Cost/mile"  value={`$${p.costPerMile.toFixed(3)}`} />
+          <StatRow label={t.vehicleComparison.statCostPerMile}  value={`$${p.costPerMile.toFixed(3)}`} />
         )}
         {p.fillsPerMonth != null && (
-          <StatRow label="Fills/mo"   value={String(p.fillsPerMonth)} small />
+          <StatRow label={t.vehicleComparison.statFillsPerMonth}   value={String(p.fillsPerMonth)} small />
         )}
       </div>
     </div>
@@ -342,15 +346,16 @@ function StatRow({ label, value, bold, green, small }: {
 // ── Single Vehicle Card (when only 1 vehicle) ────────────────────────────────
 
 function SingleVehicleCard({ profile: p, color }: { profile: VehicleProfile; color: string }) {
+  const { t } = useTranslation();
   return (
     <div className="grid grid-cols-2 gap-2 text-left mt-2">
       {[
-        { label: 'Total Spent',   value: `$${p.totalSpent.toFixed(2)}` },
-        { label: 'Total Gallons', value: `${p.totalGallons} gal` },
-        { label: 'Fill-Ups',      value: String(p.fillupCount) },
-        { label: 'Avg $/gal',     value: `$${p.avgPrice.toFixed(2)}` },
-        p.avgMpg != null && { label: 'Avg MPG',   value: `${p.avgMpg} mpg` },
-        p.costPerMile != null && { label: 'Cost/mile', value: `$${p.costPerMile.toFixed(3)}/mi` },
+        { label: t.vehicleComparison.statTotalSpent,   value: `$${p.totalSpent.toFixed(2)}` },
+        { label: t.vehicleComparison.statTotalGallons, value: `${p.totalGallons} gal` },
+        { label: t.vehicleComparison.statFillups,      value: String(p.fillupCount) },
+        { label: t.vehicleComparison.statAvgPricePerGal, value: `$${p.avgPrice.toFixed(2)}` },
+        p.avgMpg != null && { label: t.vehicleComparison.statAvgMpg,   value: `${p.avgMpg} mpg` },
+        p.costPerMile != null && { label: t.vehicleComparison.statCostPerMile, value: `$${p.costPerMile.toFixed(3)}/mi` },
       ].filter(Boolean).map((s) => {
         const stat = s as { label: string; value: string };
         return (
@@ -383,6 +388,7 @@ function CompareBar({
   lowerIsBetter: boolean;
   skipZero?:     boolean;
 }) {
+  const { t } = useTranslation();
   const values    = profiles.map(getValue);
   const nonZero   = skipZero ? values.filter((v) => v > 0) : values;
   if (nonZero.length === 0) return null;
@@ -398,7 +404,7 @@ function CompareBar({
         const val     = getValue(p);
         const isWinner = val === winnerVal && (!skipZero || val > 0);
         const barPct  = maxVal > 0 ? (val / maxVal) * 100 : 0;
-        const display = skipZero && val === 0 ? 'N/A' : format(val);
+        const display = skipZero && val === 0 ? t.vehicleComparison.notAvailable : format(val);
 
         return (
           <div key={p.name} className="flex items-center gap-2">

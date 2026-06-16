@@ -12,6 +12,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useSession }                        from 'next-auth/react';
+import { useTranslation }                    from '@/contexts/LanguageContext';
 
 interface Fillup {
   id:             string;
@@ -107,6 +108,7 @@ function Sparkline({ points }: { points: number[] }) {
 
 export default function MpgInsightCard() {
   const { data: session } = useSession();
+  const { t } = useTranslation();
   const [data,    setData]    = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -172,18 +174,18 @@ export default function MpgInsightCard() {
                    border border-slate-100 hover:border-amber-200
                    transition-colors group focus:outline-none
                    focus-visible:ring-2 focus-visible:ring-amber-400"
-        aria-label="View MPG charts"
+        aria-label={t.mpgInsightCard.ariaViewCharts}
       >
         {/* ── Header strip ── */}
         <div className="bg-navy-700 px-4 py-2.5 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-sm" aria-hidden="true">⛽</span>
             <p className="text-xs font-black text-white uppercase tracking-wider">
-              MPG Insights
+              {t.mpgInsightCard.headerTitle}
             </p>
           </div>
           <span className="text-[10px] text-white/40 group-hover:text-white/60 transition-colors">
-            See full chart ↓
+            {t.mpgInsightCard.seeFullChart} ↓
           </span>
         </div>
 
@@ -194,7 +196,7 @@ export default function MpgInsightCard() {
             {/* Hero: avg MPG + sparkline */}
             <div className="flex-1 min-w-0">
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-0.5">
-                Avg MPG
+                {t.mpgInsightCard.avgMpg}
               </p>
               <div className="flex items-baseline gap-1.5 flex-wrap">
                 <span className="text-3xl font-black text-amber-500 leading-none">
@@ -212,12 +214,12 @@ export default function MpgInsightCard() {
               {trend ? (
                 <p className="text-[10px] text-slate-400 mt-0.5 leading-tight">
                   {trend.direction === 'flat'
-                    ? `Steady vs. prior ${trend.fills} fills`
-                    : `vs. prior ${trend.fills} fills`}
+                    ? t.mpgInsightCard.steadyVsPrior(trend.fills)
+                    : t.mpgInsightCard.vsPrior(trend.fills)}
                 </p>
               ) : (
                 <p className="text-[10px] text-slate-400 mt-0.5">
-                  Log more fills with odometer to see trend
+                  {t.mpgInsightCard.logMoreForTrend}
                 </p>
               )}
             </div>
@@ -237,7 +239,7 @@ export default function MpgInsightCard() {
               {bestMpg && (
                 <div>
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">
-                    Best Fill
+                    {t.mpgInsightCard.bestFill}
                   </p>
                   <div className="flex items-baseline gap-0.5">
                     <span className="text-lg font-black text-slate-700">
@@ -250,13 +252,13 @@ export default function MpgInsightCard() {
 
               <div>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">
-                  Tracked
+                  {t.mpgInsightCard.tracked}
                 </p>
                 <div className="flex items-baseline gap-0.5">
                   <span className="text-lg font-black text-slate-700">{coveragePct}%</span>
                 </div>
                 <p className="text-[9px] text-slate-400">
-                  {fillsWithData}/{stats.count} fills
+                  {t.mpgInsightCard.fillsCount(fillsWithData, stats.count)}
                 </p>
               </div>
             </div>
@@ -265,7 +267,7 @@ export default function MpgInsightCard() {
           {/* Nudge when coverage is low */}
           {coveragePct < 60 && stats.count >= 3 && (
             <p className="text-[10px] text-amber-600 bg-amber-50 rounded-lg px-2.5 py-1.5 mt-3 leading-relaxed">
-              💡 Add your <strong>odometer reading</strong> each fill-up to improve MPG accuracy
+              💡 {t.mpgInsightCard.nudgePrefix}<strong>{t.mpgInsightCard.nudgeOdometer}</strong>{t.mpgInsightCard.nudgeSuffix}
             </p>
           )}
         </div>

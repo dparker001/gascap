@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 interface ReferredUser {
   name:     string;
@@ -68,6 +69,7 @@ function tierProgress(
 }
 
 export default function ReferralCard() {
+  const { t } = useTranslation();
   const { data: session } = useSession();
   const [data,    setData]    = useState<ReferralData | null>(null);
   const [loading, setLoading] = useState(false);
@@ -107,8 +109,8 @@ export default function ReferralCard() {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: 'GasCap™ — Know before you go',
-          text:  'Track your fuel spending & MPG with GasCap™. Use my link to sign up:',
+          title: t.referralCard.shareTitle,
+          text:  t.referralCard.shareText,
           url:   data.referralUrl,
         });
       } catch { /* user cancelled */ }
@@ -119,6 +121,12 @@ export default function ReferralCard() {
 
   if (!session) return null;
 
+  const tierLabel: Record<string, string> = {
+    supporter:  t.referralCard.tierSupporter,
+    ambassador: t.referralCard.tierAmbassador,
+    elite:      t.referralCard.tierElite,
+  };
+
   const tierCfg  = data?.ambassadorTier ? TIER_CONFIG[data.ambassadorTier] : null;
   const progress = data ? tierProgress(data.referralCount, data.thresholds) : null;
 
@@ -128,9 +136,9 @@ export default function ReferralCard() {
       <div className="flex items-center gap-2 py-2.5 px-4 bg-navy-700">
         <span className="text-sm" aria-hidden="true">🔗</span>
         <div>
-          <p className="text-xs font-black text-white uppercase tracking-wider">Refer &amp; Earn</p>
+          <p className="text-xs font-black text-white uppercase tracking-wider">{t.referralCard.headerTitle}</p>
           <p className="text-[10px] text-white/50">
-            Free Pro months · bonus drawing entries · lifetime Pro access
+            {t.referralCard.headerSubtitle}
           </p>
         </div>
       </div>
@@ -151,15 +159,15 @@ export default function ReferralCard() {
                 <span className="text-xl flex-shrink-0">{tierCfg.icon}</span>
                 <div className="min-w-0">
                   <p className={`text-xs font-black ${tierCfg.color}`}>
-                    {tierCfg.label} Ambassador
+                    {t.referralCard.ambassadorBadge(tierLabel[data.ambassadorTier as string] ?? tierCfg.label)}
                     {data.ambassadorProForLife && (
                       <span className="ml-1.5 text-[9px] font-bold bg-white/60 px-1.5 py-0.5 rounded-full">
-                        Pro for Life ✓
+                        {t.referralCard.proForLife}
                       </span>
                     )}
                   </p>
                   <p className="text-[10px] text-slate-500 leading-tight">
-                    {data.entryMultiplier}× daily drawing entries · always eligible to win
+                    {t.referralCard.entryMultiplierNote(data.entryMultiplier)}
                   </p>
                 </div>
               </div>
@@ -169,7 +177,7 @@ export default function ReferralCard() {
             <div className="flex gap-3">
               <div className="flex-1 bg-slate-50 rounded-xl px-3 py-2.5 text-center">
                 <p className="text-lg font-black text-slate-700">{data.referralCount}</p>
-                <p className="text-[10px] text-slate-400 font-semibold">Paying Referrals</p>
+                <p className="text-[10px] text-slate-400 font-semibold">{t.referralCard.payingReferrals}</p>
               </div>
               <div className={[
                 'flex-1 rounded-xl px-3 py-2.5 text-center',
@@ -181,7 +189,7 @@ export default function ReferralCard() {
                 ].join(' ')}>
                   {data.activeCredits}
                 </p>
-                <p className="text-[10px] text-slate-400 font-semibold">Credits Available</p>
+                <p className="text-[10px] text-slate-400 font-semibold">{t.referralCard.creditsAvailable}</p>
               </div>
             </div>
 
@@ -190,7 +198,7 @@ export default function ReferralCard() {
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">
-                    Next: {TIER_CONFIG[progress.nextKey].icon} {progress.nextLabel}
+                    {t.referralCard.nextLabel(`${TIER_CONFIG[progress.nextKey].icon} ${tierLabel[progress.nextKey] ?? progress.nextLabel}`)}
                   </span>
                   <span className="text-[10px] font-bold text-slate-400">
                     {data.referralCount} / {data.referralCount + progress.toNext}
@@ -203,13 +211,13 @@ export default function ReferralCard() {
                   />
                 </div>
                 <p className="text-[10px] text-slate-400 mt-1">
-                  {progress.toNext} more paying referral{progress.toNext !== 1 ? 's' : ''} to unlock {progress.nextLabel}
+                  {t.referralCard.toUnlock(progress.toNext, tierLabel[progress.nextKey] ?? progress.nextLabel)}
                 </p>
               </div>
             ) : (
               <div className="rounded-xl bg-purple-50 border border-purple-200 px-3 py-2.5 text-center">
                 <p className="text-xs font-black text-purple-700">
-                  👑 Elite Ambassador — maximum tier reached!
+                  {t.referralCard.eliteReached}
                 </p>
               </div>
             )}
@@ -225,26 +233,26 @@ export default function ReferralCard() {
                   {data.isPaid ? (
                     <>
                       <p className="text-xs font-black text-green-800">
-                        {data.redeemableMonths} month{data.redeemableMonths !== 1 ? 's' : ''} ready to redeem
-                        {data.activeCredits > data.maxRedeemAtOnce && ` (${data.activeCredits} total, max ${data.maxRedeemAtOnce} at once)`}
+                        {t.referralCard.monthsReadyToRedeem(data.redeemableMonths)}
+                        {data.activeCredits > data.maxRedeemAtOnce && t.referralCard.maxRedeemNote(data.activeCredits, data.maxRedeemAtOnce)}
                       </p>
                       <p className="text-[10px] text-green-700 leading-relaxed">
-                        Credits apply to your next billing cycle. Contact us at admin@gascap.app to apply immediately.
+                        {t.referralCard.creditsNextCycle}
                       </p>
                     </>
                   ) : (
                     <>
                       <p className="text-xs font-black text-amber-800">
-                        {data.activeCredits} month{data.activeCredits !== 1 ? 's' : ''} banked — upgrade to redeem
+                        {t.referralCard.monthsBanked(data.activeCredits)}
                       </p>
                       <p className="text-[10px] text-amber-700 leading-relaxed">
-                        Credits apply automatically when you upgrade to Pro or Fleet. Up to {data.maxRedeemAtOnce} months redeemable at once.
+                        {t.referralCard.creditsOnUpgrade(data.maxRedeemAtOnce)}
                       </p>
                     </>
                   )}
                   {data.nextExpiryDate && (
                     <p className="text-[10px] text-slate-400 mt-1">
-                      ⚠️ Earliest credit expires {new Date(data.nextExpiryDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      {t.referralCard.earliestExpires(new Date(data.nextExpiryDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }))}
                     </p>
                   )}
                 </div>
@@ -254,15 +262,15 @@ export default function ReferralCard() {
             {/* Free user with no credits — upgrade nudge */}
             {!data.isPaid && data.activeCredits === 0 && (
               <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5 text-center space-y-1">
-                <p className="text-xs font-black text-slate-700">Start referring today</p>
+                <p className="text-xs font-black text-slate-700">{t.referralCard.startReferring}</p>
                 <p className="text-[10px] text-slate-500 leading-relaxed">
-                  Earn a free month for every friend who upgrades to Pro — plus bonus drawing entries and a path to lifetime Pro access.
+                  {t.referralCard.startReferringDesc}
                 </p>
                 <a
                   href="/upgrade"
                   className="inline-block mt-1 px-4 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-white text-xs font-black transition-colors"
                 >
-                  Upgrade to Pro →
+                  {t.referralCard.upgradeToPro}
                 </a>
               </div>
             )}
@@ -270,7 +278,7 @@ export default function ReferralCard() {
             {/* Referral link */}
             <div>
               <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">
-                Your referral link
+                {t.referralCard.yourReferralLink}
               </label>
               <div className="flex gap-1.5">
                 <div className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 overflow-hidden">
@@ -285,7 +293,7 @@ export default function ReferralCard() {
                       : 'bg-slate-200 text-slate-600 hover:bg-amber-100 hover:text-amber-700',
                   ].join(' ')}
                 >
-                  {copied ? '✓ Copied!' : '📋 Copy'}
+                  {copied ? t.referralCard.copied : t.referralCard.copy}
                 </button>
               </div>
             </div>
@@ -296,7 +304,7 @@ export default function ReferralCard() {
               className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500 hover:text-amber-600 transition-colors"
             >
               <span>📷</span>
-              <span>Show QR Code</span>
+              <span>{t.referralCard.showQrCode}</span>
             </button>
 
             {/* QR code modal */}
@@ -309,29 +317,29 @@ export default function ReferralCard() {
                   className="bg-white rounded-3xl p-6 w-full max-w-xs flex flex-col items-center gap-4 shadow-2xl"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <p className="text-sm font-black text-slate-700">Your Referral QR Code</p>
+                  <p className="text-sm font-black text-slate-700">{t.referralCard.qrTitle}</p>
                   <img
                     src={`https://api.qrserver.com/v1/create-qr-code/?size=280x280&margin=6&color=0f1f34&bgcolor=ffffff&data=${encodeURIComponent(data.referralUrl)}`}
-                    alt="Referral QR code"
+                    alt={t.referralCard.qrAlt}
                     width={240}
                     height={240}
                     className="rounded-2xl border border-slate-200"
                   />
                   <p className="text-[11px] text-slate-400 text-center leading-relaxed">
-                    Have a friend scan this to sign up with your referral link
+                    {t.referralCard.qrScanHint}
                   </p>
                   <a
                     href={`https://api.qrserver.com/v1/create-qr-code/?size=600x600&margin=20&color=0f1f34&bgcolor=ffffff&data=${encodeURIComponent(data.referralUrl)}`}
                     download="gascap-referral-qr.png"
                     className="text-[11px] font-bold text-amber-600 hover:text-amber-500 transition-colors"
                   >
-                    ⬇ Download QR Image
+                    {t.referralCard.downloadQr}
                   </a>
                   <button
                     onClick={() => setShowQR(false)}
                     className="w-full py-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-sm font-black text-slate-600 transition-colors"
                   >
-                    Close QR Code
+                    {t.referralCard.closeQr}
                   </button>
                 </div>
               </div>
@@ -343,7 +351,7 @@ export default function ReferralCard() {
               className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-white text-sm font-black transition-colors flex items-center justify-center gap-2"
             >
               <span>📤</span>
-              Share with a Friend
+              {t.referralCard.shareWithFriend}
             </button>
 
             {/* Referred users list */}
@@ -351,7 +359,7 @@ export default function ReferralCard() {
               <details className="group">
                 <summary className="text-[11px] font-bold text-amber-600 cursor-pointer list-none flex items-center gap-1.5 hover:text-amber-500 transition-colors">
                   <span className="text-base">👥</span>
-                  {data.referredUsers.length} friend{data.referredUsers.length !== 1 ? 's' : ''} referred — tap to view
+                  {t.referralCard.friendsReferred(data.referredUsers.length)}
                 </summary>
                 <div className="mt-2 space-y-1.5">
                   {data.referredUsers.map((r) => (
@@ -362,12 +370,12 @@ export default function ReferralCard() {
                       </div>
                       <div className="flex gap-1.5">
                         {r.verified ? (
-                          <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-green-100 text-green-600">✓ Verified</span>
+                          <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-green-100 text-green-600">{t.referralCard.verified}</span>
                         ) : (
-                          <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-slate-100 text-slate-400">Pending</span>
+                          <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-slate-100 text-slate-400">{t.referralCard.pending}</span>
                         )}
                         {r.credited && (
-                          <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-600">💳 Paid</span>
+                          <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-600">{t.referralCard.paid}</span>
                         )}
                       </div>
                     </div>
@@ -378,12 +386,12 @@ export default function ReferralCard() {
 
             {/* Footer */}
             <p className="text-[10px] text-slate-400 text-center leading-relaxed">
-              Rewards apply when your referred friend upgrades to a paid plan · credits valid for 12 months
+              {t.referralCard.footerNote}
             </p>
 
             {data.referredBy && (
               <p className="text-[10px] text-green-600 text-center font-semibold">
-                ✓ You were referred by{' '}
+                {t.referralCard.referredByPrefix}{' '}
                 {data.referredByName
                   ? <span className="font-bold">{data.referredByName}</span>
                   : <span className="font-mono">{data.referredBy}</span>

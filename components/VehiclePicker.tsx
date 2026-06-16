@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import type { VehicleSpecs } from '@/lib/vehicleSpecs';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 interface MenuItem { text: string; value: string }
 
@@ -74,6 +75,7 @@ function ConfirmBlock({
   onSave: () => void; onCancel: () => void;
   saving: boolean; saveError: string; canSave: boolean;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="bg-slate-50 rounded-xl p-3 space-y-3 border border-slate-100">
       {/* Spec chips */}
@@ -85,7 +87,7 @@ function ConfirmBlock({
         )}
         {cylinders && (
           <span className="text-xs bg-white border border-slate-200 rounded-lg px-2 py-1 font-medium text-slate-600">
-            {String(cylinders)}-cyl
+            {t.vehiclePicker.cylChip(String(cylinders))}
           </span>
         )}
         {displ && (
@@ -95,7 +97,7 @@ function ConfirmBlock({
         )}
         {tankSize && (
           <span className="text-xs bg-amber-50 border border-amber-200 rounded-lg px-2 py-1 font-semibold text-amber-700">
-            ~{tankSize} gal est.
+            {t.vehiclePicker.tankEstChip(tankSize)}
           </span>
         )}
       </div>
@@ -103,7 +105,7 @@ function ConfirmBlock({
       {/* Tank size */}
       <div>
         <label className="block text-xs font-semibold text-slate-500 mb-1">
-          Tank Size (confirm or adjust)
+          {t.vehiclePicker.tankSizeLabel}
         </label>
         <div className="relative">
           <input
@@ -111,7 +113,7 @@ function ConfirmBlock({
             className="input-field text-sm pr-12"
             value={tankSize} min="1" step="0.1"
             onChange={(e) => setTankSize(e.target.value)}
-            placeholder="e.g. 15.9"
+            placeholder={t.vehiclePicker.tankSizePlaceholder}
           />
           <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">
             gal
@@ -121,21 +123,21 @@ function ConfirmBlock({
 
       {/* Nickname */}
       <div>
-        <label className="block text-xs font-semibold text-slate-500 mb-1">Nickname</label>
+        <label className="block text-xs font-semibold text-slate-500 mb-1">{t.vehiclePicker.nicknameLabel}</label>
         <input
           type="text" className="input-field text-sm"
           value={nickname} onChange={(e) => setNickname(e.target.value)}
-          placeholder='e.g. "My Camry"' maxLength={40}
+          placeholder={t.vehiclePicker.nicknamePlaceholder} maxLength={40}
         />
       </div>
 
       {/* Current odometer — optional, used as MPG tracking baseline */}
       <div>
         <label className="block text-xs font-semibold text-slate-500 mb-1">
-          Current Odometer{' '}
-          <span className="font-normal text-slate-400">(optional)</span>
+          {t.vehiclePicker.currentOdometerLabel}{' '}
+          <span className="font-normal text-slate-400">{t.vehiclePicker.optional}</span>
           <span className="ml-1.5 text-[10px] font-bold text-green-600 bg-green-50 rounded px-1 py-0.5">
-            MPG tracking baseline
+            {t.vehiclePicker.mpgBaselineTag}
           </span>
         </label>
         <div className="relative">
@@ -145,12 +147,12 @@ function ConfirmBlock({
             value={odometer}
             min="0" step="1"
             onChange={(e) => setOdometer(e.target.value)}
-            placeholder="e.g. 42500"
+            placeholder={t.vehiclePicker.odometerPlaceholder}
           />
           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">mi</span>
         </div>
         <p className="text-[10px] text-slate-400 mt-1 leading-snug">
-          Enter your current mileage so MPG tracking starts accurately from your first fill-up.
+          {t.vehiclePicker.odometerHint}
         </p>
       </div>
 
@@ -162,14 +164,14 @@ function ConfirmBlock({
           className="flex-1 py-2.5 rounded-xl border-2 border-slate-200 text-sm font-semibold
                      text-slate-500 hover:border-slate-300 transition-colors"
         >
-          Cancel
+          {t.vehiclePicker.cancel}
         </button>
         <button
           onClick={onSave} disabled={!canSave || saving}
           className="flex-1 py-2.5 rounded-xl bg-amber-500 text-white text-sm font-bold
                      hover:bg-amber-400 disabled:opacity-40 transition-colors"
         >
-          {saving ? 'Saving…' : 'Add to Garage'}
+          {saving ? t.vehiclePicker.saving : t.vehiclePicker.addToGarage}
         </button>
       </div>
     </div>
@@ -179,6 +181,7 @@ function ConfirmBlock({
 // ── Search tab (existing cascading-dropdown flow) ─────────────────────────
 
 function SearchTab({ onSave, onCancel, saving, saveError }: Omit<VehiclePickerProps, 'plan'>) {
+  const { t } = useTranslation();
   const [years,  setYears]  = useState<MenuItem[]>([]);
   const [makes,  setMakes]  = useState<MenuItem[]>([]);
   const [models, setModels] = useState<MenuItem[]>([]);
@@ -254,20 +257,20 @@ function SearchTab({ onSave, onCancel, saving, saveError }: Omit<VehiclePickerPr
     <div className="space-y-3">
       {/* Year */}
       <div>
-        <label className="block text-xs font-semibold text-slate-500 mb-1">Year</label>
+        <label className="block text-xs font-semibold text-slate-500 mb-1">{t.vehiclePicker.yearLabel}</label>
         <select className="input-field text-sm" value={year}
           onChange={(e) => setYear(e.target.value)} disabled={loading === 'years'}>
-          <option value="">{loading === 'years' ? 'Loading…' : 'Select year'}</option>
+          <option value="">{loading === 'years' ? t.vehiclePicker.loading : t.vehiclePicker.selectYear}</option>
           {years.map((y) => <option key={y.value} value={y.value}>{y.text}</option>)}
         </select>
       </div>
 
       {year && (
         <div>
-          <label className="block text-xs font-semibold text-slate-500 mb-1">Make</label>
+          <label className="block text-xs font-semibold text-slate-500 mb-1">{t.vehiclePicker.makeLabel}</label>
           <select className="input-field text-sm" value={make}
             onChange={(e) => setMake(e.target.value)} disabled={loading === 'makes'}>
-            <option value="">{loading === 'makes' ? 'Loading…' : 'Select make'}</option>
+            <option value="">{loading === 'makes' ? t.vehiclePicker.loading : t.vehiclePicker.selectMake}</option>
             {makes.map((m) => <option key={m.value} value={m.value}>{m.text}</option>)}
           </select>
         </div>
@@ -275,10 +278,10 @@ function SearchTab({ onSave, onCancel, saving, saveError }: Omit<VehiclePickerPr
 
       {year && make && (
         <div>
-          <label className="block text-xs font-semibold text-slate-500 mb-1">Model</label>
+          <label className="block text-xs font-semibold text-slate-500 mb-1">{t.vehiclePicker.modelLabel}</label>
           <select className="input-field text-sm" value={model}
             onChange={(e) => setModel(e.target.value)} disabled={loading === 'models'}>
-            <option value="">{loading === 'models' ? 'Loading…' : 'Select model'}</option>
+            <option value="">{loading === 'models' ? t.vehiclePicker.loading : t.vehiclePicker.selectModel}</option>
             {models.map((m) => <option key={m.value} value={m.value}>{m.text}</option>)}
           </select>
         </div>
@@ -286,17 +289,17 @@ function SearchTab({ onSave, onCancel, saving, saveError }: Omit<VehiclePickerPr
 
       {year && make && model && (
         <div>
-          <label className="block text-xs font-semibold text-slate-500 mb-1">Trim / Engine</label>
+          <label className="block text-xs font-semibold text-slate-500 mb-1">{t.vehiclePicker.trimLabel}</label>
           <select className="input-field text-sm" value={trimId}
             onChange={(e) => setTrimId(e.target.value)} disabled={loading === 'trims'}>
-            <option value="">{loading === 'trims' ? 'Loading…' : 'Select trim'}</option>
-            {trims.map((t) => <option key={t.value} value={t.value}>{t.text}</option>)}
+            <option value="">{loading === 'trims' ? t.vehiclePicker.loading : t.vehiclePicker.selectTrim}</option>
+            {trims.map((tr) => <option key={tr.value} value={tr.value}>{tr.text}</option>)}
           </select>
         </div>
       )}
 
       {loading === 'vehicle' && (
-        <p className="text-xs text-slate-400 text-center py-2">Looking up vehicle data…</p>
+        <p className="text-xs text-slate-400 text-center py-2">{t.vehiclePicker.lookingUpVehicle}</p>
       )}
 
       {details && (
@@ -315,7 +318,7 @@ function SearchTab({ onSave, onCancel, saving, saveError }: Omit<VehiclePickerPr
         <button onClick={onCancel}
           className="w-full py-2.5 rounded-xl border-2 border-slate-200 text-sm font-semibold
                      text-slate-500 hover:border-slate-300 transition-colors mt-1">
-          Cancel
+          {t.vehiclePicker.cancel}
         </button>
       )}
     </div>
@@ -325,6 +328,7 @@ function SearchTab({ onSave, onCancel, saving, saveError }: Omit<VehiclePickerPr
 // ── Manual Entry tab (Pro) ─────────────────────────────────────────────────
 
 function ManualTab({ onSave, onCancel, saving, saveError }: Omit<VehiclePickerProps, 'plan'>) {
+  const { t } = useTranslation();
   const [year,  setYear]  = useState('');
   const [make,  setMake]  = useState('');
   const [model, setModel] = useState('');
@@ -382,15 +386,14 @@ function ManualTab({ onSave, onCancel, saving, saveError }: Omit<VehiclePickerPr
     <div className="space-y-3">
       {/* Instruction */}
       <p className="text-xs text-slate-500 leading-relaxed">
-        Type your vehicle info below and tap{' '}
-        <span className="font-semibold text-amber-700">Look up specs</span> — we'll find the engine
-        type and tank capacity automatically from the EPA database.
+        {t.vehiclePicker.manualInstructionPrefix}{' '}
+        <span className="font-semibold text-amber-700">{t.vehiclePicker.manualInstructionAction}</span>{t.vehiclePicker.manualInstructionSuffix}
       </p>
 
       {/* Year / Make / Model inputs */}
       <div className="grid grid-cols-3 gap-2">
         <div>
-          <label className="block text-xs font-semibold text-slate-500 mb-1">Year</label>
+          <label className="block text-xs font-semibold text-slate-500 mb-1">{t.vehiclePicker.yearLabel}</label>
           <input
             type="number" inputMode="numeric" className="input-field text-sm" placeholder="2022"
             value={year} min="1985" max={new Date().getFullYear() + 1} step="1"
@@ -398,7 +401,7 @@ function ManualTab({ onSave, onCancel, saving, saveError }: Omit<VehiclePickerPr
           />
         </div>
         <div className="col-span-1">
-          <label className="block text-xs font-semibold text-slate-500 mb-1">Make</label>
+          <label className="block text-xs font-semibold text-slate-500 mb-1">{t.vehiclePicker.makeLabel}</label>
           <input
             type="text" className="input-field text-sm" placeholder="Toyota"
             value={make}
@@ -406,7 +409,7 @@ function ManualTab({ onSave, onCancel, saving, saveError }: Omit<VehiclePickerPr
           />
         </div>
         <div className="col-span-1">
-          <label className="block text-xs font-semibold text-slate-500 mb-1">Model</label>
+          <label className="block text-xs font-semibold text-slate-500 mb-1">{t.vehiclePicker.modelLabel}</label>
           <input
             type="text" className="input-field text-sm" placeholder="Camry"
             value={model}
@@ -421,33 +424,32 @@ function ManualTab({ onSave, onCancel, saving, saveError }: Omit<VehiclePickerPr
         className="w-full py-2.5 rounded-xl border-2 border-amber-400 text-sm font-bold
                    text-amber-700 hover:bg-amber-50 disabled:opacity-40 transition-colors"
       >
-        {lookupState === 'loading' ? 'Looking up…' : 'Look up specs →'}
+        {lookupState === 'loading' ? t.vehiclePicker.lookingUp : t.vehiclePicker.lookUpSpecs}
       </button>
 
       {/* States */}
       {lookupState === 'not_found' && (
         <div className="rounded-xl bg-red-50 border border-red-100 px-3 py-2.5 text-xs text-red-700">
-          <span className="font-semibold">No match found.</span> Double-check the year, make, and
-          model spelling, then try again. You can still enter the tank size manually below.
+          <span className="font-semibold">{t.vehiclePicker.noMatchTitle}</span> {t.vehiclePicker.noMatchBody}
           <div className="mt-2 space-y-2">
             <div className="relative">
               <input type="number" inputMode="decimal" className="input-field text-sm pr-12"
                 value={tankSize} min="1" step="0.1"
-                onChange={(e) => setTankSize(e.target.value)} placeholder="Tank size (gal)" />
+                onChange={(e) => setTankSize(e.target.value)} placeholder={t.vehiclePicker.tankSizeGalPlaceholder} />
               <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">gal</span>
             </div>
             <input type="text" className="input-field text-sm" value={nickname}
-              onChange={(e) => setNickname(e.target.value)} placeholder='Nickname e.g. "My Truck"' maxLength={40} />
+              onChange={(e) => setNickname(e.target.value)} placeholder={t.vehiclePicker.nicknameTruckPlaceholder} maxLength={40} />
             {saveError && <p className="text-xs text-red-500">{saveError}</p>}
             <div className="flex gap-2">
               <button onClick={onCancel}
                 className="flex-1 py-2.5 rounded-xl border-2 border-slate-200 text-sm font-semibold text-slate-500 hover:border-slate-300 transition-colors">
-                Cancel
+                {t.vehiclePicker.cancel}
               </button>
               <button onClick={handleSave}
                 disabled={!nickname.trim() || !tankSize || parseFloat(tankSize) <= 0 || saving}
                 className="flex-1 py-2.5 rounded-xl bg-amber-500 text-white text-sm font-bold hover:bg-amber-400 disabled:opacity-40 transition-colors">
-                {saving ? 'Saving…' : 'Add to Garage'}
+                {saving ? t.vehiclePicker.saving : t.vehiclePicker.addToGarage}
               </button>
             </div>
           </div>
@@ -456,7 +458,7 @@ function ManualTab({ onSave, onCancel, saving, saveError }: Omit<VehiclePickerPr
 
       {lookupState === 'error' && (
         <p className="text-xs text-red-500 text-center">
-          Lookup failed — check your connection and try again.
+          {t.vehiclePicker.lookupFailed}
         </p>
       )}
 
@@ -464,7 +466,7 @@ function ManualTab({ onSave, onCancel, saving, saveError }: Omit<VehiclePickerPr
         <>
           {result.matchCount > 1 && (
             <p className="text-[11px] text-slate-400 text-center">
-              {result.matchCount} trim variants found · showing representative specs
+              {t.vehiclePicker.trimVariants(result.matchCount)}
             </p>
           )}
           <ConfirmBlock
@@ -484,7 +486,7 @@ function ManualTab({ onSave, onCancel, saving, saveError }: Omit<VehiclePickerPr
         <button onClick={onCancel}
           className="w-full py-2.5 rounded-xl border-2 border-slate-200 text-sm font-semibold
                      text-slate-500 hover:border-slate-300 transition-colors">
-          Cancel
+          {t.vehiclePicker.cancel}
         </button>
       )}
     </div>
@@ -510,6 +512,7 @@ interface VinResult {
 }
 
 function VinTab({ onSave, onCancel, saving, saveError }: Omit<VehiclePickerProps, 'plan'>) {
+  const { t } = useTranslation();
   const [vin,          setVin]          = useState('');
   const [state,        setState]        = useState<'idle' | 'loading' | 'found' | 'error'>('idle');
   const [result,       setResult]       = useState<VinResult | null>(null);
@@ -531,12 +534,12 @@ function VinTab({ onSave, onCancel, saving, saveError }: Omit<VehiclePickerProps
       fd.append('image', file);
       const res  = await fetch('/api/vin/scan', { method: 'POST', body: fd, credentials: 'include' });
       const data = await res.json() as { vin?: string | null; error?: string };
-      if (!res.ok || data.error) { setScanError(data.error ?? 'Could not read VIN from image.'); return; }
-      if (!data.vin) { setScanError('No VIN found — zoom in so the "VIN" label is clearly visible, or try the dashboard plate instead.'); return; }
+      if (!res.ok || data.error) { setScanError(data.error ?? t.vehiclePicker.scanCouldNotRead); return; }
+      if (!data.vin) { setScanError(t.vehiclePicker.scanNoVin); return; }
       setVin(data.vin);
       setScanError('');
     } catch {
-      setScanError('Network error — try again.');
+      setScanError(t.vehiclePicker.scanNetworkError);
     } finally {
       setScanning(false);
     }
@@ -558,7 +561,7 @@ function VinTab({ onSave, onCancel, saving, saveError }: Omit<VehiclePickerProps
       const res = await fetch(`/api/vin?vin=${vinClean}`);
       const data = await res.json() as VinResult & { error?: string };
       if (!res.ok || data.error) {
-        setErrorMsg(data.error ?? 'Lookup failed.');
+        setErrorMsg(data.error ?? t.vehiclePicker.vinLookupFailed);
         setState('error');
         return;
       }
@@ -589,7 +592,7 @@ function VinTab({ onSave, onCancel, saving, saveError }: Omit<VehiclePickerProps
         setEpaLoading(false);
       }
     } catch {
-      setErrorMsg('Network error — check your connection.');
+      setErrorMsg(t.vehiclePicker.vinNetworkError);
       setState('error');
     }
   }
@@ -622,9 +625,7 @@ function VinTab({ onSave, onCancel, saving, saveError }: Omit<VehiclePickerProps
   return (
     <div className="space-y-3">
       <p className="text-xs text-slate-500 leading-relaxed">
-        Enter your full <span className="font-semibold text-slate-700">17-character VIN</span> to
-        automatically decode your vehicle's make, model, year, engine, and fuel type.
-        Your VIN is on your dashboard (driver's side), door jamb sticker, or registration.
+        {t.vehiclePicker.vinIntroPrefix} <span className="font-semibold text-slate-700">{t.vehiclePicker.vinIntroHighlight}</span> {t.vehiclePicker.vinIntroSuffix}
       </p>
 
       {/* Hidden file input for VIN photo */}
@@ -642,7 +643,7 @@ function VinTab({ onSave, onCancel, saving, saveError }: Omit<VehiclePickerProps
       <div>
         <div className="flex items-center justify-between mb-1">
           <label className="block text-xs font-semibold text-slate-500">
-            Vehicle Identification Number (VIN)
+            {t.vehiclePicker.vinFieldLabel}
           </label>
           <button
             type="button"
@@ -651,10 +652,10 @@ function VinTab({ onSave, onCancel, saving, saveError }: Omit<VehiclePickerProps
             className="flex items-center gap-1 text-[11px] font-bold text-amber-700 bg-amber-50
                        border border-amber-200 rounded-lg px-2 py-1 hover:bg-amber-100
                        disabled:opacity-50 transition-colors"
-            title="Best results: scan the dashboard VIN plate (bottom of windshield, driver side)"
+            title={t.vehiclePicker.scanVinTitle}
           >
             <span>{scanning ? '🔄' : '📷'}</span>
-            <span>{scanning ? 'Scanning…' : 'Scan VIN'}</span>
+            <span>{scanning ? t.vehiclePicker.scanning : t.vehiclePicker.scanVin}</span>
           </button>
         </div>
         {scanError && <p className="text-[11px] text-red-500 mb-1 font-medium">{scanError}</p>}
@@ -676,7 +677,7 @@ function VinTab({ onSave, onCancel, saving, saveError }: Omit<VehiclePickerProps
               setState('idle');
               setResult(null);
             }}
-            aria-label="17-character vehicle VIN"
+            aria-label={t.vehiclePicker.vinAriaLabel}
             autoCapitalize="characters"
             autoCorrect="off"
             spellCheck={false}
@@ -687,25 +688,25 @@ function VinTab({ onSave, onCancel, saving, saveError }: Omit<VehiclePickerProps
         </div>
         {vinLength === 17 && !vinValid && (
           <p className="mt-1 text-xs text-red-500">
-            VIN contains invalid characters. Letters I, O, and Q are never used in a VIN.
+            {t.vehiclePicker.vinInvalidChars}
           </p>
         )}
         {vinLength > 0 && vinLength < 17 && (
           <p className="mt-1 text-[10px] text-amber-600">
-            {17 - vinLength} more character{17 - vinLength !== 1 ? 's' : ''} needed
+            {t.vehiclePicker.vinCharsNeeded(17 - vinLength)}
           </p>
         )}
       </div>
 
       {/* Where to find your VIN */}
       <div className="bg-slate-50 rounded-xl px-3 py-2.5 border border-slate-100 space-y-2">
-        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Where to find your VIN</p>
+        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">{t.vehiclePicker.whereToFind}</p>
         <div className="grid grid-cols-2 gap-x-3 gap-y-0.5">
           {[
-            '🚗 Dashboard (driver side)',
-            '📋 Vehicle registration',
-            '🚪 Driver door jamb sticker',
-            '🏦 Insurance card',
+            `🚗 ${t.vehiclePicker.locationDashboard}`,
+            `📋 ${t.vehiclePicker.locationRegistration}`,
+            `🚪 ${t.vehiclePicker.locationDoorJamb}`,
+            `🏦 ${t.vehiclePicker.locationInsurance}`,
           ].map((s) => (
             <p key={s} className="text-[10px] text-slate-500">{s}</p>
           ))}
@@ -714,8 +715,8 @@ function VinTab({ onSave, onCancel, saving, saveError }: Omit<VehiclePickerProps
         <div className="flex items-start gap-1.5 pt-1 border-t border-slate-200">
           <span className="text-[10px] mt-0.5">📷</span>
           <p className="text-[10px] text-slate-500 leading-relaxed">
-            <span className="font-semibold text-slate-600">Best for scanning:</span> the dashboard plate (bottom of windshield).
-            Door jamb stickers work too — zoom in so the <span className="font-semibold">"VIN"</span> label is clearly visible in frame.
+            <span className="font-semibold text-slate-600">{t.vehiclePicker.bestForScanning}</span> {t.vehiclePicker.scanTipBody1}
+            <span className="font-semibold">{t.vehiclePicker.vinLabelQuoted}</span> {t.vehiclePicker.scanTipBody2}
           </p>
         </div>
       </div>
@@ -727,7 +728,7 @@ function VinTab({ onSave, onCancel, saving, saveError }: Omit<VehiclePickerProps
         className="w-full py-2.5 rounded-xl border-2 border-amber-400 text-sm font-bold
                    text-amber-700 hover:bg-amber-50 disabled:opacity-40 transition-colors"
       >
-        {state === 'loading' ? 'Decoding VIN…' : 'Decode VIN →'}
+        {state === 'loading' ? t.vehiclePicker.decodingVin : t.vehiclePicker.decodeVin}
       </button>
 
       {/* Error */}
@@ -759,7 +760,7 @@ function VinTab({ onSave, onCancel, saving, saveError }: Omit<VehiclePickerProps
                 <Chip>{result.fuel}</Chip>
               )}
               {result.cylinders && (
-                <Chip>{result.cylinders}-cyl</Chip>
+                <Chip>{t.vehiclePicker.cylChip(result.cylinders)}</Chip>
               )}
               {result.displacement && (
                 <Chip>{Number(result.displacement).toFixed(1)} L</Chip>
@@ -775,7 +776,7 @@ function VinTab({ onSave, onCancel, saving, saveError }: Omit<VehiclePickerProps
 
           {/* EPA tank size lookup result */}
           {epaLoading && (
-            <p className="text-[10px] text-slate-400 text-center">Looking up tank size from EPA database…</p>
+            <p className="text-[10px] text-slate-400 text-center">{t.vehiclePicker.epaTankLookup}</p>
           )}
 
           <ConfirmBlock
@@ -795,7 +796,7 @@ function VinTab({ onSave, onCancel, saving, saveError }: Omit<VehiclePickerProps
         <button onClick={onCancel}
           className="w-full py-2.5 rounded-xl border-2 border-slate-200 text-sm font-semibold
                      text-slate-500 hover:border-slate-300 transition-colors">
-          Cancel
+          {t.vehiclePicker.cancel}
         </button>
       )}
     </div>
@@ -813,6 +814,7 @@ function Chip({ children }: { children: React.ReactNode }) {
 // ── Root component ─────────────────────────────────────────────────────────
 
 export default function VehiclePicker({ plan, onSave, onCancel, saving, saveError }: VehiclePickerProps) {
+  const { t } = useTranslation();
   const [tab, setTab] = useState<'search' | 'manual' | 'vin'>('search');
   const isPro = plan === 'pro' || plan === 'fleet';
 
@@ -830,7 +832,7 @@ export default function VehiclePicker({ plan, onSave, onCancel, saving, saveErro
               : 'text-slate-400 hover:text-slate-600',
           ].join(' ')}
         >
-          🔍 Search
+          🔍 {t.vehiclePicker.tabSearch}
         </button>
         <button
           onClick={() => setTab('vin')}
@@ -841,7 +843,7 @@ export default function VehiclePicker({ plan, onSave, onCancel, saving, saveErro
               : 'text-slate-400 hover:text-slate-600',
           ].join(' ')}
         >
-          🔑 VIN
+          🔑 {t.vehiclePicker.tabVin}
         </button>
         <button
           onClick={() => setTab('manual')}
@@ -874,17 +876,16 @@ export default function VehiclePicker({ plan, onSave, onCancel, saving, saveErro
       {tab === 'manual' && !isPro && (
         <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-5 text-center space-y-2">
           <p className="text-2xl">🔒</p>
-          <p className="text-sm font-bold text-amber-800">Pro Feature</p>
+          <p className="text-sm font-bold text-amber-800">{t.vehiclePicker.proFeatureTitle}</p>
           <p className="text-xs text-amber-700 leading-relaxed">
-            Manual vehicle entry with automatic spec lookup is available on the{' '}
-            <span className="font-semibold">GasCap™ Pro</span> plan.
-            Use the Search tab to find your vehicle from the EPA database.
+            {t.vehiclePicker.proFeatureBody1}{' '}
+            <span className="font-semibold">GasCap™ Pro</span>{t.vehiclePicker.proFeatureBody2}
           </p>
           <button
             onClick={() => setTab('search')}
             className="mt-1 text-xs font-bold text-amber-700 hover:text-amber-900 underline"
           >
-            Switch to Search →
+            {t.vehiclePicker.switchToSearch}
           </button>
         </div>
       )}

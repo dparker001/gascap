@@ -3,6 +3,8 @@
 import { useSession } from 'next-auth/react';
 import { useEffect, useState, useCallback } from 'react';
 import type { Fillup } from '@/lib/fillups';
+import { useTranslation } from '@/contexts/LanguageContext';
+import type { Translations } from '@/lib/translations';
 
 interface HistoryResponse {
   fillups: Fillup[];
@@ -40,6 +42,7 @@ const COLORS = [
 
 export default function VehicleSpendingBreakdown() {
   const { data: session, status } = useSession();
+  const { t } = useTranslation();
   const [data,    setData]    = useState<HistoryResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [open,    setOpen]    = useState(false);
@@ -127,12 +130,12 @@ export default function VehicleSpendingBreakdown() {
         <div className="flex items-center gap-2">
           <span className="text-sm" aria-hidden="true">🚗</span>
           <div className="text-left">
-            <p className="text-xs font-black text-white uppercase tracking-wider">Vehicle Spending</p>
+            <p className="text-xs font-black text-white uppercase tracking-wider">{t.vehicleSpendingBreakdown.title}</p>
             {loading
-              ? <p className="text-[10px] text-white/50">Loading…</p>
+              ? <p className="text-[10px] text-white/50">{t.vehicleSpendingBreakdown.loading}</p>
               : hasData
-                ? <p className="text-[10px] text-white/50">{vehicleStats.length} vehicle{vehicleStats.length !== 1 ? 's' : ''} · ${data?.stats.totalSpent.toFixed(2)} total</p>
-                : <p className="text-[10px] text-white/50">Log fill-ups to see breakdown</p>
+                ? <p className="text-[10px] text-white/50">{t.vehicleSpendingBreakdown.headerSummary(vehicleStats.length, data?.stats.totalSpent.toFixed(2) ?? '0.00')}</p>
+                : <p className="text-[10px] text-white/50">{t.vehicleSpendingBreakdown.logToSeeBreakdown}</p>
             }
           </div>
         </div>
@@ -156,14 +159,14 @@ export default function VehicleSpendingBreakdown() {
         <div className="border-t border-slate-100 bg-white p-4 space-y-4">
 
           {loading && (
-            <p className="text-xs text-slate-400 text-center py-6">Loading…</p>
+            <p className="text-xs text-slate-400 text-center py-6">{t.vehicleSpendingBreakdown.loading}</p>
           )}
 
           {!loading && !hasData && (
             <div className="text-center py-6">
               <p className="text-3xl mb-2">⛽</p>
-              <p className="text-sm font-bold text-slate-600">No fill-ups logged yet</p>
-              <p className="text-xs text-slate-400 mt-1">Log your first fill-up to see per-vehicle spending.</p>
+              <p className="text-sm font-bold text-slate-600">{t.vehicleSpendingBreakdown.emptyTitle}</p>
+              <p className="text-xs text-slate-400 mt-1">{t.vehicleSpendingBreakdown.emptyDescription}</p>
             </div>
           )}
 
@@ -171,21 +174,21 @@ export default function VehicleSpendingBreakdown() {
             <>
               {/* Summary pills */}
               <div className="flex gap-2">
-                <SummaryPill label="Vehicles" value={String(vehicleStats.length)} color="text-slate-700" />
-                <SummaryPill label="Total Spent" value={`$${data?.stats.totalSpent.toFixed(0)}`} color="text-amber-600" />
-                <SummaryPill label="Total Gal" value={`${data?.stats.totalGallons}`} color="text-blue-600" />
+                <SummaryPill label={t.vehicleSpendingBreakdown.pillVehicles} value={String(vehicleStats.length)} color="text-slate-700" />
+                <SummaryPill label={t.vehicleSpendingBreakdown.pillTotalSpent} value={`$${data?.stats.totalSpent.toFixed(0)}`} color="text-amber-600" />
+                <SummaryPill label={t.vehicleSpendingBreakdown.pillTotalGal} value={`${data?.stats.totalGallons}`} color="text-blue-600" />
               </div>
 
               {/* Per-vehicle bars */}
               <div className="space-y-3">
                 {vehicleStats.map((v, i) => (
-                  <VehicleBar key={v.name} stat={v} color={COLORS[i % COLORS.length]} rank={i + 1} />
+                  <VehicleBar key={v.name} stat={v} color={COLORS[i % COLORS.length]} rank={i + 1} t={t} />
                 ))}
               </div>
 
               {vehicleStats.length > 1 && (
                 <p className="text-[9px] text-slate-300 text-center">
-                  Bar width = share of total fuel spend across all vehicles
+                  {t.vehicleSpendingBreakdown.barWidthNote}
                 </p>
               )}
             </>
@@ -207,9 +210,9 @@ function SummaryPill({ label, value, color }: { label: string; value: string; co
   );
 }
 
-function VehicleBar({ stat, color, rank }: { stat: VehicleStat; color: string; rank: number }) {
+function VehicleBar({ stat, color, rank, t }: { stat: VehicleStat; color: string; rank: number; t: Translations }) {
   const d = new Date(stat.lastDate + 'T12:00:00');
-  const lastFill = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' });
+  const lastFill = d.toLocaleDateString(t.vehicleSpendingBreakdown.dateLocale, { month: 'short', day: 'numeric', year: '2-digit' });
 
   return (
     <div className="space-y-1.5">
@@ -241,13 +244,13 @@ function VehicleBar({ stat, color, rank }: { stat: VehicleStat; color: string; r
 
       {/* Stat chips */}
       <div className="flex flex-wrap gap-x-3 gap-y-0.5">
-        <StatChip label="fill-ups" value={String(stat.fillupCount)} />
-        <StatChip label="gal" value={String(stat.totalGallons)} />
-        <StatChip label="avg $/gal" value={`$${stat.avgPrice.toFixed(2)}`} />
+        <StatChip label={t.vehicleSpendingBreakdown.chipFillups} value={String(stat.fillupCount)} />
+        <StatChip label={t.vehicleSpendingBreakdown.chipGal} value={String(stat.totalGallons)} />
+        <StatChip label={t.vehicleSpendingBreakdown.chipAvgPricePerGal} value={`$${stat.avgPrice.toFixed(2)}`} />
         {stat.avgMpg != null && (
-          <StatChip label="avg MPG" value={String(stat.avgMpg)} highlight />
+          <StatChip label={t.vehicleSpendingBreakdown.chipAvgMpg} value={String(stat.avgMpg)} highlight />
         )}
-        <StatChip label="last fill" value={lastFill} />
+        <StatChip label={t.vehicleSpendingBreakdown.chipLastFill} value={lastFill} />
       </div>
     </div>
   );

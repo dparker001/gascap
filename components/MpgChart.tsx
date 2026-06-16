@@ -3,6 +3,7 @@
 import { useSession } from 'next-auth/react';
 import { useEffect, useState, useCallback } from 'react';
 import type { Fillup } from '@/lib/fillups';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 interface HistoryResponse {
   fillups: Fillup[];
@@ -43,6 +44,7 @@ function buildSmoothPath(pts: { x: number; y: number }[]): string {
 }
 
 export default function MpgChart() {
+  const { t } = useTranslation();
   const { data: session, status } = useSession();
   const [data,     setData]     = useState<HistoryResponse | null>(null);
   const [loading,  setLoading]  = useState(false);
@@ -129,16 +131,16 @@ export default function MpgChart() {
         <div className="flex items-center gap-2">
           <span className="text-sm" aria-hidden="true">📈</span>
           <div className="text-left">
-            <p className="text-xs font-black text-white uppercase tracking-wider">MPG Trend</p>
+            <p className="text-xs font-black text-white uppercase tracking-wider">{t.mpgChart.title}</p>
             {avgMpg != null
-              ? <p className="text-[10px] text-white/50">Avg {avgMpg} mpg · {points.length} reading{points.length !== 1 ? 's' : ''}</p>
-              : <p className="text-[10px] text-white/50">Add odometer readings to unlock</p>
+              ? <p className="text-[10px] text-white/50">{t.mpgChart.avgSummary(avgMpg, points.length)}</p>
+              : <p className="text-[10px] text-white/50">{t.mpgChart.unlockHint}</p>
             }
           </div>
         </div>
         <div className="flex items-center gap-3">
           {latestMpg != null && (
-            <span className="text-xs font-black text-white/80">{latestMpg} mpg</span>
+            <span className="text-xs font-black text-white/80">{t.mpgChart.mpgValue(latestMpg)}</span>
           )}
           <svg
             className={`w-4 h-4 text-white/60 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
@@ -154,7 +156,7 @@ export default function MpgChart() {
         <div className="border-t border-slate-100 bg-white p-4">
 
           {loading && (
-            <p className="text-xs text-slate-400 text-center py-6">Loading…</p>
+            <p className="text-xs text-slate-400 text-center py-6">{t.mpgChart.loading}</p>
           )}
 
           {!loading && !hasMpg && (() => {
@@ -168,35 +170,30 @@ export default function MpgChart() {
                 <p className="text-3xl mb-2">🛣️</p>
                 {needsOdo ? (
                   <>
-                    <p className="text-sm font-bold text-slate-600">Add odometer readings</p>
+                    <p className="text-sm font-bold text-slate-600">{t.mpgChart.needsOdoTitle}</p>
                     <p className="text-xs text-slate-400 mt-1 leading-relaxed max-w-[240px] mx-auto">
-                      You have <strong>{fillupCount} fill-up{fillupCount !== 1 ? 's' : ''}</strong> logged,
-                      but none include an odometer reading.
-                      Enter the mileage when logging a fill-up to unlock MPG tracking.
+                      {t.mpgChart.needsOdoBody(fillupCount)}
                     </p>
                   </>
                 ) : needsMoreOdo ? (
                   <>
-                    <p className="text-sm font-bold text-slate-600">One more fill-up needed</p>
+                    <p className="text-sm font-bold text-slate-600">{t.mpgChart.needsMoreOdoTitle}</p>
                     <p className="text-xs text-slate-400 mt-1 leading-relaxed max-w-[240px] mx-auto">
-                      You have 1 fill-up with an odometer reading — log <strong>one more</strong> with
-                      a mileage reading and your MPG trend will appear here.
+                      {t.mpgChart.needsMoreOdoBody}
                     </p>
                   </>
                 ) : badOdometer ? (
                   <>
-                    <p className="text-sm font-bold text-slate-600">Check your odometer readings</p>
+                    <p className="text-sm font-bold text-slate-600">{t.mpgChart.badOdoTitle}</p>
                     <p className="text-xs text-slate-400 mt-1 leading-relaxed max-w-[240px] mx-auto">
-                      You have <strong>{withOdo} odometer readings</strong> but MPG couldn&apos;t be
-                      calculated. Make sure each fill-up&apos;s odometer is <strong>higher</strong> than
-                      the previous one.
+                      {t.mpgChart.badOdoBody(withOdo)}
                     </p>
                   </>
                 ) : (
                   <>
-                    <p className="text-sm font-bold text-slate-600">No fill-ups yet</p>
+                    <p className="text-sm font-bold text-slate-600">{t.mpgChart.noFillupsTitle}</p>
                     <p className="text-xs text-slate-400 mt-1 leading-relaxed max-w-[220px] mx-auto">
-                      Log your first fill-up with an odometer reading to start tracking fuel efficiency.
+                      {t.mpgChart.noFillupsBody}
                     </p>
                   </>
                 )}
@@ -208,9 +205,9 @@ export default function MpgChart() {
             <>
               {/* Stat pills */}
               <div className="flex gap-2 mb-4">
-                <StatPill label="Latest"  value={`${latestMpg} mpg`}   color="text-green-600" />
-                <StatPill label="Average" value={`${avgMpg} mpg`}       color="text-amber-600" />
-                <StatPill label="Readings" value={String(points.length)} color="text-navy-700" />
+                <StatPill label={t.mpgChart.statLatest}  value={t.mpgChart.mpgValue(latestMpg)}   color="text-green-600" />
+                <StatPill label={t.mpgChart.statAverage} value={t.mpgChart.mpgValue(avgMpg)}       color="text-amber-600" />
+                <StatPill label={t.mpgChart.statReadings} value={String(points.length)} color="text-navy-700" />
               </div>
 
               {/* SVG Line Chart */}
@@ -335,7 +332,7 @@ export default function MpgChart() {
                               rx="5" fill="#1e3a5f" opacity="0.92" />
                             <text x={(bX + bW / 2).toFixed(1)} y={(bY + 11).toFixed(1)}
                               fontSize="9" fill="white" textAnchor="middle" fontWeight="700">
-                              {tip.mpg} mpg
+                              {t.mpgChart.mpgValue(tip.mpg)}
                             </text>
                             <text x={(bX + bW / 2).toFixed(1)} y={(bY + 21).toFixed(1)}
                               fontSize="7.5" fill="#93c5fd" textAnchor="middle">
@@ -351,11 +348,11 @@ export default function MpgChart() {
 
               {hasChartLine ? (
                 <p className="text-[9px] text-slate-300 text-center mt-2">
-                  Hover over a point to see details · Add odometer readings at each fill-up to keep this chart growing
+                  {t.mpgChart.footerHint}
                 </p>
               ) : (
                 <p className="text-[9px] text-slate-400 text-center mt-2">
-                  First MPG logged! Log one more fill-up with an odometer reading to see your trend line.
+                  {t.mpgChart.firstMpgHint}
                 </p>
               )}
             </>

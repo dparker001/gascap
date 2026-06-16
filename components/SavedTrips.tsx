@@ -13,10 +13,12 @@ import { useSession }                       from 'next-auth/react';
 import Link                                 from 'next/link';
 import { getPlanTier }                      from '@/lib/featureAccess';
 import { trackLockedFeatureShown }          from '@/lib/gtag';
+import { useTranslation }                   from '@/contexts/LanguageContext';
 import type { SavedTrip }                   from '@/lib/savedTrips';
 
 export default function SavedTrips() {
   const { data: session } = useSession();
+  const { t } = useTranslation();
   const plan    = getPlanTier((session?.user as { plan?: string } | null) ?? null);
   const canView = plan === 'pro' || plan === 'fleet';
 
@@ -60,10 +62,10 @@ export default function SavedTrips() {
       <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-slate-50">
         <div className="flex items-center gap-2">
           <span className="text-base">🗺️</span>
-          <p className="text-xs font-black uppercase tracking-widest text-slate-600">Saved Trips</p>
+          <p className="text-xs font-black uppercase tracking-widest text-slate-600">{t.savedTrips.title}</p>
         </div>
         <span className="text-[10px] text-slate-400">
-          {loading ? '…' : `${trips.length} trip${trips.length !== 1 ? 's' : ''}`}
+          {loading ? '…' : t.savedTrips.tripCount(trips.length)}
         </span>
       </div>
 
@@ -92,13 +94,13 @@ export default function SavedTrips() {
                 {isPending ? (
                   /* Inline delete confirmation */
                   <div className="flex items-center justify-between">
-                    <p className="text-xs font-semibold text-red-700">Remove this saved trip?</p>
+                    <p className="text-xs font-semibold text-red-700">{t.savedTrips.removeConfirm}</p>
                     <div className="flex items-center gap-3">
                       <button
                         onClick={() => setPendingDeleteId(null)}
                         className="text-[11px] font-bold text-slate-500 hover:text-slate-700 transition-colors"
                       >
-                        Cancel
+                        {t.savedTrips.cancel}
                       </button>
                       <button
                         onClick={() => handleDelete(trip.id)}
@@ -106,7 +108,7 @@ export default function SavedTrips() {
                         className="text-[11px] font-bold text-white bg-red-500 hover:bg-red-600
                                    disabled:opacity-50 px-3 py-1 rounded-lg transition-colors"
                       >
-                        {deleting ? '…' : 'Delete'}
+                        {deleting ? '…' : t.savedTrips.delete}
                       </button>
                     </div>
                   </div>
@@ -119,7 +121,7 @@ export default function SavedTrips() {
                         <div className="flex items-center gap-1 mb-1">
                           <span className="text-[9px]">🔒</span>
                           <span className="text-[9px] font-black text-amber-600 uppercase tracking-wide">
-                            Pro required
+                            {t.savedTrips.proRequired}
                           </span>
                         </div>
                       )}
@@ -131,7 +133,7 @@ export default function SavedTrips() {
                         </p>
                       ) : (
                         <p className="text-sm font-bold text-slate-700">
-                          {trip.distanceMiles.toLocaleString(undefined, { maximumFractionDigits: 0 })} mi trip
+                          {t.savedTrips.miTrip(trip.distanceMiles.toLocaleString(undefined, { maximumFractionDigits: 0 }))}
                         </p>
                       )}
 
@@ -144,12 +146,12 @@ export default function SavedTrips() {
                           <span className="text-[11px] font-bold text-amber-500">$•••</span>
                         ) : (
                           <span className="text-[11px] font-bold text-amber-600">
-                            ${trip.fuelCost.toFixed(2)} fuel cost
+                            {t.savedTrips.fuelCost(trip.fuelCost.toFixed(2))}
                           </span>
                         )}
                         {trip.stops > 0 && !isLocked && (
                           <span className="text-[11px] text-slate-400">
-                            {trip.stops} stop{trip.stops !== 1 ? 's' : ''}
+                            {t.savedTrips.stopCount(trip.stops)}
                           </span>
                         )}
                       </div>
@@ -164,13 +166,13 @@ export default function SavedTrips() {
                           href="/upgrade"
                           className="text-[11px] font-black text-amber-600 hover:underline whitespace-nowrap"
                         >
-                          Upgrade →
+                          {t.savedTrips.upgrade}
                         </Link>
                       ) : (
                         <button
                           onClick={() => setPendingDeleteId(trip.id)}
                           className="text-slate-300 hover:text-red-400 transition-colors"
-                          aria-label={`Delete saved trip`}
+                          aria-label={t.savedTrips.deleteAria}
                         >
                           <svg viewBox="0 0 12 12" className="w-3.5 h-3.5" fill="none"
                                stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
@@ -191,15 +193,15 @@ export default function SavedTrips() {
       {!canView && trips.length > 0 && (
         <div className="px-4 py-3 bg-amber-50 border-t border-amber-100">
           <p className="text-xs text-amber-700 font-medium leading-snug">
-            Your saved trips are locked.{' '}
+            {t.savedTrips.footerLocked}{' '}
             <Link
               href="/upgrade"
               className="font-black underline"
               onClick={() => trackLockedFeatureShown('save_trip', plan)}
             >
-              Upgrade to Pro
+              {t.savedTrips.upgradeToPro}
             </Link>{' '}
-            to access your full trip history.
+            {t.savedTrips.footerAccess}
           </p>
         </div>
       )}

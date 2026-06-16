@@ -16,10 +16,12 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 const CONSENT_KEY = 'gc_cookie_consent';
 
 export default function CookieConsentBanner() {
+  const { t } = useTranslation();
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -46,7 +48,7 @@ export default function CookieConsentBanner() {
   return (
     <div
       role="dialog"
-      aria-label="Cookie consent"
+      aria-label={t.cookieConsentBanner.ariaLabel}
       aria-live="polite"
       className="fixed bottom-0 inset-x-0 z-50 px-4 pb-4 pointer-events-none"
     >
@@ -55,10 +57,9 @@ export default function CookieConsentBanner() {
                       items-start sm:items-center gap-3">
         {/* Text */}
         <p className="text-xs text-white/80 leading-relaxed flex-1">
-          We use cookies and similar tools (Google Analytics, Meta Pixel) to understand
-          how GasCap™ is used and improve your experience. No personal data is sold.{' '}
+          {t.cookieConsentBanner.message}{' '}
           <Link href="/privacy" className="underline text-white/90 hover:text-white font-semibold">
-            Privacy Policy
+            {t.cookieConsentBanner.privacyPolicy}
           </Link>
         </p>
 
@@ -69,14 +70,14 @@ export default function CookieConsentBanner() {
             className="flex-1 sm:flex-none px-4 py-2 rounded-xl bg-[#1EB68F] hover:bg-[#18a07e]
                        text-white text-xs font-black transition-colors"
           >
-            Accept
+            {t.cookieConsentBanner.accept}
           </button>
           <button
             onClick={decline}
             className="flex-1 sm:flex-none px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20
                        text-white text-xs font-semibold transition-colors"
           >
-            Decline
+            {t.cookieConsentBanner.decline}
           </button>
         </div>
       </div>

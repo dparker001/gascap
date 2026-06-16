@@ -3,6 +3,7 @@
 import { useSession } from 'next-auth/react';
 import { useEffect, useState, useCallback } from 'react';
 import type { Fillup } from '@/lib/fillups';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 interface HistoryResponse {
   fillups: Fillup[];
@@ -42,6 +43,7 @@ function buildSmoothPath(pts: { x: number; y: number }[]): string {
 }
 
 export default function FuelPriceHistory() {
+  const { t } = useTranslation();
   const { data: session, status } = useSession();
   const [data,      setData]      = useState<HistoryResponse | null>(null);
   const [loading,   setLoading]   = useState(false);
@@ -130,10 +132,10 @@ export default function FuelPriceHistory() {
         <div className="flex items-center gap-2">
           <span className="text-sm" aria-hidden="true">💰</span>
           <div className="text-left">
-            <p className="text-xs font-black text-white uppercase tracking-wider">Price History</p>
+            <p className="text-xs font-black text-white uppercase tracking-wider">{t.fuelPriceHistory.title}</p>
             {avgPrice != null
-              ? <p className="text-[10px] text-white/50">Avg ${avgPrice}/gal · {points.length} fill-up{points.length !== 1 ? 's' : ''}</p>
-              : <p className="text-[10px] text-white/50">Log fill-ups to track price trends</p>
+              ? <p className="text-[10px] text-white/50">{t.fuelPriceHistory.avgSummary(avgPrice, points.length)}</p>
+              : <p className="text-[10px] text-white/50">{t.fuelPriceHistory.emptySubtitle}</p>
             }
           </div>
         </div>
@@ -155,15 +157,15 @@ export default function FuelPriceHistory() {
         <div className="border-t border-slate-100 bg-white p-4">
 
           {loading && (
-            <p className="text-xs text-slate-400 text-center py-6">Loading…</p>
+            <p className="text-xs text-slate-400 text-center py-6">{t.fuelPriceHistory.loading}</p>
           )}
 
           {!loading && !hasData && (
             <div className="text-center py-6">
               <p className="text-3xl mb-2">💲</p>
-              <p className="text-sm font-bold text-slate-600">Not enough data yet</p>
+              <p className="text-sm font-bold text-slate-600">{t.fuelPriceHistory.notEnoughData}</p>
               <p className="text-xs text-slate-400 mt-1 leading-relaxed max-w-[220px] mx-auto">
-                Log at least 2 fill-ups to see your personal gas price trend.
+                {t.fuelPriceHistory.notEnoughDataBody}
               </p>
             </div>
           )}
@@ -172,9 +174,9 @@ export default function FuelPriceHistory() {
             <>
               {/* Stat pills */}
               <div className="flex gap-2 mb-4">
-                <StatPill label="Latest"  value={`$${latestPrice!.toFixed(3)}`} color="text-blue-600" />
-                <StatPill label="Average" value={`$${avgPrice}/gal`}             color="text-amber-600" />
-                <StatPill label="Lowest"  value={`$${minPrice.toFixed(3)}`}      color="text-green-600" />
+                <StatPill label={t.fuelPriceHistory.statLatest}  value={`$${latestPrice!.toFixed(3)}`} color="text-blue-600" />
+                <StatPill label={t.fuelPriceHistory.statAverage} value={`$${avgPrice}/gal`}             color="text-amber-600" />
+                <StatPill label={t.fuelPriceHistory.statLowest}  value={`$${minPrice.toFixed(3)}`}      color="text-green-600" />
               </div>
 
               {/* SVG Line Chart */}
@@ -307,15 +309,15 @@ export default function FuelPriceHistory() {
 
               {maxPrice > minPrice && (
                 <p className="text-[10px] text-center text-slate-400 mt-1">
-                  Price range: <span className="font-bold text-green-600">${minPrice.toFixed(3)}</span>
+                  {t.fuelPriceHistory.priceRangeLabel} <span className="font-bold text-green-600">${minPrice.toFixed(3)}</span>
                   {' '}→{' '}
                   <span className="font-bold text-red-500">${maxPrice.toFixed(3)}</span>
-                  {' '}(${(maxPrice - minPrice).toFixed(3)} spread)
+                  {' '}{t.fuelPriceHistory.priceRangeSpread((maxPrice - minPrice).toFixed(3))}
                 </p>
               )}
 
               <p className="text-[9px] text-slate-300 text-center mt-1">
-                Hover over a point to see details · Based on your logged fill-up prices
+                {t.fuelPriceHistory.footerHint}
               </p>
             </>
           )}

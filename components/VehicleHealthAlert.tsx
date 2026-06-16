@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
+import { useTranslation } from '@/contexts/LanguageContext';
 import type { Fillup } from '@/lib/fillups';
 
 interface FillupResponse {
@@ -18,6 +19,7 @@ interface VehicleAlert {
 
 export default function VehicleHealthAlert() {
   const { data: session } = useSession();
+  const { t } = useTranslation();
   const [alerts,  setAlerts]  = useState<VehicleAlert[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -88,28 +90,27 @@ export default function VehicleHealthAlert() {
             <span className="text-xl flex-shrink-0">🔧</span>
             <div className="flex-1">
               <p className="text-sm font-black text-orange-700">
-                MPG Drop Detected — {alert.vehicleName}
+                {t.vehicleHealthAlert.title(alert.vehicleName)}
               </p>
               <p className="text-[11px] text-orange-600 leading-relaxed mt-0.5">
-                Your recent MPG ({alert.recentMpg} mpg) is{' '}
-                <span className="font-bold">{alert.dropPct}% below</span> your average
-                ({alert.avgMpg} mpg). This could indicate low tire pressure, a dirty
-                air filter, or it may be time for an oil change.
+                {t.vehicleHealthAlert.descBefore(alert.recentMpg)}{' '}
+                <span className="font-bold">{t.vehicleHealthAlert.descBelow(alert.dropPct)}</span>{' '}
+                {t.vehicleHealthAlert.descAfter(alert.avgMpg)}
               </p>
             </div>
           </div>
           <div className="flex gap-2 pl-8">
             <div className="flex-1 bg-white rounded-xl px-3 py-2 text-center border border-orange-100">
               <p className="text-xs font-black text-orange-600">{alert.recentMpg} mpg</p>
-              <p className="text-[10px] text-slate-400">Recent avg</p>
+              <p className="text-[10px] text-slate-400">{t.vehicleHealthAlert.recentAvg}</p>
             </div>
             <div className="flex-1 bg-white rounded-xl px-3 py-2 text-center border border-orange-100">
               <p className="text-xs font-black text-slate-600">{alert.avgMpg} mpg</p>
-              <p className="text-[10px] text-slate-400">Historical avg</p>
+              <p className="text-[10px] text-slate-400">{t.vehicleHealthAlert.historicalAvg}</p>
             </div>
             <div className="flex-1 bg-orange-100 rounded-xl px-3 py-2 text-center border border-orange-200">
               <p className="text-xs font-black text-orange-700">−{alert.dropPct}%</p>
-              <p className="text-[10px] text-orange-500">Drop</p>
+              <p className="text-[10px] text-orange-500">{t.vehicleHealthAlert.drop}</p>
             </div>
           </div>
         </div>

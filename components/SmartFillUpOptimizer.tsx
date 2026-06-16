@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useSession } from 'next-auth/react';
+import { useTranslation } from '@/contexts/LanguageContext';
 import { trackFillupOptimizerRun } from '@/lib/gtag';
 
 interface OptimizerResult {
@@ -59,24 +60,22 @@ function Sparkline({ prices, color }: { prices: number[]; color: string }) {
 
 const CONFIG = {
   fill_now: {
-    icon: '⛽', label: 'Fill Up Now',
-    sub: 'Prices are trending up. Locking in today\'s price saves you money vs. waiting.',
+    icon: '⛽',
     bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-700', color: '#ef4444',
   },
   wait: {
-    icon: '⏳', label: 'Consider Waiting',
-    sub: 'Prices are trending down. Waiting a few days could save you real dollars.',
+    icon: '⏳',
     bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700', color: '#22c55e',
   },
   neutral: {
-    icon: '⚖️', label: 'No Strong Signal',
-    sub: 'Prices are holding steady — no clear advantage to waiting or filling now.',
+    icon: '⚖️',
     bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700', color: '#f59e0b',
   },
 } as const;
 
 export default function SmartFillUpOptimizer() {
   const { data: session } = useSession();
+  const { t } = useTranslation();
   const [status, setStatus] = useState<Status>('idle');
   const [result, setResult] = useState<OptimizerResult | null>(null);
   const [errMsg, setErrMsg] = useState('');
@@ -112,14 +111,14 @@ export default function SmartFillUpOptimizer() {
       const res = await fetch(`/api/fillup-optimizer?state=${state}`);
       if (!res.ok) {
         const err = await res.json() as { error?: string };
-        throw new Error(err.error ?? 'Lookup failed');
+        throw new Error(err.error ?? t.smartFillUpOptimizer.lookupFailed);
       }
       const optimizerResult = await res.json() as OptimizerResult;
       setResult(optimizerResult);
       trackFillupOptimizerRun(state);
       setStatus('done');
     } catch (err: unknown) {
-      setErrMsg(err instanceof Error ? err.message : 'Could not load price data.');
+      setErrMsg(err instanceof Error ? err.message : t.smartFillUpOptimizer.loadError);
       setStatus('error');
     }
   }
@@ -135,8 +134,8 @@ export default function SmartFillUpOptimizer() {
       <div className="flex items-center gap-2 py-2.5 px-4 bg-navy-700">
         <span className="text-sm" aria-hidden="true">🔮</span>
         <div>
-          <p className="text-xs font-black text-white uppercase tracking-wider">Smart Fill-Up Optimizer</p>
-          <p className="text-[10px] text-white/50">Live EIA market data · personalized to your fill-up size</p>
+          <p className="text-xs font-black text-white uppercase tracking-wider">{t.smartFillUpOptimizer.title}</p>
+          <p className="text-[10px] text-white/50">{t.smartFillUpOptimizer.subtitle}</p>
         </div>
       </div>
 
@@ -146,15 +145,14 @@ export default function SmartFillUpOptimizer() {
       {status === 'idle' && (
         <div className="space-y-3">
           <p className="text-xs text-slate-500 leading-relaxed">
-            Combines live government gas price data for your state with your personal
-            fill-up history to tell you the best time to fill up — with exact dollar savings.
+            {t.smartFillUpOptimizer.idleDescription}
           </p>
           <button
             onClick={handleRun}
             className="w-full py-3 bg-amber-500 hover:bg-amber-400 text-white
                        font-bold text-sm rounded-2xl transition-colors"
           >
-            Get My Recommendation →
+            {t.smartFillUpOptimizer.getRecommendation}
           </button>
         </div>
       )}
@@ -165,7 +163,7 @@ export default function SmartFillUpOptimizer() {
           <span className="w-4 h-4 border-2 border-amber-400 border-t-transparent
                            rounded-full animate-spin inline-block" aria-hidden="true" />
           <p className="text-xs text-slate-500">
-            {status === 'locating' ? 'Detecting your location…' : 'Fetching live price data…'}
+            {status === 'locating' ? t.smartFillUpOptimizer.detectingLocation : t.smartFillUpOptimizer.fetchingPrices}
           </p>
         </div>
       )}
@@ -176,7 +174,7 @@ export default function SmartFillUpOptimizer() {
           <p className="text-xs text-red-500">{errMsg}</p>
           <button onClick={() => setStatus('idle')}
             className="text-xs text-amber-600 font-semibold hover:underline">
-            Try again
+            {t.smartFillUpOptimizer.tryAgain}
           </button>
         </div>
       )}
@@ -191,9 +189,9 @@ export default function SmartFillUpOptimizer() {
               <div className="flex-1 space-y-1">
                 <div className="flex items-center gap-1.5">
                   <span className="text-base">{cfg.icon}</span>
-                  <p className={`text-sm font-black ${cfg.text}`}>{cfg.label}</p>
+                  <p className={`text-sm font-black ${cfg.text}`}>{t.smartFillUpOptimizer.recLabel[result.recommendation]}</p>
                 </div>
-                <p className="text-[11px] text-slate-600 leading-relaxed">{cfg.sub}</p>
+                <p className="text-[11px] text-slate-600 leading-relaxed">{t.smartFillUpOptimizer.recSub[result.recommendation]}</p>
               </div>
               <Sparkline prices={result.weeklyPrices} color={cfg.color} />
             </div>
@@ -203,15 +201,15 @@ export default function SmartFillUpOptimizer() {
           <div className="grid grid-cols-2 gap-2">
             <div className="bg-slate-50 rounded-xl p-3 text-center border border-slate-100">
               <p className="text-[9px] font-bold uppercase tracking-wide text-slate-400 mb-0.5">
-                {result.usingNational ? 'National avg' : `${STATE_NAMES[result.state] ?? result.state} avg`}
+                {result.usingNational ? t.smartFillUpOptimizer.nationalAvg : t.smartFillUpOptimizer.stateAvg(STATE_NAMES[result.state] ?? result.state)}
               </p>
               <p className="text-xl font-black text-navy-700">
                 ${result.currentPrice.toFixed(2)}
               </p>
-              <p className="text-[9px] text-slate-400 mt-0.5">this week</p>
+              <p className="text-[9px] text-slate-400 mt-0.5">{t.smartFillUpOptimizer.thisWeek}</p>
             </div>
             <div className="bg-slate-50 rounded-xl p-3 text-center border border-slate-100">
-              <p className="text-[9px] font-bold uppercase tracking-wide text-slate-400 mb-0.5">8-week trend</p>
+              <p className="text-[9px] font-bold uppercase tracking-wide text-slate-400 mb-0.5">{t.smartFillUpOptimizer.eightWeekTrend}</p>
               <p className={`text-xl font-black ${
                 result.pctChange > 0 ? 'text-red-600'
                 : result.pctChange < 0 ? 'text-emerald-600'
@@ -220,7 +218,7 @@ export default function SmartFillUpOptimizer() {
                 {result.pctChange > 0 ? '+' : ''}{result.pctChange.toFixed(1)}%
               </p>
               <p className="text-[9px] text-slate-400 mt-0.5">
-                {result.pctChange > 0 ? 'price increase' : result.pctChange < 0 ? 'price drop' : 'stable'}
+                {result.pctChange > 0 ? t.smartFillUpOptimizer.priceIncrease : result.pctChange < 0 ? t.smartFillUpOptimizer.priceDrop : t.smartFillUpOptimizer.stable}
               </p>
             </div>
           </div>
@@ -232,13 +230,13 @@ export default function SmartFillUpOptimizer() {
               <div className="min-w-0">
                 <p className="text-[10px] font-bold text-white/50 uppercase tracking-wide">
                   {result.recommendation === 'wait'
-                    ? 'Potential savings if you wait ~1 week'
-                    : 'Potential extra cost if you wait ~1 week'}
+                    ? t.smartFillUpOptimizer.savingsLabel
+                    : t.smartFillUpOptimizer.extraCostLabel}
                 </p>
                 <p className="text-lg font-black text-amber-400 leading-tight">
                   ~${result.potentialSavings.toFixed(2)}
                   <span className="text-xs font-normal text-white/50 ml-1.5">
-                    on your typical {result.avgGallons} gal fill-up
+                    {t.smartFillUpOptimizer.typicalFillup(result.avgGallons)}
                   </span>
                 </p>
               </div>
@@ -248,14 +246,14 @@ export default function SmartFillUpOptimizer() {
           {/* Footer */}
           <div className="flex items-center justify-between pt-0.5">
             <p className="text-[9px] text-slate-300 leading-relaxed">
-              EIA weekly data ·{' '}
+              {t.smartFillUpOptimizer.eiaWeeklyData} ·{' '}
               {result.fillupCount > 0
-                ? `avg from your ${result.fillupCount} logged fill-up${result.fillupCount !== 1 ? 's' : ''}`
-                : '12-gal default (log fill-ups to personalize)'}
+                ? t.smartFillUpOptimizer.avgFromLogged(result.fillupCount)
+                : t.smartFillUpOptimizer.defaultGallons}
             </p>
             <button onClick={() => setStatus('idle')}
               className="text-[9px] text-amber-500 font-semibold hover:underline flex-shrink-0 ml-2">
-              Refresh
+              {t.smartFillUpOptimizer.refresh}
             </button>
           </div>
         </div>

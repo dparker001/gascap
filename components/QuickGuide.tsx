@@ -1,16 +1,18 @@
 'use client';
 
 import { useState } from 'react';
-
-const STEPS = [
-  { n: '1', icon: '🚗', title: 'Pick vehicle',    hint: 'Choose from the dropdown or type your tank size in gallons.' },
-  { n: '2', icon: '⛽', title: 'Set fuel level',  hint: 'Drag the gauge or type your current gallons.' },
-  { n: '3', icon: '🎯', title: 'Choose goal',      hint: 'Set a fill target or enter your budget.' },
-  { n: '4', icon: '✅', title: 'Get the answer',  hint: 'See exact gallons and cost — no math needed.' },
-];
+import { useTranslation } from '@/contexts/LanguageContext';
 
 export default function QuickGuide() {
   const [open, setOpen] = useState(false);
+  const { t } = useTranslation();
+
+  const STEPS = [
+    { n: '1', icon: '🚗', title: t.quickGuide.step1Title, hint: t.quickGuide.step1Hint },
+    { n: '2', icon: '⛽', title: t.quickGuide.step2Title, hint: t.quickGuide.step2Hint },
+    { n: '3', icon: '🎯', title: t.quickGuide.step3Title, hint: t.quickGuide.step3Hint },
+    { n: '4', icon: '✅', title: t.quickGuide.step4Title, hint: t.quickGuide.step4Hint },
+  ];
 
   return (
     <div className="mb-4 rounded-2xl border border-slate-100 bg-white overflow-hidden shadow-sm">
@@ -20,7 +22,7 @@ export default function QuickGuide() {
         aria-expanded={open}
       >
         <div className="flex items-center gap-2">
-          <span className="text-amber-500 font-black text-xs uppercase tracking-widest">How to use</span>
+          <span className="text-amber-500 font-black text-xs uppercase tracking-widest">{t.quickGuide.howToUse}</span>
           <div className="flex items-center gap-1">
             {STEPS.map((s) => (
               <span key={s.n}

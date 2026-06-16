@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useSession }                        from 'next-auth/react';
+import { useTranslation }                    from '@/contexts/LanguageContext';
 import Link                                  from 'next/link';
 import FuelGauge                             from './FuelGauge';
 import GasPriceLookup                        from './GasPriceLookup';
@@ -34,24 +35,30 @@ interface TripResult {
 
 // ── Rental presets ─────────────────────────────────────────────────────────
 
+type RentalPresetKey =
+  | 'compactCar' | 'midsizeCar' | 'fullsizeCar' | 'smallSuv' | 'midsizeSuv'
+  | 'largeSuv' | 'minivan' | 'pickupHalfTon' | 'pickupFullTon' | 'hybridCar'
+  | 'enterManually';
+
 interface RentalPreset {
-  label:   string;
-  mpg:     number;
-  tankGal: number;
+  label:    string;          // stable code identifier (not user-facing)
+  labelKey: RentalPresetKey; // translation key under tripCostEstimator
+  mpg:      number;
+  tankGal:  number;
 }
 
 const RENTAL_PRESETS: RentalPreset[] = [
-  { label: 'Compact Car',       mpg: 32, tankGal: 12.0 },
-  { label: 'Midsize Car',       mpg: 28, tankGal: 16.0 },
-  { label: 'Full-size Car',     mpg: 24, tankGal: 17.0 },
-  { label: 'Small SUV',         mpg: 28, tankGal: 15.9 },
-  { label: 'Midsize SUV',       mpg: 24, tankGal: 19.0 },
-  { label: 'Large SUV',         mpg: 18, tankGal: 26.0 },
-  { label: 'Minivan',           mpg: 22, tankGal: 20.0 },
-  { label: 'Pickup (Half-ton)', mpg: 20, tankGal: 26.0 },
-  { label: 'Pickup (Full-ton)', mpg: 16, tankGal: 34.0 },
-  { label: 'Hybrid Car',        mpg: 50, tankGal: 11.3 },
-  { label: 'Enter manually',    mpg: 0,  tankGal: 0    },
+  { label: 'Compact Car',       labelKey: 'compactCar',    mpg: 32, tankGal: 12.0 },
+  { label: 'Midsize Car',       labelKey: 'midsizeCar',    mpg: 28, tankGal: 16.0 },
+  { label: 'Full-size Car',     labelKey: 'fullsizeCar',   mpg: 24, tankGal: 17.0 },
+  { label: 'Small SUV',         labelKey: 'smallSuv',      mpg: 28, tankGal: 15.9 },
+  { label: 'Midsize SUV',       labelKey: 'midsizeSuv',    mpg: 24, tankGal: 19.0 },
+  { label: 'Large SUV',         labelKey: 'largeSuv',      mpg: 18, tankGal: 26.0 },
+  { label: 'Minivan',           labelKey: 'minivan',       mpg: 22, tankGal: 20.0 },
+  { label: 'Pickup (Half-ton)', labelKey: 'pickupHalfTon', mpg: 20, tankGal: 26.0 },
+  { label: 'Pickup (Full-ton)', labelKey: 'pickupFullTon', mpg: 16, tankGal: 34.0 },
+  { label: 'Hybrid Car',        labelKey: 'hybridCar',     mpg: 50, tankGal: 11.3 },
+  { label: 'Enter manually',    labelKey: 'enterManually', mpg: 0,  tankGal: 0    },
 ];
 
 // ── Calculation ────────────────────────────────────────────────────────────
@@ -164,9 +171,11 @@ function useGarageData() {
 
 // ── Resolve best MPG for a garage vehicle ─────────────────────────────────
 
+type MpgLabelKey = 'epaCombinedEstimate' | 'avgFromFillupLog' | '';
+
 interface MpgResolution {
-  mpg:   number | null;
-  label: string;
+  mpg:      number | null;
+  labelKey: MpgLabelKey;
 }
 
 
@@ -175,26 +184,33 @@ function resolveMpg(v: Vehicle, avgMpgByVehicleId: Record<string, number>): MpgR
   //    (takes priority — avoids a redundant /api/mpg-lookup network call)
   const epaMpg = v.vehicleSpecs?.combMpg;
   if (epaMpg != null) {
-    return { mpg: epaMpg, label: '📋 EPA combined estimate' };
+    return { mpg: epaMpg, labelKey: 'epaCombinedEstimate' };
   }
   // 2. Fill-up history average — only when the value is in a believable range
   //    (guards against test data / sporadic odometer entries producing wild MPG)
   const historyMpg = avgMpgByVehicleId[v.id];
   if (historyMpg != null && historyMpg >= 5 && historyMpg <= 200) {
-    return { mpg: historyMpg, label: '📊 Your avg from fill-up log' };
+    return { mpg: historyMpg, labelKey: 'avgFromFillupLog' };
   }
   // 3. No stored data — caller should perform a live EPA lookup via /api/mpg-lookup
-  return { mpg: null, label: '' };
+  return { mpg: null, labelKey: '' };
 }
 
 // ── Duration formatting ────────────────────────────────────────────────────
 
-function formatDuration(seconds: number): string {
+function formatDuration(
+  seconds: number,
+  fmt: {
+    durationMin:       (mins: number) => string;
+    durationHours:     (hours: number) => string;
+    durationHoursMins: (hours: number, mins: number) => string;
+  },
+): string {
   const totalMins = Math.round(seconds / 60);
-  if (totalMins < 60) return `${totalMins} min`;
+  if (totalMins < 60) return fmt.durationMin(totalMins);
   const hours = Math.floor(totalMins / 60);
   const mins  = totalMins % 60;
-  return mins === 0 ? `${hours}h` : `${hours}h ${mins}m`;
+  return mins === 0 ? fmt.durationHours(hours) : fmt.durationHoursMins(hours, mins);
 }
 
 // ── Address autocomplete hook ─────────────────────────────────────────────
@@ -238,6 +254,7 @@ type TripPlanMode = 'manual' | 'route';
 
 export default function TripCostEstimator({ embedded = false }: { embedded?: boolean }) {
   const { data: session } = useSession();
+  const { t } = useTranslation();
   const { vehicles, avgMpgByVehicleId, load: loadGarage } = useGarageData();
 
   const [open,          setOpen]          = useState(embedded);
@@ -343,7 +360,8 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
   }, [vehicles]);
 
   async function loadVehicle(v: Vehicle) {
-    const { mpg: resolvedMpg, label } = resolveMpg(v, avgMpgByVehicleId);
+    const { mpg: resolvedMpg, labelKey } = resolveMpg(v, avgMpgByVehicleId);
+    const label = labelKey ? t.tripCostEstimator[labelKey] : '';
     setTankGal(String(v.gallons));
     setSelectedVehicleId(v.id);
     setMpgOptions(null);
@@ -370,7 +388,7 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
         if (data.ok && data.combMpg) {
           setMpg(String(data.combMpg));
           const vehicleLabel = [v.year, v.make, v.model].filter(Boolean).join(' ');
-          setMpgSourceLabel(`📋 EPA estimate${vehicleLabel ? ` · ${vehicleLabel}` : ''}`);
+          setMpgSourceLabel(t.tripCostEstimator.epaEstimateForVehicle(vehicleLabel));
           setMpgOptions({
             comb: data.combMpg,
             city: data.cityMpg ?? data.combMpg,
@@ -393,7 +411,7 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
     if (!preset) return;
     if (preset.mpg > 0) {
       setMpg(String(preset.mpg));
-      setMpgSourceLabel(label === 'Enter manually' ? '' : `📦 Typical for ${label}`);
+      setMpgSourceLabel(preset.labelKey === 'enterManually' ? '' : t.tripCostEstimator.typicalForVehicle(t.tripCostEstimator[preset.labelKey]));
     } else {
       setMpg('');
       setMpgSourceLabel('');
@@ -420,14 +438,14 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
     const pctNum   = parseFloat(fuelPct);
     const pplNum   = parseInt(people, 10);
 
-    if (!milesNum || milesNum <= 0)        errs.miles         = 'Enter a valid trip distance.';
-    if (milesNum > 20000)                  errs.miles         = 'Distance seems too large — max 20,000 mi.';
-    if (!mpgNum  || mpgNum  <= 0)          errs.mpg           = 'Enter your vehicle\'s MPG.';
-    if (mpgNum   > 200)                    errs.mpg           = 'MPG seems too high — check your entry.';
-    if (!tankNum || tankNum <= 0)          errs.tankGal       = 'Enter tank capacity in gallons.';
-    if (!priceNum || priceNum <= 0)        errs.pricePerGallon = 'Enter gas price per gallon.';
-    if (isNaN(pctNum) || pctNum < 0 || pctNum > 100) errs.fuelPct = 'Enter 0–100%.';
-    if (!pplNum  || pplNum < 1)            errs.people        = 'Enter at least 1 person.';
+    if (!milesNum || milesNum <= 0)        errs.miles         = t.tripCostEstimator.errMiles;
+    if (milesNum > 20000)                  errs.miles         = t.tripCostEstimator.errMilesTooLarge;
+    if (!mpgNum  || mpgNum  <= 0)          errs.mpg           = t.tripCostEstimator.errMpg;
+    if (mpgNum   > 200)                    errs.mpg           = t.tripCostEstimator.errMpgTooHigh;
+    if (!tankNum || tankNum <= 0)          errs.tankGal       = t.tripCostEstimator.errTank;
+    if (!priceNum || priceNum <= 0)        errs.pricePerGallon = t.tripCostEstimator.errPrice;
+    if (isNaN(pctNum) || pctNum < 0 || pctNum > 100) errs.fuelPct = t.tripCostEstimator.errFuelPct;
+    if (!pplNum  || pplNum < 1)            errs.people        = t.tripCostEstimator.errPeople;
 
     setErrors(errs);
     return Object.keys(errs).length === 0;
@@ -445,12 +463,12 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
     const priceNum = parseFloat(pricePerGallon);
     const pctNum   = parseFloat(fuelPct);
     const errs: Record<string, string> = {};
-    if (!routeOrigin.trim())              errs.routeOrigin = 'Enter a starting point.';
-    if (!routeDest.trim())                errs.routeDest   = 'Enter a destination.';
-    if (!mpgNum || mpgNum <= 0)           errs.mpg         = 'Enter your vehicle\'s MPG.';
-    if (!tankNum || tankNum <= 0)         errs.tankGal     = 'Enter tank capacity.';
-    if (!priceNum || priceNum <= 0)       errs.pricePerGallon = 'Enter gas price per gallon.';
-    if (isNaN(pctNum) || pctNum < 0 || pctNum > 100) errs.fuelPct = 'Enter 0–100%.';
+    if (!routeOrigin.trim())              errs.routeOrigin = t.tripCostEstimator.errOrigin;
+    if (!routeDest.trim())                errs.routeDest   = t.tripCostEstimator.errDest;
+    if (!mpgNum || mpgNum <= 0)           errs.mpg         = t.tripCostEstimator.errMpg;
+    if (!tankNum || tankNum <= 0)         errs.tankGal     = t.tripCostEstimator.errTankShort;
+    if (!priceNum || priceNum <= 0)       errs.pricePerGallon = t.tripCostEstimator.errPrice;
+    if (isNaN(pctNum) || pctNum < 0 || pctNum > 100) errs.fuelPct = t.tripCostEstimator.errFuelPct;
     setErrors(errs);
     if (Object.keys(errs).length > 0) return;
 
@@ -467,15 +485,15 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
       if (!data.ok) {
         setRouteError(
           data.featureDisabled
-            ? 'Route planning is not activated yet. Add GOOGLE_MAPS_API_KEY and GOOGLE_MAPS_TRIP_PLANNER_ENABLED=true to your Railway env vars.'
-            : (data.error ?? 'Could not calculate the route. Please try again.'),
+            ? t.tripCostEstimator.routeFeatureDisabled
+            : (data.error ?? t.tripCostEstimator.routeCalcFailed),
         );
         setRouteLoading(false);
         return;
       }
       route = data.route!;
     } catch {
-      setRouteError('Network error — please check your connection and try again.');
+      setRouteError(t.tripCostEstimator.networkError);
       setRouteLoading(false);
       return;
     }
@@ -587,8 +605,8 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
           <div className="flex items-center gap-2.5">
             <span className="text-lg">🗺️</span>
             <div className="text-left">
-              <p className="text-sm font-black text-slate-700">Trip Cost Estimator</p>
-              <p className="text-[10px] text-slate-400">How much will my road trip cost?</p>
+              <p className="text-sm font-black text-slate-700">{t.tripCostEstimator.title}</p>
+              <p className="text-[10px] text-slate-400">{t.tripCostEstimator.subtitle}</p>
             </div>
           </div>
           <svg
@@ -616,7 +634,7 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
                     : 'border-slate-200 bg-white text-slate-500 hover:border-amber-300',
                 ].join(' ')}
               >
-                📏 Manual Distance
+                📏 {t.tripCostEstimator.manualDistance}
               </button>
               <button
                 onClick={() => setTripPlanMode('route')}
@@ -628,7 +646,7 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
                   !canUseRoutePlanner ? 'opacity-70' : '',
                 ].join(' ')}
               >
-                🗺️ Route-Based {!canUseRoutePlanner && '⭐'}
+                🗺️ {t.tripCostEstimator.routeBased} {!canUseRoutePlanner && '⭐'}
               </button>
             </div>
 
@@ -645,9 +663,7 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
                           {UPGRADE_COPY.routeBasedTripPlanner}
                         </p>
                         <p className="text-[11px] text-amber-700 mt-1 leading-relaxed">
-                          Enter a starting point and destination to calculate fuel needs
-                          along your actual route — including a recommended refuel window
-                          and gas stations along the way.
+                          {t.tripCostEstimator.routeUpgradeDesc}
                         </p>
                       </div>
                     </div>
@@ -665,31 +681,31 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
                       onClick={() => setTripPlanMode('manual')}
                       className="w-full text-[11px] text-amber-600 font-semibold hover:underline"
                     >
-                      Use manual distance instead
+                      {t.tripCostEstimator.useManualInstead}
                     </button>
                   </div>
                 ) : (
                   /* Pro user — full route form */
                   <div className="space-y-3">
                     <div>
-                      <p className="field-label">Starting Point</p>
+                      <p className="field-label">{t.tripCostEstimator.startingPoint}</p>
                       <div className="relative">
                         <input
                           type="text"
                           className={`${errors.routeOrigin ? 'input-field-error' : 'input-field'} ${routeOrigin ? 'pr-8' : ''}`}
-                          placeholder="City, state or full address"
+                          placeholder={t.tripCostEstimator.addressPlaceholder}
                           value={routeOrigin}
                           autoComplete="off"
                           onChange={(e) => { setRouteOrigin(e.target.value); setRouteData(null); setResult(null); }}
                           onBlur={() => { setTimeout(clearOriginSugg, 150); }}
-                          aria-label="Trip starting point"
+                          aria-label={t.tripCostEstimator.ariaStartingPoint}
                         />
                         {routeOrigin && (
                           <button
                             type="button"
                             onClick={() => { setRouteOrigin(''); clearOriginSugg(); setRouteData(null); setResult(null); }}
                             className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500 transition-colors"
-                            aria-label="Clear starting point"
+                            aria-label={t.tripCostEstimator.ariaClearStartingPoint}
                           >
                             <svg className="w-3.5 h-3.5" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                               <path d="M1 1l10 10M11 1L1 11" />
@@ -714,24 +730,24 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
                       {errors.routeOrigin && <p className="mt-1 text-xs text-red-500">{errors.routeOrigin}</p>}
                     </div>
                     <div>
-                      <p className="field-label">Destination</p>
+                      <p className="field-label">{t.tripCostEstimator.destination}</p>
                       <div className="relative">
                         <input
                           type="text"
                           className={`${errors.routeDest ? 'input-field-error' : 'input-field'} ${routeDest ? 'pr-8' : ''}`}
-                          placeholder="City, state or full address"
+                          placeholder={t.tripCostEstimator.addressPlaceholder}
                           value={routeDest}
                           autoComplete="off"
                           onChange={(e) => { setRouteDest(e.target.value); setRouteData(null); setResult(null); }}
                           onBlur={() => { setTimeout(clearDestSugg, 150); }}
-                          aria-label="Trip destination"
+                          aria-label={t.tripCostEstimator.ariaDestination}
                         />
                         {routeDest && (
                           <button
                             type="button"
                             onClick={() => { setRouteDest(''); clearDestSugg(); setRouteData(null); setResult(null); }}
                             className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500 transition-colors"
-                            aria-label="Clear destination"
+                            aria-label={t.tripCostEstimator.ariaClearDestination}
                           >
                             <svg className="w-3.5 h-3.5" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                               <path d="M1 1l10 10M11 1L1 11" />
@@ -759,8 +775,7 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
                       <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2">
                         <span className="text-sm">📍</span>
                         <p className="text-xs font-bold text-emerald-700">
-                          Route: {metersToMiles(routeData.distanceMeters).toLocaleString()} miles
-                          {' '}· {formatDuration(routeData.durationSeconds)} drive
+                          {t.tripCostEstimator.routeSummary(metersToMiles(routeData.distanceMeters).toLocaleString(), formatDuration(routeData.durationSeconds, t.tripCostEstimator))}
                         </p>
                       </div>
                     )}
@@ -788,7 +803,7 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
                       : 'border-slate-200 bg-white text-slate-500 hover:border-amber-300',
                   ].join(' ')}
                 >
-                  🚗 My Garage
+                  🚗 {t.tripCostEstimator.myGarage}
                 </button>
                 <button
                   onClick={() => { setVehicleMode('rental'); setSelectedVehicleId(''); setMpg(''); setTankGal(''); setMpgSourceLabel(''); }}
@@ -799,7 +814,7 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
                       : 'border-slate-200 bg-white text-slate-500 hover:border-amber-300',
                   ].join(' ')}
                 >
-                  🔄 Rental / Other
+                  🔄 {t.tripCostEstimator.rentalOther}
                 </button>
               </div>
             </div>
@@ -808,7 +823,7 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
           {/* ── Garage vehicle selector ── */}
           {vehicleMode === 'garage' && session && vehicles.length > 0 && (
             <div>
-              <p className="field-label">Quick-load from My Garage</p>
+              <p className="field-label">{t.tripCostEstimator.quickLoadGarage}</p>
               <div className="flex gap-2 flex-wrap">
                 {vehicles.map((v) => {
                   const { mpg: resolvedMpg } = resolveMpg(v, avgMpgByVehicleId);
@@ -835,16 +850,16 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
           {/* ── Rental type selector ── */}
           {(vehicleMode === 'rental' || !session) && (
             <div>
-              <p className="field-label">Vehicle Type</p>
+              <p className="field-label">{t.tripCostEstimator.vehicleType}</p>
               <select
                 className="input-field"
                 value={rentalType}
                 onChange={(e) => loadRentalPreset(e.target.value)}
-                aria-label="Rental vehicle type"
+                aria-label={t.tripCostEstimator.ariaRentalType}
               >
-                <option value="">Select vehicle type…</option>
+                <option value="">{t.tripCostEstimator.selectVehicleType}</option>
                 {RENTAL_PRESETS.map((p) => (
-                  <option key={p.label} value={p.label}>{p.label}</option>
+                  <option key={p.label} value={p.label}>{t.tripCostEstimator[p.labelKey]}</option>
                 ))}
               </select>
             </div>
@@ -853,7 +868,7 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
           {/* ── Distance — manual mode only; route mode gets distance from Google ── */}
           {tripPlanMode !== 'route' && (
             <div>
-              <p className="field-label">Trip Distance</p>
+              <p className="field-label">{t.tripCostEstimator.tripDistance}</p>
               <div className="flex gap-2 mb-2 overflow-x-auto pb-0.5">
                 {DISTANCE_PRESETS.map((p) => (
                   <button
@@ -874,11 +889,11 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
                 <input
                   type="number" inputMode="decimal"
                   className={errors.miles ? 'input-field-error' : 'input-field'}
-                  placeholder="Enter trip miles"
+                  placeholder={t.tripCostEstimator.tripMilesPlaceholder}
                   value={miles}
                   min="1" step="1"
                   onChange={(e) => { setMiles(e.target.value); setResult(null); }}
-                  aria-label="Trip distance in miles"
+                  aria-label={t.tripCostEstimator.ariaTripDistance}
                 />
                 <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-slate-400 pointer-events-none">mi</span>
               </div>
@@ -890,7 +905,7 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
           <div className="grid grid-cols-2 gap-3">
             <div>
               <p className="field-label">
-                {garageVehicleLocked ? 'EPA Fuel Economy' : 'Your MPG'}
+                {garageVehicleLocked ? t.tripCostEstimator.epaFuelEconomy : t.tripCostEstimator.yourMpg}
               </p>
               <div className="relative">
                 <input
@@ -903,12 +918,12 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
                         ? 'input-field bg-slate-50 text-slate-400 cursor-not-allowed'
                         : 'input-field'
                   }
-                  placeholder={mpgLookingUp ? '' : garageVehicleLocked ? '—' : 'e.g. 30'}
+                  placeholder={mpgLookingUp ? '' : garageVehicleLocked ? '—' : t.tripCostEstimator.mpgPlaceholder}
                   value={mpg}
                   min="1" step="0.5"
                   readOnly={garageVehicleLocked || mpgLookingUp}
                   onChange={garageVehicleLocked ? undefined : (e) => { setMpg(e.target.value); setMpgSourceLabel(''); setMpgOptions(null); setResult(null); }}
-                  aria-label="Miles per gallon"
+                  aria-label={t.tripCostEstimator.ariaMpg}
                 />
                 {mpgLookingUp ? (
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
@@ -921,17 +936,17 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
               {errors.mpg && <p className="mt-1 text-xs text-red-500">{errors.mpg}</p>}
               {mpgLookingUp ? (
                 <p className="text-[10px] text-amber-500 mt-1 font-medium leading-snug animate-pulse">
-                  Looking up EPA fuel economy…
+                  {t.tripCostEstimator.lookingUpEpa}
                 </p>
               ) : mpgSourceLabel ? (
                 <p className="text-[10px] text-amber-600 mt-1 font-medium leading-snug">{mpgSourceLabel}</p>
               ) : garageVehicleLocked ? (
                 <p className="text-[10px] text-slate-400 mt-1 leading-snug">
-                  🔍 Fetching EPA data…
+                  🔍 {t.tripCostEstimator.fetchingEpa}
                 </p>
               ) : (
                 <p className="text-[10px] text-slate-400 mt-1 leading-snug">
-                  💡 Select a vehicle above for an estimate, or check your owner&apos;s manual.
+                  💡 {t.tripCostEstimator.mpgHint}
                 </p>
               )}
               {/* City / Highway / Combined toggle — shown when EPA lookup returned all three */}
@@ -939,9 +954,9 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
                 <div className="flex gap-1 mt-2">
                   {(
                     [
-                      ['comb', 'Comb.', mpgOptions.comb],
-                      ['city', 'City',  mpgOptions.city],
-                      ['hwy',  'Hwy',   mpgOptions.hwy ],
+                      ['comb', t.tripCostEstimator.mpgComb, mpgOptions.comb],
+                      ['city', t.tripCostEstimator.mpgCity, mpgOptions.city],
+                      ['hwy',  t.tripCostEstimator.mpgHwy,  mpgOptions.hwy ],
                     ] as const
                   ).map(([type, label, val]) => (
                     <button
@@ -950,9 +965,9 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
                       onClick={() => {
                         setMpg(String(val));
                         setMpgSourceLabel(
-                          type === 'comb' ? '📊 Combined MPG' :
-                          type === 'city' ? '🏙️ City MPG — use for city trips' :
-                          '🛣️ Highway MPG — use for highway trips',
+                          type === 'comb' ? t.tripCostEstimator.mpgCombinedLabel :
+                          type === 'city' ? t.tripCostEstimator.mpgCityLabel :
+                          t.tripCostEstimator.mpgHwyLabel,
                         );
                         setResult(null);
                       }}
@@ -970,7 +985,7 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
               )}
             </div>
             <div>
-              <p className="field-label">Tank Size</p>
+              <p className="field-label">{t.tripCostEstimator.tankSize}</p>
               <div className="relative">
                 <input
                   type="number" inputMode="decimal"
@@ -982,25 +997,25 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
                         : 'input-field'
                   }
                   autoComplete="off"
-                  placeholder="e.g. 15"
+                  placeholder={t.tripCostEstimator.tankPlaceholder}
                   value={tankGal}
                   min="1" step="0.5"
                   readOnly={garageVehicleLocked}
                   onChange={garageVehicleLocked ? undefined : (e) => { setTankGal(e.target.value); setResult(null); }}
-                  aria-label="Tank capacity in gallons"
+                  aria-label={t.tripCostEstimator.ariaTank}
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">gal</span>
               </div>
               {errors.tankGal && <p className="mt-1 text-xs text-red-500">{errors.tankGal}</p>}
               {garageVehicleLocked && (
-                <p className="text-[10px] text-slate-400 mt-1">🚗 From your saved vehicle</p>
+                <p className="text-[10px] text-slate-400 mt-1">🚗 {t.tripCostEstimator.fromSavedVehicle}</p>
               )}
             </div>
           </div>
 
           {/* ── Current fuel level (gauge) ── */}
           <div>
-            <p className="field-label">Current Fuel Level</p>
+            <p className="field-label">{t.tripCostEstimator.currentFuelLevel}</p>
             <FuelGauge
               percent={Number(fuelPct)}
               onChange={(pct) => { setFuelPct(String(pct)); setResult(null); }}
@@ -1008,13 +1023,13 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
             />
             {errors.fuelPct && <p className="mt-1 text-xs text-red-500">{errors.fuelPct}</p>}
             <p className="text-[10px] text-slate-400 mt-1">
-              💡 Drag the gauge or use +/− to set your current level. Leave at E to price a full tank.
+              💡 {t.tripCostEstimator.gaugeHint}
             </p>
           </div>
 
           {/* ── Travelers (cost splitting) ── */}
           <div>
-            <p className="field-label">Travelers (for cost splitting)</p>
+            <p className="field-label">{t.tripCostEstimator.travelers}</p>
             <div className="relative">
               <input
                 type="number" inputMode="numeric"
@@ -1023,32 +1038,32 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
                 value={people}
                 min="1" max="20" step="1"
                 onChange={(e) => { setPeople(e.target.value); setResult(null); }}
-                aria-label="Number of people splitting cost"
+                aria-label={t.tripCostEstimator.ariaPeople}
               />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">people</span>
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">{t.tripCostEstimator.peopleUnit}</span>
             </div>
             {errors.people && <p className="mt-1 text-xs text-red-500">{errors.people}</p>}
           </div>
 
           {/* ── Gas price ── */}
           <div>
-            <p className="field-label">Gas Price per Gallon</p>
+            <p className="field-label">{t.tripCostEstimator.gasPricePerGallon}</p>
             <div className="relative">
               <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-semibold pointer-events-none">$</span>
               <input
                 type="number" inputMode="decimal"
                 className={`${errors.pricePerGallon ? 'input-field-error' : 'input-field'} pl-8`}
-                placeholder="e.g. 3.49"
+                placeholder={t.tripCostEstimator.gasPricePlaceholder}
                 value={pricePerGallon}
                 min="0.01" step="0.01"
                 onChange={(e) => { setPricePerGallon(e.target.value); setResult(null); }}
-                aria-label="Gas price per gallon"
+                aria-label={t.tripCostEstimator.ariaGasPrice}
               />
             </div>
             {errors.pricePerGallon && <p className="mt-1 text-xs text-red-500">{errors.pricePerGallon}</p>}
             {tripPlanMode === 'route' && (
               <p className="text-[10px] text-slate-400 mt-1 leading-snug">
-                ⚠️ Highway prices may vary — this estimate uses your entered local price for all stops.
+                ⚠️ {t.tripCostEstimator.highwayPriceNote}
               </p>
             )}
             <GasPriceLookup
@@ -1071,14 +1086,14 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
                 {routeLoading ? (
                   <span className="flex items-center justify-center gap-2">
                     <span className="inline-block w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    Calculating Route…
+                    {t.tripCostEstimator.calculatingRoute}
                   </span>
                 ) : mpgLookingUp ? (
                   <span className="flex items-center justify-center gap-2">
                     <span className="inline-block w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    Looking up MPG…
+                    {t.tripCostEstimator.lookingUpMpg}
                   </span>
-                ) : 'Calculate Trip ⚡'}
+                ) : `${t.tripCostEstimator.calculateTrip} ⚡`}
               </button>
             ) : (
               <button
@@ -1089,14 +1104,14 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
                 {mpgLookingUp ? (
                   <span className="flex items-center justify-center gap-2">
                     <span className="inline-block w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    Looking up MPG…
+                    {t.tripCostEstimator.lookingUpMpg}
                   </span>
-                ) : 'Calculate Trip ⚡'}
+                ) : `${t.tripCostEstimator.calculateTrip} ⚡`}
               </button>
             )}
             {(miles || routeOrigin || mpg || result) && (
               <button className="btn-secondary" onClick={handleReset}>
-                Clear
+                {t.tripCostEstimator.clear}
               </button>
             )}
           </div>
@@ -1170,6 +1185,7 @@ function TripResultCard({
   priceNum?:     number;
   fuelPctNum?:   number;
 }) {
+  const { t } = useTranslation();
   const {
     totalMiles, totalGallons, totalTripCost,
     currentGalOffset,
@@ -1185,7 +1201,7 @@ function TripResultCard({
   const currentGal       = tankGalNum * (fuelPctNum / 100);
   const galToTopOff      = Math.max(0, tankGalNum - currentGal);
   const costToTopOff     = Math.round(galToTopOff * priceNum * 100) / 100;
-  const pctDisplay       = fuelPctNum <= 0 ? 'Empty (0%)' : `${Math.round(fuelPctNum)}%`;
+  const pctDisplay       = fuelPctNum <= 0 ? t.tripCostEstimator.emptyTank : `${Math.round(fuelPctNum)}%`;
   const needsPreTripFill = !noFuelNeeded && galToTopOff > 0.05; // >0.05 to skip rounding noise
 
   // ── En-route refuel math ──────────────────────────────────────────────────
@@ -1198,7 +1214,7 @@ function TripResultCard({
   // Origin city label for buttons / text
   const originCity = routeOrigin
     ? routeOrigin.split(',')[0].trim()
-    : 'your starting point';
+    : t.tripCostEstimator.yourStartingPoint;
 
   return (
     <div className="animate-result space-y-3 pt-1">
@@ -1208,7 +1224,7 @@ function TripResultCard({
         <div className="flex items-center gap-2 bg-[#005F4A]/10 border border-[#005F4A]/20 rounded-2xl px-4 py-3">
           <span className="text-base flex-shrink-0">🗺️</span>
           <div className="min-w-0">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-[#005F4A]/70">Your Route</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-[#005F4A]/70">{t.tripCostEstimator.yourRoute}</p>
             <p className="text-sm font-black text-[#005F4A] truncate">
               {routeOrigin} → {routeDest}
             </p>
@@ -1222,11 +1238,10 @@ function TripResultCard({
           <span className="text-2xl flex-shrink-0">✅</span>
           <div>
             <p className="text-sm font-black text-emerald-800 leading-snug">
-              You have enough fuel for the whole trip!
+              {t.tripCostEstimator.enoughFuelTitle}
             </p>
             <p className="text-xs text-emerald-700 mt-1 leading-relaxed">
-              This {totalMiles.toLocaleString()}-mile trip uses {totalGallons.toFixed(2)} gal total —
-              you already have that covered. No fill-ups needed.
+              {t.tripCostEstimator.enoughFuelBody(totalMiles.toLocaleString(), totalGallons.toFixed(2))}
             </p>
           </div>
         </div>
@@ -1236,7 +1251,7 @@ function TripResultCard({
       {!noFuelNeeded && (
         <div className="rounded-2xl bg-[#1E2D4A] px-4 py-4">
           <p className="text-[10px] font-bold uppercase tracking-widest text-white/40 mb-2">
-            Total Trip Fuel Usage
+            {t.tripCostEstimator.totalTripFuelUsage}
           </p>
           <div className="flex items-end gap-3">
             <div>
@@ -1244,7 +1259,7 @@ function TripResultCard({
                 {totalGallons.toFixed(2)} gal
               </p>
               <p className="text-[10px] text-white/40 mt-0.5">
-                full trip · {totalMiles.toLocaleString()} miles
+                {t.tripCostEstimator.fullTripMiles(totalMiles.toLocaleString())}
               </p>
             </div>
             <div className="text-white/30 text-xl font-light pb-0.5">=</div>
@@ -1253,13 +1268,13 @@ function TripResultCard({
                 ${totalTripCost.toFixed(2)}
               </p>
               <p className="text-[10px] text-white/40 mt-0.5">
-                at ${priceNum.toFixed(3)}/gal
+                {t.tripCostEstimator.atPricePerGal(priceNum.toFixed(3))}
               </p>
             </div>
           </div>
           {currentGalOffset > 0 && (
             <p className="text-[10px] text-white/30 mt-2 leading-relaxed">
-              Your tank already has {currentGalOffset.toFixed(2)} gal (~${(currentGalOffset * priceNum).toFixed(2)}) covered.
+              {t.tripCostEstimator.tankAlreadyHas(currentGalOffset.toFixed(2), (currentGalOffset * priceNum).toFixed(2))}
             </p>
           )}
         </div>
@@ -1270,10 +1285,10 @@ function TripResultCard({
         <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 flex items-start gap-2">
           <span className="text-sm flex-shrink-0">⚠️</span>
           <p className="text-xs text-amber-800 font-medium leading-snug">
-            <span className="font-black">Check your inputs:</span>{' '}
-            Your vehicle's full-tank range is only {tankRange} miles — that's unusually short.
-            Please verify your <span className="font-bold">MPG</span> and{' '}
-            <span className="font-bold">tank size</span> are correct.
+            <span className="font-black">{t.tripCostEstimator.checkInputsLead}</span>{' '}
+            {t.tripCostEstimator.shortRangeBody1(tankRange.toLocaleString())}{' '}
+            <span className="font-bold">{t.tripCostEstimator.mpgWord}</span> {t.tripCostEstimator.and}{' '}
+            <span className="font-bold">{t.tripCostEstimator.tankSizeWord}</span> {t.tripCostEstimator.shortRangeBody2}
           </p>
         </div>
       )}
@@ -1282,7 +1297,7 @@ function TripResultCard({
       {!noFuelNeeded && !shortRangeWarning && (
         <div className="space-y-2">
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">
-            Your Fuel Plan — Step by Step
+            {t.tripCostEstimator.fuelPlanStepByStep}
           </p>
 
           {/* STEP 1 — Pre-trip fill-up near home */}
@@ -1293,7 +1308,7 @@ function TripResultCard({
                 <span className="flex-shrink-0 w-5 h-5 rounded-full bg-white text-blue-600 text-[10px] font-black flex items-center justify-center leading-none">
                   1
                 </span>
-                <p className="text-xs font-black text-white">Before You Leave — Fill Up Near Home</p>
+                <p className="text-xs font-black text-white">{t.tripCostEstimator.step1Header}</p>
               </div>
               {/* Step body */}
               <div className="px-4 py-3 space-y-2.5">
@@ -1301,45 +1316,45 @@ function TripResultCard({
                 <div className="flex items-center gap-2">
                   <span className="text-base flex-shrink-0">🔋</span>
                   <p className="text-xs text-blue-800 leading-relaxed">
-                    <span className="font-black">Your tank is at {pctDisplay}</span>
+                    <span className="font-black">{t.tripCostEstimator.tankIsAt(pctDisplay)}</span>
                     {tankGalNum > 0 && (
-                      <> (~{currentGal.toFixed(1)} gal of {tankGalNum} gal tank)</>
+                      <> {t.tripCostEstimator.tankGalOf(currentGal.toFixed(1), String(tankGalNum))}</>
                     )}
-                    {' '}— not enough to complete the trip without stopping.
+                    {' '}{t.tripCostEstimator.notEnoughWithoutStopping}
                   </p>
                 </div>
                 {/* Action */}
                 <div className="bg-white rounded-xl border border-blue-100 px-3 py-3">
                   <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-1.5">
-                    ⛽ Stop at a station near {originCity} and add:
+                    ⛽ {t.tripCostEstimator.stopNearAndAdd(originCity)}
                   </p>
                   <div className="flex items-center gap-4">
                     <div>
                       <p className="text-xl font-black text-blue-700 leading-none">
                         {galToTopOff.toFixed(2)} gal
                       </p>
-                      <p className="text-[9px] text-slate-400 mt-0.5">to top off your tank</p>
+                      <p className="text-[9px] text-slate-400 mt-0.5">{t.tripCostEstimator.toTopOffTank}</p>
                     </div>
                     <div className="text-slate-300 text-lg font-light">≈</div>
                     <div>
                       <p className="text-xl font-black text-slate-700 leading-none">
                         ${costToTopOff.toFixed(2)}
                       </p>
-                      <p className="text-[9px] text-slate-400 mt-0.5">at ${priceNum.toFixed(3)}/gal</p>
+                      <p className="text-[9px] text-slate-400 mt-0.5">{t.tripCostEstimator.atPricePerGal(priceNum.toFixed(3))}</p>
                     </div>
                   </div>
                 </div>
                 {stopsIfFull < stops && (
                   <p className="text-[10px] text-blue-700 leading-relaxed">
-                    💡 Topping off now reduces your road stops from{' '}
-                    <span className="font-black">{stops}</span> to{' '}
-                    <span className="font-black">{stopsIfFull}</span> — fewer interruptions on the highway.
+                    💡 {t.tripCostEstimator.toppingOffReducesPre}{' '}
+                    <span className="font-black">{stops}</span> {t.tripCostEstimator.to}{' '}
+                    <span className="font-black">{stopsIfFull}</span> {t.tripCostEstimator.toppingOffReducesPost}
                   </p>
                 )}
                 <p className="text-[10px] text-blue-600 leading-relaxed">
-                  After this fill, your full tank gives you a range of{' '}
-                  <span className="font-black">{tankRange.toLocaleString()} miles</span> — enough to reach{' '}
-                  {stopsIfFull === 0 ? 'your destination' : `mile ${firstStopMile.toLocaleString()} before your next stop`}.
+                  {t.tripCostEstimator.afterFillRangePre}{' '}
+                  <span className="font-black">{t.tripCostEstimator.rangeMiles(tankRange.toLocaleString())}</span> {t.tripCostEstimator.afterFillEnoughToReach}{' '}
+                  {stopsIfFull === 0 ? t.tripCostEstimator.yourDestination : t.tripCostEstimator.mileBeforeNextStop(firstStopMile.toLocaleString())}.
                 </p>
               </div>
             </div>
@@ -1354,7 +1369,7 @@ function TripResultCard({
                   {needsPreTripFill ? '2' : '1'}
                 </span>
                 <p className="text-xs font-black text-white">
-                  On the Road — {stopsIfFull === 1 ? '1 Refuel Stop' : `${stopsIfFull} Refuel Stops`}
+                  {t.tripCostEstimator.onTheRoadStops(stopsIfFull)}
                 </p>
               </div>
               {/* Step body */}
@@ -1363,11 +1378,11 @@ function TripResultCard({
                   <span className="text-base flex-shrink-0">📍</span>
                   <p className="text-xs text-amber-900 leading-relaxed">
                     <span className="font-black">
-                      Plan to stop around mile {firstStopMile.toLocaleString()}
+                      {t.tripCostEstimator.planToStopAroundMile(firstStopMile.toLocaleString())}
                     </span>{' '}
-                    from your starting point
+                    {t.tripCostEstimator.fromYourStartingPoint}
                     {mpgNum > 0 && tankGalNum > 0 && (
-                      <> (roughly {Math.round(firstStopMile / (mpgNum * 55 / 60))} hours into your drive)</>
+                      <> {t.tripCostEstimator.roughlyHoursIntoDrive(Math.round(firstStopMile / (mpgNum * 55 / 60)))}</>
                     )}
                     .
                   </p>
@@ -1375,21 +1390,21 @@ function TripResultCard({
                 {galAtRoadStops > 0.1 && priceNum > 0 && (
                   <div className="bg-white rounded-xl border border-amber-100 px-3 py-3">
                     <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-1.5">
-                      ⛽ Add at your highway stop{stopsIfFull > 1 ? 's' : ''}:
+                      ⛽ {t.tripCostEstimator.addAtHighwayStops(stopsIfFull)}
                     </p>
                     <div className="flex items-center gap-4">
                       <div>
                         <p className="text-xl font-black text-amber-700 leading-none">
                           {galAtRoadStops.toFixed(2)} gal
                         </p>
-                        <p className="text-[9px] text-slate-400 mt-0.5">to reach your destination</p>
+                        <p className="text-[9px] text-slate-400 mt-0.5">{t.tripCostEstimator.toReachDestination}</p>
                       </div>
                       <div className="text-slate-300 text-lg font-light">≈</div>
                       <div>
                         <p className="text-xl font-black text-slate-700 leading-none">
                           ${costAtRoadStops.toFixed(2)}
                         </p>
-                        <p className="text-[9px] text-slate-400 mt-0.5">at ${priceNum.toFixed(3)}/gal</p>
+                        <p className="text-[9px] text-slate-400 mt-0.5">{t.tripCostEstimator.atPricePerGal(priceNum.toFixed(3))}</p>
                       </div>
                     </div>
                   </div>
@@ -1399,17 +1414,17 @@ function TripResultCard({
                 {(stopsLoading || fuelStops.length > 0) && (
                   <div className="space-y-1">
                     <p className="text-[10px] font-black text-amber-800 uppercase tracking-wide">
-                      ⛽ Gas Stations Around Mile {firstStopMile.toLocaleString()}
+                      ⛽ {t.tripCostEstimator.gasStationsAroundMile(firstStopMile.toLocaleString())}
                       {routeOrigin && (
                         <span className="font-normal normal-case text-amber-600">
-                          {' '}· approx. {firstStopMile.toLocaleString()} mi from {originCity}
+                          {' '}{t.tripCostEstimator.approxMiFrom(firstStopMile.toLocaleString(), originCity)}
                         </span>
                       )}
                     </p>
                     {stopsLoading ? (
                       <div className="flex items-center gap-2 text-xs text-amber-700 py-1">
                         <span className="inline-block w-3 h-3 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
-                        Searching for nearby stations…
+                        {t.tripCostEstimator.searchingNearbyStations}
                       </div>
                     ) : (
                       <div className="space-y-1">
@@ -1428,7 +1443,7 @@ function TripResultCard({
                                   <p className="text-[10px] text-amber-600 font-bold">★ {stop.rating.toFixed(1)}</p>
                                 )}
                                 <p className="text-[10px] text-slate-400">
-                                  ~{firstStopMile.toLocaleString()} mi from {originCity}
+                                  {t.tripCostEstimator.miFromOrigin(firstStopMile.toLocaleString(), originCity)}
                                 </p>
                               </div>
                             </div>
@@ -1440,9 +1455,9 @@ function TripResultCard({
                                 try { sessionStorage.setItem('gc_trip_nav_away', '1'); } catch { /* ignore */ }
                               }}
                               className="flex-shrink-0 text-[11px] font-bold text-[#1a73e8] hover:underline whitespace-nowrap mt-0.5"
-                              aria-label={`Navigate to ${stop.name} in Google Maps`}
+                              aria-label={t.tripCostEstimator.ariaNavigateTo(stop.name)}
                             >
-                              Navigate →
+                              {t.tripCostEstimator.navigate} →
                             </a>
                           </div>
                         ))}
@@ -1458,17 +1473,17 @@ function TripResultCard({
           <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3.5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-wide">Total Gas to Buy</p>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-wide">{t.tripCostEstimator.totalGasToBuy}</p>
                 <p className="text-2xl font-black text-amber-600 leading-none mt-0.5">
                   ${fuelCost.toFixed(2)}
                 </p>
                 <p className="text-[10px] text-slate-400 mt-0.5">
-                  {gallonsNeeded.toFixed(2)} gal across all stops · ${priceNum.toFixed(3)}/gal
+                  {t.tripCostEstimator.galAcrossAllStops(gallonsNeeded.toFixed(2), priceNum.toFixed(3))}
                 </p>
               </div>
               {costPerPerson != null && (
                 <div className="text-right border-l border-slate-100 pl-4">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-wide">Per Person</p>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-wide">{t.tripCostEstimator.perPerson}</p>
                   <p className="text-xl font-black text-slate-700 leading-none mt-0.5">
                     ${costPerPerson.toFixed(2)}
                   </p>
@@ -1483,11 +1498,11 @@ function TripResultCard({
       {!noFuelNeeded && (
         <div className="grid grid-cols-2 gap-2">
           <div className="bg-slate-50 rounded-xl border border-slate-100 px-3 py-2.5 text-center">
-            <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Full-Tank Range</p>
+            <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">{t.tripCostEstimator.fullTankRange}</p>
             <p className="text-base font-black text-navy-700 mt-0.5">{tankRange} mi</p>
           </div>
           <div className="bg-slate-50 rounded-xl border border-slate-100 px-3 py-2.5 text-center">
-            <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Miles per $1</p>
+            <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">{t.tripCostEstimator.milesPerDollar}</p>
             <p className="text-base font-black text-navy-700 mt-0.5">{milesPerDollar} mi</p>
           </div>
         </div>
@@ -1508,14 +1523,14 @@ function TripResultCard({
             ].join(' ')}
           >
             {isSaved ? (
-              <>✓ Trip Saved</>
+              <>✓ {t.tripCostEstimator.tripSaved}</>
             ) : isSaving ? (
               <>
                 <span className="inline-block w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                Saving…
+                {t.tripCostEstimator.saving}
               </>
             ) : (
-              <>🗺️ Save This Trip</>
+              <>🗺️ {t.tripCostEstimator.saveThisTrip}</>
             )}
           </button>
         ) : (
@@ -1526,7 +1541,7 @@ function TripResultCard({
                        border-2 border-amber-200 bg-amber-50 text-amber-700
                        hover:bg-amber-100 transition-all"
           >
-            🔒 Save This Trip — Pro Feature
+            🔒 {t.tripCostEstimator.saveThisTripProFeature}
           </Link>
         )
       )}
@@ -1551,7 +1566,7 @@ function TripResultCard({
           <WazeDeepLinkButton
             latitude={latitude}
             longitude={longitude}
-            label="Find Fuel Along the Way"
+            label={t.tripCostEstimator.findFuelAlongWay}
           />
         </div>
       )}

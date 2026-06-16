@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 interface StreakCredit {
   id:        string;
@@ -17,14 +18,15 @@ interface ActivityResp {
 }
 
 const MILESTONES = [
-  { days: 30,  emoji: '⭐', label: '30-Day Streak',  reward: '1 free Pro month' },
-  { days: 90,  emoji: '🏆', label: '90-Day Streak',  reward: '1 free Pro month' },
-  { days: 180, emoji: '💎', label: '180-Day Streak', reward: '1 free Pro month' },
-  { days: 365, emoji: '👑', label: '1-Year Streak',  reward: '1 free Pro month + Legend status' },
+  { days: 30,  emoji: '⭐' },
+  { days: 90,  emoji: '🏆' },
+  { days: 180, emoji: '💎' },
+  { days: 365, emoji: '👑' },
 ];
 
 export default function StreakRewards() {
   const { data: session } = useSession();
+  const { t } = useTranslation();
   const [streak,       setStreak]       = useState<number>(0);
   const [milestonesHit, setMilestonesHit] = useState<number[]>([]);
   const [credits,      setCredits]      = useState<StreakCredit[]>([]);
@@ -54,6 +56,9 @@ export default function StreakRewards() {
 
   const allEarned = !nextMilestone;
 
+  const milestoneLabel  = (days: number): string => t.streakRewards.milestoneLabel(days);
+  const milestoneReward = (days: number): string => t.streakRewards.milestoneReward(days);
+
   return (
     <div className="rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
 
@@ -62,14 +67,14 @@ export default function StreakRewards() {
         <div className="flex items-center gap-2">
           <span className="text-sm" aria-hidden="true">⚡</span>
           <div>
-            <p className="text-xs font-black text-white uppercase tracking-wider">Streak Rewards</p>
-            <p className="text-[10px] text-white/50">Maintain your daily streak to earn free Pro months</p>
+            <p className="text-xs font-black text-white uppercase tracking-wider">{t.streakRewards.heading}</p>
+            <p className="text-[10px] text-white/50">{t.streakRewards.subheading}</p>
           </div>
         </div>
         <div className="bg-amber-500 rounded-xl px-3 py-1.5 text-center min-w-[52px] flex-shrink-0">
           <p className="text-xl font-black text-white leading-none">{streak}</p>
           <p className="text-[9px] text-white/70 font-bold uppercase tracking-wide mt-0.5">
-            {streak === 1 ? 'day' : 'days'}
+            {streak === 1 ? t.streakRewards.dayUnit : t.streakRewards.daysUnit}
           </p>
         </div>
       </div>
@@ -81,12 +86,12 @@ export default function StreakRewards() {
         <div>
           <div className="flex justify-between items-center mb-1.5">
             <p className="text-[10px] text-slate-500 font-semibold">
-              Progress to {nextMilestone.label}
+              {t.streakRewards.progressTo(milestoneLabel(nextMilestone.days))}
             </p>
             <p className="text-[10px] font-black text-amber-600">
               {daysToNext === 0
-                ? '🎉 Reward ready!'
-                : `${daysToNext} day${daysToNext !== 1 ? 's' : ''} to go`}
+                ? t.streakRewards.rewardReady
+                : t.streakRewards.daysToGo(daysToNext)}
             </p>
           </div>
           <div className="h-3 bg-slate-100 rounded-full overflow-hidden">
@@ -99,9 +104,9 @@ export default function StreakRewards() {
             />
           </div>
           <div className="flex justify-between mt-1">
-            <p className="text-[9px] text-slate-400">{streak} days</p>
+            <p className="text-[9px] text-slate-400">{t.streakRewards.daysCount(streak)}</p>
             <p className="text-[9px] text-slate-400">
-              {nextMilestone.days} days → {nextMilestone.reward}
+              {nextMilestone.days} {t.streakRewards.daysUnit} → {milestoneReward(nextMilestone.days)}
             </p>
           </div>
         </div>
@@ -110,7 +115,7 @@ export default function StreakRewards() {
       {allEarned && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-center">
           <p className="text-xs font-black text-amber-700">
-            👑 You've hit every streak milestone — legendary!
+            {t.streakRewards.allEarned}
           </p>
         </div>
       )}
@@ -137,29 +142,29 @@ export default function StreakRewards() {
                   : isNext ? 'text-amber-700'
                   : 'text-slate-500'
                 }`}>
-                  {m.label}
+                  {milestoneLabel(m.days)}
                 </p>
                 <p className={`text-[10px] leading-tight mt-0.5 ${
                   hit ? 'text-green-600' : 'text-slate-400'
                 }`}>
-                  🎁 {m.reward}
+                  🎁 {milestoneReward(m.days)}
                 </p>
               </div>
               {hit && (
                 <span className="flex-shrink-0 text-[10px] font-black text-green-700
                                  bg-green-100 rounded-lg px-2 py-0.5">
-                  Earned
+                  {t.streakRewards.earnedBadge}
                 </span>
               )}
               {isNext && !hit && (
                 <span className="flex-shrink-0 text-[10px] font-black text-amber-700
                                  bg-amber-100 rounded-lg px-2 py-0.5">
-                  Next
+                  {t.streakRewards.nextBadge}
                 </span>
               )}
               {!hit && !isNext && (
                 <span className="flex-shrink-0 text-[10px] font-bold text-slate-400">
-                  {m.days - streak > 0 ? `${m.days - streak}d away` : 'Locked'}
+                  {m.days - streak > 0 ? t.streakRewards.daysAway(m.days - streak) : t.streakRewards.locked}
                 </span>
               )}
             </div>
@@ -171,19 +176,19 @@ export default function StreakRewards() {
       {credits.length > 0 ? (
         <div className="bg-navy-700 rounded-2xl px-4 py-3 space-y-1">
           <p className="text-sm font-black text-amber-400">
-            🎁 {credits.length} free Pro month{credits.length !== 1 ? 's' : ''} banked!
+            {t.streakRewards.creditsBanked(credits.length)}
           </p>
           <p className="text-[10px] text-white/60 leading-snug">
-            Email{' '}
+            {t.streakRewards.redeemPrefix}{' '}
             <a href="mailto:info@gascap.app" className="text-amber-400 underline underline-offset-2">
               info@gascap.app
             </a>{' '}
-            to redeem your free month{credits.length !== 1 ? 's' : ''} toward your subscription.
+            {t.streakRewards.redeemSuffix(credits.length)}
           </p>
         </div>
       ) : (
         <p className="text-[10px] text-slate-400 text-center leading-snug pb-1">
-          💡 Open GasCap every single day to grow your streak. Missing a day resets it to zero!
+          {t.streakRewards.dailyTip}
         </p>
       )}
       </div>

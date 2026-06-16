@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useSession }          from 'next-auth/react';
+import { useTranslation }      from '@/contexts/LanguageContext';
 import FillupLogger            from './FillupLogger';
 
 interface Vehicle {
@@ -15,6 +16,7 @@ interface Vehicle {
 
 export default function ManualFillupLogger() {
   const { data: session } = useSession();
+  const { t } = useTranslation();
   const [open,     setOpen]     = useState(false);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [selId,    setSelId]    = useState<string>('');
@@ -69,7 +71,7 @@ export default function ManualFillupLogger() {
                      transition-colors shadow-sm"
         >
           <span>⛽</span>
-          Log a Fill-Up
+          {t.manualFillupLogger.logAFillUp}
         </button>
       ) : (
         <div className="space-y-3">
@@ -77,7 +79,7 @@ export default function ManualFillupLogger() {
           {vehicles.length > 1 && (
             <div>
               <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">
-                Select vehicle
+                {t.manualFillupLogger.selectVehicle}
               </label>
               <select
                 value={selId}
@@ -97,15 +99,15 @@ export default function ManualFillupLogger() {
 
           {vehicles.length === 0 && (
             <div className="bg-slate-50 border border-slate-200 rounded-2xl px-4 py-4 text-center">
-              <p className="text-sm font-bold text-slate-600">No saved vehicles</p>
+              <p className="text-sm font-bold text-slate-600">{t.manualFillupLogger.noSavedVehicles}</p>
               <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                Add a vehicle in the Saved Vehicles section above, then come back to log a fill-up.
+                {t.manualFillupLogger.noSavedVehiclesHint}
               </p>
               <button
                 onClick={handleClose}
                 className="mt-3 text-xs font-bold text-amber-600 hover:text-amber-500"
               >
-                Cancel
+                {t.manualFillupLogger.cancel}
               </button>
             </div>
           )}

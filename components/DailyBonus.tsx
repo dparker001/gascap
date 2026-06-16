@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useSession }          from 'next-auth/react';
 import { usePathname }         from 'next/navigation';
+import { useTranslation }      from '@/contexts/LanguageContext';
 
 type Phase =
   | 'loading'    // fetching status from server
@@ -61,6 +62,7 @@ function Confetti() {
 export default function DailyBonus() {
   const { data: session, status: authStatus } = useSession();
   const pathname = usePathname();
+  const { t } = useTranslation();
 
   const [phase,      setPhase]      = useState<Phase>('loading');
   const [entriesWon, setEntriesWon] = useState(0);
@@ -139,7 +141,7 @@ export default function DailyBonus() {
       {isOpening && (
         <div className="space-y-2 py-1">
           <p className="text-2xl animate-spin inline-block">⚙️</p>
-          <p className="text-xs font-bold text-slate-500">Opening your gift…</p>
+          <p className="text-xs font-bold text-slate-500">{t.dailyBonus.openingGift}</p>
         </div>
       )}
 
@@ -148,11 +150,11 @@ export default function DailyBonus() {
           <Confetti />
           <p className="text-3xl">🎉</p>
           <p className="text-base font-black text-[#005F4A] leading-tight">
-            +{entriesWon} entries!
+            {t.dailyBonus.entriesWon(entriesWon)}
           </p>
           <p className="text-[10px] text-slate-500 leading-snug">
-            Added to your drawing.
-            <br />See you tomorrow!
+            {t.dailyBonus.addedToDrawing}
+            <br />{t.dailyBonus.seeYouTomorrow}
           </p>
         </div>
       )}
@@ -160,8 +162,8 @@ export default function DailyBonus() {
       {phase === 'done' && !isOpening && !isRevealed && (
         <div className="space-y-1.5 py-1">
           <p className="text-2xl">✅</p>
-          <p className="text-xs font-black text-slate-600">Already claimed today!</p>
-          <p className="text-[10px] text-slate-400">Come back tomorrow for a new gift.</p>
+          <p className="text-xs font-black text-slate-600">{t.dailyBonus.alreadyClaimed}</p>
+          <p className="text-[10px] text-slate-400">{t.dailyBonus.comeBackTomorrow}</p>
         </div>
       )}
 
@@ -215,7 +217,7 @@ export default function DailyBonus() {
           {/* Main button */}
           <button
             onClick={handleClaim}
-            aria-label={isAvailable ? 'Claim your daily bonus entries' : 'Daily bonus already claimed'}
+            aria-label={isAvailable ? t.dailyBonus.ariaClaim : t.dailyBonus.ariaClaimed}
             className={[
               'relative flex items-center justify-center rounded-full shadow-lg',
               'transition-all duration-200 select-none',

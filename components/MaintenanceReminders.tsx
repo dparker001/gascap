@@ -3,15 +3,16 @@
 import { useSession }        from 'next-auth/react';
 import { useEffect, useState, useCallback } from 'react';
 import { SERVICE_PRESETS, type ServiceType, type ReminderWithStatus } from '@/lib/maintenance-shared';
+import { useTranslation } from '@/contexts/LanguageContext';
 import type { Vehicle } from './SavedVehicles';
 
 // ── Status helpers ────────────────────────────────────────────────────────────
 
 const STATUS_CONFIG = {
-  overdue:  { label: 'Overdue',   bg: 'bg-red-50',   border: 'border-red-200',   text: 'text-red-700',   dot: 'bg-red-500',   badge: 'bg-red-100 text-red-700'   },
-  due_soon: { label: 'Due Soon',  bg: 'bg-amber-50',  border: 'border-amber-200', text: 'text-amber-700', dot: 'bg-amber-400', badge: 'bg-amber-100 text-amber-700' },
-  ok:       { label: 'OK',        bg: 'bg-green-50',  border: 'border-green-100', text: 'text-green-700', dot: 'bg-green-500', badge: 'bg-green-100 text-green-700' },
-  unknown:  { label: 'Set Up',    bg: 'bg-slate-50',  border: 'border-slate-200', text: 'text-slate-500', dot: 'bg-slate-300', badge: 'bg-slate-100 text-slate-500' },
+  overdue:  { bg: 'bg-red-50',   border: 'border-red-200',   text: 'text-red-700',   dot: 'bg-red-500',   badge: 'bg-red-100 text-red-700'   },
+  due_soon: { bg: 'bg-amber-50',  border: 'border-amber-200', text: 'text-amber-700', dot: 'bg-amber-400', badge: 'bg-amber-100 text-amber-700' },
+  ok:       { bg: 'bg-green-50',  border: 'border-green-100', text: 'text-green-700', dot: 'bg-green-500', badge: 'bg-green-100 text-green-700' },
+  unknown:  { bg: 'bg-slate-50',  border: 'border-slate-200', text: 'text-slate-500', dot: 'bg-slate-300', badge: 'bg-slate-100 text-slate-500' },
 };
 
 const SERVICE_TYPES = Object.entries(SERVICE_PRESETS) as [ServiceType, typeof SERVICE_PRESETS[ServiceType]][];
@@ -20,6 +21,7 @@ const SERVICE_TYPES = Object.entries(SERVICE_PRESETS) as [ServiceType, typeof SE
 
 export default function MaintenanceReminders() {
   const { data: session, status } = useSession();
+  const { t } = useTranslation();
   const [reminders,   setReminders]   = useState<ReminderWithStatus[]>([]);
   const [loading,     setLoading]     = useState(false);
   const [open,        setOpen]        = useState(false);
@@ -99,19 +101,19 @@ export default function MaintenanceReminders() {
         <div className="flex items-center gap-2">
           <span className="text-sm" aria-hidden="true">🔧</span>
           <div className="text-left">
-            <p className="text-xs font-black text-white uppercase tracking-wider">Maintenance Reminders</p>
+            <p className="text-xs font-black text-white uppercase tracking-wider">{t.maintenanceReminders.headerTitle}</p>
             {loading
-              ? <p className="text-[10px] text-white/50">Loading…</p>
+              ? <p className="text-[10px] text-white/50">{t.maintenanceReminders.loading}</p>
               : reminders.length === 0
-                ? <p className="text-[10px] text-white/50">Track oil changes, tire rotations &amp; more</p>
+                ? <p className="text-[10px] text-white/50">{t.maintenanceReminders.headerSubtitle}</p>
                 : alertCount > 0
                   ? <p className="text-[10px] text-red-300 font-bold">
-                      {overdueCount > 0 && `${overdueCount} overdue`}
+                      {overdueCount > 0 && t.maintenanceReminders.overdueCount(overdueCount)}
                       {overdueCount > 0 && dueSoonCount > 0 && ' · '}
-                      {dueSoonCount > 0 && `${dueSoonCount} due soon`}
+                      {dueSoonCount > 0 && t.maintenanceReminders.dueSoonCount(dueSoonCount)}
                     </p>
                   : <p className="text-[10px] text-green-300 font-semibold">
-                      ✓ All {reminders.length} service{reminders.length !== 1 ? 's' : ''} up to date
+                      {t.maintenanceReminders.allUpToDate(reminders.length)}
                     </p>
             }
           </div>
@@ -138,7 +140,7 @@ export default function MaintenanceReminders() {
           {/* Header bar inside panel */}
           <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-slate-100">
             <p className="text-xs font-black text-slate-600 uppercase tracking-wide">
-              {reminders.length} reminder{reminders.length !== 1 ? 's' : ''}
+              {t.maintenanceReminders.reminderCount(reminders.length)}
             </p>
             <button
               onClick={() => setShowForm((v) => !v)}
@@ -148,7 +150,7 @@ export default function MaintenanceReminders() {
               <svg viewBox="0 0 12 12" className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
                 <path d="M6 2v8M2 6h8"/>
               </svg>
-              Add Reminder
+              {t.maintenanceReminders.addReminder}
             </button>
           </div>
 
@@ -164,16 +166,15 @@ export default function MaintenanceReminders() {
           )}
 
           {loading && (
-            <p className="text-xs text-slate-400 text-center py-8">Loading…</p>
+            <p className="text-xs text-slate-400 text-center py-8">{t.maintenanceReminders.loading}</p>
           )}
 
           {!loading && reminders.length === 0 && !showForm && (
             <div className="text-center py-8 px-6 space-y-2">
               <p className="text-3xl">🔧</p>
-              <p className="text-sm font-bold text-slate-600">No reminders set up yet</p>
+              <p className="text-sm font-bold text-slate-600">{t.maintenanceReminders.emptyTitle}</p>
               <p className="text-xs text-slate-400 leading-relaxed max-w-[260px] mx-auto">
-                Add reminders for oil changes, tire rotations, and other scheduled services.
-                We&apos;ll alert you when they&apos;re due based on mileage or time.
+                {t.maintenanceReminders.emptyBody}
               </p>
             </div>
           )}
@@ -210,31 +211,33 @@ function ReminderCard({
   onMarkServiced: () => void;
   onDelete:       () => void;
 }) {
+  const { t } = useTranslation();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const cfg     = STATUS_CONFIG[r.status];
   const preset  = SERVICE_PRESETS[r.serviceType];
-  const label   = r.serviceType === 'custom' ? (r.customLabel ?? 'Custom Service') : preset.label;
+  const label   = r.serviceType === 'custom' ? (r.customLabel ?? t.maintenanceReminders.customService) : preset.label;
+  const statusLabel = t.maintenanceReminders.statusLabel(r.status);
 
   // Build status detail line
   let statusDetail = '';
   if (r.status === 'overdue') {
     const parts: string[] = [];
     if (r.milesUntilDue != null && r.milesUntilDue < 0)
-      parts.push(`${Math.abs(r.milesUntilDue).toLocaleString()} mi overdue`);
+      parts.push(t.maintenanceReminders.milesOverdue(Math.abs(r.milesUntilDue).toLocaleString()));
     if (r.daysUntilDue != null && r.daysUntilDue < 0)
-      parts.push(`${Math.abs(r.daysUntilDue)} days overdue`);
-    statusDetail = parts.join(' · ') || 'Overdue';
+      parts.push(t.maintenanceReminders.daysOverdue(Math.abs(r.daysUntilDue)));
+    statusDetail = parts.join(' · ') || t.maintenanceReminders.statusLabel('overdue');
   } else if (r.status === 'due_soon') {
     const parts: string[] = [];
     if (r.milesUntilDue != null && r.milesUntilDue > 0)
-      parts.push(`${r.milesUntilDue.toLocaleString()} mi to go`);
+      parts.push(t.maintenanceReminders.milesToGo(r.milesUntilDue.toLocaleString()));
     if (r.daysUntilDue != null && r.daysUntilDue > 0)
-      parts.push(`${r.daysUntilDue} days`);
-    statusDetail = parts.join(' · ') || 'Due soon';
+      parts.push(t.maintenanceReminders.daysCount(r.daysUntilDue));
+    statusDetail = parts.join(' · ') || t.maintenanceReminders.statusLabel('due_soon');
   } else if (r.status === 'ok') {
     const parts: string[] = [];
-    if (r.milesUntilDue != null) parts.push(`${r.milesUntilDue.toLocaleString()} mi remaining`);
-    if (r.daysUntilDue != null)  parts.push(`${r.daysUntilDue} days`);
+    if (r.milesUntilDue != null) parts.push(t.maintenanceReminders.milesRemaining(r.milesUntilDue.toLocaleString()));
+    if (r.daysUntilDue != null)  parts.push(t.maintenanceReminders.daysCount(r.daysUntilDue));
     statusDetail = parts.join(' · ');
   }
 
@@ -262,7 +265,7 @@ function ReminderCard({
           <div className="flex items-center gap-2 flex-wrap">
             <p className="text-sm font-black text-slate-800">{label}</p>
             <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded-full ${cfg.badge}`}>
-              {cfg.label}
+              {statusLabel}
             </span>
           </div>
 
@@ -276,23 +279,23 @@ function ReminderCard({
           <div className="flex gap-2 mt-1.5 flex-wrap">
             {r.intervalMiles && (
               <span className="text-[10px] bg-white border border-slate-200 rounded-full px-2 py-0.5 text-slate-500 font-medium">
-                Every {r.intervalMiles.toLocaleString()} mi
+                {t.maintenanceReminders.everyMiles(r.intervalMiles.toLocaleString())}
               </span>
             )}
             {r.intervalMonths && (
               <span className="text-[10px] bg-white border border-slate-200 rounded-full px-2 py-0.5 text-slate-500 font-medium">
-                Every {r.intervalMonths} mo
+                {t.maintenanceReminders.everyMonths(r.intervalMonths)}
               </span>
             )}
             {r.dueMiles != null && (
               <span className="text-[10px] bg-white border border-slate-200 rounded-full px-2 py-0.5 text-slate-500 font-medium">
-                Due @ {r.dueMiles.toLocaleString()} mi
+                {t.maintenanceReminders.dueAtMiles(r.dueMiles.toLocaleString())}
               </span>
             )}
           </div>
 
           {lastServiceStr && (
-            <p className="text-[10px] text-slate-400 mt-1">Last: {lastServiceStr}</p>
+            <p className="text-[10px] text-slate-400 mt-1">{t.maintenanceReminders.lastLabel(lastServiceStr)}</p>
           )}
           {r.notes && (
             <p className="text-[10px] text-slate-400 mt-0.5 italic">{r.notes}</p>
@@ -306,9 +309,9 @@ function ReminderCard({
             disabled={actioning}
             className="px-2.5 py-1.5 rounded-xl bg-green-500 hover:bg-green-400 disabled:opacity-50
                        text-white text-[10px] font-bold transition-colors whitespace-nowrap"
-            title="Mark as serviced today"
+            title={t.maintenanceReminders.markServicedTitle}
           >
-            {actioning ? '…' : '✓ Done'}
+            {actioning ? '…' : t.maintenanceReminders.doneButton}
           </button>
           {confirmDelete ? (
             <div className="flex gap-1">
@@ -316,14 +319,14 @@ function ReminderCard({
                 onClick={() => setConfirmDelete(false)}
                 className="flex-1 py-1 rounded-lg border border-slate-200 text-[10px] text-slate-500 font-semibold"
               >
-                No
+                {t.maintenanceReminders.no}
               </button>
               <button
                 onClick={onDelete}
                 disabled={actioning}
                 className="flex-1 py-1 rounded-lg bg-red-500 text-white text-[10px] font-bold"
               >
-                Yes
+                {t.maintenanceReminders.yes}
               </button>
             </div>
           ) : (
@@ -332,7 +335,7 @@ function ReminderCard({
               className="px-2.5 py-1.5 rounded-xl border border-slate-200 text-[10px] text-slate-400
                          hover:border-red-200 hover:text-red-400 transition-colors font-medium"
             >
-              Remove
+              {t.maintenanceReminders.remove}
             </button>
           )}
         </div>
@@ -352,6 +355,7 @@ function AddReminderForm({
   onSaved:  () => void;
   onCancel: () => void;
 }) {
+  const { t } = useTranslation();
   const [serviceType,      setServiceType]      = useState<ServiceType>('oil_change');
   const [customLabel,      setCustomLabel]      = useState('');
   const [vehicleName,      setVehicleName]      = useState(vehicles[0]?.name ?? '');
@@ -377,9 +381,9 @@ function AddReminderForm({
   }
 
   async function handleSave() {
-    if (!vehicleName.trim()) { setError('Select or enter a vehicle.'); return; }
-    if (!intervalMiles && !intervalMonths) { setError('Enter at least one interval (miles or months).'); return; }
-    if (serviceType === 'custom' && !customLabel.trim()) { setError('Enter a label for your custom service.'); return; }
+    if (!vehicleName.trim()) { setError(t.maintenanceReminders.errVehicle); return; }
+    if (!intervalMiles && !intervalMonths) { setError(t.maintenanceReminders.errInterval); return; }
+    if (serviceType === 'custom' && !customLabel.trim()) { setError(t.maintenanceReminders.errCustomLabel); return; }
 
     setSaving(true);
     setError('');
@@ -401,12 +405,12 @@ function AddReminderForm({
       });
       if (!res.ok) {
         const d = await res.json() as { error?: string };
-        setError(d.error ?? 'Save failed.');
+        setError(d.error ?? t.maintenanceReminders.errSaveFailed);
         return;
       }
       onSaved();
     } catch {
-      setError('Network error — try again.');
+      setError(t.maintenanceReminders.errNetwork);
     } finally {
       setSaving(false);
     }
@@ -416,12 +420,12 @@ function AddReminderForm({
 
   return (
     <div className="space-y-3">
-      <p className="text-xs font-black text-amber-700 uppercase tracking-wide">New Reminder</p>
+      <p className="text-xs font-black text-amber-700 uppercase tracking-wide">{t.maintenanceReminders.newReminder}</p>
 
       {/* Vehicle selector */}
       {vehicles.length > 0 && (
         <div>
-          <label className="field-label">Vehicle</label>
+          <label className="field-label">{t.maintenanceReminders.vehicleLabel}</label>
           <div className="flex gap-2 flex-wrap">
             {vehicles.map((v) => (
               <button
@@ -442,11 +446,11 @@ function AddReminderForm({
       )}
       {vehicles.length === 0 && (
         <div>
-          <label className="field-label">Vehicle Name</label>
+          <label className="field-label">{t.maintenanceReminders.vehicleNameLabel}</label>
           <input
             type="text"
             className="input-field text-sm"
-            placeholder="e.g. 2019 Camry"
+            placeholder={t.maintenanceReminders.vehicleNamePlaceholder}
             value={vehicleName}
             onChange={(e) => setVehicleName(e.target.value)}
           />
@@ -455,7 +459,7 @@ function AddReminderForm({
 
       {/* Service type */}
       <div>
-        <label className="field-label">Service Type</label>
+        <label className="field-label">{t.maintenanceReminders.serviceTypeLabel}</label>
         <div className="grid grid-cols-2 gap-1.5 max-h-52 overflow-y-auto pr-0.5">
           {SERVICE_TYPES.map(([type, info]) => (
             <button
@@ -480,11 +484,11 @@ function AddReminderForm({
       {/* Custom label */}
       {serviceType === 'custom' && (
         <div>
-          <label className="field-label">Custom Service Label</label>
+          <label className="field-label">{t.maintenanceReminders.customLabelLabel}</label>
           <input
             type="text"
             className="input-field text-sm"
-            placeholder="e.g. Differential fluid"
+            placeholder={t.maintenanceReminders.customLabelPlaceholder}
             value={customLabel}
             onChange={(e) => setCustomLabel(e.target.value)}
             maxLength={60}
@@ -495,12 +499,12 @@ function AddReminderForm({
       {/* Interval */}
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="field-label">Every (miles)</label>
+          <label className="field-label">{t.maintenanceReminders.everyMilesLabel}</label>
           <div className="relative">
             <input
               type="number" inputMode="numeric"
               className="input-field text-sm pr-10"
-              placeholder="e.g. 5000"
+              placeholder={t.maintenanceReminders.everyMilesPlaceholder}
               value={intervalMiles}
               min="1" step="500"
               onChange={(e) => setIntervalMiles(e.target.value)}
@@ -509,12 +513,12 @@ function AddReminderForm({
           </div>
         </div>
         <div>
-          <label className="field-label">Every (months)</label>
+          <label className="field-label">{t.maintenanceReminders.everyMonthsLabel}</label>
           <div className="relative">
             <input
               type="number" inputMode="numeric"
               className="input-field text-sm pr-10"
-              placeholder="e.g. 6"
+              placeholder={t.maintenanceReminders.everyMonthsPlaceholder}
               value={intervalMonths}
               min="1" max="120"
               onChange={(e) => setIntervalMonths(e.target.value)}
@@ -527,7 +531,7 @@ function AddReminderForm({
       {/* Last service */}
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="field-label">Last service date</label>
+          <label className="field-label">{t.maintenanceReminders.lastServiceDateLabel}</label>
           <input
             type="date"
             className="input-field text-sm"
@@ -537,12 +541,12 @@ function AddReminderForm({
           />
         </div>
         <div>
-          <label className="field-label">At odometer</label>
+          <label className="field-label">{t.maintenanceReminders.atOdometerLabel}</label>
           <div className="relative">
             <input
               type="number" inputMode="numeric"
               className="input-field text-sm pr-10"
-              placeholder="e.g. 42500"
+              placeholder={t.maintenanceReminders.atOdometerPlaceholder}
               value={lastServiceMiles}
               min="0" step="100"
               onChange={(e) => setLastServiceMiles(e.target.value)}
@@ -554,11 +558,11 @@ function AddReminderForm({
 
       {/* Notes */}
       <div>
-        <label className="field-label">Notes <span className="text-slate-400 font-normal">(optional)</span></label>
+        <label className="field-label">{t.maintenanceReminders.notesLabel} <span className="text-slate-400 font-normal">{t.maintenanceReminders.optional}</span></label>
         <input
           type="text"
           className="input-field text-sm"
-          placeholder='e.g. "Use synthetic 5W-30"'
+          placeholder={t.maintenanceReminders.notesPlaceholder}
           value={notes}
           maxLength={100}
           onChange={(e) => setNotes(e.target.value)}
@@ -569,10 +573,10 @@ function AddReminderForm({
 
       <div className="flex gap-2">
         <button onClick={onCancel} className="flex-1 py-2.5 rounded-xl border-2 border-slate-200 text-sm font-semibold text-slate-500 hover:border-slate-300 transition-colors bg-white">
-          Cancel
+          {t.maintenanceReminders.cancel}
         </button>
         <button onClick={handleSave} disabled={saving} className="flex-1 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-white text-sm font-bold disabled:opacity-50 transition-colors">
-          {saving ? 'Saving…' : 'Save Reminder ✓'}
+          {saving ? t.maintenanceReminders.saving : t.maintenanceReminders.saveReminder}
         </button>
       </div>
     </div>

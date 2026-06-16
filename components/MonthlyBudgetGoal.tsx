@@ -2,6 +2,7 @@
 
 import { useSession }           from 'next-auth/react';
 import { useEffect, useState, useCallback } from 'react';
+import { useTranslation } from '@/contexts/LanguageContext';
 import UpgradeNudge from './UpgradeNudge';
 
 interface GoalData {
@@ -28,6 +29,7 @@ function monthLabel(ym: string): string {
 }
 
 export default function MonthlyBudgetGoal() {
+  const { t } = useTranslation();
   const { data: session, status } = useSession();
   const [data,     setData]     = useState<GoalData | null>(null);
   const [open,     setOpen]     = useState(false);
@@ -93,13 +95,13 @@ export default function MonthlyBudgetGoal() {
         <div className="flex items-center gap-2">
           <span className="text-sm" aria-hidden="true">💰</span>
           <div className="text-left">
-            <p className="text-xs font-black text-white uppercase tracking-wider">Monthly Budget</p>
+            <p className="text-xs font-black text-white uppercase tracking-wider">{t.monthlyBudgetGoal.title}</p>
             {hasGoal && data ? (
               <p className="text-[10px] text-white/70 font-semibold">
-                ${data.spent.toFixed(2)} / ${data.limit!.toFixed(0)} · {data.daysLeft}d left
+                {t.monthlyBudgetGoal.headerSummary(data.spent.toFixed(2), data.limit!.toFixed(0), data.daysLeft)}
               </p>
             ) : (
-              <p className="text-[10px] text-white/50">Set a monthly fuel spending goal</p>
+              <p className="text-[10px] text-white/50">{t.monthlyBudgetGoal.headerSubtitle}</p>
             )}
           </div>
         </div>
@@ -132,15 +134,15 @@ export default function MonthlyBudgetGoal() {
           {!hasGoal && !editing && (
             <div className="text-center py-2">
               <p className="text-2xl mb-2">🎯</p>
-              <p className="text-sm font-bold text-slate-600">No budget goal set</p>
+              <p className="text-sm font-bold text-slate-600">{t.monthlyBudgetGoal.noGoalTitle}</p>
               <p className="text-xs text-slate-400 mt-1 mb-4">
-                Set a monthly limit to track your fuel spend and get alerts before you overshoot.
+                {t.monthlyBudgetGoal.noGoalBody}
               </p>
               <button
                 onClick={() => setEditing(true)}
                 className="px-6 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-white text-sm font-bold transition-colors"
               >
-                Set My Budget →
+                {t.monthlyBudgetGoal.setMyBudget}
               </button>
             </div>
           )}
@@ -160,7 +162,7 @@ export default function MonthlyBudgetGoal() {
                     ${data.spent.toFixed(2)}
                   </span>
                   <span className="text-sm text-slate-400 font-semibold">
-                    of ${data.limit!.toFixed(2)}
+                    {t.monthlyBudgetGoal.ofAmount(data.limit!.toFixed(2))}
                   </span>
                 </div>
                 <div className="h-3 bg-slate-100 rounded-full overflow-hidden">
@@ -170,8 +172,8 @@ export default function MonthlyBudgetGoal() {
                   />
                 </div>
                 <div className="flex justify-between mt-1">
-                  <span className="text-[10px] text-slate-400">{pct}% used</span>
-                  <span className="text-[10px] text-slate-400">{data.daysLeft} days left</span>
+                  <span className="text-[10px] text-slate-400">{t.monthlyBudgetGoal.pctUsed(pct)}</span>
+                  <span className="text-[10px] text-slate-400">{t.monthlyBudgetGoal.daysLeft(data.daysLeft)}</span>
                 </div>
               </div>
 
@@ -179,22 +181,22 @@ export default function MonthlyBudgetGoal() {
               <div className={`rounded-xl px-3 py-2.5 ${colors.bg}`}>
                 {pct >= 100 && (
                   <p className="text-xs font-bold text-red-700">
-                    🚨 You&apos;ve hit your monthly budget. Consider waiting until next month.
+                    {t.monthlyBudgetGoal.statusOver}
                   </p>
                 )}
                 {pct >= 90 && pct < 100 && (
                   <p className="text-xs font-bold text-red-600">
-                    ⚠️ Almost at your limit — only ${(data.limit! - data.spent).toFixed(2)} remaining.
+                    {t.monthlyBudgetGoal.statusAlmost((data.limit! - data.spent).toFixed(2))}
                   </p>
                 )}
                 {pct >= 70 && pct < 90 && (
                   <p className="text-xs font-semibold text-amber-700">
-                    🟡 You&apos;ve used {pct}% of your budget with {data.daysLeft} days to go.
+                    {t.monthlyBudgetGoal.statusWarning(pct, data.daysLeft)}
                   </p>
                 )}
                 {pct < 70 && (
                   <p className="text-xs font-semibold text-green-700">
-                    ✅ On track — ${(data.limit! - data.spent).toFixed(2)} remaining for the month.
+                    {t.monthlyBudgetGoal.statusOnTrack((data.limit! - data.spent).toFixed(2))}
                   </p>
                 )}
               </div>
@@ -202,9 +204,9 @@ export default function MonthlyBudgetGoal() {
               {pct >= 90 && userPlan === 'free' && (
                 <UpgradeNudge
                   emoji="🔔"
-                  headline="Get alerted before you go over"
-                  body="GasCap Pro sends you a push notification when you hit 80% of your monthly budget — before it's too late."
-                  ctaText="Upgrade for budget alerts →"
+                  headline={t.monthlyBudgetGoal.nudgeHeadline}
+                  body={t.monthlyBudgetGoal.nudgeBody}
+                  ctaText={t.monthlyBudgetGoal.nudgeCta}
                 />
               )}
 
@@ -216,8 +218,9 @@ export default function MonthlyBudgetGoal() {
                 if (overage > 2) {
                   return (
                     <p className="text-[11px] text-amber-600 font-medium text-center">
-                      📊 At your current rate, you&apos;re projected to spend <strong>${projected.toFixed(2)}</strong>
-                      {' '}this month (+${overage.toFixed(2)} over budget).
+                      {t.monthlyBudgetGoal.projectedPrefix}{' '}
+                      <strong>${projected.toFixed(2)}</strong>
+                      {' '}{t.monthlyBudgetGoal.projectedSuffix(overage.toFixed(2))}
                     </p>
                   );
                 }
@@ -231,7 +234,7 @@ export default function MonthlyBudgetGoal() {
                   className="flex-1 py-2 rounded-xl border-2 border-slate-200 text-xs font-semibold
                              text-slate-600 hover:border-amber-300 transition-colors"
                 >
-                  Change Goal
+                  {t.monthlyBudgetGoal.changeGoal}
                 </button>
                 <button
                   onClick={handleDelete}
@@ -239,7 +242,7 @@ export default function MonthlyBudgetGoal() {
                   className="px-4 py-2 rounded-xl border-2 border-slate-200 text-xs font-semibold
                              text-slate-400 hover:border-red-200 hover:text-red-400 transition-colors disabled:opacity-50"
                 >
-                  {deleting ? '…' : 'Remove'}
+                  {deleting ? '…' : t.monthlyBudgetGoal.remove}
                 </button>
               </div>
             </>
@@ -249,7 +252,7 @@ export default function MonthlyBudgetGoal() {
           {editing && (
             <div className="space-y-3">
               <p className="text-sm font-bold text-slate-700">
-                {hasGoal ? 'Update monthly budget' : 'Set a monthly fuel budget'}
+                {hasGoal ? t.monthlyBudgetGoal.formTitleUpdate : t.monthlyBudgetGoal.formTitleSet}
               </p>
 
               {/* Quick-pick buttons */}
@@ -277,7 +280,7 @@ export default function MonthlyBudgetGoal() {
                   type="number"
                   inputMode="decimal"
                   className="input-field pl-8"
-                  placeholder="Custom amount"
+                  placeholder={t.monthlyBudgetGoal.customAmountPlaceholder}
                   value={input}
                   min="1"
                   step="1"
@@ -287,7 +290,7 @@ export default function MonthlyBudgetGoal() {
               </div>
 
               <p className="text-[10px] text-slate-400">
-                💡 GasCap will track your monthly fuel spending against this limit and alert you when you&apos;re approaching it.
+                {t.monthlyBudgetGoal.formHint}
               </p>
 
               <div className="flex gap-2">
@@ -295,14 +298,14 @@ export default function MonthlyBudgetGoal() {
                   onClick={() => { setEditing(false); setInput(''); }}
                   className="flex-1 py-2.5 rounded-xl border-2 border-slate-200 text-sm font-semibold text-slate-500 hover:border-slate-300 transition-colors"
                 >
-                  Cancel
+                  {t.monthlyBudgetGoal.cancel}
                 </button>
                 <button
                   onClick={handleSave}
                   disabled={saving || !input || parseFloat(input) <= 0}
                   className="flex-1 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-white text-sm font-bold disabled:opacity-40 transition-colors"
                 >
-                  {saving ? 'Saving…' : 'Save Goal ✓'}
+                  {saving ? t.monthlyBudgetGoal.saving : t.monthlyBudgetGoal.saveGoal}
                 </button>
               </div>
             </div>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
+import { useTranslation } from '@/contexts/LanguageContext';
 import type { Fillup } from '@/lib/fillups';
 
 interface FillupResponse {
@@ -12,6 +13,7 @@ type Trend = 'up' | 'down' | 'stable';
 
 export default function GasPricePrediction() {
   const { data: session } = useSession();
+  const { t } = useTranslation();
   const [trend,  setTrend]  = useState<Trend | null>(null);
   const [prices, setPrices] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,9 +43,9 @@ export default function GasPricePrediction() {
   if (!session || loading || !trend || prices.length < 4) return null;
 
   const config = {
-    up:     { icon: '📈', label: 'Prices trending UP',     sub: 'Consider filling up soon before prices rise further.', bg: 'bg-red-50',    border: 'border-red-100',   text: 'text-red-600'   },
-    down:   { icon: '📉', label: 'Prices trending DOWN',   sub: 'You might save a little by waiting a few more days.',  bg: 'bg-green-50',  border: 'border-green-100', text: 'text-green-600' },
-    stable: { icon: '➡️', label: 'Prices are stable',      sub: 'No strong trend in your recent fill-up prices.',       bg: 'bg-amber-50',  border: 'border-amber-100', text: 'text-amber-600' },
+    up:     { icon: '📈', label: t.gasPricePrediction.trendingUpLabel,    sub: t.gasPricePrediction.trendingUpSub,    bg: 'bg-red-50',    border: 'border-red-100',   text: 'text-red-600'   },
+    down:   { icon: '📉', label: t.gasPricePrediction.trendingDownLabel,  sub: t.gasPricePrediction.trendingDownSub,  bg: 'bg-green-50',  border: 'border-green-100', text: 'text-green-600' },
+    stable: { icon: '➡️', label: t.gasPricePrediction.stableLabel,        sub: t.gasPricePrediction.stableSub,        bg: 'bg-amber-50',  border: 'border-amber-100', text: 'text-amber-600' },
   }[trend];
 
   // Mini sparkline
@@ -88,7 +90,7 @@ export default function GasPricePrediction() {
       </div>
 
       <p className="text-[10px] text-slate-300 mt-2">
-        Based on your last {prices.length} fill-ups
+        {t.gasPricePrediction.basedOnLast(prices.length)}
       </p>
     </div>
   );

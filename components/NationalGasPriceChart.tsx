@@ -4,6 +4,7 @@ import { useSession }  from 'next-auth/react';
 import { useEffect, useState, useCallback } from 'react';
 import type { PriceWeek } from '@/app/api/gas-price/history/route';
 import Link from 'next/link';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 // ── SVG constants ─────────────────────────────────────────────────────────────
 const W   = 320;
@@ -27,6 +28,7 @@ function smoothPath(pts: { x: number; y: number }[]): string {
 interface FillupPricePoint { date: string; price: number; }
 
 export default function NationalGasPriceChart() {
+  const { t } = useTranslation();
   const { data: session } = useSession();
   const userPlan = (session?.user as { plan?: string })?.plan ?? 'free';
   const isPro    = userPlan === 'pro' || userPlan === 'fleet';
@@ -147,17 +149,17 @@ export default function NationalGasPriceChart() {
         <div className="flex items-center gap-2">
           <span className="text-sm" aria-hidden="true">🇺🇸</span>
           <div className="text-left">
-            <p className="text-xs font-black text-white uppercase tracking-wider">National Gas Price Trend</p>
+            <p className="text-xs font-black text-white uppercase tracking-wider">{t.nationalGasPriceChart.title}</p>
             {latest
               ? <p className="text-[10px] text-white/50">
-                  US avg ${latest.price.toFixed(3)}/gal
+                  {t.nationalGasPriceChart.usAvgPerGal(latest.price.toFixed(3))}
                   {vsYearAgo != null && (
                     <span className={vsYearAgo > 0 ? ' text-red-300' : ' text-green-300'}>
-                      {' '}{vsYearAgo > 0 ? '▲' : '▼'} ${Math.abs(vsYearAgo).toFixed(3)} vs last year
+                      {' '}{vsYearAgo > 0 ? '▲' : '▼'} {t.nationalGasPriceChart.vsLastYear(Math.abs(vsYearAgo).toFixed(3))}
                     </span>
                   )}
                 </p>
-              : <p className="text-[10px] text-white/50">Weekly EIA national averages</p>
+              : <p className="text-[10px] text-white/50">{t.nationalGasPriceChart.weeklyEiaSubtitle}</p>
             }
           </div>
         </div>
@@ -191,7 +193,7 @@ export default function NationalGasPriceChart() {
                   weeks === w ? 'bg-white shadow-sm text-amber-600' : 'text-slate-500',
                 ].join(' ')}
               >
-                {w === 52 ? '1 Year' : '2 Years'}
+                {w === 52 ? t.nationalGasPriceChart.range1Year : t.nationalGasPriceChart.range2Years}
               </button>
             ))}
           </div>
@@ -205,8 +207,8 @@ export default function NationalGasPriceChart() {
           {!loading && !hasData && (
             <div className="py-6 text-center">
               <p className="text-2xl mb-2">📡</p>
-              <p className="text-sm font-bold text-slate-600">Could not load price data</p>
-              <p className="text-xs text-slate-400 mt-1">Check your EIA_API_KEY environment variable.</p>
+              <p className="text-sm font-bold text-slate-600">{t.nationalGasPriceChart.loadError}</p>
+              <p className="text-xs text-slate-400 mt-1">{t.nationalGasPriceChart.loadErrorHint}</p>
             </div>
           )}
 
@@ -214,10 +216,10 @@ export default function NationalGasPriceChart() {
             <>
               {/* Stats row */}
               <div className="grid grid-cols-4 gap-2">
-                <StatPill label="Now"     value={`$${latest!.price.toFixed(3)}`}  color="text-slate-700" />
-                <StatPill label="Average" value={`$${avgPrice!.toFixed(3)}`}       color="text-blue-600"  />
-                <StatPill label="Low"     value={`$${minPrice.toFixed(3)}`}        color="text-green-600" />
-                <StatPill label="High"    value={`$${maxPrice.toFixed(3)}`}        color="text-red-500"   />
+                <StatPill label={t.nationalGasPriceChart.statNow}     value={`$${latest!.price.toFixed(3)}`}  color="text-slate-700" />
+                <StatPill label={t.nationalGasPriceChart.statAverage} value={`$${avgPrice!.toFixed(3)}`}       color="text-blue-600"  />
+                <StatPill label={t.nationalGasPriceChart.statLow}     value={`$${minPrice.toFixed(3)}`}        color="text-green-600" />
+                <StatPill label={t.nationalGasPriceChart.statHigh}    value={`$${maxPrice.toFixed(3)}`}        color="text-red-500"   />
               </div>
 
               {/* SVG chart */}
@@ -320,7 +322,7 @@ export default function NationalGasPriceChart() {
                           ${tip.price.toFixed(3)}/gal
                         </text>
                         <text x={bX + bW / 2} y={bY + 23} fontSize="7.5" fill="#93c5fd" textAnchor="middle">
-                          {lbl} · US avg
+                          {t.nationalGasPriceChart.tooltipUsAvgSuffix(lbl)}
                         </text>
                       </>
                     );
@@ -332,16 +334,16 @@ export default function NationalGasPriceChart() {
               <div className="flex items-center gap-4 justify-center text-[10px] text-slate-400">
                 <div className="flex items-center gap-1">
                   <div className="w-3 h-0.5 bg-blue-500 rounded" />
-                  <span>National avg (EIA)</span>
+                  <span>{t.nationalGasPriceChart.legendNationalAvg}</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <div className="w-3 h-0.5 bg-amber-400 rounded" style={{ borderTop: '1px dashed #f59e0b' }} />
-                  <span>Your avg</span>
+                  <span>{t.nationalGasPriceChart.legendYourAvg}</span>
                 </div>
                 {isPro && myPtsSvg.length > 0 && (
                   <div className="flex items-center gap-1">
                     <div className="w-2.5 h-2.5 bg-amber-400 rounded-full border border-white" />
-                    <span>Your fill-ups</span>
+                    <span>{t.nationalGasPriceChart.legendYourFillups}</span>
                   </div>
                 )}
               </div>
@@ -351,17 +353,17 @@ export default function NationalGasPriceChart() {
                 <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 flex items-center gap-2.5">
                   <span className="text-base">⭐</span>
                   <div className="flex-1">
-                    <p className="text-xs font-black text-amber-800">See how your prices compare</p>
-                    <p className="text-[10px] text-amber-700">Upgrade to Pro to overlay your fill-up prices on this chart.</p>
+                    <p className="text-xs font-black text-amber-800">{t.nationalGasPriceChart.upsellTitle}</p>
+                    <p className="text-[10px] text-amber-700">{t.nationalGasPriceChart.upsellBody}</p>
                   </div>
                   <Link href="/#pricing" className="text-[10px] font-black text-amber-600 hover:text-amber-500 whitespace-nowrap">
-                    Upgrade →
+                    {t.nationalGasPriceChart.upsellCta}
                   </Link>
                 </div>
               )}
 
               <p className="text-[9px] text-slate-300 text-center">
-                Source: U.S. Energy Information Administration (EIA) · Updated weekly
+                {t.nationalGasPriceChart.source}
               </p>
             </>
           )}

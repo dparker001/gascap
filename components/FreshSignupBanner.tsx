@@ -15,6 +15,7 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams }     from 'next/navigation';
 import { useSession }          from 'next-auth/react';
+import { useTranslation }      from '@/contexts/LanguageContext';
 
 // sessionStorage flag — tells WelcomeBanner not to double-show its first-time card
 const FRESH_FLAG = 'gascap_fresh_signup';
@@ -22,6 +23,7 @@ const FRESH_FLAG = 'gascap_fresh_signup';
 export default function FreshSignupBanner() {
   const searchParams  = useSearchParams();
   const { data: session } = useSession();
+  const { t } = useTranslation();
 
   const [show,      setShow]      = useState(false);
   const [dismissed, setDismissed] = useState(false);
@@ -55,12 +57,12 @@ export default function FreshSignupBanner() {
   if (!show || dismissed) return null;
 
   const heading = firstName
-    ? `Welcome, ${firstName}! 🎉`
-    : 'Welcome to GasCap! 🎉';
+    ? t.freshSignupBanner.headingNamed(firstName)
+    : t.freshSignupBanner.headingGeneric;
 
   const body = emailVerified
-    ? "You're all set — enter your vehicle below to run your first calculation."
-    : "You're signed up! Check your inbox to verify, then use the calculator below.";
+    ? t.freshSignupBanner.bodyVerified
+    : t.freshSignupBanner.bodyUnverified;
 
   return (
     <div
@@ -91,7 +93,7 @@ export default function FreshSignupBanner() {
           {/* Down-arrow CTA */}
           <div className="flex items-center gap-1 mt-2">
             <span className="text-white/60 text-[11px] font-semibold tracking-wide uppercase">
-              Start calculating
+              {t.freshSignupBanner.startCalculating}
             </span>
             <svg viewBox="0 0 12 12" className="w-3 h-3 text-white/60 mt-px"
                  fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"
@@ -105,7 +107,7 @@ export default function FreshSignupBanner() {
       {/* Dismiss button */}
       <button
         onClick={() => setDismissed(true)}
-        aria-label="Dismiss welcome banner"
+        aria-label={t.freshSignupBanner.dismissAriaLabel}
         className="absolute top-3 right-3 text-white/35 hover:text-white/75
                    transition-colors p-1 rounded-full"
       >
