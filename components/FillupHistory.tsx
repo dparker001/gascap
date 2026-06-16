@@ -177,7 +177,7 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
   // cost of ALL fill-ups (including those with no odometer) by the miles spanned
   // by only the odometer fill-ups, and ignored vehicle grouping — so it was
   // inflated, and nonsensical for anyone with more than one vehicle.
-  function calcCostPerMile(fillups: Fillup[]): number | null {
+  function calcCostPerMile(fillups: Fillup[]): { value: number; miles: number } | null {
     const byVehicle: Record<string, Fillup[]> = {};
     for (const f of fillups) {
       const key = f.vehicleId ?? f.vehicleName;
@@ -200,7 +200,7 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
     }
 
     if (totalMiles < 1) return null;
-    return totalCost / totalMiles;
+    return { value: totalCost / totalMiles, miles: totalMiles };
   }
 
   const load = useCallback(async () => {
@@ -452,20 +452,36 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
                   </div>
                 )}
 
-                {/* Cost per mile — shown when odometer data available */}
-                {costPerMile !== null && (
-                  <div className="bg-white rounded-xl border border-slate-100 px-4 py-3 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2.5">
-                      <span className="text-base" aria-hidden="true">🛣️</span>
-                      <div>
-                        <p className="text-xs font-bold text-slate-700">Cost per mile</p>
-                        <p className="text-[10px] text-slate-400">Based on odometer readings</p>
+                {/* Cost per mile — populated once 2+ odometer readings exist on a
+                    vehicle; otherwise an educational prompt so it never just vanishes. */}
+                {costPerMile !== null ? (
+                  <div className="bg-white rounded-xl border border-slate-100 px-4 py-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-base" aria-hidden="true">🛣️</span>
+                        <div>
+                          <p className="text-xs font-bold text-slate-700">Cost per mile</p>
+                          <p className="text-[10px] text-slate-400">What fuel costs you for every mile you drive</p>
+                        </div>
                       </div>
+                      <p className="text-lg font-black text-navy-700 flex-shrink-0">
+                        ${costPerMile.value.toFixed(3)}
+                        <span className="text-[10px] font-semibold text-slate-400 ml-0.5">/mi</span>
+                      </p>
                     </div>
-                    <p className="text-lg font-black text-navy-700 flex-shrink-0">
-                      ${costPerMile.toFixed(3)}
-                      <span className="text-[10px] font-semibold text-slate-400 ml-0.5">/mi</span>
+                    <p className="text-[10px] text-slate-400 leading-relaxed mt-2 pt-2 border-t border-slate-50">
+                      Measured across {Math.round(costPerMile.miles).toLocaleString('en-US')} miles between your odometer readings. Add an odometer to every fill-up for the most accurate figure.
                     </p>
+                  </div>
+                ) : (
+                  <div className="bg-slate-50 rounded-xl border border-dashed border-slate-200 px-4 py-3 flex items-start gap-3">
+                    <span className="text-base flex-shrink-0 opacity-60" aria-hidden="true">🛣️</span>
+                    <div>
+                      <p className="text-xs font-bold text-slate-500">Cost per mile</p>
+                      <p className="text-[10px] text-slate-400 leading-relaxed mt-0.5">
+                        Add an odometer reading to at least two fill-ups and GasCap will show exactly what each mile of driving costs you in fuel.
+                      </p>
+                    </div>
                   </div>
                 )}
               </>

@@ -127,6 +127,10 @@ const SECTIONS = [
         a: 'MPG is calculated automatically from consecutive fill-ups that both include odometer readings, using the formula: miles driven ÷ gallons pumped. You\'ll need at least two fill-ups with odometer readings to see MPG data.',
       },
       {
+        q: 'What is "cost per mile" and how is it calculated?',
+        a: 'Cost per mile tells you what every mile of driving actually costs you in fuel — for example, $0.14/mi. GasCap calculates it the same way it calculates MPG: it looks at the distance between your odometer readings on consecutive fill-ups and divides the fuel cost over that distance by the miles you drove. Like MPG, it needs at least two fill-ups with odometer readings on the same vehicle, and it gets more accurate the more fill-ups you log with an odometer reading. If you don\'t see a number yet, just add an odometer reading to your next couple of fill-ups.',
+      },
+      {
         q: 'How do I filter or browse my fill-up history?',
         a: 'Fill-ups are grouped by month. Use the filter bar at the top to narrow by vehicle, date range, or specific month. Fleet users get an additional driver filter. Tap any entry to see its full details or delete it.',
       },
