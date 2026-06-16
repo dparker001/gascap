@@ -71,11 +71,14 @@ export async function GET(req: Request) {
 
   const users = allUsers.map((u, idx) => {
     // Find users this person referred
-    const referredUsers = u.referralCode
-      ? allUsers
-          .filter((r) => r.referredBy?.toUpperCase() === u.referralCode?.toUpperCase())
-          .map((r) => ({ name: r.name, email: r.email, joinedAt: r.createdAt }))
+    const referredRaw = u.referralCode
+      ? allUsers.filter((r) => r.referredBy?.toUpperCase() === u.referralCode?.toUpperCase())
       : [];
+    const referredUsers = referredRaw.map((r) => ({
+      name: r.name, email: r.email, joinedAt: r.createdAt, emailVerified: r.emailVerified,
+    }));
+    // Verified sign-ups only — the metric the vNetCard cross-promo rewards (5/10).
+    const verifiedReferralCount = referredRaw.filter((r) => r.emailVerified).length;
 
     const fillups     = fillupsByUser[idx];
     const fillupCount = fillups.length;
@@ -95,6 +98,7 @@ export async function GET(req: Request) {
       referredBy:       u.referredBy    ?? null,
       referredByName:   u.referredBy ? (codeToName.get(u.referredBy.toUpperCase()) ?? u.referredBy) : null,
       referredUsers,
+      verifiedReferralCount,
       stripeCustomerId: u.stripeCustomerId ?? null,
       stripeInterval:   u.stripeInterval  ?? null,
       isProTrial:       u.isProTrial      ?? false,

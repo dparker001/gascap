@@ -36,7 +36,8 @@ interface AdminUser {
   referralCode:     string | null;
   referredBy:       string | null;
   referredByName:   string | null;
-  referredUsers:    { name: string; email: string; joinedAt: string }[];
+  referredUsers:    { name: string; email: string; joinedAt: string; emailVerified?: boolean }[];
+  verifiedReferralCount?: number;
   stripeCustomerId: string | null;
   stripeInterval:   string | null;
   isProTrial:       boolean;
@@ -2025,6 +2026,14 @@ export default function AdminPage() {
                     <p className="text-[10px] text-slate-600">
                       Joined {new Date(u.createdAt).toLocaleDateString()} ·{' '}
                       {u.referralCount} referral{u.referralCount !== 1 ? 's' : ''}
+                      {typeof u.verifiedReferralCount === 'number' && u.referredUsers.length > 0 && (
+                        <span> · <span className="font-semibold text-slate-700">{u.verifiedReferralCount} verified</span></span>
+                      )}
+                      {typeof u.verifiedReferralCount === 'number' && u.verifiedReferralCount >= 5 && (
+                        <span className="ml-1 text-[9px] font-black bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full">
+                          vNet promo: {u.verifiedReferralCount >= 10 ? '2 free mo' : '1 free mo'} ✓
+                        </span>
+                      )}
                       {u.stripeCustomerId && ' · Stripe ✓'}
                       {u.referredByName && (
                         <span className="text-green-600"> · Referred by {u.referredByName}</span>
@@ -2079,6 +2088,9 @@ export default function AdminPage() {
                         <div className="mt-1 space-y-0.5 pl-2 border-l-2 border-amber-200">
                           {u.referredUsers.map((r) => (
                             <p key={r.email} className="text-[10px] text-slate-600">
+                              <span title={r.emailVerified ? 'Verified — counts toward the vNetCard promo' : 'Unverified — does not count yet'}>
+                                {r.emailVerified ? '✅' : '⬜'}
+                              </span>{' '}
                               {r.name} · {r.email} · {new Date(r.joinedAt).toLocaleDateString()}
                             </p>
                           ))}
