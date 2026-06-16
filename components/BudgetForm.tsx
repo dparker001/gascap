@@ -302,8 +302,10 @@ export default function BudgetForm({ activeTab, setActiveTab }: Props) {
       ══════════════════════════════════════════════════════════════ */}
       <StepLabel n={3} title={t.calc.step3} />
 
-      {/* Goal type tab switcher */}
-      <div className="flex gap-2 mb-4">
+      {/* Tabs + budget inputs share one card — single container like the other steps */}
+      <div id="bgt-step3" className="card">
+        {/* Goal type tab switcher */}
+        <div className="flex gap-2 mb-4">
         {GOAL_TABS.map((tab) => {
           const isActive = activeTab === tab.id;
           return (
@@ -332,8 +334,7 @@ export default function BudgetForm({ activeTab, setActiveTab }: Props) {
         })}
       </div>
 
-      {/* Budget inputs */}
-      <div id="bgt-step3" className="card">
+        {/* Budget inputs */}
         <p className="field-label">{t.calc.yourBudget}</p>
         <div className="flex gap-2 mb-3 overflow-x-auto pb-0.5">
           {SHORTCUTS.map((amt) => {

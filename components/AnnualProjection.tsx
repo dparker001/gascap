@@ -76,8 +76,9 @@ export default function AnnualProjection() {
   const weekly  = projection / 52;
 
   return (
-    <div className="rounded-2xl bg-[#1E2D4A] overflow-hidden shadow-sm">
-      <div className="px-4 pt-3.5 pb-3">
+    <section className="px-4 lg:px-0 pb-3 max-w-lg lg:max-w-none mx-auto w-full">
+      <div className="rounded-2xl bg-[#1E2D4A] overflow-hidden shadow-sm">
+        <div className="px-4 pt-3.5 pb-3">
         {/* Header */}
         <div className="flex items-center gap-2 mb-3">
           <span className="text-base" aria-hidden="true">📅</span>
@@ -113,6 +114,7 @@ export default function AnnualProjection() {
           Projection extrapolated from your fill-up pace. Log consistently for accuracy.
         </p>
       </div>
-    </div>
+      </div>
+    </section>
   );
 }

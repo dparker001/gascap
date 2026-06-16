@@ -388,30 +388,30 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
   ];
 
   return (
-    <div className="mt-6">
-      {/* ── Header toggle ──────────────────────────────────────────────────── */}
+    <div className="mt-6 rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+      {/* ── Blue header bar — the whole section reads as one panel ──────────── */}
       <button
         onClick={() => { setOpen((v) => !v); if (!open && !data) load(); }}
-        className="w-full flex items-center justify-between py-3 px-4 bg-white rounded-2xl
-                   border border-slate-100 shadow-sm hover:border-amber-200 transition-colors"
+        className="w-full flex items-center justify-between py-3 px-4 bg-navy-700
+                   hover:opacity-95 transition-opacity text-left"
       >
         <div className="flex items-center gap-2.5">
           <span className="text-lg">📋</span>
           <div className="text-left">
-            <p className="text-sm font-black text-slate-700">Fill-Up History</p>
+            <p className="text-sm font-black text-white">Fill-Up History</p>
             {stats && stats.count > 0 && (
-              <p className="text-[10px] text-slate-400">
+              <p className="text-[10px] text-white/60">
                 {stats.count} fill-up{stats.count !== 1 ? 's' : ''} · ${stats.totalSpent.toFixed(2)} total spent
               </p>
             )}
             {/* Only show "none" after data has loaded and count is truly 0 */}
             {stats && stats.count === 0 && (
-              <p className="text-[10px] text-slate-400">No fill-ups logged yet</p>
+              <p className="text-[10px] text-white/60">No fill-ups logged yet</p>
             )}
           </div>
         </div>
         <svg
-          className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+          className={`w-4 h-4 text-white/70 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
           viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
           aria-hidden="true"
         >
@@ -420,7 +420,7 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
       </button>
 
       {open && (
-        <div className="mt-2 space-y-3">
+        <div className="bg-white p-3 space-y-3">
 
           {/* ── All-time stats bar ───────────────────────────────────────── */}
           {stats && stats.count > 0 && (() => {
@@ -437,17 +437,17 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
                   />
                 </div>
 
-                {/* Annual projection — shown once we have 3+ fillups */}
+                {/* Annual projection — neutral card (the blue lives on the panel header) */}
                 {annualProjection !== null && (
-                  <div className="bg-navy-700 rounded-xl px-4 py-3 flex items-center gap-3">
+                  <div className="bg-white rounded-xl border border-slate-100 px-4 py-3 flex items-center gap-3">
                     <span className="text-xl flex-shrink-0" aria-hidden="true">📅</span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[10px] font-bold text-white/50 uppercase tracking-wide">Annual Fuel Cost Projection</p>
-                      <p className="text-xl font-black text-amber-400 leading-tight">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Annual Fuel Cost Projection</p>
+                      <p className="text-xl font-black text-amber-600 leading-tight">
                         ${Math.round(annualProjection).toLocaleString('en-US')}
-                        <span className="text-xs font-semibold text-white/40 ml-1">/year</span>
+                        <span className="text-xs font-semibold text-slate-400 ml-1">/year</span>
                       </p>
-                      <p className="text-[10px] text-white/40 mt-0.5">Based on your last {stats.count} fill-ups</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">Based on your last {stats.count} fill-ups</p>
                     </div>
                   </div>
                 )}
