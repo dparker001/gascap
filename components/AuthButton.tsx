@@ -60,6 +60,28 @@ export default function AuthButton() {
     return () => window.removeEventListener('storage', handler);
   }, []);
 
+  // Authoritative refresh: localStorage is only a cache and can be empty/evicted
+  // (fresh install, new device, or the native WKWebView clearing storage). When
+  // signed in, pull the avatar from the server (source of truth) and re-cache it
+  // so it always shows on the main window — no "open Settings and come back" needed.
+  useEffect(() => {
+    if (status !== 'authenticated') return;
+    let cancelled = false;
+    fetch('/api/user/profile')
+      .then((r) => (r.ok ? r.json() as Promise<{ avatarUrl?: string }> : Promise.reject()))
+      .then((d) => {
+        if (cancelled) return;
+        const url = d.avatarUrl ?? '';
+        setAvatarPhoto(url);
+        try {
+          if (url) localStorage.setItem(AVATAR_URL_KEY, url);
+          else     localStorage.removeItem(AVATAR_URL_KEY);
+        } catch { /* storage blocked — in-memory state still updates */ }
+      })
+      .catch(() => { /* keep whatever the cache gave us */ });
+    return () => { cancelled = true; };
+  }, [status]);
+
   if (status === 'loading') {
     return <div className="w-20 h-8 rounded-xl bg-white/20 animate-pulse" />;
   }
