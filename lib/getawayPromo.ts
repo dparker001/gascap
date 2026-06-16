@@ -29,8 +29,9 @@
 const GETAWAY_ACTIVE = true;
 
 // Optional hard deadline (ISO date) for urgency — null = no deadline / standing.
-// Active THROUGH June 30, 2026 (EDT); auto-pauses July 1.
-const GETAWAY_END_DATE: string | null = '2026-06-30T23:59:59-04:00';
+// Standing offer (no expiry) per Don — the getaway is always on with Lifetime.
+// (Set an ISO date here anytime to create a countdown for a specific push.)
+const GETAWAY_END_DATE: string | null = null;
 
 /**
  * Honest disclosure facts (sourced from the Marketing Boost / RedeemVacations
