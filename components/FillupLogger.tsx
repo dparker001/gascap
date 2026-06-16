@@ -76,6 +76,9 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
   const [odomIsEst,      setOdomIsEst]      = useState(false);
   const [stationName,    setStationName]    = useState('');
   const [recentStations, setRecentStations] = useState<string[]>([]);
+  const [nearbyStations, setNearbyStations] = useState<string[]>([]);
+  const [detecting,      setDetecting]      = useState(false);
+  const [detectMsg,      setDetectMsg]      = useState('');
   const [notes,          setNotes]          = useState('');
   const [driverLabel,    setDriverLabel]    = useState('');
   const [fuelGrade,      setFuelGrade]      = useState<FuelGrade>('');
@@ -210,6 +213,50 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
       setScanError(t.fillup.networkError);
     } finally {
       setScanning(false);
+    }
+  }
+
+  // Detect the gas station you're standing at via geolocation → nearby search.
+  // Precise GPS is used transiently and rounded to ~110 m before it leaves the
+  // device; only the station NAME ever gets stored on the fill-up.
+  async function detectStation() {
+    setDetecting(true);
+    setDetectMsg('');
+    let coords: GeolocationCoordinates;
+    try {
+      coords = await new Promise<GeolocationCoordinates>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => resolve(pos.coords),
+          (err) => reject(err),
+          { timeout: 10000, maximumAge: 60_000 },
+        );
+      });
+    } catch {
+      setDetecting(false);
+      setDetectMsg(t.fillup.detectDenied);
+      return;
+    }
+
+    // Round to 3 decimals (~110 m) — precise enough to find the right station,
+    // never pinpoint, and we never persist the coordinates.
+    const lat = Math.round(coords.latitude  * 1000) / 1000;
+    const lng = Math.round(coords.longitude * 1000) / 1000;
+
+    try {
+      const res  = await fetch(`/api/fillups/nearby-stations?lat=${lat}&lng=${lng}`);
+      const data = await res.json() as { available?: boolean; stations?: { name: string }[] };
+      const names = Array.from(new Set((data.stations ?? []).map((s) => s.name))).slice(0, 5);
+      if (names.length === 0) {
+        setDetectMsg(data.available === false ? t.fillup.detectUnavailable : t.fillup.detectNone);
+      } else {
+        setNearbyStations(names);
+        // Auto-fill the closest if the field is still empty — one less tap.
+        setStationName((prev) => prev.trim() ? prev : names[0]);
+      }
+    } catch {
+      setDetectMsg(t.fillup.detectNone);
+    } finally {
+      setDetecting(false);
     }
   }
 
@@ -561,22 +608,59 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
 
       {/* Gas Station */}
       <div>
-        <label className="field-label">{t.fillup.gasStationLabel} <span className="text-slate-400 font-normal">{t.fillup.optional}</span></label>
+        <div className="flex items-center justify-between gap-2">
+          <label className="field-label mb-0">{t.fillup.gasStationLabel} <span className="text-slate-400 font-normal">{t.fillup.optional}</span></label>
+          <button
+            type="button"
+            onClick={detectStation}
+            disabled={detecting || saving}
+            className="flex items-center gap-1 text-[11px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2.5 py-1 hover:bg-amber-100 hover:border-amber-300 transition-colors disabled:opacity-50"
+          >
+            <span aria-hidden="true">{detecting ? '🔄' : '📍'}</span>
+            <span>{detecting ? t.fillup.detecting : t.fillup.detectStation}</span>
+          </button>
+        </div>
         <input
           id="station-input"
           type="text"
           list="station-suggestions"
-          className="input-field text-sm"
+          className="input-field text-sm mt-1"
           placeholder={t.fillup.gasStationPlaceholder}
           value={stationName}
           maxLength={60}
           onChange={(e) => setStationName(e.target.value)}
         />
         <datalist id="station-suggestions">
-          {recentStations.map((s) => (
+          {[...nearbyStations, ...recentStations].map((s) => (
             <option key={s} value={s} />
           ))}
         </datalist>
+        {detectMsg && (
+          <p className="text-[10px] text-slate-400 mt-1 px-0.5">{detectMsg}</p>
+        )}
+        {/* Nearby stations from GPS — tap to select */}
+        {nearbyStations.length > 0 && (
+          <div className="mt-1.5">
+            <p className="text-[9px] font-bold text-amber-600 uppercase tracking-wide mb-1">📍 {t.fillup.nearbyStations}</p>
+            <div className="flex flex-wrap gap-1.5">
+              {nearbyStations.map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setStationName((prev) => prev === s ? '' : s)}
+                  className={[
+                    'text-[10px] font-semibold px-2.5 py-1 rounded-full border transition-colors',
+                    stationName === s
+                      ? 'bg-amber-500 text-white border-amber-500'
+                      : 'bg-white text-slate-500 border-slate-200 hover:border-amber-300 hover:text-amber-700',
+                  ].join(' ')}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         {/* Quick-select chips — top 3 recent stations */}
         {recentStations.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mt-1.5">
