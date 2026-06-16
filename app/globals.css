@@ -156,6 +156,21 @@ input[type='number'] { -moz-appearance: textfield; }
 .animate-fade-in { animation: fadeIn 0.2s ease both; }
 .animate-pulse-once { animation: pulseOnce 0.5s ease; }
 
+/* ── Native splash intro (SplashIntro.tsx) ─────────────────────────── */
+@keyframes gcSplashLogo {
+  0%   { opacity: 0; transform: scale(0.86); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes gcSplashTag {
+  0%, 35% { opacity: 0; transform: translateY(6px); }
+  100%    { opacity: 1; transform: translateY(0); }
+}
+.gc-splash-logo { animation: gcSplashLogo 0.7s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.gc-splash-tag  { animation: gcSplashTag 1.1s ease-out both; }
+@media (prefers-reduced-motion: reduce) {
+  .gc-splash-logo, .gc-splash-tag { animation: fadeIn 0.4s ease both; }
+}
+
 /* ── Gauge fill bar (result cards) ─────────────────────────────────── */
 .gauge-fill { transition: width 0.7s cubic-bezier(0.4, 0, 0.2, 1); }
 

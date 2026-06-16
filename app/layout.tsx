@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import Script                from 'next/script';
 import AuthProvider          from '@/components/AuthProvider';
+import SplashIntro           from '@/components/SplashIntro';
 import DailyBonus            from '@/components/DailyBonus';
 import GHLChatWidget         from '@/components/GHLChatWidget';
 import GoogleAnalytics       from '@/components/GoogleAnalytics';
@@ -81,6 +82,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body>
+        {/* Animated brand splash — native apps only (no-op on web) */}
+        <SplashIntro />
         {/* ── Meta Pixel ───────────────────────────────────────────────────── */}
         <Script
           id="meta-pixel"

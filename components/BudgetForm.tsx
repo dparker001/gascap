@@ -304,8 +304,9 @@ export default function BudgetForm({ activeTab, setActiveTab }: Props) {
 
       {/* Tabs + budget inputs share one card — single container like the other steps */}
       <div id="bgt-step3" className="card">
-        {/* Goal type tab switcher */}
-        <div className="flex gap-2 mb-4">
+        {/* Goal type tab switcher — segmented control that sits inside the card
+            (was a white card-in-card, which read as a separate container) */}
+        <div className="flex gap-1 mb-4 bg-slate-100 rounded-xl p-1">
         {GOAL_TABS.map((tab) => {
           const isActive = activeTab === tab.id;
           return (
@@ -315,12 +316,12 @@ export default function BudgetForm({ activeTab, setActiveTab }: Props) {
               role="tab"
               aria-selected={isActive}
               className={[
-                'flex-1 flex flex-col items-center py-3 px-3 rounded-2xl border-2',
+                'flex-1 flex flex-col items-center py-2.5 px-2 rounded-lg',
                 'transition-all duration-200 focus:outline-none focus-visible:ring-2',
-                'focus-visible:ring-amber-400 focus-visible:ring-offset-2',
+                'focus-visible:ring-amber-400',
                 isActive
-                  ? 'bg-white border-amber-500 shadow-card'
-                  : 'bg-white/60 border-transparent hover:bg-white hover:border-slate-200',
+                  ? 'bg-white shadow-sm'
+                  : 'hover:bg-white/60',
               ].join(' ')}
             >
               <span className="text-xl mb-0.5" aria-hidden="true">{tab.emoji}</span>
@@ -328,7 +329,6 @@ export default function BudgetForm({ activeTab, setActiveTab }: Props) {
                 {tab.label}
               </span>
               <span className="text-[10px] text-slate-400 mt-1 leading-none">{tab.sub}</span>
-              {isActive && <span className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1.5" aria-hidden="true" />}
             </button>
           );
         })}
