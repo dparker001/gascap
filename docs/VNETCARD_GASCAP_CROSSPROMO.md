@@ -60,6 +60,99 @@ Thanks for being a vNetCard™ member — we think you'll love what GasCap does 
 
 ---
 
+## EMAIL — v2 (RECOMMENDED: styled HTML, paste into GHL HTML block)
+
+**Subject:** `🎁 Members-only: GasCap Pro for life + a free resort getaway`
+**Preheader:** `vNetCard partnered with GasCap — Pro for life, a free getaway, and earn free vNetCard months.`
+
+```html
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#eef1f7;padding:32px 16px;font-family:system-ui,-apple-system,'Segoe UI',Arial,sans-serif;">
+  <tr><td align="center">
+    <table width="100%" style="max-width:480px;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,.08);">
+      <tr><td style="background:#1e2d4a;padding:20px 32px;text-align:center;">
+        <span style="font-size:16px;font-weight:900;color:#fff;letter-spacing:.5px;">vNetCard&trade; <span style="color:#1EB68F;">&times;</span> GasCap&trade;</span>
+        <div style="margin-top:4px;font-size:11px;color:#94a3b8;">Partner offer &middot; members only</div>
+      </td></tr>
+      <tr><td style="padding:32px;">
+        <p style="margin:0 0 14px;font-size:18px;font-weight:900;color:#1e2d4a;">Hi {{contact.first_name}}, you've got the VIP deal &#127881;</p>
+        <p style="margin:0 0 18px;font-size:15px;line-height:1.6;color:#475569;">Big news for vNetCard&trade; members: <strong>we partnered with GasCap.app</strong> &mdash; the app that ends guessing at the gas pump.</p>
+        <p style="margin:0 0 8px;font-size:14px;line-height:1.6;color:#475569;">Tell GasCap your tank size and fuel level, and it instantly shows exactly how many gallons you need and what you'll pay &mdash; using real local prices. Plus:</p>
+        <ul style="margin:0 0 22px;padding-left:20px;font-size:14px;line-height:1.7;color:#475569;">
+          <li>Live local gas prices</li>
+          <li>Rental Car return mode (skip the refuel fee)</li>
+          <li>MPG &amp; fill-up tracking</li>
+          <li>A monthly gas-card giveaway</li>
+        </ul>
+        <table width="100%" cellpadding="0" cellspacing="0" style="background:#fef3c7;border:2px solid #f59e0b;border-radius:14px;margin:0 0 22px;">
+          <tr><td style="padding:20px 22px;">
+            <p style="margin:0 0 12px;font-size:12px;font-weight:900;color:#92400e;letter-spacing:.5px;text-transform:uppercase;">Your members-only offer</p>
+            <p style="margin:0 0 8px;font-size:15px;color:#1e2d4a;">&#9989; <strong>GasCap Pro &mdash; yours for LIFE</strong>, one-time <strong>$19.99</strong> (no subscription)</p>
+            <p style="margin:0 0 8px;font-size:15px;color:#1e2d4a;">&#127965;&#65039; <strong>A free resort getaway</strong> &mdash; a complimentary hotel stay, just for joining</p>
+            <p style="margin:0;font-size:15px;color:#1e2d4a;">&#127873; <strong>Earn free vNetCard months</strong> &mdash; refer <strong>5 friends &rarr; 1 free month</strong>, <strong>10 &rarr; 2 free months</strong></p>
+          </td></tr>
+        </table>
+        <p style="text-align:center;margin:0 0 22px;">
+          <a href="https://www.gascap.app/upgrade?utm_source=vnetcard&utm_medium=email&utm_campaign=insider" style="display:inline-block;background:#005f4a;color:#fff;font-weight:900;font-size:15px;padding:14px 32px;border-radius:12px;text-decoration:none;">Claim my Lifetime + Getaway &mdash; $19.99 &rarr;</a>
+        </p>
+        <p style="margin:0 0 6px;font-size:13px;font-weight:900;color:#1e2d4a;">3 quick steps:</p>
+        <p style="margin:0 0 18px;font-size:13px;line-height:1.7;color:#475569;">
+          &#9312; Get Lifetime &mdash; <strong>use this same email</strong> so we can credit your free months.<br/>
+          &#9313; Open <strong>Refer &amp; Earn</strong> in GasCap and grab your link.<br/>
+          &#9314; Share it &mdash; every <strong>5 verified sign-ups = 1 free month of vNetCard</strong> (10 = 2).
+        </p>
+        <p style="margin:0;font-size:12px;color:#64748b;">&#128242; Native iOS &amp; Android apps launch soon &mdash; GasCap works in any browser today, and your Pro Lifetime + referrals carry over automatically.</p>
+        <p style="margin:18px 0 0;font-size:14px;color:#475569;">Exclusive to vNetCard members. Thanks for being one. &#128588;<br/>&mdash; The vNetCard&trade; + GasCap&trade; Team</p>
+      </td></tr>
+      <tr><td style="background:#f8fafc;padding:16px 32px;border-top:1px solid #e2e8f0;">
+        <p style="margin:0 0 8px;font-size:10px;line-height:1.5;color:#94a3b8;"><strong>Getaway details:</strong> Hotel stay only &mdash; flights not included. The room rate is complimentary (no timeshare); you cover the nightly taxes &amp; fees (vary by destination) plus your own travel. Must be 21+, live 100+ miles from your destination, and book 30+ days ahead. Your certificate arrives by email within 24 hours of purchase. Full terms at RedeemVacations.com.</p>
+        <p style="margin:0 0 8px;font-size:10px;line-height:1.5;color:#94a3b8;"><strong>Free-month details:</strong> Referrals must be verified GasCap sign-ups (confirmed email). Use the same email on GasCap as your vNetCard account so we can match and credit you. Free vNetCard month(s) are applied to your subscription within a few days of reaching 5 (and 10). One reward set per member.</p>
+        <p style="margin:0;font-size:11px;color:#94a3b8;">GasCap&trade; &middot; Know before you go &middot; <a href="https://gascap.app" style="color:#f59e0b;">gascap.app</a></p>
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
+```
+
+## EMAIL — v2 plain-text fallback (if you'd rather not use HTML)
+
+```
+Subject: 🎁 Members-only: GasCap Pro for life + a free resort getaway
+
+Hi {{contact.first_name}},
+
+Big news for vNetCard™ members: we partnered with GasCap.app — the app that ends guessing at the gas pump.
+
+Tell GasCap your tank size and fuel level, and it instantly shows exactly how many gallons you need and what you'll pay, using real local prices. Plus:
+• Live local gas prices
+• Rental Car return mode (skip the refuel fee)
+• MPG & fill-up tracking
+• A monthly gas-card giveaway
+
+YOUR MEMBERS-ONLY OFFER
+✅ GasCap Pro — yours for LIFE, one-time $19.99 (no subscription)
+🏝️ A free resort getaway — a complimentary hotel stay, just for joining
+🎁 Earn free vNetCard months — refer 5 friends → 1 free month; 10 → 2 free months
+
+Claim it → https://www.gascap.app/upgrade?utm_source=vnetcard&utm_medium=email&utm_campaign=insider
+
+3 QUICK STEPS
+1. Get Lifetime — use this same email so we can credit your free months.
+2. Open "Refer & Earn" in GasCap and grab your link.
+3. Share it — every 5 verified sign-ups = 1 free month of vNetCard (10 = 2).
+
+📲 Native iOS & Android apps launch soon — GasCap works in any browser today, and your Pro Lifetime + referrals carry over automatically.
+
+Exclusive to vNetCard members. Thanks for being one.
+— The vNetCard™ + GasCap™ Team
+
+—
+Getaway details: Hotel stay only — flights not included. The room rate is complimentary (no timeshare); you cover the nightly taxes & fees (vary by destination) plus your own travel. Must be 21+, live 100+ miles from your destination, and book 30+ days ahead. Your certificate arrives by email within 24 hours of purchase. Full terms at RedeemVacations.com.
+
+Free-month details: Referrals must be verified GasCap sign-ups (confirmed email). Use the same email on GasCap as your vNetCard account so we can match and credit you. Free vNetCard month(s) are applied to your subscription within a few days of reaching 5 (and 10). One reward set per member.
+
+GasCap™ · Know before you go · gascap.app
+```
+
 ## SMS TEASER (to vNetCard contacts who opted into marketing SMS)
 
 > vNetCard™ here 👋 Exclusive partner offer just for our members — check your email for GasCap Pro **for life** + a free resort getaway, and a way to earn free months of vNetCard. 📩 Reply STOP to opt out.
