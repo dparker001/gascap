@@ -444,7 +444,7 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
                     <div className="flex-1 min-w-0">
                       <p className="text-[10px] font-bold text-white/50 uppercase tracking-wide">Annual Fuel Cost Projection</p>
                       <p className="text-xl font-black text-amber-400 leading-tight">
-                        ${annualProjection.toFixed(0)}
+                        ${Math.round(annualProjection).toLocaleString('en-US')}
                         <span className="text-xs font-semibold text-white/40 ml-1">/year</span>
                       </p>
                       <p className="text-[10px] text-white/40 mt-0.5">Based on your last {stats.count} fill-ups</p>

@@ -89,7 +89,7 @@ export default function AnnualProjection() {
         {/* Hero number */}
         <div className="flex items-end gap-2 mb-1">
           <p className="text-3xl font-black text-amber-400 leading-none">
-            ${projection.toFixed(0)}
+            ${Math.round(projection).toLocaleString('en-US')}
           </p>
           <p className="text-sm font-semibold text-white/60 pb-0.5">/year</p>
         </div>
@@ -100,11 +100,11 @@ export default function AnnualProjection() {
         {/* Monthly + weekly breakdown pills */}
         <div className="flex gap-2 mt-3">
           <div className="flex-1 rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-center">
-            <p className="text-sm font-black text-white">${monthly.toFixed(0)}</p>
+            <p className="text-sm font-black text-white">${Math.round(monthly).toLocaleString('en-US')}</p>
             <p className="text-[9px] text-white/60 font-semibold uppercase tracking-wide mt-0.5">/ month</p>
           </div>
           <div className="flex-1 rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-center">
-            <p className="text-sm font-black text-white">${weekly.toFixed(0)}</p>
+            <p className="text-sm font-black text-white">${Math.round(weekly).toLocaleString('en-US')}</p>
             <p className="text-[9px] text-white/60 font-semibold uppercase tracking-wide mt-0.5">/ week</p>
           </div>
         </div>
