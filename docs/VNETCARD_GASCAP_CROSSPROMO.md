@@ -67,7 +67,7 @@
 </table>
 ```
 
-## EMAIL — v2 plain-text fallback (if you'd rather not use HTML)
+## EMAIL — plain-text fallback (if you'd rather not use HTML)
 
 ```
 Subject: 🎁 Members-only: GasCap™ Pro for life + a free resort getaway
@@ -115,15 +115,78 @@ GasCap™ · Know before you go · gascap.app
 
 ---
 
+## EMAIL — Annual-customer variant
+
+Annual subscribers get **renewal credit** instead of free months (everything else
+is identical; subject + preheader stay the same). Note the UTM is `insider-annual`
+for separate attribution.
+
+**Full plain-text (annual):**
+
+```
+Subject: 🎁 Members-only: GasCap™ Pro for life + a free resort getaway
+
+Hi {{contact.first_name}},
+
+Big news for vNetCard™ members: we partnered with GasCap™ — the app that ends guessing at the gas pump.
+
+Tell GasCap™ your tank size and fuel level, and it instantly shows exactly how many gallons you need and what you'll pay, using real local prices. Plus:
+• Live local gas prices
+• Rental Car return mode (skip the refuel fee)
+• MPG & fill-up tracking
+• A monthly gas-card giveaway
+
+YOUR MEMBERS-ONLY OFFER
+✅ GasCap™ Pro — yours for LIFE, one-time $19.99 (no subscription)
+🏝️ A free resort getaway — a complimentary hotel stay, just for joining
+🎁 Earn renewal credit — refer 5 friends → $20 off your next renewal; 10 → $40 off
+
+Claim it → https://www.gascap.app/upgrade?utm_source=vnetcard&utm_medium=email&utm_campaign=insider-annual
+
+3 QUICK STEPS
+1. Get Lifetime — use this same email so we can credit your renewal.
+2. Open "Refer & Earn" in GasCap™ and grab your link.
+3. Share it — every 5 verified sign-ups = $20 off your vNetCard™ renewal (10 = $40).
+
+📲 Native iOS & Android apps launch soon — GasCap™ works in any browser today, and your Pro Lifetime + referrals carry over automatically.
+
+Exclusive to vNetCard™ members. Thanks for being one.
+— The vNetCard™ + GasCap™ Team
+
+—
+Getaway details: Hotel stay only — flights not included. The room rate is complimentary (no timeshare); you cover the nightly taxes & fees (vary by destination) plus your own travel. Must be 21+, live 100+ miles from your destination, and book 30+ days ahead. Your certificate arrives by email within 24 hours of purchase. Full terms at RedeemVacations.com.
+
+Credit details: Referrals must be verified GasCap™ sign-ups (confirmed email). Use the same email on GasCap™ as your vNetCard™ account so we can match and credit you. $20 (at 5 referrals) / $40 (at 10) is applied to your next vNetCard™ renewal. One reward set per member.
+
+GasCap™ · Know before you go · gascap.app
+```
+
+**For the styled HTML version:** duplicate the main HTML email and swap just these:
+- Offer reward line (3rd `<p>` in the offer box) →
+  `<p style="margin:0;font-size:15px;color:#1e2d4a;">&#127873; <strong>Earn renewal credit</strong> &mdash; refer <strong>5 friends &rarr; $20 off</strong> your next renewal, <strong>10 &rarr; $40 off</strong></p>`
+- Step ③ →
+  `&#9314; Share it &mdash; every <strong>5 verified sign-ups = $20 off your vNetCard&trade; renewal</strong> (10 = $40).`
+- Footer "Free-month details" → the **Credit details** text above.
+- CTA link `utm_campaign=insider` → `insider-annual`.
+
+**Annual SMS teaser:**
+
+> vNetCard™ here 👋 Exclusive partner offer for our members — check your email for GasCap™ Pro **for life** + a free resort getaway, and a way to earn **renewal credit** on your vNetCard™. 📩 Reply STOP to opt out.
+
+---
+
 ## Tracking + fulfillment SOP
 
-1. **Build the audience** in GHL location `8oiEKtKPU1gvhSH5JF9p`: a smart list of *active, paying monthly* vNetCard subscribers. Send the email campaign; send the SMS teaser only to those opted into marketing SMS.
+1. **Build TWO segments** in GHL location `8oiEKtKPU1gvhSH5JF9p`:
+   - **(a) Active paying MONTHLY** subscribers → send the main email (free months reward).
+   - **(b) Active ANNUAL** subscribers → send the **annual-customer variant** (renewal credit reward).
+   Send the matching SMS teaser only to contacts opted into marketing SMS.
 2. **Attribution:** link carries `utm_source=vnetcard&utm_campaign=insider`. Ask them to sign up for GasCap with their vNetCard email (the matching key).
 3. **Count referrals:** in the GasCap admin panel, look up the member by email → `referredUsers` shows everyone who signed up with their code (with join dates). Count **verified** sign-ups (confirmed email) toward the 5 / 10 thresholds.
    - *Optional improvement:* add a "verified referrals" count to the admin row so this is one glance instead of manual. (Easy to add — ask Claude.)
-4. **Fulfill the free month(s) via Stripe** (Stripe runs vNetCard subscriptions):
-   - Create two coupons once: `VNET-1MO-FREE` (100% off, duration: once) and `VNET-2MO-FREE` (100% off, duration: repeating, 2 months).
-   - When a member hits **5** verified sign-ups → apply `VNET-1MO-FREE` to their vNetCard subscription. At **10** → apply `VNET-2MO-FREE` (or the 1-mo coupon a second time).
+4. **Fulfill via Stripe** (Stripe runs vNetCard subscriptions) — reward depends on the member's plan:
+   - **Monthly customers (free months):** create `VNET-1MO-FREE` (100% off, duration: once) and `VNET-2MO-FREE` (100% off, duration: repeating, 2 months). At **5** verified sign-ups → apply `VNET-1MO-FREE`; at **10** → `VNET-2MO-FREE` (or the 1-mo coupon twice).
+   - **Annual customers (renewal credit):** create `VNET-ANNUAL-20` ($20 off, duration: once) and `VNET-ANNUAL-40` ($40 off, duration: once). At **5** → apply `VNET-ANNUAL-20` to their next renewal invoice; at **10** → `VNET-ANNUAL-40`. (Or add a $20/$40 customer-balance credit.)
 5. **Getaway fulfillment** is already automated-ish ("Option B"): each Lifetime purchase fires an admin notification to issue the Marketing Boost certificate to the buyer's email.
 6. **Cadence:** review qualifiers weekly; credit and notify the member ("🎉 Your free vNetCard month is applied").
 
