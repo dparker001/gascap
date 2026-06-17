@@ -8,71 +8,16 @@ import { getawayPromoActive } from '@/lib/getawayPromo';
 import GetawayDestinationPicker from '@/components/GetawayDestinationPicker';
 
 // ── Per-plan content ────────────────────────────────────────────────────────
+// Plan content (headline/intro/perks) is built from translations inside the
+// component so the success page is fully localized (EN/ES). Colors live here.
 
-// Full Pro feature list — used on the monthly success page
-const PRO_FEATURES = [
-  '🚗  Unlimited saved vehicles',
-  '🔍  VIN photo scan — auto-decode any vehicle',
-  '📊  Fill-up history & MPG tracking',
-  '🧾  Receipt photo scan (AI-powered)',
-  '🔮  Smart Fill-Up Optimizer',
-  '🔔  Gas Price Drop Alerts',
-  '🎁  Monthly gas card giveaway entries',
-  '🤖  AI Fuel Advisor',
-];
+type PlanKey = 'pro-monthly' | 'pro-lifetime' | 'fleet';
 
-// Lifetime Pro section — giveaway entry omitted since 2× version is in exclusives
-const PRO_FEATURES_LIFETIME = [
-  '🚗  Unlimited saved vehicles',
-  '🔍  VIN photo scan — auto-decode any vehicle',
-  '📊  Fill-up history & MPG tracking',
-  '🧾  Receipt photo scan (AI-powered)',
-  '🔮  Smart Fill-Up Optimizer',
-  '🔔  Gas Price Drop Alerts',
-  '🤖  AI Fuel Advisor',
-];
-
-const LIFETIME_EXCLUSIVES = [
-  '⭐  2× giveaway entries every month',
-  '🛡️  Streak Shield — 1 grace day/month',
-  '🏅  Lifetime Member badge',
-];
-
-const PLANS = {
-  'pro-monthly': {
-    headline:   "You're Pro! 🎉",
-    label:      'GasCap™ Pro',
-    color:      'amber',
-    intro:      'Your Pro subscription is active. Here\'s what\'s now unlocked:',
-    perks:      PRO_FEATURES,
-    exclusives: null,
-  },
-  'pro-lifetime': {
-    headline:   "You're a Lifetime Member! 🏅",
-    label:      'GasCap™ Pro Lifetime',
-    color:      'teal',
-    intro:      'One payment. Pro forever. Everything below is now unlocked:',
-    perks:      PRO_FEATURES_LIFETIME,
-    exclusives: LIFETIME_EXCLUSIVES,
-  },
-  'fleet': {
-    headline:   "You're Fleet! 🎉",
-    label:      'GasCap™ Fleet',
-    color:      'blue',
-    intro:      'Your Fleet plan is active. Here\'s what\'s now unlocked:',
-    perks: [
-      '🚗  Unlimited vehicles',
-      '👥  Multi-driver access (up to 10 drivers)',
-      '📊  Fleet cost dashboard',
-      '📄  Annual tax report (PDF)',
-      '📥  Bulk vehicle import',
-      '🎁  Monthly gas card giveaway entries',
-    ],
-    exclusives: null,
-  },
-} as const;
-
-type PlanKey = keyof typeof PLANS;
+const PLAN_COLOR: Record<PlanKey, string> = {
+  'pro-monthly':  'amber',
+  'pro-lifetime': 'teal',
+  'fleet':        'blue',
+};
 
 // ── Color helpers ────────────────────────────────────────────────────────────
 
@@ -155,10 +100,16 @@ function SuccessContent() {
     planKey = 'pro-monthly';
   }
 
-  const plan = PLANS[planKey];
+  // Localized plan content (EN/ES) — built from translations.
+  const PLAN_CONTENT: Record<PlanKey, { headline: string; label: string; intro: string; perks: readonly string[] }> = {
+    'pro-monthly':  { headline: t.upgrade.successProHeadline,      label: t.plan.gascapPro,         intro: t.upgrade.successProIntro,      perks: t.upgrade.successFeatures },
+    'pro-lifetime': { headline: t.upgrade.successLifetimeHeadline, label: t.plan.gascapProLifetime, intro: t.upgrade.successLifetimeIntro, perks: t.upgrade.successFeaturesLifetime },
+    'fleet':        { headline: t.upgrade.successFleetHeadline,    label: t.plan.gascapFleet,       intro: t.upgrade.successFleetIntro,    perks: t.upgrade.successFleetFeatures },
+  };
+  const plan  = { ...PLAN_CONTENT[planKey], color: PLAN_COLOR[planKey] };
 
-  // Localized Lifetime exclusives (module-level PLANS can't access `t`)
-  const exclusives = plan.exclusives
+  // Localized Lifetime exclusives
+  const exclusives = planKey === 'pro-lifetime'
     ? [
         `⭐  ${t.pricing.exTwoXEntries}`,
         `🛡️  ${t.pricing.exStreakShield}`,
