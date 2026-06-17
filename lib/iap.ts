@@ -20,7 +20,11 @@
 
 import { detectNativePlatform } from '@/hooks/useIsNative';
 
-const IOS_KEY    = process.env.NEXT_PUBLIC_REVENUECAT_IOS_KEY;
+// RevenueCat Apple PUBLIC SDK key. This is a *public* key by design — RevenueCat
+// ships it in the client app bundle — so a hardcoded fallback is safe and removes
+// the build-time-inlining fragility of NEXT_PUBLIC_ vars. The env var still wins
+// if set (e.g. to rotate the key without a code change).
+const IOS_KEY = process.env.NEXT_PUBLIC_REVENUECAT_IOS_KEY || 'appl_jRoKILykVultnvdDRVsQcNxummv';
 
 const PRODUCT_IDS = {
   monthly:  'gascap_pro_monthly',
