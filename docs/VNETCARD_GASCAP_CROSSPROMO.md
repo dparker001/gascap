@@ -112,11 +112,40 @@ Free-month details: Referrals must be verified GasCap™ sign-ups (confirmed ema
 GasCap™ · Know before you go · gascap.app
 ```
 
-## SMS TEASER (to vNetCard contacts who opted into marketing SMS)
+## SMS (to vNetCard contacts who opted into marketing SMS)
 
-> vNetCard™ here 👋 Exclusive partner offer just for our members — check your email for GasCap™ Pro **for life** + a free resort getaway, and a way to earn free months of vNetCard™. 📩 Reply STOP to opt out.
+Send URLs via **GHL trigger links** (tracked, branded, carrier-compliant — never a
+public shortener like bit.ly). Build each SMS as a **GHL Snippet** that embeds the
+trigger link, then insert the snippet in the workflow's Send-SMS action.
 
-(No GasCap links/content in the SMS — keeps it clean for carrier filtering; the offer lives in the email.)
+**Trigger links to create** (Marketing → Trigger Links; create in the location you send from):
+
+| Name | Destination URL |
+|---|---|
+| GasCap Insider — Monthly | `https://www.gascap.app/upgrade?utm_source=vnetcard&utm_medium=sms&utm_campaign=insider` |
+| GasCap Insider — Annual  | `https://www.gascap.app/upgrade?utm_source=vnetcard&utm_medium=sms&utm_campaign=insider-annual` |
+
+**MONTHLY SMS snippet** (insert the "GasCap Insider — Monthly" trigger link where marked):
+
+> vNetCard™ partner perk 👋 Get GasCap™ Pro for LIFE + a free resort getaway for $19.99 — and earn FREE vNetCard™ months when you refer. Claim 👉 [Monthly trigger link]
+>
+> Reply STOP to opt out.
+
+**ANNUAL SMS snippet** (insert the "GasCap Insider — Annual" trigger link):
+
+> vNetCard™ partner perk 👋 Get GasCap™ Pro for LIFE + a free resort getaway for $19.99 — and earn vNetCard™ RENEWAL CREDIT when you refer. Claim 👉 [Annual trigger link]
+>
+> Reply STOP to opt out.
+
+**No-emoji lean versions** (emojis force Unicode/UCS-2 encoding = 70 chars/segment vs 160 GSM, so they cost more segments — use these to minimize cost):
+
+> Monthly: `vNetCard partner perk: Get GasCap Pro for LIFE + a free resort getaway for $19.99 — and earn FREE vNetCard months when you refer. Claim: [Monthly trigger link] Reply STOP to opt out.`
+
+> Annual: `vNetCard partner perk: Get GasCap Pro for LIFE + a free resort getaway for $19.99 — and earn vNetCard renewal credit when you refer. Claim: [Annual trigger link] Reply STOP to opt out.`
+
+**Compliance:** "Reply STOP to opt out" is included; ensure the opt-in page carries the
+"Msg & data rates may apply" + Privacy/Terms disclosure. Only send to contacts opted
+into marketing SMS (GHL skips DND/opt-outs automatically).
 
 ---
 
@@ -220,9 +249,7 @@ GasCap™ · Know before you go · gascap.app
 </table>
 ```
 
-**Annual SMS teaser:**
-
-> vNetCard™ here 👋 Exclusive partner offer for our members — check your email for GasCap™ Pro **for life** + a free resort getaway, and a way to earn **renewal credit** on your vNetCard™. 📩 Reply STOP to opt out.
+**Annual SMS:** use the **ANNUAL SMS snippet** (with the "GasCap Insider — Annual" trigger link) from the SMS section above.
 
 ---
 
@@ -259,18 +286,21 @@ Paste this into Workflow AI (run it once for MONTHLY, once for ANNUAL with the s
 > Add these actions in order:
 > 1. **Send Email** — create a new email named "Initial offer" (I'll paste my own subject and HTML body afterward).
 > 2. **Wait 10 minutes.**
-> 3. **Send SMS** with this exact message: `vNetCard™ here 👋 Exclusive partner offer just for our members — check your email for GasCap™ Pro for life + a free resort getaway, and a way to earn free months of vNetCard™. Reply STOP to opt out.`
+> 3. **Send SMS** — insert the **"GasCap Insider SMS · Monthly"** snippet (contains the "GasCap Insider — Monthly" trigger link; see the SMS section above).
 > 4. **Wait 3 days.**
-> 5. **If/Else** — condition: the contact **did NOT click a link in the "Initial offer" email**.
+> 5. **If/Else** — condition: the contact **did NOT click the "GasCap Insider — Monthly" trigger link** (and did NOT click a link in the "Initial offer" email).
 >    - **"Did NOT click" branch → Send Email** (the 3-day reminder — I'll paste it).
 >    - **"Clicked" branch → no action** (they already engaged).
 >
 > In workflow settings: turn **Re-Entry OFF** (one send per contact) and **respect DND / unsubscribe**. End the workflow after the reminder branch.
+>
+> Note: keying the non-clicker branch off the **trigger-link click** (not just email opens/clicks) is more accurate — it catches people who converted from the SMS link too, so they don't get a redundant reminder.
 
 **For the ANNUAL workflow**, paste the same prompt but change:
 - Name → **"vNetCard Insider — Annual"**
 - Trigger tag → **`vnetcard-insider-annual`**
-- SMS message → `vNetCard™ here 👋 Exclusive partner offer for our members — check your email for GasCap™ Pro for life + a free resort getaway, and a way to earn renewal credit on your vNetCard™. Reply STOP to opt out.`
+- SMS → insert the **"GasCap Insider SMS · Annual"** snippet ("GasCap Insider — Annual" trigger link)
+- Non-clicker condition → did NOT click the **"GasCap Insider — Annual"** trigger link
 - 3-day reminder email → use the **ANNUAL reminder** (renewal-credit reward) below.
 
 ### Step 3 — Fill in the email content (the part the AI can't do)
