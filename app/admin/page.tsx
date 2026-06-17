@@ -1795,13 +1795,27 @@ export default function AdminPage() {
         <div className="bg-white rounded-2xl shadow-sm p-4 space-y-3">
 
           {/* Search */}
-          <input
-            type="text"
-            placeholder="Search by name or email…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
-          />
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search by name or email…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full border border-slate-200 rounded-xl px-4 py-2.5 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch('')}
+                aria-label="Clear search"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full
+                           flex items-center justify-center text-slate-400 hover:text-slate-600
+                           hover:bg-slate-100 transition-colors"
+              >
+                ✕
+              </button>
+            )}
+          </div>
 
           {/* Plan filter */}
           <div className="space-y-1">
