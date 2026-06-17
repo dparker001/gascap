@@ -39,6 +39,8 @@ import {
 } from '@/lib/giveaway';
 import { sendMail, winnerNotificationEmailHtml, nonWinnerNotificationEmailHtml } from '@/lib/email';
 import { findById } from '@/lib/users';
+import { sendApns, apnsConfigured } from '@/lib/apns';
+import { prisma } from '@/lib/prisma';
 
 /** "YYYY-MM" → "April 2026" */
 function fmtMonth(m: string): string {
@@ -119,6 +121,25 @@ async function fireDrawNotifications(opts: {
         `You must respond within 3 days to claim your prize.`,
       ].join('\n\n'),
     }).catch((err) => console.error('[sweepstakes] winner email failed:', err)),
+
+    // 1b. Native iOS push to the WINNER ONLY (non-winners are never pushed).
+    //     Runs only here, alongside the actual winner email — so it honors the
+    //     hold-and-verify gating (this function only fires when emails are sent).
+    (async () => {
+      if (!apnsConfigured()) return;
+      const wu = await prisma.user.findUnique({
+        where:  { email: winner.email },
+        select: { iosPushToken: true },
+      }).catch(() => null);
+      const iosToken = wu?.iosPushToken;
+      if (iosToken) {
+        await sendApns(
+          iosToken,
+          '🎉 You won!',
+          'Congrats — you won this month’s GasCap™ gas-card giveaway! Check your email to claim your prize.',
+        ).catch(() => {});
+      }
+    })(),
 
     // 2. Non-winner results emails — staggered 200 ms apart to avoid burst limits
     (async () => {
@@ -447,6 +468,25 @@ export async function PUT(req: Request) {
               `You must respond within 3 days to claim your prize.`,
             ].join('\n\n'),
           }).catch((err) => console.error('[sweepstakes/alternate] winner email failed:', err)),
+
+      // 1b. Native iOS push to the WINNER ONLY — only when the winner email is
+      //     actually sent (mirrors the suppress gating; non-winners never pushed).
+      suppressWinnerEmail
+        ? Promise.resolve()
+        : (async () => {
+            if (!apnsConfigured()) return;
+            const wu = await prisma.user.findUnique({
+              where:  { email: result.winner.email },
+              select: { iosPushToken: true },
+            }).catch(() => null);
+            if (wu?.iosPushToken) {
+              await sendApns(
+                wu.iosPushToken,
+                '🎉 You won!',
+                'Congrats — you won this month’s GasCap™ gas-card giveaway! Check your email to claim your prize.',
+              ).catch(() => {});
+            }
+          })(),
 
       // 2. Non-winner emails (skip the forfeited winner too)
       (async () => {

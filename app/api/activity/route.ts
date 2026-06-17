@@ -10,6 +10,7 @@ import { BADGES, evaluateEarned, type BadgeDef } from '@/lib/badges';
 import { getVehiclesForUser }     from '@/lib/savedVehicles';
 import { streakBonusEntries }     from '@/lib/giveaway';
 import { sendMail, streakMilestoneEmailHtml } from '@/lib/email';
+import { sendApns, apnsConfigured } from '@/lib/apns';
 
 // ── GET — current badge state ─────────────────────────────────────────────
 export async function GET(req: Request) {
@@ -80,6 +81,9 @@ export async function POST(req: Request) {
   if (result.newMilestonesHit.length > 0 && !result.emailOptOut && result.userEmail) {
     const milestoneDaysSorted = STREAK_MILESTONES.map((m) => m.days);
     void (async () => {
+      // Native iOS push: fetch the stored token once for direct-APNs sends alongside each email.
+      const userRecord = await findById(userId);
+      const iosToken = (userRecord as { iosPushToken?: string | null } | undefined)?.iosPushToken;
       for (const days of result.newMilestonesHit) {
         try {
           const bonusEntries      = streakBonusEntries(days);
@@ -101,6 +105,10 @@ export async function POST(req: Request) {
             text: `Congrats on your ${dayLabel} streak, ${result.userName}! You now earn +${bonusEntries} bonus draw entries every month you keep the streak alive. Keep going — open GasCap™ daily to protect it. gascap.app`,
           });
           console.log(`[Activity] Milestone email sent → ${result.userEmail} (${days} days)`);
+          // Direct-APNs push to native iOS users (non-blocking, like the email).
+          if (iosToken && apnsConfigured()) {
+            void sendApns(iosToken, `🔥 ${days}-day streak!`, `You hit a ${days}-day GasCap™ streak — keep it going for bonus giveaway entries!`).catch(() => {});
+          }
         } catch (err) {
           console.error(`[Activity] Milestone email failed for ${result.userEmail} (${days} days):`, err);
         }

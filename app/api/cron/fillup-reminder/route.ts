@@ -16,6 +16,7 @@
 import { NextResponse }        from 'next/server';
 import { getAllUsers }          from '@/lib/users';
 import { sendPushNotification } from '@/lib/oneSignal';
+import { sendApns, apnsConfigured } from '@/lib/apns';
 import { prisma }              from '@/lib/prisma';
 
 export async function GET(req: Request) {
@@ -48,19 +49,35 @@ export async function GET(req: Request) {
     // Skip test accounts
     if ((user as { isTestAccount?: boolean }).isTestAccount) { skipped++; continue; }
 
-    // ── Send push notification ──────────────────────────────────────────────
+    // ── Send push notification (OneSignal web + direct-APNs native) ─────────
     const firstName = (user.displayName || user.name || 'there').split(' ')[0];
+    const title = '⛽ Time to fill up?';
+    const body  = `Hey ${firstName} — it's been ${intervalDays} day${intervalDays === 1 ? '' : 's'}. Open GasCap™ to plan your fill-up.`;
+    const iosToken = (user as { iosPushToken?: string | null }).iosPushToken;
     try {
+      let delivered = false;
+
+      // OneSignal (web push)
       const result = await sendPushNotification({
-        title:       '⛽ Time to fill up?',
-        body:        `Hey ${firstName} — it's been ${intervalDays} day${intervalDays === 1 ? '' : 's'}. Open GasCap™ to plan your fill-up.`,
+        title,
+        body,
         url:         '/',
         externalIds: [user.id],
       });
-
-      // Only stamp and count if OneSignal actually accepted the request
       if (result.errors) {
         console.warn(`[FillupReminder] OneSignal skipped for ${user.email}:`, result.errors);
+      } else {
+        delivered = true;
+      }
+
+      // Direct-APNs (native iOS app)
+      if (iosToken && apnsConfigured()) {
+        const r = await sendApns(iosToken, title, body).catch(() => ({ ok: false } as { ok: boolean }));
+        if (r.ok) delivered = true;
+      }
+
+      // Only stamp and count if at least one channel delivered
+      if (!delivered) {
         skipped++;
         continue;
       }

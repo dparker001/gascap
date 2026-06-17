@@ -379,11 +379,19 @@ export default function AdminPage() {
     setPushLoading('user');
     setPushMsg('');
     try {
-      const res  = await fetch(`/api/push/digest?userId=${user.id}`, { headers: { 'x-admin-password': savedPw } });
-      const data = await res.json() as { sent?: number; error?: string };
-      if (data.error) { setPushMsg(`❌ ${data.error}`); }
-      else if ((data.sent ?? 0) === 0) { setPushMsg(`⚠️ ${user.email} has no active push subscription.`); }
-      else { setPushMsg(`✅ Digest sent to ${user.email}.`); }
+      // Use the native-APNs test endpoint (POST + admin-password). The old digest
+      // endpoint was POST/session-only + web-push (OneSignal), so a GET 405'd here.
+      const res  = await fetch('/api/admin/push-test', {
+        method:  'POST',
+        headers: { 'x-admin-password': savedPw, 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ email: user.email }),
+      });
+      const data = await res.json().catch(() => ({})) as { ok?: boolean; error?: string };
+      if (!res.ok || data.error) {
+        setPushMsg(`❌ ${data.error ?? 'No iOS push token for this user — have they opened the app and allowed notifications?'}`);
+      } else {
+        setPushMsg(`✅ Push sent to ${user.email}.`);
+      }
     } catch { setPushMsg('❌ Network error.'); }
     finally { setPushLoading(null); }
   }
