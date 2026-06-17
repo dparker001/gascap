@@ -100,7 +100,8 @@ function UpgradePageInner() {
     if (res.cancelled) return; // user backed out — no error
     setError(res.error === 'unavailable'
       ? t.upgrade.iapUnavailable
-      : t.upgrade.iapFailed);
+      // Surface the underlying reason so store-config issues are diagnosable.
+      : `${t.upgrade.iapFailed}${res.error ? ` (${res.error})` : ''}`);
   }
   async function handleRestore() {
     setError('');
@@ -158,6 +159,13 @@ function UpgradePageInner() {
       <div className="min-h-screen bg-[#eef1f7] flex flex-col">
         <BrandBar />
         <div className="flex-1 px-4 py-10 max-w-md mx-auto w-full">
+          {/* Back to the app — the native screen otherwise has no exit */}
+          <button
+            onClick={() => { if (window.history.length > 1) window.history.back(); else window.location.href = '/'; }}
+            className="mb-3 inline-flex items-center gap-1 text-sm font-semibold text-slate-500 hover:text-navy-700"
+          >
+            <span aria-hidden="true">←</span> {t.upgrade.backToApp}
+          </button>
           <h1 className="text-2xl font-black text-navy-700 text-center">{t.upgrade.iapTitle}</h1>
           <p className="text-sm text-slate-500 text-center mt-1 mb-6">{t.upgrade.iapSub}</p>
 

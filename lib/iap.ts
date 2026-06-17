@@ -103,6 +103,10 @@ export async function purchasePro(which: 'monthly' | 'lifetime'): Promise<Purcha
     const offerings = await rc.Purchases.getOfferings();
     const productId = PRODUCT_IDS[which];
     const pkgs = offerings?.current?.availablePackages ?? [];
+    // No packages means StoreKit returned no purchasable products — usually the
+    // IAP products aren't approved/"Ready to Submit" yet, or the Paid Apps
+    // Agreement just activated and hasn't propagated to sandbox.
+    if (!pkgs.length) return { ok: false, error: 'no-offerings' };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const pkg = pkgs.find((p: any) => p?.product?.identifier === productId) ?? pkgs[0];
     if (!pkg) return { ok: false, error: 'no-package' };
