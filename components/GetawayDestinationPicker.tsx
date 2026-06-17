@@ -47,6 +47,10 @@ export default function GetawayDestinationPicker() {
       if (res.ok && data.ok) {
         try { localStorage.setItem(STORAGE_KEY, selected); } catch { /* ignore */ }
         setChosen(selected);
+      } else if (res.status === 403) {
+        // Account not confirmed Lifetime yet — the IAP grant webhook is still
+        // catching up. Show a friendly retry instead of the raw "included" error.
+        setError(t.pricing.getawayPickerFinalizing);
       } else {
         setError(data.error ?? t.pricing.getawayPickerError);
       }

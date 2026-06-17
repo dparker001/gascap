@@ -47,7 +47,7 @@ function labelColorClass(color: string) {
 function SuccessContent() {
   const params    = useSearchParams();
   const router    = useRouter();
-  const { data: session, update: refreshSession } = useSession();
+  const { update: refreshSession } = useSession();
   const { t } = useTranslation();
   const sessionId = params.get('session_id');
   const tier      = params.get('tier') ?? 'pro';
@@ -163,14 +163,9 @@ function SuccessContent() {
       )}
 
       {/* Getaway promo — Lifetime buyers choose their complimentary getaway.
-          Only show the picker once the account is confirmed Lifetime (the IAP
-          grant webhook is async), otherwise the claim would 403. While we wait,
-          show a note — they also get the choose link by email. */}
-      {billing === 'lifetime' && getawayPromoActive() && (
-        (session?.user as { stripeInterval?: string | null } | undefined)?.stripeInterval === 'lifetime'
-          ? <GetawayDestinationPicker />
-          : <p className="text-xs text-slate-400 leading-relaxed">{t.upgrade.getawayConfirming}</p>
-      )}
+          Always shown for lifetime; the picker handles the brief post-purchase
+          window gracefully (the grant webhook is async) with a retry message. */}
+      {billing === 'lifetime' && getawayPromoActive() && <GetawayDestinationPicker />}
 
       {sessionId && (
         <p className="text-[11px] text-slate-300 font-mono break-all">
