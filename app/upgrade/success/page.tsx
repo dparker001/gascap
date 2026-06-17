@@ -141,7 +141,7 @@ function SuccessContent() {
     // Hard stop: the purchase is already confirmed before we land here, so never
     // leave the user staring at "activating…" — show the Continue button no matter
     // what (e.g. if a session refresh stalls on the native WebView).
-    const hardStop = setTimeout(() => { if (!cancelled) setReady(true); }, 6000);
+    const hardStop = setTimeout(() => { if (!cancelled) setReady(true); }, 4000);
     return () => { cancelled = true; clearTimeout(first); clearTimeout(hardStop); };
   }, [refreshSession, tier]);
 
@@ -262,7 +262,8 @@ function SuccessContent() {
           </div>
           {/* Always allow leaving — never trap the user behind the spinner */}
           <button onClick={() => router.push('/')}
-            className="block w-full text-center text-xs text-slate-400 hover:text-slate-600 underline-offset-2 hover:underline">
+            className="block w-full py-3 rounded-2xl border-2 border-slate-200 text-sm font-bold
+                       text-slate-600 hover:border-slate-300 hover:bg-slate-50 transition-colors">
             {t.upgrade.backToApp}
           </button>
         </div>

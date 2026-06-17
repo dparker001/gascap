@@ -96,7 +96,9 @@ function UpgradePageInner() {
     setError('');
     const res = await purchasePro(which);
     setLoading(null);
-    if (res.ok) { window.location.href = '/upgrade/success'; return; }
+    // Pass the plan so the success page shows the right headline (Lifetime vs Pro)
+    // and the Lifetime getaway picker.
+    if (res.ok) { window.location.href = `/upgrade/success?tier=pro&billing=${which}`; return; }
     if (res.cancelled) return; // user backed out — no error
     setError(res.error === 'unavailable'
       ? t.upgrade.iapUnavailable
