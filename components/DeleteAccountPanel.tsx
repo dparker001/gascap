@@ -32,8 +32,9 @@ export default function DeleteAccountPanel() {
         return;
       }
       setDone(true);
-      // Sign out and return to the home page after a short beat.
-      setTimeout(() => signOut({ callbackUrl: '/?deleted=1' }), 1800);
+      // Keep the confirmation visible long enough to read; user can also tap to
+      // continue. Auto sign-out as a fallback after a few seconds.
+      setTimeout(() => signOut({ callbackUrl: '/?deleted=1' }), 5000);
     } catch {
       setError('Network error — please try again.');
       setBusy(false);
@@ -68,9 +69,17 @@ export default function DeleteAccountPanel() {
       <div className="bg-white rounded-2xl border border-emerald-200 shadow-sm p-6 text-center">
         <p className="text-3xl mb-2" aria-hidden="true">✅</p>
         <h2 className="text-lg font-black text-navy-700 mb-1">Your account has been deleted</h2>
-        <p className="text-sm text-slate-500">
-          Your account and data have been permanently removed. Signing you out…
+        <p className="text-sm text-slate-500 mb-4">
+          Your GasCap™ account and all associated data have been permanently removed.
+          A confirmation email is on its way.
         </p>
+        <button
+          onClick={() => signOut({ callbackUrl: '/?deleted=1' })}
+          className="inline-block py-3 px-6 rounded-2xl font-black text-sm text-white
+                     bg-gradient-to-r from-[#005F4A] to-[#1EB68F] hover:opacity-95 transition-opacity"
+        >
+          Return to GasCap™
+        </button>
       </div>
     );
   }
