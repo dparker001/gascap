@@ -327,6 +327,41 @@ export async function clearStripeCustomerId(userId: string): Promise<void> {
 }
 
 /**
+ * Permanently delete a user's account and all associated personal data
+ * (self-service, App Store 5.1.1). Deletes fill-ups + email logs explicitly
+ * (no cascade), records a DeletedAccountLog snapshot, then deletes the user
+ * (vehicles cascade). Returns a snapshot for the confirmation email, or null
+ * if the account no longer exists.
+ */
+export async function deleteUserAccount(
+  userId: string,
+): Promise<{ name: string; email: string; plan: string } | null> {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) return null;
+  const snapshot = { name: user.name ?? '', email: user.email, plan: user.plan ?? 'free' };
+
+  await prisma.$transaction([
+    prisma.fillup.deleteMany({ where: { userId } }),
+    prisma.emailLog.deleteMany({ where: { userId } }),
+    prisma.deletedAccountLog.create({
+      data: {
+        id:        crypto.randomUUID(),
+        userId,
+        name:      snapshot.name,
+        email:     snapshot.email,
+        plan:      snapshot.plan,
+        deletedAt: new Date().toISOString(),
+        reason:    'user_request',
+        emailSent: false,
+      },
+    }),
+    prisma.user.delete({ where: { id: userId } }), // Vehicle rows cascade
+  ]);
+
+  return snapshot;
+}
+
+/**
  * Clear the stored Stripe subscription ID — used when a recurring subscriber
  * upgrades to Lifetime (one-time payment) and we cancel their old subscription,
  * so the record no longer points at a dead/cancelled sub.

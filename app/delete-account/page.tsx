@@ -1,4 +1,5 @@
 import StaticPageHeader from '@/components/StaticPageHeader';
+import DeleteAccountPanel from '@/components/DeleteAccountPanel';
 
 export const metadata = {
   title: 'Delete Your Account — GasCap™',
@@ -25,32 +26,22 @@ export default function DeleteAccountPage() {
 
           <section>
             <p>
-              You can request deletion of your GasCap™ account and all associated personal
-              data at any time. This page explains how to request it, what is deleted, and how
-              long it takes.
+              You can permanently delete your GasCap™ account and all associated personal data
+              at any time, right here. Deletion is immediate and cannot be undone.
             </p>
           </section>
 
+          {/* Self-service deletion — instant, in-app (App Store 5.1.1) */}
+          <DeleteAccountPanel />
+
           <section>
-            <h2 className="text-lg font-black text-navy-700 mb-2">How to request deletion</h2>
-            <ol className="list-decimal pl-5 space-y-1.5">
-              <li>
-                Email{' '}
-                <a href="mailto:admin@gascap.app?subject=Delete%20my%20account" className="text-amber-600 hover:underline font-semibold">admin@gascap.app</a>{' '}
-                <strong>from the email address on your GasCap™ account</strong>, with the subject
-                line <strong>&ldquo;Delete my account.&rdquo;</strong> (You can also submit a
-                request through our{' '}
-                <a href="/contact" className="text-amber-600 hover:underline">contact form</a>.)
-              </li>
-              <li>We verify that the request comes from the account owner.</li>
-              <li>
-                We permanently delete your account and data, and email you a confirmation when
-                it&rsquo;s complete.
-              </li>
-            </ol>
-            <p className="mt-3">
-              <strong>Timeline:</strong> requests are processed within <strong>30 days</strong>
-              {' '}(usually much sooner).
+            <h2 className="text-lg font-black text-navy-700 mb-2">Prefer to email us?</h2>
+            <p>
+              You can also request deletion by emailing{' '}
+              <a href="mailto:admin@gascap.app?subject=Delete%20my%20account" className="text-amber-600 hover:underline font-semibold">admin@gascap.app</a>{' '}
+              <strong>from the email address on your account</strong> with the subject
+              &ldquo;Delete my account.&rdquo; Emailed requests are processed within{' '}
+              <strong>30 days</strong> (usually much sooner). The fastest way is the button above.
             </p>
           </section>
 
