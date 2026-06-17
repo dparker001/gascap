@@ -18,8 +18,9 @@
  *  - gascap_pro_monthly   → auto-renew sub  → interval 'monthly'
  */
 import { NextResponse } from 'next/server';
-import { setUserPlan, findById, findByEmail } from '@/lib/users';
+import { setUserPlan, findById, findByEmail, enrollPaidCampaign } from '@/lib/users';
 import { sendMail } from '@/lib/email';
+import { sendPaidCampaignEmail } from '@/lib/emailCampaignPaid';
 import { getawayPromoActive, GETAWAY_DISCLOSURE } from '@/lib/getawayPromo';
 
 export const dynamic = 'force-dynamic';
@@ -42,7 +43,7 @@ function sendAdminMail(opts: { subject: string; html: string; text: string }) {
  */
 function maybeSendGetaway(user: { email: string; name?: string | null }, eventType: string) {
   if (!getawayPromoActive()) return;
-  if (eventType !== 'INITIAL_PURCHASE' && eventType !== 'NON_RENEWING_PURCHASE') return;
+  if (!INITIAL_GRANT_EVENTS.has(eventType)) return;
   const baseUrl   = (process.env.NEXTAUTH_URL ?? 'https://www.gascap.app').replace(/\/$/, '');
   const chooseUrl = `${baseUrl}/getaway`;
   const name      = user.name ?? 'there';
@@ -90,7 +91,10 @@ const GRANT_EVENTS = new Set([
   'NON_RENEWING_PURCHASE',   // lifetime (non-consumable)
   'UNCANCELLATION',
   'PRODUCT_CHANGE',
+  'TRANSFER',                // non-consumable restored/transferred to a new app_user_id
 ]);
+// First-time grant events → trigger the welcome email + getaway (once).
+const INITIAL_GRANT_EVENTS = new Set(['INITIAL_PURCHASE', 'NON_RENEWING_PURCHASE', 'TRANSFER']);
 // Events that should REVOKE Pro. (CANCELLATION = auto-renew off but still active →
 // NOT revoked here; access ends at EXPIRATION.)
 const REVOKE_EVENTS = new Set(['EXPIRATION', 'REFUND']);
@@ -150,6 +154,15 @@ export async function POST(req: Request) {
         ev.product_id === LIFETIME_PRODUCT ? 'lifetime' : 'monthly';
       await setUserPlan(user.id, 'pro', { interval });
       console.log(`[revenuecat] ${ev.type} → granted Pro (${interval}) to ${user.email}`);
+      // First grant only (idempotent): welcome email + paid nurture, mirroring the
+      // Stripe path so IAP buyers also get an upgrade-confirmation email.
+      if (INITIAL_GRANT_EVENTS.has(ev.type) && !user.paidCampaignEnrolledAt) {
+        await enrollPaidCampaign(user.id, interval)
+          .catch((e) => console.error('[revenuecat] paid-campaign enroll failed:', e));
+        sendPaidCampaignEmail('P1', {
+          id: user.id, name: user.name, email: user.email, tier: 'pro', interval,
+        }).catch((e) => console.error('[revenuecat] P1 welcome send failed:', e));
+      }
       // Lifetime buyers earn the complimentary getaway during the active promo.
       if (interval === 'lifetime') maybeSendGetaway(user, ev.type);
     } else {

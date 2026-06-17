@@ -368,6 +368,7 @@ const en = {
     plusGetaway:   '+ a free resort getaway',
     whatsIncluded: 'Everything you get with Pro',
     lifetimeAlso:  'Lifetime also includes',
+    getawayConfirming: 'Confirming your purchase… your complimentary getaway picker will appear here in a moment. We\'ve also emailed you the link to choose your destination.',
     // Purchase success page
     successProHeadline:      "You're Pro! 🎉",
     successLifetimeHeadline: "You're a Lifetime Member! 🏅",
@@ -2894,6 +2895,7 @@ const es: typeof en = {
     plusGetaway:   '+ una escapada de resort gratis',
     whatsIncluded: 'Todo lo que incluye Pro',
     lifetimeAlso:  'Lifetime también incluye',
+    getawayConfirming: 'Confirmando tu compra… el selector de tu escapada de cortesía aparecerá aquí en un momento. También te enviamos por correo el enlace para elegir tu destino.',
     // Purchase success page
     successProHeadline:      '¡Ya eres Pro! 🎉',
     successLifetimeHeadline: '¡Eres miembro Lifetime! 🏅',
