@@ -7,7 +7,7 @@ import { setThemePreference, getThemePreference, isDarkMode, type ThemePreferenc
 import { DoorMiniPreview, DOOR_STYLE_LABELS, DOOR_DIRECTION_LABELS } from '@/components/GarageDoor';
 import { useGarageDoorPrefs, type DoorStyle, type DoorDirection } from '@/hooks/useGarageDoorPrefs';
 import { useTranslation } from '@/contexts/LanguageContext';
-import { useIsNative } from '@/hooks/useIsNative';
+import { useIsNative, useNativePlatform } from '@/hooks/useIsNative';
 
 interface ReferralSummary {
   code:            string;
@@ -57,7 +57,9 @@ function Avatar({ name, color }: { name: string; color: string }) {
 export default function SettingsPage() {
   const { data: session, status } = useSession();
   const { t, locale } = useTranslation();
-  const isNative = useIsNative();   // hide in-app billing/checkout in native wrappers
+  const isNative = useIsNative();   // hide web Stripe checkout in native wrappers
+  const platform = useNativePlatform(); // 'ios' → upgrade via Apple IAP (/upgrade)
+  const isIos    = platform === 'ios';
   const intlLocale = locale === 'es' ? 'es-ES' : 'en-US';
   const AVATAR_COLOR_KEY = 'gascap_avatar_color';
   const [avatarColor,    setAvatarColor]    = useState('bg-amber-500');
@@ -920,7 +922,17 @@ export default function SettingsPage() {
               <p className="text-sm text-slate-500">
                 {t.settings.freePlanDesc}
               </p>
-              {isNative ? (
+              {isIos ? (
+                // iOS sells Pro via Apple In-App Purchase — route to the native IAP screen.
+                <Link
+                  href="/upgrade"
+                  className="flex items-center justify-between w-full py-3 px-4 rounded-2xl
+                             bg-amber-500 hover:bg-amber-400 text-white font-bold text-sm transition-colors"
+                >
+                  <span>{t.settings.upgradeToProBtn}</span>
+                  <span>{t.settings.proPriceArrow}</span>
+                </Link>
+              ) : isNative ? (
                 <p className="text-xs text-slate-400 leading-relaxed">
                   Upgrade to GasCap™ Pro on the web at <span className="font-semibold text-slate-500">gascap.app</span>.
                 </p>
@@ -954,7 +966,11 @@ export default function SettingsPage() {
               <p className="text-sm text-slate-500">
                 {t.settings.proDesc}
               </p>
-              {isNative ? (
+              {isIos ? (
+                <p className="text-center text-[11px] text-slate-400">
+                  Manage your subscription in your iPhone Settings → Apple Account → Subscriptions.
+                </p>
+              ) : isNative ? (
                 <p className="text-center text-[11px] text-slate-400">
                   Manage your billing on the web at gascap.app.
                 </p>
@@ -989,7 +1005,11 @@ export default function SettingsPage() {
                 <span>{t.settings.fleetDashboardBtn}</span>
                 <span>{t.settings.fleetDashboardArrow}</span>
               </Link>
-              {isNative ? (
+              {isIos ? (
+                <p className="text-center text-[11px] text-slate-400">
+                  Manage your subscription in your iPhone Settings → Apple Account → Subscriptions.
+                </p>
+              ) : isNative ? (
                 <p className="text-center text-[11px] text-slate-400">
                   Manage your billing on the web at gascap.app.
                 </p>
