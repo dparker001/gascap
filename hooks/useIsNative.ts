@@ -10,6 +10,8 @@
  * native apps the product is a free utility; upgrades happen on the web.
  *
  * Detection signals (any one is sufficient, result persisted for the session):
+ *  - User-Agent marker (GasCapiOS) → baked in via Capacitor appendUserAgent;
+ *                                    most reliable for remote-loaded content
  *  - window.Capacitor            → our iOS shell
  *  - ?native=ios|android in URL  → both wrappers load the site with this marker
  *  - android-app:// referrer     → Android TWA launch
@@ -29,6 +31,17 @@ interface CapacitorGlobal {
 
 export function detectNativePlatform(): NativePlatform | null {
   if (typeof window === 'undefined') return null;
+
+  // 0. Native WebView marker baked into the User-Agent (Capacitor appendUserAgent).
+  //    MOST RELIABLE for remote-loaded content: present on every page/navigation,
+  //    with no dependency on the ?native= query param (lost after navigation),
+  //    localStorage (can be cleared on sign-out), or the @capacitor/core bridge
+  //    (getPlatform() can report 'web' when core is bundled in remote content).
+  try {
+    const ua = navigator.userAgent || '';
+    if (ua.includes('GasCapiOS'))     { persist('ios');     return 'ios'; }
+    if (ua.includes('GasCapAndroid')) { persist('android'); return 'android'; }
+  } catch { /* userAgent unavailable — fall through */ }
 
   // 1. Capacitor (iOS shell) injects a global
   const cap = (window as unknown as { Capacitor?: CapacitorGlobal }).Capacitor;

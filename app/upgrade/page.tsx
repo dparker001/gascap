@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
@@ -8,7 +8,7 @@ import { PRICING } from '@/lib/stripe';
 import { useTranslation } from '@/contexts/LanguageContext';
 import { getawayPromoActive, getawayDaysLeft } from '@/lib/getawayPromo';
 import BrandBar from '@/components/BrandBar';
-import { useIsNative, useNativePlatform } from '@/hooks/useIsNative';
+import { detectNativePlatform } from '@/hooks/useIsNative';
 import { purchasePro, restorePurchases } from '@/lib/iap';
 
 // ── Feature lists are defined inside UpgradePageInner (need t)
@@ -44,8 +44,13 @@ function UpgradePageInner() {
   const searchParams = useSearchParams();
   const coupon = searchParams.get('coupon') ?? undefined;
   const wb     = searchParams.get('wb') === '1'; // win-back $9.99 Lifetime offer
-  const isNative = useIsNative();   // no Stripe checkout inside the native wrappers
-  const platform = useNativePlatform(); // 'ios' → Apple IAP; 'android' → web-managed
+  // Resolve platform once on mount. We render a neutral loader until this is
+  // known, so a native user NEVER sees the web Stripe path even for a frame
+  // (anti-steering: App Store 3.1.1). 'ios' → Apple IAP; 'android'/web → other.
+  const [platform, setPlatform] = useState<'ios' | 'android' | null>(null);
+  const [resolved, setResolved] = useState(false);
+  useEffect(() => { setPlatform(detectNativePlatform()); setResolved(true); }, []);
+  const isNative = platform !== null;
   const [loading, setLoading] = useState<'pro-monthly' | 'pro-lifetime' | null>(null);
   const [error,   setError]   = useState('');
 
@@ -102,6 +107,20 @@ function UpgradePageInner() {
     const res = await restorePurchases();
     if (res.ok) { window.location.href = '/upgrade/success'; return; }
     setError(t.upgrade.iapNoRestore);
+  }
+
+  // Until platform detection resolves, show a neutral loader — this guarantees a
+  // native user never even briefly sees the web Stripe pricing path.
+  if (!resolved) {
+    return (
+      <div className="min-h-screen bg-[#eef1f7] flex flex-col">
+        <BrandBar />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="w-8 h-8 border-2 border-brand-teal border-t-transparent rounded-full animate-spin"
+               role="status" aria-label="Loading" />
+        </div>
+      </div>
+    );
   }
 
   // Android (TWA) has no native billing yet → Pro is managed on the web there.
