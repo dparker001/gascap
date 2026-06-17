@@ -31,13 +31,27 @@ export async function POST() {
     return NextResponse.json({ error: 'Account not found' }, { status: 404 });
   }
 
-  // Best-effort confirmation email (don't block the response on it).
+  // Best-effort confirmation email to the user (don't block the response on it).
   sendMail({
     to:      snapshot.email,
     subject: 'Your GasCap™ account has been deleted',
     html:    accountDeletedEmailHtml(snapshot.name || 'there'),
     text:    `Your GasCap account (${snapshot.email}) and all associated data have been permanently deleted. If this wasn't you, contact admin@gascap.app.`,
   }).catch((e) => console.error('[account/delete] confirmation email failed:', e));
+
+  // Admin notification — heads-up whenever a user self-deletes.
+  sendMail({
+    to:      'info@gascap.app',
+    subject: `🗑️ Account deleted — ${snapshot.email}`,
+    html: `<div style="font-family:system-ui,sans-serif;max-width:480px;">
+      <p style="font-size:18px;font-weight:800;margin:0 0 8px;">🗑️ A user deleted their account</p>
+      <p style="font-size:14px;color:#334155;margin:0 0 4px;"><strong>${snapshot.name || '(no name)'}</strong></p>
+      <p style="font-size:14px;color:#334155;margin:0 0 4px;">Email: <strong>${snapshot.email}</strong></p>
+      <p style="font-size:14px;color:#334155;margin:0 0 12px;">Plan at deletion: <strong>${snapshot.plan}</strong></p>
+      <p style="font-size:12px;color:#94a3b8;margin:0;">Self-service deletion via the app/website. Their account + data were permanently removed.</p>
+    </div>`,
+    text:    `Account deleted: ${snapshot.name || '(no name)'} <${snapshot.email}> — plan ${snapshot.plan}. Self-service deletion.`,
+  }).catch((e) => console.error('[account/delete] admin notify failed:', e));
 
   return NextResponse.json({ ok: true });
 }

@@ -9,14 +9,18 @@
 import { useState } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import Link from 'next/link';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 export default function DeleteAccountPanel() {
   const { data: session, status } = useSession();
+  const { t } = useTranslation();
+  const d = t.settings;
   const [confirm,  setConfirm]  = useState('');
   const [busy,     setBusy]     = useState(false);
   const [done,     setDone]     = useState(false);
   const [error,    setError]    = useState('');
 
+  // "DELETE" is the language-neutral confirmation keyword.
   const canDelete = confirm.trim().toUpperCase() === 'DELETE' && !busy;
 
   async function handleDelete() {
@@ -26,15 +30,14 @@ export default function DeleteAccountPanel() {
     try {
       const res = await fetch('/api/account/delete', { method: 'POST' });
       if (!res.ok) {
-        const d = await res.json().catch(() => ({}));
-        setError(d.error ?? 'Something went wrong. Please try again.');
+        const j = await res.json().catch(() => ({}));
+        setError(j.error ?? d.delErrorGeneric);
         setBusy(false);
         return;
       }
       setDone(true);
-      // Manual dismissal only — the confirmation stays until the user taps Done.
     } catch {
-      setError('Network error — please try again.');
+      setError(d.delErrorNetwork);
       setBusy(false);
     }
   }
@@ -47,16 +50,14 @@ export default function DeleteAccountPanel() {
   if (!session) {
     return (
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-        <h2 className="text-lg font-black text-navy-700 mb-1">Delete your account</h2>
-        <p className="text-sm text-slate-500 mb-4">
-          Sign in first so we can permanently delete the correct account.
-        </p>
+        <h2 className="text-lg font-black text-navy-700 mb-1">{d.delSignedOutHeading}</h2>
+        <p className="text-sm text-slate-500 mb-4">{d.delSignedOutBody}</p>
         <Link
           href="/signin?next=/delete-account"
           className="inline-block py-3 px-5 rounded-2xl font-black text-sm text-white
                      bg-gradient-to-r from-[#005F4A] to-[#1EB68F] hover:opacity-95 transition-opacity"
         >
-          Sign in to delete my account
+          {d.delSignInBtn}
         </Link>
       </div>
     );
@@ -66,17 +67,14 @@ export default function DeleteAccountPanel() {
     return (
       <div className="bg-white rounded-2xl border border-emerald-200 shadow-sm p-6 text-center">
         <p className="text-3xl mb-2" aria-hidden="true">✅</p>
-        <h2 className="text-lg font-black text-navy-700 mb-1">Your account has been deleted</h2>
-        <p className="text-sm text-slate-500 mb-4">
-          Your GasCap™ account and all associated data have been permanently removed.
-          A confirmation email is on its way.
-        </p>
+        <h2 className="text-lg font-black text-navy-700 mb-1">{d.delDoneHeading}</h2>
+        <p className="text-sm text-slate-500 mb-4">{d.delDoneBody}</p>
         <button
           onClick={() => signOut({ callbackUrl: '/?deleted=1' })}
           className="inline-block py-3 px-6 rounded-2xl font-black text-sm text-white
                      bg-gradient-to-r from-[#005F4A] to-[#1EB68F] hover:opacity-95 transition-opacity"
         >
-          Done
+          {d.delDoneBtn}
         </button>
       </div>
     );
@@ -84,18 +82,13 @@ export default function DeleteAccountPanel() {
 
   return (
     <div className="bg-white rounded-2xl border-2 border-red-200 shadow-sm p-6">
-      <h2 className="text-lg font-black text-red-600 mb-1">Permanently delete your account</h2>
+      <h2 className="text-lg font-black text-red-600 mb-1">{d.delHeading}</h2>
       <p className="text-sm text-slate-600 mb-1">
-        Signed in as <span className="font-semibold text-slate-800">{session.user?.email}</span>.
+        {d.delSignedInAs} <span className="font-semibold text-slate-800">{session.user?.email}</span>
       </p>
-      <p className="text-sm text-slate-500 mb-4">
-        This <strong>permanently</strong> deletes your account and all associated data
-        (vehicles, fill-up history, preferences, referral &amp; giveaway data). This cannot be undone.
-      </p>
+      <p className="text-sm text-slate-500 mb-4">{d.delWarning}</p>
 
-      <label className="block text-xs font-bold text-slate-500 mb-1">
-        Type <span className="font-black text-red-600">DELETE</span> to confirm
-      </label>
+      <label className="block text-xs font-bold text-slate-500 mb-1">{d.delTypeConfirm}</label>
       <input
         type="text"
         value={confirm}
@@ -115,7 +108,7 @@ export default function DeleteAccountPanel() {
         className="w-full py-3 rounded-2xl font-black text-sm text-white transition-colors
                    bg-red-600 hover:bg-red-500 disabled:bg-slate-300 disabled:cursor-not-allowed"
       >
-        {busy ? 'Deleting…' : 'Permanently delete my account'}
+        {busy ? d.delDeleting : d.delButton}
       </button>
     </div>
   );

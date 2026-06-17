@@ -19,7 +19,7 @@ export default function TermsPage() {
           {' · '}
           <a href="tel:+13215131321" className="text-amber-600 hover:underline">(321) 513-1321</a>
         </p>
-        <p className="text-sm text-slate-400 mb-8">Last updated: June 3, 2026</p>
+        <p className="text-sm text-slate-400 mb-8">Last updated: June 18, 2026</p>
 
         <div className="space-y-8 text-slate-700 text-sm leading-relaxed">
 
@@ -53,6 +53,12 @@ export default function TermsPage() {
             <p><strong>Pro Monthly ($2.99/mo):</strong> Billed monthly through Stripe. You may cancel at any time; your access continues until the end of the current billing period. If GasCap™ Pro does not help you save more than $2.99 in your first 30 days, contact us at support@gascap.app within 30 days of your first charge and we will issue a full refund of your first payment — no questions asked.</p>
             <p className="mt-2"><strong>Pro Lifetime ($19.99 one-time):</strong> A one-time, non-refundable purchase. By completing the Lifetime purchase you acknowledge that you are acquiring a permanent license to GasCap™ Pro features and that the payment is final. All sales of Lifetime plans are final — no refunds will be issued except where required by applicable law.</p>
             <p className="mt-2">You can upgrade your plan directly from the Settings page or by visiting{' '}<Link href="/upgrade" className="text-amber-600 hover:underline">gascap.app/upgrade</Link>. We reserve the right to change pricing with 30 days&apos; notice to existing subscribers.</p>
+          </section>
+
+          {/* 4a — Apple In-App Purchase */}
+          <section>
+            <h2 className="text-lg font-black text-navy-700 mb-2">Apple In-App Purchase (iOS)</h2>
+            <p>If you purchase GasCap™ Pro within our iOS app, the purchase is processed by Apple through In-App Purchase, not by Stripe. You are billed through your Apple Account, and your subscription is governed by Apple&apos;s standard terms. To manage or cancel an iOS subscription, go to your iPhone <strong>Settings → Apple Account → Subscriptions</strong>. Refunds for App Store purchases are handled by Apple per its policies. However you purchase, your Pro features unlock on your GasCap™ account across all your devices (web and app).</p>
           </section>
 
           {/* 4b — Promotional Getaway Offer */}
@@ -186,6 +192,12 @@ export default function TermsPage() {
           <section>
             <h2 className="text-lg font-black text-navy-700 mb-2">12. Changes to Terms</h2>
             <p>We may update these Terms from time to time. Continued use of the Service after changes constitutes acceptance of the new Terms. We will notify users of material changes via email.</p>
+          </section>
+
+          {/* 12b — Account Deletion */}
+          <section>
+            <h2 className="text-lg font-black text-navy-700 mb-2">Account Deletion</h2>
+            <p>You may permanently delete your GasCap™ account and all associated personal data at any time, directly within the app or website: <strong>Settings → Account → &quot;Delete account&quot;</strong> (or visit{' '}<Link href="/delete-account" className="text-amber-600 hover:underline">gascap.app/delete-account</Link>), then confirm by typing <strong>DELETE</strong>. Deletion is immediate and irreversible. You may alternatively request deletion by emailing{' '}<a href="mailto:admin@gascap.app" className="text-amber-600 hover:underline">admin@gascap.app</a>, which we process within 30 days. Certain records may be retained where required by law (e.g., tax/transaction records).</p>
           </section>
 
           {/* 13 */}

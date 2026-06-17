@@ -250,7 +250,7 @@ const SECTIONS = [
       },
       {
         q: 'How do I upgrade my plan?',
-        a: 'Visit gascap.app/upgrade or tap Settings → "Upgrade to Pro." The upgrade page shows all three options side by side: Free, Pro ($2.99/mo), and Pro Lifetime ($19.99 one-time). You\'ll be taken to a secure Stripe checkout page.',
+        a: 'Visit gascap.app/upgrade or tap Settings → "Upgrade to Pro." The upgrade page shows all three options side by side: Free, Pro ($2.99/mo), and Pro Lifetime ($19.99 one-time). You\'ll be taken to a secure Stripe checkout page. On the iPhone app, upgrading uses Apple In-App Purchase — you\'ll see a native purchase screen and pay through your Apple Account. On the web, checkout is handled securely by Stripe. Either way, Pro unlocks on your account everywhere.',
       },
       {
         q: 'Can I give GasCap™ Pro as a gift?',
@@ -274,7 +274,7 @@ const SECTIONS = [
       },
       {
         q: 'How do I cancel my subscription?',
-        a: 'Go to Settings → Plan → "Manage Billing & Subscription." This opens the Stripe self-serve portal where you can cancel or update your payment method at any time. You can also email support@gascap.app and we\'ll take care of it for you. Lifetime members have no subscription to cancel.',
+        a: 'Go to Settings → Plan → "Manage Billing & Subscription." This opens the Stripe self-serve portal where you can cancel or update your payment method at any time. You can also email support@gascap.app and we\'ll take care of it for you. Lifetime members have no subscription to cancel. If you subscribed on the iPhone app through the App Store, manage or cancel it in your iPhone Settings → tap your name (Apple Account) → Subscriptions → GasCap™ → Cancel — iOS subscriptions are billed and managed by Apple, not through the Stripe portal.',
       },
       {
         q: 'Is my payment information secure?',
@@ -430,7 +430,7 @@ const SECTIONS = [
       },
       {
         q: 'How do I delete my account?',
-        a: 'Email support@gascap.app with your account email address and we\'ll permanently delete your account and all associated data within 30 days.',
+        a: 'You can permanently delete your account and all associated data instantly from within the app: go to Settings → Account → \'Delete account,\' then type DELETE to confirm. Deletion is immediate and cannot be undone. If you prefer, you can also email support@gascap.app and we\'ll delete your account within 30 days.',
       },
     ],
   },

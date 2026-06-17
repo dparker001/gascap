@@ -934,7 +934,7 @@ export default function SettingsPage() {
                 </Link>
               ) : isNative ? (
                 <p className="text-xs text-slate-400 leading-relaxed">
-                  Upgrade to GasCap™ Pro on the web at <span className="font-semibold text-slate-500">gascap.app</span>.
+                  {t.settings.upgradeOnWebHint}
                 </p>
               ) : (
                 <button
@@ -968,11 +968,11 @@ export default function SettingsPage() {
               </p>
               {isIos ? (
                 <p className="text-center text-[11px] text-slate-400">
-                  Manage your subscription in your iPhone Settings → Apple Account → Subscriptions.
+                  {t.settings.manageSubApple}
                 </p>
               ) : isNative ? (
                 <p className="text-center text-[11px] text-slate-400">
-                  Manage your billing on the web at gascap.app.
+                  {t.settings.manageBillingWebHint}
                 </p>
               ) : (
                 <>
@@ -1007,11 +1007,11 @@ export default function SettingsPage() {
               </Link>
               {isIos ? (
                 <p className="text-center text-[11px] text-slate-400">
-                  Manage your subscription in your iPhone Settings → Apple Account → Subscriptions.
+                  {t.settings.manageSubApple}
                 </p>
               ) : isNative ? (
                 <p className="text-center text-[11px] text-slate-400">
-                  Manage your billing on the web at gascap.app.
+                  {t.settings.manageBillingWebHint}
                 </p>
               ) : (
                 <>

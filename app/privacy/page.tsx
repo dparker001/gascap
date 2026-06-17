@@ -19,7 +19,7 @@ export default function PrivacyPage() {
           {' · '}
           <a href="tel:+13215131321" className="text-amber-600 hover:underline">(321) 513-1321</a>
         </p>
-        <p className="text-sm text-slate-400 mb-8">Last updated: June 3, 2026 (rev. 5)</p>
+        <p className="text-sm text-slate-400 mb-8">Last updated: June 18, 2026 (rev. 6)</p>
 
         <div className="space-y-8 text-slate-700 text-sm leading-relaxed">
 
@@ -62,7 +62,7 @@ export default function PrivacyPage() {
               <li>Access to production systems is restricted to authorized personnel only</li>
               <li>API keys and secrets are stored as environment variables, never in source code</li>
             </ul>
-            <p className="mt-2">We retain your data for as long as your account is active. If you request account deletion, we will remove your personal data within a reasonable time, except where retention is required by law.</p>
+            <p className="mt-2">We retain your data for as long as your account is active. You may permanently delete your account and all associated data instantly from within the app or website (Settings → Account → &apos;Delete account,&apos; or <Link href="/delete-account" className="text-amber-600 hover:underline">gascap.app/delete-account</Link>) by confirming with the word DELETE. Deletion is immediate and irreversible. You may also email <a href="mailto:admin@gascap.app" className="text-amber-600 hover:underline">admin@gascap.app</a> to request deletion, which we process within 30 days, except where retention is required by law.</p>
           </section>
 
           {/* 4 */}
@@ -70,6 +70,7 @@ export default function PrivacyPage() {
             <h2 className="text-lg font-black text-navy-700 mb-2">4. Third-Party Services</h2>
             <ul className="list-disc pl-5 space-y-1">
               <li><strong>Stripe</strong> — payment processing. Your payment details are handled directly by Stripe and never stored on our servers.</li>
+              <li><strong>RevenueCat</strong> — processes Apple In-App Purchase events for iOS. When you buy GasCap™ Pro on iOS through Apple In-App Purchase, RevenueCat receives the subscription status from Apple and syncs your Pro plan to your GasCap™ account. We do not receive or store your Apple Account credentials.</li>
               <li><strong>U.S. Energy Information Administration (EIA)</strong> — gas price data. No personal data is shared.</li>
               <li><strong>NHTSA / fueleconomy.gov</strong> — vehicle data lookups. No personal data is shared.</li>
               <li><strong>Resend</strong> — transactional email delivery. Your email address is shared solely for delivery purposes.</li>
@@ -153,7 +154,7 @@ export default function PrivacyPage() {
             <ul className="list-disc pl-5 space-y-1 mt-2">
               <li><strong>Access:</strong> You may view the personal information stored in your account from within the app at any time.</li>
               <li><strong>Correction:</strong> You may update or correct your profile information (name, display name, phone) from Settings → Profile.</li>
-              <li><strong>Deletion:</strong> You may request deletion of your account and all associated data by contacting us at <a href="mailto:admin@gascap.app" className="text-amber-600 hover:underline">admin@gascap.app</a>. We will process your request within a reasonable time.</li>
+              <li><strong>Deletion:</strong> You may permanently delete your account and all associated data instantly from within the app or website (Settings → Account → &apos;Delete account,&apos; or <Link href="/delete-account" className="text-amber-600 hover:underline">gascap.app/delete-account</Link>) by confirming with the word DELETE. Deletion is immediate and irreversible. You may also email <a href="mailto:admin@gascap.app" className="text-amber-600 hover:underline">admin@gascap.app</a> to request deletion, which we process within 30 days.</li>
               <li><strong>Opt-out of marketing emails:</strong> You may opt out of marketing emails at any time by clicking the unsubscribe link in any email or contacting us directly.</li>
               <li><strong>Opt-out of SMS:</strong> Reply STOP to any text message or disable SMS from Settings → Profile.</li>
               <li><strong>Opt-out of push notifications:</strong> Revoke permission from your device settings or within the app.</li>
