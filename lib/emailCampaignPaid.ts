@@ -70,11 +70,13 @@ export function upgradeConfirmEmailHtml(
   interval: 'monthly' | 'annual' | 'lifetime' = 'monthly',
 ): string {
   const first      = name.split(' ')[0];
-  const planLabel  = tier === 'fleet' ? 'GasCap™ Fleet' : 'GasCap™ Pro';
-  const priceLabel = interval === 'lifetime'
-    ? '$19.99 one-time'
-    : '$2.99/month';
-  const renewLabel = interval === 'lifetime' ? 'never — lifetime access' : 'monthly';
+  const planLabel  = tier === 'fleet' ? 'GasCap™ Fleet'
+                   : interval === 'lifetime' ? 'GasCap™ Pro Lifetime'
+                   : 'GasCap™ Pro';
+  const priceLabel = interval === 'lifetime' ? '$19.99 one-time' : '$2.99/month';
+  const planDetail = interval === 'lifetime'
+    ? '$19.99 one-time · yours forever — no renewals, nothing to cancel'
+    : `${priceLabel} · renews monthly · cancel anytime`;
 
   return wrap(`
     ${header(tier)}
@@ -93,7 +95,7 @@ export function upgradeConfirmEmailHtml(
         <p style="margin:0 0 4px;font-size:12px;font-weight:900;color:#15803d;
                   text-transform:uppercase;letter-spacing:.8px;">✅ Your plan</p>
         <p style="margin:0 0 2px;font-size:22px;font-weight:900;color:#1e2d4a;">${planLabel}</p>
-        <p style="margin:0;font-size:14px;color:#475569;">${priceLabel} · renews ${renewLabel} · cancel anytime</p>
+        <p style="margin:0;font-size:14px;color:#475569;">${planDetail}</p>
       </div>
 
       <p style="margin:0 0 14px;font-size:15px;font-weight:700;color:#1e2d4a;">
@@ -170,7 +172,7 @@ export function upgradeConfirmEmailHtml(
 }
 
 export const upgradeConfirmEmailText = (name: string, _tier: 'pro' | 'fleet', interval: 'monthly' | 'annual' | 'lifetime') =>
-  `Hi ${name.split(' ')[0]}, your GasCap™ Pro subscription is active (${interval === 'lifetime' ? 'lifetime — no renewals ever' : interval}). Everything is unlocked — no trial countdown. Open the app: ${BASE_URL}`;
+  `Hi ${name.split(' ')[0]}, your ${interval === 'lifetime' ? 'GasCap™ Pro Lifetime is active — yours forever, no renewals' : `GasCap™ Pro subscription is active (${interval})`}. Everything is unlocked — no trial countdown. Open the app: ${BASE_URL}`;
 
 // ── P2 — 30-Day Check-In ─────────────────────────────────────────────────────
 
@@ -485,7 +487,7 @@ export async function sendPaidCampaignEmail(
 
   const MAP: Record<string, { subject: string; html: string; text: string }> = {
     P1: {
-      subject: `You're officially GasCap™ ${tier === 'fleet' ? 'Fleet' : 'Pro'} 🎉`,
+      subject: `You're officially GasCap™ ${tier === 'fleet' ? 'Fleet' : interval === 'lifetime' ? 'Pro Lifetime' : 'Pro'} 🎉`,
       html:    upgradeConfirmEmailHtml(name, id, tier, interval),
       text:    upgradeConfirmEmailText(name, tier, interval),
     },
