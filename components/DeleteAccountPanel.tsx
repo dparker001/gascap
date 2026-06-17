@@ -32,9 +32,7 @@ export default function DeleteAccountPanel() {
         return;
       }
       setDone(true);
-      // Keep the confirmation visible long enough to read; user can also tap to
-      // continue. Auto sign-out as a fallback after a few seconds.
-      setTimeout(() => signOut({ callbackUrl: '/?deleted=1' }), 5000);
+      // Manual dismissal only — the confirmation stays until the user taps Done.
     } catch {
       setError('Network error — please try again.');
       setBusy(false);
@@ -78,7 +76,7 @@ export default function DeleteAccountPanel() {
           className="inline-block py-3 px-6 rounded-2xl font-black text-sm text-white
                      bg-gradient-to-r from-[#005F4A] to-[#1EB68F] hover:opacity-95 transition-opacity"
         >
-          Return to GasCap™
+          Done
         </button>
       </div>
     );
