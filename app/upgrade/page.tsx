@@ -186,15 +186,7 @@ function UpgradePageInner() {
             </div>
           ) : (
             <div className="space-y-3">
-              {/* What Pro unlocks */}
-              <ul className="bg-white rounded-2xl shadow-sm p-4 space-y-2 mb-1">
-                {PRO_FEATURES.slice(0, 6).map((f: string) => (
-                  <li key={f} className="text-xs text-slate-600 flex items-start gap-2">
-                    <Check /> <span>{f}</span>
-                  </li>
-                ))}
-              </ul>
-
+              {/* Buy buttons first — CTA stays visible above the feature list */}
               {/* Lifetime — best value */}
               <button onClick={() => handleIap('lifetime')} disabled={loading !== null}
                 className="w-full py-4 rounded-2xl font-black text-white bg-navy-700
@@ -227,6 +219,27 @@ function UpgradePageInner() {
               <p className="text-[10px] text-slate-400 text-center leading-relaxed pt-1">
                 {t.upgrade.appleBilling}
               </p>
+
+              {/* Everything you get with Pro */}
+              <div className="bg-white rounded-2xl shadow-sm p-4 mt-2">
+                <p className="text-xs font-black text-navy-700 mb-2">{t.upgrade.whatsIncluded}</p>
+                <ul className="space-y-2">
+                  {PRO_FEATURES.map((f: string) => (
+                    <li key={f} className="text-xs text-slate-600 flex items-start gap-2">
+                      <Check /> <span>{f}</span>
+                    </li>
+                  ))}
+                </ul>
+                {/* Lifetime-only perks */}
+                <p className="text-xs font-black text-teal-700 mt-3 mb-2">{t.upgrade.lifetimeAlso}</p>
+                <ul className="space-y-2">
+                  {LIFETIME_EXCLUSIVES.map((e) => (
+                    <li key={e.text} className="text-xs text-slate-600 flex items-start gap-2">
+                      <span aria-hidden="true">{e.icon}</span> <span>{e.text}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
           )}
         </div>
