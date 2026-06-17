@@ -19,10 +19,69 @@
  */
 import { NextResponse } from 'next/server';
 import { setUserPlan, findById, findByEmail } from '@/lib/users';
+import { sendMail } from '@/lib/email';
+import { getawayPromoActive, GETAWAY_DISCLOSURE } from '@/lib/getawayPromo';
 
 export const dynamic = 'force-dynamic';
 
 const LIFETIME_PRODUCT = 'gascap_pro_lifetime';
+
+/** Fire-and-forget admin notification (mirrors the Stripe webhook). */
+function sendAdminMail(opts: { subject: string; html: string; text: string }) {
+  sendMail({ to: 'info@gascap.app', ...opts })
+    .catch((e) => console.error('[revenuecat] Admin notify failed:', e));
+}
+
+/**
+ * Getaway promo fulfillment for IAP lifetime buyers — same as the Stripe webhook.
+ * Lifetime purchase during the active promo earns a complimentary resort getaway;
+ * the buyer picks a destination at /getaway (or via the success-page picker),
+ * which fires the actionable "ISSUE GETAWAY CERT" email. Here we give the admin a
+ * heads-up and email the buyer the choose link. Only on the initial lifetime
+ * purchase event so it can't fire twice.
+ */
+function maybeSendGetaway(user: { email: string; name?: string | null }, eventType: string) {
+  if (!getawayPromoActive()) return;
+  if (eventType !== 'INITIAL_PURCHASE' && eventType !== 'NON_RENEWING_PURCHASE') return;
+  const baseUrl   = (process.env.NEXTAUTH_URL ?? 'https://www.gascap.app').replace(/\/$/, '');
+  const chooseUrl = `${baseUrl}/getaway`;
+  const name      = user.name ?? 'there';
+
+  sendAdminMail({
+    subject: `🏝️ Getaway sale (IAP) — ${user.email} will choose a destination`,
+    html: `<div style="font-family:system-ui,sans-serif;max-width:480px;">
+      <p style="font-size:20px;margin:0 0 8px;">🏝️ Getaway promo sale (Apple IAP)</p>
+      <p style="font-size:15px;color:#334155;margin:0 0 4px;"><strong>${name}</strong> bought Pro Lifetime via the app during the getaway promo.</p>
+      <p style="font-size:14px;color:#64748b;margin:0 0 12px;">They'll pick a destination at /getaway — you'll get a separate <strong>"ISSUE GETAWAY CERT"</strong> email with the destination once they choose. No action needed yet.</p>
+      <p style="font-size:13px;color:#64748b;margin:0 0 4px;">Buyer: <strong>${user.email}</strong></p>
+    </div>`,
+    text: `Getaway promo sale (IAP): ${name} <${user.email}> — awaiting destination choice (separate ISSUE email to follow).`,
+  });
+
+  sendMail({
+    to:      user.email,
+    subject: `🏝️ Choose your complimentary getaway`,
+    html: `<div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;">
+      <div style="background:linear-gradient(135deg,#005F4A,#1EB68F);border-radius:16px 16px 0 0;padding:24px;text-align:center;">
+        <p style="font-size:26px;margin:0;color:#fff;font-weight:800;">🏝️ You've earned a getaway!</p>
+      </div>
+      <div style="background:#fff;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 16px 16px;padding:24px;">
+        <p style="font-size:15px;color:#334155;margin:0 0 12px;">Hi ${name}, thanks for going Lifetime with GasCap™ Pro! 🎉 As a thank-you, pick the complimentary resort getaway you'd like:</p>
+        <p style="text-align:center;margin:0 0 16px;">
+          <a href="${chooseUrl}" style="display:inline-block;background:#1EB68F;color:#fff;font-weight:800;font-size:15px;text-decoration:none;padding:12px 28px;border-radius:12px;">Choose my destination →</a>
+        </p>
+        <div style="background:#f0fdf9;border:1px solid #99f6e4;border-radius:12px;padding:14px 16px;margin:0 0 12px;">
+          <p style="font-size:12px;color:#0f766e;font-weight:800;text-transform:uppercase;letter-spacing:.05em;margin:0 0 6px;">Good to know</p>
+          ${GETAWAY_DISCLOSURE.full.map((l) => `<p style="font-size:13px;color:#334155;margin:0 0 4px;">• ${l}</p>`).join('')}
+        </div>
+        <p style="font-size:13px;color:#64748b;margin:0;">Questions? Just reply to this email.</p>
+      </div>
+    </div>`,
+    text: `You've earned a complimentary getaway! Choose your destination: ${chooseUrl}. ${GETAWAY_DISCLOSURE.short}`,
+  }).catch((e) => console.error('[revenuecat] Getaway choose email failed:', e));
+
+  console.info(`[revenuecat] Getaway promo — choose-destination email sent to ${user.email}`);
+}
 
 // Events that should GRANT / extend Pro.
 const GRANT_EVENTS = new Set([
@@ -91,6 +150,8 @@ export async function POST(req: Request) {
         ev.product_id === LIFETIME_PRODUCT ? 'lifetime' : 'monthly';
       await setUserPlan(user.id, 'pro', { interval });
       console.log(`[revenuecat] ${ev.type} → granted Pro (${interval}) to ${user.email}`);
+      // Lifetime buyers earn the complimentary getaway during the active promo.
+      if (interval === 'lifetime') maybeSendGetaway(user, ev.type);
     } else {
       // EXPIRATION / REFUND → revert to free (setUserPlan protects ambassador Pro-for-life).
       await setUserPlan(user.id, 'free');
