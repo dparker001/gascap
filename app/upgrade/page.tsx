@@ -170,14 +170,35 @@ function UpgradePageInner() {
           <p className="text-sm text-slate-500 text-center mt-1 mb-6">{t.upgrade.iapSub}</p>
 
           {alreadyPro ? (
-            <div className="bg-white rounded-3xl shadow-card p-8 text-center space-y-3">
-              <p className="text-4xl" aria-hidden="true">✅</p>
-              <p className="text-lg font-black text-navy-700">{t.upgrade.alreadyPro}</p>
+            <div className="bg-white rounded-3xl shadow-card p-6 space-y-3">
+              <p className="text-4xl text-center" aria-hidden="true">🎉</p>
+              <p className="text-lg font-black text-navy-700 text-center">{t.upgrade.alreadyPro}</p>
+              <p className="text-xs text-slate-500 text-center">{t.upgrade.whatsIncluded}</p>
+              {/* Everything they have unlocked */}
+              <ul className="space-y-2 pt-1">
+                {PRO_FEATURES.map((f: string) => (
+                  <li key={f} className="text-xs text-slate-600 flex items-start gap-2">
+                    <Check /> <span>{f}</span>
+                  </li>
+                ))}
+              </ul>
+              {isProLifetime && (
+                <>
+                  <p className="text-xs font-black text-teal-700 pt-2 border-t border-slate-100">{t.upgrade.lifetimeAlso}</p>
+                  <ul className="space-y-2">
+                    {LIFETIME_EXCLUSIVES.map((e) => (
+                      <li key={e.text} className="text-xs text-slate-600 flex items-start gap-2">
+                        <span aria-hidden="true">{e.icon}</span> <span>{e.text}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
               <button onClick={handleRestore}
                 className="block w-full text-center text-xs text-slate-400 hover:text-slate-600 pt-1">
                 {t.upgrade.restore}
               </button>
-              {error && <p className="text-xs text-red-500">{error}</p>}
+              {error && <p className="text-xs text-red-500 text-center">{error}</p>}
               <Link href="/"
                 className="block w-full py-3.5 rounded-2xl font-black text-base text-white text-center
                            bg-gradient-to-r from-[#005F4A] to-[#1EB68F] hover:opacity-95 transition-opacity">

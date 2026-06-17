@@ -138,7 +138,11 @@ function SuccessContent() {
     }
 
     const first = setTimeout(poll, 1200);      // small head start for the webhook
-    return () => { cancelled = true; clearTimeout(first); };
+    // Hard stop: the purchase is already confirmed before we land here, so never
+    // leave the user staring at "activating…" — show the Continue button no matter
+    // what (e.g. if a session refresh stalls on the native WebView).
+    const hardStop = setTimeout(() => { if (!cancelled) setReady(true); }, 6000);
+    return () => { cancelled = true; clearTimeout(first); clearTimeout(hardStop); };
   }, [refreshSession, tier]);
 
   // Resolve which plan content to show
