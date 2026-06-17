@@ -251,13 +251,20 @@ function SuccessContent() {
           {t.upgrade.goToCalculator}
         </button>
       ) : (
-        <div className="flex items-center justify-center gap-2 text-sm text-slate-400">
-          <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none"
-               stroke="currentColor" strokeWidth="2" aria-hidden="true">
-            <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" strokeOpacity=".25"/>
-            <path d="M21 12a9 9 0 00-9-9" />
-          </svg>
-          {t.upgrade.activatingAccount}
+        <div className="space-y-2">
+          <div className="flex items-center justify-center gap-2 text-sm text-slate-400">
+            <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" strokeWidth="2" aria-hidden="true">
+              <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" strokeOpacity=".25"/>
+              <path d="M21 12a9 9 0 00-9-9" />
+            </svg>
+            {t.upgrade.activatingAccount}
+          </div>
+          {/* Always allow leaving — never trap the user behind the spinner */}
+          <button onClick={() => router.push('/')}
+            className="block w-full text-center text-xs text-slate-400 hover:text-slate-600 underline-offset-2 hover:underline">
+            {t.upgrade.backToApp}
+          </button>
         </div>
       )}
     </div>
