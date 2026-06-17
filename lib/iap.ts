@@ -35,6 +35,18 @@ function iosNative(): boolean {
   return detectNativePlatform() === 'ios';
 }
 
+/**
+ * True if the account has ANY active RevenueCat entitlement. We don't hard-match
+ * the entitlement identifier (RevenueCat's onboarding names it from the display
+ * name, e.g. "GasCap Pro"), and GasCap has exactly one entitlement = Pro — so
+ * "any active" is correct and robust to whatever identifier was assigned.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function hasActiveEntitlement(customerInfo: any): boolean {
+  const active = customerInfo?.entitlements?.active;
+  return !!active && Object.keys(active).length > 0;
+}
+
 /** Lazy-load the plugin. `as string` keeps tsc/web build happy before it's installed. */
 async function loadPurchases(): Promise<{ Purchases: any } | null> {
   try {
@@ -69,7 +81,7 @@ export async function hasProEntitlement(): Promise<boolean> {
   if (!rc) return false;
   try {
     const { customerInfo } = await rc.Purchases.getCustomerInfo();
-    return !!customerInfo?.entitlements?.active?.pro;
+    return hasActiveEntitlement(customerInfo);
   } catch {
     return false;
   }
@@ -90,7 +102,7 @@ export async function purchasePro(which: 'monthly' | 'lifetime'): Promise<Purcha
     const pkg = pkgs.find((p: any) => p?.product?.identifier === productId) ?? pkgs[0];
     if (!pkg) return { ok: false, error: 'no-package' };
     const { customerInfo } = await rc.Purchases.purchasePackage({ aPackage: pkg });
-    return { ok: !!customerInfo?.entitlements?.active?.pro };
+    return { ok: hasActiveEntitlement(customerInfo) };
   } catch (e) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const err = e as any;
@@ -107,7 +119,7 @@ export async function restorePurchases(): Promise<PurchaseResult> {
   if (!rc) return { ok: false, error: 'unavailable' };
   try {
     const { customerInfo } = await rc.Purchases.restorePurchases();
-    return { ok: !!customerInfo?.entitlements?.active?.pro };
+    return { ok: hasActiveEntitlement(customerInfo) };
   } catch (e) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     console.error('[iap] restore failed:', e);
