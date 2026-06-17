@@ -4,7 +4,7 @@ import { useSession, signOut } from 'next-auth/react';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { useTranslation } from '@/contexts/LanguageContext';
-import { useIsNative } from '@/hooks/useIsNative';
+import { useIsNative, useNativePlatform } from '@/hooks/useIsNative';
 
 const AVATAR_COLOR_KEY = 'gascap_avatar_color';
 const AVATAR_URL_KEY   = 'gascap_avatar_url';
@@ -40,6 +40,10 @@ export default function AuthButton() {
   const { data: session, status } = useSession();
   const { t } = useTranslation();
   const isNative = useIsNative();
+  // iOS sells Pro via Apple In-App Purchase, so the upgrade entry IS shown there.
+  // Android (TWA) still has no native billing → Pro stays web-only there.
+  const platform = useNativePlatform();
+  const hideUpgradeEntry = isNative && platform !== 'ios';
   const [menuOpen,    setMenuOpen]    = useState(false);
   const [avatarColor, setAvatarColor] = useState(DEFAULT_COLOR);
   const [avatarPhoto, setAvatarPhoto] = useState('');
@@ -167,7 +171,7 @@ export default function AuthButton() {
                 )}
               </div>
               <p className="text-[10px] text-slate-400 truncate">{session.user?.email}</p>
-              {!planLabel && !isNative && (
+              {!planLabel && !hideUpgradeEntry && (
                 <a href="/upgrade"
                    className="mt-1.5 inline-block text-[10px] font-bold text-brand-dark hover:text-brand-teal">
                   {t.nav.upgradeToPro}

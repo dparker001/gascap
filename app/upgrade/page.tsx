@@ -8,7 +8,8 @@ import { PRICING } from '@/lib/stripe';
 import { useTranslation } from '@/contexts/LanguageContext';
 import { getawayPromoActive, getawayDaysLeft } from '@/lib/getawayPromo';
 import BrandBar from '@/components/BrandBar';
-import { useIsNative } from '@/hooks/useIsNative';
+import { useIsNative, useNativePlatform } from '@/hooks/useIsNative';
+import { purchasePro, restorePurchases } from '@/lib/iap';
 
 // ── Feature lists are defined inside UpgradePageInner (need t)
 
@@ -43,7 +44,8 @@ function UpgradePageInner() {
   const searchParams = useSearchParams();
   const coupon = searchParams.get('coupon') ?? undefined;
   const wb     = searchParams.get('wb') === '1'; // win-back $9.99 Lifetime offer
-  const isNative = useIsNative();   // no in-app checkout in the native wrappers
+  const isNative = useIsNative();   // no Stripe checkout inside the native wrappers
+  const platform = useNativePlatform(); // 'ios' → Apple IAP; 'android' → web-managed
   const [loading, setLoading] = useState<'pro-monthly' | 'pro-lifetime' | null>(null);
   const [error,   setError]   = useState('');
 
@@ -79,9 +81,31 @@ function UpgradePageInner() {
     }
   }
 
-  // In the native apps we don't run Stripe checkout (App Store / Play require
-  // their own billing for digital goods). Pro is managed on the web instead.
-  if (isNative) {
+  // On iOS native, Pro is purchased via Apple In-App Purchase (StoreKit via
+  // RevenueCat) — App Store rules require IAP for digital goods. The purchase
+  // grants Pro on the account server-side (RevenueCat webhook), so it unlocks
+  // everywhere (web + app), exactly like the Stripe path.
+  async function handleIap(which: 'monthly' | 'lifetime') {
+    if (!session) { window.location.href = '/signup?next=/upgrade'; return; }
+    setLoading(which === 'lifetime' ? 'pro-lifetime' : 'pro-monthly');
+    setError('');
+    const res = await purchasePro(which);
+    setLoading(null);
+    if (res.ok) { window.location.href = '/upgrade/success'; return; }
+    if (res.cancelled) return; // user backed out — no error
+    setError(res.error === 'unavailable'
+      ? t.upgrade.iapUnavailable
+      : t.upgrade.iapFailed);
+  }
+  async function handleRestore() {
+    setError('');
+    const res = await restorePurchases();
+    if (res.ok) { window.location.href = '/upgrade/success'; return; }
+    setError(t.upgrade.iapNoRestore);
+  }
+
+  // Android (TWA) has no native billing yet → Pro is managed on the web there.
+  if (isNative && platform !== 'ios') {
     return (
       <div className="min-h-screen bg-[#eef1f7] flex flex-col">
         <BrandBar />
@@ -102,6 +126,80 @@ function UpgradePageInner() {
               Continue with the free app
             </Link>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (platform === 'ios') {
+    const alreadyPro = isProMonthly || isProLifetime || isOnTrial;
+    return (
+      <div className="min-h-screen bg-[#eef1f7] flex flex-col">
+        <BrandBar />
+        <div className="flex-1 px-4 py-10 max-w-md mx-auto w-full">
+          <h1 className="text-2xl font-black text-navy-700 text-center">{t.upgrade.iapTitle}</h1>
+          <p className="text-sm text-slate-500 text-center mt-1 mb-6">{t.upgrade.iapSub}</p>
+
+          {alreadyPro ? (
+            <div className="bg-white rounded-3xl shadow-card p-8 text-center space-y-3">
+              <p className="text-4xl" aria-hidden="true">✅</p>
+              <p className="text-lg font-black text-navy-700">{t.upgrade.alreadyPro}</p>
+              <button onClick={handleRestore}
+                className="block w-full text-center text-xs text-slate-400 hover:text-slate-600 pt-1">
+                {t.upgrade.restore}
+              </button>
+              {error && <p className="text-xs text-red-500">{error}</p>}
+              <Link href="/"
+                className="block w-full py-3.5 rounded-2xl font-black text-base text-white text-center
+                           bg-gradient-to-r from-[#005F4A] to-[#1EB68F] hover:opacity-95 transition-opacity">
+                {t.upgrade.backToApp}
+              </Link>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {/* What Pro unlocks */}
+              <ul className="bg-white rounded-2xl shadow-sm p-4 space-y-2 mb-1">
+                {PRO_FEATURES.slice(0, 6).map((f: string) => (
+                  <li key={f} className="text-xs text-slate-600 flex items-start gap-2">
+                    <Check /> <span>{f}</span>
+                  </li>
+                ))}
+              </ul>
+
+              {/* Lifetime — best value */}
+              <button onClick={() => handleIap('lifetime')} disabled={loading !== null}
+                className="w-full py-4 rounded-2xl font-black text-white bg-navy-700
+                           hover:opacity-95 transition-opacity disabled:opacity-60">
+                {loading === 'pro-lifetime'
+                  ? t.upgrade.processing
+                  : `${t.pricing.getLifetime} — $${PRICING.pro.lifetime}`}
+                {showGetaway && (
+                  <span className="block text-[11px] font-semibold text-amber-300 mt-0.5">
+                    {t.upgrade.plusGetaway}
+                  </span>
+                )}
+              </button>
+
+              {/* Monthly */}
+              <button onClick={() => handleIap('monthly')} disabled={loading !== null}
+                className="w-full py-4 rounded-2xl font-black text-navy-700 border-2 border-navy-700
+                           hover:bg-navy-50 transition-colors disabled:opacity-60">
+                {loading === 'pro-monthly'
+                  ? t.upgrade.processing
+                  : `${t.upgrade.upgradeBtn} Pro — $${PRICING.pro.monthly}/mo`}
+              </button>
+
+              {error && <p className="text-xs text-red-500 text-center">{error}</p>}
+
+              <button onClick={handleRestore}
+                className="block w-full text-center text-xs text-slate-400 hover:text-slate-600 pt-1">
+                {t.upgrade.restore}
+              </button>
+              <p className="text-[10px] text-slate-400 text-center leading-relaxed pt-1">
+                {t.upgrade.appleBilling}
+              </p>
+            </div>
+          )}
         </div>
       </div>
     );
