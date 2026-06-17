@@ -887,7 +887,7 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            <div className="border-t border-slate-100 pt-3">
+            <div className="border-t border-slate-100 pt-3 space-y-2">
               <button
                 onClick={() => signOut({ callbackUrl: '/' })}
                 className="w-full py-3 rounded-2xl border-2 border-red-100 text-sm font-bold
@@ -895,6 +895,12 @@ export default function SettingsPage() {
               >
                 {t.settings.signOut}
               </button>
+              <Link
+                href="/delete-account"
+                className="block text-center w-full py-2 text-[11px] font-bold text-slate-400 hover:text-red-500 transition-colors"
+              >
+                {t.settings.deleteAccount}
+              </Link>
             </div>
           </div>
         </div>

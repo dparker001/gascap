@@ -1314,6 +1314,7 @@ const en = {
     privacyPolicy:      'Privacy Policy',
     termsOfUse:         'Terms of Use',
     signOut:            'Sign Out',
+    deleteAccount:      'Delete account',
     // Plan section
     planTitle:          'Plan',
     planFreeLabel:      'Free',
@@ -3752,6 +3753,7 @@ const es: typeof en = {
     privacyPolicy:      'Política de Privacidad',
     termsOfUse:         'Términos de Uso',
     signOut:            'Cerrar sesión',
+    deleteAccount:      'Eliminar cuenta',
     // Plan section
     planTitle:          'Plan',
     planFreeLabel:      'Gratis',

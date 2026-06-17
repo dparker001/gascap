@@ -17,6 +17,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useTranslation } from '@/contexts/LanguageContext';
+import { detectNativePlatform } from '@/hooks/useIsNative';
 
 const CONSENT_KEY = 'gc_cookie_consent';
 
@@ -26,6 +27,9 @@ export default function CookieConsentBanner() {
 
   useEffect(() => {
     try {
+      // No cookie-consent prompt inside the native apps — they set no tracking
+      // cookies, so a prompt would falsely imply tracking (App Store 5.1.2).
+      if (detectNativePlatform()) return;
       const existing = localStorage.getItem(CONSENT_KEY);
       if (!existing) setVisible(true);
     } catch {

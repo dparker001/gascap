@@ -11,6 +11,7 @@ import Script        from 'next/script';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useEffect, Suspense }          from 'react';
 import { GA_ID, GADS_ID } from '@/lib/gtag';
+import { detectNativePlatform } from '@/hooks/useIsNative';
 
 // Inner component that reads searchParams (must be wrapped in Suspense)
 function PageViewTracker() {
@@ -19,6 +20,7 @@ function PageViewTracker() {
 
   useEffect(() => {
     if (!GA_ID || typeof window === 'undefined' || !window.gtag) return;
+    if (detectNativePlatform()) return;   // no GA4 pageview tracking in the native apps (App Store 5.1.2)
     const url = pathname + (searchParams.toString() ? `?${searchParams.toString()}` : '');
     window.gtag('config', GA_ID, { page_path: url });
   }, [pathname, searchParams]);
@@ -52,16 +54,17 @@ export default function GoogleAnalytics() {
             function gtag(){dataLayer.push(arguments);}
             window.gtag = gtag;
             gtag('js', new Date());
-            ${GA_ID ? `gtag('config', '${GA_ID}', {
-              page_location: window.location.href,
-              page_title:    document.title,
-              send_page_view: true,
-            });` : ''}
-            ${GADS_ID ? `if (!(!!window.Capacitor || /[?&]native=(ios|android)/.test(location.search) || (document.referrer||'').indexOf('android-app://')===0 || (function(){try{var p=localStorage.getItem('gc_native_platform');return p==='ios'||p==='android';}catch(e){return false;}})())) {
-              /* Google Ads conversion tag — web only. Off in the native apps so the
-                 App Store privacy answer ("tracking = No") stays honest. GA4 stays on as Analytics. */
-              gtag('config', '${GADS_ID}');
-            }` : ''}
+            var __isNative = !!window.Capacitor || /[?&]native=(ios|android)/.test(location.search) || (document.referrer||'').indexOf('android-app://')===0 || (function(){try{var p=localStorage.getItem('gc_native_platform');return p==='ios'||p==='android';}catch(e){return false;}})();
+            /* Native apps configure NO analytics/ads tags, so no GA/Ads cookies are
+               set — keeps "Data Not Used to Track You" honest (App Store 5.1.2). */
+            if (!__isNative) {
+              ${GA_ID ? `gtag('config', '${GA_ID}', {
+                page_location: window.location.href,
+                page_title:    document.title,
+                send_page_view: true,
+              });` : ''}
+              ${GADS_ID ? `gtag('config', '${GADS_ID}');` : ''}
+            }
           `,
         }}
       />
