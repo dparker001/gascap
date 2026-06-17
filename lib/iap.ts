@@ -20,7 +20,6 @@
 
 import { detectNativePlatform } from '@/hooks/useIsNative';
 
-const RC_PACKAGE = '@revenuecat/purchases-capacitor';
 const IOS_KEY    = process.env.NEXT_PUBLIC_REVENUECAT_IOS_KEY;
 
 const PRODUCT_IDS = {
@@ -47,13 +46,19 @@ function hasActiveEntitlement(customerInfo: any): boolean {
   return !!active && Object.keys(active).length > 0;
 }
 
-/** Lazy-load the plugin. `as string` keeps tsc/web build happy before it's installed. */
+/**
+ * Lazy-load the plugin. Literal specifier so webpack bundles it into a lazy
+ * chunk that ships with the live site — the iOS WebView (which loads remote
+ * gascap.app) fetches it and bridges to the native RevenueCat StoreKit pod.
+ * Same pattern as NativePushRegistration's @capacitor/push-notifications import.
+ * The chunk only loads on iOS-gated paths, so web users never download it.
+ */
 async function loadPurchases(): Promise<{ Purchases: any } | null> {
   try {
-    const mod = await import(RC_PACKAGE as string);
+    const mod = await import('@revenuecat/purchases-capacitor');
     return { Purchases: (mod as { Purchases: any }).Purchases };
   } catch {
-    return null;   // package not present (web) — no-op
+    return null;   // bridge/plugin unavailable — no-op
   }
 }
 
