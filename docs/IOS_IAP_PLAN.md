@@ -22,6 +22,27 @@ entitlements to the user's account). Commission: **15%** (Apple Small Business P
    - Create an **Entitlement** `pro`, and **Offerings/Packages** mapping to the two product IDs above.
    - Grab the **RevenueCat public SDK (Apple) API key** for the app.
 
+## Scaffolded so far (code committed, NOT yet live)
+- **`app/api/native/revenuecat/route.ts`** — entitlement webhook. Verifies `REVENUECAT_WEBHOOK_AUTH`, maps RevenueCat `app_user_id` → GasCap user, grants Pro on purchase/renewal (`setUserPlan(userId,'pro',{interval})`) and reverts on expiration/refund. Cross-platform with Stripe. **Testable now** (POST a sample RC payload).
+- **`lib/iap.ts`** — client helper (iOS-native only; no-op on web): `initIap(userId)`, `purchasePro('monthly'|'lifetime')`, `restorePurchases()`, `hasProEntitlement()`. Lazy-loads the RevenueCat plugin so it compiles/builds before the package is installed.
+
+### Env vars to set (Railway)
+- `REVENUECAT_WEBHOOK_AUTH` — secret string; also paste it as the Authorization header in the RevenueCat webhook config.
+- `NEXT_PUBLIC_REVENUECAT_IOS_KEY` — RevenueCat Apple public SDK key.
+
+### RevenueCat dashboard
+- Webhook URL: `https://www.gascap.app/api/native/revenuecat`, Authorization = the `REVENUECAT_WEBHOOK_AUTH` value.
+- Entitlement id must be **`pro`**; attach products `gascap_pro_monthly` + `gascap_pro_lifetime`.
+
+### Build-time steps (do during the Codemagic build, NOT now — keeps Railway `npm ci` green)
+- `npm i @revenuecat/purchases-capacitor@^8` (Capacitor 6 compatible) + commit the lockfile.
+- `npx cap sync ios` so the native plugin links; new Codemagic build.
+
+### Remaining engineering (next, with products live + sandbox)
+- Native purchase UI: on iOS, the upgrade/pricing surfaces call `purchasePro()` (IAP) instead of Stripe; add a "Restore Purchases" action; ensure NO web-Stripe pricing/links show on iOS (the `/#pricing` the reviewer hit).
+- Call `initIap(session.user.id)` after login on native.
+- Sandbox test end-to-end (sandbox Apple ID) → resubmit.
+
 ## Engineering (Claude)
 1. **Add the SDK:** `@revenuecat/purchases-capacitor` (+ pod install in CI). Its JS ships in the Next.js bundle so the web app — running inside the iOS shell — can call the native StoreKit plugin over the Capacitor bridge (works even though the app loads the remote gascap.app URL).
 2. **Identify the user to RevenueCat:** on native, after login call `Purchases.logIn(<gascap userId>)` so the StoreKit entitlement maps to the GasCap account (not an anonymous device).
