@@ -151,7 +151,9 @@ function UpgradePageInner() {
   }
 
   if (platform === 'ios') {
-    const alreadyPro = isProMonthly || isProLifetime || isOnTrial;
+    // Trial users are NOT "already Pro" here — they must be able to buy to convert
+    // the trial into a paid plan via IAP. Only actual paid Pro hides the buy buttons.
+    const alreadyPro = isProMonthly || isProLifetime;
     return (
       <div className="min-h-screen bg-[#eef1f7] flex flex-col">
         <BrandBar />
