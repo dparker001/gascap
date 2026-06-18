@@ -10,7 +10,7 @@
  */
 
 import { getFillups }            from '@/lib/fillups';
-import { getBudgetGoal }         from '@/lib/budgetGoals';
+import { prisma }                from '@/lib/prisma';
 import { sendApns, apnsConfigured } from '@/lib/apns';
 import { sendPushNotification }  from '@/lib/oneSignal';
 
@@ -31,10 +31,14 @@ export async function buildUserDigest(userId: string): Promise<Digest | null> {
   const spent     = thisMonth.reduce((s, f) => s + f.totalCost, 0);
   const count     = thisMonth.length;
   const fillLabel = `${count} fill-up${count === 1 ? '' : 's'}`;
-  const goal      = getBudgetGoal(userId);
+  // Read the user's monthly budget from the DB (User.monthlyFuelBudget — set in
+  // Settings → Monthly Fuel Budget). The old getBudgetGoal() used an ephemeral
+  // JSON file that doesn't persist on Railway, so the digest never saw it.
+  const u      = await prisma.user.findUnique({ where: { id: userId }, select: { monthlyFuelBudget: true } });
+  const budget = u?.monthlyFuelBudget ?? null;
 
-  const body = goal
-    ? `This month: $${spent.toFixed(2)} spent · ${Math.round((spent / goal.monthlyLimit) * 100)}% of $${goal.monthlyLimit} budget · ${fillLabel}`
+  const body = budget
+    ? `This month: $${spent.toFixed(2)} spent · ${Math.round((spent / budget) * 100)}% of $${budget} budget · ${fillLabel}`
     : `This month: $${spent.toFixed(2)} spent · ${fillLabel}`;
 
   return { title: '⛽ GasCap™ Weekly Digest', body };
