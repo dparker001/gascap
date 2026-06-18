@@ -1,66 +1,41 @@
-import { NextResponse }         from 'next/server';
-import { getServerSession }      from 'next-auth';
-import { authOptions }           from '@/lib/auth';
-import { getAllUsers }            from '@/lib/users';
-import { getFillups }            from '@/lib/fillups';
-import { getBudgetGoal }         from '@/lib/budgetGoals';
-import { sendPushNotification }  from '@/lib/oneSignal';
-
-async function buildDigestBody(userId: string): Promise<string> {
-  const now       = new Date();
-  const month     = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  const fillups   = await getFillups(userId);
-  const thisMonth = fillups.filter((f) => f.date.startsWith(month));
-  const spent     = thisMonth.reduce((s, f) => s + f.totalCost, 0);
-  const goal      = getBudgetGoal(userId);
-
-  let body = `This month: $${spent.toFixed(2)} spent`;
-  if (goal) {
-    const pct = Math.round((spent / goal.monthlyLimit) * 100);
-    body += ` · ${pct}% of $${goal.monthlyLimit} budget`;
-  }
-  body += ` · ${fillups.length} total fillup${fillups.length !== 1 ? 's' : ''}`;
-  return body;
-}
-
-/** POST /api/push/digest
- *  Sends the weekly spending digest.
- *  ?all=1 sends to every user (admin use, requires session)
- *  Without ?all, sends only to the signed-in user.
+/**
+ * POST /api/push/digest  — ADMIN PREVIEW
+ *
+ * Sends ONE user their personalized monthly digest so an admin can see exactly
+ * what the weekly digest looks like (delivery happens automatically via
+ * /api/cron/digest). Body: { email }. Auth: x-admin-password.
+ *
+ * (Replaces the old web-only "send to all/one" GET handler — broadcast-to-all
+ * is now the cron; the admin panel uses this for a per-user preview.)
  */
+import { NextResponse } from 'next/server';
+import { findByEmail }   from '@/lib/users';
+import { prisma }        from '@/lib/prisma';
+import { sendUserDigest } from '@/lib/digest';
+
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? '';
+
 export async function POST(req: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-  const { searchParams } = new URL(req.url);
-  const sendAll = searchParams.get('all') === '1';
-  const userId  = (session.user as { id?: string })?.id ?? session.user?.email ?? '';
-
-  if (sendAll) {
-    // Send personalized digest to every user individually
-    const users = await getAllUsers();
-    let sent = 0;
-    for (const user of users) {
-      const body = await buildDigestBody(user.id);
-      const result = await sendPushNotification({
-        title:       '⛽ GasCap Weekly Digest',
-        body,
-        url:         '/',
-        externalIds: [user.id],
-      });
-      if (result.recipients && result.recipients > 0) sent++;
-    }
-    return NextResponse.json({ sent });
+  const pw = req.headers.get('x-admin-password') ?? '';
+  if (!ADMIN_PASSWORD || pw !== ADMIN_PASSWORD) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  // Single user digest
-  const body = await buildDigestBody(userId);
-  const result = await sendPushNotification({
-    title:       '⛽ GasCap Weekly Digest',
-    body,
-    url:         '/',
-    externalIds: [userId],
-  });
+  const { email } = await req.json().catch(() => ({})) as { email?: string };
+  if (!email?.trim()) return NextResponse.json({ error: 'Email is required.' }, { status: 400 });
 
-  return NextResponse.json({ sent: result.recipients ?? 0 });
+  const user = await findByEmail(email.trim());
+  if (!user) return NextResponse.json({ error: `No user found with email: ${email}` }, { status: 404 });
+
+  const u = await prisma.user.findUnique({ where: { id: user.id }, select: { iosPushToken: true } });
+  const r = await sendUserDigest({ id: user.id, iosPushToken: u?.iosPushToken ?? null });
+
+  if (!r.active) {
+    return NextResponse.json({ error: 'This user has no fill-ups this month — their digest would be empty (skipped in the weekly send).' }, { status: 200 });
+  }
+  return NextResponse.json({
+    ok:       r.delivered,
+    preview:  r.digest,
+    ...(r.delivered ? {} : { error: 'Digest built, but this user has no active push subscription (no iOS token / web sub).' }),
+  });
 }

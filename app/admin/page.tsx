@@ -167,7 +167,7 @@ export default function AdminPage() {
   const [sortBy,         setSortBy]         = useState<'joined-desc'|'joined-asc'|'logins'|'calcs'|'fillups'|'streak'>('joined-desc');
   const [savedPw,   setSavedPw]   = useState('');
   const [pushMsg,        setPushMsg]        = useState('');
-  const [pushLoading,    setPushLoading]    = useState<'all' | 'user' | 'broadcast' | null>(null);
+  const [pushLoading,    setPushLoading]    = useState<'user' | 'broadcast' | 'digest' | null>(null);
   const [pushEmail,      setPushEmail]      = useState('');
   const [subCount,       setSubCount]       = useState<number | null>(null);
   const [bcastTitle,     setBcastTitle]     = useState('');
@@ -360,14 +360,21 @@ export default function AdminPage() {
     await load(savedPw);
   }
 
-  async function handlePushAll() {
-    setPushLoading('all');
+  // Preview the personalized digest by sending it to ONE user (the weekly cron
+  // delivers it to everyone automatically — this is just to see what it looks like).
+  async function handleDigestPreview() {
+    if (!pushEmail.trim()) { setPushMsg('❌ Enter a user email above to preview their digest.'); return; }
+    setPushLoading('digest');
     setPushMsg('');
     try {
-      const res  = await fetch('/api/push/digest?all=1', { headers: { 'x-admin-password': savedPw } });
-      const data = await res.json() as { sent?: number; skipped?: number; error?: string };
-      if (data.error) { setPushMsg(`❌ ${data.error}`); }
-      else { setPushMsg(`✅ Sent to ${data.sent ?? 0} subscriber(s). ${data.skipped ?? 0} skipped/expired.`); }
+      const res  = await fetch('/api/push/digest', {
+        method:  'POST',
+        headers: { 'x-admin-password': savedPw, 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ email: pushEmail.trim() }),
+      });
+      const data = await res.json().catch(() => ({})) as { ok?: boolean; preview?: { body?: string }; error?: string };
+      if (data.ok) { setPushMsg(`✅ Digest sent to ${pushEmail}: “${data.preview?.body ?? ''}”`); }
+      else { setPushMsg(`❌ ${data.error ?? 'Failed to send digest.'}`); }
     } catch { setPushMsg('❌ Network error.'); }
     finally { setPushLoading(null); }
   }
@@ -878,20 +885,8 @@ export default function AdminPage() {
             </div>
           )}
 
-          <div className="flex flex-col sm:flex-row gap-3">
-            {/* Send to all */}
-            <button
-              onClick={handlePushAll}
-              disabled={pushLoading !== null}
-              className="flex-1 py-2.5 px-4 rounded-xl bg-navy-700 hover:bg-navy-600 text-white
-                         text-sm font-bold transition-colors disabled:opacity-50"
-            >
-              {pushLoading === 'all' ? 'Sending…' : '📣 Send digest to all subscribers'}
-            </button>
-          </div>
-
-          {/* Send to specific user */}
-          <div className="flex gap-2">
+          {/* Per-user actions — both buttons act on this one email */}
+          <div className="flex flex-col sm:flex-row gap-2">
             <input
               type="email"
               placeholder="user@email.com"
@@ -904,18 +899,26 @@ export default function AdminPage() {
             <button
               onClick={handlePushUser}
               disabled={pushLoading !== null || !pushEmail.trim()}
-              className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-white
+              className="px-4 py-2 rounded-xl bg-slate-600 hover:bg-slate-500 text-white
                          text-sm font-bold transition-colors disabled:opacity-50 whitespace-nowrap"
             >
               {pushLoading === 'user' ? '…' : 'Send test ping'}
             </button>
+            <button
+              onClick={handleDigestPreview}
+              disabled={pushLoading !== null || !pushEmail.trim()}
+              className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-white
+                         text-sm font-bold transition-colors disabled:opacity-50 whitespace-nowrap"
+            >
+              {pushLoading === 'digest' ? '…' : '📊 Send digest preview'}
+            </button>
           </div>
 
           <p className="text-[10px] text-slate-600 leading-relaxed">
-            <strong>Note:</strong> &ldquo;Send test ping&rdquo; sends a <strong>fixed</strong> test notification
-            (to verify delivery). To send your <strong>own Title + Message</strong>, use the{' '}
-            <strong>Custom Broadcast</strong> section below — enter the recipient&rsquo;s email there
-            (or leave it blank to send to everyone).
+            <strong>Note:</strong> Both buttons act on the email above. &ldquo;Send test ping&rdquo; sends a
+            fixed delivery test; &ldquo;Send digest preview&rdquo; sends that user their real personalized
+            monthly recap (the full digest goes out automatically every Monday). To send a{' '}
+            <strong>custom message</strong>, use the <strong>Custom Broadcast</strong> section below.
           </p>
 
           {/* Custom Broadcast */}
