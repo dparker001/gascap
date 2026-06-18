@@ -907,13 +907,15 @@ export default function AdminPage() {
               className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-white
                          text-sm font-bold transition-colors disabled:opacity-50 whitespace-nowrap"
             >
-              {pushLoading === 'user' ? '…' : 'Send to user'}
+              {pushLoading === 'user' ? '…' : 'Send test ping'}
             </button>
           </div>
 
           <p className="text-[10px] text-slate-600 leading-relaxed">
-            <strong>Note:</strong> Users must have opted in to push notifications from the Share tab in the app.
-            Sending to a user with no active subscription will return a warning.
+            <strong>Note:</strong> &ldquo;Send test ping&rdquo; sends a <strong>fixed</strong> test notification
+            (to verify delivery). To send your <strong>own Title + Message</strong>, use the{' '}
+            <strong>Custom Broadcast</strong> section below — enter the recipient&rsquo;s email there
+            (or leave it blank to send to everyone).
           </p>
 
           {/* Custom Broadcast */}
