@@ -17,6 +17,7 @@ import { getawayPromoActive, GETAWAY_DISCLOSURE } from '@/lib/getawayPromo';
 import { sendReferralCreditEmail }         from '@/lib/emailCampaign';
 import { sendPaidCampaignEmail }           from '@/lib/emailCampaignPaid';
 import { sendMilestoneEmail }              from '@/lib/emailEngagement';
+import { sendUserPush }                    from '@/lib/userPush';
 import { PRICES }                          from '@/lib/stripe';
 
 /** Fire-and-forget admin notification */
@@ -273,6 +274,14 @@ export async function POST(req: Request) {
             text: `You've earned a complimentary getaway! Choose your destination: ${chooseUrl}. ${GETAWAY_DISCLOSURE.short}`,
           }).catch((e) => console.error('[GasCap] Getaway choose email failed:', e));
 
+          // Bonus push alongside the email (app users w/ notifications only).
+          sendUserPush(
+            upgradedUser.id,
+            '🏝️ You\'ve earned a getaway!',
+            'Thanks for going Lifetime — tap to choose your complimentary resort getaway.',
+            '/getaway',
+          ).catch(() => { /* best-effort */ });
+
           console.info(`[GasCap webhook] Getaway promo — choose-destination email sent to ${upgradedUser.email}`);
         }
 
@@ -292,6 +301,14 @@ export async function POST(req: Request) {
           tier:     planTier,
           interval,
         }).catch((err) => console.error('[paid-campaign] P1 send failed:', err));
+
+        // Bonus welcome push alongside the P1 email (app users w/ notifications).
+        sendUserPush(
+          upgradedUser.id,
+          `You're officially GasCap™ ${planTier === 'fleet' ? 'Fleet' : 'Pro'} 🎉`,
+          'Welcome! Your Pro features are unlocked — tap to start tracking your fill-ups.',
+          '/',
+        ).catch(() => { /* best-effort */ });
 
         // ── Referral credit for lifetime purchases ─────────────────────────
         // For subscriptions, referral credit fires on invoice.payment_succeeded.

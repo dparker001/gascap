@@ -21,6 +21,7 @@ import { NextResponse } from 'next/server';
 import { setUserPlan, findById, findByEmail, enrollPaidCampaign } from '@/lib/users';
 import { sendMail } from '@/lib/email';
 import { sendPaidCampaignEmail } from '@/lib/emailCampaignPaid';
+import { sendUserPush } from '@/lib/userPush';
 import { getawayPromoActive, GETAWAY_DISCLOSURE } from '@/lib/getawayPromo';
 
 export const dynamic = 'force-dynamic';
@@ -41,7 +42,7 @@ function sendAdminMail(opts: { subject: string; html: string; text: string }) {
  * heads-up and email the buyer the choose link. Only on the initial lifetime
  * purchase event so it can't fire twice.
  */
-function maybeSendGetaway(user: { email: string; name?: string | null }, eventType: string) {
+function maybeSendGetaway(user: { id: string; email: string; name?: string | null }, eventType: string) {
   if (!getawayPromoActive()) return;
   if (!INITIAL_GRANT_EVENTS.has(eventType)) return;
   const baseUrl   = (process.env.NEXTAUTH_URL ?? 'https://www.gascap.app').replace(/\/$/, '');
@@ -80,6 +81,14 @@ function maybeSendGetaway(user: { email: string; name?: string | null }, eventTy
     </div>`,
     text: `You've earned a complimentary getaway! Choose your destination: ${chooseUrl}. ${GETAWAY_DISCLOSURE.short}`,
   }).catch((e) => console.error('[revenuecat] Getaway choose email failed:', e));
+
+  // Bonus push alongside the email (app users w/ notifications only).
+  sendUserPush(
+    user.id,
+    '🏝️ You\'ve earned a getaway!',
+    'Thanks for going Lifetime — tap to choose your complimentary resort getaway.',
+    '/getaway',
+  ).catch(() => { /* best-effort */ });
 
   console.info(`[revenuecat] Getaway promo — choose-destination email sent to ${user.email}`);
 }
@@ -162,6 +171,13 @@ export async function POST(req: Request) {
         sendPaidCampaignEmail('P1', {
           id: user.id, name: user.name, email: user.email, tier: 'pro', interval,
         }).catch((e) => console.error('[revenuecat] P1 welcome send failed:', e));
+        // Bonus welcome push alongside the P1 email (app users w/ notifications).
+        sendUserPush(
+          user.id,
+          "You're officially GasCap™ Pro 🎉",
+          'Welcome! Your Pro features are unlocked — tap to start tracking your fill-ups.',
+          '/',
+        ).catch(() => { /* best-effort */ });
       }
       // Lifetime buyers earn the complimentary getaway during the active promo.
       if (interval === 'lifetime') maybeSendGetaway(user, ev.type);

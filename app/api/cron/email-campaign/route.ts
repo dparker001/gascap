@@ -14,6 +14,7 @@
  */
 import { NextResponse } from 'next/server';
 import { getUsersPendingCampaignStep, advanceEmailCampaignStep, getAllUsers } from '@/lib/users';
+import { sendUserPush } from '@/lib/userPush';
 import { sendCampaignEmail }  from '@/lib/emailCampaign';
 import { sendPushNotification } from '@/lib/oneSignal';
 import { logEmailError, hasEmailBeenSent, CAMPAIGN_STEP_META } from '@/lib/emailLog';
@@ -122,6 +123,18 @@ export async function GET(req: Request) {
         await sendCampaignEmail(step, { id: user.id, name: user.name, email: user.email });
         await advanceEmailCampaignStep(user.id, step);
         sent++;
+
+        // ── Push supplement for D4 and D5 (trial-ending) ──────────────────
+        // Bonus nudge alongside the email — only lands for app users who
+        // granted notifications. Fire-and-forget: never blocks the drip.
+        if (step === 4 || step === 5) {
+          const first = (user.name || '').split(' ')[0] || 'there';
+          const title = step === 5 ? '⏰ 48 hours left on your Pro trial' : '⏰ 9 days left on your Pro trial';
+          const body  = step === 5
+            ? `${first}, your trial ends in 48 hours. Keep Pro for $2.99/mo or own it for $19.99.`
+            : `${first}, 9 days left — lock in the best price before your trial ends.`;
+          sendUserPush(user.id, title, body, '/upgrade').catch(() => { /* best-effort */ });
+        }
 
         // ── SMS supplement for D4 and D5 ──────────────────────────────────
         // Only fires when the user has provided a phone number and opted in to

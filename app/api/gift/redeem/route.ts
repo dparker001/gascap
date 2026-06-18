@@ -9,6 +9,7 @@ import { authOptions }      from '@/lib/auth';
 import { findById, grantGiftedLifetime } from '@/lib/users';
 import { findGiftByCode, markGiftRedeemed } from '@/lib/gifts';
 import { updateGhlContactPlan } from '@/lib/ghl';
+import { sendUserPush } from '@/lib/userPush';
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
@@ -54,6 +55,14 @@ export async function POST(req: Request) {
 
   // Sync plan to GHL CRM (non-fatal)
   updateGhlContactPlan(user.email, 'pro').catch((e) => console.error('[GHL] gift plan sync failed:', e));
+
+  // Bonus push — fires the moment it can land (recipient is now a signed-in user).
+  sendUserPush(
+    user.id,
+    '🎁 Your gift is unlocked — GasCap™ Pro Lifetime!',
+    'Enjoy Pro forever. Tap to start tracking your fill-ups and savings.',
+    '/',
+  ).catch(() => { /* best-effort */ });
 
   return NextResponse.json({ success: true, message: 'Pro Lifetime unlocked — enjoy! 🎉' });
 }
