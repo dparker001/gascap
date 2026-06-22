@@ -239,9 +239,16 @@ function UpgradePageInner() {
                 className="block w-full text-center text-xs text-slate-400 hover:text-slate-600 pt-1">
                 {t.upgrade.restore}
               </button>
-              <p className="text-[10px] text-slate-400 text-center leading-relaxed pt-1">
-                {t.upgrade.appleBilling}
-              </p>
+              {/* Auto-renewable subscription disclosure + functional Privacy/EULA
+                  links — required by App Store Guideline 3.1.2(c). */}
+              <div className="text-[10px] text-slate-400 text-center leading-relaxed pt-1 space-y-1">
+                <p>{t.upgrade.subDisclosure}</p>
+                <p>
+                  <Link href="/privacy" className="underline hover:text-slate-600">{t.upgrade.privacy}</Link>
+                  {' · '}
+                  <Link href="/terms" className="underline hover:text-slate-600">{t.upgrade.terms}</Link>
+                </p>
+              </div>
 
               {/* Everything you get with Pro */}
               <div className="bg-white rounded-2xl shadow-sm p-4 mt-2">
