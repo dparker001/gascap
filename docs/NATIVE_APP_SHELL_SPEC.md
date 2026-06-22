@@ -18,7 +18,7 @@ A fixed, safe-area-aware bottom nav — the single biggest "feels like an app" w
 | **Calculator** | "Calculator" | fuel pump / gauge | the fuel-cost calculator (`#gascap-calculator` / FuelGauge + ResultCard) |
 | **History** | "History" | clock with arrow (or list) | `components/FillupHistory.tsx` + savings dashboard |
 | **Tools** | "Tools" | wrench (or 2×2 grid) | `components/ToolsPanel.tsx` (MPG, gas price, optimizer, etc.) |
-| **Giveaway** | "Giveaway" | gift / ticket (or trophy) | the monthly gas-card giveaway view |
+| **Rewards** | "Rewards" | gift / star (or trophy) | hub — lead with the monthly gas-card **giveaway** (hero), then streaks/daily bonus + referral credits; later, **Kard card-linked cash-back** slots in here (web-first, native-gated until vetted) |
 | **Settings** | "Settings" | gear | `app/settings` content (account, legal links, delete) |
 
 5 tabs is the iOS max and Android-friendly. Keep labels short (one word) so they don't truncate on narrow phones. Each button: vertical stack (icon, then label), full tap target, `aria-label` per tab.
@@ -41,7 +41,7 @@ Native users should land in the tool, not a homepage. On native, **do not render
 **New files**
 - `components/native/NativeAppShell.tsx` (client) — holds `activeTab` state; renders the active tab's content + `<NativeTabBar/>`. Edge-to-edge, safe-area aware.
 - `components/native/NativeTabBar.tsx` — the fixed bottom bar (5 icon+label buttons, active state, safe-area bottom inset).
-- `components/native/tabs/` — thin wrappers that mount existing components (Calculator, History, Tools, Giveaway, Settings) so we reuse, not rewrite.
+- `components/native/tabs/` — thin wrappers that mount existing components (Calculator, History, Tools, Rewards, Settings) so we reuse, not rewrite.
 
 **Changed files**
 - `app/page.tsx` — at the top of `Home()`: `if (isNative) return <NativeAppShell/>;` → bypasses the entire marketing/scroll page for native. Web path unchanged.
