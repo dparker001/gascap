@@ -230,7 +230,7 @@ const SECTIONS = [
     items: [
       {
         q: 'What\'s included in the free plan?',
-        a: 'The free plan includes 1 saved vehicle, all three calculators (Target Fill, By Budget, and EV Charge), Trip Cost Estimator, Station Comparison, EPA vehicle database search, live local gas price and electricity rate lookup (free account required), dark mode, and offline use. Creating an account is free — no credit card ever required.',
+        a: 'The free plan includes 1 saved vehicle, all three calculators (Target Fill, By Budget, and EV Charge), Trip Cost Estimator, Station Comparison, EPA vehicle database search, live local gas price and electricity rate lookup (free account required), dark mode, and offline use. Creating an account is free — no credit card required.',
       },
       {
         q: 'How do I get 30 days of Pro free?',

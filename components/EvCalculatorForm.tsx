@@ -512,7 +512,7 @@ export default function EvCalculatorForm({ activeTab, setActiveTab }: Props) {
             </p>
             <p className="text-[11px] text-emerald-700 leading-relaxed mb-3">
               Track every charge session, compare costs over time, and auto-fill
-              your battery info next visit. Free account — no credit card, ever.
+              your battery info next visit. Free account — no credit card required.
             </p>
             <div className="flex items-center gap-3">
               <Link

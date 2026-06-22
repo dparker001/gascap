@@ -254,7 +254,7 @@ const en = {
 
   // ── Guest CTA banner ───────────────────────────────────────────────────────
   cta: {
-    badge:          '30 days of Pro free — no credit card ever',
+    badge:          '30 days of Pro free — no credit card to start',
     headline:       'Know before\nyou pull up.',
     sub:            'Start with 30 free days of Pro — then $2.99/mo, cancel anytime. Save your vehicles, track your MPG, and stop over-paying at the pump.',
     createAccount:  'Start free — 30 days Pro included →',
@@ -265,7 +265,7 @@ const en = {
   // ── Guest save nudge (inline calculator) ──────────────────────────────────
   saveNudge: {
     heading: 'Save your calculations',
-    sub:     'Free account — no credit card ever.',
+    sub:     'Free account — no credit card required.',
     button:  'Sign up free',
   },
 
@@ -420,7 +420,7 @@ const en = {
     terms:         'Terms',
     privacy:       'Privacy',
     // upgrade page
-    noCC:                'No credit card ever',
+    noCC:                'No credit card to start',
     foreverSub:          'Forever',
     freeDesc:            'The essential fuel calculator — always free.',
     getStartedFreeBtn:   'Get started free',
@@ -539,7 +539,7 @@ const en = {
     billedMonthly:     'Billed monthly · cancel anytime',
     annualSavings:     (_pro: string, _fleet: string) => '',
     trustNote:         'Payments processed securely by Stripe · Cancel anytime · No hidden fees',
-    noCCEver:          'No CC Ever',
+    noCCEver:          'No CC to start',
     individuals:       'Individuals & Couples',
     householdBiz:      'Household & Business',
     freeSub:           'Full calculator · gas prices · offline PWA · no catch',
@@ -2787,7 +2787,7 @@ const es: typeof en = {
   },
 
   cta: {
-    badge:          '30 días de Pro gratis — sin tarjeta de crédito nunca',
+    badge:          '30 días de Pro gratis — sin tarjeta de crédito para empezar',
     headline:       'Sabe antes\nde llegar.',
     sub:            'Empieza con 30 días de Pro gratis — luego $2.99/mes, cancela cuando quieras. Guarda tus vehículos, rastrea tu MPG y deja de pagar de más en la gasolinera.',
     createAccount:  'Empezar gratis — 30 días Pro incluidos →',
@@ -2797,7 +2797,7 @@ const es: typeof en = {
 
   saveNudge: {
     heading: 'Guarda tus cálculos',
-    sub:     'Cuenta gratuita — sin tarjeta de crédito nunca.',
+    sub:     'Cuenta gratuita — sin tarjeta de crédito.',
     button:  'Registrarse gratis',
   },
 

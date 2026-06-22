@@ -4,7 +4,7 @@ export default function TrustStrip() {
     { icon: '📱', text: 'Works offline — no signal needed' },
     { icon: '🔒', text: 'We never sell your data' },
     { icon: '📊', text: 'Powered by U.S. EIA official data' },
-    { icon: '✓',  text: 'No credit card to start — ever' },
+    { icon: '✓',  text: 'No credit card to start' },
   ];
 
   return (
