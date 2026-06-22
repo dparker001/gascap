@@ -20,7 +20,9 @@ const SHOTS = [
   { src: 'www.gascap.app_(iPhone 14 Pro Max).png',     name: '01-know-before-you-go', lines: ['Know before', 'you go'],            sub: 'Your exact fill-up, figured out.' },
   { src: 'www.gascap.app_(iPhone 14 Pro Max) (1).png', name: '02-exact-cost',         lines: ['Know your cost', 'before you pump'], sub: 'No guessing. No overpaying.' },
   { src: 'www.gascap.app_(iPhone 14 Pro Max) (2).png', name: '03-rental-mode',        lines: ['Skip the rental', 'refuel fee'],     sub: 'Return it at the right fuel level.' },
-  { src: 'www.gascap.app_(iPhone 14 Pro Max) (3).png', name: '04-track-fillups',      lines: ['Track every', 'fill-up & MPG'],      sub: 'See your real fuel costs over time.' },
+  // Fill-up history + MPG are Pro features → label as Pro so the screenshot doesn't
+  // imply they're free (App Store 2.3.2). No price wording (2.3.7).
+  { src: 'www.gascap.app_(iPhone 14 Pro Max) (3).png', name: '04-track-fillups',      lines: ['Track every', 'fill-up & MPG'],      sub: 'Included with GasCap™ Pro.' },
   // No price/"free" words in store captions — Apple 2.3.7 treats "free"/"discounted"
   // as a price reference in metadata. Describe the feature, not the price.
   { src: 'www.gascap.app_(iPhone 14 Pro Max) (4).png', name: '05-monthly-giveaway',   lines: ['Win a gas card', 'every month'],     sub: 'A monthly giveaway for drivers.' },
