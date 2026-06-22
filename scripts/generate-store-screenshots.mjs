@@ -88,7 +88,8 @@ async function makeShot(shot, W, H, outDir) {
 }
 
 for (const s of SHOTS) {
-  await makeShot(s, 1290, 2796, join(dir, 'final', 'apple'));
+  await makeShot(s, 1290, 2796, join(dir, 'final', 'apple'));     // iPhone 6.7"
+  await makeShot(s, 1284, 2778, join(dir, 'final', 'apple-65'));  // iPhone 6.5"
   await makeShot(s, 1080, 2160, join(dir, 'final', 'play'));
   // 13-inch iPad (App Store requires this set for universal builds). The phone-shaped
   // app screen is centered on the brand canvas — standard for phone-first apps.
