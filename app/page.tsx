@@ -810,7 +810,11 @@ export default function Home() {
           </div>
         </div>
 
-        {/* ── Separator + Pricing — full-width, centered below both columns ── */}
+        {/* ── Separator + Pricing — full-width, centered below both columns.
+            Native-hidden: this "MORE" divider only introduces the pricing toggle
+            below (itself native-hidden for anti-steering), so it must hide too or
+            it dangles pointing at nothing. ── */}
+        {!isNative && (
         <div className="max-w-6xl mx-auto w-full px-4 lg:px-6 pb-2 mt-2">
           <div className="flex items-center gap-3">
             <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
@@ -819,6 +823,7 @@ export default function Home() {
             <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
           </div>
         </div>
+        )}
         {!isNative && (
         <section className="max-w-6xl mx-auto w-full px-4 lg:px-6 pb-12">
           <button
