@@ -908,7 +908,10 @@ export default function Home() {
         </>
       )}
 
-      {/* Footer */}
+      {/* Footer — web only. Native wrappers hide this website-style footer so the
+          app reads as an app, not a PWA; legal links (Help/Terms/Privacy/Contact)
+          remain reachable in Settings, and the A2P business info stays on the web. */}
+      {!isNative && (
       <footer className="border-t border-slate-100 dark:border-slate-800
                          bg-white dark:bg-slate-900 py-8 pb-24 px-4 text-center space-y-3">
         <div className="flex items-center justify-center gap-2">
@@ -970,6 +973,7 @@ export default function Home() {
           </p>
         </div>
       </footer>
+      )}
     </main>
   );
 }
