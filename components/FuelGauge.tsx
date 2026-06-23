@@ -156,7 +156,9 @@ export default function FuelGauge({ percent, onChange, tankCapacity }: FuelGauge
   const label   = fuelLabel(clampedPct);
 
   return (
-    <div className="relative select-none w-full">
+    // data-noswipe: this is a horizontal drag control — don't let the native
+    // shell's swipe-between-tabs gesture hijack a gauge drag.
+    <div data-noswipe className="relative select-none w-full">
       {/* ── SVG gauge ──────────────────────────────────────────────── */}
       <svg
         ref={svgRef}

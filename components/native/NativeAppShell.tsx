@@ -14,7 +14,7 @@
  * Spec: docs/NATIVE_APP_SHELL_SPEC.md.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSession }          from 'next-auth/react';
 
 import CalculatorTabs   from '@/components/CalculatorTabs';
@@ -75,6 +75,50 @@ export default function NativeAppShell() {
     window.scrollTo({ top: 0, behavior: 'instant' });
   }
 
+  function shiftTab(dir: -1 | 1) {
+    const idx = TABS.findIndex((t) => t.id === active);
+    const next = TABS[idx + dir];
+    if (next) changeTab(next.id);   // clamp at the ends (no wrap)
+  }
+
+  // ── Swipe left/right between tabs ──────────────────────────────────────────
+  const contentRef = useRef<HTMLDivElement>(null);
+  const touchRef   = useRef<{ x: number; y: number; t: number; ignore: boolean } | null>(null);
+
+  // Skip the swipe when the gesture starts on something that owns horizontal
+  // motion: form fields, the fuel gauge (data-noswipe), or a horizontal scroller.
+  function swipeBlocked(target: EventTarget | null): boolean {
+    const el = target as HTMLElement | null;
+    if (!el) return false;
+    if (el.closest('input, textarea, select, [data-noswipe]')) return true;
+    let node: HTMLElement | null = el;
+    while (node && node !== contentRef.current) {
+      const ox = getComputedStyle(node).overflowX;
+      if ((ox === 'auto' || ox === 'scroll') && node.scrollWidth > node.clientWidth + 4) return true;
+      node = node.parentElement;
+    }
+    return false;
+  }
+
+  function onTouchStart(e: React.TouchEvent) {
+    const t = e.touches[0];
+    touchRef.current = { x: t.clientX, y: t.clientY, t: Date.now(), ignore: swipeBlocked(e.target) };
+  }
+
+  function onTouchEnd(e: React.TouchEvent) {
+    const s = touchRef.current;
+    touchRef.current = null;
+    if (!s || s.ignore) return;
+    const c  = e.changedTouches[0];
+    const dx = c.clientX - s.x;
+    const dy = c.clientY - s.y;
+    // Decisive, mostly-horizontal flick → switch tabs. Thresholds keep it from
+    // firing on taps, vertical scrolls, or diagonal drags.
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.8 && Date.now() - s.t < 600) {
+      shiftTab(dx < 0 ? 1 : -1);   // swipe left → next tab, swipe right → previous
+    }
+  }
+
   const title = TABS.find((t) => t.id === active)?.label ?? 'GasCap';
   const show  = (id: TabId) => (id === active ? '' : 'hidden');
 
@@ -98,7 +142,13 @@ export default function NativeAppShell() {
 
       {/* Tab content — each tab mounts on first visit, then hides (state preserved).
           Padding-bottom clears the fixed tab bar + the home-indicator safe area. */}
-      <div className="flex-1" style={{ paddingBottom: 'calc(88px + env(safe-area-inset-bottom))' }}>
+      <div
+        ref={contentRef}
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
+        className="flex-1"
+        style={{ paddingBottom: 'calc(88px + env(safe-area-inset-bottom))' }}
+      >
 
         {visited.has('calculator') && (
           <div className={show('calculator')}>
