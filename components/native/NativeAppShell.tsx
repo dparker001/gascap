@@ -144,7 +144,10 @@ export default function NativeAppShell() {
   const show  = (id: TabId) => (id === active ? '' : 'hidden');
 
   return (
-    <main className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-900">
+    <main
+      className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-900"
+      style={{ paddingTop: 'calc(48px + env(safe-area-inset-top))' }}
+    >
 
       {/* First-launch brand video overlay (inert until the MP4 is added — see component) */}
       <FirstLaunchSplash />
@@ -161,9 +164,10 @@ export default function NativeAppShell() {
         aria-hidden="true"
       />
 
-      {/* Native title bar — navy, doubles as the status-bar strip (safe-area top inset) */}
+      {/* Native title bar — navy, fixed (sticky is unreliable inside this flex/scroll
+          container on iOS). Stays put with the safe-area strip while content scrolls. */}
       <header
-        className="sticky top-0 z-30 bg-[#1e3a5f] text-white shadow-sm"
+        className="fixed top-0 left-0 right-0 z-30 bg-[#1e3a5f] text-white shadow-sm"
         style={{ paddingTop: 'env(safe-area-inset-top)' }}
       >
         <div className="h-12 flex items-center justify-center px-4 relative">
