@@ -54,6 +54,8 @@ function SignInForm() {
         setError(t.signIn.errorDefault);
       }
     } else {
+      // Land a fresh sign-in on the calculator, not wherever the native shell last was.
+      if (nextPath === '/') { try { localStorage.setItem('gc_active_tab', 'calculator'); } catch { /* ignore */ } }
       router.push(nextPath);
       router.refresh();
     }

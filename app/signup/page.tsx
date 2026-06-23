@@ -131,6 +131,7 @@ function SignUpForm() {
     } else {
       // Signed in — drop them straight into the calculator with the welcome banner.
       // The FreshSignupBanner will remind them to verify their email.
+      try { localStorage.setItem('gc_active_tab', 'calculator'); } catch { /* ignore */ }
       router.push('/?welcome=1');
     }
   }

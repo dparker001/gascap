@@ -27,6 +27,7 @@ const nextConfig = {
   // dot folder can't be a Next route, so rewrite to an API route that reads env).
   rewrites: async () => [
     { source: '/.well-known/assetlinks.json', destination: '/api/assetlinks' },
+    { source: '/.well-known/apple-app-site-association', destination: '/api/apple-app-site-association' },
   ],
   // Canonical redirect: gascap.app → www.gascap.app (apex sub-routes return 404 without this)
   redirects: async () => [
