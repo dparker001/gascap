@@ -93,6 +93,20 @@ export default function FirstLaunchSplash() {
         onError={dismiss}
       />
 
+      {/* Brand wordmark — present for the WHOLE splash so the user immediately knows the
+          app. Matches the landing-page header (transparent icon + white "GasCap™", no
+          background). White text + drop-shadow stays legible over the video. */}
+      <div
+        className="absolute inset-x-0 top-0 flex items-center justify-center gap-1.5 animate-fade-in"
+        style={{ paddingTop: 'calc(env(safe-area-inset-top) + 24px)' }}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/gascap-icon-raw.png" alt="" className="h-12 w-auto object-contain drop-shadow-lg" />
+        <span className="text-white font-black text-2xl leading-none tracking-tight drop-shadow-lg">
+          GasCap<sup className="text-xs font-bold" style={{ verticalAlign: '0.6em' }}>™</sup>
+        </span>
+      </div>
+
       {/* Skip — during playback only */}
       {phase === 'playing' && (
         <button
@@ -106,39 +120,23 @@ export default function FirstLaunchSplash() {
         </button>
       )}
 
-      {/* Held hero frame + branded Enter screen — fades in once the clip lands on the lean */}
+      {/* Tagline + CTA, bottom — fades in once the clip lands on the confident lean */}
       {phase !== 'playing' && (
-        <>
-          {/* Brand wordmark — matches the landing-page header exactly (transparent icon +
-              white "GasCap™" text, no background) */}
-          <div
-            className="absolute inset-x-0 top-0 flex items-center justify-center gap-1.5 animate-fade-in"
-            style={{ paddingTop: 'calc(env(safe-area-inset-top) + 24px)' }}
+        <div
+          className="absolute inset-x-0 bottom-0 pt-24 flex flex-col items-center gap-3
+                     bg-gradient-to-t from-black/65 via-black/25 to-transparent animate-fade-in"
+          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 38px)' }}
+        >
+          <p className="text-white text-xl font-black tracking-tight drop-shadow">Know before you go.</p>
+          <button
+            type="button"
+            onClick={dismiss}
+            className="w-[78%] max-w-xs py-3.5 rounded-2xl bg-brand-orange text-white font-bold
+                       text-base shadow-lg active:opacity-90 transition-opacity"
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/gascap-icon-raw.png" alt="" className="h-12 w-auto object-contain drop-shadow-lg" />
-            <span className="text-white font-black text-2xl leading-none tracking-tight drop-shadow-lg">
-              GasCap<sup className="text-xs font-bold" style={{ verticalAlign: '0.6em' }}>™</sup>
-            </span>
-          </div>
-
-          {/* Tagline + CTA, bottom */}
-          <div
-            className="absolute inset-x-0 bottom-0 pt-24 flex flex-col items-center gap-3
-                       bg-gradient-to-t from-black/65 via-black/25 to-transparent animate-fade-in"
-            style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 38px)' }}
-          >
-            <p className="text-white text-xl font-black tracking-tight drop-shadow">Know before you go.</p>
-            <button
-              type="button"
-              onClick={dismiss}
-              className="w-[78%] max-w-xs py-3.5 rounded-2xl bg-brand-orange text-white font-bold
-                         text-base shadow-lg active:opacity-90 transition-opacity"
-            >
-              Get Started →
-            </button>
-          </div>
-        </>
+            Get Started →
+          </button>
+        </div>
       )}
     </div>
   );
