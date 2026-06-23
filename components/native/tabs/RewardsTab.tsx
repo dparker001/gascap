@@ -14,9 +14,11 @@ import Link            from 'next/link';
 import { useSession }  from 'next-auth/react';
 import StreakRewards   from '@/components/StreakRewards';
 import ReferralCard    from '@/components/ReferralCard';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 export default function RewardsTab() {
   const { status } = useSession();
+  const { t } = useTranslation();
   const isGuest = status === 'unauthenticated';
 
   return (
@@ -31,9 +33,9 @@ export default function RewardsTab() {
         <div className="flex items-center gap-3">
           <span className="text-3xl" aria-hidden="true">🎁</span>
           <div className="min-w-0">
-            <h2 className="text-lg font-bold leading-tight">Monthly Gas Card Giveaway</h2>
+            <h2 className="text-lg font-bold leading-tight">{t.rewardsHub.giveawayTitle}</h2>
             <p className="text-sm text-white/85 mt-0.5">
-              Every active day earns an entry. Tap to view this month&apos;s prize &amp; rules →
+              {t.rewardsHub.giveawaySub}
             </p>
           </div>
         </div>
@@ -44,17 +46,17 @@ export default function RewardsTab() {
         <div className="rounded-2xl border border-teal-200 dark:border-teal-900 bg-teal-50
                         dark:bg-teal-900/20 p-5 text-center">
           <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-            Sign in to start earning entries
+            {t.rewardsHub.guestTitle}
           </p>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
-            Free account · log fill-ups, keep a daily streak, and refer friends to win a gas card every month.
+            {t.rewardsHub.guestSub}
           </p>
           <Link
             href="/signup"
             className="inline-block mt-3 px-5 py-2.5 rounded-xl bg-[#005F4A] text-white text-sm
                        font-bold active:opacity-90 transition-opacity"
           >
-            Create free account →
+            {t.gate.createAccount}
           </Link>
         </div>
       )}
@@ -75,12 +77,12 @@ export default function RewardsTab() {
           <span className="text-2xl" aria-hidden="true">💳</span>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">Cash back on gas</h3>
+              <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">{t.rewardsHub.cashTitle}</h3>
               <span className="text-[9px] font-black uppercase tracking-wide px-1.5 py-0.5 rounded-full
-                               bg-amber-100 text-amber-700 border border-amber-200">Coming soon</span>
+                               bg-amber-100 text-amber-700 border border-amber-200">{t.rewardsHub.comingSoon}</span>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">
-              Link a card and earn real cash back every time you fill up — automatically, no receipts to scan.
+              {t.rewardsHub.cashSub}
             </p>
           </div>
         </div>

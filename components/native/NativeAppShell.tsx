@@ -213,9 +213,9 @@ export default function NativeAppShell() {
             {isGuest ? (
               <TabLockGate
                 icon="⛽"
-                title="Track every fill-up"
-                subtitle="Sign in to log your fill-ups, watch your MPG, and see your fuel costs over time."
-                bullets={['Automatic MPG tracking', 'Fuel cost history & trends', 'Every fill-up earns giveaway entries']}
+                title={t.gate.history.title}
+                subtitle={t.gate.history.subtitle}
+                bullets={t.gate.history.bullets}
               />
             ) : (
               <div className="px-4 pt-4 max-w-lg mx-auto w-full">
@@ -230,9 +230,9 @@ export default function NativeAppShell() {
             {isGuest ? (
               <TabLockGate
                 icon="🛠️"
-                title="Unlock your fuel tools"
-                subtitle="Sign in to use the AI Fuel Advisor, trip planner, MPG charts, and station comparison."
-                bullets={['AI Fuel Advisor', 'Trip & budget planning', 'MPG charts & stats']}
+                title={t.gate.tools.title}
+                subtitle={t.gate.tools.subtitle}
+                bullets={t.gate.tools.bullets}
               />
             ) : (
               <div className="px-4 pt-4 max-w-lg mx-auto w-full">

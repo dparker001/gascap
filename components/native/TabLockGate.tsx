@@ -11,6 +11,7 @@
  */
 
 import Link from 'next/link';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 interface Props {
   icon:     string;     // emoji glyph
@@ -20,6 +21,7 @@ interface Props {
 }
 
 export default function TabLockGate({ icon, title, subtitle, bullets }: Props) {
+  const { t } = useTranslation();
   return (
     <div className="px-5 pt-8 pb-4 max-w-md mx-auto w-full flex flex-col items-center text-center">
 
@@ -45,16 +47,16 @@ export default function TabLockGate({ icon, title, subtitle, bullets }: Props) {
         className="w-full max-w-xs px-5 py-3 rounded-xl bg-[#005F4A] text-white text-sm font-bold
                    text-center active:opacity-90 transition-opacity"
       >
-        Create free account →
+        {t.gate.createAccount}
       </Link>
       <Link
         href="/signin"
         className="mt-3 text-sm font-semibold text-teal-700 dark:text-teal-400"
       >
-        Already have an account? Sign in
+        {t.gate.haveAccount}
       </Link>
 
-      <p className="mt-4 text-[11px] text-slate-400">No credit card to start</p>
+      <p className="mt-4 text-[11px] text-slate-400">{t.gate.noCard}</p>
     </div>
   );
 }

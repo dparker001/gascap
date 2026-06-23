@@ -32,6 +32,32 @@ const en = {
     gasCard:        'Gas Card',
   },
 
+  // ── Native shell: lock gates + Rewards hub (guest / free / pro levels) ──────
+  gate: {
+    createAccount: 'Create free account →',
+    haveAccount:   'Already have an account? Sign in',
+    noCard:        'No credit card to start',
+    history: {
+      title:    'Track every fill-up',
+      subtitle: 'Sign in to log your fill-ups, watch your MPG, and see your fuel costs over time.',
+      bullets:  ['Automatic MPG tracking', 'Fuel cost history & trends', 'Every fill-up earns giveaway entries'],
+    },
+    tools: {
+      title:    'Unlock your fuel tools',
+      subtitle: 'Sign in to use the AI Fuel Advisor, trip planner, MPG charts, and station comparison.',
+      bullets:  ['AI Fuel Advisor', 'Trip & budget planning', 'MPG charts & stats'],
+    },
+  },
+  rewardsHub: {
+    giveawayTitle: 'Monthly Gas Card Giveaway',
+    giveawaySub:   "Every active day earns an entry. Tap to view this month's prize & rules →",
+    guestTitle:    'Sign in to start earning entries',
+    guestSub:      'Free account · log fill-ups, keep a daily streak, and refer friends to win a gas card every month.',
+    cashTitle:     'Cash back on gas',
+    comingSoon:    'Coming soon',
+    cashSub:       'Link a card and earn real cash back every time you fill up — automatically, no receipts to scan.',
+  },
+
   // ── Ad-landing banner (paid traffic) ───────────────────────────────────────
   adBanner: {
     eyebrow:      'Welcome — limited-time bonus',
@@ -2587,6 +2613,32 @@ const es: typeof en = {
     pricing:        'Precios',
     getStartedFree: 'Comenzar gratis',
     gasCard:        'Tarjeta de gasolina',
+  },
+
+  // ── Native shell: lock gates + Rewards hub (guest / free / pro levels) ──────
+  gate: {
+    createAccount: 'Crear cuenta gratis →',
+    haveAccount:   '¿Ya tienes cuenta? Inicia sesión',
+    noCard:        'Sin tarjeta de crédito para empezar',
+    history: {
+      title:    'Registra cada recarga',
+      subtitle: 'Inicia sesión para registrar tus recargas, ver tu rendimiento (MPG) y tus costos de combustible con el tiempo.',
+      bullets:  ['Seguimiento automático de MPG', 'Historial y tendencias de costos', 'Cada recarga gana entradas al sorteo'],
+    },
+    tools: {
+      title:    'Desbloquea tus herramientas',
+      subtitle: 'Inicia sesión para usar el Asesor de Combustible IA, el planificador de viajes, los gráficos de MPG y la comparación de estaciones.',
+      bullets:  ['Asesor de Combustible IA', 'Planificación de viajes y presupuesto', 'Gráficos y estadísticas de MPG'],
+    },
+  },
+  rewardsHub: {
+    giveawayTitle: 'Sorteo mensual de tarjeta de gasolina',
+    giveawaySub:   'Cada día activo gana una entrada. Toca para ver el premio y las reglas de este mes →',
+    guestTitle:    'Inicia sesión para empezar a ganar entradas',
+    guestSub:      'Cuenta gratis · registra recargas, mantén una racha diaria y refiere amigos para ganar una tarjeta de gasolina cada mes.',
+    cashTitle:     'Reembolso en gasolina',
+    comingSoon:    'Próximamente',
+    cashSub:       'Vincula una tarjeta y gana reembolso real cada vez que cargas combustible — automáticamente, sin escanear recibos.',
   },
 
   adBanner: {
