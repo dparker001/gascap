@@ -328,7 +328,7 @@ const en = {
     sub:              'Join free · No credit card required',
     proTrial:         'Your first 30 days are Pro — free. Then $2.99/mo, cancel anytime.',
     // Native apps: no price / subscription wording (App Store 2.1(b)/3.1.1).
-    proTrialNative:   'Free to use — no credit card required.',
+    proTrialNative:   'Your first 30 days are Pro — free. No credit card required.',
     fullNameLabel:        'Full name',
     fullNamePlaceholder:  'Alex Johnson',
     firstNameLabel:       'First name',
@@ -2921,7 +2921,7 @@ const es: typeof en = {
     sub:              'Únete gratis · Sin tarjeta de crédito',
     proTrial:         'Tus primeros 30 días son Pro — gratis. Luego $2.99/mes, cancela cuando quieras.',
     // Apps nativas: sin precio ni suscripción (App Store 2.1(b)/3.1.1).
-    proTrialNative:   'Gratis — sin tarjeta de crédito.',
+    proTrialNative:   'Tus primeros 30 días son Pro — gratis. Sin tarjeta de crédito.',
     fullNameLabel:        'Nombre completo',
     fullNamePlaceholder:  'Alex Johnson',
     firstNameLabel:       'Nombre',
