@@ -9,7 +9,7 @@ import { findById }         from '@/lib/users';
 import { getPublicReviews, upsertReview } from '@/lib/reviews';
 
 export async function GET() {
-  const reviews = getPublicReviews();
+  const reviews = await getPublicReviews();
   return NextResponse.json({ reviews });
 }
 
@@ -32,6 +32,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Review must be at least 10 characters.' }, { status: 400 });
   }
 
-  const review = upsertReview(userId, userName, body.rating, body.text, plan, body.vehicleName, lifetime);
+  const review = await upsertReview(userId, userName, body.rating, body.text, plan, body.vehicleName, lifetime);
   return NextResponse.json(review, { status: 201 });
 }

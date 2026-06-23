@@ -228,3 +228,21 @@ model Gift {
   @@index([purchaserEmail])
   @@index([status])
 }
+
+// User-submitted testimonials. One per user (keyed by userId, upsert on edit).
+// New reviews default approved=false → moderated at /admin/reviews before going public.
+model Review {
+  id          String  @id
+  userId      String  @unique
+  userName    String
+  rating      Int
+  text        String
+  vehicleName String?
+  plan        String  @default("free")
+  lifetime    Boolean @default(false)
+  approved    Boolean @default(false)
+  createdAt   String
+  updatedAt   String
+
+  @@index([approved])
+}

@@ -22,7 +22,7 @@ export async function GET(req: Request) {
   if (status === 'no-env') return NextResponse.json({ error: 'ADMIN_PASSWORD not set' }, { status: 500 });
   if (status === 'wrong')  return NextResponse.json({ error: 'Unauthorized' },            { status: 401 });
 
-  const reviews = getAllReviews();
+  const reviews = await getAllReviews();
   return NextResponse.json({ reviews });
 }
 
@@ -39,7 +39,7 @@ export async function PATCH(req: Request) {
   if (typeof body.approved !== 'boolean')
     return NextResponse.json({ error: 'Body must include { approved: boolean }' }, { status: 400 });
 
-  const ok = setReviewApproval(id, body.approved);
+  const ok = await setReviewApproval(id, body.approved);
   if (!ok) return NextResponse.json({ error: 'Review not found' }, { status: 404 });
 
   return NextResponse.json({ ok: true });
@@ -55,10 +55,10 @@ export async function DELETE(req: Request) {
   if (!id) return NextResponse.json({ error: 'Missing ?id=' }, { status: 400 });
 
   // deleteReview takes userId; find the review first to get userId
-  const all = getAllReviews();
+  const all = await getAllReviews();
   const review = all.find((r) => r.id === id);
   if (!review) return NextResponse.json({ error: 'Review not found' }, { status: 404 });
 
-  deleteReview(review.userId);
+  await deleteReview(review.userId);
   return NextResponse.json({ ok: true });
 }
