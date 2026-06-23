@@ -123,7 +123,7 @@ const PLAN_COLORS = {
 function planBadge(u: AdminUser): { label: string; cls: string } {
   if (u.plan === 'free')  return { label: 'FREE',     cls: 'bg-slate-100 text-slate-600' };
   if (u.plan === 'fleet') return { label: 'FLEET',    cls: 'bg-blue-100 text-blue-700' };
-  if (u.isProTrial)       return { label: 'TRIAL',    cls: 'bg-amber-100 text-amber-700' };
+  if (u.isProTrial)       return { label: 'PRO TRIAL', cls: 'bg-amber-100 text-amber-700' };
   if (u.stripeInterval === 'lifetime')
                           return { label: 'LIFETIME', cls: 'bg-teal-100 text-teal-700' };
   return                         { label: 'PRO',      cls: 'bg-green-100 text-green-700' };
