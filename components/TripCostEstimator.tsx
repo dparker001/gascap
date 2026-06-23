@@ -1067,6 +1067,8 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
               </p>
             )}
             <GasPriceLookup
+              autoFill
+              currentValue={pricePerGallon}
               onApply={(p, lat, lng) => {
                 setPricePerGallon(p);
                 setResult(null);

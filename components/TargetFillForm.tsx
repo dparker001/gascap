@@ -620,6 +620,8 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
         </div>
         {errors.pricePerGallon && <FieldError msg={errors.pricePerGallon} />}
         <GasPriceLookup
+          autoFill
+          currentValue={form.pricePerGallon}
           onApply={(p, lat, lng) => {
             liveRecalc({ pricePerGallon: p });
             if (lat != null && lng != null) setGasCoords({ lat, lng });

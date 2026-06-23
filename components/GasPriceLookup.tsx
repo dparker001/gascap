@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { useTranslation } from '@/contexts/LanguageContext';
@@ -18,9 +18,17 @@ interface GasPriceLookupResult {
 interface GasPriceLookupProps {
   /** Called with the detected price (and optional coords) when the user accepts it */
   onApply: (price: string, lat?: number, lng?: number) => void;
+  /** Phase A: auto-detect + pre-fill the price on mount (for signed-in users). */
+  autoFill?: boolean;
+  /** The current price-field value — auto-fill is skipped when it's non-empty so we
+   *  never overwrite something the user typed. */
+  currentValue?: string;
 }
 
 type Status = 'idle' | 'locating' | 'fetching' | 'done' | 'error';
+
+const LAST_PRICE_KEY = 'gc_last_gas_price';
+const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // remembered price is "recent" for 7 days
 
 /** AbortSignal that fires after `ms` — so a slow/hung request can't spin forever. */
 function timeoutSignal(ms: number): AbortSignal {
@@ -28,7 +36,6 @@ function timeoutSignal(ms: number): AbortSignal {
   setTimeout(() => c.abort(), ms);
   return c.signal;
 }
-
 
 const STATE_NAMES: Record<string, string> = {
   AL:'Alabama',AK:'Alaska',AZ:'Arizona',AR:'Arkansas',CA:'California',
@@ -44,7 +51,7 @@ const STATE_NAMES: Record<string, string> = {
   US:'United States (national avg)',
 };
 
-export default function GasPriceLookup({ onApply }: GasPriceLookupProps) {
+export default function GasPriceLookup({ onApply, autoFill = false, currentValue = '' }: GasPriceLookupProps) {
   const { t } = useTranslation();
   const { data: session, status: sessionStatus } = useSession();
   const isGuest = sessionStatus !== 'loading' && !session;
@@ -54,14 +61,21 @@ export default function GasPriceLookup({ onApply }: GasPriceLookupProps) {
   const [errMsg, setErrMsg]   = useState('');
   const [showGate, setShowGate] = useState(false);
   const [coords, setCoords]   = useState<{ lat: number; lng: number } | null>(null);
+  // When set, the price was applied automatically — show a compact note, not the card.
+  const [autoApplied, setAutoApplied] = useState<{ price: number; state: string } | null>(null);
+  const autoRan = useRef(false);
 
-  async function handleLookup() {
-    setStatus('locating');
+  /** Persist the last detected price so the next visit can pre-fill instantly. */
+  function remember(price: number, state: string) {
+    try { localStorage.setItem(LAST_PRICE_KEY, JSON.stringify({ price, state, at: Date.now() })); } catch { /* ignore */ }
+  }
+
+  async function handleLookup(auto = false) {
+    if (!auto) setStatus('locating');
     setResult(null);
     setErrMsg('');
-    setCoords(null);
 
-    // 1. Get geolocation
+    // 1. Geolocation
     let position: GeolocationCoordinates;
     try {
       position = await new Promise<GeolocationCoordinates>((resolve, reject) => {
@@ -72,57 +86,104 @@ export default function GasPriceLookup({ onApply }: GasPriceLookupProps) {
         );
       });
     } catch {
-      setStatus('error');
-      setErrMsg(t.gasPrice.errorDenied);
+      if (!auto) { setStatus('error'); setErrMsg(t.gasPrice.errorDenied); }
       return;
     }
 
-    // Round to ~1 decimal (~11 km) so we only ever transmit APPROXIMATE location,
-    // never precise GPS. State-level resolution for regional pricing is unaffected,
-    // and it keeps our "approximate location" privacy declaration honest.
+    // Round to ~1 decimal (~11 km) — only ever transmit APPROXIMATE location.
     const apxLat = Math.round(position.latitude  * 10) / 10;
     const apxLng = Math.round(position.longitude * 10) / 10;
-
-    // Store coords for use in onApply
     setCoords({ lat: apxLat, lng: apxLng });
 
-    // 2. Fetch price from our API route
-    setStatus('fetching');
+    // 2. Fetch price (now instant server-side — local geocode + cached EIA)
+    if (!auto) setStatus('fetching');
     try {
-      const res = await fetch(
-        `/api/gas-price?lat=${apxLat}&lng=${apxLng}`,
-        { signal: timeoutSignal(15000) },
-      );
+      const res  = await fetch(`/api/gas-price?lat=${apxLat}&lng=${apxLng}`, { signal: timeoutSignal(12000) });
       const data = await res.json() as GasPriceLookupResult;
-      setResult(data);
-      setStatus('done');
+
+      if (auto) {
+        // Silent auto-fill: apply only if the field is still empty.
+        if (data.price && !currentValue) {
+          onApply(data.price.toFixed(2), apxLat, apxLng);
+          setAutoApplied({ price: data.price, state: data.state });
+          remember(data.price, data.state);
+        }
+        setStatus('idle');
+      } else {
+        setResult(data);
+        setStatus('done');
+        if (data.price) remember(data.price, data.state);
+      }
     } catch {
-      setStatus('error');
-      setErrMsg(t.gasPrice.errorNetwork);
+      if (!auto) { setStatus('error'); setErrMsg(t.gasPrice.errorNetwork); }
     }
   }
+
+  // Phase A: auto-detect + pre-fill on mount for signed-in users with an empty field.
+  useEffect(() => {
+    if (!autoFill || autoRan.current) return;
+    if (sessionStatus !== 'authenticated') return;   // wait until we know they're signed in
+    if (currentValue) return;                          // never overwrite a typed value
+    autoRan.current = true;
+
+    // a) Instant pre-fill from the remembered price (no waiting on geolocation).
+    try {
+      const raw = localStorage.getItem(LAST_PRICE_KEY);
+      if (raw) {
+        const last = JSON.parse(raw) as { price: number; state: string; at: number };
+        if (last?.price && Date.now() - last.at < MAX_AGE_MS) {
+          onApply(last.price.toFixed(2));
+          setAutoApplied({ price: last.price, state: last.state });
+        }
+      }
+    } catch { /* ignore */ }
+
+    // b) Refresh silently from current location IF permission is already granted
+    //    (never trigger a surprise permission prompt on open).
+    navigator.permissions?.query?.({ name: 'geolocation' as PermissionName })
+      .then((p) => { if (p.state === 'granted') handleLookup(true); })
+      .catch(() => { /* Permissions API unavailable — keep the remembered value */ });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionStatus, autoFill]);
 
   function handleApply() {
     if (result?.price) {
       onApply(result.price.toFixed(2), coords?.lat, coords?.lng);
       setStatus('idle');
       setResult(null);
+      setAutoApplied({ price: result.price, state: result.state });
     }
   }
 
   const stateName = result?.state ? (STATE_NAMES[result.state] ?? result.state) : '';
+  const autoStateName = autoApplied ? (STATE_NAMES[autoApplied.state] ?? autoApplied.state) : '';
 
   return (
     <div>
+      {/* ── Auto-applied compact note ── */}
+      {autoApplied && status === 'idle' && !showGate && (
+        <div className="mt-2 flex items-center gap-2 text-xs text-emerald-700">
+          <span aria-hidden="true">📍</span>
+          <span className="font-semibold">{autoStateName} avg ${autoApplied.price.toFixed(2)}/gal applied</span>
+          <button
+            type="button"
+            onClick={() => { setAutoApplied(null); handleLookup(false); }}
+            className="text-amber-600 font-semibold hover:underline"
+          >
+            Update
+          </button>
+        </div>
+      )}
+
       {/* ── Trigger button ── */}
-      {status === 'idle' && !showGate && (
+      {status === 'idle' && !showGate && !autoApplied && (
         <button
           type="button"
           onClick={() => {
             if (isGuest) {
               setShowGate(true);
             } else {
-              handleLookup();
+              handleLookup(false);
             }
           }}
           className="inline-flex items-center gap-1.5 mt-2.5 px-3.5 py-2 rounded-xl
@@ -142,7 +203,7 @@ export default function GasPriceLookup({ onApply }: GasPriceLookupProps) {
           </p>
           <p className="text-[11px] text-amber-700 leading-relaxed mb-3">
             Create your free GasCap account to auto-detect local gas prices by location.
-            No credit card required.
+            No credit card to start.
           </p>
           <div className="flex items-center gap-3">
             <Link

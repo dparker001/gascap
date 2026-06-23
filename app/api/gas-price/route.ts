@@ -1,89 +1,19 @@
 /**
  * GET /api/gas-price?lat=xx&lng=yy
  *
- * Returns the average regular unleaded gas price for the U.S. state
- * corresponding to the supplied lat/lng, using:
- *   1. Nominatim (OpenStreetMap) reverse-geocode to resolve state
- *   2. EIA Open Data API v2 for weekly gas prices (product=EPMR, Regular Gasoline)
+ * Returns the regular-unleaded gas price for the U.S. state at the given lat/lng.
  *
- * EIA API key: set EIA_API_KEY in Railway environment variables (free at https://www.eia.gov/opendata/)
- * Falls back to national average if state not found or key missing.
- *
- * NOTE: EIA API v2 returns values as strings — must parseFloat(), not typeof === 'number'.
- * duoarea format: 'S' + 2-letter state code (e.g. SCA, STX) or 'NUS' for national.
+ * Phase A rewrite (fixes the "spins forever" bug): resolves the state LOCALLY
+ * (lib/usStateFromCoords — no Nominatim) and the price from a seed/in-memory cache
+ * that refreshes from EIA in the background (lib/gasPrices). The request never
+ * blocks on a live external call, so it responds in ~1ms.
  */
 
 import { NextResponse } from 'next/server';
+import { usStateFromCoords } from '@/lib/usStateFromCoords';
+import { getStatePrice } from '@/lib/gasPrices';
 
 const EIA_KEY = process.env.EIA_API_KEY ?? '';
-
-/** Approximate U.S. national regular-unleaded average — shown ONLY when the EIA
- *  API is unreachable (outage), clearly flagged as an estimate in the UI so it's
- *  never passed off as live data. Update periodically. */
-const FALLBACK_NATIONAL_PRICE = 3.15;
-
-/** AbortSignal that fires after `ms` — prevents a hung/slow upstream (Nominatim,
- *  EIA) from making the request hang forever (perpetual spinner on the client). */
-function timeoutSignal(ms: number): AbortSignal {
-  const c = new AbortController();
-  setTimeout(() => c.abort(), ms);
-  return c.signal;
-}
-
-/** Resolve lat/lng → 2-letter US state code via Nominatim */
-async function getStateFromCoords(lat: number, lng: number): Promise<string> {
-  try {
-    const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`;
-    const res  = await fetch(url, {
-      headers: { 'User-Agent': 'GasCap/1.0 (info@gascap.app)' },
-      next:    { revalidate: 3600 },
-      signal:  timeoutSignal(6000),
-    });
-    if (!res.ok) return 'US';
-    const data = await res.json() as {
-      address?: {
-        state_code?:       string;
-        'ISO3166-2-lvl4'?: string;
-      };
-    };
-    // Nominatim returns state_code ("CA") or ISO3166-2-lvl4 ("US-CA")
-    const raw  = data.address?.state_code ?? data.address?.['ISO3166-2-lvl4'] ?? '';
-    const code = raw.includes('-') ? raw.split('-')[1] : raw;
-    return code?.toUpperCase() || 'US';
-  } catch {
-    return 'US';
-  }
-}
-
-/**
- * Fetch regular gas price from EIA v2 using duoarea facet.
- * duoarea: 'S' + stateCode (e.g. 'SCA') or 'NUS' for national.
- * product: 'EPMR' = Regular Gasoline (all formulations combined).
- * Value comes back as a string from EIA — use parseFloat().
- */
-async function getPriceForState(stateCode: string): Promise<number | null> {
-  if (!EIA_KEY) return null;
-  const duoarea = stateCode === 'US' ? 'NUS' : `S${stateCode}`;
-  try {
-    const url =
-      `https://api.eia.gov/v2/petroleum/pri/gnd/data/` +
-      `?api_key=${EIA_KEY}` +
-      `&frequency=weekly` +
-      `&data[0]=value` +
-      `&sort[0][column]=period&sort[0][direction]=desc` +
-      `&length=1` +
-      `&facets[duoarea][]=${duoarea}` +
-      `&facets[product][]=EPMR`;
-    const res  = await fetch(url, { next: { revalidate: 3600 * 6 }, signal: timeoutSignal(7000) });
-    if (!res.ok) return null;
-    const json  = await res.json() as { response?: { data?: { value?: string | number }[] } };
-    const raw   = json.response?.data?.[0]?.value;
-    const price = parseFloat(String(raw ?? ''));
-    return isNaN(price) ? null : price;
-  } catch {
-    return null;
-  }
-}
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -94,40 +24,20 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'Missing lat/lng' }, { status: 400 });
   }
 
+  // Surface the EIA-key-setup hint in local dev (prod always has the key in Railway).
   if (!EIA_KEY) {
     return NextResponse.json({ price: null, state: 'US', noApiKey: true });
   }
 
-  try {
-    const stateCode  = await getStateFromCoords(lat, lng);
-    const statePrice = await getPriceForState(stateCode);
+  const state = usStateFromCoords(lat, lng);          // local, instant
+  const { price, live } = getStatePrice(state);       // cache/seed, instant
 
-    // Fall back to national average if state has no data
-    const price = statePrice ?? await getPriceForState('US');
-
-    if (!price) {
-      // EIA unreachable — return an approximate national estimate so the
-      // calculator stays usable during EIA outages. `approximate` tells the UI
-      // to label it as an estimate (no "EIA Official" badge).
-      return NextResponse.json({
-        price:       FALLBACK_NATIONAL_PRICE,
-        state:       stateCode,
-        isState:     false,
-        isNational:  true,
-        approximate: true,
-        source:      'estimate',
-      });
-    }
-
-    return NextResponse.json({
-      price:      Math.round(price * 1000) / 1000,
-      state:      stateCode,
-      isState:    stateCode !== 'US' && statePrice !== null,
-      isNational: stateCode === 'US' || statePrice === null,
-      source:     'eia',
-      updatedAt:  new Date().toISOString(),
-    });
-  } catch {
-    return NextResponse.json({ error: 'Lookup failed' }, { status: 500 });
-  }
+  return NextResponse.json({
+    price:      Math.round(price * 1000) / 1000,
+    state,
+    isState:    state !== 'US',
+    isNational: state === 'US',
+    source:     'eia',
+    live,                                             // true = fresh cache hit, false = seed snapshot
+  });
 }
