@@ -29,6 +29,7 @@ import NativeTabBar, { type TabMeta } from './NativeTabBar';
 import RewardsTab       from './tabs/RewardsTab';
 import TabLockGate      from './TabLockGate';
 import FirstLaunchSplash from './FirstLaunchSplash';
+import ReviewNudge       from '@/components/ReviewNudge';
 
 export type TabId = 'calculator' | 'history' | 'tools' | 'rewards' | 'settings';
 
@@ -142,6 +143,9 @@ export default function NativeAppShell() {
 
       {/* First-launch brand video overlay (inert until the MP4 is added — see component) */}
       <FirstLaunchSplash />
+
+      {/* "Rate us" nudge — engaged signed-in users, after they've come back (≥2 days) */}
+      <ReviewNudge />
 
       {/* Native title bar — navy, doubles as the status-bar strip (safe-area top inset) */}
       <header
