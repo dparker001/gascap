@@ -25,52 +25,9 @@ export interface Review {
 
 const DATA_FILE = path.join(process.cwd(), 'data', 'reviews.json');
 
-// Seed reviews — shown until real user reviews accumulate.
-// Remove individual entries once you have 6+ genuine reviews.
-const SEED_REVIEWS: Review[] = [
-  {
-    id: 'seed-001', userId: 'seed-user-001', userName: 'Marcus T.',
-    rating: 5,
-    text: "Finally stopped guessing at the pump. Pulled up knowing exactly what I needed — saved $12 on my last fill-up just by not over-filling. The live gas price lookup is a game changer.",
-    vehicleName: '2021 Ford F-150', plan: 'pro', lifetime: true, approved: true,
-    createdAt: '2026-03-20T14:32:00.000Z', updatedAt: '2026-03-20T14:32:00.000Z',
-  },
-  {
-    id: 'seed-002', userId: 'seed-user-002', userName: 'Priya S.',
-    rating: 5,
-    text: "I manage two cars for our household and the garage feature is perfect. I can switch between my Civic and my husband's truck in seconds. MPG tracking has made me a way more efficient driver.",
-    vehicleName: '2020 Honda Civic', plan: 'pro', approved: true,
-    createdAt: '2026-03-22T09:15:00.000Z', updatedAt: '2026-03-22T09:15:00.000Z',
-  },
-  {
-    id: 'seed-003', userId: 'seed-user-003', userName: 'Derek W.',
-    rating: 5,
-    text: "The monthly budget tracker keeps me honest. I set a goal and GasCap tells me exactly how I'm tracking week by week. Simple, clean, no fluff. This is what a gas app should be.",
-    vehicleName: '2019 Chevy Silverado', plan: 'pro', lifetime: true, approved: true,
-    createdAt: '2026-03-24T16:45:00.000Z', updatedAt: '2026-03-24T16:45:00.000Z',
-  },
-  {
-    id: 'seed-004', userId: 'seed-user-004', userName: 'Janelle R.',
-    rating: 5,
-    text: "Works without wifi — that alone sold me. I'm always in areas with spotty signal and every other app fails. GasCap just works. Installed it on my phone like an app and it's always there.",
-    vehicleName: '2022 Toyota RAV4', plan: 'free', approved: true,
-    createdAt: '2026-03-25T11:20:00.000Z', updatedAt: '2026-03-25T11:20:00.000Z',
-  },
-  {
-    id: 'seed-005', userId: 'seed-user-005', userName: 'Carlos M.',
-    rating: 5,
-    text: "I drive for work and fuel reimbursement is always a headache. The fill-up log and export feature makes it dead simple to submit expenses. Paid for itself the very first month.",
-    vehicleName: '2023 Hyundai Tucson', plan: 'pro', approved: true,
-    createdAt: '2026-03-26T08:55:00.000Z', updatedAt: '2026-03-26T08:55:00.000Z',
-  },
-  {
-    id: 'seed-006', userId: 'seed-user-006', userName: 'Aisha B.',
-    rating: 5,
-    text: "Shared this with my whole family. My teenage daughter uses it before every fill-up now. The AI advisor answered her question about gas grades and she saved money immediately. Love this app.",
-    vehicleName: '2018 Nissan Altima', plan: 'pro', lifetime: true, approved: true,
-    createdAt: '2026-03-27T13:10:00.000Z', updatedAt: '2026-03-27T13:10:00.000Z',
-  },
-];
+// No seed/placeholder reviews — only real, user-submitted, admin-approved reviews
+// are ever shown publicly (FTC + App Store both prohibit fabricated testimonials).
+// The marquee hides itself entirely until genuine approved reviews exist.
 
 function read(): Review[] {
   try {
@@ -87,16 +44,11 @@ function write(rows: Review[]) {
   fs.writeFileSync(DATA_FILE, JSON.stringify(rows, null, 2));
 }
 
-/** Public homepage marquee — only approved real reviews + seed fill-in. */
+/** Public homepage marquee — only real, approved reviews. */
 export function getPublicReviews(): Review[] {
-  const real = read().filter((r) => r.text.trim().length > 0 && r.approved === true);
-
-  // Merge: real reviews take slots first; seeds fill in the rest up to 6 total.
-  const realIds = new Set(real.map((r) => r.userId));
-  const seeds   = SEED_REVIEWS.filter((s) => !realIds.has(s.userId));
-  const merged  = [...real, ...seeds].slice(0, Math.max(real.length, 6));
-
-  return merged.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  return read()
+    .filter((r) => r.text.trim().length > 0 && r.approved === true)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
 /** Admin: all real user reviews (pending + approved). */
