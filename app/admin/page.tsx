@@ -393,9 +393,13 @@ export default function AdminPage() {
         headers: { 'x-admin-password': savedPw, 'Content-Type': 'application/json' },
         body:    JSON.stringify({ email: user.email }),
       });
-      const data = await res.json().catch(() => ({})) as { ok?: boolean; error?: string };
-      if (!res.ok || data.error) {
-        setPushMsg(`❌ ${data.error ?? 'No iOS push token for this user — have they opened the app and allowed notifications?'}`);
+      const data = await res.json().catch(() => ({})) as { ok?: boolean; error?: string; status?: number; reason?: string };
+      if (!res.ok || data.error || data.reason) {
+        // Surface the real APNs rejection reason (InvalidProviderToken, BadDeviceToken,
+        // DeviceTokenNotForTopic, …) instead of masking everything as "no token".
+        const detail = data.error
+          ?? (data.reason ? `APNs ${data.status ?? ''} ${data.reason}`.trim() : 'No iOS push token for this user — have they opened the app and allowed notifications?');
+        setPushMsg(`❌ ${detail}`);
       } else {
         setPushMsg(`✅ Push sent to ${user.email}.`);
       }
