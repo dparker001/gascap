@@ -32,6 +32,7 @@ import TabLockGate      from './TabLockGate';
 import FirstLaunchSplash from './FirstLaunchSplash';
 import ReviewNudge       from '@/components/ReviewNudge';
 import LanguageToggle    from '@/components/LanguageToggle';
+import { getPlanBadge, type PlanUser } from '@/lib/planBadge';
 
 export type TabId = 'calculator' | 'history' | 'tools' | 'rewards' | 'settings';
 
@@ -57,17 +58,8 @@ export default function NativeAppShell() {
   // or signed-in tabs would flash the lock screen on every open).
   const isGuest = status === 'unauthenticated';
 
-  // Plan badge for the title bar — same logic as AuthButton (which the native shell
-  // doesn't render), so Pro/Lifetime/Fleet members keep their status pill in-app.
-  const plan           = (session?.user as { plan?: string })?.plan ?? 'free';
-  const stripeInterval = (session?.user as { stripeInterval?: string | null })?.stripeInterval ?? null;
-  const isProTrial     = (session?.user as { isProTrial?: boolean })?.isProTrial ?? false;
-  const isLifetime     = plan === 'pro' && !isProTrial && stripeInterval === 'lifetime';
-  const planBadge =
-    isLifetime       ? { text: t.plan.lifetimeShort, bg: 'bg-teal-600',     medal: true  } :
-    plan === 'pro'   ? { text: t.plan.proShort,      bg: 'bg-brand-orange', medal: false } :
-    plan === 'fleet' ? { text: t.plan.fleetShort,    bg: 'bg-blue-600',     medal: false } :
-    null;
+  // Plan badge for the title bar — shared with AuthButton; trial users get a live "Pro Trial · Nd".
+  const planBadge = getPlanBadge(session?.user as PlanUser | undefined, t);
 
   const [active,  setActive]  = useState<TabId>('calculator');
   const [visited, setVisited] = useState<Set<TabId>>(() => new Set<TabId>(['calculator']));

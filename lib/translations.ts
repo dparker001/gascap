@@ -104,6 +104,7 @@ const en = {
     daysLeft:       (n: number) => `${n} days left`,
     lifetimeShort:  'Lifetime',
     proShort:       'Pro',
+    proTrialShort:  'Pro Trial',
     fleetShort:     'Fleet',
   },
 
@@ -2708,6 +2709,7 @@ const es: typeof en = {
     daysLeft:       (n: number) => `${n} días restantes`,
     lifetimeShort:  'De por vida',
     proShort:       'Pro',
+    proTrialShort:  'Prueba Pro',
     fleetShort:     'Flota',
   },
 
