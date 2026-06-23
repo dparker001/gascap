@@ -13,6 +13,7 @@ import ToolsPanel              from '@/components/ToolsPanel';
 import PricingSection          from '@/components/PricingSection';
 import { useIsNative }          from '@/hooks/useIsNative';
 import NativeAppShell          from '@/components/native/NativeAppShell';
+import FoundingMemberBanner    from '@/components/FoundingMemberBanner';
 import TrialExpiryBanner      from '@/components/TrialExpiryBanner';
 import ComebackBanner         from '@/components/ComebackBanner';
 import AnnouncementToast      from '@/components/AnnouncementToast';
@@ -569,6 +570,9 @@ export default function Home() {
 
   return (
     <main className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-900">
+
+      {/* Founding Member launch promo — scarcity bar (web only, self-hides when full) */}
+      <FoundingMemberBanner />
 
       {/* Email verified toast — shown after clicking the verify link */}
       <Suspense fallback={null}>
