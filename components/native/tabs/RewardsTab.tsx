@@ -11,7 +11,6 @@
 
 import Link            from 'next/link';
 import StreakRewards   from '@/components/StreakRewards';
-import DailyBonus      from '@/components/DailyBonus';
 import ReferralCard    from '@/components/ReferralCard';
 
 export default function RewardsTab() {
@@ -35,9 +34,10 @@ export default function RewardsTab() {
         </div>
       </Link>
 
-      {/* Engagement rewards — each renders its own state / sign-in prompt */}
+      {/* Engagement rewards — each renders its own state / sign-in prompt.
+          (DailyBonus is a global floating launcher, not an inline card — it's not
+          mounted here; the daily-gift button lifts above the tab bar on native.) */}
       <StreakRewards />
-      <DailyBonus />
       <ReferralCard />
 
     </div>

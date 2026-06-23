@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useSession }          from 'next-auth/react';
 import { usePathname }         from 'next/navigation';
 import { useTranslation }      from '@/contexts/LanguageContext';
+import { useIsNative }         from '@/hooks/useIsNative';
 
 type Phase =
   | 'loading'    // fetching status from server
@@ -63,6 +64,7 @@ export default function DailyBonus() {
   const { data: session, status: authStatus } = useSession();
   const pathname = usePathname();
   const { t } = useTranslation();
+  const isNative = useIsNative();   // lift the FAB above the native bottom tab bar
 
   const [phase,      setPhase]      = useState<Phase>('loading');
   const [entriesWon, setEntriesWon] = useState(0);
@@ -199,9 +201,12 @@ export default function DailyBonus() {
       */}
       <div
         className={[
-          'fixed bottom-5 right-4 z-50',
+          'fixed right-4 z-50',
           'md:right-auto md:left-4',
         ].join(' ')}
+        // On native, sit above the bottom tab bar (~tab-bar height + safe area)
+        // so the gift button never overlaps the Settings/Calculator tabs.
+        style={{ bottom: isNative ? 'calc(92px + env(safe-area-inset-bottom))' : '1.25rem' }}
       >
         <div className="relative">
 

@@ -69,10 +69,20 @@ export default function NativeTabBar({ tabs, active, onChange }: Props) {
     <nav
       className="fixed bottom-0 inset-x-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur
                  border-t border-slate-200 dark:border-slate-800"
-      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+      // Lift the row up ~10px above the very bottom edge (clears phone-case rounded
+      // corners) on top of the home-indicator safe-area inset.
+      style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 10px)' }}
       aria-label="Primary"
     >
-      <div className="flex">
+      {/* Inset the outer tabs from the extreme corners so a case's rounded edges
+          don't clip the Calculator (far-left) / Settings (far-right) buttons. */}
+      <div
+        className="flex"
+        style={{
+          paddingLeft:  'calc(env(safe-area-inset-left) + 8px)',
+          paddingRight: 'calc(env(safe-area-inset-right) + 8px)',
+        }}
+      >
         {tabs.map((tab) => {
           const isActive = tab.id === active;
           return (

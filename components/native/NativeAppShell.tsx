@@ -94,7 +94,7 @@ export default function NativeAppShell() {
 
       {/* Tab content — each tab mounts on first visit, then hides (state preserved).
           Padding-bottom clears the fixed tab bar + the home-indicator safe area. */}
-      <div className="flex-1" style={{ paddingBottom: 'calc(68px + env(safe-area-inset-bottom))' }}>
+      <div className="flex-1" style={{ paddingBottom: 'calc(88px + env(safe-area-inset-bottom))' }}>
 
         {visited.has('calculator') && (
           <div className={show('calculator')}>
