@@ -18,7 +18,8 @@ const KEY_ID      = process.env.APNS_KEY_ID      ?? '';
 const TEAM_ID     = process.env.APNS_TEAM_ID     ?? '';
 const PRIVATE_KEY = process.env.APNS_PRIVATE_KEY ?? '';
 const BUNDLE_ID   = process.env.APNS_BUNDLE_ID   ?? 'app.gascap.ios';
-const APNS_HOST   = 'https://api.push.apple.com';
+const PROD_HOST    = 'https://api.push.apple.com';
+const SANDBOX_HOST = 'https://api.sandbox.push.apple.com';
 
 export function apnsConfigured(): boolean {
   return !!(KEY_ID && TEAM_ID && PRIVATE_KEY);
@@ -45,22 +46,9 @@ export interface ApnsResult { ok: boolean; status?: number; reason?: string }
  * Send a single alert push to one device token. Non-throwing.
  * `data` is merged into the payload alongside `aps` for custom fields (e.g. a deep link).
  */
-export async function sendApns(
-  deviceToken: string,
-  title: string,
-  body: string,
-  data?: Record<string, unknown>,
-): Promise<ApnsResult> {
-  if (!apnsConfigured()) return { ok: false, reason: 'APNs not configured' };
-
-  let jwt: string;
-  try { jwt = await apnsJwt(); }
-  catch (e) { return { ok: false, reason: `JWT sign failed: ${String(e)}` }; }
-
-  const payload = JSON.stringify({ aps: { alert: { title, body }, sound: 'default' }, ...(data ?? {}) });
-
+function sendToHost(host: string, deviceToken: string, jwt: string, payload: string): Promise<ApnsResult> {
   return new Promise<ApnsResult>((resolve) => {
-    const client = http2.connect(APNS_HOST);
+    const client = http2.connect(host);
     const done = (r: ApnsResult) => { try { client.close(); } catch { /* */ } resolve(r); };
     client.on('error', (e) => done({ ok: false, reason: String(e) }));
 
@@ -89,4 +77,32 @@ export async function sendApns(
     req.write(payload);
     req.end();
   });
+}
+
+export async function sendApns(
+  deviceToken: string,
+  title: string,
+  body: string,
+  data?: Record<string, unknown>,
+): Promise<ApnsResult> {
+  if (!apnsConfigured()) return { ok: false, reason: 'APNs not configured' };
+
+  let jwt: string;
+  try { jwt = await apnsJwt(); }
+  catch (e) { return { ok: false, reason: `JWT sign failed: ${String(e)}` }; }
+
+  const payload = JSON.stringify({ aps: { alert: { title, body }, sound: 'default' }, ...(data ?? {}) });
+
+  // Token-based (.p8) auth: the PRODUCTION host returns 200 even for a sandbox/dev
+  // device token, then silently drops it — so a 200 doesn't prove delivery. A token
+  // belongs to exactly one environment, so send to BOTH; the right one delivers, the
+  // other harmlessly rejects (BadDeviceToken). Fixes "200 OK but no push received".
+  const [prod, sand] = await Promise.all([
+    sendToHost(PROD_HOST,    deviceToken, jwt, payload),
+    sendToHost(SANDBOX_HOST, deviceToken, jwt, payload),
+  ]);
+
+  if (prod.ok || sand.ok) return { ok: true, status: 200 };
+  // Neither accepted — surface the more informative reason (prefer the non-token one).
+  return (prod.reason && prod.reason !== 'BadDeviceToken') ? prod : sand;
 }
