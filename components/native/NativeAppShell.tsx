@@ -15,6 +15,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
+import Link                    from 'next/link';
 import { useSession }          from 'next-auth/react';
 import { useTranslation }      from '@/contexts/LanguageContext';
 
@@ -168,14 +169,25 @@ export default function NativeAppShell() {
           {/* Language switch — reachable from any tab (the native shell has no web header) */}
           <LanguageToggle className="absolute left-2 top-1/2 -translate-y-1/2 !py-1" />
           <h1 className="text-base font-bold tracking-tight">{title}</h1>
-          {planBadge && (
+          {planBadge ? (
             <span
               className={`absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-black
                           text-white px-2 py-0.5 rounded-full ${planBadge.bg}`}
             >
               {planBadge.medal ? '🏅 ' : ''}{planBadge.text.toUpperCase()}
             </span>
-          )}
+          ) : isGuest ? (
+            /* Guests had no obvious way to find sign-up after the splash — give them
+               a persistent CTA in the title bar, visible on every tab. */
+            <Link
+              href="/signup"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] font-black
+                         text-white bg-brand-orange px-2.5 py-1 rounded-full
+                         active:opacity-90 transition-opacity"
+            >
+              {t.nav.signUp}
+            </Link>
+          ) : null}
         </div>
       </header>
 

@@ -23,6 +23,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useIsNative } from '@/hooks/useIsNative';
 
 const SPLASH_VIDEO_SRC = 'https://cdn.jsdelivr.net/gh/dparker001/gascap@main/public/splash-intro.mp4';
@@ -34,6 +35,7 @@ type Phase = 'playing' | 'cta' | 'leaving';
 
 export default function FirstLaunchSplash() {
   const isNative = useIsNative();
+  const router = useRouter();
   const [show, setShow] = useState(false);
   const [phase, setPhase] = useState<Phase>('playing');
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -52,6 +54,16 @@ export default function FirstLaunchSplash() {
     try { localStorage.setItem(SEEN_KEY, '1'); } catch { /* ignore */ }
     setPhase('leaving');                       // fade the overlay out
     setTimeout(() => setShow(false), FADE_MS); // unmount after the fade
+  }
+
+  // Primary CTA — route new users to sign-up (they kept hunting for it). The signup
+  // page itself has a "continue without an account" escape, so the calculator stays
+  // reachable (Apple 5.1.1(v)) and we never gate the core utility.
+  function goSignup() {
+    if (dismissed.current) return;
+    dismissed.current = true;
+    try { localStorage.setItem(SEEN_KEY, '1'); } catch { /* ignore */ }
+    router.push('/signup');
   }
 
   function revealCta() { setPhase((p) => (p === 'playing' ? 'cta' : p)); }
@@ -130,11 +142,18 @@ export default function FirstLaunchSplash() {
           <p className="text-white text-xl font-black tracking-tight drop-shadow">Know before you go.</p>
           <button
             type="button"
-            onClick={dismiss}
+            onClick={goSignup}
             className="w-[78%] max-w-xs py-3.5 rounded-2xl bg-brand-orange text-white font-bold
                        text-base shadow-lg active:opacity-90 transition-opacity"
           >
-            Get Started →
+            Create free account →
+          </button>
+          <button
+            type="button"
+            onClick={dismiss}
+            className="text-white/85 text-sm font-semibold py-1 active:opacity-70 transition-opacity"
+          >
+            Continue without an account
           </button>
         </div>
       )}
