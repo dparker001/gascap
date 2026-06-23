@@ -75,9 +75,12 @@ function SignInForm() {
             .gc-pop { animation: gcPop .5s ease forwards; }
           `}</style>
           <div className="text-center mb-6">
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-[#005F4A] mb-3 gc-pop shadow-sm">
-              <GasPumpIcon />
-            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/gascap-icon-raw.png"
+              alt="GasCap"
+              className="h-16 w-auto mx-auto mb-3 gc-pop drop-shadow-sm"
+            />
             <p className="gc-tagline text-xl font-black text-navy-700 tracking-tight">
               <span style={{ animationDelay: '60ms' }}>Know</span>{' '}
               <span style={{ animationDelay: '180ms' }}>before</span>{' '}
