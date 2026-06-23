@@ -12,6 +12,7 @@ import FirstCalcNudge          from '@/components/FirstCalcNudge';
 import ToolsPanel              from '@/components/ToolsPanel';
 import PricingSection          from '@/components/PricingSection';
 import { useIsNative }          from '@/hooks/useIsNative';
+import NativeAppShell          from '@/components/native/NativeAppShell';
 import TrialExpiryBanner      from '@/components/TrialExpiryBanner';
 import ComebackBanner         from '@/components/ComebackBanner';
 import AnnouncementToast      from '@/components/AnnouncementToast';
@@ -560,6 +561,11 @@ export default function Home() {
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' });
   }, [session]);
+
+  // Native wrappers (iOS/Android) get the app-shell + bottom tab bar instead of the
+  // marketing/scroll landing page. All hooks above have run, so this early return is
+  // Rules-of-Hooks safe. Web path is unchanged. See docs/NATIVE_APP_SHELL_SPEC.md.
+  if (isNative) return <NativeAppShell />;
 
   return (
     <main className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-900">
