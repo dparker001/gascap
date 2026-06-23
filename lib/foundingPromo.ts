@@ -19,6 +19,11 @@ export const FOUNDING_CAP    = Number(process.env.FOUNDING_PROMO_CAP ?? 100);
 export const FOUNDING_START  = process.env.FOUNDING_PROMO_START ?? '2026-06-23T00:00:00.000Z';
 export const FOUNDING_PRICE  = 9.99;
 
+// Stripe coupon: "$10 off, once" → $19.99 Lifetime becomes $9.99 (same $10-off coupon
+// the win-back / new-member offers use). Applied server-side ONLY, on the Lifetime
+// checkout, ONLY while the founding promo is active (see stripe/checkout/route.ts).
+export const FOUNDING_LIFETIME_COUPON = process.env.FOUNDING_COUPON ?? 'hV3LWKzw';
+
 export interface FoundingStatus {
   active:    boolean;  // promo on AND spots remain
   cap:       number;

@@ -13,6 +13,7 @@ import { stripe, PRICES }  from '@/lib/stripe';
 import { getBaseUrl }      from '@/lib/getBaseUrl';
 import { newMemberOfferStatus, NEW_MEMBER_LIFETIME_COUPON } from '@/lib/newMemberOffer';
 import { winbackOfferAvailable, WINBACK_LIFETIME_COUPON } from '@/lib/winbackOffer';
+import { foundingStatus, FOUNDING_LIFETIME_COUPON } from '@/lib/foundingPromo';
 
 export async function POST(req: Request) {
   if (!stripe) {
@@ -44,6 +45,7 @@ export async function POST(req: Request) {
     coupon?:  string; // Stripe coupon ID to pre-apply (e.g. from C4 promo email)
     newMemberOffer?: boolean; // request the 7-day new-member Lifetime discount
     winbackOffer?:   boolean; // request the win-back Lifetime discount ($9.99)
+    foundingOffer?:  boolean; // request the Founding Member launch discount ($9.99)
   };
 
   const tier    = body.tier    ?? 'pro';
@@ -62,6 +64,16 @@ export async function POST(req: Request) {
   // can't be claimed via a copied /upgrade?wb=1 link by an ineligible account.
   if (body.winbackOffer && billing === 'lifetime' && winbackOfferAvailable(user)) {
     coupon = WINBACK_LIFETIME_COUPON;
+  }
+
+  // Founding Member launch promo — $9.99 Lifetime for any non-Lifetime account while
+  // the promo is active (spots remain). This is the reactivation-campaign path: it
+  // covers trial users and lapsed users who fall outside the 7-day new-member window.
+  // Re-validated server-side (promo active) so a copied /upgrade?founding=1 link
+  // can't outlive the launch.
+  if (body.foundingOffer && billing === 'lifetime' && user.stripeInterval !== 'lifetime') {
+    const { active } = await foundingStatus();
+    if (active) coupon = FOUNDING_LIFETIME_COUPON;
   }
 
   // Resolve price ID

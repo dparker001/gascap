@@ -43,7 +43,8 @@ function UpgradePageInner() {
 
   const searchParams = useSearchParams();
   const coupon = searchParams.get('coupon') ?? undefined;
-  const wb     = searchParams.get('wb') === '1'; // win-back $9.99 Lifetime offer
+  const wb       = searchParams.get('wb') === '1';       // win-back $9.99 Lifetime offer
+  const founding = searchParams.get('founding') === '1'; // Founding Member $9.99 Lifetime
   // Resolve platform once on mount. We render a neutral loader until this is
   // known, so a native user NEVER sees the web Stripe path even for a frame
   // (anti-steering: App Store 3.1.1). 'ios' → Apple IAP; 'android'/web → other.
@@ -63,18 +64,27 @@ function UpgradePageInner() {
   const getawayDays   = getawayDaysLeft();
 
   async function handleUpgrade(billing: 'monthly' | 'lifetime') {
-    if (!session) { window.location.href = '/signup?next=/upgrade'; return; }
+    if (!session) {
+      // Founding/reactivation recipients already have accounts → send to sign-in and
+      // return them to the founding offer; everyone else takes the new-signup path.
+      window.location.href = founding
+        ? '/signin?next=' + encodeURIComponent('/upgrade?founding=1')
+        : '/signup?next=/upgrade';
+      return;
+    }
     setLoading(billing === 'lifetime' ? 'pro-lifetime' : 'pro-monthly');
     setError('');
     try {
       // Only apply promo coupon on monthly — lifetime is already a one-time deal
       const applyCoupon = coupon && billing === 'monthly' ? { coupon } : {};
       // Win-back $9.99 Lifetime — request the server-validated discount on lifetime
-      const applyWinback = wb && billing === 'lifetime' ? { winbackOffer: true } : {};
+      const applyWinback  = wb && billing === 'lifetime' ? { winbackOffer: true } : {};
+      // Founding Member $9.99 Lifetime — server-validated while the launch promo is on
+      const applyFounding = founding && billing === 'lifetime' ? { foundingOffer: true } : {};
       const res  = await fetch('/api/stripe/checkout', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ tier: 'pro', billing, ...applyCoupon, ...applyWinback }),
+        body:    JSON.stringify({ tier: 'pro', billing, ...applyCoupon, ...applyWinback, ...applyFounding }),
       });
       const data = await res.json() as { url?: string; error?: string };
       if (data.url) { window.location.href = data.url; }
