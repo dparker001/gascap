@@ -43,10 +43,11 @@ export default function FoundingMemberBanner() {
       <div className="max-w-5xl mx-auto px-4 py-2.5 flex items-center gap-3">
         <span className="text-lg flex-shrink-0" aria-hidden="true">🏆</span>
         <p className="text-[13px] sm:text-sm font-semibold flex-1 leading-tight">
-          <span className="font-black">Founding Member offer:</span> Pro Lifetime{' '}
+          <span className="font-black">Founding offer:</span> Pro Lifetime{' '}
           <span className="font-black">${status.price.toFixed(2)}</span>{' '}
           <span className="opacity-75 line-through">$19.99</span>{' '}
-          — only <span className="font-black">{status.spotsLeft}</span> of {status.cap} spots left.
+          <span className="font-black">+ a free vacation getaway 🏝️</span>{' '}
+          — <span className="font-black">{status.spotsLeft}</span> of {status.cap} spots left.
         </p>
         <Link
           href={href}
