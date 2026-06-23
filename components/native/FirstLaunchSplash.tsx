@@ -25,7 +25,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { useIsNative } from '@/hooks/useIsNative';
 
-const SPLASH_VIDEO_SRC = '/splash-intro.mp4';
+// Served from jsDelivr's CDN (reads public/splash-intro.mp4 from the public repo),
+// NOT from Railway — Railway's Node static server truncates/times-out on video-sized
+// files (no CDN, mishandles Range requests). jsDelivr is global, fast, and 206-Range
+// capable. To update the clip: replace public/splash-intro.mp4 + push, then purge
+// https://purge.jsdelivr.net/gh/dparker001/gascap@main/public/splash-intro.mp4
+const SPLASH_VIDEO_SRC = 'https://cdn.jsdelivr.net/gh/dparker001/gascap@main/public/splash-intro.mp4';
 const SEEN_KEY = 'gc_splash_intro_seen';
 const SHOW_MS = 5200; // fixed overlay duration (clip is ~5s)
 
