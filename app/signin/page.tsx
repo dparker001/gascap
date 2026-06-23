@@ -64,8 +64,28 @@ function SignInForm() {
       <BrandBar />
 
       {/* Form */}
-      <div className="flex-1 flex items-start justify-center px-4 pt-10 pb-16">
+      <div className="flex-1 flex items-start justify-center px-4 pt-8 pb-16">
         <div className="w-full max-w-sm">
+
+          {/* ── Branded hero — animated tagline (pure CSS, no rebuild) ── */}
+          <style>{`
+            @keyframes gcFadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+            @keyframes gcPop    { 0% { transform: scale(.7); opacity: 0; } 60% { transform: scale(1.08); } 100% { transform: scale(1); opacity: 1; } }
+            .gc-tagline span { display: inline-block; opacity: 0; animation: gcFadeUp .55s ease forwards; }
+            .gc-pop { animation: gcPop .5s ease forwards; }
+          `}</style>
+          <div className="text-center mb-6">
+            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-[#005F4A] mb-3 gc-pop shadow-sm">
+              <GasPumpIcon />
+            </div>
+            <p className="gc-tagline text-xl font-black text-navy-700 tracking-tight">
+              <span style={{ animationDelay: '60ms' }}>Know</span>{' '}
+              <span style={{ animationDelay: '180ms' }}>before</span>{' '}
+              <span style={{ animationDelay: '300ms' }}>you</span>{' '}
+              <span style={{ animationDelay: '420ms' }}>go</span>
+            </p>
+          </div>
+
           <h1 className="text-2xl font-black text-navy-700 mb-1">{t.signIn.title}</h1>
           <p className="text-slate-500 text-sm mb-5">{t.signIn.sub}</p>
 
@@ -175,6 +195,21 @@ function SignInForm() {
               {t.signIn.continueGuest}
             </Link>
           </p>
+
+          {/* ── Why create an account — fills the lower space + sells the value ── */}
+          <div className="mt-9 grid grid-cols-3 gap-2">
+            {[
+              { icon: '⛽', label: 'Save your\nvehicles' },
+              { icon: '📈', label: 'Track your\nMPG' },
+              { icon: '🎁', label: 'Win gas\ncards' },
+            ].map((v) => (
+              <div key={v.label} className="rounded-2xl bg-white/70 border border-slate-200 px-2 py-3
+                                             flex flex-col items-center text-center gap-1">
+                <span className="text-xl" aria-hidden="true">{v.icon}</span>
+                <span className="text-[11px] font-semibold text-slate-600 leading-tight whitespace-pre-line">{v.label}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>
