@@ -152,6 +152,15 @@ export default function NativeAppShell() {
       {/* "Rate us" nudge — engaged signed-in users, after they've come back (≥2 days) */}
       <ReviewNudge />
 
+      {/* Always-navy strip pinned over the status-bar safe area — guarantees the top
+          never shows transparent/content bleed while scrolling (the sticky header
+          alone can leave the safe area exposed on iOS). */}
+      <div
+        className="fixed top-0 left-0 right-0 z-40 bg-[#1e3a5f] pointer-events-none"
+        style={{ height: 'env(safe-area-inset-top)' }}
+        aria-hidden="true"
+      />
+
       {/* Native title bar — navy, doubles as the status-bar strip (safe-area top inset) */}
       <header
         className="sticky top-0 z-30 bg-[#1e3a5f] text-white shadow-sm"
