@@ -148,11 +148,11 @@ export default function EvCalculatorForm({ activeTab, setActiveTab }: Props) {
     const errs: Record<string, string> = {};
     const kwh  = parseFloat(batteryKwh);
     const rate  = parseFloat(ratePerKwh);
-    if (!kwh  || kwh  <= 0) errs.batteryKwh  = 'Enter a valid battery capacity.';
-    else if (kwh > 250)     errs.batteryKwh  = 'Battery capacity seems too large.';
-    if (!rate || rate <= 0) errs.ratePerKwh  = 'Enter a valid electricity rate.';
-    else if (rate > 1)      errs.ratePerKwh  = 'Rate seems high — enter $/kWh (e.g. 0.15).';
-    if (targetPct <= currentPct) errs.range  = 'Target must be higher than current charge.';
+    if (!kwh  || kwh  <= 0) errs.batteryKwh  = t.ev.batteryInvalid;
+    else if (kwh > 250)     errs.batteryKwh  = t.ev.batteryTooLarge;
+    if (!rate || rate <= 0) errs.ratePerKwh  = t.ev.rateInvalid;
+    else if (rate > 1)      errs.ratePerKwh  = t.ev.rateTooHigh;
+    if (targetPct <= currentPct) errs.range  = t.ev.targetTooLow;
     setErrors(errs);
     if (Object.keys(errs).length) return;
 
@@ -373,7 +373,7 @@ export default function EvCalculatorForm({ activeTab, setActiveTab }: Props) {
               <button
                 type="button"
                 onClick={() => {/* guest sees tooltip */}}
-                title="Create a free account to auto-detect your local rate"
+                title={t.ev.autoDetectTitle}
                 className="px-3 py-2 rounded-xl bg-blue-50 border border-blue-200 text-blue-600
                            text-xs font-bold whitespace-nowrap opacity-60 cursor-not-allowed"
                 disabled
@@ -403,13 +403,13 @@ export default function EvCalculatorForm({ activeTab, setActiveTab }: Props) {
           {/* Rate helper — shown to guests */}
           {!session && (
             <p className="text-[11px] text-slate-400 mt-1.5 leading-relaxed">
-              💡 Pre-filled with the U.S. national average ($0.16/kWh).{' '}
+              {t.ev.rateHintPrefix}{' '}
               <span className="text-slate-500">
-                Find your exact rate on your electric bill, or{' '}
+                {t.ev.rateHintFind}{' '}
                 <Link href="/signup" className="text-[#1EB68F] font-semibold hover:underline">
-                  sign up free
+                  {t.ev.rateHintSignup}
                 </Link>{' '}
-                to auto-detect it by location.
+                {t.ev.rateHintSuffix}
               </span>
             </p>
           )}
@@ -420,12 +420,12 @@ export default function EvCalculatorForm({ activeTab, setActiveTab }: Props) {
                             flex items-center justify-between gap-3 animate-fade-in">
               <div>
                 <p className="text-xs font-bold text-blue-800">
-                  {rateResult.isState ? `${stateName} avg` : 'U.S. national avg'}
+                  {rateResult.isState ? `${stateName} ${t.ev.avgSuffix}` : t.ev.usNationalAvg}
                 </p>
                 <p className="text-base font-black text-blue-700">
                   ${rateResult.price.toFixed(4)}<span className="text-xs font-normal text-blue-500 ml-0.5">/kWh</span>
                 </p>
-                <p className="text-[10px] text-blue-500 mt-0.5">📊 Source: U.S. EIA · residential</p>
+                <p className="text-[10px] text-blue-500 mt-0.5">{t.ev.eiaSource}</p>
               </div>
               <div className="flex flex-col gap-1.5">
                 <button
@@ -433,13 +433,13 @@ export default function EvCalculatorForm({ activeTab, setActiveTab }: Props) {
                   className="px-3 py-1.5 rounded-xl bg-blue-600 text-white text-xs font-bold
                              hover:bg-blue-500 transition-colors whitespace-nowrap"
                 >
-                  Use this rate
+                  {t.ev.useThisRate}
                 </button>
                 <button
                   onClick={() => setRateLookupStatus('idle')}
                   className="text-[10px] text-slate-400 hover:text-slate-600 text-center"
                 >
-                  Dismiss
+                  {t.ev.dismiss}
                 </button>
               </div>
             </div>
@@ -469,10 +469,10 @@ export default function EvCalculatorForm({ activeTab, setActiveTab }: Props) {
             value={efficiency}
             min="0.5" max="10" step="0.1"
             onChange={(e) => { setEfficiency(e.target.value); setResult(null); }}
-            aria-label="Vehicle efficiency in miles per kWh"
+            aria-label={t.ev.efficiencyAria}
           />
           <p className="text-xs text-slate-400 mt-1">
-            Adds a "range added" estimate to your results. Find yours in your car's app or manual.
+            {t.ev.efficiencyHint}
           </p>
         </div>
 

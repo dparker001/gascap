@@ -329,7 +329,7 @@ export default function FuelGauge({ percent, onChange, tankCapacity }: FuelGauge
 
       {/* ── Accessible hidden range input ──────────────────────────── */}
       <label className="sr-only">
-        Current fuel level: {label}
+        {t.calc.currentFuelLevel}: {label}
         <input
           type="range"
           min={0}
@@ -347,7 +347,7 @@ export default function FuelGauge({ percent, onChange, tankCapacity }: FuelGauge
           type="button"
           onClick={() => nudge(-1)}
           disabled={clampedPct <= 0}
-          aria-label="Decrease fuel level by one eighth"
+          aria-label={t.calc.decreaseFuel}
           className="w-9 h-9 rounded-xl bg-navy-700 text-white text-lg font-black
                      flex items-center justify-center
                      hover:bg-navy-800 active:scale-95 transition-all
@@ -357,7 +357,7 @@ export default function FuelGauge({ percent, onChange, tankCapacity }: FuelGauge
         </button>
 
         <div className="text-center min-w-[80px]">
-          <p className="text-[10px] text-slate-400 font-semibold leading-tight">1/64 tank step</p>
+          <p className="text-[10px] text-slate-400 font-semibold leading-tight">{t.calc.tankStep}</p>
           {gallons && (
             <p
               className="text-sm font-black leading-tight transition-colors duration-300"
@@ -372,7 +372,7 @@ export default function FuelGauge({ percent, onChange, tankCapacity }: FuelGauge
           type="button"
           onClick={() => nudge(1)}
           disabled={clampedPct >= 100}
-          aria-label="Increase fuel level by one eighth"
+          aria-label={t.calc.increaseFuel}
           className="w-9 h-9 rounded-xl bg-navy-700 text-white text-lg font-black
                      flex items-center justify-center
                      hover:bg-navy-800 active:scale-95 transition-all

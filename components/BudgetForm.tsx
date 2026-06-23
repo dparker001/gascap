@@ -206,9 +206,9 @@ export default function BudgetForm({ activeTab, setActiveTab }: Props) {
           <span className="text-lg leading-none">💰</span>
         </div>
         <div className="min-w-0">
-          <h2 className="text-sm font-black text-white">Budget Calculator</h2>
+          <h2 className="text-sm font-black text-white">{t.calc.budgetIntroTitle}</h2>
           <p className="text-[11px] text-white/60 leading-snug mt-0.5">
-            Enter your budget and we'll calculate exactly how many gallons you can get at today's price.
+            {t.calc.budgetIntroSub}
           </p>
         </div>
       </div>
