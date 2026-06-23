@@ -879,6 +879,23 @@ export default function SettingsPage() {
                 <span className="text-sm font-semibold text-slate-700">{t.settings.contactSupport}</span>
                 <span className="text-slate-400 text-xs">→</span>
               </Link>
+              {/* Persistent "Rate us" — seeds App Store ratings (the #1 ASO lever). Opens
+                  the platform store's write-review page; web falls back to the iOS listing. */}
+              <button
+                type="button"
+                onClick={() => {
+                  const urls: Record<string, string> = {
+                    ios:     'https://apps.apple.com/app/id6761315915?action=write-review',
+                    android: 'https://play.google.com/store/apps/details?id=app.gascap.mobile',
+                  };
+                  const url = urls[platform ?? 'ios'] ?? urls.ios;
+                  try { window.open(url, '_blank'); } catch { /* ignore */ }
+                }}
+                className="flex items-center justify-between w-full py-2.5 px-3 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors"
+              >
+                <span className="text-sm font-semibold text-slate-700">{t.settings.rateApp}</span>
+                <span className="text-slate-400 text-xs">→</span>
+              </button>
               <div className="flex gap-2">
                 <Link href="/privacy" className="flex-1 text-center text-[11px] font-bold text-slate-400 hover:text-slate-600 py-2">
                   {t.settings.privacyPolicy}
