@@ -30,23 +30,28 @@ import RewardsTab       from './tabs/RewardsTab';
 import TabLockGate      from './TabLockGate';
 import FirstLaunchSplash from './FirstLaunchSplash';
 import ReviewNudge       from '@/components/ReviewNudge';
+import LanguageToggle    from '@/components/LanguageToggle';
 
 export type TabId = 'calculator' | 'history' | 'tools' | 'rewards' | 'settings';
 
-const TABS: TabMeta[] = [
-  { id: 'calculator', label: 'Calculator' },
-  { id: 'history',    label: 'History'    },
-  { id: 'tools',      label: 'Tools'      },
-  { id: 'rewards',    label: 'Rewards'    },
-  { id: 'settings',   label: 'Settings'   },
-];
+const TAB_IDS: TabId[] = ['calculator', 'history', 'tools', 'rewards', 'settings'];
 
 const STORAGE_KEY = 'gc_active_tab';
-const isTabId = (v: string | null): v is TabId => !!v && TABS.some((t) => t.id === v);
+const isTabId = (v: string | null): v is TabId => !!v && (TAB_IDS as string[]).includes(v ?? '');
 
 export default function NativeAppShell() {
   const { data: session, status } = useSession();
   const { t } = useTranslation();
+
+  // Tab labels come from the translation system so the bottom bar + title bar follow
+  // the language toggle (EN/ES).
+  const TABS: TabMeta[] = [
+    { id: 'calculator', label: t.nav.calculator },
+    { id: 'history',    label: t.nav.history    },
+    { id: 'tools',      label: t.nav.tools      },
+    { id: 'rewards',    label: t.nav.rewards    },
+    { id: 'settings',   label: t.nav.settings   },
+  ];
   // Guest = confirmed not-signed-in (don't gate while the session is still loading,
   // or signed-in tabs would flash the lock screen on every open).
   const isGuest = status === 'unauthenticated';
@@ -153,6 +158,8 @@ export default function NativeAppShell() {
         style={{ paddingTop: 'env(safe-area-inset-top)' }}
       >
         <div className="h-12 flex items-center justify-center px-4 relative">
+          {/* Language switch — reachable from any tab (the native shell has no web header) */}
+          <LanguageToggle className="absolute left-2 top-1/2 -translate-y-1/2 !py-1" />
           <h1 className="text-base font-bold tracking-tight">{title}</h1>
           {planBadge && (
             <span

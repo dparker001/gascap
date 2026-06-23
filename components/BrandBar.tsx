@@ -3,10 +3,11 @@
 // upgrade, etc.). Matches the icon + wordmark treatment of the main Header.
 
 import Link from 'next/link';
+import LanguageToggle from './LanguageToggle';
 
 export default function BrandBar() {
   return (
-    <div className="bg-brand-dark px-5 py-4">
+    <div className="bg-brand-dark px-5 py-4 flex items-center justify-between">
       <Link href="/" className="flex items-center gap-1.5 w-fit">
         <img
           src="/gascap-icon-raw.png"
@@ -18,6 +19,8 @@ export default function BrandBar() {
           GasCap<sup className="text-xs font-bold" style={{ verticalAlign: '0.6em' }}>™</sup>
         </span>
       </Link>
+      {/* Language switch — lets Spanish speakers flip to ES right at the entry point */}
+      <LanguageToggle />
     </div>
   );
 }
