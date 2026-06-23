@@ -72,6 +72,11 @@ function MarqueeRow({ reviews, starsLabelFor, planLabelFor }: { reviews: Review[
 
 // ── Main export ───────────────────────────────────────────────────────────
 
+// Don't surface the social-proof section until there's a credible critical mass of
+// genuine approved reviews — a thin row of 1–2 reads worse than none. Auto-activates
+// the moment the 7th approved review lands.
+const MIN_PUBLIC_REVIEWS = 7;
+
 export default function ReviewsMarquee() {
   const { t } = useTranslation();
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -87,7 +92,7 @@ export default function ReviewsMarquee() {
       .catch(() => setLoaded(true));
   }, []);
 
-  if (!loaded || reviews.length < 1) return null;
+  if (!loaded || reviews.length < MIN_PUBLIC_REVIEWS) return null;
 
   // Pad to at least 4 cards so the loop looks full on wide screens
   const padded = reviews.length < 4 ? [...reviews, ...reviews] : reviews;
