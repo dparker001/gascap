@@ -462,9 +462,9 @@ export default function BudgetForm({ activeTab, setActiveTab }: Props) {
       )}
 
       {tip && (
-        <div className="mb-3 flex items-start gap-2 rounded-xl bg-amber-50 border border-amber-200 px-3.5 py-2.5 animate-fade-in">
+        <div className="mb-3 flex items-start gap-2 rounded-xl bg-red-50 border border-red-300 px-3.5 py-2.5 animate-fade-in">
           <span className="text-base leading-none flex-shrink-0" aria-hidden="true">👆</span>
-          <p className="text-sm font-semibold text-amber-800">{tip}</p>
+          <p className="text-sm font-bold text-red-700">{tip}</p>
         </div>
       )}
 
