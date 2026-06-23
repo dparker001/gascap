@@ -59,7 +59,7 @@ const lockupSvg = Buffer.from(`
 <svg width="${SPLASH}" height="${SPLASH}" xmlns="http://www.w3.org/2000/svg">
   <text x="50%" y="1840" text-anchor="middle"
         font-family="Helvetica, Arial, sans-serif" font-weight="bold"
-        font-size="240" letter-spacing="2" fill="#FFFFFF">GasCap™</text>
+        font-size="240" letter-spacing="2" fill="#FFFFFF">GasCap<tspan font-size="96" dy="-95">™</tspan></text>
   <text x="50%" y="1980" text-anchor="middle"
         font-family="Helvetica, Arial, sans-serif" font-weight="600"
         font-size="92" fill="#BFE6DB">Know before you go</text>
