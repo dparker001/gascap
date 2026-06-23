@@ -28,6 +28,7 @@ import SettingsPage     from '@/app/settings/page';
 import NativeTabBar, { type TabMeta } from './NativeTabBar';
 import RewardsTab       from './tabs/RewardsTab';
 import TabLockGate      from './TabLockGate';
+import FirstLaunchSplash from './FirstLaunchSplash';
 
 export type TabId = 'calculator' | 'history' | 'tools' | 'rewards' | 'settings';
 
@@ -138,6 +139,9 @@ export default function NativeAppShell() {
 
   return (
     <main className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-900">
+
+      {/* First-launch brand video overlay (inert until the MP4 is added — see component) */}
+      <FirstLaunchSplash />
 
       {/* Native title bar — navy, doubles as the status-bar strip (safe-area top inset) */}
       <header
