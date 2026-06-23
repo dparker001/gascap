@@ -83,6 +83,7 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
   const [errors, setErrors]         = useState<ValidationErrors>({});
   const [result, setResult]         = useState<TargetFillResult | null>(null);
   const [calculated, setCalculated] = useState(false);
+  const [tip, setTip]               = useState(''); // "you forgot a step" hint at the Calculate button
   const [calcKey, setCalcKey]       = useState(0);
   const [showLiveNudge, setShowLiveNudge] = useState(false);
   const [gaugeScanning, setGaugeScanning] = useState(false);
@@ -135,6 +136,7 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
       window.gcTrack('calc_start', { mode: 'target_fill' });
     }
     setForm((prev) => ({ ...prev, ...p }));
+    if (tip) setTip(''); // they're filling something in — clear the "you forgot a step" hint
     if (calculated) {
       setResult(null);
       setCalculated(false);
@@ -212,8 +214,24 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
 
     const errs = validateTargetFill(input);
     setErrors(errs);
-    if (Object.keys(errs).length > 0) return;
+    if (Object.keys(errs).length > 0) {
+      // Don't fail silently — tell them which step they missed, right at the button,
+      // and take them up to the highlighted field.
+      const need = t.calc.need;
+      const labels = [
+        errs.tankCapacity   && need.tank,
+        errs.currentFuel    && need.fuel,
+        errs.targetPercent  && need.goal,
+        errs.pricePerGallon && need.price,
+      ].filter(Boolean) as string[];
+      setTip(labels.length ? `${t.calc.tipPrefix} ${labels.join(' · ')}` : '');
+      setTimeout(() => {
+        document.querySelector('.input-field-error')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 60);
+      return;
+    }
 
+    setTip('');
     setResult(calcTargetFill(input));
     setCalculated(true);
     setShowLiveNudge(false);
@@ -660,6 +678,14 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
           >
             {t.calc.rentalModeExit}
           </button>
+        </div>
+      )}
+
+      {/* "You forgot a step" hint — shown right at the button so a tap never feels broken */}
+      {tip && (
+        <div className="mb-3 flex items-start gap-2 rounded-xl bg-amber-50 border border-amber-200 px-3.5 py-2.5 animate-fade-in">
+          <span className="text-base leading-none flex-shrink-0" aria-hidden="true">👆</span>
+          <p className="text-sm font-semibold text-amber-800">{tip}</p>
         </div>
       )}
 

@@ -695,6 +695,16 @@ const en = {
     calculateRental:        'Calculate Rental Fuel Cost ⚡',
     clearAll:               'Clear all',
     signInToSave:           'to save vehicles to your garage.',
+    tipPrefix:              'Almost there — just add:',
+    need: {
+      tank:   'your tank size',
+      fuel:   'your fuel level',
+      goal:   'a fill goal',
+      price:  'the gas price',
+      budget: 'your budget',
+      miles:  'trip distance',
+      mpg:    'your MPG',
+    },
     // Fuel-mode toggle & unit labels
     fuelModeGal:            'Gal',
     unitGal:                'gal',
@@ -3221,6 +3231,16 @@ const es: typeof en = {
     calculateRental:        'Calcular costo de combustible rentado ⚡',
     clearAll:               'Borrar todo',
     signInToSave:           'para guardar vehículos en tu garaje.',
+    tipPrefix:              'Casi listo — solo agrega:',
+    need: {
+      tank:   'el tamaño del tanque',
+      fuel:   'el nivel de combustible',
+      goal:   'un objetivo de llenado',
+      price:  'el precio de la gasolina',
+      budget: 'tu presupuesto',
+      miles:  'la distancia del viaje',
+      mpg:    'tu MPG',
+    },
     // Fuel-mode toggle & unit labels
     fuelModeGal:            'Gal',
     unitGal:                'gal',
