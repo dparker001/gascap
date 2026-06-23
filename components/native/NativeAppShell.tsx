@@ -16,6 +16,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useSession }          from 'next-auth/react';
+import { useTranslation }      from '@/contexts/LanguageContext';
 
 import CalculatorTabs   from '@/components/CalculatorTabs';
 import FillupHistory    from '@/components/FillupHistory';
@@ -43,9 +44,22 @@ const isTabId = (v: string | null): v is TabId => !!v && TABS.some((t) => t.id =
 
 export default function NativeAppShell() {
   const { data: session, status } = useSession();
+  const { t } = useTranslation();
   // Guest = confirmed not-signed-in (don't gate while the session is still loading,
   // or signed-in tabs would flash the lock screen on every open).
   const isGuest = status === 'unauthenticated';
+
+  // Plan badge for the title bar — same logic as AuthButton (which the native shell
+  // doesn't render), so Pro/Lifetime/Fleet members keep their status pill in-app.
+  const plan           = (session?.user as { plan?: string })?.plan ?? 'free';
+  const stripeInterval = (session?.user as { stripeInterval?: string | null })?.stripeInterval ?? null;
+  const isProTrial     = (session?.user as { isProTrial?: boolean })?.isProTrial ?? false;
+  const isLifetime     = plan === 'pro' && !isProTrial && stripeInterval === 'lifetime';
+  const planBadge =
+    isLifetime       ? { text: t.plan.lifetimeShort, bg: 'bg-teal-600',     medal: true  } :
+    plan === 'pro'   ? { text: t.plan.proShort,      bg: 'bg-brand-orange', medal: false } :
+    plan === 'fleet' ? { text: t.plan.fleetShort,    bg: 'bg-blue-600',     medal: false } :
+    null;
 
   const [active,  setActive]  = useState<TabId>('calculator');
   const [visited, setVisited] = useState<Set<TabId>>(() => new Set<TabId>(['calculator']));
@@ -130,8 +144,16 @@ export default function NativeAppShell() {
         className="sticky top-0 z-30 bg-[#1e3a5f] text-white shadow-sm"
         style={{ paddingTop: 'env(safe-area-inset-top)' }}
       >
-        <div className="h-12 flex items-center justify-center px-4">
+        <div className="h-12 flex items-center justify-center px-4 relative">
           <h1 className="text-base font-bold tracking-tight">{title}</h1>
+          {planBadge && (
+            <span
+              className={`absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-black
+                          text-white px-2 py-0.5 rounded-full ${planBadge.bg}`}
+            >
+              {planBadge.medal ? '🏅 ' : ''}{planBadge.text.toUpperCase()}
+            </span>
+          )}
         </div>
       </header>
 
