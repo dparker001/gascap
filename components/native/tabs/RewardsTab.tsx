@@ -2,18 +2,23 @@
 
 /**
  * RewardsTab — native "Rewards" hub. Leads with the monthly gas-card giveaway,
- * then the engagement rewards that drive daily entries (streaks, daily bonus,
- * referral credits). Reuses existing components — no rewrites.
+ * then the engagement rewards that drive daily entries (streaks, referral credits),
+ * plus a Kard card-linked cash-back teaser ("coming soon").
  *
- * Later: Kard card-linked cash-back slots in here (web-first, native-gated until
- * vetted) — see memory [[card-linked-rewards]].
+ * Visible to guests as a teaser (giveaway + sign-in CTA) — an acquisition surface,
+ * not a hard lock. Signed-in users see their live streak/referral rewards.
+ * Kard cash-back lands here once live — see memory [[card-linked-rewards]].
  */
 
 import Link            from 'next/link';
+import { useSession }  from 'next-auth/react';
 import StreakRewards   from '@/components/StreakRewards';
 import ReferralCard    from '@/components/ReferralCard';
 
 export default function RewardsTab() {
+  const { status } = useSession();
+  const isGuest = status === 'unauthenticated';
+
   return (
     <div className="px-4 pt-4 pb-2 max-w-lg mx-auto w-full space-y-4">
 
@@ -34,11 +39,52 @@ export default function RewardsTab() {
         </div>
       </Link>
 
-      {/* Engagement rewards — each renders its own state / sign-in prompt.
-          (DailyBonus is a global floating launcher, not an inline card — it's not
-          mounted here; the daily-gift button lifts above the tab bar on native.) */}
-      <StreakRewards />
-      <ReferralCard />
+      {/* Guest CTA — turn the empty signed-out state into a sign-up pitch */}
+      {isGuest && (
+        <div className="rounded-2xl border border-teal-200 dark:border-teal-900 bg-teal-50
+                        dark:bg-teal-900/20 p-5 text-center">
+          <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+            Sign in to start earning entries
+          </p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+            Free account · log fill-ups, keep a daily streak, and refer friends to win a gas card every month.
+          </p>
+          <Link
+            href="/signup"
+            className="inline-block mt-3 px-5 py-2.5 rounded-xl bg-[#005F4A] text-white text-sm
+                       font-bold active:opacity-90 transition-opacity"
+          >
+            Create free account →
+          </Link>
+        </div>
+      )}
+
+      {/* Signed-in engagement rewards — each renders its own state.
+          (DailyBonus is a global floating launcher, not mounted inline here.) */}
+      {!isGuest && (
+        <>
+          <StreakRewards />
+          <ReferralCard />
+        </>
+      )}
+
+      {/* Kard card-linked cash-back — roadmap teaser (informational only, no dead-end) */}
+      <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white
+                      dark:bg-slate-800/50 p-5">
+        <div className="flex items-center gap-3">
+          <span className="text-2xl" aria-hidden="true">💳</span>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">Cash back on gas</h3>
+              <span className="text-[9px] font-black uppercase tracking-wide px-1.5 py-0.5 rounded-full
+                               bg-amber-100 text-amber-700 border border-amber-200">Coming soon</span>
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">
+              Link a card and earn real cash back every time you fill up — automatically, no receipts to scan.
+            </p>
+          </div>
+        </div>
+      </div>
 
     </div>
   );

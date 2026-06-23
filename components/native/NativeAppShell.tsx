@@ -26,6 +26,7 @@ import WinnerBanner     from '@/components/WinnerBanner';
 import SettingsPage     from '@/app/settings/page';
 import NativeTabBar, { type TabMeta } from './NativeTabBar';
 import RewardsTab       from './tabs/RewardsTab';
+import TabLockGate      from './TabLockGate';
 
 export type TabId = 'calculator' | 'history' | 'tools' | 'rewards' | 'settings';
 
@@ -41,7 +42,10 @@ const STORAGE_KEY = 'gc_active_tab';
 const isTabId = (v: string | null): v is TabId => !!v && TABS.some((t) => t.id === v);
 
 export default function NativeAppShell() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
+  // Guest = confirmed not-signed-in (don't gate while the session is still loading,
+  // or signed-in tabs would flash the lock screen on every open).
+  const isGuest = status === 'unauthenticated';
 
   const [active,  setActive]  = useState<TabId>('calculator');
   const [visited, setVisited] = useState<Set<TabId>>(() => new Set<TabId>(['calculator']));
@@ -106,17 +110,35 @@ export default function NativeAppShell() {
 
         {visited.has('history') && (
           <div className={show('history')}>
-            <div className="px-4 pt-4 max-w-lg mx-auto w-full">
-              <FillupHistory refreshKey={historyKey} />
-            </div>
+            {isGuest ? (
+              <TabLockGate
+                icon="⛽"
+                title="Track every fill-up"
+                subtitle="Sign in to log your fill-ups, watch your MPG, and see your fuel costs over time."
+                bullets={['Automatic MPG tracking', 'Fuel cost history & trends', 'Every fill-up earns giveaway entries']}
+              />
+            ) : (
+              <div className="px-4 pt-4 max-w-lg mx-auto w-full">
+                <FillupHistory refreshKey={historyKey} />
+              </div>
+            )}
           </div>
         )}
 
         {visited.has('tools') && (
           <div className={show('tools')}>
-            <div className="px-4 pt-4 max-w-lg mx-auto w-full">
-              <ToolsPanel />
-            </div>
+            {isGuest ? (
+              <TabLockGate
+                icon="🛠️"
+                title="Unlock your fuel tools"
+                subtitle="Sign in to use the AI Fuel Advisor, trip planner, MPG charts, and station comparison."
+                bullets={['AI Fuel Advisor', 'Trip & budget planning', 'MPG charts & stats']}
+              />
+            ) : (
+              <div className="px-4 pt-4 max-w-lg mx-auto w-full">
+                <ToolsPanel />
+              </div>
+            )}
           </div>
         )}
 
