@@ -68,6 +68,7 @@ export default function BudgetForm({ activeTab, setActiveTab }: Props) {
 
   const [form, setForm]     = useLocalStorage<FormState>('gc_budget_v2', DEFAULTS);
   const [errors, setErrors] = useState<ValidationErrors>({});
+  const [tip, setTip]       = useState(''); // "you forgot a step" hint at the Calculate button
   const [result, setResult] = useState<BudgetResult | null>(null);
   const [calculated, setCalculated]   = useState(false);
   const [showLiveNudge, setShowLiveNudge] = useState(false);
@@ -82,6 +83,7 @@ export default function BudgetForm({ activeTab, setActiveTab }: Props) {
   // Standard patch — clears result (free/guest behaviour)
   function patch(p: Partial<FormState>) {
     setForm((prev) => ({ ...prev, ...p }));
+    if (tip) setTip(''); // they're filling something in — clear the hint
     if (calculated) {
       setResult(null);
       setCalculated(false);
@@ -131,6 +133,15 @@ export default function BudgetForm({ activeTab, setActiveTab }: Props) {
     setValidationAttempted(true);
 
     if (Object.keys(errs).length > 0) {
+      // Tell them which step they missed, right at the button — don't fail silently.
+      const need = t.calc.need;
+      const labels = [
+        errs.tankCapacity   && need.tank,
+        errs.currentFuel    && need.fuel,
+        errs.budget         && need.budget,
+        errs.pricePerGallon && need.price,
+      ].filter(Boolean) as string[];
+      setTip(labels.length ? `${t.calc.tipPrefix} ${labels.join(' · ')}` : '');
       // Scroll to the first field with an error so it's visible
       const firstErrId = errs.tankCapacity   ? 'bgt-step1'
                        : errs.currentFuel    ? 'bgt-step2'
@@ -144,6 +155,7 @@ export default function BudgetForm({ activeTab, setActiveTab }: Props) {
       }
       return;
     }
+    setTip('');
 
     setResult(calcBudget(input));
     setCalculated(true);
@@ -446,6 +458,13 @@ export default function BudgetForm({ activeTab, setActiveTab }: Props) {
           <p className="text-red-700 text-sm font-semibold leading-snug">
             Please fill in the required fields highlighted above before calculating.
           </p>
+        </div>
+      )}
+
+      {tip && (
+        <div className="mb-3 flex items-start gap-2 rounded-xl bg-amber-50 border border-amber-200 px-3.5 py-2.5 animate-fade-in">
+          <span className="text-base leading-none flex-shrink-0" aria-hidden="true">👆</span>
+          <p className="text-sm font-semibold text-amber-800">{tip}</p>
         </div>
       )}
 
