@@ -109,14 +109,17 @@ export default function FirstLaunchSplash() {
       {/* Held hero frame + branded Enter screen — fades in once the clip lands on the lean */}
       {phase !== 'playing' && (
         <>
-          {/* Brand lockup, top */}
+          {/* Brand wordmark — matches the landing-page header exactly (transparent icon +
+              white "GasCap™" text, no background) */}
           <div
-            className="absolute inset-x-0 top-0 pb-14 flex justify-center
-                       bg-gradient-to-b from-black/45 to-transparent animate-fade-in"
-            style={{ paddingTop: 'calc(env(safe-area-inset-top) + 22px)' }}
+            className="absolute inset-x-0 top-0 flex items-center justify-center gap-1.5 animate-fade-in"
+            style={{ paddingTop: 'calc(env(safe-area-inset-top) + 24px)' }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo-lockup-white.png" alt="GasCap" className="h-11 w-auto drop-shadow-lg" />
+            <img src="/gascap-icon-raw.png" alt="" className="h-12 w-auto object-contain drop-shadow-lg" />
+            <span className="text-white font-black text-2xl leading-none tracking-tight drop-shadow-lg">
+              GasCap<sup className="text-xs font-bold" style={{ verticalAlign: '0.6em' }}>™</sup>
+            </span>
           </div>
 
           {/* Tagline + CTA, bottom */}
