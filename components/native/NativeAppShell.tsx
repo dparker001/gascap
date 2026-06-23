@@ -159,7 +159,7 @@ export default function NativeAppShell() {
           never shows transparent/content bleed while scrolling (the sticky header
           alone can leave the safe area exposed on iOS). */}
       <div
-        className="fixed top-0 left-0 right-0 z-40 bg-[#1e3a5f] pointer-events-none"
+        className="fixed top-0 left-0 right-0 z-40 bg-brand-dark pointer-events-none"
         style={{ height: 'env(safe-area-inset-top)' }}
         aria-hidden="true"
       />
