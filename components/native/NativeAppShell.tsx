@@ -155,22 +155,16 @@ export default function NativeAppShell() {
       {/* "Rate us" nudge — engaged signed-in users, after they've come back (≥2 days) */}
       <ReviewNudge />
 
-      {/* Always-navy strip pinned over the status-bar safe area — guarantees the top
-          never shows transparent/content bleed while scrolling (the sticky header
-          alone can leave the safe area exposed on iOS). */}
-      <div
-        className="fixed top-0 left-0 right-0 z-40 bg-brand-dark pointer-events-none"
-        style={{ height: 'env(safe-area-inset-top)' }}
-        aria-hidden="true"
-      />
-
-      {/* Native title bar — navy, fixed (sticky is unreliable inside this flex/scroll
-          container on iOS). Stays put with the safe-area strip while content scrolls. */}
+      {/* Native title bar — ONE fixed element: a green band over the status-bar safe
+          area (the header's brand-dark bg fills the safe-area paddingTop) with the navy
+          title row beneath it. Combining them means the green can't scroll independently
+          of the navy bar — whatever pins the navy bar pins the green band too. Fixed
+          because sticky is unreliable inside this flex/scroll container on iOS. */}
       <header
-        className="fixed top-0 left-0 right-0 z-30 bg-[#1e3a5f] text-white shadow-sm"
+        className="fixed top-0 left-0 right-0 z-30 bg-brand-dark text-white shadow-sm"
         style={{ paddingTop: 'env(safe-area-inset-top)' }}
       >
-        <div className="h-12 flex items-center justify-center px-4 relative">
+        <div className="h-12 bg-[#1e3a5f] flex items-center justify-center px-4 relative">
           {/* Language switch — reachable from any tab (the native shell has no web header) */}
           <LanguageToggle className="absolute left-2 top-1/2 -translate-y-1/2 !py-1" />
           <h1 className="text-base font-bold tracking-tight">{title}</h1>
