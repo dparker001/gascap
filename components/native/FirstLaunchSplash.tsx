@@ -5,10 +5,10 @@
  * native app is opened, then hands off to the app. Pure web overlay (HTML5 <video>),
  * so it ships live with NO Codemagic rebuild and no native splash-screen plumbing.
  *
- * Flow: video plays → on end it HOLDS the final confident-lean frame and fades in a
- * "Get Started" button → the user taps to enter, and the overlay fades out (no hard
- * flash to the app). A Skip button is available during playback, and a long safety
- * timer guarantees it can never trap the user.
+ * Flow: video plays → on end it HOLDS the final confident-lean frame (indefinitely)
+ * and fades in the logo + a "Get Started" button → the user taps to enter, and the
+ * overlay fades out (no hard flash to the app). The held frame stays until the user
+ * taps; a Skip button is available during playback so nobody can get trapped.
  *
  * Served from jsDelivr's CDN (reads public/splash-intro.mp4 from the public repo) —
  * Railway's Node static server truncates/times-out on video-sized files. To update
@@ -28,7 +28,6 @@ import { useIsNative } from '@/hooks/useIsNative';
 const SPLASH_VIDEO_SRC = 'https://cdn.jsdelivr.net/gh/dparker001/gascap@main/public/splash-intro.mp4';
 const SEEN_KEY = 'gc_splash_intro_seen';
 const CTA_FALLBACK_MS = 5800; // reveal the CTA by here even if `ended` never fires (clip ~5s)
-const SAFETY_MS = 30000;      // never trap the user — auto-enter after this
 const FADE_MS = 500;
 
 type Phase = 'playing' | 'cta' | 'leaving';
@@ -68,10 +67,9 @@ export default function FirstLaunchSplash() {
       });
     });
     const ctaTimer = window.setTimeout(revealCta, CTA_FALLBACK_MS);
-    const safety   = window.setTimeout(dismiss, SAFETY_MS);
     return () => {
       cancelAnimationFrame(raf1); cancelAnimationFrame(raf2);
-      clearTimeout(startTimer); clearTimeout(ctaTimer); clearTimeout(safety);
+      clearTimeout(startTimer); clearTimeout(ctaTimer);
     };
   }, [show]);
 
@@ -108,23 +106,36 @@ export default function FirstLaunchSplash() {
         </button>
       )}
 
-      {/* Held hero frame + Enter CTA — fades in once the clip lands on the confident lean */}
+      {/* Held hero frame + branded Enter screen — fades in once the clip lands on the lean */}
       {phase !== 'playing' && (
-        <div
-          className="absolute inset-x-0 bottom-0 pt-24 flex flex-col items-center gap-3
-                     bg-gradient-to-t from-black/65 via-black/25 to-transparent animate-fade-in"
-          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 38px)' }}
-        >
-          <p className="text-white text-xl font-black tracking-tight drop-shadow">Know before you go.</p>
-          <button
-            type="button"
-            onClick={dismiss}
-            className="w-[78%] max-w-xs py-3.5 rounded-2xl bg-brand-orange text-white font-bold
-                       text-base shadow-lg active:opacity-90 transition-opacity"
+        <>
+          {/* Brand lockup, top */}
+          <div
+            className="absolute inset-x-0 top-0 pb-14 flex justify-center
+                       bg-gradient-to-b from-black/45 to-transparent animate-fade-in"
+            style={{ paddingTop: 'calc(env(safe-area-inset-top) + 22px)' }}
           >
-            Get Started →
-          </button>
-        </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo-lockup-white.png" alt="GasCap" className="h-11 w-auto drop-shadow-lg" />
+          </div>
+
+          {/* Tagline + CTA, bottom */}
+          <div
+            className="absolute inset-x-0 bottom-0 pt-24 flex flex-col items-center gap-3
+                       bg-gradient-to-t from-black/65 via-black/25 to-transparent animate-fade-in"
+            style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 38px)' }}
+          >
+            <p className="text-white text-xl font-black tracking-tight drop-shadow">Know before you go.</p>
+            <button
+              type="button"
+              onClick={dismiss}
+              className="w-[78%] max-w-xs py-3.5 rounded-2xl bg-brand-orange text-white font-bold
+                         text-base shadow-lg active:opacity-90 transition-opacity"
+            >
+              Get Started →
+            </button>
+          </div>
+        </>
       )}
     </div>
   );
