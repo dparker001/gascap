@@ -60,12 +60,12 @@ export default function PricingSection() {
   const PRO_FEATURES  = t.pricing.proFeatures.map((text, i) => ({ text, highlight: PRO_HIGHLIGHTS[i] }));
 
   const LIFETIME_EXCLUSIVES = [
-    { icon: '⭐', text: t.pricing.exTwoXEntries },
-    { icon: '🛡️', text: t.pricing.exStreakShield },
     { icon: '🏅', text: t.pricing.exLifetimeBadge },
+    { icon: '🎁', text: 'Annual vacation getaway (with Lifetime Perks $9.99/yr)' },
+    { icon: '📅', text: '+20 bonus giveaway entries/week (with Lifetime Perks)' },
   ];
 
-  async function handleUpgrade(billing: 'monthly' | 'lifetime') {
+  async function handleUpgrade(billing: 'monthly' | 'annual' | 'lifetime') {
     if (!session) {
       // New visitors sign up first (free trial auto-activates), then return to upgrade
       router.push('/signup?next=/upgrade');
@@ -85,9 +85,10 @@ export default function PricingSection() {
     }
   }
 
-  const isProMonthly  = !!session && userPlan === 'pro' && userInterval !== 'lifetime' && !isOnTrial;
+  const isProMonthly  = !!session && userPlan === 'pro' && userInterval === 'monthly' && !isOnTrial;
+  const isProAnnual   = !!session && userPlan === 'pro' && userInterval === 'annual'   && !isOnTrial;
   const isProLifetime = !!session && userPlan === 'pro' && userInterval === 'lifetime' && !isOnTrial;
-  const isPro         = isProMonthly || isProLifetime; // paid Pro (not trial)
+  const isPro         = isProMonthly || isProAnnual || isProLifetime;
 
   // Getaway promo: Lifetime buyers get a complimentary resort getaway. Show the
   // bonus callout on the Lifetime card (hidden once you already own Lifetime).
@@ -105,8 +106,8 @@ export default function PricingSection() {
         {t.pricing.sub}
       </p>
 
-      {/* ── 3-panel cards ──────────────────────────────────────────────── */}
-      <div className="grid gap-4 md:grid-cols-3 md:items-stretch max-w-7xl mx-auto">
+      {/* ── 4-panel cards ──────────────────────────────────────────────── */}
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4 md:items-stretch max-w-7xl mx-auto">
 
         {/* Free */}
         <div className={[
@@ -196,12 +197,12 @@ export default function PricingSection() {
           <p className="text-xs mb-6 leading-relaxed text-white/60">{t.pricing.billedMonthly}</p>
 
           <button
-            onClick={() => !isProMonthly && !isProLifetime && handleUpgrade('monthly')}
-            disabled={loading !== null || isProMonthly || isProLifetime}
+            onClick={() => !isProMonthly && !isPro && handleUpgrade('monthly')}
+            disabled={loading !== null || isProMonthly || isPro}
             className={`w-full py-3 rounded-2xl text-sm font-black transition-colors mb-6 ${
               isProMonthly
                 ? 'bg-green-400 text-navy-900 cursor-default'
-                : isProLifetime
+                : isPro
                   ? 'bg-white/20 text-white/50 cursor-default'
                   : 'bg-amber-500 text-white hover:bg-amber-400 disabled:opacity-50'
             }`}
@@ -210,7 +211,7 @@ export default function PricingSection() {
               ? t.pricing.loading
               : isProMonthly
                 ? t.pricing.yourCurrentPlan
-                : isProLifetime
+                : isPro
                   ? t.pricing.includedInLifetime
                   : isOnTrial
                     ? `${t.pricing.upgradeFromTrial} — $${PRICING.pro.monthly}/mo`
@@ -231,6 +232,74 @@ export default function PricingSection() {
                 }`}>{f.text}</span>
               </li>
             ))}
+          </ul>
+        </div>
+
+        {/* Pro Annual */}
+        <div className={[
+          'relative flex flex-col rounded-3xl p-6 border-2 transition-all shadow-lg',
+          isProAnnual
+            ? 'bg-green-700 border-green-400 ring-2 ring-green-400'
+            : 'bg-green-700 border-green-400',
+        ].join(' ')}>
+
+          <div className={[
+            'absolute -top-3.5 left-1/2 -translate-x-1/2 text-[11px] font-black px-4 py-1',
+            'rounded-full uppercase tracking-wider whitespace-nowrap shadow-md',
+            isProAnnual ? 'bg-green-400 text-navy-900' : 'bg-green-400 text-navy-900',
+          ].join(' ')}>
+            {isProAnnual ? t.pricing.currentPlanRibbon : '3 months free'}
+          </div>
+
+          <div className="mb-4 mt-1">
+            <h3 className="font-black text-lg text-white">Pro Annual</h3>
+            <span className="inline-block mt-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-400/20 text-green-300 whitespace-nowrap">
+              Best value
+            </span>
+          </div>
+
+          <div className="mb-1 flex items-end gap-1">
+            <span className="text-4xl font-black text-white">{fmt(PRICING.pro.annual)}</span>
+            <span className="text-sm mb-1 text-white/60">/yr</span>
+          </div>
+          <p className="text-xs mb-6 leading-relaxed text-white/60">~$2.25/mo · save $9/yr vs monthly</p>
+
+          <button
+            onClick={() => !isProAnnual && !isProLifetime && handleUpgrade('annual')}
+            disabled={loading !== null || isProAnnual || isProLifetime}
+            className={`w-full py-3 rounded-2xl text-sm font-black transition-colors mb-6 ${
+              isProAnnual
+                ? 'bg-green-400 text-navy-900 cursor-default'
+                : isProLifetime
+                  ? 'bg-white/20 text-white/50 cursor-default'
+                  : 'bg-white text-green-800 hover:bg-green-50 disabled:opacity-50'
+            }`}
+          >
+            {loading === 'annual'
+              ? t.pricing.loading
+              : isProAnnual
+                ? t.pricing.yourCurrentPlan
+                : isProLifetime
+                  ? t.pricing.includedInLifetime
+                  : isOnTrial
+                    ? `Lock in annual — $${PRICING.pro.annual}/yr`
+                    : !session
+                      ? t.pricing.startFreeTrial
+                      : `Get Annual — $${PRICING.pro.annual}/yr`}
+          </button>
+
+          <div className="border-t border-white/20 mb-5" />
+          <ul className="space-y-2.5 flex-1">
+            {PRO_FEATURES.map((f) => (
+              <li key={f.text} className="flex items-start gap-2.5">
+                <Check highlight={f.highlight} dark />
+                <span className={`text-sm leading-snug ${f.highlight ? 'text-green-300 font-semibold' : 'text-white/80'}`}>{f.text}</span>
+              </li>
+            ))}
+            <li className="flex items-start gap-2.5 mt-2 pt-2 border-t border-white/20">
+              <span className="flex-shrink-0 mt-0.5 text-base">📅</span>
+              <span className="text-sm leading-snug text-green-300 font-semibold">+10 bonus giveaway entries/week</span>
+            </li>
           </ul>
         </div>
 
