@@ -234,15 +234,15 @@ const SECTIONS = [
       },
       {
         q: 'How do I get 30 days of Pro free?',
-        a: 'All new users who create a GasCap™ account automatically receive 30 days of Pro features — no credit card required. Your free trial gives full access to fill-up tracking, MPG insights, receipt scanning, AI Fuel Advisor, Gas Price Alert, stats, streak rewards, referral program, and daily gas card giveaway entries. When there are 15 days left in your trial, a banner appears in the app to remind you. After the 30-day trial ends, your account automatically downgrades to the free plan — you are never charged. To keep Pro features, upgrade before the trial expires at $2.99/month or own Pro forever with the $19.99 Lifetime plan (one payment, no subscription).',
+        a: 'All new users who create a GasCap™ account automatically receive 30 days of Pro features — no credit card required. Your free trial gives full access to fill-up tracking, MPG insights, receipt scanning, AI Fuel Advisor, Gas Price Alert, stats, streak rewards, referral program, and daily gas card giveaway entries. When there are 15 days left in your trial, a banner appears in the app to remind you. After the 30-day trial ends, your account automatically downgrades to the free plan — you are never charged. To keep Pro features, upgrade before the trial expires: $2.99/month, $26.99/year (~3 months free), or own Pro forever with the $19.99 Pro Lifetime Membership (one payment, no subscription).',
       },
       {
         q: 'What does Pro add?',
-        a: 'Pro ($2.99/mo or $19.99 Lifetime) adds unlimited saved vehicles, VIN photo scan, fill-up history & MPG tracking, receipt scanning, MPG Insight Card, AI Fuel Advisor, Gas Price Alert, fuel savings dashboard, streak counter, monthly report card, gas price trend predictions, vehicle health alerts, Annual Wrapped, referral rewards, Route Trip Planner with Google Maps, and daily gas card giveaway entries.',
+        a: 'Pro adds unlimited saved vehicles, VIN photo scan, fill-up history & MPG tracking, receipt scanning, MPG Insight Card, AI Fuel Advisor, Gas Price Alert, fuel savings dashboard, streak counter, monthly report card, gas price trend predictions, vehicle health alerts, Annual Wrapped, referral rewards, Route Trip Planner with Google Maps, and daily gas card giveaway entries. Available as Pro Monthly ($2.99/mo), Pro Annual ($26.99/yr, ~3 months free), or Pro Lifetime Membership ($19.99 one-time).',
       },
       {
-        q: 'What is the difference between Pro monthly and Pro Lifetime?',
-        a: 'Both plans include every Pro feature. Pro Lifetime ($19.99, one-time payment) adds three exclusive perks not available on the monthly plan: (1) 2× giveaway entries every month — your daily streak entries count double, giving you twice the chances in the monthly gas card draw; (2) Streak Shield — one grace day per month that automatically preserves your streak if you miss a day; and (3) a permanent Lifetime Member badge shown in your profile. With Lifetime there are no recurring charges — you pay once and keep Pro forever.',
+        q: 'What are the differences between Pro Monthly, Pro Annual, and Pro Lifetime?',
+        a: 'All three tiers include every Pro feature. Pro Monthly ($2.99/mo) is a simple month-to-month subscription with no bonus giveaway entries. Pro Annual ($26.99/yr, ~3 months free) saves you money and automatically adds +10 bonus giveaway entries every draw period. Pro Lifetime Membership ($19.99, one-time payment) gives you Pro access forever with no recurring subscription, a permanent 🏅 Lifetime Member badge, and +10 bonus giveaway entries per draw period. Lifetime members can optionally add Lifetime Perks ($9.99/yr) to upgrade to +20 bonus entries per draw period plus an annual vacation voucher (hotel getaway) every year they renew. If Lifetime Perks lapses, Pro access is never revoked — you simply drop back to +10 bonus entries.',
       },
       {
         q: 'What does Fleet add over Pro?',
@@ -250,7 +250,7 @@ const SECTIONS = [
       },
       {
         q: 'How do I upgrade my plan?',
-        a: 'Visit gascap.app/upgrade or tap Settings → "Upgrade to Pro." The upgrade page shows all three options side by side: Free, Pro ($2.99/mo), and Pro Lifetime ($19.99 one-time). You\'ll be taken to a secure Stripe checkout page. On the iPhone app, upgrading uses Apple In-App Purchase — you\'ll see a native purchase screen and pay through your Apple Account. On the web, checkout is handled securely by Stripe. Either way, Pro unlocks on your account everywhere.',
+        a: 'Visit gascap.app/upgrade or tap Settings → "Upgrade to Pro." The upgrade page shows all four options: Free, Pro Monthly ($2.99/mo), Pro Annual ($26.99/yr), and Pro Lifetime Membership ($19.99 one-time). You\'ll be taken to a secure Stripe checkout page. On the iPhone app, upgrading uses Apple In-App Purchase — you\'ll see a native purchase screen and pay through your Apple Account. On the web, checkout is handled securely by Stripe. Either way, Pro unlocks on your account everywhere. Lifetime members can add Lifetime Perks ($9.99/yr) from Settings → Plan.',
       },
       {
         q: 'Can I give GasCap™ Pro as a gift?',
@@ -261,8 +261,8 @@ const SECTIONS = [
         a: 'Open the claim link in your gift email (or go to gascap.app/redeem and enter your gift code). Sign in — or create a free account if you\'re new (your name and email are pre-filled from the gift) — then tap "Claim My Pro Lifetime." Pro Lifetime activates on your account instantly. If you already have Lifetime, the code stays unused so you can pass it on to someone else.',
       },
       {
-        q: 'How do I get a free vacation getaway with Pro Lifetime?',
-        a: 'During our limited-time getaway promotion, anyone who buys Pro Lifetime ($19.99, one-time) receives a complimentary resort getaway as a free bonus — the getaway is a thank-you for going Lifetime, not something you\'re purchasing. Right after you upgrade, you\'ll choose your destination from a curated list (Las Vegas, Denver, Miami, San Antonio, Orlando, or Nashville), and your certificate is sent by email within 24 hours. You can also choose later anytime at gascap.app/getaway.',
+        q: 'How do I get a vacation getaway with Pro Lifetime?',
+        a: 'There are two ways to earn a vacation getaway. First, anyone who purchases Pro Lifetime Membership ($19.99) receives a complimentary one-time resort getaway as a welcome bonus — right after you upgrade, choose your destination from a curated list (Las Vegas, Denver, Miami, San Antonio, Orlando, or Nashville) at gascap.app/getaway, and your certificate is sent by email within 24 hours. Second, Lifetime Perks subscribers ($9.99/yr add-on) receive a new vacation voucher every year they renew — this is an ongoing annual perk as long as Lifetime Perks is active.',
       },
       {
         q: 'What does the getaway cover, and what do I pay?',
@@ -296,7 +296,7 @@ const SECTIONS = [
       },
       {
         q: 'How do I earn entries as a Pro member?',
-        a: 'Pro subscribers automatically earn entries for each calendar day they use the app. Your daily entry count depends on your Ambassador Program tier: standard users earn 1 entry/day (up to 31/month); Supporters (5+ paying referrals) earn 2 entries/day (up to 62/month); Ambassadors (15+ paying referrals) earn 3 entries/day (up to 93/month); Elite Ambassadors (30+ paying referrals) earn 5 entries/day (up to 155/month). Pro Lifetime members earn 2× entries — their daily count is doubled before tier multipliers apply. Tier status is based on your cumulative paying referral count as of the last day of the previous month. On top of daily entries, streak bonuses apply as a flat addition: a 7-day streak adds +2 bonus entries, 30-day adds +5, 90-day adds +10, 180-day adds +15, and a full 365-day streak adds +20 bonus entries per month.',
+        a: 'Pro subscribers automatically earn entries for each calendar day they use the app. Your daily entry count depends on your Ambassador Program tier: standard users earn 1 entry/day; Supporters (5+ paying referrals) earn 2 entries/day; Ambassadors (15+ paying referrals) earn 3 entries/day; Elite Ambassadors (30+ paying referrals) earn 5 entries/day. Tier status is based on your cumulative paying referral count as of the last day of the previous month. On top of daily entries, streak bonuses apply as a flat addition: a 7-day streak adds +2 bonus entries, 30-day adds +5, 90-day adds +10, 180-day adds +15, and a full 365-day streak adds +20 bonus entries per draw period. Additionally, plan-level bonuses are added automatically each draw period: Pro Annual members receive +10 bonus entries; Pro Lifetime members with active Lifetime Perks receive +20 bonus entries; Pro Lifetime members without active Perks receive +10 bonus entries (same as Annual).',
       },
       {
         q: 'Can I enter without a paid subscription?',
