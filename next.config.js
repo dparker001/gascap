@@ -30,9 +30,11 @@ const nextConfig = {
     { source: '/.well-known/apple-app-site-association', destination: '/api/apple-app-site-association' },
   ],
   // Canonical redirect: gascap.app → www.gascap.app (apex sub-routes return 404 without this)
+  // /.well-known/* is excluded so Apple (AASA) and Google (assetlinks) can fetch
+  // those files directly from the apex domain without following a redirect.
   redirects: async () => [
     {
-      source:      '/:path*',
+      source:      '/((?!\\.well-known/).*)',
       has:         [{ type: 'host', value: 'gascap.app' }],
       destination: 'https://www.gascap.app/:path*',
       permanent:   true,

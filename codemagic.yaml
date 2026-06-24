@@ -68,6 +68,11 @@ workflows:
           <dict>
             <key>aps-environment</key>
             <string>production</string>
+            <key>com.apple.developer.associated-domains</key>
+            <array>
+              <string>webcredentials:gascap.app</string>
+              <string>webcredentials:www.gascap.app</string>
+            </array>
           </dict>
           </plist>
           PLIST
