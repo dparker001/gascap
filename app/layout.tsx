@@ -76,6 +76,10 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   themeColor: '#005F4A',
+  // Required so iOS exposes env(safe-area-inset-*) to CSS. Without it, the new
+  // contentInset:"never" build reports 0 insets → the green safe-area band
+  // collapses to nothing and content slides under the status bar.
+  viewportFit: 'cover',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
