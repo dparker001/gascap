@@ -75,10 +75,10 @@ export default function GasPriceLookup({ onApply, autoFill = false, currentValue
     setResult(null);
     setErrMsg('');
 
-    // 1. Geolocation
-    let position: GeolocationCoordinates;
+    // 1. Geolocation — optional. On failure, fall back to IP-based state detection.
+    let query = '';
     try {
-      position = await Promise.race([
+      const position = await Promise.race([
         new Promise<GeolocationCoordinates>((resolve, reject) => {
           navigator.geolocation.getCurrentPosition(
             (pos) => resolve(pos.coords),
@@ -87,31 +87,29 @@ export default function GasPriceLookup({ onApply, autoFill = false, currentValue
           );
         }),
         // iOS WKWebView can ignore getCurrentPosition's own `timeout` and never fire
-        // either callback — leaving the button spinning forever. This hard timeout
-        // guarantees the spinner always resolves (→ error state) so it can't hang.
+        // either callback — hard timeout so it always resolves.
         new Promise<never>((_, reject) =>
           setTimeout(() => reject(new Error('geo-timeout')), 8000)),
       ]);
+      // Round to ~1 decimal (~11 km) — only transmit approximate location.
+      const apxLat = Math.round(position.latitude  * 10) / 10;
+      const apxLng = Math.round(position.longitude * 10) / 10;
+      setCoords({ lat: apxLat, lng: apxLng });
+      query = `?lat=${apxLat}&lng=${apxLng}`;
     } catch {
-      if (!auto) { setStatus('error'); setErrMsg(t.gasPrice.errorDenied); }
-      return;
+      // GPS denied or timed out — server will resolve state from IP instead.
+      query = '';
     }
 
-    // Round to ~1 decimal (~11 km) — only ever transmit APPROXIMATE location.
-    const apxLat = Math.round(position.latitude  * 10) / 10;
-    const apxLng = Math.round(position.longitude * 10) / 10;
-    setCoords({ lat: apxLat, lng: apxLng });
-
-    // 2. Fetch price (now instant server-side — local geocode + cached EIA)
+    // 2. Fetch price — instant if GPS provided, ~200ms via IP fallback.
     if (!auto) setStatus('fetching');
     try {
-      const res  = await fetch(`/api/gas-price?lat=${apxLat}&lng=${apxLng}`, { signal: timeoutSignal(12000) });
+      const res  = await fetch(`/api/gas-price${query}`, { signal: timeoutSignal(12000) });
       const data = await res.json() as GasPriceLookupResult;
 
       if (auto) {
-        // Silent auto-fill: apply only if the field is still empty.
         if (data.price && !currentValue) {
-          onApply(data.price.toFixed(2), apxLat, apxLng);
+          onApply(data.price.toFixed(2), coords?.lat, coords?.lng);
           setAutoApplied({ price: data.price, state: data.state });
           remember(data.price, data.state);
         }
