@@ -78,13 +78,20 @@ export default function GasPriceLookup({ onApply, autoFill = false, currentValue
     // 1. Geolocation
     let position: GeolocationCoordinates;
     try {
-      position = await new Promise<GeolocationCoordinates>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(
-          (pos) => resolve(pos.coords),
-          (err) => reject(err),
-          { timeout: 10000, maximumAge: 300_000 },
-        );
-      });
+      position = await Promise.race([
+        new Promise<GeolocationCoordinates>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(
+            (pos) => resolve(pos.coords),
+            (err) => reject(err),
+            { timeout: 7000, maximumAge: 300_000, enableHighAccuracy: false },
+          );
+        }),
+        // iOS WKWebView can ignore getCurrentPosition's own `timeout` and never fire
+        // either callback — leaving the button spinning forever. This hard timeout
+        // guarantees the spinner always resolves (→ error state) so it can't hang.
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('geo-timeout')), 8000)),
+      ]);
     } catch {
       if (!auto) { setStatus('error'); setErrMsg(t.gasPrice.errorDenied); }
       return;

@@ -132,7 +132,7 @@ export default function TankPresets({
             : 'bg-slate-100 text-slate-500 border border-slate-200',
         ].join(' ')}>
           <span aria-hidden="true">{vehicleSourceType === 'garage' ? '🚗' : '📋'}</span>
-          {vehicleSourceType === 'garage' ? 'From garage: ' : 'From list: '}
+          {vehicleSourceType === 'garage' ? t.tankPresets.fromGarage : t.tankPresets.fromList}
           <span className="font-bold truncate max-w-[200px]">{vehicleSourceLabel}</span>
         </p>
       )}

@@ -131,7 +131,7 @@ function applyFilter(
 
 export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
   const { data: session, status } = useSession();
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const MONTH_NAMES = t.fillupHistory.monthNames;
   const [data,        setData]       = useState<HistoryResponse | null>(null);
   const [nationalAvg, setNationalAvg] = useState<number | null>(null);
@@ -921,7 +921,7 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
                           {/* Date column */}
                           <div className="flex-shrink-0 text-center min-w-[40px]">
                             <p className="text-[10px] font-bold text-slate-400 uppercase">
-                              {new Date(f.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short' })}
+                              {new Date(f.date + 'T12:00:00').toLocaleDateString(locale === 'es' ? 'es-ES' : 'en-US', { month: 'short' })}
                             </p>
                             <p className="text-xl font-black text-navy-700 leading-none">
                               {new Date(f.date + 'T12:00:00').getDate()}

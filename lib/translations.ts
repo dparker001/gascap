@@ -508,6 +508,8 @@ const en = {
   // ── Tank presets ───────────────────────────────────────────────────────────
   tankPresets: {
     label:            'Tank Size',
+    fromGarage:       'From garage: ',
+    fromList:         'From list: ',
     unit:             '(gallons)',
     selectPlaceholder:'Common vehicles — tap to auto-fill ▾',
     myVehicles:       'My Vehicles',
@@ -3103,6 +3105,8 @@ const es: typeof en = {
 
   tankPresets: {
     label:            'Tamaño del tanque',
+    fromGarage:       'Del garaje: ',
+    fromList:         'De la lista: ',
     unit:             '(galones)',
     selectPlaceholder:'Vehículos comunes — toca para llenar automáticamente ▾',
     myVehicles:       'Mis Vehículos',
