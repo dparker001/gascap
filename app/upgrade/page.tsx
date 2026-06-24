@@ -53,6 +53,7 @@ function UpgradePageInner() {
   useEffect(() => { setPlatform(detectNativePlatform()); setResolved(true); }, []);
   const isNative = platform !== null;
   const [loading, setLoading] = useState<'pro-monthly' | 'pro-annual' | 'pro-lifetime' | null>(null);
+  const [billing, setBilling] = useState<'monthly' | 'annual'>('annual');
   const [error,   setError]   = useState('');
 
   const userPlan      = (session?.user as { plan?: string })?.plan ?? 'free';
@@ -389,8 +390,8 @@ function UpgradePageInner() {
           <p className="text-center text-sm text-red-500 mb-4">{error}</p>
         )}
 
-        {/* ── 4-panel pricing cards ─────────────────────────────────────── */}
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 items-stretch">
+        {/* ── 3-panel pricing cards ─────────────────────────────────────── */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 items-stretch">
 
           {/* Free */}
           <div className="bg-white rounded-3xl border-2 border-slate-200 shadow-sm p-6 flex flex-col">
@@ -425,47 +426,87 @@ function UpgradePageInner() {
             )}
           </div>
 
-          {/* Pro Monthly */}
+          {/* Pro — monthly/annual toggle */}
           <div className="relative bg-white rounded-3xl border-2 border-amber-400 shadow-card p-6 flex flex-col">
             <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-amber-400 text-navy-900
                             text-[11px] font-black px-4 py-1 rounded-full uppercase tracking-wider
                             whitespace-nowrap shadow-md">
-              {t.pricing.monthlyRibbon}
+              {isProMonthly || isProAnnual ? t.upgrade.currentPlan : t.pricing.monthlyRibbon}
             </div>
             <div className="mb-4 mt-1">
-              <span className="inline-block bg-amber-100 text-amber-700 text-[10px] font-black
-                               px-2 py-0.5 rounded-full uppercase tracking-wider mb-2">
-                {t.upgrade.monthly}
-              </span>
               <h2 className="text-xl font-black text-navy-700">Pro</h2>
               <p className="text-xs text-slate-400 mt-0.5">{t.upgrade.cancelAnytime}</p>
             </div>
+
+            {/* Billing toggle */}
+            {!isProMonthly && !isProAnnual && !isProLifetime && (
+              <div className="flex items-center bg-slate-100 rounded-2xl p-1 mb-4 gap-1">
+                <button
+                  onClick={() => setBilling('monthly')}
+                  className={`flex-1 py-1.5 rounded-xl text-xs font-black transition-colors ${
+                    billing === 'monthly' ? 'bg-white text-navy-700 shadow-sm' : 'text-slate-400 hover:text-slate-600'
+                  }`}
+                >
+                  Monthly
+                </button>
+                <button
+                  onClick={() => setBilling('annual')}
+                  className={`flex-1 py-1.5 rounded-xl text-xs font-black transition-colors flex items-center justify-center gap-1.5 ${
+                    billing === 'annual' ? 'bg-white text-navy-700 shadow-sm' : 'text-slate-400 hover:text-slate-600'
+                  }`}
+                >
+                  Annual
+                  <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full ${
+                    billing === 'annual' ? 'bg-green-500 text-white' : 'bg-slate-200 text-slate-500'
+                  }`}>Save $9</span>
+                </button>
+              </div>
+            )}
+
             <div className="mb-1 flex items-end gap-1">
-              <span className="text-4xl font-black text-navy-700">${PRICING.pro.monthly}</span>
-              <span className="text-sm mb-1 text-slate-400">/mo</span>
+              <span className="text-4xl font-black text-navy-700">
+                {billing === 'annual' && !isProMonthly ? `$${PRICING.pro.annual}` : `$${PRICING.pro.monthly}`}
+              </span>
+              <span className="text-sm mb-1 text-slate-400">
+                {billing === 'annual' && !isProMonthly ? '/yr' : '/mo'}
+              </span>
             </div>
-            <p className="text-xs text-green-600 font-semibold mb-6 leading-relaxed">
-              {t.upgrade.lessThanDime}
+            <p className="text-xs font-semibold mb-4 leading-relaxed">
+              {billing === 'annual' && !isProMonthly
+                ? <span className="text-green-600">~${(PRICING.pro.annual / 12).toFixed(2)}/mo · 3 months free</span>
+                : <span className="text-green-600">{t.upgrade.lessThanDime}</span>}
             </p>
+
+            {/* Annual bonus badge */}
+            <div className={`mb-4 ${billing === 'annual' && !isProMonthly && !isProLifetime ? 'block' : 'hidden'}`}>
+              <span className="inline-flex items-center gap-1.5 bg-green-50 text-green-700 text-[11px] font-black px-3 py-1.5 rounded-xl border border-green-200">
+                📅 +10 bonus giveaway entries/week
+              </span>
+            </div>
+
             <button
-              onClick={() => !isProMonthly && !isProLifetime && handleUpgrade('monthly')}
-              disabled={loading !== null || isProMonthly || isProLifetime}
+              onClick={() => { if (!isProMonthly && !isProAnnual && !isProLifetime) handleUpgrade(billing); }}
+              disabled={loading !== null || isProMonthly || isProAnnual || isProLifetime}
               className={`w-full py-3 rounded-2xl font-black text-sm transition-colors mb-5 ${
-                isProMonthly
+                isProMonthly || isProAnnual
                   ? 'bg-green-500 text-white cursor-default'
                   : isProLifetime
                     ? 'bg-slate-200 text-slate-400 cursor-default'
                     : 'bg-amber-500 hover:bg-amber-400 text-white disabled:opacity-50'
               }`}>
-              {loading === 'pro-monthly'
+              {loading === 'pro-monthly' || loading === 'pro-annual'
                 ? t.upgrade.redirecting
-                : isProMonthly
+                : isProMonthly || isProAnnual
                   ? t.upgrade.currentPlan
                   : isProLifetime
                     ? t.pricing.includedInLifetime
                     : isOnTrial
-                      ? `${t.pricing.upgradeFromTrial} — $${PRICING.pro.monthly}/mo`
-                      : session ? `${t.upgrade.upgradeBtn} Pro — $${PRICING.pro.monthly}/mo` : t.pricing.startFreeTrial}
+                      ? billing === 'annual'
+                        ? `Lock in annual — $${PRICING.pro.annual}/yr`
+                        : `${t.pricing.upgradeFromTrial} — $${PRICING.pro.monthly}/mo`
+                      : billing === 'annual'
+                        ? session ? `Get Pro Annual — $${PRICING.pro.annual}/yr` : t.pricing.startFreeTrial
+                        : session ? `${t.upgrade.upgradeBtn} Pro — $${PRICING.pro.monthly}/mo` : t.pricing.startFreeTrial}
             </button>
             <div className="border-t border-slate-100 mb-5" />
             <ul className="space-y-2 flex-1">
@@ -474,59 +515,6 @@ function UpgradePageInner() {
                   <Check color="amber" /> {f}
                 </li>
               ))}
-            </ul>
-          </div>
-
-          {/* Pro Annual */}
-          <div className="relative bg-white rounded-3xl border-2 border-green-400 shadow-card p-6 flex flex-col">
-            <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-green-400 text-navy-900
-                            text-[11px] font-black px-4 py-1 rounded-full uppercase tracking-wider
-                            whitespace-nowrap shadow-md">
-              3 months free
-            </div>
-            <div className="mb-4 mt-1">
-              <span className="inline-block bg-green-100 text-green-700 text-[10px] font-black
-                               px-2 py-0.5 rounded-full uppercase tracking-wider mb-2">
-                Annual
-              </span>
-              <h2 className="text-xl font-black text-navy-700">Pro Annual</h2>
-              <p className="text-xs text-slate-400 mt-0.5">Billed once a year</p>
-            </div>
-            <div className="mb-1 flex items-end gap-1">
-              <span className="text-4xl font-black text-navy-700">${PRICING.pro.annual}</span>
-              <span className="text-sm mb-1 text-slate-400">/yr</span>
-            </div>
-            <p className="text-xs text-green-600 font-semibold mb-6 leading-relaxed">
-              ~${(PRICING.pro.annual / 12).toFixed(2)}/mo · saves ${(PRICING.pro.monthly * 12 - PRICING.pro.annual).toFixed(2)}/yr
-            </p>
-            <button
-              onClick={() => !isProAnnual && !isProLifetime && handleUpgrade('annual')}
-              disabled={loading !== null || isProAnnual || isProLifetime}
-              className={`w-full py-3 rounded-2xl font-black text-sm transition-colors mb-5 ${
-                isProAnnual
-                  ? 'bg-green-500 text-white cursor-default'
-                  : isProLifetime
-                    ? 'bg-slate-200 text-slate-400 cursor-default'
-                    : 'bg-green-500 hover:bg-green-400 text-white disabled:opacity-50'
-              }`}>
-              {loading === 'pro-annual'
-                ? t.upgrade.redirecting
-                : isProAnnual
-                  ? t.upgrade.currentPlan
-                  : isProLifetime
-                    ? t.pricing.includedInLifetime
-                    : session ? `Get Pro Annual — $${PRICING.pro.annual}/yr` : t.pricing.startFreeTrial}
-            </button>
-            <div className="border-t border-slate-100 mb-5" />
-            <ul className="space-y-2 flex-1">
-              {PRO_FEATURES.map((f) => (
-                <li key={f} className="flex items-start gap-2 text-sm text-slate-700">
-                  <Check color="green" /> {f}
-                </li>
-              ))}
-              <li className="flex items-start gap-2 text-sm text-slate-700">
-                <Check color="green" /> +10 bonus giveaway entries/week
-              </li>
             </ul>
           </div>
 
