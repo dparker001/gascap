@@ -207,7 +207,7 @@ export default function PricingSection() {
                 Annual
                 <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full ${
                   billing === 'annual' ? 'bg-amber-400 text-navy-900' : 'bg-white/20 text-white'
-                }`}>Save $9</span>
+                }`}>3 months free</span>
               </button>
             </div>
           )}
