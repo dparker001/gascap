@@ -111,9 +111,9 @@ function SuccessContent() {
   // Localized Lifetime exclusives
   const exclusives = planKey === 'pro-lifetime'
     ? [
-        `⭐  ${t.pricing.exTwoXEntries}`,
-        `🛡️  ${t.pricing.exStreakShield}`,
         `🏅  ${t.pricing.exLifetimeBadge}`,
+        `📅  ${t.pricing.exTwoXEntries}`,
+        `⭐  ${t.pricing.exStreakShield}`,
       ]
     : null;
 

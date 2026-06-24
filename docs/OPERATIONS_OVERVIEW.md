@@ -24,7 +24,7 @@
 | Help & FAQ | https://www.gascap.app/help | Comprehensive user guide — single source of truth for app features |
 | Terms of Service | https://www.gascap.app/terms | Legal, program rules, SMS terms, Ambassador Program terms |
 | Privacy Policy | https://www.gascap.app/privacy | Data handling, GDPR/CCPA |
-| Sweepstakes Rules | https://www.gascap.app/sweepstakes-rules | Official monthly drawing rules |
+| Sweepstakes Rules | https://www.gascap.app/sweepstakes-rules | Official weekly drawing rules |
 | Free Entry (AMOE) | https://www.gascap.app/amoe | No-purchase entry form |
 | Upgrade / Pricing | https://www.gascap.app/upgrade | Plan comparison and checkout |
 | Contact | https://www.gascap.app/contact | Support form + SMS opt-in |
@@ -75,14 +75,14 @@ Documented in: `app/terms/page.tsx` (§5) · `app/help/page.tsx` (Ambassador sec
 | Ambassador | 15+ | Free Pro for life + 3× daily draw entries |
 | Elite Ambassador | 30+ | Free Pro for life + 5× daily draw entries + Top Ambassadors recognition |
 
-### Monthly Gas Card Drawing
+### Weekly Gas Card Drawing
 Documented in: `app/giveaway/page.tsx` · `app/sweepstakes-rules/page.tsx` · `lib/giveaway.ts`
 
-- Entries earned: 1 per day you log in or use GasCap™ (Pro/Fleet only)
-- Entries reset each month — no carryover
-- Streak bonus (flat, separate from monthly entries): 7d=+2, 30d=+5, 90d=+10, 180d=+15, 365d=+20
+- Entries earned: 1 per active day (Pro/Fleet); flat plan bonus entries per draw week
+- Plan bonus entries: Annual +10/week · Lifetime base +20/week · Lifetime+Perks +30/week
+- Streak bonus (flat, separate): 7d=+2, 30d=+5, 90d=+10, 180d=+15, 365d=+20
 - Prize: $25 Visa prepaid card (scales to $50 at 500 paying subscribers)
-- Drawing: on or about the 5th of the following month
+- Drawing: weekly (cadence managed by `lib/giveaway.ts`)
 
 ### Pilot Partner Program (field placard visits)
 Documented in: `docs/FIELD_AMBASSADOR_PROGRAM.md`

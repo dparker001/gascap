@@ -196,10 +196,10 @@ A: 1 saved vehicle, both calculators (Target Fill & By Budget), Trip Cost Estima
 A: All new accounts automatically receive 30 days of Pro features — no credit card required. Full access to fill-up tracking, MPG insights, receipt scanning, AI Fuel Advisor, Gas Price Alert, stats, streak rewards, referral program, and monthly giveaway entries. After the 30-day trial, your account automatically reverts to free — you are never charged without taking action.
 
 **Q: What does Pro include?**
-A: Pro ($2.99/mo or $19.99 Lifetime) adds: unlimited saved vehicles, VIN photo scan, fill-up history & MPG tracking, receipt scanning, MPG Insight Card, AI Fuel Advisor, Gas Price Alert, fuel savings dashboard, streak counter, monthly report card, gas price trend predictions, vehicle health alerts, Annual Wrapped, referral rewards, and monthly gas card giveaway entries.
+A: Pro ($2.99/mo, $26.99/yr, or $19.99 Lifetime) adds: unlimited saved vehicles, VIN photo scan, fill-up history & MPG tracking, receipt scanning, MPG Insight Card, AI Fuel Advisor, Gas Price Alert, fuel savings dashboard, streak counter, monthly report card, gas price trend predictions, vehicle health alerts, Annual Wrapped, referral rewards, and weekly gas card giveaway entries.
 
-**Q: What is the difference between Pro monthly and Pro Lifetime?**
-A: Both plans include all the same Pro features. Pro Lifetime ($19.99, one-time payment) additionally includes three exclusive perks: (1) 2× giveaway entries every month — double the standard daily streak entries into the monthly gas card draw; (2) Streak Shield — one grace day per month that preserves your streak if you miss a day; and (3) a permanent Lifetime Member badge displayed in your profile. Pro Lifetime has no recurring charges — you pay once and own it forever.
+**Q: What is the difference between Pro monthly, Pro annual, and Pro Lifetime?**
+A: All Pro plans include the same core features. Pro Annual ($26.99/yr, ~3 months free vs monthly) adds +10 bonus giveaway entries per draw week. Pro Lifetime ($19.99, one-time payment) adds +20 bonus giveaway entries per draw week plus a permanent Lifetime Member badge — no recurring charges. An optional Lifetime Perks add-on ($9.99/yr) upgrades Lifetime members to +30 entries/week and includes an annual vacation voucher.
 
 **Q: What does Fleet add over Pro?**
 A: Fleet features (multi-driver tracking, fleet dashboard, tax reports) are coming soon. Pro ($2.99/mo or $19.99 Lifetime) already includes unlimited vehicles — ideal for multi-car households and small operators.

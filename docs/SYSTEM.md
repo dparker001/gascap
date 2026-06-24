@@ -126,10 +126,13 @@ Stores fill-up records. Managed entirely by `lib/fillups.ts`.
 | Pro Lifetime | $19.99 one-time | Unlimited | ✅ | ✅ | ✅ | ✅ |
 | Fleet | Coming soon (shelved) | Unlimited | ✅ | ✅ | ✅ | — |
 
-**Pro Lifetime exclusives** (not available on monthly):
-- 2× giveaway entries every month (double daily streak entries)
-- Streak Shield — 1 grace day per month preserves streak on a missed day
+**Pro Annual exclusives** (not available on monthly):
+- +10 bonus giveaway entries per draw week (flat, automatic)
+
+**Pro Lifetime exclusives** (not available on monthly or annual):
+- +20 bonus giveaway entries per draw week (included with base Lifetime)
 - Lifetime Member badge — permanent profile badge
+- Optional **Lifetime Perks** add-on ($9.99/yr): upgrades to +30 entries/week + annual vacation voucher
 
 Every new signup gets a **30-day Pro trial** automatically (`grantNewSignupProTrial` in `lib/users.ts`). This sets `plan='pro'`, `isProTrial=true`, `betaProExpiry=+30d`. A cron job (or the beta-expire endpoint) reverts them to free if they don't upgrade.
 

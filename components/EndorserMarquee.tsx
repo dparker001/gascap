@@ -1,5 +1,7 @@
 'use client';
 
+import { useTranslation } from '@/contexts/LanguageContext';
+
 // ── EndorserMarquee ────────────────────────────────────────────────────────────
 //
 // A slow auto-scrolling strip of endorser / partner logos shown on the guest
@@ -105,14 +107,15 @@ function LogoTrack({ endorsers }: { endorsers: Endorser[] }) {
 // ── Main export ───────────────────────────────────────────────────────────────
 
 export default function EndorserMarquee() {
+  const { t } = useTranslation();
   return (
     <section
-      aria-label="Partnering with local businesses"
+      aria-label={t.pricing.partnerMarqueeLabel}
       className="w-full py-4 overflow-hidden bg-slate-50/80 border-y border-slate-100"
     >
       {/* Label */}
       <p className="text-center text-[10px] font-black uppercase tracking-[0.15em] text-slate-500 mb-3 px-4">
-        Partnering with local businesses
+        {t.pricing.partnerMarqueeLabel}
       </p>
 
       {/* Scrolling strip */}

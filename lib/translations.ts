@@ -624,9 +624,16 @@ const en = {
     freeTitle:           'Free',
     proTitle:            'Pro',
     proLifetimeTitle:    'Pro Lifetime',
-    exTwoXEntries:       '2× giveaway entries every week',
-    exStreakShield:      'Streak Shield — 1 grace day/month',
+    exTwoXEntries:       '+20 bonus giveaway entries/week (included)',
+    exStreakShield:      '+30 entries + annual vacation voucher with Lifetime Perks ($9.99/yr add-on)',
     exLifetimeBadge:     'Lifetime Member badge',
+    lifetimeMembershipTitle: 'Pro Lifetime Membership',
+    lifetimePerksTeaser:     'Then $9.99/yr for Lifetime Perks',
+    lifetimePerksNote:   'Lifetime Perks is an optional $9.99/yr add-on that renews your bonus entries and delivers a new vacation voucher each year.',
+    annualToggleLabel:   'Annual',
+    annualTogglePill:    '3 months free',
+    annualBillingNote:   '~$2.25/mo · 3 months free',
+    getAnnualCta:        (price: string) => `Get Annual — $${price}/yr`,
 
     // Button states
     includedInLifetime:  'Included in Lifetime',
@@ -648,6 +655,14 @@ const en = {
     trustNoSell:         'We never sell your data',
     trustStripe:         'Secured by Stripe',
     trustCancel:         'Cancel anytime',
+
+    // Trust strip & marquee (landing page)
+    partnerMarqueeLabel: 'Partnering with local businesses',
+    trustStripHeading:   'Why drivers trust GasCap™',
+    trustStripOffline:   'Works offline — no signal needed',
+    trustStripData:      'We never sell your data',
+    trustStripEia:       'Powered by U.S. EIA official data',
+    trustStripNoCc:      'No credit card to start',
   },
 
   // ── EV Calculator ─────────────────────────────────────────────────────────
@@ -3220,9 +3235,16 @@ const es: typeof en = {
     freeTitle:           'Gratis',
     proTitle:            'Pro',
     proLifetimeTitle:    'Pro De Por Vida',
-    exTwoXEntries:       '2× entradas al sorteo cada mes',
-    exStreakShield:      'Escudo de Racha — 1 día de gracia al mes',
+    exTwoXEntries:       '+20 entradas adicionales al sorteo/semana (incluidas)',
+    exStreakShield:      '+30 entradas + bono vacacional anual con Lifetime Perks ($9.99/año)',
     exLifetimeBadge:     'Insignia de Miembro De Por Vida',
+    lifetimeMembershipTitle: 'Membresía Pro De Por Vida',
+    lifetimePerksTeaser:     'Luego $9.99/año para Lifetime Perks',
+    lifetimePerksNote:   'Lifetime Perks es un complemento opcional de $9.99/año que renueva tus entradas adicionales y te entrega un nuevo bono vacacional cada año.',
+    annualToggleLabel:   'Anual',
+    annualTogglePill:    '3 meses gratis',
+    annualBillingNote:   '~$2.25/mes · 3 meses gratis',
+    getAnnualCta:        (price: string) => `Obtener Anual — $${price}/año`,
 
     // Button states
     includedInLifetime:  'Incluido en de por vida',
@@ -3244,6 +3266,14 @@ const es: typeof en = {
     trustNoSell:         'Nunca vendemos tus datos',
     trustStripe:         'Seguro con Stripe',
     trustCancel:         'Cancela cuando quieras',
+
+    // Trust strip & marquee (landing page)
+    partnerMarqueeLabel: 'Asociándonos con negocios locales',
+    trustStripHeading:   'Por qué los conductores confían en GasCap™',
+    trustStripOffline:   'Funciona sin conexión — sin señal',
+    trustStripData:      'Nunca vendemos tus datos',
+    trustStripEia:       'Datos oficiales de la EIA de EE.UU.',
+    trustStripNoCc:      'Sin tarjeta de crédito para empezar',
   },
 
   ev: {

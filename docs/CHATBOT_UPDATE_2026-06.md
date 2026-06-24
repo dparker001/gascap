@@ -147,15 +147,15 @@ Use these exact facts when answering. Do NOT quote old pricing.
 |---|---|
 | Free plan | $0 — core calculators, 1 saved vehicle |
 | Pro Monthly | **$2.99/mo** (was $4.99 — never quote $4.99) |
-| Pro Lifetime | **$19.99 one-time** (replaces the old $49 annual plan) |
-| Annual plan | ❌ Removed — does not exist anymore |
+| Pro Annual | **$26.99/yr** (~3 months free vs monthly) |
+| Pro Lifetime | **$19.99 one-time** |
 | Fleet plan | ⏸️ Shelved / "coming soon" — Pro now has unlimited vehicles |
 | Free trial | 30 days of Pro, automatic on signup, no credit card |
 | Pro vehicles | **Unlimited** (was "up to 3" — never quote 3) |
-| Lifetime exclusives | 2× monthly giveaway entries · Streak Shield (1 grace day/mo) · Lifetime Member badge |
+| Giveaway entries | Monthly: no bonus · Annual: +10/week · Lifetime base: +20/week · Lifetime+Perks: +30/week |
+| Lifetime exclusives | +20 bonus giveaway entries/week · Lifetime Member badge · Lifetime Perks add-on ($9.99/yr) = +30/week + annual vacation voucher |
 | Monthly refund | 30-day money-back guarantee |
 | Lifetime refund | Non-refundable / final sale |
-| Early-upgrade bonus | +10 monthly giveaway entries forever (upgrade during trial) |
 | Languages | English + Spanish |
 | Upgrade URL | gascap.app/upgrade |
 | Support | support@gascap.app (1 business day) |

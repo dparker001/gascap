@@ -7,16 +7,16 @@
 
 ## Plan Overview
 
-| Attribute | Free | Pro Monthly | Pro Lifetime | Fleet |
-|---|---|---|---|---|
-| **Price** | $0/forever | $2.99/mo | $19.99 one-time | Coming soon (shelved) |
-| **Trial** | N/A | 30-day free trial | 30-day free trial | N/A |
-| **Saved Vehicles** | 1 | Unlimited | Unlimited | Unlimited |
-| **Drivers** | 1 | 1 | 1 | Up to 10 |
-| **Giveaway Entries** | — | 1×/day | 2×/day (doubled) | — |
-| **Streak Shield** | ❌ | ❌ | ✅ (1 grace day/mo) | — |
-| **Lifetime Member Badge** | ❌ | ❌ | ✅ | — |
-| **Target Audience** | Casual drivers | Regular commuters, road trippers | Committed users who want the best deal + max giveaway odds | Small business fleets |
+| Attribute | Free | Pro Monthly | Pro Annual | Pro Lifetime | Fleet |
+|---|---|---|---|---|---|
+| **Price** | $0/forever | $2.99/mo | $26.99/yr (~3 mo free) | $19.99 one-time | Coming soon (shelved) |
+| **Trial** | N/A | 30-day free trial | 30-day free trial | 30-day free trial | N/A |
+| **Saved Vehicles** | 1 | Unlimited | Unlimited | Unlimited | Unlimited |
+| **Drivers** | 1 | 1 | 1 | 1 | Up to 10 |
+| **Weekly Giveaway Bonus** | — | — | +10/week | +20/week (base) | — |
+| **Lifetime Member Badge** | ❌ | ❌ | ❌ | ✅ | — |
+| **Lifetime Perks Add-on** | ❌ | ❌ | ❌ | $9.99/yr optional (+30/wk + vacation voucher) | — |
+| **Target Audience** | Casual drivers | Regular commuters | Commuters who want savings + giveaway boost | Committed users who want the best deal + max giveaway odds | Small business fleets |
 
 ---
 

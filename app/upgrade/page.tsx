@@ -37,8 +37,8 @@ function UpgradePageInner() {
   const PRO_FEATURES  = t.pricing.proFeatures;
   const LIFETIME_EXCLUSIVES = [
     { icon: '🏅', text: t.pricing.exLifetimeBadge },
-    { icon: '📅', text: '+20 bonus giveaway entries/week (included)' },
-    { icon: '⭐', text: '+30 entries + annual vacation voucher with Lifetime Perks ($9.99/yr)' },
+    { icon: '📅', text: t.pricing.exTwoXEntries },
+    { icon: '⭐', text: t.pricing.exStreakShield },
   ];
 
   const searchParams = useSearchParams();
@@ -455,10 +455,10 @@ function UpgradePageInner() {
                     billing === 'annual' ? 'bg-white text-navy-700 shadow-sm' : 'text-slate-400 hover:text-slate-600'
                   }`}
                 >
-                  Annual
+                  {t.pricing.annualToggleLabel}
                   <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full ${
                     billing === 'annual' ? 'bg-green-500 text-white' : 'bg-slate-200 text-slate-500'
-                  }`}>Save $9</span>
+                  }`}>{t.pricing.annualTogglePill}</span>
                 </button>
               </div>
             )}
@@ -473,7 +473,7 @@ function UpgradePageInner() {
             </div>
             <p className="text-xs font-semibold mb-4 leading-relaxed">
               {billing === 'annual' && !isProMonthly
-                ? <span className="text-green-600">~${(PRICING.pro.annual / 12).toFixed(2)}/mo · 3 months free</span>
+                ? <span className="text-green-600">{t.pricing.annualBillingNote}</span>
                 : <span className="text-green-600">{t.upgrade.lessThanDime}</span>}
             </p>
 
@@ -505,7 +505,7 @@ function UpgradePageInner() {
                         ? `Lock in annual — $${PRICING.pro.annual}/yr`
                         : `${t.pricing.upgradeFromTrial} — $${PRICING.pro.monthly}/mo`
                       : billing === 'annual'
-                        ? session ? `Get Pro Annual — $${PRICING.pro.annual}/yr` : t.pricing.startFreeTrial
+                        ? session ? t.pricing.getAnnualCta(String(PRICING.pro.annual)) : t.pricing.startFreeTrial
                         : session ? `${t.upgrade.upgradeBtn} Pro — $${PRICING.pro.monthly}/mo` : t.pricing.startFreeTrial}
             </button>
             <div className="border-t border-slate-100 mb-5" />
@@ -530,8 +530,8 @@ function UpgradePageInner() {
                                px-2 py-0.5 rounded-full uppercase tracking-wider mb-2">
                 {t.pricing.lifetimeBadge}
               </span>
-              <h2 className="text-xl font-black text-white">Pro Lifetime Membership</h2>
-              <p className="text-xs text-white/50 mt-0.5">Then $9.99/yr for Lifetime Perks</p>
+              <h2 className="text-xl font-black text-white">{t.pricing.lifetimeMembershipTitle}</h2>
+              <p className="text-xs text-white/50 mt-0.5">{t.pricing.lifetimePerksTeaser}</p>
             </div>
             <div className="mb-1 flex items-end gap-1">
               <span className="text-4xl font-black text-white">${PRICING.pro.lifetime}</span>
@@ -603,7 +603,7 @@ function UpgradePageInner() {
                 </li>
               ))}
               <li className="text-[11px] text-white/40 leading-relaxed pl-6">
-                Lifetime Perks is an optional $9.99/yr add-on that renews your bonus entries and delivers a new vacation voucher each year.
+                {t.pricing.lifetimePerksNote}
               </li>
             </ul>
             <p className="mt-4 text-center text-[11px] text-white/40 leading-relaxed">

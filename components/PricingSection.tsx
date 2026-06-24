@@ -70,8 +70,8 @@ export default function PricingSection() {
 
   const LIFETIME_EXCLUSIVES = [
     { icon: '🏅', text: t.pricing.exLifetimeBadge },
-    { icon: '📅', text: '+20 bonus giveaway entries/week (included)' },
-    { icon: '⭐', text: '+30 entries + annual vacation voucher with Lifetime Perks ($9.99/yr add-on)' },
+    { icon: '📅', text: t.pricing.exTwoXEntries },
+    { icon: '⭐', text: t.pricing.exStreakShield },
   ];
 
   async function handleUpgrade(billing: 'monthly' | 'annual' | 'lifetime') {
@@ -234,10 +234,10 @@ export default function PricingSection() {
                   billing === 'annual' ? 'bg-white text-navy-700' : 'text-white/60 hover:text-white'
                 }`}
               >
-                Annual
+                {t.pricing.annualToggleLabel}
                 <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full ${
                   billing === 'annual' ? 'bg-amber-400 text-navy-900' : 'bg-white/20 text-white'
-                }`}>3 months free</span>
+                }`}>{t.pricing.annualTogglePill}</span>
               </button>
             </div>
           )}
@@ -252,7 +252,7 @@ export default function PricingSection() {
           </div>
           <p className="text-xs mb-4 leading-relaxed text-white/60">
             {billing === 'annual' && !isProMonthly
-              ? '~$2.25/mo · 3 months free'
+              ? t.pricing.annualBillingNote
               : t.pricing.billedMonthly}
           </p>
 
@@ -290,7 +290,7 @@ export default function PricingSection() {
                     : !session
                       ? t.pricing.startFreeTrial
                       : billing === 'annual'
-                        ? `Get Annual — $${PRICING.pro.annual}/yr`
+                        ? t.pricing.getAnnualCta(String(PRICING.pro.annual))
                         : t.pricing.upgradeToPro}
           </button>
 
@@ -404,7 +404,7 @@ export default function PricingSection() {
               </li>
             ))}
             <li className="text-[11px] text-slate-400 leading-relaxed pl-7">
-              Lifetime Perks is an optional $9.99/yr add-on that renews your bonus entries and delivers a new vacation voucher each year.
+              {t.pricing.lifetimePerksNote}
             </li>
           </ul>
           <p className="mt-4 text-center text-[11px] text-slate-400 leading-relaxed">

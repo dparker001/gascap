@@ -1,10 +1,16 @@
+'use client';
+
+import { useTranslation } from '@/contexts/LanguageContext';
+
 /** Trust signals — shown on the landing page guest section. */
 export default function TrustStrip() {
+  const { t } = useTranslation();
+
   const signals = [
-    { icon: '📱', text: 'Works offline — no signal needed' },
-    { icon: '🔒', text: 'We never sell your data' },
-    { icon: '📊', text: 'Powered by U.S. EIA official data' },
-    { icon: '✓',  text: 'No credit card to start' },
+    { icon: '📱', text: t.pricing.trustStripOffline },
+    { icon: '🔒', text: t.pricing.trustStripData },
+    { icon: '📊', text: t.pricing.trustStripEia },
+    { icon: '✓',  text: t.pricing.trustStripNoCc },
   ];
 
   return (
@@ -14,7 +20,7 @@ export default function TrustStrip() {
         <div className="flex items-center gap-2 mb-3">
           <div className="flex-1 h-px bg-emerald-200" />
           <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest whitespace-nowrap">
-            Why drivers trust GasCap™
+            {t.pricing.trustStripHeading}
           </span>
           <div className="flex-1 h-px bg-emerald-200" />
         </div>
