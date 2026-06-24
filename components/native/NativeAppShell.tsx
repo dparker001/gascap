@@ -30,6 +30,7 @@ import NativeTabBar, { type TabMeta } from './NativeTabBar';
 import RewardsTab       from './tabs/RewardsTab';
 import TabLockGate      from './TabLockGate';
 import FirstLaunchSplash from './FirstLaunchSplash';
+import GreetingStrip     from './GreetingStrip';
 import ReviewNudge       from '@/components/ReviewNudge';
 import LanguageToggle    from '@/components/LanguageToggle';
 import { getPlanBadge, type PlanUser } from '@/lib/planBadge';
@@ -200,6 +201,7 @@ export default function NativeAppShell() {
 
         {visited.has('calculator') && (
           <div className={show('calculator')}>
+            <GreetingStrip onOpenRewards={() => changeTab('rewards')} />
             <div className="px-4 pt-4 pb-2 max-w-lg mx-auto w-full">
               <CalculatorTabs />
             </div>

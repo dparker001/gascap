@@ -33,6 +33,11 @@ const en = {
   },
 
   // ── Native shell: lock gates + Rewards hub (guest / free / pro levels) ──────
+  greetingStrip: {
+    hi:        'Hi',
+    dayStreak: (n: number) => `${n}-day streak`,
+    entries:   (n: number) => `${n} ${n === 1 ? 'entry' : 'entries'}`,
+  },
   gate: {
     createAccount: 'Create free account →',
     haveAccount:   'Already have an account? Sign in',
@@ -2640,6 +2645,11 @@ const es: typeof en = {
   },
 
   // ── Native shell: lock gates + Rewards hub (guest / free / pro levels) ──────
+  greetingStrip: {
+    hi:        'Hola',
+    dayStreak: (n: number) => `racha de ${n} ${n === 1 ? 'día' : 'días'}`,
+    entries:   (n: number) => `${n} ${n === 1 ? 'entrada' : 'entradas'}`,
+  },
   gate: {
     createAccount: 'Crear cuenta gratis →',
     haveAccount:   '¿Ya tienes cuenta? Inicia sesión',
