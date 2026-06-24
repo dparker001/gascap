@@ -199,6 +199,66 @@ export function prevMonth(month: string): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 
+// ── Cadence layer ───────────────────────────────────────────────────────────
+// The draw "period" is stored in GiveawayDraw.month (kept as the column name to
+// avoid a schema migration). For weekly it holds an ISO-week key "YYYY-Www";
+// for monthly the existing "YYYY-MM". Built cadence-agnostic so 'daily' is a
+// later flag flip. Override with env GIVEAWAY_CADENCE.
+
+export type Cadence = 'weekly' | 'monthly' | 'daily';
+
+export const GIVEAWAY_CADENCE: Cadence =
+  (process.env.GIVEAWAY_CADENCE as Cadence) || 'weekly';
+
+/** ISO-8601 week key for a date, e.g. 2026-07-03 → "2026-W27" (weeks are Mon–Sun). */
+export function isoWeekKey(date: Date): string {
+  const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  const dayNum = (d.getUTCDay() + 6) % 7;            // Mon=0 … Sun=6
+  d.setUTCDate(d.getUTCDate() - dayNum + 3);         // shift to the week's Thursday
+  const firstThursday = new Date(Date.UTC(d.getUTCFullYear(), 0, 4));
+  const ftDay = (firstThursday.getUTCDay() + 6) % 7;
+  firstThursday.setUTCDate(firstThursday.getUTCDate() - ftDay + 3);
+  const week = 1 + Math.round((d.getTime() - firstThursday.getTime()) / (7 * 86400000));
+  return `${d.getUTCFullYear()}-W${String(week).padStart(2, '0')}`;
+}
+
+/** The current draw-period key for the configured cadence. */
+export function currentPeriod(cadence: Cadence = GIVEAWAY_CADENCE): string {
+  if (cadence === 'weekly') return isoWeekKey(new Date());
+  if (cadence === 'daily')  return new Date().toISOString().slice(0, 10);
+  return currentMonth();
+}
+
+/** Inclusive [startYMD, endYMD] date range covered by a period key. */
+export function periodRange(period: string): [string, string] {
+  if (period.includes('W')) {
+    // ISO week "YYYY-Www" → Mon…Sun. Week 1 is the week containing Jan 4.
+    const [yStr, wStr] = period.split('-W');
+    const y = Number(yStr), w = Number(wStr);
+    const jan4 = new Date(Date.UTC(y, 0, 4));
+    const jan4Day = (jan4.getUTCDay() + 6) % 7;
+    const mon = new Date(jan4);
+    mon.setUTCDate(jan4.getUTCDate() - jan4Day + (w - 1) * 7);
+    const sun = new Date(mon);
+    sun.setUTCDate(mon.getUTCDate() + 6);
+    return [mon.toISOString().slice(0, 10), sun.toISOString().slice(0, 10)];
+  }
+  if (period.length === 10) return [period, period];   // daily "YYYY-MM-DD"
+  const [y, m] = period.split('-').map(Number);        // monthly "YYYY-MM"
+  const start = new Date(Date.UTC(y, m - 1, 1));
+  const end   = new Date(Date.UTC(y, m, 0));
+  return [start.toISOString().slice(0, 10), end.toISOString().slice(0, 10)];
+}
+
+/** Count of activeDays (YYYY-MM-DD strings) that fall within a draw period. */
+export function activeDaysInPeriod(activeDays: string[], period: string): number {
+  if (!period.includes('W') && period.length === 7) {
+    return activeDays.filter((d) => d.startsWith(`${period}-`)).length;  // fast path: month prefix
+  }
+  const [start, end] = periodRange(period);
+  return activeDays.filter((d) => d >= start && d <= end).length;
+}
+
 /**
  * Given a draw month and the full draw history, return the set of
  * winner userIds who are ineligible to win again:
