@@ -20,9 +20,11 @@ interface ReferralSummary {
 }
 
 interface GiveawayEntries {
-  month:      string;
-  entryCount: number;
-  eligible:   boolean;
+  month:               string;
+  entryCount:          number;
+  eligible:            boolean;
+  lifetimePerksActive?: boolean;
+  lifetimePerksUntil?: string | null;
 }
 
 const AVATAR_URL_KEY = 'gascap_avatar_url';
@@ -102,6 +104,7 @@ export default function SettingsPage() {
   const [livePlan,         setLivePlan]         = useState<string | null>(null);
   const [liveInterval,     setLiveInterval]     = useState<string | null>(null);
   const [giveaway,         setGiveaway]         = useState<GiveawayEntries | null>(null);
+  const [perksLoading,     setPerksLoading]     = useState(false);
   const [preferredFillLevel, setPreferredFillLevel] = useState<number | null>(null);
   const [monthlyFuelBudget,  setMonthlyFuelBudget]  = useState('');
   const [budgetHighlight,    setBudgetHighlight]    = useState(false);
@@ -144,7 +147,7 @@ export default function SettingsPage() {
       .catch(() => {});
     fetch('/api/user/giveaway-entries')
       .then((r) => r.json())
-      .then((d: GiveawayEntries) => { if (d.eligible) setGiveaway(d); })
+      .then((d: GiveawayEntries) => { if (d.eligible) setGiveaway(d); else setGiveaway(d); })
       .catch(() => {});
     // Pre-populate editable profile fields from the database so they're not
     // blank on every visit and so saving never accidentally wipes saved data.
@@ -360,10 +363,15 @@ export default function SettingsPage() {
   const isProTrial   = (session.user as { isProTrial?: boolean })?.isProTrial ?? false;
   const stripeInterval = liveInterval ?? (session.user as { stripeInterval?: string | null })?.stripeInterval ?? null;
   const isProLifetime  = plan === 'pro' && !isProTrial && stripeInterval === 'lifetime';
+  const isProAnnual    = plan === 'pro' && !isProTrial && stripeInterval === 'annual';
+  const lifetimePerksActive = giveaway?.lifetimePerksActive ?? false;
+  const lifetimePerksUntil  = giveaway?.lifetimePerksUntil ?? null;
   const canUploadPhoto = plan === 'pro' || plan === 'fleet' || isProTrial;
 
   const planConfig = isProLifetime
     ? { label: t.settings.planProLifetimeLabel, bg: 'bg-teal-50', text: 'text-teal-700', border: 'border-teal-200' }
+    : isProAnnual
+    ? { label: 'Pro Annual', bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' }
     : ({
         free:  { label: t.settings.planFreeLabel,  bg: 'bg-slate-100',   text: 'text-slate-600', border: 'border-slate-200' },
         pro:   { label: t.settings.planProLabel,   bg: 'bg-amber-50',    text: 'text-amber-700', border: 'border-amber-200' },
@@ -975,6 +983,79 @@ export default function SettingsPage() {
               <p className="text-sm text-slate-500">
                 {t.settings.lifetimeDesc2}
               </p>
+
+              {/* Lifetime Perks add-on block */}
+              <div className={`rounded-2xl border p-4 space-y-3 ${lifetimePerksActive ? 'border-teal-200 bg-teal-50' : 'border-slate-200 bg-slate-50'}`}>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className={`text-xs font-black uppercase tracking-wide ${lifetimePerksActive ? 'text-teal-700' : 'text-slate-500'}`}>
+                      Lifetime Perks
+                    </p>
+                    {lifetimePerksActive && lifetimePerksUntil ? (
+                      <p className="text-[11px] text-teal-600 mt-0.5">
+                        Active · renews {new Date(lifetimePerksUntil).toLocaleDateString(intlLocale, { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </p>
+                    ) : (
+                      <p className="text-[11px] text-slate-400 mt-0.5">+20 entries/week · annual vacation voucher</p>
+                    )}
+                  </div>
+                  {lifetimePerksActive && (
+                    <span className="text-[10px] font-black bg-teal-500 text-white px-2 py-0.5 rounded-full">ACTIVE</span>
+                  )}
+                </div>
+
+                {lifetimePerksActive ? (
+                  <>
+                    <div className="flex items-center gap-2 text-[11px] text-teal-700 font-semibold">
+                      <span>🏅</span><span>+20 bonus giveaway entries per draw</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-[11px] text-teal-700 font-semibold">
+                      <span>✈️</span><span>Annual vacation voucher included</span>
+                    </div>
+                    {!isNative && (
+                      <button
+                        onClick={openPortal}
+                        disabled={portalLoading}
+                        className="w-full py-2 rounded-xl border border-teal-200 text-xs font-bold text-teal-600 hover:bg-teal-100 transition-colors disabled:opacity-50"
+                      >
+                        {portalLoading ? 'Opening…' : 'Manage Lifetime Perks billing'}
+                      </button>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <p className="text-[11px] text-slate-500 leading-relaxed">
+                      Add Lifetime Perks for $9.99/yr to unlock +20 weekly giveaway entries and an annual vacation voucher.
+                    </p>
+                    {isNative ? (
+                      <p className="text-[11px] text-slate-400">Visit gascap.app/settings to add Lifetime Perks.</p>
+                    ) : (
+                      <button
+                        disabled={perksLoading}
+                        onClick={async () => {
+                          setPerksLoading(true);
+                          try {
+                            const res = await fetch('/api/stripe/checkout', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ tier: 'pro', billing: 'lifetime-perks' }),
+                              credentials: 'include',
+                            });
+                            const data = await res.json() as { url?: string; error?: string };
+                            if (data.url) window.location.href = data.url;
+                            else alert(data.error ?? 'Unable to start checkout.');
+                          } finally {
+                            setPerksLoading(false);
+                          }
+                        }}
+                        className="w-full py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-black transition-colors disabled:opacity-50"
+                      >
+                        {perksLoading ? 'Opening…' : 'Add Lifetime Perks — $9.99/yr'}
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
             </>
           )}
 
@@ -983,6 +1064,11 @@ export default function SettingsPage() {
               <p className="text-sm text-slate-500">
                 {t.settings.proDesc}
               </p>
+              {isProAnnual && (
+                <div className="flex items-center gap-2 text-[11px] text-amber-700 font-semibold bg-amber-50 rounded-xl px-3 py-2">
+                  <span>🏅</span><span>+10 bonus giveaway entries per draw period</span>
+                </div>
+              )}
               {isIos ? (
                 <p className="text-center text-[11px] text-slate-400">
                   {t.settings.manageSubApple}
