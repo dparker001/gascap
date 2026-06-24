@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { PRICING } from '@/lib/stripe';
@@ -49,6 +49,14 @@ export default function PricingSection() {
   const isNative          = useIsNative();
   const [loading, setLoading]       = useState<string | null>(null);
   const [billing, setBilling]       = useState<'monthly' | 'annual'>('annual');
+  const [wiggle, setWiggle]         = useState(false);
+  const proCardRef                  = useRef<HTMLDivElement>(null);
+  const lifetimeCardRef             = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const t = setTimeout(() => setWiggle(true), 900);
+    return () => clearTimeout(t);
+  }, []);
 
   // No in-app purchase in the native wrappers (App Store / Play billing rules).
   if (isNative) return null;
@@ -68,12 +76,20 @@ export default function PricingSection() {
 
   async function handleUpgrade(billing: 'monthly' | 'annual' | 'lifetime') {
     if (!session) {
-      // New visitors sign up first (free trial auto-activates), then return to upgrade
       router.push('/signup?next=/upgrade');
       return;
     }
     setLoading(billing);
     try {
+      const origin = billing === 'lifetime' ? lifetimeCardRef.current : proCardRef.current;
+      if (origin) {
+        const rect = origin.getBoundingClientRect();
+        const x = (rect.left + rect.width / 2) / window.innerWidth;
+        const y = (rect.top + rect.height / 2) / window.innerHeight;
+        import('canvas-confetti').then(({ default: confetti }) => {
+          confetti({ particleCount: 80, spread: 70, origin: { x, y }, colors: ['#f59e0b', '#14b8a6', '#1e3a5f', '#ffffff'] });
+        });
+      }
       const res  = await fetch('/api/stripe/checkout', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -98,6 +114,17 @@ export default function PricingSection() {
 
   return (
     <section aria-labelledby="pricing-heading" className="mt-10">
+      <style>{`
+        @keyframes pricing-wiggle {
+          0%,100% { transform: rotate(0deg) scale(1); }
+          15%      { transform: rotate(-1.5deg) scale(1.02); }
+          30%      { transform: rotate(1.5deg) scale(1.02); }
+          45%      { transform: rotate(-1deg) scale(1.01); }
+          60%      { transform: rotate(1deg) scale(1.01); }
+          75%      { transform: rotate(-.5deg) scale(1); }
+        }
+        .pricing-wiggle { animation: pricing-wiggle 0.6s ease-in-out; }
+      `}</style>
 
       {/* Heading */}
       <h2 id="pricing-heading" className="text-center text-2xl font-black text-navy-700 mb-2">
@@ -168,12 +195,15 @@ export default function PricingSection() {
         </div>
 
         {/* Pro — monthly/annual toggle */}
-        <div className={[
-          'relative flex flex-col rounded-3xl p-6 border-2 transition-all shadow-2xl',
-          isProMonthly || isProAnnual
-            ? 'bg-navy-700 border-green-400 ring-2 ring-green-400'
-            : 'bg-navy-700 border-amber-400',
-        ].join(' ')}>
+        <div
+          ref={proCardRef}
+          className={[
+            'relative flex flex-col rounded-3xl p-6 border-2 transition-all shadow-2xl',
+            isProMonthly || isProAnnual
+              ? 'bg-navy-700 border-green-400 ring-2 ring-green-400'
+              : 'bg-navy-700 border-amber-400',
+            wiggle ? 'pricing-wiggle' : '',
+          ].join(' ')}>
 
           <div className={[
             'absolute -top-3.5 left-1/2 -translate-x-1/2 text-[11px] font-black px-4 py-1',
@@ -278,7 +308,12 @@ export default function PricingSection() {
         </div>
 
         {/* Pro Lifetime — visual hero (highest-value, most chosen) */}
-        <div className="relative flex flex-col rounded-3xl p-6 border-2 border-teal-400 bg-white shadow-2xl md:scale-[1.02] transition-all">
+        <div
+          ref={lifetimeCardRef}
+          className={[
+            'relative flex flex-col rounded-3xl p-6 border-2 border-teal-400 bg-white shadow-2xl md:scale-[1.02] transition-all',
+            wiggle ? 'pricing-wiggle' : '',
+          ].join(' ')}>
 
           <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-teal-400 text-navy-900
                           text-[11px] font-black px-4 py-1 rounded-full uppercase tracking-wider
