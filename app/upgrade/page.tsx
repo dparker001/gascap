@@ -36,11 +36,9 @@ function UpgradePageInner() {
   const FREE_FEATURES = t.pricing.freeFeatures;
   const PRO_FEATURES  = t.pricing.proFeatures;
   const LIFETIME_EXCLUSIVES = [
-    { icon: '🏅', text: '+20 bonus giveaway entries every week (Lifetime Perks)' },
-    { icon: '🏝️', text: 'Annual vacation voucher with $9.99/yr Lifetime Perks renewal' },
-    { icon: '⭐', text: t.pricing.exTwoXEntries },
-    { icon: '🛡️', text: t.pricing.exStreakShield },
     { icon: '🏅', text: t.pricing.exLifetimeBadge },
+    { icon: '📅', text: '+20 bonus giveaway entries/week (included)' },
+    { icon: '⭐', text: '+30 entries + annual vacation voucher with Lifetime Perks ($9.99/yr)' },
   ];
 
   const searchParams = useSearchParams();
@@ -527,7 +525,7 @@ function UpgradePageInner() {
                 </li>
               ))}
               <li className="flex items-start gap-2 text-sm text-slate-700">
-                <Check color="green" /> +10 bonus giveaway entries every week
+                <Check color="green" /> +10 bonus giveaway entries/week
               </li>
             </ul>
           </div>

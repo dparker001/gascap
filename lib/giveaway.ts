@@ -144,11 +144,11 @@ export async function getCurrentPrizeTier(): Promise<{
 /** Bonus entries per draw period for Pro Annual members. */
 export const ANNUAL_BONUS_ENTRIES = 10;
 
-/**
- * Bonus entries per draw period for Pro Lifetime members with active Perks renewal.
- * Lifetime members whose Perks have lapsed receive ANNUAL_BONUS_ENTRIES instead.
- */
-export const LIFETIME_BONUS_ENTRIES = 20;
+/** Bonus entries per draw period for Pro Lifetime members (base, no Perks required). */
+export const LIFETIME_BASE_BONUS_ENTRIES = 20;
+
+/** Bonus entries per draw period for Pro Lifetime members with active Lifetime Perks. */
+export const LIFETIME_BONUS_ENTRIES = 30;
 
 export interface EntrantRow {
   userId:          string;
@@ -436,7 +436,7 @@ export async function getEligibleEntrants(period: string = currentPeriod()): Pro
         && u.lifetimePerksUntil != null
         && new Date(u.lifetimePerksUntil) > new Date();
       const lifetimeBonusEntries = u.stripeInterval === 'lifetime'
-        ? (perksActive ? LIFETIME_BONUS_ENTRIES : ANNUAL_BONUS_ENTRIES)
+        ? (perksActive ? LIFETIME_BONUS_ENTRIES : LIFETIME_BASE_BONUS_ENTRIES)
         : u.stripeInterval === 'annual'
         ? ANNUAL_BONUS_ENTRIES
         : 0;

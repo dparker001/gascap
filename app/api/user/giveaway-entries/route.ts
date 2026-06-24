@@ -14,6 +14,7 @@ import {
   streakTierForStreak,
   nextStreakTier,
   LIFETIME_BONUS_ENTRIES,
+  LIFETIME_BASE_BONUS_ENTRIES,
   ANNUAL_BONUS_ENTRIES,
 } from '@/lib/giveaway';
 import {
@@ -67,7 +68,7 @@ export async function GET() {
     && user.lifetimePerksUntil != null
     && new Date(user.lifetimePerksUntil) > new Date();
   const lifetimeBonusEntries = user.stripeInterval === 'lifetime'
-    ? (perksActive ? LIFETIME_BONUS_ENTRIES : ANNUAL_BONUS_ENTRIES)
+    ? (perksActive ? LIFETIME_BONUS_ENTRIES : LIFETIME_BASE_BONUS_ENTRIES)
     : user.stripeInterval === 'annual'
     ? ANNUAL_BONUS_ENTRIES
     : 0;

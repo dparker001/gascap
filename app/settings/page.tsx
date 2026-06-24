@@ -996,7 +996,7 @@ export default function SettingsPage() {
                         Active · renews {new Date(lifetimePerksUntil).toLocaleDateString(intlLocale, { month: 'short', day: 'numeric', year: 'numeric' })}
                       </p>
                     ) : (
-                      <p className="text-[11px] text-slate-400 mt-0.5">+20 entries/week · annual vacation voucher</p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">+30 entries/week · annual vacation voucher</p>
                     )}
                   </div>
                   {lifetimePerksActive && (
@@ -1007,7 +1007,7 @@ export default function SettingsPage() {
                 {lifetimePerksActive ? (
                   <>
                     <div className="flex items-center gap-2 text-[11px] text-teal-700 font-semibold">
-                      <span>🏅</span><span>+20 bonus giveaway entries per draw</span>
+                      <span>🏅</span><span>+30 bonus giveaway entries per draw</span>
                     </div>
                     <div className="flex items-center gap-2 text-[11px] text-teal-700 font-semibold">
                       <span>✈️</span><span>Annual vacation voucher included</span>
@@ -1025,7 +1025,7 @@ export default function SettingsPage() {
                 ) : (
                   <>
                     <p className="text-[11px] text-slate-500 leading-relaxed">
-                      Add Lifetime Perks for $9.99/yr to unlock +20 weekly giveaway entries and an annual vacation voucher.
+                      Add Lifetime Perks for $9.99/yr to unlock +30 weekly giveaway entries and an annual vacation voucher.
                     </p>
                     {isNative ? (
                       <p className="text-[11px] text-slate-400">Visit gascap.app/settings to add Lifetime Perks.</p>

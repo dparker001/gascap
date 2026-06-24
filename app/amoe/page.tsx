@@ -96,7 +96,7 @@ export default function AmoePage() {
                 <p className="text-white/80 text-xs leading-relaxed">
                   Want up to <strong className="text-amber-400">7× more entries</strong> every week?
                   Upgrade to Pro and earn one entry automatically every day you open the app.
-                  Pro Lifetime members also get <strong className="text-amber-400">+20 bonus entries</strong> every week, automatically.
+                  Pro Lifetime members also get <strong className="text-amber-400">+20 bonus entries</strong> every week (+30 with Lifetime Perks), automatically.
                 </p>
                 <Link
                   href="/upgrade"
@@ -237,7 +237,7 @@ export default function AmoePage() {
                 <p className="text-white/50 text-xs leading-relaxed">
                   Pro members earn 1 entry automatically every day they open the app —
                   up to <strong className="text-white/80">7 entries per week</strong> vs your 1 free entry.
-                  Pro Lifetime members get an extra <strong className="text-white/80">+20 bonus entries</strong> every week on top of that.
+                  Pro Lifetime members get an extra <strong className="text-white/80">+20 bonus entries</strong> every week on top of that (+30 with Lifetime Perks).
                 </p>
                 <Link
                   href="/upgrade"

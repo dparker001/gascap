@@ -61,8 +61,8 @@ export default function PricingSection() {
 
   const LIFETIME_EXCLUSIVES = [
     { icon: '🏅', text: t.pricing.exLifetimeBadge },
-    { icon: '📅', text: '+10 bonus giveaway entries/week (included)' },
-    { icon: '⭐', text: '+20 entries + annual vacation voucher with Lifetime Perks ($9.99/yr add-on)' },
+    { icon: '📅', text: '+20 bonus giveaway entries/week (included)' },
+    { icon: '⭐', text: '+30 entries + annual vacation voucher with Lifetime Perks ($9.99/yr add-on)' },
   ];
 
   async function handleUpgrade(billing: 'monthly' | 'annual' | 'lifetime') {
