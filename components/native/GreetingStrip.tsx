@@ -35,7 +35,7 @@ export default function GreetingStrip({ onOpenRewards }: { onOpenRewards: () => 
       type="button"
       onClick={onOpenRewards}
       aria-label={`${t.greetingStrip.hi}${firstName ? ` ${firstName}` : ''} — ${t.nav.rewards}`}
-      className="w-full bg-[#1e3a5f] text-white px-4 py-2 flex items-center gap-2
+      className="w-full h-9 bg-[#1e3a5f] text-white px-4 flex items-center gap-2
                  border-t border-white/10 active:bg-[#24456e] transition-colors"
     >
       <span className="text-sm font-bold truncate">

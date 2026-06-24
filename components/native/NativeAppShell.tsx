@@ -140,7 +140,7 @@ export default function NativeAppShell() {
   return (
     <main
       className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-900"
-      style={{ paddingTop: 'calc(48px + env(safe-area-inset-top))' }}
+      style={{ paddingTop: `calc(${active === 'calculator' && status === 'authenticated' ? '84px' : '48px'} + env(safe-area-inset-top))` }}
     >
 
       {/* First-launch brand video overlay (inert until the MP4 is added — see component) */}
@@ -182,6 +182,11 @@ export default function NativeAppShell() {
             </Link>
           ) : null}
         </div>
+        {/* Personalized welcome bar — part of the FIXED header (Calculator tab, signed-in)
+            so it stays static beneath the title bar instead of scrolling with content. */}
+        {active === 'calculator' && status === 'authenticated' && (
+          <GreetingStrip onOpenRewards={() => changeTab('rewards')} />
+        )}
       </header>
 
       {/* Essential in-app overlays (marketing chrome is intentionally not mounted) */}
@@ -201,7 +206,6 @@ export default function NativeAppShell() {
 
         {visited.has('calculator') && (
           <div className={show('calculator')}>
-            <GreetingStrip onOpenRewards={() => changeTab('rewards')} />
             <div className="px-4 pt-4 pb-2 max-w-lg mx-auto w-full">
               <CalculatorTabs />
             </div>
