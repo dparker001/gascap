@@ -141,11 +141,21 @@ export async function getCurrentPrizeTier(): Promise<{
   };
 }
 
+/** Bonus entries per draw period for Pro Annual members. */
+export const ANNUAL_BONUS_ENTRIES = 10;
+
+/**
+ * Bonus entries per draw period for Pro Lifetime members with active Perks renewal.
+ * Lifetime members whose Perks have lapsed receive ANNUAL_BONUS_ENTRIES instead.
+ */
+export const LIFETIME_BONUS_ENTRIES = 20;
+
 export interface EntrantRow {
   userId:          string;
   name:            string;
   email:           string;
   plan:            string;
+  stripeInterval:  string | null;
   streak:          number;
   referralCount:   number;
   ambassadorTier:  AmbassadorTier;
@@ -157,7 +167,8 @@ export interface EntrantRow {
   verifyReminderBonusEntries:  number; // +25 one-time for verifying email within 7 days of reminder
   phoneBonusEntries:           number; // +25 one-time for adding phone number in settings
   dailyBonusEntries:           number; // 3–15/day from the daily gift box badge
-  entryCount:      number;        // baseEntries + streakBonus + earlyUpgrade + garageBonus + verifyReminderBonus + phoneBonus + dailyBonus
+  lifetimeBonusEntries:        number; // +20 (active Perks) or +10 (lapsed/Annual) per period
+  entryCount:      number;        // baseEntries + streakBonus + earlyUpgrade + garageBonus + verifyReminderBonus + phoneBonus + dailyBonus + lifetimeBonus
   alwaysEligible:  boolean;       // true for Ambassador tier holders — skip win restrictions
   loginCount:      number;        // lifetime login count (engagement signal for draw review)
   lastLoginAt:     string | null; // ISO timestamp of most recent login, or null if never recorded
@@ -260,41 +271,117 @@ export function activeDaysInPeriod(activeDays: string[], period: string): number
 }
 
 /**
- * Given a draw month and the full draw history, return the set of
- * winner userIds who are ineligible to win again:
- *  – Won the immediately preceding month (no consecutive wins)
- *  – Won any draw in the same calendar quarter of the same year
+ * Format a period key into a human-readable label.
+ * "2026-W27" → "Week of Jun 29 – Jul 5, 2026"
+ * "2026-06"  → "June 2026"
+ * "2026-06-24" → "June 24, 2026"
+ */
+export function formatPeriodLabel(period: string): string {
+  if (period.includes('W')) {
+    const [start, end] = periodRange(period);
+    const fmt = (d: string) => {
+      const dt = new Date(`${d}T00:00:00Z`);
+      return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+    };
+    const year = period.split('-')[0];
+    const endStr = fmt(end);
+    // Include year only on the end date to avoid "Jun 29, 2026 – Jul 5, 2026"
+    const endWithYear = new Date(`${end}T00:00:00Z`)
+      .toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+    return `Week of ${fmt(start)} – ${endWithYear}`;
+  }
+  if (period.length === 10) {
+    return new Date(`${period}T00:00:00Z`)
+      .toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+  }
+  const [y, m] = period.split('-').map(Number);
+  const MONTH_NAMES = [
+    'January','February','March','April','May','June',
+    'July','August','September','October','November','December',
+  ];
+  return `${MONTH_NAMES[m - 1]} ${y}`;
+}
+
+/**
+ * Return a label for the NEXT draw period after the given one.
+ * Used in non-winner emails: "tune in for next week's drawing."
+ * "2026-W27" → "next week's"
+ * "2026-06"  → "the July 2026"
+ */
+export function nextPeriodLabel(period: string): string {
+  if (period.includes('W')) return "next week's";
+  // Monthly: compute next month
+  const [y, m] = period.split('-').map(Number);
+  const nextMo   = m === 12 ? 1 : m + 1;
+  const nextYear = m === 12 ? y + 1 : y;
+  const MONTH_NAMES = [
+    'January','February','March','April','May','June',
+    'July','August','September','October','November','December',
+  ];
+  return `the ${MONTH_NAMES[nextMo - 1]} ${nextYear}`;
+}
+
+// ─── Winner cooldown ──────────────────────────────────────────────────────────
+
+/** Number of weeks a recent winner is ineligible after a weekly draw. */
+export const WINNER_COOLDOWN_WEEKS = 4;
+
+/** Return the UTC Monday Date for a given ISO-week period key "YYYY-Www". */
+function mondayOfIsoWeek(period: string): Date {
+  const [yStr, wStr] = period.split('-W');
+  const y = Number(yStr), w = Number(wStr);
+  const jan4    = new Date(Date.UTC(y, 0, 4));
+  const jan4Day = (jan4.getUTCDay() + 6) % 7;
+  const mon     = new Date(jan4);
+  mon.setUTCDate(jan4.getUTCDate() - jan4Day + (w - 1) * 7);
+  return mon;
+}
+
+/**
+ * Given a draw period and the full draw history, return the set of
+ * winner userIds who are ineligible to win again.
+ *
+ * Weekly cadence: blocks anyone who won within the last WINNER_COOLDOWN_WEEKS weeks.
+ * Monthly cadence (legacy): blocks consecutive-month wins + same-quarter wins.
+ *
+ * Ambassador tier holders bypass these restrictions (checked in runWeightedDraw).
  */
 export function ineligibleWinners(
-  drawMonth: string,
+  drawPeriod: string,
   history: { winnerId: string; month: string }[],
 ): Set<string> {
   const ineligible = new Set<string>();
-  const prev       = prevMonth(drawMonth);
-  const drawQ      = quarterForMonth(drawMonth);
-  const drawY      = yearForMonth(drawMonth);
+
+  if (drawPeriod.includes('W')) {
+    // Weekly cooldown: any win in the preceding WINNER_COOLDOWN_WEEKS weeks
+    const drawMonday = mondayOfIsoWeek(drawPeriod).getTime();
+    const cutoffMs   = WINNER_COOLDOWN_WEEKS * 7 * 24 * 60 * 60 * 1000;
+    for (const d of history) {
+      if (d.month === drawPeriod) continue;
+      if (!d.month.includes('W')) continue;  // ignore cross-cadence draws
+      const dMonday = mondayOfIsoWeek(d.month).getTime();
+      if (dMonday >= drawMonday - cutoffMs && dMonday < drawMonday) {
+        ineligible.add(d.winnerId);
+      }
+    }
+    return ineligible;
+  }
+
+  // Monthly legacy rules
+  const prev  = prevMonth(drawPeriod);
+  const drawQ = quarterForMonth(drawPeriod);
+  const drawY = yearForMonth(drawPeriod);
 
   for (const d of history) {
-    // Skip the draw month itself (shouldn't exist yet, but be safe)
-    if (d.month === drawMonth) continue;
-
-    // Consecutive month rule
-    if (d.month === prev) {
-      ineligible.add(d.winnerId);
-    }
-
-    // Same-quarter rule
-    if (
-      yearForMonth(d.month)    === drawY &&
-      quarterForMonth(d.month) === drawQ
-    ) {
+    if (d.month === drawPeriod) continue;
+    if (d.month === prev) ineligible.add(d.winnerId);
+    if (yearForMonth(d.month) === drawY && quarterForMonth(d.month) === drawQ) {
       ineligible.add(d.winnerId);
     }
   }
   return ineligible;
 }
 
-/** All Pro/Fleet users with ≥1 active day in the given month, excluding test accounts */
 /**
  * Hard exclusion list — these accounts (the Sponsor and immediate family) can
  * never be drawn or qualify, per Section 2 of the Official Rules. Keyed by email
@@ -308,8 +395,8 @@ const EXCLUDED_EMAILS = new Set<string>([
   'green.bilena@yahoo.com',    // Bilena Green
 ]);
 
-export async function getEligibleEntrants(month: string): Promise<EntrantRow[]> {
-  const prefix = `${month}-`;
+/** All Pro/Fleet users with ≥1 active day in the given draw period, excluding test accounts. */
+export async function getEligibleEntrants(period: string = currentPeriod()): Promise<EntrantRow[]> {
   const users  = await prisma.user.findMany({
     where: {
       plan:          { in: ['pro', 'fleet'] },
@@ -318,7 +405,8 @@ export async function getEligibleEntrants(month: string): Promise<EntrantRow[]> 
       email:         { notIn: Array.from(EXCLUDED_EMAILS) }, // Sponsor + family
     },
     select: {
-      id: true, name: true, email: true, plan: true,
+      id: true, name: true, email: true, plan: true, stripeInterval: true,
+      lifetimePerksUntil: true,
       activeDays: true, streak: true, referralCount: true,
       earlyUpgradeBonusEntries: true,
       garageBonusDays: true,
@@ -334,22 +422,30 @@ export async function getEligibleEntrants(month: string): Promise<EntrantRow[]> 
     .map((u) => {
       const refCount      = u.referralCount ?? 0;
       const multiplier    = ambassadorEntryMultiplier(refCount);
-      const activeDayCount = (u.activeDays ?? []).filter((d) => d.startsWith(prefix)).length;
+      const activeDayCount = activeDaysInPeriod(u.activeDays ?? [], period);
       const baseEntries   = activeDayCount * multiplier;  // multiplier applied to active days
       const streakBonus   = streakBonusEntries(u.streak ?? 0);
       const bonusEntries  = u.earlyUpgradeBonusEntries ?? 0;
-      // Garage bonus: +10 per day user tapped to open their garage this month
-      const garageDaysThisMonth = (u.garageBonusDays ?? [])
-        .filter((d: string) => d.startsWith(prefix)).length;
+      // Garage bonus: +10 per day user tapped to open their garage this period
+      const garageDaysThisMonth = activeDaysInPeriod(u.garageBonusDays ?? [], period);
       const garageBonusEntries         = garageDaysThisMonth * 10;
       const verifyReminderBonusEntries = u.verifyReminderBonusEntries ?? 0;
       const phoneBonusEntries          = u.phoneBonusEntries          ?? 0;
       const dailyBonusEntries          = u.dailyBonusEntries          ?? 0;
+      const perksActive          = u.stripeInterval === 'lifetime'
+        && u.lifetimePerksUntil != null
+        && new Date(u.lifetimePerksUntil) > new Date();
+      const lifetimeBonusEntries = u.stripeInterval === 'lifetime'
+        ? (perksActive ? LIFETIME_BONUS_ENTRIES : ANNUAL_BONUS_ENTRIES)
+        : u.stripeInterval === 'annual'
+        ? ANNUAL_BONUS_ENTRIES
+        : 0;
       return {
         userId:          u.id,
         name:            u.name,
         email:           u.email,
         plan:            u.plan,
+        stripeInterval:  u.stripeInterval ?? null,
         streak:          u.streak ?? 0,
         referralCount:   refCount,
         ambassadorTier:  getAmbassadorTier(refCount),
@@ -361,7 +457,8 @@ export async function getEligibleEntrants(month: string): Promise<EntrantRow[]> 
         verifyReminderBonusEntries,
         phoneBonusEntries,
         dailyBonusEntries,
-        entryCount:      baseEntries + streakBonus + bonusEntries + garageBonusEntries + verifyReminderBonusEntries + phoneBonusEntries + dailyBonusEntries,
+        lifetimeBonusEntries,
+        entryCount:      baseEntries + streakBonus + bonusEntries + garageBonusEntries + verifyReminderBonusEntries + phoneBonusEntries + dailyBonusEntries + lifetimeBonusEntries,
         alwaysEligible:  isAlwaysEligible(refCount),
         loginCount:      u.loginCount ?? 0,
         lastLoginAt:     u.lastLoginAt ?? null,
@@ -463,10 +560,14 @@ export async function getUnclaimedDraws(): Promise<typeof draws> {
   return draws;
 }
 
-/** Entry count for a single user in the given month */
+/** Entry count for a single user in the given draw period. */
+export function entryCountForPeriod(activeDays: string[], period: string): number {
+  return activeDaysInPeriod(activeDays, period);
+}
+
+/** @deprecated Use entryCountForPeriod */
 export function entryCountForMonth(activeDays: string[], month: string): number {
-  const prefix = `${month}-`;
-  return activeDays.filter((d) => d.startsWith(prefix)).length;
+  return entryCountForPeriod(activeDays, month);
 }
 
 /**

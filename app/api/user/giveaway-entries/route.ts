@@ -1,6 +1,6 @@
 /**
  * GET /api/user/giveaway-entries
- * Returns the current user's entry breakdown for the current month's drawing.
+ * Returns the current user's entry breakdown for the current draw period.
  * Includes base entries (active days) + streak bonus entries.
  */
 import { NextResponse } from 'next/server';
@@ -8,11 +8,13 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import {
-  entryCountForMonth,
-  currentMonth,
+  activeDaysInPeriod,
+  currentPeriod,
   streakBonusEntries,
   streakTierForStreak,
   nextStreakTier,
+  LIFETIME_BONUS_ENTRIES,
+  ANNUAL_BONUS_ENTRIES,
 } from '@/lib/giveaway';
 import {
   getAmbassadorTier,
@@ -32,6 +34,8 @@ export async function GET() {
     select: {
       activeDays: true,
       plan: true,
+      stripeInterval: true,
+      lifetimePerksUntil: true,
       streak: true,
       referralCount: true,
       earlyUpgradeBonusEntries: true,
@@ -45,10 +49,10 @@ export async function GET() {
   });
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
-  const month          = currentMonth();
+  const period         = currentPeriod();
   const refCount       = user.referralCount ?? 0;
   const multiplier     = ambassadorEntryMultiplier(refCount);
-  const activeDayCount = entryCountForMonth(user.activeDays ?? [], month);
+  const activeDayCount = activeDaysInPeriod(user.activeDays ?? [], period);
   const baseEntries    = activeDayCount * multiplier;   // multiplier on active days
   const streak         = user.streak ?? 0;
   const streakBonus    = streakBonusEntries(streak);
@@ -57,17 +61,25 @@ export async function GET() {
   const phoneBonusEntries      = user.phoneBonusEntries          ?? 0;
   const dailyBonusEntries      = user.dailyBonusEntries          ?? 0;
   const firstCalcBonusEntries  = user.firstCalcBonusEntries      ?? 0;
-  const garageDaysThisMonth = (user.garageBonusDays ?? [])
-    .filter((d: string) => d.startsWith(month)).length;
+  const garageDaysThisMonth = activeDaysInPeriod(user.garageBonusDays ?? [], period);
   const garageBonusEntries  = garageDaysThisMonth * 10;
+  const perksActive = user.stripeInterval === 'lifetime'
+    && user.lifetimePerksUntil != null
+    && new Date(user.lifetimePerksUntil) > new Date();
+  const lifetimeBonusEntries = user.stripeInterval === 'lifetime'
+    ? (perksActive ? LIFETIME_BONUS_ENTRIES : ANNUAL_BONUS_ENTRIES)
+    : user.stripeInterval === 'annual'
+    ? ANNUAL_BONUS_ENTRIES
+    : 0;
   const entryCount     = baseEntries + streakBonus + bonusEntries + garageBonusEntries
                          + verifyBonusEntries + phoneBonusEntries + dailyBonusEntries
-                         + firstCalcBonusEntries;
+                         + firstCalcBonusEntries + lifetimeBonusEntries;
   const eligible       = user.plan === 'pro' || user.plan === 'fleet';
   const emailVerified  = user.emailVerified ?? false;
 
   return NextResponse.json({
-    month,
+    period,
+    month: period,   // backward-compat alias (GreetingStrip + other clients may read this)
     entryCount,
     baseEntries,
     activeDayCount,   // raw days before multiplier — useful for UI display
@@ -88,5 +100,8 @@ export async function GET() {
     firstCalcBonusEntries,
     garageBonusEntries,
     garageDaysThisMonth,
+    lifetimeBonusEntries,
+    lifetimePerksActive: perksActive,
+    lifetimePerksUntil:  user.lifetimePerksUntil?.toISOString() ?? null,
   });
 }

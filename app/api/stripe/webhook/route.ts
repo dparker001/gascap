@@ -9,7 +9,7 @@
 import { NextResponse }                     from 'next/server';
 import type Stripe                          from 'stripe';
 import { stripe }                           from '@/lib/stripe';
-import { setUserPlan, findByStripeCustomer, findById, findByReferralCode, creditVerifiedReferral, getActiveCredits, enrollPaidCampaign, enrollEngagementCampaign, setEarlyUpgradeBonus, markMilestoneSent, updateUserProfile, clearStripeSubscriptionId } from '@/lib/users';
+import { setUserPlan, findByStripeCustomer, findById, findByReferralCode, creditVerifiedReferral, getActiveCredits, enrollPaidCampaign, enrollEngagementCampaign, setEarlyUpgradeBonus, markMilestoneSent, updateUserProfile, clearStripeSubscriptionId, setLifetimePerksActive, clearLifetimePerks } from '@/lib/users';
 import { updateGhlContactPlan }            from '@/lib/ghl';
 import { sendMail, giftEmailHtml }         from '@/lib/email';
 import { createGift }                      from '@/lib/gifts';
@@ -210,8 +210,10 @@ export async function POST(req: Request) {
           .catch((err) => console.error('[GHL] plan sync failed:', err));
 
         const tierLabel = interval === 'lifetime'
-          ? 'Pro Lifetime ($19.99 one-time)'
-          : planTier === 'fleet' ? 'Fleet (coming soon)' : 'Pro ($2.99/mo)';
+          ? 'Pro Lifetime Membership ($19.99)'
+          : interval === 'annual'
+          ? 'Pro Annual ($26.99/yr)'
+          : planTier === 'fleet' ? 'Fleet (coming soon)' : 'Pro Monthly ($2.99/mo)';
 
         sendAdminMail({
           subject: `⬆️ GasCap™ upgrade: ${upgradedUser.name} → ${interval === 'lifetime' ? 'PRO LIFETIME' : planTier.toUpperCase()}`,
@@ -350,26 +352,77 @@ export async function POST(req: Request) {
       const user = await findByStripeCustomer(customerId);
       if (!user) break;
 
-      // Determine tier from subscription metadata; fall back to existing plan if already paid
-      const subId = typeof invoice.subscription === 'string' ? invoice.subscription : undefined;
-      let tier: 'pro' | 'fleet' = user.plan === 'fleet' ? 'fleet' : 'pro';
+      const subId   = typeof invoice.subscription === 'string' ? invoice.subscription : undefined;
+      let   priceId = '';
 
-      // If we have a subscription ID, fetch it to read the price metadata tier
-      if (stripe && subId && tier === 'pro') {
+      if (stripe && subId) {
         try {
           const sub = await stripe.subscriptions.retrieve(subId);
-          const priceId = sub.items.data[0]?.price?.id ?? '';
-          const fleetPrices = [
-            process.env.STRIPE_PRICE_FLEET_MONTHLY ?? '',
-            process.env.STRIPE_PRICE_FLEET_ANNUAL  ?? '',
-          ].filter(Boolean);
-          if (fleetPrices.includes(priceId)) tier = 'fleet';
-        } catch { /* non-fatal: keep existing tier */ }
+          priceId   = sub.items.data[0]?.price?.id ?? '';
+        } catch { /* non-fatal */ }
       }
 
-      if (user.plan !== tier) {
-        await setUserPlan(user.id, tier, { subscriptionId: subId });
-        console.info(`[GasCap webhook] Activated ${tier} for user ${user.id} on renewal`);
+      // ── Lifetime Perks renewal ─────────────────────────────────────────────
+      // A separate annual subscription ($9.99/yr) for Lifetime members.
+      // Does NOT change plan or stripeInterval — just extends lifetimePerksUntil.
+      if (priceId && priceId === PRICES.lifetimePerks && subId) {
+        await setLifetimePerksActive(user.id, subId);
+
+        const baseUrl   = (process.env.NEXTAUTH_URL ?? 'https://www.gascap.app').replace(/\/$/, '');
+        const chooseUrl = `${baseUrl}/getaway`;
+
+        sendAdminMail({
+          subject: `🏅 Lifetime Perks renewed — ${user.email} — send vacation voucher`,
+          html: `<div style="font-family:system-ui,sans-serif;max-width:480px;">
+            <p style="font-size:20px;margin:0 0 8px;">🏅 Lifetime Perks renewal</p>
+            <p style="font-size:15px;color:#334155;margin:0 0 4px;"><strong>${user.name}</strong> renewed their Lifetime Perks ($9.99).</p>
+            <p style="font-size:14px;color:#64748b;margin:0 0 12px;">${user.email}</p>
+            <p style="font-size:14px;color:#334155;font-weight:700;margin:0 0 4px;">Action needed: issue one vacation voucher via Marketing Boost.</p>
+            <p style="font-size:12px;color:#94a3b8;">${new Date().toLocaleString('en-US',{timeZone:'America/New_York'})} ET</p>
+          </div>`,
+          text: `Lifetime Perks renewal: ${user.name} <${user.email}> — issue vacation voucher in Marketing Boost.`,
+        });
+
+        sendMail({
+          to:      user.email,
+          subject: `🏝️ Your Lifetime Perks are renewed — choose your getaway`,
+          html: `<div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;">
+            <div style="background:linear-gradient(135deg,#005F4A,#1EB68F);border-radius:16px 16px 0 0;padding:24px;text-align:center;">
+              <p style="font-size:26px;margin:0;color:#fff;font-weight:800;">🏅 Lifetime Perks renewed!</p>
+            </div>
+            <div style="background:#fff;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 16px 16px;padding:24px;">
+              <p style="font-size:15px;color:#334155;margin:0 0 12px;">Hi ${user.name}, your GasCap™ Lifetime Perks are active for another year. That means +20 bonus giveaway entries every week — and another complimentary resort getaway on us!</p>
+              <p style="text-align:center;margin:0 0 16px;">
+                <a href="${chooseUrl}" style="display:inline-block;background:#1EB68F;color:#fff;font-weight:800;font-size:15px;text-decoration:none;padding:12px 28px;border-radius:12px;">Choose my getaway →</a>
+              </p>
+              <p style="font-size:13px;color:#64748b;margin:0;">Questions? Reply to this email.</p>
+            </div>
+          </div>`,
+          text: `Your Lifetime Perks are renewed! Choose your complimentary getaway: ${chooseUrl}`,
+        }).catch((e) => console.error('[GasCap] Lifetime Perks renewal email failed:', e));
+
+        console.info(`[GasCap webhook] Lifetime Perks renewed for ${user.id}`);
+        break;
+      }
+
+      // ── Standard Pro / Annual renewal ─────────────────────────────────────
+      let tier: 'pro' | 'fleet' = user.plan === 'fleet' ? 'fleet' : 'pro';
+
+      if (priceId) {
+        const fleetPrices = [
+          process.env.STRIPE_PRICE_FLEET_MONTHLY ?? '',
+          process.env.STRIPE_PRICE_FLEET_ANNUAL  ?? '',
+        ].filter(Boolean);
+        if (fleetPrices.includes(priceId)) tier = 'fleet';
+      }
+
+      // Determine interval for annual renewal (keeps stripeInterval accurate)
+      const renewalInterval: 'monthly' | 'annual' | undefined =
+        priceId === PRICES.proAnnual ? 'annual' : undefined;
+
+      if (user.plan !== tier || renewalInterval) {
+        await setUserPlan(user.id, tier, { subscriptionId: subId, ...(renewalInterval ? { interval: renewalInterval } : {}) });
+        console.info(`[GasCap webhook] Activated ${tier}${renewalInterval ? '/annual' : ''} for user ${user.id} on renewal`);
       }
 
       // ── Referral credit — fires on first real payment only ────────────────
@@ -424,6 +477,22 @@ export async function POST(req: Request) {
 
       const user = await findByStripeCustomer(customerId);
       if (user) {
+        // Check if this is a Lifetime Perks add-on cancellation (not the main sub).
+        // If so, just clear the perks — keep plan=pro + stripeInterval=lifetime.
+        const cancelledSubId = event.type === 'customer.subscription.deleted'
+          ? (event.data.object as Stripe.Subscription).id
+          : null;
+        if (cancelledSubId && user.lifetimePerksSubId === cancelledSubId) {
+          await clearLifetimePerks(user.id);
+          console.info(`[GasCap webhook] Lifetime Perks lapsed for ${user.id} — Pro access retained`);
+          sendAdminMail({
+            subject: `📉 Lifetime Perks cancelled — ${user.email}`,
+            html: `<p>${user.name} (${user.email}) let their Lifetime Perks lapse. They keep Pro access but drop to +10 giveaway entries/week (no voucher).</p>`,
+            text:  `Lifetime Perks cancelled: ${user.name} <${user.email}> — Pro retained, perks cleared.`,
+          });
+          break;
+        }
+
         // Lifetime owners hold a one-time purchase, not a subscription. When a
         // recurring subscriber upgrades to Lifetime we cancel their old sub,
         // which fires this event — but they must NOT be reverted to Free. Skip.

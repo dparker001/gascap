@@ -1,9 +1,9 @@
 /**
  * POST /api/stripe/checkout
- * Creates a Stripe Checkout Session for upgrading to Pro or Fleet.
- * Body: { tier: 'pro' | 'fleet', billing: 'monthly' | 'lifetime' }
+ * Creates a Stripe Checkout Session for upgrading to Pro or Fleet, or adding Lifetime Perks.
+ * Body: { tier: 'pro' | 'fleet', billing: 'monthly' | 'annual' | 'lifetime' | 'lifetime-perks' }
  *
- * Lifetime uses mode:'payment' (one-time); monthly uses mode:'subscription'.
+ * Lifetime uses mode:'payment' (one-time); all others use mode:'subscription'.
  */
 import { NextResponse }    from 'next/server';
 import { getServerSession } from 'next-auth';
@@ -40,7 +40,7 @@ export async function POST(req: Request) {
 
   const body = await req.json() as {
     tier?:    'pro' | 'fleet';
-    billing?: 'monthly' | 'lifetime';
+    billing?: 'monthly' | 'annual' | 'lifetime' | 'lifetime-perks';
     priceId?: string; // legacy direct price ID override
     coupon?:  string; // Stripe coupon ID to pre-apply (e.g. from C4 promo email)
     newMemberOffer?: boolean; // request the 7-day new-member Lifetime discount
@@ -76,12 +76,46 @@ export async function POST(req: Request) {
     if (active) coupon = FOUNDING_LIFETIME_COUPON;
   }
 
+  // ── Lifetime Perks add-on ─────────────────────────────────────────────────
+  // Only available to existing Pro Lifetime Membership holders.
+  if (billing === 'lifetime-perks') {
+    if (user.stripeInterval !== 'lifetime') {
+      return NextResponse.json(
+        { error: 'Lifetime Perks are only available to Pro Lifetime Membership holders.' },
+        { status: 403 },
+      );
+    }
+    const perksPrice = PRICES.lifetimePerks;
+    if (!perksPrice) {
+      return NextResponse.json(
+        { error: 'Lifetime Perks price not configured. Add STRIPE_PRICE_LIFETIME_PERKS to env.' },
+        { status: 503 },
+      );
+    }
+    const origin = getBaseUrl(req);
+    const perksSession = await stripe.checkout.sessions.create({
+      mode:                 'subscription',
+      payment_method_types: ['card'],
+      allow_promotion_codes: false,
+      phone_number_collection: { enabled: false },
+      line_items:  [{ price: perksPrice, quantity: 1 }],
+      customer_email: user.stripeCustomerId ? undefined : user.email,
+      customer:       user.stripeCustomerId ?? undefined,
+      success_url: `${origin}/upgrade/success?session_id={CHECKOUT_SESSION_ID}&tier=pro&billing=lifetime-perks`,
+      cancel_url:  `${origin}/upgrade`,
+      metadata: { userId, userEmail: user.email, tier: 'pro', billing: 'lifetime-perks' },
+      subscription_data: { metadata: { userId, tier: 'pro', billing: 'lifetime-perks' } },
+    });
+    return NextResponse.json({ url: perksSession.url });
+  }
+
   // Resolve price ID
   let priceId = body.priceId ?? '';
   if (!priceId) {
     if (tier === 'pro') {
       if (billing === 'lifetime') priceId = PRICES.proLifetime;
-      else                        priceId = PRICES.proMonthly;
+      else if (billing === 'annual') priceId = PRICES.proAnnual;
+      else                           priceId = PRICES.proMonthly;
     }
     // Fleet plan is shelved — no active price IDs
   }
@@ -133,7 +167,7 @@ export async function POST(req: Request) {
     line_items:  [{ price: priceId, quantity: 1 }],
     customer_email: user.stripeCustomerId ? undefined : user.email,
     customer:       user.stripeCustomerId ?? undefined,
-    success_url: `${origin}/upgrade/success?session_id={CHECKOUT_SESSION_ID}&tier=${tier}&billing=${billing}`,
+    success_url: `${origin}/upgrade/success?session_id={CHECKOUT_SESSION_ID}&tier=${tier}&billing=${billing === 'annual' ? 'annual' : billing}`,
     cancel_url:  `${origin}/upgrade`,
     metadata: {
       userId,

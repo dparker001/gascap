@@ -5,6 +5,7 @@
  * Resend env vars: RESEND_API_KEY, RESEND_FROM
  * SMTP env vars:   SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM
  */
+import { formatPeriodLabel as _formatPeriodLabel } from '@/lib/giveaway';
 
 interface MailOptions {
   to:              string;
@@ -203,12 +204,7 @@ export function winnerNotificationEmailHtml(
   totalEntries: number,
   prize: string = '$25',
 ): string {
-  const [y, mo] = month.split('-');
-  const MONTH_NAMES = [
-    'January','February','March','April','May','June',
-    'July','August','September','October','November','December',
-  ];
-  const monthLabel = `${MONTH_NAMES[parseInt(mo, 10) - 1]} ${y}`;
+  const monthLabel = _formatPeriodLabel(month);
 
   return `
 <!DOCTYPE html>
@@ -310,17 +306,19 @@ export function nonWinnerNotificationEmailHtml(
   plan:          string = 'pro',
   prize:         string = '$25',
 ): string {
-  const [y, mo] = month.split('-');
-  const MONTH_NAMES = [
-    'January','February','March','April','May','June',
-    'July','August','September','October','November','December',
-  ];
-  const monthLabel  = `${MONTH_NAMES[parseInt(mo, 10) - 1]} ${y}`;
-  const mMoN        = parseInt(mo, 10);
-  const mYearN      = parseInt(y, 10);
-  const eMo         = mMoN === 12 ? 1 : mMoN + 1;
-  const eYear       = mMoN === 12 ? mYearN + 1 : mYearN;
-  const nextEntryMonth = `${MONTH_NAMES[eMo - 1]} ${eYear}`;
+  const monthLabel     = _formatPeriodLabel(month);
+  const isWeekly       = month.includes('W');
+  // "Earn more entries in July →" prompt — for weekly just say "this week"
+  const nextEntryMonth = isWeekly ? 'this week' : (() => {
+    const [y, mo] = month.split('-').map(Number);
+    const eMo   = mo === 12 ? 1 : mo + 1;
+    const eYear = mo === 12 ? y + 1 : y;
+    const MONTH_NAMES = [
+      'January','February','March','April','May','June',
+      'July','August','September','October','November','December',
+    ];
+    return `${MONTH_NAMES[eMo - 1]} ${eYear}`;
+  })();
 
   return `
 <!DOCTYPE html>

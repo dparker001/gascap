@@ -24,6 +24,8 @@ interface GiveawayEntries {
   dailyBonusEntries:        number;
   garageBonusEntries:       number;
   garageDaysThisMonth:      number;
+  lifetimeBonusEntries:     number;
+  lifetimePerksActive:      boolean;
   referralCount:            number;
 }
 
@@ -96,6 +98,8 @@ export default function GiveawayPage() {
   const dailyBonusEntries        = entries?.dailyBonusEntries ?? 0;
   const garageBonusEntries       = entries?.garageBonusEntries ?? 0;
   const garageDaysThisMonth      = entries?.garageDaysThisMonth ?? 0;
+  const lifetimeBonusEntries     = entries?.lifetimeBonusEntries ?? 0;
+  const lifetimePerksActive      = entries?.lifetimePerksActive ?? false;
   const maxDays                  = 31;
   const progressPct              = Math.min(100, Math.round((activeDayCount / maxDays) * 100));
 
@@ -115,6 +119,7 @@ export default function GiveawayPage() {
     { key: 'verify',   emoji: '✉️', label: t.giveawayPage.breakdownVerify,                  entries: verifyBonusEntries       },
     { key: 'phone',    emoji: '📱', label: t.giveawayPage.breakdownPhone,                   entries: phoneBonusEntries        },
     { key: 'upgrade',  emoji: '⭐', label: t.giveawayPage.breakdownUpgrade,                 entries: earlyUpgradeBonusEntries },
+    { key: 'lifetime', emoji: '🏅', label: lifetimePerksActive ? 'Lifetime Perks bonus' : 'Pro Lifetime / Annual bonus', entries: lifetimeBonusEntries },
   ].filter((r) => r.entries > 0);
 
   return (

@@ -36,6 +36,8 @@ function UpgradePageInner() {
   const FREE_FEATURES = t.pricing.freeFeatures;
   const PRO_FEATURES  = t.pricing.proFeatures;
   const LIFETIME_EXCLUSIVES = [
+    { icon: '🏅', text: '+20 bonus giveaway entries every week (Lifetime Perks)' },
+    { icon: '🏝️', text: 'Annual vacation voucher with $9.99/yr Lifetime Perks renewal' },
     { icon: '⭐', text: t.pricing.exTwoXEntries },
     { icon: '🛡️', text: t.pricing.exStreakShield },
     { icon: '🏅', text: t.pricing.exLifetimeBadge },
@@ -52,18 +54,19 @@ function UpgradePageInner() {
   const [resolved, setResolved] = useState(false);
   useEffect(() => { setPlatform(detectNativePlatform()); setResolved(true); }, []);
   const isNative = platform !== null;
-  const [loading, setLoading] = useState<'pro-monthly' | 'pro-lifetime' | null>(null);
+  const [loading, setLoading] = useState<'pro-monthly' | 'pro-annual' | 'pro-lifetime' | null>(null);
   const [error,   setError]   = useState('');
 
   const userPlan      = (session?.user as { plan?: string })?.plan ?? 'free';
   const userInterval  = (session?.user as { stripeInterval?: string | null })?.stripeInterval ?? null;
   const isOnTrial     = !!(session?.user as { isProTrial?: boolean })?.isProTrial;
-  const isProMonthly  = !!session && userPlan === 'pro' && userInterval !== 'lifetime' && !isOnTrial;
+  const isProMonthly  = !!session && userPlan === 'pro' && userInterval === 'monthly' && !isOnTrial;
+  const isProAnnual   = !!session && userPlan === 'pro' && userInterval === 'annual'   && !isOnTrial;
   const isProLifetime = !!session && userPlan === 'pro' && userInterval === 'lifetime' && !isOnTrial;
   const showGetaway   = getawayPromoActive() && !isProLifetime;
   const getawayDays   = getawayDaysLeft();
 
-  async function handleUpgrade(billing: 'monthly' | 'lifetime') {
+  async function handleUpgrade(billing: 'monthly' | 'annual' | 'lifetime') {
     if (!session) {
       // Founding/reactivation recipients already have accounts → send to sign-in and
       // return them to the founding offer; everyone else takes the new-signup path.
@@ -72,7 +75,7 @@ function UpgradePageInner() {
         : '/signup?next=/upgrade';
       return;
     }
-    setLoading(billing === 'lifetime' ? 'pro-lifetime' : 'pro-monthly');
+    setLoading(billing === 'lifetime' ? 'pro-lifetime' : billing === 'annual' ? 'pro-annual' : 'pro-monthly');
     setError('');
     try {
       // Only apply promo coupon on monthly — lifetime is already a one-time deal
@@ -388,8 +391,8 @@ function UpgradePageInner() {
           <p className="text-center text-sm text-red-500 mb-4">{error}</p>
         )}
 
-        {/* ── 3-panel pricing cards ─────────────────────────────────────── */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 items-stretch">
+        {/* ── 4-panel pricing cards ─────────────────────────────────────── */}
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 items-stretch">
 
           {/* Free */}
           <div className="bg-white rounded-3xl border-2 border-slate-200 shadow-sm p-6 flex flex-col">
@@ -476,7 +479,60 @@ function UpgradePageInner() {
             </ul>
           </div>
 
-          {/* Pro Lifetime */}
+          {/* Pro Annual */}
+          <div className="relative bg-white rounded-3xl border-2 border-green-400 shadow-card p-6 flex flex-col">
+            <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-green-400 text-navy-900
+                            text-[11px] font-black px-4 py-1 rounded-full uppercase tracking-wider
+                            whitespace-nowrap shadow-md">
+              3 months free
+            </div>
+            <div className="mb-4 mt-1">
+              <span className="inline-block bg-green-100 text-green-700 text-[10px] font-black
+                               px-2 py-0.5 rounded-full uppercase tracking-wider mb-2">
+                Annual
+              </span>
+              <h2 className="text-xl font-black text-navy-700">Pro Annual</h2>
+              <p className="text-xs text-slate-400 mt-0.5">Billed once a year</p>
+            </div>
+            <div className="mb-1 flex items-end gap-1">
+              <span className="text-4xl font-black text-navy-700">${PRICING.pro.annual}</span>
+              <span className="text-sm mb-1 text-slate-400">/yr</span>
+            </div>
+            <p className="text-xs text-green-600 font-semibold mb-6 leading-relaxed">
+              ~${(PRICING.pro.annual / 12).toFixed(2)}/mo · saves ${(PRICING.pro.monthly * 12 - PRICING.pro.annual).toFixed(2)}/yr
+            </p>
+            <button
+              onClick={() => !isProAnnual && !isProLifetime && handleUpgrade('annual')}
+              disabled={loading !== null || isProAnnual || isProLifetime}
+              className={`w-full py-3 rounded-2xl font-black text-sm transition-colors mb-5 ${
+                isProAnnual
+                  ? 'bg-green-500 text-white cursor-default'
+                  : isProLifetime
+                    ? 'bg-slate-200 text-slate-400 cursor-default'
+                    : 'bg-green-500 hover:bg-green-400 text-white disabled:opacity-50'
+              }`}>
+              {loading === 'pro-annual'
+                ? t.upgrade.redirecting
+                : isProAnnual
+                  ? t.upgrade.currentPlan
+                  : isProLifetime
+                    ? t.pricing.includedInLifetime
+                    : session ? `Get Pro Annual — $${PRICING.pro.annual}/yr` : t.pricing.startFreeTrial}
+            </button>
+            <div className="border-t border-slate-100 mb-5" />
+            <ul className="space-y-2 flex-1">
+              {PRO_FEATURES.map((f) => (
+                <li key={f} className="flex items-start gap-2 text-sm text-slate-700">
+                  <Check color="green" /> {f}
+                </li>
+              ))}
+              <li className="flex items-start gap-2 text-sm text-slate-700">
+                <Check color="green" /> +10 bonus giveaway entries every week
+              </li>
+            </ul>
+          </div>
+
+          {/* Pro Lifetime Membership */}
           <div className="relative bg-navy-700 rounded-3xl border-2 border-teal-400 shadow-card p-6 flex flex-col">
             <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-teal-400 text-navy-900
                             text-[11px] font-black px-4 py-1 rounded-full uppercase tracking-wider
@@ -488,8 +544,8 @@ function UpgradePageInner() {
                                px-2 py-0.5 rounded-full uppercase tracking-wider mb-2">
                 {t.pricing.lifetimeBadge}
               </span>
-              <h2 className="text-xl font-black text-white">Pro Lifetime</h2>
-              <p className="text-xs text-white/50 mt-0.5">{t.upgrade.noSubscription}</p>
+              <h2 className="text-xl font-black text-white">Pro Lifetime Membership</h2>
+              <p className="text-xs text-white/50 mt-0.5">Then $9.99/yr for Lifetime Perks</p>
             </div>
             <div className="mb-1 flex items-end gap-1">
               <span className="text-4xl font-black text-white">${PRICING.pro.lifetime}</span>
@@ -517,7 +573,7 @@ function UpgradePageInner() {
             )}
             <button
               onClick={() => !isProLifetime && handleUpgrade('lifetime')}
-              disabled={loading !== null || isProLifetime}
+              disabled={loading !== null || isProLifetime || isProAnnual}
               className={`w-full py-3 rounded-2xl font-black text-sm transition-colors mb-5 ${
                 isProLifetime
                   ? 'bg-green-400 text-navy-900 cursor-default'

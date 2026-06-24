@@ -92,6 +92,11 @@ model User {
   winbackStep              Int       @default(0)
   winbackLastSentAt        String?
   winbackStartedAt         String?   // when the win-back sequence began (drives the 3-day offer deadline)
+  // Lifetime Perks add-on — annual $9.99 renewal granting +20 giveaway entries + vacation voucher.
+  // Null = never subscribed or lapsed. Kept separate from stripeSubscriptionId (that slot is used
+  // by the primary Pro Lifetime one-time payment or monthly/annual sub).
+  lifetimePerksUntil       DateTime?
+  lifetimePerksSubId       String?
   vehicles                 Vehicle[]
 }
 

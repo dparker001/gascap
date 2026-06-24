@@ -78,6 +78,8 @@ export interface StoredUser {
   milestoneReferral1Sent?: boolean;
   earlyUpgradeBonusEntries?: number;
   phoneBonusEntries?:        number;
+  lifetimePerksUntil?:       string | null; // ISO timestamp; null = no active Perks renewal
+  lifetimePerksSubId?:       string | null;
 }
 
 export interface ReferralCredit {
@@ -162,6 +164,8 @@ function toStoredUser(u: PrismaUser): StoredUser {
     milestoneReferral1Sent: u.milestoneReferral1Sent ?? false,
     earlyUpgradeBonusEntries: u.earlyUpgradeBonusEntries ?? 0,
     phoneBonusEntries:        u.phoneBonusEntries        ?? 0,
+    lifetimePerksUntil:       u.lifetimePerksUntil?.toISOString() ?? null,
+    lifetimePerksSubId:       u.lifetimePerksSubId ?? null,
   };
 }
 
@@ -298,6 +302,31 @@ export async function setUserPlan(
       // the Lifetime-only getaway promo, so it must never be stale.
       ...(stripe?.interval ? { stripeInterval: stripe.interval } : {}),
     },
+  });
+}
+
+/**
+ * Activate or renew the Lifetime Perks add-on for a Lifetime member.
+ * Sets lifetimePerksUntil to one year from now and stores the subscription ID.
+ * Does NOT touch plan or stripeInterval — Lifetime access is permanent regardless.
+ */
+export async function setLifetimePerksActive(userId: string, subId: string): Promise<void> {
+  const until = new Date();
+  until.setFullYear(until.getFullYear() + 1);
+  await prisma.user.update({
+    where: { id: userId },
+    data:  { lifetimePerksUntil: until, lifetimePerksSubId: subId },
+  });
+}
+
+/**
+ * Lapse the Lifetime Perks add-on (cancelled or payment failed).
+ * Clears lifetimePerksUntil + subId. Plan stays pro + stripeInterval stays lifetime.
+ */
+export async function clearLifetimePerks(userId: string): Promise<void> {
+  await prisma.user.update({
+    where: { id: userId },
+    data:  { lifetimePerksUntil: null, lifetimePerksSubId: null },
   });
 }
 

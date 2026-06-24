@@ -87,15 +87,16 @@ export default function AmoePage() {
               <p className="text-white text-2xl font-black leading-tight">You&apos;re entered!</p>
               <p className="text-white/60 text-sm leading-relaxed">
                 Your free entry for the <strong className="text-white">{currentMonthLabel()}</strong> drawing
-                has been received. One winner is drawn on the 5th of next month.
+                has been received. One winner is drawn every Friday evening.
               </p>
             </div>
 
             {!isNative && (
               <div className="bg-white/10 border border-white/10 rounded-2xl p-4 text-center space-y-2">
                 <p className="text-white/80 text-xs leading-relaxed">
-                  Want up to <strong className="text-amber-400">31× more entries</strong> every month?
+                  Want up to <strong className="text-amber-400">7× more entries</strong> every week?
                   Upgrade to Pro and earn one entry automatically every day you open the app.
+                  Pro Lifetime members also get <strong className="text-amber-400">+20 bonus entries</strong> every week, automatically.
                 </p>
                 <Link
                   href="/upgrade"
@@ -122,7 +123,7 @@ export default function AmoePage() {
                 Enter the {currentMonthLabel()} Drawing
               </p>
               <p className="text-white/60 text-sm">
-                No purchase necessary. One free entry per person per month.
+                No purchase necessary. One free entry per person per week.
               </p>
             </div>
 
@@ -235,7 +236,8 @@ export default function AmoePage() {
                 <p className="text-white/70 text-xs font-bold">Want more entries?</p>
                 <p className="text-white/50 text-xs leading-relaxed">
                   Pro members earn 1 entry automatically every day they open the app —
-                  up to <strong className="text-white/80">31 entries per month</strong> vs your 1 free entry.
+                  up to <strong className="text-white/80">7 entries per week</strong> vs your 1 free entry.
+                  Pro Lifetime members get an extra <strong className="text-white/80">+20 bonus entries</strong> every week on top of that.
                 </p>
                 <Link
                   href="/upgrade"
