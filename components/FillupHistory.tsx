@@ -149,6 +149,7 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
 
   // ── Filter + month expansion state ─────────────────────────────────────────
   const [filterMode,     setFilterMode]     = useState<FilterMode>('all');
+  const [driverFilter,   setDriverFilter]   = useState<string>('all'); // fleet driver filter — MUST stay above the early return (hooks rule)
   const [customMonth,    setCustomMonth]    = useState(currentMonthStr);
   const [expandedMonths, setExpandedMonths] = useState<Set<string>>(
     () => new Set([currentMonthStr()]),
@@ -259,8 +260,10 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
   const userPlan = session?.user?.plan ?? 'free';
   const isFleet  = userPlan === 'fleet';
 
-  // Driver filter — only meaningful for fleet accounts
-  const [driverFilter, setDriverFilter] = useState<string>('all');
+  // Driver filter labels — only meaningful for fleet accounts.
+  // (driverFilter state is declared up top with the other hooks; declaring it here —
+  // after the `if (status==='loading') return null` early return — caused React #310
+  // "rendered fewer hooks than expected" on a fresh load while the session loads.)
   const allDriverLabels = isFleet
     ? [...new Set(fillups.map((f) => f.driverLabel).filter((d): d is string => !!d))]
     : [];
