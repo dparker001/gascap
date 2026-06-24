@@ -107,7 +107,7 @@ export function conversionC1Html(name: string, userId: string): string {
             </td>
           </tr>
           <tr>
-            <td style="padding:8px 0;vertical-align:top;font-size:18px;">🔥</td>
+            <td style="padding:8px 0;vertical-align:top;font-size:18px;">⏰</td>
             <td style="padding:8px 0 8px 10px;vertical-align:top;">
               <p style="margin:0 0 2px;font-size:14px;font-weight:700;color:#1e2d4a;">Login Streak & Bonus Entries</p>
               <p style="margin:0;font-size:13px;color:#64748b;line-height:1.5;">Your streak is building giveaway entries every day. Don't lose it when your trial ends.</p>

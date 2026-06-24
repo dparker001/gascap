@@ -1189,7 +1189,7 @@ export default function AdminPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">🔥 Trial Conversion Burst</p>
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">⚡ Trial Conversion Burst</p>
                   <div className="flex flex-wrap gap-1.5">
                     {[
                       { id: 'trial-c1', label: 'C1 — Value Recap' },

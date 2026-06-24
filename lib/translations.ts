@@ -37,6 +37,7 @@ const en = {
     hi:        'Hi',
     dayStreak: (n: number) => `${n}-day streak`,
     entries:   (n: number) => `${n} ${n === 1 ? 'entry' : 'entries'}`,
+    logToEnter: 'Log a fill-up to enter the draw',
   },
   gate: {
     createAccount: 'Create free account →',
@@ -921,7 +922,7 @@ const en = {
     start:     'Start your streak — open GasCap™ daily!',
     startSub:  'Come back each day and watch your streak grow.',
     daysLabel: 'days',
-    activeFire: (streak: number) => `${streak}-day streak! 🔥`,
+    activeFire: (streak: number) => `${streak}-day streak!`,
     startToday: 'Start your streak today',
     openDaily:  'Open daily to keep it going',
   },
@@ -2649,6 +2650,7 @@ const es: typeof en = {
     hi:        'Hola',
     dayStreak: (n: number) => `racha de ${n} ${n === 1 ? 'día' : 'días'}`,
     entries:   (n: number) => `${n} ${n === 1 ? 'entrada' : 'entradas'}`,
+    logToEnter: 'Registra una recarga para participar',
   },
   gate: {
     createAccount: 'Crear cuenta gratis →',
@@ -3502,7 +3504,7 @@ const es: typeof en = {
     start:     '¡Empieza tu racha — abre GasCap™ diariamente!',
     startSub:  'Vuelve cada día y mira crecer tu racha.',
     daysLabel: 'días',
-    activeFire: (streak: number) => `¡Racha de ${streak} días! 🔥`,
+    activeFire: (streak: number) => `¡Racha de ${streak} días!`,
     startToday: 'Empieza tu racha hoy',
     openDaily:  'Ábrelo a diario para mantenerla',
   },

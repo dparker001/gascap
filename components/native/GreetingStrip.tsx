@@ -2,7 +2,7 @@
 
 /**
  * GreetingStrip — slim personalized bar directly under the native title bar, shown on
- * the Calculator tab for signed-in users: "👋 Hi {name} · 🔥 N-day streak · 🎟️ N entries".
+ * the Calculator tab for signed-in users: "👋 Hi {name} · 📅 N-day streak · 🎟️ N entries".
  * Taps through to the Rewards tab. Reinforces the daily-return + giveaway-entry loop
  * (the retention hook). Hidden for guests — they see the "Sign up" pill in the title bar.
  */
@@ -43,9 +43,20 @@ export default function GreetingStrip({ onOpenRewards }: { onOpenRewards: () => 
       </span>
       {stats && (
         <span className="ml-auto flex-shrink-0 flex items-center gap-2 text-xs font-semibold whitespace-nowrap">
-          <span>🔥 {t.greetingStrip.dayStreak(stats.streak)}</span>
-          <span className="text-white/30" aria-hidden="true">·</span>
-          <span>🎟️ {t.greetingStrip.entries(stats.entries)}</span>
+          {stats.entries === 0 ? (
+            // Brand-new user — nudge the first entry instead of showing "0 entries".
+            <span>🎟️ {t.greetingStrip.logToEnter}</span>
+          ) : (
+            <>
+              {stats.streak > 0 && (
+                <>
+                  <span>📅 {t.greetingStrip.dayStreak(stats.streak)}</span>
+                  <span className="text-white/30" aria-hidden="true">·</span>
+                </>
+              )}
+              <span>🎟️ {t.greetingStrip.entries(stats.entries)}</span>
+            </>
+          )}
           <span className="text-white/60 text-sm" aria-hidden="true">›</span>
         </span>
       )}

@@ -299,7 +299,7 @@ function BonusToast({ show, bonusEntries, totalDays }: BonusToastProps) {
           </div>
           {totalDays > 1 && (
             <div className="flex-shrink-0 text-right">
-              <p className="text-white text-[10px] font-black leading-tight">🔥 {totalDays}</p>
+              <p className="text-white text-[10px] font-black leading-tight">📅 {totalDays}</p>
               <p className="text-white/60 text-[9px] leading-tight">{t.garageDoor.dayStreak}</p>
             </div>
           )}

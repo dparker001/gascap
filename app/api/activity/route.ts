@@ -93,7 +93,7 @@ export async function POST(req: Request) {
           const dayLabel = days >= 365 ? '1-year' : days >= 180 ? '6-month' : days >= 90 ? '90-day' : days >= 30 ? '30-day' : `${days}-day`;
           await sendMail({
             to:      result.userEmail,
-            subject: `${days >= 30 ? '🏆' : '🔥'} You hit a ${dayLabel} streak on GasCap™!`,
+            subject: `${days >= 30 ? '🏆' : '📅'} You hit a ${dayLabel} streak on GasCap™!`,
             html:    streakMilestoneEmailHtml(
               result.userName,
               days,
@@ -107,7 +107,7 @@ export async function POST(req: Request) {
           console.log(`[Activity] Milestone email sent → ${result.userEmail} (${days} days)`);
           // Direct-APNs push to native iOS users (non-blocking, like the email).
           if (iosToken && apnsConfigured()) {
-            void sendApns(iosToken, `🔥 ${days}-day streak!`, `You hit a ${days}-day GasCap™ streak — keep it going for bonus giveaway entries!`).catch(() => {});
+            void sendApns(iosToken, `📅 ${days}-day streak!`, `You hit a ${days}-day GasCap™ streak — keep it going for bonus giveaway entries!`).catch(() => {});
           }
         } catch (err) {
           console.error(`[Activity] Milestone email failed for ${result.userEmail} (${days} days):`, err);

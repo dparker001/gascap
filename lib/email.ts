@@ -573,7 +573,7 @@ export function streakMilestoneEmailHtml(
 ): string {
   // Choose emoji + headline based on milestone
   const milestoneConfig: Record<number, { emoji: string; headline: string; subline: string }> = {
-    7:   { emoji: '🔥', headline: `${name}, you're on a 7-day streak!`,    subline: 'One week in — you\'re already building a great habit.' },
+    7:   { emoji: '📅', headline: `${name}, you're on a 7-day streak!`,    subline: 'One week in — you\'re already building a great habit.' },
     14:  { emoji: '⚡', headline: `${name}, 14 days straight!`,             subline: 'Two full weeks of smart fueling. Keep the momentum going.' },
     30:  { emoji: '🏆', headline: `${name}, one full month!`,               subline: 'A 30-day streak is a serious commitment — and GasCap™ rewards it.' },
     90:  { emoji: '🌟', headline: `${name}, 90 days on a streak!`,          subline: 'Three months of consistent fueling smarts. You\'re in rare company.' },
@@ -581,7 +581,7 @@ export function streakMilestoneEmailHtml(
     365: { emoji: '👑', headline: `${name}, one full year on a streak!`,    subline: 'You\'ve done something almost no one does. This one\'s on us.' },
   };
   const cfg = milestoneConfig[milestoneDays] ?? {
-    emoji:    '🔥',
+    emoji:    '📅',
     headline: `${name}, you hit a ${milestoneDays}-day streak!`,
     subline:  'Keep the streak alive — it keeps paying off.',
   };
