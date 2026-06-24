@@ -259,7 +259,7 @@ export default function PricingSection() {
           {/* Annual bonus entries badge */}
           <div className={`mb-4 transition-all ${billing === 'annual' && !isProMonthly && !isProLifetime ? 'opacity-100' : 'opacity-0 pointer-events-none h-0 mb-0 overflow-hidden'}`}>
             <div className="inline-flex items-center gap-1.5 bg-amber-400/20 text-amber-300 text-[11px] font-black px-3 py-1.5 rounded-xl">
-              📅 +10 bonus giveaway entries/week
+              {t.pricing.annualBonusBadge}
             </div>
           </div>
 

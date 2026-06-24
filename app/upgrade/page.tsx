@@ -480,7 +480,7 @@ function UpgradePageInner() {
             {/* Annual bonus badge */}
             <div className={`mb-4 ${billing === 'annual' && !isProMonthly && !isProLifetime ? 'block' : 'hidden'}`}>
               <span className="inline-flex items-center gap-1.5 bg-green-50 text-green-700 text-[11px] font-black px-3 py-1.5 rounded-xl border border-green-200">
-                📅 +10 bonus giveaway entries/week
+                {t.pricing.annualBonusBadge}
               </span>
             </div>
 
