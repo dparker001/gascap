@@ -394,6 +394,9 @@ export default function PricingSection() {
                 <span className="text-sm leading-snug text-teal-700 font-semibold">{f.text}</span>
               </li>
             ))}
+            <li className="text-[11px] text-slate-400 leading-relaxed pl-7">
+              Lifetime Perks is an optional $9.99/yr add-on that renews your bonus entries and delivers a new vacation voucher each year.
+            </li>
           </ul>
           <p className="mt-4 text-center text-[11px] text-slate-400 leading-relaxed">
             {t.pricing.breakEven}
