@@ -212,12 +212,21 @@ export default function NearbyStations({ onApply }: Props) {
     setCoords({ lat, lng });
     try {
       const res  = await fetch(`/api/nearby-gas?lat=${lat}&lng=${lng}`);
-      const data = await res.json() as { stations?: NearbyStation[]; proRequired?: boolean; error?: string };
+      const text = await res.text();
+      let data: { stations?: NearbyStation[]; proRequired?: boolean; error?: string };
+      try { data = JSON.parse(text); }
+      catch {
+        console.error('[NearbyStations] non-JSON response:', res.status, text.slice(0, 200));
+        setStatus('error');
+        setErrMsg(`Server error (${res.status}). Please try again.`);
+        return;
+      }
       if (data.proRequired) { setStatus('idle'); return; }
       if (data.error)       { setStatus('error'); setErrMsg(data.error); return; }
       setStations(data.stations ?? []);
       setStatus('done');
-    } catch {
+    } catch (err) {
+      console.error('[NearbyStations] fetch error:', err);
       setStatus('error');
       setErrMsg('Network error — please try again.');
     }
@@ -243,7 +252,7 @@ export default function NearbyStations({ onApply }: Props) {
             : 'Could not get your location. Please try again.',
         );
       },
-      { timeout: 12000, maximumAge: 300_000, enableHighAccuracy: false },
+      { timeout: 8000, maximumAge: 300_000, enableHighAccuracy: false },
     );
   }, [doLookup]);
 
