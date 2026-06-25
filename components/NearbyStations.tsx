@@ -239,9 +239,12 @@ export default function NearbyStations({ onApply }: Props) {
     setStatus('fetching');
     setCoords({ lat, lng });
     try {
-      const res  = await fetch(`/api/nearby-gas?lat=${lat}&lng=${lng}`);
+      const res  = await fetch(`/api/nearby-gas?lat=${lat}&lng=${lng}`, {
+        signal: AbortSignal.timeout(15000),
+      });
       const text = await res.text();
-      let data: { stations?: NearbyStation[]; proRequired?: boolean; error?: string };
+      console.log('[NearbyStations] response:', res.status, text.slice(0, 300));
+      let data: { stations?: NearbyStation[]; proRequired?: boolean; error?: string; disabled?: boolean };
       try { data = JSON.parse(text); }
       catch {
         console.error('[NearbyStations] non-JSON response:', res.status, text.slice(0, 200));
@@ -249,9 +252,13 @@ export default function NearbyStations({ onApply }: Props) {
         setErrMsg(`Server error (${res.status}). Please try again.`);
         return;
       }
-      if (data.proRequired) { setStatus('idle'); return; }
-      if ((data as { disabled?: boolean }).disabled) { setStatus('disabled'); return; }
-      if (data.error)       { setStatus('error'); setErrMsg(data.error); return; }
+      if (data.proRequired) {
+        console.log('[NearbyStations] proRequired — plan may not be loaded yet, reason:', (data as { reason?: string }).reason);
+        setStatus('idle');
+        return;
+      }
+      if (data.disabled) { setStatus('disabled'); return; }
+      if (data.error)    { setStatus('error'); setErrMsg(data.error); return; }
       setStations(data.stations ?? []);
       setStatus('done');
     } catch (err) {
