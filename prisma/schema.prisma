@@ -107,6 +107,13 @@ model User {
   vehicles                 Vehicle[]
 }
 
+model OtpCode {
+  email   String   @id
+  code    String
+  name    String   @default("")
+  expires DateTime
+}
+
 model Vehicle {
   id              String  @id
   userId          String

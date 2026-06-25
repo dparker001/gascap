@@ -64,18 +64,14 @@ export const authOptions: NextAuthOptions = {
           });
         } else {
           // New user — check OtpCode table
-          const rows = await prisma.$queryRawUnsafe<{ code: string; name: string; expires: Date }[]>(
-            `SELECT code, name, expires FROM "OtpCode" WHERE email=$1 LIMIT 1`,
-            email,
-          );
-          const entry = rows[0];
+          const entry = await prisma.otpCode.findUnique({ where: { email } });
           if (!entry || entry.code !== code) return null;
-          if (new Date() > new Date(entry.expires)) {
-            await prisma.$executeRawUnsafe(`DELETE FROM "OtpCode" WHERE email=$1`, email);
+          if (new Date() > entry.expires) {
+            await prisma.otpCode.delete({ where: { email } }).catch(() => {});
             return null;
           }
           verifiedName = entry.name;
-          await prisma.$executeRawUnsafe(`DELETE FROM "OtpCode" WHERE email=$1`, email);
+          await prisma.otpCode.delete({ where: { email } }).catch(() => {});
         }
 
         const locale       = credentials.locale ?? 'en';

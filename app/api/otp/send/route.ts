@@ -63,12 +63,11 @@ export async function POST(req: Request) {
       });
     } else {
       // New user — store in OtpCode table (no User row yet)
-      await prisma.$executeRawUnsafe(
-        `INSERT INTO "OtpCode" (email, code, name, expires)
-         VALUES ($1, $2, $3, NOW() + INTERVAL '10 minutes')
-         ON CONFLICT (email) DO UPDATE SET code=$2, name=$3, expires=NOW() + INTERVAL '10 minutes'`,
-        email, code, name || '',
-      );
+      await prisma.otpCode.upsert({
+        where:  { email },
+        update: { code, name: name || '', expires: new Date(Date.now() + 10 * 60 * 1000) },
+        create: { email, code, name: name || '', expires: new Date(Date.now() + 10 * 60 * 1000) },
+      });
     }
   } catch (err) {
     console.error('[otp/send] DB error', err);
