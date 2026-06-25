@@ -94,6 +94,7 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
   const [rentalRate,    setRentalRate]    = useState('');
   const [gasCoords,     setGasCoords]     = useState<{ lat: number; lng: number } | null>(null);
   const [nearbyAttrib,  setNearbyAttrib]  = useState<{ name: string; distanceMi: number; grade: string } | null>(null);
+  const [nearbyStatus,  setNearbyStatus]  = useState<'idle' | 'fetching' | 'found' | 'unavailable'>('idle');
   // EPA/AI tank estimate for the currently-selected vehicle (used for validation warning)
   const [vehicleTankEst,   setVehicleTankEst]   = useState<number | undefined>(undefined);
   const [vehicleBodyClass, setVehicleBodyClass] = useState<string | undefined>(undefined);
@@ -141,6 +142,7 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
         liveRecalcRef.current({ pricePerGallon: detail.price });
         if (detail.name) {
           setNearbyAttrib({ name: detail.name, distanceMi: detail.distanceMi ?? 0, grade: detail.grade ?? 'Regular' });
+          setNearbyStatus('found');
         }
       }
     }
@@ -153,32 +155,37 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
   useEffect(() => {
     if (!isNative || !isPro) return;
     if (form.pricePerGallon) return; // don't overwrite user-entered value
-    try {
-      if (localStorage.getItem('gc_loc_asked') !== '1') return;
-    } catch { return; }
+    const locAsked = (() => { try { return localStorage.getItem('gc_loc_asked') === '1'; } catch { return false; } })();
 
+    if (!locAsked) {
+      // Location never asked — show prompt to go to Find Gas
+      setNearbyStatus('unavailable');
+      return;
+    }
+
+    setNearbyStatus('fetching');
     navigator.geolocation?.getCurrentPosition(
       async (pos) => {
         try {
           const lat = Math.round(pos.coords.latitude  * 100) / 100;
           const lng = Math.round(pos.coords.longitude * 100) / 100;
           const res  = await fetch(`/api/nearby-gas?lat=${lat}&lng=${lng}`);
-          if (!res.ok) return;
+          if (!res.ok) { setNearbyStatus('unavailable'); return; }
           const data = await res.json() as { stations?: import('@/lib/nearbyGas').NearbyStation[] };
           const station = data.stations?.find((s) => s.prices.length > 0);
-          if (!station) return;
+          if (!station) { setNearbyStatus('unavailable'); return; }
           const regular = station.prices.find((p) => p.type === 'REGULAR') ?? station.prices[0];
-          if (!regular) return;
-          // Only fill if the user still hasn't typed anything
+          if (!regular) { setNearbyStatus('unavailable'); return; }
           setForm((prev) => {
             if (prev.pricePerGallon) return prev;
             return { ...prev, pricePerGallon: regular.price.toFixed(2) };
           });
           setNearbyAttrib({ name: station.name, distanceMi: station.distanceMi, grade: regular.label });
+          setNearbyStatus('found');
           setGasCoords({ lat: station.lat, lng: station.lng });
-        } catch { /* silent — never break the calculator */ }
+        } catch { setNearbyStatus('unavailable'); }
       },
-      () => { /* location denied or unavailable — silent */ },
+      () => setNearbyStatus('unavailable'),
       { timeout: 6000, maximumAge: 300_000, enableHighAccuracy: false },
     );
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -690,26 +697,42 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
             placeholder={t.calc.placeholderPrice}
             value={form.pricePerGallon}
             min="0.01" step="0.01"
-            onChange={(e) => { setNearbyAttrib(null); patch({ pricePerGallon: e.target.value }); }}
+            onChange={(e) => { setNearbyAttrib(null); setNearbyStatus('unavailable'); patch({ pricePerGallon: e.target.value }); }}
             onBlur={(e)  => liveRecalc({ pricePerGallon: e.target.value })}
             aria-label={t.calc.ariaGasPrice}
           />
         </div>
         {errors.pricePerGallon && <FieldError msg={errors.pricePerGallon} />}
-        {/* Nearby station attribution — shown when price was auto-filled or selected from Find Gas */}
-        {nearbyAttrib && form.pricePerGallon && isNative && (
-          <p className="mt-1.5 text-[11px] text-slate-400 flex items-center gap-1">
-            <span>📍</span>
-            <span>{nearbyAttrib.name} · {nearbyAttrib.distanceMi} mi · {nearbyAttrib.grade}</span>
-            <button
-              onClick={() => window.dispatchEvent(new CustomEvent('gc:switch-tab', { detail: { tab: 'findgas' } }))}
-              className="text-teal-600 font-bold ml-1"
-            >
-              Change →
-            </button>
-          </p>
-        )}
-        {!isNative && (
+        {isNative ? (
+          <div className="mt-1.5 min-h-[20px]">
+            {nearbyStatus === 'fetching' && (
+              <p className="text-[11px] text-slate-400 flex items-center gap-1.5">
+                <span className="w-3 h-3 border-2 border-slate-300 border-t-teal-500 rounded-full animate-spin inline-block" />
+                Finding nearby gas price…
+              </p>
+            )}
+            {nearbyStatus === 'found' && nearbyAttrib && (
+              <p className="text-[11px] text-slate-400 flex items-center gap-1 flex-wrap">
+                <span>📍</span>
+                <span>{nearbyAttrib.name} · {nearbyAttrib.distanceMi} mi · {nearbyAttrib.grade}</span>
+                <button
+                  onClick={() => window.dispatchEvent(new CustomEvent('gc:switch-tab', { detail: { tab: 'findgas' } }))}
+                  className="text-teal-600 font-bold"
+                >
+                  Change →
+                </button>
+              </p>
+            )}
+            {(nearbyStatus === 'unavailable' || nearbyStatus === 'idle') && (
+              <button
+                onClick={() => window.dispatchEvent(new CustomEvent('gc:switch-tab', { detail: { tab: 'findgas' } }))}
+                className="text-[11px] text-teal-600 font-bold flex items-center gap-1"
+              >
+                <span>📍</span> Find nearby gas price →
+              </button>
+            )}
+          </div>
+        ) : (
           <GasPriceLookup
             autoFill
             currentValue={form.pricePerGallon}
