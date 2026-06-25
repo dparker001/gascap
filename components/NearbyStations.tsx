@@ -239,9 +239,9 @@ export default function NearbyStations({ onApply }: Props) {
     setStatus('fetching');
     setCoords({ lat, lng });
     try {
-      const res  = await fetch(`/gas/nearby?lat=${lat}&lng=${lng}`, {
-        signal: AbortSignal.timeout(15000),
-      });
+      console.log('[NearbyStations] fetching /gas/nearby', lat, lng);
+      const url = `/gas/nearby?lat=${lat}&lng=${lng}&_=${Date.now()}`;
+      const res  = await fetch(url, { signal: AbortSignal.timeout(15000) });
       const text = await res.text();
       console.log('[NearbyStations] response:', res.status, text.slice(0, 300));
       let data: { stations?: NearbyStation[]; proRequired?: boolean; error?: string; disabled?: boolean };
