@@ -13,7 +13,6 @@ import { hasEmailBeenSent }  from './emailLog';
 import { checkRateLimit } from './rateLimit';
 import { prisma }           from './prisma';
 import { findByReferralCode, setReferredBy } from './users';
-import { newUserOtps }     from './otpNewUsers';
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -64,12 +63,19 @@ export const authOptions: NextAuthOptions = {
             data:  { otpCode: null, otpCodeExpires: null, otpCodeName: null, emailVerified: true },
           });
         } else {
-          // New user — check in-memory store
-          const entry = newUserOtps.get(email);
+          // New user — check OtpCode table
+          const rows = await prisma.$queryRawUnsafe<{ code: string; name: string; expires: Date }[]>(
+            `SELECT code, name, expires FROM "OtpCode" WHERE email=$1 LIMIT 1`,
+            email,
+          );
+          const entry = rows[0];
           if (!entry || entry.code !== code) return null;
-          if (Date.now() > entry.expires) { newUserOtps.delete(email); return null; }
+          if (new Date() > new Date(entry.expires)) {
+            await prisma.$executeRawUnsafe(`DELETE FROM "OtpCode" WHERE email=$1`, email);
+            return null;
+          }
           verifiedName = entry.name;
-          newUserOtps.delete(email);
+          await prisma.$executeRawUnsafe(`DELETE FROM "OtpCode" WHERE email=$1`, email);
         }
 
         const locale       = credentials.locale ?? 'en';

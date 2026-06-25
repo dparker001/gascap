@@ -11,8 +11,6 @@ import { NextResponse } from 'next/server';
 import { prisma }       from '@/lib/prisma';
 import { sendMail }     from '@/lib/email';
 
-import { newUserOtps } from '@/lib/otpNewUsers';
-
 // ── Rate limiting (in-memory, abuse prevention only) ────────────────────────
 const rates = new Map<string, { count: number; windowEnd: number }>();
 function checkRate(email: string): boolean {
@@ -64,8 +62,13 @@ export async function POST(req: Request) {
         data:  { otpCode: code, otpCodeExpires: expires, otpCodeName: name || null },
       });
     } else {
-      // Store in memory for new users (no user row yet to write to)
-      newUserOtps.set(email, { code, name: name || '', expires: Date.now() + 10 * 60 * 1000 });
+      // New user — store in OtpCode table (no User row yet)
+      await prisma.$executeRawUnsafe(
+        `INSERT INTO "OtpCode" (email, code, name, expires)
+         VALUES ($1, $2, $3, NOW() + INTERVAL '10 minutes')
+         ON CONFLICT (email) DO UPDATE SET code=$2, name=$3, expires=NOW() + INTERVAL '10 minutes'`,
+        email, code, name || '',
+      );
     }
   } catch (err) {
     console.error('[otp/send] DB error', err);
