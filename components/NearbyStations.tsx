@@ -253,8 +253,9 @@ export default function NearbyStations({ onApply }: Props) {
         return;
       }
       if (data.proRequired) {
-        console.log('[NearbyStations] proRequired — plan may not be loaded yet, reason:', (data as { reason?: string }).reason);
-        setStatus('idle');
+        const reason = (data as { reason?: string }).reason ?? 'unknown';
+        setStatus('error');
+        setErrMsg(`Pro required (${reason}) — try signing out and back in.`);
         return;
       }
       if (data.disabled) { setStatus('disabled'); return; }
@@ -263,8 +264,9 @@ export default function NearbyStations({ onApply }: Props) {
       setStatus('done');
     } catch (err) {
       console.error('[NearbyStations] fetch error:', err);
+      const msg = err instanceof Error ? err.message : String(err);
       setStatus('error');
-      setErrMsg('Network error — please try again.');
+      setErrMsg(`Network error: ${msg}`);
     }
   }, []);
 
