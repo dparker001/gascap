@@ -47,11 +47,8 @@ export const authOptions: NextAuthOptions = {
           [email],
         );
         const entry = rows[0];
-        console.log('[otp/verify] email=%s rowFound=%s dbCode=%s inputCode=%s',
-          email, !!entry, entry?.code ?? 'none', code);
         if (!entry || entry.code !== code) return null;
         if (new Date() > new Date(entry.expires)) {
-          console.log('[otp/verify] expired for', email);
           await pgPool.query(`DELETE FROM "OtpCode" WHERE email=$1`, [email]);
           return null;
         }
