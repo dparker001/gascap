@@ -16,6 +16,7 @@ const BYPASS = [
   '/amoe',
   '/sweepstakes-rules',
   '/api/',
+  '/gas/',
   '/_next/',
   '/favicon',
   '/icon',
