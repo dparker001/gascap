@@ -155,10 +155,6 @@ export async function fetchNearbyStations(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const rawPrices: any[] = p.fuelOptions?.fuelPrices ?? [];
 
-      // Temporary: log raw price objects so we can verify Google's Money encoding
-      if (rawPrices.length > 0) {
-        console.log(`[nearbyGas] raw fuelPrices for "${name}":`, JSON.stringify(rawPrices.slice(0, 2)));
-      }
 
       if (hasFuelOptions && rawPrices.length === 0) {
         console.log(`[nearbyGas] "${name}" has fuelOptions but fuelPrices is empty — station may not report prices.`);
