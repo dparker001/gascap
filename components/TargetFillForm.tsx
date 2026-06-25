@@ -169,7 +169,7 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
         try {
           const lat = Math.round(pos.coords.latitude  * 100) / 100;
           const lng = Math.round(pos.coords.longitude * 100) / 100;
-          const res  = await fetch(`/api/nearby-gas?lat=${lat}&lng=${lng}`);
+          const res  = await fetch(`/gas/nearby?lat=${lat}&lng=${lng}`);
           if (!res.ok) { setNearbyStatus('unavailable'); return; }
           const data = await res.json() as { stations?: import('@/lib/nearbyGas').NearbyStation[] };
           const station = data.stations?.find((s) => s.prices.length > 0);

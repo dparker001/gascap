@@ -239,10 +239,8 @@ export default function NearbyStations({ onApply }: Props) {
     setStatus('fetching');
     setCoords({ lat, lng });
     try {
-      const res  = await fetch(`/api/nearby-gas?lat=${lat}&lng=${lng}`, {
+      const res  = await fetch(`/gas/nearby?lat=${lat}&lng=${lng}`, {
         signal: AbortSignal.timeout(15000),
-        cache: 'no-store',
-        headers: { 'Cache-Control': 'no-cache' },
       });
       const text = await res.text();
       console.log('[NearbyStations] response:', res.status, text.slice(0, 300));
