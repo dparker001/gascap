@@ -36,6 +36,7 @@ export const authOptions: NextAuthOptions = {
         referralCode: { label: 'Referral', type: 'text'  },
       },
       async authorize(credentials) {
+        try {
         if (!credentials?.email || !credentials?.code) return null;
         const email = credentials.email.toLowerCase().trim();
         const code  = credentials.code.trim();
@@ -108,6 +109,10 @@ export const authOptions: NextAuthOptions = {
         }
 
         return { id: user.id, email, name: user.name, plan: user.plan, emailVerified: true };
+        } catch (err) {
+          console.error('[otp/verify] authorize threw:', err);
+          return null;
+        }
       },
     }),
 
