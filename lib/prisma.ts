@@ -16,20 +16,15 @@ const globalForPrisma = globalThis as unknown as {
   pgPool?: Pool;
 };
 
+export const pgPool = globalForPrisma.pgPool ?? new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined,
+});
+
+if (process.env.NODE_ENV !== 'production') globalForPrisma.pgPool = pgPool;
+
 function createPrismaClient(): PrismaClient {
-  const pool = globalForPrisma.pgPool ?? new Pool({
-    connectionString: process.env.DATABASE_URL,
-    // Railway PostgreSQL requires SSL in production
-    ssl: process.env.NODE_ENV === 'production'
-      ? { rejectUnauthorized: false }
-      : undefined,
-  });
-
-  if (process.env.NODE_ENV !== 'production') {
-    globalForPrisma.pgPool = pool;
-  }
-
-  const adapter = new PrismaPg(pool);
+  const adapter = new PrismaPg(pgPool);
   return new PrismaClient({
     adapter,
     log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],

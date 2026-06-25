@@ -11,6 +11,7 @@ import { sendMail }         from './email';
 import { sendCampaignEmail } from './emailCampaign';
 import { hasEmailBeenSent }  from './emailLog';
 import { checkRateLimit } from './rateLimit';
+import { pgPool }        from './prisma';
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -22,6 +23,89 @@ export const authOptions: NextAuthOptions = {
     GoogleProvider({
       clientId:     process.env.GOOGLE_CLIENT_ID     ?? '',
       clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? '',
+    }),
+
+    // ── Passwordless OTP ───────────────────────────────────────────────────
+    CredentialsProvider({
+      id:   'credentials-otp',
+      name: 'Email OTP',
+      credentials: {
+        email:        { label: 'Email',    type: 'email' },
+        code:         { label: 'Code',     type: 'text'  },
+        locale:       { label: 'Locale',   type: 'text'  },
+        referralCode: { label: 'Referral', type: 'text'  },
+      },
+      async authorize(credentials) {
+        if (!credentials?.email || !credentials?.code) return null;
+        const email = credentials.email.toLowerCase().trim();
+        const code  = credentials.code.trim();
+
+        // Read + consume OTP from DB via raw pg (Prisma adapter had silent failures)
+        const { rows } = await pgPool.query<{ code: string; name: string; expires: Date }>(
+          `SELECT code, name, expires FROM "OtpCode" WHERE email=$1 LIMIT 1`,
+          [email],
+        );
+        const entry = rows[0];
+        if (!entry || entry.code !== code) return null;
+        if (new Date() > new Date(entry.expires)) {
+          await pgPool.query(`DELETE FROM "OtpCode" WHERE email=$1`, [email]);
+          return null;
+        }
+        await pgPool.query(`DELETE FROM "OtpCode" WHERE email=$1`, [email]);
+
+        const verifiedName = entry.name;
+        const locale       = credentials.locale ?? 'en';
+        const referralCode = credentials.referralCode ?? '';
+
+        // Find or create user
+        let user = await findByEmail(email);
+        const isNew = !user;
+
+        if (!user) {
+          const { rows: created } = await pgPool.query(
+            `INSERT INTO "User" (id, email, name, "passwordHash", plan, "createdAt", "emailVerified", locale)
+             VALUES ($1,$2,$3,NULL,'free',$4,true,$5) RETURNING id, name, plan`,
+            [crypto.randomUUID(), email, verifiedName || nameFromEmail(email),
+             new Date().toISOString(), locale === 'es' ? 'es' : 'en'],
+          );
+          user = await findByEmail(email);
+          if (!user) return null;
+        } else {
+          await pgPool.query(`UPDATE "User" SET "emailVerified"=true WHERE email=$1`, [email]);
+        }
+
+        if (isNew) {
+          ;(async () => {
+            try {
+              await grantNewSignupProTrial(user!.id, 30);
+              await enrollEmailCampaign(user!.id);
+              if (referralCode) {
+                const { findByReferralCode, setReferredBy } = await import('./users');
+                const referrer = await findByReferralCode(referralCode).catch(() => null);
+                if (referrer) await setReferredBy(user!.id, referralCode.toUpperCase()).catch(() => {});
+              }
+              if (!(await hasEmailBeenSent(user!.id, 'trial-d1'))) {
+                await sendCampaignEmail(1, { id: user!.id, name: user!.name, email });
+              }
+              sendMail({
+                to: 'info@gascap.app',
+                subject: `New GasCap signup (OTP): ${user!.name}`,
+                html: `<p><strong>${user!.name}</strong> (${email}) signed up via OTP.</p>`,
+                text: `New OTP signup: ${user!.name} <${email}>`,
+              }).catch(() => {});
+              upsertGhlContact({
+                name: user!.name, email, plan: 'pro', locale: locale === 'es' ? 'es' : 'en',
+                source: 'GasCap Signup',
+                extraTags: ['gascap-new-signup','gascap-trial-30day','gascap-email-verified','gascap-passwordless'],
+              }).catch(() => {});
+            } catch (e) { console.error('[otp] onboarding error', e); }
+          })();
+        } else {
+          await recordLogin(user.id);
+        }
+
+        return { id: user.id, email, name: user.name, plan: user.plan, emailVerified: true };
+      },
     }),
 
     CredentialsProvider({

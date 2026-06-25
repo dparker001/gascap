@@ -8,7 +8,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { prisma }       from '@/lib/prisma';
+import { pgPool }       from '@/lib/prisma';
 import { sendMail }     from '@/lib/email';
 
 // ── Rate limiting (in-memory, abuse prevention only) ────────────────────────
@@ -52,13 +52,14 @@ export async function POST(req: Request) {
   const code    = generateCode();
   const expires = new Date(Date.now() + 10 * 60 * 1000).toISOString();
 
-  // Store code in OtpCode table for all users (new and existing)
+  // Store code in OtpCode table via raw pg (Prisma adapter had silent write failures)
   try {
-    await prisma.otpCode.upsert({
-      where:  { email },
-      update: { code, name: name || '', expires: new Date(Date.now() + 10 * 60 * 1000) },
-      create: { email, code, name: name || '', expires: new Date(Date.now() + 10 * 60 * 1000) },
-    });
+    await pgPool.query(
+      `INSERT INTO "OtpCode" (email, code, name, expires)
+       VALUES ($1, $2, $3, NOW() + INTERVAL '10 minutes')
+       ON CONFLICT (email) DO UPDATE SET code=$2, name=$3, expires=NOW() + INTERVAL '10 minutes'`,
+      [email, code, name || ''],
+    );
   } catch (err) {
     console.error('[otp/send] DB error', err);
     return NextResponse.json({ error: 'Failed to send code. Please try again.' }, { status: 500 });
