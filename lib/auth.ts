@@ -43,36 +43,21 @@ export const authOptions: NextAuthOptions = {
         const email = credentials.email.toLowerCase().trim();
         const code  = credentials.code.trim();
 
-        // Verify code — DB for existing users, memory for new users
+        // Verify code from OtpCode table (used for all users)
+        const entry = await prisma.otpCode.findUnique({ where: { email } });
+        if (!entry || entry.code !== code) return null;
+        if (new Date() > entry.expires) {
+          await prisma.otpCode.delete({ where: { email } }).catch(() => {});
+          return null;
+        }
+        const verifiedName = entry.name;
+        await prisma.otpCode.delete({ where: { email } }).catch(() => {});
+
+        // Look up existing user
         const row = await prisma.user.findUnique({
           where:  { email },
-          select: { id: true, otpCode: true, otpCodeExpires: true, otpCodeName: true,
-                    name: true, plan: true, emailVerified: true, isProTrial: true,
-                    trialExpiresAt: true, emailCampaignStep: true },
+          select: { id: true, name: true, plan: true, emailCampaignStep: true },
         });
-
-        let verifiedName: string | null = null;
-
-        if (row) {
-          // Existing user — check DB
-          if (row.otpCode !== code) return null;
-          if (!row.otpCodeExpires || new Date(row.otpCodeExpires) < new Date()) return null;
-          verifiedName = row.otpCodeName ?? row.name;
-          await prisma.user.update({
-            where: { email },
-            data:  { otpCode: null, otpCodeExpires: null, otpCodeName: null, emailVerified: true },
-          });
-        } else {
-          // New user — check OtpCode table
-          const entry = await prisma.otpCode.findUnique({ where: { email } });
-          if (!entry || entry.code !== code) return null;
-          if (new Date() > entry.expires) {
-            await prisma.otpCode.delete({ where: { email } }).catch(() => {});
-            return null;
-          }
-          verifiedName = entry.name;
-          await prisma.otpCode.delete({ where: { email } }).catch(() => {});
-        }
 
         const locale       = credentials.locale ?? 'en';
         const referralCode = credentials.referralCode ?? '';

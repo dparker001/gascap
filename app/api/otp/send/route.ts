@@ -52,23 +52,13 @@ export async function POST(req: Request) {
   const code    = generateCode();
   const expires = new Date(Date.now() + 10 * 60 * 1000).toISOString();
 
-  // Existing users: store code in DB (survives cross-instance).
-  // New users: store in memory — they send+verify within seconds on the same instance.
+  // Store code in OtpCode table for all users (new and existing)
   try {
-    const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } });
-    if (existing) {
-      await prisma.user.update({
-        where: { email },
-        data:  { otpCode: code, otpCodeExpires: expires, otpCodeName: name || null },
-      });
-    } else {
-      // New user — store in OtpCode table (no User row yet)
-      await prisma.otpCode.upsert({
-        where:  { email },
-        update: { code, name: name || '', expires: new Date(Date.now() + 10 * 60 * 1000) },
-        create: { email, code, name: name || '', expires: new Date(Date.now() + 10 * 60 * 1000) },
-      });
-    }
+    await prisma.otpCode.upsert({
+      where:  { email },
+      update: { code, name: name || '', expires: new Date(Date.now() + 10 * 60 * 1000) },
+      create: { email, code, name: name || '', expires: new Date(Date.now() + 10 * 60 * 1000) },
+    });
   } catch (err) {
     console.error('[otp/send] DB error', err);
     return NextResponse.json({ error: 'Failed to send code. Please try again.' }, { status: 500 });
