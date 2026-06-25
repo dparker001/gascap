@@ -15,7 +15,7 @@ import type { NearbyStation, FuelPrice } from '@/lib/nearbyGas';
 
 interface Props {
   /** Called when the user selects a price to use in the calculator */
-  onApply?: (price: string, lat: number, lng: number) => void;
+  onApply?: (price: string, lat: number, lng: number, stationName: string, distanceMi: number, grade: string) => void;
 }
 
 type Status = 'idle' | 'locating' | 'fetching' | 'done' | 'error' | 'no_key' | 'disabled';
@@ -104,7 +104,7 @@ function StationCard({
   onApply,
 }: {
   station:  NearbyStation;
-  onApply?: (price: string, lat: number, lng: number) => void;
+  onApply?: (price: string, lat: number, lng: number, stationName: string, distanceMi: number, grade: string) => void;
 }) {
   const hasPrices = station.prices.length > 0;
   // Use regular if available, otherwise the first price in sorted order
@@ -160,7 +160,7 @@ function StationCard({
             return (
               <button
                 key={type}
-                onClick={() => onApply?.(fp.price.toFixed(2), station.lat, station.lng)}
+                onClick={() => onApply?.(fp.price.toFixed(2), station.lat, station.lng, station.name, station.distanceMi, fp.label)}
                 className={`rounded-xl px-2 py-1.5 text-center transition-colors active:opacity-80
                   ${onApply
                     ? isSelected

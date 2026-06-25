@@ -37,9 +37,9 @@ import ReviewNudge       from '@/components/ReviewNudge';
 import LanguageToggle    from '@/components/LanguageToggle';
 import { getPlanBadge, type PlanUser } from '@/lib/planBadge';
 
-export type TabId = 'calculator' | 'history' | 'tools' | 'findgas' | 'rewards' | 'settings';
+export type TabId = 'calculator' | 'findgas' | 'history' | 'tools' | 'rewards' | 'settings';
 
-const TAB_IDS: TabId[] = ['calculator', 'history', 'tools', 'findgas', 'rewards', 'settings'];
+const TAB_IDS: TabId[] = ['calculator', 'findgas', 'history', 'tools', 'rewards', 'settings'];
 
 const STORAGE_KEY = 'gc_active_tab';
 const isTabId = (v: string | null): v is TabId => !!v && (TAB_IDS as string[]).includes(v ?? '');
@@ -52,9 +52,9 @@ export default function NativeAppShell() {
   // the language toggle (EN/ES).
   const TABS: TabMeta[] = [
     { id: 'calculator', label: t.nav.calculator },
+    { id: 'findgas',    label: t.nav.findGas    },
     { id: 'history',    label: t.nav.history    },
     { id: 'tools',      label: t.nav.tools      },
-    { id: 'findgas',    label: t.nav.findGas    },
     { id: 'rewards',    label: t.nav.rewards    },
     { id: 'settings',   label: t.nav.settings   },
   ];
@@ -85,6 +85,17 @@ export default function NativeAppShell() {
   useEffect(() => {
     try { window.localStorage.setItem(STORAGE_KEY, active); } catch { /* ignore */ }
   }, [active]);
+
+  // Allow any component to switch tabs via custom event
+  useEffect(() => {
+    function handler(e: Event) {
+      const tab = (e as CustomEvent<{ tab: TabId }>).detail?.tab;
+      if (tab) changeTab(tab);
+    }
+    window.addEventListener('gc:switch-tab', handler);
+    return () => window.removeEventListener('gc:switch-tab', handler);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function changeTab(id: TabId) {
     if (id === active) return;
@@ -272,8 +283,8 @@ export default function NativeAppShell() {
 
         {visited.has('findgas') && (
           <div className={show('findgas')}>
-            <NearbyStations onApply={(price) => {
-              window.dispatchEvent(new CustomEvent('gc:inject-gas-price', { detail: { price } }));
+            <NearbyStations onApply={(price, lat, lng, stationName, distanceMi, grade) => {
+              window.dispatchEvent(new CustomEvent('gc:inject-gas-price', { detail: { price, name: stationName, distanceMi, grade } }));
               setActive('calculator');
               setVisited((prev) => { const s = new Set(prev); s.add('calculator'); return s; });
             }} />
