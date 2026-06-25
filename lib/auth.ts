@@ -68,7 +68,7 @@ export const authOptions: NextAuthOptions = {
         if (!user) {
           const { rows: created } = await pgPool.query(
             `INSERT INTO "User" (id, email, name, "passwordHash", plan, "createdAt", "emailVerified", locale)
-             VALUES ($1,$2,$3,NULL,'free',$4,true,$5) RETURNING id, name, plan`,
+             VALUES ($1,$2,$3,'otp-no-password','free',$4,true,$5) RETURNING id, name, plan`,
             [crypto.randomUUID(), email, verifiedName || nameFromEmail(email),
              new Date().toISOString(), locale === 'es' ? 'es' : 'en'],
           );
