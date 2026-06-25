@@ -5,7 +5,6 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { useTranslation } from '@/contexts/LanguageContext';
 import TankGauge from './TankGauge';
 import FillupLogger from './FillupLogger';
-import WazeDeepLinkButton          from './WazeDeepLinkButton';
 import GoogleMapsHandoffButton      from './GoogleMapsHandoffButton';
 import type { TargetFillResult, BudgetResult } from '@/lib/calculations';
 
@@ -249,11 +248,6 @@ export function TargetResultCard({ result, vehicleName, vehicleId, vehicleOdomet
             targetLevel:    targetPercent,
           }}
         />
-        <WazeDeepLinkButton
-          latitude={latitude}
-          longitude={longitude}
-          label={isRental ? t.resultCard.findFuelStopBeforeReturn : t.resultCard.findGasStation}
-        />
       </div>
 
       {/* ── Visual tank gauge ── */}
@@ -387,11 +381,6 @@ export function BudgetResultCard({ result, pricePerGallon, vehicleName, vehicleI
             estimatedCost: actualCost,
             gasPrice:      resolvedPrice,
           }}
-        />
-        <WazeDeepLinkButton
-          latitude={latitude}
-          longitude={longitude}
-          label={t.resultCard.findGasStation}
         />
       </div>
 

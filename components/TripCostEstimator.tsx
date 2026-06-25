@@ -7,7 +7,6 @@ import Link                                  from 'next/link';
 import FuelGauge                             from './FuelGauge';
 import GasPriceLookup                        from './GasPriceLookup';
 import GoogleMapsHandoffButton               from './GoogleMapsHandoffButton';
-import WazeDeepLinkButton                    from './WazeDeepLinkButton';
 import { canAccessFeature, getPlanTier, UPGRADE_COPY } from '@/lib/featureAccess';
 import { trackLockedFeatureShown }           from '@/lib/gtag';
 import { metersToMiles }                     from '@/lib/tripFuelPlanner';
@@ -1564,11 +1563,6 @@ function TripResultCard({
               estimatedCost: fuelCost,
               tripDistance:  totalMiles,
             }}
-          />
-          <WazeDeepLinkButton
-            latitude={latitude}
-            longitude={longitude}
-            label={t.tripCostEstimator.findFuelAlongWay}
           />
         </div>
       )}

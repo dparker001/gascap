@@ -439,6 +439,18 @@ export default function NearbyStations({ onApply }: Props) {
           <StationCard key={s.placeId} station={s} onApply={onApply} />
         ))
       )}
+
+      {/* Fallback for stations not in Google Places (e.g. 7-Eleven) */}
+      {coords && (
+        <a
+          href={`https://www.google.com/maps/search/gas+stations/@${coords.lat},${coords.lng},14z`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block text-center text-xs text-slate-400 py-3 hover:text-teal-600 transition-colors"
+        >
+          Don't see your station? Search in Google Maps →
+        </a>
+      )}
     </div>
   );
 }
