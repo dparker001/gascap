@@ -11,6 +11,8 @@ import { NextResponse } from 'next/server';
 import { prisma }       from '@/lib/prisma';
 import { sendMail }     from '@/lib/email';
 
+import { newUserOtps } from '@/lib/otpNewUsers';
+
 // ── Rate limiting (in-memory, abuse prevention only) ────────────────────────
 const rates = new Map<string, { count: number; windowEnd: number }>();
 function checkRate(email: string): boolean {
@@ -52,7 +54,8 @@ export async function POST(req: Request) {
   const code    = generateCode();
   const expires = new Date(Date.now() + 10 * 60 * 1000).toISOString();
 
-  // Store code in DB so any Railway instance can verify it
+  // Existing users: store code in DB (survives cross-instance).
+  // New users: store in memory — they send+verify within seconds on the same instance.
   try {
     const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } });
     if (existing) {
@@ -61,21 +64,8 @@ export async function POST(req: Request) {
         data:  { otpCode: code, otpCodeExpires: expires, otpCodeName: name || null },
       });
     } else {
-      await prisma.user.upsert({
-        where:  { email },
-        update: { otpCode: code, otpCodeExpires: expires, otpCodeName: name || null },
-        create: {
-          id:             crypto.randomUUID(),
-          email,
-          name:           name || email.split('@')[0],
-          passwordHash:   null,
-          plan:           'free',
-          createdAt:      new Date().toISOString(),
-          otpCode:        code,
-          otpCodeExpires: expires,
-          otpCodeName:    name || null,
-        },
-      });
+      // Store in memory for new users (no user row yet to write to)
+      newUserOtps.set(email, { code, name: name || '', expires: Date.now() + 10 * 60 * 1000 });
     }
   } catch (err) {
     console.error('[otp/send] DB error', err);

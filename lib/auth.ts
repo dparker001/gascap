@@ -13,6 +13,7 @@ import { hasEmailBeenSent }  from './emailLog';
 import { checkRateLimit } from './rateLimit';
 import { prisma }           from './prisma';
 import { findByReferralCode, setReferredBy } from './users';
+import { newUserOtps }     from './otpNewUsers';
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -43,49 +44,73 @@ export const authOptions: NextAuthOptions = {
         const email = credentials.email.toLowerCase().trim();
         const code  = credentials.code.trim();
 
-        // Verify code from DB
+        // Verify code — DB for existing users, memory for new users
         const row = await prisma.user.findUnique({
           where:  { email },
           select: { id: true, otpCode: true, otpCodeExpires: true, otpCodeName: true,
                     name: true, plan: true, emailVerified: true, isProTrial: true,
                     trialExpiresAt: true, emailCampaignStep: true },
         });
-        if (!row || row.otpCode !== code) return null;
-        if (!row.otpCodeExpires || new Date(row.otpCodeExpires) < new Date()) return null;
 
-        // Clear code (one-time use)
-        await prisma.user.update({
-          where: { email },
-          data:  { otpCode: null, otpCodeExpires: null, otpCodeName: null, emailVerified: true },
-        });
+        let verifiedName: string | null = null;
 
-        const isNewUser = !row.emailVerified && !row.plan || row.plan === 'free' && !row.emailCampaignStep;
-        // More reliable new-user check: no campaign step means never onboarded
-        const needsOnboarding = !row.emailCampaignStep;
+        if (row) {
+          // Existing user — check DB
+          if (row.otpCode !== code) return null;
+          if (!row.otpCodeExpires || new Date(row.otpCodeExpires) < new Date()) return null;
+          verifiedName = row.otpCodeName ?? row.name;
+          await prisma.user.update({
+            where: { email },
+            data:  { otpCode: null, otpCodeExpires: null, otpCodeName: null, emailVerified: true },
+          });
+        } else {
+          // New user — check in-memory store
+          const entry = newUserOtps.get(email);
+          if (!entry || entry.code !== code) return null;
+          if (Date.now() > entry.expires) { newUserOtps.delete(email); return null; }
+          verifiedName = entry.name;
+          newUserOtps.delete(email);
+        }
+
+        const locale       = credentials.locale ?? 'en';
+        const referralCode = credentials.referralCode ?? '';
+        const displayName  = verifiedName?.trim() || nameFromEmail(email);
+        const needsOnboarding = !row; // new user if no DB row existed
+
+        let userId: string;
+
+        if (!row) {
+          // Create the user now that OTP is verified
+          const created = await prisma.user.create({
+            data: {
+              id:            crypto.randomUUID(),
+              email,
+              name:          displayName,
+              passwordHash:  null,
+              plan:          'free',
+              createdAt:     new Date().toISOString(),
+              emailVerified: true,
+              locale:        locale === 'es' ? 'es' : 'en',
+            },
+          });
+          userId = created.id;
+        } else {
+          userId = row.id;
+        }
 
         if (needsOnboarding) {
-          // Fire-and-forget onboarding
-          const locale       = credentials.locale ?? 'en';
-          const referralCode = credentials.referralCode ?? '';
-          const displayName  = row.otpCodeName?.trim() || row.name || nameFromEmail(email);
-
-          // Update name if we captured it at signup
-          if (row.otpCodeName?.trim()) {
-            await prisma.user.update({ where: { email }, data: { name: displayName } });
-          }
-
           ;(async () => {
             try {
-              await grantNewSignupProTrial(row.id, 30);
-              await enrollEmailCampaign(row.id);
+              await grantNewSignupProTrial(userId, 30);
+              await enrollEmailCampaign(userId);
 
               if (referralCode) {
                 const referrer = await findByReferralCode(referralCode).catch(() => null);
-                if (referrer) await setReferredBy(row.id, referralCode.toUpperCase()).catch(() => {});
+                if (referrer) await setReferredBy(userId, referralCode.toUpperCase()).catch(() => {});
               }
 
-              if (!(await hasEmailBeenSent(row.id, 'trial-d1'))) {
-                await sendCampaignEmail(1, { id: row.id, name: displayName, email });
+              if (!(await hasEmailBeenSent(userId, 'trial-d1'))) {
+                await sendCampaignEmail(1, { id: userId, name: displayName, email });
               }
 
               await sendMail({
@@ -108,21 +133,20 @@ export const authOptions: NextAuthOptions = {
             }
           })();
         } else {
-          await recordLogin(row.id);
+          await recordLogin(userId);
         }
 
-        const updated = await prisma.user.findUnique({
-          where:  { email },
+        const finalUser = await prisma.user.findUnique({
+          where:  { id: userId },
           select: { id: true, name: true, plan: true },
         });
 
         return {
-          id:            row.id,
+          id:            userId,
           email,
-          name:          updated?.name ?? row.name,
-          plan:          updated?.plan ?? row.plan,
+          name:          finalUser?.name ?? displayName,
+          plan:          finalUser?.plan ?? 'free',
           emailVerified: true,
-          isNewUser:     needsOnboarding,
         };
       },
     }),
