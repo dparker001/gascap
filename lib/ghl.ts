@@ -271,6 +271,16 @@ export async function sendGhlSms(email: string, message: string, mediaUrls?: str
  * Upsert a contact by email+phone, then send them an SMS.
  * Used for phone OTP verification where the contact may not exist in GHL yet.
  */
+/** Normalize to E.164 — GHL requires this for SMS delivery */
+function toE164(phone: string): string {
+  const digits = phone.replace(/\D/g, '');
+  if (phone.startsWith('+')) return `+${digits}`;
+  // Assume US (+1) if 10 digits, already 11 starting with 1 → prepend +
+  if (digits.length === 10) return `+1${digits}`;
+  if (digits.length === 11 && digits.startsWith('1')) return `+${digits}`;
+  return `+${digits}`; // best-effort for other formats
+}
+
 export async function sendGhlSmsToPhone(
   opts: { email: string; name: string; phone: string },
   message: string,
@@ -279,6 +289,7 @@ export async function sendGhlSmsToPhone(
     console.warn('[GHL SMS] Skipping — not configured.');
     return false;
   }
+  const e164Phone = toE164(opts.phone);
   try {
     const [firstName, ...rest] = opts.name.trim().split(' ');
     const upsertRes = await fetch(`${GHL_BASE}/contacts/upsert`, {
@@ -289,7 +300,7 @@ export async function sendGhlSmsToPhone(
         firstName,
         lastName:   rest.join(' ') || '',
         email:      opts.email,
-        phone:      opts.phone,
+        phone:      e164Phone,
         source:     'GasCap Phone Verify',
       }),
     });
