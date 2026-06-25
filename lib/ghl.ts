@@ -267,6 +267,56 @@ export async function sendGhlSms(email: string, message: string, mediaUrls?: str
   }
 }
 
+/**
+ * Upsert a contact by email+phone, then send them an SMS.
+ * Used for phone OTP verification where the contact may not exist in GHL yet.
+ */
+export async function sendGhlSmsToPhone(
+  opts: { email: string; name: string; phone: string },
+  message: string,
+): Promise<boolean> {
+  if (!isConfigured()) {
+    console.warn('[GHL SMS] Skipping — not configured.');
+    return false;
+  }
+  try {
+    const [firstName, ...rest] = opts.name.trim().split(' ');
+    const upsertRes = await fetch(`${GHL_BASE}/contacts/upsert`, {
+      method:  'POST',
+      headers: ghlHeaders(),
+      body:    JSON.stringify({
+        locationId: GHL_LOCATION_ID,
+        firstName,
+        lastName:   rest.join(' ') || '',
+        email:      opts.email,
+        phone:      opts.phone,
+        source:     'GasCap Phone Verify',
+      }),
+    });
+    if (!upsertRes.ok) {
+      console.error('[GHL SMS] upsert failed:', upsertRes.status, await upsertRes.text());
+      return false;
+    }
+    const { contact } = await upsertRes.json() as { contact?: { id?: string } };
+    const contactId = contact?.id;
+    if (!contactId) { console.warn('[GHL SMS] no contactId after upsert'); return false; }
+
+    const msgRes = await fetch(`${GHL_BASE}/conversations/messages`, {
+      method:  'POST',
+      headers: ghlHeaders(),
+      body:    JSON.stringify({ type: 'SMS', contactId, locationId: GHL_LOCATION_ID, message }),
+    });
+    if (!msgRes.ok) {
+      console.error('[GHL SMS] send failed:', msgRes.status, await msgRes.text());
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error('[GHL SMS] error:', err);
+    return false;
+  }
+}
+
 // ── Plan tag update ───────────────────────────────────────────────────────
 
 /**

@@ -90,6 +90,14 @@ export default function SettingsPage() {
   const [displayName,    setDisplayName]    = useState('');
   const [phone,          setPhone]          = useState('');
   const [smsOptIn,       setSmsOptIn]       = useState(false);
+  // Phone OTP verification
+  const [phoneVerifyStep,    setPhoneVerifyStep]    = useState<'idle' | 'otp'>('idle');
+  const [phoneOtp,           setPhoneOtp]           = useState('');
+  const [phoneOtpError,      setPhoneOtpError]      = useState('');
+  const [phoneOtpSending,    setPhoneOtpSending]    = useState(false);
+  const [phoneOtpVerifying,  setPhoneOtpVerifying]  = useState(false);
+  const [phoneVerified,      setPhoneVerified]      = useState(false);
+  const [savedPhone,         setSavedPhone]         = useState(''); // phone already in DB
   const [saved,          setSaved]          = useState(false);
   const [saving,         setSaving]         = useState(false);
   const [portalLoading,  setPortalLoading]  = useState(false);
@@ -155,8 +163,9 @@ export default function SettingsPage() {
       .then((r) => r.json())
       .then((d: { displayName?: string; phone?: string; smsOptIn?: boolean; avatarUrl?: string; preferredFillLevel?: number | null; monthlyFuelBudget?: number | null }) => {
         if (d.displayName)            setDisplayName(d.displayName);
-        if (d.phone)                  setPhone(d.phone);
+        if (d.phone)                  { setPhone(d.phone); setSavedPhone(d.phone); }
         if (d.smsOptIn !== undefined) setSmsOptIn(d.smsOptIn);
+        if (d.phone && d.smsOptIn)    setPhoneVerified(true);
         if (d.preferredFillLevel != null) {
           setPreferredFillLevel(d.preferredFillLevel);
           localStorage.setItem('gascap_fill_pref', String(d.preferredFillLevel));
@@ -432,8 +441,7 @@ export default function SettingsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           displayName,
-          phone,
-          smsOptIn,
+          // phone + smsOptIn are saved by the phone OTP verify flow, not here
           avatarUrl:          avatarUrl || null,
           preferredFillLevel: preferredFillLevel ?? null,
           monthlyFuelBudget:  monthlyFuelBudget ? parseFloat(monthlyFuelBudget) : null,
@@ -789,50 +797,120 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          {/* Phone (optional) */}
+          {/* Phone + SMS verification */}
           <div>
             <label className="block text-xs font-semibold text-slate-500 mb-1.5">
               {t.settings.phoneLabel} <span className="text-slate-300 font-normal">{t.settings.phoneOptional}</span>
             </label>
-            <input
-              type="tel"
-              className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800
-                         focus:outline-none focus:ring-2 focus:ring-amber-400"
-              value={phone}
-              onChange={(e) => { setPhone(e.target.value); if (!e.target.value.trim()) setSmsOptIn(false); }}
-              placeholder={t.settings.phonePlaceholder}
-              maxLength={20}
-            />
-          </div>
 
-          {/* SMS opt-in */}
-          <div className={`rounded-xl border p-3.5 transition-all ${smsOptIn ? 'border-teal-300 bg-teal-50' : 'border-slate-200 bg-slate-50'}`}>
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                className="mt-0.5 h-4 w-4 rounded border-slate-300 accent-teal-600 cursor-pointer flex-shrink-0"
-                checked={smsOptIn}
-                disabled={!phone.trim()}
-                onChange={(e) => setSmsOptIn(e.target.checked)}
-              />
-              <div>
-                <p className={`text-sm font-semibold ${smsOptIn ? 'text-teal-800' : 'text-slate-600'}`}>
-                  {t.settings.smsTitle}
-                </p>
-                <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
-                  {t.settings.smsBody}
-                  {!phone.trim() && (
-                    <span className="block mt-0.5 text-amber-600 font-medium">{t.settings.smsAddPhone}</span>
-                  )}
-                </p>
+            {phoneVerified && phone === savedPhone ? (
+              /* Already verified */
+              <div className="flex items-center gap-2 w-full border border-teal-300 bg-teal-50 rounded-xl px-3 py-2.5 text-sm">
+                <span className="text-teal-700 font-medium flex-1">{phone}</span>
+                <span className="text-teal-600 text-xs font-semibold">✓ Verified</span>
+                <button
+                  type="button"
+                  onClick={() => { setPhone(''); setSavedPhone(''); setSmsOptIn(false); setPhoneVerified(false); setPhoneVerifyStep('idle'); }}
+                  className="text-slate-400 hover:text-slate-600 text-xs ml-1"
+                >
+                  Change
+                </button>
               </div>
-            </label>
-            {smsOptIn && (
-              <p className="mt-2 text-[11px] text-teal-700 border-t border-teal-200 pt-2">
-                {t.settings.smsConsent}
-              </p>
+            ) : phoneVerifyStep === 'otp' ? (
+              /* OTP entry */
+              <div className="space-y-3">
+                <p className="text-xs text-slate-500">Code sent to <strong>{phone}</strong></p>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={6}
+                    className="flex-1 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-center font-black tracking-[0.4em] focus:outline-none focus:ring-2 focus:ring-amber-400"
+                    placeholder="000000"
+                    value={phoneOtp}
+                    onChange={(e) => { setPhoneOtp(e.target.value.replace(/\D/g, '').slice(0, 6)); setPhoneOtpError(''); }}
+                  />
+                  <button
+                    type="button"
+                    disabled={phoneOtp.length !== 6 || phoneOtpVerifying}
+                    onClick={async () => {
+                      setPhoneOtpVerifying(true);
+                      setPhoneOtpError('');
+                      try {
+                        const res  = await fetch('/api/otp/verify-phone', {
+                          method:  'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body:    JSON.stringify({ phone, code: phoneOtp }),
+                        });
+                        const data = await res.json() as { ok?: boolean; error?: string };
+                        if (!res.ok || !data.ok) { setPhoneOtpError(data.error ?? 'Invalid code.'); }
+                        else { setPhoneVerified(true); setSavedPhone(phone); setSmsOptIn(true); setPhoneVerifyStep('idle'); setPhoneOtp(''); }
+                      } catch { setPhoneOtpError('Network error. Please try again.'); }
+                      setPhoneOtpVerifying(false);
+                    }}
+                    className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-white font-bold text-sm disabled:opacity-50"
+                  >
+                    {phoneOtpVerifying ? '…' : 'Verify'}
+                  </button>
+                </div>
+                {phoneOtpError && <p className="text-xs text-red-500">{phoneOtpError}</p>}
+                <button type="button" onClick={() => { setPhoneVerifyStep('idle'); setPhoneOtp(''); setPhoneOtpError(''); }} className="text-xs text-slate-400 hover:text-slate-600">
+                  ← Back
+                </button>
+              </div>
+            ) : (
+              /* Phone input + send button */
+              <div className="space-y-2">
+                <div className="flex gap-2">
+                  <input
+                    type="tel"
+                    className="flex-1 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                    value={phone}
+                    onChange={(e) => { setPhone(e.target.value); setPhoneVerified(false); setPhoneOtpError(''); }}
+                    placeholder={t.settings.phonePlaceholder}
+                    maxLength={20}
+                  />
+                  {phone.trim() && phone !== savedPhone && (
+                    <button
+                      type="button"
+                      disabled={phoneOtpSending}
+                      onClick={async () => {
+                        setPhoneOtpSending(true);
+                        setPhoneOtpError('');
+                        try {
+                          const res  = await fetch('/api/otp/send-phone', {
+                            method:  'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body:    JSON.stringify({ phone }),
+                          });
+                          const data = await res.json() as { ok?: boolean; error?: string };
+                          if (!res.ok || !data.ok) { setPhoneOtpError(data.error ?? 'Failed to send code.'); }
+                          else { setPhoneVerifyStep('otp'); }
+                        } catch { setPhoneOtpError('Network error. Please try again.'); }
+                        setPhoneOtpSending(false);
+                      }}
+                      className="px-3 py-2.5 rounded-xl bg-navy-700 hover:bg-navy-600 text-white font-semibold text-xs whitespace-nowrap disabled:opacity-50"
+                    >
+                      {phoneOtpSending ? 'Sending…' : 'Send Code'}
+                    </button>
+                  )}
+                </div>
+                {phoneOtpError && <p className="text-xs text-red-500">{phoneOtpError}</p>}
+                {phone.trim() && phone !== savedPhone && (
+                  <p className="text-[11px] text-slate-400">We'll text a code to verify your number and enable SMS alerts.</p>
+                )}
+              </div>
             )}
           </div>
+
+          {/* SMS opt-in status (read-only — set by phone verification) */}
+          {(phoneVerified || smsOptIn) && (
+            <div className="rounded-xl border border-teal-300 bg-teal-50 p-3.5">
+              <p className="text-sm font-semibold text-teal-800">{t.settings.smsTitle}</p>
+              <p className="text-[11px] text-teal-700 mt-0.5">{t.settings.smsConsent}</p>
+            </div>
+          )}
 
           <button
             onClick={handleSave}
