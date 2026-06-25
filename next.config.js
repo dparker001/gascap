@@ -1,9 +1,33 @@
+const defaultCache = require('next-pwa/cache');
+
+// Exclude dynamic/location-based API routes from SW cache — they must always
+// hit the network. The default next-pwa cache has a 10s networkTimeout that
+// silently falls back to cache when it expires; for these routes there is no
+// cached response, causing the client to hang forever.
+const runtimeCaching = defaultCache.map((entry) => {
+  if (
+    entry.options?.cacheName === 'apis' &&
+    typeof entry.urlPattern === 'function'
+  ) {
+    const origPattern = entry.urlPattern;
+    return {
+      ...entry,
+      urlPattern: (ctx) => {
+        const { pathname } = ctx.url ?? {};
+        if (pathname?.startsWith('/api/nearby-gas')) return false;
+        return origPattern(ctx);
+      },
+    };
+  }
+  return entry;
+});
+
 const withPWA = require('next-pwa')({
   dest:            'public',
   register:        true,
   skipWaiting:     true,
   disable:         process.env.NODE_ENV === 'development',
-  runtimeCaching:  require('next-pwa/cache'),
+  runtimeCaching,
   customWorkerDir: 'worker',
 });
 
