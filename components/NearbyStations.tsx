@@ -414,8 +414,8 @@ export default function NearbyStations({ onApply }: Props) {
   // ── Results ─────────────────────────────────────────────────────────────────
   return (
     <div className="px-4 pt-4 pb-6 max-w-lg mx-auto w-full space-y-3">
-      <p className="text-[11px] text-slate-400 text-center mb-2">
-        Tap a price to instantly fill the calculator
+      <p className="text-xs font-semibold text-teal-600 text-center bg-teal-50 rounded-xl py-2 px-3 mb-2">
+        Tap any price to instantly fill the calculator
       </p>
       <div className="flex items-center justify-between mb-1">
         <p className="text-xs text-slate-500 font-medium">
