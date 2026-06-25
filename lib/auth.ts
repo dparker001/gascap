@@ -6,12 +6,13 @@ import {
   createGoogleUser, nameFromEmail,
   grantNewSignupProTrial, enrollEmailCampaign,
 } from './users';
-import { consumeOtpSessionToken } from './otpSessions';
 import { upsertGhlContact } from './ghl';
 import { sendMail }         from './email';
 import { sendCampaignEmail } from './emailCampaign';
 import { hasEmailBeenSent }  from './emailLog';
 import { checkRateLimit } from './rateLimit';
+import { prisma }           from './prisma';
+import { findByReferralCode, setReferredBy } from './users';
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -26,28 +27,102 @@ export const authOptions: NextAuthOptions = {
     }),
 
     // ── Passwordless OTP sign-in ────────────────────────────────────────────
-    // The client calls signIn('credentials-otp', { email, sessionToken }) after
-    // /api/auth/otp/verify returns a short-lived one-time token.
+    // Client calls signIn('credentials-otp', { email, code, locale?, referralCode? })
+    // directly — no intermediate session token needed.
     CredentialsProvider({
       id:   'credentials-otp',
       name: 'Email OTP',
       credentials: {
         email:        { label: 'Email',        type: 'email' },
-        sessionToken: { label: 'Session Token', type: 'text'  },
+        code:         { label: 'Code',         type: 'text'  },
+        locale:       { label: 'Locale',       type: 'text'  },
+        referralCode: { label: 'Referral',     type: 'text'  },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.sessionToken) return null;
-        const userId = await consumeOtpSessionToken(credentials.sessionToken);
-        if (!userId) return null;
-        const user = await findById(userId);
-        if (!user) return null;
-        await recordLogin(user.id);
+        if (!credentials?.email || !credentials?.code) return null;
+        const email = credentials.email.toLowerCase().trim();
+        const code  = credentials.code.trim();
+
+        // Verify code from DB
+        const row = await prisma.user.findUnique({
+          where:  { email },
+          select: { id: true, otpCode: true, otpCodeExpires: true, otpCodeName: true,
+                    name: true, plan: true, emailVerified: true, isProTrial: true,
+                    trialExpiresAt: true, emailCampaignStep: true },
+        });
+        if (!row || row.otpCode !== code) return null;
+        if (!row.otpCodeExpires || new Date(row.otpCodeExpires) < new Date()) return null;
+
+        // Clear code (one-time use)
+        await prisma.user.update({
+          where: { email },
+          data:  { otpCode: null, otpCodeExpires: null, otpCodeName: null, emailVerified: true },
+        });
+
+        const isNewUser = !row.emailVerified && !row.plan || row.plan === 'free' && !row.emailCampaignStep;
+        // More reliable new-user check: no campaign step means never onboarded
+        const needsOnboarding = !row.emailCampaignStep;
+
+        if (needsOnboarding) {
+          // Fire-and-forget onboarding
+          const locale       = credentials.locale ?? 'en';
+          const referralCode = credentials.referralCode ?? '';
+          const displayName  = row.otpCodeName?.trim() || row.name || nameFromEmail(email);
+
+          // Update name if we captured it at signup
+          if (row.otpCodeName?.trim()) {
+            await prisma.user.update({ where: { email }, data: { name: displayName } });
+          }
+
+          ;(async () => {
+            try {
+              await grantNewSignupProTrial(row.id, 30);
+              await enrollEmailCampaign(row.id);
+
+              if (referralCode) {
+                const referrer = await findByReferralCode(referralCode).catch(() => null);
+                if (referrer) await setReferredBy(row.id, referralCode.toUpperCase()).catch(() => {});
+              }
+
+              if (!(await hasEmailBeenSent(row.id, 'trial-d1'))) {
+                await sendCampaignEmail(1, { id: row.id, name: displayName, email });
+              }
+
+              await sendMail({
+                to:      'info@gascap.app',
+                subject: `New GasCap signup (passwordless): ${displayName}`,
+                html:    `<p><strong>${displayName}</strong> (${email}) signed up via email OTP.</p>`,
+                text:    `New signup: ${displayName} <${email}>`,
+              });
+
+              upsertGhlContact({
+                name:      displayName,
+                email,
+                plan:      'pro',
+                locale:    locale === 'es' ? 'es' : 'en',
+                source:    'GasCap Signup',
+                extraTags: ['gascap-new-signup', 'gascap-trial-30day', 'gascap-email-verified', 'gascap-passwordless'],
+              }).catch(() => {});
+            } catch (e) {
+              console.error('[credentials-otp] onboarding error', e);
+            }
+          })();
+        } else {
+          await recordLogin(row.id);
+        }
+
+        const updated = await prisma.user.findUnique({
+          where:  { email },
+          select: { id: true, name: true, plan: true },
+        });
+
         return {
-          id:            user.id,
-          email:         user.email,
-          name:          user.name,
-          plan:          user.plan,
+          id:            row.id,
+          email,
+          name:          updated?.name ?? row.name,
+          plan:          updated?.plan ?? row.plan,
           emailVerified: true,
+          isNewUser:     needsOnboarding,
         };
       },
     }),

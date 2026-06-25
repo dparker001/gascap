@@ -116,49 +116,27 @@ function SignUpForm() {
 
     setOtpLoading(true);
 
-    // 1. Verify OTP server-side → get a one-time session token
-    const verifyRes = await fetch('/api/auth/otp/verify', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({
-        email,
-        code: otp,
-        locale,
-        ...(refCode ? { referralCode: refCode } : {}),
-      }),
-    });
-    const verifyData = await verifyRes.json() as {
-      ok?: boolean; error?: string; sessionToken?: string; isNewUser?: boolean;
-    };
-
-    if (!verifyRes.ok || !verifyData.ok) {
-      setOtpLoading(false);
-      setOtpError(verifyData.error ?? 'Invalid code. Please try again.');
-      return;
-    }
-
-    // 2. Exchange session token for a real NextAuth JWT
+    // Single call — NextAuth verifies the code from DB and issues a JWT
     const signInRes = await signIn('credentials-otp', {
       redirect:     false,
       email,
-      sessionToken: verifyData.sessionToken,
+      code:         otp,
+      locale,
+      referralCode: refCode ?? '',
     });
 
     setOtpLoading(false);
 
-    if (signInRes?.error) {
-      setOtpError('Sign-in failed. Please request a new code.');
+    if (!signInRes || signInRes.error) {
+      setOtpError('Invalid or expired code. Please try again.');
       return;
     }
 
-    // 3. Track new signups
-    if (verifyData.isNewUser) {
-      trackSignUp();
-      fbTrack('CompleteRegistration');
-      trackGoogleAdsSignup();
-    }
+    // Track new signups (best-effort — can't know isNewUser without the verify route)
+    trackSignUp();
+    fbTrack('CompleteRegistration');
+    trackGoogleAdsSignup();
 
-    // 4. Redirect
     try { localStorage.setItem('gc_active_tab', 'calculator'); } catch { /* ignore */ }
     if (nextPath) {
       router.push(`${nextPath}${sep(nextPath)}welcome=1`);

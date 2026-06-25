@@ -91,34 +91,24 @@ function SignInForm() {
     startCooldown();
   }
 
-  // Step 2: verify OTP
+  // Step 2: verify OTP — single call to NextAuth which verifies from DB
   async function handleOtpSubmit(e: FormEvent) {
     e.preventDefault();
     setOtpError('');
     if (otp.length !== 6) return setOtpError('Please enter the 6-digit code.');
     setOtpLoading(true);
 
-    const verifyRes  = await fetch('/api/auth/otp/verify', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ email, code: otp }),
-    });
-    const verifyData = await verifyRes.json() as { ok?: boolean; error?: string; sessionToken?: string };
-
-    if (!verifyRes.ok || !verifyData.ok) {
-      setOtpLoading(false);
-      setOtpError(verifyData.error ?? 'Invalid code. Please try again.');
-      return;
-    }
-
     const signInRes = await signIn('credentials-otp', {
-      redirect:     false,
+      redirect: false,
       email,
-      sessionToken: verifyData.sessionToken,
+      code:     otp,
     });
     setOtpLoading(false);
 
-    if (signInRes?.error) { setOtpError('Sign-in failed. Please request a new code.'); return; }
+    if (!signInRes || signInRes.error) {
+      setOtpError('Invalid or expired code. Please try again.');
+      return;
+    }
     redirect();
   }
 

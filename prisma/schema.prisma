@@ -101,6 +101,9 @@ model User {
   // consumed by the credentials-otp NextAuth provider (2-min TTL).
   otpSessionToken          String?
   otpSessionExpires        String?
+  otpCode                  String?
+  otpCodeExpires           String?
+  otpCodeName              String?
   vehicles                 Vehicle[]
 }
 
