@@ -1,28 +1,33 @@
 /**
  * Short-lived one-time session tokens issued after OTP verification.
- * The verify route creates them; the credentials-otp NextAuth provider consumes them.
- * Kept in a separate lib file to avoid circular imports between lib/auth.ts and app/api/.
+ * Stored in the DB so they survive across serverless function instances.
+ * TTL: 2 minutes — just long enough for signIn() to complete.
  */
 
-interface PendingToken {
-  userId:    string;
-  expiresAt: number;
-}
+import { prisma } from '@/lib/prisma';
 
-const pendingTokens = new Map<string, PendingToken>();
-
-export function createOtpSessionToken(userId: string): string {
-  const token = crypto.randomUUID();
-  pendingTokens.set(token, { userId, expiresAt: Date.now() + 2 * 60 * 1000 });
+export async function createOtpSessionToken(userId: string): Promise<string> {
+  const token   = crypto.randomUUID();
+  const expires = new Date(Date.now() + 2 * 60 * 1000).toISOString();
+  await prisma.user.update({
+    where: { id: userId },
+    data:  { otpSessionToken: token, otpSessionExpires: expires },
+  });
   return token;
 }
 
-export function consumeOtpSessionToken(token: string): string | null {
-  const entry = pendingTokens.get(token);
-  if (!entry || Date.now() > entry.expiresAt) {
-    pendingTokens.delete(token);
-    return null;
-  }
-  pendingTokens.delete(token);
-  return entry.userId;
+export async function consumeOtpSessionToken(token: string): Promise<string | null> {
+  const user = await prisma.user.findFirst({
+    where: { otpSessionToken: token },
+    select: { id: true, otpSessionExpires: true },
+  });
+  if (!user) return null;
+  if (!user.otpSessionExpires || new Date(user.otpSessionExpires) < new Date()) return null;
+
+  // Clear the token immediately (one-time use)
+  await prisma.user.update({
+    where: { id: user.id },
+    data:  { otpSessionToken: null, otpSessionExpires: null },
+  });
+  return user.id;
 }

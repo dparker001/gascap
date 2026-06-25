@@ -97,6 +97,10 @@ model User {
   // by the primary Pro Lifetime one-time payment or monthly/annual sub).
   lifetimePerksUntil       DateTime?
   lifetimePerksSubId       String?
+  // OTP passwordless sign-in — one-time session token issued after code verification,
+  // consumed by the credentials-otp NextAuth provider (2-min TTL).
+  otpSessionToken          String?
+  otpSessionExpires        String?
   vehicles                 Vehicle[]
 }
 

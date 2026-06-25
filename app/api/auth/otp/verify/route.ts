@@ -120,7 +120,7 @@ export async function POST(req: Request) {
   }
 
   // Issue a short-lived one-time token for the NextAuth credentials-otp provider
-  const sessionToken = createOtpSessionToken(user.id);
+  const sessionToken = await createOtpSessionToken(user.id);
 
   return NextResponse.json({ ok: true, sessionToken, isNewUser });
 }

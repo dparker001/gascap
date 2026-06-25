@@ -37,7 +37,7 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.sessionToken) return null;
-        const userId = consumeOtpSessionToken(credentials.sessionToken);
+        const userId = await consumeOtpSessionToken(credentials.sessionToken);
         if (!userId) return null;
         const user = await findById(userId);
         if (!user) return null;
