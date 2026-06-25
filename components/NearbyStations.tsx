@@ -225,13 +225,25 @@ export default function NearbyStations({ onApply }: Props) {
 
   const requestLocation = useCallback(() => {
     setStatus('locating');
+    if (!navigator.geolocation) {
+      setStatus('error');
+      setErrMsg('Geolocation not available on this device.');
+      return;
+    }
     navigator.geolocation.getCurrentPosition(
       (pos) => doLookup(
         Math.round(pos.coords.latitude  * 100) / 100,
         Math.round(pos.coords.longitude * 100) / 100,
       ),
-      () => { setStatus('error'); setErrMsg('Location access denied. Enable location in Settings.'); },
-      { timeout: 10000, maximumAge: 300_000, enableHighAccuracy: false },
+      (err) => {
+        setStatus('error');
+        setErrMsg(
+          err.code === 1
+            ? 'Location access denied. Enable location in Settings.'
+            : 'Could not get your location. Please try again.',
+        );
+      },
+      { timeout: 12000, maximumAge: 300_000, enableHighAccuracy: false },
     );
   }, [doLookup]);
 
@@ -249,9 +261,21 @@ export default function NearbyStations({ onApply }: Props) {
   // On mount: if permission already granted (and Pro), silently fetch.
   useEffect(() => {
     if (!isPro || sessionStatus === 'loading') return;
-    navigator.permissions?.query?.({ name: 'geolocation' as PermissionName })
-      .then((p) => { if (p.state === 'granted') requestLocation(); })
-      .catch(() => { /* Permissions API unavailable */ });
+    if (!navigator.geolocation) return;
+    try {
+      navigator.permissions?.query?.({ name: 'geolocation' as PermissionName })
+        .then((p) => { if (p.state === 'granted') requestLocation(); })
+        .catch(() => {
+          // Permissions API unavailable (Capacitor WebView) — just request directly
+          // if the user has already dismissed the pre-screen
+          try {
+            const asked = localStorage.getItem(LOC_ASKED_KEY);
+            if (asked === '1') requestLocation();
+          } catch { /* ignore */ }
+        });
+    } catch {
+      // Permissions API not supported at all
+    }
   }, [isPro, sessionStatus, requestLocation]);
 
   // ── Guest gate ──────────────────────────────────────────────────────────────
@@ -316,8 +340,8 @@ export default function NearbyStations({ onApply }: Props) {
       <div className="px-4 pt-8 max-w-lg mx-auto text-center">
         <p className="text-sm text-red-500 mb-3">{errMsg}</p>
         <button
-          onClick={() => { setStatus('idle'); setErrMsg(''); }}
-          className="text-sm text-teal-600 font-bold"
+          onClick={() => { setErrMsg(''); requestLocation(); }}
+          className="px-5 py-2.5 rounded-2xl bg-[#005F4A] text-white text-sm font-black"
         >
           Try again
         </button>
