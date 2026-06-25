@@ -28,6 +28,8 @@ import WinnerBanner     from '@/components/WinnerBanner';
 import SettingsPage     from '@/app/settings/page';
 import NativeTabBar, { type TabMeta } from './NativeTabBar';
 import RewardsTab       from './tabs/RewardsTab';
+import NearbyStations   from '@/components/NearbyStations';
+import VehicleChip      from './VehicleChip';
 import TabLockGate      from './TabLockGate';
 import FirstLaunchSplash from './FirstLaunchSplash';
 import GreetingStrip     from './GreetingStrip';
@@ -35,9 +37,9 @@ import ReviewNudge       from '@/components/ReviewNudge';
 import LanguageToggle    from '@/components/LanguageToggle';
 import { getPlanBadge, type PlanUser } from '@/lib/planBadge';
 
-export type TabId = 'calculator' | 'history' | 'tools' | 'rewards' | 'settings';
+export type TabId = 'calculator' | 'history' | 'tools' | 'findgas' | 'rewards' | 'settings';
 
-const TAB_IDS: TabId[] = ['calculator', 'history', 'tools', 'rewards', 'settings'];
+const TAB_IDS: TabId[] = ['calculator', 'history', 'tools', 'findgas', 'rewards', 'settings'];
 
 const STORAGE_KEY = 'gc_active_tab';
 const isTabId = (v: string | null): v is TabId => !!v && (TAB_IDS as string[]).includes(v ?? '');
@@ -52,6 +54,7 @@ export default function NativeAppShell() {
     { id: 'calculator', label: t.nav.calculator },
     { id: 'history',    label: t.nav.history    },
     { id: 'tools',      label: t.nav.tools      },
+    { id: 'findgas',    label: t.nav.findGas    },
     { id: 'rewards',    label: t.nav.rewards    },
     { id: 'settings',   label: t.nav.settings   },
   ];
@@ -64,7 +67,8 @@ export default function NativeAppShell() {
 
   const [active,  setActive]  = useState<TabId>('calculator');
   const [visited, setVisited] = useState<Set<TabId>>(() => new Set<TabId>(['calculator']));
-  const [historyKey, setHistoryKey] = useState(0); // bump to refresh FillupHistory on entry
+  const [historyKey,  setHistoryKey]  = useState(0);
+  const [calcMountKey, setCalcMountKey] = useState(0); // bump to remount calculator after vehicle switch
 
   // Restore last-active tab on mount (client-only; avoids SSR hydration mismatch).
   useEffect(() => {
@@ -88,6 +92,21 @@ export default function NativeAppShell() {
     setVisited((prev) => (prev.has(id) ? prev : new Set(prev).add(id)));
     if (id === 'history') setHistoryKey((k) => k + 1);
     window.scrollTo({ top: 0, behavior: 'instant' });
+  }
+
+  function handleVehicleSwitch(gallons: string, vehicle?: import('@/components/SavedVehicles').Vehicle) {
+    try {
+      const raw  = localStorage.getItem('gc_target_v2');
+      const prev = raw ? JSON.parse(raw) as Record<string, unknown> : {};
+      localStorage.setItem('gc_target_v2', JSON.stringify({
+        ...prev,
+        tankCapacity:    gallons,
+        vehicleId:       vehicle?.id       ?? '',
+        vehicleName:     vehicle?.name     ?? '',
+        vehicleOdometer: vehicle?.currentOdometer ?? undefined,
+      }));
+    } catch { /* ignore */ }
+    setCalcMountKey((k) => k + 1);
   }
 
   function shiftTab(dir: -1 | 1) {
@@ -158,10 +177,15 @@ export default function NativeAppShell() {
         className="fixed top-0 left-0 right-0 z-30 bg-brand-dark text-white shadow-sm"
         style={{ paddingTop: 'env(safe-area-inset-top)' }}
       >
-        <div className="h-12 bg-[#1e3a5f] flex items-center justify-center px-4 relative">
+        <div className="h-12 bg-[#1e3a5f] flex items-center justify-center px-4 relative gap-2">
           {/* Language switch — reachable from any tab (the native shell has no web header) */}
           <LanguageToggle className="absolute left-2 top-1/2 -translate-y-1/2 !py-1" />
-          <h1 className="text-base font-bold tracking-tight">{title}</h1>
+          <div className="flex flex-col items-center">
+            <h1 className="text-base font-bold tracking-tight">{title}</h1>
+            {active === 'calculator' && status === 'authenticated' && (
+              <VehicleChip onSelect={handleVehicleSwitch} />
+            )}
+          </div>
           {planBadge ? (
             <span
               className={`absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-black
@@ -206,7 +230,7 @@ export default function NativeAppShell() {
 
         {visited.has('calculator') && (
           <div className={show('calculator')}>
-            <div className="px-4 pt-4 pb-2 max-w-lg mx-auto w-full">
+            <div key={calcMountKey} className="px-4 pt-4 pb-2 max-w-lg mx-auto w-full">
               <CalculatorTabs />
             </div>
           </div>
@@ -243,6 +267,12 @@ export default function NativeAppShell() {
                 <ToolsPanel />
               </div>
             )}
+          </div>
+        )}
+
+        {visited.has('findgas') && (
+          <div className={show('findgas')}>
+            <NearbyStations />
           </div>
         )}
 

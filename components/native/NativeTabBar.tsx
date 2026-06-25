@@ -11,6 +11,7 @@
 
 import type { TabId } from './NativeAppShell';
 
+
 export interface TabMeta {
   id:    TabId;
   label: string;
@@ -47,6 +48,14 @@ const ICONS: Record<TabId, JSX.Element> = {
   ),
   tools: (
     <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+  ),
+  findgas: (
+    <>
+      <path d="M3 22V6a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v16"/>
+      <path d="M3 11h11"/>
+      <path d="M14 6h1a2 2 0 0 1 2 2v3a2 2 0 0 0 2 2h0a2 2 0 0 0 2-2V7l-3-3"/>
+      <path d="M3 22h11"/>
+    </>
   ),
   rewards: (
     <>

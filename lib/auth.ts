@@ -6,6 +6,7 @@ import {
   createGoogleUser, nameFromEmail,
   grantNewSignupProTrial, enrollEmailCampaign,
 } from './users';
+import { consumeOtpSessionToken } from '@/app/api/auth/otp/verify/route';
 import { upsertGhlContact } from './ghl';
 import { sendMail }         from './email';
 import { sendCampaignEmail } from './emailCampaign';
@@ -22,6 +23,33 @@ export const authOptions: NextAuthOptions = {
     GoogleProvider({
       clientId:     process.env.GOOGLE_CLIENT_ID     ?? '',
       clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? '',
+    }),
+
+    // ── Passwordless OTP sign-in ────────────────────────────────────────────
+    // The client calls signIn('credentials-otp', { email, sessionToken }) after
+    // /api/auth/otp/verify returns a short-lived one-time token.
+    CredentialsProvider({
+      id:   'credentials-otp',
+      name: 'Email OTP',
+      credentials: {
+        email:        { label: 'Email',        type: 'email' },
+        sessionToken: { label: 'Session Token', type: 'text'  },
+      },
+      async authorize(credentials) {
+        if (!credentials?.email || !credentials?.sessionToken) return null;
+        const userId = consumeOtpSessionToken(credentials.sessionToken);
+        if (!userId) return null;
+        const user = await findById(userId);
+        if (!user) return null;
+        await recordLogin(user.id);
+        return {
+          id:            user.id,
+          email:         user.email,
+          name:          user.name,
+          plan:          user.plan,
+          emailVerified: true,
+        };
+      },
     }),
 
     CredentialsProvider({

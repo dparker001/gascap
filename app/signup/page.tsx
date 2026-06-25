@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, FormEvent, Suspense } from 'react';
+import { useState, useEffect, FormEvent, Suspense, useRef } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
@@ -10,137 +10,268 @@ import SignUpExitIntent from '@/components/SignUpExitIntent';
 import BrandBar        from '@/components/BrandBar';
 import { useNativePlatform } from '@/hooks/useIsNative';
 
+// ── Steps ──────────────────────────────────────────────────────────────────────
+type Step = 'form' | 'otp';
+
 function SignUpForm() {
   const router       = useRouter();
   const searchParams = useSearchParams();
   const refCode      = searchParams.get('ref') ?? '';
   const { t, locale } = useTranslation();
-  // Apple requires Sign in with Apple if other social logins are offered — for v1
-  // we hide Google login inside the iOS app (email/password only there).
   const platform     = useNativePlatform();
   const hideGoogle   = platform === 'ios';
-  // Inside the native apps the product is a pure free utility — hide every price
-  // reference and Pro/subscription framing (App Store 2.1(b) / 3.1.1, Play Billing).
   const isNative     = platform !== null;
 
-  // Safe internal redirect target after signup (e.g. /redeem?code=…, /upgrade).
   const nextRaw  = searchParams.get('next');
   const nextPath = nextRaw && nextRaw.startsWith('/') ? nextRaw : null;
   const sep      = (path: string) => (path.includes('?') ? '&' : '?');
 
-  // Optional pre-filled email + name (e.g. a gift recipient claiming their gift).
-  // Name is an editable default — the buyer may have typed a nickname like "Dad".
   const prefillEmail = searchParams.get('email') ?? '';
   const prefillName  = (searchParams.get('name') ?? '').replace(/(?:^|\s)\S/g, (c) => c.toUpperCase());
 
-  const [fullName,  setFullName]  = useState(prefillName);
-  const [email,     setEmail]     = useState(prefillEmail);
-  const [phone,     setPhone]     = useState('');
-  const [smsOptIn,  setSmsOptIn]  = useState(false);
-  const [password,  setPassword]  = useState('');
-  const [showPw,    setShowPw]    = useState(false);
-  const [error,     setError]     = useState('');
-  const [loading,   setLoading]   = useState(false);
+  // ── Step 1 state ────────────────────────────────────────────────────────────
+  const [fullName,      setFullName]      = useState(prefillName);
+  const [email,         setEmail]         = useState(prefillEmail);
+  const [error,         setError]         = useState('');
+  const [loading,       setLoading]       = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
 
-  // Robustly apply pre-fill once the URL params are available (handles the case
-  // where useSearchParams resolves after first render). Never overwrites typed input.
+  // ── Step 2 (OTP) state ──────────────────────────────────────────────────────
+  const [step,          setStep]          = useState<Step>('form');
+  const [otp,           setOtp]           = useState('');
+  const [otpError,      setOtpError]      = useState('');
+  const [otpLoading,    setOtpLoading]    = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const otpInputRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
     if (prefillEmail) setEmail((cur) => cur || prefillEmail);
     if (prefillName)  setFullName((cur) => cur || prefillName);
   }, [prefillEmail, prefillName]);
 
-  const pwValid = password.length >= 8;
+  // Auto-focus OTP input when step changes
+  useEffect(() => {
+    if (step === 'otp') setTimeout(() => otpInputRef.current?.focus(), 100);
+  }, [step]);
 
-  // Capitalize the first letter of each word as the user types
+  // Cooldown ticker
+  useEffect(() => {
+    return () => { if (cooldownRef.current) clearInterval(cooldownRef.current); };
+  }, []);
+
+  function startCooldown() {
+    setResendCooldown(60);
+    cooldownRef.current = setInterval(() => {
+      setResendCooldown((s) => {
+        if (s <= 1) { clearInterval(cooldownRef.current!); return 0; }
+        return s - 1;
+      });
+    }, 1000);
+  }
+
   function handleNameChange(val: string) {
-    const capitalized = val.replace(/(?:^|\s)\S/g, (c) => c.toUpperCase());
-    setFullName(capitalized);
+    setFullName(val.replace(/(?:^|\s)\S/g, (c) => c.toUpperCase()));
   }
 
   async function handleGoogleSignUp() {
     setGoogleLoading(true);
-    // If a redirect target is set (e.g. gift redemption), honor it; else welcome flow.
     const callbackUrl = nextPath
       ? `${nextPath}${sep(nextPath)}welcome=1`
       : (refCode ? `/?welcome=1&ref=${refCode}` : '/?welcome=1');
     await signIn('google', { callbackUrl });
   }
 
+  // ── Step 1 submit: send OTP ─────────────────────────────────────────────────
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError('');
 
-    if (!fullName.trim()) return setError(t.signUp.errors.noName ?? 'Please enter your name.');
-    if (!pwValid)         return setError(t.signUp.errors.pwReqs);
+    if (!fullName.trim()) return setError('Please enter your name.');
+    if (!email.trim())    return setError('Please enter your email address.');
 
     setLoading(true);
-
-    // Split full name into first / last for the API
-    const nameParts = fullName.trim().split(/\s+/);
-    const firstName = nameParts[0] ?? '';
-    const lastName  = nameParts.slice(1).join(' ');
-
-    // Register via API — include referral code + active locale so the
-    // verification email link can bring the user back to the correct language.
-    const res = await fetch('/api/auth/register', {
-      method: 'POST',
+    const res = await fetch('/api/auth/otp/send', {
+      method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        firstName,
-        lastName,
-        email,
-        password,
-        locale,
-        ...(phone.trim()  ? { phone: phone.trim() } : {}),
-        ...(smsOptIn      ? { smsOptIn: true }       : {}),
-        ...(refCode       ? { referralCode: refCode } : {}),
-      }),
+      body:    JSON.stringify({ email, name: fullName.trim() }),
     });
+    const data = await res.json() as { ok?: boolean; error?: string };
+    setLoading(false);
 
-    if (!res.ok) {
-      const data = await res.json() as { error?: string };
-      setError(data.error ?? t.signUp.errors.fallback);
-      setLoading(false);
+    if (!res.ok || !data.ok) {
+      setError(data.error ?? 'Failed to send code. Please try again.');
       return;
     }
 
-    // ── Conversion tracking ───────────────────────────────────────────────
-    // Fire immediately after the server confirms account creation.
-    // Both events run client-side so the pixel/gtag scripts are available.
-    trackSignUp();                          // GA4: sign_up event
-    fbTrack('CompleteRegistration');        // Meta Pixel: CompleteRegistration
-    trackGoogleAdsSignup();                 // Google Ads: Sign-up conversion
-    // ─────────────────────────────────────────────────────────────────────
+    setStep('otp');
+    startCooldown();
+  }
 
-    // Auto sign-in after registration
-    const signInRes = await signIn('credentials', {
-      redirect: false,
+  // ── Step 2 submit: verify OTP ───────────────────────────────────────────────
+  async function handleOtpSubmit(e: FormEvent) {
+    e.preventDefault();
+    setOtpError('');
+    if (otp.length !== 6) return setOtpError('Please enter the 6-digit code.');
+
+    setOtpLoading(true);
+
+    // 1. Verify OTP server-side → get a one-time session token
+    const verifyRes = await fetch('/api/auth/otp/verify', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({
+        email,
+        code: otp,
+        locale,
+        ...(refCode ? { referralCode: refCode } : {}),
+      }),
+    });
+    const verifyData = await verifyRes.json() as {
+      ok?: boolean; error?: string; sessionToken?: string; isNewUser?: boolean;
+    };
+
+    if (!verifyRes.ok || !verifyData.ok) {
+      setOtpLoading(false);
+      setOtpError(verifyData.error ?? 'Invalid code. Please try again.');
+      return;
+    }
+
+    // 2. Exchange session token for a real NextAuth JWT
+    const signInRes = await signIn('credentials-otp', {
+      redirect:     false,
       email,
-      password,
+      sessionToken: verifyData.sessionToken,
     });
 
-    setLoading(false);
+    setOtpLoading(false);
 
     if (signInRes?.error) {
-      // Auto sign-in failed — send to sign-in page (preserve redirect target)
-      router.push(nextPath ? `/signin?next=${encodeURIComponent(nextPath)}` : '/signin');
-    } else if (nextPath) {
-      // Redirect target set (e.g. claim a gift) — go there with the welcome flag.
+      setOtpError('Sign-in failed. Please request a new code.');
+      return;
+    }
+
+    // 3. Track new signups
+    if (verifyData.isNewUser) {
+      trackSignUp();
+      fbTrack('CompleteRegistration');
+      trackGoogleAdsSignup();
+    }
+
+    // 4. Redirect
+    try { localStorage.setItem('gc_active_tab', 'calculator'); } catch { /* ignore */ }
+    if (nextPath) {
       router.push(`${nextPath}${sep(nextPath)}welcome=1`);
     } else {
-      // Signed in — drop them straight into the calculator with the welcome banner.
-      // The FreshSignupBanner will remind them to verify their email.
-      try { localStorage.setItem('gc_active_tab', 'calculator'); } catch { /* ignore */ }
       router.push('/?welcome=1');
     }
   }
 
+  async function handleResend() {
+    if (resendCooldown > 0) return;
+    setOtpError('');
+    const res  = await fetch('/api/auth/otp/send', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ email, name: fullName.trim() }),
+    });
+    if (res.ok) startCooldown();
+    else setOtpError('Could not resend code. Please try again shortly.');
+  }
+
+  // ── OTP entry screen ─────────────────────────────────────────────────────────
+  if (step === 'otp') {
+    return (
+      <div className="min-h-screen bg-[#eef1f7] flex flex-col">
+        <BrandBar />
+        <div className="flex-1 flex items-start justify-center px-4 pt-10 pb-16">
+          <div className="w-full max-w-sm">
+
+            <button
+              type="button"
+              onClick={() => { setStep('form'); setOtp(''); setOtpError(''); }}
+              className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 mb-6"
+            >
+              ← Back
+            </button>
+
+            <h1 className="text-2xl font-black text-navy-700 mb-1">Check your email</h1>
+            <p className="text-slate-500 text-sm mb-1">
+              We sent a 6-digit code to
+            </p>
+            <p className="text-slate-800 font-bold text-sm mb-6 break-all">{email}</p>
+
+            <form onSubmit={handleOtpSubmit} className="space-y-4">
+              <div>
+                <label className="field-label" htmlFor="otp-code">Enter your code</label>
+                <input
+                  ref={otpInputRef}
+                  id="otp-code"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  pattern="\d{6}"
+                  maxLength={6}
+                  className="input-field text-center text-3xl font-black tracking-[0.5em] py-4"
+                  placeholder="000000"
+                  value={otp}
+                  onChange={(e) => {
+                    const v = e.target.value.replace(/\D/g, '').slice(0, 6);
+                    setOtp(v);
+                    setOtpError('');
+                  }}
+                  required
+                />
+              </div>
+
+              {otpError && (
+                <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+                  <p className="text-red-600 text-sm font-medium">{otpError}</p>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={otpLoading || otp.length !== 6}
+                className="btn-amber mt-2"
+              >
+                {otpLoading ? 'Verifying…' : 'Verify & Continue →'}
+              </button>
+            </form>
+
+            <div className="mt-5 text-center">
+              {resendCooldown > 0 ? (
+                <p className="text-sm text-slate-400">
+                  Resend available in {resendCooldown}s
+                </p>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleResend}
+                  className="text-sm text-amber-600 font-semibold hover:underline"
+                >
+                  Resend code
+                </button>
+              )}
+            </div>
+
+            <p className="text-center text-[11px] text-slate-400 mt-6 leading-relaxed">
+              By continuing you agree to our{' '}
+              <Link href="/terms"   className="hover:text-amber-600 underline">Terms</Link>
+              {' '}and{' '}
+              <Link href="/privacy" className="hover:text-amber-600 underline">Privacy Policy</Link>.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Step 1: name + email form ─────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-[#eef1f7] flex flex-col">
       <BrandBar />
 
-      {/* Form */}
       <div className="flex-1 flex items-start justify-center px-4 pt-10 pb-16">
         <div className="w-full max-w-sm">
           <h1 className="text-2xl font-black text-navy-700 mb-1">{t.signUp.title}</h1>
@@ -151,8 +282,6 @@ function SignUpForm() {
             {([
               { icon: '💰', label: 'Stop overspending' },
               { icon: '⚡', label: 'Know before you go' },
-              // "No app store needed" is web-only marketing — nonsensical inside
-              // the native apps, so show an offline benefit there instead.
               isNative
                 ? { icon: '📴', label: 'Works offline' }
                 : { icon: '📱', label: 'No app store needed' },
@@ -167,8 +296,7 @@ function SignUpForm() {
             ))}
           </div>
 
-          {/* Pro trial callout — web only. The native version names no price /
-              subscription (App Store 2.1(b)/3.1.1); it shows a price-free welcome. */}
+          {/* Pro trial callout */}
           <div className="mb-5 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 flex items-center gap-3">
             <span className="text-xl flex-shrink-0">🎁</span>
             <p className="text-sm font-bold text-amber-800">
@@ -191,7 +319,7 @@ function SignUpForm() {
             </div>
           )}
 
-          {/* ── Google Sign-Up (hidden in the iOS app — see hideGoogle) ── */}
+          {/* Google Sign-Up */}
           {!hideGoogle && (
             <>
               <button
@@ -207,19 +335,16 @@ function SignUpForm() {
                 {googleLoading ? t.signUp.redirecting : t.signUp.continueWithGoogle}
               </button>
 
-              {/* Divider */}
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 my-4">
                 <div className="flex-1 h-px bg-slate-200" />
-                <span className="text-xs text-slate-400 font-medium">or</span>
+                <span className="text-xs text-slate-400 font-medium">or continue with email</span>
                 <div className="flex-1 h-px bg-slate-200" />
               </div>
             </>
           )}
 
-          {/* ── Email / Password form ────────────────────────────────── */}
+          {/* Email form — name + email only */}
           <form onSubmit={handleSubmit} noValidate className="space-y-4">
-
-            {/* Full name — single field */}
             <div>
               <label className="field-label" htmlFor="fullName">
                 {t.signUp.fullNameLabel ?? 'Full name'}
@@ -240,85 +365,10 @@ function SignUpForm() {
               <input
                 id="email" type="email" autoComplete="email"
                 className="input-field" placeholder={t.signUp.emailHolder}
-                value={email} onChange={(e) => setEmail(e.target.value)}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 required
               />
-            </div>
-
-            <div>
-              <label className="field-label" htmlFor="password">{t.signUp.passwordLabel}</label>
-              <div className="relative">
-                <input
-                  id="password"
-                  type={showPw ? 'text' : 'password'}
-                  autoComplete="new-password"
-                  className="input-field pr-11"
-                  placeholder={t.signUp.passwordHolder}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPw((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400
-                             hover:text-slate-600 transition-colors p-0.5"
-                  aria-label={showPw ? 'Hide password' : 'Show password'}
-                >
-                  <EyeIcon open={showPw} />
-                </button>
-              </div>
-              {password.length > 0 && (
-                <p className={`mt-1.5 text-xs font-medium ${pwValid ? 'text-green-600' : 'text-slate-400'}`}>
-                  {pwValid ? '✓ Good to go' : '8 characters minimum'}
-                </p>
-              )}
-            </div>
-
-            {/* Phone + SMS opt-in — always visible, always at the bottom */}
-            <div>
-              <label className="field-label" htmlFor="phone">{t.signUp.phoneLabel}</label>
-              <input
-                id="phone" type="tel" autoComplete="tel"
-                className="input-field" placeholder={t.signUp.phoneHolder}
-                value={phone}
-                onChange={(e) => {
-                  setPhone(e.target.value);
-                  if (!e.target.value.trim()) setSmsOptIn(false);
-                }}
-              />
-            </div>
-
-            {/* SMS consent panel — teal highlight when opted in */}
-            <div className={`rounded-xl border p-3.5 transition-all ${smsOptIn ? 'border-teal-300 bg-teal-50' : 'border-slate-200 bg-slate-50'}`}>
-              <label className="flex items-start gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={smsOptIn}
-                  onChange={(e) => setSmsOptIn(e.target.checked)}
-                  className="mt-0.5 h-4 w-4 rounded border-slate-300 text-teal-600
-                             focus:ring-teal-500 cursor-pointer flex-shrink-0"
-                />
-                <div>
-                  <p className={`text-sm font-semibold ${smsOptIn ? 'text-teal-800' : 'text-slate-600'}`}>
-                    Text me GasCap offers &amp; alerts
-                  </p>
-                  <p className="text-[11px] text-slate-500 leading-relaxed mt-0.5">
-                    By checking this box, you agree to receive recurring automated
-                    marketing &amp; informational texts from GasCap (price drops,
-                    reminders, offers &amp; winner alerts) at the number you provide.
-                    Consent is not a condition of purchase. Msg frequency varies;
-                    msg &amp; data rates may apply. Reply STOP to opt out, HELP for help.
-                    Must be 18+. See our{' '}
-                    <a href="/terms#sms" className="text-amber-600 hover:underline" target="_blank" rel="noopener noreferrer">
-                      SMS Terms
-                    </a>{' '}&amp;{' '}
-                    <a href="/privacy" className="text-amber-600 hover:underline" target="_blank" rel="noopener noreferrer">
-                      Privacy Policy
-                    </a>.
-                  </p>
-                </div>
-              </label>
             </div>
 
             {error && (
@@ -328,7 +378,7 @@ function SignUpForm() {
             )}
 
             <button type="submit" disabled={loading} className="btn-amber mt-2">
-              {loading ? t.signUp.loading : t.signUp.button}
+              {loading ? 'Sending code…' : 'Send my code →'}
             </button>
           </form>
 
@@ -361,7 +411,6 @@ function SignUpForm() {
         </div>
       </div>
 
-      {/* Exit-intent bottom sheet — fires after 8 s on exit signals */}
       <SignUpExitIntent />
     </div>
   );
@@ -382,36 +431,6 @@ function GoogleIcon() {
       <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
       <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
       <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-    </svg>
-  );
-}
-
-function GasPumpIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"
-         strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4" aria-hidden="true">
-      <rect x="2" y="6" width="11" height="16" rx="1.5" />
-      <rect x="4" y="9" width="7" height="4" rx="0.75" />
-      <path d="M13 8 L18 8 Q21 8 21 11 L21 16 Q21 18 19 18" />
-      <circle cx="18.5" cy="18.5" r="1.5" />
-    </svg>
-  );
-}
-
-function EyeIcon({ open }: { open: boolean }) {
-  return open ? (
-    <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor"
-         strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94" />
-      <path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19" />
-      <path d="M14.12 14.12A3 3 0 119.88 9.88" />
-      <line x1="3" y1="3" x2="21" y2="21" />
-    </svg>
-  ) : (
-    <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor"
-         strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-      <circle cx="12" cy="12" r="3" />
     </svg>
   );
 }
