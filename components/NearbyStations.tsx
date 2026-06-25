@@ -18,7 +18,7 @@ interface Props {
   onApply?: (price: string, lat: number, lng: number) => void;
 }
 
-type Status = 'idle' | 'locating' | 'fetching' | 'done' | 'error' | 'no_key';
+type Status = 'idle' | 'locating' | 'fetching' | 'done' | 'error' | 'no_key' | 'disabled';
 
 const LOC_ASKED_KEY = 'gc_loc_asked';
 const GRADE_ORDER: FuelPrice['type'][] = ['REGULAR', 'MIDGRADE', 'PREMIUM', 'DIESEL'];
@@ -106,7 +106,9 @@ function StationCard({
   station:  NearbyStation;
   onApply?: (price: string, lat: number, lng: number) => void;
 }) {
-  const regular = station.prices.find((p) => p.type === 'REGULAR');
+  const hasPrices = station.prices.length > 0;
+  // Use regular if available, otherwise the first price in sorted order
+  const bestPrice = station.prices.find((p) => p.type === 'REGULAR') ?? station.prices[0] ?? null;
 
   // Freshest updatedAt across all prices
   const freshest = station.prices
@@ -132,36 +134,68 @@ function StationCard({
             {station.isOpen === false && <span className="text-[10px] font-bold text-red-500">CLOSED</span>}
           </div>
         </div>
-        {regular && (
+        {bestPrice ? (
           <div className="text-right flex-shrink-0">
             <p className="text-2xl font-black text-slate-900 leading-none">
-              ${regular.price.toFixed(2)}
+              ${bestPrice.price.toFixed(2)}
             </p>
-            <p className="text-[10px] text-slate-400 mt-0.5">Regular</p>
+            <p className="text-[10px] text-slate-400 mt-0.5">{bestPrice.label}</p>
+          </div>
+        ) : (
+          <div className="text-right flex-shrink-0">
+            <p className="text-[11px] text-slate-400 italic leading-snug max-w-[100px]">
+              No live price
+            </p>
           </div>
         )}
       </div>
 
-      {/* Price grid */}
-      {station.prices.length > 0 && (
+      {/* Price grid — each chip is tappable to fill the calculator */}
+      {hasPrices && (
         <div className={`px-4 pb-3 grid gap-1.5 ${station.prices.length > 2 ? 'grid-cols-4' : 'grid-cols-2'}`}>
           {GRADE_ORDER.map((type) => {
             const fp = station.prices.find((p) => p.type === type);
             if (!fp) return null;
+            const isSelected = fp.type === bestPrice?.type;
             return (
-              <div key={type} className="bg-slate-50 rounded-xl px-2 py-1.5 text-center">
-                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">{fp.label}</p>
-                <p className="text-sm font-black text-slate-800">${fp.price.toFixed(2)}</p>
-              </div>
+              <button
+                key={type}
+                onClick={() => onApply?.(fp.price.toFixed(2), station.lat, station.lng)}
+                className={`rounded-xl px-2 py-1.5 text-center transition-colors active:opacity-80
+                  ${onApply
+                    ? isSelected
+                      ? 'bg-[#005F4A] text-white'
+                      : 'bg-slate-50 hover:bg-slate-100'
+                    : 'bg-slate-50'
+                  }`}
+              >
+                <p className={`text-[9px] font-bold uppercase tracking-wider ${isSelected && onApply ? 'text-emerald-200' : 'text-slate-400'}`}>
+                  {fp.label}
+                </p>
+                <p className={`text-sm font-black ${isSelected && onApply ? 'text-white' : 'text-slate-800'}`}>
+                  ${fp.price.toFixed(2)}
+                </p>
+              </button>
             );
           })}
+        </div>
+      )}
+
+      {/* No-price fallback */}
+      {!hasPrices && (
+        <div className="px-4 pb-3">
+          <p className="text-[11px] text-slate-400 italic">
+            Live price not available for this station. Enter pump price manually.
+          </p>
         </div>
       )}
 
       {/* Staleness + actions */}
       <div className="border-t border-slate-100 px-4 py-2.5 flex items-center justify-between gap-2">
         <span className="text-[10px] text-slate-400">
-          {freshest ? `Updated ${timeAgo(freshest)}` : 'Price data from Google'}
+          {freshest
+            ? `${ bestPrice?.label ?? 'Price' } · Updated ${timeAgo(freshest)}`
+            : hasPrices ? 'Price data from Google' : 'Station from Google'}
         </span>
         <div className="flex items-center gap-2">
           <a
@@ -170,14 +204,8 @@ function StationCard({
           >
             Directions <ChevronRight className="w-3 h-3" />
           </a>
-          {onApply && regular && (
-            <button
-              onClick={() => onApply(regular.price.toFixed(2), station.lat, station.lng)}
-              className="text-[11px] font-black text-white bg-[#005F4A] rounded-lg px-2.5 py-1
-                         active:opacity-90 transition-opacity"
-            >
-              Use price →
-            </button>
+          {onApply && hasPrices && (
+            <span className="text-[10px] text-slate-400 italic">tap grade to use</span>
           )}
         </div>
       </div>
@@ -222,6 +250,7 @@ export default function NearbyStations({ onApply }: Props) {
         return;
       }
       if (data.proRequired) { setStatus('idle'); return; }
+      if ((data as { disabled?: boolean }).disabled) { setStatus('disabled'); return; }
       if (data.error)       { setStatus('error'); setErrMsg(data.error); return; }
       setStations(data.stations ?? []);
       setStatus('done');
@@ -267,24 +296,18 @@ export default function NearbyStations({ onApply }: Props) {
     setLocAsked(true);
   }
 
-  // On mount: if permission already granted (and Pro), silently fetch.
+  // On mount: if pre-screen already seen (and Pro), attempt location.
+  // In Capacitor's WebView, navigator.permissions.query often returns 'prompt'
+  // even when iOS has already granted location — so we skip the permissions
+  // check entirely and just call requestLocation() directly. The geolocation
+  // API will resolve immediately if granted, or show the OS prompt if not.
   useEffect(() => {
     if (!isPro || sessionStatus === 'loading') return;
     if (!navigator.geolocation) return;
     try {
-      navigator.permissions?.query?.({ name: 'geolocation' as PermissionName })
-        .then((p) => { if (p.state === 'granted') requestLocation(); })
-        .catch(() => {
-          // Permissions API unavailable (Capacitor WebView) — just request directly
-          // if the user has already dismissed the pre-screen
-          try {
-            const asked = localStorage.getItem(LOC_ASKED_KEY);
-            if (asked === '1') requestLocation();
-          } catch { /* ignore */ }
-        });
-    } catch {
-      // Permissions API not supported at all
-    }
+      const asked = localStorage.getItem(LOC_ASKED_KEY);
+      if (asked === '1') requestLocation();
+    } catch { /* storage blocked */ }
   }, [isPro, sessionStatus, requestLocation]);
 
   // ── Guest gate ──────────────────────────────────────────────────────────────
@@ -329,6 +352,19 @@ export default function NearbyStations({ onApply }: Props) {
   // ── Location pre-screen (first time) ───────────────────────────────────────
   if (!locAsked) {
     return <LocationPreScreen onAllow={handleAllow} onSkip={handleSkip} />;
+  }
+
+  // ── Feature disabled ────────────────────────────────────────────────────────
+  if (status === 'disabled') {
+    return (
+      <div className="px-4 pt-8 pb-4 max-w-lg mx-auto text-center">
+        <PumpIcon className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+        <h2 className="text-lg font-black text-slate-900 mb-2">Find Gas Near You</h2>
+        <p className="text-sm text-slate-500">
+          Live station prices are coming soon. Enter the pump price manually in the calculator for now.
+        </p>
+      </div>
+    );
   }
 
   // ── Loading ─────────────────────────────────────────────────────────────────
