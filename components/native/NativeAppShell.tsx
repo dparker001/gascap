@@ -272,7 +272,11 @@ export default function NativeAppShell() {
 
         {visited.has('findgas') && (
           <div className={show('findgas')}>
-            <NearbyStations />
+            <NearbyStations onApply={(price) => {
+              window.dispatchEvent(new CustomEvent('gc:inject-gas-price', { detail: { price } }));
+              setActive('calculator');
+              setVisited((prev) => { const s = new Set(prev); s.add('calculator'); return s; });
+            }} />
           </div>
         )}
 

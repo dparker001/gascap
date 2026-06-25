@@ -99,6 +99,8 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
   const gaugeCamRef     = useRef<HTMLInputElement>(null);
   const gaugeGalleryRef = useRef<HTMLInputElement>(null);
   const calcStartFired  = useRef(false);
+  // Stable ref so the gc:inject-gas-price event handler always calls the latest liveRecalc
+  const liveRecalcRef   = useRef<(p: Partial<FormState>) => void>(() => {});
 
   // Clear stale garage-vehicle data when the user is confirmed logged out.
   // useLocalStorage hydrates from the previous session's JSON, so a logged-in
@@ -125,6 +127,17 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
       if (prev.targetPreset !== DEFAULTS.targetPreset) return prev; // user changed it — leave alone
       return { ...prev, targetPreset: pref, customTarget: '' };
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Listen for gas price injected from Find Gas tab
+  useEffect(() => {
+    function handler(e: Event) {
+      const price = (e as CustomEvent<{ price: string }>).detail?.price;
+      if (price) liveRecalcRef.current({ pricePerGallon: price });
+    }
+    window.addEventListener('gc:inject-gas-price', handler);
+    return () => window.removeEventListener('gc:inject-gas-price', handler);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -171,6 +184,9 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
       setErrors({});
     }
   }
+
+  // Keep ref in sync so the event listener always has the latest version
+  liveRecalcRef.current = liveRecalc;
 
   const gaugePercent = form.fuelMode === 'percent'
     ? (isNaN(Number(form.currentFuel)) ? 0 : Number(form.currentFuel))
