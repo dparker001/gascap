@@ -76,9 +76,12 @@ export const authOptions: NextAuthOptions = {
         }
 
         if (isNew) {
+          // Grant trial synchronously so badge shows PRO TRIAL on first login
+          await grantNewSignupProTrial(user!.id, 30).catch((e) => console.error('[otp] trial grant failed:', e));
+          user = await findByEmail(email) ?? user; // refresh to get updated plan/isProTrial
+          // Remaining onboarding fire-and-forget
           ;(async () => {
             try {
-              await grantNewSignupProTrial(user!.id, 30);
               await enrollEmailCampaign(user!.id);
               if (referralCode) {
                 const { findByReferralCode, setReferredBy } = await import('./users');
@@ -105,7 +108,7 @@ export const authOptions: NextAuthOptions = {
           await recordLogin(user.id);
         }
 
-        return { id: user.id, email, name: user.name, plan: user.plan, emailVerified: true };
+        return { id: user.id, email, name: user.name, plan: user.plan, isProTrial: user.isProTrial ?? false, trialExpiresAt: user.trialExpiresAt ?? null, emailVerified: true };
         } catch (err) {
           console.error('[otp/verify] authorize threw:', err);
           return null;

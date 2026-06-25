@@ -44,8 +44,7 @@ export async function POST(req: Request) {
   const user   = await findById(userId);
   if (!user) return NextResponse.json({ error: 'User not found.' }, { status: 404 });
 
-  const reqUrl = new URL(req.url);
-  const origin = `${reqUrl.protocol}//${reqUrl.host}`;
+  const origin = (process.env.NEXTAUTH_URL ?? '').replace(/\/$/, '') || (() => { const u = new URL(req.url); return `${u.protocol}//${u.host}`; })();
 
   try {
     let customerId = await resolveCustomerId(userId, user);
