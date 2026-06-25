@@ -11,8 +11,6 @@ import { sendMail }         from './email';
 import { sendCampaignEmail } from './emailCampaign';
 import { hasEmailBeenSent }  from './emailLog';
 import { checkRateLimit } from './rateLimit';
-import { prisma }           from './prisma';
-import { findByReferralCode, setReferredBy } from './users';
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -24,118 +22,6 @@ export const authOptions: NextAuthOptions = {
     GoogleProvider({
       clientId:     process.env.GOOGLE_CLIENT_ID     ?? '',
       clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? '',
-    }),
-
-    // ── Passwordless OTP sign-in ────────────────────────────────────────────
-    // Client calls signIn('credentials-otp', { email, code, locale?, referralCode? })
-    // directly — no intermediate session token needed.
-    CredentialsProvider({
-      id:   'credentials-otp',
-      name: 'Email OTP',
-      credentials: {
-        email:        { label: 'Email',        type: 'email' },
-        code:         { label: 'Code',         type: 'text'  },
-        locale:       { label: 'Locale',       type: 'text'  },
-        referralCode: { label: 'Referral',     type: 'text'  },
-      },
-      async authorize(credentials) {
-        if (!credentials?.email || !credentials?.code) return null;
-        const email = credentials.email.toLowerCase().trim();
-        const code  = credentials.code.trim();
-
-        // Verify code from OtpCode table (used for all users)
-        const entry = await prisma.otpCode.findUnique({ where: { email } });
-        if (!entry || entry.code !== code) return null;
-        if (new Date() > entry.expires) {
-          await prisma.otpCode.delete({ where: { email } }).catch(() => {});
-          return null;
-        }
-        const verifiedName = entry.name;
-        await prisma.otpCode.delete({ where: { email } }).catch(() => {});
-
-        // Look up existing user
-        const row = await prisma.user.findUnique({
-          where:  { email },
-          select: { id: true, name: true, plan: true, emailCampaignStep: true },
-        });
-
-        const locale       = credentials.locale ?? 'en';
-        const referralCode = credentials.referralCode ?? '';
-        const displayName  = verifiedName?.trim() || nameFromEmail(email);
-        const needsOnboarding = !row; // new user if no DB row existed
-
-        let userId: string;
-
-        if (!row) {
-          // Create the user now that OTP is verified
-          const created = await prisma.user.create({
-            data: {
-              id:            crypto.randomUUID(),
-              email,
-              name:          displayName,
-              passwordHash:  null,
-              plan:          'free',
-              createdAt:     new Date().toISOString(),
-              emailVerified: true,
-              locale:        locale === 'es' ? 'es' : 'en',
-            },
-          });
-          userId = created.id;
-        } else {
-          userId = row.id;
-        }
-
-        if (needsOnboarding) {
-          ;(async () => {
-            try {
-              await grantNewSignupProTrial(userId, 30);
-              await enrollEmailCampaign(userId);
-
-              if (referralCode) {
-                const referrer = await findByReferralCode(referralCode).catch(() => null);
-                if (referrer) await setReferredBy(userId, referralCode.toUpperCase()).catch(() => {});
-              }
-
-              if (!(await hasEmailBeenSent(userId, 'trial-d1'))) {
-                await sendCampaignEmail(1, { id: userId, name: displayName, email });
-              }
-
-              await sendMail({
-                to:      'info@gascap.app',
-                subject: `New GasCap signup (passwordless): ${displayName}`,
-                html:    `<p><strong>${displayName}</strong> (${email}) signed up via email OTP.</p>`,
-                text:    `New signup: ${displayName} <${email}>`,
-              });
-
-              upsertGhlContact({
-                name:      displayName,
-                email,
-                plan:      'pro',
-                locale:    locale === 'es' ? 'es' : 'en',
-                source:    'GasCap Signup',
-                extraTags: ['gascap-new-signup', 'gascap-trial-30day', 'gascap-email-verified', 'gascap-passwordless'],
-              }).catch(() => {});
-            } catch (e) {
-              console.error('[credentials-otp] onboarding error', e);
-            }
-          })();
-        } else {
-          await recordLogin(userId);
-        }
-
-        const finalUser = await prisma.user.findUnique({
-          where:  { id: userId },
-          select: { id: true, name: true, plan: true },
-        });
-
-        return {
-          id:            userId,
-          email,
-          name:          finalUser?.name ?? displayName,
-          plan:          finalUser?.plan ?? 'free',
-          emailVerified: true,
-        };
-      },
     }),
 
     CredentialsProvider({
