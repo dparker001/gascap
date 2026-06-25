@@ -22,20 +22,7 @@ import { sendMail }          from '@/lib/email';
 import { sendCampaignEmail } from '@/lib/emailCampaign';
 import { hasEmailBeenSent }  from '@/lib/emailLog';
 import { findByReferralCode, setReferredBy } from '@/lib/users';
-
-// One-time session tokens: tokenId → userId (expire in 2 minutes — just long
-// enough for the client's signIn() call to complete).
-const pendingTokens = new Map<string, { userId: string; expiresAt: number }>();
-
-export function consumeOtpSessionToken(token: string): string | null {
-  const entry = pendingTokens.get(token);
-  if (!entry || Date.now() > entry.expiresAt) {
-    pendingTokens.delete(token);
-    return null;
-  }
-  pendingTokens.delete(token);
-  return entry.userId;
-}
+import { createOtpSessionToken } from '@/lib/otpSessions';
 
 export async function POST(req: Request) {
   let email: string, code: string, locale: string, referralCode: string;
@@ -133,8 +120,7 @@ export async function POST(req: Request) {
   }
 
   // Issue a short-lived one-time token for the NextAuth credentials-otp provider
-  const sessionToken = crypto.randomUUID();
-  pendingTokens.set(sessionToken, { userId: user.id, expiresAt: Date.now() + 2 * 60 * 1000 });
+  const sessionToken = createOtpSessionToken(user.id);
 
   return NextResponse.json({ ok: true, sessionToken, isNewUser });
 }

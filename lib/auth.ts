@@ -6,7 +6,7 @@ import {
   createGoogleUser, nameFromEmail,
   grantNewSignupProTrial, enrollEmailCampaign,
 } from './users';
-import { consumeOtpSessionToken } from '@/app/api/auth/otp/verify/route';
+import { consumeOtpSessionToken } from './otpSessions';
 import { upsertGhlContact } from './ghl';
 import { sendMail }         from './email';
 import { sendCampaignEmail } from './emailCampaign';
