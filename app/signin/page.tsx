@@ -75,7 +75,7 @@ function SignInForm() {
     if (!email.trim()) return setError('Please enter your email address.');
     setLoading(true);
 
-    const res  = await fetch('/api/auth/otp/send', {
+    const res  = await fetch('/api/otp/send', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ email }),
@@ -115,7 +115,7 @@ function SignInForm() {
   async function handleResend() {
     if (resendCooldown > 0) return;
     setOtpError('');
-    const res = await fetch('/api/auth/otp/send', {
+    const res = await fetch('/api/otp/send', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ email }),
