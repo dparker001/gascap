@@ -11,6 +11,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
+import { useIsNative } from '@/hooks/useIsNative';
 import type { NearbyStation, FuelPrice } from '@/lib/nearbyGas';
 
 interface Props {
@@ -217,6 +218,7 @@ function StationCard({
 
 export default function NearbyStations({ onApply }: Props) {
   const { data: session, status: sessionStatus } = useSession();
+  const isNative = useIsNative();
   const plan    = (session?.user as { plan?: string } | undefined)?.plan ?? 'free';
   const isPro   = plan === 'pro' || plan === 'fleet' || plan === 'lifetime';
   const isGuest = sessionStatus === 'unauthenticated';
@@ -239,9 +241,22 @@ export default function NearbyStations({ onApply }: Props) {
     setStatus('fetching');
     setCoords({ lat, lng });
     try {
-      console.log('[NearbyStations] fetching /gas/nearby', lat, lng);
-      const url = `/gas/nearby?lat=${lat}&lng=${lng}&_=${Date.now()}`;
-      const res  = await fetch(url, { signal: AbortSignal.timeout(15000) });
+      // Use an absolute URL on native to avoid WKWebView relative-URL ambiguity
+      // and to ensure the request bypasses any service-worker path confusion.
+      const base = isNative ? 'https://www.gascap.app' : '';
+      const url = `${base}/gas/nearby?lat=${lat}&lng=${lng}&_=${Date.now()}`;
+      console.log('[NearbyStations] fetching', url, 'isNative:', isNative);
+
+      // AbortSignal.timeout has spotty support in older WKWebView; use a manual
+      // AbortController with setTimeout as a reliable cross-platform fallback.
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(new Error('timeout')), 15000);
+      let res: Response;
+      try {
+        res = await fetch(url, { signal: controller.signal, cache: 'no-store' });
+      } finally {
+        clearTimeout(timer);
+      }
       const text = await res.text();
       console.log('[NearbyStations] response:', res.status, text.slice(0, 300));
       let data: { stations?: NearbyStation[]; proRequired?: boolean; error?: string; disabled?: boolean };

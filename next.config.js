@@ -4,23 +4,33 @@ const defaultCache = require('next-pwa/cache');
 // hit the network. The default next-pwa cache has a 10s networkTimeout that
 // silently falls back to cache when it expires; for these routes there is no
 // cached response, causing the client to hang forever.
-const runtimeCaching = defaultCache.map((entry) => {
-  if (
-    entry.options?.cacheName === 'apis' &&
-    typeof entry.urlPattern === 'function'
-  ) {
-    const origPattern = entry.urlPattern;
-    return {
-      ...entry,
-      urlPattern: (ctx) => {
-        const { pathname } = ctx.url ?? {};
-        if (pathname?.startsWith('/api/nearby-gas')) return false;
-        return origPattern(ctx);
-      },
-    };
-  }
-  return entry;
-});
+//
+// /gas/nearby gets a NetworkOnly entry placed FIRST so the SW never touches it.
+// Without this, WKWebView's service worker intercepts the fetch and hangs
+// indefinitely (the request never reaches the network) in the Capacitor shell.
+const runtimeCaching = [
+  {
+    urlPattern: ({ url }) => url.pathname.startsWith('/gas/'),
+    handler: 'NetworkOnly',
+  },
+  ...defaultCache.map((entry) => {
+    if (
+      entry.options?.cacheName === 'apis' &&
+      typeof entry.urlPattern === 'function'
+    ) {
+      const origPattern = entry.urlPattern;
+      return {
+        ...entry,
+        urlPattern: (ctx) => {
+          const { pathname } = ctx.url ?? {};
+          if (pathname?.startsWith('/api/nearby-gas')) return false;
+          return origPattern(ctx);
+        },
+      };
+    }
+    return entry;
+  }),
+];
 
 const withPWA = require('next-pwa')({
   dest:            'public',

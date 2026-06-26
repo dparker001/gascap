@@ -14,7 +14,8 @@
   "ios": {
     "contentInset": "always",
     "backgroundColor": "#005F4A",
-    "limitsNavigationsToAppBoundDomains": false
+    "limitsNavigationsToAppBoundDomains": false,
+    "webContentsDebuggingEnabled": true
   },
   "plugins": {
     "SplashScreen": {
