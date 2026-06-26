@@ -77,6 +77,15 @@ const nextConfig = {
 
   headers: async () => [
     {
+      // Prevent Railway Hikari (and any CDN) from caching HTML pages.
+      // Without this, s-maxage=31536000 is applied and redeployments serve
+      // stale HTML → stale JS bundle hashes → users see old code for up to a year.
+      source: '/((?!_next/static|_next/image|favicon|icons|manifest).*)',
+      headers: [
+        { key: 'Cache-Control', value: 'no-store, must-revalidate' },
+      ],
+    },
+    {
       source: '/(.*)',
       headers: [
         { key: 'X-Frame-Options',           value: 'DENY' },
