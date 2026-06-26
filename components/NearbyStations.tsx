@@ -799,7 +799,7 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
           rel="noopener noreferrer"
           className="block text-center text-xs text-slate-400 py-3 hover:text-teal-600 transition-colors"
         >
-          Don't see your station? Search in Google Maps →
+          Open Google Maps to Find Additional Gas Nearby →
         </a>
       )}
     </div>
