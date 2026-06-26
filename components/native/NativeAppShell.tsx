@@ -36,6 +36,7 @@ import GreetingStrip     from './GreetingStrip';
 import ReviewNudge       from '@/components/ReviewNudge';
 import LanguageToggle    from '@/components/LanguageToggle';
 import { getPlanBadge, type PlanUser } from '@/lib/planBadge';
+import FillupLogger from '@/components/FillupLogger';
 
 export type TabId = 'calculator' | 'findgas' | 'history' | 'tools' | 'rewards' | 'settings';
 
@@ -68,7 +69,15 @@ export default function NativeAppShell() {
   const [active,  setActive]  = useState<TabId>('calculator');
   const [visited, setVisited] = useState<Set<TabId>>(() => new Set<TabId>(['calculator']));
   const [historyKey,  setHistoryKey]  = useState(0);
-  const [calcMountKey, setCalcMountKey] = useState(0); // bump to remount calculator after vehicle switch
+  const [calcMountKey, setCalcMountKey] = useState(0);
+
+  // Pending fill-up from Find Gas — shown as a banner on the Calculator tab
+  const [pendingFillup, setPendingFillup] = useState<{
+    price: string;
+    stationName: string;
+    grade: string;
+  } | null>(null);
+  const [showFillupSheet, setShowFillupSheet] = useState(false);
 
   // Restore last-active tab on mount (client-only; avoids SSR hydration mismatch).
   useEffect(() => {
@@ -241,6 +250,31 @@ export default function NativeAppShell() {
 
         {visited.has('calculator') && (
           <div className={show('calculator')}>
+            {/* One-click fill-up banner — appears after selecting a station in Find Gas */}
+            {pendingFillup && (
+              <div className="mx-4 mt-3 rounded-2xl bg-teal-50 border border-teal-200 px-4 py-3 flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-teal-800 truncate">
+                    ⛽ {pendingFillup.stationName || 'Selected station'} · ${pendingFillup.price}/gal
+                  </p>
+                  <p className="text-[11px] text-teal-600 mt-0.5">Ready to log this fill-up?</p>
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  <button
+                    onClick={() => setShowFillupSheet(true)}
+                    className="px-3 py-1.5 rounded-xl bg-[#005F4A] text-white text-xs font-black active:opacity-80"
+                  >
+                    Log Fill-up
+                  </button>
+                  <button
+                    onClick={() => setPendingFillup(null)}
+                    className="px-2 py-1.5 rounded-xl bg-teal-100 text-teal-700 text-xs font-bold active:opacity-80"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+            )}
             <div key={calcMountKey} className="px-4 pt-4 pb-2 max-w-lg mx-auto w-full">
               <CalculatorTabs />
             </div>
@@ -285,6 +319,8 @@ export default function NativeAppShell() {
           <div className={show('findgas')}>
             <NearbyStations isActive={active === 'findgas'} onApply={(price, lat, lng, stationName, distanceMi, grade) => {
               window.dispatchEvent(new CustomEvent('gc:inject-gas-price', { detail: { price, name: stationName, distanceMi, grade } }));
+              setPendingFillup({ price, stationName, grade });
+              setShowFillupSheet(false);
               setActive('calculator');
               setVisited((prev) => { const s = new Set(prev); s.add('calculator'); return s; });
             }} />
@@ -306,6 +342,65 @@ export default function NativeAppShell() {
       </div>
 
       <NativeTabBar tabs={TABS} active={active} onChange={changeTab} />
+
+      {/* Fill-up bottom sheet — slides up when user taps "Log Fill-up" banner */}
+      {showFillupSheet && pendingFillup && (() => {
+        let vehicleName = 'My Vehicle';
+        let vehicleId: string | undefined;
+        let vehicleOdometer: number | undefined;
+        try {
+          const raw = localStorage.getItem('gc_target_v2');
+          if (raw) {
+            const stored = JSON.parse(raw) as Record<string, unknown>;
+            if (stored.vehicleName) vehicleName = stored.vehicleName as string;
+            if (stored.vehicleId)   vehicleId   = stored.vehicleId   as string;
+            if (stored.vehicleOdometer) vehicleOdometer = Number(stored.vehicleOdometer);
+          }
+        } catch { /* ignore */ }
+
+        const gradeMap: Record<string, 'regular' | 'midgrade' | 'premium' | 'diesel' | 'e85'> = {
+          regular: 'regular', midgrade: 'midgrade', premium: 'premium',
+          diesel: 'diesel', e85: 'e85',
+        };
+        const mappedGrade = gradeMap[pendingFillup.grade?.toLowerCase() ?? ''] ?? '';
+
+        return (
+          <div className="fixed inset-0 z-50 flex flex-col justify-end">
+            <div
+              className="absolute inset-0 bg-black/40"
+              onClick={() => setShowFillupSheet(false)}
+            />
+            <div className="relative bg-white rounded-t-3xl shadow-2xl max-h-[90vh] overflow-y-auto"
+              style={{ paddingBottom: 'calc(24px + env(safe-area-inset-bottom))' }}
+            >
+              <div className="sticky top-0 bg-white pt-4 pb-2 px-4 flex items-center justify-between border-b border-slate-100 z-10">
+                <h2 className="text-base font-black text-slate-900">Log Fill-up</h2>
+                <button
+                  onClick={() => setShowFillupSheet(false)}
+                  className="text-slate-400 text-xl font-bold px-2"
+                >✕</button>
+              </div>
+              <FillupLogger
+                prefill={{
+                  gallonsPumped:  0,
+                  pricePerGallon: parseFloat(pendingFillup.price) || 0,
+                  vehicleName,
+                  vehicleId,
+                  vehicleOdometer,
+                  stationName:  pendingFillup.stationName,
+                  fuelGrade:    mappedGrade,
+                }}
+                onSaved={() => {
+                  setShowFillupSheet(false);
+                  setPendingFillup(null);
+                  setHistoryKey((k) => k + 1);
+                }}
+                onCancel={() => setShowFillupSheet(false)}
+              />
+            </div>
+          </div>
+        );
+      })()}
     </main>
   );
 }

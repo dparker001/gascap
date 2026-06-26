@@ -5,14 +5,16 @@ import { useSession } from 'next-auth/react';
 import { useTranslation } from '@/contexts/LanguageContext';
 
 interface FillupLoggerProps {
-  /** Pre-filled from the calculation result */
+  /** Pre-filled from the calculation result or Find Gas selection */
   prefill: {
     gallonsPumped:    number;
     pricePerGallon:   number;
     vehicleName:      string;
     vehicleId?:       string;
-    vehicleOdometer?: number;   // from vehicle's stored currentOdometer — used as first-fillup baseline
+    vehicleOdometer?: number;
     fuelLevelBefore?: number;
+    stationName?:     string;
+    fuelGrade?:       FuelGrade;
   };
   onSaved: () => void;   // called after successful save (to refresh history)
   onCancel: () => void;
@@ -74,14 +76,14 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
   } | null>(null);
   // True while the odometer field still shows the auto-estimated value
   const [odomIsEst,      setOdomIsEst]      = useState(false);
-  const [stationName,    setStationName]    = useState('');
+  const [stationName,    setStationName]    = useState(prefill.stationName ?? '');
   const [recentStations, setRecentStations] = useState<string[]>([]);
   const [nearbyStations, setNearbyStations] = useState<string[]>([]);
   const [detecting,      setDetecting]      = useState(false);
   const [detectMsg,      setDetectMsg]      = useState('');
   const [notes,          setNotes]          = useState('');
   const [driverLabel,    setDriverLabel]    = useState('');
-  const [fuelGrade,      setFuelGrade]      = useState<FuelGrade>('');
+  const [fuelGrade,      setFuelGrade]      = useState<FuelGrade>(prefill.fuelGrade ?? '');
   const [receiptThumb,   setReceiptThumb]   = useState('');   // base64 data URL
   const [saving,         setSaving]         = useState(false);
   const [error,          setError]          = useState('');
