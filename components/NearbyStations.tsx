@@ -540,6 +540,10 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
         <p className="text-sm text-slate-500">
           {status === 'locating' ? 'Finding your location…' : 'Loading nearby stations…'}
         </p>
+        {/* Temporary diagnostic — remove after native fetch is confirmed working */}
+        <p className="text-[10px] text-slate-300 font-mono">
+          native:{isNative ? 'y' : 'n'} path:{isNative ? 'CapHttp' : 'fetch'}
+        </p>
       </div>
     );
   }
