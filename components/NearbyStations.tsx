@@ -229,6 +229,11 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
   const [stations, setStations] = useState<NearbyStation[]>([]);
   const [errMsg,   setErrMsg]   = useState('');
   const [coords,   setCoords]   = useState<{ lat: number; lng: number } | null>(null);
+  const [diagLog,  setDiagLog]  = useState<string[]>([]);
+  const diag = (msg: string) => {
+    console.log('[FindGas]', msg);
+    setDiagLog((prev) => [...prev.slice(-6), msg]); // keep last 7 lines
+  };
 
   // Has the user seen the location pre-screen for Find Gas?
   const [locAsked, setLocAsked] = useState(true); // default true = don't flash on load
@@ -271,20 +276,19 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
   // Returns { status, text } or throws with a descriptive message.
   const workerFetch = useCallback((fetchUrl: string, timeoutMs = 13000): Promise<{ status: number; text: string }> => {
     return new Promise((resolve, reject) => {
-      // [6] Full URL the worker will call
-      console.log('[FindGas][worker] fetch URL:', fetchUrl);
+      diag(`[6] worker url: ${fetchUrl.split('?')[0]}`);
 
       const code = [
         'self.onmessage=async function(e){',
         '  var url=e.data;',
-        '  console.log("[FindGas][worker] fetch started:",url);', // [7] inside worker
+        '  self.postMessage({log:"[7] worker fetch started: "+url.split("?")[0]});',
         '  try{',
         '    var r=await fetch(url,{credentials:"include",cache:"no-store",headers:{"Cache-Control":"no-store"}});',
         '    var t=await r.text();',
-        '    console.log("[FindGas][worker] fetch done status:",r.status);', // [8] inside worker
+        '    self.postMessage({log:"[8] worker done status:"+r.status});',
         '    self.postMessage({status:r.status,text:t});',
         '  }catch(err){',
-        '    console.log("[FindGas][worker] fetch error:",String(err));',
+        '    self.postMessage({log:"[8] worker error:"+String(err)});',
         '    self.postMessage({error:String(err)});',
         '  }',
         '};',
@@ -295,9 +299,9 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
       try {
         blobUrl = URL.createObjectURL(new Blob([code], { type: 'application/javascript' }));
         worker  = new Worker(blobUrl);
-        console.log('[FindGas][5] Worker created successfully'); // [5]
+        diag('[5] Worker created OK');
       } catch (e) {
-        console.error('[FindGas][5] Worker creation FAILED:', String(e));
+        diag(`[5] Worker FAILED: ${String(e)}`);
         reject(e);
         return;
       }
@@ -305,19 +309,20 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
       const cleanup = () => { try { worker.terminate(); } catch { /**/ } URL.revokeObjectURL(blobUrl); };
 
       const timer = setTimeout(() => {
-        console.log('[FindGas][9] Worker timeout fired after', timeoutMs, 'ms for', fetchUrl); // [9]
+        diag(`[9] Worker timeout ${timeoutMs}ms`);
         cleanup();
         reject(new Error('worker-timeout'));
       }, timeoutMs);
 
       worker.onmessage = (e: MessageEvent) => {
+        if (e.data.log) { diag(e.data.log); return; }
         clearTimeout(timer);
         cleanup();
         if (e.data.error) {
-          console.log('[FindGas][8] Worker fetch FAILED:', e.data.error); // [8]
+          diag(`[8] worker error: ${e.data.error}`);
           reject(new Error(e.data.error));
         } else {
-          console.log('[FindGas][8] Worker fetch completed — status:', e.data.status, 'body[:200]:', String(e.data.text).slice(0, 200)); // [8] + [10]
+          diag(`[10] status:${e.data.status} body:${String(e.data.text).slice(0, 80)}`);
           resolve({ status: e.data.status, text: e.data.text });
         }
       };
@@ -325,13 +330,13 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
       worker.onerror = (e: ErrorEvent) => {
         clearTimeout(timer);
         cleanup();
-        console.error('[FindGas][worker] onerror:', e.message);
+        diag(`[worker onerror] ${e.message}`);
         reject(new Error(e.message ?? 'worker-error'));
       };
 
       worker.postMessage(fetchUrl);
     });
-  }, []);
+  }, [diag]);
 
   const doLookup = useCallback(async (lat: number, lng: number) => {
     const gen = ++fetchGenRef.current;
@@ -342,20 +347,15 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
 
     setStatus('fetching');
     setCoords({ lat, lng });
-    console.log('[FindGas] loading=true (fetching)');
 
-    // [2] Platform
-    console.log('[FindGas][2] platform detected — isNative:', isNative);
-    // [3] Current URL
-    console.log('[FindGas][3] window.location.href:', typeof window !== 'undefined' ? window.location.href : 'ssr');
-    // [4] SW controller
+    // [2] Platform  [3] href  [4] SW controller
     const swCtrl = typeof navigator !== 'undefined' && 'serviceWorker' in navigator
-      ? (navigator.serviceWorker.controller ? navigator.serviceWorker.controller.scriptURL : 'none')
-      : 'unavailable';
-    console.log('[FindGas][4] navigator.serviceWorker.controller:', swCtrl);
+      ? (navigator.serviceWorker.controller ? 'SW:active' : 'SW:none')
+      : 'SW:unavail';
+    diag(`[2] native:${isNative} ${swCtrl}`);
+    diag(`[3] ${typeof window !== 'undefined' ? window.location.pathname : 'ssr'}`);
 
     const nearbyUrl = `https://www.gascap.app/gas/nearby?lat=${lat}&lng=${lng}&_=${Date.now()}`;
-    console.log('[FindGas] fuel price fetch started:', nearbyUrl, '| gen:', gen);
 
     try {
       type GasData = { stations?: NearbyStation[]; proRequired?: boolean; reason?: string; error?: string; disabled?: boolean };
@@ -364,12 +364,11 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
 
       if (isNative) {
         // ── Ping pre-flight ──────────────────────────────────────────────────
-        // Confirms network reachability via Worker before the real request.
         const pingUrl = `https://www.gascap.app/gas/ping?_=${Date.now()}`;
-        console.log('[FindGas] sending ping via worker:', pingUrl);
+        diag('[ping] sending…');
         try {
           const ping = await workerFetch(pingUrl, 8000);
-          console.log('[FindGas] ping response — status:', ping.status, 'body:', ping.text.slice(0, 100));
+          diag(`[ping] status:${ping.status} ${ping.text.slice(0, 40)}`);
         } catch (pingErr) {
           console.log('[FindGas] ping FAILED:', String(pingErr), '— proceeding to main request anyway');
         }
@@ -380,14 +379,11 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
         // Dedicated Web Workers are not intercepted by service workers (spec-guaranteed).
         const workerResult = await workerFetch(nearbyUrl);
 
-        if (gen !== fetchGenRef.current) {
-          console.log('[FindGas] response discarded (stale gen', gen, ')');
-          return;
-        }
+        if (gen !== fetchGenRef.current) { diag('stale gen — discarded'); return; }
         httpStatus = workerResult.status;
         try { data = JSON.parse(workerResult.text); }
         catch {
-          console.error('[FindGas] non-JSON from worker — status:', workerResult.status, 'body:', workerResult.text.slice(0, 200));
+          diag(`non-JSON status:${workerResult.status}`);
           setStatus('error'); setErrMsg('Unexpected server response. Enter your price manually or tap retry.'); return;
         }
       } else {
@@ -396,61 +392,45 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
           cache:   'no-store',
           headers: { 'Cache-Control': 'no-store' },
         });
-        if (gen !== fetchGenRef.current) {
-          console.log('[FindGas] response discarded (stale gen', gen, ')');
-          return;
-        }
-        console.log('[FindGas] fetch response:', res.status, '| gen:', gen);
+        if (gen !== fetchGenRef.current) { diag('stale gen — discarded'); return; }
+        diag(`fetch status:${res.status}`);
         httpStatus = res.status;
         const text = await res.text();
-        try {
-          data = JSON.parse(text);
-        } catch {
-          console.error('[FindGas] non-JSON response:', res.status, text.slice(0, 200));
-          setStatus('error');
-          setErrMsg('Unexpected server response. Enter your price manually or tap retry.');
-          return;
+        try { data = JSON.parse(text); }
+        catch {
+          diag(`non-JSON status:${res.status}`);
+          setStatus('error'); setErrMsg('Unexpected server response. Enter your price manually or tap retry.'); return;
         }
       }
 
       if (gen !== fetchGenRef.current) return;
 
       if (httpStatus >= 400) {
-        setStatus('error');
-        setErrMsg(`Unable to load fuel prices (${httpStatus}). Enter your price manually or tap retry.`);
-        console.log('[FindGas] error state set — HTTP', httpStatus);
-        return;
+        diag(`HTTP error ${httpStatus}`);
+        setStatus('error'); setErrMsg(`Unable to load fuel prices (${httpStatus}). Enter your price manually or tap retry.`); return;
       }
       if (data.proRequired) {
-        setStatus('error');
-        setErrMsg(`Pro required (${data.reason ?? 'unknown'}) — try signing out and back in.`);
-        console.log('[FindGas] error state set — proRequired:', data.reason);
-        return;
+        diag(`proRequired: ${data.reason}`);
+        setStatus('error'); setErrMsg(`Pro required (${data.reason ?? 'unknown'}) — try signing out and back in.`); return;
       }
       if (data.disabled) { setStatus('disabled'); return; }
-      if (data.error)    {
-        setStatus('error');
-        setErrMsg(data.error);
-        console.log('[FindGas] error state set —', data.error);
-        return;
-      }
+      if (data.error)    { diag(`api error: ${data.error}`); setStatus('error'); setErrMsg(data.error); return; }
 
       setStations(data.stations ?? []);
       setStatus('done');
-      console.log('[FindGas] loading=false — done,', (data.stations ?? []).length, 'stations');
+      diag(`done — ${(data.stations ?? []).length} stations`);
 
     } catch (err) {
       if (gen !== fetchGenRef.current) return;
       const name = err instanceof Error ? err.name : 'unknown';
       const msg  = err instanceof Error ? err.message : String(err);
-      console.error('[FindGas] fetch error:', name, msg, '| gen:', gen);
+      diag(`catch: ${name} ${msg}`);
       if (name !== 'AbortError') {
         setStatus('error');
         setErrMsg('Unable to load nearby fuel prices. Enter your price manually or tap retry.');
-        console.log('[FindGas] error state set —', name, msg);
       }
     }
-  }, [isNative, workerFetch]);
+  }, [isNative, workerFetch, diag]);
 
   const requestLocation = useCallback((source: 'auto' | 'allow' | 'retry' = 'auto') => {
     // Cancel any stale geolocation callback and in-flight fetch.
@@ -458,8 +438,7 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
     fetchGenRef.current++;
     fetchControllerRef.current?.abort();
 
-    // [1] Find Gas button tapped
-    console.log('[FindGas][1] requestLocation called — source:', source);
+    diag(`[1] source:${source}`);
     console.log('[FindGas] geolocation request started | geoGen:', geoGen);
     setStatus('locating');
     console.log('[FindGas] loading=true (locating)');
@@ -617,6 +596,15 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
     );
   }
 
+  // Shared diagnostic box — visible on loading + error screens while we debug native fetch
+  const DiagBox = diagLog.length > 0 ? (
+    <div className="mt-4 mx-4 px-3 py-2 bg-slate-900 rounded-xl max-w-xs w-full">
+      {diagLog.map((line, i) => (
+        <p key={i} className="text-[9px] font-mono text-green-400 leading-tight break-all">{line}</p>
+      ))}
+    </div>
+  ) : null;
+
   // ── Loading ─────────────────────────────────────────────────────────────────
   if (status === 'locating' || status === 'fetching') {
     return (
@@ -625,10 +613,7 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
         <p className="text-sm text-slate-500">
           {status === 'locating' ? 'Finding your location…' : 'Loading nearby stations…'}
         </p>
-        {/* Temporary diagnostic — remove after native fetch is confirmed working */}
-        <p className="text-[10px] text-slate-300 font-mono">
-          native:{isNative ? 'y' : 'n'} path:{isNative ? 'CapHttp' : 'fetch'}
-        </p>
+        {DiagBox}
       </div>
     );
   }
@@ -636,21 +621,24 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
   // ── Error ───────────────────────────────────────────────────────────────────
   if (status === 'error') {
     return (
-      <div className="px-4 pt-8 max-w-lg mx-auto text-center">
+      <div className="px-4 pt-8 max-w-lg mx-auto text-center flex flex-col items-center">
         <PumpIcon className="w-10 h-10 text-slate-300 mx-auto mb-3" />
         <p className="text-sm text-slate-600 mb-4 max-w-xs mx-auto leading-snug">{errMsg}</p>
-        <button
-          onClick={() => requestLocation('retry')}
-          className="w-full max-w-xs py-3 rounded-2xl bg-[#005F4A] text-white text-sm font-black mb-2"
-        >
-          Try Again
-        </button>
-        <button
-          onClick={() => window.dispatchEvent(new CustomEvent('gc:switch-tab', { detail: { tab: 'calculator' } }))}
-          className="w-full max-w-xs py-3 rounded-2xl bg-slate-100 text-slate-700 text-sm font-bold"
-        >
-          Enter Price Manually
-        </button>
+        {DiagBox}
+        <div className="mt-4 w-full max-w-xs space-y-2">
+          <button
+            onClick={() => requestLocation('retry')}
+            className="w-full py-3 rounded-2xl bg-[#005F4A] text-white text-sm font-black"
+          >
+            Try Again
+          </button>
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent('gc:switch-tab', { detail: { tab: 'calculator' } }))}
+            className="w-full py-3 rounded-2xl bg-slate-100 text-slate-700 text-sm font-bold"
+          >
+            Enter Price Manually
+          </button>
+        </div>
       </div>
     );
   }
