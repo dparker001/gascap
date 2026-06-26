@@ -270,8 +270,6 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
   const doLookup = useCallback(async (lat: number, lng: number) => {
     const gen = ++fetchGenRef.current;
 
-    // Cancel any previous in-flight request (best-effort — CapacitorHttp may
-    // ignore AbortSignal, but we still clean up the old controller).
     fetchControllerRef.current?.abort();
     const controller = new AbortController();
     fetchControllerRef.current = controller;
@@ -280,44 +278,65 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
     setCoords({ lat, lng });
     console.log('[FindGas] loading=true (fetching)');
 
-    const base = isNative ? 'https://www.gascap.app' : '';
-    const url  = `${base}/gas/nearby?lat=${lat}&lng=${lng}&_=${Date.now()}`;
+    const url = `https://www.gascap.app/gas/nearby?lat=${lat}&lng=${lng}&_=${Date.now()}`;
     console.log('[FindGas] fuel price fetch started:', url, '| native:', isNative, '| gen:', gen);
 
     try {
-      const res = await fetch(url, {
-        signal:  controller.signal,
-        cache:   'no-store',
-        headers: { 'Cache-Control': 'no-store' },
-      });
+      type GasData = { stations?: NearbyStation[]; proRequired?: boolean; reason?: string; error?: string; disabled?: boolean };
+      let data: GasData;
+      let httpStatus: number;
 
-      if (gen !== fetchGenRef.current) {
-        console.log('[FindGas] fetch response discarded (stale gen', gen, ')');
-        return;
-      }
-
-      console.log('[FindGas] fuel price fetch response:', res.status, '| gen:', gen);
-
-      if (!res.ok) {
-        setStatus('error');
-        setErrMsg(`Unable to load fuel prices (${res.status}). Enter your price manually or tap retry.`);
-        console.log('[FindGas] error state set — HTTP', res.status);
-        return;
-      }
-
-      const text = await res.text();
-      let data: { stations?: NearbyStation[]; proRequired?: boolean; reason?: string; error?: string; disabled?: boolean };
-      try {
-        data = JSON.parse(text);
-      } catch {
-        console.error('[FindGas] non-JSON response:', res.status, text.slice(0, 200));
-        setStatus('error');
-        setErrMsg('Unexpected server response. Enter your price manually or tap retry.');
-        return;
+      if (isNative) {
+        // CapacitorHttp.get() goes through the Capacitor bridge to iOS URLSession —
+        // completely bypasses WKWebView's browser network stack and the service worker.
+        // The SW intercepts at the browser level before any JS-level window.fetch patch;
+        // calling the plugin directly is invisible to it.
+        const { CapacitorHttp } = await import('@capacitor/core');
+        console.log('[FindGas] using CapacitorHttp.get() — bypasses service worker');
+        const res = await CapacitorHttp.get({
+          url,
+          headers: { 'Cache-Control': 'no-store' },
+          connectTimeout: 10000,
+          readTimeout:    12000,
+        });
+        if (gen !== fetchGenRef.current) {
+          console.log('[FindGas] response discarded (stale gen', gen, ')');
+          return;
+        }
+        console.log('[FindGas] CapacitorHttp response:', res.status, '| gen:', gen);
+        httpStatus = res.status;
+        data = typeof res.data === 'string' ? JSON.parse(res.data) : (res.data as GasData);
+      } else {
+        const res = await fetch(url, {
+          signal:  controller.signal,
+          cache:   'no-store',
+          headers: { 'Cache-Control': 'no-store' },
+        });
+        if (gen !== fetchGenRef.current) {
+          console.log('[FindGas] response discarded (stale gen', gen, ')');
+          return;
+        }
+        console.log('[FindGas] fetch response:', res.status, '| gen:', gen);
+        httpStatus = res.status;
+        const text = await res.text();
+        try {
+          data = JSON.parse(text);
+        } catch {
+          console.error('[FindGas] non-JSON response:', res.status, text.slice(0, 200));
+          setStatus('error');
+          setErrMsg('Unexpected server response. Enter your price manually or tap retry.');
+          return;
+        }
       }
 
       if (gen !== fetchGenRef.current) return;
 
+      if (httpStatus >= 400) {
+        setStatus('error');
+        setErrMsg(`Unable to load fuel prices (${httpStatus}). Enter your price manually or tap retry.`);
+        console.log('[FindGas] error state set — HTTP', httpStatus);
+        return;
+      }
       if (data.proRequired) {
         setStatus('error');
         setErrMsg(`Pro required (${data.reason ?? 'unknown'}) — try signing out and back in.`);
@@ -340,13 +359,11 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
       if (gen !== fetchGenRef.current) return;
       const name = err instanceof Error ? err.name : 'unknown';
       const msg  = err instanceof Error ? err.message : String(err);
-      console.error('[FindGas] fuel price fetch error:', name, msg, '| gen:', gen);
-      // AbortError here means the React-state timer already set the error message —
-      // don't overwrite it. All other errors show the generic message.
+      console.error('[FindGas] fetch error:', name, msg, '| gen:', gen);
       if (name !== 'AbortError') {
         setStatus('error');
         setErrMsg('Unable to load nearby fuel prices. Enter your price manually or tap retry.');
-        console.log('[FindGas] error state set —', name);
+        console.log('[FindGas] error state set —', name, msg);
       }
     }
   }, [isNative]);
