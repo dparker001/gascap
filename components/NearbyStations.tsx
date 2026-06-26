@@ -287,25 +287,41 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
       let httpStatus: number;
 
       if (isNative) {
-        // CapacitorHttp.get() goes through the Capacitor bridge to iOS URLSession —
-        // completely bypasses WKWebView's browser network stack and the service worker.
-        // The SW intercepts at the browser level before any JS-level window.fetch patch;
-        // calling the plugin directly is invisible to it.
-        const { CapacitorHttp } = await import('@capacitor/core');
-        console.log('[FindGas] using CapacitorHttp.get() — bypasses service worker');
-        const res = await CapacitorHttp.get({
-          url,
-          headers: { 'Cache-Control': 'no-store' },
-          connectTimeout: 10000,
-          readTimeout:    12000,
+        // Dedicated Web Workers are NOT intercepted by service workers (spec-guaranteed).
+        // This bypasses the SW that hangs /gas/* fetches in WKWebView. CapacitorHttp.get()
+        // also hangs in remote-server mode because it routes same-origin requests back
+        // through the WebView network stack, re-hitting the SW.
+        const workerResult = await new Promise<{ status: number; text: string }>((resolve, reject) => {
+          const code = `self.onmessage=async function(e){try{var r=await fetch(e.data,{credentials:'include',cache:'no-store',headers:{'Cache-Control':'no-store'}});var t=await r.text();self.postMessage({status:r.status,text:t});}catch(err){self.postMessage({error:String(err)});}};`;
+          let worker: Worker;
+          let blobUrl: string;
+          try {
+            blobUrl = URL.createObjectURL(new Blob([code], { type: 'application/javascript' }));
+            worker  = new Worker(blobUrl);
+          } catch (e) {
+            reject(e); return;
+          }
+          const cleanup = () => { worker.terminate(); URL.revokeObjectURL(blobUrl); };
+          const timer = setTimeout(() => { cleanup(); reject(new Error('worker-timeout')); }, 12000);
+          worker.onmessage = (e) => {
+            clearTimeout(timer); cleanup();
+            if (e.data.error) reject(new Error(e.data.error));
+            else resolve({ status: e.data.status, text: e.data.text });
+          };
+          worker.onerror = (e) => { clearTimeout(timer); cleanup(); reject(new Error(e.message ?? 'worker-error')); };
+          worker.postMessage(url);
         });
         if (gen !== fetchGenRef.current) {
           console.log('[FindGas] response discarded (stale gen', gen, ')');
           return;
         }
-        console.log('[FindGas] CapacitorHttp response:', res.status, '| gen:', gen);
-        httpStatus = res.status;
-        data = typeof res.data === 'string' ? JSON.parse(res.data) : (res.data as GasData);
+        console.log('[FindGas] worker fetch response:', workerResult.status, '| gen:', gen);
+        httpStatus = workerResult.status;
+        try { data = JSON.parse(workerResult.text); }
+        catch {
+          console.error('[FindGas] non-JSON from worker:', workerResult.status, workerResult.text.slice(0, 200));
+          setStatus('error'); setErrMsg('Unexpected server response. Enter your price manually or tap retry.'); return;
+        }
       } else {
         const res = await fetch(url, {
           signal:  controller.signal,
