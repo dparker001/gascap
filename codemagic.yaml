@@ -146,7 +146,7 @@ workflows:
         script: |
           cd ios/App
           # Marketing version (CFBundleShortVersionString) — bump per public release
-          agvtool new-marketing-version 1.0.0
+          agvtool new-marketing-version 1.0.1
           # Build number (CFBundleVersion) must be UNIQUE per upload. Look up the latest
           # TestFlight build for the app (by NUMERIC app id, not bundle id) and +1, then
           # floor at Codemagic's own ever-incrementing $BUILD_NUMBER as a safety net so we
