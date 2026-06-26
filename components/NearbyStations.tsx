@@ -267,6 +267,72 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
     return () => clearTimeout(timer);
   }, [status]);
 
+  // Helper: run a fetch inside a dedicated Web Worker (not intercepted by the SW).
+  // Returns { status, text } or throws with a descriptive message.
+  const workerFetch = useCallback((fetchUrl: string, timeoutMs = 13000): Promise<{ status: number; text: string }> => {
+    return new Promise((resolve, reject) => {
+      // [6] Full URL the worker will call
+      console.log('[FindGas][worker] fetch URL:', fetchUrl);
+
+      const code = [
+        'self.onmessage=async function(e){',
+        '  var url=e.data;',
+        '  console.log("[FindGas][worker] fetch started:",url);', // [7] inside worker
+        '  try{',
+        '    var r=await fetch(url,{credentials:"include",cache:"no-store",headers:{"Cache-Control":"no-store"}});',
+        '    var t=await r.text();',
+        '    console.log("[FindGas][worker] fetch done status:",r.status);', // [8] inside worker
+        '    self.postMessage({status:r.status,text:t});',
+        '  }catch(err){',
+        '    console.log("[FindGas][worker] fetch error:",String(err));',
+        '    self.postMessage({error:String(err)});',
+        '  }',
+        '};',
+      ].join('');
+
+      let worker: Worker;
+      let blobUrl: string;
+      try {
+        blobUrl = URL.createObjectURL(new Blob([code], { type: 'application/javascript' }));
+        worker  = new Worker(blobUrl);
+        console.log('[FindGas][5] Worker created successfully'); // [5]
+      } catch (e) {
+        console.error('[FindGas][5] Worker creation FAILED:', String(e));
+        reject(e);
+        return;
+      }
+
+      const cleanup = () => { try { worker.terminate(); } catch { /**/ } URL.revokeObjectURL(blobUrl); };
+
+      const timer = setTimeout(() => {
+        console.log('[FindGas][9] Worker timeout fired after', timeoutMs, 'ms for', fetchUrl); // [9]
+        cleanup();
+        reject(new Error('worker-timeout'));
+      }, timeoutMs);
+
+      worker.onmessage = (e: MessageEvent) => {
+        clearTimeout(timer);
+        cleanup();
+        if (e.data.error) {
+          console.log('[FindGas][8] Worker fetch FAILED:', e.data.error); // [8]
+          reject(new Error(e.data.error));
+        } else {
+          console.log('[FindGas][8] Worker fetch completed — status:', e.data.status, 'body[:200]:', String(e.data.text).slice(0, 200)); // [8] + [10]
+          resolve({ status: e.data.status, text: e.data.text });
+        }
+      };
+
+      worker.onerror = (e: ErrorEvent) => {
+        clearTimeout(timer);
+        cleanup();
+        console.error('[FindGas][worker] onerror:', e.message);
+        reject(new Error(e.message ?? 'worker-error'));
+      };
+
+      worker.postMessage(fetchUrl);
+    });
+  }, []);
+
   const doLookup = useCallback(async (lat: number, lng: number) => {
     const gen = ++fetchGenRef.current;
 
@@ -278,8 +344,18 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
     setCoords({ lat, lng });
     console.log('[FindGas] loading=true (fetching)');
 
-    const url = `https://www.gascap.app/gas/nearby?lat=${lat}&lng=${lng}&_=${Date.now()}`;
-    console.log('[FindGas] fuel price fetch started:', url, '| native:', isNative, '| gen:', gen);
+    // [2] Platform
+    console.log('[FindGas][2] platform detected — isNative:', isNative);
+    // [3] Current URL
+    console.log('[FindGas][3] window.location.href:', typeof window !== 'undefined' ? window.location.href : 'ssr');
+    // [4] SW controller
+    const swCtrl = typeof navigator !== 'undefined' && 'serviceWorker' in navigator
+      ? (navigator.serviceWorker.controller ? navigator.serviceWorker.controller.scriptURL : 'none')
+      : 'unavailable';
+    console.log('[FindGas][4] navigator.serviceWorker.controller:', swCtrl);
+
+    const nearbyUrl = `https://www.gascap.app/gas/nearby?lat=${lat}&lng=${lng}&_=${Date.now()}`;
+    console.log('[FindGas] fuel price fetch started:', nearbyUrl, '| gen:', gen);
 
     try {
       type GasData = { stations?: NearbyStation[]; proRequired?: boolean; reason?: string; error?: string; disabled?: boolean };
@@ -287,43 +363,35 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
       let httpStatus: number;
 
       if (isNative) {
-        // Dedicated Web Workers are NOT intercepted by service workers (spec-guaranteed).
-        // This bypasses the SW that hangs /gas/* fetches in WKWebView. CapacitorHttp.get()
-        // also hangs in remote-server mode because it routes same-origin requests back
-        // through the WebView network stack, re-hitting the SW.
-        const workerResult = await new Promise<{ status: number; text: string }>((resolve, reject) => {
-          const code = `self.onmessage=async function(e){try{var r=await fetch(e.data,{credentials:'include',cache:'no-store',headers:{'Cache-Control':'no-store'}});var t=await r.text();self.postMessage({status:r.status,text:t});}catch(err){self.postMessage({error:String(err)});}};`;
-          let worker: Worker;
-          let blobUrl: string;
-          try {
-            blobUrl = URL.createObjectURL(new Blob([code], { type: 'application/javascript' }));
-            worker  = new Worker(blobUrl);
-          } catch (e) {
-            reject(e); return;
-          }
-          const cleanup = () => { worker.terminate(); URL.revokeObjectURL(blobUrl); };
-          const timer = setTimeout(() => { cleanup(); reject(new Error('worker-timeout')); }, 12000);
-          worker.onmessage = (e) => {
-            clearTimeout(timer); cleanup();
-            if (e.data.error) reject(new Error(e.data.error));
-            else resolve({ status: e.data.status, text: e.data.text });
-          };
-          worker.onerror = (e) => { clearTimeout(timer); cleanup(); reject(new Error(e.message ?? 'worker-error')); };
-          worker.postMessage(url);
-        });
+        // ── Ping pre-flight ──────────────────────────────────────────────────
+        // Confirms network reachability via Worker before the real request.
+        const pingUrl = `https://www.gascap.app/gas/ping?_=${Date.now()}`;
+        console.log('[FindGas] sending ping via worker:', pingUrl);
+        try {
+          const ping = await workerFetch(pingUrl, 8000);
+          console.log('[FindGas] ping response — status:', ping.status, 'body:', ping.text.slice(0, 100));
+        } catch (pingErr) {
+          console.log('[FindGas] ping FAILED:', String(pingErr), '— proceeding to main request anyway');
+        }
+
+        if (gen !== fetchGenRef.current) return;
+
+        // ── Main request via Worker ──────────────────────────────────────────
+        // Dedicated Web Workers are not intercepted by service workers (spec-guaranteed).
+        const workerResult = await workerFetch(nearbyUrl);
+
         if (gen !== fetchGenRef.current) {
           console.log('[FindGas] response discarded (stale gen', gen, ')');
           return;
         }
-        console.log('[FindGas] worker fetch response:', workerResult.status, '| gen:', gen);
         httpStatus = workerResult.status;
         try { data = JSON.parse(workerResult.text); }
         catch {
-          console.error('[FindGas] non-JSON from worker:', workerResult.status, workerResult.text.slice(0, 200));
+          console.error('[FindGas] non-JSON from worker — status:', workerResult.status, 'body:', workerResult.text.slice(0, 200));
           setStatus('error'); setErrMsg('Unexpected server response. Enter your price manually or tap retry.'); return;
         }
       } else {
-        const res = await fetch(url, {
+        const res = await fetch(nearbyUrl, {
           signal:  controller.signal,
           cache:   'no-store',
           headers: { 'Cache-Control': 'no-store' },
@@ -382,7 +450,7 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
         console.log('[FindGas] error state set —', name, msg);
       }
     }
-  }, [isNative]);
+  }, [isNative, workerFetch]);
 
   const requestLocation = useCallback((source: 'auto' | 'allow' | 'retry' = 'auto') => {
     // Cancel any stale geolocation callback and in-flight fetch.
@@ -390,7 +458,8 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
     fetchGenRef.current++;
     fetchControllerRef.current?.abort();
 
-    console.log('[FindGas]', source === 'retry' ? 'Try Again tapped' : source === 'allow' ? 'Use My Location tapped' : 'auto-fetch started');
+    // [1] Find Gas button tapped
+    console.log('[FindGas][1] requestLocation called — source:', source);
     console.log('[FindGas] geolocation request started | geoGen:', geoGen);
     setStatus('locating');
     console.log('[FindGas] loading=true (locating)');
