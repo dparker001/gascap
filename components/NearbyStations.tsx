@@ -14,6 +14,19 @@ import Link from 'next/link';
 import { useIsNative } from '@/hooks/useIsNative';
 import type { NearbyStation, FuelPrice } from '@/lib/nearbyGas';
 
+// Capacitor Geolocation — lazily imported so the web bundle doesn't hard-fail
+// if the plugin isn't available. Only used when isNative === true.
+type CapGeoPlugin = typeof import('@capacitor/geolocation').Geolocation;
+let _capGeo: CapGeoPlugin | null = null;
+async function getCapGeo(): Promise<CapGeoPlugin | null> {
+  if (_capGeo) return _capGeo;
+  try {
+    const mod = await import('@capacitor/geolocation');
+    _capGeo = mod.Geolocation;
+    return _capGeo;
+  } catch { return null; }
+}
+
 interface Props {
   /** Called when the user selects a price to use in the calculator */
   onApply?: (price: string, lat: number, lng: number, stationName: string, distanceMi: number, grade: string) => void;
@@ -453,8 +466,7 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
 
     diag('[4] geolocation API exists');
 
-    // Hard 20s outer timeout — covers both the permission prompt hang and any
-    // silent failure inside getCurrentPosition that doesn't call either callback.
+    // Hard 20s outer timeout — guards against any silent hang in either path.
     let geoDone = false;
     const geoTimer = setTimeout(() => {
       if (geoDone) return;
@@ -466,38 +478,135 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
       diag('[12] loading=false (geo hard timeout)');
     }, 20000);
 
-    diag('[5] calling getCurrentPosition...');
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        if (geoDone) return;
-        geoDone = true;
-        clearTimeout(geoTimer);
-        if (geoGen !== geoGenRef.current) {
-          diag('[6] stale geoGen — discarded');
+    if (isNative) {
+      // ── Capacitor Geolocation (native iOS) ────────────────────────────────
+      // navigator.geolocation.getCurrentPosition() never fires in WKWebView
+      // remote-server mode — the permission prompt never appears. The Capacitor
+      // plugin talks directly to CoreLocation and works correctly.
+      diag('[5] native path — loading Capacitor Geolocation...');
+      getCapGeo().then(async (Geo) => {
+        if (!Geo) {
+          if (geoDone) return;
+          geoDone = true;
+          clearTimeout(geoTimer);
+          diag('[5] Capacitor Geo plugin not available');
+          setStatus('error');
+          setErrMsg('Location plugin unavailable. Try updating the app.');
+          diag('[12] loading=false (no cap geo)');
           return;
         }
-        const lat = Math.round(pos.coords.latitude  * 100) / 100;
-        const lng = Math.round(pos.coords.longitude * 100) / 100;
-        diag(`[6] coords: ${lat} ${lng}`);
-        doLookup(lat, lng);
-      },
-      (err) => {
-        if (geoDone) return;
-        geoDone = true;
-        clearTimeout(geoTimer);
-        if (geoGen !== geoGenRef.current) return;
-        diag(`[7] geo error code:${err.code} ${err.message.slice(0, 40)}`);
-        setStatus('error');
-        setErrMsg(
-          err.code === 1
-            ? 'Location access denied. Enable location in Settings.'
-            : `Could not get location (code ${err.code}).`,
-        );
-        diag('[12] loading=false (geo error)');
-      },
-      { timeout: 10000, maximumAge: 300_000, enableHighAccuracy: false },
-    );
-  }, [doLookup, diag]);
+
+        diag('[3] checking Capacitor location permission...');
+        let permStatus: string;
+        try {
+          const perm = await Geo.checkPermissions();
+          permStatus = perm.location;
+          diag(`[4] permission status: ${permStatus}`);
+        } catch (e) {
+          permStatus = 'unknown';
+          diag(`[4] checkPermissions error: ${String(e).slice(0, 50)}`);
+        }
+
+        if (permStatus === 'denied') {
+          if (geoDone) return;
+          geoDone = true;
+          clearTimeout(geoTimer);
+          diag('[7] location denied — direct user to Settings');
+          if (geoGen !== geoGenRef.current) return;
+          setStatus('error');
+          setErrMsg('Location access denied. Enable in iOS Settings → GasCap → Location.');
+          diag('[12] loading=false (denied)');
+          return;
+        }
+
+        if (permStatus === 'prompt' || permStatus === 'prompt-with-rationale') {
+          diag('[3] requesting Capacitor location permission...');
+          try {
+            const req = await Geo.requestPermissions({ permissions: ['location'] });
+            diag(`[4] permission after request: ${req.location}`);
+            if (req.location === 'denied') {
+              if (geoDone) return;
+              geoDone = true;
+              clearTimeout(geoTimer);
+              if (geoGen !== geoGenRef.current) return;
+              setStatus('error');
+              setErrMsg('Location access denied. Enable in iOS Settings → GasCap → Location.');
+              diag('[12] loading=false (denied after prompt)');
+              return;
+            }
+          } catch (e) {
+            diag(`[4] requestPermissions error: ${String(e).slice(0, 50)}`);
+          }
+        }
+
+        diag('[5] calling Capacitor getCurrentPosition...');
+        try {
+          const pos = await Geo.getCurrentPosition({
+            enableHighAccuracy: true,
+            timeout: 15000,
+          });
+          if (geoDone) return;
+          geoDone = true;
+          clearTimeout(geoTimer);
+          if (geoGen !== geoGenRef.current) {
+            diag('[6] stale geoGen — discarded');
+            return;
+          }
+          const lat = Math.round(pos.coords.latitude  * 100) / 100;
+          const lng = Math.round(pos.coords.longitude * 100) / 100;
+          diag(`[6] Capacitor coords: ${lat} ${lng}`);
+          doLookup(lat, lng);
+        } catch (e) {
+          if (geoDone) return;
+          geoDone = true;
+          clearTimeout(geoTimer);
+          const msg = e instanceof Error ? e.message : String(e);
+          diag(`[7] Capacitor geo error: ${msg.slice(0, 60)}`);
+          if (geoGen !== geoGenRef.current) return;
+          setStatus('error');
+          setErrMsg(
+            msg.toLowerCase().includes('denied')
+              ? 'Location access denied. Enable in iOS Settings → GasCap → Location.'
+              : `Could not get location: ${msg.slice(0, 40)}`,
+          );
+          diag('[12] loading=false (cap geo error)');
+        }
+      });
+    } else {
+      // ── Web / browser fallback ─────────────────────────────────────────────
+      diag('[5] web path — calling navigator.geolocation.getCurrentPosition...');
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          if (geoDone) return;
+          geoDone = true;
+          clearTimeout(geoTimer);
+          if (geoGen !== geoGenRef.current) {
+            diag('[6] stale geoGen — discarded');
+            return;
+          }
+          const lat = Math.round(pos.coords.latitude  * 100) / 100;
+          const lng = Math.round(pos.coords.longitude * 100) / 100;
+          diag(`[6] web coords: ${lat} ${lng}`);
+          doLookup(lat, lng);
+        },
+        (err) => {
+          if (geoDone) return;
+          geoDone = true;
+          clearTimeout(geoTimer);
+          if (geoGen !== geoGenRef.current) return;
+          diag(`[7] web geo error code:${err.code} ${err.message.slice(0, 40)}`);
+          setStatus('error');
+          setErrMsg(
+            err.code === 1
+              ? 'Location access denied. Enable location in Settings.'
+              : `Could not get location (code ${err.code}).`,
+          );
+          diag('[12] loading=false (web geo error)');
+        },
+        { timeout: 10000, maximumAge: 300_000, enableHighAccuracy: false },
+      );
+    }
+  }, [doLookup, diag, isNative]);
 
   function handleAllow() {
     try { localStorage.setItem(LOC_ASKED_KEY, '1'); } catch { /* ignore */ }
