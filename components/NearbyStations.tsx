@@ -14,18 +14,7 @@ import Link from 'next/link';
 import { useIsNative } from '@/hooks/useIsNative';
 import type { NearbyStation, FuelPrice } from '@/lib/nearbyGas';
 
-// Capacitor Geolocation — lazily imported so the web bundle doesn't hard-fail
-// if the plugin isn't available. Only used when isNative === true.
-type CapGeoPlugin = typeof import('@capacitor/geolocation').Geolocation;
-let _capGeo: CapGeoPlugin | null = null;
-async function getCapGeo(): Promise<CapGeoPlugin | null> {
-  if (_capGeo) return _capGeo;
-  try {
-    const mod = await import('@capacitor/geolocation');
-    _capGeo = mod.Geolocation;
-    return _capGeo;
-  } catch { return null; }
-}
+import { Geolocation } from '@capacitor/geolocation';
 
 interface Props {
   /** Called when the user selects a price to use in the calculator */
@@ -481,49 +470,40 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
     if (isNative) {
       // ── Capacitor Geolocation (native iOS) ────────────────────────────────
       // navigator.geolocation.getCurrentPosition() never fires in WKWebView
-      // remote-server mode — the permission prompt never appears. The Capacitor
-      // plugin talks directly to CoreLocation and works correctly.
-      diag('[5] native path — loading Capacitor Geolocation...');
-      getCapGeo().then(async (Geo) => {
-        if (!Geo) {
-          if (geoDone) return;
-          geoDone = true;
-          clearTimeout(geoTimer);
-          diag('[5] Capacitor Geo plugin not available');
-          setStatus('error');
-          setErrMsg('Location plugin unavailable. Try updating the app.');
-          diag('[12] loading=false (no cap geo)');
-          return;
-        }
+      // remote-server mode. The Capacitor plugin talks directly to CoreLocation.
+      diag('[5a] Capacitor Geolocation import available');
 
-        diag('[3] checking Capacitor location permission...');
+      (async () => {
+        // ── Permission check ───────────────────────────────────────────────
+        diag('[5b] calling Geolocation.checkPermissions');
         let permStatus: string;
         try {
-          const perm = await Geo.checkPermissions();
+          const perm = await Geolocation.checkPermissions();
           permStatus = perm.location;
-          diag(`[4] permission status: ${permStatus}`);
+          diag(`[5c] checkPermissions result: ${permStatus}`);
         } catch (e) {
           permStatus = 'unknown';
-          diag(`[4] checkPermissions error: ${String(e).slice(0, 50)}`);
+          diag(`[5c] checkPermissions error: ${String(e).slice(0, 60)}`);
         }
 
         if (permStatus === 'denied') {
           if (geoDone) return;
           geoDone = true;
           clearTimeout(geoTimer);
-          diag('[7] location denied — direct user to Settings');
           if (geoGen !== geoGenRef.current) return;
+          diag('[7] location denied — direct user to Settings');
           setStatus('error');
           setErrMsg('Location access denied. Enable in iOS Settings → GasCap → Location.');
           diag('[12] loading=false (denied)');
           return;
         }
 
-        if (permStatus === 'prompt' || permStatus === 'prompt-with-rationale') {
-          diag('[3] requesting Capacitor location permission...');
+        if (permStatus !== 'granted') {
+          // ── Permission request (shows Apple prompt) ────────────────────
+          diag('[5d] calling Geolocation.requestPermissions');
           try {
-            const req = await Geo.requestPermissions({ permissions: ['location'] });
-            diag(`[4] permission after request: ${req.location}`);
+            const req = await Geolocation.requestPermissions({ permissions: ['location'] });
+            diag(`[5e] requestPermissions result: ${req.location}`);
             if (req.location === 'denied') {
               if (geoDone) return;
               geoDone = true;
@@ -535,13 +515,17 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
               return;
             }
           } catch (e) {
-            diag(`[4] requestPermissions error: ${String(e).slice(0, 50)}`);
+            diag(`[5e] requestPermissions error: ${String(e).slice(0, 60)}`);
+            // Continue — getCurrentPosition will fail with a clear error if really denied
           }
+        } else {
+          diag('[5e] already granted — skipping requestPermissions');
         }
 
-        diag('[5] calling Capacitor getCurrentPosition...');
+        // ── Get position ───────────────────────────────────────────────────
+        diag('[5f] calling Geolocation.getCurrentPosition');
         try {
-          const pos = await Geo.getCurrentPosition({
+          const pos = await Geolocation.getCurrentPosition({
             enableHighAccuracy: true,
             timeout: 15000,
           });
@@ -571,7 +555,7 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
           );
           diag('[12] loading=false (cap geo error)');
         }
-      });
+      })();
     } else {
       // ── Web / browser fallback ─────────────────────────────────────────────
       diag('[5] web path — calling navigator.geolocation.getCurrentPosition...');
