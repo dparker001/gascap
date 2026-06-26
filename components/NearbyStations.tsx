@@ -347,13 +347,7 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
 
     setStatus('fetching');
     setCoords({ lat, lng });
-
-    // [2] Platform  [3] href  [4] SW controller
-    const swCtrl = typeof navigator !== 'undefined' && 'serviceWorker' in navigator
-      ? (navigator.serviceWorker.controller ? 'SW:active' : 'SW:none')
-      : 'SW:unavail';
-    diag(`[2] native:${isNative} ${swCtrl}`);
-    diag(`[3] ${typeof window !== 'undefined' ? window.location.pathname : 'ssr'}`);
+    diag('[8] doLookup entered — creating worker');
 
     const nearbyUrl = `https://www.gascap.app/gas/nearby?lat=${lat}&lng=${lng}&_=${Date.now()}`;
 
@@ -432,49 +426,78 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
     }
   }, [isNative, workerFetch, diag]);
 
-  const requestLocation = useCallback((source: 'auto' | 'allow' | 'retry' = 'auto') => {
-    // Cancel any stale geolocation callback and in-flight fetch.
+  const requestLocation = useCallback((source: 'auto' | 'allow' | 'retry' | 'manual' = 'auto') => {
+    // [1] entered
+    diag(`[1] requestLocation source:${source}`);
+
     const geoGen = ++geoGenRef.current;
     fetchGenRef.current++;
     fetchControllerRef.current?.abort();
 
-    diag(`[1] source:${source}`);
-    console.log('[FindGas] geolocation request started | geoGen:', geoGen);
+    // [2] platform
+    const swCtrl = 'serviceWorker' in navigator
+      ? (navigator.serviceWorker.controller ? 'SW:active' : 'SW:none')
+      : 'SW:unavail';
+    diag(`[2] native:${isNative} ${swCtrl}`);
+
     setStatus('locating');
-    console.log('[FindGas] loading=true (locating)');
+    diag('[3] before geolocation check');
 
     if (!navigator.geolocation) {
+      diag('[3] NO geolocation API — error');
       setStatus('error');
       setErrMsg('Geolocation not available on this device.');
-      console.log('[FindGas] error state set — no geolocation API');
+      diag('[12] loading=false (no geo API)');
       return;
     }
 
+    diag('[4] geolocation API exists');
+
+    // Hard 20s outer timeout — covers both the permission prompt hang and any
+    // silent failure inside getCurrentPosition that doesn't call either callback.
+    let geoDone = false;
+    const geoTimer = setTimeout(() => {
+      if (geoDone) return;
+      geoDone = true;
+      diag('[7] geo HARD TIMEOUT 20s — no callback fired');
+      if (geoGen !== geoGenRef.current) return;
+      setStatus('error');
+      setErrMsg('Location request timed out. Tap retry to try again.');
+      diag('[12] loading=false (geo hard timeout)');
+    }, 20000);
+
+    diag('[5] calling getCurrentPosition...');
     navigator.geolocation.getCurrentPosition(
       (pos) => {
+        if (geoDone) return;
+        geoDone = true;
+        clearTimeout(geoTimer);
         if (geoGen !== geoGenRef.current) {
-          console.log('[FindGas] geolocation result discarded (stale geoGen', geoGen, ')');
+          diag('[6] stale geoGen — discarded');
           return;
         }
         const lat = Math.round(pos.coords.latitude  * 100) / 100;
         const lng = Math.round(pos.coords.longitude * 100) / 100;
-        console.log('[FindGas] coordinates received:', lat + 'x', lng + 'x', '| geoGen:', geoGen);
+        diag(`[6] coords: ${lat} ${lng}`);
         doLookup(lat, lng);
       },
       (err) => {
+        if (geoDone) return;
+        geoDone = true;
+        clearTimeout(geoTimer);
         if (geoGen !== geoGenRef.current) return;
-        console.log('[FindGas] geolocation error:', err.code, err.message);
+        diag(`[7] geo error code:${err.code} ${err.message.slice(0, 40)}`);
         setStatus('error');
         setErrMsg(
           err.code === 1
             ? 'Location access denied. Enable location in Settings.'
-            : 'Could not get your location. Please try again.',
+            : `Could not get location (code ${err.code}).`,
         );
-        console.log('[FindGas] error state set — geolocation code', err.code);
+        diag('[12] loading=false (geo error)');
       },
-      { timeout: 8000, maximumAge: 300_000, enableHighAccuracy: false },
+      { timeout: 10000, maximumAge: 300_000, enableHighAccuracy: false },
     );
-  }, [doLookup]);
+  }, [doLookup, diag]);
 
   function handleAllow() {
     try { localStorage.setItem(LOC_ASKED_KEY, '1'); } catch { /* ignore */ }
@@ -487,57 +510,38 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
     setLocAsked(true);
   }
 
-  // ── Stale fetching state on tab re-activation ───────────────────────────────
-  // Detect false→true transition on isActive. If the component was left in a
-  // loading state (e.g., fetch hung while tab was hidden), reset immediately.
+  // ── Stale loading state: reset on tab re-activation or app foreground ───────
   const prevActiveRef = useRef(false);
   useEffect(() => {
     const wasActive = prevActiveRef.current;
     prevActiveRef.current = !!isActive;
-    if (isActive && !wasActive) {
-      console.log('[FindGas] Find Gas tab active | status was:', status);
-      if (status === 'fetching' || status === 'locating') {
-        fetchGenRef.current++;
-        fetchControllerRef.current?.abort();
-        setStatus('error');
-        setErrMsg('Fuel pricing timed out. Tap retry to try again.');
-        console.log('[FindGas] stale loading state cleared on tab activation');
-      }
+    if (isActive && !wasActive && (status === 'fetching' || status === 'locating')) {
+      fetchGenRef.current++;
+      fetchControllerRef.current?.abort();
+      setStatus('error');
+      setErrMsg('Fuel pricing timed out. Tap retry to try again.');
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isActive]);
 
-  // ── App foreground: reset stale loading state (native only) ─────────────────
   useEffect(() => {
     if (!isNative) return;
     let cleanup: (() => void) | null = null;
     import('@capacitor/app').then(({ App }) => {
       App.addListener('appStateChange', ({ isActive: appActive }) => {
         if (appActive && (status === 'fetching' || status === 'locating')) {
-          console.log('[FindGas] app foregrounded with stale loading state — resetting');
           fetchGenRef.current++;
           fetchControllerRef.current?.abort();
           setStatus('error');
           setErrMsg('Fuel pricing timed out. Tap retry to try again.');
         }
       }).then((handle) => { cleanup = () => handle.remove(); });
-    }).catch(() => { /* @capacitor/app not available in web */ });
+    }).catch(() => {});
     return () => { cleanup?.(); };
   }, [isNative, status]);
 
-  // ── Auto-fetch on tab activation ────────────────────────────────────────────
-  // Only triggers from idle state — never races with an in-flight request and
-  // never re-fetches when results are already shown.
-  useEffect(() => {
-    if (!isActive) return;
-    if (!isPro || sessionStatus === 'loading') return;
-    if (status !== 'idle') return;
-    if (!navigator.geolocation) return;
-    try {
-      const asked = localStorage.getItem(LOC_ASKED_KEY);
-      if (asked === '1') requestLocation('auto');
-    } catch { /* storage blocked */ }
-  }, [isActive, isPro, sessionStatus, status, requestLocation]);
+  // Auto-fetch intentionally removed — user must tap "Use My Location" explicitly.
+  // Auto-fetch was causing getCurrentPosition to hang silently on native.
 
   // ── Guest gate ──────────────────────────────────────────────────────────────
   if (isGuest) {
@@ -643,19 +647,24 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
     );
   }
 
-  // ── Idle (pre-screen dismissed, no auto-grant) ──────────────────────────────
+  // ── Idle — always show button; never auto-start (prevents silent geo hang) ───
   if (status === 'idle') {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] px-6 text-center">
         <PumpIcon className="w-14 h-14 text-slate-300 mb-4" />
         <p className="text-slate-500 text-sm mb-4">Tap to find the cheapest gas near you.</p>
         <button
-          onClick={() => requestLocation('allow')}
+          onClick={() => {
+            try { localStorage.setItem(LOC_ASKED_KEY, '1'); } catch { /* ignore */ }
+            setLocAsked(true);
+            requestLocation('manual');
+          }}
           className="px-6 py-3 rounded-2xl bg-[#005F4A] text-white font-black text-sm
                      active:opacity-90 transition-opacity"
         >
-          📍 Find Nearby Stations
+          📍 Use My Location
         </button>
+        {DiagBox}
       </div>
     );
   }
