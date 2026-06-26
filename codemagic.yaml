@@ -20,7 +20,7 @@ workflows:
       events:
         - push
       branch_patterns:
-        - pattern: main
+        - pattern: ios-capacitor
           include: true
     integrations:
       app_store_connect: GasCap_ASC      # ← must match the integration name in Codemagic
