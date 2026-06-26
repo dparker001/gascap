@@ -19,6 +19,15 @@ export async function GET(req: Request) {
   const lat = parseFloat(searchParams.get('lat') ?? '');
   const lng = parseFloat(searchParams.get('lng') ?? '');
 
+  // Temporary diagnostic log — confirms Railway receives the request from the native app.
+  // Remove once native app delivery is verified end-to-end.
+  console.log('[/gas/nearby] request received:', {
+    method: req.method,
+    origin:    (req as Request & { headers: Headers }).headers.get('origin')     ?? null,
+    userAgent: (req as Request & { headers: Headers }).headers.get('user-agent') ?? null,
+    lat, lng,
+  });
+
   if (isNaN(lat) || isNaN(lng)) {
     return NextResponse.json({ error: 'lat and lng required' }, { status: 400 });
   }

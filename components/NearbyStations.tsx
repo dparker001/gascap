@@ -8,7 +8,7 @@
  * "Use this price" fires onApply into the parent calculator.
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { useIsNative } from '@/hooks/useIsNative';
@@ -17,6 +17,8 @@ import type { NearbyStation, FuelPrice } from '@/lib/nearbyGas';
 interface Props {
   /** Called when the user selects a price to use in the calculator */
   onApply?: (price: string, lat: number, lng: number, stationName: string, distanceMi: number, grade: string) => void;
+  /** True when this tab is the currently visible tab (used to detect stale loading state on re-activation) */
+  isActive?: boolean;
 }
 
 type Status = 'idle' | 'locating' | 'fetching' | 'done' | 'error' | 'no_key' | 'disabled';
@@ -216,7 +218,7 @@ function StationCard({
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function NearbyStations({ onApply }: Props) {
+export default function NearbyStations({ onApply, isActive = true }: Props) {
   const { data: session, status: sessionStatus } = useSession();
   const isNative = useIsNative();
   const plan    = (session?.user as { plan?: string } | undefined)?.plan ?? 'free';
@@ -237,53 +239,80 @@ export default function NearbyStations({ onApply }: Props) {
     } catch { /* storage blocked */ }
   }, []);
 
+  // Generation counter — each new doLookup call increments this so a stale
+  // in-flight response (from a previous attempt) cannot overwrite current state.
+  const fetchGenRef = useRef(0);
+
   const doLookup = useCallback(async (lat: number, lng: number) => {
+    const gen = ++fetchGenRef.current;
     setStatus('fetching');
     setCoords({ lat, lng });
-    try {
-      // Use an absolute URL on native to avoid WKWebView relative-URL ambiguity
-      // and to ensure the request bypasses any service-worker path confusion.
-      const base = isNative ? 'https://www.gascap.app' : '';
-      const url = `${base}/gas/nearby?lat=${lat}&lng=${lng}&_=${Date.now()}`;
-      console.log('[NearbyStations] fetching', url, 'isNative:', isNative);
 
-      // AbortSignal.timeout has spotty support in older WKWebView; use a manual
-      // AbortController with setTimeout as a reliable cross-platform fallback.
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(new Error('timeout')), 15000);
-      let res: Response;
-      try {
-        res = await fetch(url, { signal: controller.signal, cache: 'no-store' });
-      } finally {
-        clearTimeout(timer);
-      }
-      const text = await res.text();
-      console.log('[NearbyStations] response:', res.status, text.slice(0, 300));
-      let data: { stations?: NearbyStation[]; proRequired?: boolean; error?: string; disabled?: boolean };
-      try { data = JSON.parse(text); }
-      catch {
-        console.error('[NearbyStations] non-JSON response:', res.status, text.slice(0, 200));
+    // Absolute URL on native: avoids WKWebView relative-URL ambiguity and
+    // CapacitorHttp (URLSession-based) needs a fully-qualified URL.
+    const base = isNative ? 'https://www.gascap.app' : '';
+    const url  = `${base}/gas/nearby?lat=${lat}&lng=${lng}&_=${Date.now()}`;
+    console.log('[NearbyStations] fetching', url, 'native:', isNative);
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 15000);
+
+    try {
+      const res = await fetch(url, {
+        signal:  controller.signal,
+        cache:   'no-store',
+        headers: { 'Cache-Control': 'no-store' },
+      });
+
+      // Stale response from a superseded request — discard silently.
+      if (gen !== fetchGenRef.current) return;
+
+      if (!res.ok) {
         setStatus('error');
-        setErrMsg(`Server error (${res.status}). Please try again.`);
+        setErrMsg(`Unable to load fuel prices (${res.status}). Enter your price manually or tap retry.`);
         return;
       }
-      if (data.proRequired) {
-        const reason = (data as { reason?: string }).reason ?? 'unknown';
+
+      const text = await res.text();
+      console.log('[NearbyStations] response:', res.status, text.slice(0, 300));
+
+      let data: { stations?: NearbyStation[]; proRequired?: boolean; reason?: string; error?: string; disabled?: boolean };
+      try {
+        data = JSON.parse(text);
+      } catch {
+        console.error('[NearbyStations] non-JSON response:', res.status, text.slice(0, 200));
         setStatus('error');
-        setErrMsg(`Pro required (${reason}) — try signing out and back in.`);
+        setErrMsg('Unexpected server response. Enter your price manually or tap retry.');
+        return;
+      }
+
+      if (gen !== fetchGenRef.current) return;
+
+      if (data.proRequired) {
+        setStatus('error');
+        setErrMsg(`Pro required (${data.reason ?? 'unknown'}) — try signing out and back in.`);
         return;
       }
       if (data.disabled) { setStatus('disabled'); return; }
       if (data.error)    { setStatus('error'); setErrMsg(data.error); return; }
+
       setStations(data.stations ?? []);
       setStatus('done');
+
     } catch (err) {
+      if (gen !== fetchGenRef.current) return;
       console.error('[NearbyStations] fetch error:', err);
-      const msg = err instanceof Error ? err.message : String(err);
+      const isAbort = err instanceof Error && err.name === 'AbortError';
       setStatus('error');
-      setErrMsg(`Network error: ${msg}`);
+      setErrMsg(
+        isAbort
+          ? 'Fuel pricing is taking too long. Enter your price manually or tap retry.'
+          : 'Unable to load nearby fuel prices. Enter your price manually or tap retry.',
+      );
+    } finally {
+      clearTimeout(timer);
     }
-  }, []);
+  }, [isNative]);
 
   const requestLocation = useCallback(() => {
     setStatus('locating');
@@ -320,19 +349,56 @@ export default function NearbyStations({ onApply }: Props) {
     setLocAsked(true);
   }
 
-  // On mount: if pre-screen already seen (and Pro), attempt location.
-  // In Capacitor's WebView, navigator.permissions.query often returns 'prompt'
-  // even when iOS has already granted location — so we skip the permissions
-  // check entirely and just call requestLocation() directly. The geolocation
-  // API will resolve immediately if granted, or show the OS prompt if not.
+  // ── Fix 4a: Stale fetching state on tab re-activation ───────────────────────
+  // NearbyStations is never unmounted (only hidden). If the user backgrounded the
+  // app while a fetch was in flight, the component resumes with status='fetching'
+  // frozen. Detect the false→true transition on isActive and reset stale state.
+  const prevActiveRef = useRef(false);
   useEffect(() => {
+    const wasActive = prevActiveRef.current;
+    prevActiveRef.current = !!isActive;
+    if (isActive && !wasActive && (status === 'fetching' || status === 'locating')) {
+      fetchGenRef.current++; // invalidate any in-flight response
+      setStatus('error');
+      setErrMsg('Fuel pricing timed out. Tap retry to try again.');
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isActive]);
+
+  // ── Fix 4b: App foreground event resets stale loading state (native only) ───
+  // When iOS brings the app to foreground, any previously-hanging fetch is gone.
+  // Reset to error+retry so the user is never stuck on an infinite spinner.
+  useEffect(() => {
+    if (!isNative) return;
+    let cleanup: (() => void) | null = null;
+    import('@capacitor/app').then(({ App }) => {
+      App.addListener('appStateChange', ({ isActive: appActive }) => {
+        if (appActive && (status === 'fetching' || status === 'locating')) {
+          fetchGenRef.current++;
+          setStatus('error');
+          setErrMsg('Fuel pricing timed out. Tap retry to try again.');
+        }
+      }).then((handle) => { cleanup = () => handle.remove(); });
+    }).catch(() => { /* @capacitor/app unavailable in web builds */ });
+    return () => { cleanup?.(); };
+  // Re-register whenever status changes so the closure sees the latest value.
+  }, [isNative, status]);
+
+  // ── Auto-fetch: when tab becomes active + Pro + location previously granted ──
+  // Only fires from idle state so it never races with an in-flight request or
+  // re-fetches when results are already displayed.
+  useEffect(() => {
+    if (!isActive) return;
     if (!isPro || sessionStatus === 'loading') return;
+    if (status !== 'idle') return;
     if (!navigator.geolocation) return;
     try {
       const asked = localStorage.getItem(LOC_ASKED_KEY);
       if (asked === '1') requestLocation();
     } catch { /* storage blocked */ }
-  }, [isPro, sessionStatus, requestLocation]);
+  // isActive triggers a re-check when the tab becomes visible.
+  // status guard ensures we only auto-fetch from idle (not after error/done).
+  }, [isActive, isPro, sessionStatus, status, requestLocation]);
 
   // ── Guest gate ──────────────────────────────────────────────────────────────
   if (isGuest) {
@@ -407,12 +473,21 @@ export default function NearbyStations({ onApply }: Props) {
   if (status === 'error') {
     return (
       <div className="px-4 pt-8 max-w-lg mx-auto text-center">
-        <p className="text-sm text-red-500 mb-3">{errMsg}</p>
+        <PumpIcon className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+        <p className="text-sm text-slate-600 mb-4 max-w-xs mx-auto leading-snug">{errMsg}</p>
         <button
-          onClick={() => { setErrMsg(''); requestLocation(); }}
-          className="px-5 py-2.5 rounded-2xl bg-[#005F4A] text-white text-sm font-black"
+          onClick={() => { setErrMsg(''); setStatus('idle'); }}
+          className="w-full max-w-xs py-3 rounded-2xl bg-[#005F4A] text-white text-sm font-black mb-2"
         >
-          Try again
+          Try Again
+        </button>
+        <button
+          onClick={() => {
+            window.dispatchEvent(new CustomEvent('gc:switch-tab', { detail: { tab: 'calculator' } }));
+          }}
+          className="w-full max-w-xs py-3 rounded-2xl bg-slate-100 text-slate-700 text-sm font-bold"
+        >
+          Enter Price Manually
         </button>
       </div>
     );

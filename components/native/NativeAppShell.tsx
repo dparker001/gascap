@@ -283,7 +283,7 @@ export default function NativeAppShell() {
 
         {visited.has('findgas') && (
           <div className={show('findgas')}>
-            <NearbyStations onApply={(price, lat, lng, stationName, distanceMi, grade) => {
+            <NearbyStations isActive={active === 'findgas'} onApply={(price, lat, lng, stationName, distanceMi, grade) => {
               window.dispatchEvent(new CustomEvent('gc:inject-gas-price', { detail: { price, name: stationName, distanceMi, grade } }));
               setActive('calculator');
               setVisited((prev) => { const s = new Set(prev); s.add('calculator'); return s; });
