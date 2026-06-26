@@ -231,12 +231,6 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
   const [stations, setStations] = useState<NearbyStation[]>([]);
   const [errMsg,   setErrMsg]   = useState('');
   const [coords,   setCoords]   = useState<{ lat: number; lng: number } | null>(null);
-  const [diagLog,  setDiagLog]  = useState<string[]>([]);
-  const diag = (msg: string) => {
-    console.log('[FindGas]', msg);
-    setDiagLog((prev) => [...prev.slice(-6), msg]); // keep last 7 lines
-  };
-
   // Has the user seen the location pre-screen for Find Gas?
   const [locAsked, setLocAsked] = useState(true); // default true = don't flash on load
   useEffect(() => {
@@ -262,14 +256,11 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
   const TIMEOUT_MS = 15_000;
   useEffect(() => {
     if (status !== 'fetching' && status !== 'locating') return;
-    console.log('[FindGas] render state:', status);
     const timer = setTimeout(() => {
-      console.log('[FindGas] timeout fired — setting error state directly');
-      fetchGenRef.current++;           // discard any eventual fetch response
+      fetchGenRef.current++;
       fetchControllerRef.current?.abort();
       setStatus('error');
       setErrMsg('Fuel pricing is taking too long. Enter your price manually or tap retry.');
-      console.log('[FindGas] loading=false (timeout)');
     }, TIMEOUT_MS);
     return () => clearTimeout(timer);
   }, [status]);
@@ -278,19 +269,14 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
   // Returns { status, text } or throws with a descriptive message.
   const workerFetch = useCallback((fetchUrl: string, timeoutMs = 13000): Promise<{ status: number; text: string }> => {
     return new Promise((resolve, reject) => {
-      diag(`[6] worker url: ${fetchUrl.split('?')[0]}`);
-
       const code = [
         'self.onmessage=async function(e){',
         '  var url=e.data;',
-        '  self.postMessage({log:"[7] worker fetch started: "+url.split("?")[0]});',
         '  try{',
         '    var r=await fetch(url,{credentials:"include",cache:"no-store",headers:{"Cache-Control":"no-store"}});',
         '    var t=await r.text();',
-        '    self.postMessage({log:"[8] worker done status:"+r.status});',
         '    self.postMessage({status:r.status,text:t});',
         '  }catch(err){',
-        '    self.postMessage({log:"[8] worker error:"+String(err)});',
         '    self.postMessage({error:String(err)});',
         '  }',
         '};',
@@ -301,9 +287,7 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
       try {
         blobUrl = URL.createObjectURL(new Blob([code], { type: 'application/javascript' }));
         worker  = new Worker(blobUrl);
-        diag('[5] Worker created OK');
       } catch (e) {
-        diag(`[5] Worker FAILED: ${String(e)}`);
         reject(e);
         return;
       }
@@ -311,20 +295,16 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
       const cleanup = () => { try { worker.terminate(); } catch { /**/ } URL.revokeObjectURL(blobUrl); };
 
       const timer = setTimeout(() => {
-        diag(`[9] Worker timeout ${timeoutMs}ms`);
         cleanup();
         reject(new Error('worker-timeout'));
       }, timeoutMs);
 
       worker.onmessage = (e: MessageEvent) => {
-        if (e.data.log) { diag(e.data.log); return; }
         clearTimeout(timer);
         cleanup();
         if (e.data.error) {
-          diag(`[8] worker error: ${e.data.error}`);
           reject(new Error(e.data.error));
         } else {
-          diag(`[10] status:${e.data.status} body:${String(e.data.text).slice(0, 80)}`);
           resolve({ status: e.data.status, text: e.data.text });
         }
       };
@@ -332,13 +312,12 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
       worker.onerror = (e: ErrorEvent) => {
         clearTimeout(timer);
         cleanup();
-        diag(`[worker onerror] ${e.message}`);
         reject(new Error(e.message ?? 'worker-error'));
       };
 
       worker.postMessage(fetchUrl);
     });
-  }, [diag]);
+  }, []);
 
   const doLookup = useCallback(async (lat: number, lng: number) => {
     const gen = ++fetchGenRef.current;
@@ -349,7 +328,6 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
 
     setStatus('fetching');
     setCoords({ lat, lng });
-    diag('[8] doLookup entered — creating worker');
 
     const nearbyUrl = `https://www.gascap.app/gas/nearby?lat=${lat}&lng=${lng}&_=${Date.now()}`;
 
@@ -359,27 +337,19 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
       let httpStatus: number;
 
       if (isNative) {
-        // ── Ping pre-flight ──────────────────────────────────────────────────
+        // Ping pre-flight — warms the connection; failure is non-fatal
         const pingUrl = `https://www.gascap.app/gas/ping?_=${Date.now()}`;
-        diag('[ping] sending…');
-        try {
-          const ping = await workerFetch(pingUrl, 8000);
-          diag(`[ping] status:${ping.status} ${ping.text.slice(0, 40)}`);
-        } catch (pingErr) {
-          console.log('[FindGas] ping FAILED:', String(pingErr), '— proceeding to main request anyway');
-        }
+        try { await workerFetch(pingUrl, 8000); } catch { /* proceed anyway */ }
 
         if (gen !== fetchGenRef.current) return;
 
-        // ── Main request via Worker ──────────────────────────────────────────
-        // Dedicated Web Workers are not intercepted by service workers (spec-guaranteed).
+        // Dedicated Web Workers bypass the service worker (spec-guaranteed)
         const workerResult = await workerFetch(nearbyUrl);
 
-        if (gen !== fetchGenRef.current) { diag('stale gen — discarded'); return; }
+        if (gen !== fetchGenRef.current) return;
         httpStatus = workerResult.status;
         try { data = JSON.parse(workerResult.text); }
         catch {
-          diag(`non-JSON status:${workerResult.status}`);
           setStatus('error'); setErrMsg('Unexpected server response. Enter your price manually or tap retry.'); return;
         }
       } else {
@@ -388,13 +358,11 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
           cache:   'no-store',
           headers: { 'Cache-Control': 'no-store' },
         });
-        if (gen !== fetchGenRef.current) { diag('stale gen — discarded'); return; }
-        diag(`fetch status:${res.status}`);
+        if (gen !== fetchGenRef.current) return;
         httpStatus = res.status;
         const text = await res.text();
         try { data = JSON.parse(text); }
         catch {
-          diag(`non-JSON status:${res.status}`);
           setStatus('error'); setErrMsg('Unexpected server response. Enter your price manually or tap retry.'); return;
         }
       }
@@ -402,88 +370,60 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
       if (gen !== fetchGenRef.current) return;
 
       if (httpStatus >= 400) {
-        diag(`HTTP error ${httpStatus}`);
         setStatus('error'); setErrMsg(`Unable to load fuel prices (${httpStatus}). Enter your price manually or tap retry.`); return;
       }
       if (data.proRequired) {
-        diag(`proRequired: ${data.reason}`);
-        setStatus('error'); setErrMsg(`Pro required (${data.reason ?? 'unknown'}) — try signing out and back in.`); return;
+        setStatus('error'); setErrMsg(`Pro required — try signing out and back in.`); return;
       }
       if (data.disabled) { setStatus('disabled'); return; }
-      if (data.error)    { diag(`api error: ${data.error}`); setStatus('error'); setErrMsg(data.error); return; }
+      if (data.error)    { setStatus('error'); setErrMsg(data.error); return; }
 
       setStations(data.stations ?? []);
       setStatus('done');
-      diag(`done — ${(data.stations ?? []).length} stations`);
 
     } catch (err) {
       if (gen !== fetchGenRef.current) return;
       const name = err instanceof Error ? err.name : 'unknown';
-      const msg  = err instanceof Error ? err.message : String(err);
-      diag(`catch: ${name} ${msg}`);
       if (name !== 'AbortError') {
         setStatus('error');
         setErrMsg('Unable to load nearby fuel prices. Enter your price manually or tap retry.');
       }
     }
-  }, [isNative, workerFetch, diag]);
+  }, [isNative, workerFetch]);
 
-  const requestLocation = useCallback((source: 'auto' | 'allow' | 'retry' | 'manual' = 'auto') => {
-    // [1] entered
-    diag(`[1] requestLocation source:${source}`);
-
+  const requestLocation = useCallback((_source: 'auto' | 'allow' | 'retry' | 'manual' = 'auto') => {
     const geoGen = ++geoGenRef.current;
     fetchGenRef.current++;
     fetchControllerRef.current?.abort();
 
-    // [2] platform
-    const swCtrl = 'serviceWorker' in navigator
-      ? (navigator.serviceWorker.controller ? 'SW:active' : 'SW:none')
-      : 'SW:unavail';
-    diag(`[2] native:${isNative} ${swCtrl}`);
-
     setStatus('locating');
-    diag('[3] before geolocation check');
 
     if (!navigator.geolocation) {
-      diag('[3] NO geolocation API — error');
       setStatus('error');
       setErrMsg('Geolocation not available on this device.');
-      diag('[12] loading=false (no geo API)');
       return;
     }
 
-    diag('[4] geolocation API exists');
-
-    // Hard 20s outer timeout — guards against any silent hang in either path.
+    // Hard 20s outer timeout — guards against silent hangs in either path
     let geoDone = false;
     const geoTimer = setTimeout(() => {
       if (geoDone) return;
       geoDone = true;
-      diag('[7] geo HARD TIMEOUT 20s — no callback fired');
       if (geoGen !== geoGenRef.current) return;
       setStatus('error');
       setErrMsg('Location request timed out. Tap retry to try again.');
-      diag('[12] loading=false (geo hard timeout)');
     }, 20000);
 
     if (isNative) {
-      // ── Capacitor Geolocation (native iOS) ────────────────────────────────
       // navigator.geolocation.getCurrentPosition() never fires in WKWebView
-      // remote-server mode. The Capacitor plugin talks directly to CoreLocation.
-      diag('[5a] Capacitor Geolocation import available');
-
+      // remote-server mode; Capacitor plugin talks directly to CoreLocation.
       (async () => {
-        // ── Permission check ───────────────────────────────────────────────
-        diag('[5b] calling Geolocation.checkPermissions');
         let permStatus: string;
         try {
           const perm = await Geolocation.checkPermissions();
           permStatus = perm.location;
-          diag(`[5c] checkPermissions result: ${permStatus}`);
-        } catch (e) {
+        } catch {
           permStatus = 'unknown';
-          diag(`[5c] checkPermissions error: ${String(e).slice(0, 60)}`);
         }
 
         if (permStatus === 'denied') {
@@ -491,19 +431,14 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
           geoDone = true;
           clearTimeout(geoTimer);
           if (geoGen !== geoGenRef.current) return;
-          diag('[7] location denied — direct user to Settings');
           setStatus('error');
           setErrMsg('Location access denied. Enable in iOS Settings → GasCap → Location.');
-          diag('[12] loading=false (denied)');
           return;
         }
 
         if (permStatus !== 'granted') {
-          // ── Permission request (shows Apple prompt) ────────────────────
-          diag('[5d] calling Geolocation.requestPermissions');
           try {
             const req = await Geolocation.requestPermissions({ permissions: ['location'] });
-            diag(`[5e] requestPermissions result: ${req.location}`);
             if (req.location === 'denied') {
               if (geoDone) return;
               geoDone = true;
@@ -511,19 +446,13 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
               if (geoGen !== geoGenRef.current) return;
               setStatus('error');
               setErrMsg('Location access denied. Enable in iOS Settings → GasCap → Location.');
-              diag('[12] loading=false (denied after prompt)');
               return;
             }
-          } catch (e) {
-            diag(`[5e] requestPermissions error: ${String(e).slice(0, 60)}`);
+          } catch {
             // Continue — getCurrentPosition will fail with a clear error if really denied
           }
-        } else {
-          diag('[5e] already granted — skipping requestPermissions');
         }
 
-        // ── Get position ───────────────────────────────────────────────────
-        diag('[5f] calling Geolocation.getCurrentPosition');
         try {
           const pos = await Geolocation.getCurrentPosition({
             enableHighAccuracy: true,
@@ -532,45 +461,33 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
           if (geoDone) return;
           geoDone = true;
           clearTimeout(geoTimer);
-          if (geoGen !== geoGenRef.current) {
-            diag('[6] stale geoGen — discarded');
-            return;
-          }
+          if (geoGen !== geoGenRef.current) return;
           const lat = Math.round(pos.coords.latitude  * 100) / 100;
           const lng = Math.round(pos.coords.longitude * 100) / 100;
-          diag(`[6] Capacitor coords: ${lat} ${lng}`);
           doLookup(lat, lng);
         } catch (e) {
           if (geoDone) return;
           geoDone = true;
           clearTimeout(geoTimer);
-          const msg = e instanceof Error ? e.message : String(e);
-          diag(`[7] Capacitor geo error: ${msg.slice(0, 60)}`);
           if (geoGen !== geoGenRef.current) return;
+          const msg = e instanceof Error ? e.message : String(e);
           setStatus('error');
           setErrMsg(
             msg.toLowerCase().includes('denied')
               ? 'Location access denied. Enable in iOS Settings → GasCap → Location.'
               : `Could not get location: ${msg.slice(0, 40)}`,
           );
-          diag('[12] loading=false (cap geo error)');
         }
       })();
     } else {
-      // ── Web / browser fallback ─────────────────────────────────────────────
-      diag('[5] web path — calling navigator.geolocation.getCurrentPosition...');
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           if (geoDone) return;
           geoDone = true;
           clearTimeout(geoTimer);
-          if (geoGen !== geoGenRef.current) {
-            diag('[6] stale geoGen — discarded');
-            return;
-          }
+          if (geoGen !== geoGenRef.current) return;
           const lat = Math.round(pos.coords.latitude  * 100) / 100;
           const lng = Math.round(pos.coords.longitude * 100) / 100;
-          diag(`[6] web coords: ${lat} ${lng}`);
           doLookup(lat, lng);
         },
         (err) => {
@@ -578,19 +495,17 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
           geoDone = true;
           clearTimeout(geoTimer);
           if (geoGen !== geoGenRef.current) return;
-          diag(`[7] web geo error code:${err.code} ${err.message.slice(0, 40)}`);
           setStatus('error');
           setErrMsg(
             err.code === 1
               ? 'Location access denied. Enable location in Settings.'
               : `Could not get location (code ${err.code}).`,
           );
-          diag('[12] loading=false (web geo error)');
         },
         { timeout: 10000, maximumAge: 300_000, enableHighAccuracy: false },
       );
     }
-  }, [doLookup, diag, isNative]);
+  }, [doLookup, isNative]);
 
   function handleAllow() {
     try { localStorage.setItem(LOC_ASKED_KEY, '1'); } catch { /* ignore */ }
@@ -693,15 +608,6 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
     );
   }
 
-  // Shared diagnostic box — visible on loading + error screens while we debug native fetch
-  const DiagBox = diagLog.length > 0 ? (
-    <div className="mt-4 mx-4 px-3 py-2 bg-slate-900 rounded-xl max-w-xs w-full">
-      {diagLog.map((line, i) => (
-        <p key={i} className="text-[9px] font-mono text-green-400 leading-tight break-all">{line}</p>
-      ))}
-    </div>
-  ) : null;
-
   // ── Loading ─────────────────────────────────────────────────────────────────
   if (status === 'locating' || status === 'fetching') {
     return (
@@ -710,7 +616,6 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
         <p className="text-sm text-slate-500">
           {status === 'locating' ? 'Finding your location…' : 'Loading nearby stations…'}
         </p>
-        {DiagBox}
       </div>
     );
   }
@@ -721,7 +626,6 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
       <div className="px-4 pt-8 max-w-lg mx-auto text-center flex flex-col items-center">
         <PumpIcon className="w-10 h-10 text-slate-300 mx-auto mb-3" />
         <p className="text-sm text-slate-600 mb-4 max-w-xs mx-auto leading-snug">{errMsg}</p>
-        {DiagBox}
         <div className="mt-4 w-full max-w-xs space-y-2">
           <button
             onClick={() => requestLocation('retry')}
@@ -757,7 +661,6 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
         >
           📍 Use My Location
         </button>
-        {DiagBox}
       </div>
     );
   }
