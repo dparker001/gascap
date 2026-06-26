@@ -34,11 +34,15 @@ workflows:
 
       - name: Generate the iOS project (Capacitor)
         script: |
-          # Idempotent: add the platform if missing, then sync web assets + plugins.
-          if [ ! -d "ios" ]; then
-            npx cap add ios
-          fi
+          # Always regenerate ios/ from scratch so the Podfile reflects the
+          # exact set of plugins currently in package.json. An incremental
+          # cap sync on a stale ios/ can silently omit newly-added plugins
+          # (e.g. @capacitor/geolocation) from the Podfile → "not implemented".
+          rm -rf ios
+          npx cap add ios
           npx cap sync ios
+          echo "── Podfile after sync ──"
+          grep -E "pod '|Pod::" ios/App/Podfile || true
 
       - name: Generate app icon + splash from the orange brand mark
         script: |
@@ -116,7 +120,7 @@ workflows:
 
       - name: Install CocoaPods dependencies
         script: |
-          cd ios/App && pod install
+          cd ios/App && pod install --repo-update
 
       - name: Set marketing + build number
         script: |
