@@ -239,23 +239,50 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
     } catch { /* storage blocked */ }
   }, []);
 
-  // Generation counter — each new doLookup call increments this so a stale
-  // in-flight response (from a previous attempt) cannot overwrite current state.
-  const fetchGenRef = useRef(0);
+  // ── Request tracking refs ───────────────────────────────────────────────────
+  // fetchGenRef: incremented on each new request; stale completions are discarded.
+  // fetchControllerRef: AbortController for the current fetch (best-effort cancel).
+  // geoGenRef: prevents a stale geolocation callback from starting a new fetch.
+  const fetchGenRef       = useRef(0);
+  const fetchControllerRef = useRef<AbortController | null>(null);
+  const geoGenRef         = useRef(0);
+
+  // ── Hard timeout via React state ────────────────────────────────────────────
+  // CapacitorHttp's fetch polyfill does not reliably honour AbortSignal in all
+  // WKWebView versions, so controller.abort() may never reject the promise.
+  // Using a React-state timer instead guarantees a re-render after 15 s —
+  // it calls setStatus() directly, which always schedules a reconciliation.
+  const TIMEOUT_MS = 15_000;
+  useEffect(() => {
+    if (status !== 'fetching' && status !== 'locating') return;
+    console.log('[FindGas] render state:', status);
+    const timer = setTimeout(() => {
+      console.log('[FindGas] timeout fired — setting error state directly');
+      fetchGenRef.current++;           // discard any eventual fetch response
+      fetchControllerRef.current?.abort();
+      setStatus('error');
+      setErrMsg('Fuel pricing is taking too long. Enter your price manually or tap retry.');
+      console.log('[FindGas] loading=false (timeout)');
+    }, TIMEOUT_MS);
+    return () => clearTimeout(timer);
+  }, [status]);
 
   const doLookup = useCallback(async (lat: number, lng: number) => {
     const gen = ++fetchGenRef.current;
+
+    // Cancel any previous in-flight request (best-effort — CapacitorHttp may
+    // ignore AbortSignal, but we still clean up the old controller).
+    fetchControllerRef.current?.abort();
+    const controller = new AbortController();
+    fetchControllerRef.current = controller;
+
     setStatus('fetching');
     setCoords({ lat, lng });
+    console.log('[FindGas] loading=true (fetching)');
 
-    // Absolute URL on native: avoids WKWebView relative-URL ambiguity and
-    // CapacitorHttp (URLSession-based) needs a fully-qualified URL.
     const base = isNative ? 'https://www.gascap.app' : '';
     const url  = `${base}/gas/nearby?lat=${lat}&lng=${lng}&_=${Date.now()}`;
-    console.log('[NearbyStations] fetching', url, 'native:', isNative);
-
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 15000);
+    console.log('[FindGas] fuel price fetch started:', url, '| native:', isNative, '| gen:', gen);
 
     try {
       const res = await fetch(url, {
@@ -264,23 +291,26 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
         headers: { 'Cache-Control': 'no-store' },
       });
 
-      // Stale response from a superseded request — discard silently.
-      if (gen !== fetchGenRef.current) return;
+      if (gen !== fetchGenRef.current) {
+        console.log('[FindGas] fetch response discarded (stale gen', gen, ')');
+        return;
+      }
+
+      console.log('[FindGas] fuel price fetch response:', res.status, '| gen:', gen);
 
       if (!res.ok) {
         setStatus('error');
         setErrMsg(`Unable to load fuel prices (${res.status}). Enter your price manually or tap retry.`);
+        console.log('[FindGas] error state set — HTTP', res.status);
         return;
       }
 
       const text = await res.text();
-      console.log('[NearbyStations] response:', res.status, text.slice(0, 300));
-
       let data: { stations?: NearbyStation[]; proRequired?: boolean; reason?: string; error?: string; disabled?: boolean };
       try {
         data = JSON.parse(text);
       } catch {
-        console.error('[NearbyStations] non-JSON response:', res.status, text.slice(0, 200));
+        console.error('[FindGas] non-JSON response:', res.status, text.slice(0, 200));
         setStatus('error');
         setErrMsg('Unexpected server response. Enter your price manually or tap retry.');
         return;
@@ -291,48 +321,75 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
       if (data.proRequired) {
         setStatus('error');
         setErrMsg(`Pro required (${data.reason ?? 'unknown'}) — try signing out and back in.`);
+        console.log('[FindGas] error state set — proRequired:', data.reason);
         return;
       }
       if (data.disabled) { setStatus('disabled'); return; }
-      if (data.error)    { setStatus('error'); setErrMsg(data.error); return; }
+      if (data.error)    {
+        setStatus('error');
+        setErrMsg(data.error);
+        console.log('[FindGas] error state set —', data.error);
+        return;
+      }
 
       setStations(data.stations ?? []);
       setStatus('done');
+      console.log('[FindGas] loading=false — done,', (data.stations ?? []).length, 'stations');
 
     } catch (err) {
       if (gen !== fetchGenRef.current) return;
-      console.error('[NearbyStations] fetch error:', err);
-      const isAbort = err instanceof Error && err.name === 'AbortError';
-      setStatus('error');
-      setErrMsg(
-        isAbort
-          ? 'Fuel pricing is taking too long. Enter your price manually or tap retry.'
-          : 'Unable to load nearby fuel prices. Enter your price manually or tap retry.',
-      );
-    } finally {
-      clearTimeout(timer);
+      const name = err instanceof Error ? err.name : 'unknown';
+      const msg  = err instanceof Error ? err.message : String(err);
+      console.error('[FindGas] fuel price fetch error:', name, msg, '| gen:', gen);
+      // AbortError here means the React-state timer already set the error message —
+      // don't overwrite it. All other errors show the generic message.
+      if (name !== 'AbortError') {
+        setStatus('error');
+        setErrMsg('Unable to load nearby fuel prices. Enter your price manually or tap retry.');
+        console.log('[FindGas] error state set —', name);
+      }
     }
   }, [isNative]);
 
-  const requestLocation = useCallback(() => {
+  const requestLocation = useCallback((source: 'auto' | 'allow' | 'retry' = 'auto') => {
+    // Cancel any stale geolocation callback and in-flight fetch.
+    const geoGen = ++geoGenRef.current;
+    fetchGenRef.current++;
+    fetchControllerRef.current?.abort();
+
+    console.log('[FindGas]', source === 'retry' ? 'Try Again tapped' : source === 'allow' ? 'Use My Location tapped' : 'auto-fetch started');
+    console.log('[FindGas] geolocation request started | geoGen:', geoGen);
     setStatus('locating');
+    console.log('[FindGas] loading=true (locating)');
+
     if (!navigator.geolocation) {
       setStatus('error');
       setErrMsg('Geolocation not available on this device.');
+      console.log('[FindGas] error state set — no geolocation API');
       return;
     }
+
     navigator.geolocation.getCurrentPosition(
-      (pos) => doLookup(
-        Math.round(pos.coords.latitude  * 100) / 100,
-        Math.round(pos.coords.longitude * 100) / 100,
-      ),
+      (pos) => {
+        if (geoGen !== geoGenRef.current) {
+          console.log('[FindGas] geolocation result discarded (stale geoGen', geoGen, ')');
+          return;
+        }
+        const lat = Math.round(pos.coords.latitude  * 100) / 100;
+        const lng = Math.round(pos.coords.longitude * 100) / 100;
+        console.log('[FindGas] coordinates received:', lat + 'x', lng + 'x', '| geoGen:', geoGen);
+        doLookup(lat, lng);
+      },
       (err) => {
+        if (geoGen !== geoGenRef.current) return;
+        console.log('[FindGas] geolocation error:', err.code, err.message);
         setStatus('error');
         setErrMsg(
           err.code === 1
             ? 'Location access denied. Enable location in Settings.'
             : 'Could not get your location. Please try again.',
         );
+        console.log('[FindGas] error state set — geolocation code', err.code);
       },
       { timeout: 8000, maximumAge: 300_000, enableHighAccuracy: false },
     );
@@ -341,7 +398,7 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
   function handleAllow() {
     try { localStorage.setItem(LOC_ASKED_KEY, '1'); } catch { /* ignore */ }
     setLocAsked(true);
-    requestLocation();
+    requestLocation('allow');
   }
 
   function handleSkip() {
@@ -349,44 +406,47 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
     setLocAsked(true);
   }
 
-  // ── Fix 4a: Stale fetching state on tab re-activation ───────────────────────
-  // NearbyStations is never unmounted (only hidden). If the user backgrounded the
-  // app while a fetch was in flight, the component resumes with status='fetching'
-  // frozen. Detect the false→true transition on isActive and reset stale state.
+  // ── Stale fetching state on tab re-activation ───────────────────────────────
+  // Detect false→true transition on isActive. If the component was left in a
+  // loading state (e.g., fetch hung while tab was hidden), reset immediately.
   const prevActiveRef = useRef(false);
   useEffect(() => {
     const wasActive = prevActiveRef.current;
     prevActiveRef.current = !!isActive;
-    if (isActive && !wasActive && (status === 'fetching' || status === 'locating')) {
-      fetchGenRef.current++; // invalidate any in-flight response
-      setStatus('error');
-      setErrMsg('Fuel pricing timed out. Tap retry to try again.');
+    if (isActive && !wasActive) {
+      console.log('[FindGas] Find Gas tab active | status was:', status);
+      if (status === 'fetching' || status === 'locating') {
+        fetchGenRef.current++;
+        fetchControllerRef.current?.abort();
+        setStatus('error');
+        setErrMsg('Fuel pricing timed out. Tap retry to try again.');
+        console.log('[FindGas] stale loading state cleared on tab activation');
+      }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isActive]);
 
-  // ── Fix 4b: App foreground event resets stale loading state (native only) ───
-  // When iOS brings the app to foreground, any previously-hanging fetch is gone.
-  // Reset to error+retry so the user is never stuck on an infinite spinner.
+  // ── App foreground: reset stale loading state (native only) ─────────────────
   useEffect(() => {
     if (!isNative) return;
     let cleanup: (() => void) | null = null;
     import('@capacitor/app').then(({ App }) => {
       App.addListener('appStateChange', ({ isActive: appActive }) => {
         if (appActive && (status === 'fetching' || status === 'locating')) {
+          console.log('[FindGas] app foregrounded with stale loading state — resetting');
           fetchGenRef.current++;
+          fetchControllerRef.current?.abort();
           setStatus('error');
           setErrMsg('Fuel pricing timed out. Tap retry to try again.');
         }
       }).then((handle) => { cleanup = () => handle.remove(); });
-    }).catch(() => { /* @capacitor/app unavailable in web builds */ });
+    }).catch(() => { /* @capacitor/app not available in web */ });
     return () => { cleanup?.(); };
-  // Re-register whenever status changes so the closure sees the latest value.
   }, [isNative, status]);
 
-  // ── Auto-fetch: when tab becomes active + Pro + location previously granted ──
-  // Only fires from idle state so it never races with an in-flight request or
-  // re-fetches when results are already displayed.
+  // ── Auto-fetch on tab activation ────────────────────────────────────────────
+  // Only triggers from idle state — never races with an in-flight request and
+  // never re-fetches when results are already shown.
   useEffect(() => {
     if (!isActive) return;
     if (!isPro || sessionStatus === 'loading') return;
@@ -394,10 +454,8 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
     if (!navigator.geolocation) return;
     try {
       const asked = localStorage.getItem(LOC_ASKED_KEY);
-      if (asked === '1') requestLocation();
+      if (asked === '1') requestLocation('auto');
     } catch { /* storage blocked */ }
-  // isActive triggers a re-check when the tab becomes visible.
-  // status guard ensures we only auto-fetch from idle (not after error/done).
   }, [isActive, isPro, sessionStatus, status, requestLocation]);
 
   // ── Guest gate ──────────────────────────────────────────────────────────────
@@ -476,15 +534,13 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
         <PumpIcon className="w-10 h-10 text-slate-300 mx-auto mb-3" />
         <p className="text-sm text-slate-600 mb-4 max-w-xs mx-auto leading-snug">{errMsg}</p>
         <button
-          onClick={() => { setErrMsg(''); setStatus('idle'); }}
+          onClick={() => requestLocation('retry')}
           className="w-full max-w-xs py-3 rounded-2xl bg-[#005F4A] text-white text-sm font-black mb-2"
         >
           Try Again
         </button>
         <button
-          onClick={() => {
-            window.dispatchEvent(new CustomEvent('gc:switch-tab', { detail: { tab: 'calculator' } }));
-          }}
+          onClick={() => window.dispatchEvent(new CustomEvent('gc:switch-tab', { detail: { tab: 'calculator' } }))}
           className="w-full max-w-xs py-3 rounded-2xl bg-slate-100 text-slate-700 text-sm font-bold"
         >
           Enter Price Manually
@@ -500,7 +556,7 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
         <PumpIcon className="w-14 h-14 text-slate-300 mb-4" />
         <p className="text-slate-500 text-sm mb-4">Tap to find the cheapest gas near you.</p>
         <button
-          onClick={requestLocation}
+          onClick={() => requestLocation('allow')}
           className="px-6 py-3 rounded-2xl bg-[#005F4A] text-white font-black text-sm
                      active:opacity-90 transition-opacity"
         >
