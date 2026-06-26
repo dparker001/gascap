@@ -39,10 +39,20 @@ workflows:
           # cap sync on a stale ios/ can silently omit newly-added plugins
           # (e.g. @capacitor/geolocation) from the Podfile → "not implemented".
           rm -rf ios
+
+          # ── Verify geolocation package exists before generating iOS project ──
+          echo "=== @capacitor/geolocation version check ==="
+          node -e "const p=require('./node_modules/@capacitor/geolocation/package.json'); console.log('version:', p.version, '| capacitor.ios:', p.capacitor?.ios?.src)"
+          ls node_modules/@capacitor/geolocation/CapacitorGeolocation.podspec
+
           npx cap add ios
           npx cap sync ios
-          echo "── Podfile after sync ──"
-          grep -E "pod '|Pod::" ios/App/Podfile || true
+
+          echo "=== FULL Podfile ==="
+          cat ios/App/Podfile
+
+          echo "=== Check CapacitorGeolocation in Podfile ==="
+          grep -i "geolocation" ios/App/Podfile && echo "✓ CapacitorGeolocation found in Podfile" || echo "✗ MISSING from Podfile"
 
       - name: Generate app icon + splash from the orange brand mark
         script: |
@@ -121,6 +131,10 @@ workflows:
       - name: Install CocoaPods dependencies
         script: |
           cd ios/App && pod install --repo-update
+          echo "=== Pods directory after install ==="
+          ls Pods/ | grep -i "geo\|Geo\|Capacitor" || echo "(no geo pods found)"
+          echo "=== Check CapacitorGeolocation Swift sources in Pods ==="
+          find Pods/CapacitorGeolocation -name "*.swift" 2>/dev/null | head -5 || echo "✗ CapacitorGeolocation pod directory NOT FOUND"
 
       - name: Set marketing + build number
         script: |
@@ -177,12 +191,19 @@ workflows:
             --workspace "$XCODE_WORKSPACE" \
             --scheme "$XCODE_SCHEME"
 
-      - name: Verify push entitlement made it into the binary
+      - name: Verify Geolocation plugin + push entitlement made it into the binary
         script: |
-          # Definitive check: unzip the signed IPA and print the embedded entitlements.
+          # Definitive check: unzip the signed IPA and inspect the binary.
           IPA=$(ls build/ios/ipa/*.ipa 2>/dev/null | head -1)
           rm -rf /tmp/ipacheck && mkdir -p /tmp/ipacheck
           unzip -q "$IPA" -d /tmp/ipacheck
+          APP=$(find /tmp/ipacheck -name "*.app" -maxdepth 4 | head -1)
+          BINARY="$APP/App"
+          echo "=== Binary: $BINARY ==="
+          echo "=== GeolocationPlugin symbol check ==="
+          nm "$BINARY" 2>/dev/null | grep -i "GeolocationPlugin\|CapacitorGeo" | head -10 \
+            && echo "✓ GeolocationPlugin linked in binary" \
+            || echo "✗ GeolocationPlugin NOT FOUND in binary symbols"
           APP=$(ls -d /tmp/ipacheck/Payload/*.app | head -1)
           echo "── Embedded entitlements for $APP ──"
           codesign -d --entitlements :- "$APP" 2>/dev/null || true
