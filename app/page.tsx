@@ -962,6 +962,36 @@ export default function Home() {
           {t.footer.vnetCardDesc}
         </p>
 
+        {/* App Store badges */}
+        <div className="flex items-center justify-center gap-3 pt-2">
+          <a
+            href="https://apps.apple.com/app/id6761315915"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Download on the App Store"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/badges/app-store-badge.svg"
+              alt="Download on the App Store"
+              className="h-9 w-auto"
+            />
+          </a>
+          <a
+            href="https://play.google.com/store/apps/details?id=app.gascap.mobile"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Get it on Google Play"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/badges/google-play-badge.svg"
+              alt="Get it on Google Play"
+              className="h-9 w-auto"
+            />
+          </a>
+        </div>
+
         {/* Legal links */}
         <div className="flex items-center justify-center flex-wrap gap-x-4 gap-y-1 pt-1">
           <a href="/help"    className="text-[11px] text-slate-500 hover:text-brand-orange transition-colors">{t.footer.help}</a>

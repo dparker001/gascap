@@ -280,9 +280,10 @@ export function TargetResultCard({ result, vehicleName, vehicleId, vehicleOdomet
       {showLogger && (
         <FillupLogger
           prefill={{
-            gallonsPumped:   result.gallonsNeeded,
-            pricePerGallon:  pricePerGallon,
-            vehicleName:     vehicleName ?? t.resultCard.myVehicle,
+            gallonsPumped:      result.gallonsNeeded,
+            calculatedGallons:  result.gallonsNeeded,
+            pricePerGallon:     pricePerGallon,
+            vehicleName:        vehicleName ?? t.resultCard.myVehicle,
             vehicleId,
             vehicleOdometer,
             fuelLevelBefore,
