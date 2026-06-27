@@ -154,6 +154,9 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
   const [expandedMonths, setExpandedMonths] = useState<Set<string>>(
     () => new Set([currentMonthStr()]),
   );
+  const [selectedYear,   setSelectedYear]   = useState<string>(
+    () => new Date().getFullYear().toString(),
+  );
 
   // ── Derived stats ──────────────────────────────────────────────────────────
 
@@ -275,7 +278,30 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
       ? fillups.filter((f) => !f.driverLabel)
       : fillups.filter((f) => f.driverLabel === driverFilter);
 
-  const allGroups      = groupByMonth(visibleFillups, MONTH_NAMES);
+  // ── Year-based stats ───────────────────────────────────────────────────────
+  const availableYears = [...new Set(visibleFillups.map((f) => f.date.slice(0, 4)))]
+    .sort((a, b) => b.localeCompare(a));
+
+  const thisCalYear = new Date().getFullYear().toString();
+
+  function calcYearStats(year: string | 'all') {
+    const src = year === 'all' ? visibleFillups : visibleFillups.filter((f) => f.date.startsWith(year));
+    return {
+      count:        src.length,
+      totalSpent:   src.reduce((s, f) => s + f.totalCost, 0),
+      totalGallons: Math.round(src.reduce((s, f) => s + f.gallonsPumped, 0) * 10) / 10,
+    };
+  }
+
+  const yearStats    = calcYearStats(selectedYear);
+  const allTimeStats = calcYearStats('all');
+
+  const allGroups = groupByMonth(
+    selectedYear === 'all'
+      ? visibleFillups
+      : visibleFillups.filter((f) => f.date.startsWith(selectedYear)),
+    MONTH_NAMES,
+  );
   const filteredGroups = applyFilter(allGroups, filterMode, customMonth);
 
   // ── Edit / Delete handlers ─────────────────────────────────────────────────
@@ -434,19 +460,71 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
       {open && (
         <div className="bg-slate-50 p-3 space-y-3">
 
-          {/* ── All-time stats bar ───────────────────────────────────────── */}
+          {/* ── Stats + year selector ────────────────────────────────────── */}
           {stats && stats.count > 0 && (() => {
             const annualProjection = calcAnnualProjection(fillups, stats.totalSpent);
             const costPerMile      = calcCostPerMile(fillups);
             return (
               <>
-                <div className="grid grid-cols-3 gap-2">
-                  <StatPill label={t.fillupHistory.statTotalSpent} value={`$${stats.totalSpent.toFixed(2)}`} color="text-amber-600" />
-                  <StatPill label={t.fillupHistory.statGallons}    value={`${stats.totalGallons} gal`}        color="text-navy-700" />
+                {/* Year chips */}
+                {availableYears.length > 0 && (
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {availableYears.map((yr) => (
+                      <button
+                        key={yr}
+                        type="button"
+                        onClick={() => { setSelectedYear(yr); setFilterMode('all'); }}
+                        className={`px-3 py-1 rounded-full text-xs font-bold border transition-colors ${
+                          selectedYear === yr
+                            ? 'bg-navy-700 text-white border-navy-700'
+                            : 'bg-white text-slate-500 border-slate-200 hover:border-slate-400'
+                        }`}
+                      >
+                        {yr}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => { setSelectedYear('all'); setFilterMode('all'); }}
+                      className={`px-3 py-1 rounded-full text-xs font-bold border transition-colors ${
+                        selectedYear === 'all'
+                          ? 'bg-navy-700 text-white border-navy-700'
+                          : 'bg-white text-slate-500 border-slate-200 hover:border-slate-400'
+                      }`}
+                    >
+                      All time
+                    </button>
+                  </div>
+                )}
+
+                {/* Spent + gallons for selected year vs all time */}
+                <div className="bg-white rounded-xl border border-slate-100 px-4 py-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">
+                      {selectedYear === 'all' ? 'All time' : selectedYear}
+                    </span>
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-black text-amber-600">${yearStats.totalSpent.toFixed(2)}</span>
+                      <span className="text-sm font-black text-navy-700">{yearStats.totalGallons} gal</span>
+                    </div>
+                  </div>
+                  {selectedYear !== 'all' && allTimeStats.count > yearStats.count && (
+                    <div className="flex items-center justify-between border-t border-slate-50 pt-2">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">All time</span>
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs font-bold text-slate-500">${allTimeStats.totalSpent.toFixed(2)}</span>
+                        <span className="text-xs font-bold text-slate-500">{allTimeStats.totalGallons} gal</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
                   <StatPill label={t.fillupHistory.statAvgMpg}
                     value={stats.avgMpg ? `${stats.avgMpg} mpg` : '—'}
                     color={stats.avgMpg ? 'text-green-600' : 'text-slate-400'}
                   />
+                  <StatPill label={t.fillupHistory.statTotalSpent} value={`${yearStats.count} fill-ups`} color="text-slate-600" />
                 </div>
 
                 {/* Annual projection — neutral card (the blue lives on the panel header) */}
