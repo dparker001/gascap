@@ -448,6 +448,87 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
         }}
       />
 
+      {/* Gallons + Price row — at top so the breakdown is immediately visible */}
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="field-label">{t.fillup.gallonsLabel}</label>
+          <div className="relative">
+            <input
+              type="number" inputMode="decimal"
+              className="input-field text-sm pr-9"
+              value={gallons}
+              min="0.1" step="0.1"
+              onChange={(e) => setGallons(e.target.value)}
+            />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">{t.calc.unitGal}</span>
+          </div>
+        </div>
+        <div>
+          <label className="field-label">{t.fillup.pricePerGalLabel}</label>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-semibold pointer-events-none text-sm">$</span>
+            <input
+              type="number" inputMode="decimal"
+              className="input-field text-sm pl-7"
+              value={price}
+              min="0.01" step="0.01"
+              onChange={(e) => setPrice(e.target.value)}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* ── Fill-up breakdown vs. GasCap calculation ───────────────── */}
+      {(() => {
+        const calcGal = prefill.calculatedGallons;
+        if (!calcGal || calcGal <= 0) return null;
+        const pumped = parseFloat(gallons) || 0;
+        const ppg    = parseFloat(price)   || 0;
+        if (pumped <= 0 || ppg <= 0) return null;
+        const calcCost = Math.round(calcGal * ppg * 100) / 100;
+        const pumpCost = Math.round(pumped  * ppg * 100) / 100;
+        const diff     = Math.round((pumped - calcGal) * 100) / 100;
+        const onTarget = Math.abs(diff) <= 0.05;
+        const overGal  = diff > 0.05 ? diff : 0;
+        const underGal = diff < -0.05 ? Math.abs(diff) : 0;
+        const overCost = Math.round(overGal  * ppg * 100) / 100;
+        return (
+          <div className="rounded-xl bg-slate-50 border border-slate-200 p-3 space-y-2 -mt-1">
+            <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide">Fill-up breakdown</p>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] text-slate-500">GasCap suggested</span>
+                <span className="text-[11px] font-bold text-slate-700">{calcGal.toFixed(2)} gal · <span className="text-slate-400">${calcCost.toFixed(2)}</span></span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] text-slate-500">You pumped</span>
+                <span className="text-[11px] font-bold text-slate-700">{pumped.toFixed(2)} gal · <span className="text-slate-400">${pumpCost.toFixed(2)}</span></span>
+              </div>
+              <div className="border-t border-slate-200 pt-1.5">
+                {onTarget && (
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px]">✓</span>
+                    <span className="text-[11px] font-semibold text-emerald-600">On target</span>
+                  </div>
+                )}
+                {overGal > 0 && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] text-amber-600 font-semibold">Tank overfill</span>
+                    <span className="text-[11px] font-bold text-amber-600">+{overGal.toFixed(2)} gal · +${overCost.toFixed(2)}</span>
+                  </div>
+                )}
+                {underGal > 0 && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] text-blue-500 font-semibold">Under target</span>
+                    <span className="text-[11px] font-bold text-blue-500">−{underGal.toFixed(2)} gal · −${Math.round(underGal * ppg * 100) / 100}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* ── Scan receipt section ───────────────────────────────────── */}
       <div className="rounded-xl bg-white border border-slate-200 p-3 space-y-2">
         {/* Header row */}
@@ -557,87 +638,6 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
           onChange={(e) => setDate(e.target.value)}
         />
       </div>
-
-      {/* Gallons + Price row */}
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="field-label">{t.fillup.gallonsLabel}</label>
-          <div className="relative">
-            <input
-              type="number" inputMode="decimal"
-              className="input-field text-sm pr-9"
-              value={gallons}
-              min="0.1" step="0.1"
-              onChange={(e) => setGallons(e.target.value)}
-            />
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">{t.calc.unitGal}</span>
-          </div>
-        </div>
-        <div>
-          <label className="field-label">{t.fillup.pricePerGalLabel}</label>
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-semibold pointer-events-none text-sm">$</span>
-            <input
-              type="number" inputMode="decimal"
-              className="input-field text-sm pl-7"
-              value={price}
-              min="0.01" step="0.01"
-              onChange={(e) => setPrice(e.target.value)}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* ── Fill-up breakdown vs. GasCap calculation ───────────────── */}
-      {(() => {
-        const calcGal = prefill.calculatedGallons;
-        if (!calcGal || calcGal <= 0) return null;
-        const pumped = parseFloat(gallons) || 0;
-        const ppg    = parseFloat(price)   || 0;
-        if (pumped <= 0 || ppg <= 0) return null;
-        const calcCost = Math.round(calcGal * ppg * 100) / 100;
-        const pumpCost = Math.round(pumped  * ppg * 100) / 100;
-        const diff     = Math.round((pumped - calcGal) * 100) / 100;
-        const onTarget = Math.abs(diff) <= 0.05;
-        const overGal  = diff > 0.05 ? diff : 0;
-        const underGal = diff < -0.05 ? Math.abs(diff) : 0;
-        const overCost = Math.round(overGal  * ppg * 100) / 100;
-        return (
-          <div className="rounded-xl bg-slate-50 border border-slate-200 p-3 space-y-2 -mt-1">
-            <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide">Fill-up breakdown</p>
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] text-slate-500">GasCap suggested</span>
-                <span className="text-[11px] font-bold text-slate-700">{calcGal.toFixed(2)} gal · <span className="text-slate-400">${calcCost.toFixed(2)}</span></span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] text-slate-500">You pumped</span>
-                <span className="text-[11px] font-bold text-slate-700">{pumped.toFixed(2)} gal · <span className="text-slate-400">${pumpCost.toFixed(2)}</span></span>
-              </div>
-              <div className="border-t border-slate-200 pt-1.5">
-                {onTarget && (
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[11px]">✓</span>
-                    <span className="text-[11px] font-semibold text-emerald-600">On target</span>
-                  </div>
-                )}
-                {overGal > 0 && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] text-amber-600 font-semibold">Tank overfill</span>
-                    <span className="text-[11px] font-bold text-amber-600">+{overGal.toFixed(2)} gal · +${overCost.toFixed(2)}</span>
-                  </div>
-                )}
-                {underGal > 0 && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] text-blue-500 font-semibold">Under target</span>
-                    <span className="text-[11px] font-bold text-blue-500">−{underGal.toFixed(2)} gal · −${Math.round(underGal * ppg * 100) / 100}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        );
-      })()}
 
       {/* Price intelligence card */}
       {nationalAvg !== null && (() => {
