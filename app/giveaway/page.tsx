@@ -25,6 +25,7 @@ interface GiveawayEntries {
   garageBonusEntries:       number;
   garageDaysThisMonth:      number;
   lifetimeBonusEntries:     number;
+  referralBonusEntries:     number;
   lifetimePerksActive:      boolean;
   referralCount:            number;
 }
@@ -99,6 +100,7 @@ export default function GiveawayPage() {
   const garageBonusEntries       = entries?.garageBonusEntries ?? 0;
   const garageDaysThisMonth      = entries?.garageDaysThisMonth ?? 0;
   const lifetimeBonusEntries     = entries?.lifetimeBonusEntries ?? 0;
+  const referralBonusEntries     = entries?.referralBonusEntries ?? 0;
   const lifetimePerksActive      = entries?.lifetimePerksActive ?? false;
   const maxDays                  = 31;
   const progressPct              = Math.min(100, Math.round((activeDayCount / maxDays) * 100));
@@ -119,7 +121,8 @@ export default function GiveawayPage() {
     { key: 'verify',   emoji: '✉️', label: t.giveawayPage.breakdownVerify,                  entries: verifyBonusEntries       },
     { key: 'phone',    emoji: '📱', label: t.giveawayPage.breakdownPhone,                   entries: phoneBonusEntries        },
     { key: 'upgrade',  emoji: '⭐', label: t.giveawayPage.breakdownUpgrade,                 entries: earlyUpgradeBonusEntries },
-    { key: 'lifetime', emoji: '🏅', label: lifetimePerksActive ? 'Lifetime Perks bonus' : 'Pro Lifetime / Annual bonus', entries: lifetimeBonusEntries },
+    { key: 'lifetime',  emoji: '🏅', label: lifetimePerksActive ? 'Lifetime Perks bonus' : 'Pro Lifetime / Annual bonus', entries: lifetimeBonusEntries },
+    { key: 'referral', emoji: '👥', label: `Referral bonus (${entries?.referralCount ?? 0} referral${(entries?.referralCount ?? 0) === 1 ? '' : 's'})`, entries: referralBonusEntries },
   ].filter((r) => r.entries > 0);
 
   return (

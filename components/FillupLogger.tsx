@@ -79,6 +79,7 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
   const [odomIsEst,      setOdomIsEst]      = useState(false);
   const [stationName,    setStationName]    = useState(prefill.stationName ?? '');
   const [recentStations, setRecentStations] = useState<string[]>([]);
+  const [hiddenStations, setHiddenStations] = useState<Set<string>>(new Set());
   const [nearbyStations, setNearbyStations] = useState<string[]>([]);
   const [detecting,      setDetecting]      = useState(false);
   const [detectMsg,      setDetectMsg]      = useState('');
@@ -151,12 +152,39 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session]);
 
+  // Load hidden stations from localStorage
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('gascap_hidden_stations');
+      if (raw) setHiddenStations(new Set(JSON.parse(raw) as string[]));
+    } catch { /* ignore */ }
+  }, []);
+
+  function forgetStation(name: string) {
+    setHiddenStations((prev) => {
+      const next = new Set(prev);
+      next.add(name);
+      try { localStorage.setItem('gascap_hidden_stations', JSON.stringify([...next])); } catch { /* ignore */ }
+      return next;
+    });
+    setRecentStations((prev) => prev.filter((s) => s !== name));
+    if (stationName === name) setStationName('');
+  }
+
   // Fetch recent station names for the picker
   useEffect(() => {
     if (!session) return;
     fetch('/api/fillups/stations')
       .then((r) => r.json())
-      .then((d: { stations?: string[] }) => { if (d.stations) setRecentStations(d.stations); })
+      .then((d: { stations?: string[] }) => {
+        if (d.stations) {
+          const hidden = (() => {
+            try { return new Set(JSON.parse(localStorage.getItem('gascap_hidden_stations') ?? '[]') as string[]); }
+            catch { return new Set<string>(); }
+          })();
+          setRecentStations(d.stations.filter((s) => !hidden.has(s)));
+        }
+      })
       .catch(() => {});
   }, [session]);
 
@@ -501,37 +529,47 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
         const calcGal = prefill.calculatedGallons;
         if (!calcGal || calcGal <= 0) return null;
         const pumped = parseFloat(gallons) || 0;
-        const ppg = parseFloat(price) || 0;
+        const ppg    = parseFloat(price)   || 0;
         if (pumped <= 0 || ppg <= 0) return null;
         const calcCost = Math.round(calcGal * ppg * 100) / 100;
-        const pumpCost = Math.round(pumped * ppg * 100) / 100;
-        const overGal  = Math.max(0, Math.round((pumped - calcGal) * 100) / 100);
-        const overCost = Math.round(overGal * ppg * 100) / 100;
-        const underGal = Math.max(0, Math.round((calcGal - pumped) * 100) / 100);
+        const pumpCost = Math.round(pumped  * ppg * 100) / 100;
+        const diff     = Math.round((pumped - calcGal) * 100) / 100;
+        const onTarget = Math.abs(diff) <= 0.05;
+        const overGal  = diff > 0.05 ? diff : 0;
+        const underGal = diff < -0.05 ? Math.abs(diff) : 0;
+        const overCost = Math.round(overGal  * ppg * 100) / 100;
         return (
           <div className="rounded-xl bg-slate-50 border border-slate-200 p-3 space-y-2 -mt-1">
             <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide">Fill-up breakdown</p>
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] text-slate-500">GasCap suggested</span>
-                <span className="text-[11px] font-bold text-slate-700">{calcGal.toFixed(2)} gal · <span className="text-slate-500">${calcCost.toFixed(2)}</span></span>
+                <span className="text-[11px] font-bold text-slate-700">{calcGal.toFixed(2)} gal · <span className="text-slate-400">${calcCost.toFixed(2)}</span></span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-[11px] text-slate-500">You pumped</span>
-                <span className="text-[11px] font-bold text-slate-700">{pumped.toFixed(2)} gal · <span className="text-slate-500">${pumpCost.toFixed(2)}</span></span>
+                <span className="text-[11px] font-bold text-slate-700">{pumped.toFixed(2)} gal · <span className="text-slate-400">${pumpCost.toFixed(2)}</span></span>
               </div>
-              {overGal > 0.01 && (
-                <div className="flex items-center justify-between border-t border-slate-200 pt-1.5">
-                  <span className="text-[11px] text-amber-600 font-semibold">Tank overfill</span>
-                  <span className="text-[11px] font-bold text-amber-600">+{overGal.toFixed(2)} gal · +${overCost.toFixed(2)}</span>
-                </div>
-              )}
-              {underGal > 0.01 && (
-                <div className="flex items-center justify-between border-t border-slate-200 pt-1.5">
-                  <span className="text-[11px] text-blue-500 font-semibold">Under target</span>
-                  <span className="text-[11px] font-bold text-blue-500">−{underGal.toFixed(2)} gal</span>
-                </div>
-              )}
+              <div className="border-t border-slate-200 pt-1.5">
+                {onTarget && (
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px]">✓</span>
+                    <span className="text-[11px] font-semibold text-emerald-600">On target</span>
+                  </div>
+                )}
+                {overGal > 0 && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] text-amber-600 font-semibold">Tank overfill</span>
+                    <span className="text-[11px] font-bold text-amber-600">+{overGal.toFixed(2)} gal · +${overCost.toFixed(2)}</span>
+                  </div>
+                )}
+                {underGal > 0 && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] text-blue-500 font-semibold">Under target</span>
+                    <span className="text-[11px] font-bold text-blue-500">−{underGal.toFixed(2)} gal · −${Math.round(underGal * ppg * 100) / 100}</span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         );
@@ -705,23 +743,38 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
             </div>
           </div>
         )}
-        {/* Quick-select chips — top 3 recent stations */}
+        {/* Quick-select chips — top 3 recent stations, with forget (×) */}
         {recentStations.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mt-1.5">
             {recentStations.slice(0, 3).map((s) => (
-              <button
-                key={s}
-                type="button"
-                onClick={() => setStationName((prev) => prev === s ? '' : s)}
-                className={[
-                  'text-[10px] font-semibold px-2.5 py-1 rounded-full border transition-colors',
-                  stationName === s
-                    ? 'bg-amber-500 text-white border-amber-500'
-                    : 'bg-white text-slate-500 border-slate-200 hover:border-amber-300 hover:text-amber-700',
-                ].join(' ')}
-              >
-                {s}
-              </button>
+              <div key={s} className="flex items-center">
+                <button
+                  type="button"
+                  onClick={() => setStationName((prev) => prev === s ? '' : s)}
+                  className={[
+                    'text-[10px] font-semibold pl-2.5 pr-1.5 py-1 rounded-l-full border-y border-l transition-colors',
+                    stationName === s
+                      ? 'bg-amber-500 text-white border-amber-500'
+                      : 'bg-white text-slate-500 border-slate-200 hover:border-amber-300 hover:text-amber-700',
+                  ].join(' ')}
+                >
+                  {s}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => forgetStation(s)}
+                  title="Remove from recent stations"
+                  className={[
+                    'text-[10px] px-1.5 py-1 rounded-r-full border-y border-r transition-colors',
+                    stationName === s
+                      ? 'bg-amber-500 text-white/70 border-amber-500 hover:text-white'
+                      : 'bg-white text-slate-300 border-slate-200 hover:text-red-400 hover:border-red-200',
+                  ].join(' ')}
+                  aria-label={`Forget ${s}`}
+                >
+                  ×
+                </button>
+              </div>
             ))}
           </div>
         )}

@@ -16,6 +16,7 @@ import {
   LIFETIME_BONUS_ENTRIES,
   LIFETIME_BASE_BONUS_ENTRIES,
   ANNUAL_BONUS_ENTRIES,
+  REFERRAL_BONUS_ENTRIES,
 } from '@/lib/giveaway';
 import {
   getAmbassadorTier,
@@ -72,9 +73,10 @@ export async function GET() {
     : user.stripeInterval === 'annual'
     ? ANNUAL_BONUS_ENTRIES
     : 0;
+  const referralBonusEntries = refCount * REFERRAL_BONUS_ENTRIES;
   const entryCount     = baseEntries + streakBonus + bonusEntries + garageBonusEntries
                          + verifyBonusEntries + phoneBonusEntries + dailyBonusEntries
-                         + firstCalcBonusEntries + lifetimeBonusEntries;
+                         + firstCalcBonusEntries + lifetimeBonusEntries + referralBonusEntries;
   const eligible       = user.plan === 'pro' || user.plan === 'fleet';
   const emailVerified  = user.emailVerified ?? false;
 
@@ -102,6 +104,7 @@ export async function GET() {
     garageBonusEntries,
     garageDaysThisMonth,
     lifetimeBonusEntries,
+    referralBonusEntries,
     lifetimePerksActive: perksActive,
     lifetimePerksUntil:  user.lifetimePerksUntil?.toISOString() ?? null,
   });
