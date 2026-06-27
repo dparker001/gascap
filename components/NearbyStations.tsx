@@ -43,12 +43,31 @@ function timeAgo(iso: string | null): string {
 
 function PumpIcon({ className }: { className?: string }) {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor"
-         strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M3 22V6a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v16"/>
-      <path d="M3 11h11"/>
-      <path d="M14 6h1a2 2 0 0 1 2 2v3a2 2 0 0 0 2 2h0a2 2 0 0 0 2-2V7l-3-3"/>
-      <path d="M3 22h11"/>
+    <svg className={className} viewBox="0 0 32 32" fill="currentColor" aria-hidden="true">
+      {/* Pump cabinet body */}
+      <rect x="2" y="5" width="18" height="24" rx="2.5"/>
+      {/* Display screen */}
+      <rect x="5" y="8" width="12" height="8" rx="1.5" fill="white" opacity="0.22"/>
+      {/* Price readout lines */}
+      <rect x="7" y="10" width="8" height="1.5" rx="0.75" fill="white" opacity="0.55"/>
+      <rect x="7" y="13" width="5.5" height="1.5" rx="0.75" fill="white" opacity="0.55"/>
+      {/* Fuel grade button row */}
+      <rect x="5" y="18.5" width="3.5" height="3.5" rx="1" fill="white" opacity="0.28"/>
+      <rect x="10.25" y="18.5" width="3.5" height="3.5" rx="1" fill="white" opacity="0.18"/>
+      <rect x="15.5" y="18.5" width="2" height="3.5" rx="1" fill="white" opacity="0.12"/>
+      {/* Base / ground */}
+      <rect x="1" y="27.5" width="20" height="2.5" rx="1.5"/>
+      {/* Nozzle arm (horizontal pipe from body) */}
+      <rect x="20" y="10" width="5" height="2.2" rx="1.1"/>
+      {/* Vertical drop */}
+      <rect x="23" y="12" width="2.2" height="6" rx="1.1"/>
+      {/* Nozzle head */}
+      <rect x="20.5" y="17" width="4.8" height="2" rx="1"/>
+      {/* Nozzle tip */}
+      <rect x="19" y="18" width="2.5" height="5" rx="1.25"/>
+      {/* Hose coil suggestion */}
+      <path d="M22 18 Q26 18 26 22 Q26 26 22 26" fill="none"
+            stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" opacity="0.45"/>
     </svg>
   );
 }
