@@ -97,6 +97,14 @@ const SECTIONS = [
         a: 'Station Comparison lets you compare two nearby gas stations side by side. Enter the price per gallon at each station and the amount you need — it tells you which is cheaper and by exactly how much. Free for all users.',
       },
       {
+        q: 'What is the Find Gas tab?',
+        a: 'The Find Gas tab shows live gas prices at stations near you, powered by Google Places. It lists nearby stations with their current price, distance, and a direct link to open Google Maps for directions. Tap "Log Fill-Up" on any station card to jump straight into the fill-up logger with that station pre-filled. Available to Pro and Fleet users.',
+      },
+      {
+        q: 'Can I remove a station from the Find Gas results?',
+        a: 'Yes. If a station is permanently closed or you just want to clean up the list, tap the × button on the station card to hide it from your results. Hidden stations are remembered on your device. If you hide all stations, a "Restore hidden stations" link appears to bring them back.',
+      },
+      {
         q: 'What is the Gas Price Alert?',
         a: 'Gas Price Alert (Pro and Fleet) lets you set a price threshold — for example, $3.50/gal. When the national average price drops at or below your threshold, a banner appears at the top of the app letting you know it\'s a good time to fill up. Set your alert in Settings → Gas Price Alert.',
       },
@@ -133,6 +141,14 @@ const SECTIONS = [
       {
         q: 'How do I filter or browse my fill-up history?',
         a: 'Fill-ups are grouped by month. Use the filter bar at the top to narrow by vehicle, date range, or specific month. Fleet users get an additional driver filter. Tap any entry to see its full details or delete it.',
+      },
+      {
+        q: 'Can I see spending totals by year?',
+        a: 'Yes. At the top of Fill-Up History, year chips (e.g. 2026 · 2025 · All time) let you filter the list and stats to a specific year. The stats card shows total spent and total gallons for the selected year, with all-time totals shown below for reference. Defaults to the current year when you open the panel.',
+      },
+      {
+        q: 'What is the pump savings card after logging a fill-up?',
+        a: 'After saving a fill-up that was pre-filled from the GasCap™ calculator, a savings card appears showing how much you saved at the pump by not overfilling. It calculates the industry-average pump overfill (0.4 gal) multiplied by the price per gallon you paid. The card is a reminder that using GasCap™ to calculate your exact fill amount puts real money back in your pocket.',
       },
       {
         q: 'Can I export my fill-up history?',
@@ -376,19 +392,19 @@ const SECTIONS = [
     items: [
       {
         q: 'What are Streak Rewards?',
-        a: 'Streak Rewards are free Pro month credits you earn by maintaining a consecutive daily streak. Open the app every day to keep your streak alive. Rewards are in the Share tab under "Streak Rewards."',
+        a: 'Streak Rewards are bonuses you earn by maintaining a consecutive daily streak — open the app every day to keep your streak alive. The reward depends on your plan: Pro Monthly and Annual members earn free Pro month credits at each milestone; Pro Lifetime members earn bonus gas card giveaway entries instead (since they already have Pro forever). Rewards are in the Share tab under "Streak Rewards."',
       },
       {
-        q: 'What milestones earn a free month?',
-        a: 'Reaching a 30-day streak earns 1 free Pro month. 90 days earns another. 180 days earns another. 365 days earns a final free Pro month plus Legend status — 4 free months total if you reach one year.',
+        q: 'What milestones earn a reward?',
+        a: 'Reaching a 30-day streak earns your first reward. 90 days earns another. 180 days earns another. 365 days earns a final reward plus Legend status — 4 milestones total if you reach one year. For Monthly/Annual members each milestone = 1 free Pro month. For Lifetime members each milestone = bonus giveaway entries.',
       },
       {
-        q: 'How do I redeem a banked free month?',
+        q: 'How do I redeem a banked free month? (Monthly/Annual members)',
         a: 'Email support@gascap.app from your account email and mention your banked streak credit. We\'ll apply it to your next billing cycle.',
       },
       {
-        q: 'Does breaking my streak affect credits I already earned?',
-        a: 'No. Once a milestone is hit, the credit is banked permanently (valid for 12 months). Your streak resets to zero but you keep the credit.',
+        q: 'Does breaking my streak affect rewards I already earned?',
+        a: 'No. Once a milestone is hit, the reward is banked permanently (free month credits valid for 12 months; bonus entries are applied to the current draw period). Your streak resets to zero but you keep everything already earned.',
       },
       {
         q: 'When does a new streak day start?',
