@@ -501,10 +501,10 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
                 <div className="bg-white rounded-xl border border-slate-100 px-4 py-3 space-y-2">
                   {/* Column headers */}
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wide">Period</span>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Period</span>
                     <div className="flex items-center gap-6">
-                      <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wide">Spent</span>
-                      <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wide">Gallons</span>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Spent</span>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Gallons</span>
                     </div>
                   </div>
                   {/* Selected year / all-time row */}
@@ -787,7 +787,7 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
                               </div>
                               <div>
                                 <label className="block text-[10px] font-semibold text-slate-500 mb-1">
-                                  {t.fillupHistory.odometerLabel} <span className="font-normal text-slate-300">{t.fillupHistory.opt}</span>
+                                  {t.fillupHistory.odometerLabel} <span className="font-normal text-slate-400">{t.fillupHistory.opt}</span>
                                 </label>
                                 <input
                                   type="number" inputMode="numeric" min="0" step="1"
@@ -803,7 +803,7 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
                             {/* Gas Station */}
                             <div>
                               <label className="block text-[10px] font-semibold text-slate-500 mb-1">
-                                ⛽ {t.fillupHistory.gasStationLabel} <span className="font-normal text-slate-300">{t.fillupHistory.opt}</span>
+                                ⛽ {t.fillupHistory.gasStationLabel} <span className="font-normal text-slate-400">{t.fillupHistory.opt}</span>
                               </label>
                               <input
                                 type="text" maxLength={60}
@@ -839,7 +839,7 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
                             {/* Notes */}
                             <div>
                               <label className="block text-[10px] font-semibold text-slate-500 mb-1">
-                                {t.fillupHistory.notesLabel} <span className="font-normal text-slate-300">{t.fillupHistory.opt}</span>
+                                {t.fillupHistory.notesLabel} <span className="font-normal text-slate-400">{t.fillupHistory.opt}</span>
                               </label>
                               <input
                                 type="text" maxLength={160}
@@ -854,7 +854,7 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
                             {/* Fuel Grade */}
                             <div>
                               <label className="block text-[10px] font-semibold text-slate-500 mb-1">
-                                {t.fillupHistory.fuelGradeLabel} <span className="font-normal text-slate-300">{t.fillupHistory.opt}</span>
+                                {t.fillupHistory.fuelGradeLabel} <span className="font-normal text-slate-400">{t.fillupHistory.opt}</span>
                               </label>
                               <div className="grid grid-cols-4 gap-1.5">
                                 {EDIT_FUEL_GRADES.map((g) => (
@@ -879,7 +879,7 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
                             {/* Receipt Photo */}
                             <div>
                               <label className="block text-[10px] font-semibold text-slate-500 mb-1.5">
-                                {t.fillupHistory.receiptPhotoLabel} <span className="font-normal text-slate-300">{t.fillupHistory.opt}</span>
+                                {t.fillupHistory.receiptPhotoLabel} <span className="font-normal text-slate-400">{t.fillupHistory.opt}</span>
                               </label>
 
                               {/* Hidden file inputs */}
@@ -1087,7 +1087,7 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
                               {/* Edit */}
                               <button
                                 onClick={() => handleEditStart(f)}
-                                className="flex-shrink-0 text-slate-200 hover:text-amber-400 transition-colors mt-0.5"
+                                className="flex-shrink-0 text-slate-400 hover:text-amber-400 transition-colors mt-0.5"
                                 aria-label={t.fillupHistory.editAria}
                               >
                                 <svg viewBox="0 0 12 12" className="w-3.5 h-3.5" fill="none"
@@ -1099,7 +1099,7 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
                               {/* Delete — requires confirmation tap */}
                               <button
                                 onClick={() => setPendingDeleteId(f.id)}
-                                className="flex-shrink-0 text-slate-200 hover:text-red-400 transition-colors mt-0.5"
+                                className="flex-shrink-0 text-slate-400 hover:text-red-400 transition-colors mt-0.5"
                                 aria-label={t.fillupHistory.deleteAria}
                               >
                                 <svg viewBox="0 0 12 12" className="w-3.5 h-3.5" fill="none"
@@ -1150,7 +1150,7 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
                   {t.fillupHistory.printPdf}
                 </a>
               </div>
-              <p className="text-center text-[10px] text-slate-300 pb-2">
+              <p className="text-center text-[10px] text-slate-400 pb-2">
                 {t.fillupHistory.footerCount(fillups.length)}
                 {stats?.avgMpg ? t.fillupHistory.footerAvgMpg(stats.avgMpg) : t.fillupHistory.footerAddOdometer}
               </p>
