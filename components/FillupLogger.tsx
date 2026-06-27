@@ -451,7 +451,12 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
       {/* Gallons + Price row — at top so the breakdown is immediately visible */}
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="field-label">{t.fillup.gallonsLabel}</label>
+          <label className="field-label">
+            {t.fillup.gallonsLabel}
+            {prefill.calculatedGallons && prefill.calculatedGallons > 0 && (
+              <span className="ml-1 text-[9px] font-normal text-slate-400">actual pumped</span>
+            )}
+          </label>
           <div className="relative">
             <input
               type="number" inputMode="decimal"
