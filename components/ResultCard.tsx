@@ -416,9 +416,10 @@ export function BudgetResultCard({ result, pricePerGallon, vehicleName, vehicleI
       {showLogger && (
         <FillupLogger
           prefill={{
-            gallonsPumped:   result.gallonsAffordable,
-            pricePerGallon:  resolvedPrice,
-            vehicleName:     vehicleName ?? t.resultCard.myVehicle,
+            gallonsPumped:     result.gallonsAffordable,
+            calculatedGallons: result.gallonsAffordable,
+            pricePerGallon:    resolvedPrice,
+            vehicleName:       vehicleName ?? t.resultCard.myVehicle,
             vehicleId,
             vehicleOdometer,
             fuelLevelBefore,
