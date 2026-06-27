@@ -91,7 +91,7 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
   const [saving,         setSaving]         = useState(false);
   const [error,          setError]          = useState('');
   const [warnings,       setWarnings]       = useState<string[]>([]);
-  const [savedSummary,   setSavedSummary]   = useState<{ gallons: number; pricePaid: number; saved: number } | null>(null);
+  const [savedSummary,   setSavedSummary]   = useState<{ gallons: number; pricePaid: number; saved: number; overfillGal: number } | null>(null);
   const [forceConfirm, setForceConfirm] = useState(false);
   const [scanning,     setScanning]     = useState(false);
   const [scanError,    setScanError]    = useState('');
@@ -338,14 +338,18 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
 
       window.dispatchEvent(new Event('fillup-saved'));
 
-      // Compute savings vs. a full tank and show the confirmation card
-      const pumpedGal   = parseFloat(gallons);
-      const ppg         = parseFloat(price);
-      const tankCap     = prefill.tankCapacity;
-      if (tankCap && tankCap > pumpedGal && ppg > 0) {
-        const pricePaid  = Math.round(pumpedGal * ppg * 100) / 100;
-        const saved      = Math.round((tankCap - pumpedGal) * ppg * 100) / 100;
-        setSavedSummary({ gallons: pumpedGal, pricePaid, saved });
+      // Compute overfill savings and show the confirmation card.
+      // Industry average pump overfill is ~0.4 gal; if the user followed GasCap's
+      // suggestion closely (within 0.5 gal) we use the avg, otherwise use the delta.
+      const pumpedGal = parseFloat(gallons);
+      const ppg       = parseFloat(price);
+      if (ppg > 0 && pumpedGal > 0 && prefill.calculatedGallons) {
+        const AVG_OVERFILL_GAL = 0.4;
+        const delta     = Math.abs(pumpedGal - prefill.calculatedGallons);
+        const overfill  = delta <= 0.5 ? AVG_OVERFILL_GAL : Math.max(AVG_OVERFILL_GAL, delta);
+        const pricePaid = Math.round(pumpedGal * ppg * 100) / 100;
+        const saved     = Math.round(overfill * ppg * 100) / 100;
+        setSavedSummary({ gallons: pumpedGal, pricePaid, saved, overfillGal: overfill });
       } else {
         onSaved();
       }
@@ -358,27 +362,39 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
 
   // ── Post-save savings confirmation ────────────────────────────────────────
   if (savedSummary) {
-    const fullTankCost = Math.round((savedSummary.pricePaid + savedSummary.saved) * 100) / 100;
     return (
       <div className="mt-3 rounded-2xl border-2 border-emerald-200 bg-emerald-50 p-5 space-y-4 animate-fade-in text-center">
         <div>
-          <p className="text-3xl mb-1">🏆</p>
-          <p className="text-sm font-black text-emerald-800">Fill-up logged!</p>
-          <p className="text-[11px] text-emerald-600 mt-0.5">Here&rsquo;s what GasCap saved you today</p>
+          <p className="text-3xl mb-1">⛽</p>
+          <p className="text-sm font-black text-emerald-800">Smart fill-up complete</p>
+          <p className="text-[11px] text-emerald-600 mt-0.5">Here&rsquo;s what GasCap saved you at the pump</p>
         </div>
 
         {/* Big savings number */}
-        <div className="bg-white rounded-2xl px-4 py-4 shadow-sm border border-emerald-100">
-          <p className="text-4xl font-black text-emerald-600">${savedSummary.saved.toFixed(2)}</p>
-          <p className="text-xs font-bold text-emerald-700 mt-0.5">saved vs. a full tank</p>
-          <p className="text-[10px] text-slate-400 mt-2 leading-relaxed">
-            You paid <span className="font-bold text-slate-600">${savedSummary.pricePaid.toFixed(2)}</span> for {savedSummary.gallons.toFixed(2)} gal
-            &nbsp;·&nbsp; full tank would've cost <span className="font-bold text-slate-600">${fullTankCost.toFixed(2)}</span>
-          </p>
+        <div className="bg-white rounded-2xl px-4 py-4 shadow-sm border border-emerald-100 space-y-3">
+          <div>
+            <p className="text-4xl font-black text-emerald-600">${savedSummary.saved.toFixed(2)}</p>
+            <p className="text-xs font-bold text-emerald-700 mt-0.5">avoided in pump overfill</p>
+          </div>
+
+          <div className="border-t border-slate-100 pt-3 space-y-1.5 text-left">
+            <div className="flex justify-between text-[11px]">
+              <span className="text-slate-500">You paid</span>
+              <span className="font-bold text-slate-700">${savedSummary.pricePaid.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between text-[11px]">
+              <span className="text-slate-500">Typical pump overfill (~{savedSummary.overfillGal.toFixed(1)} gal)</span>
+              <span className="font-bold text-amber-600">+${savedSummary.saved.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between text-[11px] border-t border-slate-100 pt-1.5">
+              <span className="font-semibold text-slate-600">Without GasCap</span>
+              <span className="font-bold text-slate-700">${(savedSummary.pricePaid + savedSummary.saved).toFixed(2)}</span>
+            </div>
+          </div>
         </div>
 
-        <p className="text-[11px] text-emerald-700 leading-relaxed px-2">
-          That&rsquo;s <strong>${savedSummary.saved.toFixed(2)}</strong> back in your pocket — spend it inside or keep it. GasCap keeps the math honest.
+        <p className="text-[11px] text-slate-500 leading-relaxed px-1">
+          Pumps click off a little late — you end up paying for gas that goes into the vapor recovery system, not your tank. GasCap calculated the exact amount so you didn&rsquo;t overpay.
         </p>
 
         <button
