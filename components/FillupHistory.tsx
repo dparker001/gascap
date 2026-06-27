@@ -474,10 +474,10 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
                         key={yr}
                         type="button"
                         onClick={() => { setSelectedYear(yr); setFilterMode('all'); }}
-                        className={`px-3 py-1 rounded-full text-xs font-bold border transition-colors ${
+                        className={`px-3 py-1 rounded-full font-bold border transition-colors ${
                           selectedYear === yr
-                            ? 'bg-navy-700 text-white border-navy-700'
-                            : 'bg-white text-slate-500 border-slate-200 hover:border-slate-400'
+                            ? 'bg-navy-700 text-white border-navy-700 text-sm shadow-sm'
+                            : 'bg-white text-slate-400 border-slate-200 hover:border-slate-400 text-xs'
                         }`}
                       >
                         {yr}
@@ -486,10 +486,10 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
                     <button
                       type="button"
                       onClick={() => { setSelectedYear('all'); setFilterMode('all'); }}
-                      className={`px-3 py-1 rounded-full text-xs font-bold border transition-colors ${
+                      className={`px-3 py-1 rounded-full font-bold border transition-colors ${
                         selectedYear === 'all'
-                          ? 'bg-navy-700 text-white border-navy-700'
-                          : 'bg-white text-slate-500 border-slate-200 hover:border-slate-400'
+                          ? 'bg-navy-700 text-white border-navy-700 text-sm shadow-sm'
+                          : 'bg-white text-slate-400 border-slate-200 hover:border-slate-400 text-xs'
                       }`}
                     >
                       All time
@@ -499,21 +499,30 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
 
                 {/* Spent + gallons for selected year vs all time */}
                 <div className="bg-white rounded-xl border border-slate-100 px-4 py-3 space-y-2">
+                  {/* Column headers */}
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">
+                    <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wide">Period</span>
+                    <div className="flex items-center gap-6">
+                      <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wide">Spent</span>
+                      <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wide">Gallons</span>
+                    </div>
+                  </div>
+                  {/* Selected year / all-time row */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-black text-slate-800">
                       {selectedYear === 'all' ? 'All time' : selectedYear}
                     </span>
                     <div className="flex items-center gap-3">
                       <span className="text-sm font-black text-amber-600">${yearStats.totalSpent.toFixed(2)}</span>
-                      <span className="text-sm font-black text-navy-700">{yearStats.totalGallons} gal</span>
+                      <span className="text-sm font-black text-navy-700 w-16 text-right">{yearStats.totalGallons} gal</span>
                     </div>
                   </div>
                   {selectedYear !== 'all' && allTimeStats.count > yearStats.count && (
                     <div className="flex items-center justify-between border-t border-slate-50 pt-2">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">All time</span>
+                      <span className="text-xs font-semibold text-slate-400">All time</span>
                       <div className="flex items-center gap-3">
-                        <span className="text-xs font-bold text-slate-500">${allTimeStats.totalSpent.toFixed(2)}</span>
-                        <span className="text-xs font-bold text-slate-500">{allTimeStats.totalGallons} gal</span>
+                        <span className="text-xs font-bold text-slate-400">${allTimeStats.totalSpent.toFixed(2)}</span>
+                        <span className="text-xs font-bold text-slate-400 w-16 text-right">{allTimeStats.totalGallons} gal</span>
                       </div>
                     </div>
                   )}
