@@ -366,15 +366,15 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
       <div className="mt-3 rounded-2xl border-2 border-emerald-200 bg-emerald-50 p-5 space-y-4 animate-fade-in text-center">
         <div>
           <p className="text-3xl mb-1">⛽</p>
-          <p className="text-sm font-black text-emerald-800">Smart fill-up complete</p>
-          <p className="text-[11px] text-emerald-600 mt-0.5">Here&rsquo;s what GasCap saved you at the pump</p>
+          <p className="text-sm font-black text-emerald-800">You saved money today</p>
+          <p className="text-[11px] text-emerald-600 mt-0.5">GasCap helped you avoid pump overfill</p>
         </div>
 
         {/* Big savings number */}
         <div className="bg-white rounded-2xl px-4 py-4 shadow-sm border border-emerald-100 space-y-3">
           <div>
             <p className="text-4xl font-black text-emerald-600">${savedSummary.saved.toFixed(2)}</p>
-            <p className="text-xs font-bold text-emerald-700 mt-0.5">avoided in pump overfill</p>
+            <p className="text-xs font-bold text-emerald-700 mt-0.5">saved at the pump</p>
           </div>
 
           <div className="border-t border-slate-100 pt-3 space-y-1.5 text-left">
