@@ -37,8 +37,8 @@ export default function SweepstakesRulesPage() {
             lucky Pro or Fleet member. The more days you use the app, the more entries you earn.
             Standard users earn 1 entry per day; Ambassador Program members earn 2–5 entries per day
             depending on their tier (based on cumulative paying referrals). Keep a login streak going
-            for additional bonus entries. Pro Lifetime members receive an automatic bonus of 20 entries
-            every draw period. Ambassador tier holders are always eligible to win — no
+            for additional bonus entries. Pro Lifetime members receive an automatic bonus of 25–40 entries
+            every draw period. Each successful referral adds +15 permanent bonus entries per draw period. Ambassador tier holders are always eligible to win — no
             consecutive-week restrictions apply to them. No purchase is required to enter.
           </p>
         </div>
@@ -127,10 +127,12 @@ export default function SweepstakesRulesPage() {
                 <strong>Streak Bonus Entries (Method A subscribers only):</strong> Subscribers who
                 maintain a consecutive daily-use streak also receive bonus entries on top of their
                 base entries. Bonus entries are awarded based on the subscriber&apos;s active streak
-                as of the last day of the Entry Week: 7–29 consecutive days = 2 bonus entries;
-                30–89 consecutive days = 5 bonus entries; 90 or more consecutive days = 10 bonus
-                entries. Streak bonus entries require at least one (1) base active-day entry to be
-                awarded. Streak bonus entries are fixed and are not multiplied by Ambassador tier.
+                as of the last day of the Entry Week: 7–29 consecutive days = 3 bonus entries;
+                30–89 consecutive days = 8 bonus entries; 90–179 consecutive days = 15 bonus
+                entries; 180–364 consecutive days = 22 bonus entries; 365 or more consecutive days
+                = 30 bonus entries. Streak bonus entries require at least one (1) base active-day
+                entry to be awarded. Streak bonus entries are fixed and are not multiplied by
+                Ambassador tier.
               </p>
               <p>
                 <strong>Method B — No Purchase Necessary (free online entry):</strong> Any eligible

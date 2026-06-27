@@ -60,16 +60,16 @@ export interface StreakBonusTier {
  *
  * Streak bonus:
  *  – Keeps daily engagement rewarding even during ineligible months
- *  – Max +10 entries on top of the ~31 active-day entries
+ *  – Max +30 entries on top of the ~31 active-day entries
  *  – Requires ≥1 active day this month to qualify for the draw at all
  */
 export const STREAK_BONUS_TIERS: StreakBonusTier[] = [
   { minStreak:   0, bonus:  0, label: 'No bonus'        },
-  { minStreak:   7, bonus:  2, label: '1-week streak'   },
-  { minStreak:  30, bonus:  5, label: '1-month streak'  },
-  { minStreak:  90, bonus: 10, label: '3-month streak'  },
-  { minStreak: 180, bonus: 15, label: '6-month streak'  },
-  { minStreak: 365, bonus: 20, label: '1-year streak'   },
+  { minStreak:   7, bonus:  3, label: '1-week streak'   },
+  { minStreak:  30, bonus:  8, label: '1-month streak'  },
+  { minStreak:  90, bonus: 15, label: '3-month streak'  },
+  { minStreak: 180, bonus: 22, label: '6-month streak'  },
+  { minStreak: 365, bonus: 30, label: '1-year streak'   },
 ];
 
 /**
@@ -142,13 +142,16 @@ export async function getCurrentPrizeTier(): Promise<{
 }
 
 /** Bonus entries per draw period for Pro Annual members. */
-export const ANNUAL_BONUS_ENTRIES = 10;
+export const ANNUAL_BONUS_ENTRIES = 15;
 
 /** Bonus entries per draw period for Pro Lifetime members (base, no Perks required). */
-export const LIFETIME_BASE_BONUS_ENTRIES = 20;
+export const LIFETIME_BASE_BONUS_ENTRIES = 25;
 
 /** Bonus entries per draw period for Pro Lifetime members with active Lifetime Perks. */
-export const LIFETIME_BONUS_ENTRIES = 30;
+export const LIFETIME_BONUS_ENTRIES = 40;
+
+/** Bonus entries per successful referral (lifetime, not per-period). */
+export const REFERRAL_BONUS_ENTRIES = 15;
 
 export interface EntrantRow {
   userId:          string;
@@ -162,13 +165,14 @@ export interface EntrantRow {
   entryMultiplier: number;        // 1× standard, 2× Supporter, 3× Ambassador, 5× Elite
   baseEntries:     number;        // active days × entryMultiplier
   streakBonus:     number;        // flat bonus from streak tier (not multiplied)
-  earlyUpgradeBonusEntries:    number; // +10 bonus for trial-to-paid conversions
+  earlyUpgradeBonusEntries:    number; // +20 bonus for trial-to-paid conversions
   garageBonusEntries:          number; // +10/day for tapping to open garage (Pro+)
-  verifyReminderBonusEntries:  number; // +25 one-time for verifying email within 7 days of reminder
-  phoneBonusEntries:           number; // +25 one-time for adding phone number in settings
+  verifyReminderBonusEntries:  number; // +30 one-time for verifying email within 7 days of reminder
+  phoneBonusEntries:           number; // +30 one-time for adding phone number in settings
   dailyBonusEntries:           number; // 3–15/day from the daily gift box badge
-  lifetimeBonusEntries:        number; // +20 (active Perks) or +10 (lapsed/Annual) per period
-  entryCount:      number;        // baseEntries + streakBonus + earlyUpgrade + garageBonus + verifyReminderBonus + phoneBonus + dailyBonus + lifetimeBonus
+  lifetimeBonusEntries:        number; // +40/+25 (Perks/base Lifetime) or +15 (Annual) per period
+  referralBonusEntries:        number; // +15 per successful referral (lifetime total)
+  entryCount:      number;        // baseEntries + streakBonus + earlyUpgrade + garageBonus + verifyReminderBonus + phoneBonus + dailyBonus + lifetimeBonus + referralBonus
   alwaysEligible:  boolean;       // true for Ambassador tier holders — skip win restrictions
   loginCount:      number;        // lifetime login count (engagement signal for draw review)
   lastLoginAt:     string | null; // ISO timestamp of most recent login, or null if never recorded
@@ -432,6 +436,7 @@ export async function getEligibleEntrants(period: string = currentPeriod()): Pro
       const verifyReminderBonusEntries = u.verifyReminderBonusEntries ?? 0;
       const phoneBonusEntries          = u.phoneBonusEntries          ?? 0;
       const dailyBonusEntries          = u.dailyBonusEntries          ?? 0;
+      const referralBonusEntries       = refCount * REFERRAL_BONUS_ENTRIES;
       const perksActive          = u.stripeInterval === 'lifetime'
         && u.lifetimePerksUntil != null
         && new Date(u.lifetimePerksUntil) > new Date();
@@ -458,7 +463,8 @@ export async function getEligibleEntrants(period: string = currentPeriod()): Pro
         phoneBonusEntries,
         dailyBonusEntries,
         lifetimeBonusEntries,
-        entryCount:      baseEntries + streakBonus + bonusEntries + garageBonusEntries + verifyReminderBonusEntries + phoneBonusEntries + dailyBonusEntries + lifetimeBonusEntries,
+        referralBonusEntries,
+        entryCount:      baseEntries + streakBonus + bonusEntries + garageBonusEntries + verifyReminderBonusEntries + phoneBonusEntries + dailyBonusEntries + lifetimeBonusEntries + referralBonusEntries,
         alwaysEligible:  isAlwaysEligible(refCount),
         loginCount:      u.loginCount ?? 0,
         lastLoginAt:     u.lastLoginAt ?? null,

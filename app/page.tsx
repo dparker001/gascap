@@ -63,10 +63,10 @@ function SchemaMarkup() {
       },
       {
         '@type': 'Question',
-        name: 'Do I need to download an app from the App Store?',
+        name: 'How do I get GasCap™ on my phone?',
         acceptedAnswer: {
           '@type': 'Answer',
-          text: 'No app store needed. GasCap™ is a Progressive Web App (PWA) — just visit gascap.app on your phone and tap "Add to Home Screen" to install it like a native app. It works on iPhone, Android, and any browser.',
+          text: 'GasCap™ is available on the App Store for iPhone and Google Play for Android — search "GasCap" and tap Install. You can also visit gascap.app in your browser and tap "Add to Home Screen" to install it directly. It works on iPhone, Android, and any browser.',
         },
       },
       {
@@ -90,7 +90,7 @@ function SchemaMarkup() {
         name: 'Does GasCap™ work offline?',
         acceptedAnswer: {
           '@type': 'Answer',
-          text: 'Yes. Once installed as a PWA, the core calculator works completely offline using your last-known gas price and saved vehicles. Live gas price lookup and AI features require an internet connection.',
+          text: 'Yes. Once installed, the core calculator works completely offline using your last-known gas price and saved vehicles. Live gas price lookup and AI features require an internet connection.',
         },
       },
       {

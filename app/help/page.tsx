@@ -34,7 +34,7 @@ const SECTIONS = [
       },
       {
         q: 'How do I install GasCap™ on my phone?',
-        a: 'GasCap™ is a Progressive Web App (PWA) — no app store needed. On iPhone: open gascap.app in Safari → tap the Share icon → "Add to Home Screen." On Android: open in Chrome → tap the menu (⋮) → "Add to Home Screen" or "Install App." The app icon will appear on your home screen just like a native app.',
+        a: 'GasCap™ is available on the App Store (iPhone) and Google Play (Android) — just search "GasCap" and tap Install. You can also add it directly from your browser: on iPhone, open gascap.app in Safari → tap the Share icon → "Add to Home Screen." On Android, open in Chrome → tap the menu (⋮) → "Add to Home Screen." Either way, the app icon appears on your home screen and works just like a native app.',
       },
       {
         q: 'How do I switch between Light and Dark mode?',
@@ -76,7 +76,7 @@ const SECTIONS = [
       },
       {
         q: 'Can I use GasCap™ without internet?',
-        a: 'Yes. Once installed as a PWA, the calculators work fully offline using the last-known gas price. Gas price lookup, electricity rate lookup, gauge scan, VIN scan, and AI features require an internet connection.',
+        a: 'Yes. Once installed, the calculators work fully offline using the last-known gas price. Gas price lookup, electricity rate lookup, gauge scan, VIN scan, and AI features require an internet connection.',
       },
     ],
   },
@@ -296,7 +296,7 @@ const SECTIONS = [
       },
       {
         q: 'How do I earn entries as a Pro member?',
-        a: 'Pro subscribers automatically earn entries for each calendar day they use the app. Your daily entry count depends on your Ambassador Program tier: standard users earn 1 entry/day; Supporters (5+ paying referrals) earn 2 entries/day; Ambassadors (15+ paying referrals) earn 3 entries/day; Elite Ambassadors (30+ paying referrals) earn 5 entries/day. Tier status is based on your cumulative paying referral count as of the last day of the previous month. On top of daily entries, streak bonuses apply as a flat addition: a 7-day streak adds +2 bonus entries, 30-day adds +5, 90-day adds +10, 180-day adds +15, and a full 365-day streak adds +20 bonus entries per draw period. Additionally, plan-level bonuses are added automatically each draw period: Pro Annual members receive +10 bonus entries; Pro Lifetime members (base) receive +20 bonus entries; Pro Lifetime members with active Lifetime Perks receive +30 bonus entries.',
+        a: 'Pro subscribers automatically earn entries for each calendar day they use the app. Your daily entry count depends on your Ambassador Program tier: standard users earn 1 entry/day; Supporters (5+ paying referrals) earn 2 entries/day; Ambassadors (15+ paying referrals) earn 3 entries/day; Elite Ambassadors (30+ paying referrals) earn 5 entries/day. Tier status is based on your cumulative paying referral count as of the last day of the previous month. On top of daily entries, streak bonuses apply as a flat addition: a 7-day streak adds +3 bonus entries, 30-day adds +8, 90-day adds +15, 180-day adds +22, and a full 365-day streak adds +30 bonus entries per draw period. Plan-level bonuses are added automatically each draw period: Pro Annual members receive +15 bonus entries; Pro Lifetime members (base) receive +25 bonus entries; Pro Lifetime members with active Lifetime Perks receive +40 bonus entries. Each successful referral also permanently adds +15 bonus entries to your total each draw period.',
       },
       {
         q: 'Can I enter without a paid subscription?',
@@ -452,7 +452,7 @@ const SECTIONS = [
       },
       {
         q: 'The app isn\'t updating after I upgraded my plan.',
-        a: 'Sign out and sign back in to refresh your session. On the PWA, pull down from the top to refresh. If the issue persists, clear your browser cache or reinstall the PWA.',
+        a: 'Sign out and sign back in to refresh your session. Pull down from the top to refresh the app. If the issue persists, clear your browser cache or reinstall the app from the App Store or Google Play.',
       },
       {
         q: 'My streak didn\'t count today even though I used the app.',
