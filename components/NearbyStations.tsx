@@ -126,9 +126,11 @@ function LocationPreScreen({ onAllow, onSkip }: { onAllow: () => void; onSkip: (
 function StationCard({
   station,
   onApply,
+  onHide,
 }: {
   station:  NearbyStation;
   onApply?: (price: string, lat: number, lng: number, stationName: string, distanceMi: number, grade: string) => void;
+  onHide?:  (placeId: string) => void;
 }) {
   const hasPrices = station.prices.length > 0;
   // Use regular if available, otherwise the first price in sorted order
@@ -158,6 +160,18 @@ function StationCard({
             {station.isOpen === false && <span className="text-[10px] font-bold text-red-500">CLOSED</span>}
           </div>
         </div>
+        {onHide && (
+          <button
+            type="button"
+            onClick={() => onHide(station.placeId)}
+            aria-label="Remove station"
+            className="flex-shrink-0 w-6 h-6 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors"
+          >
+            <svg viewBox="0 0 10 10" className="w-2.5 h-2.5 text-slate-400" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+              <path d="M2 2l6 6M8 2l-6 6" />
+            </svg>
+          </button>
+        )}
         {bestPrice ? (
           <div className="text-right flex-shrink-0">
             <p className="text-2xl font-black text-slate-900 leading-none">
@@ -246,10 +260,26 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
   const isPro   = plan === 'pro' || plan === 'fleet' || plan === 'lifetime';
   const isGuest = sessionStatus === 'unauthenticated';
 
-  const [status,   setStatus]   = useState<Status>('idle');
-  const [stations, setStations] = useState<NearbyStation[]>([]);
-  const [errMsg,   setErrMsg]   = useState('');
-  const [coords,   setCoords]   = useState<{ lat: number; lng: number } | null>(null);
+  const [status,         setStatus]         = useState<Status>('idle');
+  const [stations,       setStations]       = useState<NearbyStation[]>([]);
+  const [errMsg,         setErrMsg]         = useState('');
+  const [coords,         setCoords]         = useState<{ lat: number; lng: number } | null>(null);
+  const [hiddenPlaceIds, setHiddenPlaceIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('gascap_hidden_gas_stations');
+      if (raw) setHiddenPlaceIds(new Set(JSON.parse(raw) as string[]));
+    } catch { /* ignore */ }
+  }, []);
+
+  function hideStation(placeId: string) {
+    setHiddenPlaceIds((prev) => {
+      const next = new Set(prev).add(placeId);
+      try { localStorage.setItem('gascap_hidden_gas_stations', JSON.stringify([...next])); } catch { /* ignore */ }
+      return next;
+    });
+  }
   // Has the user seen the location pre-screen for Find Gas?
   const [locAsked, setLocAsked] = useState(true); // default true = don't flash on load
   useEffect(() => {
@@ -702,16 +732,30 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
         </button>
       </div>
 
-      {stations.length === 0 ? (
-        <div className="text-center py-10">
-          <p className="text-slate-400 text-sm">No station prices found nearby.</p>
-          <p className="text-slate-400 text-xs mt-1">Google Places data may be limited in your area.</p>
-        </div>
-      ) : (
-        stations.map((s) => (
-          <StationCard key={s.placeId} station={s} onApply={onApply} />
-        ))
-      )}
+      {(() => {
+        const visible = stations.filter((s) => !hiddenPlaceIds.has(s.placeId));
+        if (visible.length === 0) return (
+          <div className="text-center py-10">
+            <p className="text-slate-400 text-sm">No station prices found nearby.</p>
+            <p className="text-slate-400 text-xs mt-1">Google Places data may be limited in your area.</p>
+            {hiddenPlaceIds.size > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  setHiddenPlaceIds(new Set());
+                  try { localStorage.removeItem('gascap_hidden_gas_stations'); } catch { /* ignore */ }
+                }}
+                className="mt-3 text-xs text-teal-600 font-bold underline"
+              >
+                Restore hidden stations
+              </button>
+            )}
+          </div>
+        );
+        return visible.map((s) => (
+          <StationCard key={s.placeId} station={s} onApply={onApply} onHide={hideStation} />
+        ));
+      })()}
 
       {/* Fallback for stations not in Google Places (e.g. 7-Eleven) */}
       {coords && (
