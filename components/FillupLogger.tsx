@@ -16,6 +16,7 @@ interface FillupLoggerProps {
     stationName?:       string;
     fuelGrade?:         FuelGrade;
     calculatedGallons?: number;  // GasCap's suggested amount — used for breakdown comparison
+    tankCapacity?:      number;  // full tank size — used for post-save savings card
   };
   onSaved: () => void;   // called after successful save (to refresh history)
   onCancel: () => void;
@@ -89,7 +90,8 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
   const [receiptThumb,   setReceiptThumb]   = useState('');   // base64 data URL
   const [saving,         setSaving]         = useState(false);
   const [error,          setError]          = useState('');
-  const [warnings,     setWarnings]     = useState<string[]>([]);
+  const [warnings,       setWarnings]       = useState<string[]>([]);
+  const [savedSummary,   setSavedSummary]   = useState<{ gallons: number; pricePaid: number; saved: number } | null>(null);
   const [forceConfirm, setForceConfirm] = useState(false);
   const [scanning,     setScanning]     = useState(false);
   const [scanError,    setScanError]    = useState('');
@@ -335,12 +337,58 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
       }
 
       window.dispatchEvent(new Event('fillup-saved'));
-      onSaved();
+
+      // Compute savings vs. a full tank and show the confirmation card
+      const pumpedGal   = parseFloat(gallons);
+      const ppg         = parseFloat(price);
+      const tankCap     = prefill.tankCapacity;
+      if (tankCap && tankCap > pumpedGal && ppg > 0) {
+        const pricePaid  = Math.round(pumpedGal * ppg * 100) / 100;
+        const saved      = Math.round((tankCap - pumpedGal) * ppg * 100) / 100;
+        setSavedSummary({ gallons: pumpedGal, pricePaid, saved });
+      } else {
+        onSaved();
+      }
     } catch {
       setError(t.fillup.networkError);
     } finally {
       setSaving(false);
     }
+  }
+
+  // ── Post-save savings confirmation ────────────────────────────────────────
+  if (savedSummary) {
+    const fullTankCost = Math.round((savedSummary.pricePaid + savedSummary.saved) * 100) / 100;
+    return (
+      <div className="mt-3 rounded-2xl border-2 border-emerald-200 bg-emerald-50 p-5 space-y-4 animate-fade-in text-center">
+        <div>
+          <p className="text-3xl mb-1">🏆</p>
+          <p className="text-sm font-black text-emerald-800">Fill-up logged!</p>
+          <p className="text-[11px] text-emerald-600 mt-0.5">Here&rsquo;s what GasCap saved you today</p>
+        </div>
+
+        {/* Big savings number */}
+        <div className="bg-white rounded-2xl px-4 py-4 shadow-sm border border-emerald-100">
+          <p className="text-4xl font-black text-emerald-600">${savedSummary.saved.toFixed(2)}</p>
+          <p className="text-xs font-bold text-emerald-700 mt-0.5">saved vs. a full tank</p>
+          <p className="text-[10px] text-slate-400 mt-2 leading-relaxed">
+            You paid <span className="font-bold text-slate-600">${savedSummary.pricePaid.toFixed(2)}</span> for {savedSummary.gallons.toFixed(2)} gal
+            &nbsp;·&nbsp; full tank would've cost <span className="font-bold text-slate-600">${fullTankCost.toFixed(2)}</span>
+          </p>
+        </div>
+
+        <p className="text-[11px] text-emerald-700 leading-relaxed px-2">
+          That&rsquo;s <strong>${savedSummary.saved.toFixed(2)}</strong> back in your pocket — spend it inside or keep it. GasCap keeps the math honest.
+        </p>
+
+        <button
+          onClick={onSaved}
+          className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-black transition-colors"
+        >
+          Done
+        </button>
+      </div>
+    );
   }
 
   return (

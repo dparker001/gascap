@@ -287,6 +287,7 @@ export function TargetResultCard({ result, vehicleName, vehicleId, vehicleOdomet
             vehicleId,
             vehicleOdometer,
             fuelLevelBefore,
+            tankCapacity:       targetPercent > 0 ? Math.round((targetGallons / (targetPercent / 100)) * 100) / 100 : undefined,
           }}
           onSaved={() => { setShowLogger(false); setLogKey((k) => k + 1); }}
           onCancel={() => setShowLogger(false)}
