@@ -140,7 +140,7 @@ const en = {
 
   // ── Hero (guest landing) ───────────────────────────────────────────────────
   hero: {
-    badge:          'No app store · Works offline · Free',
+    badge:          'App Store & Google Play · Works offline · Free',
     headline:       'Know exactly how much gas you need —',
     headlineAccent: 'before you pull up.',
     sub:            'With gas prices near record highs, know your exact fill-up cost before you swipe your card. No guessing. No overpaying.',
@@ -263,8 +263,8 @@ const en = {
         a: 'Yes — the core calculator, live gas prices, and offline access are free forever with no credit card required. Pro ($2.99/mo or $19.99 Lifetime) adds fill-up history, MPG charts, unlimited vehicles, AI advisor, and PDF export.',
       },
       {
-        q: 'Do I need to download it from the App Store?',
-        a: 'No. GasCap™ is a Progressive Web App (PWA). Visit gascap.app on your phone, tap the Share button, then "Add to Home Screen." It installs like a native app — no App Store or Google Play required.',
+        q: 'How do I get GasCap on my phone?',
+        a: 'Download it free from the App Store (iPhone) or Google Play (Android) — search "GasCap." You can also visit gascap.app in your browser and tap "Add to Home Screen" to install directly.',
       },
       {
         q: 'What is Rental Car Return Mode?',
@@ -2457,7 +2457,7 @@ const en = {
     msg1Headline: 'Still thinking?',
     msg1Body: 'The average driver wastes $300+ a year at the pump. GasCap™ takes 30 seconds to set up.',
     msg2Headline: 'Easier than you think.',
-    msg2Body: 'Takes less than a minute. No app store. No credit card. Just open and go.',
+    msg2Body: 'Takes less than a minute. Free on App Store & Google Play. No credit card required.',
     msg3Headline: 'Know before you go.',
     msg3Body: 'Know exactly how much to pump — every time. It\'s free to start.',
     msg4Headline: 'Join the community.',
@@ -2767,7 +2767,7 @@ const es: typeof en = {
   ],
 
   hero: {
-    badge:          'Sin tienda de apps · Funciona sin internet · Gratis',
+    badge:          'App Store & Google Play · Funciona sin internet · Gratis',
     headline:       'Sabe exactamente cuánta gasolina necesitas —',
     headlineAccent: 'antes de llegar a la bomba.',
     sub:            'Con los precios del combustible cerca de máximos históricos, conoce el costo exacto de tu llenado antes de pasar tu tarjeta. Sin adivinar. Sin pagar de más.',
@@ -2885,8 +2885,8 @@ const es: typeof en = {
         a: 'Sí — la calculadora básica, los precios de gasolina en tiempo real y el acceso sin conexión son gratuitos para siempre sin tarjeta de crédito. Pro ($2.99/mes o $19.99 de por vida) agrega historial de llenados, gráficas de MPG, vehículos ilimitados, asesor IA y exportación PDF.',
       },
       {
-        q: '¿Necesito descargarlo de la App Store?',
-        a: 'No. GasCap™ es una Progressive Web App (PWA). Visita gascap.app en tu teléfono, toca el botón Compartir y luego "Agregar a pantalla de inicio". Se instala como una app nativa — sin App Store ni Google Play.',
+        q: '¿Cómo descargo GasCap en mi teléfono?',
+        a: 'Descárgala gratis en la App Store (iPhone) o Google Play (Android) — busca "GasCap." También puedes visitar gascap.app en tu navegador y tocar "Agregar a pantalla de inicio" para instalarla directamente.',
       },
       {
         q: '¿Qué es el Modo Devolución de Auto Rentado?',
@@ -5053,7 +5053,7 @@ const es: typeof en = {
     msg1Headline: '¿Aún lo estás pensando?',
     msg1Body: 'El conductor promedio desperdicia más de $300 al año en la gasolinera. Configurar GasCap™ toma 30 segundos.',
     msg2Headline: 'Más fácil de lo que crees.',
-    msg2Body: 'Toma menos de un minuto. Sin tienda de apps. Sin tarjeta de crédito. Solo ábrela y listo.',
+    msg2Body: 'Toma menos de un minuto. Gratis en App Store y Google Play. Sin tarjeta de crédito.',
     msg3Headline: 'Sabe antes de ir.',
     msg3Body: 'Sabe exactamente cuánto cargar — cada vez. Empezar es gratis.',
     msg4Headline: 'Únete a la comunidad.',
