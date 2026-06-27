@@ -43,12 +43,12 @@ export interface GoogleMapsHandoffButtonProps
 // ── Default labels ────────────────────────────────────────────────────────────
 
 const DEFAULT_LABELS: Record<GoogleMapsButtonMode, string> = {
-  target_fill:    'Open Google Maps to Find Gas Nearby',
-  budget:         'Open Google Maps to Find Gas Nearby',
+  target_fill:    'Open Google Maps to Find Additional Gas Nearby',
+  budget:         'Open Google Maps to Find Additional Gas Nearby',
   rental_return:  'Find a Fuel Stop Before Return',
   trip:           'Find Fuel Along the Way',
   station_result: 'Open This Station in Google Maps',
-  unknown:        'Open Google Maps to Find Gas Nearby',
+  unknown:        'Open Google Maps to Find Additional Gas Nearby',
 };
 
 // ── Component ─────────────────────────────────────────────────────────────────
