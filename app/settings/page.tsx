@@ -8,6 +8,7 @@ import { DoorMiniPreview, DOOR_STYLE_LABELS, DOOR_DIRECTION_LABELS } from '@/com
 import { useGarageDoorPrefs, type DoorStyle, type DoorDirection } from '@/hooks/useGarageDoorPrefs';
 import { useTranslation } from '@/contexts/LanguageContext';
 import { useIsNative, useNativePlatform } from '@/hooks/useIsNative';
+import GasCapConnectSection from '@/components/GasCapConnectSection';
 
 interface ReferralSummary {
   code:            string;
@@ -1802,6 +1803,11 @@ export default function SettingsPage() {
               </button>
             </div>
           </section>
+        )}
+
+        {/* ── GasCap Connect section ── */}
+        {(plan === 'pro' || plan === 'fleet') && !isProTrial && (
+          <GasCapConnectSection />
         )}
 
         <p className="text-center text-[11px] text-slate-300 pb-4">{t.settings.versionLine}</p>
