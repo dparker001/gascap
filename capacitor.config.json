@@ -11,6 +11,14 @@
       "*.gascap.app"
     ]
   },
+  "android": {
+    "backgroundColor": "#005F4A",
+    "webContentsDebuggingEnabled": true,
+    "overrideUserAgent": "GasCapAndroid",
+    "server": {
+      "url": "https://www.gascap.app/?native=android"
+    }
+  },
   "ios": {
     "contentInset": "always",
     "backgroundColor": "#005F4A",

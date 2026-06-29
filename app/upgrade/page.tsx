@@ -138,37 +138,10 @@ function UpgradePageInner() {
     );
   }
 
-  // Android (TWA) has no native billing yet → Pro is managed on the web there.
-  if (isNative && platform !== 'ios') {
-    return (
-      <div className="min-h-screen bg-[#eef1f7] flex flex-col">
-        <BrandBar />
-        <div className="flex-1 px-4 py-12 max-w-md mx-auto w-full flex flex-col items-center justify-center text-center">
-          <div className="bg-white rounded-3xl shadow-card p-8 space-y-4 w-full">
-            <p className="text-4xl" aria-hidden="true">🌐</p>
-            <h1 className="text-xl font-black text-navy-700">Manage Pro on the web</h1>
-            <p className="text-sm text-slate-500 leading-relaxed">
-              GasCap™ Pro plans are managed on the web. Sign in at{' '}
-              <span className="font-bold text-brand-dark">gascap.app</span> from your browser to
-              start or change a plan — anything you unlock is instantly available here in the app.
-            </p>
-            <Link
-              href="/"
-              className="block w-full py-3.5 rounded-2xl font-black text-base text-white text-center
-                         bg-gradient-to-r from-[#005F4A] to-[#1EB68F] hover:opacity-95 transition-opacity"
-            >
-              Continue with the free app
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (platform === 'ios') {
+  if (platform === 'ios' || platform === 'android') {
     // Trial users are NOT "already Pro" here — they must be able to buy to convert
     // the trial into a paid plan via IAP. Only actual paid Pro hides the buy buttons.
-    const alreadyPro = isProMonthly || isProLifetime;
+    const alreadyPro = isProMonthly || isProAnnual || isProLifetime;
     return (
       <div className="min-h-screen bg-[#eef1f7] flex flex-col">
         <BrandBar />

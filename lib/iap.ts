@@ -1,30 +1,24 @@
 'use client';
 
 /**
- * iap.ts — Apple In-App Purchase helper (iOS native only), via RevenueCat.
+ * iap.ts — In-App Purchase helper (iOS + Android native), via RevenueCat.
  *
- * The native iOS app loads the live web app, so this runs in the WebView and
- * calls the RevenueCat Capacitor plugin over the bridge. On web (and Android for
- * now) every function is a no-op, so it's safe to call unconditionally.
+ * The native apps load the live web app, so this runs in the WebView and calls
+ * the RevenueCat Capacitor plugin over the bridge. On web every function is a
+ * no-op, so it's safe to call unconditionally.
  *
  * Flow: initIap(userId) once the user is known → purchasePro('monthly'|'lifetime')
- * from the native Pro UI → Apple StoreKit handles payment → RevenueCat fires the
- * /api/native/revenuecat webhook → the user's account is granted Pro (cross-platform).
- *
- * BUILD-TIME STEPS (not done yet — see docs/IOS_IAP_PLAN.md):
- *  - npm i @revenuecat/purchases-capacitor@^8 ; npx cap sync ios
- *  - Set NEXT_PUBLIC_REVENUECAT_IOS_KEY (RevenueCat Apple public SDK key).
- *  The dynamic import below resolves once the package is installed; until then this
- *  file still type-checks and the web build is unaffected (calls are native-gated).
+ * from the native Pro UI → StoreKit/Play Billing handles payment → RevenueCat
+ * fires the /api/native/revenuecat webhook → the user's account is granted Pro.
  */
 
 import { detectNativePlatform } from '@/hooks/useIsNative';
 
-// RevenueCat Apple PUBLIC SDK key. This is a *public* key by design — RevenueCat
-// ships it in the client app bundle — so a hardcoded fallback is safe and removes
-// the build-time-inlining fragility of NEXT_PUBLIC_ vars. The env var still wins
-// if set (e.g. to rotate the key without a code change).
-const IOS_KEY = process.env.NEXT_PUBLIC_REVENUECAT_IOS_KEY || 'appl_jRoKILykVultnvdDRVsQcNxummv';
+// RevenueCat PUBLIC SDK keys — public by design (shipped in the app bundle).
+// Env vars win when set (key rotation without a code change); hardcoded fallbacks
+// keep builds working before the env var is configured.
+const IOS_KEY     = process.env.NEXT_PUBLIC_REVENUECAT_IOS_KEY     || 'appl_jRoKILykVultnvdDRVsQcNxummv';
+const ANDROID_KEY = process.env.NEXT_PUBLIC_REVENUECAT_ANDROID_KEY || '';
 
 const PRODUCT_IDS = {
   monthly:  'gascap_pro_monthly',
@@ -33,9 +27,9 @@ const PRODUCT_IDS = {
 
 let configured = false;
 
-/** True only inside the wrapped iOS app (IAP is iOS-only for now). */
-function iosNative(): boolean {
-  return detectNativePlatform() === 'ios';
+/** Returns the native platform if IAP is available, or null on web. */
+function nativePlatform(): 'ios' | 'android' | null {
+  return detectNativePlatform();
 }
 
 /**
@@ -68,12 +62,14 @@ async function loadPurchases(): Promise<{ Purchases: any } | null> {
 
 /** Configure RevenueCat and tie the entitlement to the GasCap account. */
 export async function initIap(userId: string): Promise<void> {
-  if (!iosNative() || !IOS_KEY || !userId) return;
+  const platform = nativePlatform();
+  const apiKey = platform === 'ios' ? IOS_KEY : platform === 'android' ? ANDROID_KEY : '';
+  if (!platform || !apiKey || !userId) return;
   const rc = await loadPurchases();
   if (!rc) return;
   try {
     if (!configured) {
-      await rc.Purchases.configure({ apiKey: IOS_KEY, appUserID: userId });
+      await rc.Purchases.configure({ apiKey, appUserID: userId });
       configured = true;
     } else {
       await rc.Purchases.logIn({ appUserID: userId });
@@ -85,7 +81,7 @@ export async function initIap(userId: string): Promise<void> {
 
 /** Returns true if the signed-in account currently has the `pro` entitlement on-device. */
 export async function hasProEntitlement(): Promise<boolean> {
-  if (!iosNative()) return false;
+  if (!nativePlatform()) return false;
   const rc = await loadPurchases();
   if (!rc) return false;
   try {
@@ -98,9 +94,9 @@ export async function hasProEntitlement(): Promise<boolean> {
 
 export interface PurchaseResult { ok: boolean; cancelled?: boolean; error?: string }
 
-/** Buy Pro via Apple IAP. The webhook grants Pro on the account server-side. */
+/** Buy Pro via native IAP (Apple StoreKit or Google Play Billing). The webhook grants Pro server-side. */
 export async function purchasePro(which: 'monthly' | 'lifetime'): Promise<PurchaseResult> {
-  if (!iosNative()) return { ok: false, error: 'not-native' };
+  if (!nativePlatform()) return { ok: false, error: 'not-native' };
   const rc = await loadPurchases();
   if (!rc) return { ok: false, error: 'unavailable' };
   try {
@@ -125,9 +121,9 @@ export async function purchasePro(which: 'monthly' | 'lifetime'): Promise<Purcha
   }
 }
 
-/** Restore previous purchases (Apple requires this for non-consumables). */
+/** Restore previous purchases (required by Apple; useful on Android too). */
 export async function restorePurchases(): Promise<PurchaseResult> {
-  if (!iosNative()) return { ok: false, error: 'not-native' };
+  if (!nativePlatform()) return { ok: false, error: 'not-native' };
   const rc = await loadPurchases();
   if (!rc) return { ok: false, error: 'unavailable' };
   try {

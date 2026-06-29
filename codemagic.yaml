@@ -197,3 +197,64 @@ workflows:
         beta_groups:
           - GasCap App Testers   # must match the internal group name in App Store Connect exactly
         submit_to_app_store: false
+
+  android-capacitor:
+    name: GasCap Android (Capacitor → Play Store)
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: android-capacitor
+          include: true
+    environment:
+      vars:
+        PACKAGE_NAME: "app.gascap.mobile"
+        CM_KEY_ALIAS: "my-key-alias"
+        # Set these in Codemagic UI → Environment variables (encrypt sensitive values):
+        #   CM_KEYSTORE        — base64 of signing.keystore
+        #   CM_KEYSTORE_PASSWORD
+        #   CM_KEY_PASSWORD
+        #   GCLOUD_SERVICE_ACCOUNT_CREDENTIALS — Google Play service account JSON
+      node: 20
+      java: 17
+    scripts:
+      - name: Install npm dependencies
+        script: npm ci
+
+      - name: Sync Capacitor Android
+        script: npx cap sync android
+
+      - name: Generate app icons
+        script: npx capacitor-assets generate --android
+
+      - name: Set version code from build number
+        script: |
+          # Use Codemagic's ever-incrementing BUILD_NUMBER as versionCode so we
+          # never reuse a version code across Play Store uploads.
+          VCODE=${BUILD_NUMBER:-10}
+          /usr/bin/perl -pi -e "s/versionCode [0-9]+/versionCode $VCODE/" android/app/build.gradle
+          /usr/bin/perl -pi -e "s/versionName \"[^\"]+\"/versionName \"1.2.$VCODE\"/" android/app/build.gradle
+          echo "Set versionCode=$VCODE"
+
+      - name: Decode keystore
+        script: |
+          echo "$CM_KEYSTORE" | base64 --decode > /tmp/signing.keystore
+
+      - name: Build signed AAB
+        script: |
+          cd android
+          ./gradlew bundleRelease \
+            -Pandroid.injected.signing.store.file=/tmp/signing.keystore \
+            -Pandroid.injected.signing.store.password="$CM_KEYSTORE_PASSWORD" \
+            -Pandroid.injected.signing.key.alias="$CM_KEY_ALIAS" \
+            -Pandroid.injected.signing.key.password="$CM_KEY_PASSWORD"
+
+    artifacts:
+      - android/app/build/outputs/bundle/release/app-release.aab
+
+    publishing:
+      google_play:
+        credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+        track: internal
