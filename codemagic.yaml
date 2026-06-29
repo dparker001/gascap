@@ -251,7 +251,8 @@ workflows:
     artifacts:
       - android/app/build/outputs/bundle/release/app-release.aab
 
-    publishing:
-      google_play:
-        credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
-        track: internal
+    # publishing:
+    #   google_play:
+    #     credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+    #     track: internal
+    # Re-enable once service account permissions propagate (~24hrs after granting in Play Console
