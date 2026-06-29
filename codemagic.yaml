@@ -244,6 +244,7 @@ workflows:
           cd android
           ./gradlew bundleRelease \
             -Pandroid.injected.signing.store.file=/tmp/signing.keystore \
+            -Pandroid.injected.signing.store.type=PKCS12 \
             -Pandroid.injected.signing.store.password="$CM_KEYSTORE_PASSWORD" \
             -Pandroid.injected.signing.key.alias="$CM_KEY_ALIAS" \
             -Pandroid.injected.signing.key.password="$CM_KEY_PASSWORD"
