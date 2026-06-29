@@ -238,24 +238,7 @@ workflows:
       - name: Decode keystore
         script: |
           echo "$CM_KEYSTORE" | base64 --decode > /tmp/signing.keystore
-          # Convert to PKCS12 in case the source keystore is JKS format
-          # (JKS with tag numbers >30 fails on Java 17 — PKCS12 always works)
-          keytool -importkeystore \
-            -srckeystore /tmp/signing.keystore \
-            -destkeystore /tmp/signing-p12.keystore \
-            -deststoretype PKCS12 \
-            -srcalias "$CM_KEY_ALIAS" \
-            -destalias "$CM_KEY_ALIAS" \
-            -srcstorepass "$CM_KEYSTORE_PASSWORD" \
-            -deststorepass "$CM_KEYSTORE_PASSWORD" \
-            -srckeypass "$CM_KEY_PASSWORD" \
-            -destkeypass "$CM_KEY_PASSWORD" \
-            -noprompt 2>&1 || true
-          # Use converted keystore if it was created, otherwise fall back to original
-          if [ -f /tmp/signing-p12.keystore ]; then
-            mv /tmp/signing-p12.keystore /tmp/signing.keystore
-            echo "Using PKCS12 keystore"
-          fi
+          keytool -list -keystore /tmp/signing.keystore -storepass "$CM_KEYSTORE_PASSWORD" -noprompt 2>&1 | head -5
 
       - name: Build signed AAB
         script: |
