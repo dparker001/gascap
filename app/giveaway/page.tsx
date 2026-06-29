@@ -28,6 +28,7 @@ interface GiveawayEntries {
   referralBonusEntries:     number;
   lifetimePerksActive:      boolean;
   referralCount:            number;
+  priceReportEntries:       number;
 }
 
 interface DrawRecord {
@@ -102,6 +103,7 @@ export default function GiveawayPage() {
   const lifetimeBonusEntries     = entries?.lifetimeBonusEntries ?? 0;
   const referralBonusEntries     = entries?.referralBonusEntries ?? 0;
   const lifetimePerksActive      = entries?.lifetimePerksActive ?? false;
+  const priceReportEntries       = entries?.priceReportEntries ?? 0;
   const maxDays                  = 31;
   const progressPct              = Math.min(100, Math.round((activeDayCount / maxDays) * 100));
 
@@ -122,7 +124,8 @@ export default function GiveawayPage() {
     { key: 'phone',    emoji: '📱', label: t.giveawayPage.breakdownPhone,                   entries: phoneBonusEntries        },
     { key: 'upgrade',  emoji: '⭐', label: t.giveawayPage.breakdownUpgrade,                 entries: earlyUpgradeBonusEntries },
     { key: 'lifetime',  emoji: '🏅', label: lifetimePerksActive ? 'Lifetime Perks bonus' : 'Pro Lifetime / Annual bonus', entries: lifetimeBonusEntries },
-    { key: 'referral', emoji: '👥', label: `Referral bonus (${entries?.referralCount ?? 0} referral${(entries?.referralCount ?? 0) === 1 ? '' : 's'})`, entries: referralBonusEntries },
+    { key: 'referral',     emoji: '👥', label: `Referral bonus (${entries?.referralCount ?? 0} referral${(entries?.referralCount ?? 0) === 1 ? '' : 's'})`, entries: referralBonusEntries },
+    { key: 'priceReport', emoji: '⛽', label: t.giveawayPage.breakdownPriceReport,              entries: priceReportEntries       },
   ].filter((r) => r.entries > 0);
 
   return (

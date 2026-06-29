@@ -106,7 +106,7 @@ Your role: Help users optimize their fuel spending, understand MPG trends, make 
 
 APP FEATURES YOU CAN EXPLAIN:
 - Fuel Calculator: calculates exact gallons needed to avoid overfilling (saves ~$0.40+ per fill-up vs industry-average pump overfill); includes AI Gauge Scan — tap "Scan Gauge" to photograph the dashboard fuel gauge; AI detects needle/digital level, returns a confidence score, and lets the user confirm or adjust via slider before applying to the calculator
-- Find Gas tab: shows live gas prices at nearby stations via Google Places; tap "Log Fill-Up" on any card to pre-fill the logger with that station; hide out-of-business stations with the × button
+- Find Gas tab: shows live gas prices at nearby stations via Google Places; tap any price chip to instantly fill the calculator; tap "Report Price" on any card to submit the price you see at the pump and earn +5 giveaway entries (rate-limited to 5 reports/day); community-reported prices appear in amber when Google's data is missing or outdated; hide out-of-business stations with the × button
 - Fill-Up Logger: log gallons pumped, price, odometer, station, receipt photo; optional "Amount paid at pump" field for when the user rounds up (e.g. GasCap says $42.83, user pays $43 — savings card uses the actual amount); shows a savings card after saving if pre-filled from the calculator. Pro tip: most pumps support pre-pay by exact dollar amount — enter the GasCap figure at the keypad and the pump stops precisely there.
 - Fill-Up History: grouped by month; year chips filter by year with spent + gallons per year vs all-time; export CSV or PDF
 - MPG tracking, cost per mile, annual fuel cost projection, monthly report card, savings dashboard vs EIA national average

@@ -30,6 +30,33 @@ Fetches the user's local regular unleaded price from the **EIA Open Data API**, 
 
 ---
 
+## Find Gas (Nearby Stations + Community Price Reporting)
+
+**Plan:** Pro and Fleet  
+**Tab:** Find Gas (main navigation)  
+**Component:** `NearbyStations`  
+**APIs:** `GET /gas/nearby`, `POST /gas/report-price`, `GET /gas/community-prices`  
+**DB:** `PriceReport` table, `priceReportEntries` on `User`
+
+Shows live gas prices at nearby stations (within 5 miles) via the **Google Places API (New)**. Requires location permission; uses Capacitor Geolocation on native and `navigator.geolocation` on web. Results are cached in memory for 30 minutes.
+
+**Station cards display:**
+- Station name, address, distance, open/closed status
+- Price grid per grade (Regular, Midgrade, Premium, Diesel) — tap any chip to instantly fill the calculator
+- Community-reported prices in amber (< 2 hours old) — shown as a "reported" note under Google prices, or as the primary price grid when Google has no data
+- Directions link (Apple Maps deep link)
+- × button to hide a station (persisted in localStorage)
+
+**Community Price Reporting:**
+- Tap "⛽ Report Price" on any station card to open an inline form
+- Pick fuel grade + enter the price you see at the pump
+- Validation: user must be within 0.5 miles of the station; max 1 report per station/grade/day per user; max 5 reports/day across all stations
+- Awards **+5 giveaway entries** per submission (increments `priceReportEntries` on User)
+- Reported prices appear immediately on the card (optimistic update) and are fetched from the DB for all nearby users
+- Community prices expire from the display after 2 hours
+
+---
+
 ## Saved Vehicles (Garage)
 
 **Plan:** Free (1 slot), Pro (3 slots), Fleet (unlimited)  
@@ -141,9 +168,22 @@ Summary:
 **Page:** `/giveaway`  
 **Admin:** `/admin` → Draw section
 
-Pro/Fleet users earn 1 entry per calendar day they open the app (tracked via `GET /api/activity`). Up to 31 entries per month.
+Pro/Fleet users earn entries through multiple actions tracked per draw period:
 
-- One winner drawn per month
+| Source | Entries |
+|---|---|
+| Active days (open app or log fill-up) | 1/day × ambassador multiplier |
+| Streak bonus | +2 to +20 depending on streak tier |
+| Daily gift box | variable (3–15/day) |
+| Garage opens | 10/day |
+| Email verification | one-time bonus |
+| Phone number | one-time bonus |
+| Early upgrade | one-time bonus |
+| Pro Lifetime / Annual plan | fixed bonus |
+| Referrals | per referral |
+| **Gas price reports (Find Gas tab)** | **+5 per report, max 5 reports/day** |
+
+- One winner drawn per month (switching to weekly $25 draw — see weekly giveaway build)
 - Prize starts at $25; scales to $50 once 500+ paying Pro/Fleet subscribers are active
 - Winner is notified by email and via GHL webhook
 - Official rules at `/sweepstakes-rules`

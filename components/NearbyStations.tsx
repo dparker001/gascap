@@ -16,6 +16,16 @@ import type { NearbyStation, FuelPrice } from '@/lib/nearbyGas';
 
 import { Geolocation } from '@capacitor/geolocation';
 
+// ── Types ────────────────────────────────────────────────────────────────────
+
+interface CommunityPrice {
+  grade: string;
+  price: number;
+  reportedAt: string; // ISO
+}
+// placeId → list of recent community prices (< 2h old)
+type CommunityMap = Record<string, CommunityPrice[]>;
+
 interface Props {
   /** Called when the user selects a price to use in the calculator */
   onApply?: (price: string, lat: number, lng: number, stationName: string, distanceMi: number, grade: string) => void;
@@ -121,17 +131,140 @@ function LocationPreScreen({ onAllow, onSkip }: { onAllow: () => void; onSkip: (
   );
 }
 
+// ── Report Price inline form ─────────────────────────────────────────────────
+
+const GRADE_LABELS: Record<string, string> = {
+  REGULAR:  'Regular',
+  MIDGRADE: 'Midgrade',
+  PREMIUM:  'Premium',
+  DIESEL:   'Diesel',
+};
+
+function ReportPriceForm({
+  station,
+  userCoords,
+  onSuccess,
+  onCancel,
+}: {
+  station:    NearbyStation;
+  userCoords: { lat: number; lng: number } | null;
+  onSuccess:  (grade: string, price: number) => void;
+  onCancel:   () => void;
+}) {
+  const [grade,       setGrade]       = useState('REGULAR');
+  const [priceInput,  setPriceInput]  = useState('');
+  const [submitting,  setSubmitting]  = useState(false);
+  const [error,       setError]       = useState('');
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const price = parseFloat(priceInput);
+    if (isNaN(price) || price < 0.50 || price > 10.00) {
+      setError('Enter a price between $0.50 and $10.00');
+      return;
+    }
+    if (!userCoords) {
+      setError('Location unavailable — retry finding stations first.');
+      return;
+    }
+    setSubmitting(true);
+    setError('');
+    try {
+      const res = await fetch('/gas/report-price', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          placeId:     station.placeId,
+          stationName: station.name,
+          stationLat:  station.lat,
+          stationLng:  station.lng,
+          userLat:     userCoords.lat,
+          userLng:     userCoords.lng,
+          grade,
+          price,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? 'Failed to submit. Try again.');
+        return;
+      }
+      onSuccess(grade, price);
+    } catch {
+      setError('Network error. Try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="px-4 pb-3 pt-2 border-t border-slate-100 space-y-2">
+      <p className="text-[11px] font-bold text-slate-600 uppercase tracking-wide">Report price at pump</p>
+      <div className="flex gap-2">
+        <select
+          value={grade}
+          onChange={(e) => setGrade(e.target.value)}
+          className="flex-1 text-sm rounded-xl border border-slate-200 px-2 py-1.5 bg-white text-slate-800"
+        >
+          {Object.entries(GRADE_LABELS).map(([k, v]) => (
+            <option key={k} value={k}>{v}</option>
+          ))}
+        </select>
+        <div className="relative flex-1">
+          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">$</span>
+          <input
+            type="number"
+            inputMode="decimal"
+            step="0.001"
+            placeholder="3.89"
+            value={priceInput}
+            onChange={(e) => setPriceInput(e.target.value)}
+            className="w-full pl-6 pr-2 py-1.5 rounded-xl border border-slate-200 text-sm text-slate-800 bg-white"
+            required
+          />
+        </div>
+      </div>
+      {error && <p className="text-[11px] text-red-500">{error}</p>}
+      <div className="flex gap-2">
+        <button
+          type="submit"
+          disabled={submitting}
+          className="flex-1 py-2 rounded-xl bg-[#005F4A] text-white text-sm font-bold disabled:opacity-50"
+        >
+          {submitting ? 'Submitting…' : 'Submit +5 entries'}
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="px-4 py-2 rounded-xl bg-slate-100 text-slate-600 text-sm font-bold"
+        >
+          Cancel
+        </button>
+      </div>
+    </form>
+  );
+}
+
 // ── Station card ─────────────────────────────────────────────────────────────
 
 function StationCard({
   station,
   onApply,
   onHide,
+  userCoords,
+  communityPrices,
+  onPriceReported,
 }: {
-  station:  NearbyStation;
-  onApply?: (price: string, lat: number, lng: number, stationName: string, distanceMi: number, grade: string) => void;
-  onHide?:  (placeId: string) => void;
+  station:         NearbyStation;
+  onApply?:        (price: string, lat: number, lng: number, stationName: string, distanceMi: number, grade: string) => void;
+  onHide?:         (placeId: string) => void;
+  userCoords:      { lat: number; lng: number } | null;
+  communityPrices: CommunityPrice[];
+  onPriceReported: (placeId: string, grade: string, price: number) => void;
 }) {
+  const [showReportForm, setShowReportForm] = useState(false);
+  const [reportToast,    setReportToast]    = useState('');
+
   const hasPrices = station.prices.length > 0;
   // Use regular if available, otherwise the first price in sorted order
   const bestPrice = station.prices.find((p) => p.type === 'REGULAR') ?? station.prices[0] ?? null;
@@ -144,6 +277,22 @@ function StationCard({
     .at(-1) ?? null;
 
   const appleDirections = `maps://maps.apple.com/?daddr=${station.lat},${station.lng}`;
+
+  // Community price display: most recent report per grade (< 2h old)
+  const communityByGrade: Record<string, CommunityPrice> = {};
+  for (const cp of communityPrices) {
+    const existing = communityByGrade[cp.grade];
+    if (!existing || cp.reportedAt > existing.reportedAt) {
+      communityByGrade[cp.grade] = cp;
+    }
+  }
+
+  function handleReportSuccess(grade: string, price: number) {
+    setShowReportForm(false);
+    onPriceReported(station.placeId, grade, price);
+    setReportToast(`+5 entries earned! Thanks for reporting ${GRADE_LABELS[grade] ?? grade} at $${price.toFixed(2)}.`);
+    setTimeout(() => setReportToast(''), 5000);
+  }
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
@@ -179,6 +328,13 @@ function StationCard({
             </p>
             <p className="text-[10px] text-slate-400 mt-0.5">{bestPrice.label}</p>
           </div>
+        ) : communityByGrade['REGULAR'] ? (
+          <div className="text-right flex-shrink-0">
+            <p className="text-2xl font-black text-slate-900 leading-none">
+              ${communityByGrade['REGULAR'].price.toFixed(2)}
+            </p>
+            <p className="text-[10px] text-amber-500 mt-0.5 font-bold">Community</p>
+          </div>
         ) : (
           <div className="text-right flex-shrink-0">
             <p className="text-[11px] text-slate-400 italic leading-snug max-w-[100px]">
@@ -195,6 +351,7 @@ function StationCard({
             const fp = station.prices.find((p) => p.type === type);
             if (!fp) return null;
             const isSelected = fp.type === bestPrice?.type;
+            const community  = communityByGrade[type];
             return (
               <button
                 key={type}
@@ -213,6 +370,36 @@ function StationCard({
                 <p className={`text-sm font-black ${isSelected && onApply ? 'text-white' : 'text-slate-800'}`}>
                   ${fp.price.toFixed(2)}
                 </p>
+                {community && (
+                  <p className="text-[9px] text-amber-500 font-bold mt-0.5">
+                    ${community.price.toFixed(2)} reported
+                  </p>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* No Google price — show community prices if available */}
+      {!hasPrices && Object.keys(communityByGrade).length > 0 && (
+        <div className={`px-4 pb-3 grid gap-1.5 ${Object.keys(communityByGrade).length > 2 ? 'grid-cols-4' : 'grid-cols-2'}`}>
+          {GRADE_ORDER.map((type) => {
+            const cp = communityByGrade[type];
+            if (!cp) return null;
+            return (
+              <button
+                key={type}
+                onClick={() => onApply?.(cp.price.toFixed(2), station.lat, station.lng, station.name, station.distanceMi, GRADE_LABELS[type] ?? type)}
+                className="rounded-xl px-2 py-1.5 text-center bg-amber-50 hover:bg-amber-100 active:opacity-80 transition-colors"
+              >
+                <p className="text-[9px] font-bold uppercase tracking-wider text-amber-600">
+                  {GRADE_LABELS[type] ?? type}
+                </p>
+                <p className="text-sm font-black text-slate-800">
+                  ${cp.price.toFixed(2)}
+                </p>
+                <p className="text-[9px] text-amber-500 font-bold mt-0.5">community</p>
               </button>
             );
           })}
@@ -220,33 +407,53 @@ function StationCard({
       )}
 
       {/* No-price fallback */}
-      {!hasPrices && (
+      {!hasPrices && Object.keys(communityByGrade).length === 0 && (
         <div className="px-4 pb-3">
           <p className="text-[11px] text-slate-400 italic">
-            Live price not available for this station. Enter pump price manually.
+            No price data yet — be the first to report it below.
           </p>
         </div>
       )}
 
-      {/* Staleness + actions */}
-      <div className="border-t border-slate-100 px-4 py-2.5 flex items-center justify-between gap-2">
-        <span className="text-[10px] text-slate-400">
-          {freshest
-            ? `${ bestPrice?.label ?? 'Price' } · Updated ${timeAgo(freshest)}`
-            : hasPrices ? 'Price data from Google' : 'Station from Google'}
-        </span>
-        <div className="flex items-center gap-2">
-          <a
-            href={appleDirections}
-            className="text-[11px] font-bold text-teal-600 flex items-center gap-0.5"
-          >
-            Directions <ChevronRight className="w-3 h-3" />
-          </a>
-          {onApply && hasPrices && (
-            <span className="text-[10px] text-slate-400 italic">tap grade to use</span>
-          )}
+      {/* Report price form or button */}
+      {showReportForm ? (
+        <ReportPriceForm
+          station={station}
+          userCoords={userCoords}
+          onSuccess={handleReportSuccess}
+          onCancel={() => setShowReportForm(false)}
+        />
+      ) : (
+        <div className="border-t border-slate-100 px-4 py-2.5 flex items-center justify-between gap-2">
+          <span className="text-[10px] text-slate-400">
+            {freshest
+              ? `${bestPrice?.label ?? 'Price'} · Updated ${timeAgo(freshest)}`
+              : hasPrices ? 'Price data from Google' : 'Station from Google'}
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowReportForm(true)}
+              className="text-[11px] font-bold text-amber-600 flex items-center gap-0.5"
+            >
+              ⛽ Report Price
+            </button>
+            <a
+              href={appleDirections}
+              className="text-[11px] font-bold text-teal-600 flex items-center gap-0.5"
+            >
+              Directions <ChevronRight className="w-3 h-3" />
+            </a>
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Success toast */}
+      {reportToast && (
+        <div className="px-4 py-2 bg-emerald-50 border-t border-emerald-100">
+          <p className="text-[11px] text-emerald-700 font-bold">{reportToast}</p>
+        </div>
+      )}
     </div>
   );
 }
@@ -265,6 +472,7 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
   const [errMsg,         setErrMsg]         = useState('');
   const [coords,         setCoords]         = useState<{ lat: number; lng: number } | null>(null);
   const [hiddenPlaceIds, setHiddenPlaceIds] = useState<Set<string>>(new Set());
+  const [communityMap,   setCommunityMap]   = useState<CommunityMap>({});
 
   useEffect(() => {
     try {
@@ -427,8 +635,18 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
       if (data.disabled) { setStatus('disabled'); return; }
       if (data.error)    { setStatus('error'); setErrMsg(data.error); return; }
 
-      setStations(data.stations ?? []);
+      const loaded = data.stations ?? [];
+      setStations(loaded);
       setStatus('done');
+
+      // Fetch community prices for visible stations
+      if (loaded.length > 0) {
+        const ids = loaded.map((s: NearbyStation) => s.placeId).join(',');
+        fetch(`/gas/community-prices?placeIds=${encodeURIComponent(ids)}`)
+          .then((r) => r.ok ? r.json() : null)
+          .then((d: CommunityMap | null) => { if (d) setCommunityMap(d); })
+          .catch(() => {});
+      }
 
     } catch (err) {
       if (gen !== fetchGenRef.current) return;
@@ -753,7 +971,21 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
           </div>
         );
         return visible.map((s) => (
-          <StationCard key={s.placeId} station={s} onApply={onApply} onHide={hideStation} />
+          <StationCard
+            key={s.placeId}
+            station={s}
+            onApply={onApply}
+            onHide={hideStation}
+            userCoords={coords}
+            communityPrices={communityMap[s.placeId] ?? []}
+            onPriceReported={(placeId, grade, price) => {
+              const report: CommunityPrice = { grade, price, reportedAt: new Date().toISOString() };
+              setCommunityMap((prev) => ({
+                ...prev,
+                [placeId]: [...(prev[placeId] ?? []), report],
+              }));
+            }}
+          />
         ));
       })()}
 

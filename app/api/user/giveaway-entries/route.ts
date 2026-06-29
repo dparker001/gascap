@@ -47,6 +47,7 @@ export async function GET() {
       dailyBonusEntries: true,
       firstCalcBonusEntries: true,
       emailVerified: true,
+      priceReportEntries: true,
     },
   });
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
@@ -63,6 +64,7 @@ export async function GET() {
   const phoneBonusEntries      = user.phoneBonusEntries          ?? 0;
   const dailyBonusEntries      = user.dailyBonusEntries          ?? 0;
   const firstCalcBonusEntries  = user.firstCalcBonusEntries      ?? 0;
+  const priceReportEntries     = user.priceReportEntries         ?? 0;
   const garageDaysThisMonth = activeDaysInPeriod(user.garageBonusDays ?? [], period);
   const garageBonusEntries  = garageDaysThisMonth * 10;
   const perksActive = user.stripeInterval === 'lifetime'
@@ -76,7 +78,8 @@ export async function GET() {
   const referralBonusEntries = refCount * REFERRAL_BONUS_ENTRIES;
   const entryCount     = baseEntries + streakBonus + bonusEntries + garageBonusEntries
                          + verifyBonusEntries + phoneBonusEntries + dailyBonusEntries
-                         + firstCalcBonusEntries + lifetimeBonusEntries + referralBonusEntries;
+                         + firstCalcBonusEntries + lifetimeBonusEntries + referralBonusEntries
+                         + priceReportEntries;
   const eligible       = user.plan === 'pro' || user.plan === 'fleet';
   const emailVerified  = user.emailVerified ?? false;
 
@@ -105,6 +108,7 @@ export async function GET() {
     garageDaysThisMonth,
     lifetimeBonusEntries,
     referralBonusEntries,
+    priceReportEntries,
     lifetimePerksActive: perksActive,
     lifetimePerksUntil:  user.lifetimePerksUntil?.toISOString() ?? null,
   });

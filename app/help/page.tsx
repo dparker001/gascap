@@ -98,11 +98,19 @@ const SECTIONS = [
       },
       {
         q: 'What is the Find Gas tab?',
-        a: 'The Find Gas tab shows live gas prices at stations near you, powered by Google Places. It lists nearby stations with their current price, distance, and a direct link to open Google Maps for directions. Tap "Log Fill-Up" on any station card to jump straight into the fill-up logger with that station pre-filled. Available to Pro and Fleet users.',
+        a: 'The Find Gas tab shows live gas prices at stations near you, powered by Google Places. It lists nearby stations with their current price, distance, and a direct link to Google Maps for directions. Tap any price chip to instantly fill the calculator, or tap "Report Price" on a station card to submit the price you see at the pump — you earn +5 giveaway entries each time. Community-reported prices (submitted in the last 2 hours) appear in amber when Google\'s price data is missing or outdated. Available to Pro and Fleet users.',
       },
       {
         q: 'Can I remove a station from the Find Gas results?',
         a: 'Yes. If a station is permanently closed or you just want to clean up the list, tap the × button on the station card to hide it from your results. Hidden stations are remembered on your device. If you hide all stations, a "Restore hidden stations" link appears to bring them back.',
+      },
+      {
+        q: 'How do I report a gas price?',
+        a: 'In the Find Gas tab, tap "⛽ Report Price" at the bottom of any station card. You\'ll see a small form — pick the fuel grade (Regular, Midgrade, Premium, or Diesel) and enter the price you see on the pump, then tap Submit. You earn +5 giveaway entries for each report. You must be within 0.5 miles of the station to submit. You can report up to 5 stations per day.',
+      },
+      {
+        q: 'What are community prices?',
+        a: 'Community prices are pump prices reported by GasCap users at a station within the last 2 hours. They appear in amber on station cards — either as a "reported" note under a Google price, or as the primary price grid if Google has no price data for that station. Community prices are visible to all Pro and Fleet users nearby.',
       },
       {
         q: 'What is the Gas Price Alert?',
