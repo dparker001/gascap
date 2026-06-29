@@ -493,7 +493,7 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
       {/* ── Actual amount paid (optional) ──────────────────────────────────── */}
       <div>
         <label className="field-label">
-          Amount paid at pump <span className="text-slate-400 font-normal">(optional)</span>
+          Amount actually paid <span className="text-slate-400 font-normal">(optional)</span>
         </label>
         <div className="relative">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-semibold pointer-events-none text-sm">$</span>
@@ -509,7 +509,7 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
           />
         </div>
         <p className="text-[10px] text-slate-400 mt-1">
-          If you rounded up at the pump, enter what you actually paid.
+          Enter what you paid at the pump or inside — if different from the calculated total.
         </p>
       </div>
 
