@@ -238,13 +238,30 @@ workflows:
       - name: Decode keystore
         script: |
           echo "$CM_KEYSTORE" | base64 --decode > /tmp/signing.keystore
+          # Convert to PKCS12 in case the source keystore is JKS format
+          # (JKS with tag numbers >30 fails on Java 17 — PKCS12 always works)
+          keytool -importkeystore \
+            -srckeystore /tmp/signing.keystore \
+            -destkeystore /tmp/signing-p12.keystore \
+            -deststoretype PKCS12 \
+            -srcalias "$CM_KEY_ALIAS" \
+            -destalias "$CM_KEY_ALIAS" \
+            -srcstorepass "$CM_KEYSTORE_PASSWORD" \
+            -deststorepass "$CM_KEYSTORE_PASSWORD" \
+            -srckeypass "$CM_KEY_PASSWORD" \
+            -destkeypass "$CM_KEY_PASSWORD" \
+            -noprompt 2>&1 || true
+          # Use converted keystore if it was created, otherwise fall back to original
+          if [ -f /tmp/signing-p12.keystore ]; then
+            mv /tmp/signing-p12.keystore /tmp/signing.keystore
+            echo "Using PKCS12 keystore"
+          fi
 
       - name: Build signed AAB
         script: |
           cd android
           ./gradlew bundleRelease \
             -Pandroid.injected.signing.store.file=/tmp/signing.keystore \
-            -Pandroid.injected.signing.store.type=PKCS12 \
             -Pandroid.injected.signing.store.password="$CM_KEYSTORE_PASSWORD" \
             -Pandroid.injected.signing.key.alias="$CM_KEY_ALIAS" \
             -Pandroid.injected.signing.key.password="$CM_KEY_PASSWORD"
