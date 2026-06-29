@@ -106,6 +106,7 @@ model User {
   otpCodeName              String?
   // Connected Car (Smartcar) — subscription state + trial tracking
   smartcarConnected        Boolean   @default(false)
+  smartcarUserId           String?   // Smartcar V3 user_id from Connect callback (sc-user-id header)
   smartcarAddonStatus      String?   // "trial" | "active" | "expired" | null
   smartcarTrialStartedAt   String?
   smartcarTrialEndsAt      String?

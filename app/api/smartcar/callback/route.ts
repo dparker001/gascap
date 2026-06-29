@@ -1,29 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import {
-  exchangeCode,
+  getAppToken,
   getVehicleIds,
   getVehicleInfo,
   getOdometer,
   getFuelLevel,
   getVin,
-  tokenExpiry,
 } from '@/lib/smartcar';
 import { nanoid } from 'nanoid';
 
-// GET /api/smartcar/callback?code=...&state=...
-// Exchanges the Smartcar auth code for tokens, fetches the user's vehicles,
-// upserts them into the Vehicle table, and starts the 14-day trial.
+// GET /api/smartcar/callback?code=...&user_id=...&state=...
+// V3 flow: code is discarded; user_id is stored and used as sc-user-id header for API calls.
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
-  const code  = searchParams.get('code');
-  const state = searchParams.get('state');
-  const error = searchParams.get('error');
+  const state          = searchParams.get('state');
+  const error          = searchParams.get('error');
+  const smartcarUserId = searchParams.get('user_id'); // V3: Smartcar user identifier
 
   if (error) {
     return NextResponse.redirect(new URL('/settings?smartcar=denied', req.nextUrl.origin));
   }
-  if (!code || !state) {
+  if (!state || !smartcarUserId) {
     return NextResponse.redirect(new URL('/settings?smartcar=error', req.nextUrl.origin));
   }
 
@@ -34,18 +32,17 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    // Exchange code for tokens
-    const tokens    = await exchangeCode(code);
-    const expiry    = tokenExpiry(tokens.expires_in);
-    const vehicleIds = await getVehicleIds(tokens.access_token);
+    // V3: get app-level token via client_credentials
+    const appToken   = await getAppToken();
+    const vehicleIds = await getVehicleIds(appToken, smartcarUserId);
 
     // Upsert each Smartcar vehicle into our Vehicle table
     for (const smartcarId of vehicleIds) {
       const [info, vin, odometer, fuel] = await Promise.allSettled([
-        getVehicleInfo(smartcarId, tokens.access_token),
-        getVin(smartcarId, tokens.access_token),
-        getOdometer(smartcarId, tokens.access_token),
-        getFuelLevel(smartcarId, tokens.access_token),
+        getVehicleInfo(smartcarId, appToken, smartcarUserId),
+        getVin(smartcarId, appToken, smartcarUserId),
+        getOdometer(smartcarId, appToken, smartcarUserId),
+        getFuelLevel(smartcarId, appToken, smartcarUserId),
       ]);
 
       const vehicleInfo = info.status === 'fulfilled' ? info.value : null;
@@ -58,7 +55,6 @@ export async function GET(req: NextRequest) {
       const year  = vehicleInfo?.year  ? String(vehicleInfo.year) : null;
       const name  = [year, make, model].filter(Boolean).join(' ') || 'My Vehicle';
 
-      // Check if this Smartcar vehicle is already linked
       const existing = await prisma.vehicle.findFirst({
         where: { userId, smartcarId },
       });
@@ -67,15 +63,12 @@ export async function GET(req: NextRequest) {
         await prisma.vehicle.update({
           where: { id: existing.id },
           data: {
-            smartcarAccessToken:  tokens.access_token,
-            smartcarRefreshToken: tokens.refresh_token,
-            smartcarTokenExpiry:  expiry,
-            fuelLevel:   fuelData?.percentRemaining ?? null,
-            fuelRange:   fuelData?.range            ?? null,
-            fuelLevelAt: fuelData ? new Date().toISOString() : null,
+            fuelLevel:       fuelData?.percentRemaining ?? null,
+            fuelRange:       fuelData?.range            ?? null,
+            fuelLevelAt:     fuelData ? new Date().toISOString() : null,
             currentOdometer: odomData?.distance ?? existing.currentOdometer,
-            vin:  vinData?.vin ?? existing.vin,
-            make: make ?? existing.make,
+            vin:   vinData?.vin  ?? existing.vin,
+            make:  make  ?? existing.make,
             model: model ?? existing.model,
             year:  year  ?? existing.year,
           },
@@ -83,48 +76,47 @@ export async function GET(req: NextRequest) {
       } else {
         await prisma.vehicle.create({
           data: {
-            id:      nanoid(),
+            id:        nanoid(),
             userId,
             name,
-            gallons: 0,
-            vin:     vinData?.vin ?? null,
+            gallons:   0,
+            vin:       vinData?.vin ?? null,
             make,
             model,
             year,
-            fuelType: 'gasoline',
+            fuelType:  'gasoline',
             createdAt: new Date().toISOString(),
             smartcarId,
-            smartcarAccessToken:  tokens.access_token,
-            smartcarRefreshToken: tokens.refresh_token,
-            smartcarTokenExpiry:  expiry,
-            fuelLevel:   fuelData?.percentRemaining ?? null,
-            fuelRange:   fuelData?.range            ?? null,
-            fuelLevelAt: fuelData ? new Date().toISOString() : null,
+            fuelLevel:       fuelData?.percentRemaining ?? null,
+            fuelRange:       fuelData?.range            ?? null,
+            fuelLevelAt:     fuelData ? new Date().toISOString() : null,
             currentOdometer: odomData?.distance ?? null,
           },
         });
       }
     }
 
-    // Start 14-day trial if not already started
+    // Store Smartcar user_id on our User; start 14-day trial if first connection
     const user = await prisma.user.findUnique({ where: { id: userId } });
     const now  = new Date();
-    const trialUpdate: Record<string, unknown> = {
+    const userUpdate: Record<string, unknown> = {
       smartcarConnected:    true,
+      smartcarUserId,
       smartcarVehicleCount: vehicleIds.length,
     };
     if (!user?.smartcarAddonStatus) {
       const trialEnd = new Date(now);
       trialEnd.setDate(trialEnd.getDate() + 14);
-      trialUpdate.smartcarAddonStatus    = 'trial';
-      trialUpdate.smartcarTrialStartedAt = now.toISOString();
-      trialUpdate.smartcarTrialEndsAt    = trialEnd.toISOString();
+      userUpdate.smartcarAddonStatus    = 'trial';
+      userUpdate.smartcarTrialStartedAt = now.toISOString();
+      userUpdate.smartcarTrialEndsAt    = trialEnd.toISOString();
     }
-    await prisma.user.update({ where: { id: userId }, data: trialUpdate });
+    await prisma.user.update({ where: { id: userId }, data: userUpdate });
 
     return NextResponse.redirect(new URL('/settings?smartcar=connected', req.nextUrl.origin));
   } catch (err) {
-    console.error('[smartcar/callback]', err);
+    const e = err as Error;
+    console.error('[smartcar/callback] error:', e.message);
     return NextResponse.redirect(new URL('/settings?smartcar=error', req.nextUrl.origin));
   }
 }
