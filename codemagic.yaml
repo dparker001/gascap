@@ -238,11 +238,10 @@ workflows:
 
       - name: Prepare keystore
         script: |
-          # CM_KEYSTORE_PATH is set via Codemagic Secure Files upload
-          # File is auto-placed at $CM_KEYSTORE_PATH by Codemagic
-          echo "Keystore path: $CM_KEYSTORE_PATH"
+          echo "$CM_KEYSTORE" | base64 --decode > "$CM_KEYSTORE_PATH"
           echo "Keystore size: $(wc -c < "$CM_KEYSTORE_PATH") bytes"
-          keytool -list -keystore "$CM_KEYSTORE_PATH" -storepass "$CM_KEYSTORE_PASSWORD" -noprompt 2>&1 | head -5
+          file "$CM_KEYSTORE_PATH"
+          keytool -list -keystore "$CM_KEYSTORE_PATH" -storepass "$CM_KEYSTORE_PASSWORD" -noprompt 2>&1 | head -8
 
       - name: Build signed AAB
         script: |
