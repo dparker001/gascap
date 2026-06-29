@@ -214,6 +214,7 @@ workflows:
       vars:
         PACKAGE_NAME: "app.gascap.mobile"
         CM_KEY_ALIAS: "my-key-alias"
+        CM_KEYSTORE_PATH: "/tmp/signing.keystore"
       node: 20
       java: 17
     scripts:
@@ -238,16 +239,15 @@ workflows:
       - name: Decode keystore
         script: |
           echo "$CM_KEYSTORE" | base64 --decode > /tmp/signing.keystore
+          echo "Keystore size: $(wc -c < /tmp/signing.keystore) bytes"
           keytool -list -keystore /tmp/signing.keystore -storepass "$CM_KEYSTORE_PASSWORD" -noprompt 2>&1 | head -5
+          export CM_KEYSTORE_PATH=/tmp/signing.keystore
 
       - name: Build signed AAB
         script: |
+          export CM_KEYSTORE_PATH=/tmp/signing.keystore
           cd android
-          ./gradlew bundleRelease \
-            -Pandroid.injected.signing.store.file=/tmp/signing.keystore \
-            -Pandroid.injected.signing.store.password="$CM_KEYSTORE_PASSWORD" \
-            -Pandroid.injected.signing.key.alias="$CM_KEY_ALIAS" \
-            -Pandroid.injected.signing.key.password="$CM_KEY_PASSWORD"
+          ./gradlew bundleRelease
 
     artifacts:
       - android/app/build/outputs/bundle/release/app-release.aab
