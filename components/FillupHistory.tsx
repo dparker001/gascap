@@ -749,15 +749,16 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
                             <p className="text-[10px] font-black text-amber-700 uppercase tracking-widest">{t.fillupHistory.editTitle}</p>
 
                             {/* Date — full width */}
-                            <div className="overflow-hidden">
+                            <div>
                               <label className="block text-[10px] font-semibold text-slate-500 mb-1">{t.fillupHistory.dateLabel}</label>
                               <input
                                 type="date"
                                 value={editDraft.date}
                                 max={new Date().toISOString().split('T')[0]}
                                 onChange={(e) => setEditDraft((d) => d ? { ...d, date: e.target.value } : d)}
-                                className="w-full max-w-full text-xs px-2.5 py-2 border border-slate-200 rounded-xl
-                                           focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white box-border"
+                                className="w-full text-xs text-left px-2.5 py-2 border border-slate-200 rounded-xl
+                                           focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white
+                                           appearance-none [&::-webkit-date-and-time-value]:text-left"
                               />
                             </div>
 
