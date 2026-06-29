@@ -19,6 +19,7 @@ import type { CalcTab } from './CalculatorTabs';
 import { useTranslation } from '@/contexts/LanguageContext';
 import { trackCalculateTarget, trackRentalReturnToggled } from '@/lib/gtag';
 import { checkTankSize } from '@/lib/tankValidation';
+import GaugeScanModal from './GaugeScanModal';
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -90,6 +91,8 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
   const [showLiveNudge, setShowLiveNudge] = useState(false);
   const [gaugeScanning, setGaugeScanning] = useState(false);
   const [gaugeScanMsg,  setGaugeScanMsg]  = useState('');
+  const [showScanModal,    setShowScanModal]    = useState(false);
+  const [scanFromDashboard, setScanFromDashboard] = useState(false);
   const [rentalMode,    setRentalMode]    = useState(false);
   const [rentalRate,    setRentalRate]    = useState('');
   const [gasCoords,     setGasCoords]     = useState<{ lat: number; lng: number } | null>(null);
@@ -100,8 +103,6 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
   const [vehicleBodyClass, setVehicleBodyClass] = useState<string | undefined>(undefined);
   // Tank-size source tracking — drives the "From garage / From list" badge in TankPresets
   const [presetLabel, setPresetLabel] = useState('');
-  const gaugeCamRef     = useRef<HTMLInputElement>(null);
-  const gaugeGalleryRef = useRef<HTMLInputElement>(null);
   const calcStartFired  = useRef(false);
   // Stable ref so the gc:inject-gas-price event handler always calls the latest liveRecalc
   const liveRecalcRef   = useRef<(p: Partial<FormState>) => void>(() => {});
@@ -242,26 +243,29 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
     ? (isNaN(Number(form.currentFuel)) ? 0 : Number(form.currentFuel))
     : 0;
 
-  async function handleGaugeScan(file: File) {
-    setGaugeScanning(true);
+  function handleScanConfirm({ percent, confidence, gaugeType, detected, reason }: {
+    percent: number; confidence: number; gaugeType: string; detected: number | null; reason: string;
+  }) {
+    liveRecalc({ currentFuel: String(percent), fuelMode: 'percent' });
+    setScanFromDashboard(true);
     setGaugeScanMsg('');
-    try {
-      const fd = new FormData();
-      fd.append('image', file);
-      const res  = await fetch('/api/gauge/scan', { method: 'POST', body: fd, credentials: 'include' });
-      const data = await res.json() as { percent?: number | null; error?: string };
-      if (!res.ok) { setGaugeScanMsg(data.error ?? t.calc.scanFailed); return; }
-      if (data.percent === null || data.percent === undefined) {
-        setGaugeScanMsg(t.calc.scanNotReadable);
-        return;
-      }
-      liveRecalc({ currentFuel: String(data.percent), fuelMode: 'percent' });
-      setGaugeScanMsg(t.calc.scanDetected(data.percent));
-    } catch {
-      setGaugeScanMsg(t.calc.scanNetworkError);
-    } finally {
-      setGaugeScanning(false);
-    }
+    setShowScanModal(false);
+    // Fire-and-forget feedback log
+    fetch('/api/gauge/scan-feedback', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        detectedPercent:  detected,
+        confirmedPercent: percent,
+        confidence,
+        gaugeType,
+        reason,
+        vehicleId:   form.vehicleId   || undefined,
+        vehicleName: form.vehicleName || undefined,
+        tankSize:    Number(form.tankCapacity) || undefined,
+      }),
+    }).catch(() => { /* non-critical */ });
   }
 
   function handleCalculate() {
@@ -508,40 +512,26 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
               tankCapacity={tankNum}
             />
 
-            {/* ── Gauge scan inputs (hidden) ── */}
-            <input type="file" accept="image/*" capture="environment"
-              ref={gaugeCamRef} className="hidden"
-              onChange={(e) => { const f = e.target.files?.[0]; if (f) handleGaugeScan(f); e.target.value = ''; }}
-            />
-            <input type="file" accept="image/*"
-              ref={gaugeGalleryRef} className="hidden"
-              onChange={(e) => { const f = e.target.files?.[0]; if (f) handleGaugeScan(f); e.target.value = ''; }}
-            />
-
-            {/* ── Scan gauge buttons ── */}
+            {/* ── Scan gauge button ── */}
             <div className="mt-2 space-y-1.5">
               {isLoggedIn ? (
                 <>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => { setGaugeScanMsg(''); gaugeCamRef.current?.click(); }}
-                      disabled={gaugeScanning}
-                      className="flex items-center gap-1.5 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-xl px-3 py-2 hover:border-amber-300 hover:text-amber-700 transition-colors disabled:opacity-50"
-                    >
-                      <span>{gaugeScanning ? '🔄' : '📷'}</span>
-                      <span>{gaugeScanning ? t.calc.readingGauge : t.calc.scanGauge}</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { setGaugeScanMsg(''); gaugeGalleryRef.current?.click(); }}
-                      disabled={gaugeScanning}
-                      className="flex items-center gap-1.5 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-xl px-3 py-2 hover:border-amber-300 hover:text-amber-700 transition-colors disabled:opacity-50"
-                    >
-                      <span>🖼️</span>
-                      <span>{t.calc.uploadPhoto}</span>
-                    </button>
-                  </div>
+                  {scanFromDashboard && (
+                    <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-3 py-1.5">
+                      <p className="text-[11px] text-green-700 font-medium">{t.scan.setFromScan}</p>
+                      <button type="button" onClick={() => setScanFromDashboard(false)}
+                        className="text-green-400 hover:text-green-600 text-xs ml-2">✕</button>
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => { setGaugeScanMsg(''); setShowScanModal(true); }}
+                    disabled={gaugeScanning}
+                    className="flex items-center gap-1.5 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-xl px-3 py-2 hover:border-amber-300 hover:text-amber-700 transition-colors disabled:opacity-50"
+                  >
+                    <span>📷</span>
+                    <span>{t.calc.scanGauge}</span>
+                  </button>
                   {gaugeScanMsg && (
                     <p className={`text-[11px] font-medium leading-snug ${gaugeScanMsg.startsWith('✓') ? 'text-green-600' : 'text-red-500'}`}>
                       {gaugeScanMsg}
@@ -808,6 +798,14 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
           />
         )}
       </div>
+
+      {/* ── Gauge scan modal ── */}
+      {showScanModal && (
+        <GaugeScanModal
+          onConfirm={handleScanConfirm}
+          onClose={() => setShowScanModal(false)}
+        />
+      )}
     </div>
   );
 }

@@ -2,7 +2,7 @@
  * POST /api/gauge/scan
  * Claude Vision fuel-gauge reader — available to all plans.
  * Accepts: multipart/form-data with field "image" (JPEG/PNG/WebP/GIF)
- * Returns: { percent: number | null }  (0–100, integer)
+ * Returns: GaugeScanResult
  */
 import { NextResponse } from 'next/server';
 import { getToken }    from 'next-auth/jwt';
@@ -10,10 +10,18 @@ import Anthropic       from '@anthropic-ai/sdk';
 
 const anthropic = new Anthropic({ apiKey: process.env.GASCAP_ANTHROPIC_KEY });
 
+export type GaugeType = 'analog_needle' | 'digital_percentage' | 'digital_bars' | 'unknown';
+
+export interface GaugeScanResult {
+  gaugeDetected:        boolean;
+  gaugeType:            GaugeType;
+  fuelPercent:          number | null;
+  confidence:           number;        // 0–100
+  reason:               string;
+  needsUserConfirmation: boolean;
+}
+
 export async function POST(req: Request) {
-  // Use getToken (reads JWT cookie directly from the request) instead of
-  // getServerSession — the latter requires a req/res pair in App Router and
-  // silently returns null on mobile when called without one, causing 401s.
   const token = await getToken({ req: req as Parameters<typeof getToken>[0]['req'], secret: process.env.NEXTAUTH_SECRET });
   if (!token?.sub && !token?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
@@ -43,7 +51,7 @@ export async function POST(req: Request) {
   try {
     const message = await anthropic.messages.create({
       model:      'claude-haiku-4-5-20251001',
-      max_tokens: 100,
+      max_tokens: 250,
       messages: [{
         role: 'user',
         content: [
@@ -53,38 +61,46 @@ export async function POST(req: Request) {
           },
           {
             type: 'text',
-            text: `You are reading a vehicle fuel gauge from a photo taken by a driver.
+            text: `You are a vehicle fuel gauge expert analyzing a dashboard photo.
 
-GAUGE TYPES — look for ANY of these:
+STEP 1 — LOCATE THE FUEL GAUGE
+Find the fuel gauge in the image. It may be:
+- Analog needle: a dial with E (Empty) and F (Full) labels, needle pointing to current level
+- Digital percentage: a number like "87%" or "45%" on an info display
+- Digital bars: segmented bar graph showing fill level (like a battery icon)
+- Not visible or unreadable
 
-Analog needle gauges (most common):
-- VERTICAL sweep: needle moves up (Full/F at top) and down (Empty/E at bottom) — common on right side of instrument cluster. E is at the BOTTOM, F is at the TOP.
-- HORIZONTAL sweep: needle moves left/right along a curved or straight arc — E on the left, F on the right (or sometimes reversed).
-- SEMICIRCULAR arc: needle sweeps in a half-circle — E on one end, F on the other.
-- The needle pivot point and the E/F labels are the key reference points regardless of orientation.
+STEP 2 — DETERMINE GAUGE TYPE
+Classify as one of: analog_needle, digital_percentage, digital_bars, unknown
 
-Digital displays:
-- Bar graph or segmented bars showing fuel level
-- Fraction display (e.g. "1/4", "1/2", "3/4", "FULL")
-- Percentage display (e.g. "87%", "45%")
-- Icon with fill level indicator
+STEP 3 — ESTIMATE FUEL LEVEL
+- Analog needle: note where needle points relative to E and F endpoints. E=0%, F=100%. ¼=25%, ½=50%, ¾=75%. Round to nearest 5%.
+- Digital percentage: read the number directly.
+- Digital bars: count lit segments ÷ total segments × 100. Round to nearest 5%.
+- If unreadable: set fuelPercent to null.
 
-HOW TO INTERPRET:
-- Locate the E (Empty) and F (Full) labels or endpoints first
-- For vertical gauges: measure how far the needle is from E (bottom) toward F (top) as a percentage of the total travel distance
-- For horizontal/arc gauges: measure needle position as percentage from E end to F end
-- For digital bars: count lit/filled segments ÷ total segments × 100
-- E or Empty = 0%, ¼ tank = 25%, ½ tank = 50%, ¾ tank = 75%, F or Full = 100%
-- Round to the nearest 5%
+STEP 4 — ASSESS CONFIDENCE (0–100)
+Rate your confidence in the reading:
+- 90–100: Gauge clearly visible, reading unambiguous
+- 70–89: Gauge visible but some uncertainty (slight angle, partial view)
+- 50–69: Gauge partially obscured, glare, or reading is approximate
+- Below 50: Very uncertain — dark image, heavy glare, gauge barely visible
+- 0: No gauge found or completely unreadable
 
-WHEN TO RETURN NULL:
-- No fuel gauge visible in the image
-- Gauge is too blurry, dark, or obscured to read
-- Cannot confidently locate the needle or E/F endpoints
-- Image shows something other than a vehicle fuel gauge
+STEP 5 — EXPLAIN BRIEFLY
+One sentence: what you saw and how you determined the reading. If unreadable, say why (too dark, glare, not a gauge, etc.).
 
-Return ONLY a JSON object, no markdown, no explanation:
-{"percent": <integer 0–100 or null>}`,
+Return ONLY valid JSON, no markdown, no code block:
+{
+  "gaugeDetected": true or false,
+  "gaugeType": "analog_needle" | "digital_percentage" | "digital_bars" | "unknown",
+  "fuelPercent": integer 0–100 or null,
+  "confidence": integer 0–100,
+  "reason": "one sentence explanation",
+  "needsUserConfirmation": true or false
+}
+
+Set needsUserConfirmation to true if confidence < 80 or gaugeDetected is false.`,
           },
         ],
       }],
@@ -96,15 +112,35 @@ Return ONLY a JSON object, no markdown, no explanation:
       .join('');
 
     const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) return NextResponse.json({ percent: null });
-
-    const data = JSON.parse(jsonMatch[0]) as { percent: number | null };
-
-    if (data.percent !== null && typeof data.percent === 'number') {
-      const clamped = Math.max(0, Math.min(100, Math.round(data.percent)));
-      return NextResponse.json({ percent: clamped });
+    if (!jsonMatch) {
+      return NextResponse.json<GaugeScanResult>({
+        gaugeDetected: false,
+        gaugeType: 'unknown',
+        fuelPercent: null,
+        confidence: 0,
+        reason: 'Could not parse AI response.',
+        needsUserConfirmation: true,
+      });
     }
-    return NextResponse.json({ percent: null });
+
+    const raw = JSON.parse(jsonMatch[0]) as Partial<GaugeScanResult>;
+
+    const result: GaugeScanResult = {
+      gaugeDetected:        raw.gaugeDetected === true,
+      gaugeType:            (['analog_needle','digital_percentage','digital_bars','unknown'] as GaugeType[]).includes(raw.gaugeType as GaugeType)
+                              ? raw.gaugeType as GaugeType
+                              : 'unknown',
+      fuelPercent:          raw.fuelPercent !== null && typeof raw.fuelPercent === 'number'
+                              ? Math.max(0, Math.min(100, Math.round(raw.fuelPercent)))
+                              : null,
+      confidence:           typeof raw.confidence === 'number'
+                              ? Math.max(0, Math.min(100, Math.round(raw.confidence)))
+                              : 0,
+      reason:               typeof raw.reason === 'string' ? raw.reason.slice(0, 200) : '',
+      needsUserConfirmation: raw.needsUserConfirmation === true || (raw.confidence ?? 0) < 80 || raw.gaugeDetected !== true,
+    };
+
+    return NextResponse.json<GaugeScanResult>(result);
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Unknown error';
     return NextResponse.json({ error: `Scan failed: ${msg}` }, { status: 500 });

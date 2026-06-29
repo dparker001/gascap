@@ -24,11 +24,6 @@ export interface Vehicle {
   epaId?:             string;
   currentOdometer?:   number;
   vehicleSpecs?:      VehicleSpecs;
-  // GasCap Connect (Smartcar)
-  smartcarId?:        string;
-  fuelLevel?:         number;   // 0.0–1.0
-  fuelLevelAt?:       string;
-  fuelRange?:         number;   // miles
 }
 
 interface GarageResponse {
@@ -859,22 +854,6 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
                           <span className="inline-block mt-1 text-[10px] bg-white border border-slate-200
                                            rounded px-1.5 py-0.5 text-slate-500 font-medium">
                             {v.fuelType}
-                          </span>
-                        )}
-                        {/* GasCap Connect fuel level badge */}
-                        {v.smartcarId && typeof v.fuelLevel === 'number' && (
-                          <span className={[
-                            'inline-flex items-center gap-1 mt-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full',
-                            v.fuelLevel < 0.15
-                              ? 'bg-red-100 text-red-600'
-                              : v.fuelLevel < 0.3
-                              ? 'bg-amber-100 text-amber-700'
-                              : 'bg-green-100 text-green-700',
-                          ].join(' ')}>
-                            ⛽ {Math.round(v.fuelLevel * 100)}%
-                            {v.fuelRange && v.fuelRange > 0 && (
-                              <span className="font-normal opacity-75">· {Math.round(v.fuelRange)}mi</span>
-                            )}
                           </span>
                         )}
                         {v.id === selectedVehicleId && (

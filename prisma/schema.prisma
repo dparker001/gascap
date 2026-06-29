@@ -104,14 +104,6 @@ model User {
   otpCode                  String?
   otpCodeExpires           String?
   otpCodeName              String?
-  // Connected Car (Smartcar) — subscription state + trial tracking
-  smartcarConnected        Boolean   @default(false)
-  smartcarUserId           String?   // Smartcar V3 user_id from Connect callback (sc-user-id header)
-  smartcarAddonStatus      String?   // "trial" | "active" | "expired" | null
-  smartcarTrialStartedAt   String?
-  smartcarTrialEndsAt      String?
-  smartcarAddonSubId       String?   // RevenueCat or Stripe subscription ID
-  smartcarVehicleCount     Int       @default(0)  // number of connected vehicles
   vehicles                 Vehicle[]
 }
 
@@ -137,14 +129,6 @@ model Vehicle {
   currentOdometer   Float?
   vehicleSpecs      Json?
   createdAt         String
-  // Smartcar connection — per vehicle
-  smartcarId        String?   // Smartcar vehicle ID (UUID)
-  smartcarAccessToken   String?
-  smartcarRefreshToken  String?
-  smartcarTokenExpiry   String?   // ISO timestamp
-  fuelLevel         Float?    // 0.0–1.0 percentage
-  fuelLevelAt       String?   // ISO timestamp of last sync
-  fuelRange         Float?    // estimated range in miles
   user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
@@ -280,4 +264,23 @@ model Review {
   updatedAt   String
 
   @@index([approved])
+}
+
+// Gauge scan results stored for QA and future model improvement.
+// Additive-only: no existing models touched.
+model GaugeScanLog {
+  id               String  @id @default(cuid())
+  userId           String
+  detectedPercent  Int?
+  confirmedPercent Int
+  confidence       Int
+  gaugeType        String
+  reason           String?
+  vehicleId        String?
+  vehicleName      String?
+  tankSize         Float?
+  createdAt        String
+
+  @@index([userId])
+  @@index([createdAt])
 }

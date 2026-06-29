@@ -64,7 +64,7 @@ const SECTIONS = [
       },
       {
         q: 'Can I scan my fuel gauge to set the current level?',
-        a: 'Yes. Tap "Scan Gauge" to use your camera or "Upload Photo" to use an image from your gallery. AI reads the needle position — including vertical, horizontal, and arc-style gauges — and sets the fuel level automatically. You can always drag the gauge to fine-tune.',
+        a: 'Yes. Tap "Scan Gauge" to open the scanner. Center the gauge in the frame, then tap "Use Camera" or "Upload Photo." You\'ll see a preview before anything is analyzed — tap "Retake" if needed, or "Analyze" to send it to AI. The result shows the detected fuel level, gauge type (analog needle, digital bars, etc.), and a confidence score. If confidence is below 80%, a warning appears and the slider stays active so you can correct it. Tap "Looks Right" to apply the level to the calculator. A "Fuel level set from dashboard scan" badge confirms it was applied. Tips: avoid glare, hold steady, and move closer if the gauge is small in frame.',
       },
       {
         q: 'How does the live gas price lookup work?',
