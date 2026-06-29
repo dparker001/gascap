@@ -48,22 +48,10 @@ async function preprocessImage(file: File): Promise<Blob> {
   canvas.height = dh;
   const ctx     = canvas.getContext('2d')!;
 
-  // Draw resized image
+  // Draw resized image — no contrast manipulation, preserve original colors
+  // so the AI can accurately read needle position and gauge labels.
   ctx.drawImage(bitmap, 0, 0, dw, dh);
   bitmap.close();
-
-  // Boost contrast with a simple curves-like filter:
-  // stretch the histogram by clamping shadows/highlights a few ticks.
-  const imageData = ctx.getImageData(0, 0, dw, dh);
-  const d         = imageData.data;
-  const lo = 10, hi = 245;
-  const range = hi - lo;
-  for (let i = 0; i < d.length; i += 4) {
-    d[i]     = Math.round(Math.max(0, Math.min(255, ((d[i]     - lo) / range) * 255)));
-    d[i + 1] = Math.round(Math.max(0, Math.min(255, ((d[i + 1] - lo) / range) * 255)));
-    d[i + 2] = Math.round(Math.max(0, Math.min(255, ((d[i + 2] - lo) / range) * 255)));
-  }
-  ctx.putImageData(imageData, 0, 0);
 
   return new Promise<Blob>((resolve, reject) => {
     canvas.toBlob(
@@ -202,27 +190,10 @@ export default function GaugeScanModal({ onConfirm, onClose }: Props) {
           {/* ── IDLE: capture options ── */}
           {stage === 'idle' && (
             <div className="px-4 py-5 space-y-4">
-              {/* Guide illustration */}
-              <div className="relative bg-slate-900 rounded-xl overflow-hidden aspect-[4/3] flex items-center justify-center">
-                {/* Corner bracket overlay */}
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                  <div className="w-40 h-28 relative">
-                    {/* TL */}
-                    <div className="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 border-amber-400 rounded-tl" />
-                    {/* TR */}
-                    <div className="absolute top-0 right-0 w-6 h-6 border-t-2 border-r-2 border-amber-400 rounded-tr" />
-                    {/* BL */}
-                    <div className="absolute bottom-0 left-0 w-6 h-6 border-b-2 border-l-2 border-amber-400 rounded-bl" />
-                    {/* BR */}
-                    <div className="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 border-amber-400 rounded-br" />
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-3xl">⛽</span>
-                    </div>
-                  </div>
-                </div>
-                <p className="text-[10px] text-slate-400 absolute bottom-2 left-0 right-0 text-center px-3">
-                  {t.scan.guideText}
-                </p>
+              {/* Instructions */}
+              <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-center">
+                <div className="text-4xl mb-2">⛽</div>
+                <p className="text-sm font-semibold text-amber-800">{t.scan.guideText}</p>
               </div>
 
               {/* Tips */}

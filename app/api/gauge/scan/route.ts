@@ -74,9 +74,11 @@ STEP 2 — DETERMINE GAUGE TYPE
 Classify as one of: analog_needle, digital_percentage, digital_bars, unknown
 
 STEP 3 — ESTIMATE FUEL LEVEL
-- Analog needle: note where needle points relative to E and F endpoints. E=0%, F=100%. ¼=25%, ½=50%, ¾=75%. Round to nearest 5%.
-- Digital percentage: read the number directly.
-- Digital bars: count lit segments ÷ total segments × 100. Round to nearest 5%.
+- Analog needle: measure needle position relative to E and F endpoints. E=0%, F=100%. ¼=25%, ½=50%, ¾=75%.
+  IMPORTANT: If the needle is AT or PAST the F mark, return 100. Do not under-report a full tank as 85 or 90 — if it looks full, it is full.
+  Report the nearest whole number; do not round down conservatively.
+- Digital percentage: read the number exactly as shown.
+- Digital bars: count lit segments ÷ total segments × 100, nearest whole number.
 - If unreadable: set fuelPercent to null.
 
 STEP 4 — ASSESS CONFIDENCE (0–100)
