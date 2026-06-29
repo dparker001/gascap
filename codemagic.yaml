@@ -209,14 +209,11 @@ workflows:
         - pattern: android-capacitor
           include: true
     environment:
+      groups:
+        - android
       vars:
         PACKAGE_NAME: "app.gascap.mobile"
         CM_KEY_ALIAS: "my-key-alias"
-        # Set these in Codemagic UI → Environment variables (encrypt sensitive values):
-        #   CM_KEYSTORE        — base64 of signing.keystore
-        #   CM_KEYSTORE_PASSWORD
-        #   CM_KEY_PASSWORD
-        #   GCLOUD_SERVICE_ACCOUNT_CREDENTIALS — Google Play service account JSON
       node: 20
       java: 17
     scripts:
