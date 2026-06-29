@@ -44,6 +44,7 @@ export async function POST(req: Request) {
   const body = await req.json() as Omit<Fillup, 'id' | 'userId' | 'totalCost' | 'createdAt'> & {
     force?:       boolean;
     driverLabel?: string;  // Fleet Phase 1 — optional driver attribution
+    totalCost?:   number;  // user-entered actual amount paid (e.g. rounded up at the pump)
   };
 
   // Basic field validation

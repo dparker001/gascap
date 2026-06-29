@@ -91,6 +91,7 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
   const [saving,         setSaving]         = useState(false);
   const [error,          setError]          = useState('');
   const [warnings,       setWarnings]       = useState<string[]>([]);
+  const [amountPaid,     setAmountPaid]     = useState('');
   const [savedSummary,   setSavedSummary]   = useState<{ gallons: number; pricePaid: number; saved: number; overfillGal: number } | null>(null);
   const [forceConfirm, setForceConfirm] = useState(false);
   const [scanning,     setScanning]     = useState(false);
@@ -311,6 +312,9 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
           date,
           gallonsPumped:   parseFloat(gallons),
           pricePerGallon:  parseFloat(price),
+          totalCost:       amountPaid && parseFloat(amountPaid) > 0
+            ? parseFloat(amountPaid)
+            : undefined,
           odometerReading: odometer ? parseInt(odometer, 10) : undefined,
           fuelLevelBefore: prefill.fuelLevelBefore,
           stationName:     stationName.trim() || undefined,
@@ -347,7 +351,10 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
         const AVG_OVERFILL_GAL = 0.4;
         const delta     = Math.abs(pumpedGal - prefill.calculatedGallons);
         const overfill  = delta <= 0.5 ? AVG_OVERFILL_GAL : Math.max(AVG_OVERFILL_GAL, delta);
-        const pricePaid = Math.round(pumpedGal * ppg * 100) / 100;
+        const computed  = Math.round(pumpedGal * ppg * 100) / 100;
+        const pricePaid = amountPaid && parseFloat(amountPaid) > 0
+          ? Math.round(parseFloat(amountPaid) * 100) / 100
+          : computed;
         const saved     = Math.round(overfill * ppg * 100) / 100;
         setSavedSummary({ gallons: pumpedGal, pricePaid, saved, overfillGal: overfill });
       } else {
@@ -481,6 +488,29 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
             />
           </div>
         </div>
+      </div>
+
+      {/* ── Actual amount paid (optional) ──────────────────────────────────── */}
+      <div>
+        <label className="field-label">
+          Amount paid at pump <span className="text-slate-400 font-normal">(optional)</span>
+        </label>
+        <div className="relative">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-semibold pointer-events-none text-sm">$</span>
+          <input
+            type="number" inputMode="decimal"
+            className="input-field text-sm pl-7"
+            placeholder={(parseFloat(gallons) > 0 && parseFloat(price) > 0)
+              ? (Math.ceil(parseFloat(gallons) * parseFloat(price) * 100) / 100).toFixed(2)
+              : '0.00'}
+            value={amountPaid}
+            min="0.01" step="0.01"
+            onChange={(e) => setAmountPaid(e.target.value)}
+          />
+        </div>
+        <p className="text-[10px] text-slate-400 mt-1">
+          If you rounded up at the pump, enter what you actually paid.
+        </p>
       </div>
 
       {/* ── Fill-up breakdown vs. GasCap calculation ───────────────── */}

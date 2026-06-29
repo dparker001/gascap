@@ -151,6 +151,10 @@ const SECTIONS = [
         a: 'After saving a fill-up that was pre-filled from the GasCap™ calculator, a savings card appears showing how much you saved at the pump by not overfilling. It calculates the industry-average pump overfill (0.4 gal) multiplied by the price per gallon you paid. The card is a reminder that using GasCap™ to calculate your exact fill amount puts real money back in your pocket.',
       },
       {
+        q: 'Can I pay the exact GasCap™ amount at the pump?',
+        a: 'Yes — most modern pumps support pre-pay by dollar amount. When you reach the pump, select "Pre-Pay" or "Enter Amount" on the keypad and type in the exact dollar figure GasCap™ calculated (e.g. $42.83). The pump stops precisely at that amount — no rounding, no overfill. Support varies by station and terminal: some pumps only accept whole dollar pre-pays, others accept cents, and pay-inside attendants can always set any amount. If you do round up, use the "Amount paid at pump" field in the Fill-Up Logger to record what you actually spent so your savings stay accurate.',
+      },
+      {
         q: 'Can I export my fill-up history?',
         a: 'Yes. Open Fill-Up History and tap "Export CSV" to download a spreadsheet, or "Print / PDF" to save a printable report. Fleet CSV exports include the driver attribution column. Available to Pro and Fleet users.',
       },

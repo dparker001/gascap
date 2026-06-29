@@ -199,8 +199,9 @@ export async function validateNewFillup(
 /** Add a new fillup record */
 export async function addFillup(
   userId: string,
-  data: Omit<Fillup, 'id' | 'userId' | 'totalCost' | 'createdAt'>,
+  data: Omit<Fillup, 'id' | 'userId' | 'totalCost' | 'createdAt'> & { totalCost?: number },
 ): Promise<Fillup> {
+  const computedCost = Math.round(data.gallonsPumped * data.pricePerGallon * 100) / 100;
   const entry = await prisma.fillup.create({
     data: {
       id:              randomUUID(),
@@ -210,7 +211,7 @@ export async function addFillup(
       date:            data.date,
       gallonsPumped:   data.gallonsPumped,
       pricePerGallon:  data.pricePerGallon,
-      totalCost:       Math.round(data.gallonsPumped * data.pricePerGallon * 100) / 100,
+      totalCost:       data.totalCost ?? computedCost,
       odometerReading: data.odometerReading  ?? null,
       fuelLevelBefore: data.fuelLevelBefore  ?? null,
       stationName:     data.stationName      ?? null,
