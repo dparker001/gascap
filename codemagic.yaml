@@ -210,7 +210,7 @@ workflows:
           include: true
     environment:
       groups:
-        - android
+        - ANDROID
       vars:
         PACKAGE_NAME: "app.gascap.mobile"
         CM_KEY_ALIAS: "my-key-alias"
