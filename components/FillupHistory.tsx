@@ -748,19 +748,21 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
                           <div key={f.id} className="bg-amber-50 rounded-2xl border border-amber-200 shadow-sm px-4 py-4 space-y-3">
                             <p className="text-[10px] font-black text-amber-700 uppercase tracking-widest">{t.fillupHistory.editTitle}</p>
 
-                            {/* Row 1: date + gallons */}
+                            {/* Date — full width */}
+                            <div>
+                              <label className="block text-[10px] font-semibold text-slate-500 mb-1">{t.fillupHistory.dateLabel}</label>
+                              <input
+                                type="date"
+                                value={editDraft.date}
+                                max={new Date().toISOString().split('T')[0]}
+                                onChange={(e) => setEditDraft((d) => d ? { ...d, date: e.target.value } : d)}
+                                className="w-full text-xs px-2.5 py-2 border border-slate-200 rounded-xl
+                                           focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white"
+                              />
+                            </div>
+
+                            {/* Gallons + Price */}
                             <div className="grid grid-cols-2 gap-2">
-                              <div>
-                                <label className="block text-[10px] font-semibold text-slate-500 mb-1">{t.fillupHistory.dateLabel}</label>
-                                <input
-                                  type="date"
-                                  value={editDraft.date}
-                                  max={new Date().toISOString().split('T')[0]}
-                                  onChange={(e) => setEditDraft((d) => d ? { ...d, date: e.target.value } : d)}
-                                  className="w-full text-xs px-2.5 py-2 border border-slate-200 rounded-xl
-                                             focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white"
-                                />
-                              </div>
                               <div>
                                 <label className="block text-[10px] font-semibold text-slate-500 mb-1">{t.fillupHistory.gallonsLabel}</label>
                                 <input
@@ -771,10 +773,6 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
                                              focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white"
                                 />
                               </div>
-                            </div>
-
-                            {/* Row 2: price + odometer */}
-                            <div className="grid grid-cols-2 gap-2">
                               <div>
                                 <label className="block text-[10px] font-semibold text-slate-500 mb-1">{t.fillupHistory.pricePerGalLabel}</label>
                                 <input
@@ -785,19 +783,21 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
                                              focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white"
                                 />
                               </div>
-                              <div>
-                                <label className="block text-[10px] font-semibold text-slate-500 mb-1">
-                                  {t.fillupHistory.odometerLabel} <span className="font-normal text-slate-400">{t.fillupHistory.opt}</span>
-                                </label>
-                                <input
-                                  type="number" inputMode="numeric" min="0" step="1"
-                                  value={editDraft.odometerReading}
-                                  placeholder="—"
-                                  onChange={(e) => setEditDraft((d) => d ? { ...d, odometerReading: e.target.value } : d)}
-                                  className="w-full text-xs px-2.5 py-2 border border-slate-200 rounded-xl
-                                             focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white"
-                                />
-                              </div>
+                            </div>
+
+                            {/* Odometer — full width */}
+                            <div>
+                              <label className="block text-[10px] font-semibold text-slate-500 mb-1">
+                                {t.fillupHistory.odometerLabel} <span className="font-normal text-slate-400">{t.fillupHistory.opt}</span>
+                              </label>
+                              <input
+                                type="number" inputMode="numeric" min="0" step="1"
+                                value={editDraft.odometerReading}
+                                placeholder="—"
+                                onChange={(e) => setEditDraft((d) => d ? { ...d, odometerReading: e.target.value } : d)}
+                                className="w-full text-xs px-2.5 py-2 border border-slate-200 rounded-xl
+                                           focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white"
+                              />
                             </div>
 
                             {/* Gas Station */}
