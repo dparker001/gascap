@@ -100,8 +100,10 @@ function FillupForm({ onSaved }: { onSaved: () => void }) {
     <form onSubmit={handleSubmit} className="space-y-3">
       <div>
         <label className="field-label">Date</label>
-        <input type="date" className="input-field text-sm w-full" value={date}
-          onChange={e => setDate(e.target.value)} required />
+        <div className="overflow-hidden rounded-xl">
+          <input type="date" className="input-field text-sm max-w-full min-w-0 appearance-none" value={date}
+            onChange={e => setDate(e.target.value)} required />
+        </div>
       </div>
       <div>
         <label className="field-label">Platform</label>
@@ -196,8 +198,10 @@ function MileageForm({ onSaved }: { onSaved: () => void }) {
     <form onSubmit={handleSubmit} className="space-y-3">
       <div>
         <label className="field-label">Date</label>
-        <input type="date" className="input-field text-sm w-full" value={date}
-          onChange={e => setDate(e.target.value)} required />
+        <div className="overflow-hidden rounded-xl">
+          <input type="date" className="input-field text-sm max-w-full min-w-0 appearance-none" value={date}
+            onChange={e => setDate(e.target.value)} required />
+        </div>
       </div>
       <div>
         <label className="field-label">Platform</label>
