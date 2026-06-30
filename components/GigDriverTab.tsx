@@ -30,6 +30,9 @@ interface GigMileageEntry {
   category: string; startOdometer?: number | null; endOdometer?: number | null;
 }
 
+// IRS standard mileage rate for 2026 (business use)
+const IRS_RATE_2026 = 0.70;
+
 // ── Weekly summary stats ───────────────────────────────────────────────────────
 
 function calcSummary(fillups: GigFillup[], mileage: GigMileageEntry[]) {
@@ -42,7 +45,15 @@ function calcSummary(fillups: GigFillup[], mileage: GigMileageEntry[]) {
   const totalMiles   = wMileage.reduce((s, m) => s + m.miles, 0);
   const avgPpg = totalGallons > 0 ? totalSpend / totalGallons : 0;
   const cpm    = totalMiles  > 0 && totalSpend > 0 ? totalSpend / totalMiles : 0;
-  return { totalSpend, totalGallons, totalMiles, avgPpg, cpm, fillupCount: wFillups.length };
+
+  // Year-to-date business miles across all loaded data
+  const ytdStart = new Date(); ytdStart.setMonth(0, 1); ytdStart.setHours(0,0,0,0);
+  const ytdStr = ytdStart.toISOString().slice(0, 10);
+  const ytdMiles = mileage
+    .filter(m => m.date >= ytdStr && m.category === 'business')
+    .reduce((s, m) => s + m.miles, 0);
+
+  return { totalSpend, totalGallons, totalMiles, avgPpg, cpm, fillupCount: wFillups.length, ytdMiles };
 }
 
 // ── Fuel log form ─────────────────────────────────────────────────────────────
@@ -371,6 +382,28 @@ export default function GigDriverTab() {
           </div>
         )}
       </div>
+
+      {/* IRS mileage deduction card */}
+      {!loading && stats.ytdMiles > 0 && (
+        <div className="bg-blue-50 border border-blue-100 rounded-2xl px-4 py-3">
+          <p className="text-[10px] font-bold tracking-widest text-blue-400 uppercase mb-1.5">
+            {new Date().getFullYear()} IRS Deduction Estimate
+          </p>
+          <div className="flex items-end justify-between gap-2">
+            <div>
+              <p className="text-xl font-black text-blue-700">
+                ${(stats.ytdMiles * IRS_RATE_2026).toFixed(2)}
+              </p>
+              <p className="text-[11px] text-blue-500 mt-0.5">
+                {stats.ytdMiles.toFixed(0)} biz mi × ${IRS_RATE_2026}/mi
+              </p>
+            </div>
+            <p className="text-[9px] text-blue-400 text-right leading-snug max-w-[130px]">
+              Standard mileage rate · consult a tax pro
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Nav buttons */}
       <div className="flex gap-2">

@@ -39,6 +39,7 @@ import LanguageToggle    from '@/components/LanguageToggle';
 import { getPlanBadge, type PlanUser } from '@/lib/planBadge';
 import FillupLogger from '@/components/FillupLogger';
 import GigDriverTab from '@/components/GigDriverTab';
+import UserModeSelector from '@/components/UserModeSelector';
 
 export type TabId = 'calculator' | 'findgas' | 'history' | 'tools' | 'rewards' | 'settings' | 'driver';
 
@@ -71,6 +72,9 @@ export default function NativeAppShell() {
 
   // Plan badge for the title bar — shared with AuthButton; trial users get a live "Pro Trial · Nd".
   const planBadge = getPlanBadge(session?.user as PlanUser | undefined, t);
+
+  const [modeSelectorDone, setModeSelectorDone] = useState(false);
+  const showModeSelector = status === 'authenticated' && !userMode && !modeSelectorDone;
 
   const [active,  setActive]  = useState<TabId>('calculator');
   const [visited, setVisited] = useState<Set<TabId>>(() => new Set<TabId>(['calculator']));
@@ -366,6 +370,11 @@ export default function NativeAppShell() {
       </div>
 
       <NativeTabBar tabs={TABS} active={active} onChange={changeTab} />
+
+      {/* Mode selector — shown on first login when userMode is not yet set */}
+      {showModeSelector && (
+        <UserModeSelector onComplete={() => setModeSelectorDone(true)} />
+      )}
 
       {/* Fill-up bottom sheet — slides up when user taps "Log Fill-up" banner */}
       {showFillupSheet && pendingFillup && (() => {
