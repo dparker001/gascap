@@ -18,6 +18,9 @@ export default function PullToRefresh() {
   const pullingRef  = useRef(false);
 
   useEffect(() => {
+    // Disable entirely in native app — NativeAppShell handles its own refresh logic
+    // and pull-to-refresh causes accidental full reloads in WKWebView.
+    if (typeof window !== 'undefined' && !!(window as unknown as Record<string, unknown>).Capacitor) return;
     function onTouchStart(e: TouchEvent) {
       // Only start tracking if at the very top of the page
       if (window.scrollY === 0) {
