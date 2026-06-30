@@ -78,13 +78,11 @@ export default function NativeTabBar({ tabs, active, onChange }: Props) {
     <nav
       className="flex-shrink-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur
                  border-t border-slate-200 dark:border-slate-800"
-      style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 10px)' }}
       aria-label="Primary"
     >
-      {/* Inset the outer tabs from the extreme corners so a case's rounded edges
-          don't clip the Calculator (far-left) / Settings (far-right) buttons. */}
+      {/* Button row — fixed height, independent of safe-area math */}
       <div
-        className="flex"
+        className="flex h-[52px]"
         style={{
           paddingLeft:  'calc(env(safe-area-inset-left) + 8px)',
           paddingRight: 'calc(env(safe-area-inset-right) + 8px)',
@@ -99,7 +97,7 @@ export default function NativeTabBar({ tabs, active, onChange }: Props) {
               onClick={() => onChange(tab.id)}
               aria-label={tab.label}
               aria-current={isActive ? 'page' : undefined}
-              className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-1.5
+              className={`flex-1 flex flex-col items-center justify-center gap-0.5
                           transition-colors active:bg-slate-100 dark:active:bg-slate-800
                           ${isActive
                             ? 'text-teal-600 dark:text-teal-400'
@@ -118,6 +116,9 @@ export default function NativeTabBar({ tabs, active, onChange }: Props) {
           );
         })}
       </div>
+
+      {/* Safe-area spacer — sits below buttons, never overlaps them */}
+      <div style={{ height: 'max(env(safe-area-inset-bottom), 8px)' }} />
     </nav>
   );
 }
