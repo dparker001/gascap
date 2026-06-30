@@ -54,6 +54,16 @@ export default function VehicleChip({ selectedVehicleId, onSelect }: Props) {
     } catch { /* ignore */ }
   }, []);
 
+  // Keep chip in sync when a vehicle is picked from inside the calculator garage
+  useEffect(() => {
+    function onVehicleSelected(e: Event) {
+      const id = (e as CustomEvent<{ vehicleId: string }>).detail?.vehicleId;
+      if (id) setActiveId(id);
+    }
+    window.addEventListener('gc:vehicle-selected', onVehicleSelected);
+    return () => window.removeEventListener('gc:vehicle-selected', onVehicleSelected);
+  }, []);
+
   useEffect(() => {
     if (!session) return;
     fetch('/api/vehicles')

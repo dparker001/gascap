@@ -474,6 +474,8 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
               setVehicleTankEst(v?.vehicleSpecs?.tankEstGallons);
               setVehicleBodyClass(v?.vehicleSpecs?.bodyClass);
               setPresetLabel('');
+              // Notify VehicleChip in the native header so it updates immediately
+              if (v?.id) window.dispatchEvent(new CustomEvent('gc:vehicle-selected', { detail: { vehicleId: v.id } }));
             }}
             selectedVehicleId={form.vehicleId}
             calcKey={calcKey}
