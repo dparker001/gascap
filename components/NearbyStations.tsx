@@ -13,6 +13,7 @@ import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { useIsNative } from '@/hooks/useIsNative';
 import type { NearbyStation, FuelPrice } from '@/lib/nearbyGas';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 import { Geolocation } from '@capacitor/geolocation';
 
@@ -38,15 +39,22 @@ type Status = 'idle' | 'locating' | 'fetching' | 'done' | 'error' | 'no_key' | '
 const LOC_ASKED_KEY = 'gc_loc_asked';
 const GRADE_ORDER: FuelPrice['type'][] = ['REGULAR', 'MIDGRADE', 'PREMIUM', 'DIESEL'];
 
-function timeAgo(iso: string | null): string {
+interface TimeAgoLabels {
+  justNow: string;
+  minutesAgo: (m: number) => string;
+  hoursAgo: (h: number) => string;
+  daysAgo: (d: number) => string;
+}
+
+function timeAgo(iso: string | null, labels: TimeAgoLabels): string {
   if (!iso) return '';
   const diffMs  = Date.now() - new Date(iso).getTime();
   const diffMin = Math.round(diffMs / 60_000);
-  if (diffMin < 2)  return 'just now';
-  if (diffMin < 60) return `${diffMin}m ago`;
+  if (diffMin < 2)  return labels.justNow;
+  if (diffMin < 60) return labels.minutesAgo(diffMin);
   const diffH = Math.round(diffMin / 60);
-  if (diffH < 24)   return `${diffH}h ago`;
-  return `${Math.round(diffH / 24)}d ago`;
+  if (diffH < 24)   return labels.hoursAgo(diffH);
+  return labels.daysAgo(Math.round(diffH / 24));
 }
 
 // ── Gas pump SVG icon ────────────────────────────────────────────────────────
@@ -103,29 +111,28 @@ function MapPin({ className }: { className?: string }) {
 
 // ── Location pre-screen ──────────────────────────────────────────────────────
 
-function LocationPreScreen({ onAllow, onSkip }: { onAllow: () => void; onSkip: () => void }) {
+function LocationPreScreen({ onAllow, onSkip, labels }: { onAllow: () => void; onSkip: () => void; labels: { findGasNearYou: string; locationPermissionBody: string; allowLocation: string; maybeLater: string } }) {
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] px-6 text-center">
       <div className="w-20 h-20 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center mb-5">
         <MapPin className="w-10 h-10 text-amber-500" />
       </div>
-      <h2 className="text-xl font-black text-slate-900 mb-2">Find Gas Near You</h2>
+      <h2 className="text-xl font-black text-slate-900 mb-2">{labels.findGasNearYou}</h2>
       <p className="text-sm text-slate-500 leading-relaxed mb-6 max-w-xs">
-        GasCap uses your location to find the cheapest nearby gas stations and
-        auto-fill the calculator — so you know exactly what to pump before you pull in.
+        {labels.locationPermissionBody}
       </p>
       <button
         onClick={onAllow}
         className="w-full max-w-xs py-3.5 rounded-2xl bg-[#005F4A] text-white text-sm
                    font-black tracking-wide mb-3 active:opacity-90 transition-opacity"
       >
-        Allow Location
+        {labels.allowLocation}
       </button>
       <button
         onClick={onSkip}
         className="text-sm text-slate-400 font-medium hover:text-slate-600"
       >
-        Maybe Later
+        {labels.maybeLater}
       </button>
     </div>
   );
@@ -133,23 +140,29 @@ function LocationPreScreen({ onAllow, onSkip }: { onAllow: () => void; onSkip: (
 
 // ── Report Price inline form ─────────────────────────────────────────────────
 
-const GRADE_LABELS: Record<string, string> = {
-  REGULAR:  'Regular',
-  MIDGRADE: 'Midgrade',
-  PREMIUM:  'Premium',
-  DIESEL:   'Diesel',
-};
-
 function ReportPriceForm({
   station,
   userCoords,
   onSuccess,
   onCancel,
+  gradeLabels,
+  labels,
 }: {
   station:    NearbyStation;
   userCoords: { lat: number; lng: number } | null;
   onSuccess:  (grade: string, price: number) => void;
   onCancel:   () => void;
+  gradeLabels: Record<string, string>;
+  labels: {
+    errPriceRange: string;
+    errLocationUnavailable: string;
+    errSubmitFailed: string;
+    errNetwork: string;
+    reportPriceAtPump: string;
+    submitting: string;
+    submitEntries: string;
+    cancel: string;
+  };
 }) {
   const [grade,       setGrade]       = useState('REGULAR');
   const [priceInput,  setPriceInput]  = useState('');
@@ -160,11 +173,11 @@ function ReportPriceForm({
     e.preventDefault();
     const price = parseFloat(priceInput);
     if (isNaN(price) || price < 0.50 || price > 10.00) {
-      setError('Enter a price between $0.50 and $10.00');
+      setError(labels.errPriceRange);
       return;
     }
     if (!userCoords) {
-      setError('Location unavailable — retry finding stations first.');
+      setError(labels.errLocationUnavailable);
       return;
     }
     setSubmitting(true);
@@ -186,12 +199,12 @@ function ReportPriceForm({
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error ?? 'Failed to submit. Try again.');
+        setError(data.error ?? labels.errSubmitFailed);
         return;
       }
       onSuccess(grade, price);
     } catch {
-      setError('Network error. Try again.');
+      setError(labels.errNetwork);
     } finally {
       setSubmitting(false);
     }
@@ -199,14 +212,14 @@ function ReportPriceForm({
 
   return (
     <form onSubmit={handleSubmit} className="px-4 pb-3 pt-2 border-t border-slate-100 space-y-2">
-      <p className="text-[11px] font-bold text-slate-600 uppercase tracking-wide">Report price at pump</p>
+      <p className="text-[11px] font-bold text-slate-600 uppercase tracking-wide">{labels.reportPriceAtPump}</p>
       <div className="flex gap-2">
         <select
           value={grade}
           onChange={(e) => setGrade(e.target.value)}
           className="flex-1 text-sm rounded-xl border border-slate-200 px-2 py-1.5 bg-white text-slate-800"
         >
-          {Object.entries(GRADE_LABELS).map(([k, v]) => (
+          {Object.entries(gradeLabels).map(([k, v]) => (
             <option key={k} value={k}>{v}</option>
           ))}
         </select>
@@ -231,14 +244,14 @@ function ReportPriceForm({
           disabled={submitting}
           className="flex-1 py-2 rounded-xl bg-[#005F4A] text-white text-sm font-bold disabled:opacity-50"
         >
-          {submitting ? 'Submitting…' : 'Submit +5 entries'}
+          {submitting ? labels.submitting : labels.submitEntries}
         </button>
         <button
           type="button"
           onClick={onCancel}
           className="px-4 py-2 rounded-xl bg-slate-100 text-slate-600 text-sm font-bold"
         >
-          Cancel
+          {labels.cancel}
         </button>
       </div>
     </form>
@@ -247,6 +260,35 @@ function ReportPriceForm({
 
 // ── Station card ─────────────────────────────────────────────────────────────
 
+interface StationCardLabels {
+  miAway: string;
+  open: string;
+  closed: string;
+  noLivePrice: string;
+  community: string;
+  noPriceDataYet: string;
+  priceFromGoogle: string;
+  stationFromGoogle: string;
+  reportPrice: string;
+  directions: string;
+  justNow: string;
+  minutesAgo: (m: number) => string;
+  hoursAgo: (h: number) => string;
+  daysAgo: (d: number) => string;
+  errPriceRange: string;
+  errLocationUnavailable: string;
+  errSubmitFailed: string;
+  errNetwork: string;
+  reportPriceAtPump: string;
+  submitting: string;
+  submitEntries: string;
+  cancel: string;
+  gradeRegular: string;
+  gradeMidgrade: string;
+  gradePremium: string;
+  gradeDiesel: string;
+}
+
 function StationCard({
   station,
   onApply,
@@ -254,6 +296,7 @@ function StationCard({
   userCoords,
   communityPrices,
   onPriceReported,
+  labels,
 }: {
   station:         NearbyStation;
   onApply?:        (price: string, lat: number, lng: number, stationName: string, distanceMi: number, grade: string) => void;
@@ -261,6 +304,7 @@ function StationCard({
   userCoords:      { lat: number; lng: number } | null;
   communityPrices: CommunityPrice[];
   onPriceReported: (placeId: string, grade: string, price: number) => void;
+  labels:          StationCardLabels;
 }) {
   const [showReportForm, setShowReportForm] = useState(false);
   const [reportToast,    setReportToast]    = useState('');
@@ -287,10 +331,17 @@ function StationCard({
     }
   }
 
+  const gradeLabels: Record<string, string> = {
+    REGULAR:  labels.gradeRegular,
+    MIDGRADE: labels.gradeMidgrade,
+    PREMIUM:  labels.gradePremium,
+    DIESEL:   labels.gradeDiesel,
+  };
+
   function handleReportSuccess(grade: string, price: number) {
     setShowReportForm(false);
     onPriceReported(station.placeId, grade, price);
-    setReportToast(`+5 entries earned! Thanks for reporting ${GRADE_LABELS[grade] ?? grade} at $${price.toFixed(2)}.`);
+    setReportToast(`+5 entries earned! Thanks for reporting ${gradeLabels[grade] ?? grade} at $${price.toFixed(2)}.`);
     setTimeout(() => setReportToast(''), 5000);
   }
 
@@ -303,10 +354,10 @@ function StationCard({
           <p className="text-[11px] text-slate-400 mt-0.5 truncate">{station.address}</p>
           <div className="flex items-center gap-2 mt-1">
             <span className="text-[11px] text-slate-500 font-medium">
-              {station.distanceMi} mi away
+              {station.distanceMi} {labels.miAway}
             </span>
-            {station.isOpen === true  && <span className="text-[10px] font-bold text-emerald-600">OPEN</span>}
-            {station.isOpen === false && <span className="text-[10px] font-bold text-red-500">CLOSED</span>}
+            {station.isOpen === true  && <span className="text-[10px] font-bold text-emerald-600">{labels.open}</span>}
+            {station.isOpen === false && <span className="text-[10px] font-bold text-red-500">{labels.closed}</span>}
           </div>
         </div>
         {onHide && (
@@ -333,12 +384,12 @@ function StationCard({
             <p className="text-2xl font-black text-slate-900 leading-none">
               ${communityByGrade['REGULAR'].price.toFixed(2)}
             </p>
-            <p className="text-[10px] text-amber-500 mt-0.5 font-bold">Community</p>
+            <p className="text-[10px] text-amber-500 mt-0.5 font-bold">{labels.community}</p>
           </div>
         ) : (
           <div className="text-right flex-shrink-0">
             <p className="text-[11px] text-slate-400 italic leading-snug max-w-[100px]">
-              No live price
+              {labels.noLivePrice}
             </p>
           </div>
         )}
@@ -390,16 +441,16 @@ function StationCard({
             return (
               <button
                 key={type}
-                onClick={() => onApply?.(cp.price.toFixed(2), station.lat, station.lng, station.name, station.distanceMi, GRADE_LABELS[type] ?? type)}
+                onClick={() => onApply?.(cp.price.toFixed(2), station.lat, station.lng, station.name, station.distanceMi, gradeLabels[type] ?? type)}
                 className="rounded-xl px-2 py-1.5 text-center bg-amber-50 hover:bg-amber-100 active:opacity-80 transition-colors"
               >
                 <p className="text-[9px] font-bold uppercase tracking-wider text-amber-600">
-                  {GRADE_LABELS[type] ?? type}
+                  {gradeLabels[type] ?? type}
                 </p>
                 <p className="text-sm font-black text-slate-800">
                   ${cp.price.toFixed(2)}
                 </p>
-                <p className="text-[9px] text-amber-500 font-bold mt-0.5">community</p>
+                <p className="text-[9px] text-amber-500 font-bold mt-0.5">{labels.community}</p>
               </button>
             );
           })}
@@ -410,7 +461,7 @@ function StationCard({
       {!hasPrices && Object.keys(communityByGrade).length === 0 && (
         <div className="px-4 pb-3">
           <p className="text-[11px] text-slate-400 italic">
-            No price data yet — be the first to report it below.
+            {labels.noPriceDataYet}
           </p>
         </div>
       )}
@@ -422,13 +473,15 @@ function StationCard({
           userCoords={userCoords}
           onSuccess={handleReportSuccess}
           onCancel={() => setShowReportForm(false)}
+          gradeLabels={gradeLabels}
+          labels={labels}
         />
       ) : (
         <div className="border-t border-slate-100 px-4 py-2.5 flex items-center justify-between gap-2">
           <span className="text-[10px] text-slate-400">
             {freshest
-              ? `${bestPrice?.label ?? 'Price'} · Updated ${timeAgo(freshest)}`
-              : hasPrices ? 'Price data from Google' : 'Station from Google'}
+              ? `${bestPrice?.label ?? 'Price'} · Updated ${timeAgo(freshest, labels)}`
+              : hasPrices ? labels.priceFromGoogle : labels.stationFromGoogle}
           </span>
           <div className="flex items-center gap-2">
             <button
@@ -436,13 +489,13 @@ function StationCard({
               onClick={() => setShowReportForm(true)}
               className="text-[11px] font-bold text-amber-600 flex items-center gap-0.5"
             >
-              ⛽ Report Price
+              {labels.reportPrice}
             </button>
             <a
               href={appleDirections}
               className="text-[11px] font-bold text-teal-600 flex items-center gap-0.5"
             >
-              Directions <ChevronRight className="w-3 h-3" />
+              {labels.directions} <ChevronRight className="w-3 h-3" />
             </a>
           </div>
         </div>
@@ -463,6 +516,7 @@ function StationCard({
 export default function NearbyStations({ onApply, isActive = true }: Props) {
   const { data: session, status: sessionStatus } = useSession();
   const isNative = useIsNative();
+  const { t } = useTranslation();
   const plan    = (session?.user as { plan?: string } | undefined)?.plan ?? 'free';
   const isPro   = plan === 'pro' || plan === 'fleet' || plan === 'lifetime';
   const isGuest = sessionStatus === 'unauthenticated';
@@ -517,7 +571,7 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
       fetchGenRef.current++;
       fetchControllerRef.current?.abort();
       setStatus('error');
-      setErrMsg('Fuel pricing is taking too long. Enter your price manually or tap retry.');
+      setErrMsg(t.findGasTab.errTimeout);
     }, TIMEOUT_MS);
     return () => clearTimeout(timer);
   }, [status]);
@@ -607,7 +661,7 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
         httpStatus = workerResult.status;
         try { data = JSON.parse(workerResult.text); }
         catch {
-          setStatus('error'); setErrMsg('Unexpected server response. Enter your price manually or tap retry.'); return;
+          setStatus('error'); setErrMsg(t.findGasTab.errServerResponse); return;
         }
       } else {
         const res = await fetch(nearbyUrl, {
@@ -620,17 +674,17 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
         const text = await res.text();
         try { data = JSON.parse(text); }
         catch {
-          setStatus('error'); setErrMsg('Unexpected server response. Enter your price manually or tap retry.'); return;
+          setStatus('error'); setErrMsg(t.findGasTab.errServerResponse); return;
         }
       }
 
       if (gen !== fetchGenRef.current) return;
 
       if (httpStatus >= 400) {
-        setStatus('error'); setErrMsg(`Unable to load fuel prices (${httpStatus}). Enter your price manually or tap retry.`); return;
+        setStatus('error'); setErrMsg(t.findGasTab.errHttpStatus(httpStatus)); return;
       }
       if (data.proRequired) {
-        setStatus('error'); setErrMsg(`Pro required — try signing out and back in.`); return;
+        setStatus('error'); setErrMsg(t.findGasTab.errProRequired); return;
       }
       if (data.disabled) { setStatus('disabled'); return; }
       if (data.error)    { setStatus('error'); setErrMsg(data.error); return; }
@@ -653,7 +707,7 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
       const name = err instanceof Error ? err.name : 'unknown';
       if (name !== 'AbortError') {
         setStatus('error');
-        setErrMsg('Unable to load nearby fuel prices. Enter your price manually or tap retry.');
+        setErrMsg(t.findGasTab.errLoadFailed);
       }
     }
   }, [isNative, workerFetch]);
@@ -667,7 +721,7 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
 
     if (!navigator.geolocation) {
       setStatus('error');
-      setErrMsg('Geolocation not available on this device.');
+      setErrMsg(t.findGasTab.errGeoUnavailable);
       return;
     }
 
@@ -699,7 +753,7 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
           clearTimeout(geoTimer);
           if (geoGen !== geoGenRef.current) return;
           setStatus('error');
-          setErrMsg('Location access denied. Enable in iOS Settings → GasCap → Location.');
+          setErrMsg(t.findGasTab.errLocationDeniedIos);
           return;
         }
 
@@ -712,7 +766,7 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
               clearTimeout(geoTimer);
               if (geoGen !== geoGenRef.current) return;
               setStatus('error');
-              setErrMsg('Location access denied. Enable in iOS Settings → GasCap → Location.');
+              setErrMsg(t.findGasTab.errLocationDeniedIos);
               return;
             }
           } catch {
@@ -741,8 +795,8 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
           setStatus('error');
           setErrMsg(
             msg.toLowerCase().includes('denied')
-              ? 'Location access denied. Enable in iOS Settings → GasCap → Location.'
-              : `Could not get location: ${msg.slice(0, 40)}`,
+              ? t.findGasTab.errLocationDeniedIos
+              : t.findGasTab.errLocationGeneric(msg.slice(0, 40)),
           );
         }
       })();
@@ -765,8 +819,8 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
           setStatus('error');
           setErrMsg(
             err.code === 1
-              ? 'Location access denied. Enable location in Settings.'
-              : `Could not get location (code ${err.code}).`,
+              ? t.findGasTab.errLocationDenied
+              : t.findGasTab.errLocationCode(err.code),
           );
         },
         { timeout: 10000, maximumAge: 300_000, enableHighAccuracy: false },
@@ -819,17 +873,46 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
   // Auto-fetch was causing getCurrentPosition to hang silently on native.
 
   // ── Guest gate ──────────────────────────────────────────────────────────────
+  const stationCardLabels: StationCardLabels = {
+    miAway:             t.findGasTab.miAway,
+    open:               t.findGasTab.open,
+    closed:             t.findGasTab.closed,
+    noLivePrice:        t.findGasTab.noLivePrice,
+    community:          t.findGasTab.community,
+    noPriceDataYet:     t.findGasTab.noPriceDataYet,
+    priceFromGoogle:    t.findGasTab.priceFromGoogle,
+    stationFromGoogle:  t.findGasTab.stationFromGoogle,
+    reportPrice:        t.findGasTab.reportPrice,
+    directions:         t.findGasTab.directions,
+    justNow:            t.findGasTab.justNow,
+    minutesAgo:         t.findGasTab.minutesAgo,
+    hoursAgo:           t.findGasTab.hoursAgo,
+    daysAgo:            t.findGasTab.daysAgo,
+    errPriceRange:      t.findGasTab.errPriceRange,
+    errLocationUnavailable: t.findGasTab.errLocationUnavailable,
+    errSubmitFailed:    t.findGasTab.errSubmitFailed,
+    errNetwork:         t.findGasTab.errNetwork,
+    reportPriceAtPump:  t.findGasTab.reportPriceAtPump,
+    submitting:         t.findGasTab.submitting,
+    submitEntries:      t.findGasTab.submitEntries,
+    cancel:             t.findGasTab.cancel,
+    gradeRegular:       t.findGasTab.gradeRegular,
+    gradeMidgrade:      t.findGasTab.gradeMidgrade,
+    gradePremium:       t.findGasTab.gradePremium,
+    gradeDiesel:        t.findGasTab.gradeDiesel,
+  };
+
   if (isGuest) {
     return (
       <div className="px-4 pt-8 pb-4 max-w-lg mx-auto text-center">
         <PumpIcon className="w-12 h-12 text-amber-400 mx-auto mb-4" />
-        <h2 className="text-lg font-black text-slate-900 mb-2">Find Gas Near You</h2>
+        <h2 className="text-lg font-black text-slate-900 mb-2">{t.findGasTab.findGasNearYou}</h2>
         <p className="text-sm text-slate-500 mb-5">
-          Create a free account, then upgrade to Pro to see nearby station prices.
+          {t.findGasTab.guestGateBody}
         </p>
         <Link href="/signup"
           className="inline-block px-6 py-3 rounded-2xl bg-[#005F4A] text-white font-black text-sm">
-          Create free account →
+          {t.findGasTab.guestGateCta}
         </Link>
       </div>
     );
@@ -840,18 +923,18 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
     return (
       <div className="px-4 pt-8 pb-4 max-w-lg mx-auto text-center">
         <PumpIcon className="w-12 h-12 text-amber-400 mx-auto mb-4" />
-        <h2 className="text-lg font-black text-slate-900 mb-2">Find Gas Near You</h2>
+        <h2 className="text-lg font-black text-slate-900 mb-2">{t.findGasTab.findGasNearYou}</h2>
         <p className="text-sm text-slate-500 mb-2">
-          See nearby station prices, filtered by fuel grade, sorted by cheapest — Pro feature.
+          {t.findGasTab.proGateBody}
         </p>
         <ul className="text-left text-sm text-slate-600 space-y-1 mb-5 mx-auto max-w-xs">
-          <li>⛽ Live prices from nearby stations</li>
-          <li>📍 One tap to fill the calculator</li>
-          <li>🏆 Report prices, earn giveaway entries</li>
+          <li>⛽ {t.findGasTab.proGateFeature1}</li>
+          <li>📍 {t.findGasTab.proGateFeature2}</li>
+          <li>🏆 {t.findGasTab.proGateFeature3}</li>
         </ul>
         <Link href="/upgrade"
           className="inline-block px-6 py-3 rounded-2xl bg-brand-orange text-white font-black text-sm">
-          Upgrade to Pro →
+          {t.findGasTab.proGateCta}
         </Link>
       </div>
     );
@@ -859,7 +942,12 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
 
   // ── Location pre-screen (first time) ───────────────────────────────────────
   if (!locAsked) {
-    return <LocationPreScreen onAllow={handleAllow} onSkip={handleSkip} />;
+    return <LocationPreScreen onAllow={handleAllow} onSkip={handleSkip} labels={{
+      findGasNearYou: t.findGasTab.findGasNearYou,
+      locationPermissionBody: t.findGasTab.locationPermissionBody,
+      allowLocation: t.findGasTab.allowLocation,
+      maybeLater: t.findGasTab.maybeLater,
+    }} />;
   }
 
   // ── Feature disabled ────────────────────────────────────────────────────────
@@ -867,9 +955,9 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
     return (
       <div className="px-4 pt-8 pb-4 max-w-lg mx-auto text-center">
         <PumpIcon className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-        <h2 className="text-lg font-black text-slate-900 mb-2">Find Gas Near You</h2>
+        <h2 className="text-lg font-black text-slate-900 mb-2">{t.findGasTab.findGasNearYou}</h2>
         <p className="text-sm text-slate-500">
-          Live station prices are coming soon. Enter the pump price manually in the calculator for now.
+          {t.findGasTab.comingSoonBody}
         </p>
       </div>
     );
@@ -881,7 +969,7 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
       <div className="flex flex-col items-center justify-center min-h-[40vh] gap-3">
         <span className="w-8 h-8 border-[3px] border-teal-500 border-t-transparent rounded-full animate-spin" />
         <p className="text-sm text-slate-500">
-          {status === 'locating' ? 'Finding your location…' : 'Loading nearby stations…'}
+          {status === 'locating' ? t.findGasTab.findingLocation : t.findGasTab.loadingStations}
         </p>
       </div>
     );
@@ -898,13 +986,13 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
             onClick={() => requestLocation('retry')}
             className="w-full py-3 rounded-2xl bg-[#005F4A] text-white text-sm font-black"
           >
-            Try Again
+            {t.findGasTab.tryAgain}
           </button>
           <button
             onClick={() => window.dispatchEvent(new CustomEvent('gc:switch-tab', { detail: { tab: 'calculator' } }))}
             className="w-full py-3 rounded-2xl bg-slate-100 text-slate-700 text-sm font-bold"
           >
-            Enter Price Manually
+            {t.findGasTab.enterPriceManually}
           </button>
         </div>
       </div>
@@ -916,7 +1004,7 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] px-6 text-center">
         <PumpIcon className="w-14 h-14 text-slate-300 mb-4" />
-        <p className="text-slate-500 text-sm mb-4">Tap to find the cheapest gas near you.</p>
+        <p className="text-slate-500 text-sm mb-4">{t.findGasTab.tapToFind}</p>
         <button
           onClick={() => {
             try { localStorage.setItem(LOC_ASKED_KEY, '1'); } catch { /* ignore */ }
@@ -926,7 +1014,7 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
           className="px-6 py-3 rounded-2xl bg-[#005F4A] text-white font-black text-sm
                      active:opacity-90 transition-opacity"
         >
-          📍 Use My Location
+          {t.findGasTab.useMyLocation}
         </button>
       </div>
     );
@@ -936,17 +1024,17 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
   return (
     <div className="px-4 pt-4 pb-6 max-w-lg mx-auto w-full space-y-3">
       <p className="text-xs font-semibold text-teal-600 text-center bg-teal-50 rounded-xl py-2 px-3 mb-2">
-        Tap any price to instantly fill the calculator
+        {t.findGasTab.tapAnyPrice}
       </p>
       <div className="flex items-center justify-between mb-1">
         <p className="text-xs text-slate-500 font-medium">
-          {stations.length} station{stations.length !== 1 ? 's' : ''} within 5 mi
+          {t.findGasTab.stationCount(stations.length)}
         </p>
         <button
           onClick={() => coords && doLookup(coords.lat, coords.lng)}
           className="text-xs text-teal-600 font-bold"
         >
-          Refresh
+          {t.findGasTab.refresh}
         </button>
       </div>
 
@@ -954,8 +1042,8 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
         const visible = stations.filter((s) => !hiddenPlaceIds.has(s.placeId));
         if (visible.length === 0) return (
           <div className="text-center py-10">
-            <p className="text-slate-400 text-sm">No station prices found nearby.</p>
-            <p className="text-slate-400 text-xs mt-1">Google Places data may be limited in your area.</p>
+            <p className="text-slate-400 text-sm">{t.findGasTab.noStationsFound}</p>
+            <p className="text-slate-400 text-xs mt-1">{t.findGasTab.googlePlacesLimited}</p>
             {hiddenPlaceIds.size > 0 && (
               <button
                 type="button"
@@ -965,7 +1053,7 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
                 }}
                 className="mt-3 text-xs text-teal-600 font-bold underline"
               >
-                Restore hidden stations
+                {t.findGasTab.restoreHidden}
               </button>
             )}
           </div>
@@ -978,6 +1066,7 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
             onHide={hideStation}
             userCoords={coords}
             communityPrices={communityMap[s.placeId] ?? []}
+            labels={stationCardLabels}
             onPriceReported={(placeId, grade, price) => {
               const report: CommunityPrice = { grade, price, reportedAt: new Date().toISOString() };
               setCommunityMap((prev) => ({
@@ -997,7 +1086,7 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
           rel="noopener noreferrer"
           className="block text-center text-xs text-slate-400 py-3 hover:text-teal-600 transition-colors"
         >
-          Open Google Maps to Find Additional Gas Nearby →
+          {t.findGasTab.openGoogleMaps}
         </a>
       )}
     </div>

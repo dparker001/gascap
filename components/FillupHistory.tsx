@@ -492,7 +492,7 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
                           : 'bg-white text-slate-400 border-slate-200 hover:border-slate-400 text-xs'
                       }`}
                     >
-                      All time
+                      {t.fillupHistory.allTime}
                     </button>
                   </div>
                 )}
@@ -501,28 +501,28 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
                 <div className="bg-white rounded-xl border border-slate-100 px-4 py-3 space-y-2">
                   {/* Column headers */}
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Period</span>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{t.fillupHistory.periodLabel}</span>
                     <div className="flex items-center gap-6">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Spent</span>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Gallons</span>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{t.fillupHistory.spentLabel}</span>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{t.fillupHistory.gallonsLabel2}</span>
                     </div>
                   </div>
                   {/* Selected year / all-time row */}
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-black text-slate-800">
-                      {selectedYear === 'all' ? 'All time' : selectedYear}
+                      {selectedYear === 'all' ? t.fillupHistory.allTime : selectedYear}
                     </span>
                     <div className="flex items-center gap-3">
                       <span className="text-sm font-black text-amber-600">${yearStats.totalSpent.toFixed(2)}</span>
-                      <span className="text-sm font-black text-navy-700 w-16 text-right">{yearStats.totalGallons} gal</span>
+                      <span className="text-sm font-black text-navy-700 w-16 text-right">{yearStats.totalGallons}{t.fillupHistory.galUnit}</span>
                     </div>
                   </div>
                   {selectedYear !== 'all' && allTimeStats.count > yearStats.count && (
                     <div className="flex items-center justify-between border-t border-slate-50 pt-2">
-                      <span className="text-xs font-semibold text-slate-400">All time</span>
+                      <span className="text-xs font-semibold text-slate-400">{t.fillupHistory.allTime}</span>
                       <div className="flex items-center gap-3">
                         <span className="text-xs font-bold text-slate-400">${allTimeStats.totalSpent.toFixed(2)}</span>
-                        <span className="text-xs font-bold text-slate-400 w-16 text-right">{allTimeStats.totalGallons} gal</span>
+                        <span className="text-xs font-bold text-slate-400 w-16 text-right">{allTimeStats.totalGallons}{t.fillupHistory.galUnit}</span>
                       </div>
                     </div>
                   )}

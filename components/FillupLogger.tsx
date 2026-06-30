@@ -498,7 +498,7 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
       {/* ── Actual amount paid (optional) ──────────────────────────────────── */}
       <div>
         <label className="field-label">
-          Amount actually paid <span className="text-slate-400 font-normal">(optional)</span>
+          {t.fillup.amountActuallyPaidLabel} <span className="text-slate-400 font-normal">{t.fillup.optional}</span>
         </label>
         <div className="relative">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-semibold pointer-events-none text-sm">$</span>
@@ -514,7 +514,7 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
           />
         </div>
         <p className="text-[10px] text-slate-400 mt-1">
-          Enter what you paid at the pump or inside — if different from the calculated total.
+          {t.fillup.amountActuallyPaidHint}
         </p>
       </div>
 
@@ -534,32 +534,32 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
         const overCost = Math.round(overGal  * ppg * 100) / 100;
         return (
           <div className="rounded-xl bg-slate-50 border border-slate-200 p-3 space-y-2 -mt-1">
-            <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide">Fill-up breakdown</p>
+            <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide">{t.fillup.fillupBreakdown}</p>
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] text-slate-500">GasCap suggested</span>
+                <span className="text-[11px] text-slate-500">{t.fillup.gasCapsuggestedLabel}</span>
                 <span className="text-[11px] font-bold text-slate-700">{calcGal.toFixed(2)} gal · <span className="text-slate-400">${calcCost.toFixed(2)}</span></span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-[11px] text-slate-500">You pumped</span>
+                <span className="text-[11px] text-slate-500">{t.fillup.youPumpedLabel}</span>
                 <span className="text-[11px] font-bold text-slate-700">{pumped.toFixed(2)} gal · <span className="text-slate-400">${pumpCost.toFixed(2)}</span></span>
               </div>
               <div className="border-t border-slate-200 pt-1.5">
                 {onTarget && (
                   <div className="flex items-center gap-1.5">
                     <span className="text-[11px]">✓</span>
-                    <span className="text-[11px] font-semibold text-emerald-600">On target</span>
+                    <span className="text-[11px] font-semibold text-emerald-600">{t.fillup.onTarget}</span>
                   </div>
                 )}
                 {overGal > 0 && (
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] text-amber-600 font-semibold">Tank overfill</span>
+                    <span className="text-[11px] text-amber-600 font-semibold">{t.fillup.tankOverfill}</span>
                     <span className="text-[11px] font-bold text-amber-600">+{overGal.toFixed(2)} gal · +${overCost.toFixed(2)}</span>
                   </div>
                 )}
                 {underGal > 0 && (
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] text-blue-500 font-semibold">Under target</span>
+                    <span className="text-[11px] text-blue-500 font-semibold">{t.fillup.underTarget}</span>
                     <span className="text-[11px] font-bold text-blue-500">−{underGal.toFixed(2)} gal · −${Math.round(underGal * ppg * 100) / 100}</span>
                   </div>
                 )}
