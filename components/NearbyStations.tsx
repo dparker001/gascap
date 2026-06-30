@@ -822,31 +822,59 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
           }
         }
 
-        try {
-          const pos = await Geolocation.getCurrentPosition({
-            enableHighAccuracy: true,
-            timeout: 15000,
-          });
-          if (geoDone) return;
-          geoDone = true;
-          clearTimeout(geoTimer);
-          if (geoGen !== geoGenRef.current) return;
-          const lat = Math.round(pos.coords.latitude  * 100) / 100;
-          const lng = Math.round(pos.coords.longitude * 100) / 100;
-          doLookup(lat, lng);
-        } catch (e) {
-          if (geoDone) return;
-          geoDone = true;
-          clearTimeout(geoTimer);
-          if (geoGen !== geoGenRef.current) return;
-          const msg = e instanceof Error ? e.message : String(e);
-          setStatus('error');
-          setErrMsg(
-            msg.toLowerCase().includes('denied')
-              ? t.findGasTab.errLocationDeniedIos
-              : t.findGasTab.errLocationGeneric(msg.slice(0, 40)),
-          );
-        }
+        // On iOS, CoreLocation needs ~800ms after a fresh permission grant before
+        // getCurrentPosition succeeds. Delay only on first-allow to avoid the race.
+        if (_source === 'allow') await new Promise((r) => setTimeout(r, 800));
+
+        const tryGetPosition = async (): Promise<void> => {
+          try {
+            const pos = await Geolocation.getCurrentPosition({
+              enableHighAccuracy: true,
+              timeout: 15000,
+            });
+            if (geoDone) return;
+            geoDone = true;
+            clearTimeout(geoTimer);
+            if (geoGen !== geoGenRef.current) return;
+            const lat = Math.round(pos.coords.latitude  * 100) / 100;
+            const lng = Math.round(pos.coords.longitude * 100) / 100;
+            doLookup(lat, lng);
+          } catch (e) {
+            if (geoDone) return;
+            // On first allow, retry once more after another short delay —
+            // the permission propagation sometimes takes a second call.
+            if (_source === 'allow') {
+              await new Promise((r) => setTimeout(r, 1200));
+              if (geoDone || geoGen !== geoGenRef.current) return;
+              try {
+                const pos2 = await Geolocation.getCurrentPosition({
+                  enableHighAccuracy: false,
+                  timeout: 15000,
+                });
+                if (geoDone) return;
+                geoDone = true;
+                clearTimeout(geoTimer);
+                if (geoGen !== geoGenRef.current) return;
+                const lat = Math.round(pos2.coords.latitude  * 100) / 100;
+                const lng = Math.round(pos2.coords.longitude * 100) / 100;
+                doLookup(lat, lng);
+                return;
+              } catch { /* fall through to error */ }
+            }
+            if (geoDone) return;
+            geoDone = true;
+            clearTimeout(geoTimer);
+            if (geoGen !== geoGenRef.current) return;
+            const msg = e instanceof Error ? e.message : String(e);
+            setStatus('error');
+            setErrMsg(
+              msg.toLowerCase().includes('denied')
+                ? t.findGasTab.errLocationDeniedIos
+                : t.findGasTab.errLocationGeneric(msg.slice(0, 40)),
+            );
+          }
+        };
+        await tryGetPosition();
       })();
     } else {
       navigator.geolocation.getCurrentPosition(
