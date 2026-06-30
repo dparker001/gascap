@@ -24,7 +24,7 @@ interface FillupLoggerProps {
   drivers?: string[];
 }
 
-type FuelGrade = 'regular' | 'midgrade' | 'premium' | 'diesel' | 'e85' | '';
+export type FuelGrade = 'regular' | 'midgrade' | 'premium' | 'diesel' | 'e85' | '';
 
 type FuelGradeKey = 'gradeRegular' | 'gradeMidGrade' | 'gradePremium' | 'gradeDiesel';
 const FUEL_GRADES: { value: FuelGrade; labelKey: FuelGradeKey; sub: string }[] = [

@@ -795,6 +795,8 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
             rentalRate={rentalMode && rentalRate ? Number(rentalRate) : undefined}
             latitude={gasCoords?.lat}
             longitude={gasCoords?.lng}
+            stationName={nearbyAttrib?.name}
+            fuelGrade={nearbyAttrib?.grade}
           />
         )}
       </div>

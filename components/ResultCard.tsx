@@ -126,9 +126,11 @@ interface TargetResultCardProps {
   isRental?: boolean;    // true when rental mode is on, even if no rate entered
   latitude?: number;     // user's GPS lat from GasPriceLookup
   longitude?: number;    // user's GPS lng from GasPriceLookup
+  stationName?: string;  // pre-filled from Find Gas selection
+  fuelGrade?: string;    // e.g. 'Regular', 'Midgrade', 'Premium', 'Diesel'
 }
 
-export function TargetResultCard({ result, vehicleName, vehicleId, vehicleOdometer, fuelLevelBefore, rentalRate, isRental, latitude, longitude }: TargetResultCardProps) {
+export function TargetResultCard({ result, vehicleName, vehicleId, vehicleOdometer, fuelLevelBefore, rentalRate, isRental, latitude, longitude, stationName, fuelGrade }: TargetResultCardProps) {
   const {
     gallonsNeeded, estimatedCost,
     currentPercent, targetPercent, targetGallons, summary,
@@ -288,6 +290,8 @@ export function TargetResultCard({ result, vehicleName, vehicleId, vehicleOdomet
             vehicleOdometer,
             fuelLevelBefore,
             tankCapacity:       targetPercent > 0 ? Math.round((targetGallons / (targetPercent / 100)) * 100) / 100 : undefined,
+            stationName,
+            fuelGrade:          gradeToFuelGrade(fuelGrade),
           }}
           onSaved={() => { setShowLogger(false); setLogKey((k) => k + 1); }}
           onCancel={() => setShowLogger(false)}
@@ -313,6 +317,18 @@ export function TargetResultCard({ result, vehicleName, vehicleId, vehicleOdomet
   );
 }
 
+// ── Grade label → FuelGrade type ──────────────────────────────────────
+function gradeToFuelGrade(grade?: string): import('./FillupLogger').FuelGrade {
+  switch (grade?.toLowerCase()) {
+    case 'midgrade': return 'midgrade';
+    case 'premium':  return 'premium';
+    case 'diesel':   return 'diesel';
+    case 'e85':      return 'e85';
+    case 'regular':  return 'regular';
+    default:         return '';
+  }
+}
+
 // ── Budget Result ──────────────────────────────────────────────────────
 
 interface BudgetResultCardProps {
@@ -324,9 +340,11 @@ interface BudgetResultCardProps {
   fuelLevelBefore?: number;
   latitude?: number;     // user's GPS lat from GasPriceLookup
   longitude?: number;    // user's GPS lng from GasPriceLookup
+  stationName?: string;
+  fuelGrade?: string;
 }
 
-export function BudgetResultCard({ result, pricePerGallon, vehicleName, vehicleId, vehicleOdometer, fuelLevelBefore, latitude, longitude }: BudgetResultCardProps) {
+export function BudgetResultCard({ result, pricePerGallon, vehicleName, vehicleId, vehicleOdometer, fuelLevelBefore, latitude, longitude, stationName, fuelGrade }: BudgetResultCardProps) {
   const {
     gallonsAffordable, resultingGallons, resultingPercent,
     actualCost, wouldOverfill, currentPercent, summary,
@@ -423,6 +441,8 @@ export function BudgetResultCard({ result, pricePerGallon, vehicleName, vehicleI
             vehicleId,
             vehicleOdometer,
             fuelLevelBefore,
+            stationName,
+            fuelGrade:         gradeToFuelGrade(fuelGrade),
           }}
           onSaved={() => { setShowLogger(false); setLogKey((k) => k + 1); }}
           onCancel={() => setShowLogger(false)}
