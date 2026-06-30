@@ -10,6 +10,29 @@ import { useNativePlatform } from '@/hooks/useIsNative';
 
 type Step    = 'email' | 'otp' | 'password';
 
+function Hero() {
+  return (
+    <>
+      <style>{`
+        @keyframes gcFadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+        @keyframes gcPop    { 0% { transform: scale(.7); opacity: 0; } 60% { transform: scale(1.08); } 100% { transform: scale(1); opacity: 1; } }
+        .gc-tagline span { display: inline-block; opacity: 0; animation: gcFadeUp .55s ease forwards; }
+        .gc-pop { animation: gcPop .5s ease forwards; }
+      `}</style>
+      <div className="text-center mb-6">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/gascap-icon-raw.png" alt="GasCap" className="h-16 w-auto mx-auto mb-3 gc-pop drop-shadow-sm" />
+        <p className="gc-tagline text-xl font-black text-navy-700 tracking-tight">
+          <span style={{ animationDelay: '60ms' }}>Know</span>{' '}
+          <span style={{ animationDelay: '180ms' }}>before</span>{' '}
+          <span style={{ animationDelay: '300ms' }}>you</span>{' '}
+          <span style={{ animationDelay: '420ms' }}>go</span>
+        </p>
+      </div>
+    </>
+  );
+}
+
 function SignInForm() {
   const router       = useRouter();
   const searchParams = useSearchParams();
@@ -144,28 +167,6 @@ function SignInForm() {
       redirect();
     }
   }
-
-  // ── Shared hero ───────────────────────────────────────────────────────────────
-  const Hero = () => (
-    <>
-      <style>{`
-        @keyframes gcFadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
-        @keyframes gcPop    { 0% { transform: scale(.7); opacity: 0; } 60% { transform: scale(1.08); } 100% { transform: scale(1); opacity: 1; } }
-        .gc-tagline span { display: inline-block; opacity: 0; animation: gcFadeUp .55s ease forwards; }
-        .gc-pop { animation: gcPop .5s ease forwards; }
-      `}</style>
-      <div className="text-center mb-6">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/gascap-icon-raw.png" alt="GasCap" className="h-16 w-auto mx-auto mb-3 gc-pop drop-shadow-sm" />
-        <p className="gc-tagline text-xl font-black text-navy-700 tracking-tight">
-          <span style={{ animationDelay: '60ms' }}>Know</span>{' '}
-          <span style={{ animationDelay: '180ms' }}>before</span>{' '}
-          <span style={{ animationDelay: '300ms' }}>you</span>{' '}
-          <span style={{ animationDelay: '420ms' }}>go</span>
-        </p>
-      </div>
-    </>
-  );
 
   // ── OTP step ──────────────────────────────────────────────────────────────────
   if (step === 'otp') {
