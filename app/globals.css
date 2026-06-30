@@ -2,6 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Native WebView: disable pull-to-refresh and overscroll bounce ─── */
+html, body {
+  overscroll-behavior-y: none;
+}
+
 /* ── Base ──────────────────────────────────────────────────────────── */
 :root {
   --brand-navy:  #1e3a5f;
