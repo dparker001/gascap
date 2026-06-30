@@ -79,6 +79,16 @@ export default function NativeAppShell() {
 
   const [active,  setActive]  = useState<TabId>('calculator');
   const [visited, setVisited] = useState<Set<TabId>>(() => new Set<TabId>(['calculator']));
+
+  // When mode changes away from gig, kick the user off the driver tab
+  const prevIsGigDriver = useRef(isGigDriver);
+  useEffect(() => {
+    if (prevIsGigDriver.current && !isGigDriver) {
+      setActive(a => a === 'driver' ? 'calculator' : a);
+      setVisited(prev => { const s = new Set(prev); s.delete('driver'); return s; });
+    }
+    prevIsGigDriver.current = isGigDriver;
+  }, [isGigDriver]);
   const [historyKey,  setHistoryKey]  = useState(0);
   const [calcMountKey, setCalcMountKey] = useState(0);
 
