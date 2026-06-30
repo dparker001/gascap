@@ -71,6 +71,14 @@ const ICONS: Record<TabId, JSX.Element> = {
       <circle cx="12" cy="12" r="3" />
     </>
   ),
+  driver: (
+    <>
+      <rect x="1" y="3" width="15" height="13" rx="2" />
+      <path d="M16 8h4l3 5v3h-7V8z" />
+      <circle cx="5.5" cy="18.5" r="2.5" />
+      <circle cx="18.5" cy="18.5" r="2.5" />
+    </>
+  ),
 };
 
 export default function NativeTabBar({ tabs, active, onChange }: Props) {

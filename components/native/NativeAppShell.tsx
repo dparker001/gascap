@@ -38,10 +38,11 @@ import ReviewNudge       from '@/components/ReviewNudge';
 import LanguageToggle    from '@/components/LanguageToggle';
 import { getPlanBadge, type PlanUser } from '@/lib/planBadge';
 import FillupLogger from '@/components/FillupLogger';
+import GigDriverTab from '@/components/GigDriverTab';
 
-export type TabId = 'calculator' | 'findgas' | 'history' | 'tools' | 'rewards' | 'settings';
+export type TabId = 'calculator' | 'findgas' | 'history' | 'tools' | 'rewards' | 'settings' | 'driver';
 
-const TAB_IDS: TabId[] = ['calculator', 'findgas', 'history', 'tools', 'rewards', 'settings'];
+const TAB_IDS: TabId[] = ['calculator', 'findgas', 'history', 'tools', 'rewards', 'settings', 'driver'];
 
 const STORAGE_KEY = 'gc_active_tab';
 const isTabId = (v: string | null): v is TabId => !!v && (TAB_IDS as string[]).includes(v ?? '');
@@ -52,10 +53,14 @@ export default function NativeAppShell() {
 
   // Tab labels come from the translation system so the bottom bar + title bar follow
   // the language toggle (EN/ES).
+  const userMode = (session?.user as { userMode?: string | null })?.userMode;
+  const isGigDriver = userMode === 'gig';
+
   const TABS: TabMeta[] = [
     { id: 'calculator', label: t.nav.calculator },
     { id: 'findgas',    label: t.nav.findGas    },
     { id: 'history',    label: t.nav.history    },
+    ...(isGigDriver ? [{ id: 'driver' as TabId, label: 'Driver' }] : []),
     { id: 'tools',      label: t.nav.tools      },
     { id: 'rewards',    label: t.nav.rewards    },
     { id: 'settings',   label: t.nav.settings   },
@@ -335,6 +340,14 @@ export default function NativeAppShell() {
               setActive('calculator');
               setVisited((prev) => { const s = new Set(prev); s.add('calculator'); return s; });
             }} />
+          </div>
+        )}
+
+        {isGigDriver && visited.has('driver') && (
+          <div className={show('driver')}>
+            <div className="px-4 pt-4 pb-6 max-w-lg mx-auto w-full">
+              <GigDriverTab />
+            </div>
           </div>
         )}
 
