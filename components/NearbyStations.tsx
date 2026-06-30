@@ -310,6 +310,7 @@ function StationCard({
   const [showReportForm, setShowReportForm] = useState(false);
   const [reportToast,    setReportToast]    = useState('');
   const [geofenced,      setGeofenced]      = useState(false);
+  const [confirmRemove,  setConfirmRemove]  = useState(false);
 
   const hasPrices = station.prices.length > 0;
   // Use regular if available, otherwise the first price in sorted order
@@ -385,16 +386,39 @@ function StationCard({
           </div>
         </div>
         {onHide && (
-          <button
-            type="button"
-            onClick={() => onHide(station.placeId)}
-            aria-label="Remove station"
-            className="flex-shrink-0 w-6 h-6 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors"
-          >
-            <svg viewBox="0 0 10 10" className="w-2.5 h-2.5 text-slate-400" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-              <path d="M2 2l6 6M8 2l-6 6" />
-            </svg>
-          </button>
+          confirmRemove ? (
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <button
+                type="button"
+                onClick={() => { onHide(station.placeId); setConfirmRemove(false); }}
+                aria-label="Confirm remove station"
+                className="px-2 py-0.5 rounded-lg bg-red-500 text-white text-[10px] font-bold
+                           hover:bg-red-600 active:scale-95 transition-all"
+              >
+                Remove
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmRemove(false)}
+                aria-label="Cancel remove"
+                className="px-2 py-0.5 rounded-lg bg-slate-100 text-slate-500 text-[10px] font-bold
+                           hover:bg-slate-200 active:scale-95 transition-all"
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setConfirmRemove(true)}
+              aria-label="Remove station"
+              className="flex-shrink-0 w-6 h-6 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors"
+            >
+              <svg viewBox="0 0 10 10" className="w-2.5 h-2.5 text-slate-400" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                <path d="M2 2l6 6M8 2l-6 6" />
+              </svg>
+            </button>
+          )
         )}
         {bestPrice ? (
           <div className="text-right flex-shrink-0">
