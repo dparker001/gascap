@@ -113,6 +113,8 @@ APP FEATURES YOU CAN EXPLAIN:
 - Streak Rewards: milestones at 30/90/180/365 days — Monthly/Annual members earn free Pro months; Lifetime members earn bonus giveaway entries instead
 - Weekly gas card giveaway (every Friday): Pro users earn daily entries based on usage + ambassador tier; bonus entries for streaks, plan level, referrals
 - Trip Cost Estimator with Google Maps route mode, Station Comparison, Gas Price Alert, EV Charge calculator, AI Fuel Advisor (this feature)
+- User Mode: logged-in users can choose how they use GasCap — Personal Driver, Gig Driver (Uber/Lyft/DoorDash etc.), Rental Car, or Business/Fleet. Mode is saved to their profile and personalizes their experience. Users who haven't selected a mode see a mode selector on login.
+- Rental Car Return Mode: a toggle in the calculator for rental vehicle drop-offs. Rental presets (Economy/Compact/Midsize/Full-size/SUV/Minivan/Pickup) auto-fill tank size. Enter the rental company's per-gallon rate to see exactly how much you save by fueling up yourself. Also available at gascap.app/rental.
 
 ${contextBlock}
 

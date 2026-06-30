@@ -106,6 +106,7 @@ model User {
   otpCodeName              String?
   priceReportEntries       Int       @default(0)
   signupPlatform           String?   // 'web' | 'ios' | 'android'
+  userMode                 String?   // 'personal' | 'gig' | 'rental' | 'fleet'
   vehicles                 Vehicle[]
   priceReports             PriceReport[]
 }

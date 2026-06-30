@@ -59,8 +59,12 @@ const SECTIONS = [
         a: 'The MPG Insight Card appears on the main screen for Pro and Fleet users who have logged at least two fill-ups. It shows your real-world average MPG, your trend vs. previous fill-ups, and your best single fill-up efficiency. Tap the card to open the full MPG chart.',
       },
       {
+        q: 'What is my GasCap™ driver mode and how do I change it?',
+        a: 'When you first log in, GasCap™ asks how you plan to use the app: Personal Driver, Gig Driver (Uber, Lyft, DoorDash, etc.), Rental Car, or Business/Fleet. Your selection personalizes the dashboard, copy, and tools shown to you. To change your mode, go to Settings → Profile and update your Driver Mode.',
+      },
+      {
         q: 'What is Rental Car Return Mode?',
-        a: 'Rental Car Return Mode is designed for rental vehicle drop-offs. Tap the "🚗 Rental Car Return Mode" toggle at the top of the calculator to activate it. Your saved garage is hidden and replaced with rental car class presets (Economy, Midsize, SUV, etc.). Enter the rental company\'s per-gallon rate to see exactly how much you save by fueling up yourself vs. returning empty.',
+        a: 'Rental Car Return Mode is designed for rental vehicle drop-offs. Tap the "🚗 Rental Car Return Mode" toggle at the top of the calculator to activate it. Your saved garage is hidden and replaced with rental car class presets (Economy, Midsize, SUV, etc.). Enter the rental company\'s per-gallon rate to see exactly how much you save by fueling up yourself vs. returning empty. You can also visit gascap.app/rental for a dedicated rental return guide.',
       },
       {
         q: 'Can I scan my fuel gauge to set the current level?',

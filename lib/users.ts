@@ -80,6 +80,7 @@ export interface StoredUser {
   phoneBonusEntries?:        number;
   lifetimePerksUntil?:       string | null; // ISO timestamp; null = no active Perks renewal
   lifetimePerksSubId?:       string | null;
+  userMode?:                 string | null; // 'personal' | 'gig' | 'rental' | 'fleet'
 }
 
 export interface ReferralCredit {
@@ -948,6 +949,7 @@ export async function updateUserProfile(
     preferredFillLevel?: number | null;
     monthlyFuelBudget?:  number | null;
     phoneBonusEntries?:  number;   // set once when user adds phone for first time
+    userMode?:           string | null;
   },
 ): Promise<StoredUser | null> {
   // `undefined` → field not included in the request; leave as-is.
@@ -980,6 +982,9 @@ export async function updateUserProfile(
         : {}),
       ...(fields.phoneBonusEntries !== undefined
         ? { phoneBonusEntries: fields.phoneBonusEntries }
+        : {}),
+      ...(fields.userMode !== undefined
+        ? { userMode: fields.userMode || null }
         : {}),
     },
   }).catch(() => null);

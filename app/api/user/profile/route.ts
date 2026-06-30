@@ -21,6 +21,7 @@ export async function GET(_req: NextRequest) {
     avatarUrl:          (user as { avatarUrl?: string | null }).avatarUrl ?? '',
     preferredFillLevel: (user as { preferredFillLevel?: number | null }).preferredFillLevel ?? null,
     monthlyFuelBudget:  (user as { monthlyFuelBudget?: number | null }).monthlyFuelBudget   ?? null,
+    userMode:           user.userMode ?? null,
   });
 }
 
@@ -38,6 +39,7 @@ export async function PATCH(req: NextRequest) {
     avatarUrl?:          string | null;
     preferredFillLevel?: number | null;
     monthlyFuelBudget?:  number | null;
+    userMode?:           string | null;
   };
 
   // Guard against oversized avatar payloads (base64 128×128 JPEG ≈ 10KB; 100KB is very generous)
@@ -58,6 +60,11 @@ export async function PATCH(req: NextRequest) {
     }
   }
 
+  const VALID_MODES = ['personal', 'gig', 'rental', 'fleet'];
+  const safeUserMode = body.userMode !== undefined
+    ? (VALID_MODES.includes(body.userMode ?? '') ? body.userMode : null)
+    : undefined;
+
   const updated = await updateUserProfile(userId, {
     displayName:        body.displayName,
     phone:              body.phone,
@@ -66,6 +73,7 @@ export async function PATCH(req: NextRequest) {
     preferredFillLevel: body.preferredFillLevel,
     monthlyFuelBudget:  body.monthlyFuelBudget,
     phoneBonusEntries,
+    userMode:           safeUserMode,
   });
 
   if (!updated) {

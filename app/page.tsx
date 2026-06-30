@@ -37,6 +37,7 @@ import SavingsSummary         from '@/components/SavingsSummary';
 import AnnualProjection       from '@/components/AnnualProjection';
 import PastWinners            from '@/components/PastWinners';
 import WinnerBanner           from '@/components/WinnerBanner';
+import UserModeSelector       from '@/components/UserModeSelector';
 
 // ── JSON-LD Schema Markup ────────────────────────────────────────────────────
 
@@ -545,6 +546,19 @@ function VerifiedSuccessToast() {
   );
 }
 
+// ── Mode selector wrapper (reads ?mode= param inside Suspense) ───────────────
+
+function ModeSelectorWithParam({ onComplete }: { onComplete: (mode: string) => void }) {
+  const sp = useSearchParams();
+  const modeParam = sp.get('mode') as 'personal' | 'gig' | 'rental' | 'fleet' | null;
+  return (
+    <UserModeSelector
+      initialMode={modeParam ?? undefined}
+      onComplete={onComplete}
+    />
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function Home() {
@@ -557,6 +571,9 @@ export default function Home() {
   const isNative = useIsNative();
   const userPlan = (session?.user as { plan?: string })?.plan ?? 'free';
   const isGuest  = !session;
+  const userMode = (session?.user as { userMode?: string | null })?.userMode;
+  const [modeSelectorDismissed, setModeSelectorDismissed] = useState(false);
+  const showModeSelector = !!session && status === 'authenticated' && !userMode && !modeSelectorDismissed;
 
   // Scroll to top when session loads
   useEffect(() => {
@@ -587,6 +604,13 @@ export default function Home() {
 
       {/* Onboarding — shown once to new visitors */}
       {isGuest && <OnboardingModal />}
+
+      {/* User mode selector — shown once to logged-in users who haven't chosen a mode */}
+      {showModeSelector && (
+        <Suspense fallback={null}>
+          <ModeSelectorWithParam onComplete={() => setModeSelectorDismissed(true)} />
+        </Suspense>
+      )}
 
       {/* Trial expiry nudge — shown when ≤ 5 days remain on a Pro trial */}
       <TrialExpiryBanner />

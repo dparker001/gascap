@@ -248,6 +248,7 @@ export const authOptions: NextAuthOptions = {
           token.trialExpiresAt = fresh.trialExpiresAt ?? null;
           token.createdAt      = fresh.createdAt      ?? null;
           token.stripeInterval = fresh.stripeInterval ?? null;
+          token.userMode       = fresh.userMode       ?? null;
         }
       }
       return token;
@@ -261,6 +262,7 @@ export const authOptions: NextAuthOptions = {
         (session.user as { trialExpiresAt?: string | null }).trialExpiresAt   = token.trialExpiresAt as string | null ?? null;
         (session.user as { createdAt?: string | null }).createdAt             = token.createdAt     as string | null ?? null;
         (session.user as { stripeInterval?: string | null }).stripeInterval   = token.stripeInterval as string | null ?? null;
+        (session.user as { userMode?: string | null }).userMode               = token.userMode       as string | null ?? null;
       }
       return session;
     },

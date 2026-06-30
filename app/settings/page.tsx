@@ -88,6 +88,7 @@ export default function SettingsPage() {
   const lastPinchRef     = useRef<number | null>(null);
   // ─────────────────────────────────────────────────────────────────────────
 
+  const [userMode,       setUserMode]       = useState<string>('');
   const [displayName,    setDisplayName]    = useState('');
   const [phone,          setPhone]          = useState('');
   const [smsOptIn,       setSmsOptIn]       = useState(false);
@@ -176,7 +177,8 @@ export default function SettingsPage() {
     // blank on every visit and so saving never accidentally wipes saved data.
     fetch('/api/user/profile')
       .then((r) => r.json())
-      .then((d: { displayName?: string; phone?: string; smsOptIn?: boolean; avatarUrl?: string; preferredFillLevel?: number | null; monthlyFuelBudget?: number | null }) => {
+      .then((d: { displayName?: string; phone?: string; smsOptIn?: boolean; avatarUrl?: string; preferredFillLevel?: number | null; monthlyFuelBudget?: number | null; userMode?: string | null }) => {
+        if (d.userMode)               setUserMode(d.userMode);
         if (d.displayName)            setDisplayName(d.displayName);
         if (d.phone)                  { setPhone(d.phone); setSavedPhone(d.phone); }
         if (d.smsOptIn !== undefined) setSmsOptIn(d.smsOptIn);
@@ -460,6 +462,7 @@ export default function SettingsPage() {
           avatarUrl:          avatarUrl || null,
           preferredFillLevel: preferredFillLevel ?? null,
           monthlyFuelBudget:  monthlyFuelBudget ? parseFloat(monthlyFuelBudget) : null,
+          userMode:           userMode || null,
         }),
       });
       // Keep fill preference in localStorage so calculators can read it without an API call
@@ -802,6 +805,23 @@ export default function SettingsPage() {
               placeholder={session.user?.name ?? t.settings.displayNamePlaceholder}
               maxLength={50}
             />
+          </div>
+
+          {/* Driver Mode */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-500 mb-1.5">Driver Mode</label>
+            <select
+              className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800
+                         focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white"
+              value={userMode}
+              onChange={(e) => setUserMode(e.target.value)}
+            >
+              <option value="">Not set</option>
+              <option value="personal">🚗 Personal Driver</option>
+              <option value="gig">📦 Gig Driver (Uber, Lyft, DoorDash, etc.)</option>
+              <option value="rental">🏢 Rental Car</option>
+              <option value="fleet">🚚 Business / Fleet</option>
+            </select>
           </div>
 
           {/* Email (read-only) */}
