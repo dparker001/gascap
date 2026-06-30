@@ -312,18 +312,23 @@ function RecentMileage({ entries, onDelete }: { entries: GigMileageEntry[]; onDe
 
 type View = 'summary' | 'fillup' | 'mileage';
 
+const CURRENT_YEAR = new Date().getFullYear();
+const YEARS = Array.from({ length: 3 }, (_, i) => CURRENT_YEAR - i);
+
 export default function GigDriverTab() {
-  const [view,     setView]     = useState<View>('summary');
-  const [fillups,  setFillups]  = useState<GigFillup[]>([]);
-  const [mileage,  setMileage]  = useState<GigMileageEntry[]>([]);
-  const [loading,  setLoading]  = useState(true);
+  const [view,       setView]       = useState<View>('summary');
+  const [fillups,    setFillups]    = useState<GigFillup[]>([]);
+  const [mileage,    setMileage]    = useState<GigMileageEntry[]>([]);
+  const [loading,    setLoading]    = useState(true);
+  const [exportYear, setExportYear] = useState(CURRENT_YEAR);
+  const [exporting,  setExporting]  = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const [fRes, mRes] = await Promise.all([
-        fetch('/api/gig/fillups?weeks=4'),
-        fetch('/api/gig/mileage?weeks=4'),
+        fetch('/api/gig/fillups?weeks=52'),
+        fetch('/api/gig/mileage?weeks=52'),
       ]);
       const fData = fRes.ok ? await fRes.json() : { fillups: [] };
       const mData = mRes.ok ? await mRes.json() : { entries: [] };
@@ -333,6 +338,25 @@ export default function GigDriverTab() {
       setLoading(false);
     }
   }, []);
+
+  async function handleExport() {
+    setExporting(true);
+    try {
+      const res = await fetch(`/api/gig/export?year=${exportYear}`);
+      if (!res.ok) return;
+      const blob = await res.blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = `gascap-gig-${exportYear}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } finally {
+      setExporting(false);
+    }
+  }
 
   useEffect(() => { load(); }, [load]);
 
@@ -442,9 +466,34 @@ export default function GigDriverTab() {
               <p className="text-[10px] font-bold tracking-widest text-slate-400 uppercase mb-2">Recent Mileage</p>
               <RecentMileage entries={mileage} onDelete={deleteMileage} />
             </div>
-            <p className="text-[10px] text-slate-400 text-center pt-1">
-              Showing last 4 weeks · Tax export coming soon
-            </p>
+
+            {/* Tax export */}
+            <div className="border-t border-slate-100 pt-4">
+              <p className="text-[10px] font-bold tracking-widest text-slate-400 uppercase mb-3">Tax Export</p>
+              <div className="flex gap-2 items-center">
+                <select
+                  value={exportYear}
+                  onChange={e => setExportYear(Number(e.target.value))}
+                  className="flex-shrink-0 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-700 bg-white
+                             focus:outline-none focus:ring-2 focus:ring-amber-400"
+                >
+                  {YEARS.map(y => (
+                    <option key={y} value={y}>{y} Tax Year</option>
+                  ))}
+                </select>
+                <button
+                  onClick={handleExport}
+                  disabled={exporting}
+                  className="flex-1 py-2 rounded-xl bg-[#1E2D4A] text-white text-xs font-black
+                             disabled:opacity-40 active:scale-[0.98] transition-all"
+                >
+                  {exporting ? 'Preparing…' : '⬇ Download CSV'}
+                </button>
+              </div>
+              <p className="text-[9px] text-slate-400 mt-2 text-center">
+                Includes all fill-ups, mileage, and IRS deduction estimate
+              </p>
+            </div>
           </div>
         )}
       </div>
