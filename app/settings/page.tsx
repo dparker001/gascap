@@ -678,7 +678,7 @@ export default function SettingsPage() {
       {/* ─────────────────────────────────────────────────────────────────── */}
 
       {/* Fixed header + tab bar — position:fixed guarantees it never scrolls away */}
-      <div ref={fixedHeaderRef} className="fixed inset-x-0 top-0 z-20 shadow-md">
+      <div ref={fixedHeaderRef} className="fixed inset-x-0 top-0 z-20 shadow-md" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
         {/* Header */}
         <div className="bg-navy-700 px-5 pt-4 pb-3">
           <div className="max-w-lg mx-auto flex items-center gap-4">
@@ -713,7 +713,7 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      <div className="max-w-lg mx-auto px-4 pt-28 pb-6 space-y-4">
+      <div className="max-w-lg mx-auto px-4 pb-6 space-y-4" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 7rem)' }}>
 
         {/* Profile section */}
         <div ref={(el) => { sectionRefs.current['profile'] = el; }}>
@@ -829,7 +829,12 @@ export default function SettingsPage() {
               className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800
                          focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white"
               value={userMode}
-              onChange={(e) => setUserMode(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                setUserMode(val);
+                // Notify NativeAppShell immediately so Driver tab reacts without waiting for Save
+                window.dispatchEvent(new CustomEvent('gc:user-mode', { detail: { mode: val || null } }));
+              }}
             >
               <option value="">Not set</option>
               <option value="personal">🚗 Personal Driver</option>
