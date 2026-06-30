@@ -77,7 +77,25 @@ workflows:
             || /usr/libexec/PlistBuddy \
             -c "Set :NSLocationWhenInUseUsageDescription 'GasCap uses your location to find nearby gas stations and their current fuel prices.'" \
             "$PLIST"
+          # NSLocationAlwaysAndWhenInUseUsageDescription — required for background
+          # geofencing alerts via @capacitor-community/background-geolocation.
+          /usr/libexec/PlistBuddy \
+            -c "Add :NSLocationAlwaysAndWhenInUseUsageDescription string 'GasCap uses your location in the background to alert you when you are near a gas station you have saved.'" \
+            "$PLIST" \
+            || /usr/libexec/PlistBuddy \
+            -c "Set :NSLocationAlwaysAndWhenInUseUsageDescription 'GasCap uses your location in the background to alert you when you are near a gas station you have saved.'" \
+            "$PLIST"
+          # NSFaceIDUsageDescription — required by @aparajita/capacitor-biometric-auth
+          # for Face ID; without it Apple rejects the build at upload time.
+          /usr/libexec/PlistBuddy \
+            -c "Add :NSFaceIDUsageDescription string 'GasCap uses Face ID to sign you in quickly and securely.'" \
+            "$PLIST" \
+            || /usr/libexec/PlistBuddy \
+            -c "Set :NSFaceIDUsageDescription 'GasCap uses Face ID to sign you in quickly and securely.'" \
+            "$PLIST"
           echo "Info.plist location key:"; /usr/libexec/PlistBuddy -c "Print :NSLocationWhenInUseUsageDescription" "$PLIST"
+          echo "Info.plist always-location key:"; /usr/libexec/PlistBuddy -c "Print :NSLocationAlwaysAndWhenInUseUsageDescription" "$PLIST"
+          echo "Info.plist Face ID key:"; /usr/libexec/PlistBuddy -c "Print :NSFaceIDUsageDescription" "$PLIST"
 
       - name: Add Push Notifications entitlement
         script: |
