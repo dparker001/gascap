@@ -111,7 +111,7 @@ export default function NativeAppShell() {
     setActive(id);
     setVisited((prev) => (prev.has(id) ? prev : new Set(prev).add(id)));
     if (id === 'history') setHistoryKey((k) => k + 1);
-    window.scrollTo({ top: 0, behavior: 'instant' });
+    contentRef.current?.scrollTo({ top: 0, behavior: 'instant' });
   }
 
   function handleVehicleSwitch(gallons: string, vehicle?: import('@/components/SavedVehicles').Vehicle) {
@@ -178,8 +178,7 @@ export default function NativeAppShell() {
 
   return (
     <main
-      className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-900"
-      style={{ paddingTop: `calc(${active === 'calculator' && status === 'authenticated' ? '84px' : '48px'} + env(safe-area-inset-top))` }}
+      className="h-screen flex flex-col bg-slate-50 dark:bg-slate-900 overflow-hidden"
     >
 
       {/* First-launch brand video overlay (inert until the MP4 is added — see component) */}
@@ -188,13 +187,11 @@ export default function NativeAppShell() {
       {/* "Rate us" nudge — engaged signed-in users, after they've come back (≥2 days) */}
       <ReviewNudge />
 
-      {/* Native title bar — ONE fixed element: a green band over the status-bar safe
-          area (the header's brand-dark bg fills the safe-area paddingTop) with the navy
-          title row beneath it. Combining them means the green can't scroll independently
-          of the navy bar — whatever pins the navy bar pins the green band too. Fixed
-          because sticky is unreliable inside this flex/scroll container on iOS. */}
+      {/* Native title bar — pinned by being the first flex child of the h-screen shell,
+          so it never scrolls. No position:fixed needed; the content area scrolls
+          independently via overflow-y-auto on the sibling div below. */}
       <header
-        className="fixed top-0 left-0 right-0 z-30 bg-brand-dark text-white shadow-sm"
+        className="flex-shrink-0 bg-brand-dark text-white shadow-sm"
         style={{ paddingTop: 'env(safe-area-inset-top)' }}
       >
         <div className="h-12 bg-[#1e3a5f] flex items-center justify-center px-4 relative gap-2">
@@ -239,13 +236,13 @@ export default function NativeAppShell() {
       <AnnouncementToast />
 
       {/* Tab content — each tab mounts on first visit, then hides (state preserved).
-          Padding-bottom clears the fixed tab bar + the home-indicator safe area. */}
+          overflow-y-auto makes only THIS div scroll so the header and tab bar
+          stay pinned as natural flex children (no position:fixed needed). */}
       <div
         ref={contentRef}
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
-        className="flex-1"
-        style={{ paddingBottom: 'calc(88px + env(safe-area-inset-bottom))' }}
+        className="flex-1 overflow-y-auto"
       >
 
         {visited.has('calculator') && (

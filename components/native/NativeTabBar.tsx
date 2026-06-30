@@ -76,10 +76,8 @@ const ICONS: Record<TabId, JSX.Element> = {
 export default function NativeTabBar({ tabs, active, onChange }: Props) {
   return (
     <nav
-      className="fixed bottom-0 inset-x-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur
+      className="flex-shrink-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur
                  border-t border-slate-200 dark:border-slate-800"
-      // Lift the row up ~10px above the very bottom edge (clears phone-case rounded
-      // corners) on top of the home-indicator safe-area inset.
       style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 10px)' }}
       aria-label="Primary"
     >
