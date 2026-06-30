@@ -18,6 +18,7 @@ import { useEffect, useRef, useState } from 'react';
 import Link                    from 'next/link';
 import { useSession }          from 'next-auth/react';
 import { useTranslation }      from '@/contexts/LanguageContext';
+import { initNativeChrome }    from '@/lib/nativeChrome';
 
 import CalculatorTabs   from '@/components/CalculatorTabs';
 import FillupHistory    from '@/components/FillupHistory';
@@ -80,6 +81,9 @@ export default function NativeAppShell() {
   const [showFillupSheet, setShowFillupSheet] = useState(false);
 
   // Restore last-active tab on mount (client-only; avoids SSR hydration mismatch).
+  // Initialize status bar + keyboard on native shell mount
+  useEffect(() => { initNativeChrome(); }, []);
+
   useEffect(() => {
     try {
       const stored = window.localStorage.getItem(STORAGE_KEY);

@@ -93,6 +93,29 @@ workflows:
             || /usr/libexec/PlistBuddy \
             -c "Set :NSFaceIDUsageDescription 'GasCap uses Face ID to sign you in quickly and securely.'" \
             "$PLIST"
+          # UIApplicationShortcutItems — long-press home screen quick actions
+          /usr/libexec/PlistBuddy -c "Add :UIApplicationShortcutItems array" "$PLIST" 2>/dev/null || true
+          /usr/libexec/PlistBuddy \
+            -c "Add :UIApplicationShortcutItems:0 dict" \
+            -c "Add :UIApplicationShortcutItems:0:UIApplicationShortcutItemType string app.gascap.ios.log" \
+            -c "Add :UIApplicationShortcutItems:0:UIApplicationShortcutItemTitle string 'Log Fill-Up'" \
+            -c "Add :UIApplicationShortcutItems:0:UIApplicationShortcutItemSubtitle string 'Record a gas purchase'" \
+            -c "Add :UIApplicationShortcutItems:0:UIApplicationShortcutItemIconType string UIApplicationShortcutIconTypeFavorite" \
+            "$PLIST" 2>/dev/null || true
+          /usr/libexec/PlistBuddy \
+            -c "Add :UIApplicationShortcutItems:1 dict" \
+            -c "Add :UIApplicationShortcutItems:1:UIApplicationShortcutItemType string app.gascap.ios.findgas" \
+            -c "Add :UIApplicationShortcutItems:1:UIApplicationShortcutItemTitle string 'Find Gas'" \
+            -c "Add :UIApplicationShortcutItems:1:UIApplicationShortcutItemSubtitle string 'Cheapest stations nearby'" \
+            -c "Add :UIApplicationShortcutItems:1:UIApplicationShortcutItemIconType string UIApplicationShortcutIconTypeLocation" \
+            "$PLIST" 2>/dev/null || true
+          /usr/libexec/PlistBuddy \
+            -c "Add :UIApplicationShortcutItems:2 dict" \
+            -c "Add :UIApplicationShortcutItems:2:UIApplicationShortcutItemType string app.gascap.ios.savings" \
+            -c "Add :UIApplicationShortcutItems:2:UIApplicationShortcutItemTitle string 'My Savings'" \
+            -c "Add :UIApplicationShortcutItems:2:UIApplicationShortcutItemSubtitle string 'View fill-up history'" \
+            -c "Add :UIApplicationShortcutItems:2:UIApplicationShortcutItemIconType string UIApplicationShortcutIconTypeTime" \
+            "$PLIST" 2>/dev/null || true
           echo "Info.plist location key:"; /usr/libexec/PlistBuddy -c "Print :NSLocationWhenInUseUsageDescription" "$PLIST"
           echo "Info.plist always-location key:"; /usr/libexec/PlistBuddy -c "Print :NSLocationAlwaysAndWhenInUseUsageDescription" "$PLIST"
           echo "Info.plist Face ID key:"; /usr/libexec/PlistBuddy -c "Print :NSFaceIDUsageDescription" "$PLIST"
