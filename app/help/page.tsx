@@ -63,8 +63,12 @@ const SECTIONS = [
         a: 'When you first log in, GasCap™ asks how you plan to use the app: Personal Driver, Gig Driver (Uber, Lyft, DoorDash, etc.), Rental Car, or Business/Fleet. Your selection personalizes the dashboard and tools shown to you. To change your mode, go to Settings → Profile and update your Driver Mode.',
       },
       {
+        q: 'How do I export my gig driver logs for taxes?',
+        a: 'In the Driver tab, tap "History" and scroll to the Tax Export section at the bottom. Select the tax year (current year and two prior years are available), then tap "Download CSV." The file includes two sections — Fuel Fill-Ups (date, platform, station, gallons, price/gal, total) and Mileage Log (date, platform, category, miles, odometer readings) — plus a Summary showing total fuel spend, total business miles, and your IRS standard mileage deduction estimate at $0.70/mile. The CSV opens cleanly in Excel or Google Sheets. Consult a tax professional for deduction advice.',
+      },
+      {
         q: 'How do I track fuel and mileage as a gig driver?',
-        a: 'Set your Driver Mode to "Gig Driver" in Settings → Profile (or on first login). A "Driver" tab will appear in the Tools panel. Tap "Log Fill-Up" to record date, gallons, price per gallon, station, and platform (Uber, Lyft, DoorDash, etc.). Tap "Log Mileage" to record miles driven — enter start and end odometer readings and GasCap™ auto-calculates the miles. Mark trips as Business or Personal for tax tracking. The History view shows your last 4 weeks of entries. The weekly summary at the top shows total fuel spend, business miles logged, average price per gallon, and estimated cost per mile.',
+        a: 'Set your Driver Mode to "Gig Driver" in Settings → Profile (or choose it on first login). A "Driver" tab appears in the Tools panel (and in the bottom tab bar on the mobile app). Tap "Log Fill-Up" to record date, gallons, price per gallon, station, and platform (Uber, Lyft, DoorDash, etc.). Tap "Log Mileage" to record miles driven — enter start and end odometer readings and GasCap™ auto-calculates the miles, or just enter the total miles directly. Mark trips as Business or Personal for tax tracking. The weekly summary shows total fuel spend, business miles, cost per mile, avg $/gal, fill-up count, and total gallons. An IRS mileage deduction estimate (business miles × $0.70) appears automatically once you have business miles logged for the year. Switching to a different Driver Mode hides the Driver tab immediately.',
       },
       {
         q: 'What is Rental Car Return Mode?',
