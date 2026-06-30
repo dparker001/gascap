@@ -3,6 +3,7 @@
 import { useSession, signOut } from 'next-auth/react';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
+import { hasBiometricSession, clearBiometricSession, getBiometricType } from '@/lib/biometrics';
 import { setThemePreference, getThemePreference, isDarkMode, type ThemePreference } from '@/components/DarkModeProvider';
 import { DoorMiniPreview, DOOR_STYLE_LABELS, DOOR_DIRECTION_LABELS } from '@/components/GarageDoor';
 import { useGarageDoorPrefs, type DoorStyle, type DoorDirection } from '@/hooks/useGarageDoorPrefs';
@@ -121,6 +122,17 @@ export default function SettingsPage() {
   const [fleetLogoUrl,     setFleetLogoUrl]     = useState('');
   const [fleetSaved,       setFleetSaved]       = useState(false);
   const [fleetSaving,      setFleetSaving]      = useState(false);
+  const [biometricLabel,   setBiometricLabel]   = useState<string | null>(null);
+
+  useEffect(() => {
+    async function checkBiometric() {
+      const [type, hasSession] = await Promise.all([getBiometricType(), hasBiometricSession()]);
+      if (type && hasSession) {
+        setBiometricLabel(type === 'faceId' ? 'Face ID' : type === 'touchId' ? 'Touch ID' : 'Biometrics');
+      }
+    }
+    checkBiometric();
+  }, []);
   const { doorStyle, setDoorStyle, doorDirection, setDoorDirection } = useGarageDoorPrefs();
 
   useEffect(() => {
@@ -993,6 +1005,18 @@ export default function SettingsPage() {
             </div>
 
             <div className="border-t border-slate-100 pt-3 space-y-2">
+              {biometricLabel && (
+                <button
+                  onClick={async () => {
+                    await clearBiometricSession();
+                    setBiometricLabel(null);
+                  }}
+                  className="w-full py-3 rounded-2xl border-2 border-slate-200 text-sm font-bold
+                             text-slate-500 hover:bg-slate-50 transition-colors"
+                >
+                  Disable {biometricLabel} Sign-In
+                </button>
+              )}
               <button
                 onClick={() => signOut({ callbackUrl: '/' })}
                 className="w-full py-3 rounded-2xl border-2 border-red-100 text-sm font-bold

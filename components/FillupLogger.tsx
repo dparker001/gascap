@@ -3,6 +3,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useTranslation } from '@/contexts/LanguageContext';
+import { nativeShare } from '@/lib/share';
+import { hapticSuccess } from '@/lib/haptics';
 
 interface FillupLoggerProps {
   /** Pre-filled from the calculation result or Find Gas selection */
@@ -361,8 +363,10 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
           ? Math.round(parseFloat(amountPaid) * 100) / 100
           : computed;
         const saved     = Math.round(overfill * ppg * 100) / 100;
+        hapticSuccess();
         setSavedSummary({ gallons: pumpedGal, pricePaid, saved, overfillGal: overfill });
       } else {
+        hapticSuccess();
         onSaved();
       }
     } catch {
@@ -374,6 +378,17 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
 
   // ── Post-save savings confirmation ────────────────────────────────────────
   if (savedSummary) {
+    async function handleShareSavings() {
+      if (!savedSummary) return;
+      const text = [
+        `⛽ Just saved $${savedSummary.saved.toFixed(2)} at the pump with GasCap™`,
+        `💰 Paid $${savedSummary.pricePaid.toFixed(2)} instead of $${(savedSummary.pricePaid + savedSummary.saved).toFixed(2)}`,
+        `GasCap calculates the exact amount to pump — no more overfill.`,
+      ].join('\n');
+      const result = await nativeShare({ title: 'I saved at the pump with GasCap™', text });
+      if (result === 'shared' || result === 'copied') hapticSuccess();
+    }
+
     return (
       <div className="mt-3 rounded-2xl border-2 border-emerald-200 bg-emerald-50 p-5 space-y-4 animate-fade-in text-center">
         <div>
@@ -409,12 +424,21 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
           Pumps click off a little late — you end up paying for gas that goes into the vapor recovery system, not your tank. GasCap calculated the exact amount so you didn&rsquo;t overpay.
         </p>
 
-        <button
-          onClick={onSaved}
-          className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-black transition-colors"
-        >
-          Done
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={handleShareSavings}
+            className="flex-1 py-3 rounded-xl bg-white border-2 border-emerald-200 text-emerald-700
+                       text-sm font-black transition-colors hover:bg-emerald-50 active:scale-95"
+          >
+            ↑ Share
+          </button>
+          <button
+            onClick={onSaved}
+            className="flex-1 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-black transition-colors"
+          >
+            Done
+          </button>
+        </div>
       </div>
     );
   }

@@ -14,6 +14,7 @@ import Link from 'next/link';
 import { useIsNative } from '@/hooks/useIsNative';
 import type { NearbyStation, FuelPrice } from '@/lib/nearbyGas';
 import { useTranslation } from '@/contexts/LanguageContext';
+import { registerStationGeofence, isStationGeofenced } from '@/lib/geofence';
 
 import { Geolocation } from '@capacitor/geolocation';
 
@@ -308,6 +309,7 @@ function StationCard({
 }) {
   const [showReportForm, setShowReportForm] = useState(false);
   const [reportToast,    setReportToast]    = useState('');
+  const [geofenced,      setGeofenced]      = useState(false);
 
   const hasPrices = station.prices.length > 0;
   // Use regular if available, otherwise the first price in sorted order
@@ -338,6 +340,23 @@ function StationCard({
     DIESEL:   labels.gradeDiesel,
   };
 
+  // Register geofence when card mounts and a price is available
+  useEffect(() => {
+    const bestP = station.prices.find((p) => p.type === 'REGULAR') ?? station.prices[0];
+    if (station.lat && station.lng) {
+      registerStationGeofence({
+        id:    station.placeId,
+        name:  station.name,
+        lat:   station.lat,
+        lng:   station.lng,
+        price: bestP?.price,
+        grade: bestP?.label,
+      });
+      setGeofenced(isStationGeofenced(station.placeId));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [station.placeId]);
+
   function handleReportSuccess(grade: string, price: number) {
     setShowReportForm(false);
     onPriceReported(station.placeId, grade, price);
@@ -358,6 +377,11 @@ function StationCard({
             </span>
             {station.isOpen === true  && <span className="text-[10px] font-bold text-emerald-600">{labels.open}</span>}
             {station.isOpen === false && <span className="text-[10px] font-bold text-red-500">{labels.closed}</span>}
+            {geofenced && (
+              <span className="text-[10px] font-bold text-blue-500" title="You'll get an alert when near this station">
+                📍 Alert on
+              </span>
+            )}
           </div>
         </div>
         {onHide && (

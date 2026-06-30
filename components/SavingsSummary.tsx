@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useTranslation } from '@/contexts/LanguageContext';
+import { nativeShare } from '@/lib/share';
+import { hapticSuccess } from '@/lib/haptics';
 
 interface FillupStats {
   count:        number;
@@ -22,8 +24,30 @@ interface FillupResponse {
  */
 export default function SavingsSummary() {
   const { t } = useTranslation();
-  const [stats, setStats]     = useState<FillupStats | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [stats, setStats]       = useState<FillupStats | null>(null);
+  const [loading, setLoading]   = useState(true);
+  const [shareCopied, setShareCopied] = useState(false);
+
+  async function handleShare() {
+    if (!stats) return;
+    const avgPrice = stats.totalGallons > 0 ? stats.totalSpent / stats.totalGallons : 0;
+    const text = [
+      `⛽ I've logged ${stats.count} fill-up${stats.count !== 1 ? 's' : ''} with GasCap™`,
+      `💰 Total spent: $${stats.totalSpent.toFixed(2)}`,
+      avgPrice > 0 ? `📊 Avg price: $${avgPrice.toFixed(3)}/gal` : null,
+      stats.avgMpg ? `🚗 Avg fuel economy: ${stats.avgMpg} mpg` : null,
+      `Track your fuel spend at gascap.app`,
+    ].filter(Boolean).join('\n');
+
+    const result = await nativeShare({ title: 'My GasCap™ Fuel Stats', text });
+    if (result === 'shared' || result === 'copied') {
+      hapticSuccess();
+      if (result === 'copied') {
+        setShareCopied(true);
+        setTimeout(() => setShareCopied(false), 2500);
+      }
+    }
+  }
 
   useEffect(() => {
     fetch('/api/fillups')
@@ -113,6 +137,17 @@ export default function SavingsSummary() {
         <span className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold whitespace-nowrap">
           {t.savingsSummary.fillUpsLogged(stats.count)}
         </span>
+        <button
+          type="button"
+          onClick={handleShare}
+          aria-label="Share my fuel stats"
+          className="flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-700
+                     hover:bg-slate-200 dark:hover:bg-slate-600 active:scale-95
+                     transition-all text-[10px] font-bold text-slate-600 dark:text-slate-300
+                     whitespace-nowrap"
+        >
+          {shareCopied ? '✓ Copied' : '↑ Share'}
+        </button>
       </div>
 
       <div className="grid grid-cols-3 gap-2">
