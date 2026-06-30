@@ -109,6 +109,8 @@ model User {
   userMode                 String?   // 'personal' | 'gig' | 'rental' | 'fleet'
   vehicles                 Vehicle[]
   priceReports             PriceReport[]
+  gigFillups               GigFillup[]
+  gigMileage               GigMileage[]
 }
 
 model OtpCode {
@@ -153,6 +155,43 @@ model Fillup {
   fuelGrade       String?  // "regular" | "midgrade" | "premium" | "diesel" | "e85"
   receiptThumb    String?  // base64-compressed JPEG thumbnail of receipt (data URL)
   createdAt       String
+
+  @@index([userId])
+  @@index([userId, date])
+}
+
+model GigFillup {
+  id             String  @id
+  userId         String
+  date           String   // YYYY-MM-DD
+  gallons        Float
+  pricePerGallon Float
+  totalCost      Float
+  station        String?
+  odometer       Float?
+  platform       String?  // "uber" | "lyft" | "doordash" | "instacart" | "spark" | "amazon_flex" | "shipt" | "courier" | "other"
+  notes          String?
+  createdAt      String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, date])
+}
+
+model GigMileage {
+  id            String  @id
+  userId        String
+  date          String   // YYYY-MM-DD
+  startOdometer Float?
+  endOdometer   Float?
+  miles         Float
+  platform      String?  // same enum as GigFillup.platform
+  category      String   @default("business") // "business" | "personal"
+  notes         String?
+  createdAt     String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([userId, date])

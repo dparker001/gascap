@@ -24,10 +24,11 @@ import SavingsDashboard       from './SavingsDashboard';
 import WorstFillup            from './WorstFillup';
 import VehicleHealthAlert     from './VehicleHealthAlert';
 import ManualFillupLogger     from './ManualFillupLogger';
+import GigDriverTab           from './GigDriverTab';
 import { useTranslation }    from '@/contexts/LanguageContext';
 // ── Tab definitions ──────────────────────────────────────────────────────────
 
-type TabId = 'ai' | 'trip' | 'compare' | 'log' | 'charts' | 'stats' | 'service' | 'share' | 'review';
+type TabId = 'ai' | 'trip' | 'compare' | 'log' | 'charts' | 'stats' | 'service' | 'share' | 'review' | 'driver';
 
 interface Tab {
   id:            TabId;
@@ -46,6 +47,8 @@ export default function ToolsPanel() {
 
   const userPlan = (session?.user as { plan?: string })?.plan ?? 'free';
   const isPro    = userPlan === 'pro' || userPlan === 'fleet';
+  const userMode = (session?.user as { userMode?: string | null })?.userMode;
+  const isGigDriver = userMode === 'gig';
 
   // Fill-up count — shown as a badge on the Log tab
   const [fillupCount, setFillupCount] = useState<number | null>(null);
@@ -83,7 +86,7 @@ export default function ToolsPanel() {
   useEffect(() => {
     const openFromHash = () => {
       const hash = window.location.hash.replace('#', '') as TabId;
-      const validIds = ['ai','trip','compare','log','charts','stats','service','share','review'] as const;
+      const validIds = ['ai','trip','compare','log','charts','stats','service','share','review','driver'] as const;
       if (validIds.includes(hash as typeof validIds[number])) {
         setActiveTab(hash);
         // Clean up the hash without adding a history entry
@@ -105,6 +108,7 @@ export default function ToolsPanel() {
     { id: 'service', emoji: '🔧', label: t.tools.tabs.service, authRequired: true,  planRequired: 'pro'  },
     { id: 'share',   emoji: '🔗', label: t.tools.tabs.share,   authRequired: true,  planRequired: undefined },
     { id: 'review',  emoji: '⭐', label: t.tools.tabs.review,  authRequired: true,  planRequired: undefined },
+    ...(isGigDriver ? [{ id: 'driver' as TabId, emoji: '📦', label: 'Driver', authRequired: true, planRequired: undefined }] : []),
   ];
 
   // If session drops, fall back to an accessible tab
@@ -358,6 +362,14 @@ export default function ToolsPanel() {
         )}
         {effectiveTab === 'review' && !session && <SignInPrompt feature={t.toolsPrompts.featureReviews} />}
       </div>
+
+      {/* Gig Driver — shown only when userMode === 'gig' */}
+      {isGigDriver && (
+        <div role="tabpanel" id="tabpanel-driver" hidden={effectiveTab !== 'driver'}>
+          {effectiveTab === 'driver' && session && <GigDriverTab />}
+          {effectiveTab === 'driver' && !session && <SignInPrompt feature="Gig Driver tools" />}
+        </div>
+      )}
 
     </div>
   );

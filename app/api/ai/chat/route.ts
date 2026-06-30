@@ -114,6 +114,7 @@ APP FEATURES YOU CAN EXPLAIN:
 - Weekly gas card giveaway (every Friday): Pro users earn daily entries based on usage + ambassador tier; bonus entries for streaks, plan level, referrals
 - Trip Cost Estimator with Google Maps route mode, Station Comparison, Gas Price Alert, EV Charge calculator, AI Fuel Advisor (this feature)
 - User Mode: logged-in users can choose how they use GasCap — Personal Driver, Gig Driver (Uber/Lyft/DoorDash etc.), Rental Car, or Business/Fleet. Mode is saved to their profile and personalizes their experience. Users who haven't selected a mode see a mode selector on login.
+- Gig Driver Mode: when userMode is 'gig', a "Driver" tab appears in the Tools panel. It has three views: Log Fill-Up (date, gallons, price/gal, station, platform), Log Mileage (date, miles or start/end odometer, platform, business/personal category), and History (last 4 weeks of fill-ups and mileage entries). Weekly summary shows total fuel spend, business miles, cost per mile, avg $/gal, fill-up count, and total gallons. Supported platforms: Uber, Lyft, DoorDash, Instacart, Spark, Amazon Flex, Shipt, Courier, Other.
 - Rental Car Return Mode: a toggle in the calculator for rental vehicle drop-offs. Rental presets (Economy/Compact/Midsize/Full-size/SUV/Minivan/Pickup) auto-fill tank size. Enter the rental company's per-gallon rate to see exactly how much you save by fueling up yourself. Also available at gascap.app/rental.
 
 ${contextBlock}

@@ -60,7 +60,11 @@ const SECTIONS = [
       },
       {
         q: 'What is my GasCap™ driver mode and how do I change it?',
-        a: 'When you first log in, GasCap™ asks how you plan to use the app: Personal Driver, Gig Driver (Uber, Lyft, DoorDash, etc.), Rental Car, or Business/Fleet. Your selection personalizes the dashboard, copy, and tools shown to you. To change your mode, go to Settings → Profile and update your Driver Mode.',
+        a: 'When you first log in, GasCap™ asks how you plan to use the app: Personal Driver, Gig Driver (Uber, Lyft, DoorDash, etc.), Rental Car, or Business/Fleet. Your selection personalizes the dashboard and tools shown to you. To change your mode, go to Settings → Profile and update your Driver Mode.',
+      },
+      {
+        q: 'How do I track fuel and mileage as a gig driver?',
+        a: 'Set your Driver Mode to "Gig Driver" in Settings → Profile (or on first login). A "Driver" tab will appear in the Tools panel. Tap "Log Fill-Up" to record date, gallons, price per gallon, station, and platform (Uber, Lyft, DoorDash, etc.). Tap "Log Mileage" to record miles driven — enter start and end odometer readings and GasCap™ auto-calculates the miles. Mark trips as Business or Personal for tax tracking. The History view shows your last 4 weeks of entries. The weekly summary at the top shows total fuel spend, business miles logged, average price per gallon, and estimated cost per mile.',
       },
       {
         q: 'What is Rental Car Return Mode?',
