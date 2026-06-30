@@ -81,7 +81,7 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
   const [stationName,    setStationName]    = useState(prefill.stationName ?? '');
   const [recentStations, setRecentStations] = useState<string[]>([]);
   const [hiddenStations, setHiddenStations] = useState<Set<string>>(new Set());
-  const [nearbyStations, setNearbyStations] = useState<string[]>([]);
+  const [nearbyStations, setNearbyStations] = useState<{ name: string; address?: string }[]>([]);
   const [detecting,      setDetecting]      = useState(false);
   const [detectMsg,      setDetectMsg]      = useState('');
   const [notes,          setNotes]          = useState('');
@@ -278,14 +278,19 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
 
     try {
       const res  = await fetch(`/api/fillups/nearby-stations?lat=${lat}&lng=${lng}`);
-      const data = await res.json() as { available?: boolean; stations?: { name: string }[] };
-      const names = Array.from(new Set((data.stations ?? []).map((s) => s.name))).slice(0, 5);
-      if (names.length === 0) {
+      const data = await res.json() as { available?: boolean; stations?: { name: string; address?: string }[] };
+      const seen = new Set<string>();
+      const stations = (data.stations ?? []).filter((s) => {
+        if (seen.has(s.name)) return false;
+        seen.add(s.name);
+        return true;
+      }).slice(0, 5);
+      if (stations.length === 0) {
         setDetectMsg(data.available === false ? t.fillup.detectUnavailable : t.fillup.detectNone);
       } else {
-        setNearbyStations(names);
+        setNearbyStations(stations);
         // Auto-fill the closest if the field is still empty — one less tap.
-        setStationName((prev) => prev.trim() ? prev : names[0]);
+        setStationName((prev) => prev.trim() ? prev : stations[0].name);
       }
     } catch {
       setDetectMsg(t.fillup.detectNone);
@@ -812,7 +817,7 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
           onChange={(e) => setStationName(e.target.value)}
         />
         <datalist id="station-suggestions">
-          {[...nearbyStations, ...recentStations].map((s) => (
+          {[...nearbyStations.map((s) => s.name), ...recentStations].map((s) => (
             <option key={s} value={s} />
           ))}
         </datalist>
@@ -823,22 +828,30 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
         {nearbyStations.length > 0 && (
           <div className="mt-1.5">
             <p className="text-[9px] font-bold text-amber-600 uppercase tracking-wide mb-1">📍 {t.fillup.nearbyStations}</p>
-            <div className="flex flex-wrap gap-1.5">
-              {nearbyStations.map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => setStationName((prev) => prev === s ? '' : s)}
-                  className={[
-                    'text-[10px] font-semibold px-2.5 py-1 rounded-full border transition-colors',
-                    stationName === s
-                      ? 'bg-amber-500 text-white border-amber-500'
-                      : 'bg-white text-slate-500 border-slate-200 hover:border-amber-300 hover:text-amber-700',
-                  ].join(' ')}
-                >
-                  {s}
-                </button>
-              ))}
+            <div className="flex flex-col gap-1.5">
+              {nearbyStations.map((s) => {
+                const street = s.address?.split(',')[0] ?? '';
+                return (
+                  <button
+                    key={s.name}
+                    type="button"
+                    onClick={() => setStationName((prev) => prev === s.name ? '' : s.name)}
+                    className={[
+                      'text-left px-2.5 py-1.5 rounded-xl border transition-colors',
+                      stationName === s.name
+                        ? 'bg-amber-500 text-white border-amber-500'
+                        : 'bg-white text-slate-600 border-slate-200 hover:border-amber-300 hover:text-amber-700',
+                    ].join(' ')}
+                  >
+                    <p className="text-[10px] font-semibold leading-tight">{s.name}</p>
+                    {street && (
+                      <p className={`text-[9px] leading-tight mt-0.5 ${stationName === s.name ? 'text-amber-100' : 'text-slate-400'}`}>
+                        {street}
+                      </p>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}
