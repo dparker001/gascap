@@ -58,7 +58,7 @@ function Avatar({ name, color }: { name: string; color: string }) {
 }
 
 export default function SettingsPage() {
-  const { data: session, status } = useSession();
+  const { data: session, status, update: updateSession } = useSession();
   const { t, locale } = useTranslation();
   const isNative = useIsNative();   // hide web Stripe checkout in native wrappers
   const platform = useNativePlatform(); // 'ios' → upgrade via Apple IAP (/upgrade)
@@ -471,6 +471,7 @@ export default function SettingsPage() {
       } else {
         localStorage.removeItem('gascap_fill_pref');
       }
+      await updateSession();
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } finally {
