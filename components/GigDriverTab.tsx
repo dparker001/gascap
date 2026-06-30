@@ -87,20 +87,18 @@ function FillupForm({ onSaved }: { onSaved: () => void }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="field-label">Date</label>
-          <input type="date" className="input-field text-sm" value={date}
-            onChange={e => setDate(e.target.value)} required />
-        </div>
-        <div>
-          <label className="field-label">Platform</label>
-          <select className="input-field text-sm text-slate-600" value={platform}
-            onChange={e => setPlatform(e.target.value)}>
-            <option value="">Any</option>
-            {PLATFORMS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
-          </select>
-        </div>
+      <div>
+        <label className="field-label">Date</label>
+        <input type="date" className="input-field text-sm w-full" value={date}
+          onChange={e => setDate(e.target.value)} required />
+      </div>
+      <div>
+        <label className="field-label">Platform</label>
+        <select className="input-field text-sm text-slate-600 w-full" value={platform}
+          onChange={e => setPlatform(e.target.value)}>
+          <option value="">Any</option>
+          {PLATFORMS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+        </select>
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
@@ -185,20 +183,18 @@ function MileageForm({ onSaved }: { onSaved: () => void }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="field-label">Date</label>
-          <input type="date" className="input-field text-sm" value={date}
-            onChange={e => setDate(e.target.value)} required />
-        </div>
-        <div>
-          <label className="field-label">Platform</label>
-          <select className="input-field text-sm text-slate-600" value={platform}
-            onChange={e => setPlatform(e.target.value)}>
-            <option value="">Any</option>
-            {PLATFORMS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
-          </select>
-        </div>
+      <div>
+        <label className="field-label">Date</label>
+        <input type="date" className="input-field text-sm w-full" value={date}
+          onChange={e => setDate(e.target.value)} required />
+      </div>
+      <div>
+        <label className="field-label">Platform</label>
+        <select className="input-field text-sm text-slate-600 w-full" value={platform}
+          onChange={e => setPlatform(e.target.value)}>
+          <option value="">Any</option>
+          {PLATFORMS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+        </select>
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
@@ -340,12 +336,14 @@ export default function GigDriverTab() {
   return (
     <div className="space-y-3">
       {/* Header card */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-4 py-3.5">
-        <div className="flex items-start gap-3">
-          <span className="text-2xl">📦</span>
-          <div>
-            <p className="font-black text-slate-800 text-sm leading-snug">Gig Driver Mode</p>
-            <p className="text-[11px] text-slate-500 mt-0.5">Track fuel and mileage. Keep more of what you earn.</p>
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+        <div className="flex items-center gap-3 bg-[#1E2D4A] px-4 py-3.5">
+          <div className="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center flex-shrink-0">
+            <span className="text-lg leading-none">📦</span>
+          </div>
+          <div className="min-w-0">
+            <h3 className="text-sm font-black text-white">Gig Driver Mode</h3>
+            <p className="text-[11px] text-white/60 leading-snug mt-0.5">Track fuel and mileage. Keep more of what you earn.</p>
           </div>
         </div>
       </div>
