@@ -236,33 +236,45 @@ export default function SettingsPage() {
   // Prevents the scroll listener from overriding activeTab during a programmatic scroll
   const isProgrammaticScrollRef = useRef(false);
 
+  function getScroller(el: HTMLElement): HTMLElement {
+    let node: HTMLElement | null = el.parentElement;
+    while (node) {
+      const oy = getComputedStyle(node).overflowY;
+      if ((oy === 'auto' || oy === 'scroll') && node.scrollHeight > node.clientHeight) return node;
+      node = node.parentElement;
+    }
+    return document.documentElement;
+  }
+
   function scrollToSection(id: TabId) {
-    const el      = sectionRefs.current[id];
+    const el = sectionRefs.current[id];
     if (!el) return;
-    const headerH = (fixedHeaderRef.current?.offsetHeight ?? 112) + 8;
-    const top     = el.getBoundingClientRect().top + window.scrollY - headerH;
+    const scroller = getScroller(el);
+    const headerH  = (fixedHeaderRef.current?.offsetHeight ?? 112) + 8;
+    const top      = el.getBoundingClientRect().top + scroller.scrollTop - headerH;
     isProgrammaticScrollRef.current = true;
-    window.scrollTo({ top, behavior: 'smooth' });
+    scroller.scrollTo({ top, behavior: 'smooth' });
     setActiveTab(id);
-    // Release lock after smooth scroll completes (~600 ms typical)
     setTimeout(() => { isProgrammaticScrollRef.current = false; }, 800);
   }
 
   useEffect(() => {
+    const firstEl = Object.values(sectionRefs.current).find(Boolean);
+    const scroller = firstEl ? getScroller(firstEl) : (document.documentElement as HTMLElement);
+
     function onScroll() {
-      // Don't let user-scroll events clobber a tab we just set programmatically
       if (isProgrammaticScrollRef.current) return;
-      const headerH = (fixedHeaderRef.current?.offsetHeight ?? 112) + 8;
-      const scrollY = window.scrollY + headerH;
+      const headerH  = (fixedHeaderRef.current?.offsetHeight ?? 112) + 8;
+      const scrollTop = scroller.scrollTop + headerH;
       let current: TabId = 'profile';
       for (const { id } of TABS) {
         const el = sectionRefs.current[id];
-        if (el && el.offsetTop <= scrollY) current = id;
+        if (el && el.offsetTop <= scrollTop) current = id;
       }
       setActiveTab(current);
     }
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
+    scroller.addEventListener('scroll', onScroll, { passive: true });
+    return () => scroller.removeEventListener('scroll', onScroll);
   }, []);
 
   // Auto-scroll to preferences + flash the budget section when arriving via ?tab=preferences
