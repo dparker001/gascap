@@ -58,6 +58,7 @@ interface AdminUser {
   streak:           number;
   fillupCount:      number;
   lastFillup:       string | null;
+  signupPlatform?:  string | null;
 }
 
 interface AnnItem {
@@ -2042,6 +2043,21 @@ export default function AdminPage() {
                       {u.emailOptOut && (
                         <span title="User unsubscribed — no marketing emails will be sent" className="text-[10px] font-black px-2 py-0.5 rounded-full bg-red-100 text-red-700">
                           🚫 UNSUB
+                        </span>
+                      )}
+                      {u.signupPlatform === 'ios' && (
+                        <span title="Signed up via iOS app" className="text-[10px] font-black px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                          iOS
+                        </span>
+                      )}
+                      {u.signupPlatform === 'android' && (
+                        <span title="Signed up via Android app" className="text-[10px] font-black px-2 py-0.5 rounded-full bg-green-50 text-green-700">
+                          ANDROID
+                        </span>
+                      )}
+                      {u.signupPlatform === 'web' && (
+                        <span title="Signed up via web" className="text-[10px] font-black px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600">
+                          WEB
                         </span>
                       )}
                     </div>

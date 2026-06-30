@@ -34,6 +34,7 @@ export const authOptions: NextAuthOptions = {
         code:         { label: 'Code',     type: 'text'  },
         locale:       { label: 'Locale',   type: 'text'  },
         referralCode: { label: 'Referral', type: 'text'  },
+        platform:     { label: 'Platform', type: 'text'  },
       },
       async authorize(credentials) {
         try {
@@ -57,6 +58,9 @@ export const authOptions: NextAuthOptions = {
         const verifiedName = entry.name;
         const locale       = credentials.locale ?? 'en';
         const referralCode = credentials.referralCode ?? '';
+        const platform     = (['ios', 'android'] as const).includes(credentials.platform as 'ios' | 'android')
+          ? (credentials.platform as 'ios' | 'android')
+          : 'web';
 
         // Find or create user
         let user = await findByEmail(email);
@@ -64,10 +68,10 @@ export const authOptions: NextAuthOptions = {
 
         if (!user) {
           const { rows: created } = await pgPool.query(
-            `INSERT INTO "User" (id, email, name, "passwordHash", plan, "createdAt", "emailVerified", locale)
-             VALUES ($1,$2,$3,'otp-no-password','free',$4,true,$5) RETURNING id, name, plan`,
+            `INSERT INTO "User" (id, email, name, "passwordHash", plan, "createdAt", "emailVerified", locale, "signupPlatform")
+             VALUES ($1,$2,$3,'otp-no-password','free',$4,true,$5,$6) RETURNING id, name, plan`,
             [crypto.randomUUID(), email, verifiedName || nameFromEmail(email),
-             new Date().toISOString(), locale === 'es' ? 'es' : 'en'],
+             new Date().toISOString(), locale === 'es' ? 'es' : 'en', platform],
           );
           user = await findByEmail(email);
           if (!user) return null;

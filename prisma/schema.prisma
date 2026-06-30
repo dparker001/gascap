@@ -105,6 +105,7 @@ model User {
   otpCodeExpires           String?
   otpCodeName              String?
   priceReportEntries       Int       @default(0)
+  signupPlatform           String?   // 'web' | 'ios' | 'android'
   vehicles                 Vehicle[]
   priceReports             PriceReport[]
 }

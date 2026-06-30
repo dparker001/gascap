@@ -123,6 +123,7 @@ function SignUpForm() {
       code:         otp,
       locale,
       referralCode: refCode ?? '',
+      platform:     platform ?? 'web',
     });
 
     setOtpLoading(false);

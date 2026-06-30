@@ -119,6 +119,7 @@ export async function GET(req: Request) {
       streak:           u.streak,
       fillupCount,
       lastFillup,
+      signupPlatform: u.signupPlatform ?? null,
     };
   });
   return NextResponse.json({ users, total: users.length });
