@@ -483,6 +483,8 @@ export default function SettingsPage() {
       } else {
         localStorage.removeItem('gascap_fill_pref');
       }
+      // Notify NativeAppShell immediately so the Driver tab reacts before the JWT refresh
+      window.dispatchEvent(new CustomEvent('gc:user-mode', { detail: { mode: userMode || null } }));
       await updateSession();
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);

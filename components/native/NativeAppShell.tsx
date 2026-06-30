@@ -54,8 +54,20 @@ export default function NativeAppShell() {
 
   // Tab labels come from the translation system so the bottom bar + title bar follow
   // the language toggle (EN/ES).
-  const userMode = (session?.user as { userMode?: string | null })?.userMode;
+  const sessionUserMode = (session?.user as { userMode?: string | null })?.userMode;
+  const [localUserMode, setLocalUserMode] = useState<string | null | undefined>(undefined);
+  // localUserMode overrides session until JWT catches up; undefined = not yet set by event
+  const userMode = localUserMode !== undefined ? localUserMode : sessionUserMode;
   const isGigDriver = userMode === 'gig';
+
+  useEffect(() => {
+    function onModeChange(e: Event) {
+      const mode = (e as CustomEvent<{ mode: string | null }>).detail?.mode ?? null;
+      setLocalUserMode(mode);
+    }
+    window.addEventListener('gc:user-mode', onModeChange);
+    return () => window.removeEventListener('gc:user-mode', onModeChange);
+  }, []);
 
   const TABS: TabMeta[] = [
     { id: 'calculator', label: t.nav.calculator },
