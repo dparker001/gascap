@@ -18,9 +18,10 @@ export interface TabMeta {
 }
 
 interface Props {
-  tabs:     TabMeta[];
-  active:   TabId;
-  onChange: (id: TabId) => void;
+  tabs:      TabMeta[];
+  active:    TabId;
+  onChange:  (id: TabId) => void;
+  pulseTabId?: TabId | null;
 }
 
 /** 24px Lucide-style stroke icons, keyed by tab id. Inherit `currentColor`. */
@@ -81,8 +82,22 @@ const ICONS: Record<TabId, JSX.Element> = {
   ),
 };
 
-export default function NativeTabBar({ tabs, active, onChange }: Props) {
+const pulseStyle = `
+  @keyframes gc-tab-pulse {
+    0%   { opacity: 1; transform: scale(1); }
+    40%  { opacity: 0.4; transform: scale(1.18); }
+    70%  { opacity: 1; transform: scale(0.95); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+  .gc-tab-pulse {
+    animation: gc-tab-pulse 0.65s ease-in-out 3;
+  }
+`;
+
+export default function NativeTabBar({ tabs, active, onChange, pulseTabId }: Props) {
   return (
+    <>
+    <style>{pulseStyle}</style>
     <nav
       className="flex-shrink-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur
                  border-t border-slate-200 dark:border-slate-800"
@@ -97,7 +112,8 @@ export default function NativeTabBar({ tabs, active, onChange }: Props) {
         }}
       >
         {tabs.map((tab) => {
-          const isActive = tab.id === active;
+          const isActive  = tab.id === active;
+          const isPulsing = tab.id === pulseTabId;
           return (
             <button
               key={tab.id}
@@ -116,10 +132,13 @@ export default function NativeTabBar({ tabs, active, onChange }: Props) {
                 stroke="currentColor" strokeWidth="2"
                 strokeLinecap="round" strokeLinejoin="round"
                 aria-hidden="true"
+                className={isPulsing ? 'gc-tab-pulse' : ''}
               >
                 {ICONS[tab.id]}
               </svg>
-              <span className="text-[10px] font-medium leading-none">{tab.label}</span>
+              <span className={`text-[10px] font-medium leading-none ${isPulsing ? 'gc-tab-pulse' : ''}`}>
+                {tab.label}
+              </span>
             </button>
           );
         })}
@@ -128,5 +147,6 @@ export default function NativeTabBar({ tabs, active, onChange }: Props) {
       {/* Safe-area spacer — sits below buttons, never overlaps them */}
       <div style={{ height: 'max(env(safe-area-inset-bottom), 8px)' }} />
     </nav>
+    </>
   );
 }

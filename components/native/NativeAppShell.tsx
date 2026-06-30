@@ -75,6 +75,7 @@ export default function NativeAppShell() {
 
   const [modeSelectorDone, setModeSelectorDone] = useState(false);
   const showModeSelector = status === 'authenticated' && !userMode && !modeSelectorDone;
+  const [pulseTabId, setPulseTabId] = useState<TabId | null>(null);
 
   const [active,  setActive]  = useState<TabId>('calculator');
   const [visited, setVisited] = useState<Set<TabId>>(() => new Set<TabId>(['calculator']));
@@ -369,11 +370,23 @@ export default function NativeAppShell() {
 
       </div>
 
-      <NativeTabBar tabs={TABS} active={active} onChange={changeTab} />
+      <NativeTabBar tabs={TABS} active={active} onChange={changeTab} pulseTabId={pulseTabId} />
 
       {/* Mode selector — shown on first login when userMode is not yet set */}
       {showModeSelector && (
-        <UserModeSelector onComplete={() => setModeSelectorDone(true)} />
+        <UserModeSelector onComplete={(mode) => {
+          setModeSelectorDone(true);
+          if (mode === 'gig') {
+            changeTab('driver');
+            try {
+              if (!localStorage.getItem('gc_driver_tab_pulsed')) {
+                localStorage.setItem('gc_driver_tab_pulsed', '1');
+                setPulseTabId('driver');
+                setTimeout(() => setPulseTabId(null), 2200);
+              }
+            } catch { /* storage blocked */ }
+          }
+        }} />
       )}
 
       {/* Fill-up bottom sheet — slides up when user taps "Log Fill-up" banner */}
