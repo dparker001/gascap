@@ -7,14 +7,6 @@ import Link from 'next/link';
 import { useTranslation } from '@/contexts/LanguageContext';
 import BrandBar from '@/components/BrandBar';
 import { useNativePlatform } from '@/hooks/useIsNative';
-import {
-  isBiometricAvailable,
-  getBiometricType,
-  hasBiometricSession,
-  loadBiometricSession,
-  saveBiometricSession,
-  clearBiometricSession,
-} from '@/lib/biometrics';
 
 type Step    = 'email' | 'otp' | 'password';
 
@@ -47,21 +39,6 @@ function SignInForm() {
   const [password, setPassword] = useState('');
   const [showPw,   setShowPw]   = useState(false);
 
-  // ── Biometric state ───────────────────────────────────────────────────────────
-  const [biometricType,    setBiometricType]    = useState<'faceId' | 'touchId' | 'biometrics' | null>(null);
-  const [biometricReady,   setBiometricReady]   = useState(false);
-  const [biometricLoading, setBiometricLoading] = useState(false);
-  const [offerBiometric,   setOfferBiometric]   = useState(false); // post-login save prompt
-  const pendingEmail = useRef('');
-
-  useEffect(() => {
-    async function checkBiometric() {
-      const [type, hasSession] = await Promise.all([getBiometricType(), hasBiometricSession()]);
-      setBiometricType(type);
-      setBiometricReady(!!type && hasSession);
-    }
-    checkBiometric();
-  }, []);
 
   useEffect(() => {
     if (step === 'otp') setTimeout(() => otpInputRef.current?.focus(), 100);
@@ -81,38 +58,7 @@ function SignInForm() {
     }, 1000);
   }
 
-  async function redirect(emailUsed?: string) {
-    // After a successful sign-in, offer to enable biometrics if available and not yet set up
-    if (emailUsed) {
-      const [available, hasSession] = await Promise.all([isBiometricAvailable(), hasBiometricSession()]);
-      if (available && !hasSession) {
-        pendingEmail.current = emailUsed;
-        setOfferBiometric(true);
-        return; // hold on the page until user chooses
-      }
-    }
-    if (nextPath === '/') { try { localStorage.setItem('gc_active_tab', 'calculator'); } catch { /* ignore */ } }
-    router.push(nextPath);
-    router.refresh();
-  }
-
-  async function handleBiometricSignIn() {
-    setBiometricLoading(true);
-    const session = await loadBiometricSession();
-    setBiometricLoading(false);
-    if (!session) return; // cancelled or failed — let them use email
-    // Re-authenticate with stored credentials via NextAuth
-    const res = await signIn('credentials', { redirect: false, email: session.email, biometricToken: session.token });
-    if (res?.ok) {
-      if (nextPath === '/') { try { localStorage.setItem('gc_active_tab', 'calculator'); } catch { /* ignore */ } }
-      router.push(nextPath);
-      router.refresh();
-    }
-  }
-
-  async function handleSaveBiometric() {
-    // Store email; token placeholder — in production this would be the NextAuth JWT
-    await saveBiometricSession('biometric-enabled', pendingEmail.current);
+  function redirect() {
     if (nextPath === '/') { try { localStorage.setItem('gc_active_tab', 'calculator'); } catch { /* ignore */ } }
     router.push(nextPath);
     router.refresh();
@@ -164,7 +110,7 @@ function SignInForm() {
       setOtpError('Invalid or expired code. Please try again.');
       return;
     }
-    redirect(email);
+    redirect();
   }
 
   async function handleResend() {
@@ -195,7 +141,7 @@ function SignInForm() {
           : t.signIn.errorDefault,
       );
     } else {
-      redirect(email);
+      redirect();
     }
   }
 
@@ -220,41 +166,6 @@ function SignInForm() {
       </div>
     </>
   );
-
-  // ── Biometric save offer (shown after first successful sign-in) ───────────────
-  if (offerBiometric) {
-    const label = biometricType === 'faceId' ? 'Face ID' : biometricType === 'touchId' ? 'Touch ID' : 'Biometrics';
-    return (
-      <div className="min-h-screen bg-[#eef1f7] flex flex-col">
-        <BrandBar />
-        <div className="flex-1 flex items-start justify-center px-4 pt-8 pb-16">
-          <div className="w-full max-w-sm text-center">
-            <p className="text-5xl mb-4">{biometricType === 'faceId' ? '🔒' : '👆'}</p>
-            <h1 className="text-2xl font-black text-navy-700 mb-2">Use {label} next time?</h1>
-            <p className="text-slate-500 text-sm mb-8 leading-relaxed">
-              Sign in instantly with {label} instead of entering your email each time.
-            </p>
-            <button
-              onClick={handleSaveBiometric}
-              className="btn-amber w-full mb-3"
-            >
-              Enable {label}
-            </button>
-            <button
-              onClick={() => {
-                if (nextPath === '/') { try { localStorage.setItem('gc_active_tab', 'calculator'); } catch { /* ignore */ } }
-                router.push(nextPath);
-                router.refresh();
-              }}
-              className="w-full py-3 text-sm text-slate-500 hover:text-slate-700 font-semibold"
-            >
-              Not now
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   // ── OTP step ──────────────────────────────────────────────────────────────────
   if (step === 'otp') {
@@ -401,25 +312,6 @@ function SignInForm() {
 
           <h1 className="text-2xl font-black text-navy-700 mb-1">{t.signIn.title}</h1>
           <p className="text-slate-500 text-sm mb-5">{t.signIn.sub}</p>
-
-          {biometricReady && biometricType && (
-            <button
-              type="button"
-              onClick={handleBiometricSignIn}
-              disabled={biometricLoading}
-              className="w-full flex items-center justify-center gap-3 py-3.5 px-4 mb-5
-                         bg-navy-700 hover:bg-navy-800 active:scale-[0.98]
-                         text-white font-bold text-sm rounded-2xl shadow-sm transition-all
-                         disabled:opacity-60"
-            >
-              <span className="text-lg" aria-hidden="true">
-                {biometricType === 'faceId' ? '🔒' : '👆'}
-              </span>
-              {biometricLoading
-                ? 'Verifying…'
-                : `Sign in with ${biometricType === 'faceId' ? 'Face ID' : biometricType === 'touchId' ? 'Touch ID' : 'Biometrics'}`}
-            </button>
-          )}
 
           {verified && (
             <div className="mb-5 bg-green-50 border border-green-200 rounded-2xl px-4 py-3 flex items-start gap-3">
