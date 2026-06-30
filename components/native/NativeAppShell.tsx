@@ -202,7 +202,8 @@ export default function NativeAppShell() {
 
   return (
     <main
-      className="h-screen flex flex-col bg-slate-50 dark:bg-slate-900 overflow-hidden"
+      className="flex flex-col bg-slate-50 dark:bg-slate-900 overflow-hidden"
+      style={{ height: '100dvh' }}
     >
 
       {/* First-launch brand video overlay (inert until the MP4 is added — see component) */}
@@ -266,7 +267,7 @@ export default function NativeAppShell() {
         ref={contentRef}
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
-        className="flex-1 overflow-y-auto"
+        className="flex-1 min-h-0 overflow-y-auto"
       >
 
         {visited.has('calculator') && (
