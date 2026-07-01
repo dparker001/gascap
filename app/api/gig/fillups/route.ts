@@ -9,13 +9,19 @@ export async function GET(req: NextRequest) {
   const uid = (session.user as { id?: string }).id ?? '';
 
   const { searchParams } = new URL(req.url);
-  const weeks = parseInt(searchParams.get('weeks') ?? '4', 10);
-  const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - weeks * 7);
-  const cutoffStr = cutoff.toISOString().slice(0, 10);
+  const year = searchParams.get('year');
+  let where: { userId: string; date: { gte: string; lte?: string } };
+  if (year) {
+    where = { userId: uid, date: { gte: `${year}-01-01`, lte: `${year}-12-31` } };
+  } else {
+    const weeks = parseInt(searchParams.get('weeks') ?? '4', 10);
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - weeks * 7);
+    where = { userId: uid, date: { gte: cutoff.toISOString().slice(0, 10) } };
+  }
 
   const fillups = await prisma.gigFillup.findMany({
-    where: { userId: uid, date: { gte: cutoffStr } },
+    where,
     orderBy: { date: 'desc' },
   });
 

@@ -46,11 +46,9 @@ function calcSummary(fillups: GigFillup[], mileage: GigMileageEntry[]) {
   const avgPpg = totalGallons > 0 ? totalSpend / totalGallons : 0;
   const cpm    = totalMiles  > 0 && totalSpend > 0 ? totalSpend / totalMiles : 0;
 
-  // Year-to-date business miles across all loaded data
-  const ytdStart = new Date(); ytdStart.setMonth(0, 1); ytdStart.setHours(0,0,0,0);
-  const ytdStr = ytdStart.toISOString().slice(0, 10);
+  // All loaded data is already scoped to the current year, so total biz miles = YTD
   const ytdMiles = mileage
-    .filter(m => m.date >= ytdStr && m.category === 'business')
+    .filter(m => m.category === 'business')
     .reduce((s, m) => s + m.miles, 0);
 
   return { totalSpend, totalGallons, totalMiles, avgPpg, cpm, fillupCount: wFillups.length, ytdMiles };
@@ -327,8 +325,8 @@ export default function GigDriverTab() {
     setLoading(true);
     try {
       const [fRes, mRes] = await Promise.all([
-        fetch('/api/gig/fillups?weeks=52'),
-        fetch('/api/gig/mileage?weeks=52'),
+        fetch(`/api/gig/fillups?year=${CURRENT_YEAR}`),
+        fetch(`/api/gig/mileage?year=${CURRENT_YEAR}`),
       ]);
       const fData = fRes.ok ? await fRes.json() : { fillups: [] };
       const mData = mRes.ok ? await mRes.json() : { entries: [] };
