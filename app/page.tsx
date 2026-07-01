@@ -800,10 +800,15 @@ export default function Home() {
                     <p className="text-[10px] text-white/50 leading-snug">{t.quickLinks.fleetDashSub}</p>
                   </a>
                 ) : (
-                  <a href="/ambassador"
+                  <a href="#share"
+                     onClick={(e) => {
+                       e.preventDefault();
+                       window.dispatchEvent(new CustomEvent('gascap:switch-tools-tab', { detail: { tab: 'share' } }));
+                       document.getElementById('gascap-tools')?.scrollIntoView({ behavior: 'smooth' });
+                     }}
                      className="flex flex-col gap-1 bg-white dark:bg-slate-800 rounded-xl
                                 border border-slate-100 dark:border-slate-700 p-3
-                                hover:border-brand-teal/40 transition-colors group shadow-sm">
+                                hover:border-brand-teal/40 transition-colors group shadow-sm cursor-pointer">
                     <span className="text-lg">🤝</span>
                     <p className="text-[11px] font-black text-slate-700 dark:text-slate-200 group-hover:text-brand-teal transition-colors leading-tight">{t.quickLinks.referEarn}</p>
                     <p className="text-[10px] text-slate-400 leading-snug">{t.quickLinks.referEarnSub}</p>
