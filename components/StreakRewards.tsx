@@ -27,6 +27,7 @@ const MILESTONES = [
 export default function StreakRewards() {
   const { data: session } = useSession();
   const { t } = useTranslation();
+  const isLifetime = (session?.user as { stripeInterval?: string } | null)?.stripeInterval === 'lifetime';
   const [streak,       setStreak]       = useState<number>(0);
   const [milestonesHit, setMilestonesHit] = useState<number[]>([]);
   const [credits,      setCredits]      = useState<StreakCredit[]>([]);
@@ -57,7 +58,8 @@ export default function StreakRewards() {
   const allEarned = !nextMilestone;
 
   const milestoneLabel  = (days: number): string => t.streakRewards.milestoneLabel(days);
-  const milestoneReward = (days: number): string => t.streakRewards.milestoneReward(days);
+  const milestoneReward = (days: number): string =>
+    isLifetime ? t.streakRewards.milestoneRewardLifetime(days) : t.streakRewards.milestoneReward(days);
 
   return (
     <div className="rounded-2xl border border-slate-100 shadow-sm overflow-hidden">

@@ -170,6 +170,9 @@ export interface EntrantRow {
   verifyReminderBonusEntries:  number; // +30 one-time for verifying email within 7 days of reminder
   phoneBonusEntries:           number; // +30 one-time for adding phone number in settings
   dailyBonusEntries:           number; // 3–15/day from the daily gift box badge
+  firstCalcBonusEntries:       number; // +5 one-time for first calc
+  priceReportEntries:          number; // +5 per price report submitted
+  gigLogEntries:               number; // +5 per gig fill-up or mileage log
   lifetimeBonusEntries:        number; // +40/+25 (Perks/base Lifetime) or +15 (Annual) per period
   referralBonusEntries:        number; // +15 per successful referral (lifetime total)
   entryCount:      number;        // baseEntries + streakBonus + earlyUpgrade + garageBonus + verifyReminderBonus + phoneBonus + dailyBonus + lifetimeBonus + referralBonus
@@ -417,6 +420,9 @@ export async function getEligibleEntrants(period: string = currentPeriod()): Pro
       verifyReminderBonusEntries: true,
       phoneBonusEntries: true,
       dailyBonusEntries: true,
+      firstCalcBonusEntries: true,
+      priceReportEntries: true,
+      gigLogEntries: true,
       loginCount: true,
       lastLoginAt: true,
     },
@@ -436,6 +442,9 @@ export async function getEligibleEntrants(period: string = currentPeriod()): Pro
       const verifyReminderBonusEntries = u.verifyReminderBonusEntries ?? 0;
       const phoneBonusEntries          = u.phoneBonusEntries          ?? 0;
       const dailyBonusEntries          = u.dailyBonusEntries          ?? 0;
+      const firstCalcBonusEntries      = u.firstCalcBonusEntries      ?? 0;
+      const priceReportEntries         = u.priceReportEntries         ?? 0;
+      const gigLogEntries              = u.gigLogEntries              ?? 0;
       const referralBonusEntries       = refCount * REFERRAL_BONUS_ENTRIES;
       const perksActive          = u.stripeInterval === 'lifetime'
         && u.lifetimePerksUntil != null
@@ -462,9 +471,12 @@ export async function getEligibleEntrants(period: string = currentPeriod()): Pro
         verifyReminderBonusEntries,
         phoneBonusEntries,
         dailyBonusEntries,
+        firstCalcBonusEntries,
+        priceReportEntries,
+        gigLogEntries,
         lifetimeBonusEntries,
         referralBonusEntries,
-        entryCount:      baseEntries + streakBonus + bonusEntries + garageBonusEntries + verifyReminderBonusEntries + phoneBonusEntries + dailyBonusEntries + lifetimeBonusEntries + referralBonusEntries,
+        entryCount:      baseEntries + streakBonus + bonusEntries + garageBonusEntries + verifyReminderBonusEntries + phoneBonusEntries + dailyBonusEntries + firstCalcBonusEntries + priceReportEntries + gigLogEntries + lifetimeBonusEntries + referralBonusEntries,
         alwaysEligible:  isAlwaysEligible(refCount),
         loginCount:      u.loginCount ?? 0,
         lastLoginAt:     u.lastLoginAt ?? null,
