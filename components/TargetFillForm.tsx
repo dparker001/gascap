@@ -107,6 +107,19 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
   // Stable ref so the gc:inject-gas-price event handler always calls the latest liveRecalc
   const liveRecalcRef   = useRef<(p: Partial<FormState>) => void>(() => {});
 
+  // Auto-activate rental mode for users whose driver mode is 'rental',
+  // or when arriving from the /rental landing page via ?rental=1
+  const userMode = (session?.user as { userMode?: string | null })?.userMode;
+  useEffect(() => {
+    const fromRentalPage = typeof window !== 'undefined' &&
+      new URLSearchParams(window.location.search).get('rental') === '1';
+    if ((userMode === 'rental' || fromRentalPage) && !rentalMode) {
+      setRentalMode(true);
+      setForm(prev => ({ ...prev, targetPreset: 100, customTarget: '' }));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userMode]);
+
   // Clear stale garage-vehicle data when the user is confirmed logged out.
   // useLocalStorage hydrates from the previous session's JSON, so a logged-in
   // user's vehicleId/vehicleName can persist in localStorage after sign-out and

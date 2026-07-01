@@ -47,7 +47,7 @@ export default function RentalPage() {
             finds the cheapest station nearby.
           </p>
           <Link
-            href="/signup?mode=rental"
+            href="/?rental=1"
             className="inline-block bg-brand-orange text-white font-black text-sm
                        px-8 py-3.5 rounded-xl hover:bg-orange-600 active:scale-[0.98] transition-all"
           >
@@ -121,7 +121,7 @@ export default function RentalPage() {
           GasCap™ is free. Get started in seconds — no account required to calculate.
         </p>
         <Link
-          href="/signup?mode=rental"
+          href="/?rental=1"
           className="inline-block bg-brand-orange text-white font-black text-sm
                      px-8 py-3.5 rounded-xl hover:bg-orange-600 active:scale-[0.98] transition-all"
         >
