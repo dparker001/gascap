@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useIsNative } from '@/hooks/useIsNative';
 
 const PLATFORMS = [
   { value: 'uber',        label: 'Uber' },
@@ -328,6 +329,8 @@ export default function GigDriverTab() {
   const [loading,    setLoading]    = useState(true);
   const [exportYear, setExportYear] = useState(CURRENT_YEAR);
   const [exporting,  setExporting]  = useState(false);
+  const [exportMsg,  setExportMsg]  = useState<string | null>(null);
+  const isNative = useIsNative();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -345,20 +348,41 @@ export default function GigDriverTab() {
     }
   }, []);
 
+  function showExportMsg(msg: string) {
+    setExportMsg(msg);
+    setTimeout(() => setExportMsg(null), 4000);
+  }
+
   async function handleExport() {
     setExporting(true);
     try {
       const res = await fetch(`/api/gig/export?year=${exportYear}`);
-      if (!res.ok) return;
-      const blob = await res.blob();
-      const url  = URL.createObjectURL(blob);
-      const a    = document.createElement('a');
-      a.href     = url;
-      a.download = `gascap-gig-${exportYear}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      if (res.status === 204) {
+        showExportMsg(`No logs found for ${exportYear}. Start logging fill-ups or mileage to generate a report.`);
+        return;
+      }
+      if (!res.ok) {
+        showExportMsg('Export failed. Please try again.');
+        return;
+      }
+      const blob     = await res.blob();
+      const filename = `gascap-gig-${exportYear}.csv`;
+      // navigator.share with a File works in iOS WKWebView; fall back to blob-URL on web
+      if (isNative && typeof navigator.share === 'function') {
+        const file = new File([blob], filename, { type: 'text/csv' });
+        await navigator.share({ files: [file], title: filename });
+      } else {
+        const url = URL.createObjectURL(blob);
+        const a   = document.createElement('a');
+        a.href     = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+    } catch {
+      // navigator.share throws if user cancels — not an error
     } finally {
       setExporting(false);
     }
@@ -496,9 +520,15 @@ export default function GigDriverTab() {
                   {exporting ? 'Preparing…' : '⬇ Download CSV'}
                 </button>
               </div>
-              <p className="text-[9px] text-slate-400 mt-2 text-center">
-                Includes all fill-ups, mileage, and IRS deduction estimate
-              </p>
+              {exportMsg ? (
+                <p className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 mt-2 text-center leading-snug">
+                  {exportMsg}
+                </p>
+              ) : (
+                <p className="text-[9px] text-slate-400 mt-2 text-center">
+                  Includes all fill-ups, mileage, and IRS deduction estimate
+                </p>
+              )}
             </div>
           </div>
         )}
