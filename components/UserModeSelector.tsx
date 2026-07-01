@@ -55,6 +55,7 @@ export default function UserModeSelector({ initialMode, onComplete }: Props) {
         body:    JSON.stringify({ userMode: selected }),
       });
       await update(); // refresh JWT so session.user.userMode is populated
+      window.dispatchEvent(new CustomEvent('gc:user-mode', { detail: { mode: selected } }));
       onComplete(selected);
     } catch {
       setSaving(false);

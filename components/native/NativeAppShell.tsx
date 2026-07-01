@@ -101,6 +101,15 @@ export default function NativeAppShell() {
     }
     prevIsGigDriver.current = isGigDriver;
   }, [isGigDriver]);
+
+  // When mode changes to rental, remount the calculator so TargetFillForm picks up userMode
+  const prevUserMode = useRef(userMode);
+  useEffect(() => {
+    if (userMode === 'rental' && prevUserMode.current !== 'rental') {
+      setCalcMountKey(k => k + 1);
+    }
+    prevUserMode.current = userMode;
+  }, [userMode]);
   const [historyKey,  setHistoryKey]  = useState(0);
   const [calcMountKey, setCalcMountKey] = useState(0);
 
