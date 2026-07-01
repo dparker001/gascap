@@ -65,6 +65,20 @@ function FillupForm({ onSaved }: { onSaved: () => void }) {
   const [platform, setPlatform] = useState('');
   const [saving,   setSaving]   = useState(false);
   const [saved,    setSaved]    = useState(false);
+  const [prefilled, setPrefilled] = useState(false);
+
+  useEffect(() => {
+    function onPrefill(e: Event) {
+      const { gallons: g, ppg: p, station: s } = (e as CustomEvent<{ gallons: number; ppg: number; station: string }>).detail;
+      setGallons(g > 0 ? g.toFixed(3) : '');
+      setPpg(p > 0 ? p.toFixed(3) : '');
+      setStation(s ?? '');
+      setPrefilled(true);
+      setTimeout(() => setPrefilled(false), 4000);
+    }
+    window.addEventListener('gc:gig-prefill', onPrefill);
+    return () => window.removeEventListener('gc:gig-prefill', onPrefill);
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -101,6 +115,11 @@ function FillupForm({ onSaved }: { onSaved: () => void }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
+      {prefilled && (
+        <p className="text-[10px] text-teal-700 bg-teal-50 border border-teal-200 rounded-xl px-3 py-2 text-center">
+          ⛽ Pre-filled from your last calculation — review and save.
+        </p>
+      )}
       <div>
         <label className="field-label">Date</label>
         <div className="overflow-hidden rounded-xl">

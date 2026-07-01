@@ -315,12 +315,22 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
     }
 
     setTip('');
-    setResult(calcTargetFill(input));
+    const calcResult = calcTargetFill(input);
+    setResult(calcResult);
     setCalculated(true);
     setShowLiveNudge(false);
     setCalcKey((k) => k + 1);
     trackCalculateTarget();
-    if (typeof window !== 'undefined') window.dispatchEvent(new Event('gascap:calculated'));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('gascap:calculated'));
+      window.dispatchEvent(new CustomEvent('gc:gig-prefill', {
+        detail: {
+          gallons: calcResult.gallonsNeeded,
+          ppg:     Number(form.pricePerGallon),
+          station: nearbyAttrib?.name ?? '',
+        },
+      }));
+    }
     fetch('/api/activity', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
