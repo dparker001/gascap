@@ -682,11 +682,18 @@ export default function SettingsPage() {
         {/* Header */}
         <div className="bg-navy-700 px-5 pt-4 pb-3">
           <div className="max-w-lg mx-auto flex items-center gap-4">
-            <Link href="/" className="text-white/60 hover:text-white transition-colors">
+            <button
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent('gc:switch-tab', { detail: { tab: 'calculator' } }));
+                window.dispatchEvent(new CustomEvent('gascap:switch-tools-tab', { detail: { tab: 'calculator' } }));
+              }}
+              className="text-white/60 hover:text-white transition-colors active:opacity-70"
+              aria-label="Back"
+            >
               <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                 <path d="M19 12H5M12 5l-7 7 7 7" />
               </svg>
-            </Link>
+            </button>
             <h1 className="text-white font-black text-xl">{t.settings.title}</h1>
           </div>
         </div>
