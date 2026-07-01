@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
   const VALID_PLATFORMS = ['uber','lyft','doordash','instacart','spark','amazon_flex','shipt','courier','other'];
   const platform = VALID_PLATFORMS.includes(body.platform ?? '') ? body.platform : null;
 
-  const GIG_LOG_ENTRIES = 3;
+  const GIG_LOG_ENTRIES = 5;
 
   const [record] = await prisma.$transaction([
     prisma.gigFillup.create({

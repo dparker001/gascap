@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
   const platform = VALID_PLATFORMS.includes(body.platform ?? '') ? body.platform : null;
   const category = VALID_CATEGORIES.includes(body.category ?? '') ? body.category! : 'business';
 
-  const GIG_LOG_ENTRIES = 3;
+  const GIG_LOG_ENTRIES = 5;
 
   const [record] = await prisma.$transaction([
     prisma.gigMileage.create({
