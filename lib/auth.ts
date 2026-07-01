@@ -112,7 +112,7 @@ export const authOptions: NextAuthOptions = {
           await recordLogin(user.id);
         }
 
-        return { id: user.id, email, name: user.name, plan: user.plan, isProTrial: user.isProTrial ?? false, trialExpiresAt: user.trialExpiresAt ?? null, emailVerified: true };
+        return { id: user.id, email, name: user.name, plan: user.plan, isProTrial: user.isProTrial ?? false, trialExpiresAt: user.trialExpiresAt ?? null, emailVerified: true, userMode: user.userMode ?? null };
         } catch (err) {
           console.error('[otp/verify] authorize threw:', err);
           return null;
@@ -147,7 +147,7 @@ export const authOptions: NextAuthOptions = {
         const valid = await verifyPassword(credentials.password, user.passwordHash);
         if (!valid) return null;
         await recordLogin(user.id);
-        return { id: user.id, email: user.email, name: user.name, plan: user.plan, emailVerified: user.emailVerified ?? false };
+        return { id: user.id, email: user.email, name: user.name, plan: user.plan, emailVerified: user.emailVerified ?? false, userMode: user.userMode ?? null };
       },
     }),
   ],
@@ -237,6 +237,7 @@ export const authOptions: NextAuthOptions = {
         token.trialExpiresAt  = (user as { trialExpiresAt?: string }).trialExpiresAt ?? null;
         token.createdAt       = (user as { createdAt?: string }).createdAt ?? null;
         token.stripeInterval  = (user as { stripeInterval?: string }).stripeInterval ?? null;
+        token.userMode        = (user as { userMode?: string | null }).userMode ?? null;
       }
       // Re-fetch plan on session refresh so upgrades are reflected immediately
       if (trigger === 'update' || (!user && token.id)) {
