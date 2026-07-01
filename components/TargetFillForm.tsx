@@ -110,7 +110,11 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
   // Auto-activate rental mode for users whose driver mode is 'rental',
   // or when arriving from the /rental landing page via ?rental=1
   const sessionUserMode = (session?.user as { userMode?: string | null })?.userMode;
-  const [localUserMode, setLocalUserMode] = useState<string | null | undefined>(undefined);
+  // Seed from sessionStorage on mount so rental mode fires even before JWT refreshes
+  const [localUserMode, setLocalUserMode] = useState<string | null | undefined>(() => {
+    if (typeof window === 'undefined') return undefined;
+    return sessionStorage.getItem('gc_user_mode') ?? undefined;
+  });
   useEffect(() => {
     function onModeChange(e: Event) {
       setLocalUserMode((e as CustomEvent<{ mode: string | null }>).detail?.mode ?? null);

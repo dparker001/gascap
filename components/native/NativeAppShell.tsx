@@ -64,6 +64,14 @@ export default function NativeAppShell() {
     function onModeChange(e: Event) {
       const mode = (e as CustomEvent<{ mode: string | null }>).detail?.mode ?? null;
       setLocalUserMode(mode);
+      // Persist so TargetFillForm can read it on (re)mount before JWT refreshes
+      if (mode) sessionStorage.setItem('gc_user_mode', mode);
+      else sessionStorage.removeItem('gc_user_mode');
+      // Jump to calculator when rental is selected so the toggle is immediately visible
+      if (mode === 'rental') {
+        setActive('calculator');
+        setVisited((prev) => { const s = new Set(prev); s.add('calculator'); return s; });
+      }
     }
     window.addEventListener('gc:user-mode', onModeChange);
     return () => window.removeEventListener('gc:user-mode', onModeChange);
