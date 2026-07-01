@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
   ]);
 
   if (fillups.length === 0 && mileage.length === 0) {
-    return NextResponse.json({ empty: true }, { status: 204 });
+    return NextResponse.json({ empty: true }, { status: 404 });
   }
 
   const totalSpend   = fillups.reduce((s, f) => s + f.totalCost, 0);

@@ -376,7 +376,7 @@ export default function GigDriverTab() {
     setExporting(true);
     try {
       const res = await fetch(`/api/gig/export?year=${exportYear}`);
-      if (res.status === 204) {
+      if (res.status === 404) {
         showExportMsg(`No logs found for ${exportYear}. Start logging fill-ups or mileage to generate a report.`);
         return;
       }
