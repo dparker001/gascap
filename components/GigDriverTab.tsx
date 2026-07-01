@@ -68,6 +68,19 @@ function FillupForm({ onSaved }: { onSaved: () => void }) {
   const [prefilled, setPrefilled] = useState(false);
 
   useEffect(() => {
+    // Apply prefill from sessionStorage on mount (event may have fired before this component mounted)
+    const stored = sessionStorage.getItem('gc_gig_prefill');
+    if (stored) {
+      try {
+        const { gallons: g, ppg: p, station: s } = JSON.parse(stored) as { gallons: number; ppg: number; station: string };
+        setGallons(g > 0 ? g.toFixed(3) : '');
+        setPpg(p > 0 ? p.toFixed(3) : '');
+        setStation(s ?? '');
+        setPrefilled(true);
+        setTimeout(() => setPrefilled(false), 4000);
+      } catch { /* ignore */ }
+    }
+
     function onPrefill(e: Event) {
       const { gallons: g, ppg: p, station: s } = (e as CustomEvent<{ gallons: number; ppg: number; station: string }>).detail;
       setGallons(g > 0 ? g.toFixed(3) : '');
@@ -98,6 +111,7 @@ function FillupForm({ onSaved }: { onSaved: () => void }) {
       });
       if (res.ok) {
         const data = await res.json() as { entriesAwarded?: number };
+        sessionStorage.removeItem('gc_gig_prefill');
         setSaved(true);
         setGallons(''); setPpg(''); setStation(''); setPlatform('');
         onSaved();

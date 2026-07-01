@@ -333,13 +333,13 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
     trackCalculateTarget();
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new Event('gascap:calculated'));
-      window.dispatchEvent(new CustomEvent('gc:gig-prefill', {
-        detail: {
-          gallons: calcResult.gallonsNeeded,
-          ppg:     Number(form.pricePerGallon),
-          station: nearbyAttrib?.name ?? '',
-        },
-      }));
+      const prefillData = {
+        gallons: calcResult.gallonsNeeded,
+        ppg:     Number(form.pricePerGallon),
+        station: nearbyAttrib?.name ?? '',
+      };
+      sessionStorage.setItem('gc_gig_prefill', JSON.stringify(prefillData));
+      window.dispatchEvent(new CustomEvent('gc:gig-prefill', { detail: prefillData }));
     }
     fetch('/api/activity', {
       method:  'POST',
