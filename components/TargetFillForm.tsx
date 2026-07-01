@@ -130,6 +130,8 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
     if ((userMode === 'rental' || fromRentalPage) && !rentalMode) {
       setRentalMode(true);
       setForm(prev => ({ ...prev, targetPreset: 100, customTarget: '' }));
+    } else if (userMode !== 'rental' && userMode != null && !fromRentalPage && rentalMode) {
+      setRentalMode(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userMode]);
