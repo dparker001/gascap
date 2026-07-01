@@ -279,10 +279,10 @@ function BonusToast({ show, bonusEntries, totalDays }: BonusToastProps) {
   const { t } = useTranslation();
   return (
     <div
-      className={`absolute inset-x-3 top-3 z-30 transition-all duration-500 ${
+      className={`fixed inset-x-4 bottom-24 z-50 transition-all duration-500 ${
         show
           ? 'opacity-100 translate-y-0 scale-100'
-          : 'opacity-0 -translate-y-3 scale-95 pointer-events-none'
+          : 'opacity-0 translate-y-3 scale-95 pointer-events-none'
       }`}
     >
       <div className="bg-amber-500 rounded-2xl shadow-xl overflow-hidden">
