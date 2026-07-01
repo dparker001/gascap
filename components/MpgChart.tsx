@@ -50,6 +50,7 @@ export default function MpgChart() {
   const [loading,  setLoading]  = useState(false);
   const [open,     setOpen]     = useState(false);
   const [activeIdx, setActiveIdx] = useState<number | null>(null);
+  const [selectedYear, setSelectedYear] = useState<string>(() => new Date().getFullYear().toString());
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -75,11 +76,19 @@ export default function MpgChart() {
 
   if (status === 'loading' || !session) return null;
 
-  // ── Build data points ──────────────────────────────────────────────────────
+  // ── Available years from all fillups ──────────────────────────────────────
+  const availableYears = data
+    ? [...new Set((data.fillups ?? []).map((f) => f.date.slice(0, 4)))].sort((a, b) => b.localeCompare(a))
+    : [];
+
+  // ── Build data points (filtered by selectedYear) ───────────────────────────
   const points: DataPoint[] = [];
   if (data) {
-    // mpgMap is keyed by fillup id; fillups are newest-first — reverse for chart order
-    const sorted = [...(data.fillups ?? [])].reverse();
+    const allFillups = data.fillups ?? [];
+    const filtered = selectedYear === 'all'
+      ? allFillups
+      : allFillups.filter((f) => f.date.startsWith(selectedYear));
+    const sorted = [...filtered].reverse();
     for (const f of sorted) {
       const mpg = data.mpgMap[f.id];
       if (mpg != null) {
@@ -96,7 +105,9 @@ export default function MpgChart() {
 
   const hasMpg      = points.length >= 1;   // enough to render chart
   const hasChartLine = points.length >= 2;  // enough to draw line + area
-  const avgMpg      = data?.stats.avgMpg;
+  const avgMpg      = points.length > 0
+    ? Math.round((points.reduce((s, p) => s + p.mpg, 0) / points.length) * 10) / 10
+    : null;
   const latestMpg = points.length > 0 ? points[points.length - 1].mpg : null;
 
   // ── Chart coordinate helpers ───────────────────────────────────────────────
@@ -200,6 +211,34 @@ export default function MpgChart() {
               </div>
             );
           })()}
+
+          {!loading && availableYears.length > 1 && (
+            <div className="flex gap-1.5 flex-wrap mb-3">
+              {availableYears.map((yr) => (
+                <button
+                  key={yr}
+                  onClick={() => setSelectedYear(yr)}
+                  className={`px-3 py-1 rounded-full text-xs font-bold border transition-colors ${
+                    selectedYear === yr
+                      ? 'bg-navy-700 text-white border-navy-700'
+                      : 'bg-slate-50 text-slate-500 border-slate-200 hover:border-navy-400'
+                  }`}
+                >
+                  {yr}
+                </button>
+              ))}
+              <button
+                onClick={() => setSelectedYear('all')}
+                className={`px-3 py-1 rounded-full text-xs font-bold border transition-colors ${
+                  selectedYear === 'all'
+                    ? 'bg-navy-700 text-white border-navy-700'
+                    : 'bg-slate-50 text-slate-500 border-slate-200 hover:border-navy-400'
+                }`}
+              >
+                All
+              </button>
+            </div>
+          )}
 
           {!loading && hasMpg && (
             <>
