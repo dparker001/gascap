@@ -43,14 +43,15 @@ function buildSmoothPath(pts: { x: number; y: number }[]): string {
   return d;
 }
 
-export default function MpgChart() {
+export default function MpgChart({ selectedYear: selectedYearProp }: { selectedYear?: string }) {
   const { t } = useTranslation();
   const { data: session, status } = useSession();
   const [data,     setData]     = useState<HistoryResponse | null>(null);
   const [loading,  setLoading]  = useState(false);
   const [open,     setOpen]     = useState(false);
   const [activeIdx, setActiveIdx] = useState<number | null>(null);
-  const [selectedYear, setSelectedYear] = useState<string>(() => new Date().getFullYear().toString());
+  const [selectedYearLocal, setSelectedYearLocal] = useState<string>(() => new Date().getFullYear().toString());
+  const selectedYear = selectedYearProp ?? selectedYearLocal;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -212,12 +213,12 @@ export default function MpgChart() {
             );
           })()}
 
-          {!loading && availableYears.length > 1 && (
+          {!loading && availableYears.length > 1 && !selectedYearProp && (
             <div className="flex gap-1.5 flex-wrap mb-3">
               {availableYears.map((yr) => (
                 <button
                   key={yr}
-                  onClick={() => setSelectedYear(yr)}
+                  onClick={() => setSelectedYearLocal(yr)}
                   className={`px-3 py-1 rounded-full text-xs font-bold border transition-colors ${
                     selectedYear === yr
                       ? 'bg-navy-700 text-white border-navy-700'
@@ -228,7 +229,7 @@ export default function MpgChart() {
                 </button>
               ))}
               <button
-                onClick={() => setSelectedYear('all')}
+                onClick={() => setSelectedYearLocal('all')}
                 className={`px-3 py-1 rounded-full text-xs font-bold border transition-colors ${
                   selectedYear === 'all'
                     ? 'bg-navy-700 text-white border-navy-700'

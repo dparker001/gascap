@@ -52,15 +52,21 @@ export default function ToolsPanel() {
 
   // Fill-up count — shown as a badge on the Log tab
   const [fillupCount, setFillupCount] = useState<number | null>(null);
+  const [chartsYear, setChartsYear] = useState<string>(() => new Date().getFullYear().toString());
+  const [chartsAvailableYears, setChartsAvailableYears] = useState<string[]>([]);
   useEffect(() => {
     if (!session) { setFillupCount(null); return; }
     let cancelled = false;
     const fetchCount = () => {
       fetch('/api/fillups')
         .then((r) => r.ok ? r.json() : null)
-        .then((d: { stats?: { count?: number }; fillups?: unknown[] } | null) => {
+        .then((d: { stats?: { count?: number }; fillups?: { date: string }[] } | null) => {
           if (!cancelled && d) {
             setFillupCount(d.stats?.count ?? d.fillups?.length ?? 0);
+            if (d.fillups?.length) {
+              const years = [...new Set(d.fillups.map((f) => f.date.slice(0, 4)))].sort((a, b) => b.localeCompare(a));
+              setChartsAvailableYears(years);
+            }
           }
         })
         .catch(() => {});
@@ -268,13 +274,40 @@ export default function ToolsPanel() {
                 withDivider={false}
               />
             </div>
+            {chartsAvailableYears.length > 1 && (
+              <div className="flex gap-1.5 flex-wrap px-1">
+                {chartsAvailableYears.map((yr) => (
+                  <button
+                    key={yr}
+                    onClick={() => setChartsYear(yr)}
+                    className={`px-3 py-1 rounded-full text-xs font-bold border transition-colors ${
+                      chartsYear === yr
+                        ? 'bg-[#1E2D4A] text-white border-[#1E2D4A]'
+                        : 'bg-slate-50 text-slate-500 border-slate-200 hover:border-[#1E2D4A]'
+                    }`}
+                  >
+                    {yr}
+                  </button>
+                ))}
+                <button
+                  onClick={() => setChartsYear('all')}
+                  className={`px-3 py-1 rounded-full text-xs font-bold border transition-colors ${
+                    chartsYear === 'all'
+                      ? 'bg-[#1E2D4A] text-white border-[#1E2D4A]'
+                      : 'bg-slate-50 text-slate-500 border-slate-200 hover:border-[#1E2D4A]'
+                  }`}
+                >
+                  All
+                </button>
+              </div>
+            )}
             <MpgInsightCard />
             <SmartFillUpOptimizer />
             <MonthlyReportCard />
-            <MpgChart />
-            <FuelPriceHistory />
+            <MpgChart selectedYear={chartsYear} />
+            <FuelPriceHistory selectedYear={chartsYear} />
             <NationalGasPriceChart />
-            <VehicleSpendingBreakdown />
+            <VehicleSpendingBreakdown selectedYear={chartsYear} />
             <VehicleComparison />
           </div>
         )}

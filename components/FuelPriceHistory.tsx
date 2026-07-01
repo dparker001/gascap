@@ -42,7 +42,7 @@ function buildSmoothPath(pts: { x: number; y: number }[]): string {
   return d;
 }
 
-export default function FuelPriceHistory() {
+export default function FuelPriceHistory({ selectedYear }: { selectedYear?: string }) {
   const { t } = useTranslation();
   const { data: session, status } = useSession();
   const [data,      setData]      = useState<HistoryResponse | null>(null);
@@ -76,7 +76,10 @@ export default function FuelPriceHistory() {
   // ── Build data points (oldest → newest) ───────────────────────────────────
   const points: PricePoint[] = [];
   if (data?.fillups?.length) {
-    const sorted = [...data.fillups].sort((a, b) => a.date.localeCompare(b.date));
+    const allFillups = selectedYear && selectedYear !== 'all'
+      ? data.fillups.filter((f) => f.date.startsWith(selectedYear))
+      : data.fillups;
+    const sorted = [...allFillups].sort((a, b) => a.date.localeCompare(b.date));
     for (const f of sorted) {
       const d = new Date(f.date + 'T12:00:00');
       points.push({
