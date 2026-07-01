@@ -52,22 +52,30 @@ export async function POST(req: NextRequest) {
   const platform = VALID_PLATFORMS.includes(body.platform ?? '') ? body.platform : null;
   const category = VALID_CATEGORIES.includes(body.category ?? '') ? body.category! : 'business';
 
-  const record = await prisma.gigMileage.create({
-    data: {
-      id:            crypto.randomUUID(),
-      userId:        uid,
-      date:          body.date,
-      miles:         body.miles,
-      startOdometer: body.startOdometer ?? null,
-      endOdometer:   body.endOdometer   ?? null,
-      platform:      platform ?? null,
-      category,
-      notes:         body.notes?.trim() || null,
-      createdAt:     new Date().toISOString(),
-    },
-  });
+  const GIG_LOG_ENTRIES = 3;
 
-  return NextResponse.json({ entry: record }, { status: 201 });
+  const [record] = await prisma.$transaction([
+    prisma.gigMileage.create({
+      data: {
+        id:            crypto.randomUUID(),
+        userId:        uid,
+        date:          body.date,
+        miles:         body.miles,
+        startOdometer: body.startOdometer ?? null,
+        endOdometer:   body.endOdometer   ?? null,
+        platform:      platform ?? null,
+        category,
+        notes:         body.notes?.trim() || null,
+        createdAt:     new Date().toISOString(),
+      },
+    }),
+    prisma.user.update({
+      where: { id: uid },
+      data:  { gigLogEntries: { increment: GIG_LOG_ENTRIES } },
+    }),
+  ]);
+
+  return NextResponse.json({ entry: record, entriesAwarded: GIG_LOG_ENTRIES }, { status: 201 });
 }
 
 export async function DELETE(req: NextRequest) {

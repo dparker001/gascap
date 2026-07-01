@@ -105,6 +105,7 @@ model User {
   otpCodeExpires           String?
   otpCodeName              String?
   priceReportEntries       Int       @default(0)
+  gigLogEntries            Int       @default(0)
   signupPlatform           String?   // 'web' | 'ios' | 'android'
   userMode                 String?   // 'personal' | 'gig' | 'rental' | 'fleet'
   vehicles                 Vehicle[]

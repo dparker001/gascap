@@ -82,9 +82,13 @@ function FillupForm({ onSaved }: { onSaved: () => void }) {
         }),
       });
       if (res.ok) {
+        const data = await res.json() as { entriesAwarded?: number };
         setSaved(true);
         setGallons(''); setPpg(''); setStation(''); setPlatform('');
         onSaved();
+        if (data.entriesAwarded) {
+          window.dispatchEvent(new CustomEvent('gascap:entries-earned', { detail: { entriesWon: data.entriesAwarded } }));
+        }
         setTimeout(() => setSaved(false), 2500);
       }
     } finally {
@@ -182,9 +186,13 @@ function MileageForm({ onSaved }: { onSaved: () => void }) {
         }),
       });
       if (res.ok) {
+        const data = await res.json() as { entriesAwarded?: number };
         setSaved(true);
         setMiles(''); setStartOdo(''); setEndOdo(''); setPlatform('');
         onSaved();
+        if (data.entriesAwarded) {
+          window.dispatchEvent(new CustomEvent('gascap:entries-earned', { detail: { entriesWon: data.entriesAwarded } }));
+        }
         setTimeout(() => setSaved(false), 2500);
       }
     } finally {

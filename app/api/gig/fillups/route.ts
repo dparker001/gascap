@@ -50,23 +50,31 @@ export async function POST(req: NextRequest) {
   const VALID_PLATFORMS = ['uber','lyft','doordash','instacart','spark','amazon_flex','shipt','courier','other'];
   const platform = VALID_PLATFORMS.includes(body.platform ?? '') ? body.platform : null;
 
-  const record = await prisma.gigFillup.create({
-    data: {
-      id:             crypto.randomUUID(),
-      userId:         uid,
-      date:           body.date,
-      gallons:        body.gallons,
-      pricePerGallon: body.pricePerGallon,
-      totalCost:      Math.round(body.gallons * body.pricePerGallon * 100) / 100,
-      station:        body.station?.trim() || null,
-      odometer:       body.odometer ?? null,
-      platform:       platform ?? null,
-      notes:          body.notes?.trim() || null,
-      createdAt:      new Date().toISOString(),
-    },
-  });
+  const GIG_LOG_ENTRIES = 3;
 
-  return NextResponse.json({ fillup: record }, { status: 201 });
+  const [record] = await prisma.$transaction([
+    prisma.gigFillup.create({
+      data: {
+        id:             crypto.randomUUID(),
+        userId:         uid,
+        date:           body.date,
+        gallons:        body.gallons,
+        pricePerGallon: body.pricePerGallon,
+        totalCost:      Math.round(body.gallons * body.pricePerGallon * 100) / 100,
+        station:        body.station?.trim() || null,
+        odometer:       body.odometer ?? null,
+        platform:       platform ?? null,
+        notes:          body.notes?.trim() || null,
+        createdAt:      new Date().toISOString(),
+      },
+    }),
+    prisma.user.update({
+      where: { id: uid },
+      data:  { gigLogEntries: { increment: GIG_LOG_ENTRIES } },
+    }),
+  ]);
+
+  return NextResponse.json({ fillup: record, entriesAwarded: GIG_LOG_ENTRIES }, { status: 201 });
 }
 
 export async function DELETE(req: NextRequest) {

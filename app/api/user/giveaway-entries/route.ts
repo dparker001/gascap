@@ -48,6 +48,7 @@ export async function GET() {
       firstCalcBonusEntries: true,
       emailVerified: true,
       priceReportEntries: true,
+      gigLogEntries: true,
     },
   });
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
@@ -65,6 +66,7 @@ export async function GET() {
   const dailyBonusEntries      = user.dailyBonusEntries          ?? 0;
   const firstCalcBonusEntries  = user.firstCalcBonusEntries      ?? 0;
   const priceReportEntries     = user.priceReportEntries         ?? 0;
+  const gigLogEntries          = user.gigLogEntries              ?? 0;
   const garageDaysThisMonth = activeDaysInPeriod(user.garageBonusDays ?? [], period);
   const garageBonusEntries  = garageDaysThisMonth * 10;
   const perksActive = user.stripeInterval === 'lifetime'
@@ -79,7 +81,8 @@ export async function GET() {
   const entryCount     = baseEntries + streakBonus + bonusEntries + garageBonusEntries
                          + verifyBonusEntries + phoneBonusEntries + dailyBonusEntries
                          + firstCalcBonusEntries + lifetimeBonusEntries + referralBonusEntries
-                         + priceReportEntries;
+                         + priceReportEntries
+                         + gigLogEntries;
   const eligible       = user.plan === 'pro' || user.plan === 'fleet';
   const emailVerified  = user.emailVerified ?? false;
 
@@ -109,6 +112,7 @@ export async function GET() {
     lifetimeBonusEntries,
     referralBonusEntries,
     priceReportEntries,
+    gigLogEntries,
     lifetimePerksActive: perksActive,
     lifetimePerksUntil:  user.lifetimePerksUntil?.toISOString() ?? null,
   });
