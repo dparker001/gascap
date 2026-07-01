@@ -109,7 +109,17 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
 
   // Auto-activate rental mode for users whose driver mode is 'rental',
   // or when arriving from the /rental landing page via ?rental=1
-  const userMode = (session?.user as { userMode?: string | null })?.userMode;
+  const sessionUserMode = (session?.user as { userMode?: string | null })?.userMode;
+  const [localUserMode, setLocalUserMode] = useState<string | null | undefined>(undefined);
+  useEffect(() => {
+    function onModeChange(e: Event) {
+      setLocalUserMode((e as CustomEvent<{ mode: string | null }>).detail?.mode ?? null);
+    }
+    window.addEventListener('gc:user-mode', onModeChange);
+    return () => window.removeEventListener('gc:user-mode', onModeChange);
+  }, []);
+  const userMode = localUserMode !== undefined ? localUserMode : sessionUserMode;
+  const isGigMode = userMode === 'gig';
   useEffect(() => {
     const fromRentalPage = typeof window !== 'undefined' &&
       new URLSearchParams(window.location.search).get('rental') === '1';
@@ -823,6 +833,23 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
             stationName={nearbyAttrib?.name}
             fuelGrade={nearbyAttrib?.grade}
           />
+        )}
+        {result && isGigMode && (
+          <button
+            type="button"
+            onClick={() => {
+              window.dispatchEvent(new CustomEvent('gc:switch-tab', { detail: { tab: 'driver' } }));
+              window.dispatchEvent(new CustomEvent('gascap:switch-tools-tab', { detail: { tab: 'driver' } }));
+            }}
+            className="mt-3 w-full flex items-center gap-3 bg-[#1E2D4A] rounded-2xl px-4 py-3 text-left active:opacity-80 transition-opacity"
+          >
+            <span className="text-xl flex-shrink-0">📦</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-black text-white leading-tight">You&rsquo;re in Gig Driver mode</p>
+              <p className="text-[10px] text-white/60 mt-0.5 leading-snug">This fill-up is pre-filled in your Driver tab — tap to log it for taxes.</p>
+            </div>
+            <svg className="w-4 h-4 text-white/40 flex-shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M6 4l4 4-4 4"/></svg>
+          </button>
         )}
       </div>
 
