@@ -366,7 +366,6 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
   const [editVinScanning, setEditVinScanning] = useState(false);
   const [editVinScanErr,  setEditVinScanErr]  = useState('');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
-  const editVinFileRef = useRef<HTMLInputElement>(null);
 
   // Fleet search + pagination
   const [searchQuery,     setSearchQuery]     = useState('');
@@ -724,37 +723,34 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
 
                       {/* VIN */}
                       <div className="space-y-1">
-                        {/* Hidden file input — opens camera/gallery */}
-                        <input
-                          type="file"
-                          accept="image/*"
-                          capture="environment"
-                          ref={editVinFileRef}
-                          className="hidden"
-                          onChange={(e) => {
-                            const f = e.target.files?.[0];
-                            if (f) handleEditVinScan(f);
-                            e.target.value = '';
-                          }}
-                        />
-
                         {/* Label row with scan button */}
                         <div className="flex items-center justify-between">
                           <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">
                             VIN <span className="font-normal normal-case">{t.savedVehicles.vinOptional}</span>
                           </label>
-                          <button
-                            type="button"
-                            onClick={() => editVinFileRef.current?.click()}
-                            disabled={editVinScanning}
-                            className="flex items-center gap-1 text-[11px] font-bold text-amber-700 bg-amber-50
-                                       border border-amber-200 rounded-lg px-2 py-0.5 hover:bg-amber-100
-                                       disabled:opacity-50 transition-colors"
+                          {/* Label wraps file input directly — avoids programmatic .click() which crashes WKWebView */}
+                          <label
+                            className={[
+                              'flex items-center gap-1 text-[11px] font-bold text-amber-700 bg-amber-50',
+                              'border border-amber-200 rounded-lg px-2 py-0.5 hover:bg-amber-100 transition-colors',
+                              editVinScanning ? 'opacity-50 pointer-events-none' : 'cursor-pointer',
+                            ].join(' ')}
                             title={t.savedVehicles.scanVinTitle}
                           >
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              disabled={editVinScanning}
+                              onChange={(e) => {
+                                const f = e.target.files?.[0];
+                                if (f) handleEditVinScan(f);
+                                e.target.value = '';
+                              }}
+                            />
                             <span>{editVinScanning ? '🔄' : '📷'}</span>
                             <span>{editVinScanning ? t.savedVehicles.scanning : t.savedVehicles.scanVin}</span>
-                          </button>
+                          </label>
                         </div>
 
                         {editVinScanErr && (
