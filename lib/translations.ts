@@ -733,6 +733,12 @@ const en = {
     rentalModeExit:         'Exit',
     garageClosedTitle:      'Garage door closed',
     garageClosedHint:       "— your saved vehicles aren't used for rental calculations. Pick a rental class from the dropdown above.",
+    rentalPickupLevelLabel: 'Pickup fuel level',
+    rentalPickupLevelHint:  "Match this to the level shown when you picked up the car — that's your return target.",
+    rentalReturnDateLabel:  'Return date',
+    rentalReturnDateHint:   'Get a reminder to refuel before drop-off.',
+    rentalReturnAlertToday: 'Returning today — fill to your pickup level before drop-off to avoid extra charges.',
+    rentalReturnAlertTomorrow: "Returning tomorrow — don't forget to refuel before drop-off.",
     step1:                  'Your Vehicle & Tank Size',
     firstCalcEyebrow:       'New here?',
     firstCalcHeadline:      'See exactly what your next fill-up will cost',
@@ -1449,7 +1455,7 @@ const en = {
 
   // ── Giveaway nudge (home strip) ────────────────────────────────────────────
   giveawayNudge: {
-    monthlyGiveaway:  'Weekly $25 Giveaway',
+    weeklyGiveaway:  'Weekly $25 Giveaway',
     earnedUpgrade:    (count: number) => `You've earned ${count} ${count === 1 ? 'entry' : 'entries'} — upgrade to Pro to enter`,
     upgradeEarn:      'Upgrade to Pro and earn entries with every calculation',
     monthlyDrawing:   (date: string) => `Weekly $25 Drawing · ${date}`,
@@ -1595,7 +1601,7 @@ const en = {
     gascaptainsLockedSub:'Exclusive community for paid Pro & Fleet members',
     gascaptainsBadge:   '⭐ Pro & Fleet',
     // Giveaway card
-    monthlyGasCard:     'Weekly Gas Card',
+    weeklyGasCard:     'Weekly Gas Card',
     giveawayBadge:      'GIVEAWAY',
     entrySingular:      'entry',
     entryPlural:        'entries',
@@ -3450,6 +3456,12 @@ const es: typeof en = {
     rentalModeExit:         'Salir',
     garageClosedTitle:      'Garaje cerrado',
     garageClosedHint:       '— tus vehículos guardados no se usan en cálculos de autos rentados. Elige una categoría de la lista arriba.',
+    rentalPickupLevelLabel: 'Nivel de combustible al recoger',
+    rentalPickupLevelHint:  'Ajusta esto al nivel que mostraba el auto cuando lo recogiste — ese es tu objetivo al devolver.',
+    rentalReturnDateLabel:  'Fecha de devolución',
+    rentalReturnDateHint:   'Recibe un recordatorio para repostar antes de la entrega.',
+    rentalReturnAlertToday: 'Devuelves hoy — llena al nivel de recogida antes de entregar para evitar cargos extra.',
+    rentalReturnAlertTomorrow: 'Devuelves mañana — no olvides repostar antes de la entrega.',
     step1:                  'Tu vehículo y tanque',
     firstCalcEyebrow:       '¿Nuevo aquí?',
     firstCalcHeadline:      'Mira cuánto costará tu próxima carga',
@@ -4151,7 +4163,7 @@ const es: typeof en = {
 
   // ── Giveaway nudge (home strip) ────────────────────────────────────────────
   giveawayNudge: {
-    monthlyGiveaway:  'Sorteo semanal de $25',
+    weeklyGiveaway:  'Sorteo semanal de $25',
     earnedUpgrade:    (count: number) => `Has ganado ${count} ${count === 1 ? 'entrada' : 'entradas'} — mejora a Pro para participar`,
     upgradeEarn:      'Mejora a Pro y gana entradas con cada cálculo',
     monthlyDrawing:   (date: string) => `Sorteo semanal de $25 · ${date}`,
@@ -4297,7 +4309,7 @@ const es: typeof en = {
     gascaptainsLockedSub:'Comunidad exclusiva para miembros de pago Pro y Flota',
     gascaptainsBadge:   '⭐ Pro y Flota',
     // Giveaway card
-    monthlyGasCard:     'Tarjeta de gasolina semanal',
+    weeklyGasCard:     'Tarjeta de gasolina semanal',
     giveawayBadge:      'SORTEO',
     entrySingular:      'entrada',
     entryPlural:        'entradas',

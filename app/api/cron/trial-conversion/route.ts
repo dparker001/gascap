@@ -2,11 +2,11 @@
  * GET /api/cron/trial-conversion?secret=X&step=1|2|3
  *
  * Sends one of three conversion emails to all active Pro trial users.
- * Fired by GitHub Actions on specific dates in the trial expiration window:
+ * Fired manually (or by GitHub Actions) on specific dates in the trial expiration window:
  *
- *   step=1  May 19 — soft value reminder ("what you're getting")
- *   step=2  May 23 — savings math + price anchor
- *   step=3  May 25 — hard deadline urgency
+ *   step=1  — soft value reminder ("what you're getting")
+ *   step=2  — savings math + price anchor
+ *   step=3  — hard deadline urgency
  *
  * Idempotent: skips users who already received the email for this step.
  * Skips users with emailOptOut = true.

@@ -10,6 +10,7 @@ on:
     - cron: '0 16 * * *'   # comp-campaign         (16:00 UTC)
     - cron: '0 18 * * *'   # fillup-reminder       (18:00 UTC)
     - cron: '0 20 * * *'   # price-alerts          (20:00 UTC)
+    - cron: '0 23 * * *'   # streak-reminder       (23:00 UTC / 7 PM ET)
   workflow_dispatch:
     inputs:
       endpoint:
@@ -25,6 +26,7 @@ on:
           - comp-campaign
           - fillup-reminder
           - price-alerts
+          - streak-reminder
 
 jobs:
   cron:
@@ -42,6 +44,7 @@ jobs:
             "0 16 * * *")  echo "endpoint=comp-campaign"       >> "$GITHUB_OUTPUT" ;;
             "0 18 * * *")  echo "endpoint=fillup-reminder"     >> "$GITHUB_OUTPUT" ;;
             "0 20 * * *")  echo "endpoint=price-alerts"        >> "$GITHUB_OUTPUT" ;;
+            "0 23 * * *")  echo "endpoint=streak-reminder"     >> "$GITHUB_OUTPUT" ;;
             *)             echo "endpoint=${{ inputs.endpoint }}" >> "$GITHUB_OUTPUT" ;;
           esac
 

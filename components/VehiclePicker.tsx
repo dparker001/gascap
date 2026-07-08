@@ -630,7 +630,7 @@ function VinTab({ onSave, onCancel, saving, saveError }: Omit<VehiclePickerProps
 
       {/* Hidden file input for VIN photo */}
       <input
-        type="file" accept="image/*" capture="environment"
+        type="file" accept="image/*"
         ref={fileInputRef} className="hidden"
         onChange={(e) => {
           const f = e.target.files?.[0];

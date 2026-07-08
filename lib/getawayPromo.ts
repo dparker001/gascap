@@ -25,8 +25,8 @@
  * time-boxed for urgency, not quantity-capped.
  */
 
-// ── Flip this to true to launch the promo ────────────────────────────────────
-const GETAWAY_ACTIVE = true;
+// ── Set GETAWAY_ACTIVE=false in Railway env to kill the promo without a redeploy ─
+const GETAWAY_ACTIVE = process.env.GETAWAY_ACTIVE !== 'false';
 
 // Optional hard deadline (ISO date) for urgency — null = no deadline / standing.
 // Standing offer (no expiry) per Don — the getaway is always on with Lifetime.

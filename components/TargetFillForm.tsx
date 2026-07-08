@@ -93,8 +93,10 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
   const [gaugeScanMsg,  setGaugeScanMsg]  = useState('');
   const [showScanModal,    setShowScanModal]    = useState(false);
   const [scanFromDashboard, setScanFromDashboard] = useState(false);
-  const [rentalMode,    setRentalMode]    = useState(false);
-  const [rentalRate,    setRentalRate]    = useState('');
+  const [rentalMode,        setRentalMode]        = useState(false);
+  const [rentalRate,        setRentalRate]        = useState('');
+  const [rentalPickupLevel, setRentalPickupLevel] = useState(100); // % — 100 = full
+  const [rentalReturnDate,  setRentalReturnDate]  = useState('');  // YYYY-MM-DD
   const [gasCoords,     setGasCoords]     = useState<{ lat: number; lng: number } | null>(null);
   const [nearbyAttrib,  setNearbyAttrib]  = useState<{ name: string; distanceMi: number; grade: string } | null>(null);
   const [nearbyStatus,  setNearbyStatus]  = useState<'idle' | 'fetching' | 'found' | 'unavailable'>('idle');
@@ -106,6 +108,38 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
   const calcStartFired  = useRef(false);
   // Stable ref so the gc:inject-gas-price event handler always calls the latest liveRecalc
   const liveRecalcRef   = useRef<(p: Partial<FormState>) => void>(() => {});
+
+  // Persist rental pickup level + return date in localStorage so values survive a page refresh
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const lvl  = localStorage.getItem('gc_rental_pickup_level');
+    const date = localStorage.getItem('gc_rental_return_date');
+    if (lvl)  setRentalPickupLevel(Number(lvl));
+    if (date) setRentalReturnDate(date);
+  }, []);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem('gc_rental_pickup_level', String(rentalPickupLevel));
+  }, [rentalPickupLevel]);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (rentalReturnDate) localStorage.setItem('gc_rental_return_date', rentalReturnDate);
+    else localStorage.removeItem('gc_rental_return_date');
+  }, [rentalReturnDate]);
+
+  // Compute return-day alert (today or tomorrow local date)
+  const rentalReturnAlert: 'today' | 'tomorrow' | null = (() => {
+    if (!rentalReturnDate) return null;
+    const now   = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const tomorrow = (() => {
+      const d = new Date(now); d.setDate(d.getDate() + 1);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    })();
+    if (rentalReturnDate === today)     return 'today';
+    if (rentalReturnDate === tomorrow)  return 'tomorrow';
+    return null;
+  })();
 
   // Auto-activate rental mode for users whose driver mode is 'rental',
   // or when arriving from the /rental landing page via ?rental=1
@@ -129,7 +163,7 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
       new URLSearchParams(window.location.search).get('rental') === '1';
     if ((userMode === 'rental' || fromRentalPage) && !rentalMode) {
       setRentalMode(true);
-      setForm(prev => ({ ...prev, targetPreset: 100, customTarget: '' }));
+      setForm(prev => ({ ...prev, targetPreset: rentalPickupLevel, customTarget: '' }));
     } else if (userMode !== 'rental' && userMode != null && !fromRentalPage && rentalMode) {
       setRentalMode(false);
     }
@@ -412,8 +446,7 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
           const next = !rentalMode;
           setRentalMode(next);
           trackRentalReturnToggled(next);
-          // Auto-set target to Full when entering rental mode
-          if (next) liveRecalc({ targetPreset: 100, customTarget: '' });
+          if (next) liveRecalc({ targetPreset: rentalPickupLevel, customTarget: '' });
         }}
         className={[
           'w-full flex items-center gap-3 rounded-2xl px-4 py-3 mb-3 border-2 transition-all',
@@ -443,32 +476,98 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
         </div>
       </button>
 
-      {/* Rental rate input — only when rental mode is on */}
+      {/* Rental detail panel — only when rental mode is on */}
       {rentalMode && (
-        <div className="bg-blue-50 border border-blue-200 rounded-2xl px-4 py-3 mb-3 space-y-2">
-          <div className="flex items-center gap-2">
-            <span className="text-base" aria-hidden="true">🏢</span>
-            <p className="text-xs font-black text-blue-800">{t.calc.rentalRateLabel}</p>
-            <span className="text-[10px] text-blue-500 font-medium">{t.calc.rentalRateOptional}</span>
+        <div className="bg-blue-50 border border-blue-200 rounded-2xl px-4 py-3 mb-3 space-y-3">
+
+          {/* Return-day alert */}
+          {rentalReturnAlert && (
+            <div className="flex items-start gap-2 bg-amber-50 border border-amber-300 rounded-xl px-3 py-2">
+              <span className="text-base flex-shrink-0" aria-hidden="true">⏰</span>
+              <p className="text-[11px] font-bold text-amber-800 leading-snug">
+                {rentalReturnAlert === 'today'
+                  ? t.calc.rentalReturnAlertToday
+                  : t.calc.rentalReturnAlertTomorrow}
+              </p>
+            </div>
+          )}
+
+          {/* Pickup fuel level */}
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-base" aria-hidden="true">⛽</span>
+              <p className="text-xs font-black text-blue-800">{t.calc.rentalPickupLevelLabel}</p>
+            </div>
+            <p className="text-[11px] text-blue-600 leading-snug mb-2">{t.calc.rentalPickupLevelHint}</p>
+            <div className="flex gap-1.5 flex-wrap">
+              {([100, 75, 50, 25, 0] as const).map((pct) => {
+                const label = pct === 100 ? 'Full' : pct === 75 ? '¾' : pct === 50 ? '½' : pct === 25 ? '¼' : 'E';
+                const active = rentalPickupLevel === pct;
+                return (
+                  <button
+                    key={pct}
+                    type="button"
+                    onClick={() => {
+                      setRentalPickupLevel(pct);
+                      liveRecalc({ targetPreset: pct, customTarget: '' });
+                    }}
+                    className={[
+                      'flex-1 min-w-[44px] py-1.5 rounded-lg text-xs font-black border transition-colors',
+                      active
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-white text-blue-700 border-blue-200 hover:border-blue-400',
+                    ].join(' ')}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-          <p className="text-[11px] text-blue-600 leading-snug">
-            {t.calc.rentalRateHint}
-          </p>
-          <div className="relative">
-            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-blue-400 font-bold text-sm pointer-events-none">$</span>
+
+          {/* Return date */}
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-base" aria-hidden="true">📅</span>
+              <p className="text-xs font-black text-blue-800">{t.calc.rentalReturnDateLabel}</p>
+              <span className="text-[10px] text-blue-500 font-medium">{t.calc.rentalRateOptional}</span>
+            </div>
+            <p className="text-[11px] text-blue-600 leading-snug mb-1.5">{t.calc.rentalReturnDateHint}</p>
             <input
-              type="number"
-              inputMode="decimal"
-              className="input-field pl-7 border-blue-200 bg-white text-sm"
-              placeholder={t.calc.placeholderRentalRate}
-              value={rentalRate}
-              min="0.01"
-              step="0.01"
-              onChange={(e) => setRentalRate(e.target.value)}
-              aria-label={t.calc.ariaRentalRate}
+              type="date"
+              className="input-field border-blue-200 bg-white text-sm"
+              value={rentalReturnDate}
+              min={new Date().toISOString().slice(0, 10)}
+              onChange={(e) => setRentalReturnDate(e.target.value)}
+              aria-label={t.calc.rentalReturnDateLabel}
             />
-            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-slate-400 pointer-events-none">/gal</span>
           </div>
+
+          {/* Rental company rate */}
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-base" aria-hidden="true">🏢</span>
+              <p className="text-xs font-black text-blue-800">{t.calc.rentalRateLabel}</p>
+              <span className="text-[10px] text-blue-500 font-medium">{t.calc.rentalRateOptional}</span>
+            </div>
+            <p className="text-[11px] text-blue-600 leading-snug mb-1.5">{t.calc.rentalRateHint}</p>
+            <div className="relative">
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-blue-400 font-bold text-sm pointer-events-none">$</span>
+              <input
+                type="number"
+                inputMode="decimal"
+                className="input-field pl-7 border-blue-200 bg-white text-sm"
+                placeholder={t.calc.placeholderRentalRate}
+                value={rentalRate}
+                min="0.01"
+                step="0.01"
+                onChange={(e) => setRentalRate(e.target.value)}
+                aria-label={t.calc.ariaRentalRate}
+              />
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-slate-400 pointer-events-none">/gal</span>
+            </div>
+          </div>
+
         </div>
       )}
 

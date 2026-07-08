@@ -217,6 +217,10 @@ const SECTIONS = [
         a: 'If your recent MPG drops more than 10% below your historical average for a vehicle, you\'ll see an alert suggesting you check tire pressure, air filter, or other common causes of declining efficiency.',
       },
       {
+        q: 'Can I filter my MPG and fuel charts by year?',
+        a: 'Yes. In the Charts tab (📈), year chips at the top (e.g. 2026 · 2025 · All time) filter all charts — MPG over time, fuel spend, gallons, and price per gallon — to the selected year. The same year selection you use in Fill-Up History carries over to the Charts tab automatically, so both views stay in sync.',
+      },
+      {
         q: 'What is Annual Wrapped?',
         a: 'Annual Wrapped (🎁) is a year-in-review summary — total fill-ups, gallons, money spent, average price, best and worst months, top vehicle, and estimated miles driven. Tap the gift icon in the header to view it. You can share your summary to social media or copy it to your clipboard.',
       },
@@ -285,12 +289,16 @@ const SECTIONS = [
         a: 'All three tiers include every Pro feature. Pro Monthly ($2.99/mo) is a simple month-to-month subscription with no bonus giveaway entries. Pro Annual ($26.99/yr, ~3 months free) saves you money and automatically adds +10 bonus giveaway entries every draw period. Pro Lifetime Membership ($19.99, one-time payment) gives you Pro access forever with no recurring subscription, a permanent 🏅 Lifetime Member badge, and +20 bonus giveaway entries per draw period. Lifetime members can optionally add Lifetime Perks ($9.99/yr) to upgrade to +30 bonus entries per draw period plus an annual vacation voucher (hotel getaway) every year they renew. If Lifetime Perks lapses, Pro access is never revoked — you simply drop back to +20 bonus entries.',
       },
       {
+        q: 'Why does the Lifetime price show as $9.99 instead of $19.99?',
+        a: 'GasCap™ occasionally runs a Founding Member promotion for the first 100 Lifetime signups at $9.99 — a one-time introductory price to reward early supporters. Once those 100 slots are claimed, the price returns to the standard $19.99. If you see $9.99 on the upgrade page, that promo is still active. Both prices grant the exact same Pro Lifetime access with no recurring subscription.',
+      },
+      {
         q: 'What does Fleet add over Pro?',
         a: 'Fleet features (multi-driver tracking, fleet dashboard, tax reports) are coming soon. Pro now includes unlimited vehicles — ideal for households and owner-operators with multiple cars.',
       },
       {
         q: 'How do I upgrade my plan?',
-        a: 'Visit gascap.app/upgrade or tap Settings → "Upgrade to Pro." The upgrade page shows all four options: Free, Pro Monthly ($2.99/mo), Pro Annual ($26.99/yr), and Pro Lifetime Membership ($19.99 one-time). You\'ll be taken to a secure Stripe checkout page. On the iPhone app, upgrading uses Apple In-App Purchase — you\'ll see a native purchase screen and pay through your Apple Account. On the web, checkout is handled securely by Stripe. Either way, Pro unlocks on your account everywhere. Lifetime members can add Lifetime Perks ($9.99/yr) from Settings → Plan.',
+        a: 'Visit gascap.app/upgrade or tap Settings → "Upgrade to Pro." The upgrade page shows all four options: Free, Pro Monthly ($2.99/mo), Pro Annual ($26.99/yr), and Pro Lifetime Membership ($19.99 one-time). On the iPhone app, upgrading uses Apple In-App Purchase — you\'ll see a native purchase screen and pay through your Apple Account. On the Android app, upgrading uses Google Play In-App Purchase — you\'ll see a native Google Play billing screen and pay through your Google Account. On the web, checkout is handled securely by Stripe. Either way, Pro unlocks on your account everywhere. Lifetime members can add Lifetime Perks ($9.99/yr) from Settings → Plan.',
       },
       {
         q: 'Can I give GasCap™ Pro as a gift?',
@@ -327,8 +335,8 @@ const SECTIONS = [
     title: '🎁 Giveaway',
     items: [
       {
-        q: 'What is the Monthly Gas Card Giveaway?',
-        a: 'Every month, GasCap™ gives away a $25 Visa prepaid card — use it at the pump or anywhere Visa is accepted — to one lucky winner. The drawing is held on or about the 5th of the following month. No purchase is required to enter.',
+        q: 'What is the Weekly Gas Card Giveaway?',
+        a: 'Every Friday, GasCap™ gives away a $25 Visa prepaid card — use it at the pump or anywhere Visa is accepted — to one lucky winner. The drawing is held automatically every Friday at 9 PM ET. No purchase is required to enter.',
       },
       {
         q: 'Who is eligible to enter?',
@@ -344,15 +352,15 @@ const SECTIONS = [
       },
       {
         q: 'What is the entry toast notification?',
-        a: 'Pro and Fleet users see a brief "⚡ Entry earned!" notification each day confirming their giveaway entry for the current month. It appears once per day and auto-dismisses.',
+        a: 'Pro and Fleet users see a brief "⚡ Entry earned!" notification each day confirming their giveaway entry for the current draw period. It appears once per day and auto-dismisses.',
       },
       {
         q: 'Where can I check my entry count?',
         a: 'Two ways: tap the 🎁 gift box icon in the app header for a quick look at your current entry count, or visit gascap.app/giveaway for your full entry count, eligibility status, and the most recent past winner.',
       },
       {
-        q: 'Can I win every month?',
-        a: 'It depends on your Ambassador tier. Standard users are subject to a consecutive-month restriction — a winner from the preceding calendar month is not eligible the following month, and no person may win more than once per calendar quarter. However, Ambassador Program tier holders (Supporter, Ambassador, and Elite Ambassador) are always eligible and may win in consecutive months with no quarterly limit. If a selected winner is ineligible, an additional drawing is held.',
+        q: 'Can I win multiple weeks in a row?',
+        a: 'It depends on your Ambassador tier. Standard users are subject to a consecutive-week restriction — a winner from the preceding week is not eligible the following week, and no person may win more than once per calendar month. However, Ambassador Program tier holders (Supporter, Ambassador, and Elite Ambassador) are always eligible and may win in consecutive weeks with no monthly limit. If a selected winner is ineligible, an additional drawing is held.',
       },
       {
         q: 'How will I know if I won?',
@@ -390,7 +398,7 @@ const SECTIONS = [
       },
       {
         q: 'How do Ambassador tiers affect my monthly drawing entries?',
-        a: 'Once you reach a tier, your daily drawing entries are multiplied automatically: Supporter members earn 2 entries per day (up to 62/month); Ambassadors earn 3 entries per day (up to 93/month); Elite Ambassadors earn 5 entries per day (up to 155/month). Streak bonus entries still apply on top. Additionally, all Ambassador tier holders are always eligible to win the monthly drawing — the standard consecutive-month and quarterly restrictions do not apply.',
+        a: 'Once you reach a tier, your daily drawing entries are multiplied automatically: Supporter members earn 2 entries per day; Ambassadors earn 3 entries per day; Elite Ambassadors earn 5 entries per day. Streak bonus entries still apply on top. Additionally, all Ambassador tier holders are always eligible to win the weekly drawing — the standard consecutive-week and monthly restrictions do not apply.',
       },
       {
         q: 'When does my referral count update?',
@@ -446,7 +454,7 @@ const SECTIONS = [
       },
       {
         q: 'Why do I need to verify my email?',
-        a: 'Email verification protects your account, ensures we can notify you if you win the monthly giveaway, and unlocks your bonus drawing entries. Verify within 48 hours of signing up to earn +25 bonus entries — verify any time after to earn +10 bonus entries. Check your inbox and spam folder for the verification email from support@gascap.app. Unverified accounts cannot win the monthly drawing.',
+        a: 'Email verification protects your account, ensures we can notify you if you win the weekly giveaway, and unlocks your bonus drawing entries. Verify within 48 hours of signing up to earn +25 bonus entries — verify any time after to earn +10 bonus entries. Check your inbox and spam folder for the verification email from support@gascap.app. Unverified accounts cannot win the monthly drawing.',
       },
       {
         q: 'What data does GasCap™ collect?',
@@ -608,7 +616,7 @@ export default function HelpPage() {
 
         {/* Sweepstakes quick-link card */}
         <div className="mt-6 bg-[#005F4A] rounded-3xl p-6 text-center">
-          <p className="text-white font-black text-lg mb-1">🎁 Monthly Gas Card Giveaway</p>
+          <p className="text-white font-black text-lg mb-1">🎁 Weekly Gas Card Giveaway</p>
           <p className="text-white/60 text-sm mb-4">
             Pro and Fleet members earn entries every day they use the app.
             No purchase required to enter.

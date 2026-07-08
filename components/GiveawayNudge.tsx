@@ -91,7 +91,7 @@ export default function GiveawayNudge() {
 
         <div className="flex-1 min-w-0">
           <p className="text-white text-[13px] font-black leading-tight">
-            {t.giveawayNudge.monthlyGiveaway}
+            {t.giveawayNudge.weeklyGiveaway}
           </p>
           <p className="text-white/50 text-[11px] mt-0.5 leading-snug">
             {entryCount > 0

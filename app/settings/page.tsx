@@ -1525,7 +1525,7 @@ export default function SettingsPage() {
         {giveaway && (
           <div className="bg-white rounded-2xl border border-amber-200 shadow-sm p-5 space-y-3">
             <div className="flex items-center justify-between">
-              <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400">{t.settings.monthlyGasCard}</h2>
+              <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400">{t.settings.weeklyGasCard}</h2>
               <span className="text-[10px] font-black bg-amber-400 text-white px-2 py-0.5 rounded-full">{t.settings.giveawayBadge}</span>
             </div>
 
