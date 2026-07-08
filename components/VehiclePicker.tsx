@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { VehicleSpecs } from '@/lib/vehicleSpecs';
 import { useTranslation } from '@/contexts/LanguageContext';
+import { compressImageForUpload } from '@/lib/imageUtils';
 
 interface MenuItem { text: string; value: string }
 
@@ -530,8 +531,9 @@ function VinTab({ onSave, onCancel, saving, saveError }: Omit<VehiclePickerProps
     setScanning(true);
     setScanError('');
     try {
+      const compressed = await compressImageForUpload(file);
       const fd = new FormData();
-      fd.append('image', file);
+      fd.append('image', compressed, 'vin.jpg');
       const res  = await fetch('/api/vin/scan', { method: 'POST', body: fd, credentials: 'include' });
       const data = await res.json() as { vin?: string | null; error?: string };
       if (!res.ok || data.error) { setScanError(data.error ?? t.vehiclePicker.scanCouldNotRead); return; }

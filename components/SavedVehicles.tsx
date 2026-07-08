@@ -7,6 +7,7 @@ import BadgeShelf   from './BadgeShelf';
 import type { VehicleSpecs } from '@/lib/vehicleSpecs';
 import { useTranslation } from '@/contexts/LanguageContext';
 import { checkTankSize } from '@/lib/tankValidation';
+import { compressImageForUpload } from '@/lib/imageUtils';
 import { GarageDoor }                        from './GarageDoor';
 import { useGarageDoorPrefs }                from '@/hooks/useGarageDoorPrefs';
 
@@ -445,8 +446,9 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
     setEditVinScanning(true);
     setEditVinScanErr('');
     try {
+      const compressed = await compressImageForUpload(file);
       const fd = new FormData();
-      fd.append('image', file);
+      fd.append('image', compressed, 'vin.jpg');
       const res  = await fetch('/api/vin/scan', { method: 'POST', body: fd, credentials: 'include' });
       const data = await res.json() as { vin?: string | null; error?: string };
       if (!res.ok || data.error) {
