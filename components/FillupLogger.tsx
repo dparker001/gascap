@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import { compressImageForUpload } from '@/lib/imageUtils';
 import { useSession } from 'next-auth/react';
 import { useTranslation } from '@/contexts/LanguageContext';
 import { nativeShare } from '@/lib/share';
@@ -99,8 +100,7 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
   const [scanning,     setScanning]     = useState(false);
   const [scanError,    setScanError]    = useState('');
   const [nationalAvg,  setNationalAvg]  = useState<number | null>(null);
-  const fileInputRef    = useRef<HTMLInputElement>(null);
-  const galleryInputRef = useRef<HTMLInputElement>(null);
+
 
   // Fetch national average once for inline price intelligence card
   useEffect(() => {
@@ -210,8 +210,9 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
     } catch { /* canvas not available — continue without thumbnail */ }
 
     try {
+      const compressed = await compressImageForUpload(file);
       const fd = new FormData();
-      fd.append('image', file);
+      fd.append('image', compressed, 'receipt.jpg');
       const res = await fetch('/api/fillups/scan', { method: 'POST', body: fd, credentials: 'include' });
       const data = await res.json() as {
         gallons?:        number | null;
@@ -459,31 +460,6 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
         </div>
       </div>
 
-      {/* Hidden file inputs — camera and gallery */}
-      <input
-        type="file"
-        accept="image/*"
-        capture="environment"
-        ref={fileInputRef}
-        className="hidden"
-        onChange={(e) => {
-          const f = e.target.files?.[0];
-          if (f) handleScan(f);
-          e.target.value = '';
-        }}
-      />
-      <input
-        type="file"
-        accept="image/*"
-        ref={galleryInputRef}
-        className="hidden"
-        onChange={(e) => {
-          const f = e.target.files?.[0];
-          if (f) handleScan(f);
-          e.target.value = '';
-        }}
-      />
-
       {/* Gallons + Price row — at top so the breakdown is immediately visible */}
       <div className="grid grid-cols-2 gap-3">
         <div>
@@ -614,24 +590,18 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
         <div className="flex items-start gap-3">
           <div className="flex-1 flex flex-col gap-2">
             <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={saving || scanning}
-                className="flex items-center gap-1.5 text-xs font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 hover:border-amber-300 hover:text-amber-700 transition-colors disabled:opacity-50"
-              >
+              <label className={`flex items-center gap-1.5 text-xs font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 hover:border-amber-300 hover:text-amber-700 transition-colors cursor-pointer ${saving || scanning ? 'opacity-50 pointer-events-none' : ''}`}>
                 <span>{scanning ? '🔄' : '📷'}</span>
                 <span>{scanning ? t.fillup.readingReceipt : t.fillup.useCamera}</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => galleryInputRef.current?.click()}
-                disabled={saving || scanning}
-                className="flex items-center gap-1.5 text-xs font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 hover:border-amber-300 hover:text-amber-700 transition-colors disabled:opacity-50"
-              >
+                <input type="file" accept="image/*" capture="environment" className="hidden"
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handleScan(f); e.target.value = ''; }} />
+              </label>
+              <label className={`flex items-center gap-1.5 text-xs font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 hover:border-amber-300 hover:text-amber-700 transition-colors cursor-pointer ${saving || scanning ? 'opacity-50 pointer-events-none' : ''}`}>
                 <span>🖼️</span>
                 <span>{t.fillup.uploadFromPhotos}</span>
-              </button>
+                <input type="file" accept="image/*" className="hidden"
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handleScan(f); e.target.value = ''; }} />
+              </label>
             </div>
             {scanError && <p className="text-[11px] text-red-500 font-medium">{scanError}</p>}
             {receiptThumb && !scanning && (

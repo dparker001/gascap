@@ -8,9 +8,10 @@
  * Phase 4: confirmation UI with confidence bar and adjustment slider.
  */
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import type { GaugeScanResult, GaugeType } from '@/app/api/gauge/scan/route';
 import { useTranslation } from '@/contexts/LanguageContext';
+import { compressImageForUpload } from '@/lib/imageUtils';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -34,33 +35,8 @@ interface Props {
 const MAX_DIM    = 1024;
 const JPEG_QUAL  = 0.88;
 
-async function preprocessImage(file: File): Promise<Blob> {
-  const bitmap = await createImageBitmap(file);
-
-  // Compute target dimensions preserving aspect ratio
-  const { width: w, height: h } = bitmap;
-  const scale  = Math.min(1, MAX_DIM / Math.max(w, h));
-  const dw     = Math.round(w * scale);
-  const dh     = Math.round(h * scale);
-
-  const canvas  = document.createElement('canvas');
-  canvas.width  = dw;
-  canvas.height = dh;
-  const ctx     = canvas.getContext('2d')!;
-
-  // Draw resized image — no contrast manipulation, preserve original colors
-  // so the AI can accurately read needle position and gauge labels.
-  ctx.drawImage(bitmap, 0, 0, dw, dh);
-  bitmap.close();
-
-  return new Promise<Blob>((resolve, reject) => {
-    canvas.toBlob(
-      (blob) => blob ? resolve(blob) : reject(new Error('Canvas toBlob failed')),
-      'image/jpeg',
-      JPEG_QUAL,
-    );
-  });
-}
+// preprocessImage replaced by compressImageForUpload from lib/imageUtils
+// (createImageBitmap crashed WKWebView on HEIC photos from iOS camera roll)
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -92,9 +68,6 @@ export default function GaugeScanModal({ onConfirm, onClose }: Props) {
   const [errorMsg,     setErrorMsg]     = useState<string>('');
   const [processedBlob, setProcessedBlob] = useState<Blob | null>(null);
 
-  const camRef     = useRef<HTMLInputElement>(null);
-  const galleryRef = useRef<HTMLInputElement>(null);
-
   // Called when a file is selected (camera or gallery)
   const handleFile = useCallback(async (file: File) => {
     const objectUrl = URL.createObjectURL(file);
@@ -102,10 +75,11 @@ export default function GaugeScanModal({ onConfirm, onClose }: Props) {
     setStage('preview');
 
     try {
-      const processed = await preprocessImage(file);
+      // compressImageForUpload uses <img>+canvas — safe in WKWebView and handles HEIC
+      const processed = await compressImageForUpload(file, MAX_DIM, JPEG_QUAL);
       setProcessedBlob(processed);
     } catch {
-      // Fall back to original if preprocessing fails
+      // Fall back to original if compression fails
       setProcessedBlob(file);
     }
   }, []);
@@ -203,24 +177,18 @@ export default function GaugeScanModal({ onConfirm, onClose }: Props) {
                 <li>• {t.scan.tip3}</li>
               </ul>
 
-              {/* Hidden inputs */}
-              <input type="file" accept="image/*" capture="environment" ref={camRef} className="hidden"
-                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ''; }} />
-              <input type="file" accept="image/*" ref={galleryRef} className="hidden"
-                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ''; }} />
-
-              {/* Capture buttons */}
+              {/* Capture buttons — label-wrapped so the tap goes straight to OS picker */}
               <div className="flex gap-2">
-                <button type="button"
-                  onClick={() => camRef.current?.click()}
-                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-amber-500 text-white text-sm font-bold shadow hover:bg-amber-400 active:bg-amber-600 transition-colors">
+                <label className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-amber-500 text-white text-sm font-bold shadow hover:bg-amber-400 active:bg-amber-600 transition-colors cursor-pointer">
                   <span>📷</span><span>{t.scan.useCamera}</span>
-                </button>
-                <button type="button"
-                  onClick={() => galleryRef.current?.click()}
-                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-white border border-slate-200 text-slate-700 text-sm font-bold hover:border-amber-300 hover:text-amber-700 transition-colors">
+                  <input type="file" accept="image/*" capture="environment" className="hidden"
+                    onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ''; }} />
+                </label>
+                <label className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-white border border-slate-200 text-slate-700 text-sm font-bold hover:border-amber-300 hover:text-amber-700 transition-colors cursor-pointer">
                   <span>🖼️</span><span>{t.scan.uploadPhoto}</span>
-                </button>
+                  <input type="file" accept="image/*" className="hidden"
+                    onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ''; }} />
+                </label>
               </div>
             </div>
           )}

@@ -1,7 +1,7 @@
 'use client';
 
 import { useSession } from 'next-auth/react';
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import type { Fillup } from '@/lib/fillups';
 import { useTranslation } from '@/contexts/LanguageContext';
 import UpgradeNudge from './UpgradeNudge';
@@ -144,8 +144,7 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
   const [editImgLoading,  setEditImgLoading]  = useState(false);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [drivers,         setDrivers]         = useState<string[]>([]);
-  const editCameraRef  = useRef<HTMLInputElement>(null);
-  const editGalleryRef = useRef<HTMLInputElement>(null);
+
 
   // ── Filter + month expansion state ─────────────────────────────────────────
   const [filterMode,     setFilterMode]     = useState<FilterMode>('all');
@@ -883,38 +882,6 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
                                 {t.fillupHistory.receiptPhotoLabel} <span className="font-normal text-slate-400">{t.fillupHistory.opt}</span>
                               </label>
 
-                              {/* Hidden file inputs */}
-                              <input
-                                type="file" accept="image/*" capture="environment"
-                                ref={editCameraRef} className="hidden"
-                                onChange={async (e) => {
-                                  const file = e.target.files?.[0];
-                                  if (!file) return;
-                                  e.target.value = '';
-                                  setEditImgLoading(true);
-                                  try {
-                                    const thumb = await compressEditImage(file);
-                                    setEditDraft((d) => d ? { ...d, receiptThumb: thumb } : d);
-                                  } catch { /* ignore */ }
-                                  finally { setEditImgLoading(false); }
-                                }}
-                              />
-                              <input
-                                type="file" accept="image/*"
-                                ref={editGalleryRef} className="hidden"
-                                onChange={async (e) => {
-                                  const file = e.target.files?.[0];
-                                  if (!file) return;
-                                  e.target.value = '';
-                                  setEditImgLoading(true);
-                                  try {
-                                    const thumb = await compressEditImage(file);
-                                    setEditDraft((d) => d ? { ...d, receiptThumb: thumb } : d);
-                                  } catch { /* ignore */ }
-                                  finally { setEditImgLoading(false); }
-                                }}
-                              />
-
                               {editDraft.receiptThumb ? (
                                 /* Existing or newly-added thumbnail */
                                 <div className="flex items-start gap-3">
@@ -925,22 +892,16 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
                                     className="w-14 h-20 object-cover rounded-lg border border-slate-200 shadow-sm flex-shrink-0"
                                   />
                                   <div className="flex flex-col gap-1.5 pt-0.5">
-                                    <button
-                                      type="button"
-                                      onClick={() => editCameraRef.current?.click()}
-                                      disabled={editImgLoading}
-                                      className="text-[10px] font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 hover:border-amber-300 hover:text-amber-700 transition-colors disabled:opacity-50"
-                                    >
+                                    <label className={`text-[10px] font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 hover:border-amber-300 hover:text-amber-700 transition-colors cursor-pointer ${editImgLoading ? 'opacity-50 pointer-events-none' : ''}`}>
                                       📷 {editImgLoading ? t.fillupHistory.loading : t.fillupHistory.replaceCamera}
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => editGalleryRef.current?.click()}
-                                      disabled={editImgLoading}
-                                      className="text-[10px] font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 hover:border-amber-300 hover:text-amber-700 transition-colors disabled:opacity-50"
-                                    >
+                                      <input type="file" accept="image/*" capture="environment" className="hidden"
+                                        onChange={async (e) => { const file = e.target.files?.[0]; if (!file) return; e.target.value = ''; setEditImgLoading(true); try { const thumb = await compressEditImage(file); setEditDraft((d) => d ? { ...d, receiptThumb: thumb } : d); } catch { /* ignore */ } finally { setEditImgLoading(false); } }} />
+                                    </label>
+                                    <label className={`text-[10px] font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 hover:border-amber-300 hover:text-amber-700 transition-colors cursor-pointer ${editImgLoading ? 'opacity-50 pointer-events-none' : ''}`}>
                                       🖼️ {t.fillupHistory.replacePhotos}
-                                    </button>
+                                      <input type="file" accept="image/*" className="hidden"
+                                        onChange={async (e) => { const file = e.target.files?.[0]; if (!file) return; e.target.value = ''; setEditImgLoading(true); try { const thumb = await compressEditImage(file); setEditDraft((d) => d ? { ...d, receiptThumb: thumb } : d); } catch { /* ignore */ } finally { setEditImgLoading(false); } }} />
+                                    </label>
                                     <button
                                       type="button"
                                       onClick={() => setEditDraft((d) => d ? { ...d, receiptThumb: '' } : d)}
@@ -953,24 +914,18 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
                               ) : (
                                 /* No receipt yet */
                                 <div className="flex gap-2">
-                                  <button
-                                    type="button"
-                                    onClick={() => editCameraRef.current?.click()}
-                                    disabled={editImgLoading}
-                                    className="flex items-center gap-1.5 text-[10px] font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 hover:border-amber-300 hover:text-amber-700 transition-colors disabled:opacity-50"
-                                  >
+                                  <label className={`flex items-center gap-1.5 text-[10px] font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 hover:border-amber-300 hover:text-amber-700 transition-colors cursor-pointer ${editImgLoading ? 'opacity-50 pointer-events-none' : ''}`}>
                                     <span>{editImgLoading ? '🔄' : '📷'}</span>
                                     <span>{editImgLoading ? t.fillupHistory.loading : t.fillupHistory.useCamera}</span>
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => editGalleryRef.current?.click()}
-                                    disabled={editImgLoading}
-                                    className="flex items-center gap-1.5 text-[10px] font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 hover:border-amber-300 hover:text-amber-700 transition-colors disabled:opacity-50"
-                                  >
+                                    <input type="file" accept="image/*" capture="environment" className="hidden"
+                                      onChange={async (e) => { const file = e.target.files?.[0]; if (!file) return; e.target.value = ''; setEditImgLoading(true); try { const thumb = await compressEditImage(file); setEditDraft((d) => d ? { ...d, receiptThumb: thumb } : d); } catch { /* ignore */ } finally { setEditImgLoading(false); } }} />
+                                  </label>
+                                  <label className={`flex items-center gap-1.5 text-[10px] font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 hover:border-amber-300 hover:text-amber-700 transition-colors cursor-pointer ${editImgLoading ? 'opacity-50 pointer-events-none' : ''}`}>
                                     <span>🖼️</span>
                                     <span>{t.fillupHistory.uploadFromPhotos}</span>
-                                  </button>
+                                    <input type="file" accept="image/*" className="hidden"
+                                      onChange={async (e) => { const file = e.target.files?.[0]; if (!file) return; e.target.value = ''; setEditImgLoading(true); try { const thumb = await compressEditImage(file); setEditDraft((d) => d ? { ...d, receiptThumb: thumb } : d); } catch { /* ignore */ } finally { setEditImgLoading(false); } }} />
+                                  </label>
                                 </div>
                               )}
                             </div>
