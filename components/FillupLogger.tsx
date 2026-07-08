@@ -593,7 +593,7 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
               <label className={`flex items-center gap-1.5 text-xs font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 hover:border-amber-300 hover:text-amber-700 transition-colors cursor-pointer ${saving || scanning ? 'opacity-50 pointer-events-none' : ''}`}>
                 <span>{scanning ? '🔄' : '📷'}</span>
                 <span>{scanning ? t.fillup.readingReceipt : t.fillup.useCamera}</span>
-                <input type="file" accept="image/*" capture="environment" className="hidden"
+                <input type="file" accept="image/*" className="hidden"
                   onChange={(e) => { const f = e.target.files?.[0]; if (f) handleScan(f); e.target.value = ''; }} />
               </label>
               <label className={`flex items-center gap-1.5 text-xs font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 hover:border-amber-300 hover:text-amber-700 transition-colors cursor-pointer ${saving || scanning ? 'opacity-50 pointer-events-none' : ''}`}>

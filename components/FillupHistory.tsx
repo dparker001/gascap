@@ -894,7 +894,7 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
                                   <div className="flex flex-col gap-1.5 pt-0.5">
                                     <label className={`text-[10px] font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 hover:border-amber-300 hover:text-amber-700 transition-colors cursor-pointer ${editImgLoading ? 'opacity-50 pointer-events-none' : ''}`}>
                                       📷 {editImgLoading ? t.fillupHistory.loading : t.fillupHistory.replaceCamera}
-                                      <input type="file" accept="image/*" capture="environment" className="hidden"
+                                      <input type="file" accept="image/*" className="hidden"
                                         onChange={async (e) => { const file = e.target.files?.[0]; if (!file) return; e.target.value = ''; setEditImgLoading(true); try { const thumb = await compressEditImage(file); setEditDraft((d) => d ? { ...d, receiptThumb: thumb } : d); } catch { /* ignore */ } finally { setEditImgLoading(false); } }} />
                                     </label>
                                     <label className={`text-[10px] font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 hover:border-amber-300 hover:text-amber-700 transition-colors cursor-pointer ${editImgLoading ? 'opacity-50 pointer-events-none' : ''}`}>
@@ -917,7 +917,7 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
                                   <label className={`flex items-center gap-1.5 text-[10px] font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 hover:border-amber-300 hover:text-amber-700 transition-colors cursor-pointer ${editImgLoading ? 'opacity-50 pointer-events-none' : ''}`}>
                                     <span>{editImgLoading ? '🔄' : '📷'}</span>
                                     <span>{editImgLoading ? t.fillupHistory.loading : t.fillupHistory.useCamera}</span>
-                                    <input type="file" accept="image/*" capture="environment" className="hidden"
+                                    <input type="file" accept="image/*" className="hidden"
                                       onChange={async (e) => { const file = e.target.files?.[0]; if (!file) return; e.target.value = ''; setEditImgLoading(true); try { const thumb = await compressEditImage(file); setEditDraft((d) => d ? { ...d, receiptThumb: thumb } : d); } catch { /* ignore */ } finally { setEditImgLoading(false); } }} />
                                   </label>
                                   <label className={`flex items-center gap-1.5 text-[10px] font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 hover:border-amber-300 hover:text-amber-700 transition-colors cursor-pointer ${editImgLoading ? 'opacity-50 pointer-events-none' : ''}`}>

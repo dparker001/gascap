@@ -181,7 +181,7 @@ export default function GaugeScanModal({ onConfirm, onClose }: Props) {
               <div className="flex gap-2">
                 <label className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-amber-500 text-white text-sm font-bold shadow hover:bg-amber-400 active:bg-amber-600 transition-colors cursor-pointer">
                   <span>📷</span><span>{t.scan.useCamera}</span>
-                  <input type="file" accept="image/*" capture="environment" className="hidden"
+                  <input type="file" accept="image/*" className="hidden"
                     onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ''; }} />
                 </label>
                 <label className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-white border border-slate-200 text-slate-700 text-sm font-bold hover:border-amber-300 hover:text-amber-700 transition-colors cursor-pointer">
