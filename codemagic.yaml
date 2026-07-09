@@ -93,6 +93,26 @@ workflows:
             || /usr/libexec/PlistBuddy \
             -c "Set :NSFaceIDUsageDescription 'GasCap uses Face ID to sign you in quickly and securely.'" \
             "$PLIST"
+          # NSCameraUsageDescription + NSPhotoLibraryUsageDescription — MANDATORY.
+          # WKWebView <input type="file" accept="image/*"> invokes the native camera
+          # (UIImagePickerController) and photo picker under the hood. iOS HARD-CRASHES
+          # the app the instant either is invoked if these strings are missing — this
+          # was the VIN-scan / gauge-scan / receipt-scan crash. No web/JS change can
+          # fix it; the keys must live in the signed binary's Info.plist.
+          /usr/libexec/PlistBuddy \
+            -c "Add :NSCameraUsageDescription string 'GasCap uses the camera to scan your fuel gauge, VIN, and gas receipts.'" \
+            "$PLIST" \
+            || /usr/libexec/PlistBuddy \
+            -c "Set :NSCameraUsageDescription 'GasCap uses the camera to scan your fuel gauge, VIN, and gas receipts.'" \
+            "$PLIST"
+          /usr/libexec/PlistBuddy \
+            -c "Add :NSPhotoLibraryUsageDescription string 'GasCap accesses your photo library so you can upload a photo of your fuel gauge, VIN, or gas receipt.'" \
+            "$PLIST" \
+            || /usr/libexec/PlistBuddy \
+            -c "Set :NSPhotoLibraryUsageDescription 'GasCap accesses your photo library so you can upload a photo of your fuel gauge, VIN, or gas receipt.'" \
+            "$PLIST"
+          echo "Info.plist camera key:"; /usr/libexec/PlistBuddy -c "Print :NSCameraUsageDescription" "$PLIST"
+          echo "Info.plist photos key:"; /usr/libexec/PlistBuddy -c "Print :NSPhotoLibraryUsageDescription" "$PLIST"
           # UIApplicationShortcutItems — long-press home screen quick actions
           /usr/libexec/PlistBuddy -c "Add :UIApplicationShortcutItems array" "$PLIST" 2>/dev/null || true
           /usr/libexec/PlistBuddy \
