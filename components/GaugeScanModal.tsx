@@ -68,13 +68,25 @@ export default function GaugeScanModal({ onConfirm, onClose }: Props) {
   const [scanResult,   setScanResult]   = useState<GaugeScanResult | null>(null);
   const [adjustedPct,  setAdjustedPct]  = useState<number>(50);
   const [errorMsg,     setErrorMsg]     = useState<string>('');
+  const [isUpgrade,    setIsUpgrade]    = useState(false);
   const [processedBlob, setProcessedBlob] = useState<Blob | null>(null);
+  const [aspect,        setAspect]        = useState<number>(1);
 
   // Called when a file is selected (camera or gallery)
   const handleFile = useCallback(async (file: File) => {
     const objectUrl = URL.createObjectURL(file);
     setPreviewUrl(objectUrl);
     setStage('preview');
+
+    // Read the image aspect ratio (width/height) so the server geometry can
+    // correct angles on non-square photos. Aspect is preserved by compression.
+    const dimImg = new Image();
+    dimImg.onload = () => {
+      if (dimImg.naturalWidth && dimImg.naturalHeight) {
+        setAspect(dimImg.naturalWidth / dimImg.naturalHeight);
+      }
+    };
+    dimImg.src = objectUrl;
 
     try {
       // compressImageForUpload uses <img>+canvas — safe in WKWebView and handles HEIC
@@ -90,12 +102,22 @@ export default function GaugeScanModal({ onConfirm, onClose }: Props) {
     if (!processedBlob) return;
     setStage('analyzing');
     setErrorMsg('');
+    setIsUpgrade(false);
 
     try {
       const fd = new FormData();
       fd.append('image', processedBlob, 'gauge.jpg');
+      fd.append('aspect', String(aspect));
       const res  = await fetch('/api/gauge/scan', { method: 'POST', body: fd, credentials: 'include' });
-      const data = await res.json() as GaugeScanResult & { error?: string };
+      const data = await res.json() as GaugeScanResult & { error?: string; upgrade?: boolean };
+
+      // Pro gate
+      if (res.status === 403 && data.upgrade) {
+        setIsUpgrade(true);
+        setErrorMsg(data.error ?? t.scan.proRequired);
+        setStage('error');
+        return;
+      }
 
       if (!res.ok) {
         setErrorMsg(data.error ?? t.calc.scanFailed);
@@ -103,18 +125,21 @@ export default function GaugeScanModal({ onConfirm, onClose }: Props) {
         return;
       }
 
+      // Truly unreadable (no gauge / no value) → force a retake.
       if (!data.gaugeDetected || data.fuelPercent === null) {
-        // Map reason to user-friendly error hint
-        const reason = data.reason?.toLowerCase() ?? '';
-        let hint = t.calc.scanNotReadable;
-        if (reason.includes('dark'))  hint = t.scan.errDark;
-        if (reason.includes('glare')) hint = t.scan.errGlare;
-        if (reason.includes('close') || reason.includes('far')) hint = t.scan.errTooFar;
+        const q = data.imageQualityStatus ?? '';
+        let hint = t.scan.retakeHint;
+        if      (q === 'dark')                      hint = t.scan.errDark;
+        else if (q === 'glare')                     hint = t.scan.errGlare;
+        else if (q === 'too_far' || q === 'partial') hint = t.scan.errTooFar;
+        else if (data.reason)                       hint = data.reason;
         setErrorMsg(hint);
         setStage('error');
         return;
       }
 
+      // We have a value. If confidence is low / retake advised, the confirm stage
+      // shows the warning and keeps the slider active so the user can adjust or retake.
       setScanResult(data);
       setAdjustedPct(data.fuelPercent);
       setStage('confirm');
@@ -130,6 +155,7 @@ export default function GaugeScanModal({ onConfirm, onClose }: Props) {
     setProcessedBlob(null);
     setScanResult(null);
     setErrorMsg('');
+    setIsUpgrade(false);
     setStage('idle');
   }
 
@@ -166,10 +192,30 @@ export default function GaugeScanModal({ onConfirm, onClose }: Props) {
           {/* ── IDLE: capture options ── */}
           {stage === 'idle' && (
             <div className="px-4 py-5 space-y-4">
-              {/* Instructions */}
-              <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-center">
-                <div className="text-4xl mb-2">⛽</div>
-                <p className="text-sm font-semibold text-amber-800">{t.scan.guideText}</p>
+              {/* Guided-capture framing guide — center the gauge so E, F, and the
+                  needle are all clearly inside the frame (the accuracy depends on it). */}
+              <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+                <div className="mx-auto mb-2 w-full max-w-[220px]">
+                  <svg viewBox="0 0 220 120" className="w-full h-auto" role="img" aria-label={t.scan.guideText}>
+                    {/* target frame */}
+                    <rect x="6" y="6" width="208" height="108" rx="10" fill="none"
+                          stroke="#f59e0b" strokeWidth="2" strokeDasharray="7 6" />
+                    {/* corner ticks */}
+                    <g stroke="#f59e0b" strokeWidth="3" strokeLinecap="round">
+                      <path d="M20 6 V16 M6 20 H16" /><path d="M200 6 V16 M214 20 H204" />
+                      <path d="M20 114 V104 M6 100 H16" /><path d="M200 114 V104 M214 100 H204" />
+                    </g>
+                    {/* gauge arc */}
+                    <path d="M60 92 A50 50 0 0 1 160 92" fill="none" stroke="#94a3b8" strokeWidth="3" />
+                    {/* needle (points to ~half) */}
+                    <line x1="110" y1="92" x2="110" y2="46" stroke="#ef4444" strokeWidth="3" strokeLinecap="round" />
+                    <circle cx="110" cy="92" r="4" fill="#475569" />
+                    {/* E and F labels */}
+                    <text x="52" y="104" fontSize="15" fontWeight="800" fill="#475569" textAnchor="middle">E</text>
+                    <text x="168" y="104" fontSize="15" fontWeight="800" fill="#475569" textAnchor="middle">F</text>
+                  </svg>
+                </div>
+                <p className="text-sm font-semibold text-amber-800 text-center">{t.scan.guideText}</p>
               </div>
 
               {/* Tips */}
@@ -307,20 +353,27 @@ export default function GaugeScanModal({ onConfirm, onClose }: Props) {
           {/* ── ERROR ── */}
           {stage === 'error' && (
             <div className="px-4 py-6 space-y-4">
-              {previewUrl && (
+              {previewUrl && !isUpgrade && (
                 <div className="w-full rounded-xl overflow-hidden bg-slate-100 aspect-[4/3] opacity-60">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={previewUrl} alt="" className="w-full h-full object-contain" />
                 </div>
               )}
-              <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl px-3 py-3">
-                <span className="text-red-400 mt-0.5">✕</span>
-                <p className="text-sm text-red-700 font-medium leading-snug">{errorMsg}</p>
+              <div className={`flex items-start gap-2 rounded-xl px-3 py-3 ${isUpgrade ? 'bg-amber-50 border border-amber-200' : 'bg-red-50 border border-red-200'}`}>
+                <span className={`mt-0.5 ${isUpgrade ? 'text-amber-500' : 'text-red-400'}`}>{isUpgrade ? '🔒' : '✕'}</span>
+                <p className={`text-sm font-medium leading-snug ${isUpgrade ? 'text-amber-800' : 'text-red-700'}`}>{errorMsg}</p>
               </div>
-              <button type="button" onClick={handleRetake}
-                className="w-full py-3 rounded-xl bg-amber-500 text-white text-sm font-bold shadow hover:bg-amber-400 transition-colors">
-                {t.scan.tryAgain}
-              </button>
+              {isUpgrade ? (
+                <a href="/upgrade"
+                  className="block w-full text-center py-3 rounded-xl bg-brand-orange text-white text-sm font-bold shadow hover:opacity-90 transition-opacity">
+                  {t.scan.upgradeCta}
+                </a>
+              ) : (
+                <button type="button" onClick={handleRetake}
+                  className="w-full py-3 rounded-xl bg-amber-500 text-white text-sm font-bold shadow hover:bg-amber-400 transition-colors">
+                  {t.scan.tryAgain}
+                </button>
+              )}
             </div>
           )}
 

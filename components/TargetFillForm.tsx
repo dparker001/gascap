@@ -21,10 +21,10 @@ import { trackCalculateTarget, trackRentalReturnToggled } from '@/lib/gtag';
 import { checkTankSize } from '@/lib/tankValidation';
 import GaugeScanModal from './GaugeScanModal';
 
-// Gauge photo-scan is SHELVED: it hit the (paid) Anthropic API on every scan for
-// all users — including free — and the manual needle-drag slider below is instant,
-// free, and covers the same need. Flip to true to re-enable the scan button + modal.
-const GAUGE_SCAN_ENABLED = false;
+// Gauge photo-scan: Pro-only. Uses the geometry pipeline (vision model locates the
+// needle/E/F, server computes the angle→% in code + cross-checks). The manual
+// needle-drag slider remains the free path. Flip to false to shelve entirely.
+const GAUGE_SCAN_ENABLED = true;
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -660,7 +660,7 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
             {/* ── Scan gauge button (shelved — see GAUGE_SCAN_ENABLED) ── */}
             {GAUGE_SCAN_ENABLED && (
             <div className="mt-2 space-y-1.5">
-              {isLoggedIn ? (
+              {isPro ? (
                 <>
                   {scanFromDashboard && (
                     <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-3 py-1.5">
@@ -687,6 +687,15 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
                     {t.calc.scanHint}
                   </p>
                 </>
+              ) : isLoggedIn ? (
+                /* Logged-in free users: gauge scan is a Pro perk. */
+                <a href="/upgrade" className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+                  <span className="text-amber-500 text-sm">📷</span>
+                  <p className="text-[11px] text-amber-700 leading-snug">
+                    <span className="font-bold underline underline-offset-2">{t.scan.upgradeCta}</span>
+                    {' — '}{t.scan.proRequired}
+                  </p>
+                </a>
               ) : (
                 <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
                   <span className="text-amber-500 text-sm">📷</span>

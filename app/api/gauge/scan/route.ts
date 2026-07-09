@@ -1,39 +1,81 @@
 /**
  * POST /api/gauge/scan
- * Claude Vision fuel-gauge reader — available to all plans.
- * Accepts: multipart/form-data with field "image" (JPEG/PNG/WebP/GIF)
- * Returns: GaugeScanResult
+ * Fuel-gauge reader — Pro plan required.
+ *
+ * Pipeline (accuracy-first):
+ *   1. Claude Vision LOCATES landmarks (pivot, needle tip, E end, F end) + gauge type +
+ *      image quality, and independently gives a holistic % guess.
+ *   2. We compute the fuel % from the needle's angle in code (lib/gaugeGeometry) — the
+ *      deterministic step the model is bad at.
+ *   3. Self-consistency cross-check: geometry % vs holistic %. Big disagreement → low
+ *      confidence + retakeRequired, so we ask the user to retry rather than guess wrong.
+ *
+ * Accepts: multipart/form-data — "image" (JPEG/PNG/WebP/GIF), optional "aspect" (w/h).
  */
 import { NextResponse } from 'next/server';
 import { getToken }    from 'next-auth/jwt';
+import { findById }    from '@/lib/users';
 import Anthropic       from '@anthropic-ai/sdk';
+import { computeGaugePercent, type Pt } from '@/lib/gaugeGeometry';
 
 const anthropic = new Anthropic({ apiKey: process.env.GASCAP_ANTHROPIC_KEY });
 
 export type GaugeType = 'analog_needle' | 'digital_percentage' | 'digital_bars' | 'unknown';
 
 export interface GaugeScanResult {
-  gaugeDetected:        boolean;
-  gaugeType:            GaugeType;
-  fuelPercent:          number | null;
-  confidence:           number;        // 0–100
-  reason:               string;
+  // Core fields (backward-compatible with the existing client)
+  gaugeDetected:         boolean;
+  gaugeType:             GaugeType;
+  fuelPercent:           number | null;   // final answer, 0–100
+  confidence:            number;          // 0–100
+  reason:                string;
   needsUserConfirmation: boolean;
+  // Geometry-pipeline fields
+  estimatedFuelPercentage: number | null;
+  confidenceScore:         number;
+  detectedNeedleAngle:     number | null;
+  emptyAngle:              number | null;
+  fullAngle:               number | null;
+  imageQualityStatus:      string;        // good | glare | dark | blurry | too_far | partial | unknown
+  retakeRequired:          boolean;
 }
 
-// SHELVED: gauge photo-scan is disabled to stop it consuming Anthropic tokens for
-// all users (incl. free). The manual needle-drag gauge covers the same need for free.
-// This server-side guard also protects against cached/old clients that still show the
-// scan button. Flip to true (and GAUGE_SCAN_ENABLED in TargetFillForm.tsx) to restore.
-const GAUGE_SCAN_ENABLED = false;
+// Cross-check tolerance: geometry vs holistic disagreement above this (percentage
+// points) means we don't trust the read and ask for a retake / manual confirm.
+const CROSS_CHECK_TOLERANCE = 12;
+
+interface ModelOut {
+  gaugeDetected?:   boolean;
+  gaugeType?:       string;
+  imageQuality?:    string;
+  pivot?:           Pt | null;
+  needleTip?:       Pt | null;
+  empty?:           Pt | null;
+  full?:            Pt | null;
+  holisticPercent?: number | null;
+  digitalPercent?:  number | null;
+  reason?:          string;
+}
+
+const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
+const okType = (t: string | undefined): GaugeType =>
+  (['analog_needle', 'digital_percentage', 'digital_bars', 'unknown'] as GaugeType[]).includes(t as GaugeType)
+    ? (t as GaugeType) : 'unknown';
+const intOrNull = (v: unknown): number | null =>
+  typeof v === 'number' && isFinite(v) ? clamp(Math.round(v), 0, 100) : null;
 
 export async function POST(req: Request) {
-  if (!GAUGE_SCAN_ENABLED) {
-    return NextResponse.json({ error: 'Gauge scanning is currently unavailable. Set your fuel level with the gauge dial instead.' }, { status: 503 });
-  }
-
   const token = await getToken({ req: req as Parameters<typeof getToken>[0]['req'], secret: process.env.NEXTAUTH_SECRET });
   if (!token?.sub && !token?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const userId = (token.id ?? token.sub ?? '') as string;
+  const user   = await findById(userId);
+  if (!user || user.plan === 'free') {
+    return NextResponse.json(
+      { error: 'Gauge scanning is a Pro feature. Upgrade to read your fuel level from a photo.', upgrade: true },
+      { status: 403 },
+    );
+  }
 
   if (!process.env.GASCAP_ANTHROPIC_KEY) {
     return NextResponse.json({ error: 'AI not configured.' }, { status: 503 });
@@ -54,6 +96,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Image must be JPEG, PNG, WebP, or GIF.' }, { status: 400 });
   }
 
+  const aspectRaw = parseFloat((formData.get('aspect') as string) ?? '');
+  const aspect    = isFinite(aspectRaw) && aspectRaw > 0 ? aspectRaw : 1;
+
   const bytes     = await file.arrayBuffer();
   const base64    = Buffer.from(bytes).toString('base64');
   const mediaType = file.type as 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif';
@@ -61,59 +106,49 @@ export async function POST(req: Request) {
   try {
     const message = await anthropic.messages.create({
       model:      'claude-sonnet-5',
-      max_tokens: 700,
+      max_tokens: 500,
       messages: [{
         role: 'user',
         content: [
-          {
-            type:   'image',
-            source: { type: 'base64', media_type: mediaType, data: base64 },
-          },
+          { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
           {
             type: 'text',
-            text: `You are a vehicle fuel gauge expert analyzing a dashboard photo. Accuracy matters more than speed — reason carefully before committing to a number.
+            text: `You are locating landmarks on a vehicle fuel gauge so software can compute the level geometrically. Do NOT try to compute the final percentage from the ratio yourself — just locate points precisely.
 
-STEP 1 — LOCATE THE FUEL GAUGE
-Find the fuel gauge in the image. It may be:
-- Analog needle: a dial with E (Empty) and F (Full) labels, needle pointing to current level. Often has a pump icon and intermediate ticks (¼, ½, ¾).
-- Digital percentage: a number like "87%" or "45%" on an info display.
-- Digital bars: segmented bar graph showing fill level (like a battery icon).
-- Not visible or unreadable.
+Coordinates are normalized: x = fraction of image WIDTH (0=left, 1=right), y = fraction of image HEIGHT (0=top, 1=bottom). Give 2–3 decimals.
 
-STEP 2 — DETERMINE GAUGE TYPE
-Classify as one of: analog_needle, digital_percentage, digital_bars, unknown.
+Classify gaugeType:
+- analog_needle: a rotating needle on a dial/arc with E (empty) and F (full) ends. MOST COMMON.
+- digital_percentage: a numeric readout like "72%".
+- digital_bars: a segmented bar/battery-style indicator.
+- unknown: no fuel gauge visible or unreadable.
 
-STEP 3 — ESTIMATE FUEL LEVEL (reason step-by-step in the "analysis" field FIRST)
-- Analog needle — THIS IS THE HARD CASE, do it carefully:
-  * The needle sweeps along an ARC, not a vertical line. E is at one end of the arc, F at the other.
-  * Identify the exact positions of the E end, the F end, and any ¼/½/¾ tick marks.
-  * Estimate what FRACTION of the way along the E→F arc the needle tip sits. Judge angular position along the arc — do NOT judge by vertical height, which is a common mistake and reads low.
-  * Map that fraction to a percent: E=0, ¼=25, ½=50, ¾=75, F=100. Interpolate between ticks.
-  * If the needle sits exactly on or past the F tick, it is 100. If exactly on E or below, it is a single digit or 0. Otherwise give an honest interpolated value — do not bias high or low.
-- Digital percentage: read the number exactly as shown.
-- Digital bars: count lit/filled segments ÷ total segments × 100, nearest whole number.
-- If genuinely unreadable (too dark, blurred, glare, gauge not in frame): set fuelPercent to null.
+For analog_needle, locate these four points as precisely as you can:
+- pivot: the needle's rotation center (where the needle is anchored — often below/behind the dial).
+- needleTip: the pointed end of the needle (the end AWAY from the pivot).
+- empty: the E mark / empty end of the fuel scale (may be the letter E, a pump-empty icon, or the first tick).
+- full: the F mark / full end of the fuel scale (letter F or the last tick).
+If it is NOT a rotating needle (digital, or a straight horizontal/vertical bar), set pivot/needleTip/empty/full to null.
 
-STEP 4 — ASSESS CONFIDENCE (0–100)
-- 90–100: Gauge clearly visible, reading unambiguous (esp. digital readouts).
-- 70–89: Gauge visible but some uncertainty (slight angle, needle between ticks, partial view).
-- 50–69: Gauge partially obscured, glare, or reading is approximate.
-- Below 50: Very uncertain — dark image, heavy glare, gauge barely visible.
-- 0: No gauge found or completely unreadable.
-Analog-needle readings between ticks should rarely exceed 85 confidence — they are inherently estimates.
+Also report:
+- holisticPercent: your own best independent estimate of the fuel level 0–100 (used only as a sanity cross-check). Give this for EVERY gauge type.
+- digitalPercent: for digital_percentage/digital_bars, the exact level read from the display (else null).
+- imageQuality: one of good | glare | dark | blurry | too_far | partial.
+- reason: one short sentence.
 
-Return ONLY valid JSON, no markdown, no code block. Put "analysis" FIRST and reason through the needle/arc position there BEFORE stating fuelPercent:
+Return ONLY valid JSON, no markdown:
 {
-  "analysis": "2-4 sentences: where E and F are, where the needle points along the arc, what fraction that is, and how you mapped it to a percent",
-  "gaugeDetected": true or false,
-  "gaugeType": "analog_needle" | "digital_percentage" | "digital_bars" | "unknown",
-  "fuelPercent": integer 0–100 or null,
-  "confidence": integer 0–100,
-  "reason": "one short sentence for the user",
-  "needsUserConfirmation": true or false
-}
-
-Set needsUserConfirmation to true if confidence < 80 or gaugeDetected is false.`,
+  "gaugeDetected": true|false,
+  "gaugeType": "analog_needle"|"digital_percentage"|"digital_bars"|"unknown",
+  "imageQuality": "good"|"glare"|"dark"|"blurry"|"too_far"|"partial",
+  "pivot": {"x":0.0,"y":0.0} | null,
+  "needleTip": {"x":0.0,"y":0.0} | null,
+  "empty": {"x":0.0,"y":0.0} | null,
+  "full": {"x":0.0,"y":0.0} | null,
+  "holisticPercent": 0-100 | null,
+  "digitalPercent": 0-100 | null,
+  "reason": "one sentence"
+}`,
           },
         ],
       }],
@@ -125,37 +160,115 @@ Set needsUserConfirmation to true if confidence < 80 or gaugeDetected is false.`
       .join('');
 
     const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      return NextResponse.json<GaugeScanResult>({
-        gaugeDetected: false,
-        gaugeType: 'unknown',
-        fuelPercent: null,
-        confidence: 0,
-        reason: 'Could not parse AI response.',
-        needsUserConfirmation: true,
-      });
+    if (!jsonMatch) return NextResponse.json<GaugeScanResult>(failure('Could not parse AI response.'));
+
+    const m = JSON.parse(jsonMatch[0]) as ModelOut;
+
+    const gaugeType     = okType(m.gaugeType);
+    const gaugeDetected = m.gaugeDetected === true && gaugeType !== 'unknown';
+    const imageQuality  = typeof m.imageQuality === 'string' ? m.imageQuality : 'unknown';
+    const reason        = typeof m.reason === 'string' ? m.reason.slice(0, 200) : '';
+    const holistic      = intOrNull(m.holisticPercent);
+    const digital       = intOrNull(m.digitalPercent);
+    const badQuality    = ['dark', 'glare', 'blurry', 'too_far', 'partial'].includes(imageQuality);
+
+    if (!gaugeDetected) {
+      return NextResponse.json<GaugeScanResult>(failure(reason || 'No fuel gauge detected.', imageQuality));
     }
 
-    const raw = JSON.parse(jsonMatch[0]) as Partial<GaugeScanResult>;
+    // ── Digital gauges: no geometry, use the direct read ──
+    if (gaugeType === 'digital_percentage' || gaugeType === 'digital_bars') {
+      const value = digital ?? holistic;
+      if (value === null) return NextResponse.json<GaugeScanResult>(failure(reason || 'Could not read the display.', imageQuality));
+      const confidence = digital !== null ? (badQuality ? 72 : 90) : 60;
+      return NextResponse.json<GaugeScanResult>(build({
+        gaugeDetected: true, gaugeType, percent: value, confidence,
+        reason: reason || 'Read from the digital display.',
+        needleAngle: null, emptyAngle: null, fullAngle: null,
+        imageQuality, retake: confidence < 60,
+      }));
+    }
 
-    const result: GaugeScanResult = {
-      gaugeDetected:        raw.gaugeDetected === true,
-      gaugeType:            (['analog_needle','digital_percentage','digital_bars','unknown'] as GaugeType[]).includes(raw.gaugeType as GaugeType)
-                              ? raw.gaugeType as GaugeType
-                              : 'unknown',
-      fuelPercent:          raw.fuelPercent !== null && typeof raw.fuelPercent === 'number'
-                              ? Math.max(0, Math.min(100, Math.round(raw.fuelPercent)))
-                              : null,
-      confidence:           typeof raw.confidence === 'number'
-                              ? Math.max(0, Math.min(100, Math.round(raw.confidence)))
-                              : 0,
-      reason:               typeof raw.reason === 'string' ? raw.reason.slice(0, 200) : '',
-      needsUserConfirmation: raw.needsUserConfirmation === true || (raw.confidence ?? 0) < 80 || raw.gaugeDetected !== true,
-    };
+    // ── Analog needle: geometry is primary ──
+    const geom = computeGaugePercent(m.pivot ?? null, m.needleTip ?? null, m.empty ?? null, m.full ?? null, aspect);
 
-    return NextResponse.json<GaugeScanResult>(result);
+    if (geom.ok && geom.percent !== null) {
+      // Cross-check geometry against the model's holistic guess.
+      if (holistic !== null) {
+        const diff = Math.abs(geom.percent - holistic);
+        if (diff > CROSS_CHECK_TOLERANCE) {
+          return NextResponse.json<GaugeScanResult>(build({
+            gaugeDetected: true, gaugeType, percent: geom.percent,
+            confidence: clamp(50 - (diff - CROSS_CHECK_TOLERANCE), 20, 50),
+            reason: 'The geometry and a second read disagreed — please retake or confirm the level manually.',
+            needleAngle: geom.needleAngle, emptyAngle: geom.emptyAngle, fullAngle: geom.fullAngle,
+            imageQuality, retake: true,
+          }));
+        }
+        const confidence = clamp(Math.round(94 - diff * 2) - (badQuality ? 10 : 0), 62, 94);
+        return NextResponse.json<GaugeScanResult>(build({
+          gaugeDetected: true, gaugeType, percent: geom.percent, confidence,
+          reason: reason || 'Computed from the needle angle.',
+          needleAngle: geom.needleAngle, emptyAngle: geom.emptyAngle, fullAngle: geom.fullAngle,
+          imageQuality, retake: false,
+        }));
+      }
+      // Geometry only (no holistic to cross-check) — usable but flag for confirmation.
+      return NextResponse.json<GaugeScanResult>(build({
+        gaugeDetected: true, gaugeType, percent: geom.percent,
+        confidence: badQuality ? 58 : 70,
+        reason: reason || 'Computed from the needle angle.',
+        needleAngle: geom.needleAngle, emptyAngle: geom.emptyAngle, fullAngle: geom.fullAngle,
+        imageQuality, retake: false,
+      }));
+    }
+
+    // Geometry failed (landmarks missing/degenerate). Fall back to holistic if we have it.
+    if (holistic !== null) {
+      return NextResponse.json<GaugeScanResult>(build({
+        gaugeDetected: true, gaugeType, percent: holistic, confidence: 48,
+        reason: 'Could not pin the needle precisely — showing an approximate read. Please confirm.',
+        needleAngle: geom.needleAngle, emptyAngle: geom.emptyAngle, fullAngle: geom.fullAngle,
+        imageQuality, retake: true,
+      }));
+    }
+
+    return NextResponse.json<GaugeScanResult>(failure(reason || 'Could not read the gauge — try a clearer, closer photo.', imageQuality));
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Unknown error';
     return NextResponse.json({ error: `Scan failed: ${msg}` }, { status: 500 });
   }
+}
+
+// ── Result builders ──────────────────────────────────────────────────────────
+
+function build(a: {
+  gaugeDetected: boolean; gaugeType: GaugeType; percent: number; confidence: number;
+  reason: string; needleAngle: number | null; emptyAngle: number | null; fullAngle: number | null;
+  imageQuality: string; retake: boolean;
+}): GaugeScanResult {
+  return {
+    gaugeDetected:         a.gaugeDetected,
+    gaugeType:             a.gaugeType,
+    fuelPercent:           a.percent,
+    confidence:            a.confidence,
+    reason:                a.reason,
+    needsUserConfirmation: a.retake || a.confidence < 80,
+    estimatedFuelPercentage: a.percent,
+    confidenceScore:         a.confidence,
+    detectedNeedleAngle:     a.needleAngle,
+    emptyAngle:              a.emptyAngle,
+    fullAngle:               a.fullAngle,
+    imageQualityStatus:      a.imageQuality,
+    retakeRequired:          a.retake,
+  };
+}
+
+function failure(reason: string, imageQuality = 'unknown'): GaugeScanResult {
+  return {
+    gaugeDetected: false, gaugeType: 'unknown', fuelPercent: null, confidence: 0,
+    reason, needsUserConfirmation: true,
+    estimatedFuelPercentage: null, confidenceScore: 0, detectedNeedleAngle: null,
+    emptyAngle: null, fullAngle: null, imageQualityStatus: imageQuality, retakeRequired: true,
+  };
 }
