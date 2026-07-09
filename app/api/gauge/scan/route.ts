@@ -50,8 +50,8 @@ export async function POST(req: Request) {
 
   try {
     const message = await anthropic.messages.create({
-      model:      'claude-haiku-4-5-20251001',
-      max_tokens: 250,
+      model:      'claude-sonnet-5',
+      max_tokens: 700,
       messages: [{
         role: 'user',
         content: [
@@ -61,44 +61,45 @@ export async function POST(req: Request) {
           },
           {
             type: 'text',
-            text: `You are a vehicle fuel gauge expert analyzing a dashboard photo.
+            text: `You are a vehicle fuel gauge expert analyzing a dashboard photo. Accuracy matters more than speed — reason carefully before committing to a number.
 
 STEP 1 — LOCATE THE FUEL GAUGE
 Find the fuel gauge in the image. It may be:
-- Analog needle: a dial with E (Empty) and F (Full) labels, needle pointing to current level
-- Digital percentage: a number like "87%" or "45%" on an info display
-- Digital bars: segmented bar graph showing fill level (like a battery icon)
-- Not visible or unreadable
+- Analog needle: a dial with E (Empty) and F (Full) labels, needle pointing to current level. Often has a pump icon and intermediate ticks (¼, ½, ¾).
+- Digital percentage: a number like "87%" or "45%" on an info display.
+- Digital bars: segmented bar graph showing fill level (like a battery icon).
+- Not visible or unreadable.
 
 STEP 2 — DETERMINE GAUGE TYPE
-Classify as one of: analog_needle, digital_percentage, digital_bars, unknown
+Classify as one of: analog_needle, digital_percentage, digital_bars, unknown.
 
-STEP 3 — ESTIMATE FUEL LEVEL
-- Analog needle: measure needle position relative to E and F endpoints. E=0%, F=100%. ¼=25%, ½=50%, ¾=75%.
-  IMPORTANT: If the needle is AT or PAST the F mark, return 100. Do not under-report a full tank as 85 or 90 — if it looks full, it is full.
-  Report the nearest whole number; do not round down conservatively.
+STEP 3 — ESTIMATE FUEL LEVEL (reason step-by-step in the "analysis" field FIRST)
+- Analog needle — THIS IS THE HARD CASE, do it carefully:
+  * The needle sweeps along an ARC, not a vertical line. E is at one end of the arc, F at the other.
+  * Identify the exact positions of the E end, the F end, and any ¼/½/¾ tick marks.
+  * Estimate what FRACTION of the way along the E→F arc the needle tip sits. Judge angular position along the arc — do NOT judge by vertical height, which is a common mistake and reads low.
+  * Map that fraction to a percent: E=0, ¼=25, ½=50, ¾=75, F=100. Interpolate between ticks.
+  * If the needle sits exactly on or past the F tick, it is 100. If exactly on E or below, it is a single digit or 0. Otherwise give an honest interpolated value — do not bias high or low.
 - Digital percentage: read the number exactly as shown.
-- Digital bars: count lit segments ÷ total segments × 100, nearest whole number.
-- If unreadable: set fuelPercent to null.
+- Digital bars: count lit/filled segments ÷ total segments × 100, nearest whole number.
+- If genuinely unreadable (too dark, blurred, glare, gauge not in frame): set fuelPercent to null.
 
 STEP 4 — ASSESS CONFIDENCE (0–100)
-Rate your confidence in the reading:
-- 90–100: Gauge clearly visible, reading unambiguous
-- 70–89: Gauge visible but some uncertainty (slight angle, partial view)
-- 50–69: Gauge partially obscured, glare, or reading is approximate
-- Below 50: Very uncertain — dark image, heavy glare, gauge barely visible
-- 0: No gauge found or completely unreadable
+- 90–100: Gauge clearly visible, reading unambiguous (esp. digital readouts).
+- 70–89: Gauge visible but some uncertainty (slight angle, needle between ticks, partial view).
+- 50–69: Gauge partially obscured, glare, or reading is approximate.
+- Below 50: Very uncertain — dark image, heavy glare, gauge barely visible.
+- 0: No gauge found or completely unreadable.
+Analog-needle readings between ticks should rarely exceed 85 confidence — they are inherently estimates.
 
-STEP 5 — EXPLAIN BRIEFLY
-One sentence: what you saw and how you determined the reading. If unreadable, say why (too dark, glare, not a gauge, etc.).
-
-Return ONLY valid JSON, no markdown, no code block:
+Return ONLY valid JSON, no markdown, no code block. Put "analysis" FIRST and reason through the needle/arc position there BEFORE stating fuelPercent:
 {
+  "analysis": "2-4 sentences: where E and F are, where the needle points along the arc, what fraction that is, and how you mapped it to a percent",
   "gaugeDetected": true or false,
   "gaugeType": "analog_needle" | "digital_percentage" | "digital_bars" | "unknown",
   "fuelPercent": integer 0–100 or null,
   "confidence": integer 0–100,
-  "reason": "one sentence explanation",
+  "reason": "one short sentence for the user",
   "needsUserConfirmation": true or false
 }
 

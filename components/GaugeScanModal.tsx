@@ -32,8 +32,10 @@ interface Props {
 
 // ── Image preprocessing ────────────────────────────────────────────────────
 
-const MAX_DIM    = 1024;
-const JPEG_QUAL  = 0.88;
+// 1536px longest edge: Claude's vision downsamples to ~1568px anyway, so this keeps
+// maximum gauge detail without wasting upload bandwidth on a WKWebView.
+const MAX_DIM    = 1536;
+const JPEG_QUAL  = 0.9;
 
 // preprocessImage replaced by compressImageForUpload from lib/imageUtils
 // (createImageBitmap crashed WKWebView on HEIC photos from iOS camera roll)
