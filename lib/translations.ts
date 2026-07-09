@@ -276,7 +276,7 @@ const en = {
       },
       {
         q: 'Does it work offline?',
-        a: 'Yes. Once installed as a PWA, the calculator works offline using your last-known gas price and saved vehicles. Live gas price lookup, gauge scanning, and AI features require a connection.',
+        a: 'Yes. Once installed as a PWA, the calculator works offline using your last-known gas price and saved vehicles. Live gas price lookup and AI features require a connection.',
       },
       {
         q: 'How is this different from a road trip fuel calculator?',
@@ -284,7 +284,7 @@ const en = {
       },
       {
         q: 'How do I set my current fuel level?',
-        a: 'Drag the needle on the fuel gauge dial to match your dashboard, or use the slider — the calculator updates instantly. You can also switch to gallons and enter an exact amount. Pro users can tap "Scan Gauge" to photograph the dashboard gauge: GasCap™ locates the needle, E, and F, computes the level from the needle angle, and cross-checks it before you confirm.',
+        a: 'Drag the needle on the fuel gauge dial to match your dashboard, or use the slider — the calculator updates instantly. You can also switch to gallons and enter an exact amount.',
       },
     ],
   },
@@ -3013,7 +3013,7 @@ const es: typeof en = {
       },
       {
         q: '¿Funciona sin conexión a internet?',
-        a: 'Sí. Una vez instalada como PWA, la calculadora funciona sin conexión usando tu último precio de gasolina guardado y vehículos guardados. La búsqueda de precios en tiempo real, el escaneo de medidor y las funciones de IA requieren conexión.',
+        a: 'Sí. Una vez instalada como PWA, la calculadora funciona sin conexión usando tu último precio de gasolina guardado y vehículos guardados. La búsqueda de precios en tiempo real y las funciones de IA requieren conexión.',
       },
       {
         q: '¿En qué se diferencia de una calculadora de viaje por carretera?',
@@ -3021,7 +3021,7 @@ const es: typeof en = {
       },
       {
         q: '¿Cómo establezco mi nivel de combustible actual?',
-        a: 'Arrastra la aguja en el medidor de gasolina para que coincida con tu tablero, o usa el deslizador — la calculadora se actualiza al instante. También puedes cambiar a galones e ingresar una cantidad exacta. Los usuarios Pro pueden tocar "Escanear Medidor" para tomar una foto del tablero: GasCap™ localiza la aguja, la E y la F, calcula el nivel a partir del ángulo de la aguja y lo verifica antes de que confirmes.',
+        a: 'Arrastra la aguja en el medidor de gasolina para que coincida con tu tablero, o usa el deslizador — la calculadora se actualiza al instante. También puedes cambiar a galones e ingresar una cantidad exacta.',
       },
     ],
   },

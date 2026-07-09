@@ -64,7 +64,17 @@ const okType = (t: string | undefined): GaugeType =>
 const intOrNull = (v: unknown): number | null =>
   typeof v === 'number' && isFinite(v) ? clamp(Math.round(v), 0, 100) : null;
 
+// SHELVED (2026-07-09): gauge scan is disabled — not accurate enough to trust. This
+// server guard returns before any Anthropic call, so cached/old clients that still show
+// the button spend zero tokens. The pipeline below is kept intact for a future revisit.
+// Flip to true (AND GAUGE_SCAN_ENABLED in TargetFillForm.tsx) to re-enable.
+const GAUGE_SCAN_ENABLED = false;
+
 export async function POST(req: Request) {
+  if (!GAUGE_SCAN_ENABLED) {
+    return NextResponse.json({ error: 'Gauge scanning is currently unavailable. Set your fuel level with the gauge dial instead.' }, { status: 503 });
+  }
+
   const token = await getToken({ req: req as Parameters<typeof getToken>[0]['req'], secret: process.env.NEXTAUTH_SECRET });
   if (!token?.sub && !token?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 

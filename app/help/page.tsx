@@ -76,7 +76,7 @@ const SECTIONS = [
       },
       {
         q: 'How do I set my current fuel level?',
-        a: 'Drag the needle on the fuel gauge dial to match your dashboard, or use the slider — the calculator updates instantly. You can also switch to gallons and type an exact amount. Pro users get an extra shortcut: tap "Scan Gauge" and photograph your dashboard gauge — GasCap™ locates the needle, E, and F, computes the level from the needle angle, and cross-checks the result. Center the gauge so E, F, and the needle are all clearly visible; if confidence is low you can adjust the slider or retake.',
+        a: 'Drag the needle on the fuel gauge dial to match your dashboard, or use the slider — the calculator updates instantly. You can also switch to gallons and type an exact amount.',
       },
       {
         q: 'How does the live gas price lookup work?',
@@ -88,7 +88,7 @@ const SECTIONS = [
       },
       {
         q: 'Can I use GasCap™ without internet?',
-        a: 'Yes. Once installed, the calculators work fully offline using the last-known gas price. Gas price lookup, electricity rate lookup, gauge scan, VIN scan, and AI features require an internet connection.',
+        a: 'Yes. Once installed, the calculators work fully offline using the last-known gas price. Gas price lookup, electricity rate lookup, VIN scan, and AI features require an internet connection.',
       },
     ],
   },

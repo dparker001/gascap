@@ -21,10 +21,12 @@ import { trackCalculateTarget, trackRentalReturnToggled } from '@/lib/gtag';
 import { checkTankSize } from '@/lib/tankValidation';
 import GaugeScanModal from './GaugeScanModal';
 
-// Gauge photo-scan: Pro-only. Uses the geometry pipeline (vision model locates the
-// needle/E/F, server computes the angle→% in code + cross-checks). The manual
-// needle-drag slider remains the free path. Flip to false to shelve entirely.
-const GAUGE_SCAN_ENABLED = true;
+// Gauge photo-scan: SHELVED again (2026-07-09) — not accurate enough to trust, even
+// on clean images. The full Pro geometry pipeline (vision locates needle/E/F, server
+// computes angle→% + cross-check) is kept intact for a possible future revisit. The
+// manual needle-drag slider is the free, accurate path. Flip to true (AND the server
+// guard in app/api/gauge/scan/route.ts) to re-enable.
+const GAUGE_SCAN_ENABLED = false;
 
 // ── Types ──────────────────────────────────────────────────────────────
 
