@@ -21,6 +21,11 @@ import { trackCalculateTarget, trackRentalReturnToggled } from '@/lib/gtag';
 import { checkTankSize } from '@/lib/tankValidation';
 import GaugeScanModal from './GaugeScanModal';
 
+// Gauge photo-scan is SHELVED: it hit the (paid) Anthropic API on every scan for
+// all users — including free — and the manual needle-drag slider below is instant,
+// free, and covers the same need. Flip to true to re-enable the scan button + modal.
+const GAUGE_SCAN_ENABLED = false;
+
 // ── Types ──────────────────────────────────────────────────────────────
 
 type FuelMode = 'percent' | 'gallons';
@@ -652,7 +657,8 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
               tankCapacity={tankNum}
             />
 
-            {/* ── Scan gauge button ── */}
+            {/* ── Scan gauge button (shelved — see GAUGE_SCAN_ENABLED) ── */}
+            {GAUGE_SCAN_ENABLED && (
             <div className="mt-2 space-y-1.5">
               {isLoggedIn ? (
                 <>
@@ -691,6 +697,7 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
                 </div>
               )}
             </div>
+            )}
           </>
         ) : (
           <div className="relative">

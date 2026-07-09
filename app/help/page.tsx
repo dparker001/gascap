@@ -75,8 +75,8 @@ const SECTIONS = [
         a: 'Rental Car Return Mode is designed for rental vehicle drop-offs. Tap the "🚗 Rental Car Return Mode" toggle at the top of the calculator to activate it — or set your Driver Mode to "Rental Car" in Settings and it activates automatically every time you open the app. Visiting gascap.app/rental and tapping the CTA also launches the calculator in rental mode directly. Your saved garage is hidden and replaced with rental car class presets (Economy, Midsize, SUV, etc.). Enter the rental company\'s per-gallon rate to see exactly how much you save by fueling up yourself vs. returning empty.',
       },
       {
-        q: 'Can I scan my fuel gauge to set the current level?',
-        a: 'Yes. Tap "Scan Gauge" to open the scanner. Center the gauge in the frame, then tap "Use Camera" or "Upload Photo." You\'ll see a preview before anything is analyzed — tap "Retake" if needed, or "Analyze" to send it to AI. The result shows the detected fuel level, gauge type (analog needle, digital bars, etc.), and a confidence score. If confidence is below 80%, a warning appears and the slider stays active so you can correct it. Tap "Looks Right" to apply the level to the calculator. A "Fuel level set from dashboard scan" badge confirms it was applied. Tips: avoid glare, hold steady, and move closer if the gauge is small in frame.',
+        q: 'How do I set my current fuel level?',
+        a: 'Drag the needle on the fuel gauge dial to match your dashboard, or use the slider — the calculator updates instantly. You can also switch to gallons and type an exact amount.',
       },
       {
         q: 'How does the live gas price lookup work?',
@@ -88,7 +88,7 @@ const SECTIONS = [
       },
       {
         q: 'Can I use GasCap™ without internet?',
-        a: 'Yes. Once installed, the calculators work fully offline using the last-known gas price. Gas price lookup, electricity rate lookup, gauge scan, VIN scan, and AI features require an internet connection.',
+        a: 'Yes. Once installed, the calculators work fully offline using the last-known gas price. Gas price lookup, electricity rate lookup, VIN scan, and AI features require an internet connection.',
       },
     ],
   },

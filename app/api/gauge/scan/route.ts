@@ -21,7 +21,17 @@ export interface GaugeScanResult {
   needsUserConfirmation: boolean;
 }
 
+// SHELVED: gauge photo-scan is disabled to stop it consuming Anthropic tokens for
+// all users (incl. free). The manual needle-drag gauge covers the same need for free.
+// This server-side guard also protects against cached/old clients that still show the
+// scan button. Flip to true (and GAUGE_SCAN_ENABLED in TargetFillForm.tsx) to restore.
+const GAUGE_SCAN_ENABLED = false;
+
 export async function POST(req: Request) {
+  if (!GAUGE_SCAN_ENABLED) {
+    return NextResponse.json({ error: 'Gauge scanning is currently unavailable. Set your fuel level with the gauge dial instead.' }, { status: 503 });
+  }
+
   const token = await getToken({ req: req as Parameters<typeof getToken>[0]['req'], secret: process.env.NEXTAUTH_SECRET });
   if (!token?.sub && !token?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 

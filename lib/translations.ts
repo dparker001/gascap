@@ -276,15 +276,15 @@ const en = {
       },
       {
         q: 'Does it work offline?',
-        a: 'Yes. Once installed as a PWA, the calculator works offline using your last-known gas price and saved vehicles. Live gas price lookup, gauge scanning, and AI features require a connection.',
+        a: 'Yes. Once installed as a PWA, the calculator works offline using your last-known gas price and saved vehicles. Live gas price lookup and AI features require a connection.',
       },
       {
         q: 'How is this different from a road trip fuel calculator?',
         a: "Road trip calculators estimate fuel cost for a journey by distance. GasCap™ solves a different problem: it tells you exactly what it costs to fill your tank right now, based on your current level and local price. It's the tool you use at the pump — not while planning a route.",
       },
       {
-        q: 'Can GasCap™ scan my gas gauge?',
-        a: "Yes — Pro users can tap \"Scan Gauge\" to take a photo of their dashboard. GasCap™'s AI reads the needle position and automatically sets your current fuel level. Supports arc, horizontal, and vertical sweep gauges.",
+        q: 'How do I set my current fuel level?',
+        a: 'Drag the needle on the fuel gauge dial to match your dashboard, or use the slider — the calculator updates instantly. You can also switch to gallons and enter an exact amount.',
       },
     ],
   },
@@ -3010,15 +3010,15 @@ const es: typeof en = {
       },
       {
         q: '¿Funciona sin conexión a internet?',
-        a: 'Sí. Una vez instalada como PWA, la calculadora funciona sin conexión usando tu último precio de gasolina guardado y vehículos guardados. La búsqueda de precios en tiempo real, el escaneo de medidor y las funciones de IA requieren conexión.',
+        a: 'Sí. Una vez instalada como PWA, la calculadora funciona sin conexión usando tu último precio de gasolina guardado y vehículos guardados. La búsqueda de precios en tiempo real y las funciones de IA requieren conexión.',
       },
       {
         q: '¿En qué se diferencia de una calculadora de viaje por carretera?',
         a: 'Las calculadoras de viaje estiman el costo de combustible por distancia. GasCap™ resuelve un problema distinto: te dice exactamente cuánto cuesta llenar tu tanque ahora mismo, según tu nivel actual y el precio local. Es la herramienta que usas en la gasolinera — no mientras planeas la ruta.',
       },
       {
-        q: '¿GasCap™ puede escanear mi medidor de gasolina?',
-        a: 'Sí — los usuarios Pro pueden tocar "Escanear Medidor" para tomar una foto del tablero. La IA de GasCap™ lee la posición de la aguja y establece automáticamente tu nivel de combustible. Compatible con medidores de arco, horizontales y verticales.',
+        q: '¿Cómo establezco mi nivel de combustible actual?',
+        a: 'Arrastra la aguja en el medidor de gasolina para que coincida con tu tablero, o usa el deslizador — la calculadora se actualiza al instante. También puedes cambiar a galones e ingresar una cantidad exacta.',
       },
     ],
   },
