@@ -60,16 +60,24 @@ export interface StreakBonusTier {
  *
  * Streak bonus:
  *  – Keeps daily engagement rewarding even during ineligible months
- *  – Max +30 entries on top of the ~31 active-day entries
- *  – Requires ≥1 active day this month to qualify for the draw at all
+ *  – Max +120 entries on top of the ~7 active-day entries per weekly draw
+ *  – Requires ≥1 active day this period to qualify for the draw at all
+ *
+ * 90/180/365-day tiers bumped 2026-07 (15/22/30 -> 40/70/120) to make long streaks
+ * meaningfully more rewarding. Deliberately NOT set to the originally-floated
+ * 100/200/500: at that scale a single 365-day streak would out-weigh a Lifetime+Perks
+ * member (+40) by 12x+ in the weighted draw, letting one mechanic dominate every
+ * winner selection. 120 keeps the top tier a big, motivating jump (~4x the old max)
+ * while staying in the same order of magnitude as the other stacking bonuses
+ * (Lifetime+Perks +40, each referral +15) — see memory/feedback_giveaway_entry_ladder.md.
  */
 export const STREAK_BONUS_TIERS: StreakBonusTier[] = [
-  { minStreak:   0, bonus:  0, label: 'No bonus'        },
-  { minStreak:   7, bonus:  3, label: '1-week streak'   },
-  { minStreak:  30, bonus:  8, label: '1-month streak'  },
-  { minStreak:  90, bonus: 15, label: '3-month streak'  },
-  { minStreak: 180, bonus: 22, label: '6-month streak'  },
-  { minStreak: 365, bonus: 30, label: '1-year streak'   },
+  { minStreak:   0, bonus:   0, label: 'No bonus'        },
+  { minStreak:   7, bonus:   3, label: '1-week streak'   },
+  { minStreak:  30, bonus:   8, label: '1-month streak'  },
+  { minStreak:  90, bonus:  40, label: '3-month streak'  },
+  { minStreak: 180, bonus:  70, label: '6-month streak'  },
+  { minStreak: 365, bonus: 120, label: '1-year streak'   },
 ];
 
 /**
