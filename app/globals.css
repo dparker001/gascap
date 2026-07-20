@@ -2,10 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ── Native WebView: disable pull-to-refresh and overscroll bounce ─── */
-html, body {
-  overscroll-behavior-y: none;
-}
+/* Native pull-to-refresh/overscroll bounce is handled at the touch level in
+   lib/nativeChrome.ts (WKWebView ignores CSS overscroll-behavior-y — see comment
+   there) and PullToRefresh.tsx disables itself entirely in native. The blanket
+   `overscroll-behavior-y: none` that used to live here did nothing for native and
+   only applied globally to every desktop/mobile browser page (incl. /admin), where
+   it pairs badly with `scroll-behavior: smooth` below and can cause Safari to stop
+   responding to scroll input. Removed 2026-07 — see gotcha-admin-scroll-lock memory. */
 
 /* ── Base ──────────────────────────────────────────────────────────── */
 :root {
