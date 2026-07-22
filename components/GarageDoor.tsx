@@ -392,6 +392,8 @@ export function GarageDoor({
         setTotalDays(data.totalGarageDays ?? 1);
         setShowToast(true);
         setTimeout(() => setShowToast(false), 6000);
+        // Let the entries counter (GreetingStrip, Rewards tab, etc.) refetch live.
+        window.dispatchEvent(new CustomEvent('gascap:entries-earned', { detail: { entriesWon: data.bonusEntries ?? 10 } }));
       }
     } catch { /* ignore network errors — don't block the animation */ }
   }, [isOpen]);

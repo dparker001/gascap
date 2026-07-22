@@ -19,11 +19,17 @@ export default function GreetingStrip({ onOpenRewards }: { onOpenRewards: () => 
   useEffect(() => {
     if (status !== 'authenticated') return;
     let cancelled = false;
-    fetch('/api/user/giveaway-entries', { credentials: 'include' })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => { if (d && !cancelled) setStats({ streak: d.streak ?? 0, entries: d.entryCount ?? 0 }); })
-      .catch(() => { /* ignore — strip just shows the greeting */ });
-    return () => { cancelled = true; };
+    const load = () => {
+      fetch('/api/user/giveaway-entries', { credentials: 'include' })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => { if (d && !cancelled) setStats({ streak: d.streak ?? 0, entries: d.entryCount ?? 0 }); })
+        .catch(() => { /* ignore — strip just shows the greeting */ });
+    };
+    load();
+    // Garage door, gift box, gig log, budget form, etc. all dispatch this after
+    // awarding entries — refetch so the count ticks up in real time here too.
+    window.addEventListener('gascap:entries-earned', load);
+    return () => { cancelled = true; window.removeEventListener('gascap:entries-earned', load); };
   }, [status]);
 
   if (status !== 'authenticated') return null;
