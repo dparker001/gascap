@@ -13,7 +13,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSession }                        from 'next-auth/react';
 import { useTranslation }                    from '@/contexts/LanguageContext';
-import { resolveVehicleMpg }                 from '@/lib/fillups';
+import { resolveVehicleMpg }                 from '@/lib/mpgResolver';
 import type { VehicleSpecs }                 from '@/lib/vehicleSpecs';
 
 interface Fillup {

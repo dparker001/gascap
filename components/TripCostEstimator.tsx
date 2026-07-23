@@ -10,7 +10,7 @@ import GoogleMapsHandoffButton               from './GoogleMapsHandoffButton';
 import { canAccessFeature, getPlanTier, UPGRADE_COPY } from '@/lib/featureAccess';
 import { trackLockedFeatureShown }           from '@/lib/gtag';
 import { metersToMiles }                     from '@/lib/tripFuelPlanner';
-import { resolveVehicleMpg }                 from '@/lib/fillups';
+import { resolveVehicleMpg }                 from '@/lib/mpgResolver';
 import type { RouteResult, FuelStop }        from '@/lib/mapsProvider/types';
 import type { Vehicle }                      from './SavedVehicles';
 

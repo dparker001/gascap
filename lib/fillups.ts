@@ -4,7 +4,13 @@
  */
 import { randomUUID } from 'crypto';
 import { prisma }     from './prisma';
-import type { VehicleSpecs } from './vehicleSpecs';
+
+// Re-exported for server-side callers that import these from lib/fillups —
+// the actual implementation lives in lib/mpgResolver.ts (a pure, client-safe
+// module with zero server-only imports; see that file's comment for why this
+// split matters). CLIENT components must import from lib/mpgResolver directly,
+// never from here — this file pulls in Prisma/pg, which breaks the browser bundle.
+export { resolveVehicleMpg, type MpgResolution, type MpgSourceLabel } from './mpgResolver';
 
 export interface Fillup {
   id:             string;
@@ -288,43 +294,6 @@ export async function getRecentStations(userId: string, limit = 10): Promise<str
 }
 
 // ── Pure computation helpers (synchronous — work on already-fetched data) ──
-
-export type MpgSourceLabel = 'epaCombinedEstimate' | 'avgFromFillupLog' | '';
-
-export interface MpgResolution {
-  mpg:      number | null;
-  labelKey: MpgSourceLabel;
-}
-
-/**
- * Resolve the best MPG to DISPLAY AND CALCULATE WITH for a vehicle.
- *
- * EPA's combined rating (decoded from the VIN, stored on vehicleSpecs) is
- * authoritative whenever it's on file — it's available immediately (zero fill-ups
- * required) and isn't skewed by a mistyped odometer reading or a missed fill-up
- * breaking a "consecutive readings" pair. The user's own observed average (from
- * logged fill-ups) is used ONLY when no EPA data exists at all, and only when it
- * falls in a believable range — it's never allowed to override a known EPA rating.
- * Odometer entries are still valuable and still collected; they just become a
- * silent "your actual vs. EPA" comparison instead of the primary number.
- *
- * (Originally implemented locally in TripCostEstimator.tsx — centralized here so
- * every MPG-consuming surface follows the same rule instead of each falling back
- * to raw computeMpg() independently.)
- */
-export function resolveVehicleMpg(
-  vehicleSpecs: VehicleSpecs | null | undefined,
-  observedAvgMpg: number | null | undefined,
-): MpgResolution {
-  const epaMpg = vehicleSpecs?.combMpg;
-  if (epaMpg != null) {
-    return { mpg: epaMpg, labelKey: 'epaCombinedEstimate' };
-  }
-  if (observedAvgMpg != null && observedAvgMpg >= 5 && observedAvgMpg <= 200) {
-    return { mpg: observedAvgMpg, labelKey: 'avgFromFillupLog' };
-  }
-  return { mpg: null, labelKey: '' };
-}
 
 /**
  * Compute MPG for each fillup that has consecutive odometer readings.
