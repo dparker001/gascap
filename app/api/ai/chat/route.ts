@@ -10,6 +10,8 @@ import Anthropic            from '@anthropic-ai/sdk';
 import { getFillups, computeMpg, getFillupStats } from '@/lib/fillups';
 import { getBudgetGoal }    from '@/lib/budgetGoals';
 import { findById, findByEmail } from '@/lib/users';
+import { getVehiclesForUser } from '@/lib/savedVehicles';
+import { resolveVehicleMpg } from '@/lib/mpgResolver';
 
 const client = new Anthropic({ apiKey: process.env.GASCAP_ANTHROPIC_KEY });
 
@@ -75,6 +77,7 @@ export async function POST(req: Request) {
     const mpgMap   = computeMpg(fillups);
     const stats    = getFillupStats(fillups, mpgMap);
     const goal     = getBudgetGoal(userId);
+    const vehicles = await getVehiclesForUser(userId);
 
     const now      = new Date();
     const month    = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -85,13 +88,28 @@ export async function POST(req: Request) {
     const mpgValues = Object.values(mpgMap).filter((v): v is number => v !== null);
     const latestMpg = mpgValues.length > 0 ? mpgValues[mpgValues.length - 1] : null;
 
+    // MPG for the AI's context: prefer the same EPA-rating-first logic the app
+    // itself shows (MpgInsightCard) — a VIN-added vehicle has a trustworthy MPG
+    // immediately, it shouldn't need 2+ logged fill-ups just for the AI to know it.
+    const epaMpgs = vehicles
+      .map((v) => resolveVehicleMpg(v.vehicleSpecs, null).mpg)
+      .filter((m): m is number => m != null);
+    const epaAvgMpg = epaMpgs.length > 0
+      ? Math.round((epaMpgs.reduce((s, m) => s + m, 0) / epaMpgs.length) * 10) / 10
+      : null;
+    const avgMpgLine = stats.avgMpg != null
+      ? `${stats.avgMpg} (from logged fill-ups)`
+      : epaAvgMpg != null
+        ? `${epaAvgMpg} (EPA rating — no fill-up history logged yet)`
+        : 'not yet available (add a vehicle with a VIN, or log 2+ fill-ups with odometer readings)';
+
     contextBlock = `
 USER DATA CONTEXT:
 - Vehicles: ${body.vehicles?.map((v) => `${v.name} (${v.gallons} gal tank${v.fuelType ? ', ' + v.fuelType : ''})`).join('; ') || 'none saved'}
 - Total fillups logged: ${stats.count}
 - Total fuel spent (all time): $${stats.totalSpent.toFixed(2)}
 - Total gallons (all time): ${stats.totalGallons} gal
-- Average MPG across all vehicles: ${stats.avgMpg ?? 'not yet calculated (needs odometer readings)'}
+- Average MPG across all vehicles: ${avgMpgLine}
 - Latest calculated MPG: ${latestMpg ?? 'N/A'}
 - This month (${month}): ${monthFills.length} fillup${monthFills.length !== 1 ? 's' : ''}, $${monthSpent.toFixed(2)} spent
 - Monthly budget goal: ${goal ? `$${goal.monthlyLimit} (${Math.round((monthSpent / goal.monthlyLimit) * 100)}% used)` : 'not set'}

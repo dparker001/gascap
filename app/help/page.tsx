@@ -56,7 +56,7 @@ const SECTIONS = [
       },
       {
         q: 'What is the MPG Insight Card?',
-        a: 'The MPG Insight Card appears on the main screen for Pro and Fleet users who have logged at least two fill-ups. It shows your real-world average MPG, your trend vs. previous fill-ups, and your best single fill-up efficiency. Tap the card to open the full MPG chart.',
+        a: 'The MPG Insight Card appears on the main screen for Pro and Fleet users. If you added your vehicle by VIN, it shows the EPA-rated MPG immediately — no fill-ups required. Once you\'ve logged at least two fill-ups with odometer readings, it switches to your real-world average MPG, along with your trend vs. previous fill-ups and your best single fill-up efficiency. Tap the card to open the full MPG chart.',
       },
       {
         q: 'What is my GasCap™ driver mode and how do I change it?',
@@ -152,7 +152,7 @@ const SECTIONS = [
       },
       {
         q: 'How is MPG calculated?',
-        a: 'MPG is calculated automatically from consecutive fill-ups that both include odometer readings, using the formula: miles driven ÷ gallons pumped. You\'ll need at least two fill-ups with odometer readings to see MPG data.',
+        a: 'If your vehicle was added by VIN, GasCap™ shows its official EPA-rated combined MPG right away — no fill-ups needed. Once you log at least two fill-ups with odometer readings, GasCap™ also calculates your real-world average from consecutive fill-ups (miles driven ÷ gallons pumped) as a comparison against the EPA rating. If your vehicle wasn\'t added by VIN, you\'ll need at least two fill-ups with odometer readings before any MPG data appears.',
       },
       {
         q: 'What is "cost per mile" and how is it calculated?',
