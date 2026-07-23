@@ -13,6 +13,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSession }                        from 'next-auth/react';
 import { useTranslation }                    from '@/contexts/LanguageContext';
+import { resolveVehicleMpg }                 from '@/lib/fillups';
+import type { VehicleSpecs }                 from '@/lib/vehicleSpecs';
 
 interface Fillup {
   id:             string;
@@ -111,6 +113,9 @@ export default function MpgInsightCard() {
   const { t } = useTranslation();
   const [data,    setData]    = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  // EPA fallback for vehicles with no fill-up history yet (e.g. just added via
+  // VIN scan) — combined MPG is known immediately, no odometer entries needed.
+  const [epaMpg,  setEpaMpg]  = useState<number | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -118,6 +123,18 @@ export default function MpgInsightCard() {
       if (res.ok) setData(await res.json() as ApiResponse);
     } catch { /* non-fatal */ }
     finally { setLoading(false); }
+    try {
+      const vRes = await fetch('/api/vehicles');
+      if (vRes.ok) {
+        const vData = await vRes.json() as { vehicles?: { vehicleSpecs?: VehicleSpecs }[] };
+        const withEpa = (vData.vehicles ?? [])
+          .map((v) => resolveVehicleMpg(v.vehicleSpecs, null).mpg)
+          .filter((m): m is number => m != null);
+        if (withEpa.length > 0) {
+          setEpaMpg(Math.round((withEpa.reduce((s, m) => s + m, 0) / withEpa.length) * 10) / 10);
+        }
+      }
+    } catch { /* non-fatal — card just won't show the EPA fallback */ }
   }, []);
 
   useEffect(() => {
@@ -137,10 +154,13 @@ export default function MpgInsightCard() {
       ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
-  // Gates
-  if (!session || loading || !data || data.stats.avgMpg === null) return null;
+  // Gates — render if we have EITHER a real observed average OR an EPA fallback
+  if (!session || loading || !data) return null;
+  const hasObserved = data.stats.avgMpg !== null;
+  if (!hasObserved && epaMpg === null) return null;
 
   const { fillups, mpgMap, stats } = data;
+  const heroMpg = hasObserved ? stats.avgMpg : epaMpg;
 
   const mpgValues    = Object.values(mpgMap).filter((v): v is number => v !== null);
   const bestMpg      = mpgValues.length > 0 ? Math.max(...mpgValues) : null;
@@ -196,22 +216,26 @@ export default function MpgInsightCard() {
             {/* Hero: avg MPG + sparkline */}
             <div className="flex-1 min-w-0">
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-0.5">
-                {t.mpgInsightCard.avgMpg}
+                {hasObserved ? t.mpgInsightCard.avgMpg : t.mpgInsightCard.epaRatedMpg}
               </p>
               <div className="flex items-baseline gap-1.5 flex-wrap">
                 <span className="text-3xl font-black text-amber-500 leading-none">
-                  {stats.avgMpg}
+                  {heroMpg}
                 </span>
                 <span className="text-xs text-slate-400 font-semibold">mpg</span>
 
-                {trend && trend.direction !== 'flat' && (
+                {hasObserved && trend && trend.direction !== 'flat' && (
                   <span className={`text-sm font-black ${trendColor}`}>
                     {trendIcon} {Math.abs(trend.delta)}
                   </span>
                 )}
               </div>
 
-              {trend ? (
+              {!hasObserved ? (
+                <p className="text-[10px] text-slate-400 mt-0.5 leading-tight">
+                  {t.mpgInsightCard.epaFallbackHint}
+                </p>
+              ) : trend ? (
                 <p className="text-[10px] text-slate-400 mt-0.5 leading-tight">
                   {trend.direction === 'flat'
                     ? t.mpgInsightCard.steadyVsPrior(trend.fills)
@@ -225,16 +249,17 @@ export default function MpgInsightCard() {
             </div>
 
             {/* Sparkline */}
-            {sparkPoints.length >= 2 && (
+            {hasObserved && sparkPoints.length >= 2 && (
               <div className="flex-shrink-0 opacity-90">
                 <Sparkline points={sparkPoints} />
               </div>
             )}
 
             {/* Divider */}
-            <div className="w-px self-stretch bg-slate-100 flex-shrink-0" />
+            {hasObserved && <div className="w-px self-stretch bg-slate-100 flex-shrink-0" />}
 
-            {/* Right column: best + coverage */}
+            {/* Right column: best + coverage — needs real fill-up history */}
+            {hasObserved && (
             <div className="flex-shrink-0 space-y-2.5">
               {bestMpg && (
                 <div>
@@ -262,6 +287,7 @@ export default function MpgInsightCard() {
                 </p>
               </div>
             </div>
+            )}
           </div>
 
           {/* Nudge when coverage is low */}

@@ -10,6 +10,7 @@ import GoogleMapsHandoffButton               from './GoogleMapsHandoffButton';
 import { canAccessFeature, getPlanTier, UPGRADE_COPY } from '@/lib/featureAccess';
 import { trackLockedFeatureShown }           from '@/lib/gtag';
 import { metersToMiles }                     from '@/lib/tripFuelPlanner';
+import { resolveVehicleMpg }                 from '@/lib/fillups';
 import type { RouteResult, FuelStop }        from '@/lib/mapsProvider/types';
 import type { Vehicle }                      from './SavedVehicles';
 
@@ -169,30 +170,10 @@ function useGarageData() {
 }
 
 // ── Resolve best MPG for a garage vehicle ─────────────────────────────────
+// Shared with every other MPG-consuming surface — see lib/fillups.ts.
 
-type MpgLabelKey = 'epaCombinedEstimate' | 'avgFromFillupLog' | '';
-
-interface MpgResolution {
-  mpg:      number | null;
-  labelKey: MpgLabelKey;
-}
-
-
-function resolveMpg(v: Vehicle, avgMpgByVehicleId: Record<string, number>): MpgResolution {
-  // 1. EPA official combined estimate already stored in vehicleSpecs
-  //    (takes priority — avoids a redundant /api/mpg-lookup network call)
-  const epaMpg = v.vehicleSpecs?.combMpg;
-  if (epaMpg != null) {
-    return { mpg: epaMpg, labelKey: 'epaCombinedEstimate' };
-  }
-  // 2. Fill-up history average — only when the value is in a believable range
-  //    (guards against test data / sporadic odometer entries producing wild MPG)
-  const historyMpg = avgMpgByVehicleId[v.id];
-  if (historyMpg != null && historyMpg >= 5 && historyMpg <= 200) {
-    return { mpg: historyMpg, labelKey: 'avgFromFillupLog' };
-  }
-  // 3. No stored data — caller should perform a live EPA lookup via /api/mpg-lookup
-  return { mpg: null, labelKey: '' };
+function resolveMpg(v: Vehicle, avgMpgByVehicleId: Record<string, number>) {
+  return resolveVehicleMpg(v.vehicleSpecs, avgMpgByVehicleId[v.id]);
 }
 
 // ── Duration formatting ────────────────────────────────────────────────────

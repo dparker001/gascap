@@ -864,10 +864,11 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
                         )}
                       </button>
 
-                      {/* Info */}
+                      {/* Info — orange at rest (not just on hover) so it reads as a
+                          tappable affordance on mobile, where hover never fires */}
                       <button
                         onClick={(e) => { e.stopPropagation(); setInfoVehicle(v); }}
-                        className="flex-shrink-0 p-1.5 rounded-lg text-slate-400 hover:text-blue-500 hover:bg-blue-50 transition-colors"
+                        className="flex-shrink-0 p-1.5 rounded-lg bg-amber-50 text-amber-500 hover:text-amber-600 hover:bg-amber-100 transition-colors"
                         title={t.garage.vehicleInfoTitle}
                       >
                         <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4" aria-label={t.garage.vehicleInfoAria}>
