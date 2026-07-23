@@ -288,13 +288,24 @@ export async function setUserPlan(
     }
   }
 
+  // A real Stripe payment/renewal ends the trial — but only treat THIS call as
+  // "a real payment" if it carries an actual subscriptionId or interval. Some
+  // callers invoke setUserPlan with the user's OWN CURRENT plan just to attach
+  // a stripeCustomerId (e.g. app/api/stripe/portal/route.ts, opened the moment
+  // a trial user merely clicks "Manage Billing" — no purchase involved). Without
+  // this guard, that alone silently and permanently wiped isProTrial/
+  // trialExpiresAt for a still-valid trial: plan stayed 'pro' (never reverted
+  // to free, since getExpiredTrialUsers() requires isProTrial=true to ever pick
+  // the account up), so the user ended up stuck with free Pro access forever
+  // and dropped out of the trial-conversion email drip. Found 2026-07-23 via a
+  // real account (servant4hire@gmail.com) stuck exactly this way.
+  const isRealPurchaseOrRenewal = !!(stripe?.subscriptionId || stripe?.interval);
+
   await prisma.user.update({
     where: { id: userId },
     data: {
       plan,
-      // A real Stripe payment ends the trial — clear trial flags regardless
-      // of whether the user was or not.
-      ...(plan !== 'free' ? { isProTrial: false, trialExpiresAt: null } : {}),
+      ...(plan !== 'free' && isRealPurchaseOrRenewal ? { isProTrial: false, trialExpiresAt: null } : {}),
       ...(stripe?.customerId     ? { stripeCustomerId:     stripe.customerId }     : {}),
       ...(stripe?.subscriptionId ? { stripeSubscriptionId: stripe.subscriptionId } : {}),
       // Persist the billing interval authoritatively on every paid upgrade so
