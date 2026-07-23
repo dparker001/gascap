@@ -810,6 +810,9 @@ const en = {
     scanNotReadable:        "Couldn't read the gauge — try a clearer photo of just the fuel gauge.",
     scanDetected:           (pct: number) => `✓ Detected ~${pct}% — drag the gauge to fine-tune.`,
     scanNetworkError:       'Network error — try again.',
+    priceAppliedToast:      (price: string, station?: string) =>
+      station ? `✓ $${price}/gal from ${station} applied to your calculation below.`
+              : `✓ $${price}/gal applied to your calculation below.`,
   },
 
   // ── Tools panel ────────────────────────────────────────────────────────────
@@ -3536,6 +3539,9 @@ const es: typeof en = {
     scanNotReadable:        'No se pudo leer el medidor — prueba con una foto más clara del medidor de gasolina.',
     scanDetected:           (pct: number) => `✓ Detectado ~${pct}% — arrastra el medidor para ajustar.`,
     scanNetworkError:       'Error de red — inténtalo de nuevo.',
+    priceAppliedToast:      (price: string, station?: string) =>
+      station ? `✓ $${price}/gal de ${station} aplicado a tu cálculo abajo.`
+              : `✓ $${price}/gal aplicado a tu cálculo abajo.`,
   },
 
   tools: {

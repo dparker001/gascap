@@ -107,6 +107,11 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
   const [gasCoords,     setGasCoords]     = useState<{ lat: number; lng: number } | null>(null);
   const [nearbyAttrib,  setNearbyAttrib]  = useState<{ name: string; distanceMi: number; grade: string } | null>(null);
   const [nearbyStatus,  setNearbyStatus]  = useState<'idle' | 'fetching' | 'found' | 'unavailable'>('idle');
+  // Confirms the price was applied after a Find Gas tap — the calculator doesn't
+  // auto-scroll to the price field, so without this the user has no feedback that
+  // anything happened.
+  const [priceToast,        setPriceToast]        = useState<string | null>(null);
+  const [priceToastExiting, setPriceToastExiting]  = useState(false);
   // EPA/AI tank estimate for the currently-selected vehicle (used for validation warning)
   const [vehicleTankEst,   setVehicleTankEst]   = useState<number | undefined>(undefined);
   const [vehicleBodyClass, setVehicleBodyClass] = useState<string | undefined>(undefined);
@@ -215,12 +220,28 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
           setNearbyAttrib({ name: detail.name, distanceMi: detail.distanceMi ?? 0, grade: detail.grade ?? 'Regular' });
           setNearbyStatus('found');
         }
+        // Switching tabs to the calculator doesn't scroll to the price field, so
+        // confirm the tap actually did something via a toast instead.
+        setPriceToastExiting(false);
+        setPriceToast(t.calc.priceAppliedToast(detail.price, detail.name));
       }
     }
     window.addEventListener('gc:inject-gas-price', handler);
     return () => window.removeEventListener('gc:inject-gas-price', handler);
+  // liveRecalcRef intentionally omitted (see its own comment) — t is included so the
+  // toast doesn't use a stale-language closure if the user switches language mid-session.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [t]);
+
+  // Auto-dismiss the price-applied toast
+  useEffect(() => {
+    if (!priceToast) return;
+    const dismissTimer = setTimeout(() => {
+      setPriceToastExiting(true);
+      setTimeout(() => setPriceToast(null), 350);
+    }, 5000);
+    return () => clearTimeout(dismissTimer);
+  }, [priceToast]);
 
   // Native only: silently fetch nearest gas price on mount and pre-fill if field is empty
   useEffect(() => {
@@ -427,6 +448,28 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
 
   return (
     <div className="pb-2">
+
+      {/* ── Price-applied toast (confirms a Find Gas tap actually did something,
+           since switching to the calculator tab doesn't auto-scroll to the price field) ── */}
+      {priceToast && (
+        <div
+          role="status"
+          aria-live="polite"
+          onClick={() => { setPriceToastExiting(true); setTimeout(() => setPriceToast(null), 350); }}
+          className={[
+            'fixed left-1/2 z-[9999] -translate-x-1/2',
+            'flex items-center gap-2',
+            'max-w-[90vw] w-max rounded-2xl px-5 py-3.5',
+            'bg-navy-700 text-white shadow-2xl',
+            'text-sm font-semibold leading-snug text-center',
+            'cursor-pointer select-none',
+            priceToastExiting ? 'animate-toast-exit' : 'animate-toast-enter',
+          ].join(' ')}
+          style={{ bottom: isNative ? 'calc(92px + env(safe-area-inset-bottom))' : '1.25rem' }}
+        >
+          {priceToast}
+        </div>
+      )}
 
       {/* ── Tool header ──────────────────────────────────────────── */}
       <div className="bg-[#1E2D4A] rounded-2xl px-4 py-3.5 mb-4 flex items-center gap-3">
