@@ -192,6 +192,11 @@ function VehicleInfoModal({ vehicle, onClose, onSpecsUpdated }: {
     }
   }
 
+  /** True if at least one value in the list is present (not undefined/null/''). */
+  function hasAnyValue(values: unknown[]): boolean {
+    return values.some((v) => v !== undefined && v !== null && v !== '');
+  }
+
   function Row({ label, value }: { label: string; value?: string | number | boolean | null }) {
     if (value === undefined || value === null || value === '') return null;
     const display = typeof value === 'boolean' ? (value ? t.garage.rowYes : t.garage.rowNo) : String(value);
@@ -203,7 +208,14 @@ function VehicleInfoModal({ vehicle, onClose, onSpecsUpdated }: {
     );
   }
 
-  function Section({ title, emoji, children }: { title: string; emoji: string; children: React.ReactNode }) {
+  function Section({ title, emoji, hasContent, children }: { title: string; emoji: string; hasContent: boolean; children: React.ReactNode }) {
+    // NHTSA's vPIC decode reliably returns core spec fields (engine, drivetrain,
+    // trim) but safety-equipment fields (ABS, airbags, blind spot, etc.) are
+    // voluntarily submitted by manufacturers and are sparse across their entire
+    // database — even mandatory equipment like ABS/airbags often comes back
+    // empty for modern vehicles. Rather than show an empty header + box when a
+    // whole category has no data, hide the section entirely.
+    if (!hasContent) return null;
     return (
       <div className="mb-4">
         <div className="flex items-center gap-1.5 mb-2">
@@ -279,7 +291,9 @@ function VehicleInfoModal({ vehicle, onClose, onSpecsUpdated }: {
           ) : (
             <>
               {/* Overview */}
-              <Section title={t.garage.sectionOverview} emoji="🚗">
+              <Section title={t.garage.sectionOverview} emoji="🚗" hasContent={
+                hasAnyValue([specs.bodyClass, specs.vehicleType, specs.series, specs.manufacturer, specs.seats])
+              }>
                 <Row label={t.garage.rowBodyStyle}   value={specs.bodyClass} />
                 <Row label={t.garage.rowVehicleType} value={specs.vehicleType} />
                 <Row label={t.garage.rowSeries}      value={specs.series} />
@@ -288,7 +302,10 @@ function VehicleInfoModal({ vehicle, onClose, onSpecsUpdated }: {
               </Section>
 
               {/* Engine */}
-              <Section title={t.garage.sectionEngine} emoji="⚙️">
+              <Section title={t.garage.sectionEngine} emoji="⚙️" hasContent={
+                hasAnyValue([specs.engineDisplL, specs.engineCylinders, specs.engineConfig, specs.engineHP,
+                 specs.engineTorqueLbFt, specs.turbo, specs.supercharger, specs.fuelInjector, specs.fuelType])
+              }>
                 <Row label={t.garage.rowDisplacement}  value={specs.engineDisplL  ? `${specs.engineDisplL.toFixed(1)} L`    : null} />
                 <Row label={t.garage.rowCylinders}     value={specs.engineCylinders} />
                 <Row label={t.garage.rowConfiguration} value={specs.engineConfig} />
@@ -301,7 +318,9 @@ function VehicleInfoModal({ vehicle, onClose, onSpecsUpdated }: {
               </Section>
 
               {/* Performance / Economy */}
-              <Section title={t.garage.sectionFuelEconomy} emoji="⛽">
+              <Section title={t.garage.sectionFuelEconomy} emoji="⛽" hasContent={
+                hasAnyValue([specs.combMpg, specs.cityMpg, specs.hwyMpg, specs.tankEstGallons, specs.rangeEstMiles, specs.co2GPerMile])
+              }>
                 <Row label={t.garage.rowCombinedMpg} value={specs.combMpg   ? `${specs.combMpg} mpg`       : null} />
                 <Row label={t.garage.rowCityMpg}     value={specs.cityMpg   ? `${specs.cityMpg} mpg`       : null} />
                 <Row label={t.garage.rowHighwayMpg}  value={specs.hwyMpg    ? `${specs.hwyMpg} mpg`        : null} />
@@ -311,15 +330,23 @@ function VehicleInfoModal({ vehicle, onClose, onSpecsUpdated }: {
               </Section>
 
               {/* Drivetrain */}
-              <Section title={t.garage.sectionDrivetrain} emoji="🔧">
+              <Section title={t.garage.sectionDrivetrain} emoji="🔧" hasContent={
+                hasAnyValue([specs.driveType, specs.transmission, specs.wheelbaseIn, specs.gvwr])
+              }>
                 <Row label={t.garage.rowDriveType}    value={specs.driveType} />
                 <Row label={t.garage.rowTransmission} value={specs.transmission} />
                 <Row label={t.garage.rowWheelbase}    value={specs.wheelbaseIn ? `${specs.wheelbaseIn}"` : null} />
                 <Row label={t.garage.rowGvwr}         value={specs.gvwr} />
               </Section>
 
-              {/* Safety */}
-              <Section title={t.garage.sectionSafety} emoji="🛡️">
+              {/* Safety — often has little or no data at all; NHTSA's vPIC safety
+                  fields are voluntarily submitted by manufacturers and are sparse
+                  across the whole database, even for mandatory equipment like ABS
+                  and airbags on modern vehicles. Section hides itself when empty. */}
+              <Section title={t.garage.sectionSafety} emoji="🛡️" hasContent={
+                hasAnyValue([specs.abs, specs.tpmsType, specs.backupCamera, specs.blindSpotMonitor, specs.laneDeparture,
+                 specs.adaptiveCruise, specs.frontAirbags, specs.sideAirbags, specs.curtainAirbags, specs.kneeAirbags])
+              }>
                 <Row label={t.garage.rowAbs}             value={specs.abs} />
                 <Row label={t.garage.rowTpms}            value={specs.tpmsType ? `${specs.tpmsType}` : null} />
                 <Row label={t.garage.rowBackupCamera}    value={specs.backupCamera} />
