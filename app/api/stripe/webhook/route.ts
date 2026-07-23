@@ -424,9 +424,13 @@ export async function POST(req: Request) {
         if (fleetPrices.includes(priceId)) tier = 'fleet';
       }
 
-      // Determine interval for annual renewal (keeps stripeInterval accurate)
+      // Determine interval for annual renewal (keeps stripeInterval accurate for any
+      // legacy annual subscription still renewing — Annual is shelved for NEW
+      // purchases as of 2026-07-23, see lib/stripe.ts, so this is a defensive-only
+      // check; read directly from env like the fleet check above since PRICES no
+      // longer exposes proAnnual publicly).
       const renewalInterval: 'monthly' | 'annual' | undefined =
-        priceId === PRICES.proAnnual ? 'annual' : undefined;
+        priceId === (process.env.STRIPE_PRICE_PRO_ANNUAL ?? '') ? 'annual' : undefined;
 
       if (user.plan !== tier || renewalInterval) {
         await setUserPlan(user.id, tier, { subscriptionId: subId, ...(renewalInterval ? { interval: renewalInterval } : {}) });

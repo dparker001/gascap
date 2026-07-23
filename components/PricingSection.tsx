@@ -48,7 +48,6 @@ export default function PricingSection() {
   const { t }             = useTranslation();
   const isNative          = useIsNative();
   const [loading, setLoading]       = useState<string | null>(null);
-  const [billing, setBilling]       = useState<'monthly' | 'annual'>('annual');
   const [wiggle, setWiggle]         = useState(false);
   const proCardRef                  = useRef<HTMLDivElement>(null);
   const lifetimeCardRef             = useRef<HTMLDivElement>(null);
@@ -74,7 +73,7 @@ export default function PricingSection() {
     { icon: '⭐', text: t.pricing.exStreakShield },
   ];
 
-  async function handleUpgrade(billing: 'monthly' | 'annual' | 'lifetime') {
+  async function handleUpgrade(billing: 'monthly' | 'lifetime') {
     if (!session) {
       router.push('/signup?next=/upgrade');
       return;
@@ -194,7 +193,7 @@ export default function PricingSection() {
           </ul>
         </div>
 
-        {/* Pro — monthly/annual toggle */}
+        {/* Pro — monthly */}
         <div
           ref={proCardRef}
           className={[
@@ -217,56 +216,18 @@ export default function PricingSection() {
             <h3 className="font-black text-lg text-white">{t.pricing.proTitle}</h3>
           </div>
 
-          {/* Billing toggle */}
-          {!isProMonthly && !isProAnnual && !isProLifetime && (
-            <div className="flex items-center bg-white/10 rounded-2xl p-1 mb-4 gap-1">
-              <button
-                onClick={() => setBilling('monthly')}
-                className={`flex-1 py-1.5 rounded-xl text-xs font-black transition-colors ${
-                  billing === 'monthly' ? 'bg-white text-navy-700' : 'text-white/60 hover:text-white'
-                }`}
-              >
-                {t.pricing.mo ? `${t.pricing.mo[0].toUpperCase()}${t.pricing.mo.slice(1)}` : 'Monthly'}
-              </button>
-              <button
-                onClick={() => setBilling('annual')}
-                className={`flex-1 py-1.5 rounded-xl text-xs font-black transition-colors flex items-center justify-center gap-1.5 ${
-                  billing === 'annual' ? 'bg-white text-navy-700' : 'text-white/60 hover:text-white'
-                }`}
-              >
-                {t.pricing.annualToggleLabel}
-                <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full ${
-                  billing === 'annual' ? 'bg-amber-400 text-navy-900' : 'bg-white/20 text-white'
-                }`}>{t.pricing.annualTogglePill}</span>
-              </button>
-            </div>
-          )}
-
           <div className="mb-1 flex items-end gap-1">
-            <span className="text-4xl font-black text-white">
-              {billing === 'annual' && !isProMonthly ? fmt(PRICING.pro.annual) : fmt(PRICING.pro.monthly)}
-            </span>
-            <span className="text-sm mb-1 text-white/60">
-              {billing === 'annual' && !isProMonthly ? '/yr' : `/${t.pricing.mo}`}
-            </span>
+            <span className="text-4xl font-black text-white">{fmt(PRICING.pro.monthly)}</span>
+            <span className="text-sm mb-1 text-white/60">/{t.pricing.mo}</span>
           </div>
           <p className="text-xs mb-4 leading-relaxed text-white/60">
-            {billing === 'annual' && !isProMonthly
-              ? t.pricing.annualBillingNote
-              : t.pricing.billedMonthly}
+            {t.pricing.billedMonthly}
           </p>
-
-          {/* Annual bonus entries badge */}
-          <div className={`mb-4 transition-all ${billing === 'annual' && !isProMonthly && !isProLifetime ? 'opacity-100' : 'opacity-0 pointer-events-none h-0 mb-0 overflow-hidden'}`}>
-            <div className="inline-flex items-center gap-1.5 bg-amber-400/20 text-amber-300 text-[11px] font-black px-3 py-1.5 rounded-xl">
-              {t.pricing.annualBonusBadge}
-            </div>
-          </div>
 
           <button
             onClick={() => {
               if (isProMonthly || isProAnnual || isProLifetime) return;
-              handleUpgrade(billing);
+              handleUpgrade('monthly');
             }}
             disabled={loading !== null || isProMonthly || isProAnnual || isProLifetime}
             className={`w-full py-3 rounded-2xl text-sm font-black transition-colors mb-6 ${
@@ -277,21 +238,17 @@ export default function PricingSection() {
                   : 'bg-amber-500 text-white hover:bg-amber-400 disabled:opacity-50'
             }`}
           >
-            {loading === 'monthly' || loading === 'annual'
+            {loading === 'monthly'
               ? t.pricing.loading
               : isProMonthly || isProAnnual
                 ? t.pricing.yourCurrentPlan
                 : isProLifetime
                   ? t.pricing.includedInLifetime
                   : isOnTrial
-                    ? billing === 'annual'
-                      ? `Lock in annual — $${PRICING.pro.annual}/yr`
-                      : `${t.pricing.upgradeFromTrial} — $${PRICING.pro.monthly}/mo`
+                    ? `${t.pricing.upgradeFromTrial} — $${PRICING.pro.monthly}/mo`
                     : !session
                       ? t.pricing.startFreeTrial
-                      : billing === 'annual'
-                        ? t.pricing.getAnnualCta(String(PRICING.pro.annual))
-                        : t.pricing.upgradeToPro}
+                      : t.pricing.upgradeToPro}
           </button>
 
           <div className="border-t border-white/20 mb-5" />

@@ -111,7 +111,7 @@ APP FEATURES YOU CAN EXPLAIN:
 - Fill-Up History: grouped by month; year chips filter by year with spent + gallons per year vs all-time; export CSV or PDF
 - Charts tab: MPG over time, fuel spend, gallons, and price per gallon charts — year chips at the top filter all charts to the selected year (same year selection syncs with Fill-Up History)
 - MPG tracking, cost per mile, annual fuel cost projection, monthly report card, savings dashboard vs EIA national average
-- Streak Rewards: milestones at 30/90/180/365 days — Monthly/Annual members earn free Pro months; Lifetime members earn bonus giveaway entries instead
+- Streak Rewards: milestones at 30/90/180/365 days — Monthly members earn free Pro months; Lifetime members earn bonus giveaway entries instead
 - Weekly gas card giveaway (every Friday): Pro users earn daily entries based on usage + ambassador tier; bonus entries for streaks, plan level, referrals
 - Trip Cost Estimator with Google Maps route mode, Station Comparison, Gas Price Alert, EV Charge calculator, AI Fuel Advisor (this feature)
 - Getaway promo: anyone who purchases Pro Lifetime receives a complimentary resort hotel getaway (fulfilled by Marketing Boost / RedeemVacations). Hotel room rate is free (up to $350/night); traveler covers nightly taxes & fees and their own travel. Choose from Las Vegas, Denver, Miami, San Antonio, Orlando, or Nashville. Activate at gascap.app/getaway within 7 days; travel within 18 months. Lifetime Perks ($9.99/yr add-on) renews the getaway certificate annually.

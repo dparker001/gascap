@@ -53,7 +53,6 @@ function UpgradePageInner() {
   useEffect(() => { setPlatform(detectNativePlatform()); setResolved(true); }, []);
   const isNative = platform !== null;
   const [loading, setLoading] = useState<'pro-monthly' | 'pro-annual' | 'pro-lifetime' | null>(null);
-  const [billing, setBilling] = useState<'monthly' | 'annual'>('annual');
   const [error,   setError]   = useState('');
 
   const userPlan      = (session?.user as { plan?: string })?.plan ?? 'free';
@@ -65,7 +64,7 @@ function UpgradePageInner() {
   const showGetaway   = getawayPromoActive() && !isProLifetime;
   const getawayDays   = getawayDaysLeft();
 
-  async function handleUpgrade(billing: 'monthly' | 'annual' | 'lifetime') {
+  async function handleUpgrade(billing: 'monthly' | 'lifetime') {
     if (!session) {
       // Founding/reactivation recipients already have accounts → send to sign-in and
       // return them to the founding offer; everyone else takes the new-signup path.
@@ -74,7 +73,7 @@ function UpgradePageInner() {
         : '/signup?next=/upgrade';
       return;
     }
-    setLoading(billing === 'lifetime' ? 'pro-lifetime' : billing === 'annual' ? 'pro-annual' : 'pro-monthly');
+    setLoading(billing === 'lifetime' ? 'pro-lifetime' : 'pro-monthly');
     setError('');
     try {
       // Only apply promo coupon on monthly — lifetime is already a one-time deal
@@ -399,7 +398,7 @@ function UpgradePageInner() {
             )}
           </div>
 
-          {/* Pro — monthly/annual toggle */}
+          {/* Pro — monthly */}
           <div className="relative bg-white rounded-3xl border-2 border-amber-400 shadow-card p-6 flex flex-col">
             <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-amber-400 text-navy-900
                             text-[11px] font-black px-4 py-1 rounded-full uppercase tracking-wider
@@ -411,54 +410,16 @@ function UpgradePageInner() {
               <p className="text-xs text-slate-400 mt-0.5">{t.upgrade.cancelAnytime}</p>
             </div>
 
-            {/* Billing toggle */}
-            {!isProMonthly && !isProAnnual && !isProLifetime && (
-              <div className="flex items-center bg-slate-100 rounded-2xl p-1 mb-4 gap-1">
-                <button
-                  onClick={() => setBilling('monthly')}
-                  className={`flex-1 py-1.5 rounded-xl text-xs font-black transition-colors ${
-                    billing === 'monthly' ? 'bg-white text-navy-700 shadow-sm' : 'text-slate-400 hover:text-slate-600'
-                  }`}
-                >
-                  Monthly
-                </button>
-                <button
-                  onClick={() => setBilling('annual')}
-                  className={`flex-1 py-1.5 rounded-xl text-xs font-black transition-colors flex items-center justify-center gap-1.5 ${
-                    billing === 'annual' ? 'bg-white text-navy-700 shadow-sm' : 'text-slate-400 hover:text-slate-600'
-                  }`}
-                >
-                  {t.pricing.annualToggleLabel}
-                  <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full ${
-                    billing === 'annual' ? 'bg-green-500 text-white' : 'bg-slate-200 text-slate-500'
-                  }`}>{t.pricing.annualTogglePill}</span>
-                </button>
-              </div>
-            )}
-
             <div className="mb-1 flex items-end gap-1">
-              <span className="text-4xl font-black text-navy-700">
-                {billing === 'annual' && !isProMonthly ? `$${PRICING.pro.annual}` : `$${PRICING.pro.monthly}`}
-              </span>
-              <span className="text-sm mb-1 text-slate-400">
-                {billing === 'annual' && !isProMonthly ? '/yr' : '/mo'}
-              </span>
+              <span className="text-4xl font-black text-navy-700">${PRICING.pro.monthly}</span>
+              <span className="text-sm mb-1 text-slate-400">/mo</span>
             </div>
             <p className="text-xs font-semibold mb-4 leading-relaxed">
-              {billing === 'annual' && !isProMonthly
-                ? <span className="text-green-600">{t.pricing.annualBillingNote}</span>
-                : <span className="text-green-600">{t.upgrade.lessThanDime}</span>}
+              <span className="text-green-600">{t.upgrade.lessThanDime}</span>
             </p>
 
-            {/* Annual bonus badge */}
-            <div className={`mb-4 ${billing === 'annual' && !isProMonthly && !isProLifetime ? 'block' : 'hidden'}`}>
-              <span className="inline-flex items-center gap-1.5 bg-green-50 text-green-700 text-[11px] font-black px-3 py-1.5 rounded-xl border border-green-200">
-                {t.pricing.annualBonusBadge}
-              </span>
-            </div>
-
             <button
-              onClick={() => { if (!isProMonthly && !isProAnnual && !isProLifetime) handleUpgrade(billing); }}
+              onClick={() => { if (!isProMonthly && !isProAnnual && !isProLifetime) handleUpgrade('monthly'); }}
               disabled={loading !== null || isProMonthly || isProAnnual || isProLifetime}
               className={`w-full py-3 rounded-2xl font-black text-sm transition-colors mb-5 ${
                 isProMonthly || isProAnnual
@@ -474,12 +435,8 @@ function UpgradePageInner() {
                   : isProLifetime
                     ? t.pricing.includedInLifetime
                     : isOnTrial
-                      ? billing === 'annual'
-                        ? `Lock in annual — $${PRICING.pro.annual}/yr`
-                        : `${t.pricing.upgradeFromTrial} — $${PRICING.pro.monthly}/mo`
-                      : billing === 'annual'
-                        ? session ? t.pricing.getAnnualCta(String(PRICING.pro.annual)) : t.pricing.startFreeTrial
-                        : session ? `${t.upgrade.upgradeBtn} Pro — $${PRICING.pro.monthly}/mo` : t.pricing.startFreeTrial}
+                      ? `${t.pricing.upgradeFromTrial} — $${PRICING.pro.monthly}/mo`
+                      : session ? `${t.upgrade.upgradeBtn} Pro — $${PRICING.pro.monthly}/mo` : t.pricing.startFreeTrial}
             </button>
             <div className="border-t border-slate-100 mb-5" />
             <ul className="space-y-2 flex-1">

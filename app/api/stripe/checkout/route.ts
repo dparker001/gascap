@@ -2,6 +2,7 @@
  * POST /api/stripe/checkout
  * Creates a Stripe Checkout Session for upgrading to Pro or Fleet, or adding Lifetime Perks.
  * Body: { tier: 'pro' | 'fleet', billing: 'monthly' | 'annual' | 'lifetime' | 'lifetime-perks' }
+ * 'annual' is accepted for type/legacy compat only — always rejected below (see block).
  *
  * Lifetime uses mode:'payment' (one-time); all others use mode:'subscription'.
  */
@@ -51,6 +52,19 @@ export async function POST(req: Request) {
   const tier    = body.tier    ?? 'pro';
   const billing = body.billing ?? 'monthly';
   let   coupon  = body.coupon  ?? null;
+
+  // Annual is no longer offered — Lifetime ($19.99 one-time) was strictly cheaper
+  // AND better (forever access, more giveaway entries, the vacation getaway) than
+  // Annual ($26.99/yr), so there was never a rational reason to buy it. Blocked
+  // explicitly (rather than silently falling through) so a stale cached client
+  // can't still create one. Zero existing Annual subscribers as of 2026-07-23, so
+  // this affects no one. See lib/stripe.ts for the shelved price ID.
+  if (billing === 'annual') {
+    return NextResponse.json(
+      { error: 'Annual billing is no longer offered. Choose Monthly or Lifetime instead.' },
+      { status: 400 },
+    );
+  }
   // Tags which campaign the coupon came from — the founding, win-back, and
   // new-member offers all currently share the same Stripe coupon ID, so this is
   // the only way to attribute a purchase to a specific campaign after the fact.
@@ -120,8 +134,7 @@ export async function POST(req: Request) {
   if (!priceId) {
     if (tier === 'pro') {
       if (billing === 'lifetime') priceId = PRICES.proLifetime;
-      else if (billing === 'annual') priceId = PRICES.proAnnual;
-      else                           priceId = PRICES.proMonthly;
+      else                        priceId = PRICES.proMonthly;
     }
     // Fleet plan is shelved — no active price IDs
   }
@@ -173,7 +186,7 @@ export async function POST(req: Request) {
     line_items:  [{ price: priceId, quantity: 1 }],
     customer_email: user.stripeCustomerId ? undefined : user.email,
     customer:       user.stripeCustomerId ?? undefined,
-    success_url: `${origin}/upgrade/success?session_id={CHECKOUT_SESSION_ID}&tier=${tier}&billing=${billing === 'annual' ? 'annual' : billing}`,
+    success_url: `${origin}/upgrade/success?session_id={CHECKOUT_SESSION_ID}&tier=${tier}&billing=${billing}`,
     cancel_url:  `${origin}/upgrade`,
     metadata: {
       userId,
