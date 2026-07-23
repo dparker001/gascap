@@ -9,7 +9,7 @@
 import { NextResponse }                     from 'next/server';
 import type Stripe                          from 'stripe';
 import { stripe }                           from '@/lib/stripe';
-import { setUserPlan, findByStripeCustomer, findById, findByReferralCode, creditVerifiedReferral, getActiveCredits, enrollPaidCampaign, enrollEngagementCampaign, setEarlyUpgradeBonus, markMilestoneSent, updateUserProfile, clearStripeSubscriptionId, setLifetimePerksActive, clearLifetimePerks } from '@/lib/users';
+import { setUserPlan, findByStripeCustomer, findById, findByReferralCode, creditVerifiedReferral, getActiveCredits, enrollPaidCampaign, enrollEngagementCampaign, setEarlyUpgradeBonus, markMilestoneSent, updateUserProfile, clearStripeSubscriptionId, setLifetimePerksActive, clearLifetimePerks, markFoundingMember } from '@/lib/users';
 import { updateGhlContactPlan }            from '@/lib/ghl';
 import { sendMail, giftEmailHtml }         from '@/lib/email';
 import { createGift }                      from '@/lib/gifts';
@@ -168,6 +168,14 @@ export async function POST(req: Request) {
         subscriptionId: subscriptionId ?? undefined,
         interval,
       });
+
+      // Founding Member launch promo — record the REAL redemption so the "X of
+      // 100 spots left" banner counts actual $9.99 Lifetime purchases, not just
+      // signups since launch (the coupon is shared with win-back/new-member, so
+      // this metadata tag is the only way to attribute the purchase correctly).
+      if (interval === 'lifetime' && session.metadata?.offerSource === 'founding') {
+        await markFoundingMember(userId);
+      }
 
       // Lifetime is a one-time payment (mode:'payment') with no subscription of
       // its own. If this buyer was previously a recurring subscriber (monthly /

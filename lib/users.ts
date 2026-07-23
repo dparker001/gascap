@@ -307,6 +307,20 @@ export async function setUserPlan(
 }
 
 /**
+ * Mark a user as a Founding Member (first purchased Lifetime via the launch promo
+ * coupon). Idempotent — only sets the timestamp the first time so an accidental
+ * repeat webhook delivery doesn't reset it. Used to count REAL founding redemptions
+ * for the "X of 100 spots left" banner, instead of counting all signups since
+ * launch (see lib/foundingPromo.ts).
+ */
+export async function markFoundingMember(userId: string): Promise<void> {
+  await prisma.user.updateMany({
+    where: { id: userId, foundingMemberAt: null },
+    data:  { foundingMemberAt: new Date() },
+  });
+}
+
+/**
  * Activate or renew the Lifetime Perks add-on for a Lifetime member.
  * Sets lifetimePerksUntil to one year from now and stores the subscription ID.
  * Does NOT touch plan or stripeInterval — Lifetime access is permanent regardless.

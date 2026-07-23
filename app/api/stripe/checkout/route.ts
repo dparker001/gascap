@@ -51,12 +51,17 @@ export async function POST(req: Request) {
   const tier    = body.tier    ?? 'pro';
   const billing = body.billing ?? 'monthly';
   let   coupon  = body.coupon  ?? null;
+  // Tags which campaign the coupon came from — the founding, win-back, and
+  // new-member offers all currently share the same Stripe coupon ID, so this is
+  // the only way to attribute a purchase to a specific campaign after the fact.
+  let   offerSource: 'founding' | 'winback' | 'new_member' | null = null;
 
   // New-member 7-day Lifetime discount ($5 off). Server-validates eligibility
   // (createdAt within 7 days, not already Lifetime) so the discount can't be
   // claimed by a copied link or an ineligible account.
   if (body.newMemberOffer && billing === 'lifetime' && newMemberOfferStatus(user).eligible) {
     coupon = NEW_MEMBER_LIFETIME_COUPON;
+    offerSource = 'new_member';
   }
 
   // Win-back $9.99 Lifetime — only for lapsed free users (expired trial). Like
@@ -64,6 +69,7 @@ export async function POST(req: Request) {
   // can't be claimed via a copied /upgrade?wb=1 link by an ineligible account.
   if (body.winbackOffer && billing === 'lifetime' && winbackOfferAvailable(user)) {
     coupon = WINBACK_LIFETIME_COUPON;
+    offerSource = 'winback';
   }
 
   // Founding Member launch promo — $9.99 Lifetime for any non-Lifetime account while
@@ -73,7 +79,7 @@ export async function POST(req: Request) {
   // can't outlive the launch.
   if (body.foundingOffer && billing === 'lifetime' && user.stripeInterval !== 'lifetime') {
     const { active } = await foundingStatus();
-    if (active) coupon = FOUNDING_LIFETIME_COUPON;
+    if (active) { coupon = FOUNDING_LIFETIME_COUPON; offerSource = 'founding'; }
   }
 
   // ── Lifetime Perks add-on ─────────────────────────────────────────────────
@@ -174,6 +180,7 @@ export async function POST(req: Request) {
       userEmail: user.email,
       tier,
       billing,
+      ...(offerSource ? { offerSource } : {}),
     },
     // subscription_data only valid for mode:'subscription'
     ...(!isLifetime ? {
@@ -184,7 +191,7 @@ export async function POST(req: Request) {
     } : {
       // payment_intent_data carries metadata for one-time payments
       payment_intent_data: {
-        metadata: { userId, tier, billing },
+        metadata: { userId, tier, billing, ...(offerSource ? { offerSource } : {}) },
       },
     }),
   });

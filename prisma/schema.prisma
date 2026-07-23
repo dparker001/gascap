@@ -57,6 +57,7 @@ model User {
   paidCampaignEnrolledAt   String?
   paidCampaignStep         Int?
   stripeInterval           String?
+  foundingMemberAt         DateTime?
   verifyReminderSentAt           String?
   verifyReminderBonusEntries     Int       @default(0)
   ambassadorProForLife     Boolean   @default(false)
