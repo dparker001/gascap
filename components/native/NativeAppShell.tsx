@@ -132,6 +132,32 @@ export default function NativeAppShell() {
   // Initialize status bar + keyboard on native shell mount
   useEffect(() => { initNativeChrome(); }, []);
 
+  // Record today as an active day for the streak — the native shell has no equivalent
+  // of the web HeroEngagementPanel/MobileEngagementRow, which fire this on every page
+  // load. Without it, native users only got credit for days they completed a
+  // calculation, not simply for opening the app — contradicting the app's own
+  // "open daily to keep your streak alive" messaging and silently breaking streaks.
+  // Fires on mount AND on every foreground resume (isActive) so a day isn't missed
+  // when the app is merely backgrounded across midnight rather than relaunched.
+  useEffect(() => {
+    if (!session?.user) return;
+    const recordVisit = () => {
+      fetch('/api/activity', {
+        method:      'POST',
+        credentials: 'include',
+        headers:     { 'Content-Type': 'application/json' },
+        body:        JSON.stringify({ event: 'visit', localDate: new Date().toLocaleDateString('en-CA') }),
+      }).catch(() => { /* streak just won't tick up this time — non-critical */ });
+    };
+    recordVisit();
+    let cleanup: (() => void) | null = null;
+    import('@capacitor/app').then(({ App }) => {
+      App.addListener('appStateChange', ({ isActive }) => { if (isActive) recordVisit(); })
+        .then((handle) => { cleanup = () => handle.remove(); });
+    }).catch(() => {});
+    return () => cleanup?.();
+  }, [session]);
+
   // Handle iOS home screen shortcuts — ?shortcut=log|findgas|savings
   useEffect(() => {
     const p = new URLSearchParams(window.location.search);
