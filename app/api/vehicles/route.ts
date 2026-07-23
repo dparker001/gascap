@@ -101,7 +101,10 @@ export async function PATCH(req: Request) {
   const id = searchParams.get('id');
   if (!id) return NextResponse.json({ error: 'Missing vehicle id.' }, { status: 400 });
 
-  const body = await req.json() as { name?: string; gallons?: number; vin?: string; currentOdometer?: number; vehicleSpecs?: VehicleSpecs };
+  const body = await req.json() as {
+    name?: string; gallons?: number; vin?: string; currentOdometer?: number; vehicleSpecs?: VehicleSpecs;
+    fuelType?: string; fuelTypeConfirmedByUser?: boolean;
+  };
   if (body.gallons !== undefined && body.gallons <= 0) {
     return NextResponse.json({ error: 'Invalid tank size.' }, { status: 400 });
   }

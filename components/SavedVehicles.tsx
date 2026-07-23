@@ -22,6 +22,7 @@ export interface Vehicle {
   model?:             string;
   trim?:              string;
   fuelType?:          string;
+  fuelTypeConfirmedByUser?: boolean;
   epaId?:             string;
   currentOdometer?:   number;
   vehicleSpecs?:      VehicleSpecs;
@@ -304,7 +305,8 @@ function VehicleInfoModal({ vehicle, onClose, onSpecsUpdated }: {
               {/* Engine */}
               <Section title={t.garage.sectionEngine} emoji="⚙️" hasContent={
                 hasAnyValue([specs.engineDisplL, specs.engineCylinders, specs.engineConfig, specs.engineHP,
-                 specs.engineTorqueLbFt, specs.turbo, specs.supercharger, specs.fuelInjector, specs.fuelType])
+                 specs.engineTorqueLbFt, specs.turbo, specs.supercharger, specs.fuelInjector, specs.fuelType,
+                 vehicle.fuelTypeConfirmedByUser ? vehicle.fuelType : undefined])
               }>
                 <Row label={t.garage.rowDisplacement}  value={specs.engineDisplL  ? `${specs.engineDisplL.toFixed(1)} L`    : null} />
                 <Row label={t.garage.rowCylinders}     value={specs.engineCylinders} />
@@ -314,7 +316,26 @@ function VehicleInfoModal({ vehicle, onClose, onSpecsUpdated }: {
                 <Row label={t.garage.rowTurbo}         value={specs.turbo} />
                 <Row label={t.garage.rowSupercharger}  value={specs.supercharger} />
                 <Row label={t.garage.rowFuelInjector}  value={specs.fuelInjector} />
-                <Row label={t.garage.rowFuelType}      value={specs.fuelType} />
+                {/* Fuel type: prefer the OWNER-CONFIRMED value (set via edit vehicle)
+                    over our EPA-derived estimate, and label/caveat accordingly — a
+                    wrong octane recommendation is a real mechanical (and legal) risk,
+                    so the estimate must never be presented as equivalent to what the
+                    owner actually knows from their manual/fuel door. */}
+                {vehicle.fuelTypeConfirmedByUser && vehicle.fuelType ? (
+                  <>
+                    <Row label={t.garage.rowFuelType} value={vehicle.fuelType} />
+                    <p className="text-[9px] text-green-600 leading-snug pb-1">
+                      {t.garage.fuelTypeConfirmedNote}
+                    </p>
+                  </>
+                ) : specs.fuelType ? (
+                  <>
+                    <Row label={t.garage.rowFuelTypeEpa} value={specs.fuelType} />
+                    <p className="text-[9px] text-amber-600 leading-snug pb-1">
+                      {t.garage.fuelTypeEstimateCaveat}
+                    </p>
+                  </>
+                ) : null}
               </Section>
 
               {/* Performance / Economy */}
@@ -389,6 +410,7 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
   const [editName,        setEditName]        = useState('');
   const [editGallons,     setEditGallons]     = useState('');
   const [editVin,         setEditVin]         = useState('');
+  const [editFuelType,    setEditFuelType]    = useState('');
   const [editSaving,      setEditSaving]      = useState(false);
   const [editVinStatus,   setEditVinStatus]   = useState<'idle' | 'fetching' | 'done' | 'error'>('idle');
   const [editVinScanning, setEditVinScanning] = useState(false);
@@ -464,6 +486,10 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
     setEditName(v.name);
     setEditGallons(String(v.gallons));
     setEditVin(v.vin ?? '');
+    // Only pre-fill if the user already confirmed it themselves — an EPA-derived
+    // guess should NOT show as if the user had already chosen it (that would let
+    // an unrelated save silently "confirm" our estimate without them noticing).
+    setEditFuelType(v.fuelTypeConfirmedByUser ? (v.fuelType ?? '') : '');
     setEditVinStatus('idle');
     setEditVinScanning(false);
     setEditVinScanErr('');
@@ -503,7 +529,13 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
     const cleanVin       = editVin.trim().toUpperCase().replace(/[^A-Z0-9]/g, '') || undefined;
     const vinChanged     = cleanVin !== (currentVehicle?.vin ?? undefined);
 
-    // 1. Persist name, gallons, and VIN
+    // Only send fuel-type fields if the selector actually changed from its
+    // starting value — avoids re-writing fuelTypeConfirmedByUser on every
+    // unrelated edit (e.g. just renaming the vehicle).
+    const priorFuelType   = currentVehicle?.fuelTypeConfirmedByUser ? (currentVehicle.fuelType ?? '') : '';
+    const fuelTypeChanged = editFuelType.trim() !== priorFuelType;
+
+    // 1. Persist name, gallons, VIN, and fuel type
     const patchRes = await fetch(`/api/vehicles?id=${editingId}`, {
       method:  'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -511,6 +543,11 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
         name:    editName.trim(),
         gallons: parseFloat(editGallons),
         ...(vinChanged ? { vin: cleanVin ?? '' } : {}),
+        ...(fuelTypeChanged
+          ? editFuelType.trim()
+            ? { fuelType: editFuelType.trim(), fuelTypeConfirmedByUser: true }
+            : { fuelTypeConfirmedByUser: false }
+          : {}),
       }),
     });
 
@@ -749,6 +786,35 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
                           </p>
                         );
                       })()}
+
+                      {/* Fuel type — user can confirm/override the EPA-estimated
+                          octane. Left empty ("Not sure") keeps using the EPA
+                          estimate shown in Vehicle Info; any other choice is
+                          treated as confirmed by the owner (e.g. from their
+                          owner's manual or fuel door) and shown without the
+                          "estimate — verify" caveat. */}
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">
+                          {t.savedVehicles.fuelTypeLabel}
+                        </label>
+                        <select
+                          className="w-full border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm
+                                     text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white"
+                          value={editFuelType}
+                          onChange={(e) => setEditFuelType(e.target.value)}
+                        >
+                          <option value="">{t.savedVehicles.fuelTypeNotSure}</option>
+                          <option value="Regular Gasoline">{t.savedVehicles.fuelTypeRegular}</option>
+                          <option value="Midgrade Gasoline">{t.savedVehicles.fuelTypeMidgrade}</option>
+                          <option value="Premium Gasoline">{t.savedVehicles.fuelTypePremium}</option>
+                          <option value="Diesel">{t.savedVehicles.fuelTypeDiesel}</option>
+                          <option value="Electricity">{t.savedVehicles.fuelTypeElectric}</option>
+                          <option value="E85 Flex Fuel">{t.savedVehicles.fuelTypeFlex}</option>
+                        </select>
+                        <p className="text-[10px] text-slate-400 leading-snug">
+                          {t.savedVehicles.fuelTypeHint}
+                        </p>
+                      </div>
 
                       {/* VIN */}
                       <div className="space-y-1">

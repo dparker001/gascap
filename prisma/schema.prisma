@@ -133,6 +133,7 @@ model Vehicle {
   model           String?
   trim            String?
   fuelType        String?
+  fuelTypeConfirmedByUser Boolean @default(false)
   epaId           String?
   currentOdometer   Float?
   vehicleSpecs      Json?

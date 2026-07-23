@@ -155,6 +155,10 @@ const SECTIONS = [
         a: 'If your vehicle was added by VIN, GasCap™ shows its official EPA-rated combined MPG right away — no fill-ups needed. Once you log at least two fill-ups with odometer readings, GasCap™ also calculates your real-world average from consecutive fill-ups (miles driven ÷ gallons pumped) as a comparison against the EPA rating. If your vehicle wasn\'t added by VIN, you\'ll need at least two fill-ups with odometer readings before any MPG data appears.',
       },
       {
+        q: 'How does GasCap™ know what fuel type my vehicle needs, and can I correct it?',
+        a: 'When you add a vehicle by VIN, GasCap™ shows an EPA-based estimate of your recommended fuel type (e.g. Regular, Midgrade, Premium) in the Vehicle Info panel — labeled "EPA-Rated Fuel Type" since it\'s an estimate matched to your vehicle\'s specs, not a manufacturer-verified figure. To be certain, check your owner\'s manual or the sticker inside your fuel door, then open "Edit Vehicle" in your garage and set the Fuel Type field yourself — once confirmed, GasCap™ shows your choice instead of the estimate, labeled "Fuel Type" with a confirmation checkmark. Selecting "Not sure — use EPA estimate" reverts to the estimate at any time.',
+      },
+      {
         q: 'What is "cost per mile" and how is it calculated?',
         a: 'Cost per mile tells you what every mile of driving actually costs you in fuel — for example, $0.14/mi. GasCap calculates it the same way it calculates MPG: it looks at the distance between your odometer readings on consecutive fill-ups and divides the fuel cost over that distance by the miles you drove. Like MPG, it needs at least two fill-ups with odometer readings on the same vehicle, and it gets more accurate the more fill-ups you log with an odometer reading. If you don\'t see a number yet, just add an odometer reading to your next couple of fill-ups.',
       },
