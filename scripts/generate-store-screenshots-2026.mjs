@@ -22,7 +22,7 @@ const SHOTS = [
   { src: '02-find-gas.png',   name: '02-find-gas',            lines: ['Compare gas prices', 'near you'],    sub: 'Tap any price to fill the calculator.' },
   { src: '03-history.png',   name: '03-track-fillups',        lines: ['Track every', 'fill-up & MPG'],      sub: 'Included with GasCap™ Pro.' },
   { src: '04-rental.png',    name: '04-rental-mode',          lines: ['Skip the rental', 'refuel fee'],     sub: 'Return it at the right fuel level.' },
-  { src: '05-rewards.png',   name: '05-weekly-giveaway',       lines: ['Win a gas card', 'every week'],      sub: 'A weekly giveaway for drivers.' },
+  { src: '05-rewards.png',   name: '05-monthly-giveaway',      lines: ['Win a $50 gas card', 'every month'],  sub: 'A monthly giveaway for drivers.' },
   { src: '06-tools.png',     name: '06-ai-advisor',           lines: ['Ask your AI', 'fuel advisor'],       sub: 'Answers about your fill-ups, anytime.' },
 ];
 
