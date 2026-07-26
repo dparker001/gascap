@@ -36,7 +36,6 @@ import FuelBudgetWidget       from '@/components/FuelBudgetWidget';
 import SavingsSummary         from '@/components/SavingsSummary';
 import AnnualProjection       from '@/components/AnnualProjection';
 import PastWinners            from '@/components/PastWinners';
-import WinnerBanner           from '@/components/WinnerBanner';
 import UserModeSelector       from '@/components/UserModeSelector';
 
 // ── JSON-LD Schema Markup ────────────────────────────────────────────────────
@@ -636,9 +635,6 @@ export default function Home() {
       {/* Getaway promo pop-up — non-members get the Lifetime + getaway hook a few
           seconds after load; closeable + auto-dismisses (gated by the promo) */}
       <AdLandingBanner />
-
-      {/* ── Prize claim banner — shown to logged-in winners until claimed ── */}
-      {session && <WinnerBanner />}
 
       {/* ── Guest hero — SEO headline above the calculator ────────────── */}
       {isGuest && <GuestHero />}

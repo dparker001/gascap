@@ -25,7 +25,6 @@ import FillupHistory    from '@/components/FillupHistory';
 import ToolsPanel       from '@/components/ToolsPanel';
 import TrialExpiryBanner from '@/components/TrialExpiryBanner';
 import AnnouncementToast from '@/components/AnnouncementToast';
-import WinnerBanner     from '@/components/WinnerBanner';
 import SettingsPage     from '@/app/settings/page';
 import NativeTabBar, { type TabMeta } from './NativeTabBar';
 import RewardsTab       from './tabs/RewardsTab';
@@ -322,7 +321,6 @@ export default function NativeAppShell() {
 
       {/* Essential in-app overlays (marketing chrome is intentionally not mounted) */}
       <TrialExpiryBanner />
-      {session && <WinnerBanner />}
       <AnnouncementToast />
 
       {/* Tab content — each tab mounts on first visit, then hides (state preserved).

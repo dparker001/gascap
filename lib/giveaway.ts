@@ -556,6 +556,7 @@ export async function recordDraw(result: DrawResult, notes?: string) {
       totalEntries: result.totalEntries,
       drawnAt:      new Date().toISOString(),
       notes:        notes ?? null,
+      claimToken:   randomUUID(),
     },
   });
 }
@@ -570,6 +571,40 @@ export async function markWinnerClaimed(month: string) {
   return prisma.giveawayDraw.update({
     where: { month },
     data:  { claimedAt: new Date().toISOString() },
+  });
+}
+
+/** Number of days after drawnAt a winner has to claim before forfeiting (matches official rules). */
+export const CLAIM_WINDOW_DAYS = 3;
+
+export type ClaimTokenStatus =
+  | { ok: true; draw: Awaited<ReturnType<typeof getDrawHistory>>[number] }
+  | { ok: false; reason: 'not_found' | 'invalid_token' | 'already_claimed' | 'expired' };
+
+/** Validate a claim token against the recorded draw for that month. */
+export async function checkClaimToken(month: string, token: string): Promise<ClaimTokenStatus> {
+  const history = await getDrawHistory();
+  const draw    = history.find((d) => d.month === month);
+  if (!draw) return { ok: false, reason: 'not_found' };
+  if (!draw.claimToken || draw.claimToken !== token) return { ok: false, reason: 'invalid_token' };
+  if (draw.claimedAt) return { ok: false, reason: 'already_claimed' };
+
+  const deadline = new Date(draw.drawnAt).getTime() + CLAIM_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+  if (Date.now() > deadline) return { ok: false, reason: 'expired' };
+
+  return { ok: true, draw };
+}
+
+/**
+ * Mark a winner's claim confirmed with their 18+/eligibility certification
+ * timestamp. Used by the public self-serve claim route. Idempotent guard
+ * (already-claimed) is enforced by checkClaimToken before this is called.
+ */
+export async function recordAgeConfirmedClaim(month: string) {
+  const now = new Date().toISOString();
+  return prisma.giveawayDraw.update({
+    where: { month },
+    data:  { claimedAt: now, ageConfirmedAt: now },
   });
 }
 
@@ -659,14 +694,16 @@ export async function updateDrawWinner(
   return prisma.giveawayDraw.update({
     where: { month },
     data: {
-      winnerId:     result.winner.userId,
-      winnerName:   result.winner.name,
-      winnerEmail:  result.winner.email,
-      entryCount:   result.winner.entryCount,
-      totalEntries: result.totalEntries,
-      drawnAt:      new Date().toISOString(),
-      claimedAt:    null,   // reset — new winner must claim
-      notes:        [forfeitNote, notes ?? ''].filter(Boolean).join(' '),
+      winnerId:       result.winner.userId,
+      winnerName:     result.winner.name,
+      winnerEmail:    result.winner.email,
+      entryCount:     result.winner.entryCount,
+      totalEntries:   result.totalEntries,
+      drawnAt:        new Date().toISOString(),
+      claimedAt:      null,   // reset — new winner must claim
+      claimToken:     randomUUID(), // fresh token — the old one was never sent to this winner
+      ageConfirmedAt: null,
+      notes:          [forfeitNote, notes ?? ''].filter(Boolean).join(' '),
     },
   });
 }

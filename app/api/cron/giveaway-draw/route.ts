@@ -10,11 +10,18 @@
  *  1. Cadence guard: for monthly cadence, skip unless today is the last day of the month.
  *  2. Idempotency: skip if a draw already exists for the current period.
  *  3. Run the weighted draw for the current period.
- *  4. Record the draw in the DB.
- *  5. Fire winner + non-winner emails and GHL notifications (fire-and-forget).
- *  6. Auto-confirm: send the $50 Tremendous card immediately (no admin click needed).
- *  7. Mark the draw as claimed.
- *  8. Email Don with a draw summary + Tremendous status.
+ *  4. Record the draw in the DB (generates a claim token).
+ *  5. Fire winner + non-winner emails and GHL notifications (fire-and-forget)
+ *     — the winner email includes a self-serve claim link, not a card.
+ *  6. Email Don a draw summary noting the winner has been notified and is
+ *     awaiting their own claim confirmation.
+ *
+ * The Tremendous card is intentionally NEVER sent from this cron. It's only
+ * ever issued once the winner explicitly certifies 18+/eligibility via the
+ * public claim link (app/api/giveaway/claim), or an admin manually confirms
+ * via the admin panel (PATCH /api/admin/sweepstakes) as a fallback. This
+ * cron auto-sending the card immediately, with no confirmation step, was the
+ * exact gap that motivated building the claim flow — see lib/tremendous.ts.
  *
  * Prize is fixed at $50 for monthly draws (WEEKLY_PRIZE env to override — kept
  * the original env var name to avoid a Railway config change).
@@ -26,9 +33,9 @@ import {
   runWeightedDraw,
   recordDraw,
   getDrawHistory,
-  markWinnerClaimed,
   formatPeriodLabel,
   GIVEAWAY_CADENCE,
+  CLAIM_WINDOW_DAYS,
 } from '@/lib/giveaway';
 import { fireDrawNotifications } from '@/lib/drawNotifications';
 import { sendMail } from '@/lib/email';
@@ -83,10 +90,12 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: false, error: msg }, { status: 422 });
   }
 
-  // ── Record the draw ────────────────────────────────────────────────────────
+  // ── Record the draw (generates a claim token) ──────────────────────────────
   const draw = await recordDraw(result, 'Auto-draw via cron');
 
   // ── Fire emails + GHL notifications (fire-and-forget) ─────────────────────
+  // The winner email includes a self-serve claim link (claimToken) — the
+  // Tremendous card only ships once they confirm eligibility through it.
   void fireDrawNotifications({
     period,
     prize:        WEEKLY_PRIZE,
@@ -95,79 +104,10 @@ export async function GET(req: Request) {
     drawnAt:      draw.drawnAt,
     notes:        draw.notes ?? null,
     suppressSms:  false,
+    claimToken:   draw.claimToken,
   });
 
-  // ── Auto-confirm: send Tremendous card immediately ────────────────────────
-  let tremendousSent    = false;
-  let tremendousOrderId: string | undefined;
-  let tremendousError:   string | undefined;
-
-  const tremendousKey        = process.env.TREMENDOUS_API_KEY;
-  const tremendousCampaignId = process.env.TREMENDOUS_CAMPAIGN_ID;
-  const tremendousConfigured = Boolean(tremendousKey && tremendousCampaignId);
-
-  if (!tremendousConfigured) {
-    tremendousError = 'TREMENDOUS_API_KEY or TREMENDOUS_CAMPAIGN_ID not configured — manual fulfillment required';
-    console.warn('[giveaway-draw]', tremendousError);
-  } else {
-    try {
-      const denomination = parseFloat(WEEKLY_PRIZE.replace(/[^0-9.]/g, ''));
-      if (isNaN(denomination) || denomination <= 0) {
-        tremendousError = `Could not parse WEEKLY_PRIZE: ${WEEKLY_PRIZE}`;
-        console.warn('[giveaway-draw]', tremendousError);
-      } else {
-        const tRes = await fetch('https://www.tremendous.com/api/v2/orders', {
-          method:  'POST',
-          headers: {
-            'Authorization': `Bearer ${tremendousKey}`,
-            'Content-Type':  'application/json',
-          },
-          body: JSON.stringify({
-            payment: { funding_source_id: 'BALANCE' },
-            rewards: [{
-              campaign_id: tremendousCampaignId,
-              recipient: {
-                name:  result.winner.name,
-                email: result.winner.email,
-              },
-              value: { denomination, currency_code: 'USD' },
-            }],
-          }),
-        });
-
-        if (!tRes.ok) {
-          const errText = await tRes.text();
-          tremendousError = `Tremendous API ${tRes.status}: ${errText}`;
-          console.error('[giveaway-draw] Tremendous error:', tremendousError);
-        } else {
-          const tData = await tRes.json() as { order?: { id?: string } };
-          tremendousOrderId = tData.order?.id;
-          tremendousSent    = true;
-          console.log(
-            `[giveaway-draw] Tremendous ${WEEKLY_PRIZE} card sent to ${result.winner.email}` +
-            ` — order ${tremendousOrderId ?? 'unknown'}`,
-          );
-        }
-      }
-    } catch (tErr) {
-      tremendousError = String(tErr);
-      console.error('[giveaway-draw] Tremendous threw:', tremendousError);
-    }
-  }
-
-  // Mark claimed if Tremendous sent (or if Tremendous isn't configured, mark anyway
-  // so the admin panel shows it as "sent" pending manual fulfillment).
-  if (tremendousSent || !tremendousConfigured) {
-    await markWinnerClaimed(period);
-  }
-
   // ── Notify Don with draw summary ───────────────────────────────────────────
-  const cardStatus = tremendousSent
-    ? `✅ Tremendous ${WEEKLY_PRIZE} card sent (order ${tremendousOrderId ?? 'unknown'})`
-    : tremendousConfigured
-      ? `⚠️ Tremendous FAILED — ${tremendousError}\n\nManual fulfillment needed.`
-      : `ℹ️ Tremendous not configured — manual fulfillment needed.`;
-
   await sendMail({
     to:      ADMIN_EMAIL,
     subject: `🏆 GasCap™ Monthly Draw Complete — ${periodLabel}`,
@@ -186,13 +126,8 @@ export async function GET(req: Request) {
           <tr><td style="padding:6px 0;color:#64748b;">Prize</td>
               <td style="padding:6px 0;">${WEEKLY_PRIZE} Visa prepaid card</td></tr>
           <tr><td style="padding:6px 0;color:#64748b;">Card delivery</td>
-              <td style="padding:6px 0;">${cardStatus}</td></tr>
+              <td style="padding:6px 0;">⏳ Winner notified — card ships once they confirm eligibility (link expires in ${CLAIM_WINDOW_DAYS} days)</td></tr>
         </table>
-        ${tremendousSent ? '' : `
-        <div style="background:#fef3c7;border:2px solid #f59e0b;border-radius:10px;padding:14px;margin:16px 0;">
-          <p style="margin:0;font-weight:700;color:#92400e;">Action needed: manual card fulfillment</p>
-          <p style="margin:6px 0 0;font-size:13px;color:#92400e;">${tremendousError ?? ''}</p>
-        </div>`}
         <p style="margin:20px 0 0;">
           <a href="https://www.gascap.app/admin/sweepstakes"
              style="display:inline-block;background:#005f4a;color:#fff;font-weight:700;
@@ -209,23 +144,21 @@ export async function GET(req: Request) {
       `Winner: ${result.winner.name} (${result.winner.email})`,
       `Entries: ${result.winner.entryCount} of ${result.totalEntries} total`,
       `Prize: ${WEEKLY_PRIZE} Visa prepaid card`,
-      `Card delivery: ${cardStatus}`,
+      `Card delivery: Winner notified — card ships once they confirm eligibility (link expires in ${CLAIM_WINDOW_DAYS} days)`,
       `Admin panel: https://www.gascap.app/admin/sweepstakes`,
     ].join('\n'),
   }).catch((err) => console.error('[giveaway-draw] admin notification failed:', err));
 
-  console.log(`[giveaway-draw] Draw complete for ${period}: winner=${result.winner.email}, tremendousSent=${tremendousSent}`);
+  console.log(`[giveaway-draw] Draw complete for ${period}: winner=${result.winner.email}, awaiting claim`);
 
   return NextResponse.json({
-    ok:               true,
+    ok:           true,
     period,
     periodLabel,
-    winner:           result.winner.email,
-    entryCount:       result.winner.entryCount,
-    totalEntries:     result.totalEntries,
-    prize:            WEEKLY_PRIZE,
-    tremendousSent,
-    tremendousOrderId,
-    tremendousError,
+    winner:       result.winner.email,
+    entryCount:   result.winner.entryCount,
+    totalEntries: result.totalEntries,
+    prize:        WEEKLY_PRIZE,
+    awaitingClaim: true,
   });
 }

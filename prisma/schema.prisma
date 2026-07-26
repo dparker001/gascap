@@ -218,16 +218,18 @@ model EmailLog {
 }
 
 model GiveawayDraw {
-  id           String  @id
-  month        String  @unique
-  winnerId     String
-  winnerName   String
-  winnerEmail  String
-  entryCount   Int
-  totalEntries Int
-  drawnAt      String
-  notes        String?
-  claimedAt    String?  // set when winner confirms receipt; null = unclaimed
+  id             String  @id
+  month          String  @unique
+  winnerId       String
+  winnerName     String
+  winnerEmail    String
+  entryCount     Int
+  totalEntries   Int
+  drawnAt        String
+  notes          String?
+  claimedAt      String?  // set when winner confirms receipt; null = unclaimed
+  claimToken     String?  // unique token embedded in the winner's claim link (self-serve confirmation)
+  ageConfirmedAt String?  // set when the winner (or admin, as manual override) certifies 18+ eligibility
 }
 
 model CampaignPlacement {

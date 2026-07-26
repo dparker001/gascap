@@ -203,6 +203,7 @@ export function winnerNotificationEmailHtml(
   entryCount: number,
   totalEntries: number,
   prize: string = '$25',
+  claimUrl: string = 'https://gascap.app',
 ): string {
   const monthLabel = _formatPeriodLabel(month);
 
@@ -239,15 +240,12 @@ ${brandHeader()}
 
           <!-- Body copy -->
           <p style="margin:0 0 16px;font-size:14px;color:#475569;line-height:1.65;">
-            Your&nbsp;<strong>${prize} Visa prepaid card</strong> is on its way — check this inbox
-            for a separate email from our rewards partner with your digital claim link. It may take
-            up to&nbsp;<strong>24&nbsp;hours</strong> to arrive. Check your spam folder if you
-            don&apos;t see it.
+            One last step before we send your&nbsp;<strong>${prize} Visa prepaid card</strong>:
+            click below to confirm your eligibility. It takes 10 seconds.
           </p>
           <p style="margin:0 0 16px;font-size:14px;color:#475569;line-height:1.65;">
-            Please reply to this email to confirm you received your card. If we don&apos;t hear
-            back within&nbsp;<strong>14&nbsp;days</strong> we may need to select an alternate
-            winner per our
+            You must confirm within&nbsp;<strong>3&nbsp;days</strong> of this email or we may need
+            to select an alternate winner per our
             <a href="https://gascap.app/sweepstakes-rules"
                style="color:#15a680;font-weight:600;">official rules</a>.
           </p>
@@ -259,10 +257,10 @@ ${brandHeader()}
 
           <!-- CTA -->
           <div style="text-align:center;">
-            <a href="https://gascap.app"
+            <a href="${claimUrl}"
                style="display:inline-block;background:#005f4a;color:#fff;font-weight:900;
                       font-size:14px;padding:13px 28px;border-radius:12px;text-decoration:none;">
-              Open GasCap™
+              Confirm &amp; Claim My Prize
             </a>
           </div>
 
