@@ -87,7 +87,7 @@ export default function AmoePage() {
               <p className="text-white text-2xl font-black leading-tight">You&apos;re entered!</p>
               <p className="text-white/60 text-sm leading-relaxed">
                 Your free entry for the <strong className="text-white">{currentMonthLabel()}</strong> drawing
-                has been received. One winner is drawn every Friday evening.
+                has been received. One winner is drawn at the end of each month.
               </p>
             </div>
 

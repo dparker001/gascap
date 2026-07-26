@@ -41,9 +41,8 @@ export interface PrizeTier {
  * To unlock the next tier, add a row here and redeploy.
  */
 export const PRIZE_TIERS: PrizeTier[] = [
-  { minSubscribers:   0, prize: '$25',  label: 'Starter' },
-  { minSubscribers: 500, prize: '$50',  label: 'Growth'  },
-  // { minSubscribers: 1000, prize: '$100', label: 'Scale' },  // ← unlock when ready
+  { minSubscribers:   0, prize: '$50',  label: 'Starter' },
+  // { minSubscribers: 500, prize: '$100', label: 'Growth' },  // ← unlock when ready
 ];
 
 // ─── Streak Bonus Tiers ───────────────────────────────────────────────────────
@@ -234,7 +233,7 @@ export function prevMonth(month: string): string {
 export type Cadence = 'weekly' | 'monthly' | 'daily';
 
 export const GIVEAWAY_CADENCE: Cadence =
-  (process.env.GIVEAWAY_CADENCE as Cadence) || 'weekly';
+  (process.env.GIVEAWAY_CADENCE as Cadence) || 'monthly';
 
 /** ISO-8601 week key for a date, e.g. 2026-07-03 → "2026-W27" (weeks are Mon–Sun). */
 export function isoWeekKey(date: Date): string {

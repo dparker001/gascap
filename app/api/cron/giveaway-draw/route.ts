@@ -1,19 +1,23 @@
 /**
  * GET /api/cron/giveaway-draw
  *
- * Auto-draw cron — runs Friday evenings (Railway scheduler).
- * Recommended schedule: "0 21 * * 5" (9 PM UTC ≈ 5 PM ET on Fridays).
+ * Auto-draw cron — intended to run daily (Railway scheduler); only actually
+ * executes a draw on the last calendar day of the month for monthly cadence
+ * (see isLastDayOfMonth below). Recommended schedule: "55 23 * * *" (11:55 PM
+ * UTC daily) — the guard makes it a no-op on every day but the last.
  *
  * Behavior per run:
- *  1. Idempotency: skip if a draw already exists for the current period.
- *  2. Run the weighted draw for the current period.
- *  3. Record the draw in the DB.
- *  4. Fire winner + non-winner emails and GHL notifications (fire-and-forget).
- *  5. Auto-confirm: send the $25 Tremendous card immediately (no admin click needed).
- *  6. Mark the draw as claimed.
- *  7. Email Don with a draw summary + Tremendous status.
+ *  1. Cadence guard: for monthly cadence, skip unless today is the last day of the month.
+ *  2. Idempotency: skip if a draw already exists for the current period.
+ *  3. Run the weighted draw for the current period.
+ *  4. Record the draw in the DB.
+ *  5. Fire winner + non-winner emails and GHL notifications (fire-and-forget).
+ *  6. Auto-confirm: send the $50 Tremendous card immediately (no admin click needed).
+ *  7. Mark the draw as claimed.
+ *  8. Email Don with a draw summary + Tremendous status.
  *
- * Prize is fixed at $25 for weekly draws (WEEKLY_PRIZE env to override).
+ * Prize is fixed at $50 for monthly draws (WEEKLY_PRIZE env to override — kept
+ * the original env var name to avoid a Railway config change).
  * Secured with CRON_SECRET query param.
  */
 import { NextResponse } from 'next/server';
@@ -24,17 +28,31 @@ import {
   getDrawHistory,
   markWinnerClaimed,
   formatPeriodLabel,
+  GIVEAWAY_CADENCE,
 } from '@/lib/giveaway';
 import { fireDrawNotifications } from '@/lib/drawNotifications';
 import { sendMail } from '@/lib/email';
 
 const ADMIN_EMAIL  = process.env.ADMIN_EMAIL  ?? 'admin@gascap.app';
-const WEEKLY_PRIZE = process.env.WEEKLY_PRIZE ?? '$25';
+const WEEKLY_PRIZE = process.env.WEEKLY_PRIZE ?? '$50';
+
+/** True if tomorrow (UTC) rolls over into a new month — i.e. today is the last day. */
+function isLastDayOfMonth(d = new Date()): boolean {
+  const tomorrow = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 1));
+  return tomorrow.getUTCDate() === 1;
+}
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   if (!process.env.CRON_SECRET || searchParams.get('secret') !== process.env.CRON_SECRET) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  // Monthly cadence only draws once, on the last calendar day — a daily-scheduled
+  // cron would otherwise fire the draw on day 1 and cut the month's entries short.
+  // ?force=1 bypasses this for manual/admin testing.
+  if (GIVEAWAY_CADENCE === 'monthly' && !isLastDayOfMonth() && searchParams.get('force') !== '1') {
+    return NextResponse.json({ ok: true, skipped: true, reason: 'Not the last day of the month yet.' });
   }
 
   const period      = currentPeriod();
@@ -152,11 +170,11 @@ export async function GET(req: Request) {
 
   await sendMail({
     to:      ADMIN_EMAIL,
-    subject: `🏆 GasCap™ Weekly Draw Complete — ${periodLabel}`,
+    subject: `🏆 GasCap™ Monthly Draw Complete — ${periodLabel}`,
     html: `
       <div style="font-family:system-ui,sans-serif;max-width:520px;margin:0 auto;padding:24px;">
         <p style="font-size:22px;font-weight:900;color:#1e2d4a;margin:0 0 16px;">
-          🏆 Weekly Draw Complete — ${periodLabel}
+          🏆 Monthly Draw Complete — ${periodLabel}
         </p>
         <table style="width:100%;border-collapse:collapse;font-size:14px;color:#334155;">
           <tr><td style="padding:6px 0;color:#64748b;">Winner</td>
@@ -187,7 +205,7 @@ export async function GET(req: Request) {
         </p>
       </div>`,
     text: [
-      `GasCap™ Weekly Draw Complete — ${periodLabel}`,
+      `GasCap™ Monthly Draw Complete — ${periodLabel}`,
       `Winner: ${result.winner.name} (${result.winner.email})`,
       `Entries: ${result.winner.entryCount} of ${result.totalEntries} total`,
       `Prize: ${WEEKLY_PRIZE} Visa prepaid card`,

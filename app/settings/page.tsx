@@ -1233,7 +1233,7 @@ export default function SettingsPage() {
                 ) : (
                   <>
                     <p className="text-[11px] text-slate-500 leading-relaxed">
-                      Add Lifetime Perks for $9.99/yr to unlock +30 weekly giveaway entries and an annual vacation voucher.
+                      Add Lifetime Perks for $9.99/yr to unlock +30 monthly giveaway entries and an annual vacation voucher.
                     </p>
                     {isNative ? (
                       <p className="text-[11px] text-slate-400">Visit gascap.app/settings to add Lifetime Perks.</p>

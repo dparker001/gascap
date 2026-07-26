@@ -339,8 +339,8 @@ const SECTIONS = [
     title: '🎁 Giveaway',
     items: [
       {
-        q: 'What is the Weekly Gas Card Giveaway?',
-        a: 'Every Friday, GasCap™ gives away a $25 Visa prepaid card — use it at the pump or anywhere Visa is accepted — to one lucky winner. The drawing is held automatically every Friday at 9 PM ET. No purchase is required to enter.',
+        q: 'What is the Monthly Gas Card Giveaway?',
+        a: 'Every month, GasCap™ gives away a $50 Visa prepaid card — use it at the pump or anywhere Visa is accepted — to one lucky winner. The drawing is held automatically at the end of each month. No purchase is required to enter.',
       },
       {
         q: 'Who is eligible to enter?',
@@ -402,7 +402,7 @@ const SECTIONS = [
       },
       {
         q: 'How do Ambassador tiers affect my monthly drawing entries?',
-        a: 'Once you reach a tier, your daily drawing entries are multiplied automatically: Supporter members earn 2 entries per day; Ambassadors earn 3 entries per day; Elite Ambassadors earn 5 entries per day. Streak bonus entries still apply on top. Additionally, all Ambassador tier holders are always eligible to win the weekly drawing — the standard consecutive-week and monthly restrictions do not apply.',
+        a: 'Once you reach a tier, your daily drawing entries are multiplied automatically: Supporter members earn 2 entries per day; Ambassadors earn 3 entries per day; Elite Ambassadors earn 5 entries per day. Streak bonus entries still apply on top. Additionally, all Ambassador tier holders are always eligible to win the monthly drawing — the standard consecutive-month and quarterly restrictions do not apply.',
       },
       {
         q: 'When does my referral count update?',
@@ -458,7 +458,7 @@ const SECTIONS = [
       },
       {
         q: 'Why do I need to verify my email?',
-        a: 'Email verification protects your account, ensures we can notify you if you win the weekly giveaway, and unlocks your bonus drawing entries. Verify within 48 hours of signing up to earn +25 bonus entries — verify any time after to earn +10 bonus entries. Check your inbox and spam folder for the verification email from support@gascap.app. Unverified accounts cannot win the monthly drawing.',
+        a: 'Email verification protects your account, ensures we can notify you if you win the monthly giveaway, and unlocks your bonus drawing entries. Verify within 48 hours of signing up to earn +25 bonus entries — verify any time after to earn +10 bonus entries. Check your inbox and spam folder for the verification email from support@gascap.app. Unverified accounts cannot win the monthly drawing.',
       },
       {
         q: 'What data does GasCap™ collect?',
@@ -620,7 +620,7 @@ export default function HelpPage() {
 
         {/* Sweepstakes quick-link card */}
         <div className="mt-6 bg-[#005F4A] rounded-3xl p-6 text-center">
-          <p className="text-white font-black text-lg mb-1">🎁 Weekly Gas Card Giveaway</p>
+          <p className="text-white font-black text-lg mb-1">🎁 Monthly Gas Card Giveaway</p>
           <p className="text-white/60 text-sm mb-4">
             Pro and Fleet members earn entries every day they use the app.
             No purchase required to enter.
