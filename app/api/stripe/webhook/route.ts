@@ -380,15 +380,15 @@ export async function POST(req: Request) {
         const chooseUrl = `${baseUrl}/getaway`;
 
         sendAdminMail({
-          subject: `🏅 Lifetime Perks renewed — ${user.email} — send vacation voucher`,
+          subject: `🏅 Lifetime Perks renewed — ${user.email} will choose a destination`,
           html: `<div style="font-family:system-ui,sans-serif;max-width:480px;">
             <p style="font-size:20px;margin:0 0 8px;">🏅 Lifetime Perks renewal</p>
             <p style="font-size:15px;color:#334155;margin:0 0 4px;"><strong>${user.name}</strong> renewed their Lifetime Perks ($9.99).</p>
             <p style="font-size:14px;color:#64748b;margin:0 0 12px;">${user.email}</p>
-            <p style="font-size:14px;color:#334155;font-weight:700;margin:0 0 4px;">Action needed: issue one vacation voucher via Marketing Boost.</p>
+            <p style="font-size:14px;color:#334155;margin:0 0 4px;">They'll pick a destination at /getaway — sent automatically via Marketing Boost if it's in the live API catalog, otherwise you'll get a separate <strong>"ISSUE GETAWAY CERT"</strong> email. No action needed yet.</p>
             <p style="font-size:12px;color:#94a3b8;">${new Date().toLocaleString('en-US',{timeZone:'America/New_York'})} ET</p>
           </div>`,
-          text: `Lifetime Perks renewal: ${user.name} <${user.email}> — issue vacation voucher in Marketing Boost.`,
+          text: `Lifetime Perks renewal: ${user.name} <${user.email}> — awaiting destination choice (auto-sent via MB API if available, otherwise separate ISSUE email to follow).`,
         });
 
         sendMail({

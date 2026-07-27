@@ -1,9 +1,16 @@
 /**
  * POST /api/getaway/choose
- * A Lifetime buyer picks their complimentary getaway destination. We don't issue
- * the certificate automatically (no API on the free MB partner plan) — instead we
- * email the admin the exact destination to issue in Marketing Boost, and confirm
- * to the buyer that it's being sent.
+ * A Lifetime buyer picks their complimentary getaway destination.
+ *
+ * Automated path: if the chosen destination has a live match in this
+ * account's Marketing Boost catalog (see lib/marketingBoost.ts — fetched
+ * live, not hardcoded), the certificate is sent immediately via their API
+ * and no manual admin action is needed.
+ *
+ * Fallback path: if there's no match (e.g. this destination isn't in MB's
+ * catalog for this account yet) or the API call fails, we fall back to the
+ * original manual flow — email the admin the exact destination to issue by
+ * hand in the Marketing Boost portal, and tell the buyer it's being sent.
  *
  * v1 is intentionally DB-less: the admin + buyer emails are the paper trail.
  * (A future version can persist the choice for an admin dashboard.)
@@ -16,6 +23,7 @@ import { authOptions }      from '@/lib/auth';
 import { findById }         from '@/lib/users';
 import { sendMail }         from '@/lib/email';
 import { getawayPromoActive, findGetawayDestination, GETAWAY_DISCLOSURE } from '@/lib/getawayPromo';
+import { findMBDestinationByName, sendVacationIncentive } from '@/lib/marketingBoost';
 
 /** Fire-and-forget admin notification */
 function notifyAdmin(opts: { subject: string; html: string; text: string }) {
@@ -56,18 +64,47 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'The getaway is included with Pro Lifetime.' }, { status: 403 });
   }
 
-  // ── Actionable admin email: which destination to issue, to whom ──────────────
-  notifyAdmin({
-    subject: `🏝️ ISSUE GETAWAY CERT → ${dest.name} → ${user.email}`,
-    html: `<div style="font-family:system-ui,sans-serif;max-width:480px;">
-      <p style="font-size:20px;margin:0 0 8px;">🏝️ Issue a getaway certificate</p>
-      <p style="font-size:15px;color:#334155;margin:0 0 4px;"><strong>${user.name}</strong> chose <strong>${dest.name}</strong>.</p>
-      <p style="font-size:14px;color:#0f766e;margin:0 0 12px;"><strong>Action:</strong> In Marketing Boost → online-bookings vacation → issue a destination-based <strong>${dest.name}</strong> getaway to <strong>${user.email}</strong>.</p>
-      <p style="font-size:13px;color:#64748b;margin:0 0 4px;">Recipient: <strong>${user.email}</strong> · Destination: <strong>${dest.name}</strong> (${dest.id})</p>
-      <p style="font-size:12px;color:#94a3b8;">${new Date().toLocaleString('en-US',{timeZone:'America/New_York'})} ET</p>
-    </div>`,
-    text: `ISSUE GETAWAY CERT in Marketing Boost (online-bookings) — destination ${dest.name} → ${user.name} <${user.email}>`,
-  });
+  // ── Try the automated path first: does this account's live MB catalog
+  //    include a destination matching what the buyer picked? ───────────────────
+  const mbMatch = await findMBDestinationByName(dest.name);
+  let autoSent = false;
+
+  if (mbMatch) {
+    const result = await sendVacationIncentive({
+      destinationId: mbMatch.id,
+      name:          user.name,
+      email:         user.email,
+    });
+    if (result.ok) {
+      autoSent = true;
+      notifyAdmin({
+        subject: `🏝️ Getaway cert auto-sent → ${dest.name} → ${user.email}`,
+        html: `<div style="font-family:system-ui,sans-serif;max-width:480px;">
+          <p style="font-size:16px;margin:0 0 8px;">✅ No action needed — sent automatically via Marketing Boost API.</p>
+          <p style="font-size:14px;color:#334155;margin:0;"><strong>${user.name}</strong> (${user.email}) chose <strong>${dest.name}</strong>.</p>
+        </div>`,
+        text: `Getaway cert auto-sent via MB API: ${dest.name} → ${user.name} <${user.email}>`,
+      });
+    } else {
+      console.error(`[GasCap] MB auto-send failed for ${user.email} → ${dest.name}:`, result.error);
+    }
+  }
+
+  // ── Fallback: no live catalog match, or the API call failed — issue manually ──
+  if (!autoSent) {
+    notifyAdmin({
+      subject: `🏝️ ISSUE GETAWAY CERT → ${dest.name} → ${user.email}`,
+      html: `<div style="font-family:system-ui,sans-serif;max-width:480px;">
+        <p style="font-size:20px;margin:0 0 8px;">🏝️ Issue a getaway certificate</p>
+        <p style="font-size:15px;color:#334155;margin:0 0 4px;"><strong>${user.name}</strong> chose <strong>${dest.name}</strong>.</p>
+        <p style="font-size:14px;color:#0f766e;margin:0 0 12px;"><strong>Action:</strong> In Marketing Boost → online-bookings vacation → issue a destination-based <strong>${dest.name}</strong> getaway to <strong>${user.email}</strong>.</p>
+        <p style="font-size:13px;color:#64748b;margin:0 0 4px;">Recipient: <strong>${user.email}</strong> · Destination: <strong>${dest.name}</strong> (${dest.id})</p>
+        <p style="font-size:12px;color:#94a3b8;">${new Date().toLocaleString('en-US',{timeZone:'America/New_York'})} ET</p>
+        <p style="font-size:12px;color:#b45309;margin-top:8px;">(Not auto-sent — this destination isn&apos;t in the live Marketing Boost API catalog for this account yet.)</p>
+      </div>`,
+      text: `ISSUE GETAWAY CERT in Marketing Boost (online-bookings) — destination ${dest.name} → ${user.name} <${user.email}> (not found in live MB API catalog — manual fulfillment needed)`,
+    });
+  }
 
   // ── Buyer confirmation ───────────────────────────────────────────────────────
   sendMail({
@@ -89,6 +126,6 @@ export async function POST(req: Request) {
     text: `Your ${dest.name} getaway certificate is being issued — watch your inbox within 24 hours. ${GETAWAY_DISCLOSURE.short}`,
   }).catch((e) => console.error('[GasCap] Getaway buyer confirmation failed:', e));
 
-  console.info(`[GasCap] Getaway destination chosen: ${dest.name} by ${user.email}`);
-  return NextResponse.json({ ok: true, destination: dest.id });
+  console.info(`[GasCap] Getaway destination chosen: ${dest.name} by ${user.email} (${autoSent ? 'auto-sent via MB API' : 'manual fulfillment queued'})`);
+  return NextResponse.json({ ok: true, destination: dest.id, autoSent });
 }
