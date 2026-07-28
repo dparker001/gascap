@@ -58,20 +58,25 @@ export const GETAWAY_DISCLOSURE = {
  * rate itself is free. Keep this list short (~6) so the choice is quick.
  */
 export interface GetawayDestination {
-  id:     string;   // stable slug used in the choose API + emails
-  name:   string;   // display name
-  vibe:   string;   // one-line hook
-  emoji:  string;
-  fee:    number;   // nightly taxes & fees (USD) the traveler prepays
+  id:              string;   // stable slug used in the choose API + emails
+  name:            string;   // display name
+  vibe:            string;   // one-line hook
+  emoji:           string;
+  fee:             number;   // nightly taxes & fees (USD) the traveler prepays
+  mbDestinationId: string;   // Marketing Boost's own destination ID — verified live via a
+                             // real test send (2026-07-26) against MB's actual send API,
+                             // sourced directly from MB support (not the account-scoped
+                             // GET /all-destination-list endpoint, which only returns a
+                             // small curated subset and is NOT the full sendable catalog).
 }
 
 export const GETAWAY_DESTINATIONS: readonly GetawayDestination[] = [
-  { id: 'las-vegas',   name: 'Las Vegas, NV',   vibe: 'Shows, dining & nightlife',     emoji: '🎰', fee: 33.24 },
-  { id: 'denver',      name: 'Denver, CO',      vibe: 'Mountains & winter getaway',    emoji: '🏔️', fee: 48.94 },
-  { id: 'miami',       name: 'Miami, FL',       vibe: 'Beach & nightlife',             emoji: '🏖️', fee: 49.76 },
-  { id: 'san-antonio', name: 'San Antonio, TX', vibe: 'Riverwalk & family fun',        emoji: '🌵', fee: 54.22 },
-  { id: 'orlando',     name: 'Orlando, FL',     vibe: 'Theme parks & family',          emoji: '🎢', fee: 56.70 },
-  { id: 'nashville',   name: 'Nashville, TN',   vibe: 'Live music city',               emoji: '🎸', fee: 65.59 },
+  { id: 'las-vegas',   name: 'Las Vegas, NV',   vibe: 'Shows, dining & nightlife',     emoji: '🎰', fee: 33.24, mbDestinationId: '41'   },
+  { id: 'denver',      name: 'Denver, CO',      vibe: 'Mountains & winter getaway',    emoji: '🏔️', fee: 48.94, mbDestinationId: '4834' },
+  { id: 'miami',       name: 'Miami, FL',       vibe: 'Beach & nightlife',             emoji: '🏖️', fee: 49.76, mbDestinationId: '30'   },
+  { id: 'san-antonio', name: 'San Antonio, TX', vibe: 'Riverwalk & family fun',        emoji: '🌵', fee: 54.22, mbDestinationId: '45'   },
+  { id: 'orlando',     name: 'Orlando, FL',     vibe: 'Theme parks & family',          emoji: '🎢', fee: 56.70, mbDestinationId: '34'   },
+  { id: 'nashville',   name: 'Nashville, TN',   vibe: 'Live music city',               emoji: '🎸', fee: 65.59, mbDestinationId: '5355' },
 ] as const;
 
 /** Look up a destination by its id (returns undefined if not one of the six). */

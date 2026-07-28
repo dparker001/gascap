@@ -2,11 +2,17 @@
  * Marketing Boost API client — automated vacation-incentive fulfillment.
  *
  * Replaces the old manual flow (admin logs into the MB members portal and
- * issues a certificate by hand for every Lifetime sale). Destinations are
- * fetched LIVE from MB's account-scoped catalog, never hardcoded — so if MB
- * expands this account's access later, it's reflected automatically with no
- * code change. See lib/getawayPromo.ts for the separate, hardcoded 6-city
- * list used by other (non-Lifetime) getaway offers/funnels.
+ * issues a certificate by hand for every Lifetime sale).
+ *
+ * getMBDestinations()/getActiveMBDestinations() below hit MB's account-scoped
+ * GET /all-destination-list endpoint — kept for reference/admin-dashboard use,
+ * but DO NOT treat it as authoritative for "what this account can send."
+ * Confirmed 2026-07-26: it only returns a small curated subset (9 destinations)
+ * while MB's actual send API happily accepts destination IDs far outside that
+ * list (all 6 of GETAWAY_DESTINATIONS' mbDestinationId values, sourced directly
+ * from MB support and verified with real test sends, work fine). The getaway
+ * choose flow (app/api/getaway/choose) uses the hardcoded, verified IDs on
+ * each GetawayDestination in lib/getawayPromo.ts instead of this GET endpoint.
  */
 
 const API_BASE    = 'https://members.marketingboost.com/api';
@@ -80,22 +86,6 @@ export async function getMBDestinations(): Promise<MBDestination[]> {
 /** Only the currently-bookable destinations. */
 export async function getActiveMBDestinations(): Promise<MBDestination[]> {
   return (await getMBDestinations()).filter((d) => d.active);
-}
-
-/**
- * Find the live MB destination matching a display name (e.g. "Las Vegas, NV"),
- * tolerant of minor formatting differences (state abbreviations, punctuation).
- * Returns undefined if this account's catalog doesn't currently include it.
- */
-export async function findMBDestinationByName(name: string): Promise<MBDestination | undefined> {
-  const norm = (s: string) => s.toLowerCase().replace(/[^a-z]/g, '');
-  const target    = norm(name);
-  const targetCity = norm(name.split(',')[0]);
-  const list = await getActiveMBDestinations();
-  return list.find((d) => {
-    const dNorm = norm(d.name);
-    return dNorm === target || dNorm === targetCity || norm(d.name.split(',')[0]) === targetCity;
-  });
 }
 
 export interface SendVacationResult {
