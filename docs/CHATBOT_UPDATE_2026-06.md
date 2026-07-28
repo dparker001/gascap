@@ -39,10 +39,13 @@ A: Like the regular Pro Lifetime plan, gift purchases are one-time and non-refun
 > Lifetime is the product; the getaway is an extra thank-you on top.
 
 **Q: Do I get a free vacation with Pro Lifetime?**
-A: During our limited-time promotion, yes — anyone who buys **Pro Lifetime** ($19.99, one-time) gets a complimentary resort getaway as a free thank-you bonus. Pro Lifetime is what you're purchasing; the getaway is an extra on top. Right after you upgrade you'll choose your destination (Las Vegas, Denver, Miami, San Antonio, Orlando, or Nashville), and your certificate is emailed within 24 hours. You can also choose later at **gascap.app/getaway**.
+A: During our limited-time promotion, yes — anyone who buys **Pro Lifetime** ($19.99, one-time) gets a complimentary resort getaway as a free thank-you bonus. Pro Lifetime is what you're purchasing; the getaway is an extra on top. Right after you upgrade you'll choose your destination from 100+ options across the U.S. and worldwide (searchable by city or country), and your certificate is emailed automatically within 24 hours. You can also choose later at **gascap.app/getaway**.
 
 **Q: How do I pick or claim my getaway destination?**
-A: After your Lifetime purchase, go to the success page or **gascap.app/getaway**, pick one of the six destinations, and confirm. We'll email your certificate within 24 hours — it comes from our travel partner, Marketing Boost / RedeemVacations, so check your spam folder too.
+A: After your Lifetime purchase, go to the success page or **gascap.app/getaway**, search or scroll to find your destination from 100+ options across the U.S. and worldwide, and confirm. Your certificate is sent automatically — it comes from our travel partner, Marketing Boost / RedeemVacations, within 24 hours, so check your spam folder too.
+
+**Q: What destinations can I choose from?**
+A: 100+ destinations across the U.S. and worldwide — major U.S. cities (Las Vegas, Denver, Miami, San Antonio, Orlando, Nashville, New York City, Los Angeles, and many more), plus international destinations like Cancún, Puerto Vallarta, Bali, Phuket, Dubai, Paris, Rome, and more. Use the search box on the destination picker to find yours by city or country.
 
 **Q: What does the getaway cost me?**
 A: This is a hotel stay only — flights are NOT included. The hotel room rate (valued up to $350/night) is free. You cover the destination's nightly taxes and fees — they vary by destination and are shown before you choose — plus your own airfare, food, and any resort fees the hotel charges. There's no timeshare presentation. Activation fees are non-refundable.
@@ -147,13 +150,15 @@ Use these exact facts when answering. Do NOT quote old pricing.
 |---|---|
 | Free plan | $0 — core calculators, 1 saved vehicle |
 | Pro Monthly | **$2.99/mo** (was $4.99 — never quote $4.99) |
-| Pro Annual | **$26.99/yr** (~3 months free vs monthly) |
+| Pro Annual | ⛔ REMOVED (2026-07-23) — do not quote or offer; strictly dominated by Lifetime |
 | Pro Lifetime | **$19.99 one-time** |
 | Fleet plan | ⏸️ Shelved / "coming soon" — Pro now has unlimited vehicles |
 | Free trial | 30 days of Pro, automatic on signup, no credit card |
 | Pro vehicles | **Unlimited** (was "up to 3" — never quote 3) |
-| Giveaway entries | Monthly: no bonus · Annual: +10/week · Lifetime base: +20/week · Lifetime+Perks: +30/week |
-| Lifetime exclusives | +20 bonus giveaway entries/week · Lifetime Member badge · Lifetime Perks add-on ($9.99/yr) = +30/week + annual vacation voucher |
+| Giveaway | **$50** Visa prepaid card, drawn **monthly** at month end (was $25/weekly — never quote either) |
+| Giveaway entries | Monthly: no bonus · Lifetime base: +25/month · Lifetime+Perks: +40/month |
+| Lifetime exclusives | +25 bonus giveaway entries/month · Lifetime Member badge · complimentary getaway (100+ destinations, while promo active) · Lifetime Perks add-on ($9.99/yr) = +40/month + another getaway certificate every renewal |
+| Streak/Ambassador vouchers | NEW — one-time Marketing Boost Dining Voucher/Hotel Savings Card at each streak milestone (30/90/180/365 days) and Ambassador tier (Supporter/Ambassador/Elite). Pro/Fleet only, not free accounts. |
 | Monthly refund | 30-day money-back guarantee |
 | Lifetime refund | Non-refundable / final sale |
 | Languages | English + Spanish |

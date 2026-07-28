@@ -1,5 +1,5 @@
 # GasCap™ Chatbot — Full Training Document
-> Last updated: 2026-05-02
+> Last updated: 2026-07-28
 > For use in GHL Conversation AI knowledge base
 > Support email: support@gascap.app | Website: gascap.app
 
@@ -199,7 +199,7 @@ A: All new accounts automatically receive 30 days of Pro features — no credit 
 A: Pro ($2.99/mo or $19.99 Lifetime) adds: unlimited saved vehicles, VIN photo scan, fill-up history & MPG tracking, receipt scanning, MPG Insight Card, AI Fuel Advisor, Gas Price Alert, fuel savings dashboard, streak counter, monthly report card, gas price trend predictions, vehicle health alerts, Annual Wrapped, referral rewards, and monthly gas card giveaway entries.
 
 **Q: What is the difference between Pro monthly and Pro Lifetime?**
-A: Both plans include all the same Pro features. Pro Lifetime ($19.99, one-time payment) additionally includes three exclusive perks: (1) 2× giveaway entries every month — double the standard daily streak entries into the monthly gas card draw; (2) Streak Shield — one grace day per month that preserves your streak if you miss a day; and (3) a permanent Lifetime Member badge displayed in your profile. Pro Lifetime has no recurring charges — you pay once and own it forever.
+A: Both plans include all the same Pro features. Pro Lifetime ($19.99, one-time payment) additionally includes: +25 bonus giveaway entries every month (vs. the standard rate), a permanent Lifetime Member badge, and — while the getaway promo is active — a complimentary resort getaway certificate with your choice of 100+ destinations across the U.S. and worldwide, fulfilled automatically by email within 24 hours. Pro Lifetime has no recurring charges — you pay once and own it forever. An optional Lifetime Perks add-on ($9.99/yr) increases Lifetime entries to +40/month and adds another complimentary getaway certificate every year Perks renews.
 
 **Q: What does Fleet add over Pro?**
 A: Fleet features (multi-driver tracking, fleet dashboard, tax reports) are coming soon. Pro ($2.99/mo or $19.99 Lifetime) already includes unlimited vehicles — ideal for multi-car households and small operators.
