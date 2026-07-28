@@ -11,6 +11,15 @@ import { getVehiclesForUser }     from '@/lib/savedVehicles';
 import { streakBonusEntries }     from '@/lib/giveaway';
 import { sendMail, streakMilestoneEmailHtml } from '@/lib/email';
 import { sendApns, apnsConfigured } from '@/lib/apns';
+import { sendDiningVoucher, sendHotelSavingsCard } from '@/lib/marketingBoost';
+
+/** One-time Marketing Boost reward for streak milestones — 30/90/180/365 days only (7/14 are email-only nudges). */
+const STREAK_VOUCHER_REWARD: Record<number, { kind: 'dining' | 'hotel'; amount: number; label: string }> = {
+  30:  { kind: 'dining', amount: 25,  label: '$25 Dining Voucher' },
+  90:  { kind: 'dining', amount: 50,  label: '$50 Dining Voucher' },
+  180: { kind: 'hotel',  amount: 100, label: '$100 Hotel Savings Card' },
+  365: { kind: 'hotel',  amount: 300, label: '$300 Hotel Savings Card' },
+};
 
 // ── GET — current badge state ─────────────────────────────────────────────
 export async function GET(req: Request) {
@@ -108,6 +117,35 @@ export async function POST(req: Request) {
           // Direct-APNs push to native iOS users (non-blocking, like the email).
           if (iosToken && apnsConfigured()) {
             void sendApns(iosToken, `📅 ${days}-day streak!`, `You hit a ${days}-day GasCap™ streak — keep it going for bonus giveaway entries!`).catch(() => {});
+          }
+
+          // ── One-time Marketing Boost voucher reward (30/90/180/365-day tiers only) ──
+          // Pro/Fleet only (trial counts — trial users have plan='pro') — matches the
+          // existing giveaway-entries eligibility gate. Free users never get a real
+          // paid voucher: streak tracking itself is universal, but the real-money
+          // reward should not be farmable via free accounts that never convert.
+          // Safe from duplicate sends: streakMilestonesHit (persisted on the user)
+          // guarantees `days` only ever appears in newMilestonesHit once per user.
+          const voucherReward = (result.plan === 'pro' || result.plan === 'fleet') ? STREAK_VOUCHER_REWARD[days] : undefined;
+          if (voucherReward) {
+            const voucherResult = voucherReward.kind === 'dining'
+              ? await sendDiningVoucher({ fullName: result.userName, email: result.userEmail, amount: voucherReward.amount as 25 | 50 | 100 | 200, message: `Congrats on your ${dayLabel} GasCap™ streak!` })
+              : await sendHotelSavingsCard({ fullName: result.userName, email: result.userEmail, amount: voucherReward.amount as 100 | 200 | 300 | 500, message: `Congrats on your ${dayLabel} GasCap™ streak!` });
+            if (voucherResult.ok) {
+              await sendMail({
+                to:      result.userEmail,
+                subject: `🎁 Your ${dayLabel} streak reward: ${voucherReward.label}!`,
+                html: `<div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;">
+                  <p style="font-size:20px;margin:0 0 8px;">🎁 Congratulations, ${result.userName}!</p>
+                  <p style="font-size:15px;color:#334155;margin:0 0 12px;">Your <strong>${dayLabel} streak</strong> just earned you a <strong>${voucherReward.label}</strong> — check your inbox (and spam folder) over the next 24 hours for an email from Marketing Boost.</p>
+                  <p style="font-size:13px;color:#64748b;margin:0;">Questions? Reply to this email.</p>
+                </div>`,
+                text: `Congrats, ${result.userName}! Your ${dayLabel} streak earned you a ${voucherReward.label} — on its way from Marketing Boost within 24 hours.`,
+              }).catch((e) => console.error(`[Activity] streak voucher confirmation email failed for ${result.userEmail}:`, e));
+              console.log(`[Activity] Streak voucher sent → ${result.userEmail} (${days} days, ${voucherReward.label})`);
+            } else {
+              console.error(`[Activity] Streak voucher send failed for ${result.userEmail} (${days} days):`, voucherResult.error);
+            }
           }
         } catch (err) {
           console.error(`[Activity] Milestone email failed for ${result.userEmail} (${days} days):`, err);

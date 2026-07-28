@@ -9,7 +9,9 @@ import { findNewBadges, type UserStats } from './badges';
 import { getVehiclesForUser } from './savedVehicles';
 import type { User as PrismaUser } from './generated/prisma/client';
 import { Prisma } from './generated/prisma/client';
-import { qualifiesForFreeProForLife, AMBASSADOR_THRESHOLDS } from './ambassador';
+import { qualifiesForFreeProForLife, AMBASSADOR_THRESHOLDS, getAmbassadorTier } from './ambassador';
+import { sendHotelSavingsCard, sendDiningVoucher } from './marketingBoost';
+import { sendMail } from './email';
 
 export { getAmbassadorTier, ambassadorEntryMultiplier, isAlwaysEligible, AMBASSADOR_THRESHOLDS } from './ambassador';
 
@@ -904,6 +906,52 @@ export async function recordReferral(referrerId: string): Promise<void> {
   const grantedPlan: 'pro' | undefined =
     justCrossedAmbassador && user.plan !== 'fleet' ? 'pro' : undefined;
 
+  // ── Ambassador tier voucher reward (Marketing Boost) ─────────────────────
+  // One-time per tier, fired the instant a referrer's cumulative count first
+  // crosses a tier boundary. Safe from duplicate sends: creditVerifiedReferral
+  // (the only caller) already does an atomic compare-and-swap so this function
+  // runs exactly once per unique referral event, and each event can cross at
+  // most one tier boundary (count only ever goes up by 1 at a time).
+  //
+  // Pro/Fleet only — a Supporter-tier reward (5 referrals) requires the referrer
+  // to already be a paying/trial Pro or Fleet member; Ambassador/Elite (15+/30+)
+  // always qualify since crossing those thresholds grants free Pro in this same
+  // update (justCrossedAmbassador below). Prevents a free account from farming
+  // real-money vouchers purely by referring paying friends while never paying itself.
+  const prevTier = getAmbassadorTier(current);
+  const justCrossedTier = getAmbassadorTier(newCount);
+  const referrerIsPaidOrGrantedPro = user.plan === 'pro' || user.plan === 'fleet' || justCrossedAmbassador;
+  const crossedNewTier = justCrossedTier !== null && justCrossedTier !== prevTier && referrerIsPaidOrGrantedPro;
+
+  const TIER_REWARD: Record<'supporter' | 'ambassador' | 'elite', { kind: 'dining' | 'hotel'; amount: number; label: string }> = {
+    supporter:  { kind: 'dining', amount: 50,  label: '$50 Dining Voucher' },
+    ambassador: { kind: 'hotel',  amount: 100, label: '$100 Hotel Savings Card' },
+    elite:      { kind: 'hotel',  amount: 500, label: '$500 Hotel Savings Card' },
+  };
+
+  if (crossedNewTier && justCrossedTier) {
+    const reward = TIER_REWARD[justCrossedTier];
+    void (async () => {
+      const result = reward.kind === 'dining'
+        ? await sendDiningVoucher({ fullName: user.name, email: user.email, amount: reward.amount as 25 | 50 | 100 | 200, message: `Congrats on reaching ${justCrossedTier} tier on GasCap™!` })
+        : await sendHotelSavingsCard({ fullName: user.name, email: user.email, amount: reward.amount as 100 | 200 | 300 | 500, message: `Congrats on reaching ${justCrossedTier} tier on GasCap™!` });
+      if (!result.ok) {
+        console.error(`[ambassador] ${justCrossedTier} tier reward send failed for ${user.email}:`, result.error);
+        return;
+      }
+      sendMail({
+        to:      user.email,
+        subject: `🎉 You reached ${justCrossedTier.charAt(0).toUpperCase()}${justCrossedTier.slice(1)} tier — here's your ${reward.label}!`,
+        html: `<div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;">
+          <p style="font-size:20px;margin:0 0 8px;">🎉 Congratulations, ${user.name}!</p>
+          <p style="font-size:15px;color:#334155;margin:0 0 12px;">You've reached <strong>${justCrossedTier}</strong> tier with ${newCount} paying referrals. As a thank-you, we're sending you a <strong>${reward.label}</strong> — check your inbox (and spam folder) over the next 24 hours for an email from Marketing Boost.</p>
+          <p style="font-size:13px;color:#64748b;margin:0;">Questions? Reply to this email.</p>
+        </div>`,
+        text: `Congrats, ${user.name}! You reached ${justCrossedTier} tier with ${newCount} paying referrals — a ${reward.label} is on its way from Marketing Boost within 24 hours.`,
+      }).catch((e) => console.error('[ambassador] tier reward confirmation email failed:', e));
+    })();
+  }
+
   await prisma.user.update({
     where: { id: referrerId },
     data: {
@@ -913,6 +961,7 @@ export async function recordReferral(referrerId: string): Promise<void> {
       referralCredits:         updatedCredits as unknown as Prisma.InputJsonValue,
       ...(justCrossedAmbassador ? { ambassadorProForLife: true } : {}),
       ...(grantedPlan           ? { plan: grantedPlan }          : {}),
+      ...(crossedNewTier && justCrossedTier ? { ambassadorTierRewardsSent: { push: justCrossedTier } } : {}),
     },
   });
 }

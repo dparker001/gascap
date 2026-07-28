@@ -59,7 +59,8 @@ export default function StreakRewards() {
 
   const milestoneLabel  = (days: number): string => t.streakRewards.milestoneLabel(days);
   const milestoneReward = (days: number): string =>
-    isLifetime ? t.streakRewards.milestoneRewardLifetime(days) : t.streakRewards.milestoneReward(days);
+    (isLifetime ? t.streakRewards.milestoneRewardLifetime(days) : t.streakRewards.milestoneReward(days))
+      + ' + ' + t.streakRewards.milestoneVoucher(days);
 
   return (
     <div className="rounded-2xl border border-slate-100 shadow-sm overflow-hidden">

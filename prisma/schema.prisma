@@ -61,6 +61,10 @@ model User {
   verifyReminderSentAt           String?
   verifyReminderBonusEntries     Int       @default(0)
   ambassadorProForLife     Boolean   @default(false)
+  // Which Ambassador tiers ('supporter'|'ambassador'|'elite') have already had their
+  // one-time Marketing Boost voucher reward sent — prevents duplicate sends on
+  // Stripe webhook retries. See app/api/stripe/webhook/route.ts referral-credit block.
+  ambassadorTierRewardsSent String[] @default([])
   compCampaignEnrolledAt   String?
   compCampaignStep         Int?
   smsOptIn                 Boolean   @default(false)

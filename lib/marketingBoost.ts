@@ -130,3 +130,72 @@ export async function sendVacationIncentive(opts: {
     return { ok: false, error: String(err) };
   }
 }
+
+export type HotelSavingsAmount = 100 | 200 | 300 | 500;
+export type DiningVoucherAmount = 25 | 50 | 100 | 200;
+
+/** Send a Hotel Savings Card via Marketing Boost. Used for streak/referral milestone rewards. */
+export async function sendHotelSavingsCard(opts: {
+  fullName: string;
+  email:    string;
+  amount:   HotelSavingsAmount;
+  message?: string;
+}): Promise<SendVacationResult> {
+  if (!API_KEY || !SENDER || !BUSINESS_ID) {
+    return { ok: false, error: 'Marketing Boost not configured (missing API key, sender, or business ID)' };
+  }
+  try {
+    const res = await fetch(`${API_BASE}/hotel_saving_api/send`, {
+      method:  'POST',
+      headers: { 'X-Api-Key': API_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sender:    SENDER,
+        business:  BUSINESS_ID,
+        full_name: opts.fullName,
+        email:     opts.email,
+        amount:    opts.amount,
+        ...(opts.message ? { message: opts.message } : {}),
+      }),
+    });
+    const json = await res.json().catch(() => ({})) as { status?: boolean; message?: string; errors?: string };
+    if (!res.ok || json.status !== true) {
+      return { ok: false, error: json.errors ?? json.message ?? `HTTP ${res.status}` };
+    }
+    return { ok: true, message: json.message };
+  } catch (err) {
+    return { ok: false, error: String(err) };
+  }
+}
+
+/** Send a Dining Voucher via Marketing Boost. Used for streak/referral milestone rewards. */
+export async function sendDiningVoucher(opts: {
+  fullName: string;
+  email:    string;
+  amount:   DiningVoucherAmount;
+  message?: string;
+}): Promise<SendVacationResult> {
+  if (!API_KEY || !SENDER || !BUSINESS_ID) {
+    return { ok: false, error: 'Marketing Boost not configured (missing API key, sender, or business ID)' };
+  }
+  try {
+    const res = await fetch(`${API_BASE}/restaurants_api/send`, {
+      method:  'POST',
+      headers: { 'X-Api-Key': API_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sender:    SENDER,
+        business:  BUSINESS_ID,
+        full_name: opts.fullName,
+        email:     opts.email,
+        amount:    opts.amount,
+        ...(opts.message ? { message: opts.message } : {}),
+      }),
+    });
+    const json = await res.json().catch(() => ({})) as { status?: boolean; message?: string; errors?: string };
+    if (!res.ok || json.status !== true) {
+      return { ok: false, error: json.errors ?? json.message ?? `HTTP ${res.status}` };
+    }
+    return { ok: true, message: json.message };
+  } catch (err) {
+    return { ok: false, error: String(err) };
+  }
+}
