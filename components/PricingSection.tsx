@@ -75,7 +75,9 @@ export default function PricingSection() {
 
   async function handleUpgrade(billing: 'monthly' | 'lifetime') {
     if (!session) {
-      router.push('/signup?next=/upgrade');
+      // Carry the billing intent through signup so /upgrade can auto-continue
+      // checkout once they land back authenticated — no second click needed.
+      router.push('/signup?next=' + encodeURIComponent(`/upgrade?auto=${billing}`));
       return;
     }
     setLoading(billing);

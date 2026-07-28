@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
@@ -30,7 +30,7 @@ function Check({ color = 'green' }: { color?: 'green' | 'amber' | 'teal' }) {
 // ── Main page ─────────────────────────────────────────────────────────────
 
 function UpgradePageInner() {
-  const { data: session } = useSession();
+  const { data: session, status: sessionStatus } = useSession();
   const { t } = useTranslation();
 
   const FREE_FEATURES = t.pricing.freeFeatures;
@@ -64,13 +64,34 @@ function UpgradePageInner() {
   const showGetaway   = getawayPromoActive() && !isProLifetime;
   const getawayDays   = getawayDaysLeft();
 
+  // Auto-continue checkout after a fresh signup: when a signed-out visitor clicks
+  // Get Lifetime/Pro, we send them to /signup?next=/upgrade?auto=<billing> instead
+  // of just /upgrade. Once they land back here already authenticated, this fires
+  // the same purchase flow automatically — no second click needed to find and
+  // re-press the button they already pressed once. Guarded with a ref so it only
+  // ever fires once per page load, and only once we know both the real auth state
+  // (not the transient "loading" status) and native-vs-web platform.
+  const autoFired = useRef(false);
+  useEffect(() => {
+    if (autoFired.current) return;
+    if (sessionStatus !== 'authenticated' || !resolved) return;
+    const auto = searchParams.get('auto');
+    if (auto !== 'monthly' && auto !== 'lifetime') return;
+    if (auto === 'lifetime' && isProLifetime) return;
+    if (auto === 'monthly' && (isProMonthly || isProAnnual || isProLifetime)) return;
+    autoFired.current = true;
+    if (isNative) void handleIap(auto);
+    else          void handleUpgrade(auto);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionStatus, resolved, isNative, isProLifetime, isProMonthly, isProAnnual]);
+
   async function handleUpgrade(billing: 'monthly' | 'lifetime') {
     if (!session) {
       // Founding/reactivation recipients already have accounts → send to sign-in and
       // return them to the founding offer; everyone else takes the new-signup path.
       window.location.href = founding
         ? '/signin?next=' + encodeURIComponent('/upgrade?founding=1')
-        : '/signup?next=/upgrade';
+        : '/signup?next=' + encodeURIComponent(`/upgrade?auto=${billing}`);
       return;
     }
     setLoading(billing === 'lifetime' ? 'pro-lifetime' : 'pro-monthly');
@@ -102,7 +123,7 @@ function UpgradePageInner() {
   // grants Pro on the account server-side (RevenueCat webhook), so it unlocks
   // everywhere (web + app), exactly like the Stripe path.
   async function handleIap(which: 'monthly' | 'lifetime') {
-    if (!session) { window.location.href = '/signup?next=/upgrade'; return; }
+    if (!session) { window.location.href = '/signup?next=' + encodeURIComponent(`/upgrade?auto=${which}`); return; }
     setLoading(which === 'lifetime' ? 'pro-lifetime' : 'pro-monthly');
     setError('');
     const res = await purchasePro(which);
