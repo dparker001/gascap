@@ -36,9 +36,10 @@
 | Document | File | Purpose |
 |---|---|---|
 | **This file** | `OPERATIONS_OVERVIEW.md` | Master map of all docs and systems |
-| Chatbot Training | `CHATBOT_TRAINING.md` | Full training doc (master copy) |
-| Chatbot Training Part 1 | `CHATBOT_TRAINING_PART1.md` | Sections 1–8 — upload to GHL knowledge base |
-| Chatbot Training Part 2 | `CHATBOT_TRAINING_PART2.md` | Sections 9–14 — upload to GHL knowledge base |
+| Chatbot Training | `CHATBOT_TRAINING.md` | Full training doc (master copy, not for direct paste — GHL's 25,000-char field limit requires the 3-part split below) |
+| Chatbot Training Part 1 | `CHATBOT_TRAINING_PART1.md` | Sections 1–7 — paste into GHL knowledge base |
+| Chatbot Training Part 2 | `CHATBOT_TRAINING_PART2.md` | Section 8 (Plans & Billing) — paste into GHL knowledge base |
+| Chatbot Training Part 3 | `CHATBOT_TRAINING_PART3.md` | Sections 9–14 — paste into GHL knowledge base |
 | Pilot Partner Program | `FIELD_AMBASSADOR_PROGRAM.md` | Field rep recruiting, incentives, pitch script, placard ops |
 | Placard Copy & Print Specs | `PLACARD_COPY_AND_SPECS.md` | Print specs, QR sizing, headline variants, vendor list |
 | GHL Form Specs | `AMBASSADOR_GOOGLE_FORM.md` | Placement Report form fields, Sheet columns |
