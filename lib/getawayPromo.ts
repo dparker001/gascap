@@ -52,15 +52,22 @@ export const GETAWAY_DISCLOSURE = {
 } as const;
 
 /**
- * The curated getaway destinations a buyer can choose from after purchasing
- * Lifetime. Fees are the nightly taxes & fees the traveler prepays to activate
- * (vary by destination — sourced from the RedeemVacations catalog). The room
- * rate itself is free. Keep this list short (~6) so the choice is quick.
+ * The getaway destinations a buyer can choose from after purchasing Lifetime.
+ * Fees are the nightly taxes & fees the traveler prepays to activate (vary by
+ * destination — sourced from the RedeemVacations catalog / Marketing Boost's
+ * account-scoped destination-list API). The room rate itself is free.
+ *
+ * Only destinations with BOTH a verified mbDestinationId (confirmed via a
+ * real test send against MB's live API) AND real fee data are listed here —
+ * MB's full catalog has 100+ destinations, but we don't fabricate nightly
+ * fees for ones we haven't verified pricing for. Expand this list only when
+ * both facts are confirmed for a new destination.
  */
 export interface GetawayDestination {
   id:              string;   // stable slug used in the choose API + emails
   name:            string;   // display name
-  vibe:            string;   // one-line hook
+  vibe:            string;   // one-line hook (English)
+  vibeEs:          string;   // one-line hook (Spanish)
   emoji:           string;
   fee:             number;   // nightly taxes & fees (USD) the traveler prepays
   mbDestinationId: string;   // Marketing Boost's own destination ID — verified live via a
@@ -71,12 +78,17 @@ export interface GetawayDestination {
 }
 
 export const GETAWAY_DESTINATIONS: readonly GetawayDestination[] = [
-  { id: 'las-vegas',   name: 'Las Vegas, NV',   vibe: 'Shows, dining & nightlife',     emoji: '🎰', fee: 33.24, mbDestinationId: '41'   },
-  { id: 'denver',      name: 'Denver, CO',      vibe: 'Mountains & winter getaway',    emoji: '🏔️', fee: 48.94, mbDestinationId: '4834' },
-  { id: 'miami',       name: 'Miami, FL',       vibe: 'Beach & nightlife',             emoji: '🏖️', fee: 49.76, mbDestinationId: '30'   },
-  { id: 'san-antonio', name: 'San Antonio, TX', vibe: 'Riverwalk & family fun',        emoji: '🌵', fee: 54.22, mbDestinationId: '45'   },
-  { id: 'orlando',     name: 'Orlando, FL',     vibe: 'Theme parks & family',          emoji: '🎢', fee: 56.70, mbDestinationId: '34'   },
-  { id: 'nashville',   name: 'Nashville, TN',   vibe: 'Live music city',               emoji: '🎸', fee: 65.59, mbDestinationId: '5355' },
+  { id: 'las-vegas',       name: 'Las Vegas, NV',      vibe: 'Shows, dining & nightlife',     vibeEs: 'Espectáculos, gastronomía y vida nocturna', emoji: '🎰', fee: 33.24, mbDestinationId: '41'   },
+  { id: 'denver',          name: 'Denver, CO',         vibe: 'Mountains & winter getaway',    vibeEs: 'Montañas y escapada de invierno',           emoji: '🏔️', fee: 48.94, mbDestinationId: '4834' },
+  { id: 'miami',           name: 'Miami, FL',          vibe: 'Beach & nightlife',             vibeEs: 'Playa y vida nocturna',                     emoji: '🏖️', fee: 49.76, mbDestinationId: '30'   },
+  { id: 'san-antonio',     name: 'San Antonio, TX',    vibe: 'Riverwalk & family fun',        vibeEs: 'Riverwalk y diversión familiar',            emoji: '🌵', fee: 54.22, mbDestinationId: '45'   },
+  { id: 'orlando',         name: 'Orlando, FL',        vibe: 'Theme parks & family',          vibeEs: 'Parques temáticos y familia',               emoji: '🎢', fee: 56.70, mbDestinationId: '34'   },
+  { id: 'nashville',       name: 'Nashville, TN',      vibe: 'Live music city',               vibeEs: 'Ciudad de música en vivo',                  emoji: '🎸', fee: 65.59, mbDestinationId: '5355' },
+  { id: 'cancun',          name: 'Cancún, Mexico',     vibe: 'Beaches & all-inclusive resorts', vibeEs: 'Playas y resorts todo incluido',          emoji: '🏝️', fee: 38.95, mbDestinationId: '10'   },
+  { id: 'puerto-vallarta', name: 'Puerto Vallarta, Mexico', vibe: 'Pacific coast charm',       vibeEs: 'Encanto de la costa del Pacífico',         emoji: '⛵', fee: 29.74, mbDestinationId: '48'   },
+  { id: 'bali',            name: 'Bali, Indonesia',    vibe: 'Tropical beaches & temples',    vibeEs: 'Playas tropicales y templos',              emoji: '🌴', fee: 29.95, mbDestinationId: '49'   },
+  { id: 'phuket',          name: 'Phuket, Thailand',   vibe: 'Islands & nightlife',           vibeEs: 'Islas y vida nocturna',                     emoji: '🏖️', fee: 29.49, mbDestinationId: '3'    },
+  { id: 'dubai',           name: 'Dubai, UAE',         vibe: 'Luxury shopping & skyline',     vibeEs: 'Compras de lujo y horizonte urbano',        emoji: '🌆', fee: 47.15, mbDestinationId: '20'   },
 ] as const;
 
 /** Look up a destination by its id (returns undefined if not one of the six). */

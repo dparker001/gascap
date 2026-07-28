@@ -19,7 +19,7 @@ import { GETAWAY_DESTINATIONS, findGetawayDestination } from '@/lib/getawayPromo
 const STORAGE_KEY = 'gc_getaway_destination';
 
 export default function GetawayDestinationPicker() {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const [selected, setSelected] = useState<string | null>(null);
   const [chosen,   setChosen]   = useState<string | null>(null);  // confirmed destination id
   const [loading,  setLoading]  = useState(false);
@@ -107,7 +107,7 @@ export default function GetawayDestinationPicker() {
               <span className="text-xl flex-shrink-0" aria-hidden="true">{d.emoji}</span>
               <span className="flex-1 min-w-0">
                 <span className="block text-sm font-black text-navy-700 leading-tight">{d.name}</span>
-                <span className="block text-[11px] text-slate-500 leading-tight">{d.vibe}</span>
+                <span className="block text-[11px] text-slate-500 leading-tight">{locale === 'es' ? d.vibeEs : d.vibe}</span>
               </span>
               <span className="flex-shrink-0 text-right">
                 <span className="block text-[11px] font-bold text-teal-700">${d.fee.toFixed(2)}</span>

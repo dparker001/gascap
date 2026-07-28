@@ -314,7 +314,7 @@ const SECTIONS = [
       },
       {
         q: 'How do I get a vacation getaway with Pro Lifetime?',
-        a: 'There are two ways to earn a vacation getaway. First, anyone who purchases Pro Lifetime Membership ($19.99) receives a complimentary one-time resort getaway as a welcome bonus — right after you upgrade, choose your destination from a curated list (Las Vegas, Denver, Miami, San Antonio, Orlando, or Nashville) at gascap.app/getaway, and your certificate is sent by email within 24 hours. Second, Lifetime Perks subscribers ($9.99/yr add-on) receive a new vacation voucher every year they renew — this is an ongoing annual perk as long as Lifetime Perks is active.',
+        a: 'There are two ways to earn a vacation getaway. First, anyone who purchases Pro Lifetime Membership ($19.99) receives a complimentary one-time resort getaway as a welcome bonus — right after you upgrade, choose your destination from a curated list (including Las Vegas, Denver, Miami, San Antonio, Orlando, Nashville, Cancún, Puerto Vallarta, Bali, Phuket, and Dubai) at gascap.app/getaway, and your certificate is sent by email within 24 hours. Second, Lifetime Perks subscribers ($9.99/yr add-on) receive a new vacation voucher every year they renew — this is an ongoing annual perk as long as Lifetime Perks is active.',
       },
       {
         q: 'What does the getaway cover, and what do I pay?',

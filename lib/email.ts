@@ -790,7 +790,7 @@ export function winbackEmailHtml(firstName: string, step: 1 | 2 | 3, withGetaway
                 🏝️ Plus a FREE resort getaway
               </p>
               <p style="margin:0 0 6px;font-size:13px;color:#0f6e56;line-height:1.5;">
-                Grab Lifetime now and we'll include a complimentary resort getaway certificate — pick from Las Vegas, Miami, Orlando, Nashville &amp; more.
+                Grab Lifetime now and we'll include a complimentary resort getaway certificate — pick from destinations across the U.S. and worldwide.
               </p>
               <p style="margin:0;font-size:10px;color:#64748b;line-height:1.5;">
                 Hotel stay only; flights not included. Room rate is complimentary — you cover the nightly taxes &amp; fees. Must be 21+, live 100+ miles away, book 30+ days ahead. Full terms at RedeemVacations.com.
