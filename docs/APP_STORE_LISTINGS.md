@@ -113,3 +113,61 @@ A demo account can be created with any email/password on the Sign Up screen.
 The monthly gas-card giveaway is a free-entry sweepstakes (no purchase necessary;
 free online entry at gascap.app/amoe) — official rules at gascap.app/sweepstakes-rules.
 ```
+
+---
+
+## Spanish (es) localization — drafted 2026-07-26, to submit AFTER v1.0.1 clears its current review
+
+**Do not touch the in-flight 1.0.1 submission with this.** Add as its own follow-up
+localization/metadata submission once 1.0.1 is approved and live — keeps the two
+review cycles separate so this doesn't risk delaying the release already in the pipeline.
+Adding a new App Store localization is metadata-only (no new binary/build/Codemagic
+run needed) but still goes through App Review — usually much faster than a binary review.
+
+### App Name (29/30 chars)
+```
+GasCap — Costo de Combustible
+```
+(Brand name "GasCap" kept in English per Apple convention — only the descriptor is translated.)
+
+### Subtitle (19/30 chars)
+```
+Conoce antes de ir
+```
+Direct parallel to the English "Know before you go." If brand consistency across markets
+matters more than a translated slogan, this can stay in English instead — Don's call.
+
+### Promotional Text (155 chars — freely editable any time, no review needed)
+```
+GasCap™ te dice exactamente cuánta gasolina echar — sin excederte, sin pagar de más. Ahora puedes ganar una tarjeta de gasolina de $50 cada mes con solo usar la app.
+```
+
+### Keywords (92/100 chars, comma-separated, no spaces)
+```
+gasolina,combustible,calculadora,ahorro,precio gasolina,kilometraje,tanque,viaje,auto,sorteo
+```
+
+### Description
+```
+GasCap™ es gratis — la calculadora de costo de combustible, precios de gasolina en vivo y el acceso sin conexión son gratis para siempre.
+
+GasCap™ Pro (requiere compra) desbloquea: historial de cargas y seguimiento de ahorros, gráficas de MPG, vehículos guardados ilimitados, Asesor de Combustible con IA, y exportación a PDF. Pro está disponible como suscripción de renovación automática — $2.99/mes, o como compra única de por vida (Lifetime) — $19.99.
+
+Política de Privacidad: https://www.gascap.app/privacy · Términos de Uso (EULA): https://www.gascap.app/terms
+```
+Note: "(Lifetime)" kept in parens after "de por vida" since that's the literal label
+Spanish-speaking users see on-screen (e.g. the Settings plan badge) — keeps the listing
+consistent with actual in-app text rather than introducing a translated term users won't see.
+
+### What's New in This Version — v1.0.1 (Spanish translation of the same release notes)
+```
+Esta actualización corrige un problema que causaba que la app se cerrara al escanear un VIN o recibo de gasolina con la cámara, y mejora la visualización de la barra de estado en algunas pantallas.
+
+También hicimos varias mejoras de precisión y confiabilidad:
+• El MPG ahora aparece de inmediato para vehículos agregados por VIN, usando el índice oficial de la EPA — no necesitas registrar cargas de combustible primero
+• Corregimos la precisión del tipo de combustible para vehículos con múltiples opciones de motor; ahora puedes confirmar o corregir tú mismo el tipo de combustible recomendado
+• Corregimos un error que impedía contar correctamente las rachas algunos días
+• Nuestro sorteo de tarjeta de gasolina ahora es de $50, sorteado cada mes
+
+Gracias por usar GasCap™ — la app que te dice exactamente cuánto echar, para que nunca te excedas ni pagues de más.
+```
