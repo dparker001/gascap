@@ -15,6 +15,8 @@ A: Pro and Fleet subscribers automatically earn entries for each calendar day th
 
 Entries reset each month — they do NOT carry over from one month to the next.
 
+Plus: if you upgraded to paid Pro during your free trial, you also get a permanent +10 bonus entries every month on top of everything above.
+
 Streak bonus entries are calculated separately and added on top as a flat one-time addition (not multiplied):
 - 7-day streak → +3 bonus entries
 - 30-day streak → +8 bonus entries
@@ -22,7 +24,13 @@ Streak bonus entries are calculated separately and added on top as a flat one-ti
 - 180-day streak → +70 bonus entries
 - 365-day streak → +120 bonus entries
 
-**Formula:** Total entries = (active days this month × your daily rate) + streak bonus flat addition
+**Formula:** Total entries = (active days this month × your daily rate) + streak bonus flat addition + early-upgrade bonus (if applicable)
+
+**Q: Is there a reward for upgrading while I'm still on my free trial?**
+A: Yes! If you upgrade to a paid Pro plan (monthly or Lifetime) during your 30-day free trial, you lock in a permanent bonus of **+10 extra gas card giveaway entries every month, forever** — on top of your normal daily entries. It's our way of thanking early upgraders. The bonus stays on your account for as long as you're a Pro member.
+
+**Q: What is the early-upgrade bonus?**
+A: The early-upgrade bonus is +10 bonus monthly giveaway draw entries, added to your account permanently when you upgrade to paid Pro during your free trial window. These 10 entries are added on top of the entries you earn from daily logins/usage and any streak bonuses. Upgrade before your trial ends at gascap.app/upgrade to claim it.
 
 **Q: Is there a leaderboard showing everyone's entry counts?**
 A: No. There is no public leaderboard. Your entry count is private and visible only to you on your own giveaway page at gascap.app/giveaway.

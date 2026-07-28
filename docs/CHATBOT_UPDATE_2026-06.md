@@ -1,4 +1,10 @@
 # GasCap™ Chatbot — Content Update (June 2026)
+> ✅ MERGED 2026-07-28: all sections below (Refund Policy, Early-Upgrade Bonus,
+> Spanish/Language, Gifting, Getaway) are now fully incorporated into
+> `CHATBOT_TRAINING.md`, `CHATBOT_TRAINING_PART1.md`, and `CHATBOT_TRAINING_PART2.md` —
+> those are the current, complete, ready-to-paste files. This file is kept as a
+> historical record of what was added and why; no need to paste from here separately.
+>
 > Purpose: ready-to-paste Q&A blocks for the GHL Conversation AI knowledge base.
 > The main file `CHATBOT_TRAINING.md` was already updated for the $2.99/$19.99
 > pricing, Pro Lifetime, and unlimited vehicles. This file adds: (1) Refund Policy,
