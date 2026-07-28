@@ -179,15 +179,16 @@ Pro/Fleet users earn entries through multiple actions tracked per draw period:
 | Email verification | one-time bonus |
 | Phone number | one-time bonus |
 | Early upgrade | one-time bonus |
-| Pro Lifetime / Annual plan | fixed bonus |
+| Pro Lifetime plan | fixed bonus (+25/month base, +40/month with Lifetime Perks) |
 | Referrals | per referral |
 | **Gas price reports (Find Gas tab)** | **+5 per report, max 5 reports/day** |
 
-- One winner drawn per month (switching to weekly $25 draw — see weekly giveaway build)
-- Prize starts at $25; scales to $50 once 500+ paying Pro/Fleet subscribers are active
+- One winner drawn per month — $50 Visa prepaid card (switched from weekly $25 back to monthly $50, 2026-07-28 — de-risked launch spend while marketing traction was unproven)
+- Winner confirms via a self-serve claim link (18+/eligibility certification) within 3 days before the card is sent — see app/api/giveaway/claim
 - Winner is notified by email and via GHL webhook
 - Official rules at `/sweepstakes-rules`
 - Free entry via mail-in (AMOE) available at `/giveaway#free-entry`
+- Streak milestones (30/90/180/365 days) and Ambassador tiers (Supporter/Ambassador/Elite) also earn one-time Marketing Boost vouchers (Dining Voucher / Hotel Savings Card) — Pro/Fleet only, see lib/marketingBoost.ts
 
 ---
 
@@ -215,7 +216,7 @@ Each step CTA fires a custom event to open the relevant form and scroll to it. S
 | 1 | Immediate | Welcome + Pro trial activated |
 | 2 | Day 3 | Feature deep-dive (AI, MPG, rental mode) |
 | 3 | Day 10 | Mid-trial value check-in |
-| 4 | Day 21 | Annual deal — lock in pricing |
+| 4 | Day 21 | 9 days left — Pro Monthly ($2.99/mo) primary, Lifetime secondary |
 | 5 | Day 28 | Final 48 hours |
 
 Users who upgrade are automatically skipped from further trial drip emails. Users with `emailOptOut=true` are excluded from all campaign emails.
