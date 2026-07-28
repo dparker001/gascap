@@ -4,15 +4,18 @@
  * GetawayDestinationPicker — shown to a Lifetime buyer (after purchase, during
  * the getaway promo) so they choose their complimentary getaway destination.
  *
- * On submit it POSTs to /api/getaway/choose, which emails the admin exactly which
- * destination to issue in Marketing Boost and confirms to the buyer. A localStorage
- * flag remembers the choice so revisiting shows the confirmed state instead of
- * letting them re-submit.
+ * On submit it POSTs to /api/getaway/choose, which sends the certificate
+ * automatically via the Marketing Boost API and confirms to the buyer. A
+ * localStorage flag remembers the choice so revisiting shows the confirmed
+ * state instead of letting them re-submit.
+ *
+ * The catalog is 100+ destinations (lib/getawayPromo.ts), so this includes a
+ * search box to filter by city or country rather than one long scroll.
  *
  * Used on the upgrade success page and the standalone /getaway page.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useTranslation }      from '@/contexts/LanguageContext';
 import { GETAWAY_DESTINATIONS, findGetawayDestination } from '@/lib/getawayPromo';
 
@@ -24,6 +27,7 @@ export default function GetawayDestinationPicker() {
   const [chosen,   setChosen]   = useState<string | null>(null);  // confirmed destination id
   const [loading,  setLoading]  = useState(false);
   const [error,    setError]    = useState('');
+  const [query,    setQuery]    = useState('');
 
   // Restore a prior choice so we show the confirmed state, not the picker.
   useEffect(() => {
@@ -32,6 +36,15 @@ export default function GetawayDestinationPicker() {
       if (prior && findGetawayDestination(prior)) setChosen(prior);
     } catch { /* ignore */ }
   }, []);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return GETAWAY_DESTINATIONS;
+    return GETAWAY_DESTINATIONS.filter((d) => {
+      const country = locale === 'es' ? d.countryEs : d.country;
+      return d.name.toLowerCase().includes(q) || country.toLowerCase().includes(q);
+    });
+  }, [query, locale]);
 
   async function handleConfirm() {
     if (!selected) return;
@@ -92,9 +105,22 @@ export default function GetawayDestinationPicker() {
         {t.pricing.getawayPickerSub}
       </p>
 
-      <div className="mt-3 space-y-2">
-        {GETAWAY_DESTINATIONS.map((d) => {
+      <input
+        type="text"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder={t.pricing.getawayPickerSearchPlaceholder}
+        className="mt-3 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700
+                   placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-400"
+      />
+
+      <div className="mt-2 space-y-2 max-h-72 overflow-y-auto pr-0.5">
+        {filtered.length === 0 && (
+          <p className="text-[11px] text-slate-400 text-center py-4">{t.pricing.getawayPickerNoResults}</p>
+        )}
+        {filtered.map((d) => {
           const isSel = selected === d.id;
+          const country = locale === 'es' ? d.countryEs : d.country;
           return (
             <button
               key={d.id}
@@ -107,11 +133,7 @@ export default function GetawayDestinationPicker() {
               <span className="text-xl flex-shrink-0" aria-hidden="true">{d.emoji}</span>
               <span className="flex-1 min-w-0">
                 <span className="block text-sm font-black text-navy-700 leading-tight">{d.name}</span>
-                <span className="block text-[11px] text-slate-500 leading-tight">{locale === 'es' ? d.vibeEs : d.vibe}</span>
-              </span>
-              <span className="flex-shrink-0 text-right">
-                <span className="block text-[11px] font-bold text-teal-700">${d.fee.toFixed(2)}</span>
-                <span className="block text-[9px] text-slate-400 leading-tight">{t.pricing.getawayPickerFeeLabel}</span>
+                <span className="block text-[11px] text-slate-500 leading-tight">{country}</span>
               </span>
             </button>
           );
