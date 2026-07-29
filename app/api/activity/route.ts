@@ -137,10 +137,10 @@ export async function POST(req: Request) {
                 subject: `🎁 Your ${dayLabel} streak reward: ${voucherReward.label}!`,
                 html: `<div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;">
                   <p style="font-size:20px;margin:0 0 8px;">🎁 Congratulations, ${result.userName}!</p>
-                  <p style="font-size:15px;color:#334155;margin:0 0 12px;">Your <strong>${dayLabel} streak</strong> just earned you a <strong>${voucherReward.label}</strong> — check your inbox (and spam folder) over the next 24 hours for an email from Marketing Boost.</p>
+                  <p style="font-size:15px;color:#334155;margin:0 0 12px;">Your <strong>${dayLabel} streak</strong> just earned you a <strong>${voucherReward.label}</strong> — check your inbox (and spam folder) over the next 24 hours for an email from Parker Select Rewards.</p>
                   <p style="font-size:13px;color:#64748b;margin:0;">Questions? Reply to this email.</p>
                 </div>`,
-                text: `Congrats, ${result.userName}! Your ${dayLabel} streak earned you a ${voucherReward.label} — on its way from Marketing Boost within 24 hours.`,
+                text: `Congrats, ${result.userName}! Your ${dayLabel} streak earned you a ${voucherReward.label} — on its way from Parker Select Rewards within 24 hours.`,
               }).catch((e) => console.error(`[Activity] streak voucher confirmation email failed for ${result.userEmail}:`, e));
               console.log(`[Activity] Streak voucher sent → ${result.userEmail} (${days} days, ${voucherReward.label})`);
             } else {

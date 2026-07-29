@@ -944,10 +944,10 @@ export async function recordReferral(referrerId: string): Promise<void> {
         subject: `🎉 You reached ${justCrossedTier.charAt(0).toUpperCase()}${justCrossedTier.slice(1)} tier — here's your ${reward.label}!`,
         html: `<div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;">
           <p style="font-size:20px;margin:0 0 8px;">🎉 Congratulations, ${user.name}!</p>
-          <p style="font-size:15px;color:#334155;margin:0 0 12px;">You've reached <strong>${justCrossedTier}</strong> tier with ${newCount} paying referrals. As a thank-you, we're sending you a <strong>${reward.label}</strong> — check your inbox (and spam folder) over the next 24 hours for an email from Marketing Boost.</p>
+          <p style="font-size:15px;color:#334155;margin:0 0 12px;">You've reached <strong>${justCrossedTier}</strong> tier with ${newCount} paying referrals. As a thank-you, we're sending you a <strong>${reward.label}</strong> — check your inbox (and spam folder) over the next 24 hours for an email from Parker Select Rewards.</p>
           <p style="font-size:13px;color:#64748b;margin:0;">Questions? Reply to this email.</p>
         </div>`,
-        text: `Congrats, ${user.name}! You reached ${justCrossedTier} tier with ${newCount} paying referrals — a ${reward.label} is on its way from Marketing Boost within 24 hours.`,
+        text: `Congrats, ${user.name}! You reached ${justCrossedTier} tier with ${newCount} paying referrals — a ${reward.label} is on its way from Parker Select Rewards within 24 hours.`,
       }).catch((e) => console.error('[ambassador] tier reward confirmation email failed:', e));
     })();
   }

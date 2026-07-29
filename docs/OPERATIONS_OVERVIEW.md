@@ -78,7 +78,7 @@ Documented in: `app/terms/page.tsx` (§5) · `app/help/page.tsx` (Ambassador sec
 | Ambassador | 15+ | Free Pro for life + 3× daily draw entries + one-time $100 Hotel Savings Card |
 | Elite Ambassador | 30+ | Free Pro for life + 5× daily draw entries + Top Ambassadors recognition + one-time $500 Hotel Savings Card |
 
-Tier vouchers (Marketing Boost) fire automatically on first reaching a tier — Pro/Fleet only, see `lib/users.ts` `recordReferral()`.
+Tier vouchers (branded to customers as Parker Select Rewards, fulfilled via Marketing Boost API) fire automatically on first reaching a tier — Pro/Fleet only, see `lib/users.ts` `recordReferral()`.
 
 ### Monthly Gas Card Drawing
 Documented in: `app/giveaway/page.tsx` · `app/sweepstakes-rules/page.tsx` · `lib/giveaway.ts`
@@ -86,7 +86,7 @@ Documented in: `app/giveaway/page.tsx` · `app/sweepstakes-rules/page.tsx` · `l
 - Entries earned: 1 per active day (Pro/Fleet); flat plan bonus entries per draw month
 - Plan bonus entries: Lifetime base +25/month · Lifetime+Perks +40/month
 - Streak bonus (flat, separate): 7d=+3, 30d=+8, 90d=+40, 180d=+70, 365d=+120
-- Streak milestones ALSO earn a one-time Marketing Boost voucher (Pro/Fleet only): 30d=$25 dining, 90d=$50 dining, 180d=$100 hotel, 365d=$300 hotel — see `app/api/activity/route.ts`
+- Streak milestones ALSO earn a one-time Parker Select Rewards voucher (Pro/Fleet only, fulfilled via Marketing Boost API): 30d=$25 dining, 90d=$50 dining, 180d=$100 hotel, 365d=$300 hotel — see `app/api/activity/route.ts`
 - Prize: $50 Visa prepaid card, fixed (switched back from a weekly $25 draw 2026-07-28 to de-risk launch spend)
 - Drawing: monthly, at month end (cadence managed by `lib/giveaway.ts`, guarded to only fire on the last calendar day — see `app/api/cron/giveaway-draw/route.ts`)
 - Winner must confirm via a self-serve claim link (18+/eligibility certification) within 3 days before the Tremendous card is sent — see `app/api/giveaway/claim`

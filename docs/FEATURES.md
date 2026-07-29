@@ -188,7 +188,7 @@ Pro/Fleet users earn entries through multiple actions tracked per draw period:
 - Winner is notified by email and via GHL webhook
 - Official rules at `/sweepstakes-rules`
 - Free entry via mail-in (AMOE) available at `/giveaway#free-entry`
-- Streak milestones (30/90/180/365 days) and Ambassador tiers (Supporter/Ambassador/Elite) also earn one-time Marketing Boost vouchers (Dining Voucher / Hotel Savings Card) — Pro/Fleet only, see lib/marketingBoost.ts
+- Streak milestones (30/90/180/365 days) and Ambassador tiers (Supporter/Ambassador/Elite) also earn one-time Parker Select Rewards vouchers (Dining Voucher / Hotel Savings Card, fulfilled via the Marketing Boost API) — Pro/Fleet only, see lib/marketingBoost.ts
 
 ---
 

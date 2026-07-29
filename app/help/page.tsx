@@ -395,7 +395,7 @@ const SECTIONS = [
       },
       {
         q: 'What are the Ambassador tier thresholds and rewards?',
-        a: 'Three tiers, based on cumulative all-time paying referrals: Supporter (5+ referrals) — earn 1 free Pro month per paying referral, up to 6 free months total, plus 2× daily drawing entries, plus a one-time $50 Dining Voucher; Ambassador (15+ referrals) — earn free GasCap™ Pro while you maintain 5 or more currently active paying referrals, plus 3× daily drawing entries, plus a one-time $100 Hotel Savings Card; Elite Ambassador (30+ referrals) — free Pro while you maintain 5+ active paying referrals, 5× daily drawing entries, recognition in the Top Ambassadors list, early feature access, a personal thank-you from the GasCap™ team, plus a one-time $500 Hotel Savings Card. Tier vouchers are sent automatically by email (via Marketing Boost) the moment you first reach each tier.',
+        a: 'Three tiers, based on cumulative all-time paying referrals: Supporter (5+ referrals) — earn 1 free Pro month per paying referral, up to 6 free months total, plus 2× daily drawing entries, plus a one-time $50 Dining Voucher; Ambassador (15+ referrals) — earn free GasCap™ Pro while you maintain 5 or more currently active paying referrals, plus 3× daily drawing entries, plus a one-time $100 Hotel Savings Card; Elite Ambassador (30+ referrals) — free Pro while you maintain 5+ active paying referrals, 5× daily drawing entries, recognition in the Top Ambassadors list, early feature access, a personal thank-you from the GasCap™ team, plus a one-time $500 Hotel Savings Card. Tier vouchers are sent automatically by email (via Parker Select Rewards) the moment you first reach each tier.',
       },
       {
         q: 'How many free months can I earn through referrals?',
@@ -429,11 +429,11 @@ const SECTIONS = [
     items: [
       {
         q: 'What are Streak Rewards?',
-        a: 'Streak Rewards are bonuses you earn by maintaining a consecutive daily streak — open the app every day to keep your streak alive. The reward depends on your plan: Pro Monthly and Annual members earn free Pro month credits at each milestone; Pro Lifetime members earn bonus gas card giveaway entries instead (since they already have Pro forever). Every milestone (regardless of plan) also earns a one-time Marketing Boost voucher: $25 Dining Voucher at 30 days, $50 Dining Voucher at 90 days, $100 Hotel Savings Card at 180 days, and $300 Hotel Savings Card at 365 days. Rewards are in the Share tab under "Streak Rewards."',
+        a: 'Streak Rewards are bonuses you earn by maintaining a consecutive daily streak — open the app every day to keep your streak alive. The reward depends on your plan: Pro Monthly and Annual members earn free Pro month credits at each milestone; Pro Lifetime members earn bonus gas card giveaway entries instead (since they already have Pro forever). Every milestone (regardless of plan) also earns a one-time Parker Select Rewards voucher: $25 Dining Voucher at 30 days, $50 Dining Voucher at 90 days, $100 Hotel Savings Card at 180 days, and $300 Hotel Savings Card at 365 days. Rewards are in the Share tab under "Streak Rewards."',
       },
       {
         q: 'What milestones earn a reward?',
-        a: 'Reaching a 30-day streak earns your first reward. 90 days earns another. 180 days earns another. 365 days earns a final reward plus Legend status — 4 milestones total if you reach one year. For Monthly/Annual members each milestone = 1 free Pro month. For Lifetime members each milestone = bonus giveaway entries. Every milestone also sends a one-time Marketing Boost voucher (Dining Voucher at 30/90 days, Hotel Savings Card at 180/365 days) by email within 24 hours.',
+        a: 'Reaching a 30-day streak earns your first reward. 90 days earns another. 180 days earns another. 365 days earns a final reward plus Legend status — 4 milestones total if you reach one year. For Monthly/Annual members each milestone = 1 free Pro month. For Lifetime members each milestone = bonus giveaway entries. Every milestone also sends a one-time Parker Select Rewards voucher (Dining Voucher at 30/90 days, Hotel Savings Card at 180/365 days) by email within 24 hours.',
       },
       {
         q: 'How do I redeem a banked free month? (Monthly/Annual members)',
