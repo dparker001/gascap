@@ -214,6 +214,13 @@ function SignInForm() {
               ← Back
             </button>
 
+            <div className="flex items-start gap-2 bg-emerald-50 border border-emerald-200 rounded-xl px-3.5 py-3 mb-5">
+              <span className="text-lg leading-none">📧</span>
+              <p className="text-sm text-emerald-800 font-semibold leading-snug">
+                Code sent! Check your email inbox (and spam folder) for a 6-digit code.
+              </p>
+            </div>
+
             <h1 className="text-2xl font-black text-navy-700 mb-1">Check your email</h1>
             <p className="text-slate-500 text-sm mb-1">We sent a 6-digit code to</p>
             <p className="text-slate-800 font-bold text-sm mb-6 break-all">{email}</p>
