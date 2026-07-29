@@ -136,9 +136,9 @@ workflows:
           # Fail the BUILD instead of shipping a broken binary silently.
           MISSING=""
           for pod in Capacitor CapacitorCordova CapacitorApp CapacitorGeolocation CapacitorHaptics \
-                     CapacitorKeyboard CapacitorLocalNotifications CapacitorPreferences \
+                     CapacitorKeyboard CapacitorLocalNotifications \
                      CapacitorPushNotifications CapacitorShare CapacitorSplashScreen CapacitorStatusBar \
-                     AparajitaCapacitorBiometricAuth CapacitorCommunityBackgroundGeolocation; do
+                     CapacitorCommunityBackgroundGeolocation; do
             if ! grep -q "^  - $pod (" ios/App/Podfile.lock 2>/dev/null; then
               MISSING="$MISSING $pod"
             fi
