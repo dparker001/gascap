@@ -54,10 +54,11 @@ async function initStatusBar(): Promise<void> {
 async function initKeyboard(): Promise<void> {
   try {
     const { Keyboard } = await import('@capacitor/keyboard');
-    // Prevent the WebView from resizing when the keyboard appears —
-    // we handle layout shift via CSS env(keyboard-inset-height) instead.
-    // 'body' resize mode is the most reliable across iOS versions.
-    await Keyboard.setAccessoryBarVisible({ isVisible: false });
+    // Show the accessory bar's "Done" button above the keyboard — with it
+    // hidden, there was no way to dismiss the keyboard on any input across
+    // the app (numeric keypads in particular have no Return key at all),
+    // leaving the keyboard covering whatever button/content sat below it.
+    await Keyboard.setAccessoryBarVisible({ isVisible: true });
     await Keyboard.setScroll({ isDisabled: false });
   } catch { /* plugin not available in this build */ }
 }
