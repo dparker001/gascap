@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
@@ -30,7 +30,7 @@ function Check({ color = 'green' }: { color?: 'green' | 'amber' | 'teal' }) {
 // ── Main page ─────────────────────────────────────────────────────────────
 
 function UpgradePageInner() {
-  const { data: session } = useSession();
+  const { data: session, status: sessionStatus } = useSession();
   const { t } = useTranslation();
 
   const FREE_FEATURES = t.pricing.freeFeatures;
@@ -53,7 +53,6 @@ function UpgradePageInner() {
   useEffect(() => { setPlatform(detectNativePlatform()); setResolved(true); }, []);
   const isNative = platform !== null;
   const [loading, setLoading] = useState<'pro-monthly' | 'pro-annual' | 'pro-lifetime' | null>(null);
-  const [billing, setBilling] = useState<'monthly' | 'annual'>('annual');
   const [error,   setError]   = useState('');
 
   const userPlan      = (session?.user as { plan?: string })?.plan ?? 'free';
@@ -65,16 +64,37 @@ function UpgradePageInner() {
   const showGetaway   = getawayPromoActive() && !isProLifetime;
   const getawayDays   = getawayDaysLeft();
 
-  async function handleUpgrade(billing: 'monthly' | 'annual' | 'lifetime') {
+  // Auto-continue checkout after a fresh signup: when a signed-out visitor clicks
+  // Get Lifetime/Pro, we send them to /signup?next=/upgrade?auto=<billing> instead
+  // of just /upgrade. Once they land back here already authenticated, this fires
+  // the same purchase flow automatically — no second click needed to find and
+  // re-press the button they already pressed once. Guarded with a ref so it only
+  // ever fires once per page load, and only once we know both the real auth state
+  // (not the transient "loading" status) and native-vs-web platform.
+  const autoFired = useRef(false);
+  useEffect(() => {
+    if (autoFired.current) return;
+    if (sessionStatus !== 'authenticated' || !resolved) return;
+    const auto = searchParams.get('auto');
+    if (auto !== 'monthly' && auto !== 'lifetime') return;
+    if (auto === 'lifetime' && isProLifetime) return;
+    if (auto === 'monthly' && (isProMonthly || isProAnnual || isProLifetime)) return;
+    autoFired.current = true;
+    if (isNative) void handleIap(auto);
+    else          void handleUpgrade(auto);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionStatus, resolved, isNative, isProLifetime, isProMonthly, isProAnnual]);
+
+  async function handleUpgrade(billing: 'monthly' | 'lifetime') {
     if (!session) {
       // Founding/reactivation recipients already have accounts → send to sign-in and
       // return them to the founding offer; everyone else takes the new-signup path.
       window.location.href = founding
         ? '/signin?next=' + encodeURIComponent('/upgrade?founding=1')
-        : '/signup?next=/upgrade';
+        : '/signup?next=' + encodeURIComponent(`/upgrade?auto=${billing}`);
       return;
     }
-    setLoading(billing === 'lifetime' ? 'pro-lifetime' : billing === 'annual' ? 'pro-annual' : 'pro-monthly');
+    setLoading(billing === 'lifetime' ? 'pro-lifetime' : 'pro-monthly');
     setError('');
     try {
       // Only apply promo coupon on monthly — lifetime is already a one-time deal
@@ -103,7 +123,7 @@ function UpgradePageInner() {
   // grants Pro on the account server-side (RevenueCat webhook), so it unlocks
   // everywhere (web + app), exactly like the Stripe path.
   async function handleIap(which: 'monthly' | 'lifetime') {
-    if (!session) { window.location.href = '/signup?next=/upgrade'; return; }
+    if (!session) { window.location.href = '/signup?next=' + encodeURIComponent(`/upgrade?auto=${which}`); return; }
     setLoading(which === 'lifetime' ? 'pro-lifetime' : 'pro-monthly');
     setError('');
     const res = await purchasePro(which);
@@ -138,37 +158,10 @@ function UpgradePageInner() {
     );
   }
 
-  // Android (TWA) has no native billing yet → Pro is managed on the web there.
-  if (isNative && platform !== 'ios') {
-    return (
-      <div className="min-h-screen bg-[#eef1f7] flex flex-col">
-        <BrandBar />
-        <div className="flex-1 px-4 py-12 max-w-md mx-auto w-full flex flex-col items-center justify-center text-center">
-          <div className="bg-white rounded-3xl shadow-card p-8 space-y-4 w-full">
-            <p className="text-4xl" aria-hidden="true">🌐</p>
-            <h1 className="text-xl font-black text-navy-700">Manage Pro on the web</h1>
-            <p className="text-sm text-slate-500 leading-relaxed">
-              GasCap™ Pro plans are managed on the web. Sign in at{' '}
-              <span className="font-bold text-brand-dark">gascap.app</span> from your browser to
-              start or change a plan — anything you unlock is instantly available here in the app.
-            </p>
-            <Link
-              href="/"
-              className="block w-full py-3.5 rounded-2xl font-black text-base text-white text-center
-                         bg-gradient-to-r from-[#005F4A] to-[#1EB68F] hover:opacity-95 transition-opacity"
-            >
-              Continue with the free app
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (platform === 'ios') {
+  if (platform === 'ios' || platform === 'android') {
     // Trial users are NOT "already Pro" here — they must be able to buy to convert
     // the trial into a paid plan via IAP. Only actual paid Pro hides the buy buttons.
-    const alreadyPro = isProMonthly || isProLifetime;
+    const alreadyPro = isProMonthly || isProAnnual || isProLifetime;
     return (
       <div className="min-h-screen bg-[#eef1f7] flex flex-col">
         <BrandBar />
@@ -426,7 +419,7 @@ function UpgradePageInner() {
             )}
           </div>
 
-          {/* Pro — monthly/annual toggle */}
+          {/* Pro — monthly */}
           <div className="relative bg-white rounded-3xl border-2 border-amber-400 shadow-card p-6 flex flex-col">
             <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-amber-400 text-navy-900
                             text-[11px] font-black px-4 py-1 rounded-full uppercase tracking-wider
@@ -438,54 +431,16 @@ function UpgradePageInner() {
               <p className="text-xs text-slate-400 mt-0.5">{t.upgrade.cancelAnytime}</p>
             </div>
 
-            {/* Billing toggle */}
-            {!isProMonthly && !isProAnnual && !isProLifetime && (
-              <div className="flex items-center bg-slate-100 rounded-2xl p-1 mb-4 gap-1">
-                <button
-                  onClick={() => setBilling('monthly')}
-                  className={`flex-1 py-1.5 rounded-xl text-xs font-black transition-colors ${
-                    billing === 'monthly' ? 'bg-white text-navy-700 shadow-sm' : 'text-slate-400 hover:text-slate-600'
-                  }`}
-                >
-                  Monthly
-                </button>
-                <button
-                  onClick={() => setBilling('annual')}
-                  className={`flex-1 py-1.5 rounded-xl text-xs font-black transition-colors flex items-center justify-center gap-1.5 ${
-                    billing === 'annual' ? 'bg-white text-navy-700 shadow-sm' : 'text-slate-400 hover:text-slate-600'
-                  }`}
-                >
-                  {t.pricing.annualToggleLabel}
-                  <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full ${
-                    billing === 'annual' ? 'bg-green-500 text-white' : 'bg-slate-200 text-slate-500'
-                  }`}>{t.pricing.annualTogglePill}</span>
-                </button>
-              </div>
-            )}
-
             <div className="mb-1 flex items-end gap-1">
-              <span className="text-4xl font-black text-navy-700">
-                {billing === 'annual' && !isProMonthly ? `$${PRICING.pro.annual}` : `$${PRICING.pro.monthly}`}
-              </span>
-              <span className="text-sm mb-1 text-slate-400">
-                {billing === 'annual' && !isProMonthly ? '/yr' : '/mo'}
-              </span>
+              <span className="text-4xl font-black text-navy-700">${PRICING.pro.monthly}</span>
+              <span className="text-sm mb-1 text-slate-400">/mo</span>
             </div>
             <p className="text-xs font-semibold mb-4 leading-relaxed">
-              {billing === 'annual' && !isProMonthly
-                ? <span className="text-green-600">{t.pricing.annualBillingNote}</span>
-                : <span className="text-green-600">{t.upgrade.lessThanDime}</span>}
+              <span className="text-green-600">{t.upgrade.lessThanDime}</span>
             </p>
 
-            {/* Annual bonus badge */}
-            <div className={`mb-4 ${billing === 'annual' && !isProMonthly && !isProLifetime ? 'block' : 'hidden'}`}>
-              <span className="inline-flex items-center gap-1.5 bg-green-50 text-green-700 text-[11px] font-black px-3 py-1.5 rounded-xl border border-green-200">
-                {t.pricing.annualBonusBadge}
-              </span>
-            </div>
-
             <button
-              onClick={() => { if (!isProMonthly && !isProAnnual && !isProLifetime) handleUpgrade(billing); }}
+              onClick={() => { if (!isProMonthly && !isProAnnual && !isProLifetime) handleUpgrade('monthly'); }}
               disabled={loading !== null || isProMonthly || isProAnnual || isProLifetime}
               className={`w-full py-3 rounded-2xl font-black text-sm transition-colors mb-5 ${
                 isProMonthly || isProAnnual
@@ -501,12 +456,8 @@ function UpgradePageInner() {
                   : isProLifetime
                     ? t.pricing.includedInLifetime
                     : isOnTrial
-                      ? billing === 'annual'
-                        ? `Lock in annual — $${PRICING.pro.annual}/yr`
-                        : `${t.pricing.upgradeFromTrial} — $${PRICING.pro.monthly}/mo`
-                      : billing === 'annual'
-                        ? session ? t.pricing.getAnnualCta(String(PRICING.pro.annual)) : t.pricing.startFreeTrial
-                        : session ? `${t.upgrade.upgradeBtn} Pro — $${PRICING.pro.monthly}/mo` : t.pricing.startFreeTrial}
+                      ? `${t.pricing.upgradeFromTrial} — $${PRICING.pro.monthly}/mo`
+                      : session ? `${t.upgrade.upgradeBtn} Pro — $${PRICING.pro.monthly}/mo` : t.pricing.startFreeTrial}
             </button>
             <div className="border-t border-slate-100 mb-5" />
             <ul className="space-y-2 flex-1">

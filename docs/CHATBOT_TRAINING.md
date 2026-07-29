@@ -1,5 +1,5 @@
 # GasCap™ Chatbot — Full Training Document
-> Last updated: 2026-05-02
+> Last updated: 2026-07-28
 > For use in GHL Conversation AI knowledge base
 > Support email: support@gascap.app | Website: gascap.app
 
@@ -62,6 +62,18 @@ A: Go to Settings → Appearance. Use the three-way toggle to choose Auto (follo
 
 **Q: Why do I need to verify my email?**
 A: Email verification protects your account and ensures we can reach you for important notices. Check your inbox and spam folder for a message from support@gascap.app. If you didn't receive it, email us and we'll resend.
+
+**Q: Is GasCap™ available in Spanish?**
+A: Yes — GasCap™ is fully available in Spanish (Español). The home/landing page, the calculators, the header and garage, the streak counter, sign-in and sign-up, the referral flow, the fill-up logger, and the entire pricing and upgrade flow are all translated. Use the language switcher to change between English and Spanish — your choice is saved automatically.
+
+**Q: How do I switch GasCap™ to Spanish?**
+A: Tap the language switcher (EN / ES) in the app and select Español. The interface updates instantly and remembers your preference for next time. ¡Así de fácil!
+
+**Q: ¿GasCap™ está disponible en español?**
+A: ¡Sí! GasCap™ está completamente disponible en español. La página principal, las calculadoras, el registro e inicio de sesión, el programa de referidos y todo el flujo de precios y mejora de plan están traducidos. Usa el selector de idioma (EN / ES) para cambiar — tu preferencia se guarda automáticamente. Para soporte, escríbenos a support@gascap.app.
+
+**Q: What languages does GasCap™ support?**
+A: GasCap™ currently supports English and Spanish. A few legal/reference pages (Terms, Privacy, Help, and the sweepstakes rules) are available in English only. More languages may be added in the future based on demand.
 
 ---
 
@@ -196,10 +208,10 @@ A: 1 saved vehicle, both calculators (Target Fill & By Budget), Trip Cost Estima
 A: All new accounts automatically receive 30 days of Pro features — no credit card required. Full access to fill-up tracking, MPG insights, receipt scanning, AI Fuel Advisor, Gas Price Alert, stats, streak rewards, referral program, and monthly giveaway entries. After the 30-day trial, your account automatically reverts to free — you are never charged without taking action.
 
 **Q: What does Pro include?**
-A: Pro ($2.99/mo, $26.99/yr, or $19.99 Lifetime) adds: unlimited saved vehicles, VIN photo scan, fill-up history & MPG tracking, receipt scanning, MPG Insight Card, AI Fuel Advisor, Gas Price Alert, fuel savings dashboard, streak counter, monthly report card, gas price trend predictions, vehicle health alerts, Annual Wrapped, referral rewards, and weekly gas card giveaway entries.
+A: Pro ($2.99/mo or $19.99 Lifetime) adds: unlimited saved vehicles, VIN photo scan, fill-up history & MPG tracking, receipt scanning, MPG Insight Card, AI Fuel Advisor, Gas Price Alert, fuel savings dashboard, streak counter, monthly report card, gas price trend predictions, vehicle health alerts, Annual Wrapped, referral rewards, and monthly gas card giveaway entries.
 
-**Q: What is the difference between Pro monthly, Pro annual, and Pro Lifetime?**
-A: All Pro plans include the same core features. Pro Annual ($26.99/yr, ~3 months free vs monthly) adds +10 bonus giveaway entries per draw week. Pro Lifetime ($19.99, one-time payment) adds +20 bonus giveaway entries per draw week plus a permanent Lifetime Member badge — no recurring charges. An optional Lifetime Perks add-on ($9.99/yr) upgrades Lifetime members to +30 entries/week and includes an annual vacation voucher.
+**Q: What is the difference between Pro monthly and Pro Lifetime?**
+A: Both plans include all the same Pro features. Pro Lifetime ($19.99, one-time payment) additionally includes: +25 bonus giveaway entries every month (vs. the standard rate), a permanent Lifetime Member badge, and — while the getaway promo is active — a complimentary resort getaway certificate with your choice of 100+ destinations across the U.S. and worldwide, fulfilled automatically by email within 24 hours. Pro Lifetime has no recurring charges — you pay once and own it forever. An optional Lifetime Perks add-on ($9.99/yr) increases Lifetime entries to +40/month and adds another complimentary getaway certificate every year Perks renews.
 
 **Q: What does Fleet add over Pro?**
 A: Fleet features (multi-driver tracking, fleet dashboard, tax reports) are coming soon. Pro ($2.99/mo or $19.99 Lifetime) already includes unlimited vehicles — ideal for multi-car households and small operators.
@@ -208,7 +220,21 @@ A: Fleet features (multi-driver tracking, fleet dashboard, tax reports) are comi
 A: Visit gascap.app/upgrade or tap Settings → "Upgrade to Pro." Choose monthly ($2.99/mo) or Lifetime ($19.99, one-time). You'll be taken to a secure Stripe checkout page.
 
 **Q: How do I cancel?**
-A: Go to Settings → Plan → "Manage Billing & Subscription." This opens the Stripe self-serve portal where you can cancel or update your payment method. You can also email support@gascap.app and we'll handle it for you. Access continues until the end of your current billing period. Lifetime members are not affected by cancellation — there is no subscription to cancel.
+A: Go to Settings → Plan → "Manage Billing & Subscription." This opens the Stripe self-serve portal where you can cancel or update your payment method. You can also email support@gascap.app and we'll handle it for you. Access continues until the end of your current billing period. If you're within 30 days of your first Pro Monthly charge, you may also qualify for a full refund of that first payment — just email support@gascap.app. Lifetime members are not affected by cancellation — there is no subscription to cancel (and Lifetime is non-refundable).
+
+**Q: What is your refund policy?**
+A: It depends on your plan:
+• **Pro Monthly ($2.99/mo)** — 30-day money-back guarantee. If GasCap™ Pro doesn't help you save more than $2.99 in your first 30 days, email support@gascap.app within 30 days of your first charge and we'll refund your first payment in full — no questions asked.
+• **Pro Lifetime ($19.99 one-time)** — This is a one-time, non-refundable purchase. All Lifetime sales are final, except where required by law. Because it's a permanent license at a one-time price, we're not able to refund it after purchase.
+
+**Q: Can I get a refund on my monthly Pro subscription?**
+A: Yes. We offer a 30-day money-back guarantee on Pro Monthly. If Pro doesn't save you more than the $2.99 you paid in your first month, email support@gascap.app within 30 days of your first charge and we'll refund your first payment — no questions asked. After the first 30 days, you can still cancel anytime to stop future billing, and your access continues until the end of the current billing period.
+
+**Q: Is the Pro Lifetime plan refundable?**
+A: No — Pro Lifetime ($19.99) is a one-time, non-refundable purchase. You're buying a permanent license to GasCap™ Pro at a one-time price, so all Lifetime sales are final (except where required by applicable law). If you're not sure whether Lifetime is right for you, the best path is to use your 30-day free Pro trial first, or start with Pro Monthly — then upgrade to Lifetime once you know you love it.
+
+**Q: I was charged by mistake — what do I do?**
+A: No problem — email support@gascap.app with the email address on your account and we'll look into it right away. We'll get back to you within 1 business day.
 
 **Q: Is my payment information secure?**
 A: Yes. GasCap™ uses Stripe for all payments — we never store your card details. Stripe is PCI DSS Level 1 certified.
@@ -219,12 +245,54 @@ A: Your account automatically reverts to the free plan. You are never charged. A
 **Q: Can I switch between monthly and Lifetime?**
 A: You can upgrade from monthly to Lifetime at any time through Settings → Plan → "Manage Billing & Subscription." Contact support@gascap.app if you need assistance with the transition.
 
+**Q: Can I give GasCap™ Pro as a gift?**
+A: Yes! Go to **gascap.app/gift** to give **Pro Lifetime** ($19.99, one-time) as a gift — great for Father's Day, birthdays, or the holidays. You don't need an account to buy a gift. You can either email the gift code directly to the recipient, or get the code yourself to hand over or print, and you can add a personal note. The recipient redeems it on their own account and gets Pro forever — no subscription.
+
+**Q: How does the recipient claim their gift?**
+A: They open the claim link in the gift email (or go to **gascap.app/redeem** and enter the code). They sign in — or create a free account if new (name and email are pre-filled from the gift) — then tap "Claim My Pro Lifetime." Lifetime activates instantly.
+
+**Q: Is the gift a subscription?**
+A: No — a gifted Pro Lifetime is a one-time purchase. The recipient owns Pro forever with no recurring charges.
+
+**Q: What if the recipient already has Pro Lifetime?**
+A: The gift code stays unused so they can pass it along to someone else. It's only consumed when claimed by an account that isn't already Lifetime.
+
+**Q: Can I buy gifts for several people?**
+A: Each gift purchase is one Pro Lifetime. To gift multiple people, complete a separate gift purchase for each, or email support@gascap.app and we'll help arrange it.
+
+**Q: Are gifts refundable?**
+A: Like the regular Pro Lifetime plan, gift purchases are one-time and non-refundable. If something went wrong with a purchase, email support@gascap.app within a reasonable time and we'll help.
+
+**Q: Do I get a free vacation with Pro Lifetime?**
+A: During our limited-time promotion, yes — anyone who buys **Pro Lifetime** ($19.99, one-time) gets a complimentary resort getaway as a free thank-you bonus. Pro Lifetime is what you're purchasing; the getaway is an extra on top. Right after you upgrade you'll choose your destination from 100+ options across the U.S. and worldwide (searchable by city or country), and your certificate is emailed automatically within 24 hours. You can also choose later at **gascap.app/getaway**.
+
+**Q: How do I pick or claim my getaway destination?**
+A: After your Lifetime purchase, go to the success page or **gascap.app/getaway**, search or scroll to find your destination from 100+ options across the U.S. and worldwide, and confirm. Your certificate is sent automatically — it comes from our travel partner, Marketing Boost / RedeemVacations, within 24 hours, so check your spam folder too.
+
+**Q: What destinations can I choose from?**
+A: 100+ destinations across the U.S. and worldwide — major U.S. cities (Las Vegas, Denver, Miami, San Antonio, Orlando, Nashville, New York City, Los Angeles, and many more), plus international destinations like Cancún, Puerto Vallarta, Bali, Phuket, Dubai, Paris, Rome, and more. Use the search box on the destination picker to find yours by city or country.
+
+**Q: What does the getaway cost me?**
+A: This is a hotel stay only — flights are NOT included. The hotel room rate (valued up to $350/night) is free. You cover the destination's nightly taxes and fees — they vary by destination and are shown before you choose — plus your own airfare, food, and any resort fees the hotel charges. There's no timeshare presentation. Activation fees are non-refundable.
+
+**Q: Are flights included in the getaway?**
+A: No — the getaway covers the hotel room rate only. Your airfare/flights, transfers, food, and any resort fees are your own responsibility. You can fly or drive to your destination (you must live at least 100 miles away to use it).
+
+**Q: What are the getaway rules / eligibility?**
+A: Activate the certificate within 7 days, travel any time within 18 months, and book at least 30 days ahead (major holidays excluded). It's for up to 2 adults (at least one age 21+), with up to 2 children under 12 allowed at some hotels. No group travel — one stay per household. You must live at least 100 miles from your chosen destination and present a government-issued ID and a major credit/debit card at check-in. Full terms come with the certificate at RedeemVacations.com.
+
+**Q: Am I paying $19.99 for the vacation?**
+A: No — you're purchasing the GasCap™ Pro Lifetime license (all Pro features, forever). The getaway is a free promotional bonus we add as a thank-you during the promo; it isn't the product, and it has no separate cost or cash value.
+
+**Q: Is the getaway refundable, or does it change the Lifetime refund policy?**
+A: Pro Lifetime remains a one-time, non-refundable purchase whether or not you claim the getaway. The certificate has no cash value, and once you pay the activation taxes/fees to the travel partner those are non-refundable (per their terms).
+
 ---
 
 ## SECTION 9 — MONTHLY GAS CARD GIVEAWAY
 
 **Q: What is the Monthly Gas Card Giveaway?**
-A: Every month, GasCap™ gives away a $25 Visa prepaid card to one lucky winner — use it at the pump or anywhere Visa is accepted. The drawing is held on or about the 5th of the following month. No purchase is required to enter.
+A: Every month, GasCap™ gives away a $50 Visa prepaid card to one lucky winner — use it at the pump or anywhere Visa is accepted. The drawing is held at the end of each month. No purchase is required to enter.
 
 **Q: Who can enter?**
 A: Legal U.S. residents 18 years of age or older. Employees of Gas Capacity LLC and their immediate family members are not eligible. Void where prohibited by law.
@@ -238,14 +306,22 @@ A: Pro and Fleet subscribers automatically earn entries for each calendar day th
 
 Entries reset each month — they do NOT carry over from one month to the next.
 
-Streak bonus entries are calculated separately and added on top as a flat one-time addition (not multiplied):
-- 7-day streak → +2 bonus entries
-- 30-day streak → +5 bonus entries
-- 90-day streak → +10 bonus entries
-- 180-day streak → +15 bonus entries
-- 365-day streak → +20 bonus entries
+Plus: if you upgraded to paid Pro during your free trial, you also get a permanent +10 bonus entries every month on top of everything above.
 
-**Formula:** Total entries = (active days this month × your daily rate) + streak bonus flat addition
+Streak bonus entries are calculated separately and added on top as a flat one-time addition (not multiplied):
+- 7-day streak → +3 bonus entries
+- 30-day streak → +8 bonus entries
+- 90-day streak → +40 bonus entries
+- 180-day streak → +70 bonus entries
+- 365-day streak → +120 bonus entries
+
+**Formula:** Total entries = (active days this month × your daily rate) + streak bonus flat addition + early-upgrade bonus (if applicable)
+
+**Q: Is there a reward for upgrading while I'm still on my free trial?**
+A: Yes! If you upgrade to a paid Pro plan (monthly or Lifetime) during your 30-day free trial, you lock in a permanent bonus of **+10 extra gas card giveaway entries every month, forever** — on top of your normal daily entries. It's our way of thanking early upgraders. The bonus stays on your account for as long as you're a Pro member.
+
+**Q: What is the early-upgrade bonus?**
+A: The early-upgrade bonus is +10 bonus monthly giveaway draw entries, added to your account permanently when you upgrade to paid Pro during your free trial window. These 10 entries are added on top of the entries you earn from daily logins/usage and any streak bonuses. Upgrade before your trial ends at gascap.app/upgrade to claim it.
 
 **Q: Is there a leaderboard showing everyone's entry counts?**
 A: No. There is no public leaderboard. Your entry count is private and visible only to you on your own giveaway page at gascap.app/giveaway.
@@ -260,7 +336,7 @@ A: Visit gascap.app/giveaway to see your current entry count, eligibility status
 A: Standard users: a winner from the preceding month is not eligible the following month, and no one may win more than once per calendar quarter. Ambassador tier holders (Supporter, Ambassador, Elite): always eligible — no consecutive-month or quarterly restriction.
 
 **Q: How will I know if I won?**
-A: Winners are notified by email within 7 days of the drawing. You must respond within 14 days or the prize may be forfeited and an alternate winner selected.
+A: Winners are notified by email right after the drawing, with a link to confirm and claim your prize — you'll check a box certifying you're 18+, a U.S. resident, and eligible per the official rules. You must click through and confirm within 3 days or the prize may be forfeited and an alternate winner selected. Once you confirm, your $50 Visa prepaid card is sent within 24 hours.
 
 **Q: Where are the official rules?**
 A: Full official rules: gascap.app/sweepstakes-rules.
@@ -280,9 +356,11 @@ A: Two conditions must BOTH be met: (1) the person signed up using your unique r
 
 **Q: What are the tier thresholds and rewards?**
 A: Three tiers based on cumulative all-time paying referrals:
-- **Supporter (5+):** 1 free Pro month per paying referral, up to 6 free months total, plus 2× daily drawing entries and no consecutive-win restriction.
-- **Ambassador (15+):** Free GasCap™ Pro while maintaining 5 or more currently active paying referrals. If active referrals fall below 5, complimentary Pro pauses until restored. Plus 3× daily drawing entries.
-- **Elite Ambassador (30+):** Free GasCap™ Pro while maintaining 5 or more currently active paying referrals (same active condition as Ambassador). If active referrals fall below 5, complimentary Pro pauses until restored. Plus 5× daily drawing entries, recognition in the Top Ambassadors list, early feature access, and a personal thank-you from the GasCap™ founder.
+- **Supporter (5+):** 1 free Pro month per paying referral, up to 6 free months total, plus 2× daily drawing entries, no consecutive-win restriction, and a one-time $50 Dining Voucher the moment you first reach this tier.
+- **Ambassador (15+):** Free GasCap™ Pro while maintaining 5 or more currently active paying referrals. If active referrals fall below 5, complimentary Pro pauses until restored. Plus 3× daily drawing entries and a one-time $100 Hotel Savings Card the moment you first reach this tier.
+- **Elite Ambassador (30+):** Free GasCap™ Pro while maintaining 5 or more currently active paying referrals (same active condition as Ambassador). If active referrals fall below 5, complimentary Pro pauses until restored. Plus 5× daily drawing entries, recognition in the Top Ambassadors list, early feature access, a personal thank-you from the GasCap™ team, and a one-time $500 Hotel Savings Card the moment you first reach this tier.
+
+Tier vouchers (Dining Voucher / Hotel Savings Card) are sent automatically by email from Parker Select Rewards within 24 hours of first reaching each tier — no action needed. Referrer must be a paying or trial Pro/Fleet member to earn a tier voucher; free accounts don't qualify.
 
 **Q: How many free months can I earn through referrals?**
 A: Up to 6 free Pro months total — 1 free month per paying referral, credited within 24 hours of their first payment. Once you reach 6 banked months, free month credits stop. But your referral count keeps climbing toward Pro for Life at 15 paying referrals. Credits are valid for 12 months and applied automatically to your next billing cycle (up to 3 at a time).
@@ -307,10 +385,10 @@ A: Full details at gascap.app/ambassador.
 ## SECTION 11 — STREAK REWARDS
 
 **Q: What are Streak Rewards?**
-A: Streak Rewards are free Pro month credits you earn by maintaining a consecutive daily streak. Open the app every day to keep your streak alive. Rewards are in the Share tab under "Streak Rewards."
+A: Streak Rewards are bonuses you earn by maintaining a consecutive daily streak — open the app every day to keep your streak alive. The reward depends on your plan: Pro Monthly members earn free Pro month credits at each milestone; Pro Lifetime members earn bonus gas card giveaway entries instead (since they already have Pro forever). Every milestone also earns a one-time Parker Select Rewards voucher, sent automatically by email within 24 hours: $25 Dining Voucher (30 days), $50 Dining Voucher (90 days), $100 Hotel Savings Card (180 days), $300 Hotel Savings Card (365 days). Streak Rewards (including vouchers) require a paying or trial Pro/Fleet plan — free accounts don't earn them. Rewards are in the Share tab under "Streak Rewards."
 
-**Q: What milestones earn a free month?**
-A: 30-day streak: 1 free Pro month. 90-day streak: another free month. 180-day streak: another. 365-day streak: a final free month plus Legend status — 4 free months total if you reach one year.
+**Q: What milestones earn a reward?**
+A: 30-day streak: your first reward. 90-day streak: another. 180-day streak: another. 365-day streak: a final reward plus Legend status — 4 milestones total if you reach one year. For Monthly members each milestone = 1 free Pro month. For Lifetime members each milestone = bonus giveaway entries. Every milestone (any plan) also sends a Dining Voucher or Hotel Savings Card as described above.
 
 **Q: How do I redeem a banked streak credit?**
 A: Email support@gascap.app from your account email and mention your banked streak credit. We'll apply it to your next billing cycle.

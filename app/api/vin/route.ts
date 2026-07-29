@@ -15,7 +15,19 @@ interface NhtsaResponse { Results: NhtsaValue[]; Count: number; Message: string 
 
 interface EpaMenuItem { text: string; value: string }
 
-async function epaLookup(year: string, make: string, model: string): Promise<{
+/**
+ * A year/make/model can have several trims with materially different engines and
+ * fuel requirements (e.g. a Challenger SXT's 3.6L V6 takes Regular; an R/T's 5.7L
+ * V8 needs Premium). EPA's per-trim data (including the octane-specific fuelType1
+ * field) is only accurate if we match the SPECIFIC decoded trim — grabbing the
+ * first menu result silently returns the wrong trim's fuel type/MPG whenever a
+ * model has more than one engine option. `hints` (from the NHTSA decode) lets us
+ * pick the closest-matching trim by engine displacement + cylinder count instead.
+ */
+async function epaLookup(
+  year: string, make: string, model: string,
+  hints?: { displL?: number; cylinders?: number },
+): Promise<{
   epaId?:        string;
   combMpg?:      number;
   cityMpg?:      number;
@@ -23,6 +35,7 @@ async function epaLookup(year: string, make: string, model: string): Promise<{
   tankEst?:      number;
   rangeMiles?:   number;
   co2GPerMile?:  number;
+  fuelType1?:    string;   // EPA's octane-specific grade, e.g. "Premium Gasoline Recommended"
 } | null> {
   try {
     const base = 'https://fueleconomy.gov/ws/rest/vehicle';
@@ -39,26 +52,52 @@ async function epaLookup(year: string, make: string, model: string): Promise<{
     const items = trimData.menuItem ? (Array.isArray(trimData.menuItem) ? trimData.menuItem : [trimData.menuItem]) : [];
     if (items.length === 0) return null;
 
-    // Fetch details for first trim
-    const vRes = await fetch(`${base}/${items[0].value}`, { headers: hdrs, ...cache });
-    if (!vRes.ok) return null;
-    const d = await vRes.json() as Record<string, unknown>;
+    // Fetch details for every trim in parallel (all 24h-cached, so this is cheap)
+    // so we can pick the one whose engine actually matches the decoded VIN.
+    const details = await Promise.all(items.map(async (item) => {
+      try {
+        const r = await fetch(`${base}/${item.value}`, { headers: hdrs, ...cache });
+        if (!r.ok) return null;
+        return { value: item.value, data: await r.json() as Record<string, unknown> };
+      } catch { return null; }
+    }));
+    const valid = details.filter((d): d is { value: string; data: Record<string, unknown> } => d !== null);
+    if (valid.length === 0) return null;
 
+    // Pick the trim whose displacement + cylinder count are the closest match to
+    // the NHTSA-decoded engine. No hints (or a single trim) → first result, same
+    // as before.
+    let chosen = valid[0];
+    if (hints && (hints.displL != null || hints.cylinders != null) && valid.length > 1) {
+      let bestScore = Infinity;
+      for (const d of valid) {
+        const dDispl = Number(d.data.displ);
+        const dCyl   = Number(d.data.cylinders);
+        let score = 0;
+        score += hints.displL != null && !isNaN(dDispl) ? Math.abs(dDispl - hints.displL) : 5;
+        score += hints.cylinders != null && !isNaN(dCyl) && dCyl !== hints.cylinders ? 10 : 0;
+        if (score < bestScore) { bestScore = score; chosen = d; }
+      }
+    }
+
+    const d = chosen.data;
     const comb  = Number(d.comb08  ?? d.combA08  ?? 0);
     const city  = Number(d.city08  ?? d.cityA08  ?? 0);
     const hwy   = Number(d.hwy08   ?? d.hwyA08   ?? 0);
     const range = Number(d.range   ?? d.rangeA   ?? 0);
     const co2   = Number(d.co2TailpipeGpm ?? 0);
     const tank  = comb > 0 && range > 0 ? Math.round((range / comb) * 10) / 10 : null;
+    const fuelType1 = typeof d.fuelType1 === 'string' && d.fuelType1 ? d.fuelType1 : undefined;
 
     return {
-      epaId:       items[0].value,
+      epaId:       chosen.value,
       combMpg:     comb  > 0 ? comb  : undefined,
       cityMpg:     city  > 0 ? city  : undefined,
       hwyMpg:      hwy   > 0 ? hwy   : undefined,
       tankEst:     tank  ?? undefined,
       rangeMiles:  range > 0 ? range : undefined,
       co2GPerMile: co2   > 0 ? co2   : undefined,
+      fuelType1,
     };
   } catch {
     return null;
@@ -190,7 +229,12 @@ export async function GET(req: Request) {
     const kneeAirbags     = pick('Air Bag Locations (Knee)');
 
     // ── EPA enrichment ───────────────────────────────────────────────────
-    const epa = await epaLookup(year, make, model);
+    // Pass the decoded engine so multi-trim models (e.g. a Challenger's SXT V6 vs
+    // R/T V8) resolve to the correct trim's fuel type/MPG, not just the first one.
+    const epa = await epaLookup(year, make, model, {
+      displL:     toNum(displ),
+      cylinders:  toNum(cyls),
+    });
 
     // ── AI fallback for tank capacity ─────────────────────────────────────
     const epaHasTank = (epa?.tankEst ?? 0) > 0;
@@ -215,7 +259,10 @@ export async function GET(req: Request) {
       turbo:            toBool(turboRaw),
       supercharger:     toBool(superRaw),
       fuelInjector:     fuelInjector ?? undefined,
-      fuelType:         fuel         ?? undefined,
+      // Prefer EPA's octane-specific grade ("Premium Gasoline Recommended") over
+      // NHTSA's generic category ("Gasoline") — this is the actual answer to
+      // "does this vehicle need premium?", matched to the correct trim above.
+      fuelType:         epa?.fuelType1 ?? fuel ?? undefined,
       combMpg:          epa?.combMpg,
       cityMpg:          epa?.cityMpg,
       hwyMpg:           epa?.hwyMpg,
@@ -240,9 +287,11 @@ export async function GET(req: Request) {
     };
 
     return NextResponse.json({
-      // Backwards-compatible flat fields for VehiclePicker
+      // Backwards-compatible flat fields for VehiclePicker — this `fuel` value is
+      // what actually gets saved as the vehicle's fuelType, so it needs the same
+      // EPA-preferred, trim-matched value as specs.fuelType above.
       vin, make, model, year,
-      body, fuel, cylinders: cyls, displacement: displ,
+      body, fuel: epa?.fuelType1 ?? fuel, cylinders: cyls, displacement: displ,
       trim, drive, transmission: trans,
       // Tank size from EPA (or AI fallback) for auto-fill
       tankEst: tankEst,

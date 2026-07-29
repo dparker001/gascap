@@ -9,7 +9,35 @@ function isNative(): boolean {
 
 export async function initNativeChrome(): Promise<void> {
   if (!isNative()) return;
+  disablePullToRefresh();
   await Promise.all([initStatusBar(), initKeyboard()]);
+}
+
+function disablePullToRefresh(): void {
+  // WKWebView ignores CSS overscroll-behavior-y. Block at the touch level instead:
+  // prevent default only when the document is scrolled to the top AND the user
+  // is pulling downward — this kills pull-to-refresh without breaking normal scrolling.
+  let startY = 0;
+  document.addEventListener('touchstart', (e) => {
+    startY = e.touches[0].clientY;
+  }, { passive: true });
+
+  document.addEventListener('touchmove', (e) => {
+    const dy = e.touches[0].clientY - startY;
+    // Only block a downward pull when the page (or nearest scrollable) is at the top
+    if (dy > 0 && window.scrollY === 0) {
+      // Allow if the touch target is inside a scrollable element that has scroll room
+      const el = e.target as Element | null;
+      let node: Element | null = el;
+      while (node && node !== document.documentElement) {
+        const style = getComputedStyle(node);
+        const oy = style.overflowY;
+        if ((oy === 'auto' || oy === 'scroll') && node.scrollTop > 0) return;
+        node = node.parentElement;
+      }
+      e.preventDefault();
+    }
+  }, { passive: false });
 }
 
 async function initStatusBar(): Promise<void> {

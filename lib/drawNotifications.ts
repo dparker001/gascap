@@ -25,11 +25,16 @@ export async function fireDrawNotifications(opts: {
   notes:        string | null;
   prize:        string;   // e.g. "$25"
   suppressSms:  boolean;
+  claimToken?:  string | null; // omit for legacy/no-claim-gate callers
 }): Promise<void> {
-  const { period, winner, totalEntries, drawnAt, notes, prize, suppressSms } = opts;
+  const { period, winner, totalEntries, drawnAt, notes, prize, suppressSms, claimToken } = opts;
   const periodLabel   = formatPeriodLabel(period);
   const nextDrawLabel = nextPeriodLabel(period);
   const webhookUrl    = process.env.GHL_WINNER_WEBHOOK_URL;
+  const origin        = (process.env.NEXTAUTH_URL ?? 'https://gascap.app').replace(/\/$/, '');
+  const claimUrl      = claimToken
+    ? `${origin}/giveaway/claim?month=${encodeURIComponent(period)}&token=${encodeURIComponent(claimToken)}`
+    : `${origin}`;
 
   // Anonymised winner label for non-winner emails: "Madlon P."
   const [wFirst, ...wRest] = winner.name.trim().split(' ');
@@ -48,13 +53,13 @@ export async function fireDrawNotifications(opts: {
     sendMail({
       to:      winner.email,
       subject: `🏆 You won the ${periodLabel} GasCap™ Gas Card!`,
-      html:    winnerNotificationEmailHtml(winner.name, period, winner.entryCount, totalEntries, prize),
+      html:    winnerNotificationEmailHtml(winner.name, period, winner.entryCount, totalEntries, prize, claimUrl),
       text: [
         `Congratulations ${winner.name}!`,
         `You won the ${periodLabel} GasCap™ Gas Card Giveaway (${prize}).`,
-        `Your ${prize} Visa prepaid card will be sent within 7 days.`,
-        `Reply to confirm receipt or email support@gascap.app with questions.`,
-        `You must respond within 3 days to claim your prize.`,
+        `Confirm your eligibility to claim your prize: ${claimUrl}`,
+        `You must confirm within 3 days or an alternate winner may be selected.`,
+        `Questions? Email support@gascap.app.`,
       ].join('\n\n'),
     }).catch((err) => console.error('[draw] winner email failed:', err)),
 

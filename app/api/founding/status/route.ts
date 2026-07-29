@@ -1,6 +1,6 @@
 /**
  * GET /api/founding/status — live Founding Member promo status for the banner.
- * { active, cap, spotsLeft, price }
+ * { active, cap, spotsLeft, price, showBanner }
  */
 
 import { NextResponse } from 'next/server';
@@ -14,6 +14,6 @@ export async function GET() {
     return NextResponse.json(status);
   } catch {
     // Never break the page if the count fails — just report the promo inactive.
-    return NextResponse.json({ active: false, cap: 100, spotsLeft: 0, price: 9.99 });
+    return NextResponse.json({ active: false, cap: 100, spotsLeft: 0, price: 9.99, showBanner: false });
   }
 }

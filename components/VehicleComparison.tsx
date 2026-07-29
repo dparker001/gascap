@@ -16,6 +16,11 @@ interface HistoryResponse {
   };
 }
 
+interface GarageVehicle {
+  id:   string;
+  name: string;
+}
+
 interface VehicleProfile {
   name:          string;
   fillupCount:   number;
@@ -38,15 +43,23 @@ const COLORS = ['#f59e0b', '#3b82f6', '#10b981', '#8b5cf6', '#ef4444', '#06b6d4'
 export default function VehicleComparison() {
   const { data: session, status } = useSession();
   const { t } = useTranslation();
-  const [data,    setData]    = useState<HistoryResponse | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [open,    setOpen]    = useState(false);
+  const [data,           setData]           = useState<HistoryResponse | null>(null);
+  const [garageVehicles, setGarageVehicles] = useState<GarageVehicle[]>([]);
+  const [loading,        setLoading]        = useState(false);
+  const [open,           setOpen]           = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/fillups');
-      if (res.ok) setData(await res.json() as HistoryResponse);
+      const [fillupsRes, vehiclesRes] = await Promise.all([
+        fetch('/api/fillups'),
+        fetch('/api/vehicles'),
+      ]);
+      if (fillupsRes.ok) setData(await fillupsRes.json() as HistoryResponse);
+      if (vehiclesRes.ok) {
+        const vd = await vehiclesRes.json() as { vehicles?: GarageVehicle[] };
+        setGarageVehicles(vd.vehicles ?? []);
+      }
     } finally {
       setLoading(false);
     }
@@ -125,8 +138,15 @@ export default function VehicleComparison() {
     profiles.sort((a, b) => b.totalSpent - a.totalSpent);
   }
 
+  // Garage vehicles with no fill-ups logged yet
+  const profileNames = new Set(profiles.map((p) => p.name.toLowerCase()));
+  const emptyVehicles = garageVehicles.filter(
+    (v) => !profileNames.has(v.name.toLowerCase())
+  );
+
   const hasMultiple = profiles.length >= 2;
   const hasData     = profiles.length >= 1;
+  const totalVehicleCount = profiles.length + emptyVehicles.length;
 
   return (
     <div className="mt-3 rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
@@ -141,11 +161,19 @@ export default function VehicleComparison() {
             <p className="text-xs font-black text-white uppercase tracking-wider">{t.vehicleComparison.title}</p>
             {loading
               ? <p className="text-[10px] text-white/50">{t.vehicleComparison.loading}</p>
-              : hasMultiple
-                ? <p className="text-[10px] text-white/50">{t.vehicleComparison.subtitleMultiple(profiles.length)}</p>
+              : hasMultiple || totalVehicleCount >= 2
+                ? <p className="text-[10px] text-white/50">
+                    {t.vehicleComparison.subtitleMultiple(profiles.length)}
+                    {emptyVehicles.length > 0 && ` · ${emptyVehicles.length} need${emptyVehicles.length === 1 ? 's' : ''} fill-ups`}
+                  </p>
                 : hasData
-                  ? <p className="text-[10px] text-white/50">{t.vehicleComparison.subtitleSingle(profiles[0].name)}</p>
-                  : <p className="text-[10px] text-white/50">{t.vehicleComparison.subtitleEmpty}</p>
+                  ? <p className="text-[10px] text-white/50">
+                      {t.vehicleComparison.subtitleSingle(profiles[0].name)}
+                      {emptyVehicles.length > 0 && ` · ${emptyVehicles.length} need${emptyVehicles.length === 1 ? 's' : ''} fill-ups`}
+                    </p>
+                  : emptyVehicles.length > 0
+                    ? <p className="text-[10px] text-white/50">{totalVehicleCount} vehicle{totalVehicleCount !== 1 ? 's' : ''} · all need fill-ups</p>
+                    : <p className="text-[10px] text-white/50">{t.vehicleComparison.subtitleEmpty}</p>
             }
           </div>
         </div>
@@ -165,11 +193,30 @@ export default function VehicleComparison() {
             <p className="text-xs text-slate-400 text-center py-6">{t.vehicleComparison.loading}</p>
           )}
 
-          {!loading && !hasData && (
+          {!loading && !hasData && emptyVehicles.length === 0 && (
             <div className="text-center py-6">
               <p className="text-3xl mb-2">🚗</p>
               <p className="text-sm font-bold text-slate-600">{t.vehicleComparison.emptyTitle}</p>
               <p className="text-xs text-slate-400 mt-1">{t.vehicleComparison.emptyBody}</p>
+            </div>
+          )}
+
+          {!loading && !hasData && emptyVehicles.length > 0 && (
+            <div>
+              <p className="text-xs text-slate-400 text-center mb-3">Log fill-ups for your vehicles to see comparisons.</p>
+              <div className="flex gap-3 flex-wrap justify-center">
+                {emptyVehicles.map((v) => (
+                  <div
+                    key={v.id}
+                    className="rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 flex flex-col items-center justify-center gap-1.5 p-4 text-center"
+                    style={{ minWidth: '140px' }}
+                  >
+                    <span className="text-2xl">🚗</span>
+                    <p className="text-xs font-bold text-slate-600 leading-tight">{v.name}</p>
+                    <p className="text-[10px] text-slate-400 leading-snug">No fill-ups logged yet</p>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
@@ -180,9 +227,19 @@ export default function VehicleComparison() {
               <p className="text-xs text-slate-400 mt-1 leading-relaxed max-w-[220px] mx-auto">
                 {t.vehicleComparison.singleBody}
               </p>
-              {/* Show single vehicle stats anyway */}
-              <div className="mt-4">
+              <div className="mt-4 flex gap-3 justify-center flex-wrap">
                 <SingleVehicleCard profile={profiles[0]} color={COLORS[0]} />
+                {emptyVehicles.map((v) => (
+                  <div
+                    key={v.id}
+                    className="rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 flex flex-col items-center justify-center gap-1.5 p-4 text-center"
+                    style={{ minWidth: '140px' }}
+                  >
+                    <span className="text-2xl">🚗</span>
+                    <p className="text-xs font-bold text-slate-600 leading-tight">{v.name}</p>
+                    <p className="text-[10px] text-slate-400 leading-snug">No fill-ups logged yet</p>
+                  </div>
+                ))}
               </div>
             </div>
           )}
@@ -200,6 +257,17 @@ export default function VehicleComparison() {
                 >
                   {profiles.map((p, i) => (
                     <VehicleCard key={p.name} profile={p} color={COLORS[i % COLORS.length]} rank={i + 1} />
+                  ))}
+                  {emptyVehicles.map((v) => (
+                    <div
+                      key={v.id}
+                      className="rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 flex flex-col items-center justify-center gap-1.5 p-4 text-center shrink-0"
+                      style={{ minWidth: '140px' }}
+                    >
+                      <span className="text-2xl">🚗</span>
+                      <p className="text-xs font-bold text-slate-600 leading-tight">{v.name}</p>
+                      <p className="text-[10px] text-slate-400 leading-snug">No fill-ups logged yet</p>
+                    </div>
                   ))}
                 </div>
               </div>

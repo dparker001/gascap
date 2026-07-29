@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { VehicleSpecs } from '@/lib/vehicleSpecs';
 import { useTranslation } from '@/contexts/LanguageContext';
+import { compressImageForUpload } from '@/lib/imageUtils';
 
 interface MenuItem { text: string; value: string }
 
@@ -524,14 +525,15 @@ function VinTab({ onSave, onCancel, saving, saveError }: Omit<VehiclePickerProps
   const [vehicleSpecs, setVehicleSpecs] = useState<VehicleSpecs | null>(null);
   const [scanning,     setScanning]     = useState(false);
   const [scanError,    setScanError]    = useState('');
-  const fileInputRef = useRef<HTMLInputElement>(null);
+
 
   async function handleVinScan(file: File) {
     setScanning(true);
     setScanError('');
     try {
+      const compressed = await compressImageForUpload(file);
       const fd = new FormData();
-      fd.append('image', file);
+      fd.append('image', compressed, 'vin.jpg');
       const res  = await fetch('/api/vin/scan', { method: 'POST', body: fd, credentials: 'include' });
       const data = await res.json() as { vin?: string | null; error?: string };
       if (!res.ok || data.error) { setScanError(data.error ?? t.vehiclePicker.scanCouldNotRead); return; }
@@ -628,35 +630,34 @@ function VinTab({ onSave, onCancel, saving, saveError }: Omit<VehiclePickerProps
         {t.vehiclePicker.vinIntroPrefix} <span className="font-semibold text-slate-700">{t.vehiclePicker.vinIntroHighlight}</span> {t.vehiclePicker.vinIntroSuffix}
       </p>
 
-      {/* Hidden file input for VIN photo */}
-      <input
-        type="file" accept="image/*" capture="environment"
-        ref={fileInputRef} className="hidden"
-        onChange={(e) => {
-          const f = e.target.files?.[0];
-          if (f) handleVinScan(f);
-          e.target.value = '';
-        }}
-      />
-
       {/* VIN input */}
       <div>
         <div className="flex items-center justify-between mb-1">
           <label className="block text-xs font-semibold text-slate-500">
             {t.vehiclePicker.vinFieldLabel}
           </label>
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={scanning}
-            className="flex items-center gap-1 text-[11px] font-bold text-amber-700 bg-amber-50
-                       border border-amber-200 rounded-lg px-2 py-1 hover:bg-amber-100
-                       disabled:opacity-50 transition-colors"
+          {/* Label wraps the file input directly — avoids programmatic .click() which crashes WKWebView */}
+          <label
+            className={[
+              'flex items-center gap-1 text-[11px] font-bold text-amber-700 bg-amber-50',
+              'border border-amber-200 rounded-lg px-2 py-1 hover:bg-amber-100 transition-colors',
+              scanning ? 'opacity-50 pointer-events-none' : 'cursor-pointer',
+            ].join(' ')}
             title={t.vehiclePicker.scanVinTitle}
           >
+            <input
+              type="file" accept="image/*"
+              className="hidden"
+              disabled={scanning}
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) handleVinScan(f);
+                e.target.value = '';
+              }}
+            />
             <span>{scanning ? '🔄' : '📷'}</span>
             <span>{scanning ? t.vehiclePicker.scanning : t.vehiclePicker.scanVin}</span>
-          </button>
+          </label>
         </div>
         {scanError && <p className="text-[11px] text-red-500 mb-1 font-medium">{scanError}</p>}
         <div className="relative">

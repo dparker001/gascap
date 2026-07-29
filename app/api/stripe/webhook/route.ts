@@ -9,7 +9,7 @@
 import { NextResponse }                     from 'next/server';
 import type Stripe                          from 'stripe';
 import { stripe }                           from '@/lib/stripe';
-import { setUserPlan, findByStripeCustomer, findById, findByReferralCode, creditVerifiedReferral, getActiveCredits, enrollPaidCampaign, enrollEngagementCampaign, setEarlyUpgradeBonus, markMilestoneSent, updateUserProfile, clearStripeSubscriptionId, setLifetimePerksActive, clearLifetimePerks } from '@/lib/users';
+import { setUserPlan, findByStripeCustomer, findById, findByReferralCode, creditVerifiedReferral, getActiveCredits, enrollPaidCampaign, enrollEngagementCampaign, setEarlyUpgradeBonus, markMilestoneSent, updateUserProfile, clearStripeSubscriptionId, setLifetimePerksActive, clearLifetimePerks, markFoundingMember } from '@/lib/users';
 import { updateGhlContactPlan }            from '@/lib/ghl';
 import { sendMail, giftEmailHtml }         from '@/lib/email';
 import { createGift }                      from '@/lib/gifts';
@@ -168,6 +168,14 @@ export async function POST(req: Request) {
         subscriptionId: subscriptionId ?? undefined,
         interval,
       });
+
+      // Founding Member launch promo — record the REAL redemption so the "X of
+      // 100 spots left" banner counts actual $9.99 Lifetime purchases, not just
+      // signups since launch (the coupon is shared with win-back/new-member, so
+      // this metadata tag is the only way to attribute the purchase correctly).
+      if (interval === 'lifetime' && session.metadata?.offerSource === 'founding') {
+        await markFoundingMember(userId);
+      }
 
       // Lifetime is a one-time payment (mode:'payment') with no subscription of
       // its own. If this buyer was previously a recurring subscriber (monthly /
@@ -372,15 +380,15 @@ export async function POST(req: Request) {
         const chooseUrl = `${baseUrl}/getaway`;
 
         sendAdminMail({
-          subject: `🏅 Lifetime Perks renewed — ${user.email} — send vacation voucher`,
+          subject: `🏅 Lifetime Perks renewed — ${user.email} will choose a destination`,
           html: `<div style="font-family:system-ui,sans-serif;max-width:480px;">
             <p style="font-size:20px;margin:0 0 8px;">🏅 Lifetime Perks renewal</p>
             <p style="font-size:15px;color:#334155;margin:0 0 4px;"><strong>${user.name}</strong> renewed their Lifetime Perks ($9.99).</p>
             <p style="font-size:14px;color:#64748b;margin:0 0 12px;">${user.email}</p>
-            <p style="font-size:14px;color:#334155;font-weight:700;margin:0 0 4px;">Action needed: issue one vacation voucher via Marketing Boost.</p>
+            <p style="font-size:14px;color:#334155;margin:0 0 4px;">They'll pick a destination at /getaway — sent automatically via Marketing Boost if it's in the live API catalog, otherwise you'll get a separate <strong>"ISSUE GETAWAY CERT"</strong> email. No action needed yet.</p>
             <p style="font-size:12px;color:#94a3b8;">${new Date().toLocaleString('en-US',{timeZone:'America/New_York'})} ET</p>
           </div>`,
-          text: `Lifetime Perks renewal: ${user.name} <${user.email}> — issue vacation voucher in Marketing Boost.`,
+          text: `Lifetime Perks renewal: ${user.name} <${user.email}> — awaiting destination choice (auto-sent via MB API if available, otherwise separate ISSUE email to follow).`,
         });
 
         sendMail({
@@ -416,9 +424,13 @@ export async function POST(req: Request) {
         if (fleetPrices.includes(priceId)) tier = 'fleet';
       }
 
-      // Determine interval for annual renewal (keeps stripeInterval accurate)
+      // Determine interval for annual renewal (keeps stripeInterval accurate for any
+      // legacy annual subscription still renewing — Annual is shelved for NEW
+      // purchases as of 2026-07-23, see lib/stripe.ts, so this is a defensive-only
+      // check; read directly from env like the fleet check above since PRICES no
+      // longer exposes proAnnual publicly).
       const renewalInterval: 'monthly' | 'annual' | undefined =
-        priceId === PRICES.proAnnual ? 'annual' : undefined;
+        priceId === (process.env.STRIPE_PRICE_PRO_ANNUAL ?? '') ? 'annual' : undefined;
 
       if (user.plan !== tier || renewalInterval) {
         await setUserPlan(user.id, tier, { subscriptionId: subId, ...(renewalInterval ? { interval: renewalInterval } : {}) });

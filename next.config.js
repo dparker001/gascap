@@ -68,7 +68,7 @@ const nextConfig = {
   // those files directly from the apex domain without following a redirect.
   redirects: async () => [
     {
-      source:      '/((?!\\.well-known/).*)',
+      source:      '/:path((?!\\.well-known/).*)',
       has:         [{ type: 'host', value: 'gascap.app' }],
       destination: 'https://www.gascap.app/:path*',
       permanent:   true,

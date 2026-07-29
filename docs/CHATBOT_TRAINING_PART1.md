@@ -1,6 +1,6 @@
-# GasCap™ Chatbot — Full Training Document
-> Last updated: 2026-05-02
-> For use in GHL Conversation AI knowledge base
+# GasCap™ Chatbot — Training Document (Part 1 of 3 — Sections 1-7)
+> Last updated: 2026-07-28
+> For use in GHL Conversation AI knowledge base — paste ALL 3 parts into the same bot.
 > Support email: support@gascap.app | Website: gascap.app
 
 ---
@@ -20,6 +20,7 @@ You are **GasCap™ Support** — the friendly, helpful virtual assistant for Ga
 - Never promise specific resolution timelines beyond "1 business day."
 
 ---
+
 
 ## SECTION 1 — ABOUT GASCAP™
 
@@ -63,6 +64,18 @@ A: Go to Settings → Appearance. Use the three-way toggle to choose Auto (follo
 **Q: Why do I need to verify my email?**
 A: Email verification protects your account and ensures we can reach you for important notices. Check your inbox and spam folder for a message from support@gascap.app. If you didn't receive it, email us and we'll resend.
 
+**Q: Is GasCap™ available in Spanish?**
+A: Yes — GasCap™ is fully available in Spanish (Español). The home/landing page, the calculators, the header and garage, the streak counter, sign-in and sign-up, the referral flow, the fill-up logger, and the entire pricing and upgrade flow are all translated. Use the language switcher to change between English and Spanish — your choice is saved automatically.
+
+**Q: How do I switch GasCap™ to Spanish?**
+A: Tap the language switcher (EN / ES) in the app and select Español. The interface updates instantly and remembers your preference for next time. ¡Así de fácil!
+
+**Q: ¿GasCap™ está disponible en español?**
+A: ¡Sí! GasCap™ está completamente disponible en español. La página principal, las calculadoras, el registro e inicio de sesión, el programa de referidos y todo el flujo de precios y mejora de plan están traducidos. Usa el selector de idioma (EN / ES) para cambiar — tu preferencia se guarda automáticamente. Para soporte, escríbenos a support@gascap.app.
+
+**Q: What languages does GasCap™ support?**
+A: GasCap™ currently supports English and Spanish. A few legal/reference pages (Terms, Privacy, Help, and the sweepstakes rules) are available in English only. More languages may be added in the future based on demand.
+
 ---
 
 ## SECTION 3 — THE CALCULATORS
@@ -93,10 +106,10 @@ A: Yes. Once installed as a PWA, the calculators work fully offline using the la
 ## SECTION 4 — TOOLS
 
 **Q: What is the Trip Cost Estimator?**
-A: The Trip Cost Estimator has two modes. Manual mode (free, no account needed): enter distance, MPG, and gas price to see total gallons and cost. Route mode (Pro and Fleet): enter an origin and destination — GasCap™ uses Google to calculate the real route distance, then shows your exact fuel cost. If you need a fuel stop along the way, it finds real gas stations on your route and lets you open them in Google Maps or Waze with turn-by-turn directions. Saved trips appear in the Stats tab for future reference.
+A: The Trip Cost Estimator calculates the fuel cost of a road trip. In **manual mode** (free for all users), enter your trip distance, vehicle MPG, and current gas price — it shows total gallons needed and estimated cost. **Pro and Fleet users** also have **route mode**: enter an origin and destination with address autocomplete and GasCap™ uses Google Routes API to calculate the real route distance — giving you a cost estimate for the actual road, not a straight line. When a fuel stop is needed, GasCap™ finds real gas stations along the route. Completed trips are saved and appear in the Stats tab.
 
 **Q: Does GasCap™ work with Google Maps or Waze?**
-A: Yes. In the Trip tab, Pro and Fleet users can enter an origin and destination to calculate fuel cost for the real route. When a refuel stop is needed, tap "Find Fuel Along the Way" to open Google Maps or Waze with directions straight to the nearest gas station on your route. After closing Maps and returning to GasCap™, the app scrolls you back to your trip result automatically.
+A: Yes — this is a **Pro and Fleet feature**. In the Trip tab, enter an origin and destination to get the exact fuel cost for the real route. When a fuel stop is needed, GasCap™ finds actual gas stations along the route. Tap "Find Fuel Along the Way" to open Google Maps (or Waze) with turn-by-turn directions straight to the pump. After you close Maps and return to GasCap™, the app scrolls you right back to your trip result.
 
 **Q: What is the Station Comparison tool?**
 A: Station Comparison lets you compare two nearby gas stations side by side. Enter the price per gallon at each station and the amount you need — it tells you which is cheaper and by exactly how much. Free for all users.
@@ -177,47 +190,13 @@ A: From the Fleet Dashboard, tap "Bulk Vehicle Import." Download the template CS
 A: Yes — Fleet subscribers can download a PDF Annual Fleet Fuel Tax Report from the Fleet Dashboard. Tap Reports, choose a tax year, and tap "Download PDF." The report includes a monthly cost breakdown, per-vehicle summary with MPG, a complete fill-up log with driver attribution, and a tax disclaimer.
 
 **Q: Can I show my company's logo in GasCap™?**
-A: Yes — Fleet subscribers can white-label the dashboard with their company name and logo. Go to Settings → Fleet Branding, enter your company name and logo URL, and your branding will appear in the desktop dashboard header. Your logo sits alongside "Powered by GasCap™ Fleet" attribution.
+A: Yes — **Fleet subscribers** can white-label the dashboard with their company name and logo. Go to Settings → Fleet Branding, enter your company name and logo URL, and your branding will appear in the desktop dashboard header. Your logo sits alongside "Powered by GasCap™ Fleet" attribution.
 
 **Q: Can drivers log fill-ups on their own devices?**
 A: Currently, fill-ups are logged by the account holder and attributed to a driver. Multi-driver login with individual accounts is on the roadmap for a future Fleet update.
 
 **Q: Is there a free trial for Fleet?**
 A: Fleet features are coming soon. In the meantime, Pro ($2.99/mo or $19.99 Lifetime) includes unlimited vehicles — ideal for households and small operators with multiple cars. New accounts get 30 days of Pro free automatically.
-
----
-
-## SECTION 8 — PLANS & BILLING
-
-**Q: What's included in the free plan?**
-A: 1 saved vehicle, both calculators (Target Fill & By Budget), Trip Cost Estimator, Station Comparison, EPA vehicle database search, live local gas price lookup, dark mode, and offline use. Free forever — no credit card ever required.
-
-**Q: How do I get 30 days of Pro free?**
-A: All new accounts automatically receive 30 days of Pro features — no credit card required. Full access to fill-up tracking, MPG insights, receipt scanning, AI Fuel Advisor, Gas Price Alert, stats, streak rewards, referral program, and monthly giveaway entries. After the 30-day trial, your account automatically reverts to free — you are never charged without taking action.
-
-**Q: What does Pro include?**
-A: Pro ($2.99/mo or $19.99 Lifetime) adds: unlimited saved vehicles, VIN photo scan, fill-up history & MPG tracking, receipt scanning, MPG Insight Card, AI Fuel Advisor, Gas Price Alert, fuel savings dashboard, streak counter, monthly report card, gas price trend predictions, vehicle health alerts, Annual Wrapped, referral rewards, and monthly gas card giveaway entries.
-
-**Q: What is the difference between Pro monthly and Pro Lifetime?**
-A: Both plans include all the same Pro features. Pro Lifetime ($19.99, one-time payment) additionally includes three exclusive perks: (1) 2× giveaway entries every month — double the standard daily streak entries into the monthly gas card draw; (2) Streak Shield — one grace day per month that preserves your streak if you miss a day; and (3) a permanent Lifetime Member badge displayed in your profile. Pro Lifetime has no recurring charges — you pay once and own it forever.
-
-**Q: What does Fleet add over Pro?**
-A: Fleet features (multi-driver tracking, fleet dashboard, tax reports) are coming soon. Pro ($2.99/mo or $19.99 Lifetime) already includes unlimited vehicles — ideal for multi-car households and small operators.
-
-**Q: How do I upgrade?**
-A: Visit gascap.app/upgrade or tap Settings → "Upgrade to Pro." Choose monthly ($2.99/mo) or Lifetime ($19.99, one-time). You'll be taken to a secure Stripe checkout page.
-
-**Q: How do I cancel?**
-A: Go to Settings → Plan → "Manage Billing & Subscription." This opens the Stripe self-serve portal where you can cancel or update your payment method. You can also email support@gascap.app and we'll handle it for you. Access continues until the end of your current billing period. Lifetime members are not affected by cancellation — there is no subscription to cancel.
-
-**Q: Is my payment information secure?**
-A: Yes. GasCap™ uses Stripe for all payments — we never store your card details. Stripe is PCI DSS Level 1 certified.
-
-**Q: What happens when my free trial ends?**
-A: Your account automatically reverts to the free plan. You are never charged. A reminder banner appears in the app starting 15 days before your trial expires. To keep Pro features, upgrade before the trial ends — $2.99/month or $19.99 Lifetime (one payment, no subscription ever).
-
-**Q: Can I switch between monthly and Lifetime?**
-A: You can upgrade from monthly to Lifetime at any time through Settings → Plan → "Manage Billing & Subscription." Contact support@gascap.app if you need assistance with the transition.
 
 ---
 

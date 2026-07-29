@@ -17,6 +17,12 @@ export interface SavedVehicle {
   model?:             string;
   trim?:              string;
   fuelType?:          string;
+  // True once the user has explicitly set/confirmed fuelType themselves (via the
+  // edit-vehicle fuel type selector) — distinguishes "the owner told us" from
+  // "our best EPA-derived guess", which matters both for display (no need to
+  // caveat a user-confirmed value) and for liability (see gotcha-vin-epa-trim-matching
+  // memory — a wrong octane recommendation is a real mechanical/legal risk).
+  fuelTypeConfirmedByUser?: boolean;
   epaId?:             string;
   // Baseline odometer when vehicle was added to garage
   currentOdometer?:   number;
@@ -35,6 +41,7 @@ function toSavedVehicle(v: {
   model: string | null;
   trim: string | null;
   fuelType: string | null;
+  fuelTypeConfirmedByUser?: boolean;
   epaId: string | null;
   currentOdometer: number | null;
   vehicleSpecs: unknown;
@@ -51,6 +58,7 @@ function toSavedVehicle(v: {
     model:              v.model           ?? undefined,
     trim:               v.trim            ?? undefined,
     fuelType:           v.fuelType        ?? undefined,
+    fuelTypeConfirmedByUser: v.fuelTypeConfirmedByUser ?? false,
     epaId:              v.epaId           ?? undefined,
     currentOdometer:    v.currentOdometer ?? undefined,
     vehicleSpecs:       v.vehicleSpecs    != null ? (v.vehicleSpecs as VehicleSpecs) : undefined,
@@ -112,7 +120,10 @@ export async function deleteVehicle(userId: string, vehicleId: string): Promise<
 export async function updateVehicle(
   userId: string,
   vehicleId: string,
-  updates: { name?: string; gallons?: number; vin?: string; currentOdometer?: number; vehicleSpecs?: VehicleSpecs },
+  updates: {
+    name?: string; gallons?: number; vin?: string; currentOdometer?: number; vehicleSpecs?: VehicleSpecs;
+    fuelType?: string; fuelTypeConfirmedByUser?: boolean;
+  },
 ): Promise<SavedVehicle | undefined> {
   // Verify ownership first
   const existing = await prisma.vehicle.findFirst({
@@ -126,6 +137,8 @@ export async function updateVehicle(
   if (updates.vin              !== undefined) data.vin              = updates.vin || null;
   if (updates.currentOdometer  !== undefined) data.currentOdometer  = updates.currentOdometer;
   if (updates.vehicleSpecs     !== undefined) data.vehicleSpecs     = updates.vehicleSpecs;
+  if (updates.fuelType         !== undefined) data.fuelType         = updates.fuelType || null;
+  if (updates.fuelTypeConfirmedByUser !== undefined) data.fuelTypeConfirmedByUser = updates.fuelTypeConfirmedByUser;
 
   const row = await prisma.vehicle.update({
     where: { id: vehicleId },

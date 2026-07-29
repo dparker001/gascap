@@ -2,6 +2,7 @@
 
 import { useRef, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from '@/contexts/LanguageContext';
+import { hapticLight, hapticMedium } from '@/lib/haptics';
 
 // ─── Gauge geometry ────────────────────────────────────────────────────────
 // viewBox: 0 0 280 145   |  center: (140, 135)  |  radius: 115
@@ -99,8 +100,9 @@ interface FuelGaugeProps {
 
 export default function FuelGauge({ percent, onChange, tankCapacity }: FuelGaugeProps) {
   const { t } = useTranslation();
-  const svgRef  = useRef<SVGSVGElement>(null);
-  const active  = useRef(false);
+  const svgRef     = useRef<SVGSVGElement>(null);
+  const active     = useRef(false);
+  const lastSnap   = useRef<number>(-1);
   const [dragging, setDragging] = useState(false);
 
   const clampedPct = Math.max(0, Math.min(100, isNaN(percent) ? 0 : percent));
@@ -121,7 +123,12 @@ export default function FuelGauge({ percent, onChange, tankCapacity }: FuelGauge
       const dy = svgY - CY;
       let deg = (Math.atan2(dy, dx) * 180) / Math.PI;
       if (deg < 0) deg += 360;
-      onChange(snapToEighth(angleToPct(deg)));
+      const snapped = snapToEighth(angleToPct(deg));
+      if (snapped !== lastSnap.current) {
+        lastSnap.current = snapped;
+        hapticLight();
+      }
+      onChange(snapped);
     },
     [onChange],
   );
@@ -147,6 +154,7 @@ export default function FuelGauge({ percent, onChange, tankCapacity }: FuelGauge
   function nudge(dir: 1 | -1) {
     const currentStep = Math.round(clampedPct / NUDGE_STEP);
     const newStep     = Math.max(0, Math.min(64, currentStep + dir));
+    hapticMedium();
     onChange(parseFloat((newStep * NUDGE_STEP).toFixed(6)));
   }
 

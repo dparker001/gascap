@@ -35,6 +35,10 @@ export async function GET(req: Request) {
     return NextResponse.json({ stations: [], proRequired: true, reason: 'free_plan' });
   }
 
+  if (process.env.ENABLE_LIVE_FUEL_PRICES !== 'true') {
+    return NextResponse.json({ stations: [], disabled: true });
+  }
+
   if (!process.env.GOOGLE_PLACES_API_KEY) {
     return NextResponse.json({ stations: [], error: 'Places API key not configured' });
   }

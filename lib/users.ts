@@ -9,7 +9,9 @@ import { findNewBadges, type UserStats } from './badges';
 import { getVehiclesForUser } from './savedVehicles';
 import type { User as PrismaUser } from './generated/prisma/client';
 import { Prisma } from './generated/prisma/client';
-import { qualifiesForFreeProForLife, AMBASSADOR_THRESHOLDS } from './ambassador';
+import { qualifiesForFreeProForLife, AMBASSADOR_THRESHOLDS, getAmbassadorTier } from './ambassador';
+import { sendHotelSavingsCard, sendDiningVoucher } from './marketingBoost';
+import { sendMail } from './email';
 
 export { getAmbassadorTier, ambassadorEntryMultiplier, isAlwaysEligible, AMBASSADOR_THRESHOLDS } from './ambassador';
 
@@ -80,6 +82,7 @@ export interface StoredUser {
   phoneBonusEntries?:        number;
   lifetimePerksUntil?:       string | null; // ISO timestamp; null = no active Perks renewal
   lifetimePerksSubId?:       string | null;
+  userMode?:                 string | null; // 'personal' | 'gig' | 'rental' | 'fleet'
 }
 
 export interface ReferralCredit {
@@ -287,13 +290,24 @@ export async function setUserPlan(
     }
   }
 
+  // A real Stripe payment/renewal ends the trial — but only treat THIS call as
+  // "a real payment" if it carries an actual subscriptionId or interval. Some
+  // callers invoke setUserPlan with the user's OWN CURRENT plan just to attach
+  // a stripeCustomerId (e.g. app/api/stripe/portal/route.ts, opened the moment
+  // a trial user merely clicks "Manage Billing" — no purchase involved). Without
+  // this guard, that alone silently and permanently wiped isProTrial/
+  // trialExpiresAt for a still-valid trial: plan stayed 'pro' (never reverted
+  // to free, since getExpiredTrialUsers() requires isProTrial=true to ever pick
+  // the account up), so the user ended up stuck with free Pro access forever
+  // and dropped out of the trial-conversion email drip. Found 2026-07-23 via a
+  // real account (servant4hire@gmail.com) stuck exactly this way.
+  const isRealPurchaseOrRenewal = !!(stripe?.subscriptionId || stripe?.interval);
+
   await prisma.user.update({
     where: { id: userId },
     data: {
       plan,
-      // A real Stripe payment ends the trial — clear trial flags regardless
-      // of whether the user was or not.
-      ...(plan !== 'free' ? { isProTrial: false, trialExpiresAt: null } : {}),
+      ...(plan !== 'free' && isRealPurchaseOrRenewal ? { isProTrial: false, trialExpiresAt: null } : {}),
       ...(stripe?.customerId     ? { stripeCustomerId:     stripe.customerId }     : {}),
       ...(stripe?.subscriptionId ? { stripeSubscriptionId: stripe.subscriptionId } : {}),
       // Persist the billing interval authoritatively on every paid upgrade so
@@ -302,6 +316,20 @@ export async function setUserPlan(
       // the Lifetime-only getaway promo, so it must never be stale.
       ...(stripe?.interval ? { stripeInterval: stripe.interval } : {}),
     },
+  });
+}
+
+/**
+ * Mark a user as a Founding Member (first purchased Lifetime via the launch promo
+ * coupon). Idempotent — only sets the timestamp the first time so an accidental
+ * repeat webhook delivery doesn't reset it. Used to count REAL founding redemptions
+ * for the "X of 100 spots left" banner, instead of counting all signups since
+ * launch (see lib/foundingPromo.ts).
+ */
+export async function markFoundingMember(userId: string): Promise<void> {
+  await prisma.user.updateMany({
+    where: { id: userId, foundingMemberAt: null },
+    data:  { foundingMemberAt: new Date() },
   });
 }
 
@@ -878,6 +906,52 @@ export async function recordReferral(referrerId: string): Promise<void> {
   const grantedPlan: 'pro' | undefined =
     justCrossedAmbassador && user.plan !== 'fleet' ? 'pro' : undefined;
 
+  // ── Ambassador tier voucher reward (Marketing Boost) ─────────────────────
+  // One-time per tier, fired the instant a referrer's cumulative count first
+  // crosses a tier boundary. Safe from duplicate sends: creditVerifiedReferral
+  // (the only caller) already does an atomic compare-and-swap so this function
+  // runs exactly once per unique referral event, and each event can cross at
+  // most one tier boundary (count only ever goes up by 1 at a time).
+  //
+  // Pro/Fleet only — a Supporter-tier reward (5 referrals) requires the referrer
+  // to already be a paying/trial Pro or Fleet member; Ambassador/Elite (15+/30+)
+  // always qualify since crossing those thresholds grants free Pro in this same
+  // update (justCrossedAmbassador below). Prevents a free account from farming
+  // real-money vouchers purely by referring paying friends while never paying itself.
+  const prevTier = getAmbassadorTier(current);
+  const justCrossedTier = getAmbassadorTier(newCount);
+  const referrerIsPaidOrGrantedPro = user.plan === 'pro' || user.plan === 'fleet' || justCrossedAmbassador;
+  const crossedNewTier = justCrossedTier !== null && justCrossedTier !== prevTier && referrerIsPaidOrGrantedPro;
+
+  const TIER_REWARD: Record<'supporter' | 'ambassador' | 'elite', { kind: 'dining' | 'hotel'; amount: number; label: string }> = {
+    supporter:  { kind: 'dining', amount: 50,  label: '$50 Dining Voucher' },
+    ambassador: { kind: 'hotel',  amount: 100, label: '$100 Hotel Savings Card' },
+    elite:      { kind: 'hotel',  amount: 500, label: '$500 Hotel Savings Card' },
+  };
+
+  if (crossedNewTier && justCrossedTier) {
+    const reward = TIER_REWARD[justCrossedTier];
+    void (async () => {
+      const result = reward.kind === 'dining'
+        ? await sendDiningVoucher({ fullName: user.name, email: user.email, amount: reward.amount as 25 | 50 | 100 | 200, message: `Congrats on reaching ${justCrossedTier} tier on GasCap™!` })
+        : await sendHotelSavingsCard({ fullName: user.name, email: user.email, amount: reward.amount as 100 | 200 | 300 | 500, message: `Congrats on reaching ${justCrossedTier} tier on GasCap™!` });
+      if (!result.ok) {
+        console.error(`[ambassador] ${justCrossedTier} tier reward send failed for ${user.email}:`, result.error);
+        return;
+      }
+      sendMail({
+        to:      user.email,
+        subject: `🎉 You reached ${justCrossedTier.charAt(0).toUpperCase()}${justCrossedTier.slice(1)} tier — here's your ${reward.label}!`,
+        html: `<div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;">
+          <p style="font-size:20px;margin:0 0 8px;">🎉 Congratulations, ${user.name}!</p>
+          <p style="font-size:15px;color:#334155;margin:0 0 12px;">You've reached <strong>${justCrossedTier}</strong> tier with ${newCount} paying referrals. As a thank-you, we're sending you a <strong>${reward.label}</strong> — check your inbox (and spam folder) over the next 24 hours for an email from Parker Select Rewards.</p>
+          <p style="font-size:13px;color:#64748b;margin:0;">Questions? Reply to this email.</p>
+        </div>`,
+        text: `Congrats, ${user.name}! You reached ${justCrossedTier} tier with ${newCount} paying referrals — a ${reward.label} is on its way from Parker Select Rewards within 24 hours.`,
+      }).catch((e) => console.error('[ambassador] tier reward confirmation email failed:', e));
+    })();
+  }
+
   await prisma.user.update({
     where: { id: referrerId },
     data: {
@@ -887,6 +961,7 @@ export async function recordReferral(referrerId: string): Promise<void> {
       referralCredits:         updatedCredits as unknown as Prisma.InputJsonValue,
       ...(justCrossedAmbassador ? { ambassadorProForLife: true } : {}),
       ...(grantedPlan           ? { plan: grantedPlan }          : {}),
+      ...(crossedNewTier && justCrossedTier ? { ambassadorTierRewardsSent: { push: justCrossedTier } } : {}),
     },
   });
 }
@@ -948,6 +1023,7 @@ export async function updateUserProfile(
     preferredFillLevel?: number | null;
     monthlyFuelBudget?:  number | null;
     phoneBonusEntries?:  number;   // set once when user adds phone for first time
+    userMode?:           string | null;
   },
 ): Promise<StoredUser | null> {
   // `undefined` → field not included in the request; leave as-is.
@@ -980,6 +1056,9 @@ export async function updateUserProfile(
         : {}),
       ...(fields.phoneBonusEntries !== undefined
         ? { phoneBonusEntries: fields.phoneBonusEntries }
+        : {}),
+      ...(fields.userMode !== undefined
+        ? { userMode: fields.userMode || null }
         : {}),
     },
   }).catch(() => null);

@@ -126,13 +126,13 @@ Stores fill-up records. Managed entirely by `lib/fillups.ts`.
 | Pro Lifetime | $19.99 one-time | Unlimited | ✅ | ✅ | ✅ | ✅ |
 | Fleet | Coming soon (shelved) | Unlimited | ✅ | ✅ | ✅ | — |
 
-**Pro Annual exclusives** (not available on monthly):
-- +10 bonus giveaway entries per draw week (flat, automatic)
+Pro Annual was removed 2026-07-23 — strictly dominated by Lifetime, no longer purchasable. Any reference to it elsewhere is stale.
 
-**Pro Lifetime exclusives** (not available on monthly or annual):
-- +20 bonus giveaway entries per draw week (included with base Lifetime)
+**Pro Lifetime exclusives** (not available on monthly):
+- +25 bonus giveaway entries per draw month (included with base Lifetime)
 - Lifetime Member badge — permanent profile badge
-- Optional **Lifetime Perks** add-on ($9.99/yr): upgrades to +30 entries/week + annual vacation voucher
+- Complimentary getaway certificate (100+ destinations, while `GETAWAY_ACTIVE` promo is on) — automated via Marketing Boost, see `lib/getawayPromo.ts` + `lib/marketingBoost.ts`
+- Optional **Lifetime Perks** add-on ($9.99/yr): upgrades to +40 entries/month + another getaway certificate every year Perks renews
 
 Every new signup gets a **30-day Pro trial** automatically (`grantNewSignupProTrial` in `lib/users.ts`). This sets `plan='pro'`, `isProTrial=true`, `betaProExpiry=+30d`. A cron job (or the beta-expire endpoint) reverts them to free if they don't upgrade.
 

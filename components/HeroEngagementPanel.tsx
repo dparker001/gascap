@@ -129,7 +129,7 @@ export default function HeroEngagementPanel() {
             </p>
           ) : (
             <p className="text-white/80 text-xs font-black leading-none">
-              {t.giveawayNudge.monthlyGiveaway}
+              {t.giveawayNudge.weeklyGiveaway}
             </p>
           )}
           <p className="text-white/50 text-[10px] mt-0.5">{t.giveawayNudge.drawing(draw)}</p>

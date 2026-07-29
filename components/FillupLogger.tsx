@@ -1,20 +1,25 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import { compressImageForUpload } from '@/lib/imageUtils';
 import { useSession } from 'next-auth/react';
 import { useTranslation } from '@/contexts/LanguageContext';
+import { nativeShare } from '@/lib/share';
+import { hapticSuccess } from '@/lib/haptics';
 
 interface FillupLoggerProps {
   /** Pre-filled from the calculation result or Find Gas selection */
   prefill: {
-    gallonsPumped:    number;
-    pricePerGallon:   number;
-    vehicleName:      string;
-    vehicleId?:       string;
-    vehicleOdometer?: number;
-    fuelLevelBefore?: number;
-    stationName?:     string;
-    fuelGrade?:       FuelGrade;
+    gallonsPumped:      number;
+    pricePerGallon:     number;
+    vehicleName:        string;
+    vehicleId?:         string;
+    vehicleOdometer?:   number;
+    fuelLevelBefore?:   number;
+    stationName?:       string;
+    fuelGrade?:         FuelGrade;
+    calculatedGallons?: number;  // GasCap's suggested amount — used for breakdown comparison
+    tankCapacity?:      number;  // full tank size — used for post-save savings card
   };
   onSaved: () => void;   // called after successful save (to refresh history)
   onCancel: () => void;
@@ -22,7 +27,7 @@ interface FillupLoggerProps {
   drivers?: string[];
 }
 
-type FuelGrade = 'regular' | 'midgrade' | 'premium' | 'diesel' | 'e85' | '';
+export type FuelGrade = 'regular' | 'midgrade' | 'premium' | 'diesel' | 'e85' | '';
 
 type FuelGradeKey = 'gradeRegular' | 'gradeMidGrade' | 'gradePremium' | 'gradeDiesel';
 const FUEL_GRADES: { value: FuelGrade; labelKey: FuelGradeKey; sub: string }[] = [
@@ -78,7 +83,8 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
   const [odomIsEst,      setOdomIsEst]      = useState(false);
   const [stationName,    setStationName]    = useState(prefill.stationName ?? '');
   const [recentStations, setRecentStations] = useState<string[]>([]);
-  const [nearbyStations, setNearbyStations] = useState<string[]>([]);
+  const [hiddenStations, setHiddenStations] = useState<Set<string>>(new Set());
+  const [nearbyStations, setNearbyStations] = useState<{ name: string; address?: string }[]>([]);
   const [detecting,      setDetecting]      = useState(false);
   const [detectMsg,      setDetectMsg]      = useState('');
   const [notes,          setNotes]          = useState('');
@@ -87,13 +93,14 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
   const [receiptThumb,   setReceiptThumb]   = useState('');   // base64 data URL
   const [saving,         setSaving]         = useState(false);
   const [error,          setError]          = useState('');
-  const [warnings,     setWarnings]     = useState<string[]>([]);
+  const [warnings,       setWarnings]       = useState<string[]>([]);
+  const [amountPaid,     setAmountPaid]     = useState('');
+  const [savedSummary,   setSavedSummary]   = useState<{ gallons: number; pricePaid: number; saved: number; overfillGal: number } | null>(null);
   const [forceConfirm, setForceConfirm] = useState(false);
   const [scanning,     setScanning]     = useState(false);
   const [scanError,    setScanError]    = useState('');
   const [nationalAvg,  setNationalAvg]  = useState<number | null>(null);
-  const fileInputRef    = useRef<HTMLInputElement>(null);
-  const galleryInputRef = useRef<HTMLInputElement>(null);
+
 
   // Fetch national average once for inline price intelligence card
   useEffect(() => {
@@ -150,12 +157,39 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session]);
 
+  // Load hidden stations from localStorage
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('gascap_hidden_stations');
+      if (raw) setHiddenStations(new Set(JSON.parse(raw) as string[]));
+    } catch { /* ignore */ }
+  }, []);
+
+  function forgetStation(name: string) {
+    setHiddenStations((prev) => {
+      const next = new Set(prev);
+      next.add(name);
+      try { localStorage.setItem('gascap_hidden_stations', JSON.stringify([...next])); } catch { /* ignore */ }
+      return next;
+    });
+    setRecentStations((prev) => prev.filter((s) => s !== name));
+    if (stationName === name) setStationName('');
+  }
+
   // Fetch recent station names for the picker
   useEffect(() => {
     if (!session) return;
     fetch('/api/fillups/stations')
       .then((r) => r.json())
-      .then((d: { stations?: string[] }) => { if (d.stations) setRecentStations(d.stations); })
+      .then((d: { stations?: string[] }) => {
+        if (d.stations) {
+          const hidden = (() => {
+            try { return new Set(JSON.parse(localStorage.getItem('gascap_hidden_stations') ?? '[]') as string[]); }
+            catch { return new Set<string>(); }
+          })();
+          setRecentStations(d.stations.filter((s) => !hidden.has(s)));
+        }
+      })
       .catch(() => {});
   }, [session]);
 
@@ -176,8 +210,9 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
     } catch { /* canvas not available — continue without thumbnail */ }
 
     try {
+      const compressed = await compressImageForUpload(file);
       const fd = new FormData();
-      fd.append('image', file);
+      fd.append('image', compressed, 'receipt.jpg');
       const res = await fetch('/api/fillups/scan', { method: 'POST', body: fd, credentials: 'include' });
       const data = await res.json() as {
         gallons?:        number | null;
@@ -246,14 +281,19 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
 
     try {
       const res  = await fetch(`/api/fillups/nearby-stations?lat=${lat}&lng=${lng}`);
-      const data = await res.json() as { available?: boolean; stations?: { name: string }[] };
-      const names = Array.from(new Set((data.stations ?? []).map((s) => s.name))).slice(0, 5);
-      if (names.length === 0) {
+      const data = await res.json() as { available?: boolean; stations?: { name: string; address?: string }[] };
+      const seen = new Set<string>();
+      const stations = (data.stations ?? []).filter((s) => {
+        if (seen.has(s.name)) return false;
+        seen.add(s.name);
+        return true;
+      }).slice(0, 5);
+      if (stations.length === 0) {
         setDetectMsg(data.available === false ? t.fillup.detectUnavailable : t.fillup.detectNone);
       } else {
-        setNearbyStations(names);
+        setNearbyStations(stations);
         // Auto-fill the closest if the field is still empty — one less tap.
-        setStationName((prev) => prev.trim() ? prev : names[0]);
+        setStationName((prev) => prev.trim() ? prev : stations[0].name);
       }
     } catch {
       setDetectMsg(t.fillup.detectNone);
@@ -280,6 +320,9 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
           date,
           gallonsPumped:   parseFloat(gallons),
           pricePerGallon:  parseFloat(price),
+          totalCost:       amountPaid && parseFloat(amountPaid) > 0
+            ? parseFloat(amountPaid)
+            : undefined,
           odometerReading: odometer ? parseInt(odometer, 10) : undefined,
           fuelLevelBefore: prefill.fuelLevelBefore,
           stationName:     stationName.trim() || undefined,
@@ -306,12 +349,99 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
       }
 
       window.dispatchEvent(new Event('fillup-saved'));
-      onSaved();
+
+      // Compute overfill savings and show the confirmation card.
+      // Industry average pump overfill is ~0.4 gal; if the user followed GasCap's
+      // suggestion closely (within 0.5 gal) we use the avg, otherwise use the delta.
+      const pumpedGal = parseFloat(gallons);
+      const ppg       = parseFloat(price);
+      if (ppg > 0 && pumpedGal > 0 && prefill.calculatedGallons) {
+        const AVG_OVERFILL_GAL = 0.4;
+        const delta     = Math.abs(pumpedGal - prefill.calculatedGallons);
+        const overfill  = delta <= 0.5 ? AVG_OVERFILL_GAL : Math.max(AVG_OVERFILL_GAL, delta);
+        const computed  = Math.round(pumpedGal * ppg * 100) / 100;
+        const pricePaid = amountPaid && parseFloat(amountPaid) > 0
+          ? Math.round(parseFloat(amountPaid) * 100) / 100
+          : computed;
+        const saved     = Math.round(overfill * ppg * 100) / 100;
+        hapticSuccess();
+        setSavedSummary({ gallons: pumpedGal, pricePaid, saved, overfillGal: overfill });
+      } else {
+        hapticSuccess();
+        onSaved();
+      }
     } catch {
       setError(t.fillup.networkError);
     } finally {
       setSaving(false);
     }
+  }
+
+  // ── Post-save savings confirmation ────────────────────────────────────────
+  if (savedSummary) {
+    async function handleShareSavings() {
+      if (!savedSummary) return;
+      const text = [
+        `⛽ Just saved $${savedSummary.saved.toFixed(2)} at the pump with GasCap™`,
+        `💰 Paid $${savedSummary.pricePaid.toFixed(2)} instead of $${(savedSummary.pricePaid + savedSummary.saved).toFixed(2)}`,
+        `GasCap calculates the exact amount to pump — no more overfill.`,
+      ].join('\n');
+      const result = await nativeShare({ title: 'I saved at the pump with GasCap™', text });
+      if (result === 'shared' || result === 'copied') hapticSuccess();
+    }
+
+    return (
+      <div className="mt-3 rounded-2xl border-2 border-emerald-200 bg-emerald-50 p-5 space-y-4 animate-fade-in text-center">
+        <div>
+          <p className="text-3xl mb-1">⛽</p>
+          <p className="text-sm font-black text-emerald-800">You saved money today</p>
+          <p className="text-[11px] text-emerald-600 mt-0.5">GasCap helped you avoid pump overfill</p>
+        </div>
+
+        {/* Big savings number */}
+        <div className="bg-white rounded-2xl px-4 py-4 shadow-sm border border-emerald-100 space-y-3">
+          <div>
+            <p className="text-4xl font-black text-emerald-600">${savedSummary.saved.toFixed(2)}</p>
+            <p className="text-xs font-bold text-emerald-700 mt-0.5">saved at the pump</p>
+          </div>
+
+          <div className="border-t border-slate-100 pt-3 space-y-1.5 text-left">
+            <div className="flex justify-between text-[11px]">
+              <span className="text-slate-500">You paid</span>
+              <span className="font-bold text-slate-700">${savedSummary.pricePaid.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between text-[11px]">
+              <span className="text-slate-500">Typical pump overfill (~{savedSummary.overfillGal.toFixed(1)} gal)</span>
+              <span className="font-bold text-amber-600">+${savedSummary.saved.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between text-[11px] border-t border-slate-100 pt-1.5">
+              <span className="font-semibold text-slate-600">Without GasCap</span>
+              <span className="font-bold text-slate-700">${(savedSummary.pricePaid + savedSummary.saved).toFixed(2)}</span>
+            </div>
+          </div>
+        </div>
+
+        <p className="text-[11px] text-slate-500 leading-relaxed px-1">
+          Pumps click off a little late — you end up paying for gas that goes into the vapor recovery system, not your tank. GasCap calculated the exact amount so you didn&rsquo;t overpay.
+        </p>
+
+        <div className="flex gap-2">
+          <button
+            onClick={handleShareSavings}
+            className="flex-1 py-3 rounded-xl bg-white border-2 border-emerald-200 text-emerald-700
+                       text-sm font-black transition-colors hover:bg-emerald-50 active:scale-95"
+          >
+            ↑ Share
+          </button>
+          <button
+            onClick={onSaved}
+            className="flex-1 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-black transition-colors"
+          >
+            Done
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -330,30 +460,114 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
         </div>
       </div>
 
-      {/* Hidden file inputs — camera and gallery */}
-      <input
-        type="file"
-        accept="image/*"
-        capture="environment"
-        ref={fileInputRef}
-        className="hidden"
-        onChange={(e) => {
-          const f = e.target.files?.[0];
-          if (f) handleScan(f);
-          e.target.value = '';
-        }}
-      />
-      <input
-        type="file"
-        accept="image/*"
-        ref={galleryInputRef}
-        className="hidden"
-        onChange={(e) => {
-          const f = e.target.files?.[0];
-          if (f) handleScan(f);
-          e.target.value = '';
-        }}
-      />
+      {/* Gallons + Price row — at top so the breakdown is immediately visible */}
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="field-label">
+            {t.fillup.gallonsLabel}
+            {prefill.calculatedGallons && prefill.calculatedGallons > 0 && (
+              <span className="ml-1 text-[9px] font-normal text-slate-400">actual pumped</span>
+            )}
+          </label>
+          <div className="relative">
+            <input
+              type="number" inputMode="decimal"
+              className="input-field text-sm pr-9"
+              value={gallons}
+              min="0.1" step="0.1"
+              onChange={(e) => setGallons(e.target.value)}
+            />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">{t.calc.unitGal}</span>
+          </div>
+        </div>
+        <div>
+          <label className="field-label">{t.fillup.pricePerGalLabel}</label>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-semibold pointer-events-none text-sm">$</span>
+            <input
+              type="number" inputMode="decimal"
+              className="input-field text-sm pl-7"
+              value={price}
+              min="0.01" step="0.01"
+              onChange={(e) => setPrice(e.target.value)}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* ── Actual amount paid (optional) ──────────────────────────────────── */}
+      <div>
+        <label className="field-label">
+          {t.fillup.amountActuallyPaidLabel} <span className="text-slate-400 font-normal">{t.fillup.optional}</span>
+        </label>
+        <div className="relative">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-semibold pointer-events-none text-sm">$</span>
+          <input
+            type="number" inputMode="decimal"
+            className="input-field text-sm pl-7"
+            placeholder={(parseFloat(gallons) > 0 && parseFloat(price) > 0)
+              ? (Math.ceil(parseFloat(gallons) * parseFloat(price) * 100) / 100).toFixed(2)
+              : '0.00'}
+            value={amountPaid}
+            min="0.01" step="0.01"
+            onChange={(e) => setAmountPaid(e.target.value)}
+          />
+        </div>
+        <p className="text-[10px] text-slate-400 mt-1">
+          {t.fillup.amountActuallyPaidHint}
+        </p>
+      </div>
+
+      {/* ── Fill-up breakdown vs. GasCap calculation ───────────────── */}
+      {(() => {
+        const calcGal = prefill.calculatedGallons;
+        if (!calcGal || calcGal <= 0) return null;
+        const pumped = parseFloat(gallons) || 0;
+        const ppg    = parseFloat(price)   || 0;
+        if (pumped <= 0 || ppg <= 0) return null;
+        const calcCost = Math.round(calcGal * ppg * 100) / 100;
+        const pumpCost = Math.round(pumped  * ppg * 100) / 100;
+        const diff     = Math.round((pumped - calcGal) * 100) / 100;
+        const onTarget = Math.abs(diff) <= 0.05;
+        const overGal  = diff > 0.05 ? diff : 0;
+        const underGal = diff < -0.05 ? Math.abs(diff) : 0;
+        const overCost = Math.round(overGal  * ppg * 100) / 100;
+        return (
+          <div className="rounded-xl bg-slate-50 border border-slate-200 p-3 space-y-2 -mt-1">
+            <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide">{t.fillup.fillupBreakdown}</p>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] text-slate-500">{t.fillup.gasCapsuggestedLabel}</span>
+                <span className="text-[11px] font-bold text-slate-700">{calcGal.toFixed(2)} gal · <span className="text-slate-400">${calcCost.toFixed(2)}</span></span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] text-slate-500">{t.fillup.youPumpedLabel}</span>
+                <span className="text-[11px] font-bold text-slate-700">{pumped.toFixed(2)} gal · <span className="text-slate-400">${pumpCost.toFixed(2)}</span></span>
+              </div>
+              <div className="border-t border-slate-200 pt-1.5">
+                {onTarget && (
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px]">✓</span>
+                    <span className="text-[11px] font-semibold text-emerald-600">{t.fillup.onTarget}</span>
+                  </div>
+                )}
+                {overGal > 0 && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] text-amber-600 font-semibold">{t.fillup.tankOverfill}</span>
+                    <span className="text-[11px] font-bold text-amber-600">+{overGal.toFixed(2)} gal · +${overCost.toFixed(2)}</span>
+                  </div>
+                )}
+                {underGal > 0 && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] text-blue-500 font-semibold">{t.fillup.underTarget}</span>
+                    <span className="text-[11px] font-bold text-blue-500">−{underGal.toFixed(2)} gal · −${Math.round(underGal * ppg * 100) / 100}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── Scan receipt section ───────────────────────────────────── */}
       <div className="rounded-xl bg-white border border-slate-200 p-3 space-y-2">
@@ -376,24 +590,18 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
         <div className="flex items-start gap-3">
           <div className="flex-1 flex flex-col gap-2">
             <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={saving || scanning}
-                className="flex items-center gap-1.5 text-xs font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 hover:border-amber-300 hover:text-amber-700 transition-colors disabled:opacity-50"
-              >
+              <label className={`flex items-center gap-1.5 text-xs font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 hover:border-amber-300 hover:text-amber-700 transition-colors cursor-pointer ${saving || scanning ? 'opacity-50 pointer-events-none' : ''}`}>
                 <span>{scanning ? '🔄' : '📷'}</span>
                 <span>{scanning ? t.fillup.readingReceipt : t.fillup.useCamera}</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => galleryInputRef.current?.click()}
-                disabled={saving || scanning}
-                className="flex items-center gap-1.5 text-xs font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 hover:border-amber-300 hover:text-amber-700 transition-colors disabled:opacity-50"
-              >
+                <input type="file" accept="image/*" className="hidden"
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handleScan(f); e.target.value = ''; }} />
+              </label>
+              <label className={`flex items-center gap-1.5 text-xs font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 hover:border-amber-300 hover:text-amber-700 transition-colors cursor-pointer ${saving || scanning ? 'opacity-50 pointer-events-none' : ''}`}>
                 <span>🖼️</span>
                 <span>{t.fillup.uploadFromPhotos}</span>
-              </button>
+                <input type="file" accept="image/*" className="hidden"
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handleScan(f); e.target.value = ''; }} />
+              </label>
             </div>
             {scanError && <p className="text-[11px] text-red-500 font-medium">{scanError}</p>}
             {receiptThumb && !scanning && (
@@ -463,36 +671,6 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
           max={today}
           onChange={(e) => setDate(e.target.value)}
         />
-      </div>
-
-      {/* Gallons + Price row */}
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="field-label">{t.fillup.gallonsLabel}</label>
-          <div className="relative">
-            <input
-              type="number" inputMode="decimal"
-              className="input-field text-sm pr-9"
-              value={gallons}
-              min="0.1" step="0.1"
-              onChange={(e) => setGallons(e.target.value)}
-            />
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">{t.calc.unitGal}</span>
-          </div>
-        </div>
-        <div>
-          <label className="field-label">{t.fillup.pricePerGalLabel}</label>
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-semibold pointer-events-none text-sm">$</span>
-            <input
-              type="number" inputMode="decimal"
-              className="input-field text-sm pl-7"
-              value={price}
-              min="0.01" step="0.01"
-              onChange={(e) => setPrice(e.target.value)}
-            />
-          </div>
-        </div>
       </div>
 
       {/* Price intelligence card */}
@@ -633,7 +811,7 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
           onChange={(e) => setStationName(e.target.value)}
         />
         <datalist id="station-suggestions">
-          {[...nearbyStations, ...recentStations].map((s) => (
+          {[...nearbyStations.map((s) => s.name), ...recentStations].map((s) => (
             <option key={s} value={s} />
           ))}
         </datalist>
@@ -644,14 +822,43 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
         {nearbyStations.length > 0 && (
           <div className="mt-1.5">
             <p className="text-[9px] font-bold text-amber-600 uppercase tracking-wide mb-1">📍 {t.fillup.nearbyStations}</p>
-            <div className="flex flex-wrap gap-1.5">
-              {nearbyStations.map((s) => (
+            <div className="flex flex-col gap-1.5">
+              {nearbyStations.map((s) => {
+                const street = s.address?.split(',')[0] ?? '';
+                return (
+                  <button
+                    key={s.name}
+                    type="button"
+                    onClick={() => setStationName((prev) => prev === s.name ? '' : s.name)}
+                    className={[
+                      'text-left px-2.5 py-1.5 rounded-xl border transition-colors',
+                      stationName === s.name
+                        ? 'bg-amber-500 text-white border-amber-500'
+                        : 'bg-white text-slate-600 border-slate-200 hover:border-amber-300 hover:text-amber-700',
+                    ].join(' ')}
+                  >
+                    <p className="text-[10px] font-semibold leading-tight">{s.name}</p>
+                    {street && (
+                      <p className={`text-[9px] leading-tight mt-0.5 ${stationName === s.name ? 'text-amber-100' : 'text-slate-400'}`}>
+                        {street}
+                      </p>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+        {/* Quick-select chips — top 3 recent stations, with forget (×) */}
+        {recentStations.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mt-1.5">
+            {recentStations.slice(0, 3).map((s) => (
+              <div key={s} className="flex items-center">
                 <button
-                  key={s}
                   type="button"
                   onClick={() => setStationName((prev) => prev === s ? '' : s)}
                   className={[
-                    'text-[10px] font-semibold px-2.5 py-1 rounded-full border transition-colors',
+                    'text-[10px] font-semibold pl-2.5 pr-1.5 py-1 rounded-l-full border-y border-l transition-colors',
                     stationName === s
                       ? 'bg-amber-500 text-white border-amber-500'
                       : 'bg-white text-slate-500 border-slate-200 hover:border-amber-300 hover:text-amber-700',
@@ -659,27 +866,21 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
                 >
                   {s}
                 </button>
-              ))}
-            </div>
-          </div>
-        )}
-        {/* Quick-select chips — top 3 recent stations */}
-        {recentStations.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mt-1.5">
-            {recentStations.slice(0, 3).map((s) => (
-              <button
-                key={s}
-                type="button"
-                onClick={() => setStationName((prev) => prev === s ? '' : s)}
-                className={[
-                  'text-[10px] font-semibold px-2.5 py-1 rounded-full border transition-colors',
-                  stationName === s
-                    ? 'bg-amber-500 text-white border-amber-500'
-                    : 'bg-white text-slate-500 border-slate-200 hover:border-amber-300 hover:text-amber-700',
-                ].join(' ')}
-              >
-                {s}
-              </button>
+                <button
+                  type="button"
+                  onClick={() => forgetStation(s)}
+                  title="Remove from recent stations"
+                  className={[
+                    'text-[10px] px-1.5 py-1 rounded-r-full border-y border-r transition-colors',
+                    stationName === s
+                      ? 'bg-amber-500 text-white/70 border-amber-500 hover:text-white'
+                      : 'bg-white text-slate-300 border-slate-200 hover:text-red-400 hover:border-red-200',
+                  ].join(' ')}
+                  aria-label={`Forget ${s}`}
+                >
+                  ×
+                </button>
+              </div>
             ))}
           </div>
         )}

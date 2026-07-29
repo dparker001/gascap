@@ -57,9 +57,14 @@ model User {
   paidCampaignEnrolledAt   String?
   paidCampaignStep         Int?
   stripeInterval           String?
+  foundingMemberAt         DateTime?
   verifyReminderSentAt           String?
   verifyReminderBonusEntries     Int       @default(0)
   ambassadorProForLife     Boolean   @default(false)
+  // Which Ambassador tiers ('supporter'|'ambassador'|'elite') have already had their
+  // one-time Marketing Boost voucher reward sent — prevents duplicate sends on
+  // Stripe webhook retries. See app/api/stripe/webhook/route.ts referral-credit block.
+  ambassadorTierRewardsSent String[] @default([])
   compCampaignEnrolledAt   String?
   compCampaignStep         Int?
   smsOptIn                 Boolean   @default(false)
@@ -104,7 +109,14 @@ model User {
   otpCode                  String?
   otpCodeExpires           String?
   otpCodeName              String?
+  priceReportEntries       Int       @default(0)
+  gigLogEntries            Int       @default(0)
+  signupPlatform           String?   // 'web' | 'ios' | 'android'
+  userMode                 String?   // 'personal' | 'gig' | 'rental' | 'fleet'
   vehicles                 Vehicle[]
+  priceReports             PriceReport[]
+  gigFillups               GigFillup[]
+  gigMileage               GigMileage[]
 }
 
 model OtpCode {
@@ -125,6 +137,7 @@ model Vehicle {
   model           String?
   trim            String?
   fuelType        String?
+  fuelTypeConfirmedByUser Boolean @default(false)
   epaId           String?
   currentOdometer   Float?
   vehicleSpecs      Json?
@@ -154,6 +167,43 @@ model Fillup {
   @@index([userId, date])
 }
 
+model GigFillup {
+  id             String  @id
+  userId         String
+  date           String   // YYYY-MM-DD
+  gallons        Float
+  pricePerGallon Float
+  totalCost      Float
+  station        String?
+  odometer       Float?
+  platform       String?  // "uber" | "lyft" | "doordash" | "instacart" | "spark" | "amazon_flex" | "shipt" | "courier" | "other"
+  notes          String?
+  createdAt      String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, date])
+}
+
+model GigMileage {
+  id            String  @id
+  userId        String
+  date          String   // YYYY-MM-DD
+  startOdometer Float?
+  endOdometer   Float?
+  miles         Float
+  platform      String?  // same enum as GigFillup.platform
+  category      String   @default("business") // "business" | "personal"
+  notes         String?
+  createdAt     String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, date])
+}
+
 model EmailLog {
   id        String  @id
   userId    String
@@ -172,16 +222,18 @@ model EmailLog {
 }
 
 model GiveawayDraw {
-  id           String  @id
-  month        String  @unique
-  winnerId     String
-  winnerName   String
-  winnerEmail  String
-  entryCount   Int
-  totalEntries Int
-  drawnAt      String
-  notes        String?
-  claimedAt    String?  // set when winner confirms receipt; null = unclaimed
+  id             String  @id
+  month          String  @unique
+  winnerId       String
+  winnerName     String
+  winnerEmail    String
+  entryCount     Int
+  totalEntries   Int
+  drawnAt        String
+  notes          String?
+  claimedAt      String?  // set when winner confirms receipt; null = unclaimed
+  claimToken     String?  // unique token embedded in the winner's claim link (self-serve confirmation)
+  ageConfirmedAt String?  // set when the winner (or admin, as manual override) certifies 18+ eligibility
 }
 
 model CampaignPlacement {
@@ -264,4 +316,41 @@ model Review {
   updatedAt   String
 
   @@index([approved])
+}
+
+// Gauge scan results stored for QA and future model improvement.
+// Additive-only: no existing models touched.
+model GaugeScanLog {
+  id               String  @id @default(cuid())
+  userId           String
+  detectedPercent  Int?
+  confirmedPercent Int
+  confidence       Int
+  gaugeType        String
+  reason           String?
+  vehicleId        String?
+  vehicleName      String?
+  tankSize         Float?
+  createdAt        String
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model PriceReport {
+  id          String  @id
+  userId      String
+  placeId     String
+  stationName String
+  lat         Float
+  lng         Float
+  grade       String
+  price       Float
+  createdAt   String
+
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([placeId])
+  @@index([createdAt])
 }

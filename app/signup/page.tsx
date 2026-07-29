@@ -123,6 +123,7 @@ function SignUpForm() {
       code:         otp,
       locale,
       referralCode: refCode ?? '',
+      platform:     platform ?? 'web',
     });
 
     setOtpLoading(false);
@@ -262,7 +263,7 @@ function SignUpForm() {
               { icon: '⚡', label: 'Know before you go' },
               isNative
                 ? { icon: '📴', label: 'Works offline' }
-                : { icon: '📱', label: 'No app store needed' },
+                : { icon: '📱', label: 'App Store & Google Play' },
             ] as { icon: string; label: string }[]).map(({ icon, label }) => (
               <div
                 key={label}

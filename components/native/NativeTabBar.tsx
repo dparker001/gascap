@@ -18,9 +18,10 @@ export interface TabMeta {
 }
 
 interface Props {
-  tabs:     TabMeta[];
-  active:   TabId;
-  onChange: (id: TabId) => void;
+  tabs:      TabMeta[];
+  active:    TabId;
+  onChange:  (id: TabId) => void;
+  pulseTabId?: TabId | null;
 }
 
 /** 24px Lucide-style stroke icons, keyed by tab id. Inherit `currentColor`. */
@@ -71,29 +72,48 @@ const ICONS: Record<TabId, JSX.Element> = {
       <circle cx="12" cy="12" r="3" />
     </>
   ),
+  driver: (
+    <>
+      <rect x="1" y="3" width="15" height="13" rx="2" />
+      <path d="M16 8h4l3 5v3h-7V8z" />
+      <circle cx="5.5" cy="18.5" r="2.5" />
+      <circle cx="18.5" cy="18.5" r="2.5" />
+    </>
+  ),
 };
 
-export default function NativeTabBar({ tabs, active, onChange }: Props) {
+const pulseStyle = `
+  @keyframes gc-tab-pulse {
+    0%   { opacity: 1; transform: scale(1); }
+    40%  { opacity: 0.4; transform: scale(1.18); }
+    70%  { opacity: 1; transform: scale(0.95); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+  .gc-tab-pulse {
+    animation: gc-tab-pulse 0.65s ease-in-out 3;
+  }
+`;
+
+export default function NativeTabBar({ tabs, active, onChange, pulseTabId }: Props) {
   return (
+    <>
+    <style>{pulseStyle}</style>
     <nav
-      className="fixed bottom-0 inset-x-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur
+      className="flex-shrink-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur
                  border-t border-slate-200 dark:border-slate-800"
-      // Lift the row up ~10px above the very bottom edge (clears phone-case rounded
-      // corners) on top of the home-indicator safe-area inset.
-      style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 10px)' }}
       aria-label="Primary"
     >
-      {/* Inset the outer tabs from the extreme corners so a case's rounded edges
-          don't clip the Calculator (far-left) / Settings (far-right) buttons. */}
+      {/* Button row — fixed height, independent of safe-area math */}
       <div
-        className="flex"
+        className="flex h-[52px]"
         style={{
           paddingLeft:  'calc(env(safe-area-inset-left) + 8px)',
           paddingRight: 'calc(env(safe-area-inset-right) + 8px)',
         }}
       >
         {tabs.map((tab) => {
-          const isActive = tab.id === active;
+          const isActive  = tab.id === active;
+          const isPulsing = tab.id === pulseTabId;
           return (
             <button
               key={tab.id}
@@ -101,7 +121,7 @@ export default function NativeTabBar({ tabs, active, onChange }: Props) {
               onClick={() => onChange(tab.id)}
               aria-label={tab.label}
               aria-current={isActive ? 'page' : undefined}
-              className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-1.5
+              className={`flex-1 flex flex-col items-center justify-center gap-0.5
                           transition-colors active:bg-slate-100 dark:active:bg-slate-800
                           ${isActive
                             ? 'text-teal-600 dark:text-teal-400'
@@ -112,14 +132,21 @@ export default function NativeTabBar({ tabs, active, onChange }: Props) {
                 stroke="currentColor" strokeWidth="2"
                 strokeLinecap="round" strokeLinejoin="round"
                 aria-hidden="true"
+                className={isPulsing ? 'gc-tab-pulse' : ''}
               >
                 {ICONS[tab.id]}
               </svg>
-              <span className="text-[10px] font-medium leading-none">{tab.label}</span>
+              <span className={`text-[10px] font-medium leading-none ${isPulsing ? 'gc-tab-pulse' : ''}`}>
+                {tab.label}
+              </span>
             </button>
           );
         })}
       </div>
+
+      {/* Safe-area spacer — sits below buttons, never overlaps them */}
+      <div style={{ height: 'max(env(safe-area-inset-bottom), 8px)' }} />
     </nav>
+    </>
   );
 }

@@ -7,6 +7,7 @@ import BadgeShelf   from './BadgeShelf';
 import type { VehicleSpecs } from '@/lib/vehicleSpecs';
 import { useTranslation } from '@/contexts/LanguageContext';
 import { checkTankSize } from '@/lib/tankValidation';
+import { compressImageForUpload } from '@/lib/imageUtils';
 import { GarageDoor }                        from './GarageDoor';
 import { useGarageDoorPrefs }                from '@/hooks/useGarageDoorPrefs';
 
@@ -21,6 +22,7 @@ export interface Vehicle {
   model?:             string;
   trim?:              string;
   fuelType?:          string;
+  fuelTypeConfirmedByUser?: boolean;
   epaId?:             string;
   currentOdometer?:   number;
   vehicleSpecs?:      VehicleSpecs;
@@ -191,6 +193,11 @@ function VehicleInfoModal({ vehicle, onClose, onSpecsUpdated }: {
     }
   }
 
+  /** True if at least one value in the list is present (not undefined/null/''). */
+  function hasAnyValue(values: unknown[]): boolean {
+    return values.some((v) => v !== undefined && v !== null && v !== '');
+  }
+
   function Row({ label, value }: { label: string; value?: string | number | boolean | null }) {
     if (value === undefined || value === null || value === '') return null;
     const display = typeof value === 'boolean' ? (value ? t.garage.rowYes : t.garage.rowNo) : String(value);
@@ -202,7 +209,14 @@ function VehicleInfoModal({ vehicle, onClose, onSpecsUpdated }: {
     );
   }
 
-  function Section({ title, emoji, children }: { title: string; emoji: string; children: React.ReactNode }) {
+  function Section({ title, emoji, hasContent, children }: { title: string; emoji: string; hasContent: boolean; children: React.ReactNode }) {
+    // NHTSA's vPIC decode reliably returns core spec fields (engine, drivetrain,
+    // trim) but safety-equipment fields (ABS, airbags, blind spot, etc.) are
+    // voluntarily submitted by manufacturers and are sparse across their entire
+    // database — even mandatory equipment like ABS/airbags often comes back
+    // empty for modern vehicles. Rather than show an empty header + box when a
+    // whole category has no data, hide the section entirely.
+    if (!hasContent) return null;
     return (
       <div className="mb-4">
         <div className="flex items-center gap-1.5 mb-2">
@@ -278,7 +292,9 @@ function VehicleInfoModal({ vehicle, onClose, onSpecsUpdated }: {
           ) : (
             <>
               {/* Overview */}
-              <Section title={t.garage.sectionOverview} emoji="🚗">
+              <Section title={t.garage.sectionOverview} emoji="🚗" hasContent={
+                hasAnyValue([specs.bodyClass, specs.vehicleType, specs.series, specs.manufacturer, specs.seats])
+              }>
                 <Row label={t.garage.rowBodyStyle}   value={specs.bodyClass} />
                 <Row label={t.garage.rowVehicleType} value={specs.vehicleType} />
                 <Row label={t.garage.rowSeries}      value={specs.series} />
@@ -287,7 +303,11 @@ function VehicleInfoModal({ vehicle, onClose, onSpecsUpdated }: {
               </Section>
 
               {/* Engine */}
-              <Section title={t.garage.sectionEngine} emoji="⚙️">
+              <Section title={t.garage.sectionEngine} emoji="⚙️" hasContent={
+                hasAnyValue([specs.engineDisplL, specs.engineCylinders, specs.engineConfig, specs.engineHP,
+                 specs.engineTorqueLbFt, specs.turbo, specs.supercharger, specs.fuelInjector, specs.fuelType,
+                 vehicle.fuelTypeConfirmedByUser ? vehicle.fuelType : undefined])
+              }>
                 <Row label={t.garage.rowDisplacement}  value={specs.engineDisplL  ? `${specs.engineDisplL.toFixed(1)} L`    : null} />
                 <Row label={t.garage.rowCylinders}     value={specs.engineCylinders} />
                 <Row label={t.garage.rowConfiguration} value={specs.engineConfig} />
@@ -296,11 +316,32 @@ function VehicleInfoModal({ vehicle, onClose, onSpecsUpdated }: {
                 <Row label={t.garage.rowTurbo}         value={specs.turbo} />
                 <Row label={t.garage.rowSupercharger}  value={specs.supercharger} />
                 <Row label={t.garage.rowFuelInjector}  value={specs.fuelInjector} />
-                <Row label={t.garage.rowFuelType}      value={specs.fuelType} />
+                {/* Fuel type: prefer the OWNER-CONFIRMED value (set via edit vehicle)
+                    over our EPA-derived estimate, and label/caveat accordingly — a
+                    wrong octane recommendation is a real mechanical (and legal) risk,
+                    so the estimate must never be presented as equivalent to what the
+                    owner actually knows from their manual/fuel door. */}
+                {vehicle.fuelTypeConfirmedByUser && vehicle.fuelType ? (
+                  <>
+                    <Row label={t.garage.rowFuelType} value={vehicle.fuelType} />
+                    <p className="text-[9px] text-green-600 leading-snug pb-1">
+                      {t.garage.fuelTypeConfirmedNote}
+                    </p>
+                  </>
+                ) : specs.fuelType ? (
+                  <>
+                    <Row label={t.garage.rowFuelTypeEpa} value={specs.fuelType} />
+                    <p className="text-[9px] text-amber-600 leading-snug pb-1">
+                      {t.garage.fuelTypeEstimateCaveat}
+                    </p>
+                  </>
+                ) : null}
               </Section>
 
               {/* Performance / Economy */}
-              <Section title={t.garage.sectionFuelEconomy} emoji="⛽">
+              <Section title={t.garage.sectionFuelEconomy} emoji="⛽" hasContent={
+                hasAnyValue([specs.combMpg, specs.cityMpg, specs.hwyMpg, specs.tankEstGallons, specs.rangeEstMiles, specs.co2GPerMile])
+              }>
                 <Row label={t.garage.rowCombinedMpg} value={specs.combMpg   ? `${specs.combMpg} mpg`       : null} />
                 <Row label={t.garage.rowCityMpg}     value={specs.cityMpg   ? `${specs.cityMpg} mpg`       : null} />
                 <Row label={t.garage.rowHighwayMpg}  value={specs.hwyMpg    ? `${specs.hwyMpg} mpg`        : null} />
@@ -310,15 +351,23 @@ function VehicleInfoModal({ vehicle, onClose, onSpecsUpdated }: {
               </Section>
 
               {/* Drivetrain */}
-              <Section title={t.garage.sectionDrivetrain} emoji="🔧">
+              <Section title={t.garage.sectionDrivetrain} emoji="🔧" hasContent={
+                hasAnyValue([specs.driveType, specs.transmission, specs.wheelbaseIn, specs.gvwr])
+              }>
                 <Row label={t.garage.rowDriveType}    value={specs.driveType} />
                 <Row label={t.garage.rowTransmission} value={specs.transmission} />
                 <Row label={t.garage.rowWheelbase}    value={specs.wheelbaseIn ? `${specs.wheelbaseIn}"` : null} />
                 <Row label={t.garage.rowGvwr}         value={specs.gvwr} />
               </Section>
 
-              {/* Safety */}
-              <Section title={t.garage.sectionSafety} emoji="🛡️">
+              {/* Safety — often has little or no data at all; NHTSA's vPIC safety
+                  fields are voluntarily submitted by manufacturers and are sparse
+                  across the whole database, even for mandatory equipment like ABS
+                  and airbags on modern vehicles. Section hides itself when empty. */}
+              <Section title={t.garage.sectionSafety} emoji="🛡️" hasContent={
+                hasAnyValue([specs.abs, specs.tpmsType, specs.backupCamera, specs.blindSpotMonitor, specs.laneDeparture,
+                 specs.adaptiveCruise, specs.frontAirbags, specs.sideAirbags, specs.curtainAirbags, specs.kneeAirbags])
+              }>
                 <Row label={t.garage.rowAbs}             value={specs.abs} />
                 <Row label={t.garage.rowTpms}            value={specs.tpmsType ? `${specs.tpmsType}` : null} />
                 <Row label={t.garage.rowBackupCamera}    value={specs.backupCamera} />
@@ -361,12 +410,12 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
   const [editName,        setEditName]        = useState('');
   const [editGallons,     setEditGallons]     = useState('');
   const [editVin,         setEditVin]         = useState('');
+  const [editFuelType,    setEditFuelType]    = useState('');
   const [editSaving,      setEditSaving]      = useState(false);
   const [editVinStatus,   setEditVinStatus]   = useState<'idle' | 'fetching' | 'done' | 'error'>('idle');
   const [editVinScanning, setEditVinScanning] = useState(false);
   const [editVinScanErr,  setEditVinScanErr]  = useState('');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
-  const editVinFileRef = useRef<HTMLInputElement>(null);
 
   // Fleet search + pagination
   const [searchQuery,     setSearchQuery]     = useState('');
@@ -437,6 +486,10 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
     setEditName(v.name);
     setEditGallons(String(v.gallons));
     setEditVin(v.vin ?? '');
+    // Only pre-fill if the user already confirmed it themselves — an EPA-derived
+    // guess should NOT show as if the user had already chosen it (that would let
+    // an unrelated save silently "confirm" our estimate without them noticing).
+    setEditFuelType(v.fuelTypeConfirmedByUser ? (v.fuelType ?? '') : '');
     setEditVinStatus('idle');
     setEditVinScanning(false);
     setEditVinScanErr('');
@@ -446,8 +499,9 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
     setEditVinScanning(true);
     setEditVinScanErr('');
     try {
+      const compressed = await compressImageForUpload(file);
       const fd = new FormData();
-      fd.append('image', file);
+      fd.append('image', compressed, 'vin.jpg');
       const res  = await fetch('/api/vin/scan', { method: 'POST', body: fd, credentials: 'include' });
       const data = await res.json() as { vin?: string | null; error?: string };
       if (!res.ok || data.error) {
@@ -475,7 +529,13 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
     const cleanVin       = editVin.trim().toUpperCase().replace(/[^A-Z0-9]/g, '') || undefined;
     const vinChanged     = cleanVin !== (currentVehicle?.vin ?? undefined);
 
-    // 1. Persist name, gallons, and VIN
+    // Only send fuel-type fields if the selector actually changed from its
+    // starting value — avoids re-writing fuelTypeConfirmedByUser on every
+    // unrelated edit (e.g. just renaming the vehicle).
+    const priorFuelType   = currentVehicle?.fuelTypeConfirmedByUser ? (currentVehicle.fuelType ?? '') : '';
+    const fuelTypeChanged = editFuelType.trim() !== priorFuelType;
+
+    // 1. Persist name, gallons, VIN, and fuel type
     const patchRes = await fetch(`/api/vehicles?id=${editingId}`, {
       method:  'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -483,6 +543,11 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
         name:    editName.trim(),
         gallons: parseFloat(editGallons),
         ...(vinChanged ? { vin: cleanVin ?? '' } : {}),
+        ...(fuelTypeChanged
+          ? editFuelType.trim()
+            ? { fuelType: editFuelType.trim(), fuelTypeConfirmedByUser: true }
+            : { fuelTypeConfirmedByUser: false }
+          : {}),
       }),
     });
 
@@ -722,39 +787,65 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
                         );
                       })()}
 
+                      {/* Fuel type — user can confirm/override the EPA-estimated
+                          octane. Left empty ("Not sure") keeps using the EPA
+                          estimate shown in Vehicle Info; any other choice is
+                          treated as confirmed by the owner (e.g. from their
+                          owner's manual or fuel door) and shown without the
+                          "estimate — verify" caveat. */}
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">
+                          {t.savedVehicles.fuelTypeLabel}
+                        </label>
+                        <select
+                          className="w-full border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm
+                                     text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white"
+                          value={editFuelType}
+                          onChange={(e) => setEditFuelType(e.target.value)}
+                        >
+                          <option value="">{t.savedVehicles.fuelTypeNotSure}</option>
+                          <option value="Regular Gasoline">{t.savedVehicles.fuelTypeRegular}</option>
+                          <option value="Midgrade Gasoline">{t.savedVehicles.fuelTypeMidgrade}</option>
+                          <option value="Premium Gasoline">{t.savedVehicles.fuelTypePremium}</option>
+                          <option value="Diesel">{t.savedVehicles.fuelTypeDiesel}</option>
+                          <option value="Electricity">{t.savedVehicles.fuelTypeElectric}</option>
+                          <option value="E85 Flex Fuel">{t.savedVehicles.fuelTypeFlex}</option>
+                        </select>
+                        <p className="text-[10px] text-slate-400 leading-snug">
+                          {t.savedVehicles.fuelTypeHint}
+                        </p>
+                      </div>
+
                       {/* VIN */}
                       <div className="space-y-1">
-                        {/* Hidden file input — opens camera/gallery */}
-                        <input
-                          type="file"
-                          accept="image/*"
-                          capture="environment"
-                          ref={editVinFileRef}
-                          className="hidden"
-                          onChange={(e) => {
-                            const f = e.target.files?.[0];
-                            if (f) handleEditVinScan(f);
-                            e.target.value = '';
-                          }}
-                        />
-
                         {/* Label row with scan button */}
                         <div className="flex items-center justify-between">
                           <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">
                             VIN <span className="font-normal normal-case">{t.savedVehicles.vinOptional}</span>
                           </label>
-                          <button
-                            type="button"
-                            onClick={() => editVinFileRef.current?.click()}
-                            disabled={editVinScanning}
-                            className="flex items-center gap-1 text-[11px] font-bold text-amber-700 bg-amber-50
-                                       border border-amber-200 rounded-lg px-2 py-0.5 hover:bg-amber-100
-                                       disabled:opacity-50 transition-colors"
+                          {/* Label wraps file input directly — avoids programmatic .click() which crashes WKWebView */}
+                          <label
+                            className={[
+                              'flex items-center gap-1 text-[11px] font-bold text-amber-700 bg-amber-50',
+                              'border border-amber-200 rounded-lg px-2 py-0.5 hover:bg-amber-100 transition-colors',
+                              editVinScanning ? 'opacity-50 pointer-events-none' : 'cursor-pointer',
+                            ].join(' ')}
                             title={t.savedVehicles.scanVinTitle}
                           >
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              disabled={editVinScanning}
+                              onChange={(e) => {
+                                const f = e.target.files?.[0];
+                                if (f) handleEditVinScan(f);
+                                e.target.value = '';
+                              }}
+                            />
                             <span>{editVinScanning ? '🔄' : '📷'}</span>
                             <span>{editVinScanning ? t.savedVehicles.scanning : t.savedVehicles.scanVin}</span>
-                          </button>
+                          </label>
                         </div>
 
                         {editVinScanErr && (
@@ -866,10 +957,11 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
                         )}
                       </button>
 
-                      {/* Info */}
+                      {/* Info — orange at rest (not just on hover) so it reads as a
+                          tappable affordance on mobile, where hover never fires */}
                       <button
                         onClick={(e) => { e.stopPropagation(); setInfoVehicle(v); }}
-                        className="flex-shrink-0 p-1.5 rounded-lg text-slate-400 hover:text-blue-500 hover:bg-blue-50 transition-colors"
+                        className="flex-shrink-0 p-1.5 rounded-lg bg-amber-50 text-amber-500 hover:text-amber-600 hover:bg-amber-100 transition-colors"
                         title={t.garage.vehicleInfoTitle}
                       >
                         <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4" aria-label={t.garage.vehicleInfoAria}>

@@ -173,7 +173,7 @@ export default function TermsPage() {
           {/* 9 */}
           <section>
             <h2 className="text-lg font-black text-navy-700 mb-2">9. Disclaimers</h2>
-            <p>Gas price data is provided by the U.S. Energy Information Administration (EIA) and may not reflect real-time local prices. Fuel estimates are approximate and for informational purposes only. The Service is provided "as is" without warranties of any kind.</p>
+            <p>Gas price data is provided by the U.S. Energy Information Administration (EIA) and may not reflect real-time local prices. Fuel estimates are approximate and for informational purposes only. Vehicle specification data (including engine, drivetrain, safety equipment, and recommended fuel type/octane) is sourced from third-party government and industry databases (including the National Highway Traffic Safety Administration and the U.S. Environmental Protection Agency), matched to your vehicle using its VIN. This data is approximate, may not reflect your vehicle's actual specifications or manufacturer recommendations, and is not verified against your vehicle's owner's manual or manufacturer documentation. Always confirm your vehicle's recommended fuel type and other specifications with your owner's manual, manufacturer, or authorized dealer before acting on any information provided by the Service. The Service is provided "as is" without warranties of any kind.</p>
           </section>
 
           {/* 10 */}

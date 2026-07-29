@@ -19,6 +19,9 @@ const globalForPrisma = globalThis as unknown as {
 export const pgPool = globalForPrisma.pgPool ?? new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined,
+  max:             10,   // cap concurrent connections (Railway starter allows ~25 total)
+  idleTimeoutMillis: 30_000,   // release idle connections after 30s
+  connectionTimeoutMillis: 5_000,  // fail fast if pool is exhausted rather than hang
 });
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.pgPool = pgPool;

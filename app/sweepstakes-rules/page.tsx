@@ -3,10 +3,10 @@ import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: 'Official Sweepstakes Rules — GasCap™',
-  description: 'Official rules for the GasCap™ Weekly $25 Gas Card Giveaway.',
+  description: 'Official rules for the GasCap™ Monthly $50 Gas Card Giveaway.',
 };
 
-const PRIZE_VALUE = '$25';
+const PRIZE_VALUE = '$50';
 const SPONSOR = 'Gas Capacity LLC';
 const CONTACT_EMAIL = 'support@gascap.app';
 
@@ -23,7 +23,7 @@ export default function SweepstakesRulesPage() {
           </Link>
           <div>
             <h1 className="text-white font-black text-xl">Official Sweepstakes Rules</h1>
-            <p className="text-white/60 text-xs mt-0.5">GasCap™ Weekly $25 Gas Card Giveaway</p>
+            <p className="text-white/60 text-xs mt-0.5">GasCap™ Monthly $50 Gas Card Giveaway</p>
           </div>
         </div>
       </div>
@@ -33,13 +33,13 @@ export default function SweepstakesRulesPage() {
         {/* Intro box */}
         <div className="bg-[#1EB68F]/10 border border-[#1EB68F]/30 rounded-2xl p-5">
           <p className="text-sm text-slate-700 leading-relaxed">
-            <strong>Plain-English Summary:</strong> Every week, GasCap™ gives away a {PRIZE_VALUE} Visa prepaid card — use it at the pump or anywhere Visa is accepted — to one
+            <strong>Plain-English Summary:</strong> Every month, GasCap™ gives away a {PRIZE_VALUE} Visa prepaid card — use it at the pump or anywhere Visa is accepted — to one
             lucky Pro or Fleet member. The more days you use the app, the more entries you earn.
             Standard users earn 1 entry per day; Ambassador Program members earn 2–5 entries per day
             depending on their tier (based on cumulative paying referrals). Keep a login streak going
-            for additional bonus entries. Pro Lifetime members receive an automatic bonus of 20 entries
-            every draw period. Ambassador tier holders are always eligible to win — no
-            consecutive-week restrictions apply to them. No purchase is required to enter.
+            for additional bonus entries. Pro Lifetime members receive an automatic bonus of 25–40 entries
+            every draw period. Each successful referral adds +15 permanent bonus entries per draw period. Ambassador tier holders are always eligible to win — no
+            consecutive-month restrictions apply to them. No purchase is required to enter.
           </p>
         </div>
 
@@ -49,7 +49,7 @@ export default function SweepstakesRulesPage() {
           <section className="p-5 space-y-2">
             <h2 className="text-sm font-black text-slate-800">1. Sponsor</h2>
             <p className="text-sm text-slate-600 leading-relaxed">
-              The GasCap™ Weekly $25 Gas Card Giveaway (&ldquo;Sweepstakes&rdquo;) is sponsored by {SPONSOR}
+              The GasCap™ Monthly $50 Gas Card Giveaway (&ldquo;Sweepstakes&rdquo;) is sponsored by {SPONSOR}
               (&ldquo;Sponsor&rdquo;), the operator of{' '}
               <Link href="https://www.gascap.app" className="text-[#1EB68F] underline" target="_blank" rel="noopener noreferrer">gascap.app</Link>.
             </p>
@@ -75,28 +75,30 @@ export default function SweepstakesRulesPage() {
               may still enter at no cost using the No Purchase Necessary method (Method B, Section 4).
             </p>
             <p className="text-sm text-slate-600 leading-relaxed">
-              <strong>Winner Frequency Restriction:</strong> A person who has won a prize in any
-              of the four (4) preceding Entry Weeks is not eligible to win again in the current
-              Entry Week. If a selected winner is ineligible under this restriction, an additional
-              drawing will be conducted from the remaining eligible entries until an eligible winner
-              is selected.
+              <strong>Winner Frequency Restriction:</strong> A person who won a prize in the
+              immediately preceding Entry Month, or who has already won a prize during the same
+              calendar quarter as the current Entry Month, is not eligible to win again in the
+              current Entry Month. If a selected winner is ineligible under this restriction, an
+              additional drawing will be conducted from the remaining eligible entries until an
+              eligible winner is selected.
             </p>
             <p className="text-sm text-slate-600 leading-relaxed">
               <strong>Ambassador Program Exception:</strong> Entrants who have reached a GasCap™
               Ambassador Program tier (Supporter, Ambassador, or Elite Ambassador) as of the first day
-              of the current Entry Week are exempt from the Winner Frequency Restriction set forth
-              above. Such entrants are eligible to win in any Entry Week, including consecutive
-              weeks. Tier status is determined by cumulative paying referral count as of the
-              first day of the Entry Week.
+              of the current Entry Month are exempt from the Winner Frequency Restriction set forth
+              above. Such entrants are eligible to win in any Entry Month, including consecutive
+              months. Tier status is determined by cumulative paying referral count as of the
+              first day of the Entry Month.
             </p>
           </section>
 
           <section className="p-5 space-y-2">
             <h2 className="text-sm font-black text-slate-800">3. Entry Period</h2>
             <p className="text-sm text-slate-600 leading-relaxed">
-              Each Sweepstakes period covers one calendar week Monday through Sunday (the &ldquo;Entry Week&rdquo;),
-              beginning Monday at 12:00:00 AM Eastern Time and ending Sunday at 11:59:59 PM Eastern Time.
-              A new drawing is held each Friday evening.
+              Each Sweepstakes period covers one calendar month (the &ldquo;Entry Month&rdquo;),
+              beginning at 12:00:00 AM Eastern Time on the first day of the month and ending at
+              11:59:59 PM Eastern Time on the last day of the month. A new drawing is held at the
+              end of each Entry Month.
             </p>
           </section>
 
@@ -112,10 +114,10 @@ export default function SweepstakesRulesPage() {
                 last day of the month immediately preceding the Entry Month, as follows:
               </p>
               <ul className="list-disc pl-5 space-y-1 text-sm text-slate-600">
-                <li><strong>Standard (0–4 cumulative paying referrals):</strong> one (1) entry per active day; maximum 7 base entries per Entry Week.</li>
-                <li><strong>Supporter tier (5–14 cumulative paying referrals):</strong> two (2) entries per active day; maximum 14 base entries per Entry Week.</li>
-                <li><strong>Ambassador tier (15–29 cumulative paying referrals):</strong> three (3) entries per active day; maximum 21 base entries per Entry Week.</li>
-                <li><strong>Elite Ambassador tier (30 or more cumulative paying referrals):</strong> five (5) entries per active day; maximum 35 base entries per Entry Week.</li>
+                <li><strong>Standard (0–4 cumulative paying referrals):</strong> one (1) entry per active day; maximum approximately 31 base entries per Entry Month.</li>
+                <li><strong>Supporter tier (5–14 cumulative paying referrals):</strong> two (2) entries per active day; maximum approximately 62 base entries per Entry Month.</li>
+                <li><strong>Ambassador tier (15–29 cumulative paying referrals):</strong> three (3) entries per active day; maximum approximately 93 base entries per Entry Month.</li>
+                <li><strong>Elite Ambassador tier (30 or more cumulative paying referrals):</strong> five (5) entries per active day; maximum approximately 155 base entries per Entry Month.</li>
               </ul>
               <p>
                 &ldquo;Cumulative paying referrals&rdquo; means the total number of individuals who signed up using
@@ -127,10 +129,12 @@ export default function SweepstakesRulesPage() {
                 <strong>Streak Bonus Entries (Method A subscribers only):</strong> Subscribers who
                 maintain a consecutive daily-use streak also receive bonus entries on top of their
                 base entries. Bonus entries are awarded based on the subscriber&apos;s active streak
-                as of the last day of the Entry Week: 7–29 consecutive days = 2 bonus entries;
-                30–89 consecutive days = 5 bonus entries; 90 or more consecutive days = 10 bonus
-                entries. Streak bonus entries require at least one (1) base active-day entry to be
-                awarded. Streak bonus entries are fixed and are not multiplied by Ambassador tier.
+                as of the last day of the Entry Month: 7–29 consecutive days = 3 bonus entries;
+                30–89 consecutive days = 8 bonus entries; 90–179 consecutive days = 40 bonus
+                entries; 180–364 consecutive days = 70 bonus entries; 365 or more consecutive days
+                = 120 bonus entries. Streak bonus entries require at least one (1) base active-day
+                entry to be awarded. Streak bonus entries are fixed and are not multiplied by
+                Ambassador tier.
               </p>
               <p>
                 <strong>Method B — No Purchase Necessary (free online entry):</strong> Any eligible
@@ -148,8 +152,8 @@ export default function SweepstakesRulesPage() {
               </div>
               <p>
                 The free entry form requires only a first name, last name, and valid email address.
-                Free-entry submissions must be submitted before 11:59:59 PM Eastern Time on the Sunday
-                closing the Entry Week. Limit one (1) free online entry per person per Entry Week,
+                Free-entry submissions must be submitted before 11:59:59 PM Eastern Time on the last
+                day of the Entry Month. Limit one (1) free online entry per person per Entry Month,
                 as determined by email address. Free online entries receive one (1) entry regardless
                 of the number of app active days.
               </p>
@@ -159,8 +163,8 @@ export default function SweepstakesRulesPage() {
           <section className="p-5 space-y-2">
             <h2 className="text-sm font-black text-slate-800">5. Drawing &amp; Winner Selection</h2>
             <p className="text-sm text-slate-600 leading-relaxed">
-              On or about the Friday evening closing each Entry Week, the Sponsor will conduct
-              a random weighted drawing from all eligible entries received during that Entry Week.
+              On or about the last day of each Entry Month, the Sponsor will conduct
+              a random weighted drawing from all eligible entries received during that Entry Month.
               Each entry represents one equal chance to win. The drawing is conducted electronically by
               the Sponsor using a randomized selection process. Odds of winning depend on the total
               number of entries received.
@@ -171,14 +175,14 @@ export default function SweepstakesRulesPage() {
               an additional drawing will be conducted from the remaining eligible entries. This process
               will repeat until an eligible winner is identified. In the unlikely event that all
               entrants are ineligible under the frequency restrictions, no prize will be awarded for
-              that Entry Week and the prize will not carry over.
+              that Entry Month and the prize will not carry over.
             </p>
           </section>
 
           <section className="p-5 space-y-2">
             <h2 className="text-sm font-black text-slate-800">6. Prize</h2>
             <p className="text-sm text-slate-600 leading-relaxed">
-              One (1) Grand Prize per Entry Week: a {PRIZE_VALUE} Visa prepaid card (or equivalent
+              One (1) Grand Prize per Entry Month: a {PRIZE_VALUE} Visa prepaid card (or equivalent
               Visa prepaid card of equal value, at Sponsor&apos;s discretion). Approximate retail
               value: {PRIZE_VALUE}. Prize is non-transferable and no substitution or cash equivalent is
               permitted, except at Sponsor&apos;s sole discretion. Sponsor reserves the right to substitute
@@ -242,7 +246,7 @@ export default function SweepstakesRulesPage() {
             <h2 className="text-sm font-black text-slate-800">12. Contact &amp; Winners List</h2>
             <p className="text-sm text-slate-600 leading-relaxed">
               For questions, a copy of these rules, or a list of prize winners (available after
-              the conclusion of each Entry Week), contact us at{' '}
+              the conclusion of each Entry Month), contact us at{' '}
               <a href={`mailto:${CONTACT_EMAIL}`} className="text-[#1EB68F] underline">{CONTACT_EMAIL}</a>{' '}
               or by mail at: {SPONSOR}, 7901 4th St N, STE 300, St. Petersburg, FL 33702.
             </p>
@@ -256,7 +260,7 @@ export default function SweepstakesRulesPage() {
           <Link href="/sweepstakes-rules" className="text-slate-500 hover:text-slate-700 underline">gascap.app/sweepstakes-rules</Link>.
           Continued participation after a change is posted
           constitutes acceptance of the revised rules. This page constitutes the complete
-          Official Rules for the GasCap™ Weekly $25 Gas Card Giveaway.{' '}
+          Official Rules for the GasCap™ Monthly $50 Gas Card Giveaway.{' '}
           <strong>No purchase necessary. A purchase does not improve your odds of winning.</strong>
         </p>
 

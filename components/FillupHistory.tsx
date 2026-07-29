@@ -1,7 +1,7 @@
 'use client';
 
 import { useSession } from 'next-auth/react';
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import type { Fillup } from '@/lib/fillups';
 import { useTranslation } from '@/contexts/LanguageContext';
 import UpgradeNudge from './UpgradeNudge';
@@ -144,8 +144,7 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
   const [editImgLoading,  setEditImgLoading]  = useState(false);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [drivers,         setDrivers]         = useState<string[]>([]);
-  const editCameraRef  = useRef<HTMLInputElement>(null);
-  const editGalleryRef = useRef<HTMLInputElement>(null);
+
 
   // ── Filter + month expansion state ─────────────────────────────────────────
   const [filterMode,     setFilterMode]     = useState<FilterMode>('all');
@@ -153,6 +152,9 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
   const [customMonth,    setCustomMonth]    = useState(currentMonthStr);
   const [expandedMonths, setExpandedMonths] = useState<Set<string>>(
     () => new Set([currentMonthStr()]),
+  );
+  const [selectedYear,   setSelectedYear]   = useState<string>(
+    () => new Date().getFullYear().toString(),
   );
 
   // ── Derived stats ──────────────────────────────────────────────────────────
@@ -275,7 +277,30 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
       ? fillups.filter((f) => !f.driverLabel)
       : fillups.filter((f) => f.driverLabel === driverFilter);
 
-  const allGroups      = groupByMonth(visibleFillups, MONTH_NAMES);
+  // ── Year-based stats ───────────────────────────────────────────────────────
+  const availableYears = [...new Set(visibleFillups.map((f) => f.date.slice(0, 4)))]
+    .sort((a, b) => b.localeCompare(a));
+
+  const thisCalYear = new Date().getFullYear().toString();
+
+  function calcYearStats(year: string | 'all') {
+    const src = year === 'all' ? visibleFillups : visibleFillups.filter((f) => f.date.startsWith(year));
+    return {
+      count:        src.length,
+      totalSpent:   src.reduce((s, f) => s + f.totalCost, 0),
+      totalGallons: Math.round(src.reduce((s, f) => s + f.gallonsPumped, 0) * 10) / 10,
+    };
+  }
+
+  const yearStats    = calcYearStats(selectedYear);
+  const allTimeStats = calcYearStats('all');
+
+  const allGroups = groupByMonth(
+    selectedYear === 'all'
+      ? visibleFillups
+      : visibleFillups.filter((f) => f.date.startsWith(selectedYear)),
+    MONTH_NAMES,
+  );
   const filteredGroups = applyFilter(allGroups, filterMode, customMonth);
 
   // ── Edit / Delete handlers ─────────────────────────────────────────────────
@@ -434,19 +459,80 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
       {open && (
         <div className="bg-slate-50 p-3 space-y-3">
 
-          {/* ── All-time stats bar ───────────────────────────────────────── */}
+          {/* ── Stats + year selector ────────────────────────────────────── */}
           {stats && stats.count > 0 && (() => {
             const annualProjection = calcAnnualProjection(fillups, stats.totalSpent);
             const costPerMile      = calcCostPerMile(fillups);
             return (
               <>
-                <div className="grid grid-cols-3 gap-2">
-                  <StatPill label={t.fillupHistory.statTotalSpent} value={`$${stats.totalSpent.toFixed(2)}`} color="text-amber-600" />
-                  <StatPill label={t.fillupHistory.statGallons}    value={`${stats.totalGallons} gal`}        color="text-navy-700" />
+                {/* Year chips */}
+                {availableYears.length > 0 && (
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {availableYears.map((yr) => (
+                      <button
+                        key={yr}
+                        type="button"
+                        onClick={() => { setSelectedYear(yr); setFilterMode('all'); }}
+                        className={`px-3 py-1 rounded-full font-bold border transition-colors ${
+                          selectedYear === yr
+                            ? 'bg-navy-700 text-white border-navy-700 text-sm shadow-sm'
+                            : 'bg-white text-slate-400 border-slate-200 hover:border-slate-400 text-xs'
+                        }`}
+                      >
+                        {yr}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => { setSelectedYear('all'); setFilterMode('all'); }}
+                      className={`px-3 py-1 rounded-full font-bold border transition-colors ${
+                        selectedYear === 'all'
+                          ? 'bg-navy-700 text-white border-navy-700 text-sm shadow-sm'
+                          : 'bg-white text-slate-400 border-slate-200 hover:border-slate-400 text-xs'
+                      }`}
+                    >
+                      {t.fillupHistory.allTime}
+                    </button>
+                  </div>
+                )}
+
+                {/* Spent + gallons for selected year vs all time */}
+                <div className="bg-white rounded-xl border border-slate-100 px-4 py-3 space-y-2">
+                  {/* Column headers */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{t.fillupHistory.periodLabel}</span>
+                    <div className="flex items-center gap-6">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{t.fillupHistory.spentLabel}</span>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{t.fillupHistory.gallonsLabel2}</span>
+                    </div>
+                  </div>
+                  {/* Selected year / all-time row */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-black text-slate-800">
+                      {selectedYear === 'all' ? t.fillupHistory.allTime : selectedYear}
+                    </span>
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-black text-amber-600">${yearStats.totalSpent.toFixed(2)}</span>
+                      <span className="text-sm font-black text-navy-700 w-16 text-right">{yearStats.totalGallons}{t.fillupHistory.galUnit}</span>
+                    </div>
+                  </div>
+                  {selectedYear !== 'all' && allTimeStats.count > yearStats.count && (
+                    <div className="flex items-center justify-between border-t border-slate-50 pt-2">
+                      <span className="text-xs font-semibold text-slate-400">{t.fillupHistory.allTime}</span>
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs font-bold text-slate-400">${allTimeStats.totalSpent.toFixed(2)}</span>
+                        <span className="text-xs font-bold text-slate-400 w-16 text-right">{allTimeStats.totalGallons}{t.fillupHistory.galUnit}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
                   <StatPill label={t.fillupHistory.statAvgMpg}
                     value={stats.avgMpg ? `${stats.avgMpg} mpg` : '—'}
                     color={stats.avgMpg ? 'text-green-600' : 'text-slate-400'}
                   />
+                  <StatPill label={t.fillupHistory.statTotalSpent} value={`${yearStats.count} fill-ups`} color="text-slate-600" />
                 </div>
 
                 {/* Annual projection — neutral card (the blue lives on the panel header) */}
@@ -661,19 +747,22 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
                           <div key={f.id} className="bg-amber-50 rounded-2xl border border-amber-200 shadow-sm px-4 py-4 space-y-3">
                             <p className="text-[10px] font-black text-amber-700 uppercase tracking-widest">{t.fillupHistory.editTitle}</p>
 
-                            {/* Row 1: date + gallons */}
+                            {/* Date — full width */}
+                            <div>
+                              <label className="block text-[10px] font-semibold text-slate-500 mb-1">{t.fillupHistory.dateLabel}</label>
+                              <input
+                                type="date"
+                                value={editDraft.date}
+                                max={new Date().toISOString().split('T')[0]}
+                                onChange={(e) => setEditDraft((d) => d ? { ...d, date: e.target.value } : d)}
+                                className="w-full text-xs text-left px-2.5 py-2 border border-slate-200 rounded-xl
+                                           focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white
+                                           appearance-none [&::-webkit-date-and-time-value]:text-left"
+                              />
+                            </div>
+
+                            {/* Gallons + Price */}
                             <div className="grid grid-cols-2 gap-2">
-                              <div>
-                                <label className="block text-[10px] font-semibold text-slate-500 mb-1">{t.fillupHistory.dateLabel}</label>
-                                <input
-                                  type="date"
-                                  value={editDraft.date}
-                                  max={new Date().toISOString().split('T')[0]}
-                                  onChange={(e) => setEditDraft((d) => d ? { ...d, date: e.target.value } : d)}
-                                  className="w-full text-xs px-2.5 py-2 border border-slate-200 rounded-xl
-                                             focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white"
-                                />
-                              </div>
                               <div>
                                 <label className="block text-[10px] font-semibold text-slate-500 mb-1">{t.fillupHistory.gallonsLabel}</label>
                                 <input
@@ -684,10 +773,6 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
                                              focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white"
                                 />
                               </div>
-                            </div>
-
-                            {/* Row 2: price + odometer */}
-                            <div className="grid grid-cols-2 gap-2">
                               <div>
                                 <label className="block text-[10px] font-semibold text-slate-500 mb-1">{t.fillupHistory.pricePerGalLabel}</label>
                                 <input
@@ -698,25 +783,27 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
                                              focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white"
                                 />
                               </div>
-                              <div>
-                                <label className="block text-[10px] font-semibold text-slate-500 mb-1">
-                                  {t.fillupHistory.odometerLabel} <span className="font-normal text-slate-300">{t.fillupHistory.opt}</span>
-                                </label>
-                                <input
-                                  type="number" inputMode="numeric" min="0" step="1"
-                                  value={editDraft.odometerReading}
-                                  placeholder="—"
-                                  onChange={(e) => setEditDraft((d) => d ? { ...d, odometerReading: e.target.value } : d)}
-                                  className="w-full text-xs px-2.5 py-2 border border-slate-200 rounded-xl
-                                             focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white"
-                                />
-                              </div>
+                            </div>
+
+                            {/* Odometer — full width */}
+                            <div>
+                              <label className="block text-[10px] font-semibold text-slate-500 mb-1">
+                                {t.fillupHistory.odometerLabel} <span className="font-normal text-slate-400">{t.fillupHistory.opt}</span>
+                              </label>
+                              <input
+                                type="number" inputMode="numeric" min="0" step="1"
+                                value={editDraft.odometerReading}
+                                placeholder="—"
+                                onChange={(e) => setEditDraft((d) => d ? { ...d, odometerReading: e.target.value } : d)}
+                                className="w-full text-xs px-2.5 py-2 border border-slate-200 rounded-xl
+                                           focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white"
+                              />
                             </div>
 
                             {/* Gas Station */}
                             <div>
                               <label className="block text-[10px] font-semibold text-slate-500 mb-1">
-                                ⛽ {t.fillupHistory.gasStationLabel} <span className="font-normal text-slate-300">{t.fillupHistory.opt}</span>
+                                ⛽ {t.fillupHistory.gasStationLabel} <span className="font-normal text-slate-400">{t.fillupHistory.opt}</span>
                               </label>
                               <input
                                 type="text" maxLength={60}
@@ -752,7 +839,7 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
                             {/* Notes */}
                             <div>
                               <label className="block text-[10px] font-semibold text-slate-500 mb-1">
-                                {t.fillupHistory.notesLabel} <span className="font-normal text-slate-300">{t.fillupHistory.opt}</span>
+                                {t.fillupHistory.notesLabel} <span className="font-normal text-slate-400">{t.fillupHistory.opt}</span>
                               </label>
                               <input
                                 type="text" maxLength={160}
@@ -767,7 +854,7 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
                             {/* Fuel Grade */}
                             <div>
                               <label className="block text-[10px] font-semibold text-slate-500 mb-1">
-                                {t.fillupHistory.fuelGradeLabel} <span className="font-normal text-slate-300">{t.fillupHistory.opt}</span>
+                                {t.fillupHistory.fuelGradeLabel} <span className="font-normal text-slate-400">{t.fillupHistory.opt}</span>
                               </label>
                               <div className="grid grid-cols-4 gap-1.5">
                                 {EDIT_FUEL_GRADES.map((g) => (
@@ -792,40 +879,8 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
                             {/* Receipt Photo */}
                             <div>
                               <label className="block text-[10px] font-semibold text-slate-500 mb-1.5">
-                                {t.fillupHistory.receiptPhotoLabel} <span className="font-normal text-slate-300">{t.fillupHistory.opt}</span>
+                                {t.fillupHistory.receiptPhotoLabel} <span className="font-normal text-slate-400">{t.fillupHistory.opt}</span>
                               </label>
-
-                              {/* Hidden file inputs */}
-                              <input
-                                type="file" accept="image/*" capture="environment"
-                                ref={editCameraRef} className="hidden"
-                                onChange={async (e) => {
-                                  const file = e.target.files?.[0];
-                                  if (!file) return;
-                                  e.target.value = '';
-                                  setEditImgLoading(true);
-                                  try {
-                                    const thumb = await compressEditImage(file);
-                                    setEditDraft((d) => d ? { ...d, receiptThumb: thumb } : d);
-                                  } catch { /* ignore */ }
-                                  finally { setEditImgLoading(false); }
-                                }}
-                              />
-                              <input
-                                type="file" accept="image/*"
-                                ref={editGalleryRef} className="hidden"
-                                onChange={async (e) => {
-                                  const file = e.target.files?.[0];
-                                  if (!file) return;
-                                  e.target.value = '';
-                                  setEditImgLoading(true);
-                                  try {
-                                    const thumb = await compressEditImage(file);
-                                    setEditDraft((d) => d ? { ...d, receiptThumb: thumb } : d);
-                                  } catch { /* ignore */ }
-                                  finally { setEditImgLoading(false); }
-                                }}
-                              />
 
                               {editDraft.receiptThumb ? (
                                 /* Existing or newly-added thumbnail */
@@ -837,22 +892,16 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
                                     className="w-14 h-20 object-cover rounded-lg border border-slate-200 shadow-sm flex-shrink-0"
                                   />
                                   <div className="flex flex-col gap-1.5 pt-0.5">
-                                    <button
-                                      type="button"
-                                      onClick={() => editCameraRef.current?.click()}
-                                      disabled={editImgLoading}
-                                      className="text-[10px] font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 hover:border-amber-300 hover:text-amber-700 transition-colors disabled:opacity-50"
-                                    >
+                                    <label className={`text-[10px] font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 hover:border-amber-300 hover:text-amber-700 transition-colors cursor-pointer ${editImgLoading ? 'opacity-50 pointer-events-none' : ''}`}>
                                       📷 {editImgLoading ? t.fillupHistory.loading : t.fillupHistory.replaceCamera}
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => editGalleryRef.current?.click()}
-                                      disabled={editImgLoading}
-                                      className="text-[10px] font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 hover:border-amber-300 hover:text-amber-700 transition-colors disabled:opacity-50"
-                                    >
+                                      <input type="file" accept="image/*" className="hidden"
+                                        onChange={async (e) => { const file = e.target.files?.[0]; if (!file) return; e.target.value = ''; setEditImgLoading(true); try { const thumb = await compressEditImage(file); setEditDraft((d) => d ? { ...d, receiptThumb: thumb } : d); } catch { /* ignore */ } finally { setEditImgLoading(false); } }} />
+                                    </label>
+                                    <label className={`text-[10px] font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 hover:border-amber-300 hover:text-amber-700 transition-colors cursor-pointer ${editImgLoading ? 'opacity-50 pointer-events-none' : ''}`}>
                                       🖼️ {t.fillupHistory.replacePhotos}
-                                    </button>
+                                      <input type="file" accept="image/*" className="hidden"
+                                        onChange={async (e) => { const file = e.target.files?.[0]; if (!file) return; e.target.value = ''; setEditImgLoading(true); try { const thumb = await compressEditImage(file); setEditDraft((d) => d ? { ...d, receiptThumb: thumb } : d); } catch { /* ignore */ } finally { setEditImgLoading(false); } }} />
+                                    </label>
                                     <button
                                       type="button"
                                       onClick={() => setEditDraft((d) => d ? { ...d, receiptThumb: '' } : d)}
@@ -865,24 +914,18 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
                               ) : (
                                 /* No receipt yet */
                                 <div className="flex gap-2">
-                                  <button
-                                    type="button"
-                                    onClick={() => editCameraRef.current?.click()}
-                                    disabled={editImgLoading}
-                                    className="flex items-center gap-1.5 text-[10px] font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 hover:border-amber-300 hover:text-amber-700 transition-colors disabled:opacity-50"
-                                  >
+                                  <label className={`flex items-center gap-1.5 text-[10px] font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 hover:border-amber-300 hover:text-amber-700 transition-colors cursor-pointer ${editImgLoading ? 'opacity-50 pointer-events-none' : ''}`}>
                                     <span>{editImgLoading ? '🔄' : '📷'}</span>
                                     <span>{editImgLoading ? t.fillupHistory.loading : t.fillupHistory.useCamera}</span>
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => editGalleryRef.current?.click()}
-                                    disabled={editImgLoading}
-                                    className="flex items-center gap-1.5 text-[10px] font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 hover:border-amber-300 hover:text-amber-700 transition-colors disabled:opacity-50"
-                                  >
+                                    <input type="file" accept="image/*" className="hidden"
+                                      onChange={async (e) => { const file = e.target.files?.[0]; if (!file) return; e.target.value = ''; setEditImgLoading(true); try { const thumb = await compressEditImage(file); setEditDraft((d) => d ? { ...d, receiptThumb: thumb } : d); } catch { /* ignore */ } finally { setEditImgLoading(false); } }} />
+                                  </label>
+                                  <label className={`flex items-center gap-1.5 text-[10px] font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 hover:border-amber-300 hover:text-amber-700 transition-colors cursor-pointer ${editImgLoading ? 'opacity-50 pointer-events-none' : ''}`}>
                                     <span>🖼️</span>
                                     <span>{t.fillupHistory.uploadFromPhotos}</span>
-                                  </button>
+                                    <input type="file" accept="image/*" className="hidden"
+                                      onChange={async (e) => { const file = e.target.files?.[0]; if (!file) return; e.target.value = ''; setEditImgLoading(true); try { const thumb = await compressEditImage(file); setEditDraft((d) => d ? { ...d, receiptThumb: thumb } : d); } catch { /* ignore */ } finally { setEditImgLoading(false); } }} />
+                                  </label>
                                 </div>
                               )}
                             </div>
@@ -1000,7 +1043,7 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
                               {/* Edit */}
                               <button
                                 onClick={() => handleEditStart(f)}
-                                className="flex-shrink-0 text-slate-200 hover:text-amber-400 transition-colors mt-0.5"
+                                className="flex-shrink-0 text-slate-400 hover:text-amber-400 transition-colors mt-0.5"
                                 aria-label={t.fillupHistory.editAria}
                               >
                                 <svg viewBox="0 0 12 12" className="w-3.5 h-3.5" fill="none"
@@ -1012,7 +1055,7 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
                               {/* Delete — requires confirmation tap */}
                               <button
                                 onClick={() => setPendingDeleteId(f.id)}
-                                className="flex-shrink-0 text-slate-200 hover:text-red-400 transition-colors mt-0.5"
+                                className="flex-shrink-0 text-slate-400 hover:text-red-400 transition-colors mt-0.5"
                                 aria-label={t.fillupHistory.deleteAria}
                               >
                                 <svg viewBox="0 0 12 12" className="w-3.5 h-3.5" fill="none"
@@ -1063,7 +1106,7 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
                   {t.fillupHistory.printPdf}
                 </a>
               </div>
-              <p className="text-center text-[10px] text-slate-300 pb-2">
+              <p className="text-center text-[10px] text-slate-400 pb-2">
                 {t.fillupHistory.footerCount(fillups.length)}
                 {stats?.avgMpg ? t.fillupHistory.footerAvgMpg(stats.avgMpg) : t.fillupHistory.footerAddOdometer}
               </p>

@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import StaticPageHeader from '@/components/StaticPageHeader';
+import BackToTopButton from '@/components/BackToTopButton';
 
 export const metadata = { title: 'Help & Support — GasCap™' };
 
@@ -34,7 +35,7 @@ const SECTIONS = [
       },
       {
         q: 'How do I install GasCap™ on my phone?',
-        a: 'GasCap™ is a Progressive Web App (PWA) — no app store needed. On iPhone: open gascap.app in Safari → tap the Share icon → "Add to Home Screen." On Android: open in Chrome → tap the menu (⋮) → "Add to Home Screen" or "Install App." The app icon will appear on your home screen just like a native app.',
+        a: 'GasCap™ is available on the App Store (iPhone) and Google Play (Android) — just search "GasCap" and tap Install. You can also add it directly from your browser: on iPhone, open gascap.app in Safari → tap the Share icon → "Add to Home Screen." On Android, open in Chrome → tap the menu (⋮) → "Add to Home Screen." Either way, the app icon appears on your home screen and works just like a native app.',
       },
       {
         q: 'How do I switch between Light and Dark mode?',
@@ -56,15 +57,27 @@ const SECTIONS = [
       },
       {
         q: 'What is the MPG Insight Card?',
-        a: 'The MPG Insight Card appears on the main screen for Pro and Fleet users who have logged at least two fill-ups. It shows your real-world average MPG, your trend vs. previous fill-ups, and your best single fill-up efficiency. Tap the card to open the full MPG chart.',
+        a: 'The MPG Insight Card appears on the main screen for Pro and Fleet users. If you added your vehicle by VIN, it shows the EPA-rated MPG immediately — no fill-ups required. Once you\'ve logged at least two fill-ups with odometer readings, it switches to your real-world average MPG, along with your trend vs. previous fill-ups and your best single fill-up efficiency. Tap the card to open the full MPG chart.',
+      },
+      {
+        q: 'What is my GasCap™ driver mode and how do I change it?',
+        a: 'When you first log in, GasCap™ asks how you plan to use the app: Personal Driver, Gig Driver (Uber, Lyft, DoorDash, etc.), Rental Car, or Business/Fleet. Your selection personalizes the dashboard and tools shown to you. To change your mode, go to Settings → Profile and update your Driver Mode.',
+      },
+      {
+        q: 'How do I export my gig driver logs for taxes?',
+        a: 'In the Driver tab, tap "History" and scroll to the Tax Export section at the bottom. Select the tax year (current year and two prior years are available), then tap "Download CSV." The file includes two sections — Fuel Fill-Ups (date, platform, station, gallons, price/gal, total) and Mileage Log (date, platform, category, miles, odometer readings) — plus a Summary showing total fuel spend, total business miles, and your IRS standard mileage deduction estimate at $0.70/mile. The CSV opens cleanly in Excel or Google Sheets. Consult a tax professional for deduction advice.',
+      },
+      {
+        q: 'How do I track fuel and mileage as a gig driver?',
+        a: 'Set your Driver Mode to "Gig Driver" in Settings → Profile (or choose it on first login). A "Driver" tab appears in the Tools panel (and in the bottom tab bar on the mobile app). Tap "Log Fill-Up" to record date, gallons, price per gallon, station, and platform (Uber, Lyft, DoorDash, etc.). Tap "Log Mileage" to record miles driven — enter start and end odometer readings and GasCap™ auto-calculates the miles, or just enter the total miles directly. Mark trips as Business or Personal for tax tracking. The weekly summary shows total fuel spend, business miles, cost per mile, avg $/gal, fill-up count, and total gallons. An IRS mileage deduction estimate (business miles × $0.70) appears automatically once you have business miles logged for the year. Switching to a different Driver Mode hides the Driver tab immediately.',
       },
       {
         q: 'What is Rental Car Return Mode?',
-        a: 'Rental Car Return Mode is designed for rental vehicle drop-offs. Tap the "🚗 Rental Car Return Mode" toggle at the top of the calculator to activate it. Your saved garage is hidden and replaced with rental car class presets (Economy, Midsize, SUV, etc.). Enter the rental company\'s per-gallon rate to see exactly how much you save by fueling up yourself vs. returning empty.',
+        a: 'Rental Car Return Mode is designed for rental vehicle drop-offs. Tap the "🚗 Rental Car Return Mode" toggle at the top of the calculator to activate it — or set your Driver Mode to "Rental Car" in Settings and it activates automatically every time you open the app. Visiting gascap.app/rental and tapping the CTA also launches the calculator in rental mode directly. Your saved garage is hidden and replaced with rental car class presets (Economy, Midsize, SUV, etc.). Enter the rental company\'s per-gallon rate to see exactly how much you save by fueling up yourself vs. returning empty.',
       },
       {
-        q: 'Can I scan my fuel gauge to set the current level?',
-        a: 'Yes. Tap "Scan Gauge" to use your camera or "Upload Photo" to use an image from your gallery. AI reads the needle position — including vertical, horizontal, and arc-style gauges — and sets the fuel level automatically. You can always drag the gauge to fine-tune.',
+        q: 'How do I set my current fuel level?',
+        a: 'Drag the needle on the fuel gauge dial to match your dashboard, or use the slider — the calculator updates instantly. You can also switch to gallons and type an exact amount.',
       },
       {
         q: 'How does the live gas price lookup work?',
@@ -76,7 +89,7 @@ const SECTIONS = [
       },
       {
         q: 'Can I use GasCap™ without internet?',
-        a: 'Yes. Once installed as a PWA, the calculators work fully offline using the last-known gas price. Gas price lookup, electricity rate lookup, gauge scan, VIN scan, and AI features require an internet connection.',
+        a: 'Yes. Once installed, the calculators work fully offline using the last-known gas price. Gas price lookup, electricity rate lookup, VIN scan, and AI features require an internet connection.',
       },
     ],
   },
@@ -95,6 +108,22 @@ const SECTIONS = [
       {
         q: 'What is the Station Comparison tool?',
         a: 'Station Comparison lets you compare two nearby gas stations side by side. Enter the price per gallon at each station and the amount you need — it tells you which is cheaper and by exactly how much. Free for all users.',
+      },
+      {
+        q: 'What is the Find Gas tab?',
+        a: 'The Find Gas tab shows live gas prices at stations near you, powered by Google Places. It lists nearby stations with their current price, distance, and a direct link to Google Maps for directions. Tap any price chip to instantly fill the calculator, or tap "Report Price" on a station card to submit the price you see at the pump — you earn +5 giveaway entries each time. Community-reported prices (submitted in the last 2 hours) appear in amber when Google\'s price data is missing or outdated. Available to Pro and Fleet users.',
+      },
+      {
+        q: 'Can I remove a station from the Find Gas results?',
+        a: 'Yes. If a station is permanently closed or you just want to clean up the list, tap the × button on the station card to hide it from your results. Hidden stations are remembered on your device. If you hide all stations, a "Restore hidden stations" link appears to bring them back.',
+      },
+      {
+        q: 'How do I report a gas price?',
+        a: 'In the Find Gas tab, tap "⛽ Report Price" at the bottom of any station card. You\'ll see a small form — pick the fuel grade (Regular, Midgrade, Premium, or Diesel) and enter the price you see on the pump, then tap Submit. You earn +5 giveaway entries for each report. You must be within 0.5 miles of the station to submit. You can report up to 5 stations per day.',
+      },
+      {
+        q: 'What are community prices?',
+        a: 'Community prices are pump prices reported by GasCap users at a station within the last 2 hours. They appear in amber on station cards — either as a "reported" note under a Google price, or as the primary price grid if Google has no price data for that station. Community prices are visible to all Pro and Fleet users nearby.',
       },
       {
         q: 'What is the Gas Price Alert?',
@@ -124,7 +153,11 @@ const SECTIONS = [
       },
       {
         q: 'How is MPG calculated?',
-        a: 'MPG is calculated automatically from consecutive fill-ups that both include odometer readings, using the formula: miles driven ÷ gallons pumped. You\'ll need at least two fill-ups with odometer readings to see MPG data.',
+        a: 'If your vehicle was added by VIN, GasCap™ shows its official EPA-rated combined MPG right away — no fill-ups needed. Once you log at least two fill-ups with odometer readings, GasCap™ also calculates your real-world average from consecutive fill-ups (miles driven ÷ gallons pumped) as a comparison against the EPA rating. If your vehicle wasn\'t added by VIN, you\'ll need at least two fill-ups with odometer readings before any MPG data appears.',
+      },
+      {
+        q: 'How does GasCap™ know what fuel type my vehicle needs, and can I correct it?',
+        a: 'When you add a vehicle by VIN, GasCap™ shows an EPA-based estimate of your recommended fuel type (e.g. Regular, Midgrade, Premium) in the Vehicle Info panel — labeled "EPA-Rated Fuel Type" since it\'s an estimate matched to your vehicle\'s specs, not a manufacturer-verified figure. To be certain, check your owner\'s manual or the sticker inside your fuel door, then open "Edit Vehicle" in your garage and set the Fuel Type field yourself — once confirmed, GasCap™ shows your choice instead of the estimate, labeled "Fuel Type" with a confirmation checkmark. Selecting "Not sure — use EPA estimate" reverts to the estimate at any time.',
       },
       {
         q: 'What is "cost per mile" and how is it calculated?',
@@ -133,6 +166,18 @@ const SECTIONS = [
       {
         q: 'How do I filter or browse my fill-up history?',
         a: 'Fill-ups are grouped by month. Use the filter bar at the top to narrow by vehicle, date range, or specific month. Fleet users get an additional driver filter. Tap any entry to see its full details or delete it.',
+      },
+      {
+        q: 'Can I see spending totals by year?',
+        a: 'Yes. At the top of Fill-Up History, year chips (e.g. 2026 · 2025 · All time) let you filter the list and stats to a specific year. The stats card shows total spent and total gallons for the selected year, with all-time totals shown below for reference. Defaults to the current year when you open the panel.',
+      },
+      {
+        q: 'What is the pump savings card after logging a fill-up?',
+        a: 'After saving a fill-up that was pre-filled from the GasCap™ calculator, a savings card appears showing how much you saved at the pump by not overfilling. It calculates the industry-average pump overfill (0.4 gal) multiplied by the price per gallon you paid. The card is a reminder that using GasCap™ to calculate your exact fill amount puts real money back in your pocket.',
+      },
+      {
+        q: 'Can I pay the exact GasCap™ amount at the pump?',
+        a: 'Yes — most modern pumps support pre-pay by dollar amount. When you reach the pump, select "Pre-Pay" or "Enter Amount" on the keypad and type in the exact dollar figure GasCap™ calculated (e.g. $42.83). The pump stops precisely at that amount — no rounding, no overfill. Support varies by station and terminal: some pumps only accept whole dollar pre-pays, others accept cents, and pay-inside attendants can always set any amount. If you do round up, use the "Amount paid at pump" field in the Fill-Up Logger to record what you actually spent so your savings stay accurate.',
       },
       {
         q: 'Can I export my fill-up history?',
@@ -175,6 +220,10 @@ const SECTIONS = [
       {
         q: 'What are Vehicle Health Alerts?',
         a: 'If your recent MPG drops more than 10% below your historical average for a vehicle, you\'ll see an alert suggesting you check tire pressure, air filter, or other common causes of declining efficiency.',
+      },
+      {
+        q: 'Can I filter my MPG and fuel charts by year?',
+        a: 'Yes. In the Charts tab (📈), year chips at the top (e.g. 2026 · 2025 · All time) filter all charts — MPG over time, fuel spend, gallons, and price per gallon — to the selected year. The same year selection you use in Fill-Up History carries over to the Charts tab automatically, so both views stay in sync.',
       },
       {
         q: 'What is Annual Wrapped?',
@@ -234,15 +283,19 @@ const SECTIONS = [
       },
       {
         q: 'How do I get 30 days of Pro free?',
-        a: 'All new users who create a GasCap™ account automatically receive 30 days of Pro features — no credit card required. Your free trial gives full access to fill-up tracking, MPG insights, receipt scanning, AI Fuel Advisor, Gas Price Alert, stats, streak rewards, referral program, and daily gas card giveaway entries. When there are 15 days left in your trial, a banner appears in the app to remind you. After the 30-day trial ends, your account automatically downgrades to the free plan — you are never charged. To keep Pro features, upgrade before the trial expires: $2.99/month, $26.99/year (~3 months free), or own Pro forever with the $19.99 Pro Lifetime Membership (one payment, no subscription).',
+        a: 'All new users who create a GasCap™ account automatically receive 30 days of Pro features — no credit card required. Your free trial gives full access to fill-up tracking, MPG insights, receipt scanning, AI Fuel Advisor, Gas Price Alert, stats, streak rewards, referral program, and daily gas card giveaway entries. When there are 15 days left in your trial, a banner appears in the app to remind you. After the 30-day trial ends, your account automatically downgrades to the free plan — you are never charged. To keep Pro features, upgrade before the trial expires: $2.99/month, or own Pro forever with the $19.99 Pro Lifetime Membership (one payment, no subscription) — which also includes a complimentary vacation getaway certificate.',
       },
       {
         q: 'What does Pro add?',
-        a: 'Pro adds unlimited saved vehicles, VIN photo scan, fill-up history & MPG tracking, receipt scanning, MPG Insight Card, AI Fuel Advisor, Gas Price Alert, fuel savings dashboard, streak counter, monthly report card, gas price trend predictions, vehicle health alerts, Annual Wrapped, referral rewards, Route Trip Planner with Google Maps, and daily gas card giveaway entries. Available as Pro Monthly ($2.99/mo), Pro Annual ($26.99/yr, ~3 months free), or Pro Lifetime Membership ($19.99 one-time).',
+        a: 'Pro adds unlimited saved vehicles, VIN photo scan, fill-up history & MPG tracking, receipt scanning, MPG Insight Card, AI Fuel Advisor, Gas Price Alert, fuel savings dashboard, streak counter, monthly report card, gas price trend predictions, vehicle health alerts, Annual Wrapped, referral rewards, Route Trip Planner with Google Maps, and daily gas card giveaway entries. Available as Pro Monthly ($2.99/mo) or Pro Lifetime Membership ($19.99 one-time).',
       },
       {
-        q: 'What are the differences between Pro Monthly, Pro Annual, and Pro Lifetime?',
-        a: 'All three tiers include every Pro feature. Pro Monthly ($2.99/mo) is a simple month-to-month subscription with no bonus giveaway entries. Pro Annual ($26.99/yr, ~3 months free) saves you money and automatically adds +10 bonus giveaway entries every draw period. Pro Lifetime Membership ($19.99, one-time payment) gives you Pro access forever with no recurring subscription, a permanent 🏅 Lifetime Member badge, and +20 bonus giveaway entries per draw period. Lifetime members can optionally add Lifetime Perks ($9.99/yr) to upgrade to +30 bonus entries per draw period plus an annual vacation voucher (hotel getaway) every year they renew. If Lifetime Perks lapses, Pro access is never revoked — you simply drop back to +20 bonus entries.',
+        q: 'What are the differences between Pro Monthly and Pro Lifetime?',
+        a: 'Both tiers include every Pro feature. Pro Monthly ($2.99/mo) is a simple month-to-month subscription with no bonus giveaway entries. Pro Lifetime Membership ($19.99, one-time payment) gives you Pro access forever with no recurring subscription, a permanent 🏅 Lifetime Member badge, a complimentary vacation getaway certificate, and +25 bonus giveaway entries per draw period. Lifetime members can optionally add Lifetime Perks ($9.99/yr) to upgrade to +40 bonus entries per draw period plus a fresh vacation voucher every year they renew. If Lifetime Perks lapses, Pro access is never revoked — you simply drop back to +25 bonus entries.',
+      },
+      {
+        q: 'Why does the Lifetime price show as $9.99 instead of $19.99?',
+        a: 'GasCap™ occasionally runs a Founding Member promotion for the first 100 Lifetime signups at $9.99 — a one-time introductory price to reward early supporters. Once those 100 slots are claimed, the price returns to the standard $19.99. If you see $9.99 on the upgrade page, that promo is still active. Both prices grant the exact same Pro Lifetime access with no recurring subscription.',
       },
       {
         q: 'What does Fleet add over Pro?',
@@ -250,7 +303,7 @@ const SECTIONS = [
       },
       {
         q: 'How do I upgrade my plan?',
-        a: 'Visit gascap.app/upgrade or tap Settings → "Upgrade to Pro." The upgrade page shows all four options: Free, Pro Monthly ($2.99/mo), Pro Annual ($26.99/yr), and Pro Lifetime Membership ($19.99 one-time). You\'ll be taken to a secure Stripe checkout page. On the iPhone app, upgrading uses Apple In-App Purchase — you\'ll see a native purchase screen and pay through your Apple Account. On the web, checkout is handled securely by Stripe. Either way, Pro unlocks on your account everywhere. Lifetime members can add Lifetime Perks ($9.99/yr) from Settings → Plan.',
+        a: 'Visit gascap.app/upgrade or tap Settings → "Upgrade to Pro." The upgrade page shows all three options: Free, Pro Monthly ($2.99/mo), and Pro Lifetime Membership ($19.99 one-time). On the iPhone app, upgrading uses Apple In-App Purchase — you\'ll see a native purchase screen and pay through your Apple Account. On the Android app, upgrading uses Google Play In-App Purchase — you\'ll see a native Google Play billing screen and pay through your Google Account. On the web, checkout is handled securely by Stripe. Either way, Pro unlocks on your account everywhere. Lifetime members can add Lifetime Perks ($9.99/yr) from Settings → Plan.',
       },
       {
         q: 'Can I give GasCap™ Pro as a gift?',
@@ -262,7 +315,7 @@ const SECTIONS = [
       },
       {
         q: 'How do I get a vacation getaway with Pro Lifetime?',
-        a: 'There are two ways to earn a vacation getaway. First, anyone who purchases Pro Lifetime Membership ($19.99) receives a complimentary one-time resort getaway as a welcome bonus — right after you upgrade, choose your destination from a curated list (Las Vegas, Denver, Miami, San Antonio, Orlando, or Nashville) at gascap.app/getaway, and your certificate is sent by email within 24 hours. Second, Lifetime Perks subscribers ($9.99/yr add-on) receive a new vacation voucher every year they renew — this is an ongoing annual perk as long as Lifetime Perks is active.',
+        a: 'There are two ways to earn a vacation getaway. First, anyone who purchases Pro Lifetime Membership ($19.99) receives a complimentary one-time resort getaway as a welcome bonus — right after you upgrade, choose your destination from a curated list (including Las Vegas, Denver, Miami, San Antonio, Orlando, Nashville, Cancún, Puerto Vallarta, Bali, Phuket, and Dubai) at gascap.app/getaway, and your certificate is sent by email within 24 hours. Second, Lifetime Perks subscribers ($9.99/yr add-on) receive a new vacation voucher every year they renew — this is an ongoing annual perk as long as Lifetime Perks is active.',
       },
       {
         q: 'What does the getaway cover, and what do I pay?',
@@ -288,7 +341,7 @@ const SECTIONS = [
     items: [
       {
         q: 'What is the Monthly Gas Card Giveaway?',
-        a: 'Every month, GasCap™ gives away a $25 Visa prepaid card — use it at the pump or anywhere Visa is accepted — to one lucky winner. The drawing is held on or about the 5th of the following month. No purchase is required to enter.',
+        a: 'Every month, GasCap™ gives away a $50 Visa prepaid card — use it at the pump or anywhere Visa is accepted — to one lucky winner. The drawing is held automatically at the end of each month. No purchase is required to enter.',
       },
       {
         q: 'Who is eligible to enter?',
@@ -296,7 +349,7 @@ const SECTIONS = [
       },
       {
         q: 'How do I earn entries as a Pro member?',
-        a: 'Pro subscribers automatically earn entries for each calendar day they use the app. Your daily entry count depends on your Ambassador Program tier: standard users earn 1 entry/day; Supporters (5+ paying referrals) earn 2 entries/day; Ambassadors (15+ paying referrals) earn 3 entries/day; Elite Ambassadors (30+ paying referrals) earn 5 entries/day. Tier status is based on your cumulative paying referral count as of the last day of the previous month. On top of daily entries, streak bonuses apply as a flat addition: a 7-day streak adds +2 bonus entries, 30-day adds +5, 90-day adds +10, 180-day adds +15, and a full 365-day streak adds +20 bonus entries per draw period. Additionally, plan-level bonuses are added automatically each draw period: Pro Annual members receive +10 bonus entries; Pro Lifetime members (base) receive +20 bonus entries; Pro Lifetime members with active Lifetime Perks receive +30 bonus entries.',
+        a: 'Pro subscribers automatically earn entries for each calendar day they use the app. Your daily entry count depends on your Ambassador Program tier: standard users earn 1 entry/day; Supporters (5+ paying referrals) earn 2 entries/day; Ambassadors (15+ paying referrals) earn 3 entries/day; Elite Ambassadors (30+ paying referrals) earn 5 entries/day. Tier status is based on your cumulative paying referral count as of the last day of the previous month. On top of daily entries, streak bonuses apply as a flat addition: a 7-day streak adds +3 bonus entries, 30-day adds +8, 90-day adds +40, 180-day adds +70, and a full 365-day streak adds +120 bonus entries per draw period. Plan-level bonuses are added automatically each draw period: Pro Lifetime members (base) receive +25 bonus entries; Pro Lifetime members with active Lifetime Perks receive +40 bonus entries. Each successful referral also permanently adds +15 bonus entries to your total each draw period.',
       },
       {
         q: 'Can I enter without a paid subscription?',
@@ -304,15 +357,15 @@ const SECTIONS = [
       },
       {
         q: 'What is the entry toast notification?',
-        a: 'Pro and Fleet users see a brief "⚡ Entry earned!" notification each day confirming their giveaway entry for the current month. It appears once per day and auto-dismisses.',
+        a: 'Pro and Fleet users see a brief "⚡ Entry earned!" notification each day confirming their giveaway entry for the current draw period. It appears once per day and auto-dismisses.',
       },
       {
         q: 'Where can I check my entry count?',
         a: 'Two ways: tap the 🎁 gift box icon in the app header for a quick look at your current entry count, or visit gascap.app/giveaway for your full entry count, eligibility status, and the most recent past winner.',
       },
       {
-        q: 'Can I win every month?',
-        a: 'It depends on your Ambassador tier. Standard users are subject to a consecutive-month restriction — a winner from the preceding calendar month is not eligible the following month, and no person may win more than once per calendar quarter. However, Ambassador Program tier holders (Supporter, Ambassador, and Elite Ambassador) are always eligible and may win in consecutive months with no quarterly limit. If a selected winner is ineligible, an additional drawing is held.',
+        q: 'Can I win multiple weeks in a row?',
+        a: 'It depends on your Ambassador tier. Standard users are subject to a consecutive-week restriction — a winner from the preceding week is not eligible the following week, and no person may win more than once per calendar month. However, Ambassador Program tier holders (Supporter, Ambassador, and Elite Ambassador) are always eligible and may win in consecutive weeks with no monthly limit. If a selected winner is ineligible, an additional drawing is held.',
       },
       {
         q: 'How will I know if I won?',
@@ -342,7 +395,7 @@ const SECTIONS = [
       },
       {
         q: 'What are the Ambassador tier thresholds and rewards?',
-        a: 'Three tiers, based on cumulative all-time paying referrals: Supporter (5+ referrals) — earn 1 free Pro month per paying referral, up to 6 free months total, plus 2× daily drawing entries; Ambassador (15+ referrals) — earn free GasCap™ Pro while you maintain 5 or more currently active paying referrals, plus 3× daily drawing entries; Elite Ambassador (30+ referrals) — free Pro while you maintain 5+ active paying referrals, 5× daily drawing entries, recognition in the Top Ambassadors list, early feature access, and a personal thank-you from the GasCap™ team.',
+        a: 'Three tiers, based on cumulative all-time paying referrals: Supporter (5+ referrals) — earn 1 free Pro month per paying referral, up to 6 free months total, plus 2× daily drawing entries, plus a one-time $50 Dining Voucher; Ambassador (15+ referrals) — earn free GasCap™ Pro while you maintain 5 or more currently active paying referrals, plus 3× daily drawing entries, plus a one-time $100 Hotel Savings Card; Elite Ambassador (30+ referrals) — free Pro while you maintain 5+ active paying referrals, 5× daily drawing entries, recognition in the Top Ambassadors list, early feature access, a personal thank-you from the GasCap™ team, plus a one-time $500 Hotel Savings Card. Tier vouchers are sent automatically by email (via Parker Select Rewards) the moment you first reach each tier.',
       },
       {
         q: 'How many free months can I earn through referrals?',
@@ -350,7 +403,7 @@ const SECTIONS = [
       },
       {
         q: 'How do Ambassador tiers affect my monthly drawing entries?',
-        a: 'Once you reach a tier, your daily drawing entries are multiplied automatically: Supporter members earn 2 entries per day (up to 62/month); Ambassadors earn 3 entries per day (up to 93/month); Elite Ambassadors earn 5 entries per day (up to 155/month). Streak bonus entries still apply on top. Additionally, all Ambassador tier holders are always eligible to win the monthly drawing — the standard consecutive-month and quarterly restrictions do not apply.',
+        a: 'Once you reach a tier, your daily drawing entries are multiplied automatically: Supporter members earn 2 entries per day; Ambassadors earn 3 entries per day; Elite Ambassadors earn 5 entries per day. Streak bonus entries still apply on top. Additionally, all Ambassador tier holders are always eligible to win the monthly drawing — the standard consecutive-month and quarterly restrictions do not apply.',
       },
       {
         q: 'When does my referral count update?',
@@ -376,19 +429,19 @@ const SECTIONS = [
     items: [
       {
         q: 'What are Streak Rewards?',
-        a: 'Streak Rewards are free Pro month credits you earn by maintaining a consecutive daily streak. Open the app every day to keep your streak alive. Rewards are in the Share tab under "Streak Rewards."',
+        a: 'Streak Rewards are bonuses you earn by maintaining a consecutive daily streak — open the app every day to keep your streak alive. The reward depends on your plan: Pro Monthly and Annual members earn free Pro month credits at each milestone; Pro Lifetime members earn bonus gas card giveaway entries instead (since they already have Pro forever). Every milestone (regardless of plan) also earns a one-time Parker Select Rewards voucher: $25 Dining Voucher at 30 days, $50 Dining Voucher at 90 days, $100 Hotel Savings Card at 180 days, and $300 Hotel Savings Card at 365 days. Rewards are in the Share tab under "Streak Rewards."',
       },
       {
-        q: 'What milestones earn a free month?',
-        a: 'Reaching a 30-day streak earns 1 free Pro month. 90 days earns another. 180 days earns another. 365 days earns a final free Pro month plus Legend status — 4 free months total if you reach one year.',
+        q: 'What milestones earn a reward?',
+        a: 'Reaching a 30-day streak earns your first reward. 90 days earns another. 180 days earns another. 365 days earns a final reward plus Legend status — 4 milestones total if you reach one year. For Monthly/Annual members each milestone = 1 free Pro month. For Lifetime members each milestone = bonus giveaway entries. Every milestone also sends a one-time Parker Select Rewards voucher (Dining Voucher at 30/90 days, Hotel Savings Card at 180/365 days) by email within 24 hours.',
       },
       {
-        q: 'How do I redeem a banked free month?',
+        q: 'How do I redeem a banked free month? (Monthly/Annual members)',
         a: 'Email support@gascap.app from your account email and mention your banked streak credit. We\'ll apply it to your next billing cycle.',
       },
       {
-        q: 'Does breaking my streak affect credits I already earned?',
-        a: 'No. Once a milestone is hit, the credit is banked permanently (valid for 12 months). Your streak resets to zero but you keep the credit.',
+        q: 'Does breaking my streak affect rewards I already earned?',
+        a: 'No. Once a milestone is hit, the reward is banked permanently (free month credits valid for 12 months; bonus entries are applied to the current draw period). Your streak resets to zero but you keep everything already earned.',
       },
       {
         q: 'When does a new streak day start?',
@@ -452,7 +505,7 @@ const SECTIONS = [
       },
       {
         q: 'The app isn\'t updating after I upgraded my plan.',
-        a: 'Sign out and sign back in to refresh your session. On the PWA, pull down from the top to refresh. If the issue persists, clear your browser cache or reinstall the PWA.',
+        a: 'Sign out and sign back in to refresh your session. Pull down from the top to refresh the app. If the issue persists, clear your browser cache or reinstall the app from the App Store or Google Play.',
       },
       {
         q: 'My streak didn\'t count today even though I used the app.',
@@ -510,6 +563,7 @@ export default function HelpPage() {
     <div className="min-h-screen bg-[#eef1f7]">
 
       <StaticPageHeader active="help" />
+      <BackToTopButton />
 
       {/* ── Sticky section nav ─────────────────────────────────────────── */}
       <div className="sticky top-[52px] z-20 bg-[#eef1f7]/95 backdrop-blur-sm border-b border-slate-200">

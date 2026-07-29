@@ -10,8 +10,7 @@
  * To enable live API calls:
  *   1. Set GOOGLE_MAPS_API_KEY=your_server_side_key on Railway
  *   2. Set GOOGLE_MAPS_TRIP_PLANNER_ENABLED=true on Railway
- *   3. Implement the TODO blocks in googleMapsProvider.ts
- *   4. The /api/maps/route and /api/maps/search-fuel-stops endpoints will activate
+ *   3. The /api/maps/route and /api/maps/search-fuel-stops endpoints will activate
  */
 
 import type { IMapsProvider } from './types';

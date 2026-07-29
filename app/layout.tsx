@@ -22,7 +22,7 @@ const APP_URL = 'https://www.gascap.app';
 export const metadata: Metadata = {
   title: 'GasCap™ — Free Gas Calculator | Know Before You Pull Up',
   description:
-    'Free gas calculator that tells you exactly how much fuel you need and what it will cost before you reach the pump. Live local gas prices, rental car return mode, MPG tracking, and AI fuel advisor. No app store needed.',
+    'Free gas calculator that tells you exactly how much fuel you need and what it will cost before you reach the pump. Live local gas prices, rental car return mode, MPG tracking, and AI fuel advisor. Available on App Store and Google Play.',
   metadataBase: new URL(APP_URL),
   manifest: '/manifest.json',
   // Google Search Console ownership verification (for Play Console org website check)

@@ -36,7 +36,7 @@ import FuelBudgetWidget       from '@/components/FuelBudgetWidget';
 import SavingsSummary         from '@/components/SavingsSummary';
 import AnnualProjection       from '@/components/AnnualProjection';
 import PastWinners            from '@/components/PastWinners';
-import WinnerBanner           from '@/components/WinnerBanner';
+import UserModeSelector       from '@/components/UserModeSelector';
 
 // ── JSON-LD Schema Markup ────────────────────────────────────────────────────
 
@@ -63,10 +63,10 @@ function SchemaMarkup() {
       },
       {
         '@type': 'Question',
-        name: 'Do I need to download an app from the App Store?',
+        name: 'How do I get GasCap™ on my phone?',
         acceptedAnswer: {
           '@type': 'Answer',
-          text: 'No app store needed. GasCap™ is a Progressive Web App (PWA) — just visit gascap.app on your phone and tap "Add to Home Screen" to install it like a native app. It works on iPhone, Android, and any browser.',
+          text: 'GasCap™ is available on the App Store for iPhone and Google Play for Android — search "GasCap" and tap Install. You can also visit gascap.app in your browser and tap "Add to Home Screen" to install it directly. It works on iPhone, Android, and any browser.',
         },
       },
       {
@@ -90,7 +90,7 @@ function SchemaMarkup() {
         name: 'Does GasCap™ work offline?',
         acceptedAnswer: {
           '@type': 'Answer',
-          text: 'Yes. Once installed as a PWA, the core calculator works completely offline using your last-known gas price and saved vehicles. Live gas price lookup and AI features require an internet connection.',
+          text: 'Yes. Once installed, the core calculator works completely offline using your last-known gas price and saved vehicles. Live gas price lookup and AI features require an internet connection.',
         },
       },
       {
@@ -545,6 +545,19 @@ function VerifiedSuccessToast() {
   );
 }
 
+// ── Mode selector wrapper (reads ?mode= param inside Suspense) ───────────────
+
+function ModeSelectorWithParam({ onComplete }: { onComplete: (mode: string) => void }) {
+  const sp = useSearchParams();
+  const modeParam = sp.get('mode') as 'personal' | 'gig' | 'rental' | 'fleet' | null;
+  return (
+    <UserModeSelector
+      initialMode={modeParam ?? undefined}
+      onComplete={onComplete}
+    />
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function Home() {
@@ -557,6 +570,9 @@ export default function Home() {
   const isNative = useIsNative();
   const userPlan = (session?.user as { plan?: string })?.plan ?? 'free';
   const isGuest  = !session;
+  const userMode = (session?.user as { userMode?: string | null })?.userMode;
+  const [modeSelectorDismissed, setModeSelectorDismissed] = useState(false);
+  const showModeSelector = !!session && status === 'authenticated' && !userMode && !modeSelectorDismissed;
 
   // Scroll to top when session loads
   useEffect(() => {
@@ -588,6 +604,13 @@ export default function Home() {
       {/* Onboarding — shown once to new visitors */}
       {isGuest && <OnboardingModal />}
 
+      {/* User mode selector — shown once to logged-in users who haven't chosen a mode */}
+      {showModeSelector && (
+        <Suspense fallback={null}>
+          <ModeSelectorWithParam onComplete={() => setModeSelectorDismissed(true)} />
+        </Suspense>
+      )}
+
       {/* Trial expiry nudge — shown when ≤ 5 days remain on a Pro trial */}
       <TrialExpiryBanner />
 
@@ -612,9 +635,6 @@ export default function Home() {
       {/* Getaway promo pop-up — non-members get the Lifetime + getaway hook a few
           seconds after load; closeable + auto-dismisses (gated by the promo) */}
       <AdLandingBanner />
-
-      {/* ── Prize claim banner — shown to logged-in winners until claimed ── */}
-      {session && <WinnerBanner />}
 
       {/* ── Guest hero — SEO headline above the calculator ────────────── */}
       {isGuest && <GuestHero />}
@@ -776,10 +796,15 @@ export default function Home() {
                     <p className="text-[10px] text-white/50 leading-snug">{t.quickLinks.fleetDashSub}</p>
                   </a>
                 ) : (
-                  <a href="/ambassador"
+                  <a href="#share"
+                     onClick={(e) => {
+                       e.preventDefault();
+                       window.dispatchEvent(new CustomEvent('gascap:switch-tools-tab', { detail: { tab: 'share' } }));
+                       document.getElementById('gascap-tools')?.scrollIntoView({ behavior: 'smooth' });
+                     }}
                      className="flex flex-col gap-1 bg-white dark:bg-slate-800 rounded-xl
                                 border border-slate-100 dark:border-slate-700 p-3
-                                hover:border-brand-teal/40 transition-colors group shadow-sm">
+                                hover:border-brand-teal/40 transition-colors group shadow-sm cursor-pointer">
                     <span className="text-lg">🤝</span>
                     <p className="text-[11px] font-black text-slate-700 dark:text-slate-200 group-hover:text-brand-teal transition-colors leading-tight">{t.quickLinks.referEarn}</p>
                     <p className="text-[10px] text-slate-400 leading-snug">{t.quickLinks.referEarnSub}</p>
@@ -961,6 +986,36 @@ export default function Home() {
         <p className="text-[10px] text-slate-500">
           {t.footer.vnetCardDesc}
         </p>
+
+        {/* App Store badges */}
+        <div className="flex items-center justify-center gap-3 pt-2">
+          <a
+            href="https://apps.apple.com/app/id6761315915"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Download on the App Store"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/badges/app-store-badge.svg"
+              alt="Download on the App Store"
+              className="h-9 w-auto"
+            />
+          </a>
+          <a
+            href="https://play.google.com/store/apps/details?id=app.gascap.mobile"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Get it on Google Play"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/badges/google-play-badge.svg"
+              alt="Get it on Google Play"
+              className="h-9 w-auto"
+            />
+          </a>
+        </div>
 
         {/* Legal links */}
         <div className="flex items-center justify-center flex-wrap gap-x-4 gap-y-1 pt-1">

@@ -41,9 +41,8 @@ export interface PrizeTier {
  * To unlock the next tier, add a row here and redeploy.
  */
 export const PRIZE_TIERS: PrizeTier[] = [
-  { minSubscribers:   0, prize: '$25',  label: 'Starter' },
-  { minSubscribers: 500, prize: '$50',  label: 'Growth'  },
-  // { minSubscribers: 1000, prize: '$100', label: 'Scale' },  // ← unlock when ready
+  { minSubscribers:   0, prize: '$50',  label: 'Starter' },
+  // { minSubscribers: 500, prize: '$100', label: 'Growth' },  // ← unlock when ready
 ];
 
 // ─── Streak Bonus Tiers ───────────────────────────────────────────────────────
@@ -60,16 +59,24 @@ export interface StreakBonusTier {
  *
  * Streak bonus:
  *  – Keeps daily engagement rewarding even during ineligible months
- *  – Max +10 entries on top of the ~31 active-day entries
- *  – Requires ≥1 active day this month to qualify for the draw at all
+ *  – Max +120 entries on top of the ~7 active-day entries per weekly draw
+ *  – Requires ≥1 active day this period to qualify for the draw at all
+ *
+ * 90/180/365-day tiers bumped 2026-07 (15/22/30 -> 40/70/120) to make long streaks
+ * meaningfully more rewarding. Deliberately NOT set to the originally-floated
+ * 100/200/500: at that scale a single 365-day streak would out-weigh a Lifetime+Perks
+ * member (+40) by 12x+ in the weighted draw, letting one mechanic dominate every
+ * winner selection. 120 keeps the top tier a big, motivating jump (~4x the old max)
+ * while staying in the same order of magnitude as the other stacking bonuses
+ * (Lifetime+Perks +40, each referral +15) — see memory/feedback_giveaway_entry_ladder.md.
  */
 export const STREAK_BONUS_TIERS: StreakBonusTier[] = [
-  { minStreak:   0, bonus:  0, label: 'No bonus'        },
-  { minStreak:   7, bonus:  2, label: '1-week streak'   },
-  { minStreak:  30, bonus:  5, label: '1-month streak'  },
-  { minStreak:  90, bonus: 10, label: '3-month streak'  },
-  { minStreak: 180, bonus: 15, label: '6-month streak'  },
-  { minStreak: 365, bonus: 20, label: '1-year streak'   },
+  { minStreak:   0, bonus:   0, label: 'No bonus'        },
+  { minStreak:   7, bonus:   3, label: '1-week streak'   },
+  { minStreak:  30, bonus:   8, label: '1-month streak'  },
+  { minStreak:  90, bonus:  40, label: '3-month streak'  },
+  { minStreak: 180, bonus:  70, label: '6-month streak'  },
+  { minStreak: 365, bonus: 120, label: '1-year streak'   },
 ];
 
 /**
@@ -142,13 +149,16 @@ export async function getCurrentPrizeTier(): Promise<{
 }
 
 /** Bonus entries per draw period for Pro Annual members. */
-export const ANNUAL_BONUS_ENTRIES = 10;
+export const ANNUAL_BONUS_ENTRIES = 15;
 
 /** Bonus entries per draw period for Pro Lifetime members (base, no Perks required). */
-export const LIFETIME_BASE_BONUS_ENTRIES = 20;
+export const LIFETIME_BASE_BONUS_ENTRIES = 25;
 
 /** Bonus entries per draw period for Pro Lifetime members with active Lifetime Perks. */
-export const LIFETIME_BONUS_ENTRIES = 30;
+export const LIFETIME_BONUS_ENTRIES = 40;
+
+/** Bonus entries per successful referral (lifetime, not per-period). */
+export const REFERRAL_BONUS_ENTRIES = 15;
 
 export interface EntrantRow {
   userId:          string;
@@ -162,13 +172,17 @@ export interface EntrantRow {
   entryMultiplier: number;        // 1× standard, 2× Supporter, 3× Ambassador, 5× Elite
   baseEntries:     number;        // active days × entryMultiplier
   streakBonus:     number;        // flat bonus from streak tier (not multiplied)
-  earlyUpgradeBonusEntries:    number; // +10 bonus for trial-to-paid conversions
+  earlyUpgradeBonusEntries:    number; // +20 bonus for trial-to-paid conversions
   garageBonusEntries:          number; // +10/day for tapping to open garage (Pro+)
-  verifyReminderBonusEntries:  number; // +25 one-time for verifying email within 7 days of reminder
-  phoneBonusEntries:           number; // +25 one-time for adding phone number in settings
+  verifyReminderBonusEntries:  number; // +30 one-time for verifying email within 7 days of reminder
+  phoneBonusEntries:           number; // +30 one-time for adding phone number in settings
   dailyBonusEntries:           number; // 3–15/day from the daily gift box badge
-  lifetimeBonusEntries:        number; // +20 (active Perks) or +10 (lapsed/Annual) per period
-  entryCount:      number;        // baseEntries + streakBonus + earlyUpgrade + garageBonus + verifyReminderBonus + phoneBonus + dailyBonus + lifetimeBonus
+  firstCalcBonusEntries:       number; // +5 one-time for first calc
+  priceReportEntries:          number; // +5 per price report submitted
+  gigLogEntries:               number; // +5 per gig fill-up or mileage log
+  lifetimeBonusEntries:        number; // +40/+25 (Perks/base Lifetime) or +15 (Annual) per period
+  referralBonusEntries:        number; // +15 per successful referral (lifetime total)
+  entryCount:      number;        // baseEntries + streakBonus + earlyUpgrade + garageBonus + verifyReminderBonus + phoneBonus + dailyBonus + lifetimeBonus + referralBonus
   alwaysEligible:  boolean;       // true for Ambassador tier holders — skip win restrictions
   loginCount:      number;        // lifetime login count (engagement signal for draw review)
   lastLoginAt:     string | null; // ISO timestamp of most recent login, or null if never recorded
@@ -219,7 +233,7 @@ export function prevMonth(month: string): string {
 export type Cadence = 'weekly' | 'monthly' | 'daily';
 
 export const GIVEAWAY_CADENCE: Cadence =
-  (process.env.GIVEAWAY_CADENCE as Cadence) || 'weekly';
+  (process.env.GIVEAWAY_CADENCE as Cadence) || 'monthly';
 
 /** ISO-8601 week key for a date, e.g. 2026-07-03 → "2026-W27" (weeks are Mon–Sun). */
 export function isoWeekKey(date: Date): string {
@@ -413,6 +427,9 @@ export async function getEligibleEntrants(period: string = currentPeriod()): Pro
       verifyReminderBonusEntries: true,
       phoneBonusEntries: true,
       dailyBonusEntries: true,
+      firstCalcBonusEntries: true,
+      priceReportEntries: true,
+      gigLogEntries: true,
       loginCount: true,
       lastLoginAt: true,
     },
@@ -432,6 +449,10 @@ export async function getEligibleEntrants(period: string = currentPeriod()): Pro
       const verifyReminderBonusEntries = u.verifyReminderBonusEntries ?? 0;
       const phoneBonusEntries          = u.phoneBonusEntries          ?? 0;
       const dailyBonusEntries          = u.dailyBonusEntries          ?? 0;
+      const firstCalcBonusEntries      = u.firstCalcBonusEntries      ?? 0;
+      const priceReportEntries         = u.priceReportEntries         ?? 0;
+      const gigLogEntries              = u.gigLogEntries              ?? 0;
+      const referralBonusEntries       = refCount * REFERRAL_BONUS_ENTRIES;
       const perksActive          = u.stripeInterval === 'lifetime'
         && u.lifetimePerksUntil != null
         && new Date(u.lifetimePerksUntil) > new Date();
@@ -457,8 +478,12 @@ export async function getEligibleEntrants(period: string = currentPeriod()): Pro
         verifyReminderBonusEntries,
         phoneBonusEntries,
         dailyBonusEntries,
+        firstCalcBonusEntries,
+        priceReportEntries,
+        gigLogEntries,
         lifetimeBonusEntries,
-        entryCount:      baseEntries + streakBonus + bonusEntries + garageBonusEntries + verifyReminderBonusEntries + phoneBonusEntries + dailyBonusEntries + lifetimeBonusEntries,
+        referralBonusEntries,
+        entryCount:      baseEntries + streakBonus + bonusEntries + garageBonusEntries + verifyReminderBonusEntries + phoneBonusEntries + dailyBonusEntries + firstCalcBonusEntries + priceReportEntries + gigLogEntries + lifetimeBonusEntries + referralBonusEntries,
         alwaysEligible:  isAlwaysEligible(refCount),
         loginCount:      u.loginCount ?? 0,
         lastLoginAt:     u.lastLoginAt ?? null,
@@ -531,6 +556,7 @@ export async function recordDraw(result: DrawResult, notes?: string) {
       totalEntries: result.totalEntries,
       drawnAt:      new Date().toISOString(),
       notes:        notes ?? null,
+      claimToken:   randomUUID(),
     },
   });
 }
@@ -545,6 +571,40 @@ export async function markWinnerClaimed(month: string) {
   return prisma.giveawayDraw.update({
     where: { month },
     data:  { claimedAt: new Date().toISOString() },
+  });
+}
+
+/** Number of days after drawnAt a winner has to claim before forfeiting (matches official rules). */
+export const CLAIM_WINDOW_DAYS = 3;
+
+export type ClaimTokenStatus =
+  | { ok: true; draw: Awaited<ReturnType<typeof getDrawHistory>>[number] }
+  | { ok: false; reason: 'not_found' | 'invalid_token' | 'already_claimed' | 'expired' };
+
+/** Validate a claim token against the recorded draw for that month. */
+export async function checkClaimToken(month: string, token: string): Promise<ClaimTokenStatus> {
+  const history = await getDrawHistory();
+  const draw    = history.find((d) => d.month === month);
+  if (!draw) return { ok: false, reason: 'not_found' };
+  if (!draw.claimToken || draw.claimToken !== token) return { ok: false, reason: 'invalid_token' };
+  if (draw.claimedAt) return { ok: false, reason: 'already_claimed' };
+
+  const deadline = new Date(draw.drawnAt).getTime() + CLAIM_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+  if (Date.now() > deadline) return { ok: false, reason: 'expired' };
+
+  return { ok: true, draw };
+}
+
+/**
+ * Mark a winner's claim confirmed with their 18+/eligibility certification
+ * timestamp. Used by the public self-serve claim route. Idempotent guard
+ * (already-claimed) is enforced by checkClaimToken before this is called.
+ */
+export async function recordAgeConfirmedClaim(month: string) {
+  const now = new Date().toISOString();
+  return prisma.giveawayDraw.update({
+    where: { month },
+    data:  { claimedAt: now, ageConfirmedAt: now },
   });
 }
 
@@ -634,14 +694,16 @@ export async function updateDrawWinner(
   return prisma.giveawayDraw.update({
     where: { month },
     data: {
-      winnerId:     result.winner.userId,
-      winnerName:   result.winner.name,
-      winnerEmail:  result.winner.email,
-      entryCount:   result.winner.entryCount,
-      totalEntries: result.totalEntries,
-      drawnAt:      new Date().toISOString(),
-      claimedAt:    null,   // reset — new winner must claim
-      notes:        [forfeitNote, notes ?? ''].filter(Boolean).join(' '),
+      winnerId:       result.winner.userId,
+      winnerName:     result.winner.name,
+      winnerEmail:    result.winner.email,
+      entryCount:     result.winner.entryCount,
+      totalEntries:   result.totalEntries,
+      drawnAt:        new Date().toISOString(),
+      claimedAt:      null,   // reset — new winner must claim
+      claimToken:     randomUUID(), // fresh token — the old one was never sent to this winner
+      ageConfirmedAt: null,
+      notes:          [forfeitNote, notes ?? ''].filter(Boolean).join(' '),
     },
   });
 }

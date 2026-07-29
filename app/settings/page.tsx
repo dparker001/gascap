@@ -2,7 +2,9 @@
 
 import { useSession, signOut } from 'next-auth/react';
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { hasBiometricCredentials, clearBiometricCredentials, getBiometricType, saveBiometricCredentials } from '@/lib/biometrics';
 import { setThemePreference, getThemePreference, isDarkMode, type ThemePreference } from '@/components/DarkModeProvider';
 import { DoorMiniPreview, DOOR_STYLE_LABELS, DOOR_DIRECTION_LABELS } from '@/components/GarageDoor';
 import { useGarageDoorPrefs, type DoorStyle, type DoorDirection } from '@/hooks/useGarageDoorPrefs';
@@ -57,8 +59,9 @@ function Avatar({ name, color }: { name: string; color: string }) {
 }
 
 export default function SettingsPage() {
-  const { data: session, status } = useSession();
+  const { data: session, status, update: updateSession } = useSession();
   const { t, locale } = useTranslation();
+  const router = useRouter();
   const isNative = useIsNative();   // hide web Stripe checkout in native wrappers
   const platform = useNativePlatform(); // 'ios' → upgrade via Apple IAP (/upgrade)
   const isIos    = platform === 'ios';
@@ -87,6 +90,7 @@ export default function SettingsPage() {
   const lastPinchRef     = useRef<number | null>(null);
   // ─────────────────────────────────────────────────────────────────────────
 
+  const [userMode,       setUserMode]       = useState<string>('');
   const [displayName,    setDisplayName]    = useState('');
   const [phone,          setPhone]          = useState('');
   const [smsOptIn,       setSmsOptIn]       = useState(false);
@@ -121,6 +125,20 @@ export default function SettingsPage() {
   const [fleetLogoUrl,     setFleetLogoUrl]     = useState('');
   const [fleetSaved,       setFleetSaved]       = useState(false);
   const [fleetSaving,      setFleetSaving]      = useState(false);
+  const [biometricLabel,   setBiometricLabel]   = useState<string | null>(null);
+  const [bioEnrollState,   setBioEnrollState]   = useState<'idle' | 'prompt' | 'saving'>('idle');
+  const [bioPwInput,       setBioPwInput]       = useState('');
+  const [bioPwError,       setBioPwError]       = useState('');
+
+  useEffect(() => {
+    async function checkBiometric() {
+      const [type, has] = await Promise.all([getBiometricType(), hasBiometricCredentials()]);
+      if (type && has) {
+        setBiometricLabel(type === 'faceId' ? 'Face ID' : type === 'touchId' ? 'Touch ID' : 'Biometrics');
+      }
+    }
+    checkBiometric();
+  }, []);
   const { doorStyle, setDoorStyle, doorDirection, setDoorDirection } = useGarageDoorPrefs();
 
   useEffect(() => {
@@ -161,7 +179,8 @@ export default function SettingsPage() {
     // blank on every visit and so saving never accidentally wipes saved data.
     fetch('/api/user/profile')
       .then((r) => r.json())
-      .then((d: { displayName?: string; phone?: string; smsOptIn?: boolean; avatarUrl?: string; preferredFillLevel?: number | null; monthlyFuelBudget?: number | null }) => {
+      .then((d: { displayName?: string; phone?: string; smsOptIn?: boolean; avatarUrl?: string; preferredFillLevel?: number | null; monthlyFuelBudget?: number | null; userMode?: string | null }) => {
+        if (d.userMode)               setUserMode(d.userMode);
         if (d.displayName)            setDisplayName(d.displayName);
         if (d.phone)                  { setPhone(d.phone); setSavedPhone(d.phone); }
         if (d.smsOptIn !== undefined) setSmsOptIn(d.smsOptIn);
@@ -219,33 +238,45 @@ export default function SettingsPage() {
   // Prevents the scroll listener from overriding activeTab during a programmatic scroll
   const isProgrammaticScrollRef = useRef(false);
 
+  function getScroller(el: HTMLElement): HTMLElement {
+    let node: HTMLElement | null = el.parentElement;
+    while (node) {
+      const oy = getComputedStyle(node).overflowY;
+      if ((oy === 'auto' || oy === 'scroll') && node.scrollHeight > node.clientHeight) return node;
+      node = node.parentElement;
+    }
+    return document.documentElement;
+  }
+
   function scrollToSection(id: TabId) {
-    const el      = sectionRefs.current[id];
+    const el = sectionRefs.current[id];
     if (!el) return;
-    const headerH = (fixedHeaderRef.current?.offsetHeight ?? 112) + 8;
-    const top     = el.getBoundingClientRect().top + window.scrollY - headerH;
+    const scroller = getScroller(el);
+    const headerH  = (fixedHeaderRef.current?.offsetHeight ?? 112) + 8;
+    const top      = el.getBoundingClientRect().top + scroller.scrollTop - headerH;
     isProgrammaticScrollRef.current = true;
-    window.scrollTo({ top, behavior: 'smooth' });
+    scroller.scrollTo({ top, behavior: 'smooth' });
     setActiveTab(id);
-    // Release lock after smooth scroll completes (~600 ms typical)
     setTimeout(() => { isProgrammaticScrollRef.current = false; }, 800);
   }
 
   useEffect(() => {
+    const firstEl = Object.values(sectionRefs.current).find(Boolean);
+    const scroller = firstEl ? getScroller(firstEl) : (document.documentElement as HTMLElement);
+
     function onScroll() {
-      // Don't let user-scroll events clobber a tab we just set programmatically
       if (isProgrammaticScrollRef.current) return;
-      const headerH = (fixedHeaderRef.current?.offsetHeight ?? 112) + 8;
-      const scrollY = window.scrollY + headerH;
+      const headerH  = (fixedHeaderRef.current?.offsetHeight ?? 112) + 8;
+      const scrollTop = scroller.scrollTop + headerH;
       let current: TabId = 'profile';
       for (const { id } of TABS) {
         const el = sectionRefs.current[id];
-        if (el && el.offsetTop <= scrollY) current = id;
+        if (el && el.offsetTop <= scrollTop) current = id;
       }
       setActiveTab(current);
     }
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
+    scroller.addEventListener('scroll', onScroll, { passive: true });
+    return () => scroller.removeEventListener('scroll', onScroll);
   }, []);
 
   // Auto-scroll to preferences + flash the budget section when arriving via ?tab=preferences
@@ -445,6 +476,7 @@ export default function SettingsPage() {
           avatarUrl:          avatarUrl || null,
           preferredFillLevel: preferredFillLevel ?? null,
           monthlyFuelBudget:  monthlyFuelBudget ? parseFloat(monthlyFuelBudget) : null,
+          userMode:           userMode || null,
         }),
       });
       // Keep fill preference in localStorage so calculators can read it without an API call
@@ -453,6 +485,9 @@ export default function SettingsPage() {
       } else {
         localStorage.removeItem('gascap_fill_pref');
       }
+      // Notify NativeAppShell immediately so the Driver tab reacts before the JWT refresh
+      window.dispatchEvent(new CustomEvent('gc:user-mode', { detail: { mode: userMode || null } }));
+      await updateSession();
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } finally {
@@ -645,16 +680,27 @@ export default function SettingsPage() {
       {/* ─────────────────────────────────────────────────────────────────── */}
 
       {/* Fixed header + tab bar — position:fixed guarantees it never scrolls away */}
-      <div ref={fixedHeaderRef} className="fixed inset-x-0 top-0 z-20 shadow-md">
+      <div ref={fixedHeaderRef} className="fixed inset-x-0 top-0 z-20 shadow-md" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
         {/* Header */}
         <div className="bg-navy-700 px-5 pt-4 pb-3">
-          <div className="max-w-lg mx-auto flex items-center gap-4">
-            <Link href="/" className="text-white/60 hover:text-white transition-colors">
+          <div className="max-w-lg mx-auto flex items-center relative">
+            <button
+              onClick={() => {
+                if (isNative) {
+                  window.dispatchEvent(new CustomEvent('gc:switch-tab', { detail: { tab: 'calculator' } }));
+                  window.dispatchEvent(new CustomEvent('gascap:switch-tools-tab', { detail: { tab: 'calculator' } }));
+                } else {
+                  router.push('/');
+                }
+              }}
+              className="text-white/60 hover:text-white transition-colors active:opacity-70 absolute left-0"
+              aria-label="Back"
+            >
               <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                 <path d="M19 12H5M12 5l-7 7 7 7" />
               </svg>
-            </Link>
-            <h1 className="text-white font-black text-xl">{t.settings.title}</h1>
+            </button>
+            <h1 className="text-white font-black text-xl w-full text-center">{t.settings.title}</h1>
           </div>
         </div>
 
@@ -680,7 +726,7 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      <div className="max-w-lg mx-auto px-4 pt-28 pb-6 space-y-4">
+      <div className="max-w-lg mx-auto px-4 pb-6 space-y-4" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 7rem)' }}>
 
         {/* Profile section */}
         <div ref={(el) => { sectionRefs.current['profile'] = el; }}>
@@ -787,6 +833,28 @@ export default function SettingsPage() {
               placeholder={session.user?.name ?? t.settings.displayNamePlaceholder}
               maxLength={50}
             />
+          </div>
+
+          {/* Driver Mode */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-500 mb-1.5">Driver Mode</label>
+            <select
+              className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800
+                         focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white"
+              value={userMode}
+              onChange={(e) => {
+                const val = e.target.value;
+                setUserMode(val);
+                // Notify NativeAppShell immediately so Driver tab reacts without waiting for Save
+                window.dispatchEvent(new CustomEvent('gc:user-mode', { detail: { mode: val || null } }));
+              }}
+            >
+              <option value="">Not set</option>
+              <option value="personal">🚗 Personal Driver</option>
+              <option value="gig">📦 Gig Driver (Uber, Lyft, DoorDash, etc.)</option>
+              <option value="rental">🏢 Rental Car</option>
+              <option value="fleet">🚚 Business / Fleet</option>
+            </select>
           </div>
 
           {/* Email (read-only) */}
@@ -993,6 +1061,74 @@ export default function SettingsPage() {
             </div>
 
             <div className="border-t border-slate-100 pt-3 space-y-2">
+              {biometricLabel ? (
+                <button
+                  onClick={async () => {
+                    await clearBiometricCredentials();
+                    setBiometricLabel(null);
+                  }}
+                  className="w-full py-3 rounded-2xl border-2 border-slate-200 text-sm font-bold
+                             text-slate-500 hover:bg-slate-50 transition-colors"
+                >
+                  Disable {biometricLabel} Sign-In
+                </button>
+              ) : bioEnrollState === 'idle' ? (
+                <button
+                  onClick={async () => {
+                    const type = await getBiometricType();
+                    if (type) setBioEnrollState('prompt');
+                  }}
+                  className="w-full py-3 rounded-2xl border-2 border-slate-200 text-sm font-bold
+                             text-slate-500 hover:bg-slate-50 transition-colors"
+                >
+                  Enable Face ID / Touch ID Sign-In
+                </button>
+              ) : (
+                <div className="rounded-2xl border-2 border-amber-200 bg-amber-50 p-4 space-y-3">
+                  <p className="text-sm font-bold text-slate-700">Confirm your password to enable biometric sign-in</p>
+                  <input
+                    type="password"
+                    autoComplete="current-password"
+                    placeholder="Password"
+                    value={bioPwInput}
+                    onChange={(e) => { setBioPwInput(e.target.value); setBioPwError(''); }}
+                    className="input-field text-sm"
+                  />
+                  {bioPwError && <p className="text-xs text-red-500 font-medium">{bioPwError}</p>}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => { setBioEnrollState('idle'); setBioPwInput(''); setBioPwError(''); }}
+                      className="flex-1 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-500"
+                    >Cancel</button>
+                    <button
+                      disabled={bioEnrollState === 'saving' || !bioPwInput}
+                      onClick={async () => {
+                        setBioEnrollState('saving');
+                        const userEmail = (session?.user as { email?: string })?.email ?? '';
+                        // Verify password first
+                        const res = await fetch('/api/auth/verify-password', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ email: userEmail, password: bioPwInput }),
+                        });
+                        if (!res.ok) {
+                          setBioPwError('Incorrect password.');
+                          setBioEnrollState('prompt');
+                          return;
+                        }
+                        await saveBiometricCredentials(userEmail, bioPwInput);
+                        const type = await getBiometricType();
+                        setBiometricLabel(type === 'faceId' ? 'Face ID' : type === 'touchId' ? 'Touch ID' : 'Biometrics');
+                        setBioEnrollState('idle');
+                        setBioPwInput('');
+                      }}
+                      className="flex-1 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold disabled:opacity-50"
+                    >
+                      {bioEnrollState === 'saving' ? 'Saving…' : 'Enable'}
+                    </button>
+                  </div>
+                </div>
+              )}
               <button
                 onClick={() => signOut({ callbackUrl: '/' })}
                 className="w-full py-3 rounded-2xl border-2 border-red-100 text-sm font-bold
@@ -1103,7 +1239,7 @@ export default function SettingsPage() {
                 ) : (
                   <>
                     <p className="text-[11px] text-slate-500 leading-relaxed">
-                      Add Lifetime Perks for $9.99/yr to unlock +30 weekly giveaway entries and an annual vacation voucher.
+                      Add Lifetime Perks for $9.99/yr to unlock +30 monthly giveaway entries and an annual vacation voucher.
                     </p>
                     {isNative ? (
                       <p className="text-[11px] text-slate-400">Visit gascap.app/settings to add Lifetime Perks.</p>
@@ -1395,7 +1531,7 @@ export default function SettingsPage() {
         {giveaway && (
           <div className="bg-white rounded-2xl border border-amber-200 shadow-sm p-5 space-y-3">
             <div className="flex items-center justify-between">
-              <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400">{t.settings.monthlyGasCard}</h2>
+              <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400">{t.settings.weeklyGasCard}</h2>
               <span className="text-[10px] font-black bg-amber-400 text-white px-2 py-0.5 rounded-full">{t.settings.giveawayBadge}</span>
             </div>
 

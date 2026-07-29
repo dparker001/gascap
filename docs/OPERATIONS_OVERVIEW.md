@@ -1,6 +1,6 @@
 # GasCap™ — Operations Overview
 
-> Last updated: 2026-05-02
+> Last updated: 2026-07-28
 > Owner: Don Parker (admin@gascap.app)
 > This document is a map — not a rulebook. Follow the links for authoritative content.
 
@@ -24,7 +24,7 @@
 | Help & FAQ | https://www.gascap.app/help | Comprehensive user guide — single source of truth for app features |
 | Terms of Service | https://www.gascap.app/terms | Legal, program rules, SMS terms, Ambassador Program terms |
 | Privacy Policy | https://www.gascap.app/privacy | Data handling, GDPR/CCPA |
-| Sweepstakes Rules | https://www.gascap.app/sweepstakes-rules | Official weekly drawing rules |
+| Sweepstakes Rules | https://www.gascap.app/sweepstakes-rules | Official monthly drawing rules |
 | Free Entry (AMOE) | https://www.gascap.app/amoe | No-purchase entry form |
 | Upgrade / Pricing | https://www.gascap.app/upgrade | Plan comparison and checkout |
 | Contact | https://www.gascap.app/contact | Support form + SMS opt-in |
@@ -36,9 +36,10 @@
 | Document | File | Purpose |
 |---|---|---|
 | **This file** | `OPERATIONS_OVERVIEW.md` | Master map of all docs and systems |
-| Chatbot Training | `CHATBOT_TRAINING.md` | Full training doc (master copy) |
-| Chatbot Training Part 1 | `CHATBOT_TRAINING_PART1.md` | Sections 1–8 — upload to GHL knowledge base |
-| Chatbot Training Part 2 | `CHATBOT_TRAINING_PART2.md` | Sections 9–14 — upload to GHL knowledge base |
+| Chatbot Training | `CHATBOT_TRAINING.md` | Full training doc (master copy, not for direct paste — GHL's 25,000-char field limit requires the 3-part split below) |
+| Chatbot Training Part 1 | `CHATBOT_TRAINING_PART1.md` | Sections 1–7 — paste into GHL knowledge base |
+| Chatbot Training Part 2 | `CHATBOT_TRAINING_PART2.md` | Section 8 (Plans & Billing) — paste into GHL knowledge base |
+| Chatbot Training Part 3 | `CHATBOT_TRAINING_PART3.md` | Sections 9–14 — paste into GHL knowledge base |
 | Pilot Partner Program | `FIELD_AMBASSADOR_PROGRAM.md` | Field rep recruiting, incentives, pitch script, placard ops |
 | Placard Copy & Print Specs | `PLACARD_COPY_AND_SPECS.md` | Print specs, QR sizing, headline variants, vendor list |
 | GHL Form Specs | `AMBASSADOR_GOOGLE_FORM.md` | Placement Report form fields, Sheet columns |
@@ -59,6 +60,8 @@
 | **Stripe** | Payments, subscriptions | dashboard.stripe.com |
 | **Railway** | Hosting, PostgreSQL database, cron jobs | railway.app |
 | **TangoCard** | Gas card reward delivery (field reps + ambassador program) | tangocard.com |
+| **Tremendous** | Monthly giveaway $50 Visa prepaid card delivery | tremendous.com — fires on winner claim confirmation, see `lib/tremendous.ts` |
+| **Marketing Boost** | Getaway certificates (100+ destinations), streak/Ambassador Dining Vouchers + Hotel Savings Cards | members.marketingboost.com — API key in Railway env, see `lib/marketingBoost.ts` |
 | **EIA Open Data** | Live gas price data | eia.gov/opendata |
 | **Meta (Facebook/Instagram)** | Social media, ads | Pixel ID: 948950298128395 |
 
@@ -71,18 +74,22 @@ Documented in: `app/terms/page.tsx` (§5) · `app/help/page.tsx` (Ambassador sec
 
 | Tier | Paying Referrals | Key Reward |
 |---|---|---|
-| Supporter | 5+ | 1 free Pro month per referral (cap: 6 credits) + 2× daily draw entries |
-| Ambassador | 15+ | Free Pro for life + 3× daily draw entries |
-| Elite Ambassador | 30+ | Free Pro for life + 5× daily draw entries + Top Ambassadors recognition |
+| Supporter | 5+ | 1 free Pro month per referral (cap: 6 credits) + 2× daily draw entries + one-time $50 Dining Voucher |
+| Ambassador | 15+ | Free Pro for life + 3× daily draw entries + one-time $100 Hotel Savings Card |
+| Elite Ambassador | 30+ | Free Pro for life + 5× daily draw entries + Top Ambassadors recognition + one-time $500 Hotel Savings Card |
 
-### Weekly Gas Card Drawing
+Tier vouchers (branded to customers as Parker Select Rewards, fulfilled via Marketing Boost API) fire automatically on first reaching a tier — Pro/Fleet only, see `lib/users.ts` `recordReferral()`.
+
+### Monthly Gas Card Drawing
 Documented in: `app/giveaway/page.tsx` · `app/sweepstakes-rules/page.tsx` · `lib/giveaway.ts`
 
-- Entries earned: 1 per active day (Pro/Fleet); flat plan bonus entries per draw week
-- Plan bonus entries: Annual +10/week · Lifetime base +20/week · Lifetime+Perks +30/week
-- Streak bonus (flat, separate): 7d=+2, 30d=+5, 90d=+10, 180d=+15, 365d=+20
-- Prize: $25 Visa prepaid card (scales to $50 at 500 paying subscribers)
-- Drawing: weekly (cadence managed by `lib/giveaway.ts`)
+- Entries earned: 1 per active day (Pro/Fleet); flat plan bonus entries per draw month
+- Plan bonus entries: Lifetime base +25/month · Lifetime+Perks +40/month
+- Streak bonus (flat, separate): 7d=+3, 30d=+8, 90d=+40, 180d=+70, 365d=+120
+- Streak milestones ALSO earn a one-time Parker Select Rewards voucher (Pro/Fleet only, fulfilled via Marketing Boost API): 30d=$25 dining, 90d=$50 dining, 180d=$100 hotel, 365d=$300 hotel — see `app/api/activity/route.ts`
+- Prize: $50 Visa prepaid card, fixed (switched back from a weekly $25 draw 2026-07-28 to de-risk launch spend)
+- Drawing: monthly, at month end (cadence managed by `lib/giveaway.ts`, guarded to only fire on the last calendar day — see `app/api/cron/giveaway-draw/route.ts`)
+- Winner must confirm via a self-serve claim link (18+/eligibility certification) within 3 days before the Tremendous card is sent — see `app/api/giveaway/claim`
 
 ### Pilot Partner Program (field placard visits)
 Documented in: `docs/FIELD_AMBASSADOR_PROGRAM.md`

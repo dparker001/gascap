@@ -7,7 +7,12 @@
  *
  * Web only (hidden on native — the discounted $9.99 needs a separate Apple IAP
  * product, and anti-steering forbids pointing the app at web checkout). Hidden for
- * Lifetime members and once the 100 spots are gone. Dismissible.
+ * Lifetime members, once the 100 spots are gone, and — via showBanner — until real
+ * redemptions clear FOUNDING_DISPLAY_FLOOR (lib/foundingPromo.ts). A live "100 of
+ * 100 spots left" counter (i.e. zero real purchases) reads as "nobody wants this"
+ * rather than urgency, so the banner stays hidden pre-marketing-launch and
+ * auto-reveals once there's enough real momentum — no manual toggle to remember.
+ * Dismissible.
  */
 
 import { useEffect, useState } from 'react';
@@ -17,7 +22,7 @@ import { useIsNative } from '@/hooks/useIsNative';
 
 const DISMISS_KEY = 'gc_founding_dismissed';
 
-interface Status { active: boolean; cap: number; spotsLeft: number; price: number }
+interface Status { active: boolean; cap: number; spotsLeft: number; price: number; showBanner: boolean }
 
 export default function FoundingMemberBanner() {
   const { data: session } = useSession();
@@ -33,7 +38,7 @@ export default function FoundingMemberBanner() {
   }, []);
 
   if (isNative || isLifetime || dismissed) return null;
-  if (!status?.active || status.spotsLeft <= 0) return null;
+  if (!status?.showBanner) return null;
 
   const href = session ? '/upgrade?founding=1' : '/signup?ref=founding';
   const cta  = session ? 'Claim $9.99 Lifetime →' : 'Claim your spot →';

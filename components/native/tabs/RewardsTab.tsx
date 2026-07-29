@@ -12,14 +12,36 @@
 
 import Link            from 'next/link';
 import { useSession }  from 'next-auth/react';
+import { useEffect, useState } from 'react';
 import StreakRewards   from '@/components/StreakRewards';
 import ReferralCard    from '@/components/ReferralCard';
 import { useTranslation } from '@/contexts/LanguageContext';
 
 export default function RewardsTab() {
-  const { status } = useSession();
+  const { data: session, status } = useSession();
   const { t } = useTranslation();
   const isGuest = status === 'unauthenticated';
+  const [entryCount, setEntryCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!session) return;
+    fetch('/api/user/giveaway-entries')
+      .then((r) => r.ok ? r.json() : null)
+      .then((d: { entryCount?: number } | null) => {
+        if (d?.entryCount != null) setEntryCount(d.entryCount);
+      })
+      .catch(() => {});
+    const handler = () => {
+      fetch('/api/user/giveaway-entries')
+        .then((r) => r.ok ? r.json() : null)
+        .then((d: { entryCount?: number } | null) => {
+          if (d?.entryCount != null) setEntryCount(d.entryCount);
+        })
+        .catch(() => {});
+    };
+    window.addEventListener('gascap:entries-earned', handler);
+    return () => window.removeEventListener('gascap:entries-earned', handler);
+  }, [session]);
 
   return (
     <div className="px-4 pt-4 pb-2 max-w-lg mx-auto w-full space-y-4">
@@ -32,12 +54,18 @@ export default function RewardsTab() {
       >
         <div className="flex items-center gap-3">
           <span className="text-3xl" aria-hidden="true">🎁</span>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <h2 className="text-lg font-bold leading-tight">{t.rewardsHub.giveawayTitle}</h2>
             <p className="text-sm text-white/85 mt-0.5">
               {t.rewardsHub.giveawaySub}
             </p>
           </div>
+          {!isGuest && entryCount != null && (
+            <div className="shrink-0 text-right">
+              <p className="text-2xl font-black leading-none">{entryCount}</p>
+              <p className="text-xs text-white/80 mt-0.5 font-medium">entries</p>
+            </div>
+          )}
         </div>
       </Link>
 

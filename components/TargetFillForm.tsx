@@ -19,6 +19,14 @@ import type { CalcTab } from './CalculatorTabs';
 import { useTranslation } from '@/contexts/LanguageContext';
 import { trackCalculateTarget, trackRentalReturnToggled } from '@/lib/gtag';
 import { checkTankSize } from '@/lib/tankValidation';
+import GaugeScanModal from './GaugeScanModal';
+
+// Gauge photo-scan: SHELVED again (2026-07-09) — not accurate enough to trust, even
+// on clean images. The full Pro geometry pipeline (vision locates needle/E/F, server
+// computes angle→% + cross-check) is kept intact for a possible future revisit. The
+// manual needle-drag slider is the free, accurate path. Flip to true (AND the server
+// guard in app/api/gauge/scan/route.ts) to re-enable.
+const GAUGE_SCAN_ENABLED = false;
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -90,21 +98,89 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
   const [showLiveNudge, setShowLiveNudge] = useState(false);
   const [gaugeScanning, setGaugeScanning] = useState(false);
   const [gaugeScanMsg,  setGaugeScanMsg]  = useState('');
-  const [rentalMode,    setRentalMode]    = useState(false);
-  const [rentalRate,    setRentalRate]    = useState('');
+  const [showScanModal,    setShowScanModal]    = useState(false);
+  const [scanFromDashboard, setScanFromDashboard] = useState(false);
+  const [rentalMode,        setRentalMode]        = useState(false);
+  const [rentalRate,        setRentalRate]        = useState('');
+  const [rentalPickupLevel, setRentalPickupLevel] = useState(100); // % — 100 = full
+  const [rentalReturnDate,  setRentalReturnDate]  = useState('');  // YYYY-MM-DD
   const [gasCoords,     setGasCoords]     = useState<{ lat: number; lng: number } | null>(null);
   const [nearbyAttrib,  setNearbyAttrib]  = useState<{ name: string; distanceMi: number; grade: string } | null>(null);
   const [nearbyStatus,  setNearbyStatus]  = useState<'idle' | 'fetching' | 'found' | 'unavailable'>('idle');
+  // Confirms the price was applied after a Find Gas tap — the calculator doesn't
+  // auto-scroll to the price field, so without this the user has no feedback that
+  // anything happened.
+  const [priceToast,        setPriceToast]        = useState<string | null>(null);
+  const [priceToastExiting, setPriceToastExiting]  = useState(false);
   // EPA/AI tank estimate for the currently-selected vehicle (used for validation warning)
   const [vehicleTankEst,   setVehicleTankEst]   = useState<number | undefined>(undefined);
   const [vehicleBodyClass, setVehicleBodyClass] = useState<string | undefined>(undefined);
   // Tank-size source tracking — drives the "From garage / From list" badge in TankPresets
   const [presetLabel, setPresetLabel] = useState('');
-  const gaugeCamRef     = useRef<HTMLInputElement>(null);
-  const gaugeGalleryRef = useRef<HTMLInputElement>(null);
   const calcStartFired  = useRef(false);
   // Stable ref so the gc:inject-gas-price event handler always calls the latest liveRecalc
   const liveRecalcRef   = useRef<(p: Partial<FormState>) => void>(() => {});
+
+  // Persist rental pickup level + return date in localStorage so values survive a page refresh
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const lvl  = localStorage.getItem('gc_rental_pickup_level');
+    const date = localStorage.getItem('gc_rental_return_date');
+    if (lvl)  setRentalPickupLevel(Number(lvl));
+    if (date) setRentalReturnDate(date);
+  }, []);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem('gc_rental_pickup_level', String(rentalPickupLevel));
+  }, [rentalPickupLevel]);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (rentalReturnDate) localStorage.setItem('gc_rental_return_date', rentalReturnDate);
+    else localStorage.removeItem('gc_rental_return_date');
+  }, [rentalReturnDate]);
+
+  // Compute return-day alert (today or tomorrow local date)
+  const rentalReturnAlert: 'today' | 'tomorrow' | null = (() => {
+    if (!rentalReturnDate) return null;
+    const now   = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const tomorrow = (() => {
+      const d = new Date(now); d.setDate(d.getDate() + 1);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    })();
+    if (rentalReturnDate === today)     return 'today';
+    if (rentalReturnDate === tomorrow)  return 'tomorrow';
+    return null;
+  })();
+
+  // Auto-activate rental mode for users whose driver mode is 'rental',
+  // or when arriving from the /rental landing page via ?rental=1
+  const sessionUserMode = (session?.user as { userMode?: string | null })?.userMode;
+  // Seed from sessionStorage on mount so rental mode fires even before JWT refreshes
+  const [localUserMode, setLocalUserMode] = useState<string | null | undefined>(() => {
+    if (typeof window === 'undefined') return undefined;
+    return sessionStorage.getItem('gc_user_mode') ?? undefined;
+  });
+  useEffect(() => {
+    function onModeChange(e: Event) {
+      setLocalUserMode((e as CustomEvent<{ mode: string | null }>).detail?.mode ?? null);
+    }
+    window.addEventListener('gc:user-mode', onModeChange);
+    return () => window.removeEventListener('gc:user-mode', onModeChange);
+  }, []);
+  const userMode = localUserMode !== undefined ? localUserMode : sessionUserMode;
+  const isGigMode = userMode === 'gig';
+  useEffect(() => {
+    const fromRentalPage = typeof window !== 'undefined' &&
+      new URLSearchParams(window.location.search).get('rental') === '1';
+    if ((userMode === 'rental' || fromRentalPage) && !rentalMode) {
+      setRentalMode(true);
+      setForm(prev => ({ ...prev, targetPreset: rentalPickupLevel, customTarget: '' }));
+    } else if (userMode !== 'rental' && userMode != null && !fromRentalPage && rentalMode) {
+      setRentalMode(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userMode]);
 
   // Clear stale garage-vehicle data when the user is confirmed logged out.
   // useLocalStorage hydrates from the previous session's JSON, so a logged-in
@@ -144,12 +220,28 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
           setNearbyAttrib({ name: detail.name, distanceMi: detail.distanceMi ?? 0, grade: detail.grade ?? 'Regular' });
           setNearbyStatus('found');
         }
+        // Switching tabs to the calculator doesn't scroll to the price field, so
+        // confirm the tap actually did something via a toast instead.
+        setPriceToastExiting(false);
+        setPriceToast(t.calc.priceAppliedToast(detail.price, detail.name));
       }
     }
     window.addEventListener('gc:inject-gas-price', handler);
     return () => window.removeEventListener('gc:inject-gas-price', handler);
+  // liveRecalcRef intentionally omitted (see its own comment) — t is included so the
+  // toast doesn't use a stale-language closure if the user switches language mid-session.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [t]);
+
+  // Auto-dismiss the price-applied toast
+  useEffect(() => {
+    if (!priceToast) return;
+    const dismissTimer = setTimeout(() => {
+      setPriceToastExiting(true);
+      setTimeout(() => setPriceToast(null), 350);
+    }, 5000);
+    return () => clearTimeout(dismissTimer);
+  }, [priceToast]);
 
   // Native only: silently fetch nearest gas price on mount and pre-fill if field is empty
   useEffect(() => {
@@ -242,26 +334,29 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
     ? (isNaN(Number(form.currentFuel)) ? 0 : Number(form.currentFuel))
     : 0;
 
-  async function handleGaugeScan(file: File) {
-    setGaugeScanning(true);
+  function handleScanConfirm({ percent, confidence, gaugeType, detected, reason }: {
+    percent: number; confidence: number; gaugeType: string; detected: number | null; reason: string;
+  }) {
+    liveRecalc({ currentFuel: String(percent), fuelMode: 'percent' });
+    setScanFromDashboard(true);
     setGaugeScanMsg('');
-    try {
-      const fd = new FormData();
-      fd.append('image', file);
-      const res  = await fetch('/api/gauge/scan', { method: 'POST', body: fd, credentials: 'include' });
-      const data = await res.json() as { percent?: number | null; error?: string };
-      if (!res.ok) { setGaugeScanMsg(data.error ?? t.calc.scanFailed); return; }
-      if (data.percent === null || data.percent === undefined) {
-        setGaugeScanMsg(t.calc.scanNotReadable);
-        return;
-      }
-      liveRecalc({ currentFuel: String(data.percent), fuelMode: 'percent' });
-      setGaugeScanMsg(t.calc.scanDetected(data.percent));
-    } catch {
-      setGaugeScanMsg(t.calc.scanNetworkError);
-    } finally {
-      setGaugeScanning(false);
-    }
+    setShowScanModal(false);
+    // Fire-and-forget feedback log
+    fetch('/api/gauge/scan-feedback', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        detectedPercent:  detected,
+        confirmedPercent: percent,
+        confidence,
+        gaugeType,
+        reason,
+        vehicleId:   form.vehicleId   || undefined,
+        vehicleName: form.vehicleName || undefined,
+        tankSize:    Number(form.tankCapacity) || undefined,
+      }),
+    }).catch(() => { /* non-critical */ });
   }
 
   function handleCalculate() {
@@ -298,12 +393,22 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
     }
 
     setTip('');
-    setResult(calcTargetFill(input));
+    const calcResult = calcTargetFill(input);
+    setResult(calcResult);
     setCalculated(true);
     setShowLiveNudge(false);
     setCalcKey((k) => k + 1);
     trackCalculateTarget();
-    if (typeof window !== 'undefined') window.dispatchEvent(new Event('gascap:calculated'));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('gascap:calculated'));
+      const prefillData = {
+        gallons: calcResult.gallonsNeeded,
+        ppg:     Number(form.pricePerGallon),
+        station: nearbyAttrib?.name ?? '',
+      };
+      sessionStorage.setItem('gc_gig_prefill', JSON.stringify(prefillData));
+      window.dispatchEvent(new CustomEvent('gc:gig-prefill', { detail: prefillData }));
+    }
     fetch('/api/activity', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -344,6 +449,28 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
   return (
     <div className="pb-2">
 
+      {/* ── Price-applied toast (confirms a Find Gas tap actually did something,
+           since switching to the calculator tab doesn't auto-scroll to the price field) ── */}
+      {priceToast && (
+        <div
+          role="status"
+          aria-live="polite"
+          onClick={() => { setPriceToastExiting(true); setTimeout(() => setPriceToast(null), 350); }}
+          className={[
+            'fixed left-1/2 z-[9999] -translate-x-1/2',
+            'flex items-center gap-2',
+            'max-w-[90vw] w-max rounded-2xl px-5 py-3.5',
+            'bg-navy-700 text-white shadow-2xl',
+            'text-sm font-semibold leading-snug text-center',
+            'cursor-pointer select-none',
+            priceToastExiting ? 'animate-toast-exit' : 'animate-toast-enter',
+          ].join(' ')}
+          style={{ bottom: isNative ? 'calc(92px + env(safe-area-inset-bottom))' : '1.25rem' }}
+        >
+          {priceToast}
+        </div>
+      )}
+
       {/* ── Tool header ──────────────────────────────────────────── */}
       <div className="bg-[#1E2D4A] rounded-2xl px-4 py-3.5 mb-4 flex items-center gap-3">
         <div className="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center flex-shrink-0">
@@ -369,8 +496,7 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
           const next = !rentalMode;
           setRentalMode(next);
           trackRentalReturnToggled(next);
-          // Auto-set target to Full when entering rental mode
-          if (next) liveRecalc({ targetPreset: 100, customTarget: '' });
+          if (next) liveRecalc({ targetPreset: rentalPickupLevel, customTarget: '' });
         }}
         className={[
           'w-full flex items-center gap-3 rounded-2xl px-4 py-3 mb-3 border-2 transition-all',
@@ -400,32 +526,98 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
         </div>
       </button>
 
-      {/* Rental rate input — only when rental mode is on */}
+      {/* Rental detail panel — only when rental mode is on */}
       {rentalMode && (
-        <div className="bg-blue-50 border border-blue-200 rounded-2xl px-4 py-3 mb-3 space-y-2">
-          <div className="flex items-center gap-2">
-            <span className="text-base" aria-hidden="true">🏢</span>
-            <p className="text-xs font-black text-blue-800">{t.calc.rentalRateLabel}</p>
-            <span className="text-[10px] text-blue-500 font-medium">{t.calc.rentalRateOptional}</span>
+        <div className="bg-blue-50 border border-blue-200 rounded-2xl px-4 py-3 mb-3 space-y-3">
+
+          {/* Return-day alert */}
+          {rentalReturnAlert && (
+            <div className="flex items-start gap-2 bg-amber-50 border border-amber-300 rounded-xl px-3 py-2">
+              <span className="text-base flex-shrink-0" aria-hidden="true">⏰</span>
+              <p className="text-[11px] font-bold text-amber-800 leading-snug">
+                {rentalReturnAlert === 'today'
+                  ? t.calc.rentalReturnAlertToday
+                  : t.calc.rentalReturnAlertTomorrow}
+              </p>
+            </div>
+          )}
+
+          {/* Pickup fuel level */}
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-base" aria-hidden="true">⛽</span>
+              <p className="text-xs font-black text-blue-800">{t.calc.rentalPickupLevelLabel}</p>
+            </div>
+            <p className="text-[11px] text-blue-600 leading-snug mb-2">{t.calc.rentalPickupLevelHint}</p>
+            <div className="flex gap-1.5 flex-wrap">
+              {([100, 75, 50, 25, 0] as const).map((pct) => {
+                const label = pct === 100 ? 'Full' : pct === 75 ? '¾' : pct === 50 ? '½' : pct === 25 ? '¼' : 'E';
+                const active = rentalPickupLevel === pct;
+                return (
+                  <button
+                    key={pct}
+                    type="button"
+                    onClick={() => {
+                      setRentalPickupLevel(pct);
+                      liveRecalc({ targetPreset: pct, customTarget: '' });
+                    }}
+                    className={[
+                      'flex-1 min-w-[44px] py-1.5 rounded-lg text-xs font-black border transition-colors',
+                      active
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-white text-blue-700 border-blue-200 hover:border-blue-400',
+                    ].join(' ')}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-          <p className="text-[11px] text-blue-600 leading-snug">
-            {t.calc.rentalRateHint}
-          </p>
-          <div className="relative">
-            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-blue-400 font-bold text-sm pointer-events-none">$</span>
+
+          {/* Return date */}
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-base" aria-hidden="true">📅</span>
+              <p className="text-xs font-black text-blue-800">{t.calc.rentalReturnDateLabel}</p>
+              <span className="text-[10px] text-blue-500 font-medium">{t.calc.rentalRateOptional}</span>
+            </div>
+            <p className="text-[11px] text-blue-600 leading-snug mb-1.5">{t.calc.rentalReturnDateHint}</p>
             <input
-              type="number"
-              inputMode="decimal"
-              className="input-field pl-7 border-blue-200 bg-white text-sm"
-              placeholder={t.calc.placeholderRentalRate}
-              value={rentalRate}
-              min="0.01"
-              step="0.01"
-              onChange={(e) => setRentalRate(e.target.value)}
-              aria-label={t.calc.ariaRentalRate}
+              type="date"
+              className="input-field border-blue-200 bg-white text-sm"
+              value={rentalReturnDate}
+              min={new Date().toISOString().slice(0, 10)}
+              onChange={(e) => setRentalReturnDate(e.target.value)}
+              aria-label={t.calc.rentalReturnDateLabel}
             />
-            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-slate-400 pointer-events-none">/gal</span>
           </div>
+
+          {/* Rental company rate */}
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-base" aria-hidden="true">🏢</span>
+              <p className="text-xs font-black text-blue-800">{t.calc.rentalRateLabel}</p>
+              <span className="text-[10px] text-blue-500 font-medium">{t.calc.rentalRateOptional}</span>
+            </div>
+            <p className="text-[11px] text-blue-600 leading-snug mb-1.5">{t.calc.rentalRateHint}</p>
+            <div className="relative">
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-blue-400 font-bold text-sm pointer-events-none">$</span>
+              <input
+                type="number"
+                inputMode="decimal"
+                className="input-field pl-7 border-blue-200 bg-white text-sm"
+                placeholder={t.calc.placeholderRentalRate}
+                value={rentalRate}
+                min="0.01"
+                step="0.01"
+                onChange={(e) => setRentalRate(e.target.value)}
+                aria-label={t.calc.ariaRentalRate}
+              />
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-slate-400 pointer-events-none">/gal</span>
+            </div>
+          </div>
+
         </div>
       )}
 
@@ -470,6 +662,8 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
               setVehicleTankEst(v?.vehicleSpecs?.tankEstGallons);
               setVehicleBodyClass(v?.vehicleSpecs?.bodyClass);
               setPresetLabel('');
+              // Notify VehicleChip in the native header so it updates immediately
+              if (v?.id) window.dispatchEvent(new CustomEvent('gc:vehicle-selected', { detail: { vehicleId: v.id } }));
             }}
             selectedVehicleId={form.vehicleId}
             calcKey={calcKey}
@@ -508,40 +702,27 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
               tankCapacity={tankNum}
             />
 
-            {/* ── Gauge scan inputs (hidden) ── */}
-            <input type="file" accept="image/*" capture="environment"
-              ref={gaugeCamRef} className="hidden"
-              onChange={(e) => { const f = e.target.files?.[0]; if (f) handleGaugeScan(f); e.target.value = ''; }}
-            />
-            <input type="file" accept="image/*"
-              ref={gaugeGalleryRef} className="hidden"
-              onChange={(e) => { const f = e.target.files?.[0]; if (f) handleGaugeScan(f); e.target.value = ''; }}
-            />
-
-            {/* ── Scan gauge buttons ── */}
+            {/* ── Scan gauge button (shelved — see GAUGE_SCAN_ENABLED) ── */}
+            {GAUGE_SCAN_ENABLED && (
             <div className="mt-2 space-y-1.5">
-              {isLoggedIn ? (
+              {isPro ? (
                 <>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => { setGaugeScanMsg(''); gaugeCamRef.current?.click(); }}
-                      disabled={gaugeScanning}
-                      className="flex items-center gap-1.5 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-xl px-3 py-2 hover:border-amber-300 hover:text-amber-700 transition-colors disabled:opacity-50"
-                    >
-                      <span>{gaugeScanning ? '🔄' : '📷'}</span>
-                      <span>{gaugeScanning ? t.calc.readingGauge : t.calc.scanGauge}</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { setGaugeScanMsg(''); gaugeGalleryRef.current?.click(); }}
-                      disabled={gaugeScanning}
-                      className="flex items-center gap-1.5 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-xl px-3 py-2 hover:border-amber-300 hover:text-amber-700 transition-colors disabled:opacity-50"
-                    >
-                      <span>🖼️</span>
-                      <span>{t.calc.uploadPhoto}</span>
-                    </button>
-                  </div>
+                  {scanFromDashboard && (
+                    <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-3 py-1.5">
+                      <p className="text-[11px] text-green-700 font-medium">{t.scan.setFromScan}</p>
+                      <button type="button" onClick={() => setScanFromDashboard(false)}
+                        className="text-green-400 hover:text-green-600 text-xs ml-2">✕</button>
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => { setGaugeScanMsg(''); setShowScanModal(true); }}
+                    disabled={gaugeScanning}
+                    className="flex items-center gap-1.5 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-xl px-3 py-2 hover:border-amber-300 hover:text-amber-700 transition-colors disabled:opacity-50"
+                  >
+                    <span>📷</span>
+                    <span>{t.calc.scanGauge}</span>
+                  </button>
                   {gaugeScanMsg && (
                     <p className={`text-[11px] font-medium leading-snug ${gaugeScanMsg.startsWith('✓') ? 'text-green-600' : 'text-red-500'}`}>
                       {gaugeScanMsg}
@@ -551,6 +732,15 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
                     {t.calc.scanHint}
                   </p>
                 </>
+              ) : isLoggedIn ? (
+                /* Logged-in free users: gauge scan is a Pro perk. */
+                <a href="/upgrade" className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+                  <span className="text-amber-500 text-sm">📷</span>
+                  <p className="text-[11px] text-amber-700 leading-snug">
+                    <span className="font-bold underline underline-offset-2">{t.scan.upgradeCta}</span>
+                    {' — '}{t.scan.proRequired}
+                  </p>
+                </a>
               ) : (
                 <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
                   <span className="text-amber-500 text-sm">📷</span>
@@ -561,6 +751,7 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
                 </div>
               )}
             </div>
+            )}
           </>
         ) : (
           <div className="relative">
@@ -805,9 +996,36 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
             rentalRate={rentalMode && rentalRate ? Number(rentalRate) : undefined}
             latitude={gasCoords?.lat}
             longitude={gasCoords?.lng}
+            stationName={nearbyAttrib?.name}
+            fuelGrade={nearbyAttrib?.grade}
           />
         )}
+        {result && isGigMode && (
+          <button
+            type="button"
+            onClick={() => {
+              window.dispatchEvent(new CustomEvent('gc:switch-tab', { detail: { tab: 'driver' } }));
+              window.dispatchEvent(new CustomEvent('gascap:switch-tools-tab', { detail: { tab: 'driver' } }));
+            }}
+            className="mt-3 w-full flex items-center gap-3 bg-[#1E2D4A] rounded-2xl px-4 py-3 text-left active:opacity-80 transition-opacity"
+          >
+            <span className="text-xl flex-shrink-0">📦</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-black text-white leading-tight">You&rsquo;re in Gig Driver mode</p>
+              <p className="text-[10px] text-white/60 mt-0.5 leading-snug">This fill-up is pre-filled in your Driver tab — tap to log it for taxes.</p>
+            </div>
+            <svg className="w-4 h-4 text-white/40 flex-shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M6 4l4 4-4 4"/></svg>
+          </button>
+        )}
       </div>
+
+      {/* ── Gauge scan modal ── */}
+      {showScanModal && (
+        <GaugeScanModal
+          onConfirm={handleScanConfirm}
+          onClose={() => setShowScanModal(false)}
+        />
+      )}
     </div>
   );
 }

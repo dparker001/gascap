@@ -2,6 +2,7 @@
  * POST /api/stripe/checkout
  * Creates a Stripe Checkout Session for upgrading to Pro or Fleet, or adding Lifetime Perks.
  * Body: { tier: 'pro' | 'fleet', billing: 'monthly' | 'annual' | 'lifetime' | 'lifetime-perks' }
+ * 'annual' is accepted for type/legacy compat only — always rejected below (see block).
  *
  * Lifetime uses mode:'payment' (one-time); all others use mode:'subscription'.
  */
@@ -52,11 +53,29 @@ export async function POST(req: Request) {
   const billing = body.billing ?? 'monthly';
   let   coupon  = body.coupon  ?? null;
 
+  // Annual is no longer offered — Lifetime ($19.99 one-time) was strictly cheaper
+  // AND better (forever access, more giveaway entries, the vacation getaway) than
+  // Annual ($26.99/yr), so there was never a rational reason to buy it. Blocked
+  // explicitly (rather than silently falling through) so a stale cached client
+  // can't still create one. Zero existing Annual subscribers as of 2026-07-23, so
+  // this affects no one. See lib/stripe.ts for the shelved price ID.
+  if (billing === 'annual') {
+    return NextResponse.json(
+      { error: 'Annual billing is no longer offered. Choose Monthly or Lifetime instead.' },
+      { status: 400 },
+    );
+  }
+  // Tags which campaign the coupon came from — the founding, win-back, and
+  // new-member offers all currently share the same Stripe coupon ID, so this is
+  // the only way to attribute a purchase to a specific campaign after the fact.
+  let   offerSource: 'founding' | 'winback' | 'new_member' | null = null;
+
   // New-member 7-day Lifetime discount ($5 off). Server-validates eligibility
   // (createdAt within 7 days, not already Lifetime) so the discount can't be
   // claimed by a copied link or an ineligible account.
   if (body.newMemberOffer && billing === 'lifetime' && newMemberOfferStatus(user).eligible) {
     coupon = NEW_MEMBER_LIFETIME_COUPON;
+    offerSource = 'new_member';
   }
 
   // Win-back $9.99 Lifetime — only for lapsed free users (expired trial). Like
@@ -64,6 +83,7 @@ export async function POST(req: Request) {
   // can't be claimed via a copied /upgrade?wb=1 link by an ineligible account.
   if (body.winbackOffer && billing === 'lifetime' && winbackOfferAvailable(user)) {
     coupon = WINBACK_LIFETIME_COUPON;
+    offerSource = 'winback';
   }
 
   // Founding Member launch promo — $9.99 Lifetime for any non-Lifetime account while
@@ -73,7 +93,7 @@ export async function POST(req: Request) {
   // can't outlive the launch.
   if (body.foundingOffer && billing === 'lifetime' && user.stripeInterval !== 'lifetime') {
     const { active } = await foundingStatus();
-    if (active) coupon = FOUNDING_LIFETIME_COUPON;
+    if (active) { coupon = FOUNDING_LIFETIME_COUPON; offerSource = 'founding'; }
   }
 
   // ── Lifetime Perks add-on ─────────────────────────────────────────────────
@@ -114,8 +134,7 @@ export async function POST(req: Request) {
   if (!priceId) {
     if (tier === 'pro') {
       if (billing === 'lifetime') priceId = PRICES.proLifetime;
-      else if (billing === 'annual') priceId = PRICES.proAnnual;
-      else                           priceId = PRICES.proMonthly;
+      else                        priceId = PRICES.proMonthly;
     }
     // Fleet plan is shelved — no active price IDs
   }
@@ -167,13 +186,14 @@ export async function POST(req: Request) {
     line_items:  [{ price: priceId, quantity: 1 }],
     customer_email: user.stripeCustomerId ? undefined : user.email,
     customer:       user.stripeCustomerId ?? undefined,
-    success_url: `${origin}/upgrade/success?session_id={CHECKOUT_SESSION_ID}&tier=${tier}&billing=${billing === 'annual' ? 'annual' : billing}`,
+    success_url: `${origin}/upgrade/success?session_id={CHECKOUT_SESSION_ID}&tier=${tier}&billing=${billing}`,
     cancel_url:  `${origin}/upgrade`,
     metadata: {
       userId,
       userEmail: user.email,
       tier,
       billing,
+      ...(offerSource ? { offerSource } : {}),
     },
     // subscription_data only valid for mode:'subscription'
     ...(!isLifetime ? {
@@ -184,7 +204,7 @@ export async function POST(req: Request) {
     } : {
       // payment_intent_data carries metadata for one-time payments
       payment_intent_data: {
-        metadata: { userId, tier, billing },
+        metadata: { userId, tier, billing, ...(offerSource ? { offerSource } : {}) },
       },
     }),
   });

@@ -25,7 +25,6 @@ import FillupHistory    from '@/components/FillupHistory';
 import ToolsPanel       from '@/components/ToolsPanel';
 import TrialExpiryBanner from '@/components/TrialExpiryBanner';
 import AnnouncementToast from '@/components/AnnouncementToast';
-import WinnerBanner     from '@/components/WinnerBanner';
 import SettingsPage     from '@/app/settings/page';
 import NativeTabBar, { type TabMeta } from './NativeTabBar';
 import RewardsTab       from './tabs/RewardsTab';
@@ -38,10 +37,12 @@ import ReviewNudge       from '@/components/ReviewNudge';
 import LanguageToggle    from '@/components/LanguageToggle';
 import { getPlanBadge, type PlanUser } from '@/lib/planBadge';
 import FillupLogger from '@/components/FillupLogger';
+import GigDriverTab from '@/components/GigDriverTab';
+import UserModeSelector from '@/components/UserModeSelector';
 
-export type TabId = 'calculator' | 'findgas' | 'history' | 'tools' | 'rewards' | 'settings';
+export type TabId = 'calculator' | 'findgas' | 'history' | 'tools' | 'rewards' | 'settings' | 'driver';
 
-const TAB_IDS: TabId[] = ['calculator', 'findgas', 'history', 'tools', 'rewards', 'settings'];
+const TAB_IDS: TabId[] = ['calculator', 'findgas', 'history', 'tools', 'rewards', 'settings', 'driver'];
 
 const STORAGE_KEY = 'gc_active_tab';
 const isTabId = (v: string | null): v is TabId => !!v && (TAB_IDS as string[]).includes(v ?? '');
@@ -52,10 +53,34 @@ export default function NativeAppShell() {
 
   // Tab labels come from the translation system so the bottom bar + title bar follow
   // the language toggle (EN/ES).
+  const sessionUserMode = (session?.user as { userMode?: string | null })?.userMode;
+  const [localUserMode, setLocalUserMode] = useState<string | null | undefined>(undefined);
+  // localUserMode overrides session until JWT catches up; undefined = not yet set by event
+  const userMode = localUserMode !== undefined ? localUserMode : sessionUserMode;
+  const isGigDriver = userMode === 'gig';
+
+  useEffect(() => {
+    function onModeChange(e: Event) {
+      const mode = (e as CustomEvent<{ mode: string | null }>).detail?.mode ?? null;
+      setLocalUserMode(mode);
+      // Persist so TargetFillForm can read it on (re)mount before JWT refreshes
+      if (mode) sessionStorage.setItem('gc_user_mode', mode);
+      else sessionStorage.removeItem('gc_user_mode');
+      // Jump to calculator when rental is selected so the toggle is immediately visible
+      if (mode === 'rental') {
+        setActive('calculator');
+        setVisited((prev) => { const s = new Set(prev); s.add('calculator'); return s; });
+      }
+    }
+    window.addEventListener('gc:user-mode', onModeChange);
+    return () => window.removeEventListener('gc:user-mode', onModeChange);
+  }, []);
+
   const TABS: TabMeta[] = [
     { id: 'calculator', label: t.nav.calculator },
     { id: 'findgas',    label: t.nav.findGas    },
     { id: 'history',    label: t.nav.history    },
+    ...(isGigDriver ? [{ id: 'driver' as TabId, label: 'Driver' }] : []),
     { id: 'tools',      label: t.nav.tools      },
     { id: 'rewards',    label: t.nav.rewards    },
     { id: 'settings',   label: t.nav.settings   },
@@ -67,8 +92,31 @@ export default function NativeAppShell() {
   // Plan badge for the title bar — shared with AuthButton; trial users get a live "Pro Trial · Nd".
   const planBadge = getPlanBadge(session?.user as PlanUser | undefined, t);
 
+  const [modeSelectorDone, setModeSelectorDone] = useState(false);
+  const showModeSelector = status === 'authenticated' && !userMode && !modeSelectorDone;
+  const [pulseTabId, setPulseTabId] = useState<TabId | null>(null);
+
   const [active,  setActive]  = useState<TabId>('calculator');
   const [visited, setVisited] = useState<Set<TabId>>(() => new Set<TabId>(['calculator']));
+
+  // When mode changes away from gig, kick the user off the driver tab
+  const prevIsGigDriver = useRef(isGigDriver);
+  useEffect(() => {
+    if (prevIsGigDriver.current && !isGigDriver) {
+      setActive(a => a === 'driver' ? 'calculator' : a);
+      setVisited(prev => { const s = new Set(prev); s.delete('driver'); return s; });
+    }
+    prevIsGigDriver.current = isGigDriver;
+  }, [isGigDriver]);
+
+  // When mode changes to rental, remount the calculator so TargetFillForm picks up userMode
+  const prevUserMode = useRef(userMode);
+  useEffect(() => {
+    if (userMode === 'rental' && prevUserMode.current !== 'rental') {
+      setCalcMountKey(k => k + 1);
+    }
+    prevUserMode.current = userMode;
+  }, [userMode]);
   const [historyKey,  setHistoryKey]  = useState(0);
   const [calcMountKey, setCalcMountKey] = useState(0);
 
@@ -79,6 +127,45 @@ export default function NativeAppShell() {
     grade: string;
   } | null>(null);
   const [showFillupSheet, setShowFillupSheet] = useState(false);
+
+  // Initialize status bar + keyboard on native shell mount
+  useEffect(() => { initNativeChrome(); }, []);
+
+  // Record today as an active day for the streak — the native shell has no equivalent
+  // of the web HeroEngagementPanel/MobileEngagementRow, which fire this on every page
+  // load. Without it, native users only got credit for days they completed a
+  // calculation, not simply for opening the app — contradicting the app's own
+  // "open daily to keep your streak alive" messaging and silently breaking streaks.
+  // Fires on mount AND on every foreground resume (isActive) so a day isn't missed
+  // when the app is merely backgrounded across midnight rather than relaunched.
+  useEffect(() => {
+    if (!session?.user) return;
+    const recordVisit = () => {
+      fetch('/api/activity', {
+        method:      'POST',
+        credentials: 'include',
+        headers:     { 'Content-Type': 'application/json' },
+        body:        JSON.stringify({ event: 'visit', localDate: new Date().toLocaleDateString('en-CA') }),
+      }).catch(() => { /* streak just won't tick up this time — non-critical */ });
+    };
+    recordVisit();
+    let cleanup: (() => void) | null = null;
+    import('@capacitor/app').then(({ App }) => {
+      App.addListener('appStateChange', ({ isActive }) => { if (isActive) recordVisit(); })
+        .then((handle) => { cleanup = () => handle.remove(); });
+    }).catch(() => {});
+    return () => cleanup?.();
+  }, [session]);
+
+  // Handle iOS home screen shortcuts — ?shortcut=log|findgas|savings
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search);
+    const shortcut = p.get('shortcut');
+    if (shortcut === 'log')     { changeTab('history');    }
+    if (shortcut === 'findgas') { changeTab('findgas');    }
+    if (shortcut === 'savings') { changeTab('history');    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Restore last-active tab on mount (client-only; avoids SSR hydration mismatch).
   // Initialize status bar + keyboard on native shell mount
@@ -115,7 +202,7 @@ export default function NativeAppShell() {
     setActive(id);
     setVisited((prev) => (prev.has(id) ? prev : new Set(prev).add(id)));
     if (id === 'history') setHistoryKey((k) => k + 1);
-    window.scrollTo({ top: 0, behavior: 'instant' });
+    contentRef.current?.scrollTo({ top: 0, behavior: 'instant' });
   }
 
   function handleVehicleSwitch(gallons: string, vehicle?: import('@/components/SavedVehicles').Vehicle) {
@@ -182,8 +269,8 @@ export default function NativeAppShell() {
 
   return (
     <main
-      className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-900"
-      style={{ paddingTop: `calc(${active === 'calculator' && status === 'authenticated' ? '84px' : '48px'} + env(safe-area-inset-top))` }}
+      className="flex flex-col bg-slate-50 dark:bg-slate-900 overflow-hidden"
+      style={{ height: '100dvh' }}
     >
 
       {/* First-launch brand video overlay (inert until the MP4 is added — see component) */}
@@ -192,13 +279,11 @@ export default function NativeAppShell() {
       {/* "Rate us" nudge — engaged signed-in users, after they've come back (≥2 days) */}
       <ReviewNudge />
 
-      {/* Native title bar — ONE fixed element: a green band over the status-bar safe
-          area (the header's brand-dark bg fills the safe-area paddingTop) with the navy
-          title row beneath it. Combining them means the green can't scroll independently
-          of the navy bar — whatever pins the navy bar pins the green band too. Fixed
-          because sticky is unreliable inside this flex/scroll container on iOS. */}
+      {/* Native title bar — pinned by being the first flex child of the h-screen shell,
+          so it never scrolls. No position:fixed needed; the content area scrolls
+          independently via overflow-y-auto on the sibling div below. */}
       <header
-        className="fixed top-0 left-0 right-0 z-30 bg-brand-dark text-white shadow-sm"
+        className="flex-shrink-0 bg-brand-dark text-white shadow-sm"
         style={{ paddingTop: 'env(safe-area-inset-top)' }}
       >
         <div className="h-12 bg-[#1e3a5f] flex items-center justify-center px-4 relative gap-2">
@@ -239,17 +324,16 @@ export default function NativeAppShell() {
 
       {/* Essential in-app overlays (marketing chrome is intentionally not mounted) */}
       <TrialExpiryBanner />
-      {session && <WinnerBanner />}
       <AnnouncementToast />
 
       {/* Tab content — each tab mounts on first visit, then hides (state preserved).
-          Padding-bottom clears the fixed tab bar + the home-indicator safe area. */}
+          overflow-y-auto makes only THIS div scroll so the header and tab bar
+          stay pinned as natural flex children (no position:fixed needed). */}
       <div
         ref={contentRef}
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
-        className="flex-1"
-        style={{ paddingBottom: 'calc(88px + env(safe-area-inset-bottom))' }}
+        className="flex-1 min-h-0 overflow-y-auto"
       >
 
         {visited.has('calculator') && (
@@ -331,6 +415,14 @@ export default function NativeAppShell() {
           </div>
         )}
 
+        {isGigDriver && visited.has('driver') && (
+          <div className={show('driver')}>
+            <div className="px-4 pt-4 pb-6 max-w-lg mx-auto w-full">
+              <GigDriverTab />
+            </div>
+          </div>
+        )}
+
         {visited.has('rewards') && (
           <div className={show('rewards')}>
             <RewardsTab />
@@ -345,7 +437,24 @@ export default function NativeAppShell() {
 
       </div>
 
-      <NativeTabBar tabs={TABS} active={active} onChange={changeTab} />
+      <NativeTabBar tabs={TABS} active={active} onChange={changeTab} pulseTabId={pulseTabId} />
+
+      {/* Mode selector — shown on first login when userMode is not yet set */}
+      {showModeSelector && (
+        <UserModeSelector onComplete={(mode) => {
+          setModeSelectorDone(true);
+          if (mode === 'gig') {
+            changeTab('driver');
+            try {
+              if (!localStorage.getItem('gc_driver_tab_pulsed')) {
+                localStorage.setItem('gc_driver_tab_pulsed', '1');
+                setPulseTabId('driver');
+                setTimeout(() => setPulseTabId(null), 2200);
+              }
+            } catch { /* storage blocked */ }
+          }
+        }} />
+      )}
 
       {/* Fill-up bottom sheet — slides up when user taps "Log Fill-up" banner */}
       {showFillupSheet && pendingFillup && (() => {

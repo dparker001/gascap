@@ -40,7 +40,7 @@ const COLORS = [
   '#84cc16', // lime
 ];
 
-export default function VehicleSpendingBreakdown() {
+export default function VehicleSpendingBreakdown({ selectedYear }: { selectedYear?: string }) {
   const { data: session, status } = useSession();
   const { t } = useTranslation();
   const [data,    setData]    = useState<HistoryResponse | null>(null);
@@ -75,14 +75,17 @@ export default function VehicleSpendingBreakdown() {
   const vehicleStats: VehicleStat[] = [];
 
   if (data?.fillups?.length) {
+    const filteredFillups = selectedYear && selectedYear !== 'all'
+      ? data.fillups.filter((f) => f.date.startsWith(selectedYear))
+      : data.fillups;
     const byVehicle: Record<string, Fillup[]> = {};
-    for (const f of data.fillups) {
+    for (const f of filteredFillups) {
       const key = f.vehicleId ?? f.vehicleName;
       if (!byVehicle[key]) byVehicle[key] = [];
       byVehicle[key].push(f);
     }
 
-    const totalAllSpent = data.fillups.reduce((s, f) => s + f.totalCost, 0);
+    const totalAllSpent = filteredFillups.reduce((s, f) => s + f.totalCost, 0);
 
     for (const [, fills] of Object.entries(byVehicle)) {
       const totalSpent   = fills.reduce((s, f) => s + f.totalCost, 0);
