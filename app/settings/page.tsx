@@ -4,7 +4,6 @@ import { useSession, signOut } from 'next-auth/react';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { hasBiometricCredentials, clearBiometricCredentials, getBiometricType, saveBiometricCredentials } from '@/lib/biometrics';
 import { setThemePreference, getThemePreference, isDarkMode, type ThemePreference } from '@/components/DarkModeProvider';
 import { DoorMiniPreview, DOOR_STYLE_LABELS, DOOR_DIRECTION_LABELS } from '@/components/GarageDoor';
 import { useGarageDoorPrefs, type DoorStyle, type DoorDirection } from '@/hooks/useGarageDoorPrefs';
@@ -125,20 +124,6 @@ export default function SettingsPage() {
   const [fleetLogoUrl,     setFleetLogoUrl]     = useState('');
   const [fleetSaved,       setFleetSaved]       = useState(false);
   const [fleetSaving,      setFleetSaving]      = useState(false);
-  const [biometricLabel,   setBiometricLabel]   = useState<string | null>(null);
-  const [bioEnrollState,   setBioEnrollState]   = useState<'idle' | 'prompt' | 'saving'>('idle');
-  const [bioPwInput,       setBioPwInput]       = useState('');
-  const [bioPwError,       setBioPwError]       = useState('');
-
-  useEffect(() => {
-    async function checkBiometric() {
-      const [type, has] = await Promise.all([getBiometricType(), hasBiometricCredentials()]);
-      if (type && has) {
-        setBiometricLabel(type === 'faceId' ? 'Face ID' : type === 'touchId' ? 'Touch ID' : 'Biometrics');
-      }
-    }
-    checkBiometric();
-  }, []);
   const { doorStyle, setDoorStyle, doorDirection, setDoorDirection } = useGarageDoorPrefs();
 
   useEffect(() => {
@@ -1061,95 +1046,6 @@ export default function SettingsPage() {
             </div>
 
             <div className="border-t border-slate-100 pt-3 space-y-2">
-              {biometricLabel ? (
-                <button
-                  onClick={async () => {
-                    await clearBiometricCredentials();
-                    setBiometricLabel(null);
-                  }}
-                  className="w-full py-3 rounded-2xl border-2 border-slate-200 text-sm font-bold
-                             text-slate-500 hover:bg-slate-50 transition-colors"
-                >
-                  Disable {biometricLabel} Sign-In
-                </button>
-              ) : bioEnrollState === 'idle' ? (
-                <button
-                  onClick={async () => {
-                    const type = await getBiometricType();
-                    if (type) setBioEnrollState('prompt');
-                  }}
-                  className="w-full py-3 rounded-2xl border-2 border-slate-200 text-sm font-bold
-                             text-slate-500 hover:bg-slate-50 transition-colors"
-                >
-                  Enable Face ID / Touch ID Sign-In
-                </button>
-              ) : (
-                <div className="rounded-2xl border-2 border-amber-200 bg-amber-50 p-4 space-y-3">
-                  <p className="text-sm font-bold text-slate-700">Confirm your password to enable biometric sign-in</p>
-                  <input
-                    type="password"
-                    autoComplete="current-password"
-                    placeholder="Password"
-                    value={bioPwInput}
-                    onChange={(e) => { setBioPwInput(e.target.value); setBioPwError(''); }}
-                    className="input-field text-sm"
-                  />
-                  {bioPwError && <p className="text-xs text-red-500 font-medium">{bioPwError}</p>}
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => { setBioEnrollState('idle'); setBioPwInput(''); setBioPwError(''); }}
-                      className="flex-1 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-500"
-                    >Cancel</button>
-                    <button
-                      disabled={bioEnrollState === 'saving' || !bioPwInput}
-                      onClick={async () => {
-                        setBioEnrollState('saving');
-                        setBioPwError('');
-                        const userEmail = (session?.user as { email?: string })?.email ?? '';
-                        const timeout = (ms: number) =>
-                          new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), ms));
-                        try {
-                          // Verify password first — race against a timeout since a hung native
-                          // fetch never rejects on its own, which would leave the button stuck
-                          // on "Saving…" forever (reported by Don on a real device).
-                          const res = await Promise.race([
-                            fetch('/api/auth/verify-password', {
-                              method: 'POST',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({ email: userEmail, password: bioPwInput }),
-                            }),
-                            timeout(10_000),
-                          ]);
-                          if (!res.ok) {
-                            setBioPwError('Incorrect password.');
-                            setBioEnrollState('prompt');
-                            return;
-                          }
-                          const saved = await Promise.race([
-                            saveBiometricCredentials(userEmail, bioPwInput),
-                            timeout(10_000),
-                          ]);
-                          if (!saved) {
-                            setBioPwError('Could not save to this device — try again.');
-                            setBioEnrollState('prompt');
-                            return;
-                          }
-                          const type = await Promise.race([getBiometricType(), timeout(5_000)]).catch(() => null);
-                          setBiometricLabel(type === 'faceId' ? 'Face ID' : type === 'touchId' ? 'Touch ID' : 'Biometrics');
-                          setBioEnrollState('idle');
-                          setBioPwInput('');
-                        } catch {
-                          setBioPwError('Something went wrong — try again.');
-                          setBioEnrollState('prompt');
-                        }
-                      }}
-                      className="flex-1 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold disabled:opacity-50"
-                    >
-                      {bioEnrollState === 'saving' ? 'Saving…' : 'Enable'}
-                    </button>
-                  </div>
-                </div>
-              )}
               <button
                 onClick={() => signOut({ callbackUrl: '/' })}
                 className="w-full py-3 rounded-2xl border-2 border-red-100 text-sm font-bold
