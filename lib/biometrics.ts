@@ -39,8 +39,10 @@ export type BiometricType = 'faceId' | 'touchId' | 'biometrics' | null;
 export async function hasBiometricCredentials(): Promise<boolean> {
   const prefs = await getPreferences();
   if (!prefs) return false;
-  const { value } = await prefs.get({ key: KEY_EMAIL });
-  return !!value;
+  try {
+    const { value } = await prefs.get({ key: KEY_EMAIL });
+    return !!value;
+  } catch { return false; }
 }
 
 /**
@@ -68,10 +70,13 @@ export async function authenticateAndLoad(): Promise<{ email: string; password: 
   const [prefs, mod] = await Promise.all([getPreferences(), getBioPlugin()]);
   if (!prefs || !mod) return null;
 
-  const [{ value: email }, { value: password }] = await Promise.all([
-    prefs.get({ key: KEY_EMAIL }),
-    prefs.get({ key: KEY_PWD }),
-  ]);
+  let email: string | null, password: string | null;
+  try {
+    [{ value: email }, { value: password }] = await Promise.all([
+      prefs.get({ key: KEY_EMAIL }),
+      prefs.get({ key: KEY_PWD }),
+    ]);
+  } catch { return null; }
   if (!email || !password) return null;
 
   try {

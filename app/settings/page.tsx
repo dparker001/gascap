@@ -2,6 +2,7 @@
 
 import { useSession, signOut } from 'next-auth/react';
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { hasBiometricCredentials, clearBiometricCredentials, getBiometricType, saveBiometricCredentials } from '@/lib/biometrics';
 import { setThemePreference, getThemePreference, isDarkMode, type ThemePreference } from '@/components/DarkModeProvider';
@@ -60,6 +61,7 @@ function Avatar({ name, color }: { name: string; color: string }) {
 export default function SettingsPage() {
   const { data: session, status, update: updateSession } = useSession();
   const { t, locale } = useTranslation();
+  const router = useRouter();
   const isNative = useIsNative();   // hide web Stripe checkout in native wrappers
   const platform = useNativePlatform(); // 'ios' → upgrade via Apple IAP (/upgrade)
   const isIos    = platform === 'ios';
@@ -684,8 +686,12 @@ export default function SettingsPage() {
           <div className="max-w-lg mx-auto flex items-center relative">
             <button
               onClick={() => {
-                window.dispatchEvent(new CustomEvent('gc:switch-tab', { detail: { tab: 'calculator' } }));
-                window.dispatchEvent(new CustomEvent('gascap:switch-tools-tab', { detail: { tab: 'calculator' } }));
+                if (isNative) {
+                  window.dispatchEvent(new CustomEvent('gc:switch-tab', { detail: { tab: 'calculator' } }));
+                  window.dispatchEvent(new CustomEvent('gascap:switch-tools-tab', { detail: { tab: 'calculator' } }));
+                } else {
+                  router.push('/');
+                }
               }}
               className="text-white/60 hover:text-white transition-colors active:opacity-70 absolute left-0"
               aria-label="Back"
