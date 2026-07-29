@@ -130,7 +130,6 @@ workflows:
             "$PLIST" 2>/dev/null || true
           echo "Info.plist location key:"; /usr/libexec/PlistBuddy -c "Print :NSLocationWhenInUseUsageDescription" "$PLIST"
           echo "Info.plist always-location key:"; /usr/libexec/PlistBuddy -c "Print :NSLocationAlwaysAndWhenInUseUsageDescription" "$PLIST"
-          echo "Info.plist Face ID key:"; /usr/libexec/PlistBuddy -c "Print :NSFaceIDUsageDescription" "$PLIST"
 
       - name: Add Push Notifications entitlement
         script: |
