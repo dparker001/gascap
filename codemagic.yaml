@@ -85,14 +85,6 @@ workflows:
             || /usr/libexec/PlistBuddy \
             -c "Set :NSLocationAlwaysAndWhenInUseUsageDescription 'GasCap uses your location in the background to alert you when you are near a gas station you have saved.'" \
             "$PLIST"
-          # NSFaceIDUsageDescription — required by @aparajita/capacitor-biometric-auth
-          # for Face ID; without it Apple rejects the build at upload time.
-          /usr/libexec/PlistBuddy \
-            -c "Add :NSFaceIDUsageDescription string 'GasCap uses Face ID to sign you in quickly and securely.'" \
-            "$PLIST" \
-            || /usr/libexec/PlistBuddy \
-            -c "Set :NSFaceIDUsageDescription 'GasCap uses Face ID to sign you in quickly and securely.'" \
-            "$PLIST"
           # NSCameraUsageDescription + NSPhotoLibraryUsageDescription — MANDATORY.
           # WKWebView <input type="file" accept="image/*"> invokes the native camera
           # (UIImagePickerController) and photo picker under the hood. iOS HARD-CRASHES
