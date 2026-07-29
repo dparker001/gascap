@@ -1104,23 +1104,34 @@ export default function SettingsPage() {
                       disabled={bioEnrollState === 'saving' || !bioPwInput}
                       onClick={async () => {
                         setBioEnrollState('saving');
+                        setBioPwError('');
                         const userEmail = (session?.user as { email?: string })?.email ?? '';
-                        // Verify password first
-                        const res = await fetch('/api/auth/verify-password', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ email: userEmail, password: bioPwInput }),
-                        });
-                        if (!res.ok) {
-                          setBioPwError('Incorrect password.');
+                        try {
+                          // Verify password first
+                          const res = await fetch('/api/auth/verify-password', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ email: userEmail, password: bioPwInput }),
+                          });
+                          if (!res.ok) {
+                            setBioPwError('Incorrect password.');
+                            setBioEnrollState('prompt');
+                            return;
+                          }
+                          const saved = await saveBiometricCredentials(userEmail, bioPwInput);
+                          if (!saved) {
+                            setBioPwError('Could not save to this device — try again.');
+                            setBioEnrollState('prompt');
+                            return;
+                          }
+                          const type = await getBiometricType();
+                          setBiometricLabel(type === 'faceId' ? 'Face ID' : type === 'touchId' ? 'Touch ID' : 'Biometrics');
+                          setBioEnrollState('idle');
+                          setBioPwInput('');
+                        } catch {
+                          setBioPwError('Something went wrong — try again.');
                           setBioEnrollState('prompt');
-                          return;
                         }
-                        await saveBiometricCredentials(userEmail, bioPwInput);
-                        const type = await getBiometricType();
-                        setBiometricLabel(type === 'faceId' ? 'Face ID' : type === 'touchId' ? 'Touch ID' : 'Biometrics');
-                        setBioEnrollState('idle');
-                        setBioPwInput('');
                       }}
                       className="flex-1 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold disabled:opacity-50"
                     >
