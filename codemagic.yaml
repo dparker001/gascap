@@ -188,6 +188,30 @@ workflows:
         script: |
           cd ios/App && pod install --repo-update
 
+      - name: Verify all Capacitor plugins actually installed
+        script: |
+          # Silent plugin-install failures are the recurring class of bug here (see
+          # @capacitor/geolocation v6/v8 mismatch and @capacitor/preferences
+          # "not implemented on ios" — both shipped to TestFlight before anyone
+          # noticed, since pod install can exit 0 even when a pod is dropped).
+          # Fail the BUILD instead of shipping a broken binary silently.
+          MISSING=""
+          for pod in Capacitor CapacitorCordova CapacitorApp CapacitorGeolocation CapacitorHaptics \
+                     CapacitorKeyboard CapacitorLocalNotifications CapacitorPreferences \
+                     CapacitorPushNotifications CapacitorShare CapacitorSplashScreen CapacitorStatusBar \
+                     AparajitaCapacitorBiometricAuth CapacitorCommunityBackgroundGeolocation; do
+            if ! grep -q "^  - $pod (" ios/App/Podfile.lock 2>/dev/null; then
+              MISSING="$MISSING $pod"
+            fi
+          done
+          if [ -n "$MISSING" ]; then
+            echo "❌ Missing pods after install:$MISSING"
+            echo "── Podfile.lock PODS section ──"
+            sed -n '/^PODS:/,/^DEPENDENCIES:/p' ios/App/Podfile.lock
+            exit 1
+          fi
+          echo "✓ All expected Capacitor plugin pods present in Podfile.lock"
+
       - name: Set marketing + build number
         script: |
           cd ios/App

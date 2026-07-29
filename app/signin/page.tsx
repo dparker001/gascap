@@ -145,16 +145,19 @@ function SignInForm() {
   }
 
   // Step 2: verify OTP — single call to NextAuth which verifies from DB
-  async function handleOtpSubmit(e: FormEvent) {
-    e.preventDefault();
+  // Accepts an optional explicit code so auto-submit (on the 6th digit) doesn't
+  // have to wait for a state update to land before reading `otp`.
+  async function handleOtpSubmit(e?: FormEvent, codeOverride?: string) {
+    e?.preventDefault();
+    const code = codeOverride ?? otp;
     setOtpError('');
-    if (otp.length !== 6) return setOtpError('Please enter the 6-digit code.');
+    if (code.length !== 6) return setOtpError('Please enter the 6-digit code.');
     setOtpLoading(true);
 
     const signInRes = await signIn('credentials-otp', {
       redirect: false,
       email,
-      code:     otp,
+      code,
     });
     setOtpLoading(false);
 
@@ -239,7 +242,18 @@ function SignInForm() {
                   className="input-field text-center text-3xl font-black tracking-[0.5em] py-4"
                   placeholder="000000"
                   value={otp}
-                  onChange={(e) => { setOtp(e.target.value.replace(/\D/g, '').slice(0, 6)); setOtpError(''); }}
+                  onChange={(e) => {
+                    const digits = e.target.value.replace(/\D/g, '').slice(0, 6);
+                    setOtp(digits);
+                    setOtpError('');
+                    // Auto-submit on the 6th digit — the button sits below the
+                    // numeric keypad (which has no Return/Done key on iOS and no
+                    // way to dismiss it), so waiting for a tap isn't reliable.
+                    if (digits.length === 6) {
+                      otpInputRef.current?.blur();
+                      handleOtpSubmit(undefined, digits);
+                    }
+                  }}
                   required
                 />
               </div>
