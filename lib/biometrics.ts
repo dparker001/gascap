@@ -88,22 +88,29 @@ export async function authenticateAndLoad(): Promise<{ email: string; password: 
 /**
  * Save credentials to Keychain after a successful password sign-in.
  * Call only when the user explicitly enables biometric sign-in.
+ * Returns false (instead of throwing) if the native Preferences write fails,
+ * so callers can reset any "saving" UI state instead of hanging forever.
  */
-export async function saveBiometricCredentials(email: string, password: string): Promise<void> {
+export async function saveBiometricCredentials(email: string, password: string): Promise<boolean> {
   const prefs = await getPreferences();
-  if (!prefs) return;
-  await Promise.all([
-    prefs.set({ key: KEY_EMAIL, value: email }),
-    prefs.set({ key: KEY_PWD,   value: password }),
-  ]);
+  if (!prefs) return false;
+  try {
+    await Promise.all([
+      prefs.set({ key: KEY_EMAIL, value: email }),
+      prefs.set({ key: KEY_PWD,   value: password }),
+    ]);
+    return true;
+  } catch { return false; }
 }
 
 /** Clears saved credentials — call on sign-out or when user disables biometric sign-in */
 export async function clearBiometricCredentials(): Promise<void> {
   const prefs = await getPreferences();
   if (!prefs) return;
-  await Promise.all([
-    prefs.remove({ key: KEY_EMAIL }),
-    prefs.remove({ key: KEY_PWD }),
-  ]);
+  try {
+    await Promise.all([
+      prefs.remove({ key: KEY_EMAIL }),
+      prefs.remove({ key: KEY_PWD }),
+    ]);
+  } catch { /* best-effort — nothing else to do if the native write fails */ }
 }
