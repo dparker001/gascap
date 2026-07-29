@@ -1106,25 +1106,35 @@ export default function SettingsPage() {
                         setBioEnrollState('saving');
                         setBioPwError('');
                         const userEmail = (session?.user as { email?: string })?.email ?? '';
+                        const timeout = (ms: number) =>
+                          new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), ms));
                         try {
-                          // Verify password first
-                          const res = await fetch('/api/auth/verify-password', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ email: userEmail, password: bioPwInput }),
-                          });
+                          // Verify password first — race against a timeout since a hung native
+                          // fetch never rejects on its own, which would leave the button stuck
+                          // on "Saving…" forever (reported by Don on a real device).
+                          const res = await Promise.race([
+                            fetch('/api/auth/verify-password', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ email: userEmail, password: bioPwInput }),
+                            }),
+                            timeout(10_000),
+                          ]);
                           if (!res.ok) {
                             setBioPwError('Incorrect password.');
                             setBioEnrollState('prompt');
                             return;
                           }
-                          const saved = await saveBiometricCredentials(userEmail, bioPwInput);
+                          const saved = await Promise.race([
+                            saveBiometricCredentials(userEmail, bioPwInput),
+                            timeout(10_000),
+                          ]);
                           if (!saved) {
                             setBioPwError('Could not save to this device — try again.');
                             setBioEnrollState('prompt');
                             return;
                           }
-                          const type = await getBiometricType();
+                          const type = await Promise.race([getBiometricType(), timeout(5_000)]).catch(() => null);
                           setBiometricLabel(type === 'faceId' ? 'Face ID' : type === 'touchId' ? 'Touch ID' : 'Biometrics');
                           setBioEnrollState('idle');
                           setBioPwInput('');
