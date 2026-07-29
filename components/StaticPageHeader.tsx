@@ -18,7 +18,7 @@ interface StaticPageHeaderProps {
 
 export default function StaticPageHeader({ active }: StaticPageHeaderProps) {
   return (
-    <header className="bg-navy-700 shadow-md">
+    <header className="sticky top-0 z-50 bg-navy-700 shadow-md">
       <div className="max-w-4xl mx-auto px-4 py-0 flex items-center justify-between gap-4">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-1.5 py-3 flex-shrink-0">

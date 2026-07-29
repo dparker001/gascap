@@ -39,8 +39,14 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   transition: background-color 0.2s ease, color 0.2s ease;
-  overflow-x: hidden; /* belt-and-suspenders: clip any overflow child */
   width: 100%;        /* guard against body wider than viewport */
+  /* NOTE: do NOT set overflow-x here — it forces the UA to compute
+     overflow-y:auto on body too, turning body into its own scroll
+     container even though <html> is what actually scrolls. That
+     silently breaks position:sticky for every sticky element on the
+     site (sticky computes against the nearest scroll container, not
+     the one that actually scrolls). html's overflow-x:hidden above is
+     sufficient on its own to prevent horizontal drift. */
 }
 
 /* ── Component classes ─────────────────────────────────────────────── */
