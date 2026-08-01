@@ -73,7 +73,7 @@ const SECTIONS = [
       },
       {
         q: 'What is Rental Car Return Mode?',
-        a: 'Rental Car Return Mode is designed for rental vehicle drop-offs. Tap the "🚗 Rental Car Return Mode" toggle at the top of the calculator to activate it — or set your Driver Mode to "Rental Car" in Settings and it activates automatically every time you open the app. Visiting gascap.app/rental and tapping the CTA also launches the calculator in rental mode directly. Your saved garage is hidden and replaced with rental car class presets (Economy, Midsize, SUV, etc.). Enter the rental company\'s per-gallon rate to see exactly how much you save by fueling up yourself vs. returning empty.',
+        a: 'Rental Car Return Mode is designed for rental vehicle drop-offs. Tap the "🚗 Rental Car Return Mode" toggle at the top of the calculator to activate it — or set your Driver Mode to "Rental Car" in Settings and it activates automatically every time you open the app. Visiting gascap.app/rental and tapping the CTA also launches the calculator in rental mode directly. Your saved garage is hidden and replaced with rental car class presets (Economy, Midsize, SUV, etc.) for a quick tank-size estimate. If you know the exact car, you can also look it up by Year/Make/Model, or scan/enter its VIN (found on the dash or door jamb, same as any car) for the most accurate tank size. Enter the rental company\'s per-gallon rate to see exactly how much you save by fueling up yourself vs. returning empty.',
       },
       {
         q: 'How do I set my current fuel level?',

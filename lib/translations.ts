@@ -2373,6 +2373,7 @@ const en = {
     model:  'Model',
     trim:   'Trim',
     looking: 'Looking up tank size…',
+    vinTitle: 'Or scan/enter the VIN for exact accuracy',
   },
   garageDoor: {
     unlockLine1: 'Save a vehicle to',
@@ -5093,6 +5094,7 @@ const es: typeof en = {
     model:  'Modelo',
     trim:   'Versión',
     looking: 'Buscando tamaño del tanque…',
+    vinTitle: 'O escanea/ingresa el VIN para mayor precisión',
   },
   garageDoor: {
     unlockLine1: 'Guarda un vehículo para',

@@ -6,6 +6,7 @@ import FuelGauge     from './FuelGauge';
 import TankPresets   from './TankPresets';
 import SavedVehicles from './SavedVehicles';
 import RentalVehicleLookup from './RentalVehicleLookup';
+import RentalVinLookup from './RentalVinLookup';
 import GasPriceLookup from './GasPriceLookup';
 import { TargetResultCard } from './ResultCard';
 import {
@@ -657,6 +658,14 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
               </p>
             </div>
             <RentalVehicleLookup
+              onTankSize={(g, label) => {
+                patch({ tankCapacity: g, vehicleId: '', vehicleName: '', vehicleOdometer: undefined });
+                setVehicleTankEst(undefined);
+                setVehicleBodyClass(undefined);
+                setPresetLabel(label);
+              }}
+            />
+            <RentalVinLookup
               onTankSize={(g, label) => {
                 patch({ tankCapacity: g, vehicleId: '', vehicleName: '', vehicleOdometer: undefined });
                 setVehicleTankEst(undefined);
