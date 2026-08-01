@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react';
 import FuelGauge     from './FuelGauge';
 import TankPresets   from './TankPresets';
 import SavedVehicles from './SavedVehicles';
+import RentalVehicleLookup from './RentalVehicleLookup';
 import GasPriceLookup from './GasPriceLookup';
 import { TargetResultCard } from './ResultCard';
 import {
@@ -648,12 +649,22 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
         />
         {errors.tankCapacity && <FieldError msg={errors.tankCapacity} />}
         {rentalMode ? (
-          <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-xl px-3 py-2.5 mt-1">
-            <span className="text-base flex-shrink-0" aria-hidden="true">🚪</span>
-            <p className="text-[11px] text-blue-600 leading-snug">
-              <span className="font-black">{t.calc.garageClosedTitle}</span>{t.calc.garageClosedHint}
-            </p>
-          </div>
+          <>
+            <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-xl px-3 py-2.5 mt-1">
+              <span className="text-base flex-shrink-0" aria-hidden="true">🚪</span>
+              <p className="text-[11px] text-blue-600 leading-snug">
+                <span className="font-black">{t.calc.garageClosedTitle}</span>{t.calc.garageClosedHint}
+              </p>
+            </div>
+            <RentalVehicleLookup
+              onTankSize={(g, label) => {
+                patch({ tankCapacity: g, vehicleId: '', vehicleName: '', vehicleOdometer: undefined });
+                setVehicleTankEst(undefined);
+                setVehicleBodyClass(undefined);
+                setPresetLabel(label);
+              }}
+            />
+          </>
         ) : (
           <SavedVehicles
             currentGallons={form.tankCapacity}

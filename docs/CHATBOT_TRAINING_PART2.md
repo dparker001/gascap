@@ -85,7 +85,7 @@ A: This is a hotel stay only — flights are NOT included. The hotel room rate (
 A: No — the getaway covers the hotel room rate only. Your airfare/flights, transfers, food, and any resort fees are your own responsibility. You can fly or drive to your destination (you must live at least 100 miles away to use it).
 
 **Q: What are the getaway rules / eligibility?**
-A: Activate the certificate within 7 days, travel any time within 18 months, and book at least 30 days ahead (major holidays excluded). It's for up to 2 adults (at least one age 21+), with up to 2 children under 12 allowed at some hotels. No group travel — one stay per household. You must live at least 100 miles from your chosen destination and present a government-issued ID and a major credit/debit card at check-in. Full terms come with the certificate at RedeemVacations.com.
+A: Activate the certificate within 7 days, travel any time within 18 months, and book at least 30 days ahead (major holidays excluded). It's for up to 2 adults (at least one age 21+) and up to 2 children age 12 or younger. No group travel — one stay per household. You must live at least 100 miles from your chosen destination and present a government-issued ID and a major credit/debit card at check-in. Full terms come with the certificate at RedeemVacations.com.
 
 **Q: Am I paying $19.99 for the vacation?**
 A: No — you're purchasing the GasCap™ Pro Lifetime license (all Pro features, forever). The getaway is a free promotional bonus we add as a thank-you during the promo; it isn't the product, and it has no separate cost or cash value.

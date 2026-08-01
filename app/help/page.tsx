@@ -323,7 +323,7 @@ const SECTIONS = [
       },
       {
         q: 'Who can use the getaway, and how is it delivered?',
-        a: 'The getaway is issued and fulfilled by our travel partner, Marketing Boost / RedeemVacations — watch for an email from them (check spam too). It accommodates up to 2 adults (at least one age 21+), with up to 2 children under 12 allowed at some hotels. You must reside at least 100 miles from your chosen destination and present a valid government-issued ID and a major credit or debit card at check-in. Full terms come with your certificate at RedeemVacations.com.',
+        a: 'The getaway is issued and fulfilled by our travel partner, Marketing Boost / RedeemVacations — watch for an email from them (check spam too). It accommodates up to 2 adults (at least one age 21+) and up to 2 children age 12 or younger. You must reside at least 100 miles from your chosen destination and present a valid government-issued ID and a major credit or debit card at check-in. Full terms come with your certificate at RedeemVacations.com.',
       },
       {
         q: 'How do I cancel my subscription?',

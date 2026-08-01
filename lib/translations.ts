@@ -2366,6 +2366,14 @@ const en = {
     proFeatureBody2: ' plan. Use the Search tab to find your vehicle from the EPA database.',
     switchToSearch: 'Switch to Search →',
   },
+  rentalLookup: {
+    title:  'Know the exact car? Look it up for a more accurate tank size:',
+    year:   'Year',
+    make:   'Make',
+    model:  'Model',
+    trim:   'Trim',
+    looking: 'Looking up tank size…',
+  },
   garageDoor: {
     unlockLine1: 'Save a vehicle to',
     unlockLine2: 'unlock the garage door',
@@ -5077,6 +5085,14 @@ const es: typeof en = {
     proFeatureBody1: 'La entrada manual de vehículos con búsqueda automática de especificaciones está disponible en el plan',
     proFeatureBody2: '. Usa la pestaña Buscar para encontrar tu vehículo en la base de datos de la EPA.',
     switchToSearch: 'Cambiar a Buscar →',
+  },
+  rentalLookup: {
+    title:  '¿Sabes el auto exacto? Búscalo para un tamaño de tanque más preciso:',
+    year:   'Año',
+    make:   'Marca',
+    model:  'Modelo',
+    trim:   'Versión',
+    looking: 'Buscando tamaño del tanque…',
   },
   garageDoor: {
     unlockLine1: 'Guarda un vehículo para',
