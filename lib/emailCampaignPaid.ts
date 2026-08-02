@@ -98,6 +98,27 @@ export function upgradeConfirmEmailHtml(
         <p style="margin:0;font-size:14px;color:#475569;">${planDetail}</p>
       </div>
 
+      ${interval === 'lifetime' ? `
+      <table cellpadding="0" cellspacing="0" width="100%"
+             style="background:linear-gradient(135deg,#005F4A,#1EB68F);border-radius:14px;margin:0 0 26px;">
+        <tr><td style="padding:20px 24px;">
+          <p style="margin:0 0 4px;font-size:12px;font-weight:900;color:#fef3c7;
+                    text-transform:uppercase;letter-spacing:.8px;">🏝️ Included with Lifetime</p>
+          <p style="margin:0 0 8px;font-size:17px;font-weight:900;color:#fff;">
+            Pick your free vacation getaway
+          </p>
+          <p style="margin:0 0 14px;font-size:13px;color:rgba(255,255,255,.85);line-height:1.6;">
+            Your Lifetime purchase includes a complimentary resort getaway certificate — choose your
+            destination from 100+ options across the U.S. and worldwide. Your certificate is emailed
+            automatically within 24 hours of picking.
+          </p>
+          <a href="${BASE_URL}/getaway" style="display:inline-block;background:#fff;color:#005F4A;
+             font-weight:900;font-size:13px;padding:11px 22px;border-radius:10px;text-decoration:none;">
+            Choose Your Destination →
+          </a>
+        </td></tr>
+      </table>` : ''}
+
       <p style="margin:0 0 14px;font-size:15px;font-weight:700;color:#1e2d4a;">
         What's fully unlocked on your account:
       </p>
@@ -172,7 +193,7 @@ export function upgradeConfirmEmailHtml(
 }
 
 export const upgradeConfirmEmailText = (name: string, _tier: 'pro' | 'fleet', interval: 'monthly' | 'annual' | 'lifetime') =>
-  `Hi ${name.split(' ')[0]}, your ${interval === 'lifetime' ? 'GasCap™ Pro Lifetime is active — yours forever, no renewals' : `GasCap™ Pro subscription is active (${interval})`}. Everything is unlocked — no trial countdown. Open the app: ${BASE_URL}`;
+  `Hi ${name.split(' ')[0]}, your ${interval === 'lifetime' ? 'GasCap™ Pro Lifetime is active — yours forever, no renewals' : `GasCap™ Pro subscription is active (${interval})`}. Everything is unlocked — no trial countdown.${interval === 'lifetime' ? ` Your Lifetime purchase also includes a complimentary vacation getaway — pick your destination from 100+ options at ${BASE_URL}/getaway.` : ''} Open the app: ${BASE_URL}`;
 
 // ── P2 — 30-Day Check-In ─────────────────────────────────────────────────────
 
