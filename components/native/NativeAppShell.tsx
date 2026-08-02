@@ -197,6 +197,17 @@ export default function NativeAppShell() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Hide the garage VehicleChip while Rental Mode is active — garage
+  // vehicles aren't used for rental calculations.
+  const [rentalModeActive, setRentalModeActive] = useState(false);
+  useEffect(() => {
+    function handler(e: Event) {
+      setRentalModeActive(!!(e as CustomEvent<{ active: boolean }>).detail?.active);
+    }
+    window.addEventListener('gc:rental-mode', handler);
+    return () => window.removeEventListener('gc:rental-mode', handler);
+  }, []);
+
   function changeTab(id: TabId) {
     if (id === active) return;
     setActive(id);
@@ -291,7 +302,7 @@ export default function NativeAppShell() {
           <LanguageToggle className="absolute left-2 top-1/2 -translate-y-1/2 !py-1" />
           <div className="flex flex-col items-center">
             <h1 className="text-base font-bold tracking-tight">{title}</h1>
-            {active === 'calculator' && status === 'authenticated' && (
+            {active === 'calculator' && status === 'authenticated' && !rentalModeActive && (
               <VehicleChip onSelect={handleVehicleSwitch} />
             )}
           </div>

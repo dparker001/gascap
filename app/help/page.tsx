@@ -73,7 +73,7 @@ const SECTIONS = [
       },
       {
         q: 'What is Rental Car Return Mode?',
-        a: 'Rental Car Return Mode is designed for rental vehicle drop-offs. Tap the "🚗 Rental Car Return Mode" toggle at the top of the calculator to activate it — or set your Driver Mode to "Rental Car" in Settings and it activates automatically every time you open the app. Visiting gascap.app/rental and tapping the CTA also launches the calculator in rental mode directly. Your saved garage is hidden and replaced with rental car class presets (Economy, Midsize, SUV, etc.). Enter the rental company\'s per-gallon rate to see exactly how much you save by fueling up yourself vs. returning empty.',
+        a: 'Rental Car Return Mode is designed for rental vehicle drop-offs. Tap the "🚗 Rental Car Return Mode" toggle at the top of the calculator to activate it — or set your Driver Mode to "Rental Car" in Settings and it activates automatically every time you open the app. Visiting gascap.app/rental and tapping the CTA also launches the calculator in rental mode directly. Your saved garage is hidden and replaced with rental car class presets (Economy, Midsize, SUV, etc.) for a quick tank-size estimate. If you know the exact car, you can also look it up by Year/Make/Model, or scan/enter its VIN (found on the dash or door jamb, same as any car) for the most accurate tank size. Enter the rental company\'s per-gallon rate to see exactly how much you save by fueling up yourself vs. returning empty.',
       },
       {
         q: 'How do I set my current fuel level?',
@@ -323,7 +323,7 @@ const SECTIONS = [
       },
       {
         q: 'Who can use the getaway, and how is it delivered?',
-        a: 'The getaway is issued and fulfilled by our travel partner, Marketing Boost / RedeemVacations — watch for an email from them (check spam too). It accommodates up to 2 adults (at least one age 21+), with up to 2 children under 12 allowed at some hotels. You must reside at least 100 miles from your chosen destination and present a valid government-issued ID and a major credit or debit card at check-in. Full terms come with your certificate at RedeemVacations.com.',
+        a: 'The getaway is issued and fulfilled by our travel partner, Marketing Boost / RedeemVacations — watch for an email from them (check spam too). It accommodates up to 2 adults (at least one age 21+) and up to 2 children age 12 or younger. You must reside at least 100 miles from your chosen destination and present a valid government-issued ID and a major credit or debit card at check-in. Full terms come with your certificate at RedeemVacations.com.',
       },
       {
         q: 'How do I cancel my subscription?',

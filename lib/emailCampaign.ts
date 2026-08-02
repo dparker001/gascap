@@ -197,7 +197,7 @@ export function welcomeEmailHtml(name: string, userId: string, verifyUrl?: strin
         </p>
         <p style="margin:0;font-size:13px;color:#166534;line-height:1.6;">
           Every day you <strong>log in or use GasCap™</strong> earns you an entry for that month's
-          $25 Visa prepaid card drawing. The more days you're active, the better your odds. Drawing is held
+          $50 Visa prepaid card drawing. The more days you're active, the better your odds. Drawing is held
           monthly — free to enter, no purchase required.
         </p>
       </div>
@@ -220,7 +220,8 @@ export function welcomeEmailHtml(name: string, userId: string, verifyUrl?: strin
         Here's how to get the most out of your first week:
       </p>
       <ol style="margin:0 0 22px 20px;padding:0;font-size:14px;color:#475569;line-height:1.7;">
-        <li><strong>Add your vehicle</strong> — tank size + fuel type, one time only.</li>
+        <li><strong>Add your vehicle(s)</strong> — tank size + fuel type, set once per car. Pro trial includes unlimited saved vehicles.</li>
+        <li><strong>Set your Driver Mode</strong> in Settings — Personal, Gig Driver, Rental Car, or Fleet — to personalize your dashboard and tools.</li>
         <li><strong>Run a Target Fill calc</strong> — see exactly what a fill-up will cost before you pull in.</li>
         <li><strong>Try Rental Car Return Mode</strong> next time you rent — avoid the $12/gal refuel trap.</li>
         <li><strong>Try the AI Advisor</strong> — ask it "How much fuel will I need for a 300-mile trip?"</li>
@@ -263,7 +264,7 @@ export function welcomeEmailHtml(name: string, userId: string, verifyUrl?: strin
 }
 
 export const welcomeEmailText = (name: string) =>
-  `Hi ${name.split(' ')[0]}, welcome to GasCap™! Your 30-day free Pro trial is now active — Rental Car Return Mode (avoid $12/gal refuel fees), Route Trip Planner (Google Maps integration), AI Fuel Advisor, MPG charts, budget tracking, maintenance reminders, and PDF exports are all unlocked. No credit card needed, auto-reverts to free after 30 days. Open the app: ${BASE_URL}`;
+  `Hi ${name.split(' ')[0]}, welcome to GasCap™! Your 30-day free Pro trial is now active — unlimited saved vehicles, Rental Car Return Mode (avoid $12/gal refuel fees), Route Trip Planner (Google Maps integration), AI Fuel Advisor, MPG charts, budget tracking, maintenance reminders, and PDF exports are all unlocked. Tip: set your Driver Mode in Settings (Personal, Gig Driver, Rental Car, or Fleet) to personalize your dashboard. No credit card needed, auto-reverts to free after 30 days. Open the app: ${BASE_URL}`;
 
 // ── Email 2 — Feature Deep-Dive (Day 3) ───────────────────────────────────
 
@@ -418,7 +419,9 @@ export function proUpsellEmailHtml(name: string, userId: string): string {
       <p style="margin:0 0 16px;font-size:14px;color:#475569;line-height:1.65;">
         Twenty days still to go on your trial — use them. And if you love what you see,
         you can lock in Pro for just <strong>$2.99/month</strong> — or own it forever
-        with the <strong>$19.99 Lifetime plan</strong> (one payment, no subscription ever).
+        with the <strong>$19.99 Lifetime plan</strong> (one payment, no subscription ever),
+        which also comes with a <strong>complimentary vacation getaway certificate</strong> —
+        pick your destination from 100+ options across the U.S. and worldwide.
       </p>
 
       ${ctaButton('Open GasCap™ →', BASE_URL)}
@@ -440,7 +443,7 @@ export function proUpsellEmailHtml(name: string, userId: string): string {
 }
 
 export const proUpsellEmailText = (name: string) =>
-  `Hi ${name.split(' ')[0]}, you're 10 days into your GasCap™ Pro trial — 20 days left. Power-user features to try: AI trip planner, MPG drop detection, cost-per-mile tracking, unlimited badges, PDF reports. BONUS: Share your referral link (in the Share tab) — earn a free Pro month every time a friend upgrades, plus bonus drawing entries. Refer 15 and Pro is yours for life. Open the app: ${BASE_URL}`;
+  `Hi ${name.split(' ')[0]}, you're 10 days into your GasCap™ Pro trial — 20 days left. Power-user features to try: AI trip planner, MPG drop detection, cost-per-mile tracking, unlimited badges, PDF reports. BONUS: Share your referral link (in the Share tab) — earn a free Pro month every time a friend upgrades, plus bonus drawing entries. Refer 15 and Pro is yours for life. Or own Pro forever with the $19.99 Lifetime plan — it also comes with a complimentary vacation getaway certificate. Open the app: ${BASE_URL}`;
 
 // ── Email 4 — 9 Days Left (Day 21) ────────────────────────────────────────
 
@@ -517,7 +520,8 @@ export function annualDealEmailHtml(name: string, userId: string): string {
           Upgrade Now →
         </a>
         <p style="margin:14px 0 0;font-size:12px;color:#92400e;">
-          Or own Pro forever — <strong>$19.99 Lifetime</strong> (one payment, no subscription) · Secure checkout via Stripe
+          Or own Pro forever — <strong>$19.99 Lifetime</strong> (one payment, no subscription) plus a
+          <strong>free vacation getaway certificate</strong> · Secure checkout via Stripe
         </p>
       </div>
 
@@ -540,7 +544,7 @@ export function annualDealEmailHtml(name: string, userId: string): string {
 }
 
 export const annualDealEmailText = (name: string) =>
-  `Hi ${name.split(' ')[0]}, your free GasCap™ Pro trial ends in 9 days. Keep everything you've been using for just $2.99/month — cancel anytime, less than a dime a day. Or own Pro forever with the $19.99 Lifetime plan (one payment, no subscription). Quick tip: share your referral link now (in the Share tab) — if a friend signs up, we bank 1 free Pro month for you. Upgrade: ${BASE_URL}/upgrade`;
+  `Hi ${name.split(' ')[0]}, your free GasCap™ Pro trial ends in 9 days. Keep everything you've been using for just $2.99/month — cancel anytime, less than a dime a day. Or own Pro forever with the $19.99 Lifetime plan (one payment, no subscription) — it also comes with a free vacation getaway certificate. Quick tip: share your referral link now (in the Share tab) — if a friend signs up, we bank 1 free Pro month for you. Upgrade: ${BASE_URL}/upgrade`;
 
 // ── Email 5 — Final 48 Hours (Day 28) ─────────────────────────────────────
 
@@ -579,7 +583,8 @@ export function lastCallEmailHtml(name: string, userId: string): string {
           Upgrade Now →
         </a>
         <p style="margin:14px 0 0;font-size:12px;color:#92400e;">
-          Or own Pro forever — <strong>$19.99 Lifetime</strong> (one payment, no subscription ever) · Secure via Stripe
+          Or own Pro forever — <strong>$19.99 Lifetime</strong> (one payment, no subscription ever) plus a
+          <strong>free vacation getaway certificate</strong> · Secure via Stripe
         </p>
       </div>
 
@@ -597,8 +602,9 @@ export function lastCallEmailHtml(name: string, userId: string): string {
 
       <p style="margin:0 0 14px;font-size:14px;color:#475569;line-height:1.65;">
         <strong>Not upgrading?</strong> That's completely okay. Your GasCap™ free account will still have
-        the calculators, live gas price lookup, and one saved vehicle — yours forever, no charge. We'd
-        just love to hear why so we can keep making GasCap™ better. Just hit reply.
+        the calculators and live gas price lookup, forever, no charge. Any vehicles you've already saved
+        during your trial stay right where they are — you just won't be able to add new ones beyond your
+        first without Pro. We'd just love to hear why so we can keep making GasCap™ better. Just hit reply.
       </p>
 
       <p style="margin:24px 0 0;font-size:13px;color:#94a3b8;line-height:1.6;">
@@ -613,7 +619,7 @@ export function lastCallEmailHtml(name: string, userId: string): string {
 }
 
 export const lastCallEmailText = (name: string) =>
-  `Hi ${name.split(' ')[0]}, your GasCap™ Pro trial ends in 48 hours. Keep everything you've been using for just $2.99/month — cancel anytime, less than a dime a day. Or own Pro forever with the $19.99 Lifetime plan (one payment, no subscription). Upgrade before your account reverts to free: ${BASE_URL}/upgrade`;
+  `Hi ${name.split(' ')[0]}, your GasCap™ Pro trial ends in 48 hours. Keep everything you've been using for just $2.99/month — cancel anytime, less than a dime a day. Or own Pro forever with the $19.99 Lifetime plan (one payment, no subscription) — it also comes with a free vacation getaway certificate. Upgrade before your account reverts to free: ${BASE_URL}/upgrade`;
 
 // ── Email 6 — Trial Ended (fires from expiry cron on downgrade) ────────────
 
@@ -654,6 +660,7 @@ export function trialEndedEmailHtml(name: string, userId: string): string {
         </p>
         <p style="margin:0 0 16px;font-size:14px;color:#92400e;">
           <strong>$2.99/mo</strong> — or own Pro forever with <strong>$19.99 Lifetime</strong>
+          (plus a free vacation getaway certificate)
         </p>
         ${ctaButton('Upgrade to Pro →', `${BASE_URL}/upgrade`)}
         <p style="margin:14px 0 0;font-size:12px;color:#b45309;">
@@ -662,8 +669,10 @@ export function trialEndedEmailHtml(name: string, userId: string): string {
       </div>
 
       <p style="margin:0 0 14px;font-size:14px;color:#475569;line-height:1.65;">
-        Staying on the free plan? No problem at all. You'll keep unlimited
-        fuel calculations, live gas price lookup, and one saved vehicle — free, forever.
+        Staying on the free plan? No problem at all. You'll keep unlimited fuel calculations
+        and live gas price lookup, free forever. Any vehicles you already saved during your trial
+        are still right there in your garage — you just can't add new ones beyond your first
+        without Pro.
       </p>
       <p style="margin:0 0 14px;font-size:14px;color:#475569;line-height:1.65;">
         If there's anything we could have done better during your trial, just
@@ -681,7 +690,7 @@ export function trialEndedEmailHtml(name: string, userId: string): string {
 }
 
 export const trialEndedEmailText = (name: string) =>
-  `Hi ${name.split(' ')[0]}, your GasCap™ Pro trial has ended and your account is now on the free plan. Your data is safe. Want to keep Pro? Upgrade at ${BASE_URL}/upgrade — $2.99/mo or own it forever for $19.99 (Lifetime). Free plan keeps unlimited calculations, gas price lookup, and one vehicle. — Don, GasCap™`;
+  `Hi ${name.split(' ')[0]}, your GasCap™ Pro trial has ended and your account is now on the free plan. Your data is safe — any vehicles you already saved are still in your garage, you just can't add new ones beyond your first without Pro. Want to keep Pro? Upgrade at ${BASE_URL}/upgrade — $2.99/mo or own it forever for $19.99 (Lifetime, plus a free vacation getaway certificate). Free plan keeps unlimited calculations and live gas price lookup. — Don, GasCap™`;
 
 // ── Campaign dispatch helper ───────────────────────────────────────────────
 
@@ -974,7 +983,7 @@ export function compC2EmailHtml(name: string, userId: string): string {
       </p>
       <p style="margin:0 0 20px;font-size:15px;color:#475569;line-height:1.65;">
         Your personal referral link is ready — and sharing it is simpler than you think.
-        Here's a quick walkthrough so you can start earning toward your Visa prepaid card rewards.
+        Here's a quick walkthrough so you can start earning toward your Ambassador rewards.
       </p>
 
       <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:14px;padding:22px;margin-bottom:24px;">
@@ -984,7 +993,7 @@ export function compC2EmailHtml(name: string, userId: string): string {
         <table cellpadding="0" cellspacing="0" width="100%">
           ${featureRow('1️⃣', 'Open GasCap™ → Share tab', 'Tap the Share icon at the bottom of the app. Your unique referral link and QR code are right there.')}
           ${featureRow('2️⃣', 'Copy your link or grab your QR code', 'Paste the link in a text, group chat, or social caption — or screenshot the QR code for in-person sharing.')}
-          ${featureRow('3️⃣', 'When they upgrade, you earn', 'Every time someone you referred upgrades to a paid plan, you earn credit toward your Visa prepaid card milestones.')}
+          ${featureRow('3️⃣', 'When they upgrade, you earn', 'Every time someone you referred upgrades to a paid plan, your Ambassador tier progress moves closer to your next reward.')}
         </table>
       </div>
 
@@ -1024,7 +1033,7 @@ export function compC2EmailHtml(name: string, userId: string): string {
 
 export const compC2EmailText = (name: string): string => {
   const first = name.split(' ')[0];
-  return `Hi ${first}, your GasCap™ referral link is ready. Here's how to share it in 3 steps: (1) Open GasCap™ and go to the Share tab. (2) Copy your link or save your QR code. (3) Paste it in a text, group chat, or social caption — when someone you referred upgrades, you earn toward your Visa prepaid card rewards. Copy-paste text: "Hey — try this app called GasCap™. It tells you exactly how many gallons to pump so you never overpay. Free to use: [YOUR LINK]". Get your link at ${BASE_URL}/#share`;
+  return `Hi ${first}, your GasCap™ referral link is ready. Here's how to share it in 3 steps: (1) Open GasCap™ and go to the Share tab. (2) Copy your link or save your QR code. (3) Paste it in a text, group chat, or social caption — when someone you referred upgrades, your Ambassador tier progress moves closer to your next reward. Copy-paste text: "Hey — try this app called GasCap™. It tells you exactly how many gallons to pump so you never overpay. Free to use: [YOUR LINK]". Get your link at ${BASE_URL}/#share`;
 };
 
 // ── C3 — Day 7: Best places to share ──────────────────────────────────────
@@ -1062,8 +1071,8 @@ export function compC3EmailHtml(name: string, userId: string): string {
       </div>
 
       <p style="margin:0 0 16px;font-size:14px;color:#475569;line-height:1.65;">
-        <strong>Remember:</strong> You earn Visa prepaid card credits only when someone you referred
-        upgrades to a paid plan. So the more people you reach, the faster your rewards stack up.
+        <strong>Remember:</strong> your Ambassador tier only counts referrals who
+        upgrade to a paid plan. So the more people you reach, the faster your rewards stack up.
       </p>
 
       ${compCtaButton('Open GasCap™ + Share Tab →', `${BASE_URL}/#share`)}
@@ -1101,15 +1110,15 @@ export function compC4EmailHtml(name: string, userId: string): string {
 
       <div style="background:#1e2d4a;border-radius:14px;padding:22px;margin-bottom:24px;">
         <p style="margin:0 0 14px;font-size:12px;font-weight:900;color:#fbbf24;letter-spacing:1px;text-transform:uppercase;">
-          🏆 Visa Prepaid Card Milestone Rewards
+          🏆 Ambassador Tier Rewards
         </p>
         <table cellpadding="0" cellspacing="0" width="100%">
-          ${milestoneRow('10 paying referrals', '$25 Visa Prepaid Card', 'We send you a $25 Visa prepaid card — use it anywhere Visa is accepted', false)}
-          ${milestoneRow('25 paying referrals', '$50 Visa Prepaid Card', 'You\'ve helped 25 drivers save — here\'s $50 back', false)}
-          ${milestoneRow('50 paying referrals', '$100 Visa Prepaid Card', 'Elite Ambassador status — you\'ve earned it', false)}
+          ${milestoneRow('Supporter — 5+ referrals', '1 free Pro month per referral (up to 6) + $50 Dining Voucher', '2× daily giveaway drawing entries', false)}
+          ${milestoneRow('Ambassador — 15+ referrals', 'Free Pro for life + $100 Hotel Savings Card', '3× daily giveaway drawing entries', false)}
+          ${milestoneRow('Elite Ambassador — 30+ referrals', 'Free Pro for life + $500 Hotel Savings Card', '5× daily giveaway drawing entries + Top Ambassadors recognition', false)}
         </table>
         <p style="margin:12px 0 0;font-size:11px;color:rgba(255,255,255,.5);line-height:1.5;">
-          Milestones are cumulative and permanent — they never reset. We'll reach out when you hit one.
+          Tier status is cumulative and permanent — it never resets. Vouchers are sent automatically by email the moment you first reach each tier.
         </p>
       </div>
 
@@ -1143,7 +1152,7 @@ export function compC4EmailHtml(name: string, userId: string): string {
 
 export const compC4EmailText = (name: string): string => {
   const first = name.split(' ')[0];
-  return `Hi ${first}, here's your Ambassador rewards breakdown: 10 paying referrals → $25 Visa prepaid card. 25 paying referrals → $50 Visa prepaid card. 50 paying referrals → $100 Visa prepaid card. Milestones are cumulative and permanent — they never reset. We'll reach out when you hit one. Referrals count only when someone you referred upgrades to a paid plan. Check your count at ${BASE_URL}/#share. Questions? Just reply to this email.`;
+  return `Hi ${first}, here's your Ambassador rewards breakdown: Supporter (5+ paying referrals) → 1 free Pro month per referral up to 6, 2x daily giveaway entries, and a $50 Dining Voucher. Ambassador (15+ paying referrals) → free Pro for life, 3x daily giveaway entries, and a $100 Hotel Savings Card. Elite Ambassador (30+ paying referrals) → free Pro for life, 5x daily giveaway entries, Top Ambassadors recognition, and a $500 Hotel Savings Card. Tier status is cumulative and permanent — it never resets, and vouchers are sent automatically by email the moment you first reach each tier. Referrals count only when someone you referred upgrades to a paid plan. Check your count at ${BASE_URL}/#share. Questions? Just reply to this email.`;
 };
 
 // ── C5 — Day 30: Re-engagement + top ambassador tips ──────────────────────
@@ -1177,13 +1186,13 @@ export function compC5EmailHtml(name: string, userId: string): string {
 
       <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:12px;padding:18px 22px;margin-bottom:24px;">
         <p style="margin:0 0 8px;font-size:14px;font-weight:900;color:#92400e;">
-          🎁 Your Visa prepaid card milestones — a quick recap
+          🎁 Your Ambassador tier rewards — a quick recap
         </p>
         <p style="margin:0;font-size:14px;color:#78350f;line-height:1.65;">
-          10 paying referrals → <strong>$25 Visa prepaid card</strong><br>
-          25 paying referrals → <strong>$50 Visa prepaid card</strong><br>
-          50 paying referrals → <strong>$100 Visa prepaid card</strong><br>
-          <span style="font-size:12px;color:#92400e;opacity:.8;">Cumulative and permanent — milestones never reset</span>
+          Supporter (5+) → <strong>1 free Pro month/referral (up to 6) + $50 Dining Voucher</strong><br>
+          Ambassador (15+) → <strong>Free Pro for life + $100 Hotel Savings Card</strong><br>
+          Elite Ambassador (30+) → <strong>Free Pro for life + $500 Hotel Savings Card</strong><br>
+          <span style="font-size:12px;color:#92400e;opacity:.8;">Cumulative and permanent — tier status never resets</span>
         </p>
       </div>
 
@@ -1206,7 +1215,7 @@ export function compC5EmailHtml(name: string, userId: string): string {
 
 export const compC5EmailText = (name: string): string => {
   const first = name.split(' ')[0];
-  return `Hi ${first}, you've been a GasCap™ Ambassador for 30 days — thank you. Tips from our top ambassadors: (1) Personal recommendation beats mass posting. (2) Show the calculator mid-use in a screenshot. (3) Re-share when gas prices spike in the news. (4) Reply personally to questions. Visa prepaid card milestone recap: 10 referrals → $25, 25 referrals → $50, 50 referrals → $100. Milestones are cumulative and permanent. Want help with better graphics or message templates? Just reply to this email. Open GasCap™ at ${BASE_URL}/#share`;
+  return `Hi ${first}, you've been a GasCap™ Ambassador for 30 days — thank you. Tips from our top ambassadors: (1) Personal recommendation beats mass posting. (2) Show the calculator mid-use in a screenshot. (3) Re-share when gas prices spike in the news. (4) Reply personally to questions. Ambassador tier recap: Supporter (5+) → 1 free Pro month/referral up to 6 plus a $50 Dining Voucher. Ambassador (15+) → free Pro for life plus a $100 Hotel Savings Card. Elite Ambassador (30+) → free Pro for life plus a $500 Hotel Savings Card. Tier status is cumulative and permanent. Want help with better graphics or message templates? Just reply to this email. Open GasCap™ at ${BASE_URL}/#share`;
 };
 
 // ── Early-Upgrade Offer — one-time announcement to active trial users ─────────

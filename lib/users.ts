@@ -872,19 +872,22 @@ export async function recordReferral(referrerId: string): Promise<void> {
   const newCount = current + 1;
 
   // ── Supporter-tier credit (1 free Pro month per paying referral) ─────────
-  // Two conditions must both be true to issue a credit:
+  // Three conditions must all be true to issue a credit:
   //   1. Not yet at the Ambassador milestone (free Pro for life makes credits moot)
   //   2. Lifetime credits issued < MAX_REFERRAL_CREDITS (hard cap of 6)
+  //   3. Referrer isn't already a Pro Lifetime member — a free-month credit is
+  //      meaningless for someone with no recurring subscription to apply it to.
   // After 6 credits, the referrer's ongoing incentive is the draw-entry
   // multiplier and the path to Free Pro for Life at 15 paying referrals.
-  const existing        = (user.referralCredits as unknown as ReferralCredit[]) ?? [];
-  const monthsEarned    = user.referralProMonthsEarned ?? 0;
-  const underCreditCap  = monthsEarned < MAX_REFERRAL_CREDITS;
-  const belowProForLife = !qualifiesForFreeProForLife(newCount);
+  const existing         = (user.referralCredits as unknown as ReferralCredit[]) ?? [];
+  const monthsEarned     = user.referralProMonthsEarned ?? 0;
+  const underCreditCap   = monthsEarned < MAX_REFERRAL_CREDITS;
+  const belowProForLife  = !qualifiesForFreeProForLife(newCount);
+  const alreadyLifetime  = user.stripeInterval === 'lifetime';
 
   let updatedCredits = existing;
   let earnedMonth    = false;
-  if (belowProForLife && underCreditCap) {
+  if (belowProForLife && underCreditCap && !alreadyLifetime) {
     const now    = new Date();
     const expiry = new Date(now);
     expiry.setMonth(expiry.getMonth() + CREDIT_EXPIRY_MONTHS);

@@ -5,6 +5,9 @@ import { useSession } from 'next-auth/react';
 import FuelGauge     from './FuelGauge';
 import TankPresets   from './TankPresets';
 import SavedVehicles from './SavedVehicles';
+import RentalVehicleLookup from './RentalVehicleLookup';
+import RentalVinLookup from './RentalVinLookup';
+import { scheduleRentalReturnReminder, cancelRentalReturnReminder } from '@/lib/rentalReminder';
 import GasPriceLookup from './GasPriceLookup';
 import { TargetResultCard } from './ResultCard';
 import {
@@ -104,6 +107,7 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
   const [rentalRate,        setRentalRate]        = useState('');
   const [rentalPickupLevel, setRentalPickupLevel] = useState(100); // % — 100 = full
   const [rentalReturnDate,  setRentalReturnDate]  = useState('');  // YYYY-MM-DD
+  const [rentalReturnTime,  setRentalReturnTime]  = useState('');  // HH:MM (24h)
   const [gasCoords,     setGasCoords]     = useState<{ lat: number; lng: number } | null>(null);
   const [nearbyAttrib,  setNearbyAttrib]  = useState<{ name: string; distanceMi: number; grade: string } | null>(null);
   const [nearbyStatus,  setNearbyStatus]  = useState<'idle' | 'fetching' | 'found' | 'unavailable'>('idle');
@@ -121,13 +125,15 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
   // Stable ref so the gc:inject-gas-price event handler always calls the latest liveRecalc
   const liveRecalcRef   = useRef<(p: Partial<FormState>) => void>(() => {});
 
-  // Persist rental pickup level + return date in localStorage so values survive a page refresh
+  // Persist rental pickup level + return date/time in localStorage so values survive a page refresh
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const lvl  = localStorage.getItem('gc_rental_pickup_level');
     const date = localStorage.getItem('gc_rental_return_date');
+    const time = localStorage.getItem('gc_rental_return_time');
     if (lvl)  setRentalPickupLevel(Number(lvl));
     if (date) setRentalReturnDate(date);
+    if (time) setRentalReturnTime(time);
   }, []);
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -138,6 +144,20 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
     if (rentalReturnDate) localStorage.setItem('gc_rental_return_date', rentalReturnDate);
     else localStorage.removeItem('gc_rental_return_date');
   }, [rentalReturnDate]);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (rentalReturnTime) localStorage.setItem('gc_rental_return_time', rentalReturnTime);
+    else localStorage.removeItem('gc_rental_return_time');
+  }, [rentalReturnTime]);
+
+  // Schedule (or cancel) the 2-hours-before drop-off reminder whenever date/time change
+  useEffect(() => {
+    if (rentalReturnDate && rentalReturnTime) {
+      scheduleRentalReturnReminder(rentalReturnDate, rentalReturnTime);
+    } else {
+      cancelRentalReturnReminder();
+    }
+  }, [rentalReturnDate, rentalReturnTime]);
 
   // Compute return-day alert (today or tomorrow local date)
   const rentalReturnAlert: 'today' | 'tomorrow' | null = (() => {
@@ -181,6 +201,13 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userMode]);
+
+  // Let the native header know rental mode's state — it hides the garage
+  // VehicleChip while rental mode is active, since garage vehicles aren't
+  // used for rental calculations.
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('gc:rental-mode', { detail: { active: rentalMode } }));
+  }, [rentalMode]);
 
   // Clear stale garage-vehicle data when the user is confirmed logged out.
   // useLocalStorage hydrates from the previous session's JSON, so a logged-in
@@ -583,14 +610,26 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
               <span className="text-[10px] text-blue-500 font-medium">{t.calc.rentalRateOptional}</span>
             </div>
             <p className="text-[11px] text-blue-600 leading-snug mb-1.5">{t.calc.rentalReturnDateHint}</p>
-            <input
-              type="date"
-              className="input-field border-blue-200 bg-white text-sm"
-              value={rentalReturnDate}
-              min={new Date().toISOString().slice(0, 10)}
-              onChange={(e) => setRentalReturnDate(e.target.value)}
-              aria-label={t.calc.rentalReturnDateLabel}
-            />
+            <div className="grid grid-cols-2 gap-2 w-full min-w-0">
+              <input
+                type="date"
+                className="input-field border-blue-200 bg-white text-sm w-full min-w-0 box-border"
+                value={rentalReturnDate}
+                min={new Date().toISOString().slice(0, 10)}
+                onChange={(e) => setRentalReturnDate(e.target.value)}
+                aria-label={t.calc.rentalReturnDateLabel}
+              />
+              <input
+                type="time"
+                className="input-field border-blue-200 bg-white text-sm w-full min-w-0 box-border"
+                value={rentalReturnTime}
+                onChange={(e) => setRentalReturnTime(e.target.value)}
+                aria-label={t.calc.rentalReturnTimeLabel}
+              />
+            </div>
+            {rentalReturnDate && !rentalReturnTime && (
+              <p className="text-[10px] text-blue-500 mt-1">{t.calc.rentalReturnTimeHint}</p>
+            )}
           </div>
 
           {/* Rental company rate */}
@@ -648,12 +687,30 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
         />
         {errors.tankCapacity && <FieldError msg={errors.tankCapacity} />}
         {rentalMode ? (
-          <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-xl px-3 py-2.5 mt-1">
-            <span className="text-base flex-shrink-0" aria-hidden="true">🚪</span>
-            <p className="text-[11px] text-blue-600 leading-snug">
-              <span className="font-black">{t.calc.garageClosedTitle}</span>{t.calc.garageClosedHint}
-            </p>
-          </div>
+          <>
+            <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-xl px-3 py-2.5 mt-1">
+              <span className="text-base flex-shrink-0" aria-hidden="true">🚪</span>
+              <p className="text-[11px] text-blue-600 leading-snug">
+                <span className="font-black">{t.calc.garageClosedTitle}</span>{t.calc.garageClosedHint}
+              </p>
+            </div>
+            <RentalVehicleLookup
+              onTankSize={(g, label) => {
+                patch({ tankCapacity: g, vehicleId: '', vehicleName: '', vehicleOdometer: undefined });
+                setVehicleTankEst(undefined);
+                setVehicleBodyClass(undefined);
+                setPresetLabel(label);
+              }}
+            />
+            <RentalVinLookup
+              onTankSize={(g, label) => {
+                patch({ tankCapacity: g, vehicleId: '', vehicleName: '', vehicleOdometer: undefined });
+                setVehicleTankEst(undefined);
+                setVehicleBodyClass(undefined);
+                setPresetLabel(label);
+              }}
+            />
+          </>
         ) : (
           <SavedVehicles
             currentGallons={form.tankCapacity}
@@ -890,6 +947,12 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
             min="0.01" step="0.01"
             onChange={(e) => { setNearbyAttrib(null); setNearbyStatus('unavailable'); patch({ pricePerGallon: e.target.value }); }}
             onBlur={(e)  => liveRecalc({ pricePerGallon: e.target.value })}
+            onFocus={(e) => {
+              // This field sits low in Step 4 — the native keyboard can cover it
+              // even when the browser's own scroll-into-view doesn't kick in.
+              // Force it into view, centered above the keyboard.
+              setTimeout(() => e.target.scrollIntoView({ behavior: 'smooth', block: 'center' }), 150);
+            }}
             aria-label={t.calc.ariaGasPrice}
           />
         </div>
