@@ -189,7 +189,8 @@ workflows:
           MISSING=""
           for pod in Capacitor CapacitorCordova CapacitorApp CapacitorGeolocation CapacitorHaptics \
                      CapacitorKeyboard CapacitorLocalNotifications \
-                     CapacitorPushNotifications CapacitorShare CapacitorSplashScreen CapacitorStatusBar; do
+                     CapacitorPushNotifications CapacitorShare CapacitorSplashScreen CapacitorStatusBar \
+                     CapacitorCommunityBackgroundGeolocation; do
             if ! grep -q "^  - $pod (" ios/App/Podfile.lock 2>/dev/null; then
               MISSING="$MISSING $pod"
             fi
