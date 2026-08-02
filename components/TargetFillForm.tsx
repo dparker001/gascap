@@ -947,6 +947,12 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
             min="0.01" step="0.01"
             onChange={(e) => { setNearbyAttrib(null); setNearbyStatus('unavailable'); patch({ pricePerGallon: e.target.value }); }}
             onBlur={(e)  => liveRecalc({ pricePerGallon: e.target.value })}
+            onFocus={(e) => {
+              // This field sits low in Step 4 — the native keyboard can cover it
+              // even when the browser's own scroll-into-view doesn't kick in.
+              // Force it into view, centered above the keyboard.
+              setTimeout(() => e.target.scrollIntoView({ behavior: 'smooth', block: 'center' }), 150);
+            }}
             aria-label={t.calc.ariaGasPrice}
           />
         </div>
