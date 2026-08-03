@@ -610,22 +610,30 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
               <span className="text-[10px] text-blue-500 font-medium">{t.calc.rentalRateOptional}</span>
             </div>
             <p className="text-[11px] text-blue-600 leading-snug mb-1.5">{t.calc.rentalReturnDateHint}</p>
-            <div className="flex flex-col gap-2 w-full min-w-0">
-              <input
-                type="date"
-                className="input-field border-blue-200 bg-white text-sm w-full min-w-0 box-border"
-                value={rentalReturnDate}
-                min={new Date().toISOString().slice(0, 10)}
-                onChange={(e) => setRentalReturnDate(e.target.value)}
-                aria-label={t.calc.rentalReturnDateLabel}
-              />
-              <input
-                type="time"
-                className="input-field border-blue-200 bg-white text-sm w-full min-w-0 box-border"
-                value={rentalReturnTime}
-                onChange={(e) => setRentalReturnTime(e.target.value)}
-                aria-label={t.calc.rentalReturnTimeLabel}
-              />
+            <div className="flex flex-col gap-2 w-full min-w-0 overflow-hidden">
+              <div className="w-full min-w-0 overflow-hidden">
+                <label className="block text-[10px] font-bold text-blue-500 mb-0.5">{t.calc.rentalReturnDateLabel}</label>
+                <input
+                  type="date"
+                  className="input-field border-blue-200 bg-white text-sm px-3 py-2.5"
+                  style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}
+                  value={rentalReturnDate}
+                  min={new Date().toISOString().slice(0, 10)}
+                  onChange={(e) => setRentalReturnDate(e.target.value)}
+                  aria-label={t.calc.rentalReturnDateLabel}
+                />
+              </div>
+              <div className="w-full min-w-0 overflow-hidden">
+                <label className="block text-[10px] font-bold text-blue-500 mb-0.5">{t.calc.rentalReturnTimeLabel}</label>
+                <input
+                  type="time"
+                  className="input-field border-blue-200 bg-white text-sm px-3 py-2.5"
+                  style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}
+                  value={rentalReturnTime}
+                  onChange={(e) => setRentalReturnTime(e.target.value)}
+                  aria-label={t.calc.rentalReturnTimeLabel}
+                />
+              </div>
             </div>
             {rentalReturnDate && !rentalReturnTime && (
               <p className="text-[10px] text-blue-500 mt-1">{t.calc.rentalReturnTimeHint}</p>
