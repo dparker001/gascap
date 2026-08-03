@@ -11,7 +11,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
-import { useIsNative } from '@/hooks/useIsNative';
+import { useIsNative, useNativePlatform } from '@/hooks/useIsNative';
 import type { NearbyStation, FuelPrice } from '@/lib/nearbyGas';
 import { useTranslation } from '@/contexts/LanguageContext';
 
@@ -564,6 +564,7 @@ function StationCard({
 export default function NearbyStations({ onApply, isActive = true }: Props) {
   const { data: session, status: sessionStatus } = useSession();
   const isNative = useIsNative();
+  const nativePlatform = useNativePlatform();
   const { t } = useTranslation();
   const plan    = (session?.user as { plan?: string } | undefined)?.plan ?? 'free';
   const isPro   = plan === 'pro' || plan === 'fleet' || plan === 'lifetime';
@@ -769,6 +770,12 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
     }
   }, [isNative, workerFetch]);
 
+  // The "denied" message names a specific Settings path — must match whichever
+  // OS is actually running, not just assume iOS (this used to always say
+  // "iOS Settings" even on Android).
+  const errLocationDeniedMsg =
+    nativePlatform === 'android' ? t.findGasTab.errLocationDeniedAndroid : t.findGasTab.errLocationDeniedIos;
+
   const requestLocation = useCallback((_source: 'auto' | 'allow' | 'retry' | 'manual' = 'auto') => {
     const geoGen = ++geoGenRef.current;
     fetchGenRef.current++;
@@ -811,7 +818,7 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
           clearTimeout(geoTimer);
           if (geoGen !== geoGenRef.current) return;
           setStatus('error');
-          setErrMsg(t.findGasTab.errLocationDeniedIos);
+          setErrMsg(errLocationDeniedMsg);
           return;
         }
 
@@ -824,7 +831,7 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
               clearTimeout(geoTimer);
               if (geoGen !== geoGenRef.current) return;
               setStatus('error');
-              setErrMsg(t.findGasTab.errLocationDeniedIos);
+              setErrMsg(errLocationDeniedMsg);
               return;
             }
           } catch {
@@ -879,7 +886,7 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
             setStatus('error');
             setErrMsg(
               msg.toLowerCase().includes('denied')
-                ? t.findGasTab.errLocationDeniedIos
+                ? errLocationDeniedMsg
                 : t.findGasTab.errLocationGeneric(msg.slice(0, 40)),
             );
           }
