@@ -577,7 +577,7 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
             </div>
             <p className="text-[11px] text-blue-600 leading-snug mb-2">{t.calc.rentalPickupLevelHint}</p>
             <div className="flex gap-1.5 flex-wrap">
-              {([100, 75, 50, 25, 0] as const).map((pct) => {
+              {([0, 25, 50, 75, 100] as const).map((pct) => {
                 const label = pct === 100 ? 'Full' : pct === 75 ? '¾' : pct === 50 ? '½' : pct === 25 ? '¼' : 'E';
                 const active = rentalPickupLevel === pct;
                 return (
@@ -606,11 +606,11 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
           <div>
             <div className="flex items-center gap-2 mb-1">
               <span className="text-base" aria-hidden="true">📅</span>
-              <p className="text-xs font-black text-blue-800">{t.calc.rentalReturnDateLabel}</p>
+              <p className="text-xs font-black text-blue-800">{t.calc.rentalReturnDateTimeLabel}</p>
               <span className="text-[10px] text-blue-500 font-medium">{t.calc.rentalRateOptional}</span>
             </div>
             <p className="text-[11px] text-blue-600 leading-snug mb-1.5">{t.calc.rentalReturnDateHint}</p>
-            <div className="grid grid-cols-2 gap-2 w-full min-w-0">
+            <div className="flex flex-col gap-2 w-full min-w-0">
               <input
                 type="date"
                 className="input-field border-blue-200 bg-white text-sm w-full min-w-0 box-border"
