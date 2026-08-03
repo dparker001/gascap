@@ -15,6 +15,7 @@
     "backgroundColor": "#005F4A",
     "webContentsDebuggingEnabled": true,
     "overrideUserAgent": "GasCapAndroid",
+    "useLegacyBridge": true,
     "server": {
       "url": "https://www.gascap.app/?native=android"
     }
