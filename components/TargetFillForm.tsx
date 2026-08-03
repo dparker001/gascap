@@ -312,6 +312,10 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isNative, isPro]);
 
+  // Applied to all 4 step cards so rental mode stays visually identifiable
+  // while scrolling, not just on the toggle/detail panel up top.
+  const stepCardClass = rentalMode ? 'card border-2 border-blue-200 bg-blue-50/40' : 'card';
+
   // Standard patch — clears result (free/guest behaviour)
   function patch(p: Partial<FormState>) {
     // QR placard pilot — fire calc_start the first time the user touches the form
@@ -561,7 +565,7 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
           the return date or pickup fuel level.
       ══════════════════════════════════════════════════════════════ */}
       <StepLabel n={1} title={t.calc.step1} />
-      <div className="card">
+      <div className={stepCardClass}>
         <TankPresets
           value={form.tankCapacity}
           onChange={(v) => {
@@ -747,7 +751,7 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
           STEP 2 — Set fuel level
       ══════════════════════════════════════════════════════════════ */}
       <StepLabel n={2} title={t.calc.step2} />
-      <div className="card">
+      <div className={stepCardClass}>
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <p className="field-label mb-0">{t.calc.currentFuelLevel}</p>
@@ -888,7 +892,7 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
       </div>
 
       {/* Target fill level selector */}
-      <div className="card">
+      <div className={stepCardClass}>
         <p className="field-label">{t.calc.fillUpTo}</p>
         <div className="flex gap-2 mb-3">
           {TARGET_PRESETS.map((p) => (
@@ -950,7 +954,7 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
       <StepLabel n={4} title={t.calc.step4} />
 
       {/* Gas price */}
-      <div className="card mb-4">
+      <div className={`${stepCardClass} mb-4`}>
         <p className="field-label">{t.calc.gasPriceLabel}</p>
         <div className="relative">
           <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-semibold pointer-events-none">$</span>
