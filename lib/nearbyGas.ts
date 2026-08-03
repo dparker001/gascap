@@ -89,6 +89,12 @@ export async function fetchNearbyStations(
   const body = {
     includedTypes:       ['gas_station'],
     maxResultCount:      10,
+    // Without this, searchNearby defaults to ranking by POPULARITY, not
+    // distance — a closer but less-reviewed station (e.g. a 7-Eleven) can get
+    // pushed out of the top-10 cap by busier stations further away, even
+    // within the radius. DISTANCE ranking is the correct default for "find
+    // gas near me."
+    rankPreference:      'DISTANCE',
     locationRestriction: {
       circle: {
         center: { latitude: lat, longitude: lng },
