@@ -606,6 +606,14 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
   const fetchGenRef       = useRef(0);
   const fetchControllerRef = useRef<AbortController | null>(null);
   const geoGenRef         = useRef(0);
+  // Timestamp of the most recent 'locating'/'fetching' transition — lets the
+  // app-foreground/tab-reactivation handlers below tell a genuinely stale
+  // request apart from one that's merely a few seconds old (e.g. the OS
+  // location-permission dialog briefly backgrounds the app, which fires
+  // appStateChange the instant the user taps Allow — well before the
+  // request has had a real chance to resolve or time out).
+  const fetchStartedAtRef = useRef(0);
+  const STALE_AFTER_MS = 10_000;
 
   // ── Hard timeout via React state ────────────────────────────────────────────
   // CapacitorHttp's fetch polyfill does not reliably honour AbortSignal in all
@@ -686,6 +694,7 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
     fetchControllerRef.current = controller;
 
     setStatus('fetching');
+    fetchStartedAtRef.current = Date.now();
     setCoords({ lat, lng });
 
     const nearbyUrl = `https://www.gascap.app/gas/nearby?lat=${lat}&lng=${lng}&_=${Date.now()}`;
@@ -766,6 +775,7 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
     fetchControllerRef.current?.abort();
 
     setStatus('locating');
+    fetchStartedAtRef.current = Date.now();
 
     if (!navigator.geolocation) {
       setStatus('error');
@@ -920,7 +930,11 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
   useEffect(() => {
     const wasActive = prevActiveRef.current;
     prevActiveRef.current = !!isActive;
-    if (isActive && !wasActive && (status === 'fetching' || status === 'locating')) {
+    if (
+      isActive && !wasActive &&
+      (status === 'fetching' || status === 'locating') &&
+      Date.now() - fetchStartedAtRef.current > STALE_AFTER_MS
+    ) {
       fetchGenRef.current++;
       fetchControllerRef.current?.abort();
       setStatus('error');
@@ -934,7 +948,13 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
     let cleanup: (() => void) | null = null;
     import('@capacitor/app').then(({ App }) => {
       App.addListener('appStateChange', ({ isActive: appActive }) => {
-        if (appActive && (status === 'fetching' || status === 'locating')) {
+        // Tapping "Allow" on the native location-permission dialog briefly
+        // backgrounds the app, firing this the instant the dialog is
+        // dismissed — well before a legitimate request could time out.
+        if (
+          appActive && (status === 'fetching' || status === 'locating') &&
+          Date.now() - fetchStartedAtRef.current > STALE_AFTER_MS
+        ) {
           fetchGenRef.current++;
           fetchControllerRef.current?.abort();
           setStatus('error');
