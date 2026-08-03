@@ -555,123 +555,10 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
         </div>
       </button>
 
-      {/* Rental detail panel — only when rental mode is on */}
-      {rentalMode && (
-        <div className="bg-blue-50 border border-blue-200 rounded-2xl px-4 py-3 mb-3 space-y-3">
-
-          {/* Return-day alert */}
-          {rentalReturnAlert && (
-            <div className="flex items-start gap-2 bg-amber-50 border border-amber-300 rounded-xl px-3 py-2">
-              <span className="text-base flex-shrink-0" aria-hidden="true">⏰</span>
-              <p className="text-[11px] font-bold text-amber-800 leading-snug">
-                {rentalReturnAlert === 'today'
-                  ? t.calc.rentalReturnAlertToday
-                  : t.calc.rentalReturnAlertTomorrow}
-              </p>
-            </div>
-          )}
-
-          {/* Pickup fuel level */}
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-base" aria-hidden="true">⛽</span>
-              <p className="text-xs font-black text-blue-800">{t.calc.rentalPickupLevelLabel}</p>
-            </div>
-            <p className="text-[11px] text-blue-600 leading-snug mb-2">{t.calc.rentalPickupLevelHint}</p>
-            <div className="flex gap-1.5 flex-wrap">
-              {([0, 25, 50, 75, 100] as const).map((pct) => {
-                const label = pct === 100 ? 'Full' : pct === 75 ? '¾' : pct === 50 ? '½' : pct === 25 ? '¼' : 'E';
-                const active = rentalPickupLevel === pct;
-                return (
-                  <button
-                    key={pct}
-                    type="button"
-                    onClick={() => {
-                      setRentalPickupLevel(pct);
-                      liveRecalc({ targetPreset: pct, customTarget: '' });
-                    }}
-                    className={[
-                      'flex-1 min-w-[44px] py-1.5 rounded-lg text-xs font-black border transition-colors',
-                      active
-                        ? 'bg-blue-600 text-white border-blue-600'
-                        : 'bg-white text-blue-700 border-blue-200 hover:border-blue-400',
-                    ].join(' ')}
-                  >
-                    {label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Return date */}
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-base" aria-hidden="true">📅</span>
-              <p className="text-xs font-black text-blue-800">{t.calc.rentalReturnDateTimeLabel}</p>
-              <span className="text-[10px] text-blue-500 font-medium">{t.calc.rentalRateOptional}</span>
-            </div>
-            <p className="text-[11px] text-blue-600 leading-snug mb-1.5">{t.calc.rentalReturnDateHint}</p>
-            <div className="flex flex-col gap-2 w-full min-w-0 overflow-hidden">
-              <div className="min-w-0 overflow-hidden">
-                <label className="block text-[10px] font-bold text-blue-500 mb-0.5">{t.calc.rentalReturnDateLabel}</label>
-                <input
-                  type="date"
-                  className="input-field border-blue-200 bg-white text-sm px-3 py-2"
-                  style={{ width: '148px', maxWidth: '100%', boxSizing: 'border-box' }}
-                  value={rentalReturnDate}
-                  min={new Date().toISOString().slice(0, 10)}
-                  onChange={(e) => setRentalReturnDate(e.target.value)}
-                  aria-label={t.calc.rentalReturnDateLabel}
-                />
-              </div>
-              <div className="min-w-0 overflow-hidden">
-                <label className="block text-[10px] font-bold text-blue-500 mb-0.5">{t.calc.rentalReturnTimeLabel}</label>
-                <input
-                  type="time"
-                  className="input-field border-blue-200 bg-white text-sm px-3 py-2"
-                  style={{ width: '110px', maxWidth: '100%', boxSizing: 'border-box' }}
-                  value={rentalReturnTime}
-                  onChange={(e) => setRentalReturnTime(e.target.value)}
-                  aria-label={t.calc.rentalReturnTimeLabel}
-                />
-              </div>
-            </div>
-            {rentalReturnDate && !rentalReturnTime && (
-              <p className="text-[10px] text-blue-500 mt-1">{t.calc.rentalReturnTimeHint}</p>
-            )}
-          </div>
-
-          {/* Rental company rate */}
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-base" aria-hidden="true">🏢</span>
-              <p className="text-xs font-black text-blue-800">{t.calc.rentalRateLabel}</p>
-              <span className="text-[10px] text-blue-500 font-medium">{t.calc.rentalRateOptional}</span>
-            </div>
-            <p className="text-[11px] text-blue-600 leading-snug mb-1.5">{t.calc.rentalRateHint}</p>
-            <div className="relative">
-              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-blue-400 font-bold text-sm pointer-events-none">$</span>
-              <input
-                type="number"
-                inputMode="decimal"
-                className="input-field pl-7 border-blue-200 bg-white text-sm"
-                placeholder={t.calc.placeholderRentalRate}
-                value={rentalRate}
-                min="0.01"
-                step="0.01"
-                onChange={(e) => setRentalRate(e.target.value)}
-                aria-label={t.calc.ariaRentalRate}
-              />
-              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-slate-400 pointer-events-none">/gal</span>
-            </div>
-          </div>
-
-        </div>
-      )}
-
       {/* ══════════════════════════════════════════════════════════════
           STEP 1 — Tank size (pick a vehicle or enter gallons)
+          Shown first in Rental Mode — you know the vehicle before you know
+          the return date or pickup fuel level.
       ══════════════════════════════════════════════════════════════ */}
       <StepLabel n={1} title={t.calc.step1} />
       <div className="card">
@@ -737,6 +624,124 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
           />
         )}
       </div>
+
+      {/* Rental detail panel — only when rental mode is on. Ordered to match
+          the actual pickup sequence: return date/time is usually known before
+          you even leave for the counter; pickup fuel level is checked once
+          you're physically in the car; rental rate is optional and last. */}
+      {rentalMode && (
+        <div className="bg-blue-50 border border-blue-200 rounded-2xl px-4 py-3 mb-3 space-y-3">
+
+          {/* Return-day alert */}
+          {rentalReturnAlert && (
+            <div className="flex items-start gap-2 bg-amber-50 border border-amber-300 rounded-xl px-3 py-2">
+              <span className="text-base flex-shrink-0" aria-hidden="true">⏰</span>
+              <p className="text-[11px] font-bold text-amber-800 leading-snug">
+                {rentalReturnAlert === 'today'
+                  ? t.calc.rentalReturnAlertToday
+                  : t.calc.rentalReturnAlertTomorrow}
+              </p>
+            </div>
+          )}
+
+          {/* Return date */}
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-base" aria-hidden="true">📅</span>
+              <p className="text-xs font-black text-blue-800">{t.calc.rentalReturnDateTimeLabel}</p>
+              <span className="text-[10px] text-blue-500 font-medium">{t.calc.rentalRateOptional}</span>
+            </div>
+            <p className="text-[11px] text-blue-600 leading-snug mb-1.5">{t.calc.rentalReturnDateHint}</p>
+            <div className="flex flex-col gap-2 w-full min-w-0 overflow-hidden">
+              <div className="min-w-0 overflow-hidden">
+                <label className="block text-[10px] font-bold text-blue-500 mb-0.5">{t.calc.rentalReturnDateLabel}</label>
+                <input
+                  type="date"
+                  className="input-field border-blue-200 bg-white text-sm px-3 py-2"
+                  style={{ width: '148px', maxWidth: '100%', boxSizing: 'border-box' }}
+                  value={rentalReturnDate}
+                  min={new Date().toISOString().slice(0, 10)}
+                  onChange={(e) => setRentalReturnDate(e.target.value)}
+                  aria-label={t.calc.rentalReturnDateLabel}
+                />
+              </div>
+              <div className="min-w-0 overflow-hidden">
+                <label className="block text-[10px] font-bold text-blue-500 mb-0.5">{t.calc.rentalReturnTimeLabel}</label>
+                <input
+                  type="time"
+                  className="input-field border-blue-200 bg-white text-sm px-3 py-2"
+                  style={{ width: '110px', maxWidth: '100%', boxSizing: 'border-box' }}
+                  value={rentalReturnTime}
+                  onChange={(e) => setRentalReturnTime(e.target.value)}
+                  aria-label={t.calc.rentalReturnTimeLabel}
+                />
+              </div>
+            </div>
+            {rentalReturnDate && !rentalReturnTime && (
+              <p className="text-[10px] text-blue-500 mt-1">{t.calc.rentalReturnTimeHint}</p>
+            )}
+          </div>
+
+          {/* Pickup fuel level */}
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-base" aria-hidden="true">⛽</span>
+              <p className="text-xs font-black text-blue-800">{t.calc.rentalPickupLevelLabel}</p>
+            </div>
+            <p className="text-[11px] text-blue-600 leading-snug mb-2">{t.calc.rentalPickupLevelHint}</p>
+            <div className="flex gap-1.5 flex-wrap">
+              {([0, 25, 50, 75, 100] as const).map((pct) => {
+                const label = pct === 100 ? 'Full' : pct === 75 ? '¾' : pct === 50 ? '½' : pct === 25 ? '¼' : 'E';
+                const active = rentalPickupLevel === pct;
+                return (
+                  <button
+                    key={pct}
+                    type="button"
+                    onClick={() => {
+                      setRentalPickupLevel(pct);
+                      liveRecalc({ targetPreset: pct, customTarget: '' });
+                    }}
+                    className={[
+                      'flex-1 min-w-[44px] py-1.5 rounded-lg text-xs font-black border transition-colors',
+                      active
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-white text-blue-700 border-blue-200 hover:border-blue-400',
+                    ].join(' ')}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Rental company rate */}
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-base" aria-hidden="true">🏢</span>
+              <p className="text-xs font-black text-blue-800">{t.calc.rentalRateLabel}</p>
+              <span className="text-[10px] text-blue-500 font-medium">{t.calc.rentalRateOptional}</span>
+            </div>
+            <p className="text-[11px] text-blue-600 leading-snug mb-1.5">{t.calc.rentalRateHint}</p>
+            <div className="relative">
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-blue-400 font-bold text-sm pointer-events-none">$</span>
+              <input
+                type="number"
+                inputMode="decimal"
+                className="input-field pl-7 border-blue-200 bg-white text-sm"
+                placeholder={t.calc.placeholderRentalRate}
+                value={rentalRate}
+                min="0.01"
+                step="0.01"
+                onChange={(e) => setRentalRate(e.target.value)}
+                aria-label={t.calc.ariaRentalRate}
+              />
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-slate-400 pointer-events-none">/gal</span>
+            </div>
+          </div>
+
+        </div>
+      )}
 
       {/* ══════════════════════════════════════════════════════════════
           STEP 2 — Set fuel level
