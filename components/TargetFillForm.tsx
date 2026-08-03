@@ -103,7 +103,9 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
   const [gaugeScanMsg,  setGaugeScanMsg]  = useState('');
   const [showScanModal,    setShowScanModal]    = useState(false);
   const [scanFromDashboard, setScanFromDashboard] = useState(false);
-  const [rentalMode,        setRentalMode]        = useState(false);
+  // Persisted (not just component state) so switching to the Budget/EV tab —
+  // which unmounts this component entirely — doesn't silently exit rental mode.
+  const [rentalMode,        setRentalMode]        = useLocalStorage<boolean>('gc_rental_mode_active', false);
   const [rentalRate,        setRentalRate]        = useState('');
   const [rentalPickupLevel, setRentalPickupLevel] = useState(100); // % — 100 = full
   const [rentalReturnDate,  setRentalReturnDate]  = useState('');  // YYYY-MM-DD

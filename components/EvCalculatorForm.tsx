@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { calcEvCharge, type EvChargeResult } from '@/lib/calculations';
 import { EV_PRESETS, PHEV_PRESETS } from '@/lib/evPresets';
 import { useTranslation } from '@/contexts/LanguageContext';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
 import type { CalcTab } from './CalculatorTabs';
 
 interface Props {
@@ -44,6 +45,14 @@ function formatHours(h: number): string {
 export default function EvCalculatorForm({ activeTab, setActiveTab }: Props) {
   const { t } = useTranslation();
   const { data: session } = useSession();
+  // Same persisted key as TargetFillForm — rental mode must survive switching tabs
+  const [rentalMode, setRentalMode] = useLocalStorage<boolean>('gc_rental_mode_active', false);
+
+  // Keep the native header's garage VehicleChip hidden while rental mode is active,
+  // even when this tab (not TargetFillForm) is the one mounted.
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('gc:rental-mode', { detail: { active: rentalMode } }));
+  }, [rentalMode]);
 
   // Tab definitions — mirrors TargetFillForm / BudgetForm GOAL_TABS
   const GOAL_TABS: { id: CalcTab; emoji: string; label: string; sub: string }[] = [
@@ -176,6 +185,24 @@ export default function EvCalculatorForm({ activeTab, setActiveTab }: Props) {
 
   return (
     <div className="w-full max-w-lg mx-auto px-4 pb-8 space-y-4">
+
+      {/* ── Rental mode carries across tabs — surface it here too ───────── */}
+      {rentalMode && (
+        <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-2xl px-4 py-2.5">
+          <span className="text-lg flex-shrink-0" aria-hidden="true">🚗</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-black text-blue-800 leading-none">{t.calc.rentalModeActiveReminder}</p>
+            <p className="text-[10px] text-blue-600 mt-0.5 leading-snug">{t.calc.rentalModeCrossTabHint}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setRentalMode(false)}
+            className="flex-shrink-0 text-[11px] font-bold text-blue-500 hover:text-blue-700 px-2 py-1"
+          >
+            {t.calc.rentalModeExit}
+          </button>
+        </div>
+      )}
 
       {/* ── Goal Tab Switcher ────────────────────────────────────────────── */}
       <div className="grid grid-cols-3 gap-2 mt-4" role="tablist" aria-label="Calculator mode">
