@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "422565575671",
+    "project_id": "gascap-819f0",
+    "storage_bucket": "gascap-819f0.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:422565575671:android:580e9ee3e0a69c69ca0cf2",
+        "android_client_info": {
+          "package_name": "app.gascap.mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBqI4XAHhl2jen4T3JRTfMpy31l_-VrMgg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
