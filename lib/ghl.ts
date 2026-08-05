@@ -281,13 +281,17 @@ function toE164(phone: string): string {
   return `+${digits}`; // best-effort for other formats
 }
 
+export type GhlSmsResult =
+  | { ok: true }
+  | { ok: false; reason: 'not-configured' | 'upsert-failed' | 'no-contact' | 'phone-claimed' | 'send-failed' | 'error' };
+
 export async function sendGhlSmsToPhone(
   opts: { email: string; name: string; phone: string },
   message: string,
-): Promise<boolean> {
+): Promise<GhlSmsResult> {
   if (!isConfigured()) {
     console.warn('[GHL SMS] Skipping — not configured.');
-    return false;
+    return { ok: false, reason: 'not-configured' };
   }
   const e164Phone = toE164(opts.phone);
   try {
@@ -306,11 +310,21 @@ export async function sendGhlSmsToPhone(
     });
     if (!upsertRes.ok) {
       console.error('[GHL SMS] upsert failed:', upsertRes.status, await upsertRes.text());
-      return false;
+      return { ok: false, reason: 'upsert-failed' };
     }
-    const { contact } = await upsertRes.json() as { contact?: { id?: string } };
+    const { contact } = await upsertRes.json() as { contact?: { id?: string; phone?: string | null } };
     const contactId = contact?.id;
-    if (!contactId) { console.warn('[GHL SMS] no contactId after upsert'); return false; }
+    if (!contactId) { console.warn('[GHL SMS] no contactId after upsert'); return { ok: false, reason: 'no-contact' }; }
+
+    // GHL dedupes contacts by phone number: if this number is already
+    // attached to a DIFFERENT contact, upsert silently returns success
+    // without actually attaching it here — contact.phone comes back null/
+    // mismatched instead of erroring. Without this check we'd tell the user
+    // "code sent" while no SMS was ever actually sent to anyone.
+    if (contact?.phone !== e164Phone) {
+      console.warn('[GHL SMS] phone not attached after upsert — likely already claimed by another contact:', { contactId, expected: e164Phone, got: contact?.phone });
+      return { ok: false, reason: 'phone-claimed' };
+    }
 
     const msgRes = await fetch(`${GHL_BASE}/conversations/messages`, {
       method:  'POST',
@@ -319,12 +333,12 @@ export async function sendGhlSmsToPhone(
     });
     if (!msgRes.ok) {
       console.error('[GHL SMS] send failed:', msgRes.status, await msgRes.text());
-      return false;
+      return { ok: false, reason: 'send-failed' };
     }
-    return true;
+    return { ok: true };
   } catch (err) {
     console.error('[GHL SMS] error:', err);
-    return false;
+    return { ok: false, reason: 'error' };
   }
 }
 
