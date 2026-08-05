@@ -268,15 +268,21 @@ workflows:
 
       - name: Build signed AAB
         script: |
-          # Gradle's jar-transform cache (~/.gradle/caches/jars-9) persists across
-          # Codemagic builds and can get a corrupted entry stuck in it, which
-          # Gradle won't self-heal — every subsequent build fails identically on
-          # the same file path ("Failed to create Jar file .../<hash>/<name>.jar")
-          # regardless of retries or unrelated code changes. Wipe it before every
-          # build so a bad cache entry can never persist past one bad run.
+          # Gradle's jar-transform cache (~/.gradle/caches/jars-9) can get a
+          # corrupted entry stuck in it, which Gradle won't self-heal. Wipe it
+          # before every build so a bad cache entry can never persist past one
+          # bad run.
           rm -rf ~/.gradle/caches/jars-9 ~/.gradle/caches/transforms-3 ~/.gradle/caches/transforms-4
           cd android
-          ./gradlew bundleRelease
+          # --no-parallel: this "Failed to create Jar file .../<hash>/<name>.jar"
+          # error is a known Gradle race condition — two subprojects (revenuecat-
+          # purchases-capacitor and capacitor-cordova-android-plugins both depend
+          # on the same Bouncy Castle jar transitively) can have parallel workers
+          # racing to write the SAME transform-cache entry simultaneously. This
+          # reproduced identically even on a fully fresh machine/cache, which
+          # rules out simple corruption and points at exactly this race. Forcing
+          # serial execution removes the race entirely.
+          ./gradlew bundleRelease --no-parallel
 
     artifacts:
       - android/app/build/outputs/bundle/release/app-release.aab
