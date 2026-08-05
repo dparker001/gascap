@@ -315,23 +315,8 @@ workflows:
 
       - name: Build signed AAB
         script: |
-          rm -rf ~/.gradle/caches/jars-9 ~/.gradle/caches/transforms-3 ~/.gradle/caches/transforms-4
           cd android
-
-          # DIAGNOSTIC RUN — cache-wipe and --no-parallel both failed identically
-          # on the same "Failed to create Jar file .../bcprov-jdk18on-1.79.jar"
-          # error, which rules out both simple local-cache corruption and a
-          # parallel-worker race. Get the real root cause instead of guessing
-          # again: full stack trace, disk space, and an independent checksum
-          # check of the artifact straight from Maven Central.
-          echo "── Disk space ──"; df -h "$HOME"
-          echo "── Independent Maven Central fetch of the exact jar ──"
-          curl -sSL -o /tmp/bcprov-check.jar \
-            "https://repo1.maven.org/maven2/org/bouncycastle/bcprov-jdk18on/1.79/bcprov-jdk18on-1.79.jar" \
-            && echo "size: $(wc -c < /tmp/bcprov-check.jar) bytes" \
-            && shasum -a 256 /tmp/bcprov-check.jar
-
-          ./gradlew bundleRelease --no-parallel --stacktrace
+          ./gradlew bundleRelease
 
     artifacts:
       - android/app/build/outputs/bundle/release/app-release.aab
