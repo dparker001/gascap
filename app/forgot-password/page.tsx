@@ -4,20 +4,42 @@ import { useState, FormEvent } from 'react';
 import Link from 'next/link';
 
 export default function ForgotPasswordPage() {
-  const [email,     setEmail]     = useState('');
-  const [submitted, setSubmitted] = useState(false);
-  const [loading,   setLoading]   = useState(false);
+  const [email,          setEmail]          = useState('');
+  const [submitted,      setSubmitted]      = useState(false);
+  const [loading,        setLoading]        = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    setLoading(true);
+  async function sendResetEmail() {
     await fetch('/api/auth/forgot-password', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ email }),
     });
+  }
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    await sendResetEmail();
     setLoading(false);
     setSubmitted(true);
+    startCooldown();
+  }
+
+  function startCooldown() {
+    setResendCooldown(60);
+    const t = setInterval(() => {
+      setResendCooldown((s) => {
+        if (s <= 1) { clearInterval(t); return 0; }
+        return s - 1;
+      });
+    }, 1000);
+  }
+
+  async function handleResend() {
+    if (resendCooldown > 0) return;
+    await sendResetEmail();
+    startCooldown();
   }
 
   return (
@@ -42,6 +64,20 @@ export default function ForgotPasswordPage() {
               <p className="text-sm text-slate-500 leading-relaxed">
                 If an account exists for <span className="font-semibold text-slate-700">{email}</span>,
                 we've sent a password reset link. It expires in 1 hour.
+              </p>
+              <p className="text-xs text-slate-400">
+                Didn't get it?{' '}
+                {resendCooldown > 0 ? (
+                  <span>Resend available in {resendCooldown}s</span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleResend}
+                    className="text-amber-600 font-semibold hover:underline"
+                  >
+                    Resend email
+                  </button>
+                )}
               </p>
               <Link href="/signin"
                 className="block w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400
