@@ -285,30 +285,45 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
     }
 
     setNearbyStatus('fetching');
-    navigator.geolocation?.getCurrentPosition(
-      async (pos) => {
-        try {
-          const lat = Math.round(pos.coords.latitude  * 100) / 100;
-          const lng = Math.round(pos.coords.longitude * 100) / 100;
-          const res  = await fetch(`/gas/nearby?lat=${lat}&lng=${lng}`);
-          if (!res.ok) { setNearbyStatus('unavailable'); return; }
-          const data = await res.json() as { stations?: import('@/lib/nearbyGas').NearbyStation[] };
-          const station = data.stations?.find((s) => s.prices.length > 0);
-          if (!station) { setNearbyStatus('unavailable'); return; }
-          const regular = station.prices.find((p) => p.type === 'REGULAR') ?? station.prices[0];
-          if (!regular) { setNearbyStatus('unavailable'); return; }
-          setForm((prev) => {
-            if (prev.pricePerGallon) return prev;
-            return { ...prev, pricePerGallon: regular.price.toFixed(2) };
-          });
-          setNearbyAttrib({ name: station.name, distanceMi: station.distanceMi, grade: regular.label });
-          setNearbyStatus('found');
-          setGasCoords({ lat: station.lat, lng: station.lng });
-        } catch { setNearbyStatus('unavailable'); }
-      },
-      () => setNearbyStatus('unavailable'),
-      { timeout: 6000, maximumAge: 300_000, enableHighAccuracy: false },
-    );
+
+    async function applyNearby(lat: number, lng: number) {
+      try {
+        const rLat = Math.round(lat * 100) / 100;
+        const rLng = Math.round(lng * 100) / 100;
+        const res  = await fetch(`/gas/nearby?lat=${rLat}&lng=${rLng}`);
+        if (!res.ok) { setNearbyStatus('unavailable'); return; }
+        const data = await res.json() as { stations?: import('@/lib/nearbyGas').NearbyStation[] };
+        const station = data.stations?.find((s) => s.prices.length > 0);
+        if (!station) { setNearbyStatus('unavailable'); return; }
+        const regular = station.prices.find((p) => p.type === 'REGULAR') ?? station.prices[0];
+        if (!regular) { setNearbyStatus('unavailable'); return; }
+        setForm((prev) => {
+          if (prev.pricePerGallon) return prev;
+          return { ...prev, pricePerGallon: regular.price.toFixed(2) };
+        });
+        setNearbyAttrib({ name: station.name, distanceMi: station.distanceMi, grade: regular.label });
+        setNearbyStatus('found');
+        setGasCoords({ lat: station.lat, lng: station.lng });
+      } catch { setNearbyStatus('unavailable'); }
+    }
+
+    // Raw navigator.geolocation is unreliable inside an Android WebView — it
+    // doesn't reliably surface the native permission dialog the way it does
+    // in iOS's WKWebView. Use the Capacitor plugin on native so this behaves
+    // the same on both platforms (matches the Find Gas tab's approach).
+    if (isNative) {
+      import('@capacitor/geolocation').then(({ Geolocation }) => {
+        Geolocation.getCurrentPosition({ enableHighAccuracy: false, timeout: 6000 })
+          .then((pos) => applyNearby(pos.coords.latitude, pos.coords.longitude))
+          .catch(() => setNearbyStatus('unavailable'));
+      }).catch(() => setNearbyStatus('unavailable'));
+    } else {
+      navigator.geolocation?.getCurrentPosition(
+        (pos) => applyNearby(pos.coords.latitude, pos.coords.longitude),
+        () => setNearbyStatus('unavailable'),
+        { timeout: 6000, maximumAge: 300_000, enableHighAccuracy: false },
+      );
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isNative, isPro]);
 

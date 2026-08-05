@@ -17,6 +17,33 @@ import { useTranslation } from '@/contexts/LanguageContext';
 
 import { Geolocation } from '@capacitor/geolocation';
 import { registerStationGeofence, isStationGeofenced } from '@/lib/geofence';
+import { detectNativePlatform } from '@/hooks/useIsNative';
+
+// Report Price's proximity check needs the user's CURRENT position, not
+// whatever coords were captured when the original Find Gas search ran —
+// that search can be minutes/miles stale by the time someone actually
+// walks up to the pump, which was silently failing the "within 0.5 mi"
+// check even while standing at the station.
+async function getFreshCoords(
+  fallback: { lat: number; lng: number } | null,
+): Promise<{ lat: number; lng: number } | null> {
+  try {
+    if (detectNativePlatform()) {
+      const pos = await Geolocation.getCurrentPosition({ enableHighAccuracy: true, timeout: 8000 });
+      return { lat: pos.coords.latitude, lng: pos.coords.longitude };
+    }
+    if (!navigator.geolocation) return fallback;
+    return await new Promise((resolve) => {
+      navigator.geolocation.getCurrentPosition(
+        (p) => resolve({ lat: p.coords.latitude, lng: p.coords.longitude }),
+        () => resolve(fallback),
+        { timeout: 8000, maximumAge: 0, enableHighAccuracy: true },
+      );
+    });
+  } catch {
+    return fallback;
+  }
+}
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -184,6 +211,13 @@ function ReportPriceForm({
     setSubmitting(true);
     setError('');
     try {
+      // Re-fetch current position instead of trusting the stale coords from
+      // whenever Find Gas last searched — the user may have driven since then.
+      const freshCoords = await getFreshCoords(userCoords);
+      if (!freshCoords) {
+        setError(labels.errLocationUnavailable);
+        return;
+      }
       const res = await fetch('/gas/report-price', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -192,8 +226,8 @@ function ReportPriceForm({
           stationName: station.name,
           stationLat:  station.lat,
           stationLng:  station.lng,
-          userLat:     userCoords.lat,
-          userLng:     userCoords.lng,
+          userLat:     freshCoords.lat,
+          userLng:     freshCoords.lng,
           grade,
           price,
         }),
