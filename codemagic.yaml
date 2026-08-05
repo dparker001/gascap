@@ -77,22 +77,6 @@ workflows:
             || /usr/libexec/PlistBuddy \
             -c "Set :NSLocationWhenInUseUsageDescription 'GasCap uses your location to find nearby gas stations and their current fuel prices.'" \
             "$PLIST"
-          # NSLocationAlwaysAndWhenInUseUsageDescription — required for background
-          # geofencing alerts via @capacitor-community/background-geolocation.
-          /usr/libexec/PlistBuddy \
-            -c "Add :NSLocationAlwaysAndWhenInUseUsageDescription string 'GasCap uses your location in the background to alert you when you are near a gas station you have saved.'" \
-            "$PLIST" \
-            || /usr/libexec/PlistBuddy \
-            -c "Set :NSLocationAlwaysAndWhenInUseUsageDescription 'GasCap uses your location in the background to alert you when you are near a gas station you have saved.'" \
-            "$PLIST"
-          # UIBackgroundModes:location — REQUIRED by @capacitor-community/background-geolocation
-          # for iOS to actually deliver location updates while backgrounded. Without this key,
-          # the watcher silently stops receiving updates the moment the app backgrounds — the
-          # permission strings alone are not enough (this was the "no notification at all"
-          # geofencing test failure).
-          /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes array" "$PLIST" 2>/dev/null || true
-          /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes:0 string location" "$PLIST" 2>/dev/null || true
-          echo "Info.plist background modes:"; /usr/libexec/PlistBuddy -c "Print :UIBackgroundModes" "$PLIST"
           # NSCameraUsageDescription + NSPhotoLibraryUsageDescription — MANDATORY.
           # WKWebView <input type="file" accept="image/*"> invokes the native camera
           # (UIImagePickerController) and photo picker under the hood. iOS HARD-CRASHES
@@ -137,7 +121,6 @@ workflows:
             -c "Add :UIApplicationShortcutItems:2:UIApplicationShortcutItemIconType string UIApplicationShortcutIconTypeTime" \
             "$PLIST" 2>/dev/null || true
           echo "Info.plist location key:"; /usr/libexec/PlistBuddy -c "Print :NSLocationWhenInUseUsageDescription" "$PLIST"
-          echo "Info.plist always-location key:"; /usr/libexec/PlistBuddy -c "Print :NSLocationAlwaysAndWhenInUseUsageDescription" "$PLIST"
 
       - name: Add Push Notifications entitlement
         script: |
