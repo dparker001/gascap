@@ -8,6 +8,7 @@ import DarkModeProvider      from '@/components/DarkModeProvider';
 import PullToRefresh         from '@/components/PullToRefresh';
 import ScrollRestore         from '@/components/ScrollRestore';
 import NativePushRegistration from '@/components/NativePushRegistration';
+import NativeOneSignalRegistration from '@/components/NativeOneSignalRegistration';
 import NativeIapInit          from '@/components/NativeIapInit';
 import ErrorBoundary         from '@/components/ErrorBoundary';
 import { LanguageProvider }  from '@/contexts/LanguageContext';
@@ -133,6 +134,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <AuthProvider>
             <OneSignalProvider />
             <NativePushRegistration />
+            <NativeOneSignalRegistration />
             <NativeIapInit />
             <GiveawayEntryToast />
             {/* Email verification nudge — shown on every page for unverified users */}
