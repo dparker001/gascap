@@ -28,8 +28,16 @@ async function getFreshCoords(
 ): Promise<{ lat: number; lng: number } | null> {
   try {
     if (detectNativePlatform()) {
-      const pos = await Geolocation.getCurrentPosition({ enableHighAccuracy: true, timeout: 8000 });
-      return { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      try {
+        const pos = await Geolocation.getCurrentPosition({ enableHighAccuracy: true, timeout: 8000 });
+        return { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      } catch {
+        // enableHighAccuracy:true requires the "Precise location" toggle on
+        // Android — fall back to approximate location (still far more
+        // accurate than reusing stale coords) rather than failing outright.
+        const pos = await Geolocation.getCurrentPosition({ enableHighAccuracy: false, timeout: 8000 });
+        return { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      }
     }
     if (!navigator.geolocation) return fallback;
     return await new Promise((resolve) => {
@@ -855,8 +863,14 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
 
         const tryGetPosition = async (): Promise<void> => {
           try {
+            // enableHighAccuracy:true requires the "Precise location" toggle on
+            // Android — with only approximate location granted (the default
+            // and common choice), the plugin treats that as denied even though
+            // location access WAS granted. Find Gas only needs city-block
+            // accuracy for a multi-mile radius search, so there's no reason to
+            // require precise GPS here at all.
             const pos = await Geolocation.getCurrentPosition({
-              enableHighAccuracy: true,
+              enableHighAccuracy: false,
               timeout: 15000,
             });
             if (geoDone) return;
