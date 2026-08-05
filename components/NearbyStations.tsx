@@ -822,10 +822,16 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
       // navigator.geolocation.getCurrentPosition() never fires in WKWebView
       // remote-server mode; Capacitor plugin talks directly to CoreLocation.
       (async () => {
+        // Check the 'coarseLocation' alias, not 'location' — 'location'
+        // requires BOTH fine + coarse to read as granted, which forces the
+        // Precise Location toggle even though we only ever request
+        // enableHighAccuracy:false below. This pre-check was rejecting as
+        // "denied" before ever reaching the (already coarse-only) actual
+        // position request.
         let permStatus: string;
         try {
           const perm = await Geolocation.checkPermissions();
-          permStatus = perm.location;
+          permStatus = perm.coarseLocation;
         } catch {
           permStatus = 'unknown';
         }
@@ -842,8 +848,8 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
 
         if (permStatus !== 'granted') {
           try {
-            const req = await Geolocation.requestPermissions({ permissions: ['location'] });
-            if (req.location === 'denied') {
+            const req = await Geolocation.requestPermissions({ permissions: ['coarseLocation'] });
+            if (req.coarseLocation === 'denied') {
               if (geoDone) return;
               geoDone = true;
               clearTimeout(geoTimer);
