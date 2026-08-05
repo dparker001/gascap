@@ -38,4 +38,12 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- @capacitor/geolocation ships an empty manifest by design — it expects
+         the host app to declare these itself. Missing until now, which meant
+         every Geolocation.requestPermissions() call was asking Android to
+         grant a permission that was never declared, so it was always silently
+         refused regardless of what the runtime code did. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 </manifest>
