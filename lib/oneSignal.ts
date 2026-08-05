@@ -38,6 +38,13 @@ export async function sendPushNotification({
     web_url:  webUrl,
     chrome_web_icon: 'https://gascap.app/icon-192.png',
     firefox_icon:    'https://gascap.app/icon-192.png',
+    // Android defaults to normal priority, which only shows in the
+    // notification shade — 10 (high) is required for a heads-up/pop-up
+    // banner. Also requires the Android notification channel itself to be
+    // set to "Urgent" importance in the OneSignal dashboard (Settings ->
+    // Push & In-App -> Android Notification Channels); priority alone
+    // can't override a lower-importance channel.
+    priority: 10,
   };
 
   if (externalIds && externalIds.length > 0) {
