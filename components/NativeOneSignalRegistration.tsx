@@ -37,6 +37,13 @@ export default function NativeOneSignalRegistration() {
       const { default: OneSignal } = await import('@onesignal/capacitor-plugin');
       await OneSignal.initialize(appId);
       await OneSignal.Notifications.requestPermission(true);
+      // Without this, OneSignal receives the push (hence the vibration) but
+      // does NOT show a visible notification while the app is in the
+      // foreground — it assumes the app wants to handle display itself.
+      // Always show it, same as if the app were backgrounded.
+      OneSignal.Notifications.addEventListener('foregroundWillDisplay', (event) => {
+        event.getNotification().display();
+      });
     })().catch((e) => {
       console.warn('[NativeOneSignal] init failed:', e);
       initialized = false; // allow retry
