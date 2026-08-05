@@ -49,6 +49,20 @@ workflows:
           npx cap add ios
           npx cap sync ios
 
+          # Capacitor's generated Podfile pins an explicit `platform :ios, 'X.X'`
+          # line. RevenueCat 13.3.0's podspec requires iOS 15.0+ — CocoaPods does
+          # NOT auto-raise an explicit platform pin to satisfy a pod's minimum
+          # (it only auto-elevates when nothing pins it lower), so pod install
+          # fails outright with "required a higher minimum deployment target"
+          # unless this line is bumped to match.
+          perl -pi -e "s/platform :ios, '[\d.]+'/platform :ios, '15.0'/" ios/App/Podfile
+          echo "Podfile platform line:"; grep "platform :ios" ios/App/Podfile
+
+          # Keep the Xcode project's own deployment target consistent with the
+          # Podfile — otherwise the app target can still declare a lower
+          # minimum than the pods it links against.
+          perl -pi -e "s/IPHONEOS_DEPLOYMENT_TARGET = [\d.]+;/IPHONEOS_DEPLOYMENT_TARGET = 15.0;/g" ios/App/App.xcodeproj/project.pbxproj
+
       - name: Generate app icon + splash from the orange brand mark
         script: |
           # Bakes assets/icon-only.png + assets/splash*.png into the iOS AppIcon
