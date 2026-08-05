@@ -16,29 +16,40 @@
  * Google Android (FCM)), plus android/app/google-services.json in the repo.
  */
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { detectNativePlatform } from '@/hooks/useIsNative';
+
+// TEMP DEBUG — remove once Android push registration is confirmed working.
+// Shows the actual init/login status on-screen so it can be read directly
+// off the device without needing a USB-debugging session.
+const SHOW_DEBUG_BANNER = true;
 
 let initialized = false;
 
 export default function NativeOneSignalRegistration() {
   const { data: session } = useSession();
+  const [debugStatus, setDebugStatus] = useState('idle');
 
   // Initialize once, Android only.
   useEffect(() => {
     if (detectNativePlatform() !== 'android') return;
-    if (initialized) return;
+    if (initialized) { setDebugStatus('already initialized'); return; }
     const appId = process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID;
-    if (!appId) return;
+    if (!appId) { setDebugStatus('FAILED: no NEXT_PUBLIC_ONESIGNAL_APP_ID'); return; }
     initialized = true;
+    setDebugStatus('initializing...');
 
     (async () => {
       const { default: OneSignal } = await import('@onesignal/capacitor-plugin');
+      setDebugStatus('plugin loaded, calling initialize()...');
       await OneSignal.initialize(appId);
-      await OneSignal.Notifications.requestPermission(true);
+      setDebugStatus('initialized, requesting permission...');
+      const granted = await OneSignal.Notifications.requestPermission(true);
+      setDebugStatus(`ready — permission granted: ${granted}`);
     })().catch((e) => {
       console.warn('[NativeOneSignal] init failed:', e);
+      setDebugStatus(`FAILED: ${e?.message ?? String(e)}`);
       initialized = false; // allow retry
     });
   }, []);
@@ -54,8 +65,34 @@ export default function NativeOneSignalRegistration() {
     (async () => {
       const { default: OneSignal } = await import('@onesignal/capacitor-plugin');
       await OneSignal.login(userId);
-    })().catch(() => {});
+      setDebugStatus((s) => `${s} | logged in as ${userId.slice(0, 8)}...`);
+    })().catch((e) => {
+      setDebugStatus((s) => `${s} | LOGIN FAILED: ${e?.message ?? String(e)}`);
+    });
   }, [session]);
+
+  if (SHOW_DEBUG_BANNER && detectNativePlatform() === 'android') {
+    return (
+      <div
+        style={{
+          position: 'fixed',
+          bottom: 70,
+          left: 8,
+          right: 8,
+          zIndex: 99999,
+          background: 'rgba(0,0,0,0.85)',
+          color: debugStatus.startsWith('FAILED') || debugStatus.includes('FAILED') ? '#ff6b6b' : '#7CFC00',
+          fontSize: 10,
+          padding: '6px 8px',
+          borderRadius: 8,
+          fontFamily: 'monospace',
+          wordBreak: 'break-word',
+        }}
+      >
+        OneSignal: {debugStatus}
+      </div>
+    );
+  }
 
   return null;
 }
