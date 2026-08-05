@@ -47,7 +47,14 @@ export async function POST(req: Request) {
     `Your GasCap verification code: ${code}\n\nExpires in 10 minutes. Reply STOP to opt out.`,
   );
 
-  if (!sent) {
+  if (!sent.ok) {
+    if (sent.reason === 'phone-claimed') {
+      await pgPool.query(`DELETE FROM "OtpCode" WHERE email=$1`, [`phone:${phone}`]);
+      return NextResponse.json(
+        { error: 'This phone number is already registered to another account. Please use a different number.' },
+        { status: 409 },
+      );
+    }
     return NextResponse.json({ error: 'Failed to send SMS. Please check your number and try again.' }, { status: 500 });
   }
 
