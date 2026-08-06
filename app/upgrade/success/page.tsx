@@ -6,6 +6,7 @@ import { useSession } from 'next-auth/react';
 import { useTranslation } from '@/contexts/LanguageContext';
 import { getawayPromoActive } from '@/lib/getawayPromo';
 import GetawayDestinationPicker from '@/components/GetawayDestinationPicker';
+import { fbTrack } from '@/lib/gtag';
 
 // ── Per-plan content ────────────────────────────────────────────────────────
 // Plan content (headline/intro/perks) is built from translations inside the
@@ -89,6 +90,37 @@ function SuccessContent() {
     const hardStop = setTimeout(() => { if (!cancelled) setReady(true); }, 4000);
     return () => { cancelled = true; clearTimeout(first); clearTimeout(hardStop); };
   }, [refreshSession, tier]);
+
+  // Meta Pixel Purchase event — fires once per checkout session (never again on
+  // refresh/re-render). Stripe has already confirmed payment before redirecting
+  // here, so this doesn't need to wait on the webhook-propagation poll above.
+  // Pulls the real charged amount from Stripe rather than guessing per-plan,
+  // since win-back/founding-member offers discount the standard price —
+  // ad platforms need the true value for value-based bidding to work.
+  useEffect(() => {
+    if (!sessionId) return;
+    const firedKey = `gc_fb_purchase_${sessionId}`;
+    try {
+      if (sessionStorage.getItem(firedKey)) return;
+      sessionStorage.setItem(firedKey, '1');
+    } catch { /* storage unavailable — fire once this session anyway */ }
+
+    fetch(`/api/stripe/session-amount?session_id=${encodeURIComponent(sessionId)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { amountTotal?: number | null; currency?: string | null } | null) => {
+        fbTrack('Purchase', {
+          ...(d?.amountTotal != null ? { value: d.amountTotal / 100 } : {}),
+          currency: (d?.currency ?? 'usd').toUpperCase(),
+          content_name: tier === 'fleet' ? 'fleet' : billing === 'lifetime' ? 'pro-lifetime' : 'pro-monthly',
+        });
+      })
+      .catch(() => {
+        // Still fire without a value rather than losing the conversion signal entirely
+        fbTrack('Purchase', { currency: 'USD' });
+      });
+    // sessionId/tier/billing are stable for the life of this page (from the URL)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionId]);
 
   // Resolve which plan content to show
   let planKey: PlanKey;
