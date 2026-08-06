@@ -111,6 +111,11 @@ model User {
   otpCodeName              String?
   priceReportEntries       Int       @default(0)
   gigLogEntries            Int       @default(0)
+  // Streak milestone bonus for Lifetime members — a free-month StreakCredit
+  // is meaningless for them (no subscription to apply it to), so they earn
+  // giveaway entries instead, awarded in the same tier ladder as the
+  // referral program (10/20/30/50 by milestone). See awardStreakMilestones().
+  streakMilestoneBonusEntries Int    @default(0)
   signupPlatform           String?   // 'web' | 'ios' | 'android'
   userMode                 String?   // 'personal' | 'gig' | 'rental' | 'fleet'
   vehicles                 Vehicle[]

@@ -430,6 +430,7 @@ export async function getEligibleEntrants(period: string = currentPeriod()): Pro
       firstCalcBonusEntries: true,
       priceReportEntries: true,
       gigLogEntries: true,
+      streakMilestoneBonusEntries: true,
       loginCount: true,
       lastLoginAt: true,
     },
@@ -452,6 +453,7 @@ export async function getEligibleEntrants(period: string = currentPeriod()): Pro
       const firstCalcBonusEntries      = u.firstCalcBonusEntries      ?? 0;
       const priceReportEntries         = u.priceReportEntries         ?? 0;
       const gigLogEntries              = u.gigLogEntries              ?? 0;
+      const streakMilestoneBonusEntries = u.streakMilestoneBonusEntries ?? 0;
       const referralBonusEntries       = refCount * REFERRAL_BONUS_ENTRIES;
       const perksActive          = u.stripeInterval === 'lifetime'
         && u.lifetimePerksUntil != null
@@ -481,9 +483,10 @@ export async function getEligibleEntrants(period: string = currentPeriod()): Pro
         firstCalcBonusEntries,
         priceReportEntries,
         gigLogEntries,
+        streakMilestoneBonusEntries,
         lifetimeBonusEntries,
         referralBonusEntries,
-        entryCount:      baseEntries + streakBonus + bonusEntries + garageBonusEntries + verifyReminderBonusEntries + phoneBonusEntries + dailyBonusEntries + firstCalcBonusEntries + priceReportEntries + gigLogEntries + lifetimeBonusEntries + referralBonusEntries,
+        entryCount:      baseEntries + streakBonus + bonusEntries + garageBonusEntries + verifyReminderBonusEntries + phoneBonusEntries + dailyBonusEntries + firstCalcBonusEntries + priceReportEntries + gigLogEntries + streakMilestoneBonusEntries + lifetimeBonusEntries + referralBonusEntries,
         alwaysEligible:  isAlwaysEligible(refCount),
         loginCount:      u.loginCount ?? 0,
         lastLoginAt:     u.lastLoginAt ?? null,

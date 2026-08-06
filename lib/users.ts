@@ -695,16 +695,36 @@ export function calcStreak(activeDays: string[], today?: string): number {
   return streak;
 }
 
+// Lifetime members have no subscription to apply a free-month StreakCredit
+// to, so they earn giveaway entries instead — same ascending ladder shape as
+// the referral program's Supporter/Ambassador/Elite tiers (10/20/30, jumping
+// higher at the top tier).
+const STREAK_MILESTONE_LIFETIME_ENTRIES: Record<number, number> = {
+  30:  10,
+  90:  20,
+  180: 30,
+  365: 50,
+};
+
 function awardStreakMilestones(
   streakMilestonesHit: number[],
   streakCredits: StreakCredit[],
   streak: number,
-): { newlyHit: number[]; updatedCredits: StreakCredit[] } {
+  isLifetime: boolean,
+): { newlyHit: number[]; updatedCredits: StreakCredit[]; bonusEntriesAwarded: number } {
   const newlyHit = STREAK_MILESTONES
     .filter((m) => streak >= m.days && !streakMilestonesHit.includes(m.days))
     .map((m) => m.days);
 
-  if (newlyHit.length === 0) return { newlyHit: [], updatedCredits: streakCredits };
+  if (newlyHit.length === 0) return { newlyHit: [], updatedCredits: streakCredits, bonusEntriesAwarded: 0 };
+
+  if (isLifetime) {
+    const bonusEntriesAwarded = newlyHit.reduce(
+      (sum, days) => sum + (STREAK_MILESTONE_LIFETIME_ENTRIES[days] ?? 0),
+      0,
+    );
+    return { newlyHit, updatedCredits: streakCredits, bonusEntriesAwarded };
+  }
 
   const now    = new Date();
   const expiry = new Date(now);
@@ -720,6 +740,7 @@ function awardStreakMilestones(
   return {
     newlyHit,
     updatedCredits: [...streakCredits, ...newCredits],
+    bonusEntriesAwarded: 0,
   };
 }
 
@@ -780,10 +801,11 @@ export async function recordActivity(
   const newBadges    = findNewBadges(stats, badges);
   const updatedBadges = [...badges, ...newBadges];
 
-  const { newlyHit, updatedCredits } = awardStreakMilestones(
+  const { newlyHit, updatedCredits, bonusEntriesAwarded } = awardStreakMilestones(
     user.streakMilestonesHit ?? [],
     (user.streakCredits as unknown as StreakCredit[]) ?? [],
     streak,
+    user.stripeInterval === 'lifetime',
   );
 
   await prisma.user.update({
@@ -797,6 +819,7 @@ export async function recordActivity(
       badges:             updatedBadges,
       streakMilestonesHit: [...(user.streakMilestonesHit ?? []), ...newlyHit],
       streakCredits:      updatedCredits as unknown as Prisma.InputJsonValue,
+      ...(bonusEntriesAwarded > 0 ? { streakMilestoneBonusEntries: { increment: bonusEntriesAwarded } } : {}),
       ...(isFirstCalc ? { firstCalcBonusEntries: FIRST_CALC_BONUS } : {}),
     },
   });
