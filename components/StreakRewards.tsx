@@ -175,8 +175,13 @@ export default function StreakRewards() {
         })}
       </div>
 
-      {/* Banked credits CTA */}
-      {credits.length > 0 ? (
+      {/* Banked credits CTA — meaningless for Lifetime members (no subscription
+          to apply a free month to). awardStreakMilestones() still banks a
+          credit for every user regardless of plan; hide the display for
+          Lifetime rather than showing a redemption offer that can't be
+          redeemed. Milestone vouchers (Dining/Hotel cards) still fire
+          separately and are unaffected by this. */}
+      {credits.length > 0 && !isLifetime ? (
         <div className="bg-navy-700 rounded-2xl px-4 py-3 space-y-1">
           <p className="text-sm font-black text-amber-400">
             {t.streakRewards.creditsBanked(credits.length)}
