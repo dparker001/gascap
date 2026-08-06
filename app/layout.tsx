@@ -15,6 +15,7 @@ import { LanguageProvider }  from '@/contexts/LanguageContext';
 import OneSignalProvider          from '@/components/OneSignalProvider';
 import GiveawayEntryToast         from '@/components/GiveawayEntryToast';
 import EmailVerificationBanner    from '@/components/EmailVerificationBanner';
+import WhatsNewModal              from '@/components/WhatsNewModal';
 import CookieConsentBanner        from '@/components/CookieConsentBanner';
 import './globals.css';
 
@@ -139,6 +140,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <GiveawayEntryToast />
             {/* Email verification nudge — shown on every page for unverified users */}
             <EmailVerificationBanner />
+            <WhatsNewModal />
             <ErrorBoundary>
               <PullToRefresh />
               <ScrollRestore />

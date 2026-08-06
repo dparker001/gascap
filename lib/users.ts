@@ -854,6 +854,13 @@ const MAX_REDEEM_AT_ONCE   = 3;
 const CREDIT_EXPIRY_MONTHS = 12;
 
 export function getActiveCredits(user: StoredUser): ReferralCredit[] {
+  // Free-month credits are meaningless for Lifetime members — there's no
+  // recurring subscription to apply them to. recordReferral() already stops
+  // banking NEW credits once a referrer is Lifetime, but credits banked
+  // BEFORE they upgraded stay in the DB and would otherwise still show as
+  // an active "months banked" reward on the Rewards page. Hide them rather
+  // than delete the underlying records.
+  if (user.stripeInterval === 'lifetime') return [];
   const now = new Date();
   return (user.referralCredits ?? []).filter(
     (c) => !c.redeemedAt && new Date(c.expiresAt) > now,
