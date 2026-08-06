@@ -28,7 +28,13 @@ export const metadata: Metadata = {
   metadataBase: new URL(APP_URL),
   manifest: '/manifest.json',
   // Google Search Console ownership verification (for Play Console org website check)
-  verification: { google: 'pq2eDCNBb57ylg6VfOf5rrusb6hlWMGx_Z-7Y-tu-h8' },
+  // + Meta Business domain verification (needed for Pixel/Custom Conversions/
+  // Audiences to work reliably on ad accounts — this domain was owned by the
+  // GasCap business portfolio but had never actually been verified).
+  verification: {
+    google: 'pq2eDCNBb57ylg6VfOf5rrusb6hlWMGx_Z-7Y-tu-h8',
+    other: { 'facebook-domain-verification': 'lzlmb7iiyprg8fw06u4r1j8we0oiow' },
+  },
   icons: { icon: '/favicon.png?v=6', apple: '/apple-touch-icon.png?v=6' },
   appleWebApp: { capable: true, statusBarStyle: 'default', title: 'GasCap™' },
   alternates: {
