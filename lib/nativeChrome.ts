@@ -91,19 +91,27 @@ async function initKeyboard(): Promise<void> {
     // scroll nudge instead of waiting for the user to do it by hand.
     const forceRepaint = (el: HTMLElement) => {
       let node: HTMLElement | null = el.parentElement;
+      let hops = 0;
       while (node) {
         const style = getComputedStyle(node);
-        if ((style.overflowY === 'auto' || style.overflowY === 'scroll') && node.scrollHeight > node.clientHeight) {
+        const overflows = node.scrollHeight > node.clientHeight;
+        // eslint-disable-next-line no-console
+        console.log(`[gc-kb-debug] hop ${hops}: <${node.tagName.toLowerCase()} class="${node.className}"> overflowY=${style.overflowY} scrollH=${node.scrollHeight} clientH=${node.clientHeight} overflows=${overflows}`);
+        if ((style.overflowY === 'auto' || style.overflowY === 'scroll') && overflows) {
           const original = node.scrollTop;
+          console.log(`[gc-kb-debug] NUDGING this node, scrollTop ${original} -> ${original + 1} -> ${original}`);
           node.scrollTop = original + 1;
           requestAnimationFrame(() => { node!.scrollTop = original; });
           return;
         }
         node = node.parentElement;
+        hops++;
       }
+      console.log('[gc-kb-debug] no scrollable ancestor found — nothing nudged');
     };
 
     Keyboard.addListener('keyboardDidShow', () => {
+      console.log('[gc-kb-debug] keyboardDidShow fired, focusedField=', focusedField?.tagName, focusedField?.getBoundingClientRect());
       if (focusedField) forceRepaint(focusedField);
       focusedField?.scrollIntoView({ block: 'center', behavior: 'smooth' });
     });
