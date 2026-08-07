@@ -13,6 +13,12 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
+// This route has no request-based API (headers/cookies/searchParams) to
+// signal dynamic rendering, so Next.js tries to prerender it at build time —
+// where DATABASE_URL isn't available (Railway only injects it at runtime),
+// causing the Prisma calls to fail and the whole build to exit non-zero.
+export const dynamic = 'force-dynamic';
+
 function daysAgoStr(days: number): string {
   const d = new Date();
   d.setUTCDate(d.getUTCDate() - days);
