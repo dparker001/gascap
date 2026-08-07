@@ -512,7 +512,12 @@ export async function getUsersPendingCampaignStep(step: number, minDays: number)
   const users = await prisma.user.findMany({
     where: {
       emailOptOut:             false,
-      stripeSubscriptionId:    null,
+      // isProTrial (not stripeSubscriptionId) is the correct "still eligible for
+      // trial-drip" check — a Lifetime purchase is a one-time payment with no
+      // Stripe subscription of its own, so stripeSubscriptionId stays null even
+      // after a Lifetime buyer upgrades, which used to let them keep receiving
+      // "your trial is ending" emails after they'd already paid for Lifetime.
+      isProTrial:              true,
       emailCampaignStep:       step - 1,
       emailCampaignEnrolledAt: { not: null, lte: cutoff },
     },

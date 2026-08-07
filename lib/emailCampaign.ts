@@ -270,6 +270,11 @@ export function welcomeEmailHtml(name: string, userId: string, verifyUrl?: strin
       <p style="margin:14px 0 0;font-size:13px;color:#94a3b8;line-height:1.6;">
         Got questions? Just reply to this email — it reaches me directly.
       </p>
+      <p style="margin:10px 0 0;font-size:13px;color:#94a3b8;line-height:1.6;">
+        P.S. If you already know you'll love GasCap™, skip the wait — the
+        <strong>$19.99 Lifetime plan</strong> gets you Pro forever (no subscription)
+        plus a free vacation getaway certificate.
+      </p>
 
       ${verifyUrl ? `
       <div style="background:#fef9f0;border:1px solid #fed7aa;border-radius:12px;padding:16px 20px;margin-top:24px;">
