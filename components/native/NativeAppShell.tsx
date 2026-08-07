@@ -336,9 +336,18 @@ export default function NativeAppShell() {
 
       {/* Tab content — each tab mounts on first visit, then hides (state preserved).
           overflow-y-auto makes only THIS div scroll so the header and tab bar
-          stay pinned as natural flex children (no position:fixed needed). */}
+          stay pinned as natural flex children (no position:fixed needed).
+          id="gc-native-scroll" is targeted by nativeChrome.ts to pad the
+          bottom by the real keyboard height while it's open — confirmed via
+          on-screen diagnostics that resize:"native" does NOT actually shrink
+          window.innerHeight/visualViewport here (the keyboard just overlays
+          a full-height, unresized view), so scrollIntoView had no obscured
+          region to account for and iOS's automatic keyboard-avoidance
+          scroll only handles the top-level page scroll, not this nested
+          overflow-y-auto container. */}
       <div
         ref={contentRef}
+        id="gc-native-scroll"
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
         className="flex-1 min-h-0 overflow-y-auto"

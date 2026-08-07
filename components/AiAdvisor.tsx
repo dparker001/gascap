@@ -28,10 +28,6 @@ export default function AiAdvisor({ embedded = false }: { embedded?: boolean }) 
   const [configured, setConfigured] = useState<boolean | null>(null);
   const [livePlan,   setLivePlan]   = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
-  // TEMPORARY diagnostic readout for the keyboard-covers-input bug — remove
-  // once the real cause is confirmed. Shows what's actually happening on
-  // focus instead of guessing blind at WebView layout behavior.
-  const [debugInfo, setDebugInfo] = useState<string>('');
 
   // Fetch live plan so we don't rely on potentially stale JWT
   useEffect(() => {
@@ -260,19 +256,15 @@ export default function AiAdvisor({ embedded = false }: { embedded?: boolean }) 
                 </div>
               )}
 
-              {/* TEMPORARY diagnostic readout — remove once the real cause is found */}
-              {debugInfo && (
-                <pre className="bg-black text-lime-400 text-[9px] leading-tight p-2 whitespace-pre-wrap break-all">
-                  {debugInfo}
-                </pre>
-              )}
-
               {/* Input bar — Pro/Fleet only.
-                  sticky bottom-0 pins it to the visible bottom edge of the
-                  page's scrolling container (NativeAppShell's flex-1
-                  overflow-y-auto region) — this stays correct regardless of
-                  keyboard-resize timing quirks, unlike a JS scrollIntoView
-                  that has to race the keyboard's own show animation. */}
+                  sticky bottom-0 keeps it pinned within its scroll container
+                  once visible. Bringing it into view when the keyboard opens
+                  is handled centrally in nativeChrome.ts (pads
+                  #gc-native-scroll by the real keyboard height, then scrolls
+                  the focused field into that new room) rather than here —
+                  the keyboard doesn't actually resize the WebView on this
+                  build, so a local scrollIntoView had no obscured region to
+                  account for. */}
               {isPro ? (
                 <>
                   <div className="sticky bottom-0 bg-white border-t border-slate-100 px-3 py-3 flex gap-2">
@@ -284,23 +276,6 @@ export default function AiAdvisor({ embedded = false }: { embedded?: boolean }) 
                       placeholder={t.ai.inputPlaceholder}
                       value={input}
                       onChange={(e) => setInput(e.target.value)}
-                      onFocus={(e) => {
-                        const el = e.currentTarget;
-                        const logAt = (label: string) => {
-                          const r = el.getBoundingClientRect();
-                          const vv = window.visualViewport;
-                          setDebugInfo((prev) => prev + `\n[${label}] input.top=${r.top.toFixed(0)} input.bottom=${r.bottom.toFixed(0)} ` +
-                            `innerH=${window.innerHeight} vvH=${vv?.height.toFixed(0)} vvOffsetTop=${vv?.offsetTop.toFixed(0)}`);
-                        };
-                        setDebugInfo(`[focus] ${new Date().toLocaleTimeString()}`);
-                        logAt('t=0ms');
-                        setTimeout(() => logAt('t=50ms'), 50);
-                        setTimeout(() => {
-                          logAt('t=300ms pre-scroll');
-                          el.scrollIntoView({ block: 'end', behavior: 'smooth' });
-                          setTimeout(() => logAt('t=650ms post-scroll'), 350);
-                        }, 300);
-                      }}
                       onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(input); } }}
                       disabled={loading}
                       aria-label={t.aiAdvisor.inputAriaLabel}

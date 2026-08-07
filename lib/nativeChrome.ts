@@ -61,16 +61,19 @@ async function initKeyboard(): Promise<void> {
     await Keyboard.setAccessoryBarVisible({ isVisible: true });
     await Keyboard.setScroll({ isDisabled: false });
 
-    // WKWebView quirk: the keyboard resize fires on focus, but the
-    // scroll-into-view calculation above doesn't always recompute until
-    // something forces a layout reflow — which typing happens to do, which
-    // is why the field only came into view once the user started typing,
-    // not the moment they tapped it. Track the focused field, then scroll
-    // it into view once the keyboard has ACTUALLY finished animating in
-    // (keyboardDidShow), rather than guessing a fixed delay — a hardcoded
-    // timeout can fire before the resize animation finishes on slower
-    // devices, computing the scroll position against a still-too-tall
-    // viewport and leaving the field only partially clear.
+    // Confirmed via on-screen diagnostics (screenshots from a real device):
+    // resize:"native" does NOT actually shrink window.innerHeight or
+    // visualViewport.height here — the keyboard just overlays on top of a
+    // full-height, unresized WebView. The browser has no idea the keyboard
+    // exists spatially, so scrollIntoView has no obscured region to account
+    // for. On top of that, iOS's own automatic keyboard-avoidance scroll
+    // only reliably handles the top-level page scroll, not the nested
+    // overflow-y-auto region NativeAppShell uses to keep the header/tab bar
+    // pinned (see #gc-native-scroll there). Fix both by manually padding
+    // that container's bottom by the real keyboard height while it's open —
+    // the same technique UIScrollView.contentInset.bottom does natively —
+    // then scrolling the focused field into view now that there's real
+    // room to scroll into.
     let focusedField: HTMLElement | null = null;
     document.addEventListener('focusin', (e) => {
       const el = e.target;
@@ -80,8 +83,18 @@ async function initKeyboard(): Promise<void> {
     });
     document.addEventListener('focusout', () => { focusedField = null; });
 
+    const scrollRegion = () => document.getElementById('gc-native-scroll');
+
+    Keyboard.addListener('keyboardWillShow', (info) => {
+      const region = scrollRegion();
+      if (region) region.style.paddingBottom = `${info.keyboardHeight}px`;
+    });
+    Keyboard.addListener('keyboardWillHide', () => {
+      const region = scrollRegion();
+      if (region) region.style.paddingBottom = '';
+    });
     Keyboard.addListener('keyboardDidShow', () => {
-      focusedField?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      focusedField?.scrollIntoView({ block: 'end', behavior: 'smooth' });
     });
   } catch { /* plugin not available in this build */ }
 }
