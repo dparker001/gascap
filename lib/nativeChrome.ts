@@ -65,15 +65,22 @@ async function initKeyboard(): Promise<void> {
     // scroll-into-view calculation above doesn't always recompute until
     // something forces a layout reflow — which typing happens to do, which
     // is why the field only came into view once the user started typing,
-    // not the moment they tapped it. Force the scroll ourselves on focus
-    // instead of waiting for that incidental reflow.
+    // not the moment they tapped it. Track the focused field, then scroll
+    // it into view once the keyboard has ACTUALLY finished animating in
+    // (keyboardDidShow), rather than guessing a fixed delay — a hardcoded
+    // timeout can fire before the resize animation finishes on slower
+    // devices, computing the scroll position against a still-too-tall
+    // viewport and leaving the field only partially clear.
+    let focusedField: HTMLElement | null = null;
     document.addEventListener('focusin', (e) => {
       const el = e.target;
       if (!(el instanceof HTMLElement)) return;
       if (el.tagName !== 'INPUT' && el.tagName !== 'TEXTAREA') return;
-      setTimeout(() => {
-        el.scrollIntoView({ block: 'center', behavior: 'smooth' });
-      }, 300); // roughly matches the keyboard's own show animation
+      focusedField = el;
+    });
+    document.addEventListener('focusout', () => { focusedField = null; });
+    Keyboard.addListener('keyboardDidShow', () => {
+      focusedField?.scrollIntoView({ block: 'center', behavior: 'smooth' });
     });
   } catch { /* plugin not available in this build */ }
 }
