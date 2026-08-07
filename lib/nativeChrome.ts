@@ -80,20 +80,6 @@ async function initKeyboard(): Promise<void> {
     });
     document.addEventListener('focusout', () => { focusedField = null; });
 
-    // The app shell's height is pinned to 100dvh (see NativeAppShell), but
-    // WKWebView's dvh unit doesn't reliably shrink in sync with the native
-    // keyboard resize — so the shell (and the tab bar pinned to its bottom)
-    // didn't actually shrink out of the keyboard's way, leaving content at
-    // the very bottom of the scrollable area covered by both the tab bar
-    // AND the keyboard. Track the real keyboard height ourselves and expose
-    // it as a CSS variable NativeAppShell subtracts from its height.
-    Keyboard.addListener('keyboardWillShow', (info) => {
-      document.documentElement.style.setProperty('--gc-kb-height', `${info.keyboardHeight}px`);
-    });
-    Keyboard.addListener('keyboardWillHide', () => {
-      document.documentElement.style.setProperty('--gc-kb-height', '0px');
-    });
-
     Keyboard.addListener('keyboardDidShow', () => {
       focusedField?.scrollIntoView({ block: 'center', behavior: 'smooth' });
     });
