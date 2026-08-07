@@ -256,10 +256,15 @@ export default function AiAdvisor({ embedded = false }: { embedded?: boolean }) 
                 </div>
               )}
 
-              {/* Input bar — Pro/Fleet only */}
+              {/* Input bar — Pro/Fleet only.
+                  sticky bottom-0 pins it to the visible bottom edge of the
+                  page's scrolling container (NativeAppShell's flex-1
+                  overflow-y-auto region) — this stays correct regardless of
+                  keyboard-resize timing quirks, unlike a JS scrollIntoView
+                  that has to race the keyboard's own show animation. */}
               {isPro ? (
                 <>
-                  <div className="border-t border-slate-100 px-3 py-3 flex gap-2">
+                  <div className="sticky bottom-0 bg-white border-t border-slate-100 px-3 py-3 flex gap-2">
                     <input
                       type="text"
                       className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2
@@ -268,6 +273,12 @@ export default function AiAdvisor({ embedded = false }: { embedded?: boolean }) 
                       placeholder={t.ai.inputPlaceholder}
                       value={input}
                       onChange={(e) => setInput(e.target.value)}
+                      onFocus={(e) => {
+                        // Bring the field into view immediately on tap rather
+                        // than waiting for the user to scroll manually or for
+                        // the keyboard's own resize animation to settle.
+                        setTimeout(() => e.currentTarget.scrollIntoView({ block: 'end', behavior: 'smooth' }), 50);
+                      }}
                       onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(input); } }}
                       disabled={loading}
                       aria-label={t.aiAdvisor.inputAriaLabel}
