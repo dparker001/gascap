@@ -89,31 +89,41 @@ async function initKeyboard(): Promise<void> {
     // stale-paint bug after the native keyboard resize, not a layout or
     // scroll-position bug — so force the repaint ourselves with a tiny
     // scroll nudge instead of waiting for the user to do it by hand.
-    const forceRepaint = (el: HTMLElement) => {
+    // Find the nearest actually-scrollable ancestor of the focused field.
+    const scrollableAncestor = (el: HTMLElement): HTMLElement | null => {
       let node: HTMLElement | null = el.parentElement;
-      let hops = 0;
       while (node) {
         const style = getComputedStyle(node);
-        const overflows = node.scrollHeight > node.clientHeight;
-        // eslint-disable-next-line no-console
-        console.log(`[gc-kb-debug] hop ${hops}: <${node.tagName.toLowerCase()} class="${node.className}"> overflowY=${style.overflowY} scrollH=${node.scrollHeight} clientH=${node.clientHeight} overflows=${overflows}`);
-        if ((style.overflowY === 'auto' || style.overflowY === 'scroll') && overflows) {
-          const original = node.scrollTop;
-          console.log(`[gc-kb-debug] NUDGING this node, scrollTop ${original} -> ${original + 1} -> ${original}`);
-          node.scrollTop = original + 1;
-          requestAnimationFrame(() => { node!.scrollTop = original; });
-          return;
+        if ((style.overflowY === 'auto' || style.overflowY === 'scroll') && node.scrollHeight > node.clientHeight) {
+          return node;
         }
         node = node.parentElement;
-        hops++;
       }
-      console.log('[gc-kb-debug] no scrollable ancestor found — nothing nudged');
+      return null;
     };
 
-    Keyboard.addListener('keyboardDidShow', () => {
-      console.log('[gc-kb-debug] keyboardDidShow fired, focusedField=', focusedField?.tagName, focusedField?.getBoundingClientRect());
-      if (focusedField) forceRepaint(focusedField);
-      focusedField?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    // Scroll the focused field above the keyboard by computing the exact
+    // offset ourselves. Confirmed on-device via Web Inspector that
+    // scrollIntoView alone did NOT reposition this field (it stayed at
+    // y=797 with the keyboard up) — its heuristics don't behave predictably
+    // inside this nested scroll container in WKWebView. Using the real
+    // keyboardHeight the event hands us is deterministic instead.
+    Keyboard.addListener('keyboardDidShow', (info) => {
+      const el = focusedField;
+      if (!el) return;
+      const container = scrollableAncestor(el);
+      if (!container) return;
+
+      const cRect  = container.getBoundingClientRect();
+      const elRect = el.getBoundingClientRect();
+      // Bottom edge of the space still visible above the keyboard, in
+      // viewport coords. The container may extend under the keyboard.
+      const visibleBottom = Math.min(cRect.bottom, window.innerHeight - info.keyboardHeight);
+      const margin = 12; // small breathing room under the field
+      const overhang = elRect.bottom + margin - visibleBottom;
+      if (overhang > 0) {
+        container.scrollTop += overhang;
+      }
     });
   } catch { /* plugin not available in this build */ }
 }
