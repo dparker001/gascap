@@ -278,7 +278,7 @@ export default function NativeAppShell() {
   return (
     <main
       className="flex flex-col bg-slate-50 dark:bg-slate-900 overflow-hidden"
-      style={{ height: '100dvh' }}
+      style={{ height: 'calc(100dvh - var(--gc-kb-height, 0px))' }}
     >
 
       {/* First-launch brand video overlay (inert until the MP4 is added — see component) */}
