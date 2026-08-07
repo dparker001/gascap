@@ -61,16 +61,6 @@ async function initKeyboard(): Promise<void> {
     await Keyboard.setAccessoryBarVisible({ isVisible: true });
     await Keyboard.setScroll({ isDisabled: false });
 
-    // NOTE: JS-side window.innerHeight/visualViewport.height do NOT reflect
-    // the native keyboard resize in this WKWebView build (confirmed via
-    // on-screen diagnostics) — but that does NOT mean the resize isn't
-    // happening. The tab bar correctly sitting above the keyboard is real
-    // evidence it is; those specific JS APIs just don't report it. An
-    // earlier attempt to manually pad the scroll container based on that
-    // wrong conclusion double-compensated and broke the tab bar's position
-    // app-wide — reverted. Track the focused field and give it a plain
-    // scroll-into-view nudge once the keyboard is confirmed shown, without
-    // assuming anything about viewport size.
     let focusedField: HTMLElement | null = null;
     document.addEventListener('focusin', (e) => {
       const el = e.target;
@@ -80,16 +70,7 @@ async function initKeyboard(): Promise<void> {
     });
     document.addEventListener('focusout', () => { focusedField = null; });
 
-    // Confirmed via live device inspection (Safari Web Inspector, console):
-    // at the moment the field was reportedly hidden, its computed rect
-    // (getBoundingClientRect) already fell entirely within the resized,
-    // visible viewport — the LAYOUT was already correct. But it was still
-    // visually covered until the user manually dragged/scrolled the
-    // screen, which is exactly what forces WKWebView to repaint. This is a
-    // stale-paint bug after the native keyboard resize, not a layout or
-    // scroll-position bug — so force the repaint ourselves with a tiny
-    // scroll nudge instead of waiting for the user to do it by hand.
-    // Find the nearest actually-scrollable ancestor of the focused field.
+    /** Nearest ancestor that can actually be scrolled. */
     const scrollableAncestor = (el: HTMLElement): HTMLElement | null => {
       let node: HTMLElement | null = el.parentElement;
       while (node) {
@@ -102,28 +83,37 @@ async function initKeyboard(): Promise<void> {
       return null;
     };
 
-    // Scroll the focused field above the keyboard by computing the exact
-    // offset ourselves. Confirmed on-device via Web Inspector that
-    // scrollIntoView alone did NOT reposition this field (it stayed at
-    // y=797 with the keyboard up) — its heuristics don't behave predictably
-    // inside this nested scroll container in WKWebView. Using the real
-    // keyboardHeight the event hands us is deterministic instead.
-    Keyboard.addListener('keyboardDidShow', (info) => {
+    /**
+     * Scroll the focused field back above the keyboard.
+     *
+     * Timing is the whole trick here. Verified on-device via Safari Web
+     * Inspector that `keyboardDidShow` fires BEFORE the WKWebView frame
+     * finishes resizing: at that instant the scroll container is still
+     * full height (clientH=759) with only 17px of scrollable range, and
+     * the field sits at y=797 — so nothing useful can be scrolled, and any
+     * offset computed then is against stale geometry. Moments later the
+     * frame shrinks (innerHeight 956 -> 543, container -> 413) but the
+     * scroll position is never revisited, stranding the field below the
+     * fold. That also explains why typing appeared to "fix" it — typing
+     * forces a later reflow.
+     *
+     * So run off the viewport resize instead, which is the signal that the
+     * new geometry has actually landed. rAF-chained to let layout settle
+     * before measuring.
+     */
+    const revealFocusedField = () => {
       const el = focusedField;
       if (!el) return;
-      const container = scrollableAncestor(el);
-      if (!container) return;
+      requestAnimationFrame(() => {
+        const container = scrollableAncestor(el);
+        if (!container) return;
+        const overhang = el.getBoundingClientRect().bottom + 12 - container.getBoundingClientRect().bottom;
+        if (overhang > 0) container.scrollTop += overhang;
+      });
+    };
 
-      const cRect  = container.getBoundingClientRect();
-      const elRect = el.getBoundingClientRect();
-      // Bottom edge of the space still visible above the keyboard, in
-      // viewport coords. The container may extend under the keyboard.
-      const visibleBottom = Math.min(cRect.bottom, window.innerHeight - info.keyboardHeight);
-      const margin = 12; // small breathing room under the field
-      const overhang = elRect.bottom + margin - visibleBottom;
-      if (overhang > 0) {
-        container.scrollTop += overhang;
-      }
-    });
+    window.visualViewport?.addEventListener('resize', revealFocusedField);
+    // Fallback for the case where the resize lands before focus is tracked.
+    Keyboard.addListener('keyboardDidShow', () => setTimeout(revealFocusedField, 150));
   } catch { /* plugin not available in this build */ }
 }
