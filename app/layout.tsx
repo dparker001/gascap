@@ -14,6 +14,7 @@ import ErrorBoundary         from '@/components/ErrorBoundary';
 import { LanguageProvider }  from '@/contexts/LanguageContext';
 import OneSignalProvider          from '@/components/OneSignalProvider';
 import GiveawayEntryToast         from '@/components/GiveawayEntryToast';
+import AggregateStatsToast        from '@/components/AggregateStatsToast';
 import EmailVerificationBanner    from '@/components/EmailVerificationBanner';
 import WhatsNewModal              from '@/components/WhatsNewModal';
 import CookieConsentBanner        from '@/components/CookieConsentBanner';
@@ -144,6 +145,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <NativeOneSignalRegistration />
             <NativeIapInit />
             <GiveawayEntryToast />
+            <AggregateStatsToast />
             {/* Email verification nudge — shown on every page for unverified users */}
             <EmailVerificationBanner />
             <WhatsNewModal />
