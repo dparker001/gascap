@@ -32,6 +32,7 @@ import {
   currentPeriod,
   runWeightedDraw,
   recordDraw,
+  resetPeriodBonusEntries,
   getDrawHistory,
   formatPeriodLabel,
   GIVEAWAY_CADENCE,
@@ -92,6 +93,10 @@ export async function GET(req: Request) {
 
   // ── Record the draw (generates a claim token) ──────────────────────────────
   const draw = await recordDraw(result, 'Auto-draw via cron');
+
+  // ── Reset per-period achievement bonus counters for the new period ────────
+  await resetPeriodBonusEntries().catch((err) =>
+    console.error('[giveaway-draw] resetPeriodBonusEntries failed:', err));
 
   // ── Fire emails + GHL notifications (fire-and-forget) ─────────────────────
   // The winner email includes a self-serve claim link (claimToken) — the

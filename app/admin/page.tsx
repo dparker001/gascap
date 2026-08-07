@@ -525,37 +525,48 @@ export default function AdminPage() {
   }
 
   // ── GHL Backfill handler ───────────────────────────────────────────────
+  // Pages through /api/admin/ghl-backfill (offset/limit) instead of one giant
+  // request — syncing every user in a single call used to run past Railway's
+  // 30s proxy timeout and surface as a generic "Network error" once the user
+  // count grew, even though the backend kept working. Paging keeps each
+  // request comfortably under that limit.
   async function handleGhlBackfill() {
     if (!confirm('Sync all users to GHL? Safe to run multiple times — upsert is idempotent.')) return;
     setBackfillLoading(true);
     setBackfillMsg('');
     setBackfillProgress(0);
 
-    // Animate progress: accelerates quickly then decelerates as it nears 85%
-    const timer = setInterval(() => {
-      setBackfillProgress((prev) => {
-        if (prev >= 85) return prev;
-        const step = Math.max(0.4, (85 - prev) * 0.06);
-        return Math.min(85, prev + step);
-      });
-    }, 200);
+    let offset = 0;
+    let totalUsers = 0;
+    let syncedTotal = 0;
+    const allErrors: string[] = [];
 
     try {
-      const res  = await fetch('/api/admin/ghl-backfill', { method: 'POST', headers: { 'x-admin-password': savedPw } });
-      const data = await res.json() as { total: number; synced: number; skipped: number; errors: string[] };
-      clearInterval(timer);
-      setBackfillProgress(100);
-      if (res.ok) {
-        setBackfillMsg(`✅ Synced ${data.synced} of ${data.total} users to GHL${data.errors.length > 0 ? ` (${data.errors.length} errors — check logs)` : ''}`);
-        // Record sync time so the pulse clears
-        const syncedAt = new Date().toISOString();
-        setLastGhlSync(syncedAt);
-        try { localStorage.setItem('gascap_admin_last_ghl_sync', syncedAt); } catch {}
-      } else {
-        setBackfillMsg('❌ Backfill failed — check logs');
+      for (;;) {
+        const res  = await fetch(`/api/admin/ghl-backfill?offset=${offset}`, { method: 'POST', headers: { 'x-admin-password': savedPw } });
+        const data = await res.json() as { total: number; synced: number; skipped: number; errors: string[]; hasMore: boolean; nextOffset: number | null };
+        if (!res.ok) {
+          setBackfillMsg('❌ Backfill failed — check logs');
+          setBackfillLoading(false);
+          setTimeout(() => setBackfillProgress(0), 1500);
+          return;
+        }
+
+        totalUsers   = data.total;
+        syncedTotal += data.synced;
+        allErrors.push(...data.errors);
+        offset      += 30;
+        setBackfillProgress(totalUsers > 0 ? Math.min(99, Math.round((offset / totalUsers) * 100)) : 99);
+
+        if (!data.hasMore) break;
       }
+
+      setBackfillProgress(100);
+      setBackfillMsg(`✅ Synced ${syncedTotal} of ${totalUsers} users to GHL${allErrors.length > 0 ? ` (${allErrors.length} errors — check logs)` : ''}`);
+      const syncedAt = new Date().toISOString();
+      setLastGhlSync(syncedAt);
+      try { localStorage.setItem('gascap_admin_last_ghl_sync', syncedAt); } catch {}
     } catch {
-      clearInterval(timer);
       setBackfillProgress(0);
       setBackfillMsg('❌ Network error');
     }

@@ -31,6 +31,7 @@ import {
   runWeightedDraw,
   runAlternateWeightedDraw,
   recordDraw,
+  resetPeriodBonusEntries,
   updateDrawWinner,
   getDrawHistory,
   currentMonth,
@@ -156,6 +157,10 @@ export async function POST(req: Request) {
     // ─────────────────────────────────────────────────────────────────────
 
     const draw   = await recordDraw(result, body.notes);
+
+    // Reset per-period achievement bonus counters for the new period
+    await resetPeriodBonusEntries().catch((err) =>
+      console.error('[admin/sweepstakes] resetPeriodBonusEntries failed:', err));
 
     // Hold-and-verify (default): record the winner, send nothing, and wait for
     // the admin to release the emails via the `send-winner-email` action after

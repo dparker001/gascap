@@ -1,15 +1,22 @@
 /**
  * POST /api/admin/ghl-backfill
  *
- * One-time utility: reads every user and upserts them into GHL as contacts.
+ * Reads users and upserts them into GHL as contacts, one PAGE at a time.
  * Users who are already in GHL are safely updated (upsert by email).
  *
  * Query params:
- *   ?smsOnly=true  — process only users with smsOptIn=true (fast, ~5s for 100 users)
- *   (no param)     — process all users (may be slow for large user counts)
+ *   ?smsOnly=true      — process only users with smsOptIn=true
+ *   ?offset=N&limit=N  — page through the full user list (default limit 30)
  *
- * Processes users in concurrent batches of 5 to stay under GHL's 10 req/s limit
- * while completing quickly enough to avoid Railway's 30-second proxy timeout.
+ * A single request processing every user used to run well past Railway's
+ * 30-second proxy timeout for any non-trivial user count, dropping the
+ * connection and surfacing as a generic "Network error" in the admin panel
+ * even though the backend kept running. Paginating keeps each request's
+ * batch small enough (default 30 users ≈ 60 GHL calls) to reliably finish
+ * inside the timeout — the caller loops using the returned `nextOffset`
+ * until `hasMore` is false.
+ *
+ * Processes users in concurrent batches of 3 to stay under GHL's ~10 req/s limit.
  *
  * Auth: x-admin-password header required.
  * Safe to run multiple times — upsert is idempotent.
@@ -27,20 +34,30 @@ function auth(req: Request): boolean {
 
 // Each contact now makes TWO GHL calls (upsert + additive add-tags), so keep the
 // batch small + pause longer to stay under GHL's ~10 req/s limit.
-const BATCH_SIZE = 3; // 3 contacts × 2 calls = ~6 reqs per batch
+const BATCH_SIZE  = 3; // 3 contacts × 2 calls = ~6 reqs per batch
+const PAGE_LIMIT  = 30; // default page size — keeps a page's total runtime well under 30s
 
 export async function POST(req: Request) {
   if (!auth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
   const smsOnly = searchParams.get('smsOnly') === 'true';
+  const offset  = Math.max(0, parseInt(searchParams.get('offset') ?? '0', 10) || 0);
+  const limit   = Math.max(1, parseInt(searchParams.get('limit') ?? String(PAGE_LIMIT), 10) || PAGE_LIMIT);
 
   const allUsers = await getAllUsers();
-  const users = smsOnly
+  const filtered = smsOnly
     ? allUsers.filter((u) => u.smsOptIn === true && u.email?.includes('@'))
     : allUsers.filter((u) => u.email?.includes('@'));
 
-  if (users.length === 0) return NextResponse.json({ synced: 0, skipped: 0, errors: [] });
+  const totalUsers = filtered.length;
+  const users       = filtered.slice(offset, offset + limit);
+  const hasMore     = offset + limit < totalUsers;
+  const nextOffset  = hasMore ? offset + limit : null;
+
+  if (users.length === 0) {
+    return NextResponse.json({ total: totalUsers, synced: 0, skipped: 0, errors: [], hasMore: false, nextOffset: null });
+  }
 
   let synced  = 0;
   let skipped = 0;
@@ -88,9 +105,11 @@ export async function POST(req: Request) {
   }
 
   return NextResponse.json({
-    total:   users.length,
+    total:   totalUsers,
     synced,
     skipped,
     errors,
+    hasMore,
+    nextOffset,
   });
 }

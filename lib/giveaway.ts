@@ -564,6 +564,36 @@ export async function recordDraw(result: DrawResult, notes?: string) {
   });
 }
 
+/**
+ * Zeroes the per-period achievement bonus counters for every user so they
+ * don't carry forward into next period's entry count. Must run once per
+ * draw, right after recordDraw() — these fields are plain lifetime
+ * counters (incremented on report/log/verify/milestone events) with no
+ * period field of their own, so without this reset they'd otherwise keep
+ * adding their full all-time total into every future period forever.
+ *
+ * Deliberately NOT reset here (these are meant to persist/recur):
+ *  - earlyUpgradeBonusEntries — documented as "stacks every month" while subscribed
+ *  - referralCount            — permanent growth-lever bonus, referrals count forever
+ *  - lifetimeBonusEntries     — not a stored counter; computed fresh each period
+ *                               in getEligibleEntrants() from stripeInterval, so
+ *                               Lifetime/Annual members already start each new
+ *                               period at their flat plan bonus automatically.
+ */
+export async function resetPeriodBonusEntries(): Promise<void> {
+  await prisma.user.updateMany({
+    data: {
+      verifyReminderBonusEntries:  0,
+      phoneBonusEntries:           0,
+      dailyBonusEntries:           0,
+      firstCalcBonusEntries:       0,
+      priceReportEntries:          0,
+      gigLogEntries:               0,
+      streakMilestoneBonusEntries: 0,
+    },
+  });
+}
+
 /** All past draws, newest first */
 export async function getDrawHistory() {
   return prisma.giveawayDraw.findMany({ orderBy: { drawnAt: 'desc' } });

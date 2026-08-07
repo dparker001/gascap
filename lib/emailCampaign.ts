@@ -215,6 +215,12 @@ export function welcomeEmailHtml(name: string, userId: string, verifyUrl?: strin
         </p>
         <a href="https://apps.apple.com/app/id6761315915" style="display:inline-block;margin:0 4px;"><img src="${BASE_URL}/badges/app-store-badge.svg" alt="Download on the App Store" height="40"></a>
         <a href="https://play.google.com/store/apps/details?id=app.gascap.mobile" style="display:inline-block;margin:0 4px;"><img src="${BASE_URL}/badges/google-play-badge.svg" alt="Get it on Google Play" height="40"></a>
+        <p style="margin:14px 0 0;font-size:12px;color:#4338ca;">
+          Follow us:
+          <a href="https://www.facebook.com/profile.php?id=61572133750226" style="color:#3730a3;font-weight:700;text-decoration:none;">Facebook</a>
+          ·
+          <a href="https://www.instagram.com/gascap.app/" style="color:#3730a3;font-weight:700;text-decoration:none;">Instagram</a>
+        </p>
       </div>
 
       <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:12px;padding:18px 22px;margin:0 0 22px;">
