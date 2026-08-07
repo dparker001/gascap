@@ -227,7 +227,7 @@ export function welcomeEmailHtml(name: string, userId: string, verifyUrl?: strin
         <p style="margin:0 0 6px;font-size:14px;font-weight:900;color:#92400e;">
           🚗 Renting a car? Don't miss our most-loved feature
         </p>
-        <p style="margin:0;font-size:13px;color:#78350f;line-height:1.6;">
+        <p style="margin:0 0 10px;font-size:13px;color:#78350f;line-height:1.6;">
           <strong>Rental Car Return Mode</strong> tells you exactly how many gallons to
           buy before drop-off — so you don't overpay the $10–$12/gallon refueling fee
           or waste money over-filling a tank you're about to hand back. Toggle
@@ -235,7 +235,18 @@ export function welcomeEmailHtml(name: string, userId: string, verifyUrl?: strin
           fuel rate to see your exact savings in real time. It alone pays for Pro
           on a single trip.
         </p>
+        <p style="margin:0;font-size:13px;color:#78350f;line-height:1.6;">
+          📲 <strong>On the app</strong>, set your return date and time and GasCap™ will
+          send you a reminder 2 hours before drop-off, so you never forget to fill up
+          on time.
+        </p>
       </div>
+
+      <p style="margin:0 0 22px;text-align:center;">
+        <a href="${BASE_URL}/features" style="font-size:13px;font-weight:700;color:#f59e0b;text-decoration:none;">
+          See everything GasCap™ Pro can do →
+        </a>
+      </p>
 
       <p style="margin:0 0 14px;font-size:15px;font-weight:700;color:#1e2d4a;">
         Here's how to get the most out of your first week:
