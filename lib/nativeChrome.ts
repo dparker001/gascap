@@ -80,7 +80,31 @@ async function initKeyboard(): Promise<void> {
     });
     document.addEventListener('focusout', () => { focusedField = null; });
 
+    // Confirmed via live device inspection (Safari Web Inspector, console):
+    // at the moment the field was reportedly hidden, its computed rect
+    // (getBoundingClientRect) already fell entirely within the resized,
+    // visible viewport — the LAYOUT was already correct. But it was still
+    // visually covered until the user manually dragged/scrolled the
+    // screen, which is exactly what forces WKWebView to repaint. This is a
+    // stale-paint bug after the native keyboard resize, not a layout or
+    // scroll-position bug — so force the repaint ourselves with a tiny
+    // scroll nudge instead of waiting for the user to do it by hand.
+    const forceRepaint = (el: HTMLElement) => {
+      let node: HTMLElement | null = el.parentElement;
+      while (node) {
+        const style = getComputedStyle(node);
+        if ((style.overflowY === 'auto' || style.overflowY === 'scroll') && node.scrollHeight > node.clientHeight) {
+          const original = node.scrollTop;
+          node.scrollTop = original + 1;
+          requestAnimationFrame(() => { node!.scrollTop = original; });
+          return;
+        }
+        node = node.parentElement;
+      }
+    };
+
     Keyboard.addListener('keyboardDidShow', () => {
+      if (focusedField) forceRepaint(focusedField);
       focusedField?.scrollIntoView({ block: 'center', behavior: 'smooth' });
     });
   } catch { /* plugin not available in this build */ }
