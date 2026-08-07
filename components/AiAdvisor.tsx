@@ -28,6 +28,10 @@ export default function AiAdvisor({ embedded = false }: { embedded?: boolean }) 
   const [configured, setConfigured] = useState<boolean | null>(null);
   const [livePlan,   setLivePlan]   = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  // TEMPORARY diagnostic readout for the keyboard-covers-input bug — remove
+  // once the real cause is confirmed. Shows what's actually happening on
+  // focus instead of guessing blind at WebView layout behavior.
+  const [debugInfo, setDebugInfo] = useState<string>('');
 
   // Fetch live plan so we don't rely on potentially stale JWT
   useEffect(() => {
@@ -256,6 +260,13 @@ export default function AiAdvisor({ embedded = false }: { embedded?: boolean }) 
                 </div>
               )}
 
+              {/* TEMPORARY diagnostic readout — remove once the real cause is found */}
+              {debugInfo && (
+                <pre className="bg-black text-lime-400 text-[9px] leading-tight p-2 whitespace-pre-wrap break-all">
+                  {debugInfo}
+                </pre>
+              )}
+
               {/* Input bar — Pro/Fleet only.
                   sticky bottom-0 pins it to the visible bottom edge of the
                   page's scrolling container (NativeAppShell's flex-1
@@ -274,10 +285,21 @@ export default function AiAdvisor({ embedded = false }: { embedded?: boolean }) 
                       value={input}
                       onChange={(e) => setInput(e.target.value)}
                       onFocus={(e) => {
-                        // Bring the field into view immediately on tap rather
-                        // than waiting for the user to scroll manually or for
-                        // the keyboard's own resize animation to settle.
-                        setTimeout(() => e.currentTarget.scrollIntoView({ block: 'end', behavior: 'smooth' }), 50);
+                        const el = e.currentTarget;
+                        const logAt = (label: string) => {
+                          const r = el.getBoundingClientRect();
+                          const vv = window.visualViewport;
+                          setDebugInfo((prev) => prev + `\n[${label}] input.top=${r.top.toFixed(0)} input.bottom=${r.bottom.toFixed(0)} ` +
+                            `innerH=${window.innerHeight} vvH=${vv?.height.toFixed(0)} vvOffsetTop=${vv?.offsetTop.toFixed(0)}`);
+                        };
+                        setDebugInfo(`[focus] ${new Date().toLocaleTimeString()}`);
+                        logAt('t=0ms');
+                        setTimeout(() => logAt('t=50ms'), 50);
+                        setTimeout(() => {
+                          logAt('t=300ms pre-scroll');
+                          el.scrollIntoView({ block: 'end', behavior: 'smooth' });
+                          setTimeout(() => logAt('t=650ms post-scroll'), 350);
+                        }, 300);
                       }}
                       onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(input); } }}
                       disabled={loading}
