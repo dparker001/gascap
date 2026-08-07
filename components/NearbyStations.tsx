@@ -1164,7 +1164,14 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
           {t.findGasTab.stationCount(stations.length)}
         </p>
         <button
-          onClick={() => coords && doLookup(coords.lat, coords.lng)}
+          onClick={async () => {
+            if (!coords) return;
+            // Re-fetch current position instead of reusing stale coords — the
+            // same gap that used to make Report Price fail its proximity check
+            // even while standing at the pump (see getFreshCoords above).
+            const fresh = await getFreshCoords(coords);
+            if (fresh) doLookup(fresh.lat, fresh.lng);
+          }}
           className="text-xs text-teal-600 font-bold"
         >
           {t.findGasTab.refresh}

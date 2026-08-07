@@ -10,6 +10,7 @@
 
 import { useEffect, useState } from 'react';
 import { useSession }          from 'next-auth/react';
+import { useTranslation }      from '@/contexts/LanguageContext';
 
 const STORAGE_KEY = 'gascap_stats_toast';
 const SHOW_DELAY_MS = 6000;  // stagger after GiveawayEntryToast
@@ -22,16 +23,16 @@ interface AggregateStats {
   dollarsTrackedThisMonth: number;
 }
 
-function pickMessage(s: AggregateStats): string | null {
+function pickMessage(s: AggregateStats, t: ReturnType<typeof useTranslation>['t']): string | null {
   const candidates: string[] = [];
   if (s.fillupsThisWeek > 0) {
-    candidates.push(`⛽ ${s.fillupsThisWeek.toLocaleString()} fill-ups logged by GasCap™ drivers this week.`);
+    candidates.push(t.statsToast.fillupsThisWeek(s.fillupsThisWeek));
   }
   if (s.priceReportsThisWeek > 0) {
-    candidates.push(`📍 ${s.priceReportsThisWeek.toLocaleString()} local price reports shared by drivers this week.`);
+    candidates.push(t.statsToast.priceReportsThisWeek(s.priceReportsThisWeek));
   }
   if (s.dollarsTrackedThisMonth > 0) {
-    candidates.push(`💰 $${s.dollarsTrackedThisMonth.toLocaleString()} in fuel tracked by GasCap™ users this month.`);
+    candidates.push(t.statsToast.dollarsTrackedThisMonth(s.dollarsTrackedThisMonth));
   }
   if (candidates.length === 0) return null;
   return candidates[Math.floor(Math.random() * candidates.length)];
@@ -39,6 +40,7 @@ function pickMessage(s: AggregateStats): string | null {
 
 export default function AggregateStatsToast() {
   const { data: session } = useSession();
+  const { t } = useTranslation();
   const [message, setMessage] = useState<string | null>(null);
   const [exiting, setExiting] = useState(false);
 
@@ -52,7 +54,7 @@ export default function AggregateStatsToast() {
       fetch('/api/stats/aggregate')
         .then((r) => (r.ok ? r.json() : Promise.reject()))
         .then((s: AggregateStats) => {
-          const msg = pickMessage(s);
+          const msg = pickMessage(s, t);
           if (!msg) return;
           setMessage(msg);
           localStorage.setItem(STORAGE_KEY, today);
@@ -61,7 +63,7 @@ export default function AggregateStatsToast() {
     }, SHOW_DELAY_MS);
 
     return () => clearTimeout(showTimer);
-  }, [session]);
+  }, [session, t]);
 
   // Auto-dismiss
   useEffect(() => {

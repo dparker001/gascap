@@ -1366,7 +1366,7 @@ const en = {
   // ── Find Gas tab ────────────────────────────────────────────────────────────
   findGasTab: {
     findGasNearYou:       'Find Gas Near You',
-    locationPermissionBody: 'GasCap uses your location to show real-time gas prices at nearby stations — so you can find the cheapest fuel before you pull in.',
+    locationPermissionBody: 'GasCap uses your location to show real-time gas prices at nearby stations — so you know before you pull in.',
     allowLocation:        'Allow Location',
     maybeLater:           'Maybe Later',
     gradeRegular:         'Regular',
@@ -1404,17 +1404,17 @@ const en = {
     errLocationGeneric:   (msg: string) => `Could not get location: ${msg}`,
     guestGateBody:        'Create a free account, then upgrade to Pro to see nearby station prices.',
     guestGateCta:         'Create free account →',
-    proGateBody:          'See nearby station prices, filtered by fuel grade, sorted by cheapest — Pro feature.',
+    proGateBody:          'See nearby station prices, filtered by fuel grade, sorted by distance — Pro feature.',
     proGateFeature1:      'Live prices from Google at nearby stations',
     proGateFeature2:      'Filter by Regular, Midgrade, Premium, or Diesel',
-    proGateFeature3:      'Sorted cheapest first — no hunting required',
+    proGateFeature3:      'Sorted closest first — no hunting required',
     proGateCta:           'Upgrade to Pro →',
     comingSoonBody:       'Live station prices are coming soon. Enter the pump price manually in the calculator for now.',
     findingLocation:      'Finding your location…',
     loadingStations:      'Loading nearby stations…',
     tryAgain:             'Try Again',
     enterPriceManually:   'Enter Price Manually',
-    tapToFind:            'Tap to find the cheapest gas near you.',
+    tapToFind:            'Tap to see real-time gas prices near you.',
     useMyLocation:        '📍 Use My Location',
     tapAnyPrice:          'Tap any price to instantly fill the calculator',
     stationCount:         (n: number) => `${n} station${n !== 1 ? 's' : ''} within 5 mi`,
@@ -1427,6 +1427,13 @@ const en = {
     minutesAgo:           (m: number) => `${m}m ago`,
     hoursAgo:             (h: number) => `${h}h ago`,
     daysAgo:              (d: number) => `${d}d ago`,
+  },
+
+  // ── Aggregate activity stats toast — AggregateStatsToast.tsx ─────────────────
+  statsToast: {
+    fillupsThisWeek:       (n: number) => `⛽ ${n.toLocaleString()} fill-ups logged by GasCap™ drivers this week.`,
+    priceReportsThisWeek:  (n: number) => `📍 ${n.toLocaleString()} local price reports shared by drivers this week.`,
+    dollarsTrackedThisMonth: (n: number) => `💰 $${n.toLocaleString()} in fuel tracked by GasCap™ users this month.`,
   },
 
   // ── Saved vehicles — strings local to SavedVehicles.tsx ─────────────────────
@@ -4093,7 +4100,7 @@ const es: typeof en = {
   // ── Find Gas tab ────────────────────────────────────────────────────────────
   findGasTab: {
     findGasNearYou:       'Encuentra gas cerca de ti',
-    locationPermissionBody: 'GasCap usa tu ubicación para mostrar precios de gasolina en tiempo real en las estaciones cercanas — para que puedas encontrar el combustible más barato antes de llegar.',
+    locationPermissionBody: 'GasCap usa tu ubicación para mostrar precios de gasolina en tiempo real en las estaciones cercanas — para que sepas antes de llegar.',
     allowLocation:        'Permitir ubicación',
     maybeLater:           'Quizás después',
     gradeRegular:         'Regular',
@@ -4131,17 +4138,17 @@ const es: typeof en = {
     errLocationGeneric:   (msg: string) => `No se pudo obtener la ubicación: ${msg}`,
     guestGateBody:        'Crea una cuenta gratis y luego actualiza a Pro para ver los precios de estaciones cercanas.',
     guestGateCta:         'Crear cuenta gratis →',
-    proGateBody:          'Ve los precios de estaciones cercanas, filtrados por tipo de combustible, ordenados por el más barato — función Pro.',
+    proGateBody:          'Ve los precios de estaciones cercanas, filtrados por tipo de combustible, ordenados por distancia — función Pro.',
     proGateFeature1:      'Precios en vivo de Google en estaciones cercanas',
     proGateFeature2:      'Filtra por Regular, Semi-premium, Premium o Diésel',
-    proGateFeature3:      'Ordenado del más barato — sin buscar',
+    proGateFeature3:      'Ordenado del más cercano — sin buscar',
     proGateCta:           'Actualizar a Pro →',
     comingSoonBody:       'Los precios de estaciones en vivo pronto estarán disponibles. Por ahora ingresa el precio de la bomba manualmente en la calculadora.',
     findingLocation:      'Encontrando tu ubicación…',
     loadingStations:      'Cargando estaciones cercanas…',
     tryAgain:             'Intentar de nuevo',
     enterPriceManually:   'Ingresar precio manualmente',
-    tapToFind:            'Toca para encontrar la gasolina más barata cerca de ti.',
+    tapToFind:            'Toca para ver los precios de gasolina en tiempo real cerca de ti.',
     useMyLocation:        '📍 Usar mi ubicación',
     tapAnyPrice:          'Toca cualquier precio para llenar la calculadora al instante',
     stationCount:         (n: number) => `${n} estación${n !== 1 ? 'es' : ''} en 5 mi`,
@@ -4154,6 +4161,13 @@ const es: typeof en = {
     minutesAgo:           (m: number) => `hace ${m}m`,
     hoursAgo:             (h: number) => `hace ${h}h`,
     daysAgo:              (d: number) => `hace ${d}d`,
+  },
+
+  // ── Aggregate activity stats toast — AggregateStatsToast.tsx ─────────────────
+  statsToast: {
+    fillupsThisWeek:       (n: number) => `⛽ ${n.toLocaleString()} recargas registradas por conductores de GasCap™ esta semana.`,
+    priceReportsThisWeek:  (n: number) => `📍 ${n.toLocaleString()} reportes de precios locales compartidos por conductores esta semana.`,
+    dollarsTrackedThisMonth: (n: number) => `💰 $${n.toLocaleString()} en combustible registrados por usuarios de GasCap™ este mes.`,
   },
 
   // ── Saved vehicles — strings local to SavedVehicles.tsx ─────────────────────
