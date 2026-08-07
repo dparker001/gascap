@@ -83,37 +83,54 @@ async function initKeyboard(): Promise<void> {
       return null;
     };
 
+    // Real keyboard height, straight from the native event.
+    let kbHeight = 0;
+
     /**
      * Scroll the focused field back above the keyboard.
      *
-     * Timing is the whole trick here. Verified on-device via Safari Web
-     * Inspector that `keyboardDidShow` fires BEFORE the WKWebView frame
-     * finishes resizing: at that instant the scroll container is still
-     * full height (clientH=759) with only 17px of scrollable range, and
-     * the field sits at y=797 — so nothing useful can be scrolled, and any
-     * offset computed then is against stale geometry. Moments later the
-     * frame shrinks (innerHeight 956 -> 543, container -> 413) but the
-     * scroll position is never revisited, stranding the field below the
-     * fold. That also explains why typing appeared to "fix" it — typing
-     * forces a later reflow.
+     * Two separate things had to be right here, and earlier attempts each
+     * only got one of them:
      *
-     * So run off the viewport resize instead, which is the signal that the
-     * new geometry has actually landed. rAF-chained to let layout settle
-     * before measuring.
+     * 1. WHAT to measure against. The scroll container does not reliably
+     *    shrink when the keyboard appears — its bottom edge can still sit
+     *    at ~889 while the keyboard's top edge is at ~543. Measuring the
+     *    field against the container's own bottom therefore concludes
+     *    "already visible" and scrolls nothing. The real cutoff is
+     *    `innerHeight - keyboardHeight`, whichever is higher up.
+     *
+     * 2. WHEN to measure. `keyboardDidShow` fires before the WKWebView
+     *    frame finishes resizing — at that moment the container is still
+     *    full height (clientH=759) with only 17px of scroll range, so
+     *    there is nowhere to scroll to. Verified on-device via Safari Web
+     *    Inspector. Running again after the resize settles is what makes
+     *    the range available. (This is also why typing appeared to help:
+     *    it forced a later reflow.)
+     *
+     * So: clamp to the keyboard, and run on a few passes so at least one
+     * lands after the new geometry does.
      */
     const revealFocusedField = () => {
       const el = focusedField;
-      if (!el) return;
-      requestAnimationFrame(() => {
-        const container = scrollableAncestor(el);
-        if (!container) return;
-        const overhang = el.getBoundingClientRect().bottom + 12 - container.getBoundingClientRect().bottom;
-        if (overhang > 0) container.scrollTop += overhang;
-      });
+      if (!el || !kbHeight) return;
+      const container = scrollableAncestor(el);
+      if (!container) return;
+
+      const cutoff  = Math.min(container.getBoundingClientRect().bottom, window.innerHeight - kbHeight);
+      const overhang = el.getBoundingClientRect().bottom + 12 - cutoff;
+      if (overhang > 0) container.scrollTop += overhang;
     };
 
+    Keyboard.addListener('keyboardWillShow', (info) => { kbHeight = info.keyboardHeight; });
+    Keyboard.addListener('keyboardWillHide', () => { kbHeight = 0; });
+
+    // Fire on the resize (the signal that new geometry landed) and on a
+    // couple of delayed passes, since the resize event is not guaranteed
+    // to fire in this WebView. revealFocusedField is idempotent — once the
+    // field clears the keyboard, overhang goes negative and it no-ops.
     window.visualViewport?.addEventListener('resize', revealFocusedField);
-    // Fallback for the case where the resize lands before focus is tracked.
-    Keyboard.addListener('keyboardDidShow', () => setTimeout(revealFocusedField, 150));
+    Keyboard.addListener('keyboardDidShow', () => {
+      [0, 150, 400].forEach((d) => setTimeout(revealFocusedField, d));
+    });
   } catch { /* plugin not available in this build */ }
 }
