@@ -211,11 +211,17 @@ workflows:
         script: |
           cd ios/App
           # Marketing version (CFBundleShortVersionString) — bump per public release.
-          # This was hardcoded at 1.0.1 across every build (including the approved
-          # build 49) — once a version has actually shipped live, App Store Connect
-          # requires a NEW version string for the next submission, so this must be
-          # bumped by hand for each real release, not left as a fixed literal.
-          agvtool new-marketing-version 1.1.0
+          # This has been hardcoded here before (1.0.1, then 1.1.0) and broken the
+          # App Store Connect upload each time that literal had already been
+          # approved ("must contain a higher version than that of the previously
+          # approved version"). NOTE: the ios/ project is regenerated fresh every
+          # build (npx cap add ios, above), so agvtool can't read a "last used"
+          # version from it — there's no persistent state to auto-increment from
+          # without querying the App Store Connect API directly, which needs
+          # verifying against the actual CLI available in this build image before
+          # relying on it. Until that's built, bump this literal by hand for each
+          # real release — currently 1.1.0 was already approved, so this build is 1.1.1.
+          agvtool new-marketing-version 1.1.1
           # Build number (CFBundleVersion) must be UNIQUE per upload. Look up the latest
           # TestFlight build for the app (by NUMERIC app id, not bundle id) and +1, then
           # floor at Codemagic's own ever-incrementing $BUILD_NUMBER as a safety net so we
