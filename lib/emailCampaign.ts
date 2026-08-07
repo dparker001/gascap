@@ -36,6 +36,10 @@ function header(plan?: string) {
 function footer(userId: string) {
   return `
     <tr><td style="background:#f8fafc;padding:16px 32px;border-top:1px solid #e2e8f0;border-radius:0 0 16px 16px;">
+      <p style="margin:0 0 12px;text-align:center;">
+        <a href="https://apps.apple.com/app/id6761315915" style="display:inline-block;margin:0 4px;"><img src="${BASE_URL}/badges/app-store-badge.svg" alt="Download on the App Store" height="36"></a>
+        <a href="https://play.google.com/store/apps/details?id=app.gascap.mobile" style="display:inline-block;margin:0 4px;"><img src="${BASE_URL}/badges/google-play-badge.svg" alt="Get it on Google Play" height="36"></a>
+      </p>
       <p style="margin:0;font-size:11px;color:#94a3b8;line-height:1.6;">
         GasCap™ · Know before you go ·
         <a href="${BASE_URL}" style="color:#f59e0b;text-decoration:none;">gascap.app</a><br>
@@ -200,6 +204,17 @@ export function welcomeEmailHtml(name: string, userId: string, verifyUrl?: strin
           $50 Visa prepaid card drawing. The more days you're active, the better your odds. Drawing is held
           monthly — free to enter, no purchase required.
         </p>
+      </div>
+
+      <div style="background:#eef2ff;border:1px solid #c7d2fe;border-radius:12px;padding:18px 22px;margin:0 0 22px;text-align:center;">
+        <p style="margin:0 0 10px;font-size:14px;font-weight:900;color:#3730a3;">
+          📲 GasCap™ is now a real app — get it on your phone
+        </p>
+        <p style="margin:0 0 14px;font-size:13px;color:#4338ca;line-height:1.6;">
+          Faster, works offline, and sends you push alerts for price drops and streak reminders.
+        </p>
+        <a href="https://apps.apple.com/app/id6761315915" style="display:inline-block;margin:0 4px;"><img src="${BASE_URL}/badges/app-store-badge.svg" alt="Download on the App Store" height="40"></a>
+        <a href="https://play.google.com/store/apps/details?id=app.gascap.mobile" style="display:inline-block;margin:0 4px;"><img src="${BASE_URL}/badges/google-play-badge.svg" alt="Get it on Google Play" height="40"></a>
       </div>
 
       <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:12px;padding:18px 22px;margin:0 0 22px;">

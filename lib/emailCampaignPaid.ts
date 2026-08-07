@@ -27,6 +27,10 @@ function header(plan?: string) { return brandHeader(plan); }
 function footer(userId: string) {
   return `
     <tr><td style="background:#f8fafc;padding:16px 32px;border-top:1px solid #e2e8f0;border-radius:0 0 16px 16px;">
+      <p style="margin:0 0 12px;text-align:center;">
+        <a href="https://apps.apple.com/app/id6761315915" style="display:inline-block;margin:0 4px;"><img src="${BASE_URL}/badges/app-store-badge.svg" alt="Download on the App Store" height="36"></a>
+        <a href="https://play.google.com/store/apps/details?id=app.gascap.mobile" style="display:inline-block;margin:0 4px;"><img src="${BASE_URL}/badges/google-play-badge.svg" alt="Get it on Google Play" height="36"></a>
+      </p>
       <p style="margin:0;font-size:11px;color:#94a3b8;line-height:1.6;">
         GasCap™ · Know before you go ·
         <a href="${BASE_URL}" style="color:#f59e0b;text-decoration:none;">gascap.app</a><br>
