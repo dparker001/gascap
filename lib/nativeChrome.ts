@@ -60,5 +60,20 @@ async function initKeyboard(): Promise<void> {
     // leaving the keyboard covering whatever button/content sat below it.
     await Keyboard.setAccessoryBarVisible({ isVisible: true });
     await Keyboard.setScroll({ isDisabled: false });
+
+    // WKWebView quirk: the keyboard resize fires on focus, but the
+    // scroll-into-view calculation above doesn't always recompute until
+    // something forces a layout reflow — which typing happens to do, which
+    // is why the field only came into view once the user started typing,
+    // not the moment they tapped it. Force the scroll ourselves on focus
+    // instead of waiting for that incidental reflow.
+    document.addEventListener('focusin', (e) => {
+      const el = e.target;
+      if (!(el instanceof HTMLElement)) return;
+      if (el.tagName !== 'INPUT' && el.tagName !== 'TEXTAREA') return;
+      setTimeout(() => {
+        el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      }, 300); // roughly matches the keyboard's own show animation
+    });
   } catch { /* plugin not available in this build */ }
 }

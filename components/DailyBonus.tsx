@@ -66,9 +66,28 @@ export default function DailyBonus() {
   const { t } = useTranslation();
   const isNative = useIsNative();   // lift the FAB above the native bottom tab bar
 
-  const [phase,      setPhase]      = useState<Phase>('loading');
-  const [entriesWon, setEntriesWon] = useState(0);
-  const [popover,    setPopover]    = useState(false);
+  const [phase,        setPhase]        = useState<Phase>('loading');
+  const [entriesWon,   setEntriesWon]   = useState(0);
+  const [popover,      setPopover]      = useState(false);
+  // Hide while the on-screen keyboard is likely open — this FAB sits
+  // bottom-right, the same corner as several forms' submit buttons (e.g. the
+  // AI Advisor's send arrow), so it visually collides with them once a field
+  // is focused and the keyboard pushes content up.
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
+
+  useEffect(() => {
+    if (!isNative) return;
+    const isTextField = (el: EventTarget | null) =>
+      el instanceof HTMLElement && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA');
+    const onFocusIn  = (e: FocusEvent) => { if (isTextField(e.target)) setKeyboardOpen(true); };
+    const onFocusOut = (e: FocusEvent) => { if (isTextField(e.target)) setKeyboardOpen(false); };
+    document.addEventListener('focusin', onFocusIn);
+    document.addEventListener('focusout', onFocusOut);
+    return () => {
+      document.removeEventListener('focusin', onFocusIn);
+      document.removeEventListener('focusout', onFocusOut);
+    };
+  }, [isNative]);
 
   // Don't render on admin pages or auth pages
   const hidden = pathname.startsWith('/admin') ||
@@ -88,6 +107,7 @@ export default function DailyBonus() {
 
   if (hidden || !session?.user) return null;
   if (phase === 'loading') return null;
+  if (keyboardOpen) return null;
 
   async function handleClaim() {
     if (phase !== 'available') {
