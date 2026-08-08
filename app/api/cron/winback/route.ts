@@ -33,6 +33,21 @@ const SUBJECTS: Record<1 | 2 | 3, (firstName: string) => string> = {
 
 const UNSUB = 'https://www.gascap.app/settings';
 
+/**
+ * Max emails per run. Two reasons, both real:
+ *
+ * 1. Timeout. GitHub Actions calls this with `curl --max-time 30`. Sends are
+ *    sequential at roughly 200-500ms each, so an unbounded run over 210 users
+ *    would take 40-100s — the action reports failure while the server quietly
+ *    keeps going, which is exactly the bug the GHL backfill had.
+ * 2. Deliverability. This domain normally sends a handful of messages a day.
+ *    A sudden 210-message burst is the pattern spam filters punish.
+ *
+ * Whatever doesn't fit rolls into the next daily run — progress is durable
+ * because each user is stamped as they're sent.
+ */
+const MAX_PER_RUN = 60;
+
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const secret = searchParams.get('secret');
@@ -66,7 +81,7 @@ export async function GET(req: Request) {
   const allUsers = await getAllUsers();
   const now = Date.now();
 
-  let sent = 0, skipped = 0;
+  let sent = 0, skipped = 0, deferred = 0;
   const byStep: Record<number, number> = { 1: 0, 2: 0, 3: 0 };
   const sample: string[] = [];
 
@@ -115,6 +130,9 @@ export async function GET(req: Request) {
 
     if (dryRun) { continue; }
 
+    // Batch cap — the remainder is picked up by tomorrow's run.
+    if (sent >= MAX_PER_RUN) { deferred++; continue; }
+
     const firstName = (user.displayName || user.name || 'there').split(' ')[0];
     try {
       await sendMail({
@@ -154,6 +172,7 @@ export async function GET(req: Request) {
     audience:  byStep[1] + byStep[2] + byStep[3],
     byStep,
     sent:      dryRun ? 0 : sent,
+    deferred,          // over MAX_PER_RUN this run — picked up tomorrow
     skipped,
     sample,
     ranAt:     new Date().toISOString(),
