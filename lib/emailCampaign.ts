@@ -375,6 +375,15 @@ export function featureTipsEmailHtml(name: string, userId: string): string {
 
       ${ctaButton('Try These Pro Features →', BASE_URL)}
 
+      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:16px 20px;margin:24px 0 0;">
+        <p style="margin:0 0 6px;font-size:13px;font-weight:900;color:#14532d;">📱 +25 giveaway entries, one time</p>
+        <p style="margin:0;font-size:13px;color:#166534;line-height:1.55;">
+          Verify your phone number in <strong>Settings</strong> and we'll add
+          <strong>25 bonus entries</strong> to this month's $50 gas card drawing — enough
+          to jump most of the leaderboard. Takes about 20 seconds.
+        </p>
+      </div>
+
       <div style="background:#fefce8;border:1px solid #fde68a;border-radius:12px;padding:16px 20px;margin:24px 0 0;">
         <p style="margin:0 0 6px;font-size:13px;font-weight:700;color:#92400e;">💡 Quick tip</p>
         <p style="margin:0;font-size:13px;color:#78350f;line-height:1.5;">
@@ -395,7 +404,7 @@ export function featureTipsEmailHtml(name: string, userId: string): string {
 }
 
 export const featureTipsEmailText = (name: string) =>
-  `Hi ${name.split(' ')[0]}, you're 3 days into your GasCap™ Pro trial. Try these: Rental Car Return Mode (avoid the $12/gal refuel trap on rentals — pays for Pro in a single trip), AI Fuel Advisor (ask anything), MPG trending charts (catch engine issues early), and monthly budget tracker (never overspend). Open the app: ${BASE_URL}`;
+  `Hi ${name.split(' ')[0]}, you're 3 days into your GasCap™ Pro trial. Try these: Rental Car Return Mode (avoid the $12/gal refuel trap on rentals — pays for Pro in a single trip), AI Fuel Advisor (ask anything), MPG trending charts (catch engine issues early), and monthly budget tracker (never overspend). BONUS: verify your phone number in Settings for +25 entries in this month's $50 gas card drawing. Open the app: ${BASE_URL}`;
 
 // ── Email 3 — Mid-Trial Value Check-In (Day 10) ───────────────────────────
 

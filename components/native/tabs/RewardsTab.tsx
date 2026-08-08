@@ -22,21 +22,23 @@ export default function RewardsTab() {
   const { t } = useTranslation();
   const isGuest = status === 'unauthenticated';
   const [entryCount, setEntryCount] = useState<number | null>(null);
+  // Null until loaded, so the nudge never flashes before we know the answer.
+  const [phoneBonusEntries, setPhoneBonusEntries] = useState<number | null>(null);
 
   useEffect(() => {
     if (!session) return;
+    const load = (d: { entryCount?: number; phoneBonusEntries?: number } | null) => {
+      if (d?.entryCount != null) setEntryCount(d.entryCount);
+      if (d?.phoneBonusEntries != null) setPhoneBonusEntries(d.phoneBonusEntries);
+    };
     fetch('/api/user/giveaway-entries')
       .then((r) => r.ok ? r.json() : null)
-      .then((d: { entryCount?: number } | null) => {
-        if (d?.entryCount != null) setEntryCount(d.entryCount);
-      })
+      .then(load)
       .catch(() => {});
     const handler = () => {
       fetch('/api/user/giveaway-entries')
         .then((r) => r.ok ? r.json() : null)
-        .then((d: { entryCount?: number } | null) => {
-          if (d?.entryCount != null) setEntryCount(d.entryCount);
-        })
+        .then(load)
         .catch(() => {});
     };
     window.addEventListener('gascap:entries-earned', handler);
@@ -68,6 +70,31 @@ export default function RewardsTab() {
           )}
         </div>
       </Link>
+
+      {/* Phone-verification nudge — the +25 bonus was only ever surfaced as a
+          passive line item in the /giveaway breakdown, so just 4 of 172 users
+          with a phone on file had ever claimed it. Shown only to signed-in
+          users who haven't claimed it yet; disappears permanently once they do. */}
+      {!isGuest && phoneBonusEntries === 0 && (
+        <Link
+          href="/settings#phone"
+          className="block rounded-2xl border border-emerald-200 dark:border-emerald-900
+                     bg-emerald-50 dark:bg-emerald-900/20 p-4 active:opacity-90 transition-opacity"
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-2xl shrink-0" aria-hidden="true">📱</span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-bold text-emerald-900 dark:text-emerald-200 leading-tight">
+                {t.rewardsHub.phoneNudgeTitle}
+              </p>
+              <p className="text-xs text-emerald-800/80 dark:text-emerald-300/80 mt-0.5 leading-snug">
+                {t.rewardsHub.phoneNudgeSub}
+              </p>
+            </div>
+            <span className="shrink-0 text-emerald-700 dark:text-emerald-300 text-lg" aria-hidden="true">›</span>
+          </div>
+        </Link>
+      )}
 
       {/* Guest CTA — turn the empty signed-out state into a sign-up pitch */}
       {isGuest && (

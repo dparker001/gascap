@@ -19,7 +19,7 @@ const SECTIONS = [
       },
       {
         q: 'How do I create an account?',
-        a: 'Visit gascap.app and tap "Sign Up." You can sign up with Google (one tap) or with email. For email sign-up, enter your full name, email address, and a password (8+ characters). A phone number is optional — if you enter one, an SMS opt-in checkbox appears. You\'ll receive a verification email — click the link to activate your account. All new accounts automatically start with 30 days of Pro free, no credit card required.',
+        a: 'Visit gascap.app and tap "Sign Up." You can sign up with Google (one tap) or with email. For email sign-up, enter your full name, email address, and a password (8+ characters). You can add a phone number later in Settings — verifying it earns +25 bonus giveaway entries. You\'ll receive a verification email — click the link to activate your account. All new accounts automatically start with 30 days of Pro free, no credit card required.',
       },
       {
         q: 'I just signed up — what should I do first?',
@@ -231,7 +231,7 @@ const SECTIONS = [
       },
       {
         q: 'How do Fill-Up Reminders work?',
-        a: 'Fill-Up Reminders will notify you when you haven\'t logged a fill-up within your chosen interval. Reminders will be delivered via SMS to your opted-in phone number — this feature is coming soon (pending SMS service activation). GasCap™ does not use push notifications. In the meantime, you can set a recurring reminder manually in your phone\'s calendar app.',
+        a: 'Fill-Up Reminders will notify you when you haven\'t logged a fill-up within your chosen interval. Reminders will be delivered via SMS to your opted-in phone number — this feature is coming soon (pending SMS service activation). The iPhone and Android apps do support push notifications for things like trial reminders and giveaway alerts. In the meantime, you can set a recurring fill-up reminder manually in your phone\'s calendar app.',
       },
     ],
   },
@@ -349,7 +349,7 @@ const SECTIONS = [
       },
       {
         q: 'How do I earn entries as a Pro member?',
-        a: 'Pro subscribers automatically earn entries for each calendar day they use the app. Your daily entry count depends on your Ambassador Program tier: standard users earn 1 entry/day; Supporters (5+ paying referrals) earn 2 entries/day; Ambassadors (15+ paying referrals) earn 3 entries/day; Elite Ambassadors (30+ paying referrals) earn 5 entries/day. Tier status is based on your cumulative paying referral count as of the last day of the previous month. On top of daily entries, streak bonuses apply as a flat addition: a 7-day streak adds +3 bonus entries, 30-day adds +8, 90-day adds +40, 180-day adds +70, and a full 365-day streak adds +120 bonus entries per draw period. Plan-level bonuses are added automatically each draw period: Pro Lifetime members (base) receive +25 bonus entries; Pro Lifetime members with active Lifetime Perks receive +40 bonus entries. Each successful referral also permanently adds +15 bonus entries to your total each draw period.',
+        a: 'Pro subscribers automatically earn entries for each calendar day they use the app. Your daily entry count depends on your Ambassador Program tier: standard users earn 1 entry/day; Supporters (5+ paying referrals) earn 2 entries/day; Ambassadors (15+ paying referrals) earn 3 entries/day; Elite Ambassadors (30+ paying referrals) earn 5 entries/day. Tier status is based on your cumulative paying referral count as of the last day of the previous month. On top of daily entries, streak bonuses apply as a flat addition: a 7-day streak adds +3 bonus entries, 30-day adds +8, 90-day adds +40, 180-day adds +70, and a full 365-day streak adds +120 bonus entries per draw period. Plan-level bonuses are added automatically each draw period: Pro Lifetime members (base) receive +25 bonus entries; Pro Lifetime members with active Lifetime Perks receive +40 bonus entries. Each successful referral also permanently adds +15 bonus entries to your total each draw period. One-time bonuses are also available: verifying your phone number in Settings adds +25 entries, and your first calculation adds +5.',
       },
       {
         q: 'Can I enter without a paid subscription?',
