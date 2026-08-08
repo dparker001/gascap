@@ -75,7 +75,17 @@ export async function GET(req: Request) {
     if (!winbackEligible(user)) { continue; }
     if (user.emailOptOut || !user.email) { skipped++; continue; }
 
-    const curStep = (user as { winbackStep?: number }).winbackStep ?? 0;
+    const storedStep = (user as { winbackStep?: number }).winbackStep ?? 0;
+    const lastSentAt = (user as { winbackLastSentAt?: string | null }).winbackLastSentAt;
+
+    // A sequence that stalled months ago restarts from step 1 rather than
+    // resuming mid-thread — the 181 users frozen at step 1 since 2026-06-15
+    // won't remember that email, and step 1 is where the current copy and the
+    // value stack live. Dropping them straight into the step-2 "here's the
+    // math" email would reference a pitch they never really received.
+    const restarting = storedStep > 0 && winbackStalled(lastSentAt) && WINBACK_RESUME_STALLED;
+    const curStep    = restarting ? 0 : storedStep;
+
     if (curStep >= WINBACK_STEPS) { continue; } // sequence complete
 
     // Stop entirely once the campaign deadline has passed — including for users
@@ -87,14 +97,15 @@ export async function GET(req: Request) {
     // price that checkout would then refuse to honor.
     if (!winbackOfferActive()) { skipped++; continue; }
 
-    // Respect the gap between steps (step 1 fires immediately for new entrants).
-    const lastAt = (user as { winbackLastSentAt?: string | null }).winbackLastSentAt;
-
     // Don't silently resume sequences that stalled months ago — see
-    // WINBACK_RESUME_STALLED. Opt in via env to re-engage them deliberately.
-    if (curStep > 0 && winbackStalled(lastAt) && !WINBACK_RESUME_STALLED) { skipped++; continue; }
-    if (curStep > 0 && lastAt) {
-      const daysSince = (now - new Date(lastAt).getTime()) / 86_400_000;
+    // WINBACK_RESUME_STALLED. Opt in via env to re-engage them (they restart
+    // at step 1, per `restarting` above).
+    if (storedStep > 0 && winbackStalled(lastSentAt) && !WINBACK_RESUME_STALLED) { skipped++; continue; }
+
+    // Respect the gap between steps. Skipped for restarts — a stalled sequence
+    // is by definition well past the gap, and curStep is 0 there anyway.
+    if (curStep > 0 && lastSentAt) {
+      const daysSince = (now - new Date(lastSentAt).getTime()) / 86_400_000;
       if (daysSince < WINBACK_GAP_DAYS) { skipped++; continue; }
     }
 
@@ -121,7 +132,8 @@ export async function GET(req: Request) {
       const nowIso = new Date().toISOString();
       await prisma.user.update({
         where: { id: user.id },
-        // Stamp winbackStartedAt on the FIRST email — it starts the 3-day clock.
+        // Re-stamped on step 1, including restarts, so the record reflects when
+        // this run of the sequence actually began.
         data:  {
           winbackStep:       nextStep,
           winbackLastSentAt: nowIso,
