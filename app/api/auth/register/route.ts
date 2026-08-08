@@ -66,9 +66,23 @@ export async function POST(req: Request) {
 
     // Build display name from firstName + lastName if provided; fall back to
     // deriving from the email prefix for API/Google sign-ups that omit the fields.
-    const name = (firstName?.trim() && lastName?.trim())
-      ? `${firstName.trim()} ${lastName.trim()}`
-      : firstName?.trim() || nameFromEmail(email);
+    //
+    // Reject junk before it becomes someone's display name — the name fields
+    // are optional and unvalidated, and a real signup pasted their email
+    // address into one, so campaign emails greeted them "Hi
+    // Kemtavis2011@gmail.com" (greetings use name.split(' ')[0]). Anything
+    // email-shaped or containing no letters falls back to nameFromEmail().
+    const looksLikeJunk = (v: string) => v.includes('@') || !/[a-zA-Z]/.test(v);
+    const clean = (v?: string) => {
+      const trimmed = v?.trim() ?? '';
+      return !trimmed || looksLikeJunk(trimmed) ? '' : trimmed;
+    };
+    const cleanFirst = clean(firstName);
+    const cleanLast  = clean(lastName);
+
+    const name = (cleanFirst && cleanLast)
+      ? `${cleanFirst} ${cleanLast}`
+      : cleanFirst || nameFromEmail(email);
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email))
