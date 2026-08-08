@@ -18,8 +18,39 @@ export const WINBACK_LIFETIME_COUPON =
 export const WINBACK_DISCOUNT_USD = 10;
 export const WINBACK_PRICE_USD    = 9.99;
 export const WINBACK_STEPS        = 3;     // number of emails in the sequence
-export const WINBACK_GAP_DAYS     = 1;     // days between sequence steps (day 0,1,2)
-export const WINBACK_WINDOW_DAYS  = 3;     // offer expires 3 days after a user's 1st email
+// Days between sequence steps. Was 1 (three emails on consecutive days), which
+// made sense when the deadline was a rolling 3-day per-user window. With a
+// fixed end-of-August deadline, a 3-day burst would land the "last call" email
+// ~20 days before the offer actually closes. At 10 days the three emails spread
+// across the campaign and step 3 arrives near the real deadline.
+export const WINBACK_GAP_DAYS     = 10;
+
+/**
+ * Hard campaign deadline for the $9.99 price — replaces the old rolling
+ * per-user 3-day window. Everyone eligible gets the same end date, so the
+ * emails can name a real calendar date instead of "3 days from whenever
+ * your first email happened to land."
+ *
+ * Override in Railway (WINBACK_END_DATE) to extend or end it early without a
+ * deploy. Expressed in ET, the business's timezone.
+ */
+export const WINBACK_END_DATE =
+  process.env.WINBACK_END_DATE ?? '2026-08-31T23:59:59-04:00';
+
+/** Human-readable deadline for email copy, e.g. "August 31". */
+export function winbackDeadlineLabel(locale: 'en' | 'es' = 'en'): string {
+  const d = new Date(WINBACK_END_DATE);
+  if (Number.isNaN(d.getTime())) return locale === 'es' ? 'pronto' : 'soon';
+  return d.toLocaleDateString(locale === 'es' ? 'es-US' : 'en-US', {
+    month: 'long', day: 'numeric', timeZone: 'America/New_York',
+  });
+}
+
+/** Whole days remaining before the offer closes (0 once it has passed). */
+export function winbackDaysLeft(): number {
+  const ms = new Date(WINBACK_END_DATE).getTime() - Date.now();
+  return ms <= 0 ? 0 : Math.ceil(ms / 86_400_000);
+}
 
 export interface WinbackUser {
   plan?:                    string | null;
@@ -50,20 +81,19 @@ export function winbackEligible(user: WinbackUser): boolean {
 }
 
 /**
- * Is the $9.99 deadline still open for this user? The offer is a real 3-day
- * window starting at their FIRST win-back email (winbackStartedAt). Before the
- * sequence starts (winbackStartedAt null) the offer is open — so the in-app
- * banner / checkout work for anyone eligible until their clock starts ticking.
+ * Is the $9.99 offer still open? A single campaign-wide deadline
+ * (WINBACK_END_DATE) rather than the old rolling per-user 3-day window, so
+ * every eligible user sees the same end date and the emails can name a real
+ * calendar date. Takes an optional user arg purely to keep the old call
+ * signature working at existing call sites.
  */
-export function winbackOfferActive(user: WinbackUser): boolean {
-  const started = user.winbackStartedAt;
-  if (!started) return true; // not started yet → still claimable
-  const ms = new Date(started).getTime();
-  if (Number.isNaN(ms)) return true;
-  return (Date.now() - ms) < WINBACK_WINDOW_DAYS * 86_400_000;
+export function winbackOfferActive(_user?: WinbackUser): boolean {
+  const end = new Date(WINBACK_END_DATE).getTime();
+  if (Number.isNaN(end)) return false; // malformed env value → fail closed
+  return Date.now() < end;
 }
 
-/** Targeted AND within the 3-day deadline — the gate for showing/applying the offer. */
+/** Targeted AND before the campaign deadline — the gate for showing/applying the offer. */
 export function winbackOfferAvailable(user: WinbackUser): boolean {
   return winbackEligible(user) && winbackOfferActive(user);
 }

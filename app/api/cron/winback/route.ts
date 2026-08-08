@@ -17,15 +17,18 @@ import { getAllUsers }                    from '@/lib/users';
 import { sendMail, winbackEmailHtml }     from '@/lib/email';
 import { prisma }                         from '@/lib/prisma';
 import { getawayPromoActive }              from '@/lib/getawayPromo';
-import { winbackEligible, winbackOfferActive, WINBACK_STEPS, WINBACK_GAP_DAYS } from '@/lib/winbackOffer';
+import { winbackEligible, winbackOfferActive, winbackDeadlineLabel, WINBACK_STEPS, WINBACK_GAP_DAYS } from '@/lib/winbackOffer';
 
 // Subjects are personalized with the recipient's first name and always name the
-// offer as "Lifetime" (so $9.99 is never mistaken for a monthly price). Timing
-// matches the 3-day per-user deadline (emails on day 0, 1, 2).
+// offer as "Lifetime" (so $9.99 is never mistaken for a monthly price). They
+// reference the campaign-wide deadline (WINBACK_END_DATE) rather than relative
+// days — the old "expires in 2 days" / "ends tomorrow" copy was only accurate
+// when the deadline was a rolling 3-day per-user window.
+const DEADLINE = winbackDeadlineLabel();
 const SUBJECTS: Record<1 | 2 | 3, (firstName: string) => string> = {
-  1: (n) => `${n}, come back to GasCap™ Pro — $9.99 Lifetime (3 days only)`,
-  2: (n) => `${n}, your $9.99 GasCap™ Lifetime offer expires in 2 days ⏰`,
-  3: (n) => `Last call, ${n}: $9.99 GasCap™ Lifetime ends tomorrow`,
+  1: (n) => `${n}, your GasCap™ garage is still here — Pro for life, $9.99`,
+  2: (n) => `${n}, $9.99 once vs $2.99 every month`,
+  3: (n) => `Last call, ${n}: $9.99 GasCap™ Lifetime ends ${DEADLINE}`,
 };
 
 const UNSUB = 'https://www.gascap.app/settings';
@@ -98,7 +101,7 @@ export async function GET(req: Request) {
         to:             user.email,
         subject:        SUBJECTS[nextStep](firstName),
         html:           winbackEmailHtml(firstName, nextStep, withGetaway),
-        text:           `Hi ${firstName}, come back to GasCap™ Pro — get Pro Lifetime for $9.99 (50% off)${withGetaway ? ' plus a FREE resort getaway' : ''}, 3 days only. The discount applies automatically at checkout: https://www.gascap.app/upgrade?wb=1`,
+        text:           `Hi ${firstName}, your GasCap™ garage is still here — saved vehicles and fill-up history included. Get Pro Lifetime for $9.99 instead of $19.99 (one payment, no subscription)${withGetaway ? ', plus a complimentary resort getaway certificate' : ''}. Rental Car Return Mode, live station prices, the AI Fuel Advisor, MPG tracking and +25 monthly giveaway entries all unlock again. Offer ends ${DEADLINE}. The discount applies automatically at checkout: https://www.gascap.app/upgrade?wb=1`,
         unsubscribeUrl: UNSUB,
       });
 

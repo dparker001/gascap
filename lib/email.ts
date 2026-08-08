@@ -6,6 +6,7 @@
  * SMTP env vars:   SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM
  */
 import { formatPeriodLabel as _formatPeriodLabel } from '@/lib/giveaway';
+import { winbackDeadlineLabel } from '@/lib/winbackOffer';
 
 interface MailOptions {
   to:              string;
@@ -799,30 +800,51 @@ export function winbackEmailHtml(firstName: string, step: 1 | 2 | 3, withGetaway
           </table>
         </td></tr>` : '';
 
+  const deadline = winbackDeadlineLabel();
+
+  // What Pro actually unlocks. The previous version of this email never said —
+  // it asked for the sale without naming the product, which is a hard ask for
+  // someone who last opened the app a month ago.
+  const valueStack = `
+        <tr><td style="padding:0 32px 20px;">
+          <table cellpadding="0" cellspacing="0" border="0" role="presentation" width="100%">
+            <tr><td style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;padding:18px 22px;">
+              <p style="margin:0 0 10px;font-size:12px;font-weight:900;color:#1e2d4a;text-transform:uppercase;letter-spacing:0.06em;">
+                Everything that unlocks again
+              </p>
+              <p style="margin:0 0 7px;font-size:13px;color:#334155;line-height:1.5;">🚗 <strong>Rental Car Return Mode</strong> — the exact gallons to buy before drop-off, so you skip the $10–12/gal refuel fee</p>
+              <p style="margin:0 0 7px;font-size:13px;color:#334155;line-height:1.5;">⛽ <strong>Live prices at nearby stations</strong> — tap any price to fill the calculator instantly</p>
+              <p style="margin:0 0 7px;font-size:13px;color:#334155;line-height:1.5;">🤖 <strong>AI Fuel Advisor</strong> — ask it anything about your mileage, costs, or an upcoming trip</p>
+              <p style="margin:0 0 7px;font-size:13px;color:#334155;line-height:1.5;">📊 <strong>MPG tracking</strong> — a sudden drop is often the first sign of an engine problem</p>
+              <p style="margin:0;font-size:13px;color:#334155;line-height:1.5;">🎁 <strong>+25 giveaway entries every month</strong> — better odds in the $50 gas card drawing, for life</p>
+            </td></tr>
+          </table>
+        </td></tr>`;
+
   const byStep = {
     1: {
       emoji: '🚗',
-      preheader: 'Your saved vehicles & fill-up history are still here. Unlock Pro for life — $9.99, half off.',
-      headline: 'Your garage is still here —<br>come back for $9.99 Lifetime',
-      lead: `Hi ${firstName}, your saved vehicles and fill-up history didn't go anywhere. Unlock all of GasCap™ Pro again — this time <strong>for life</strong> — for half off.`,
-      button: 'Get $9.99 Lifetime access →',
-      note: 'One payment. Pro forever. This offer ends in 3 days.',
+      preheader: `Your garage is still here. Pro for life — $9.99 instead of $19.99, through ${deadline}.`,
+      headline: 'Everything in your garage<br>is still waiting',
+      lead: `Hi ${firstName}, your saved vehicles and every fill-up you logged are still in your account — nothing was deleted when your trial ended. For <strong>$9.99, once</strong>, you can unlock all of it again and never pay for GasCap™ Pro again.`,
+      button: 'Unlock Pro for life — $9.99 →',
+      note: `Half off through ${deadline}. One payment, no subscription.`,
     },
     2: {
-      emoji: '⏰',
-      preheader: 'Pro saves drivers $150–$400 a year. Lock in Lifetime for $9.99 before it ends.',
-      headline: 'Your $9.99 Lifetime offer<br>expires in 2 days',
-      lead: `Hi ${firstName}, GasCap™ Pro members save an estimated <strong>$150–$400 a year</strong> with price-drop alerts, the fill-up optimizer, and MPG tracking. Lock in Lifetime once for $9.99 — then it's free every year after.`,
-      button: 'Lock in $9.99 Lifetime →',
-      note: '$9.99 once vs. ~$36/year on monthly. The math is easy.',
+      emoji: '🧮',
+      preheader: `$9.99 once vs $2.99 every month. Pro Lifetime pays for itself by winter.`,
+      headline: 'The math on $9.99',
+      lead: `Hi ${firstName}, GasCap™ Pro is $2.99/month — about $36 a year, every year. Lifetime is <strong>$9.99 one time</strong>, which pays for itself in under four months and costs nothing after that. One skipped rental refuel fee covers it outright.`,
+      button: 'Get Lifetime for $9.99 →',
+      note: `$9.99 once vs ~$36 every year. Offer ends ${deadline}.`,
     },
     3: {
       emoji: '🏁',
-      preheader: 'Final reminder — your 50%-off Lifetime offer ends tomorrow. $9.99 once, Pro forever.',
-      headline: 'Last call: $9.99 Lifetime<br>ends tomorrow',
-      lead: `Hi ${firstName}, this is the final reminder — your 50%-off Lifetime offer ends tomorrow. "The AI told me my MPG dropped 12% — GasCap™ paid for itself in a month." — Marcus J., Orlando.`,
-      button: 'Get Lifetime before it ends →',
-      note: 'After tomorrow, Lifetime returns to $19.99.',
+      preheader: `Last call — $9.99 Lifetime ends ${deadline}. After that it returns to $19.99.`,
+      headline: `Last call — this ends<br>${deadline}`,
+      lead: `Hi ${firstName}, this is the final reminder. After <strong>${deadline}</strong>, Lifetime goes back to $19.99 and this 50% link stops working. If you're going to keep using GasCap™ at all, this is the cheapest it will ever be.`,
+      button: 'Claim $9.99 Lifetime →',
+      note: `Ends ${deadline}. Then back to $19.99.`,
     },
   }[step];
 
@@ -864,6 +886,7 @@ ${brandHeader()}
           </table>
         </td></tr>
 ${getawayBlock}
+${valueStack}
         <!-- CTA -->
         <tr><td style="padding:0 32px 28px;text-align:center;">
           <a href="${cta}"
