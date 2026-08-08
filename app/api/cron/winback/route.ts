@@ -17,7 +17,7 @@ import { getAllUsers }                    from '@/lib/users';
 import { sendMail, winbackEmailHtml }     from '@/lib/email';
 import { prisma }                         from '@/lib/prisma';
 import { getawayPromoActive }              from '@/lib/getawayPromo';
-import { winbackEligible, winbackOfferActive, winbackDeadlineLabel, WINBACK_STEPS, WINBACK_GAP_DAYS } from '@/lib/winbackOffer';
+import { winbackEligible, winbackOfferActive, winbackDeadlineLabel, winbackStalled, WINBACK_RESUME_STALLED, WINBACK_STEPS, WINBACK_GAP_DAYS } from '@/lib/winbackOffer';
 
 // Subjects are personalized with the recipient's first name and always name the
 // offer as "Lifetime" (so $9.99 is never mistaken for a monthly price). They
@@ -78,12 +78,21 @@ export async function GET(req: Request) {
     const curStep = (user as { winbackStep?: number }).winbackStep ?? 0;
     if (curStep >= WINBACK_STEPS) { continue; } // sequence complete
 
-    // Once a user's 3-day deadline has passed, stop the sequence (don't send
-    // "still time!" emails after the offer they were promised has expired).
-    if (curStep > 0 && !winbackOfferActive(user)) { skipped++; continue; }
+    // Stop entirely once the campaign deadline has passed — including for users
+    // who have never been emailed (curStep === 0). The old `curStep > 0` guard
+    // was correct when the deadline was a rolling per-user window (a new
+    // entrant's clock hadn't started yet, so the offer was genuinely still
+    // open for them). With a fixed campaign-wide deadline that's no longer
+    // true: after the end date a first-time entrant would be emailed a $9.99
+    // price that checkout would then refuse to honor.
+    if (!winbackOfferActive()) { skipped++; continue; }
 
     // Respect the gap between steps (step 1 fires immediately for new entrants).
     const lastAt = (user as { winbackLastSentAt?: string | null }).winbackLastSentAt;
+
+    // Don't silently resume sequences that stalled months ago — see
+    // WINBACK_RESUME_STALLED. Opt in via env to re-engage them deliberately.
+    if (curStep > 0 && winbackStalled(lastAt) && !WINBACK_RESUME_STALLED) { skipped++; continue; }
     if (curStep > 0 && lastAt) {
       const daysSince = (now - new Date(lastAt).getTime()) / 86_400_000;
       if (daysSince < WINBACK_GAP_DAYS) { skipped++; continue; }

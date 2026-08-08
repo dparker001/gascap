@@ -37,6 +37,26 @@ export const WINBACK_GAP_DAYS     = 10;
 export const WINBACK_END_DATE =
   process.env.WINBACK_END_DATE ?? '2026-08-31T23:59:59-04:00';
 
+/**
+ * Should users whose sequence STALLED long ago be resumed mid-sequence?
+ *
+ * 181 users received step 1 on 2026-06-15 and then froze, because the old
+ * per-user 3-day window closed before the next send. Moving to a campaign-wide
+ * deadline silently made all of them eligible again — one cron run would have
+ * sent 181 step-2 emails referencing an offer they last heard about two months
+ * ago. Off by default so that can't happen unintentionally; set
+ * WINBACK_RESUME_STALLED=true in Railway to deliberately re-engage them.
+ */
+export const WINBACK_RESUME_STALLED = process.env.WINBACK_RESUME_STALLED === 'true';
+
+/** A sequence is "stalled" if its last email predates the current campaign. */
+export function winbackStalled(lastSentAt?: string | null): boolean {
+  if (!lastSentAt) return false;
+  const ms = new Date(lastSentAt).getTime();
+  if (Number.isNaN(ms)) return false;
+  return (Date.now() - ms) > 30 * 86_400_000;
+}
+
 /** Human-readable deadline for email copy, e.g. "August 31". */
 export function winbackDeadlineLabel(locale: 'en' | 'es' = 'en'): string {
   const d = new Date(WINBACK_END_DATE);
