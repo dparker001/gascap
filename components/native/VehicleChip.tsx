@@ -10,6 +10,8 @@
 import { useSession } from 'next-auth/react';
 import { useEffect, useState } from 'react';
 import type { Vehicle } from '@/components/SavedVehicles';
+import { isElectric, usesGasoline } from '@/lib/vehicleSpecs';
+import { CALC_TAB_EVENT, SET_CALC_TAB_EVENT, type CalcTab } from '@/components/CalculatorTabs';
 
 interface Props {
   /** Currently selected vehicle id (from CalculatorTabs state) */
@@ -36,6 +38,19 @@ function ChevronDown() {
       <path d="m6 9 6 6 6-6"/>
     </svg>
   );
+}
+
+/**
+ * Battery-electric vehicles are stored with gallons 0 (no tank) and their real
+ * capacity in vehicleSpecs.batteryKwh — so show kWh for them rather than "0g".
+ * PHEVs have both; the tank is what the gas tab needs, so show gallons.
+ */
+function capacityLabel(v: Vehicle, long = false): string {
+  const kwh = v.vehicleSpecs?.batteryKwh;
+  if (kwh && !usesGasoline(v.fuelType, v.vehicleSpecs)) {
+    return long ? `${kwh} kWh battery` : `${kwh}kWh`;
+  }
+  return long ? `${v.gallons} gal tank` : `${v.gallons}g`;
 }
 
 export default function VehicleChip({ selectedVehicleId, onSelect }: Props) {
@@ -72,9 +87,29 @@ export default function VehicleChip({ selectedVehicleId, onSelect }: Props) {
       .catch(() => { /* silent — chip just won't show */ });
   }, [session]);
 
-  if (!session || vehicles.length === 0) return null;
+  // Track which calculator is showing so the list can be filtered to vehicles
+  // that tab can actually handle (see CalculatorTabs).
+  const [calcTab, setCalcTab] = useState<CalcTab>('target');
+  useEffect(() => {
+    function handler(e: Event) {
+      const tab = (e as CustomEvent<{ tab?: CalcTab }>).detail?.tab;
+      if (tab) setCalcTab(tab);
+    }
+    window.addEventListener(CALC_TAB_EVENT, handler);
+    return () => window.removeEventListener(CALC_TAB_EVENT, handler);
+  }, []);
 
-  const active = vehicles.find((v) => v.id === (activeId ?? selectedVehicleId)) ?? vehicles[0];
+  // Showing a gas truck while costing a charge is noise, and vice versa. PHEVs
+  // pass both checks — they genuinely burn gasoline and charge.
+  const relevant = vehicles.filter((v) =>
+    calcTab === 'ev'
+      ? isElectric(v.fuelType, v.vehicleSpecs)
+      : usesGasoline(v.fuelType, v.vehicleSpecs)
+  );
+
+  if (!session || relevant.length === 0) return null;
+
+  const active = relevant.find((v) => v.id === (activeId ?? selectedVehicleId)) ?? relevant[0];
 
   return (
     <>
@@ -88,7 +123,7 @@ export default function VehicleChip({ selectedVehicleId, onSelect }: Props) {
       >
         <CarIcon />
         <span className="max-w-[100px] truncate">{active.name}</span>
-        <span className="opacity-60">· {active.gallons}g</span>
+        <span className="opacity-60">· {capacityLabel(active)}</span>
         <ChevronDown />
       </button>
 
@@ -116,7 +151,7 @@ export default function VehicleChip({ selectedVehicleId, onSelect }: Props) {
             </p>
 
             <div className="overflow-y-auto max-h-72">
-              {vehicles.map((v) => {
+              {relevant.map((v) => {
                 const isActive = v.id === active.id;
                 return (
                   <button
@@ -125,6 +160,14 @@ export default function VehicleChip({ selectedVehicleId, onSelect }: Props) {
                     onClick={() => {
                       setActiveId(v.id);
                       onSelect(String(v.gallons), v);
+                      // A battery-electric vehicle has no tank, so loading it
+                      // into the gas calculator would be meaningless — route to
+                      // the EV tab instead. PHEVs stay put; they work on both.
+                      const bev = isElectric(v.fuelType, v.vehicleSpecs)
+                        && !usesGasoline(v.fuelType, v.vehicleSpecs);
+                      if (bev && calcTab !== 'ev') {
+                        window.dispatchEvent(new CustomEvent(SET_CALC_TAB_EVENT, { detail: { tab: 'ev' } }));
+                      }
                       setOpen(false);
                     }}
                     className={`w-full flex items-center justify-between px-5 py-3.5
@@ -138,7 +181,7 @@ export default function VehicleChip({ selectedVehicleId, onSelect }: Props) {
                           {v.name}
                         </p>
                         <p className="text-xs text-slate-400">
-                          {v.gallons} gal tank
+                          {capacityLabel(v, true)}
                           {v.year && v.make ? ` · ${v.year} ${v.make}` : ''}
                         </p>
                       </div>

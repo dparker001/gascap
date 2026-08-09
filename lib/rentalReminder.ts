@@ -16,7 +16,11 @@ function isNative(): boolean {
  * Schedule (or reschedule) the drop-off reminder for the given local date/time.
  * If the computed reminder time has already passed, no notification is scheduled.
  */
-export async function scheduleRentalReturnReminder(dateStr: string, timeStr: string): Promise<void> {
+export async function scheduleRentalReturnReminder(
+  dateStr: string,
+  timeStr: string,
+  opts: { isEv?: boolean } = {},
+): Promise<void> {
   if (!isNative() || !dateStr || !timeStr) return;
   try {
     const returnAt = new Date(`${dateStr}T${timeStr}:00`);
@@ -31,11 +35,18 @@ export async function scheduleRentalReturnReminder(dateStr: string, timeStr: str
       if (req.display !== 'granted') return;
     }
 
+    // EV rentals aren't refuelled per gallon — they're returned to a required
+    // charge level (same-as-pickup capped ~75-80% at Hertz/Dollar/Thrifty/SIXT,
+    // or a flat 70% minimum at Avis/Budget). Charging also takes far longer
+    // than a fill-up, so the wording nudges toward starting now rather than
+    // stopping on the way.
     await LocalNotifications.schedule({
       notifications: [{
         id:    NOTIFICATION_ID,
-        title: '⛽ Rental due back in 2 hours',
-        body:  "Fill up before drop-off to avoid the rental company's refuel fee.",
+        title: opts.isEv ? '🔋 Rental due back in 2 hours' : '⛽ Rental due back in 2 hours',
+        body:  opts.isEv
+          ? 'Charge to your required return level now — charging takes longer than a fill-up.'
+          : "Fill up before drop-off to avoid the rental company's refuel fee.",
         schedule: { at: reminderAt },
         extra: { tab: 'calculator' },
       }],
