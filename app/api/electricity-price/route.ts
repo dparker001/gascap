@@ -46,7 +46,11 @@ async function getElectricityPrice(stateCode: string): Promise<number | null> {
       api_key:                    EIA_KEY,
       frequency:                  'monthly',
       'data[0]':                  'price',
-      'facets[sectorName][]':     'residential',
+      // EIA v2 rejects 'sectorName' outright — "The only valid facets are
+      // 'stateid', and 'sectorid'" — which made every lookup return null and
+      // surface as "Rate lookup unavailable" in the EV calculator. RES is the
+      // residential sector code.
+      'facets[sectorid][]':       'RES',
       'sort[0][column]':          'period',
       'sort[0][direction]':       'desc',
       offset:                     '0',
