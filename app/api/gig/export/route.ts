@@ -39,7 +39,10 @@ export async function GET(req: NextRequest) {
   }
 
   const totalSpend   = fillups.reduce((s, f) => s + f.totalCost, 0);
-  const totalGallons = fillups.reduce((s, f) => s + f.gallons, 0);
+  // Gallons and kWh are different units — summing them would put a meaningless
+  // number on a document someone files taxes with. Totalled separately.
+  const totalGallons = fillups.filter(f => f.energyUnit !== 'kwh').reduce((s, f) => s + f.gallons, 0);
+  const totalKwh     = fillups.filter(f => f.energyUnit === 'kwh').reduce((s, f) => s + f.gallons, 0);
   const bizMiles     = mileage.filter(m => m.category === 'business').reduce((s, m) => s + m.miles, 0);
   const irsDeduction = bizMiles * IRS_RATE;
 
@@ -50,22 +53,28 @@ export async function GET(req: NextRequest) {
   lines.push('');
 
   // ── Fuel fill-ups ─────────────────────────────────────────────────────────
-  lines.push('FUEL FILL-UPS');
-  lines.push('Date,Platform,Station,Gallons,Price/Gal,Total Cost');
+  lines.push('FUEL / CHARGING');
+  // Explicit Unit column rather than a "Gallons" header that would mislabel
+  // every EV charge session on a tax document.
+  lines.push('Date,Platform,Station or Charger,Quantity,Unit,Unit Price,Total Cost');
   if (fillups.length === 0) {
     lines.push('(no fill-ups logged for this year)');
   } else {
     for (const f of fillups) {
+      const kwh = f.energyUnit === 'kwh';
       lines.push([
         esc(f.date),
         esc(f.platform?.replace('_', ' ') ?? ''),
         esc(f.station),
         f.gallons.toFixed(3),
+        kwh ? 'kWh' : 'gal',
         f.pricePerGallon.toFixed(3),
         f.totalCost.toFixed(2),
       ].join(','));
     }
-    lines.push(`,,Total,${totalGallons.toFixed(3)},,${ totalSpend.toFixed(2)}`);
+    if (totalGallons > 0) lines.push(`,,Total gallons,${totalGallons.toFixed(3)},gal,,`);
+    if (totalKwh     > 0) lines.push(`,,Total kWh,${totalKwh.toFixed(3)},kWh,,`);
+    lines.push(`,,Total spend,,,,${totalSpend.toFixed(2)}`);
   }
   lines.push('');
 

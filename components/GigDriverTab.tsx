@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useIsNative } from '@/hooks/useIsNative';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
 
 const PLATFORMS = [
   { value: 'uber',        label: 'Uber' },
@@ -22,9 +23,18 @@ function todayStr() {
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface GigFillup {
+  // gallons/pricePerGallon hold quantity + unit price for whichever energy the
+  // vehicle takes; energyUnit says which. See prisma/schema.prisma.
   id: string; date: string; gallons: number; pricePerGallon: number;
+  energyUnit?: EnergyUnit;
   totalCost: number; station?: string | null; platform?: string | null;
 }
+
+export type EnergyUnit = 'gal' | 'kwh';
+
+/** Rows predate the column, so treat a missing unit as gallons. */
+const unitOf = (f: { energyUnit?: EnergyUnit | null }): EnergyUnit =>
+  f.energyUnit === 'kwh' ? 'kwh' : 'gal';
 
 interface GigMileageEntry {
   id: string; date: string; miles: number; platform?: string | null;
@@ -42,9 +52,23 @@ function calcSummary(fillups: GigFillup[], mileage: GigMileageEntry[]) {
   const wFillups  = fillups.filter(f => f.date >= weekStr);
   const wMileage  = mileage.filter(m => m.date >= weekStr && m.category === 'business');
   const totalSpend   = wFillups.reduce((s, f) => s + f.totalCost, 0);
-  const totalGallons = wFillups.reduce((s, f) => s + f.gallons, 0);
   const totalMiles   = wMileage.reduce((s, m) => s + m.miles, 0);
-  const avgPpg = totalGallons > 0 ? totalSpend / totalGallons : 0;
+
+  // Gallons and kWh are different units and must never be summed together —
+  // a driver with a gas car and an EV, or a PHEV, would otherwise see a
+  // meaningless total. Tracked separately; the UI shows whichever apply.
+  const gasFills = wFillups.filter(f => unitOf(f) === 'gal');
+  const kwhFills = wFillups.filter(f => unitOf(f) === 'kwh');
+  const totalGallons = gasFills.reduce((s, f) => s + f.gallons, 0);
+  const totalKwh     = kwhFills.reduce((s, f) => s + f.gallons, 0);
+  const gasSpend     = gasFills.reduce((s, f) => s + f.totalCost, 0);
+  const kwhSpend     = kwhFills.reduce((s, f) => s + f.totalCost, 0);
+  const avgPpg  = totalGallons > 0 ? gasSpend / totalGallons : 0;
+  const avgPkwh = totalKwh     > 0 ? kwhSpend / totalKwh     : 0;
+
+  // Cost per mile is unit-agnostic — total spend over total miles — so it stays
+  // correct for gas, electric, or a mixed fleet. It's the metric gig drivers
+  // actually optimise, and the one place EVs show their advantage.
   const cpm    = totalMiles  > 0 && totalSpend > 0 ? totalSpend / totalMiles : 0;
 
   // All loaded data is already scoped to the current year, so total biz miles = YTD
@@ -52,7 +76,11 @@ function calcSummary(fillups: GigFillup[], mileage: GigMileageEntry[]) {
     .filter(m => m.category === 'business')
     .reduce((s, m) => s + m.miles, 0);
 
-  return { totalSpend, totalGallons, totalMiles, avgPpg, cpm, fillupCount: wFillups.length, ytdMiles };
+  return {
+    totalSpend, totalGallons, totalKwh, totalMiles, avgPpg, avgPkwh, cpm,
+    fillupCount: wFillups.length, ytdMiles,
+    hasGas: gasFills.length > 0, hasKwh: kwhFills.length > 0,
+  };
 }
 
 // ── Fuel log form ─────────────────────────────────────────────────────────────
@@ -66,6 +94,10 @@ function FillupForm({ onSaved }: { onSaved: () => void }) {
   const [saving,   setSaving]   = useState(false);
   const [saved,    setSaved]    = useState(false);
   const [prefilled, setPrefilled] = useState(false);
+  // Persisted — a driver's vehicle doesn't change between sessions, so don't
+  // make an EV driver re-pick kWh every single time they log a charge.
+  const [unit, setUnit] = useLocalStorage<EnergyUnit>('gc_gig_energy_unit', 'gal');
+  const isKwh = unit === 'kwh';
 
   useEffect(() => {
     // Apply prefill from sessionStorage on mount (event may have fired before this component mounted)
@@ -105,6 +137,7 @@ function FillupForm({ onSaved }: { onSaved: () => void }) {
           date,
           gallons:        parseFloat(gallons),
           pricePerGallon: parseFloat(ppg),
+          energyUnit:     unit,
           station:        station || undefined,
           platform:       platform || undefined,
         }),
@@ -149,23 +182,48 @@ function FillupForm({ onSaved }: { onSaved: () => void }) {
           {PLATFORMS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
         </select>
       </div>
+      {/* Gas or electric. EV gig drivers previously had to type kWh into a
+          field labelled "Gallons", which then reported as gallons everywhere
+          including the tax CSV. */}
+      <div>
+        <label className="field-label">Energy type</label>
+        <div className="grid grid-cols-2 gap-2">
+          {([['gal', '\u26fd Gas'], ['kwh', '\U0001f50b Electric']] as const).map(([val, label]) => (
+            <button
+              key={val}
+              type="button"
+              onClick={() => setUnit(val)}
+              className={`py-2 rounded-xl text-xs font-black border-2 transition-colors ${
+                unit === val
+                  ? 'border-teal-400 bg-teal-50 text-teal-700'
+                  : 'border-slate-200 text-slate-500 hover:border-slate-300'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="field-label">Gallons</label>
+          <label className="field-label">{isKwh ? 'kWh' : 'Gallons'}</label>
           <input type="number" inputMode="decimal" className="input-field text-sm"
-            placeholder="12.4" min="0.1" max="200" step="0.01"
+            placeholder={isKwh ? '48.5' : '12.4'} min="0.1" max={isKwh ? '400' : '200'} step="0.01"
             value={gallons} onChange={e => setGallons(e.target.value)} required />
         </div>
         <div>
-          <label className="field-label">Price / gal</label>
+          <label className="field-label">{isKwh ? 'Price / kWh' : 'Price / gal'}</label>
           <input type="number" inputMode="decimal" className="input-field text-sm"
-            placeholder="3.49" min="0.01" max="30" step="0.001"
+            placeholder={isKwh ? '0.16' : '3.49'} min="0.01" max="30" step="0.001"
             value={ppg} onChange={e => setPpg(e.target.value)} required />
         </div>
       </div>
       <div>
-        <label className="field-label">Station <span className="font-normal text-slate-400">(optional)</span></label>
-        <input type="text" className="input-field text-sm" placeholder="Shell, Chevron…"
+        <label className="field-label">
+          {isKwh ? 'Charger' : 'Station'} <span className="font-normal text-slate-400">(optional)</span>
+        </label>
+        <input type="text" className="input-field text-sm"
+          placeholder={isKwh ? 'Home, Electrify America\u2026' : 'Shell, Chevron\u2026'}
           value={station} onChange={e => setStation(e.target.value)} maxLength={80} />
       </div>
       {total && (
@@ -309,7 +367,9 @@ function RecentFillups({ fillups, onDelete }: { fillups: GigFillup[]; onDelete: 
           <div className="flex-1 min-w-0">
             <span className="font-black text-slate-700">{f.date}</span>
             {f.platform && <span className="ml-1.5 text-[10px] text-slate-400 capitalize">{f.platform.replace('_', ' ')}</span>}
-            <span className="ml-2 text-slate-500">{f.gallons.toFixed(2)} gal @ ${f.pricePerGallon.toFixed(3)}</span>
+            <span className="ml-2 text-slate-500">
+              {f.gallons.toFixed(2)} {unitOf(f) === 'kwh' ? 'kWh' : 'gal'} @ ${f.pricePerGallon.toFixed(3)}
+            </span>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
             <span className="font-black text-brand-orange">${f.totalCost.toFixed(2)}</span>
@@ -461,9 +521,21 @@ export default function GigDriverTab() {
               { label: 'Fuel spend',  value: `$${stats.totalSpend.toFixed(2)}` },
               { label: 'Biz miles',   value: stats.totalMiles > 0 ? `${stats.totalMiles.toFixed(0)} mi` : '—' },
               { label: 'Cost/mile',   value: stats.cpm > 0 ? `$${stats.cpm.toFixed(3)}` : '—' },
-              { label: 'Avg $/gal',   value: stats.avgPpg > 0 ? `$${stats.avgPpg.toFixed(3)}` : '—' },
+              // Gas and electric are shown separately — never summed. A driver
+              // with only one kind sees only that one; a mixed fleet sees both.
+              ...(stats.hasGas || !stats.hasKwh ? [
+                { label: 'Avg $/gal', value: stats.avgPpg > 0 ? `$${stats.avgPpg.toFixed(3)}` : '—' },
+              ] : []),
+              ...(stats.hasKwh ? [
+                { label: 'Avg $/kWh', value: stats.avgPkwh > 0 ? `$${stats.avgPkwh.toFixed(3)}` : '—' },
+              ] : []),
               { label: 'Fill-ups',    value: String(stats.fillupCount) },
-              { label: 'Gallons',     value: stats.totalGallons > 0 ? stats.totalGallons.toFixed(1) : '—' },
+              ...(stats.hasGas || !stats.hasKwh ? [
+                { label: 'Gallons', value: stats.totalGallons > 0 ? stats.totalGallons.toFixed(1) : '—' },
+              ] : []),
+              ...(stats.hasKwh ? [
+                { label: 'kWh', value: stats.totalKwh > 0 ? stats.totalKwh.toFixed(1) : '—' },
+              ] : []),
             ].map(s => (
               <div key={s.label} className="text-center">
                 <p className="text-sm font-black text-slate-800">{s.value}</p>

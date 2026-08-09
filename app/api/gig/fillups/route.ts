@@ -37,6 +37,7 @@ export async function POST(req: NextRequest) {
     date:           string;
     gallons:        number;
     pricePerGallon: number;
+    energyUnit?:    'gal' | 'kwh';   // EV drivers log kWh at $/kWh
     station?:       string;
     odometer?:      number;
     platform?:      string;
@@ -60,6 +61,7 @@ export async function POST(req: NextRequest) {
         date:           body.date,
         gallons:        body.gallons,
         pricePerGallon: body.pricePerGallon,
+        energyUnit:     body.energyUnit === 'kwh' ? 'kwh' : 'gal',
         totalCost:      Math.round(body.gallons * body.pricePerGallon * 100) / 100,
         station:        body.station?.trim() || null,
         odometer:       body.odometer ?? null,

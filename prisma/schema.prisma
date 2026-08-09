@@ -176,8 +176,15 @@ model GigFillup {
   id             String  @id
   userId         String
   date           String   // YYYY-MM-DD
+  // gallons/pricePerGallon hold the QUANTITY and UNIT PRICE for whichever
+  // energy the vehicle takes — gallons at $/gal, or kWh at $/kWh for an EV.
+  // energyUnit says which, so summaries and the tax CSV can label them
+  // correctly. Column names are historical; renaming them would break every
+  // existing caller for no functional gain. Cost per mile is unaffected —
+  // it's totalCost ÷ miles, which is unit-agnostic.
   gallons        Float
   pricePerGallon Float
+  energyUnit     String  @default("gal")  // "gal" | "kwh"
   totalCost      Float
   station        String?
   odometer       Float?
