@@ -51,6 +51,31 @@ export interface VehicleSpecs {
   curtainAirbags?:   string;
   kneeAirbags?:      string;
 
+  // ── Electric / plug-in hybrid ────────────────────────────────────
+  // Set when the vehicle is saved from the EV calculator so the EV tab can
+  // prefill battery + efficiency the same way Target Fill prefills tank size.
+  // Lives here rather than as new Vehicle columns — no migration needed, and
+  // these only apply to a minority of vehicles.
+  batteryKwh?:       number;   // usable battery capacity
+  efficiencyMiKwh?:  number;   // mi/kWh (EPA rating approx)
+  isPHEV?:           boolean;  // burns gas too — appears in BOTH calculators
+
   // ── Metadata ─────────────────────────────────────────────────────
   decodedAt?:        string;   // ISO timestamp
+}
+
+/** True for battery-electric and plug-in hybrids — anything the EV tab handles. */
+export function isElectric(fuelType?: string | null, specs?: VehicleSpecs | null): boolean {
+  if (specs?.batteryKwh) return true;
+  const f = (fuelType ?? '').toLowerCase();
+  return f.includes('electric') || f.includes('phev') || f.includes('plug-in');
+}
+
+/** True for anything the gas calculator handles — includes PHEVs, which burn both. */
+export function usesGasoline(fuelType?: string | null, specs?: VehicleSpecs | null): boolean {
+  if (specs?.isPHEV) return true;
+  const f = (fuelType ?? '').toLowerCase();
+  if (f.includes('phev') || f.includes('plug-in')) return true;
+  // Battery-electric only — no gasoline. Everything else (incl. blank) burns gas.
+  return !(f.includes('electric') && !specs?.isPHEV);
 }

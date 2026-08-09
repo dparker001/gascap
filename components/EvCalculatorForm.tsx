@@ -1,10 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { calcEvCharge, type EvChargeResult } from '@/lib/calculations';
 import { EV_PRESETS, PHEV_PRESETS } from '@/lib/evPresets';
+import { isElectric } from '@/lib/vehicleSpecs';
+import type { SavedVehicle } from '@/lib/savedVehicles';
 import { useTranslation } from '@/contexts/LanguageContext';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import type { CalcTab } from './CalculatorTabs';
@@ -36,6 +38,9 @@ const STATE_NAMES: Record<string, string> = {
   US:'United States (national avg)',
 };
 
+/** U.S. national average — also the sentinel for "user hasn't set a rate yet". */
+const DEFAULT_RATE = '0.16';
+
 function formatHours(h: number): string {
   if (h < 1) return `${Math.round(h * 60)} min`;
   if (h < 10) return `${h.toFixed(1)} hrs`;
@@ -65,7 +70,7 @@ export default function EvCalculatorForm({ activeTab, setActiveTab }: Props) {
   const [batteryKwh, setBatteryKwh]   = useState('');
   const [currentPct, setCurrentPct]   = useState(20);
   const [targetPct,  setTargetPct]    = useState(80);
-  const [ratePerKwh, setRatePerKwh]   = useState('0.16'); // U.S. national avg default
+  const [ratePerKwh, setRatePerKwh]   = useState(DEFAULT_RATE);
   const [efficiency, setEfficiency]   = useState('');
   const [presetLabel, setPresetLabel] = useState('');
   const [isPHEV, setIsPHEV]           = useState(false);
@@ -77,6 +82,79 @@ export default function EvCalculatorForm({ activeTab, setActiveTab }: Props) {
   const [rateLookupStatus, setRateLookupStatus] = useState<RateLookupStatus>('idle');
   const [rateResult, setRateResult]             = useState<RateResult | null>(null);
   const [rateLookupErr, setRateLookupErr]       = useState('');
+  // Set when the rate was filled in automatically, so the UI can say where it came from.
+  const [autoRate, setAutoRate]                 = useState<RateResult | null>(null);
+
+  // ── Garage (shared with the gas calculator — EVs are not a separate garage) ──
+  const [savedEvs, setSavedEvs]         = useState<SavedVehicle[]>([]);
+  const [selectedEvId, setSelectedEvId] = useState('');
+  const [saveState, setSaveState]       = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [saveErr, setSaveErr]           = useState('');
+
+  // Load the user's electric + plug-in hybrid vehicles. PHEVs appear here AND
+  // in the gas calculator — they genuinely burn both.
+  const loadGarage = useCallback(async () => {
+    if (!session) { setSavedEvs([]); return; }
+    try {
+      const r = await fetch('/api/vehicles');
+      if (!r.ok) return;
+      const d = await r.json() as { vehicles?: SavedVehicle[] };
+      setSavedEvs((d.vehicles ?? []).filter((v) => isElectric(v.fuelType, v.vehicleSpecs)));
+    } catch { /* garage is an enhancement here — never block the calculator */ }
+  }, [session]);
+
+  useEffect(() => { void loadGarage(); }, [loadGarage]);
+
+  /** Prefill battery + efficiency from a saved vehicle. */
+  function handleSavedEvChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    const id = e.target.value;
+    setSelectedEvId(id);
+    if (!id) return;
+    const v = savedEvs.find((x) => x.id === id);
+    if (!v) return;
+    const specs = v.vehicleSpecs ?? {};
+    if (specs.batteryKwh)      setBatteryKwh(String(specs.batteryKwh));
+    if (specs.efficiencyMiKwh) setEfficiency(String(specs.efficiencyMiKwh));
+    setIsPHEV(!!specs.isPHEV);
+    setPresetLabel(v.name);
+    setResult(null);
+    setErrors({});
+  }
+
+  /** Save the current battery/efficiency as a vehicle in the shared garage. */
+  async function handleSaveToGarage() {
+    const kwh = parseFloat(batteryKwh);
+    if (!kwh || kwh <= 0) { setSaveErr(t.ev.batteryInvalid); setSaveState('error'); return; }
+    setSaveState('saving');
+    setSaveErr('');
+    const eff = parseFloat(efficiency);
+    try {
+      const r = await fetch('/api/vehicles', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name:     presetLabel || 'My EV',
+          // Battery-electric has no tank; PHEVs keep whatever the user set on
+          // the gas tab. The API validates batteryKwh instead of gallons here.
+          gallons:  0,
+          fuelType: isPHEV ? 'Plug-in Hybrid' : 'Electricity',
+          vehicleSpecs: {
+            batteryKwh:      kwh,
+            ...(eff > 0 ? { efficiencyMiKwh: eff } : {}),
+            isPHEV,
+          },
+        }),
+      });
+      const d = await r.json() as { error?: string; id?: string };
+      if (!r.ok) { setSaveErr(d.error ?? 'Could not save.'); setSaveState('error'); return; }
+      setSaveState('saved');
+      await loadGarage();
+      if (d.id) setSelectedEvId(d.id);
+      setTimeout(() => setSaveState('idle'), 2500);
+    } catch {
+      setSaveErr('Network error.'); setSaveState('error');
+    }
+  }
 
   // ── Preset select ──
   function handlePresetChange(e: React.ChangeEvent<HTMLSelectElement>) {
@@ -98,19 +176,31 @@ export default function EvCalculatorForm({ activeTab, setActiveTab }: Props) {
   }
 
   // ── Electricity rate lookup ──
-  async function handleRateLookup() {
+  /**
+   * @param auto true when fired automatically on first load. Auto runs apply
+   *   the rate straight into the field (no second tap) and fail silently — the
+   *   default rate is already populated, so an unprompted error is just noise.
+   *   The manual button keeps the confirm step and reports errors.
+   */
+  async function handleRateLookup(auto = false) {
     if (!session) return; // guest gate handled below
     setRateLookupStatus('locating');
     setRateResult(null);
     setRateLookupErr('');
+
+    const fail = (msg: string) => {
+      if (auto) { setRateLookupStatus('idle'); return; }
+      setRateLookupStatus('error');
+      setRateLookupErr(msg);
+    };
+
     let coords: GeolocationCoordinates;
     try {
       coords = await new Promise<GeolocationCoordinates>((res, rej) =>
         navigator.geolocation.getCurrentPosition((p) => res(p.coords), rej, { timeout: 10000 })
       );
     } catch {
-      setRateLookupStatus('error');
-      setRateLookupErr('Location access denied. Enter your rate manually.');
+      fail('Location access denied. Enter your rate manually.');
       return;
     }
     setRateLookupStatus('fetching');
@@ -120,17 +210,33 @@ export default function EvCalculatorForm({ activeTab, setActiveTab }: Props) {
       );
       const data = await r.json() as RateResult & { noApiKey?: boolean };
       if (data.noApiKey || !data.price) {
-        setRateLookupStatus('error');
-        setRateLookupErr('Rate lookup unavailable. Enter your rate manually.');
+        fail('Rate lookup unavailable. Enter your rate manually.');
+        return;
+      }
+      if (auto) {
+        setRatePerKwh(data.price.toFixed(4));
+        setAutoRate(data);
+        setRateLookupStatus('idle');
         return;
       }
       setRateResult(data);
       setRateLookupStatus('done');
     } catch {
-      setRateLookupStatus('error');
-      setRateLookupErr('Network error. Enter your rate manually.');
+      fail('Network error. Enter your rate manually.');
     }
   }
+
+  // Auto-fill the local rate once per mount for signed-in users. Only when the
+  // rate is still the untouched national-average default — never overwrite a
+  // rate the user typed or that came from a saved vehicle.
+  const autoRateTried = useRef(false);
+  useEffect(() => {
+    if (autoRateTried.current || !session) return;
+    if (ratePerKwh !== DEFAULT_RATE) return;
+    autoRateTried.current = true;
+    void handleRateLookup(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session]);
 
   function applyRate() {
     if (rateResult?.price) {
@@ -243,6 +349,29 @@ export default function EvCalculatorForm({ activeTab, setActiveTab }: Props) {
       {/* ── Card 1: Vehicle ─────────────────────────────────────────────── */}
       <div className="bg-white rounded-2xl shadow-card p-5 space-y-4">
 
+        {/* Saved EVs from the shared garage — only rendered once the user has
+            one, so first-time users still see the preset list first. */}
+        {savedEvs.length > 0 && (
+          <div>
+            <label className="field-label">{t.ev.savedVehicleLabel}</label>
+            <select
+              className="input-field text-sm text-slate-600"
+              value={selectedEvId}
+              onChange={handleSavedEvChange}
+              aria-label={t.ev.savedVehicleLabel}
+            >
+              <option value="">{t.ev.savedVehiclePlaceholder}</option>
+              {savedEvs.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.name}
+                  {v.vehicleSpecs?.batteryKwh ? ` — ${v.vehicleSpecs.batteryKwh} kWh` : ''}
+                  {v.vehicleSpecs?.isPHEV ? ' (PHEV)' : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         {/* Vehicle preset */}
         <div>
           <label className="field-label">{t.ev.presetLabel}</label>
@@ -306,6 +435,28 @@ export default function EvCalculatorForm({ activeTab, setActiveTab }: Props) {
             <p className="text-xs text-red-500 mt-1">{errors.batteryKwh}</p>
           )}
         </div>
+
+        {/* Save to the shared garage — signed-in users only. Hidden once the
+            current values came from a saved vehicle, so there's no obvious
+            path to creating duplicates. */}
+        {session && batteryKwh && !selectedEvId && (
+          <div>
+            <button
+              type="button"
+              onClick={() => void handleSaveToGarage()}
+              disabled={saveState === 'saving'}
+              className="w-full py-2.5 rounded-xl border-2 border-emerald-300 text-emerald-700
+                         text-xs font-black hover:bg-emerald-50 transition-colors disabled:opacity-60"
+            >
+              {saveState === 'saving' ? t.ev.saving
+                : saveState === 'saved' ? `✓ ${t.ev.savedToGarage}`
+                : `🔋 ${t.ev.saveToGarage}`}
+            </button>
+            {saveState === 'error' && saveErr && (
+              <p className="text-xs text-red-500 mt-1">{saveErr}</p>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ── Card 2: Charge Range ─────────────────────────────────────────── */}
@@ -410,7 +561,7 @@ export default function EvCalculatorForm({ activeTab, setActiveTab }: Props) {
             ) : (
               <button
                 type="button"
-                onClick={handleRateLookup}
+                onClick={() => void handleRateLookup()}
                 disabled={rateLookupStatus === 'locating' || rateLookupStatus === 'fetching'}
                 className="px-3 py-2 rounded-xl bg-blue-50 border border-blue-200 text-blue-700
                            text-xs font-bold whitespace-nowrap hover:bg-blue-100 transition-colors
@@ -425,6 +576,17 @@ export default function EvCalculatorForm({ activeTab, setActiveTab }: Props) {
 
           {errors.ratePerKwh && (
             <p className="text-xs text-red-500 mt-1">{errors.ratePerKwh}</p>
+          )}
+
+          {/* Auto-filled rate — says where the number came from, and that it's a
+              state average rather than this user's actual utility rate. */}
+          {autoRate?.price && !rateLookupErr && (
+            <p className="mt-1.5 text-[10px] font-semibold leading-snug px-2.5 py-1 rounded-lg
+                          inline-flex items-center gap-1.5 bg-blue-50 text-blue-700
+                          border border-blue-200">
+              <span aria-hidden="true">📍</span>
+              {t.ev.rateAutoFilled(STATE_NAMES[autoRate.state] ?? autoRate.state)}
+            </p>
           )}
 
           {/* Rate helper — shown to guests */}

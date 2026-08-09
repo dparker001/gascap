@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { findById } from '@/lib/users';
 import { getVehiclesForUser, addVehicle, deleteVehicle, updateVehicle } from '@/lib/savedVehicles';
-import type { VehicleSpecs } from '@/lib/vehicleSpecs';
+import { isElectric, type VehicleSpecs } from '@/lib/vehicleSpecs';
 
 // Pro is unlimited; free is capped at 1
 const PLAN_LIMITS = { free: 1, pro: 9999, fleet: 9999 };
@@ -48,8 +48,19 @@ export async function POST(req: Request) {
     vehicleSpecs?:     VehicleSpecs;
   };
 
-  if (!body.name?.trim())              return NextResponse.json({ error: 'Name is required.' },    { status: 400 });
-  if (!body.gallons || body.gallons <= 0) return NextResponse.json({ error: 'Invalid tank size.' }, { status: 400 });
+  if (!body.name?.trim()) return NextResponse.json({ error: 'Name is required.' }, { status: 400 });
+
+  // Battery-electric vehicles have no fuel tank, so gallons is legitimately 0 —
+  // their capacity lives in vehicleSpecs.batteryKwh instead. PHEVs still have a
+  // real tank and are validated normally.
+  const isBEV = isElectric(body.fuelType, body.vehicleSpecs) && !body.vehicleSpecs?.isPHEV;
+  if (isBEV) {
+    if (!body.vehicleSpecs?.batteryKwh || body.vehicleSpecs.batteryKwh <= 0) {
+      return NextResponse.json({ error: 'Invalid battery capacity.' }, { status: 400 });
+    }
+  } else if (!body.gallons || body.gallons <= 0) {
+    return NextResponse.json({ error: 'Invalid tank size.' }, { status: 400 });
+  }
 
   const [user, existing] = await Promise.all([findById(userId), getVehiclesForUser(userId)]);
   const plan  = user?.plan ?? 'free';
@@ -63,7 +74,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: msg, limitReached: true, plan }, { status: 403 });
   }
 
-  const vehicle = await addVehicle(userId, body.name!, body.gallons!, {
+  const vehicle = await addVehicle(userId, body.name!, body.gallons ?? 0, {
     vin:             body.vin?.trim().toUpperCase() || undefined,
     year:            body.year,
     make:            body.make,
