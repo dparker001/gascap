@@ -6,6 +6,11 @@ import { useSession } from 'next-auth/react';
 import { calcEvCharge, type EvChargeResult } from '@/lib/calculations';
 import { EV_PRESETS, PHEV_PRESETS } from '@/lib/evPresets';
 import { isElectric } from '@/lib/vehicleSpecs';
+import { scheduleRentalReturnReminder } from '@/lib/rentalReminder';
+import {
+  EV_RENTAL_POLICIES, getEvRentalPolicy, calcEvRentalNeed,
+  type EvRentalPolicyId,
+} from '@/lib/evRentalPolicy';
 import type { SavedVehicle } from '@/lib/savedVehicles';
 import { useTranslation } from '@/contexts/LanguageContext';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
@@ -84,6 +89,69 @@ export default function EvCalculatorForm({ activeTab, setActiveTab }: Props) {
   const [rateLookupErr, setRateLookupErr]       = useState('');
   // Set when the rate was filled in automatically, so the UI can say where it came from.
   const [autoRate, setAutoRate]                 = useState<RateResult | null>(null);
+
+  // ── Rental mode (EV) ──
+  // Gas rentals are priced per gallon; EV rentals require a return CHARGE LEVEL
+  // and bill a recharge fee if you're under it. See lib/evRentalPolicy.ts.
+  // Return date/time share the same localStorage keys as TargetFillForm so the
+  // two tabs stay in sync for a single rental.
+  const [rentalCompany,     setRentalCompany]     = useState<EvRentalPolicyId>('other');
+  const [rentalPickupPct,   setRentalPickupPct]   = useState(80);
+  const [rentalReturnDate,  setRentalReturnDate]  = useState('');
+  const [rentalReturnTime,  setRentalReturnTime]  = useState('');
+
+  useEffect(() => {
+    try {
+      const date = localStorage.getItem('gc_rental_return_date');
+      const time = localStorage.getItem('gc_rental_return_time');
+      const pick = localStorage.getItem('gc_rental_pickup_level');
+      const co   = localStorage.getItem('gc_rental_ev_company');
+      if (date) setRentalReturnDate(date);
+      if (time) setRentalReturnTime(time);
+      if (pick) setRentalPickupPct(Number(pick) || 80);
+      if (co)   setRentalCompany(co as EvRentalPolicyId);
+    } catch { /* ignore */ }
+  }, []);
+
+  useEffect(() => {
+    try { localStorage.setItem('gc_rental_ev_company', rentalCompany); } catch { /* ignore */ }
+  }, [rentalCompany]);
+
+  useEffect(() => {
+    try { localStorage.setItem('gc_rental_pickup_level', String(rentalPickupPct)); } catch { /* ignore */ }
+  }, [rentalPickupPct]);
+
+  useEffect(() => {
+    try {
+      if (rentalReturnDate) localStorage.setItem('gc_rental_return_date', rentalReturnDate);
+      else localStorage.removeItem('gc_rental_return_date');
+    } catch { /* ignore */ }
+  }, [rentalReturnDate]);
+
+  useEffect(() => {
+    try {
+      if (rentalReturnTime) localStorage.setItem('gc_rental_return_time', rentalReturnTime);
+      else localStorage.removeItem('gc_rental_return_time');
+    } catch { /* ignore */ }
+  }, [rentalReturnTime]);
+
+  // Drop-off reminder — isEv:true swaps the copy to charging, which matters
+  // because charging takes hours rather than minutes.
+  useEffect(() => {
+    if (rentalMode && rentalReturnDate && rentalReturnTime) {
+      void scheduleRentalReturnReminder(rentalReturnDate, rentalReturnTime, { isEv: true });
+    }
+  }, [rentalMode, rentalReturnDate, rentalReturnTime]);
+
+  const rentalNeed = rentalMode && parseFloat(batteryKwh) > 0
+    ? calcEvRentalNeed({
+        policyId:    rentalCompany,
+        pickupPct:   rentalPickupPct,
+        currentPct,
+        batteryKwh:  parseFloat(batteryKwh),
+        pricePerKwh: parseFloat(ratePerKwh) || 0,
+      })
+    : null;
 
   // ── Garage (shared with the gas calculator — EVs are not a separate garage) ──
   const [savedEvs, setSavedEvs]         = useState<SavedVehicle[]>([]);
@@ -292,21 +360,114 @@ export default function EvCalculatorForm({ activeTab, setActiveTab }: Props) {
   return (
     <div className="w-full max-w-lg mx-auto px-4 pb-8 space-y-4">
 
-      {/* ── Rental mode carries across tabs — surface it here too ───────── */}
+      {/* ── Rental mode ──────────────────────────────────────────────────
+          Previously this only showed a banner telling EV renters to "switch to
+          Target Fill" — the GASOLINE calculator, which asks for gallons. EV
+          rentals are governed by a required return CHARGE LEVEL, so the inputs
+          live here now. */}
       {rentalMode && (
-        <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-2xl px-4 py-2.5">
-          <span className="text-lg flex-shrink-0" aria-hidden="true">🚗</span>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-black text-blue-800 leading-none">{t.calc.rentalModeActiveReminder}</p>
-            <p className="text-[10px] text-blue-600 mt-0.5 leading-snug">{t.calc.rentalModeCrossTabHint}</p>
+        <div className="bg-blue-50 border border-blue-200 rounded-2xl px-4 py-3 space-y-3">
+          <div className="flex items-center gap-2">
+            <span className="text-lg flex-shrink-0" aria-hidden="true">🚗</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-black text-blue-800 leading-none">{t.calc.rentalModeActiveReminder}</p>
+              <p className="text-[10px] text-blue-600 mt-0.5 leading-snug">{t.ev.rentalEvHint}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setRentalMode(false)}
+              className="flex-shrink-0 text-[11px] font-bold text-blue-500 hover:text-blue-700 px-2 py-1"
+            >
+              {t.calc.rentalModeExit}
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={() => setRentalMode(false)}
-            className="flex-shrink-0 text-[11px] font-bold text-blue-500 hover:text-blue-700 px-2 py-1"
-          >
-            {t.calc.rentalModeExit}
-          </button>
+
+          {/* Rental company — drives the required return level */}
+          <div>
+            <label className="text-[11px] font-black text-blue-800 block mb-1">{t.ev.rentalCompanyLabel}</label>
+            <select
+              className="input-field text-sm"
+              value={rentalCompany}
+              onChange={(e) => setRentalCompany(e.target.value as EvRentalPolicyId)}
+              aria-label={t.ev.rentalCompanyLabel}
+            >
+              {EV_RENTAL_POLICIES.map((p) => (
+                <option key={p.id} value={p.id}>{p.label}</option>
+              ))}
+            </select>
+            <p className="text-[10px] text-blue-600 mt-1 leading-snug">
+              {getEvRentalPolicy(rentalCompany).rule}
+            </p>
+          </div>
+
+          {/* Pickup charge — the reference point for same-as-received policies */}
+          <div>
+            <label className="text-[11px] font-black text-blue-800 block mb-1">
+              {t.ev.rentalPickupLabel} <span className="font-bold text-blue-500">{rentalPickupPct}%</span>
+            </label>
+            <input
+              type="range" min="0" max="100" step="5"
+              value={rentalPickupPct}
+              onChange={(e) => setRentalPickupPct(Number(e.target.value))}
+              className="w-full accent-blue-600"
+              aria-label={t.ev.rentalPickupLabel}
+            />
+          </div>
+
+          {/* Return date/time — shared with Target Fill, drives the reminder */}
+          <div className="flex gap-2">
+            <div className="flex-1 min-w-0">
+              <label className="text-[11px] font-black text-blue-800 block mb-1">{t.calc.rentalReturnDateLabel}</label>
+              <input
+                type="date"
+                value={rentalReturnDate}
+                onChange={(e) => setRentalReturnDate(e.target.value)}
+                className="input-field text-sm"
+                style={{ width: 148 }}
+                aria-label={t.calc.rentalReturnDateLabel}
+              />
+            </div>
+            <div className="flex-shrink-0">
+              <label className="text-[11px] font-black text-blue-800 block mb-1">{t.calc.rentalReturnTimeLabel}</label>
+              <input
+                type="time"
+                value={rentalReturnTime}
+                onChange={(e) => setRentalReturnTime(e.target.value)}
+                className="input-field text-sm"
+                style={{ width: 110 }}
+                aria-label={t.calc.rentalReturnTimeLabel}
+              />
+            </div>
+          </div>
+
+          {/* What it takes to hand it back compliant */}
+          {rentalNeed && rentalNeed.requiredPct == null && (
+            <div className="bg-white border border-blue-200 rounded-xl px-3 py-2.5">
+              <p className="text-[11px] text-blue-800 leading-snug">{t.ev.rentalCheckAgreement}</p>
+            </div>
+          )}
+          {rentalNeed && rentalNeed.requiredPct != null && (
+            <div className="bg-white border border-blue-200 rounded-xl px-3 py-2.5">
+              <p className="text-[11px] font-black text-blue-900 mb-1">
+                {t.ev.rentalRequiredReturn(rentalNeed.requiredPct)}
+              </p>
+              {rentalNeed.alreadyMet ? (
+                <p className="text-[11px] text-emerald-700 font-semibold leading-snug">
+                  {t.ev.rentalAlreadyMet}
+                </p>
+              ) : (
+                <p className="text-[11px] text-blue-700 leading-snug">
+                  {t.ev.rentalNeedSummary(
+                    currentPct,
+                    rentalNeed.requiredPct,
+                    rentalNeed.kWhNeeded,
+                    rentalNeed.estimatedCost,
+                    formatHours(rentalNeed.level2Hours),
+                  )}
+                </p>
+              )}
+            </div>
+          )}
         </div>
       )}
 
