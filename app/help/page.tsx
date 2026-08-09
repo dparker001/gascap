@@ -77,7 +77,7 @@ const SECTIONS = [
       },
       {
         q: 'How do I set my current fuel level?',
-        a: 'Drag the needle on the fuel gauge dial to match your dashboard, or use the slider — the calculator updates instantly. You can also switch to gallons and type an exact amount.',
+        a: 'Drag the needle on the fuel gauge dial to match your dashboard, or use the slider — the calculator updates instantly. You can also switch to gallons and type an exact amount. Newer vehicles often have a digital or coarse bar gauge with no tick marks to judge against. For those, tap the \'Miles\' button next to % and Gal, then enter the miles-to-empty shown on your dash plus your MPG — GasCap\u2122 converts that into gallons remaining. MPG is filled in automatically if your vehicle was added by VIN, and you can edit it. Dash range estimates are deliberately conservative, so treat the result as approximate.',
       },
       {
         q: 'How does the live gas price lookup work?',

@@ -33,7 +33,26 @@ const GAUGE_SCAN_ENABLED = false;
 
 // ── Types ──────────────────────────────────────────────────────────────
 
-type FuelMode = 'percent' | 'gallons';
+// 'miles' lets drivers enter the dash's distance-to-empty readout. Many newer
+// vehicles have a digital or coarse bar gauge with no usable tick marks, so
+// there's nothing to drag the needle to. Converted to gallons before it
+// reaches the calculator, which only knows percent and gallons.
+type FuelMode = 'percent' | 'gallons' | 'miles';
+
+/**
+ * Gallons left, from a dash distance-to-empty reading.
+ *
+ * Both inputs are themselves estimates — the dash figure is computed from
+ * recent driving and is usually deliberately conservative — so this is an
+ * approximation of an approximation. It is still far better than guessing at a
+ * gauge with no tick marks, which is the alternative for these vehicles.
+ * Capped at the tank so a generous readout can't imply more than the car holds.
+ */
+function gallonsFromMilesRemaining(miles: number, mpg: number, tankCapacity: number): number | undefined {
+  if (!(miles > 0) || !(mpg > 0)) return undefined;
+  const gallons = miles / mpg;
+  return tankCapacity > 0 ? Math.min(gallons, tankCapacity) : gallons;
+}
 
 interface FormState {
   tankCapacity:    string;
@@ -45,6 +64,8 @@ interface FormState {
   vehicleName:     string;
   vehicleId:       string;
   vehicleOdometer: number | undefined;
+  milesRemaining:  string;   // dash distance-to-empty, when fuelMode is 'miles'
+  mpgForMiles:     string;   // MPG used for the conversion (auto-filled, editable)
 }
 
 const DEFAULTS: FormState = {
@@ -57,6 +78,8 @@ const DEFAULTS: FormState = {
   vehicleName:     '',
   vehicleId:       '',
   vehicleOdometer: undefined,
+  milesRemaining:  '',
+  mpgForMiles:     '',
 };
 
 // Note: "Full" label is localized inside the component via t.calc.presetFull
@@ -361,9 +384,15 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
 
     const input = {
       tankCapacity:       Number(merged.tankCapacity),
-      fuelInputMode:      merged.fuelMode,
+      // 'miles' is a UI convenience — resolve it to gallons here so the
+      // calculator keeps its two-mode contract.
+      fuelInputMode:      merged.fuelMode === 'percent' ? 'percent' as const : 'gallons' as const,
       currentFuelPercent: merged.fuelMode === 'percent' ? Number(merged.currentFuel) : undefined,
-      currentFuelGallons: merged.fuelMode === 'gallons' ? Number(merged.currentFuel) : undefined,
+      currentFuelGallons: merged.fuelMode === 'gallons'
+        ? Number(merged.currentFuel)
+        : merged.fuelMode === 'miles'
+          ? gallonsFromMilesRemaining(Number(merged.milesRemaining), Number(merged.mpgForMiles), Number(merged.tankCapacity))
+          : undefined,
       targetPercent,
       pricePerGallon:     Number(merged.pricePerGallon),
     };
@@ -414,9 +443,13 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
 
     const input = {
       tankCapacity:       Number(form.tankCapacity),
-      fuelInputMode:      form.fuelMode,
+      fuelInputMode:      form.fuelMode === 'percent' ? 'percent' as const : 'gallons' as const,
       currentFuelPercent: form.fuelMode === 'percent' ? Number(form.currentFuel) : undefined,
-      currentFuelGallons: form.fuelMode === 'gallons' ? Number(form.currentFuel) : undefined,
+      currentFuelGallons: form.fuelMode === 'gallons'
+        ? Number(form.currentFuel)
+        : form.fuelMode === 'miles'
+          ? gallonsFromMilesRemaining(Number(form.milesRemaining), Number(form.mpgForMiles), Number(form.tankCapacity))
+          : undefined,
       targetPercent,
       pricePerGallon:     Number(form.pricePerGallon),
     };
@@ -631,7 +664,14 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
           <SavedVehicles
             currentGallons={form.tankCapacity}
             onSelect={(g, v) => {
-              patch({ tankCapacity: g, vehicleName: v?.name ?? '', vehicleId: v?.id ?? '', vehicleOdometer: v?.currentOdometer });
+              patch({
+                tankCapacity: g, vehicleName: v?.name ?? '', vehicleId: v?.id ?? '',
+                vehicleOdometer: v?.currentOdometer,
+                // Prefill the MPG used for distance-to-empty conversion. EPA
+                // combined is the same figure MpgInsightCard prefers, and it's
+                // available immediately for VIN-added vehicles. Still editable.
+                ...(v?.vehicleSpecs?.combMpg ? { mpgForMiles: String(v.vehicleSpecs.combMpg) } : {}),
+              });
               setVehicleTankEst(v?.vehicleSpecs?.tankEstGallons);
               setVehicleBodyClass(v?.vehicleSpecs?.bodyClass);
               setPresetLabel('');
@@ -782,6 +822,8 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
               onClick={() => patch({ fuelMode: 'percent', currentFuel: '25' })} />
             <ModeBtn label={t.calc.fuelModeGal} active={form.fuelMode === 'gallons'}
               onClick={() => patch({ fuelMode: 'gallons', currentFuel: '' })} />
+            <ModeBtn label={t.calc.fuelModeMiles} active={form.fuelMode === 'miles'}
+              onClick={() => patch({ fuelMode: 'miles' })} />
           </div>
         </div>
 
@@ -844,6 +886,57 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
             </div>
             )}
           </>
+        ) : form.fuelMode === 'miles' ? (
+          /* Distance-to-empty entry, for vehicles whose gauge has no usable
+             tick marks. Converted to gallons via MPG. */
+          <div className="space-y-2">
+            <div className="relative">
+              <input
+                type="number" inputMode="decimal"
+                className="input-field"
+                placeholder={t.calc.placeholderMiles}
+                value={form.milesRemaining}
+                min="0" step="1"
+                onChange={(e) => patch({ milesRemaining: e.target.value })}
+                onBlur={(e)  => liveRecalc({ milesRemaining: e.target.value })}
+                aria-label={t.calc.ariaMilesRemaining}
+              />
+              <Unit>{t.calc.unitMiles}</Unit>
+            </div>
+
+            <div className="relative">
+              <input
+                type="number" inputMode="decimal"
+                className="input-field"
+                placeholder={t.calc.placeholderMpg}
+                value={form.mpgForMiles}
+                min="1" max="200" step="0.1"
+                onChange={(e) => patch({ mpgForMiles: e.target.value })}
+                onBlur={(e)  => liveRecalc({ mpgForMiles: e.target.value })}
+                aria-label={t.calc.ariaMpgForMiles}
+              />
+              <Unit>{t.calc.unitMpg}</Unit>
+            </div>
+
+            {(() => {
+              const gal = gallonsFromMilesRemaining(
+                Number(form.milesRemaining), Number(form.mpgForMiles), Number(form.tankCapacity),
+              );
+              if (gal == null) {
+                return (
+                  <p className="text-[11px] text-slate-400 leading-snug">{t.calc.milesHint}</p>
+                );
+              }
+              const tank = Number(form.tankCapacity);
+              const pct  = tank > 0 ? Math.round((gal / tank) * 100) : null;
+              return (
+                <p className="text-[11px] text-slate-500 leading-snug bg-slate-50 border border-slate-200
+                              rounded-xl px-3 py-2">
+                  {t.calc.milesEstimate(gal.toFixed(1), pct)}
+                </p>
+              );
+            })()}
+          </div>
         ) : (
           <div className="relative">
             <input

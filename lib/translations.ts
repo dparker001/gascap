@@ -808,6 +808,18 @@ const en = {
     },
     // Fuel-mode toggle & unit labels
     fuelModeGal:            'Gal',
+    fuelModeMiles:          'Miles',
+    placeholderMiles:       'e.g. 120',
+    placeholderMpg:         'e.g. 28',
+    unitMiles:              'mi to empty',
+    unitMpg:                'MPG',
+    ariaMilesRemaining:     'Miles remaining to empty from your dashboard',
+    ariaMpgForMiles:        'MPG used to convert miles remaining into gallons',
+    milesHint:              "Enter your dash's miles-to-empty and your MPG — useful when your gauge has no tick marks.",
+    milesEstimate:          (gal: string, pct: number | null) =>
+      pct != null
+        ? `\u2248 ${gal} gal left (about ${pct}% of tank). Dash estimates run conservative, so treat this as approximate.`
+        : `\u2248 ${gal} gal left. Dash estimates run conservative, so treat this as approximate.`,
     unitGal:                'gal',
     presetFull:             'Full',
     liveBadge:              '⚡ LIVE',
@@ -3573,6 +3585,18 @@ const es: typeof en = {
     },
     // Fuel-mode toggle & unit labels
     fuelModeGal:            'Gal',
+    fuelModeMiles:          'Millas',
+    placeholderMiles:       'ej. 120',
+    placeholderMpg:         'ej. 28',
+    unitMiles:              'mi restantes',
+    unitMpg:                'MPG',
+    ariaMilesRemaining:     'Millas restantes hasta vacío según tu tablero',
+    ariaMpgForMiles:        'MPG usado para convertir las millas restantes en galones',
+    milesHint:              'Ingresa las millas restantes de tu tablero y tu MPG — útil cuando tu medidor no tiene marcas.',
+    milesEstimate:          (gal: string, pct: number | null) =>
+      pct != null
+        ? `\u2248 ${gal} gal restantes (alrededor del ${pct}% del tanque). Las estimaciones del tablero son conservadoras, tómalo como aproximado.`
+        : `\u2248 ${gal} gal restantes. Las estimaciones del tablero son conservadoras, tómalo como aproximado.`,
     unitGal:                'gal',
     presetFull:             'Lleno',
     liveBadge:              '⚡ EN VIVO',
