@@ -303,6 +303,54 @@ export function welcomeEmailHtml(name: string, userId: string, verifyUrl?: strin
 export const welcomeEmailText = (name: string) =>
   `Hi ${name.split(' ')[0]}, welcome to GasCap™! Your 30-day free Pro trial is now active — unlimited saved vehicles, Rental Car Return Mode (avoid $12/gal refuel fees), Route Trip Planner (Google Maps integration), AI Fuel Advisor, MPG charts, budget tracking, maintenance reminders, and PDF exports are all unlocked. Tip: set your Driver Mode in Settings (Personal, Gig Driver, Rental Car, or Fleet) to personalize your dashboard. No credit card needed, auto-reverts to free after 30 days. Open the app: ${BASE_URL}`;
 
+// ── First fill-up nudge (behaviour-triggered, one-time) ────────────────────
+// For users who saved a vehicle but never logged a fill-up — the sharpest
+// drop-off in the funnel. They showed real intent by entering their car, so
+// the job here is to name the specific payoff they haven't seen yet, not to
+// re-pitch the product. See app/api/cron/first-fillup-nudge.
+
+export function firstFillupNudgeEmailHtml(firstName: string, userId: string): string {
+  return wrap(`
+    ${header()}
+    <tr><td style="padding:32px;">
+      <p style="margin:0 0 6px;font-size:24px;font-weight:900;color:#1e2d4a;line-height:1.2;">
+        Your garage is set up, ${firstName}
+      </p>
+      <p style="margin:0 0 20px;font-size:15px;color:#475569;line-height:1.65;">
+        You added your vehicle — that's the part most people never get around to.
+        One fill-up is all that's left before GasCap™ starts telling you things
+        you can't get anywhere else.
+      </p>
+
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;padding:18px 22px;margin:0 0 22px;">
+        <p style="margin:0 0 10px;font-size:12px;font-weight:900;color:#1e2d4a;text-transform:uppercase;letter-spacing:0.06em;">
+          What one fill-up unlocks
+        </p>
+        <p style="margin:0 0 7px;font-size:13px;color:#334155;line-height:1.5;">📊 <strong>Your real MPG</strong> — not the sticker number, what your car actually does</p>
+        <p style="margin:0 0 7px;font-size:13px;color:#334155;line-height:1.5;">💵 <strong>Cost per mile</strong> — what driving actually costs you</p>
+        <p style="margin:0;font-size:13px;color:#334155;line-height:1.5;">📉 <strong>MPG drop alerts</strong> — a sudden drop is often the first sign of an engine problem, months before a warning light</p>
+      </div>
+
+      <p style="margin:0 0 22px;font-size:14px;color:#475569;line-height:1.6;">
+        It takes about 20 seconds: gallons, price, and your odometer if you have it.
+        Next time you're at the pump, log it before you drive off.
+      </p>
+
+      ${ctaButton('Log a fill-up →', `${BASE_URL}/?log=1`)}
+
+      <p style="margin:26px 0 0;font-size:13px;color:#94a3b8;line-height:1.6;">
+        Not tracking fill-ups? That's fine — the calculator works without it.
+        Just reply if something isn't working the way you expected.
+      </p>
+      <p style="margin:14px 0 0;font-size:13px;color:#475569;">— Don, Founder of GasCap™</p>
+    </td></tr>
+    ${footer(userId)}
+  `);
+}
+
+export const firstFillupNudgeEmailText = (firstName: string) =>
+  `Hi ${firstName}, you added your vehicle to GasCap™ — one fill-up is all that's left before it can show you your real MPG (not the sticker number), your cost per mile, and MPG drop alerts that often catch engine problems months before a warning light. Takes about 20 seconds: gallons, price, and your odometer if you have it. Log one next time you're at the pump: ${BASE_URL}/?log=1`;
+
 // ── Email 2 — Feature Deep-Dive (Day 3) ───────────────────────────────────
 
 export function featureTipsEmailHtml(name: string, userId: string): string {

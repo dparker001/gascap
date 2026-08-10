@@ -118,6 +118,9 @@ model User {
   streakMilestoneBonusEntries Int    @default(0)
   signupPlatform           String?   // 'web' | 'ios' | 'android'
   userMode                 String?   // 'personal' | 'gig' | 'rental' | 'fleet'
+  // Stamped when the "log your first fill-up" nudge is sent, so it only ever
+  // goes out once per user. See app/api/cron/first-fillup-nudge.
+  firstFillupNudgedAt      String?
   vehicles                 Vehicle[]
   priceReports             PriceReport[]
   gigFillups               GigFillup[]

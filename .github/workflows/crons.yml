@@ -9,6 +9,7 @@ on:
     - cron: '30 15 * * *'  # paid-campaign         (15:30 UTC)
     - cron: '0 16 * * *'   # comp-campaign         (16:00 UTC)
     - cron: '30 16 * * *'  # winback               (16:30 UTC / 12:30 PM ET)
+    - cron: '30 17 * * *'  # first-fillup-nudge    (17:30 UTC / 1:30 PM ET)
     - cron: '0 18 * * *'   # fillup-reminder       (18:00 UTC)
     - cron: '0 20 * * *'   # price-alerts          (20:00 UTC)
     - cron: '0 23 * * *'   # streak-reminder       (23:00 UTC / 7 PM ET)
@@ -27,6 +28,7 @@ on:
           - paid-campaign
           - comp-campaign
           - winback
+          - first-fillup-nudge
           - fillup-reminder
           - price-alerts
           - streak-reminder
@@ -47,6 +49,7 @@ jobs:
             "30 15 * * *") echo "endpoint=paid-campaign"       >> "$GITHUB_OUTPUT" ;;
             "0 16 * * *")  echo "endpoint=comp-campaign"       >> "$GITHUB_OUTPUT" ;;
             "30 16 * * *") echo "endpoint=winback"             >> "$GITHUB_OUTPUT" ;;
+            "30 17 * * *") echo "endpoint=first-fillup-nudge" >> "$GITHUB_OUTPUT" ;;
             "0 18 * * *")  echo "endpoint=fillup-reminder"     >> "$GITHUB_OUTPUT" ;;
             "0 20 * * *")  echo "endpoint=price-alerts"        >> "$GITHUB_OUTPUT" ;;
             "0 23 * * *")  echo "endpoint=streak-reminder"     >> "$GITHUB_OUTPUT" ;;
