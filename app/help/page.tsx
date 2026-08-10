@@ -111,7 +111,7 @@ const SECTIONS = [
       },
       {
         q: 'What is the Find Gas tab?',
-        a: 'The Find Gas tab shows live gas prices at stations near you, powered by Google Places. It lists nearby stations with their current price, distance, and a direct link to Google Maps for directions. Tap any price chip to instantly fill the calculator, or tap "Report Price" on a station card to submit the price you see at the pump — you earn +5 giveaway entries each time. Community-reported prices (submitted in the last 2 hours) appear in amber when Google\'s price data is missing or outdated. Available to Pro and Fleet users.',
+        a: 'The Find Gas tab shows live gas prices at stations near you, powered by Google Places. It lists nearby stations with their current price, distance, and a direct link to Google Maps for directions. Tap any price chip to instantly fill the calculator, or tap "Report Price" on a station card to submit the price you see at the pump — you earn +5 giveaway entries each time. Community-reported prices (submitted in the last 24 hours) appear in amber when Google\'s price data is missing or outdated. Available to Pro and Fleet users.',
       },
       {
         q: 'Can I remove a station from the Find Gas results?',
@@ -123,7 +123,7 @@ const SECTIONS = [
       },
       {
         q: 'What are community prices?',
-        a: 'Community prices are pump prices reported by GasCap users at a station within the last 2 hours. They appear in amber on station cards — either as a "reported" note under a Google price, or as the primary price grid if Google has no price data for that station. Community prices are visible to all Pro and Fleet users nearby.',
+        a: 'Community prices are pump prices reported by GasCap users at a station within the last 24 hours. Each one shows how long ago it was reported, so you can judge how current it is. They appear in amber on station cards — either as a "reported" note under a Google price, or as the primary price grid if Google has no price data for that station. Community prices are visible to all Pro and Fleet users nearby.',
       },
       {
         q: 'What is the Gas Price Alert?',

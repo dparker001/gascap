@@ -108,9 +108,16 @@ export const authOptions: NextAuthOptions = {
               }).catch(() => {});
             } catch (e) { console.error('[otp] onboarding error', e); }
           })();
-        } else {
-          await recordLogin(user.id);
         }
+
+        // Record the login for EVERY successful sign-in, new or returning.
+        // This used to sit in the `else` above, so a brand-new signup got a
+        // working session but no recorded login — which is why users appeared
+        // with loginCount 0 while clearly using the app. It also matters
+        // beyond the stat: recordLogin stamps activeDays, and that's what
+        // earns a giveaway entry, so new signups were missing an entry for
+        // their signup day. The Google new-user path already did this.
+        await recordLogin(user.id);
 
         return { id: user.id, email, name: user.name, plan: user.plan, isProTrial: user.isProTrial ?? false, trialExpiresAt: user.trialExpiresAt ?? null, emailVerified: true, userMode: user.userMode ?? null };
         } catch (err) {
