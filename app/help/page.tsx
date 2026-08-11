@@ -35,7 +35,7 @@ const SECTIONS = [
       },
       {
         q: 'How do I install GasCap™ on my phone?',
-        a: 'GasCap™ is available on the App Store (iPhone) and Google Play (Android) — just search "GasCap" and tap Install. You can also add it directly from your browser: on iPhone, open gascap.app in Safari → tap the Share icon → "Add to Home Screen." On Android, open in Chrome → tap the menu (⋮) → "Add to Home Screen." Either way, the app icon appears on your home screen and works just like a native app.',
+        a: 'Visit gascap.app/download on your phone — it detects whether you\'re on iPhone or Android and takes you straight to the right store listing. Or search "GasCap" directly on the App Store (iPhone) and Google Play (Android). You can also add it directly from your browser: on iPhone, open gascap.app in Safari → tap the Share icon → "Add to Home Screen." On Android, open in Chrome → tap the menu (⋮) → "Add to Home Screen." Either way, the app icon appears on your home screen and works just like a native app.',
       },
       {
         q: 'How do I switch between Light and Dark mode?',
