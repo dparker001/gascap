@@ -12,7 +12,8 @@
     "lint": "next lint",
     "test": "vitest run --pool=forks",
     "postinstall": "prisma generate",
-    "check:crons": "node scripts/check-cron-inventory.mjs"
+    "check:crons": "node scripts/check-cron-inventory.mjs",
+    "test:tiers": "node scripts/test-ambassador-tiers.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.80.0",

@@ -971,7 +971,16 @@ export async function recordReferral(referrerId: string): Promise<void> {
   const prevTier = getAmbassadorTier(current);
   const justCrossedTier = getAmbassadorTier(newCount);
   const referrerIsPaidOrGrantedPro = user.plan === 'pro' || user.plan === 'fleet' || justCrossedAmbassador;
-  const crossedNewTier = justCrossedTier !== null && justCrossedTier !== prevTier && referrerIsPaidOrGrantedPro;
+  // ambassadorTierRewardsSent was written on every payout but never actually
+  // read, so the replay guard existed in the schema and did nothing. Any path
+  // that re-crossed a boundary — a corrected referralCount, a webhook replay —
+  // would have sent a second real-money voucher. Consult it.
+  const alreadyRewarded = (user.ambassadorTierRewardsSent ?? []).includes(justCrossedTier ?? '');
+  const crossedNewTier =
+    justCrossedTier !== null
+    && justCrossedTier !== prevTier
+    && referrerIsPaidOrGrantedPro
+    && !alreadyRewarded;
 
   const TIER_REWARD: Record<'supporter' | 'ambassador' | 'elite', { kind: 'dining' | 'hotel'; amount: number; label: string }> = {
     supporter:  { kind: 'dining', amount: 50,  label: '$50 Dining Voucher' },
@@ -979,28 +988,12 @@ export async function recordReferral(referrerId: string): Promise<void> {
     elite:      { kind: 'hotel',  amount: 500, label: '$500 Hotel Savings Card' },
   };
 
-  if (crossedNewTier && justCrossedTier) {
-    const reward = TIER_REWARD[justCrossedTier];
-    void (async () => {
-      const result = reward.kind === 'dining'
-        ? await sendDiningVoucher({ fullName: user.name, email: user.email, amount: reward.amount as 25 | 50 | 100 | 200, message: `Congrats on reaching ${justCrossedTier} tier on GasCap™!` })
-        : await sendHotelSavingsCard({ fullName: user.name, email: user.email, amount: reward.amount as 100 | 200 | 300 | 500, message: `Congrats on reaching ${justCrossedTier} tier on GasCap™!` });
-      if (!result.ok) {
-        console.error(`[ambassador] ${justCrossedTier} tier reward send failed for ${user.email}:`, result.error);
-        return;
-      }
-      sendMail({
-        to:      user.email,
-        subject: `🎉 You reached ${justCrossedTier.charAt(0).toUpperCase()}${justCrossedTier.slice(1)} tier — here's your ${reward.label}!`,
-        html: `<div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;">
-          <p style="font-size:20px;margin:0 0 8px;">🎉 Congratulations, ${user.name}!</p>
-          <p style="font-size:15px;color:#334155;margin:0 0 12px;">You've reached <strong>${justCrossedTier}</strong> tier with ${newCount} paying referrals. As a thank-you, we're sending you a <strong>${reward.label}</strong> — check your inbox (and spam folder) over the next 24 hours for an email from Parker Select Rewards.</p>
-          <p style="font-size:13px;color:#64748b;margin:0;">Questions? Reply to this email.</p>
-        </div>`,
-        text: `Congrats, ${user.name}! You reached ${justCrossedTier} tier with ${newCount} paying referrals — a ${reward.label} is on its way from Parker Select Rewards within 24 hours.`,
-      }).catch((e) => console.error('[ambassador] tier reward confirmation email failed:', e));
-    })();
-  }
+  // Ordering matters here: the update below records the tier as rewarded, and
+  // only after it commits do we send. The previous order sent first, so an
+  // interrupted or failed update could leave a voucher issued with no record
+  // of it — and the next referral would issue another. For real money,
+  // at-most-once beats at-least-once.
+  const pendingReward = crossedNewTier && justCrossedTier ? justCrossedTier : null;
 
   await prisma.user.update({
     where: { id: referrerId },
@@ -1011,9 +1004,42 @@ export async function recordReferral(referrerId: string): Promise<void> {
       referralCredits:         updatedCredits as unknown as Prisma.InputJsonValue,
       ...(justCrossedAmbassador ? { ambassadorProForLife: true } : {}),
       ...(grantedPlan           ? { plan: grantedPlan }          : {}),
-      ...(crossedNewTier && justCrossedTier ? { ambassadorTierRewardsSent: { push: justCrossedTier } } : {}),
+      ...(pendingReward ? { ambassadorTierRewardsSent: { push: pendingReward } } : {}),
     },
   });
+
+  // Reward send — only now that the "already rewarded" marker is durable.
+  if (pendingReward) {
+    const reward = TIER_REWARD[pendingReward];
+    const tierName = pendingReward;
+    void (async () => {
+      const result = reward.kind === 'dining'
+        ? await sendDiningVoucher({ fullName: user.name, email: user.email, amount: reward.amount as 25 | 50 | 100 | 200, message: `Congrats on reaching ${tierName} tier on GasCap\u2122!` })
+        : await sendHotelSavingsCard({ fullName: user.name, email: user.email, amount: reward.amount as 100 | 200 | 300 | 500, message: `Congrats on reaching ${tierName} tier on GasCap\u2122!` });
+      if (!result.ok) {
+        // Marked as sent but the send failed — surfaced loudly because it now
+        // needs issuing by hand rather than being retried automatically.
+        console.error(`[ambassador] ${tierName} reward send FAILED for ${user.email} — issue manually:`, result.error);
+        sendMail({
+          to:      process.env.ADMIN_EMAIL ?? 'admin@gascap.app',
+          subject: `\u26a0\ufe0f Ambassador ${tierName} reward failed \u2014 issue ${reward.label} to ${user.email}`,
+          html:    `<p><strong>${user.name}</strong> (${user.email}) reached <strong>${tierName}</strong> with ${newCount} paying referrals, but the Marketing Boost send failed.</p><p><strong>Action:</strong> issue a ${reward.label} by hand.</p><p style="color:#64748b;font-size:13px;">${result.error}</p>`,
+          text:    `Ambassador ${tierName} reward failed for ${user.email}. Issue ${reward.label} manually. Error: ${result.error}`,
+        }).catch(() => {});
+        return;
+      }
+      sendMail({
+        to:      user.email,
+        subject: `\U0001f389 You reached ${tierName.charAt(0).toUpperCase()}${tierName.slice(1)} tier \u2014 here's your ${reward.label}!`,
+        html: `<div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;">
+          <p style="font-size:20px;margin:0 0 8px;">\U0001f389 Congratulations, ${user.name}!</p>
+          <p style="font-size:15px;color:#334155;margin:0 0 12px;">You've reached <strong>${tierName}</strong> tier with ${newCount} paying referrals. As a thank-you, we're sending you a <strong>${reward.label}</strong> — check your inbox (and spam folder) over the next 24 hours for an email from Parker Select Rewards.</p>
+          <p style="font-size:13px;color:#64748b;margin:0;">Questions? Reply to this email.</p>
+        </div>`,
+        text: `Congrats, ${user.name}! You reached ${tierName} tier with ${newCount} paying referrals — a ${reward.label} is on its way from Parker Select Rewards within 24 hours.`,
+      }).catch((e) => console.error('[ambassador] tier reward confirmation email failed:', e));
+    })();
+  }
 }
 
 export async function redeemReferralCredits(userId: string): Promise<number> {
