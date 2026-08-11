@@ -636,11 +636,6 @@ export default function Home() {
           seconds after load; closeable + auto-dismisses (gated by the promo) */}
       <AdLandingBanner />
 
-      {/* ── Guest hero — SEO headline above the calculator ────────────── */}
-      {isGuest && <GuestHero />}
-
-      {/* ── Endorser / partner logo marquee — landing page (guests) only ── */}
-      {isGuest && <EndorserMarquee />}
 
       {/* ══════════════════════════════════════════════════════════════════
           LOGGED-IN: two-column desktop layout
@@ -891,10 +886,23 @@ export default function Home() {
       {/* ── Guest single-column content ─────────────────────────────────── */}
       {isGuest && (
         <>
-          {/* Calculator */}
+          {/* Calculator — deliberately the FIRST thing under the header.
+              It used to sit 902px down, below the video hero (465px) and the
+              endorser marquee (121px), so ad traffic landed above the product
+              and had to scroll to reach what the ad promised. The header
+              already carries the pitch ("Know before you go — calculate fuel &
+              cost before you pull up"), so the hero was repeating it. Hero and
+              marquee now follow the calculator. */}
           <section id="gascap-calculator" className="flex-1 px-4 pt-5 pb-4 max-w-lg mx-auto w-full">
             <CalculatorTabs />
           </section>
+
+          {/* Hero — still carries the SEO headline, now below the product */}
+          <GuestHero />
+
+          {/* Endorser / partner logos — social proof reads better after
+              someone has actually seen the thing being endorsed */}
+          <EndorserMarquee />
 
           {/* Save nudge */}
           <section className="px-4 -mt-2 pb-2 max-w-lg mx-auto w-full">
