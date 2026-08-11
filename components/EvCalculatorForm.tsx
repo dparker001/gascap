@@ -885,7 +885,7 @@ export default function EvCalculatorForm({ activeTab, setActiveTab }: Props) {
 
       {/* ── Results ─────────────────────────────────────────────────────── */}
       {result && (
-        <div key={calcKey} className="bg-white rounded-2xl shadow-card overflow-hidden animate-result">
+        <div key={calcKey} className="bg-white rounded-2xl shadow-card overflow-hidden animate-result" data-calc-result>
 
           {/* Header */}
           <div className="bg-gradient-to-r from-[#005F4A] to-[#1EB68F] px-5 py-4

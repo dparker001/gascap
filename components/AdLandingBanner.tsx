@@ -32,6 +32,8 @@ const DISMISS_KEY  = 'gc_ad_popup_dismissed';  // ms timestamp of last manual cl
 const COOLDOWN_DAYS = 1;      // after a manual close, stay hidden this long
 const SHOW_DELAY_MS = 2500;   // wait after load before popping up
 const AUTO_HIDE_MS  = 12000;  // auto-dismiss if the visitor doesn't interact
+const RESULT_RECHECK_MS  = 1500;   // how often to re-check whether a result is on screen
+const MAX_RESULT_WAIT_MS = 30000;  // give up entirely rather than nag someone mid-task
 
 export default function AdLandingBanner() {
   const { data: session, status } = useSession();
@@ -55,11 +57,32 @@ export default function AdLandingBanner() {
       if (Date.now() - last < COOLDOWN_DAYS * 86_400_000) return;
     } catch { /* storage blocked — still show */ }
 
-    const timer = setTimeout(() => {
+    // Don't interrupt a calculation. The pop-up runs on a load timer, so it
+    // used to land wherever the visitor happened to be — including directly
+    // over a fresh result, which is the one moment the app has just proven
+    // its value. Wait until no result is on screen, re-checking on an
+    // interval, and give up rather than nag if they stay on it.
+    let waited = 0;
+    let retry: ReturnType<typeof setTimeout> | undefined;
+    const reveal = () => {
       setShow(true);
       try { sessionStorage.setItem(SESSION_KEY, '1'); } catch { /* ignore */ }
+    };
+
+    const timer = setTimeout(function attempt() {
+      const el = document.querySelector('[data-calc-result]');
+      const resultOnScreen = !!el && (() => {
+        const r = el.getBoundingClientRect();
+        return r.bottom > 0 && r.top < window.innerHeight;
+      })();
+
+      if (!resultOnScreen) { reveal(); return; }
+      waited += RESULT_RECHECK_MS;
+      if (waited >= MAX_RESULT_WAIT_MS) return; // reading it this long — leave them alone
+      retry = setTimeout(attempt, RESULT_RECHECK_MS);
     }, SHOW_DELAY_MS);
-    return () => clearTimeout(timer);
+
+    return () => { clearTimeout(timer); if (retry) clearTimeout(retry); };
   }, [status, session]);
 
   // Auto-dismiss on a timer once visible.

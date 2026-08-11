@@ -147,7 +147,10 @@ export function TargetResultCard({ result, vehicleName, vehicleId, vehicleOdomet
   const pricePerGallon = gallonsNeeded > 0 ? Math.round((estimatedCost / gallonsNeeded) * 100) / 100 : 0;
 
   return (
-    <div className="animate-result mt-4 space-y-3">
+    // data-calc-result: AdLandingBanner checks for this before popping up, so
+    // the getaway promo never covers a fresh result — the one moment the app
+    // has just demonstrated its value.
+    <div className="animate-result mt-4 space-y-3" data-calc-result>
 
       {/* ── Hero stat row ── */}
       <div className="grid grid-cols-2 gap-3">
@@ -360,7 +363,7 @@ export function BudgetResultCard({ result, pricePerGallon, vehicleName, vehicleI
     ?? (gallonsAffordable > 0 ? Math.round((actualCost / gallonsAffordable) * 100) / 100 : 0);
 
   return (
-    <div className="animate-result mt-4 space-y-3">
+    <div className="animate-result mt-4 space-y-3" data-calc-result>
 
       {/* ── Overfill warning ── */}
       {wouldOverfill && (
