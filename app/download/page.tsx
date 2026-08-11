@@ -17,10 +17,10 @@ export const metadata: Metadata = {
     description: 'Know what your fill-up will cost before you ever reach the pump. Find nearby gas prices, calculate fuel costs, and manage vehicles — free.',
     images: [
       {
-        url:    '/og-image.png?v=2',
-        width:  1200,
-        height: 630,
-        alt:    'GasCap™ — Know Before You Go',
+        url:    '/og-image-download.png',
+        width:  1731,
+        height: 909,
+        alt:    'GasCap™ — Available now on iOS & Android',
       },
     ],
   },
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
     card:        'summary_large_image',
     title:       'Download GasCap™ | Know Before You Go',
     description: 'Know what your fill-up will cost before you ever reach the pump.',
-    images:      ['/og-image.png?v=2'],
+    images:      ['/og-image-download.png'],
   },
 };
 
