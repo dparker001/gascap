@@ -19,6 +19,8 @@
 
 import { sendMail, brandHeader } from './email';
 import { logEmail }              from './emailLog';
+import { REFERRAL_BONUS_ENTRIES } from './giveaway';
+import { findById }              from './users';
 
 // ── Shared layout helpers ──────────────────────────────────────────────────
 
@@ -933,12 +935,90 @@ export function referralCreditEmailText(
   return `Hi ${first}, someone you referred just became a paying GasCap™ subscriber! You've earned 1 free month of Pro. You now have ${totalCredits} credit${totalCredits === 1 ? '' : 's'} banked (each = 1 free month, $2.99 value). Credits apply on your next billing cycle (up to 3 at once) and expire after 12 months. You can earn up to 6 free months total — at 15 paying referrals, Pro is yours for life. View your credits: ${BASE_URL}/settings`;
 }
 
+/**
+ * Referral reward email for a LIFETIME referrer.
+ *
+ * A free Pro month is worthless to someone with no subscription to apply it
+ * to, and recordReferral already refuses to bank one for them. The email,
+ * however, fired regardless — so a Lifetime member who referred a buyer was
+ * told they'd "earned a free month" that was never actually granted. What
+ * they really earn is REFERRAL_BONUS_ENTRIES giveaway entries per referral,
+ * every draw period, permanently.
+ */
+export function referralEntriesEmailHtml(referrerName: string, referrerId: string, referralCount: number): string {
+  const first = referrerName.split(' ')[0];
+  const total = referralCount * REFERRAL_BONUS_ENTRIES;
+  return wrap(`
+    ${header('lifetime')}
+    <tr><td style="padding:32px;">
+      <p style="margin:0 0 6px;font-size:24px;font-weight:900;color:#1e2d4a;line-height:1.2;">
+        Nice one, ${first} — that referral counts 🎉
+      </p>
+      <p style="margin:0 0 20px;font-size:15px;color:#475569;line-height:1.65;">
+        Someone you referred just became a GasCap™ Pro member. As a Lifetime
+        member you already own Pro outright, so instead of a free month your
+        referrals pay out where it actually helps you:
+      </p>
+
+      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:14px;padding:18px 22px;margin:0 0 22px;text-align:center;">
+        <p style="margin:0 0 4px;font-size:12px;font-weight:900;color:#14532d;text-transform:uppercase;letter-spacing:0.06em;">
+          Bonus giveaway entries
+        </p>
+        <p style="margin:0;font-size:34px;font-weight:900;color:#14532d;line-height:1.1;">
+          +${REFERRAL_BONUS_ENTRIES}
+        </p>
+        <p style="margin:6px 0 0;font-size:13px;color:#166534;line-height:1.5;">
+          every draw period, for as long as the giveaway runs — not a one-time bonus.
+        </p>
+      </div>
+
+      <p style="margin:0 0 22px;font-size:14px;color:#475569;line-height:1.6;">
+        That's <strong>${referralCount} referral${referralCount === 1 ? '' : 's'}</strong> so far,
+        worth <strong>+${total} entries</strong> in every monthly $50 gas card drawing.
+        Keep going and the Ambassador tiers multiply your daily entries on top of that.
+      </p>
+
+      ${ctaButton('See your entries →', `${BASE_URL}/giveaway`)}
+
+      <p style="margin:18px 0 0;font-size:13px;color:#475569;">— Don, Founder of GasCap™</p>
+    </td></tr>
+    ${footer(referrerId)}
+  `);
+}
+
+export const referralEntriesEmailText = (referrerName: string, referralCount: number) =>
+  `Hi ${referrerName.split(' ')[0]}, someone you referred just became a GasCap\u2122 Pro member. You already own Pro for life, so instead of a free month this earns you +${REFERRAL_BONUS_ENTRIES} bonus entries in every monthly $50 gas card drawing — recurring, not one-time. That's ${referralCount} referral${referralCount === 1 ? '' : 's'} so far, worth +${referralCount * REFERRAL_BONUS_ENTRIES} entries per draw. See your entries: ${BASE_URL}/giveaway`;
+
 export async function sendReferralCreditEmail(
   referrerId:   string,
   referrerEmail: string,
   referrerName:  string,
   totalCredits:  number,
 ): Promise<void> {
+  // Branch here rather than at the call sites — the webhook sends this from
+  // two places and they would inevitably drift.
+  //
+  // recordReferral refuses to bank a free month for a Lifetime member (they
+  // have no subscription to apply it to), but this email fired anyway, so a
+  // Lifetime referrer was told they'd earned a month that never existed.
+  // They do earn something real — recurring giveaway entries — so say that.
+  const referrer   = await findById(referrerId).catch(() => null);
+  const isLifetime = referrer?.stripeInterval === 'lifetime';
+
+  if (isLifetime) {
+    const count   = referrer?.referralCount ?? 1;
+    const subject = `🎉 Your referral earned you +${REFERRAL_BONUS_ENTRIES} giveaway entries`;
+    await sendMail({
+      to:             referrerEmail,
+      subject,
+      html:           referralEntriesEmailHtml(referrerName, referrerId, count),
+      text:           referralEntriesEmailText(referrerName, count),
+      unsubscribeUrl: unsubLink(referrerId),
+    });
+    logEmail({ userId: referrerId, userEmail: referrerEmail, userName: referrerName, type: 'referral-entries', subject }).catch(() => {});
+    return;
+  }
+
   const subject = `🎉 You earned a free month on GasCap™! (${totalCredits} banked)`;
   await sendMail({
     to:             referrerEmail,
