@@ -42,16 +42,21 @@ export async function GET(req: Request) {
       await expireTrial(user.id);
       downgraded++;
 
-      // 2. Send "trial ended" email
-      const trialEndedSubject = 'Your GasCap™ Pro trial has ended';
-      await sendMail({
-        to:      user.email,
-        subject: trialEndedSubject,
-        html:    trialEndedEmailHtml(user.name, user.id),
-        text:    trialEndedEmailText(user.name),
-      });
-      logEmail({ userId: user.id, userEmail: user.email, userName: user.name, type: 'trial-ended', subject: trialEndedSubject }).catch(() => {});
-      emailsSent++;
+      // 2. Send "trial ended" email — only to users who accept email.
+      //    The opt-out check belongs HERE, not in the query that decides who
+      //    gets downgraded. Filtering the query was letting opt-outs keep Pro
+      //    for free indefinitely.
+      if (!user.emailOptOut) {
+        const trialEndedSubject = 'Your GasCap™ Pro trial has ended';
+        await sendMail({
+          to:      user.email,
+          subject: trialEndedSubject,
+          html:    trialEndedEmailHtml(user.name, user.id),
+          text:    trialEndedEmailText(user.name),
+        });
+        logEmail({ userId: user.id, userEmail: user.email, userName: user.name, type: 'trial-ended', subject: trialEndedSubject }).catch(() => {});
+        emailsSent++;
+      }
 
       console.log(`[trial-expire] Expired trial for ${user.email}`);
     } catch (err) {

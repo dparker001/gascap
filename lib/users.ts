@@ -454,13 +454,25 @@ export async function expireTrial(userId: string): Promise<void> {
 }
 
 /** Returns all users whose free Pro trial has expired but haven't been downgraded yet. */
+/**
+ * Users whose Pro trial has lapsed and who should be downgraded.
+ *
+ * NOTE: deliberately does NOT filter on emailOptOut. It used to, which meant
+ * opting out of marketing email silently granted permanent free Pro — the
+ * account was never downgraded because it never appeared in this query. Eight
+ * accounts sat in that state for two months before a data-integrity check
+ * caught it.
+ *
+ * Expiry is an account-state operation and email is a notification; they are
+ * separate concerns. The caller decides who to email (see
+ * app/api/cron/trial-expire), but everyone here gets downgraded.
+ */
 export async function getExpiredTrialUsers(): Promise<StoredUser[]> {
   const now = new Date().toISOString();
   const users = await prisma.user.findMany({
     where: {
       isProTrial:     true,
       trialExpiresAt: { lt: now },
-      emailOptOut:    false,
       isTestAccount:  false,
     },
   });
