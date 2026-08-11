@@ -2,6 +2,7 @@ name: GasCap Cron Jobs
 
 on:
   schedule:
+    - cron: '0 11 * * *'   # integrity-check       (11:00 UTC / 7:00 AM ET)
     - cron: '0 12 * * *'   # engagement-campaign  (12:00 UTC)
     - cron: '0 13 * * *'   # trial-expire          (13:00 UTC)
     - cron: '0 14 * * *'   # email-campaign        (14:00 UTC)
@@ -21,6 +22,7 @@ on:
         required: true
         type: choice
         options:
+          - integrity-check
           - engagement-campaign
           - trial-expire
           - email-campaign
@@ -42,6 +44,7 @@ jobs:
         id: resolve
         run: |
           case "${{ github.event.schedule }}" in
+            "0 11 * * *")  echo "endpoint=integrity-check"     >> "$GITHUB_OUTPUT" ;;
             "0 12 * * *")  echo "endpoint=engagement-campaign" >> "$GITHUB_OUTPUT" ;;
             "0 13 * * *")  echo "endpoint=trial-expire"        >> "$GITHUB_OUTPUT" ;;
             "0 14 * * *")  echo "endpoint=email-campaign"      >> "$GITHUB_OUTPUT" ;;
