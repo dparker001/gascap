@@ -145,14 +145,19 @@ export async function GET(req: Request) {
   ));
 
   // ── Family 3: scheduled work not actually running ─────────────────────────
-  // A draw should exist for the period that just closed.
+  // A draw should exist for the period that just closed — unless the giveaway
+  // is deliberately paused. It was for June and July 2026, and this check
+  // reported that as a failure on its first run, which is exactly the kind of
+  // false positive that trains people to ignore the report. Set
+  // GIVEAWAY_PAUSED=true in Railway while a pause is intentional.
+  const giveawayPaused = process.env.GIVEAWAY_PAUSED === 'true';
   const lastPeriod = prevMonth(currentPeriod());
   const draws      = await getDrawHistory();
-  const missingDraw = draws.some((d) => d.month === lastPeriod) ? 0 : 1;
+  const missingDraw = giveawayPaused || draws.some((d) => d.month === lastPeriod) ? 0 : 1;
   findings.push(flag(
     'missing-draw', `No giveaway draw recorded for ${lastPeriod}`,
     missingDraw,
-    'The auto-draw cron only fires on the last day of the month. A missing draw means it did not run, and entry counters will not have reset either.',
+    'The draw is run manually from the admin panel — it is not scheduled. A missing draw also means entry counters never reset, so totals keep compounding across periods. If the pause is intentional, set GIVEAWAY_PAUSED=true.',
     'error',
   ));
 

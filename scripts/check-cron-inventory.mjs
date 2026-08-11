@@ -21,10 +21,13 @@ const WORKFLOW = '.github/workflows/crons.yml';
 
 // Endpoints intentionally invoked by something other than the shared schedule.
 const EXEMPT = new Set([
-  'trial-conversion', // has its own date-gated workflow (trial-conversion.yml)
-  'giveaway-draw',    // fires from the daily draw workflow with its own guard
-  'winner-claim-check',
-  'digest',           // weekly, matched separately below
+  'trial-conversion',   // has its own date-gated workflow (trial-conversion.yml)
+  // Deliberately manual: the monthly draw is run by hand from the admin panel
+  // so it can be paused (as it was for June/July 2026) without editing code.
+  // The route itself is fully built and guarded — scheduling it daily would
+  // make it self-running, since it no-ops on any day but the month's last.
+  'giveaway-draw',
+  'winner-claim-check', // invoked from the claim flow, not on a schedule
 ]);
 
 const routes = readdirSync(CRON_DIR, { withFileTypes: true })
