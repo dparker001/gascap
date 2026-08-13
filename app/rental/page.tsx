@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { GlowIcon, type GlowIconName } from '@/components/marketing/GlowIcon';
 
 export const metadata: Metadata = {
   title: 'Rental Car Return Mode — GasCap™',
@@ -11,13 +12,13 @@ export const metadata: Metadata = {
   },
 };
 
-const CHECKLIST = [
-  { icon: '⛽', text: 'Refill vehicle to required level' },
-  { icon: '📸', text: 'Take a photo of the fuel gauge' },
-  { icon: '🚗', text: 'Take exterior vehicle photos' },
-  { icon: '🧹', text: 'Remove personal belongings' },
-  { icon: '📍', text: 'Confirm return address' },
-  { icon: '🧾', text: 'Save receipt or pump photo' },
+const CHECKLIST: { icon: GlowIconName; text: string }[] = [
+  { icon: 'pump',    text: 'Refill vehicle to required level' },
+  { icon: 'camera',  text: 'Take a photo of the fuel gauge' },
+  { icon: 'car',     text: 'Take exterior vehicle photos' },
+  { icon: 'sparkle', text: 'Remove personal belongings' },
+  { icon: 'pin',     text: 'Confirm return address' },
+  { icon: 'receipt', text: 'Save receipt or pump photo' },
 ];
 
 const STEPS = [
@@ -32,8 +33,21 @@ export default function RentalPage() {
     <main className="min-h-screen bg-slate-50">
 
       {/* Hero */}
-      <section className="bg-slate-900 text-white px-4 pt-14 pb-12 text-center">
-        <div className="max-w-lg mx-auto">
+      <section className="bg-slate-900 text-white px-4 pt-14 pb-12 text-center overflow-hidden relative">
+        <div
+          className="absolute -top-16 -left-10 w-56 h-56 rounded-full opacity-20 blur-3xl pointer-events-none"
+          style={{ background: '#FF8300' }}
+          aria-hidden="true"
+        />
+        <div
+          className="absolute -bottom-20 -right-10 w-56 h-56 rounded-full opacity-20 blur-3xl pointer-events-none"
+          style={{ background: '#1EB68F' }}
+          aria-hidden="true"
+        />
+        <div className="max-w-lg mx-auto relative">
+          <div className="flex justify-center mb-4">
+            <GlowIcon name="car" size={72} />
+          </div>
           <p className="text-[11px] font-bold tracking-widest text-brand-orange uppercase mb-3">
             GasCap™ Rental Mode
           </p>
@@ -106,7 +120,7 @@ export default function RentalPage() {
                 className="flex items-center gap-2.5 bg-slate-50 border border-slate-200
                            rounded-xl px-3 py-2.5"
               >
-                <span className="text-lg">{item.icon}</span>
+                <GlowIcon name={item.icon} size={36} />
                 <p className="text-[11px] font-semibold text-slate-700 leading-snug">{item.text}</p>
               </div>
             ))}

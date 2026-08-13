@@ -9,7 +9,8 @@
 
 export type GlowIconName =
   | 'star' | 'trophy' | 'diamond' | 'crown' | 'gift'
-  | 'hotel' | 'dining' | 'handshake' | 'pump' | 'coin';
+  | 'hotel' | 'dining' | 'handshake' | 'pump' | 'coin'
+  | 'pin' | 'camera' | 'car' | 'receipt' | 'chart' | 'sparkle';
 
 const PATHS: Record<GlowIconName, string> = {
   star:      'M12 3l2.4 5.9 6.3.5-4.8 4.1 1.5 6.2L12 16.6 6.6 19.7l1.5-6.2-4.8-4.1 6.3-.5L12 3z',
@@ -22,6 +23,12 @@ const PATHS: Record<GlowIconName, string> = {
   handshake: 'M3 11l4-4 4 3 2-2 4 4-3 3-1-1-3 3-1-1-3 3-3-3 4-4',
   pump:      'M6 21V8a2 2 0 012-2h4a2 2 0 012 2v13 M4 21h10 M14 9h2l3 3v6a1.5 1.5 0 01-3 0v-3h-2 M7 5h4',
   coin:      'M12 21a9 9 0 100-18 9 9 0 000 18z M12 7v10 M9.5 9.5c0-1 1-1.8 2.5-1.8s2.5.8 2.5 1.8-1 1.5-2.5 1.8-2.5.8-2.5 1.9 1 1.8 2.5 1.8 2.5-.8 2.5-1.8',
+  pin:       'M12 21s7-7.5 7-12a7 7 0 10-14 0c0 4.5 7 12 7 12z M12 12a2.5 2.5 0 100-5 2.5 2.5 0 000 5z',
+  camera:    'M4 8h3l1.5-2h7L17 8h3a1 1 0 011 1v9a1 1 0 01-1 1H4a1 1 0 01-1-1V9a1 1 0 011-1z M12 17a4 4 0 100-8 4 4 0 000 8z',
+  car:       'M4 16.5V12l2-5h12l2 5v4.5 M4 16.5h16 M6 16.5v2 M18 16.5v2 M6.5 12h11 M7 14h1.2 M15.8 14H17',
+  receipt:   'M6 3h12v18l-2-1.4L14 21l-2-1.4L10 21l-2-1.4L6 21V3z M9 8h6 M9 12h6 M9 16h4',
+  chart:     'M4 20V10 M10 20V4 M16 20v-7 M4 20h16',
+  sparkle:   'M12 3l1.1 4 4 1.1-4 1.1L12 13l-1.1-4-4-1.1 4-1.1L12 3z M18 14l.6 2 2 .6-2 .6-.6 2-.6-2-2-.6 2-.6z',
 };
 
 export function GlowIcon({

@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from '@/contexts/LanguageContext';
 import StreakRewards         from '@/components/StreakRewards';
 import CompAmbassadorTracker from '@/components/CompAmbassadorTracker';
+import { GlowIcon, type GlowIconName } from '@/components/marketing/GlowIcon';
 
 interface ReferralSummary {
   referralUrl:   string;
@@ -13,10 +14,11 @@ interface ReferralSummary {
 }
 
 // Structural styling only — all copy lives in t.ambassadorPage (steps/tiers).
-const TIER_STYLE = [
-  { icon: '🤝', threshold: 5,  entries: 2, color: 'bg-slate-50 border-slate-200', title: 'text-slate-700', badge: 'bg-slate-200 text-slate-600' },
-  { icon: '🏅', threshold: 15, entries: 3, color: 'bg-navy-50 border-navy-200',   title: 'text-navy-700',  badge: 'bg-navy-700 text-white'      },
-  { icon: '🏆', threshold: 30, entries: 5, color: 'bg-amber-50 border-amber-200', title: 'text-amber-700', badge: 'bg-amber-500 text-white'     },
+// Icons match the tier icons used on /rewards for consistency.
+const TIER_STYLE: { icon: GlowIconName; threshold: number; entries: number; color: string; title: string; badge: string }[] = [
+  { icon: 'handshake', threshold: 5,  entries: 2, color: 'bg-slate-50 border-slate-200', title: 'text-slate-700', badge: 'bg-slate-200 text-slate-600' },
+  { icon: 'hotel',      threshold: 15, entries: 3, color: 'bg-navy-50 border-navy-200',   title: 'text-navy-700',  badge: 'bg-navy-700 text-white'      },
+  { icon: 'crown',      threshold: 30, entries: 5, color: 'bg-amber-50 border-amber-200', title: 'text-amber-700', badge: 'bg-amber-500 text-white'     },
 ];
 
 export default function AmbassadorPage() {
@@ -54,7 +56,9 @@ export default function AmbassadorPage() {
 
       {/* ── Header ──────────────────────────────────────────────────── */}
       <div className="bg-navy-700 px-4 pt-12 pb-8 text-center">
-        <div className="text-4xl mb-3">🏆</div>
+        <div className="flex justify-center mb-3">
+          <GlowIcon name="trophy" size={68} />
+        </div>
         <h1 className="text-2xl font-black text-white leading-tight">
           GasCap™ {ap.programName}
         </h1>
@@ -75,7 +79,7 @@ export default function AmbassadorPage() {
         {session && referral && count > 0 && currentTier !== null && (
           <div className={`rounded-2xl border px-4 py-4 ${tiers[currentTier].color}`}>
             <div className="flex items-center gap-3">
-              <span className="text-2xl">{tiers[currentTier].icon}</span>
+              <GlowIcon name={tiers[currentTier].icon} size={44} />
               <div className="flex-1">
                 <div className="flex items-center gap-2">
                   <p className={`text-sm font-black ${tiers[currentTier].title}`}>
@@ -162,7 +166,7 @@ export default function AmbassadorPage() {
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span>{tier.icon}</span>
+                    <GlowIcon name={tier.icon} size={28} />
                     <p className={`text-xs font-black ${tier.title}`}>{tier.label}</p>
                     {currentTier === i && (
                       <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full ${tier.badge}`}>{ap.youBadge}</span>

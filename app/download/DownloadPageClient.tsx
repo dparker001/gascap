@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { gtagEvent, fbTrack } from '@/lib/gtag';
+import { GlowIcon, type GlowIconName } from '@/components/marketing/GlowIcon';
 
 // Real, live store listings (also used in emailCampaign.ts / ReviewNudge.tsx).
 const IOS_URL     = process.env.NEXT_PUBLIC_GASCAP_IOS_APP_URL     || 'https://apps.apple.com/app/id6761315915';
@@ -29,29 +30,29 @@ function utmParams(searchParams: URLSearchParams) {
   return params;
 }
 
-const BENEFITS = [
+const BENEFITS: { icon: GlowIconName; title: string; body: string }[] = [
   {
-    icon: '📍',
+    icon: 'pin',
     title: 'Find Nearby Gas Prices',
     body: 'See real-time prices at nearby stations so you always know where to fill up for less.',
   },
   {
-    icon: '⛽',
+    icon: 'pump',
     title: 'Know Your Fill-Up Cost',
     body: 'Set your fuel level and target, and GasCap™ tells you the exact cost before you pump a drop.',
   },
   {
-    icon: '💰',
+    icon: 'coin',
     title: 'Budget Before You Pump',
     body: 'Enter a dollar amount and see exactly how many gallons it buys — no more guessing at the pump.',
   },
   {
-    icon: '🚗',
+    icon: 'car',
     title: 'Manage Your Vehicles',
     body: 'Save every vehicle in your garage, track tank size, and switch between them in a tap.',
   },
   {
-    icon: '📊',
+    icon: 'chart',
     title: 'Track Fuel Usage',
     body: 'Log fill-ups and watch your MPG, spending, and savings trends over time.',
   },
@@ -158,6 +159,9 @@ export default function DownloadPageClient() {
 
       {/* ── Hero ───────────────────────────────────────────────────────── */}
       <section className="px-5 pt-10 pb-8 text-center max-w-lg mx-auto">
+        <div className="flex justify-center mb-4">
+          <GlowIcon name="pump" size={72} />
+        </div>
         <h1 className="text-3xl sm:text-4xl font-black leading-tight mb-3">
           Know Before You Go.
         </h1>
@@ -198,7 +202,7 @@ export default function DownloadPageClient() {
         <div className="max-w-2xl mx-auto grid gap-5 sm:grid-cols-2">
           {BENEFITS.map((b) => (
             <div key={b.title} className="bg-white rounded-xl shadow-card p-5 flex gap-4">
-              <span className="text-3xl leading-none" aria-hidden="true">{b.icon}</span>
+              <GlowIcon name={b.icon} size={48} />
               <div>
                 <h3 className="font-bold text-brand-dark mb-1">{b.title}</h3>
                 <p className="text-sm text-gray-600">{b.body}</p>
