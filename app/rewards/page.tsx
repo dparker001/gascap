@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { GlowIcon, type GlowIconName } from '@/components/marketing/GlowIcon';
 
 export const metadata: Metadata = {
   title: 'Earn Rewards — Dining Vouchers & Hotel Savings Cards | GasCap™',
@@ -12,17 +13,18 @@ export const metadata: Metadata = {
   },
 };
 
-const STREAK_MILESTONES = [
-  { days: 30, emoji: '⭐', reward: '$25 Dining Voucher' },
-  { days: 60, emoji: '🏆', reward: '$50 Dining Voucher' },
-  { days: 120, emoji: '💎', reward: '$100 Hotel Savings Card' },
-  { days: 365, emoji: '👑', reward: '$500 Hotel Savings Card' },
+const STREAK_MILESTONES: { days: number; icon: GlowIconName; reward: string }[] = [
+  { days: 30,  icon: 'star',    reward: '$25 Dining Voucher' },
+  { days: 60,  icon: 'trophy',  reward: '$50 Dining Voucher' },
+  { days: 120, icon: 'diamond', reward: '$100 Hotel Savings Card' },
+  { days: 365, icon: 'crown',   reward: '$500 Hotel Savings Card' },
 ];
 
-const AMBASSADOR_TIERS = [
+const AMBASSADOR_TIERS: { name: string; threshold: string; icon: GlowIconName; perks: string[] }[] = [
   {
     name: 'Supporter',
     threshold: '5+ paying referrals',
+    icon: 'handshake',
     perks: [
       '1 free Pro month per referral, up to 6 free months (Lifetime members earn bonus giveaway entries instead)',
       '2× daily giveaway entries',
@@ -32,6 +34,7 @@ const AMBASSADOR_TIERS = [
   {
     name: 'Ambassador',
     threshold: '15+ paying referrals',
+    icon: 'hotel',
     perks: [
       'Free Pro for life',
       '3× daily giveaway entries',
@@ -41,6 +44,7 @@ const AMBASSADOR_TIERS = [
   {
     name: 'Elite Ambassador',
     threshold: '30+ paying referrals',
+    icon: 'crown',
     perks: [
       'Free Pro for life',
       '5× daily giveaway entries',
@@ -56,8 +60,21 @@ export default function RewardsPage() {
     <main className="min-h-screen bg-slate-50">
 
       {/* Hero */}
-      <section className="bg-slate-900 text-white px-4 pt-14 pb-12 text-center">
-        <div className="max-w-lg mx-auto">
+      <section className="bg-slate-900 text-white px-4 pt-14 pb-12 text-center overflow-hidden relative">
+        <div
+          className="absolute -top-16 -left-10 w-56 h-56 rounded-full opacity-20 blur-3xl pointer-events-none"
+          style={{ background: '#FF8300' }}
+          aria-hidden="true"
+        />
+        <div
+          className="absolute -bottom-20 -right-10 w-56 h-56 rounded-full opacity-20 blur-3xl pointer-events-none"
+          style={{ background: '#1EB68F' }}
+          aria-hidden="true"
+        />
+        <div className="max-w-lg mx-auto relative">
+          <div className="flex justify-center mb-4">
+            <GlowIcon name="gift" size={72} />
+          </div>
           <p className="text-[11px] font-bold tracking-widest text-brand-orange uppercase mb-3">
             GasCap™ Rewards
           </p>
@@ -95,10 +112,7 @@ export default function RewardsPage() {
               className="flex items-center gap-4 bg-white border border-slate-100 shadow-sm
                          rounded-2xl px-4 py-3.5"
             >
-              <span className="flex-shrink-0 w-11 h-11 rounded-full bg-navy-700
-                               flex items-center justify-center text-xl">
-                {m.emoji}
-              </span>
+              <GlowIcon name={m.icon} size={52} />
               <div className="flex-1">
                 <p className="font-black text-slate-800 text-sm">
                   {m.days === 365 ? '1-Year Streak' : `${m.days}-Day Streak`}
@@ -116,6 +130,9 @@ export default function RewardsPage() {
 
       {/* Monthly Gas Card Giveaway */}
       <section className="px-4 py-10 max-w-lg mx-auto text-center">
+        <div className="flex justify-center mb-3">
+          <GlowIcon name="coin" size={64} />
+        </div>
         <h2 className="text-xl font-black text-slate-800 mb-2">Monthly $50 Gas Card Giveaway</h2>
         <p className="text-[12px] text-slate-500 mb-6 max-w-sm mx-auto">
           Every month GasCap™ gives away a $50 Visa prepaid card — use it at the pump or anywhere
@@ -161,11 +178,14 @@ export default function RewardsPage() {
                 key={tier.name}
                 className="bg-slate-50 border border-slate-200 rounded-2xl p-4"
               >
-                <div className="flex items-baseline justify-between mb-2">
-                  <p className="font-black text-slate-800 text-sm">{tier.name}</p>
-                  <p className="text-[11px] font-bold text-brand-orange uppercase tracking-wide">
-                    {tier.threshold}
-                  </p>
+                <div className="flex items-center gap-3 mb-3">
+                  <GlowIcon name={tier.icon} size={44} />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-black text-slate-800 text-sm">{tier.name}</p>
+                    <p className="text-[10px] font-bold text-brand-orange uppercase tracking-wide">
+                      {tier.threshold}
+                    </p>
+                  </div>
                 </div>
                 <div className="space-y-1">
                   {tier.perks.map((p) => (
