@@ -19,8 +19,8 @@ interface ActivityResp {
 
 const MILESTONES = [
   { days: 30,  emoji: '⭐' },
-  { days: 90,  emoji: '🏆' },
-  { days: 180, emoji: '💎' },
+  { days: 60,  emoji: '🏆' },
+  { days: 120, emoji: '💎' },
   { days: 365, emoji: '👑' },
 ];
 

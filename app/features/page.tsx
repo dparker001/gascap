@@ -79,7 +79,7 @@ const CATEGORIES: Category[] = [
       {
         icon: '📅',
         title: 'Streak Rewards',
-        body: 'Open GasCap™ daily to build a streak. Milestones at 30/90/180/365 days earn free Pro months (or bonus entries for Lifetime members) plus real rewards — Dining Vouchers and Hotel Savings Cards, sent automatically by email.',
+        body: 'Open GasCap™ daily to build a streak. Milestones at 30/60/120/365 days earn free Pro months (or bonus entries for Lifetime members) plus real rewards — Dining Vouchers and Hotel Savings Cards, sent automatically by email.',
       },
       {
         icon: '🎁',

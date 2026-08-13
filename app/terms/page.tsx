@@ -111,7 +111,7 @@ export default function TermsPage() {
           {/* 7b */}
           <section>
             <h2 className="text-lg font-black text-navy-700 mb-2">7b. Streak Reward Credits</h2>
-            <p>Users who maintain consecutive daily usage streaks may earn free Pro month credits at the following milestones: 30, 90, 180, and 365 consecutive days. The following terms apply:</p>
+            <p>Users who maintain consecutive daily usage streaks may earn free Pro month credits at the following milestones: 30, 60, 120, and 365 consecutive days. The following terms apply:</p>
             <ul className="list-disc pl-5 space-y-1 mt-2">
               <li>Each milestone may only be earned once per user account.</li>
               <li>Streak credits are valid for 12 months from the date earned and expire if not redeemed.</li>

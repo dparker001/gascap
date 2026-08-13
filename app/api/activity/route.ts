@@ -13,11 +13,11 @@ import { sendMail, streakMilestoneEmailHtml } from '@/lib/email';
 import { sendApns, apnsConfigured } from '@/lib/apns';
 import { sendDiningVoucher, sendHotelSavingsCard } from '@/lib/marketingBoost';
 
-/** One-time Marketing Boost reward for streak milestones — 30/90/180/365 days only (7/14 are email-only nudges). */
+/** One-time Marketing Boost reward for streak milestones — 30/60/120/365 days only (7/14 are email-only nudges). */
 const STREAK_VOUCHER_REWARD: Record<number, { kind: 'dining' | 'hotel'; amount: number; label: string }> = {
   30:  { kind: 'dining', amount: 25,  label: '$25 Dining Voucher' },
-  90:  { kind: 'dining', amount: 50,  label: '$50 Dining Voucher' },
-  180: { kind: 'hotel',  amount: 100, label: '$100 Hotel Savings Card' },
+  60:  { kind: 'dining', amount: 50,  label: '$50 Dining Voucher' },
+  120: { kind: 'hotel',  amount: 100, label: '$100 Hotel Savings Card' },
   365: { kind: 'hotel',  amount: 300, label: '$300 Hotel Savings Card' },
 };
 
@@ -99,7 +99,7 @@ export async function POST(req: Request) {
           const nextMilestoneDays = milestoneDaysSorted.find((d) => d > days) ?? null;
           const nextBonusEntries  = nextMilestoneDays ? streakBonusEntries(nextMilestoneDays) : null;
 
-          const dayLabel = days >= 365 ? '1-year' : days >= 180 ? '6-month' : days >= 90 ? '90-day' : days >= 30 ? '30-day' : `${days}-day`;
+          const dayLabel = days >= 365 ? '1-year' : days >= 120 ? '120-day' : days >= 60 ? '60-day' : days >= 30 ? '30-day' : `${days}-day`;
           await sendMail({
             to:      result.userEmail,
             subject: `${days >= 30 ? '🏆' : '📅'} You hit a ${dayLabel} streak on GasCap™!`,

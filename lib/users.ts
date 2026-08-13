@@ -100,13 +100,16 @@ export interface StreakCredit {
   redeemedAt?: string;
 }
 
+// Lowered from 30/90/180/365 on 2026-08-13 — the Marketing Boost vouchers are
+// free to issue, and 90/180 days was out of reach for most users, so the
+// hotel-tier reward (previously locked behind 180 days) now lands at 120.
 export const STREAK_MILESTONES: { days: number; months: number }[] = [
-  { days: 7,   months: 0 },  // entry bonus tier: +2 draw entries — sends celebration email
+  { days: 7,   months: 0 },  // momentum nudge email
   { days: 14,  months: 0 },  // momentum nudge email — "halfway to +5 entries!"
-  { days: 30,  months: 1 },  // entry bonus tier: +5 draw entries + 1 free Pro month credit
-  { days: 90,  months: 1 },  // entry bonus tier: +10 draw entries + 1 free Pro month credit
-  { days: 180, months: 1 },  // entry bonus tier: +15 draw entries + 1 free Pro month credit
-  { days: 365, months: 1 },  // entry bonus tier: +20 draw entries + 1 free Pro month credit
+  { days: 30,  months: 1 },  // 1 free Pro month credit + $25 Dining Voucher
+  { days: 60,  months: 1 },  // 1 free Pro month credit + $50 Dining Voucher
+  { days: 120, months: 1 },  // 1 free Pro month credit + $100 Hotel Savings Card
+  { days: 365, months: 1 },  // 1 free Pro month credit + $300 Hotel Savings Card
 ];
 
 export type ActivityEvent = 'calc' | 'budget_calc' | 'location_lookup' | 'visit';
@@ -718,8 +721,8 @@ export function calcStreak(activeDays: string[], today?: string): number {
 // higher at the top tier).
 const STREAK_MILESTONE_LIFETIME_ENTRIES: Record<number, number> = {
   30:  10,
-  90:  20,
-  180: 30,
+  60:  20,
+  120: 30,
   365: 50,
 };
 

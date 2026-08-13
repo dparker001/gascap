@@ -551,10 +551,10 @@ ${bonusBlock}
 
 /** ─────────────────────────────────────────────────────────────────────────
  * Streak milestone celebration email — sent the first time a user crosses
- * a streak milestone (7, 14, 30, 90, 180, 365 days).
+ * a streak milestone (7, 14, 30, 60, 120, 365 days).
  *
  * @param name               User's display name
- * @param milestoneDays      The milestone just hit (e.g. 7, 30, 90)
+ * @param milestoneDays      The milestone just hit (e.g. 7, 30, 60)
  * @param bonusEntries       Bonus draw entries now earned at this streak tier
  * @param nextMilestoneDays  Next milestone to aim for, or null if at max
  * @param nextBonusEntries   Bonus entries at the next milestone, or null
@@ -573,8 +573,8 @@ export function streakMilestoneEmailHtml(
     7:   { emoji: '📅', headline: `${name}, you're on a 7-day streak!`,    subline: 'One week in — you\'re already building a great habit.' },
     14:  { emoji: '⚡', headline: `${name}, 14 days straight!`,             subline: 'Two full weeks of smart fueling. Keep the momentum going.' },
     30:  { emoji: '🏆', headline: `${name}, one full month!`,               subline: 'A 30-day streak is a serious commitment — and GasCap™ rewards it.' },
-    90:  { emoji: '🌟', headline: `${name}, 90 days on a streak!`,          subline: 'Three months of consistent fueling smarts. You\'re in rare company.' },
-    180: { emoji: '💎', headline: `${name}, 6 months straight!`,            subline: 'Half a year of daily streaks. That\'s seriously impressive.' },
+    60:  { emoji: '🌟', headline: `${name}, 60 days on a streak!`,          subline: 'Two months of consistent fueling smarts. You\'re in rare company.' },
+    120: { emoji: '💎', headline: `${name}, 120 days straight!`,            subline: 'Four months of daily streaks. That\'s seriously impressive.' },
     365: { emoji: '👑', headline: `${name}, one full year on a streak!`,    subline: 'You\'ve done something almost no one does. This one\'s on us.' },
   };
   const cfg = milestoneConfig[milestoneDays] ?? {
