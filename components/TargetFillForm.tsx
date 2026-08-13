@@ -82,12 +82,20 @@ const DEFAULTS: FormState = {
   mpgForMiles:     '',
 };
 
-// Note: "Full" label is localized inside the component via t.calc.presetFull
+// Eighth-tank increments — more obvious tap targets than typing an exact
+// percentage. Rounded to the nearest whole percent (12.5 -> 13, etc).
+// "Full" label is localized inside the component via t.calc.presetFull
 const TARGET_PRESET_VALUES: { label: string; value: number }[] = [
+  { label: '⅛', value: 13  },
   { label: '¼', value: 25  },
+  { label: '⅜', value: 38  },
   { label: '½', value: 50  },
+  { label: '⅝', value: 63  },
   { label: '¾', value: 75  },
+  { label: '⅞', value: 88  },
 ];
+
+const CUSTOM_NUDGE_STEP = 5;
 
 
 interface Props {
@@ -406,6 +414,12 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
 
   // Keep ref in sync so the event listener always has the latest version
   liveRecalcRef.current = liveRecalc;
+
+  function nudgeCustomTarget(delta: number) {
+    const base = form.customTarget !== '' ? Number(form.customTarget) : (form.targetPreset ?? 50);
+    const next = Math.min(100, Math.max(1, (isNaN(base) ? 50 : base) + delta));
+    liveRecalc({ targetPreset: null, customTarget: String(next) });
+  }
 
   const gaugePercent = form.fuelMode === 'percent'
     ? (isNaN(Number(form.currentFuel)) ? 0 : Number(form.currentFuel))
@@ -1002,7 +1016,7 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
       {/* Target fill level selector */}
       <div className={stepCardClass}>
         <p className="field-label">{t.calc.fillUpTo}</p>
-        <div className="flex gap-2 mb-3">
+        <div className="grid grid-cols-4 gap-2 mb-2">
           {TARGET_PRESETS.map((p) => (
             <button
               key={p.value}
@@ -1013,29 +1027,47 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
               {p.label}
             </button>
           ))}
-          <button
-            className={isCustom ? 'btn-preset-active' : 'btn-preset-inactive'}
-            onClick={() => patch({ targetPreset: null })}
-            aria-pressed={isCustom}
-          >
-            {t.calc.custom}
-          </button>
         </div>
+        <button
+          className={`w-full mb-3 ${isCustom ? 'btn-preset-active' : 'btn-preset-inactive'}`}
+          onClick={() => patch({ targetPreset: null })}
+          aria-pressed={isCustom}
+        >
+          {t.calc.custom}
+        </button>
 
         {isCustom && (
-          <div className="relative">
-            <input
-              type="number" inputMode="decimal"
-              className={errors.targetPercent ? 'input-field-error' : 'input-field'}
-              placeholder={t.calc.placeholderPercent}
-              value={form.customTarget}
-              min="1" max="100" step="1"
-              autoFocus
-              onChange={(e) => patch({ customTarget: e.target.value })}
-              onBlur={(e)  => liveRecalc({ customTarget: e.target.value })}
-              aria-label={t.calc.ariaCustomTarget}
-            />
-            <Unit>%</Unit>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              className="flex-none w-11 h-11 flex items-center justify-center rounded-xl border-2 border-slate-200 text-slate-500 bg-white hover:border-amber-300 hover:text-amber-600 font-bold text-xl transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-amber-300 focus:ring-offset-1"
+              onClick={() => nudgeCustomTarget(-CUSTOM_NUDGE_STEP)}
+              aria-label={t.calc.ariaNudgeDown}
+            >
+              −
+            </button>
+            <div className="relative flex-1">
+              <input
+                type="number" inputMode="decimal"
+                className={errors.targetPercent ? 'input-field-error' : 'input-field'}
+                placeholder={t.calc.placeholderPercent}
+                value={form.customTarget}
+                min="1" max="100" step="1"
+                autoFocus
+                onChange={(e) => patch({ customTarget: e.target.value })}
+                onBlur={(e)  => liveRecalc({ customTarget: e.target.value })}
+                aria-label={t.calc.ariaCustomTarget}
+              />
+              <Unit>%</Unit>
+            </div>
+            <button
+              type="button"
+              className="flex-none w-11 h-11 flex items-center justify-center rounded-xl border-2 border-slate-200 text-slate-500 bg-white hover:border-amber-300 hover:text-amber-600 font-bold text-xl transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-amber-300 focus:ring-offset-1"
+              onClick={() => nudgeCustomTarget(CUSTOM_NUDGE_STEP)}
+              aria-label={t.calc.ariaNudgeUp}
+            >
+              +
+            </button>
           </div>
         )}
         {errors.targetPercent && <FieldError msg={errors.targetPercent} />}
