@@ -19,6 +19,7 @@ import Link                    from 'next/link';
 import { useSession }          from 'next-auth/react';
 import { useTranslation }      from '@/contexts/LanguageContext';
 import { initNativeChrome }    from '@/lib/nativeChrome';
+import { detectNativePlatform } from '@/hooks/useIsNative';
 
 import CalculatorTabs   from '@/components/CalculatorTabs';
 import FillupHistory    from '@/components/FillupHistory';
@@ -145,7 +146,13 @@ export default function NativeAppShell() {
         method:      'POST',
         credentials: 'include',
         headers:     { 'Content-Type': 'application/json' },
-        body:        JSON.stringify({ event: 'visit', localDate: new Date().toLocaleDateString('en-CA') }),
+        body:        JSON.stringify({
+          event:      'visit',
+          localDate:  new Date().toLocaleDateString('en-CA'),
+          // Lets admin see when a web signup later starts using the native app —
+          // separate from signupPlatform, which is set once and never updated.
+          nativePlatform: detectNativePlatform() ?? undefined,
+        }),
       }).catch(() => { /* streak just won't tick up this time — non-critical */ });
     };
     recordVisit();

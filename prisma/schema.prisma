@@ -121,7 +121,12 @@ model User {
   // Ambassador threshold, so they earn giveaway entries instead (10/referral,
   // same rate as the 30-day streak substitute). See recordReferral().
   referralLifetimeBonusEntries Int   @default(0)
-  signupPlatform           String?   // 'web' | 'ios' | 'android'
+  signupPlatform           String?   // 'web' | 'ios' | 'android' — WHERE THEY FIRST SIGNED UP, never updated after
+  // Set on every native app visit (NativeAppShell), separate from signupPlatform —
+  // this is how a web signup who later downloads the app becomes visible to admin.
+  // See gotcha-native-signup-vs-usage-platform memory.
+  lastNativePlatform       String?   // 'ios' | 'android' | null
+  lastNativeAt             String?
   userMode                 String?   // 'personal' | 'gig' | 'rental' | 'fleet'
   // Stamped when the "log your first fill-up" nudge is sent, so it only ever
   // goes out once per user. See app/api/cron/first-fillup-nudge.

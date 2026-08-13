@@ -59,6 +59,8 @@ interface AdminUser {
   fillupCount:      number;
   lastFillup:       string | null;
   signupPlatform?:  string | null;
+  lastNativePlatform?: string | null;
+  lastNativeAt?:    string | null;
 }
 
 interface AnnItem {
@@ -2069,6 +2071,14 @@ export default function AdminPage() {
                       {u.signupPlatform === 'web' && (
                         <span title="Signed up via web" className="text-[10px] font-black px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600">
                           WEB
+                        </span>
+                      )}
+                      {u.lastNativePlatform && (
+                        <span
+                          title={`Also using the ${u.lastNativePlatform === 'ios' ? 'iOS' : 'Android'} app${u.lastNativeAt ? ` — last seen ${new Date(u.lastNativeAt).toLocaleDateString()}` : ''}`}
+                          className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-700"
+                        >
+                          📱 {u.lastNativePlatform === 'ios' ? 'iOS' : 'ANDROID'} APP
                         </span>
                       )}
                     </div>

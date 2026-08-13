@@ -6,6 +6,7 @@ import { NextResponse }    from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions }     from '@/lib/auth';
 import { findById, recordActivity, calcStreak, STREAK_MILESTONES, type ActivityEvent } from '@/lib/users';
+import { prisma } from '@/lib/prisma';
 import { BADGES, evaluateEarned, type BadgeDef } from '@/lib/badges';
 import { getVehiclesForUser }     from '@/lib/savedVehicles';
 import { streakBonusEntries }     from '@/lib/giveaway';
@@ -72,13 +73,27 @@ export async function POST(req: Request) {
 
   let event: ActivityEvent = 'visit';
   let localDate: string | undefined;
+  let nativePlatform: 'ios' | 'android' | undefined;
   try {
-    const body = await req.json() as { event?: string; localDate?: string };
+    const body = await req.json() as { event?: string; localDate?: string; nativePlatform?: string };
     if (['calc', 'budget_calc', 'location_lookup', 'visit'].includes(body.event ?? '')) {
       event = body.event as ActivityEvent;
     }
     if (typeof body.localDate === 'string') localDate = body.localDate;
+    if (body.nativePlatform === 'ios' || body.nativePlatform === 'android') {
+      nativePlatform = body.nativePlatform;
+    }
   } catch { /* empty body is fine */ }
+
+  // Separate from signupPlatform (set once, at signup, never updated) — this is
+  // how a user who signed up on web and later downloads the app becomes visible.
+  // Non-blocking: a failure here shouldn't break streak/badge recording below.
+  if (nativePlatform) {
+    prisma.user.update({
+      where: { id: userId },
+      data:  { lastNativePlatform: nativePlatform, lastNativeAt: new Date().toISOString() },
+    }).catch((e) => console.error('[activity] lastNativePlatform update failed:', e));
+  }
 
   const result = await recordActivity(userId, event, localDate);
 

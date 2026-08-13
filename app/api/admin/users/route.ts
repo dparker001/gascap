@@ -120,6 +120,8 @@ export async function GET(req: Request) {
       fillupCount,
       lastFillup,
       signupPlatform: u.signupPlatform ?? null,
+      lastNativePlatform: u.lastNativePlatform ?? null,
+      lastNativeAt: u.lastNativeAt ?? null,
     };
   });
   return NextResponse.json({ users, total: users.length });
