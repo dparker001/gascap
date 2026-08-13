@@ -429,7 +429,7 @@ const SECTIONS = [
     items: [
       {
         q: 'What are Streak Rewards?',
-        a: 'Streak Rewards are bonuses you earn by maintaining a consecutive daily streak — open the app every day to keep your streak alive. The reward depends on your plan: Pro Monthly and Annual members earn free Pro month credits at each milestone; Pro Lifetime members earn bonus gas card giveaway entries instead (since they already have Pro forever). Every milestone (regardless of plan) also earns a one-time Parker Select Rewards voucher: $25 Dining Voucher at 30 days, $50 Dining Voucher at 60 days, $100 Hotel Savings Card at 120 days, and $300 Hotel Savings Card at 365 days. Rewards are in the Share tab under "Streak Rewards."',
+        a: 'Streak Rewards are bonuses you earn by maintaining a consecutive daily streak — open the app every day to keep your streak alive. The reward depends on your plan: Pro Monthly and Annual members earn free Pro month credits at each milestone; Pro Lifetime members earn bonus gas card giveaway entries instead (since they already have Pro forever). Every milestone (regardless of plan) also earns a one-time Parker Select Rewards voucher: $25 Dining Voucher at 30 days, $50 Dining Voucher at 60 days, $100 Hotel Savings Card at 120 days, and $500 Hotel Savings Card at 365 days. Rewards are in the Share tab under "Streak Rewards."',
       },
       {
         q: 'What milestones earn a reward?',

@@ -109,7 +109,7 @@ export const STREAK_MILESTONES: { days: number; months: number }[] = [
   { days: 30,  months: 1 },  // 1 free Pro month credit + $25 Dining Voucher
   { days: 60,  months: 1 },  // 1 free Pro month credit + $50 Dining Voucher
   { days: 120, months: 1 },  // 1 free Pro month credit + $100 Hotel Savings Card
-  { days: 365, months: 1 },  // 1 free Pro month credit + $300 Hotel Savings Card
+  { days: 365, months: 1 },  // 1 free Pro month credit + $500 Hotel Savings Card
 ];
 
 export type ActivityEvent = 'calc' | 'budget_calc' | 'location_lookup' | 'visit';

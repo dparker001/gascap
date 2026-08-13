@@ -18,7 +18,7 @@ const STREAK_VOUCHER_REWARD: Record<number, { kind: 'dining' | 'hotel'; amount: 
   30:  { kind: 'dining', amount: 25,  label: '$25 Dining Voucher' },
   60:  { kind: 'dining', amount: 50,  label: '$50 Dining Voucher' },
   120: { kind: 'hotel',  amount: 100, label: '$100 Hotel Savings Card' },
-  365: { kind: 'hotel',  amount: 300, label: '$300 Hotel Savings Card' },
+  365: { kind: 'hotel',  amount: 500, label: '$500 Hotel Savings Card' },
 };
 
 // ── GET — current badge state ─────────────────────────────────────────────

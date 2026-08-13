@@ -2545,7 +2545,7 @@ const en = {
     daysCount: (n: number) => `${n} days`,
     milestoneLabel: (days: number) => days === 365 ? '1-Year Streak' : `${days}-Day Streak`,
     milestoneVoucher: (days: number): string =>
-      days === 30 ? '$25 Dining Voucher' : days === 60 ? '$50 Dining Voucher' : days === 120 ? '$100 Hotel Savings Card' : '$300 Hotel Savings Card',
+      days === 30 ? '$25 Dining Voucher' : days === 60 ? '$50 Dining Voucher' : days === 120 ? '$100 Hotel Savings Card' : '$500 Hotel Savings Card',
     milestoneReward: (days: number): string => days === 365 ? '1 free Pro month + Legend status' : '1 free Pro month',
     milestoneRewardLifetime: (days: number): string =>
       days === 365 ? '+50 bonus entries + Legend status' : days === 120 ? '+30 bonus entries' : days === 60 ? '+20 bonus entries' : '+10 bonus entries',
@@ -5312,7 +5312,7 @@ const es: typeof en = {
     daysCount: (n: number) => `${n} días`,
     milestoneLabel: (days: number) => days === 365 ? 'Racha de 1 año' : `Racha de ${days} días`,
     milestoneVoucher: (days: number): string =>
-      days === 30 ? 'Tarjeta de $25 para restaurantes' : days === 60 ? 'Tarjeta de $50 para restaurantes' : days === 120 ? 'Tarjeta de $100 para hoteles' : 'Tarjeta de $300 para hoteles',
+      days === 30 ? 'Tarjeta de $25 para restaurantes' : days === 60 ? 'Tarjeta de $50 para restaurantes' : days === 120 ? 'Tarjeta de $100 para hoteles' : 'Tarjeta de $500 para hoteles',
     milestoneReward: (days: number) => days === 365 ? '1 mes Pro gratis + estatus de Leyenda' : '1 mes Pro gratis',
     milestoneRewardLifetime: (days: number) =>
       days === 365 ? '+50 entradas extra + estatus Leyenda' : days === 120 ? '+30 entradas extra' : days === 60 ? '+20 entradas extra' : '+10 entradas extra',
