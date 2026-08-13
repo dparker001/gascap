@@ -321,6 +321,17 @@ export async function setUserPlan(
       ...(stripe?.interval ? { stripeInterval: stripe.interval } : {}),
     },
   });
+
+  // Idempotent — only set on the FIRST lifetime purchase, so a repeat webhook
+  // delivery or a later plan change never resets it. Drives the getaway
+  // activation reminder cron (getaway-reminder), which needs a real purchase
+  // date to know who's overdue.
+  if (stripe?.interval === 'lifetime') {
+    await prisma.user.updateMany({
+      where: { id: userId, lifetimePurchasedAt: null },
+      data:  { lifetimePurchasedAt: new Date().toISOString() },
+    });
+  }
 }
 
 /**

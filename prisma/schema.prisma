@@ -102,6 +102,18 @@ model User {
   // by the primary Pro Lifetime one-time payment or monthly/annual sub).
   lifetimePerksUntil       DateTime?
   lifetimePerksSubId       String?
+  // Getaway activation tracking — added because there was none at all. The
+  // /getaway/choose route was "intentionally DB-less" (only fired emails), so
+  // GasCap had no way to know who'd chosen a destination, let alone who'd
+  // actually paid the destination taxes/fees on Marketing Boost's site (that
+  // step happens entirely off-platform — MB may track it, GasCap doesn't).
+  // lifetimePurchasedAt only backfills going forward (set at purchase time);
+  // existing Lifetime members before this shipped will have it null and are
+  // excluded from the reminder cron rather than guessed at.
+  lifetimePurchasedAt      String?
+  getawayDestinationId     String?
+  getawayDestinationChosenAt String?
+  getawayReminderSentAt    String?
   // OTP passwordless sign-in — one-time session token issued after code verification,
   // consumed by the credentials-otp NextAuth provider (2-min TTL).
   otpSessionToken          String?

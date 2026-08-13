@@ -13,8 +13,13 @@
  * by hand in the Marketing Boost portal — so a buyer never gets left with
  * no certificate at all.
  *
- * v1 is intentionally DB-less: the admin + buyer emails are the paper trail.
- * (A future version can persist the choice for an admin dashboard.)
+ * getawayDestinationId/getawayDestinationChosenAt are persisted below so the
+ * getaway-reminder cron can tell who's chosen a destination vs. who hasn't —
+ * this route was previously "intentionally DB-less" but that made it
+ * impossible to ever remind someone who forgot. Note this only tracks
+ * whether they picked a destination in OUR app, not whether they completed
+ * activation (paying the destination taxes/fees) on Marketing Boost's site —
+ * that step is entirely off-platform and GasCap has no visibility into it.
  *
  * Body: { destination: string }  // one of GETAWAY_DESTINATIONS ids
  */
@@ -22,6 +27,7 @@ import { NextResponse }     from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions }      from '@/lib/auth';
 import { findById }         from '@/lib/users';
+import { prisma }           from '@/lib/prisma';
 import { sendMail }         from '@/lib/email';
 import { getawayPromoActive, findGetawayDestination, GETAWAY_DISCLOSURE } from '@/lib/getawayPromo';
 import { sendVacationIncentive } from '@/lib/marketingBoost';
@@ -98,6 +104,13 @@ export async function POST(req: Request) {
       text: `ISSUE GETAWAY CERT in Marketing Boost (online-bookings) — destination ${dest.name} → ${user.name} <${user.email}> (auto-send failed: ${result.error ?? 'unknown error'})`,
     });
   }
+
+  // Persisted regardless of autoSent — the user did choose a destination in our
+  // app either way; whether MB's send succeeded is a separate fulfillment concern.
+  await prisma.user.update({
+    where: { id: userId },
+    data:  { getawayDestinationId: dest.id, getawayDestinationChosenAt: new Date().toISOString() },
+  }).catch((e) => console.error('[GasCap] Failed to persist getaway destination choice:', e));
 
   // ── Buyer confirmation ───────────────────────────────────────────────────────
   sendMail({
