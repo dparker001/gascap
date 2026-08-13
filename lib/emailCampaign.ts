@@ -1287,12 +1287,12 @@ export function compC4EmailHtml(name: string, userId: string): string {
           🏆 Ambassador Tier Rewards
         </p>
         <table cellpadding="0" cellspacing="0" width="100%">
-          ${milestoneRow('Supporter — 5+ referrals', '1 free Pro month per referral (up to 6) + $50 Dining Voucher', '2× daily giveaway drawing entries', false)}
-          ${milestoneRow('Ambassador — 15+ referrals', 'Free Pro for life + $100 Hotel Savings Card', '3× daily giveaway drawing entries', false)}
-          ${milestoneRow('Elite Ambassador — 30+ referrals', 'Free Pro for life + $500 Hotel Savings Card', '5× daily giveaway drawing entries + Top Ambassadors recognition', false)}
+          ${milestoneRow('Supporter — 5+ referrals', '1 free Pro month per referral (up to 6) + $100 Dining Voucher', '2× daily giveaway drawing entries', false)}
+          ${milestoneRow('Ambassador — 15+ referrals', 'Free Pro for life + $200 Hotel Savings Card', '3× daily giveaway drawing entries', false)}
+          ${milestoneRow('Elite Ambassador — 30+ referrals', 'Free Pro for life + $500 Hotel Savings Card + $200 Dining Voucher', '5× daily giveaway drawing entries + Top Ambassadors recognition', false)}
         </table>
         <p style="margin:12px 0 0;font-size:11px;color:rgba(255,255,255,.5);line-height:1.5;">
-          Tier status is cumulative and permanent — it never resets. Vouchers are sent automatically by email the moment you first reach each tier.
+          Tier status is cumulative and permanent — it never resets. Vouchers are sent automatically by email the moment you first reach each tier. Pro Lifetime members below Ambassador tier earn bonus giveaway entries instead of free-month credits. Rewards and amounts are subject to change.
         </p>
       </div>
 
@@ -1326,7 +1326,7 @@ export function compC4EmailHtml(name: string, userId: string): string {
 
 export const compC4EmailText = (name: string): string => {
   const first = name.split(' ')[0];
-  return `Hi ${first}, here's your Ambassador rewards breakdown: Supporter (5+ paying referrals) → 1 free Pro month per referral up to 6, 2x daily giveaway entries, and a $50 Dining Voucher. Ambassador (15+ paying referrals) → free Pro for life, 3x daily giveaway entries, and a $100 Hotel Savings Card. Elite Ambassador (30+ paying referrals) → free Pro for life, 5x daily giveaway entries, Top Ambassadors recognition, and a $500 Hotel Savings Card. Tier status is cumulative and permanent — it never resets, and vouchers are sent automatically by email the moment you first reach each tier. Referrals count only when someone you referred upgrades to a paid plan. Check your count at ${BASE_URL}/#share. Questions? Just reply to this email.`;
+  return `Hi ${first}, here's your Ambassador rewards breakdown: Supporter (5+ paying referrals) → 1 free Pro month per referral up to 6 (bonus giveaway entries instead if you're Pro Lifetime), 2x daily giveaway entries, and a $100 Dining Voucher. Ambassador (15+ paying referrals) → free Pro for life, 3x daily giveaway entries, and a $200 Hotel Savings Card. Elite Ambassador (30+ paying referrals) → free Pro for life, 5x daily giveaway entries, Top Ambassadors recognition, a $500 Hotel Savings Card, and a $200 Dining Voucher. Tier status is cumulative and permanent — it never resets, and vouchers are sent automatically by email the moment you first reach each tier. Referrals count only when someone you referred upgrades to a paid plan. Rewards and amounts are subject to change. Check your count at ${BASE_URL}/#share. Questions? Just reply to this email.`;
 };
 
 // ── C5 — Day 30: Re-engagement + top ambassador tips ──────────────────────
@@ -1363,9 +1363,9 @@ export function compC5EmailHtml(name: string, userId: string): string {
           🎁 Your Ambassador tier rewards — a quick recap
         </p>
         <p style="margin:0;font-size:14px;color:#78350f;line-height:1.65;">
-          Supporter (5+) → <strong>1 free Pro month/referral (up to 6) + $50 Dining Voucher</strong><br>
-          Ambassador (15+) → <strong>Free Pro for life + $100 Hotel Savings Card</strong><br>
-          Elite Ambassador (30+) → <strong>Free Pro for life + $500 Hotel Savings Card</strong><br>
+          Supporter (5+) → <strong>1 free Pro month/referral (up to 6) + $100 Dining Voucher</strong><br>
+          Ambassador (15+) → <strong>Free Pro for life + $200 Hotel Savings Card</strong><br>
+          Elite Ambassador (30+) → <strong>Free Pro for life + $500 Hotel Savings Card + $200 Dining Voucher</strong><br>
           <span style="font-size:12px;color:#92400e;opacity:.8;">Cumulative and permanent — tier status never resets</span>
         </p>
       </div>
@@ -1389,7 +1389,7 @@ export function compC5EmailHtml(name: string, userId: string): string {
 
 export const compC5EmailText = (name: string): string => {
   const first = name.split(' ')[0];
-  return `Hi ${first}, you've been a GasCap™ Ambassador for 30 days — thank you. Tips from our top ambassadors: (1) Personal recommendation beats mass posting. (2) Show the calculator mid-use in a screenshot. (3) Re-share when gas prices spike in the news. (4) Reply personally to questions. Ambassador tier recap: Supporter (5+) → 1 free Pro month/referral up to 6 plus a $50 Dining Voucher. Ambassador (15+) → free Pro for life plus a $100 Hotel Savings Card. Elite Ambassador (30+) → free Pro for life plus a $500 Hotel Savings Card. Tier status is cumulative and permanent. Want help with better graphics or message templates? Just reply to this email. Open GasCap™ at ${BASE_URL}/#share`;
+  return `Hi ${first}, you've been a GasCap™ Ambassador for 30 days — thank you. Tips from our top ambassadors: (1) Personal recommendation beats mass posting. (2) Show the calculator mid-use in a screenshot. (3) Re-share when gas prices spike in the news. (4) Reply personally to questions. Ambassador tier recap: Supporter (5+) → 1 free Pro month/referral up to 6 plus a $100 Dining Voucher. Ambassador (15+) → free Pro for life plus a $200 Hotel Savings Card. Elite Ambassador (30+) → free Pro for life plus a $500 Hotel Savings Card and a $200 Dining Voucher. Tier status is cumulative and permanent. Want help with better graphics or message templates? Just reply to this email. Open GasCap™ at ${BASE_URL}/#share`;
 };
 
 // ── Early-Upgrade Offer — one-time announcement to active trial users ─────────

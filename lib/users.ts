@@ -38,6 +38,7 @@ export interface StoredUser {
   referralProMonthsEarned?: number;
   referralRewardCredited?:  boolean;
   referralCredits?:         ReferralCredit[];
+  referralLifetimeBonusEntries?: number;
   isProTrial?:     boolean;
   trialExpiresAt?: string;
   emailVerified?:      boolean;
@@ -895,6 +896,9 @@ const MAX_REFERRAL_CREDITS = 6;
 const MAX_REDEEM_AT_ONCE   = 3;
 // 12 months — generous window since credits can bank before the referrer upgrades
 const CREDIT_EXPIRY_MONTHS = 12;
+// Lifetime members can't use a free-month credit — same rate as the 30-day
+// Streak Rewards Lifetime substitute (STREAK_MILESTONE_LIFETIME_ENTRIES).
+const REFERRAL_LIFETIME_ENTRIES_PER_CREDIT = 10;
 
 export function getActiveCredits(user: StoredUser): ReferralCredit[] {
   // Free-month credits are meaningless for Lifetime members — there's no
@@ -929,6 +933,13 @@ export async function recordReferral(referrerId: string): Promise<void> {
   //      meaningless for someone with no recurring subscription to apply it to.
   // After 6 credits, the referrer's ongoing incentive is the draw-entry
   // multiplier and the path to Free Pro for Life at 15 paying referrals.
+  //
+  // Lifetime members hit condition 3 on every referral below the Ambassador
+  // threshold, and previously got nothing in its place — a real gap, since
+  // Streak Rewards already substitutes bonus giveaway entries for Lifetime
+  // members in the same situation (see STREAK_MILESTONE_LIFETIME_ENTRIES).
+  // Mirror that here: same 10-entries-per-month-equivalent rate, same 6-credit
+  // cap, banked in referralLifetimeBonusEntries instead of a ReferralCredit.
   const existing         = (user.referralCredits as unknown as ReferralCredit[]) ?? [];
   const monthsEarned     = user.referralProMonthsEarned ?? 0;
   const underCreditCap   = monthsEarned < MAX_REFERRAL_CREDITS;
@@ -937,17 +948,22 @@ export async function recordReferral(referrerId: string): Promise<void> {
 
   let updatedCredits = existing;
   let earnedMonth    = false;
-  if (belowProForLife && underCreditCap && !alreadyLifetime) {
-    const now    = new Date();
-    const expiry = new Date(now);
-    expiry.setMonth(expiry.getMonth() + CREDIT_EXPIRY_MONTHS);
-    const credit: ReferralCredit = {
-      id:        crypto.randomUUID(),
-      earnedAt:  now.toISOString(),
-      expiresAt: expiry.toISOString(),
-    };
-    updatedCredits = [...existing, credit];
-    earnedMonth    = true;
+  let lifetimeBonusEntriesAwarded = 0;
+  if (belowProForLife && underCreditCap) {
+    if (alreadyLifetime) {
+      lifetimeBonusEntriesAwarded = REFERRAL_LIFETIME_ENTRIES_PER_CREDIT;
+    } else {
+      const now    = new Date();
+      const expiry = new Date(now);
+      expiry.setMonth(expiry.getMonth() + CREDIT_EXPIRY_MONTHS);
+      const credit: ReferralCredit = {
+        id:        crypto.randomUUID(),
+        earnedAt:  now.toISOString(),
+        expiresAt: expiry.toISOString(),
+      };
+      updatedCredits = [...existing, credit];
+      earnedMonth    = true;
+    }
   }
 
   // ── Ambassador milestone: free Pro for life ──────────────────────────────
@@ -985,10 +1001,15 @@ export async function recordReferral(referrerId: string): Promise<void> {
     && referrerIsPaidOrGrantedPro
     && !alreadyRewarded;
 
-  const TIER_REWARD: Record<'supporter' | 'ambassador' | 'elite', { kind: 'dining' | 'hotel'; amount: number; label: string }> = {
-    supporter:  { kind: 'dining', amount: 50,  label: '$50 Dining Voucher' },
-    ambassador: { kind: 'hotel',  amount: 100, label: '$100 Hotel Savings Card' },
-    elite:      { kind: 'hotel',  amount: 500, label: '$500 Hotel Savings Card' },
+  // Elite gets two vouchers (a Hotel Card AND a Dining Voucher) — every other
+  // tier gets one, hence the array shape even though most tiers have length 1.
+  const TIER_REWARD: Record<'supporter' | 'ambassador' | 'elite', { kind: 'dining' | 'hotel'; amount: number; label: string }[]> = {
+    supporter:  [{ kind: 'dining', amount: 100, label: '$100 Dining Voucher' }],
+    ambassador: [{ kind: 'hotel',  amount: 200, label: '$200 Hotel Savings Card' }],
+    elite:      [
+      { kind: 'hotel',  amount: 500, label: '$500 Hotel Savings Card' },
+      { kind: 'dining', amount: 200, label: '$200 Dining Voucher' },
+    ],
   };
 
   // Ordering matters here: the update below records the tier as rewarded, and
@@ -997,14 +1018,19 @@ export async function recordReferral(referrerId: string): Promise<void> {
   // of it — and the next referral would issue another. For real money,
   // at-most-once beats at-least-once.
   const pendingReward = crossedNewTier && justCrossedTier ? justCrossedTier : null;
+  const earnedCreditOrLifetimeBonus = earnedMonth || lifetimeBonusEntriesAwarded > 0;
 
   await prisma.user.update({
     where: { id: referrerId },
     data: {
       referralCount:           newCount,
-      // Only increment months-earned counter when a credit was actually issued
-      referralProMonthsEarned: earnedMonth ? monthsEarned + 1 : monthsEarned,
+      // Increment months-earned counter for either path — it's the shared
+      // cap gate for both the free-month credit and its Lifetime substitute.
+      referralProMonthsEarned: earnedCreditOrLifetimeBonus ? monthsEarned + 1 : monthsEarned,
       referralCredits:         updatedCredits as unknown as Prisma.InputJsonValue,
+      ...(lifetimeBonusEntriesAwarded > 0
+        ? { referralLifetimeBonusEntries: { increment: lifetimeBonusEntriesAwarded } }
+        : {}),
       ...(justCrossedAmbassador ? { ambassadorProForLife: true } : {}),
       ...(grantedPlan           ? { plan: grantedPlan }          : {}),
       ...(pendingReward ? { ambassadorTierRewardsSent: { push: pendingReward } } : {}),
@@ -1013,33 +1039,38 @@ export async function recordReferral(referrerId: string): Promise<void> {
 
   // Reward send — only now that the "already rewarded" marker is durable.
   if (pendingReward) {
-    const reward = TIER_REWARD[pendingReward];
+    const rewards = TIER_REWARD[pendingReward];
     const tierName = pendingReward;
     void (async () => {
-      const result = reward.kind === 'dining'
-        ? await sendDiningVoucher({ fullName: user.name, email: user.email, amount: reward.amount as 25 | 50 | 100 | 200, message: `Congrats on reaching ${tierName} tier on GasCap\u2122!` })
-        : await sendHotelSavingsCard({ fullName: user.name, email: user.email, amount: reward.amount as 100 | 200 | 300 | 500, message: `Congrats on reaching ${tierName} tier on GasCap\u2122!` });
-      if (!result.ok) {
+      const results = await Promise.all(rewards.map((reward) =>
+        reward.kind === 'dining'
+          ? sendDiningVoucher({ fullName: user.name, email: user.email, amount: reward.amount as 25 | 50 | 100 | 200, message: `Congrats on reaching ${tierName} tier on GasCap\u2122!` })
+          : sendHotelSavingsCard({ fullName: user.name, email: user.email, amount: reward.amount as 100 | 200 | 300 | 500, message: `Congrats on reaching ${tierName} tier on GasCap\u2122!` }),
+      ));
+      const failed    = rewards.filter((_, i) => !results[i].ok);
+      const labelList = rewards.map((r) => r.label).join(' and ');
+      if (failed.length > 0) {
         // Marked as sent but the send failed — surfaced loudly because it now
         // needs issuing by hand rather than being retried automatically.
-        console.error(`[ambassador] ${tierName} reward send FAILED for ${user.email} — issue manually:`, result.error);
+        const failedLabels = failed.map((r) => r.label).join(' and ');
+        console.error(`[ambassador] ${tierName} reward send FAILED (${failedLabels}) for ${user.email} — issue manually`);
         sendMail({
           to:      process.env.ADMIN_EMAIL ?? 'admin@gascap.app',
-          subject: `\u26a0\ufe0f Ambassador ${tierName} reward failed \u2014 issue ${reward.label} to ${user.email}`,
-          html:    `<p><strong>${user.name}</strong> (${user.email}) reached <strong>${tierName}</strong> with ${newCount} paying referrals, but the Marketing Boost send failed.</p><p><strong>Action:</strong> issue a ${reward.label} by hand.</p><p style="color:#64748b;font-size:13px;">${result.error}</p>`,
-          text:    `Ambassador ${tierName} reward failed for ${user.email}. Issue ${reward.label} manually. Error: ${result.error}`,
+          subject: `\u26a0\ufe0f Ambassador ${tierName} reward failed \u2014 issue ${failedLabels} to ${user.email}`,
+          html:    `<p><strong>${user.name}</strong> (${user.email}) reached <strong>${tierName}</strong> with ${newCount} paying referrals, but the Marketing Boost send failed for: ${failedLabels}.</p><p><strong>Action:</strong> issue ${failed.length > 1 ? 'these' : 'this'} by hand.</p>`,
+          text:    `Ambassador ${tierName} reward failed for ${user.email}. Issue ${failedLabels} manually.`,
         }).catch(() => {});
-        return;
+        if (failed.length === rewards.length) return;
       }
       sendMail({
         to:      user.email,
-        subject: `\U0001f389 You reached ${tierName.charAt(0).toUpperCase()}${tierName.slice(1)} tier \u2014 here's your ${reward.label}!`,
+        subject: `\U0001f389 You reached ${tierName.charAt(0).toUpperCase()}${tierName.slice(1)} tier \u2014 here's your ${labelList}!`,
         html: `<div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;">
           <p style="font-size:20px;margin:0 0 8px;">\U0001f389 Congratulations, ${user.name}!</p>
-          <p style="font-size:15px;color:#334155;margin:0 0 12px;">You've reached <strong>${tierName}</strong> tier with ${newCount} paying referrals. As a thank-you, we're sending you a <strong>${reward.label}</strong> — check your inbox (and spam folder) over the next 24 hours for an email from Parker Select Rewards.</p>
+          <p style="font-size:15px;color:#334155;margin:0 0 12px;">You've reached <strong>${tierName}</strong> tier with ${newCount} paying referrals. As a thank-you, we're sending you a <strong>${labelList}</strong> — check your inbox (and spam folder) over the next 24 hours for an email from Parker Select Rewards.</p>
           <p style="font-size:13px;color:#64748b;margin:0;">Questions? Reply to this email.</p>
         </div>`,
-        text: `Congrats, ${user.name}! You reached ${tierName} tier with ${newCount} paying referrals — a ${reward.label} is on its way from Parker Select Rewards within 24 hours.`,
+        text: `Congrats, ${user.name}! You reached ${tierName} tier with ${newCount} paying referrals — a ${labelList} is on its way from Parker Select Rewards within 24 hours.`,
       }).catch((e) => console.error('[ambassador] tier reward confirmation email failed:', e));
     })();
   }

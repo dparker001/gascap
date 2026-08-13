@@ -182,6 +182,7 @@ export default function AmbassadorPage() {
               <p>💡 <strong>{ap.finePrint1Bold}</strong> {ap.finePrint1Rest}</p>
               <p>⚡ <strong>{ap.finePrint2Bold}</strong> {ap.finePrint2Rest}</p>
               <p>🔒 <strong>{ap.finePrint3Bold}</strong> {ap.finePrint3Rest}</p>
+              <p>🎁 <strong>{ap.finePrint4Bold}</strong> {ap.finePrint4Rest}</p>
             </div>
           </div>
         </div>

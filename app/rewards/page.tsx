@@ -24,9 +24,9 @@ const AMBASSADOR_TIERS = [
     name: 'Supporter',
     threshold: '5+ paying referrals',
     perks: [
-      '1 free Pro month per referral, up to 6 free months',
+      '1 free Pro month per referral, up to 6 free months (Lifetime members earn bonus giveaway entries instead)',
       '2× daily giveaway entries',
-      '$50 Dining Voucher',
+      '$100 Dining Voucher',
     ],
   },
   {
@@ -35,7 +35,7 @@ const AMBASSADOR_TIERS = [
     perks: [
       'Free Pro for life',
       '3× daily giveaway entries',
-      '$100 Hotel Savings Card',
+      '$200 Hotel Savings Card',
     ],
   },
   {
@@ -46,6 +46,7 @@ const AMBASSADOR_TIERS = [
       '5× daily giveaway entries',
       'Top Ambassadors recognition',
       '$500 Hotel Savings Card',
+      '$200 Dining Voucher',
     ],
   },
 ];
@@ -67,7 +68,7 @@ export default function RewardsPage() {
           <p className="text-slate-300 text-sm leading-relaxed mb-6 max-w-sm mx-auto">
             Keep a daily streak or refer friends and earn real{' '}
             <strong className="text-white">Dining Vouchers</strong> and{' '}
-            <strong className="text-white">Hotel Savings Cards</strong> — up to $500 in value.
+            <strong className="text-white">Hotel Savings Cards</strong> — up to $700 in value.
           </p>
           <Link
             href="/signup"
@@ -192,6 +193,9 @@ export default function RewardsPage() {
           Every Dining Voucher and Hotel Savings Card is a real reward, fulfilled automatically by
           Parker Select Rewards and sent straight to your inbox within about 24 hours of hitting a
           milestone. No purchase, no credit card, and no extra steps required to earn them.
+        </p>
+        <p className="text-[11px] text-slate-400 mt-4 max-w-sm mx-auto">
+          Rewards and reward amounts are subject to change.
         </p>
       </section>
 

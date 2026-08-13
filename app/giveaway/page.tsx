@@ -30,6 +30,7 @@ interface GiveawayEntries {
   referralCount:            number;
   priceReportEntries:       number;
   gigLogEntries:            number;
+  referralLifetimeBonusEntries: number;
 }
 
 interface DrawRecord {

@@ -90,7 +90,8 @@ const CATEGORIES: Category[] = [
       {
         icon: '🤝',
         title: 'Ambassador Referral Program',
-        body: 'Refer friends and climb tiers — Supporter, Ambassador, and Elite tiers earn Dining Vouchers up to a $500 Hotel Savings Card, sent the moment you hit each milestone.',
+        body: 'Refer friends and climb tiers — Supporter, Ambassador, and Elite tiers earn Dining Vouchers and Hotel Savings Cards worth up to $700, sent the moment you hit each milestone.',
+        link: { href: '/rewards', label: 'See all rewards →' },
       },
       {
         icon: '🏝️',
