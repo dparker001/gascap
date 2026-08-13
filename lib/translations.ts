@@ -513,6 +513,7 @@ const en = {
     label:            'Tank Size',
     fromGarage:       'From garage: ',
     fromList:         'From list: ',
+    fromVin:          'VIN match: ',
     unit:             '(gallons)',
     selectPlaceholder:'Common vehicles — tap to auto-fill ▾',
     myVehicles:       'My Vehicles',
@@ -2416,6 +2417,8 @@ const en = {
     trim:   'Trim',
     looking: 'Looking up tank size…',
     vinTitle: 'Or scan/enter the VIN for exact accuracy',
+    vinFoundTitle: (vehicle: string) => `${vehicle} detected`,
+    vinFoundTank: (gallons: string) => `${gallons} gal tank — exact match from the VIN, no guessing.`,
   },
   garageDoor: {
     unlockLine1: 'Save a vehicle to',
@@ -3295,6 +3298,7 @@ const es: typeof en = {
     label:            'Tamaño del tanque',
     fromGarage:       'Del garaje: ',
     fromList:         'De la lista: ',
+    fromVin:          'Coincidencia VIN: ',
     unit:             '(galones)',
     selectPlaceholder:'Vehículos comunes — toca para llenar automáticamente ▾',
     myVehicles:       'Mis Vehículos',
@@ -5180,6 +5184,8 @@ const es: typeof en = {
     trim:   'Versión',
     looking: 'Buscando tamaño del tanque…',
     vinTitle: 'O escanea/ingresa el VIN para mayor precisión',
+    vinFoundTitle: (vehicle: string) => `${vehicle} detectado`,
+    vinFoundTank: (gallons: string) => `Tanque de ${gallons} gal — coincidencia exacta del VIN, sin adivinar.`,
   },
   garageDoor: {
     unlockLine1: 'Guarda un vehículo para',

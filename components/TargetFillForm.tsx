@@ -152,8 +152,9 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
   // EPA/AI tank estimate for the currently-selected vehicle (used for validation warning)
   const [vehicleTankEst,   setVehicleTankEst]   = useState<number | undefined>(undefined);
   const [vehicleBodyClass, setVehicleBodyClass] = useState<string | undefined>(undefined);
-  // Tank-size source tracking — drives the "From garage / From list" badge in TankPresets
+  // Tank-size source tracking — drives the "From garage / VIN match / From list" badge in TankPresets
   const [presetLabel, setPresetLabel] = useState('');
+  const [presetIsVin, setPresetIsVin] = useState(false);
   const calcStartFired  = useRef(false);
   // Stable ref so the gc:inject-gas-price event handler always calls the latest liveRecalc
   const liveRecalcRef   = useRef<(p: Partial<FormState>) => void>(() => {});
@@ -534,6 +535,7 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
     setVehicleTankEst(undefined);
     setVehicleBodyClass(undefined);
     setPresetLabel('');
+    setPresetIsVin(false);
   }
 
   const isCustom    = form.targetPreset === null;
@@ -636,6 +638,7 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
             setVehicleTankEst(undefined);
             setVehicleBodyClass(undefined);
             setPresetLabel('');
+            setPresetIsVin(false);
           }}
           onPresetSelect={(v, label) => {
             // Dropdown selection — clear garage, set preset label
@@ -643,9 +646,10 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
             setVehicleTankEst(undefined);
             setVehicleBodyClass(undefined);
             setPresetLabel(label);
+            setPresetIsVin(false);
           }}
           vehicleSourceLabel={form.vehicleId ? form.vehicleName : presetLabel}
-          vehicleSourceType={form.vehicleId ? 'garage' : presetLabel ? 'preset' : undefined}
+          vehicleSourceType={form.vehicleId ? 'garage' : presetLabel ? (presetIsVin ? 'vin' : 'preset') : undefined}
           rentalMode={rentalMode}
         />
         {errors.tankCapacity && <FieldError msg={errors.tankCapacity} />}
@@ -663,6 +667,7 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
                 setVehicleTankEst(undefined);
                 setVehicleBodyClass(undefined);
                 setPresetLabel(label);
+                setPresetIsVin(false);
               }}
             />
             <RentalVinLookup
@@ -671,6 +676,7 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
                 setVehicleTankEst(undefined);
                 setVehicleBodyClass(undefined);
                 setPresetLabel(label);
+                setPresetIsVin(true);
               }}
             />
           </>
@@ -689,6 +695,7 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
               setVehicleTankEst(v?.vehicleSpecs?.tankEstGallons);
               setVehicleBodyClass(v?.vehicleSpecs?.bodyClass);
               setPresetLabel('');
+              setPresetIsVin(false);
               // Notify VehicleChip in the native header so it updates immediately
               if (v?.id) window.dispatchEvent(new CustomEvent('gc:vehicle-selected', { detail: { vehicleId: v.id } }));
             }}

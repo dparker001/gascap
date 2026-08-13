@@ -32,6 +32,9 @@ export default function RentalVinLookup({ onTankSize }: RentalVinLookupProps) {
   const [errorMsg,  setErrorMsg]  = useState('');
   const [scanning,  setScanning]  = useState(false);
   const [scanError, setScanError] = useState('');
+  // Confirmation shown at the point of the scan/decode — the tank-size field
+  // above updates too, but that's easy to miss; this is the "yes, it worked" moment.
+  const [foundVehicle, setFoundVehicle] = useState<{ label: string; tank: string } | null>(null);
 
   const vinClean  = vin.trim().toUpperCase();
   const vinValid  = /^[A-HJ-NPR-Z0-9]{17}$/.test(vinClean);
@@ -72,13 +75,17 @@ export default function RentalVinLookup({ onTankSize }: RentalVinLookupProps) {
       const label = `${data.year} ${data.make} ${data.model}${data.trim ? ' ' + data.trim : ''}`;
       if (data.tankEst != null) {
         onTankSize(String(data.tankEst), label);
+        setFoundVehicle({ label, tank: String(data.tankEst) });
       } else {
         // Fallback: try a separate EPA lookup if the VIN API's internal EPA lookup failed
         const qs = new URLSearchParams({ action: 'lookup', year: data.year, make: data.make, model: data.model });
         const epaRes = await fetch(`/api/fueleconomy?${qs}`);
         if (epaRes.ok) {
           const epa = await epaRes.json() as { tankEst?: number | null };
-          if (epa.tankEst) onTankSize(String(epa.tankEst), label);
+          if (epa.tankEst) {
+            onTankSize(String(epa.tankEst), label);
+            setFoundVehicle({ label, tank: String(epa.tankEst) });
+          }
         }
       }
     } catch {
@@ -128,6 +135,7 @@ export default function RentalVinLookup({ onTankSize }: RentalVinLookupProps) {
           onChange={(e) => {
             setVin(e.target.value.replace(/[\s-]/g, '').toUpperCase());
             setState('idle');
+            setFoundVehicle(null);
           }}
           autoCapitalize="characters"
           autoCorrect="off"
@@ -149,6 +157,16 @@ export default function RentalVinLookup({ onTankSize }: RentalVinLookupProps) {
 
       {state === 'error' && (
         <p className="text-[11px] text-red-600 font-semibold">❌ {errorMsg}</p>
+      )}
+
+      {state === 'found' && foundVehicle && (
+        <div className="flex items-start gap-2 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2.5">
+          <span className="text-base flex-shrink-0" aria-hidden="true">✅</span>
+          <p className="text-[11px] text-emerald-700 leading-snug">
+            <span className="font-black block">{t.rentalLookup.vinFoundTitle(foundVehicle.label)}</span>
+            {t.rentalLookup.vinFoundTank(foundVehicle.tank)}
+          </p>
+        </div>
       )}
     </div>
   );

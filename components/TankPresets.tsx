@@ -28,8 +28,12 @@ interface TankPresetsProps {
    * Pass '' or undefined to hide the badge.
    */
   vehicleSourceLabel?: string;
-  /** When 'garage', uses a green badge; when 'preset', uses a slate badge. */
-  vehicleSourceType?:  'garage' | 'preset';
+  /**
+   * 'garage' and 'vin' use the prominent green badge (both are exact matches —
+   * a saved vehicle or a decoded VIN); 'preset' uses a slate badge since it's
+   * a guess from a dropdown/class, not a confirmed vehicle.
+   */
+  vehicleSourceType?:  'garage' | 'preset' | 'vin';
 }
 
 export default function TankPresets({
@@ -123,16 +127,22 @@ export default function TankPresets({
         aria-label="Tank capacity in gallons"
       />
 
-      {/* Source badge — clarifies whether the tank size came from the garage or a preset */}
+      {/* Source badge — clarifies whether the tank size came from the garage, a VIN decode, or a preset */}
       {vehicleSourceLabel && (
         <p className={[
           'mt-1.5 text-[10px] font-semibold leading-snug px-2.5 py-1 rounded-lg inline-flex items-center gap-1.5',
-          vehicleSourceType === 'garage'
+          vehicleSourceType === 'garage' || vehicleSourceType === 'vin'
             ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
             : 'bg-slate-100 text-slate-500 border border-slate-200',
         ].join(' ')}>
-          <span aria-hidden="true">{vehicleSourceType === 'garage' ? '🚗' : '📋'}</span>
-          {vehicleSourceType === 'garage' ? t.tankPresets.fromGarage : t.tankPresets.fromList}
+          <span aria-hidden="true">
+            {vehicleSourceType === 'garage' ? '🚗' : vehicleSourceType === 'vin' ? '✅' : '📋'}
+          </span>
+          {vehicleSourceType === 'garage'
+            ? t.tankPresets.fromGarage
+            : vehicleSourceType === 'vin'
+              ? t.tankPresets.fromVin
+              : t.tankPresets.fromList}
           <span className="font-bold truncate max-w-[200px]">{vehicleSourceLabel}</span>
         </p>
       )}
