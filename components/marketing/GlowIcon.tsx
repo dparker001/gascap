@@ -10,7 +10,8 @@
 export type GlowIconName =
   | 'star' | 'trophy' | 'diamond' | 'crown' | 'gift'
   | 'hotel' | 'dining' | 'handshake' | 'pump' | 'coin'
-  | 'pin' | 'camera' | 'car' | 'receipt' | 'chart' | 'sparkle';
+  | 'pin' | 'camera' | 'car' | 'receipt' | 'chart' | 'sparkle'
+  | 'bell' | 'clipboard' | 'map' | 'calendar' | 'palm' | 'briefcase' | 'bolt' | 'bot';
 
 const PATHS: Record<GlowIconName, string> = {
   star:      'M12 3l2.4 5.9 6.3.5-4.8 4.1 1.5 6.2L12 16.6 6.6 19.7l1.5-6.2-4.8-4.1 6.3-.5L12 3z',
@@ -29,6 +30,14 @@ const PATHS: Record<GlowIconName, string> = {
   receipt:   'M6 3h12v18l-2-1.4L14 21l-2-1.4L10 21l-2-1.4L6 21V3z M9 8h6 M9 12h6 M9 16h4',
   chart:     'M4 20V10 M10 20V4 M16 20v-7 M4 20h16',
   sparkle:   'M12 3l1.1 4 4 1.1-4 1.1L12 13l-1.1-4-4-1.1 4-1.1L12 3z M18 14l.6 2 2 .6-2 .6-.6 2-.6-2-2-.6 2-.6z',
+  bell:      'M12 3a2 2 0 00-2 2v.6C7.5 6.5 6 9 6 12v3l-2 3h16l-2-3v-3c0-3-1.5-5.5-4-6.4V5a2 2 0 00-2-2z M10 20a2 2 0 004 0',
+  clipboard: 'M9 3h6v3H9z M6 6h12v15H6z M9 11h6 M9 14h6 M9 17h4',
+  map:       'M9 4L4 6v14l5-2 6 2 5-2V4l-5 2-6-2z M9 4v14 M15 6v14',
+  calendar:  'M4 8h16 M4 8v10a2 2 0 002 2h12a2 2 0 002-2V8 M4 8V6a2 2 0 012-2h12a2 2 0 012 2v2 M8 3v4 M16 3v4 M8 13h.01 M12 13h.01 M16 13h.01',
+  palm:      'M12 21V13 M12 13Q8 9 4 11 M12 13Q16 9 20 11 M12 13Q9 7 7 4 M12 13Q15 7 17 4 M12 13Q12 7 12 3',
+  briefcase: 'M4 8h16v11H4z M9 8V6a2 2 0 012-2h2a2 2 0 012 2v2 M4 13h16',
+  bolt:      'M13 2L4 14h6l-1 8 9-12h-6z',
+  bot:       'M4 5h16v11H8l-4 4V5z M8 9h.01 M12 9h.01 M16 9h.01',
 };
 
 export function GlowIcon({

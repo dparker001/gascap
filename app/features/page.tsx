@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { GlowIcon, type GlowIconName } from '@/components/marketing/GlowIcon';
 
 export const metadata: Metadata = {
   title: 'Features — GasCap™',
@@ -12,7 +13,7 @@ export const metadata: Metadata = {
 };
 
 interface Feature {
-  icon: string;
+  icon: GlowIconName;
   title: string;
   body: string;
   link?: { href: string; label: string };
@@ -30,17 +31,17 @@ const CATEGORIES: Category[] = [
     heading: 'Never overpay for gas again',
     features: [
       {
-        icon: '⛽',
+        icon: 'pump',
         title: 'Fuel Calculator',
         body: 'Set your current fuel level with a drag of the gauge and GasCap™ tells you the exact gallons to pump — no more guessing, no more overfilling.',
       },
       {
-        icon: '📍',
+        icon: 'pin',
         title: 'Find Gas + Live Prices',
         body: 'See real-time prices at nearby stations, tap to apply instantly, and report prices yourself to earn giveaway entries when Google\'s data is stale.',
       },
       {
-        icon: '🔔',
+        icon: 'bell',
         title: 'Gas Price Alerts',
         body: 'Get notified when prices near you drop, so you always know the right time to fill up.',
       },
@@ -51,22 +52,22 @@ const CATEGORIES: Category[] = [
     heading: 'Know your numbers',
     features: [
       {
-        icon: '📝',
+        icon: 'clipboard',
         title: 'Fill-Up Logging & History',
         body: 'Log gallons, price, odometer, and receipts. History is grouped by month with year filters, and exports to CSV or PDF.',
       },
       {
-        icon: '📊',
+        icon: 'chart',
         title: 'MPG & Spend Charts',
         body: 'Track MPG over time, total spend, gallons, and price per gallon — with a savings dashboard comparing you to the EIA national average.',
       },
       {
-        icon: '🚗',
+        icon: 'car',
         title: 'Vehicle Garage + VIN Decode',
         body: 'Add a vehicle by VIN (photo scan or manual entry) to auto-fill tank size, engine specs, and estimated fuel type.',
       },
       {
-        icon: '🗺️',
+        icon: 'map',
         title: 'Trip Cost Estimator',
         body: 'Enter a route and get an exact fuel cost estimate using real Google Maps data, plus a station comparison tool to see which of two stations actually saves you more.',
       },
@@ -77,24 +78,24 @@ const CATEGORIES: Category[] = [
     heading: 'Get paid to use GasCap™',
     features: [
       {
-        icon: '📅',
+        icon: 'calendar',
         title: 'Streak Rewards',
         body: 'Open GasCap™ daily to build a streak. Milestones at 30/60/120/365 days earn free Pro months (or bonus entries for Lifetime members) plus real rewards — Dining Vouchers and Hotel Savings Cards, sent automatically by email.',
       },
       {
-        icon: '🎁',
+        icon: 'gift',
         title: 'Monthly Gas Card Giveaway',
         body: '$50 drawn every month. Pro users earn entries from daily usage, streaks, plan level, and referrals.',
         link: { href: '/rewards', label: 'See all rewards →' },
       },
       {
-        icon: '🤝',
+        icon: 'handshake',
         title: 'Ambassador Referral Program',
         body: 'Refer friends and climb tiers — Supporter, Ambassador, and Elite tiers earn Dining Vouchers and Hotel Savings Cards worth up to $700, sent the moment you hit each milestone.',
         link: { href: '/rewards', label: 'See all rewards →' },
       },
       {
-        icon: '🏝️',
+        icon: 'palm',
         title: 'Free Vacation Getaway (Lifetime)',
         body: 'Purchase Lifetime Pro and get a complimentary resort hotel getaway — choose from destinations across the U.S. and worldwide, including Las Vegas, Miami, Cancún, and Bali.',
         link: { href: '/getaway', label: 'See getaway details →' },
@@ -106,18 +107,18 @@ const CATEGORIES: Category[] = [
     heading: 'One app, however you drive',
     features: [
       {
-        icon: '🚙',
+        icon: 'car',
         title: 'Rental Car Return Mode',
         body: 'Look up your rental by Year/Make/Model or VIN for an exact tank size, enter the rental company\'s rate, and see exactly how much you save by fueling up yourself before drop-off.',
         link: { href: '/rental', label: 'Learn more →' },
       },
       {
-        icon: '💼',
+        icon: 'briefcase',
         title: 'Gig Driver Mode',
         body: 'Log fuel and mileage by platform (Uber, Lyft, DoorDash, and more), see weekly cost-per-mile summaries, and export a year-end CSV with your IRS mileage deduction already calculated.',
       },
       {
-        icon: '⚡',
+        icon: 'bolt',
         title: 'EV Charge Calculator',
         body: 'Driving electric or a plug-in hybrid? Estimate charging cost and time based on your battery, rate, and target charge level.',
       },
@@ -128,7 +129,7 @@ const CATEGORIES: Category[] = [
     heading: 'Your AI fuel advisor',
     features: [
       {
-        icon: '🤖',
+        icon: 'bot',
         title: 'AI Fuel Advisor',
         body: 'Ask questions about trip costs, MPG drops, maintenance timing, or anything fuel-related — it knows your vehicle and fill-up history and gives specific, practical answers.',
       },
@@ -141,8 +142,21 @@ export default function FeaturesPage() {
     <main className="min-h-screen bg-slate-50">
 
       {/* Hero */}
-      <section className="bg-slate-900 text-white px-4 pt-14 pb-12 text-center">
-        <div className="max-w-lg mx-auto">
+      <section className="bg-slate-900 text-white px-4 pt-14 pb-12 text-center overflow-hidden relative">
+        <div
+          className="absolute -top-16 -left-10 w-56 h-56 rounded-full opacity-20 blur-3xl pointer-events-none"
+          style={{ background: '#FF8300' }}
+          aria-hidden="true"
+        />
+        <div
+          className="absolute -bottom-20 -right-10 w-56 h-56 rounded-full opacity-20 blur-3xl pointer-events-none"
+          style={{ background: '#1EB68F' }}
+          aria-hidden="true"
+        />
+        <div className="max-w-lg mx-auto relative">
+          <div className="flex justify-center mb-4">
+            <GlowIcon name="pump" size={72} />
+          </div>
           <p className="text-[11px] font-bold tracking-widest text-brand-orange uppercase mb-3">
             GasCap™ Features
           </p>
@@ -182,7 +196,7 @@ export default function FeaturesPage() {
                   key={f.title}
                   className="flex items-start gap-3.5 bg-slate-50 border border-slate-200 rounded-2xl p-4"
                 >
-                  <span className="text-2xl flex-shrink-0 leading-none mt-0.5">{f.icon}</span>
+                  <GlowIcon name={f.icon} size={44} className="mt-0.5" />
                   <div>
                     <p className="font-black text-slate-800 text-sm mb-1">{f.title}</p>
                     <p className="text-[12px] text-slate-500 leading-relaxed">{f.body}</p>
