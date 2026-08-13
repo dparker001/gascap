@@ -12,6 +12,7 @@ import { useTranslation } from '@/contexts/LanguageContext';
 import { getawayPromoActive } from '@/lib/getawayPromo';
 import GetawayDestinationPicker from '@/components/GetawayDestinationPicker';
 import BrandBar from '@/components/BrandBar';
+import { GlowIcon } from '@/components/marketing/GlowIcon';
 
 export default function GetawayPage() {
   const { data: session, status } = useSession();
@@ -27,7 +28,9 @@ export default function GetawayPage() {
       <div className="flex flex-col items-center justify-center px-4 py-10">
         <div className="bg-white rounded-3xl shadow-card p-7 max-w-md w-full space-y-4">
           <div className="text-center">
-            <div className="text-4xl mb-1" aria-hidden="true">🏝️</div>
+            <div className="flex justify-center mb-2">
+              <GlowIcon name="palm" size={64} />
+            </div>
             <h1 className="text-xl font-black text-navy-700">{t.pricing.getawayPageTitle}</h1>
           </div>
 
