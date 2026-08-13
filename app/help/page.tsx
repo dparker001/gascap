@@ -341,7 +341,7 @@ const SECTIONS = [
     items: [
       {
         q: 'What is the Monthly Gas Card Giveaway?',
-        a: 'Every month, GasCap™ gives away a $50 Visa prepaid card — use it at the pump or anywhere Visa is accepted — to one lucky winner. The drawing is held automatically at the end of each month. No purchase is required to enter.',
+        a: 'Every month, GasCap™ gives away a $50 Visa prepaid card — use it at the pump or anywhere Visa is accepted — to one lucky winner. The drawing is held automatically at the end of each month. No purchase is required to enter. See gascap.app/rewards for an overview of the giveaway plus every other reward GasCap™ offers.',
       },
       {
         q: 'Who is eligible to enter?',
@@ -395,7 +395,7 @@ const SECTIONS = [
       },
       {
         q: 'What are the Ambassador tier thresholds and rewards?',
-        a: 'Three tiers, based on cumulative all-time paying referrals: Supporter (5+ referrals) — earn 1 free Pro month per paying referral, up to 6 free months total, plus 2× daily drawing entries, plus a one-time $50 Dining Voucher; Ambassador (15+ referrals) — earn free GasCap™ Pro while you maintain 5 or more currently active paying referrals, plus 3× daily drawing entries, plus a one-time $100 Hotel Savings Card; Elite Ambassador (30+ referrals) — free Pro while you maintain 5+ active paying referrals, 5× daily drawing entries, recognition in the Top Ambassadors list, early feature access, a personal thank-you from the GasCap™ team, plus a one-time $500 Hotel Savings Card. Tier vouchers are sent automatically by email (via Parker Select Rewards) the moment you first reach each tier.',
+        a: 'Three tiers, based on cumulative all-time paying referrals: Supporter (5+ referrals) — earn 1 free Pro month per paying referral, up to 6 free months total, plus 2× daily drawing entries, plus a one-time $50 Dining Voucher; Ambassador (15+ referrals) — earn free GasCap™ Pro while you maintain 5 or more currently active paying referrals, plus 3× daily drawing entries, plus a one-time $100 Hotel Savings Card; Elite Ambassador (30+ referrals) — free Pro while you maintain 5+ active paying referrals, 5× daily drawing entries, recognition in the Top Ambassadors list, early feature access, a personal thank-you from the GasCap™ team, plus a one-time $500 Hotel Savings Card. Tier vouchers are sent automatically by email (via Parker Select Rewards) the moment you first reach each tier. See gascap.app/rewards for an overview of every reward, or gascap.app/ambassador for full Ambassador Program details.',
       },
       {
         q: 'How many free months can I earn through referrals?',
@@ -429,7 +429,7 @@ const SECTIONS = [
     items: [
       {
         q: 'What are Streak Rewards?',
-        a: 'Streak Rewards are bonuses you earn by maintaining a consecutive daily streak — open the app every day to keep your streak alive. The reward depends on your plan: Pro Monthly and Annual members earn free Pro month credits at each milestone; Pro Lifetime members earn bonus gas card giveaway entries instead (since they already have Pro forever). Every milestone (regardless of plan) also earns a one-time Parker Select Rewards voucher: $25 Dining Voucher at 30 days, $50 Dining Voucher at 60 days, $100 Hotel Savings Card at 120 days, and $500 Hotel Savings Card at 365 days. Rewards are in the Share tab under "Streak Rewards."',
+        a: 'Streak Rewards are bonuses you earn by maintaining a consecutive daily streak — open the app every day to keep your streak alive. The reward depends on your plan: Pro Monthly and Annual members earn free Pro month credits at each milestone; Pro Lifetime members earn bonus gas card giveaway entries instead (since they already have Pro forever). Every milestone (regardless of plan) also earns a one-time Parker Select Rewards voucher: $25 Dining Voucher at 30 days, $50 Dining Voucher at 60 days, $100 Hotel Savings Card at 120 days, and $500 Hotel Savings Card at 365 days. Rewards are in the Share tab under "Streak Rewards." See gascap.app/rewards for the full breakdown of every reward GasCap™ offers.',
       },
       {
         q: 'What milestones earn a reward?',

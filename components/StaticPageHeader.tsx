@@ -4,6 +4,7 @@ const YEAR = new Date().getFullYear();
 
 const NAV_LINKS = [
   { href: '/',         label: '← App'   },
+  { href: '/rewards',  label: 'Rewards' },
   { href: '/help',     label: 'Help'    },
   { href: '/upgrade',  label: 'Upgrade' },
   { href: '/terms',    label: 'Terms'   },
@@ -13,7 +14,7 @@ const NAV_LINKS = [
 
 interface StaticPageHeaderProps {
   /** Highlight the active page in the nav */
-  active?: 'help' | 'terms' | 'privacy' | 'upgrade' | 'contact';
+  active?: 'rewards' | 'help' | 'terms' | 'privacy' | 'upgrade' | 'contact';
 }
 
 export default function StaticPageHeader({ active }: StaticPageHeaderProps) {

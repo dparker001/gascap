@@ -1027,6 +1027,8 @@ export default function Home() {
 
         {/* Legal links */}
         <div className="flex items-center justify-center flex-wrap gap-x-4 gap-y-1 pt-1">
+          <a href="/rewards" className="text-[11px] text-slate-500 hover:text-brand-orange transition-colors">{t.footer.rewards}</a>
+          <span className="text-slate-400">·</span>
           <a href="/help"    className="text-[11px] text-slate-500 hover:text-brand-orange transition-colors">{t.footer.help}</a>
           <span className="text-slate-400">·</span>
           <a href="/terms"   className="text-[11px] text-slate-500 hover:text-brand-orange transition-colors">{t.footer.terms}</a>

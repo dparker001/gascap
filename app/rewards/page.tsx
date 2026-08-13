@@ -113,6 +113,39 @@ export default function RewardsPage() {
         </p>
       </section>
 
+      {/* Monthly Gas Card Giveaway */}
+      <section className="px-4 py-10 max-w-lg mx-auto text-center">
+        <h2 className="text-xl font-black text-slate-800 mb-2">Monthly $50 Gas Card Giveaway</h2>
+        <p className="text-[12px] text-slate-500 mb-6 max-w-sm mx-auto">
+          Every month GasCap™ gives away a $50 Visa prepaid card — use it at the pump or anywhere
+          Visa is accepted. No purchase necessary to enter.
+        </p>
+        <div className="bg-white border border-slate-100 shadow-sm rounded-2xl p-5 text-left space-y-3">
+          <div className="flex items-start gap-2">
+            <span className="text-brand-orange font-black text-sm mt-0.5">✓</span>
+            <p className="text-[12px] text-slate-600 leading-snug">
+              Pro members earn entries automatically for every day they use the app
+            </p>
+          </div>
+          <div className="flex items-start gap-2">
+            <span className="text-brand-orange font-black text-sm mt-0.5">✓</span>
+            <p className="text-[12px] text-slate-600 leading-snug">
+              Streaks, Ambassador tier, and referrals all add bonus entries
+            </p>
+          </div>
+          <div className="flex items-start gap-2">
+            <span className="text-brand-orange font-black text-sm mt-0.5">✓</span>
+            <p className="text-[12px] text-slate-600 leading-snug">
+              One winner drawn automatically at the end of every month
+            </p>
+          </div>
+        </div>
+        <p className="text-[11px] text-slate-400 mt-4">
+          No subscription? You can still enter for free —{' '}
+          <Link href="/amoe" className="text-brand-orange font-bold hover:underline">see how →</Link>
+        </p>
+      </section>
+
       {/* Ambassador Program */}
       <section className="bg-white border-y border-slate-100 px-4 py-10">
         <div className="max-w-lg mx-auto">
@@ -144,6 +177,11 @@ export default function RewardsPage() {
               </div>
             ))}
           </div>
+          <p className="text-[11px] text-slate-400 text-center mt-5">
+            <Link href="/ambassador" className="text-brand-orange font-bold hover:underline">
+              See full Ambassador Program details →
+            </Link>
+          </p>
         </div>
       </section>
 

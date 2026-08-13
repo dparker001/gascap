@@ -85,6 +85,7 @@ const CATEGORIES: Category[] = [
         icon: '🎁',
         title: 'Monthly Gas Card Giveaway',
         body: '$50 drawn every month. Pro users earn entries from daily usage, streaks, plan level, and referrals.',
+        link: { href: '/rewards', label: 'See all rewards →' },
       },
       {
         icon: '🤝',
