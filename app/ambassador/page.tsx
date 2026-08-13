@@ -198,7 +198,7 @@ export default function AmbassadorPage() {
             {ap.ctaBody}
           </p>
           <a
-            href="mailto:admin@gascap.app?subject=Ambassador%20Program&body=Hi%20there%2C%0A%0AI%27m%20interested%20in%20the%20GasCap%20Ambassador%20Program.%0A%0AName%3A%0ACity%3A%0A%0AThanks!"
+            href="mailto:support@gascap.app?subject=Ambassador%20Program&body=Hi%20there%2C%0A%0AI%27m%20interested%20in%20the%20GasCap%20Ambassador%20Program.%0A%0AName%3A%0ACity%3A%0A%0AThanks!"
             className="block w-full py-3 rounded-2xl text-white text-sm font-black hover:opacity-90 transition-opacity"
             style={{ backgroundColor: '#FA7109' }}
           >
