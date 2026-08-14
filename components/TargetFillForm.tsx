@@ -17,7 +17,7 @@ import {
   type ValidationErrors,
 } from '@/lib/calculations';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
-import { useIsNative } from '@/hooks/useIsNative';
+import { useIsNative, useNativePlatform } from '@/hooks/useIsNative';
 import type { CalcTab } from './CalculatorTabs';
 import { useTranslation } from '@/contexts/LanguageContext';
 import { trackCalculateTarget, trackRentalReturnToggled } from '@/lib/gtag';
@@ -111,6 +111,11 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
   const isPro      = ['pro', 'fleet', 'lifetime'].includes((session?.user as { plan?: string })?.plan ?? '');
   const isLoggedIn = !!session;
   const isNative   = useIsNative();
+  // iOS's WKWebView renders <input type=date/time> without the ghost-text
+  // segments Safari/Chrome show — Android's WebView is Chromium-based and
+  // already renders its own, so this overlay is iOS-only to avoid doubling
+  // up with a native rendering that (unlike iOS) is already there.
+  const nativePlatform = useNativePlatform();
 
   const GOAL_TABS: { id: CalcTab; emoji: string; label: string; sub: string }[] = [
     { id: 'target', emoji: '⛽', label: t.calc.targetFillLabel, sub: t.calc.targetFillSub },
@@ -152,9 +157,14 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
   // EPA/AI tank estimate for the currently-selected vehicle (used for validation warning)
   const [vehicleTankEst,   setVehicleTankEst]   = useState<number | undefined>(undefined);
   const [vehicleBodyClass, setVehicleBodyClass] = useState<string | undefined>(undefined);
-  // Tank-size source tracking — drives the "From garage / VIN match / From list" badge in TankPresets
+  // Tank-size source tracking — drives the "From garage / VIN match / Lookup
+  // match / From list" badge in TankPresets. 'dropdown' is the rental-class
+  // preset picker; 'lookup' is Year/Make/Model; 'vin' is the VIN scan/entry —
+  // kept distinct from 'dropdown' so TankPresets knows to blank its own
+  // <select> display when the tank size came from somewhere else instead of
+  // showing a stale rental-class selection next to the real (exact) one.
   const [presetLabel, setPresetLabel] = useState('');
-  const [presetIsVin, setPresetIsVin] = useState(false);
+  const [presetSourceKind, setPresetSourceKind] = useState<'dropdown' | 'lookup' | 'vin'>('dropdown');
   // Once a vehicle source is set in Rental Mode, the Year/Make/Model and VIN
   // lookup sections collapse behind a toggle instead of staying visible
   // alongside the already-resolved tank size — was confusing users into
@@ -540,7 +550,7 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
     setVehicleTankEst(undefined);
     setVehicleBodyClass(undefined);
     setPresetLabel('');
-    setPresetIsVin(false);
+    setPresetSourceKind('dropdown');
   }
 
   const isCustom    = form.targetPreset === null;
@@ -643,7 +653,7 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
             setVehicleTankEst(undefined);
             setVehicleBodyClass(undefined);
             setPresetLabel('');
-            setPresetIsVin(false);
+            setPresetSourceKind('dropdown');
           }}
           onPresetSelect={(v, label) => {
             // Dropdown selection — clear garage, set preset label
@@ -651,11 +661,11 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
             setVehicleTankEst(undefined);
             setVehicleBodyClass(undefined);
             setPresetLabel(label);
-            setPresetIsVin(false);
+            setPresetSourceKind('dropdown');
             setExpandAltVehicleInputs(false);
           }}
           vehicleSourceLabel={form.vehicleId ? form.vehicleName : presetLabel}
-          vehicleSourceType={form.vehicleId ? 'garage' : presetLabel ? (presetIsVin ? 'vin' : 'preset') : undefined}
+          vehicleSourceType={form.vehicleId ? 'garage' : presetLabel ? (presetSourceKind === 'vin' ? 'vin' : presetSourceKind === 'lookup' ? 'lookup' : 'preset') : undefined}
           rentalMode={rentalMode}
         />
         {errors.tankCapacity && <FieldError msg={errors.tankCapacity} />}
@@ -677,7 +687,7 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
                     setVehicleTankEst(undefined);
                     setVehicleBodyClass(undefined);
                     setPresetLabel(label);
-                    setPresetIsVin(false);
+                    setPresetSourceKind('lookup');
                     setExpandAltVehicleInputs(false);
                   }}
                 />
@@ -687,12 +697,14 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
                     setVehicleTankEst(undefined);
                     setVehicleBodyClass(undefined);
                     setPresetLabel(label);
-                    setPresetIsVin(true);
+                    setPresetSourceKind('vin');
                     setExpandAltVehicleInputs(false);
                   }}
                 />
               </>
-            ) : (
+            ) : presetSourceKind === 'dropdown' ? (
+              // Dropdown-origin selection is already visible in the Tank Size
+              // <select> above — no need for a redundant summary here.
               <button
                 type="button"
                 onClick={() => setExpandAltVehicleInputs(true)}
@@ -700,6 +712,25 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
               >
                 {t.calc.rentalShowOtherVehicleOptions}
               </button>
+            ) : (
+              // Lookup/VIN-origin selection has no other visible trace once
+              // these sections collapse — show a real summary right where the
+              // user was just interacting, not just a small badge up in the
+              // Tank Size field.
+              <div className="flex items-center gap-3 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2.5 mt-2">
+                <span className="text-xl flex-shrink-0" aria-hidden="true">✅</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-black text-emerald-800 truncate">{presetLabel}</p>
+                  <p className="text-[11px] text-emerald-600">{t.calc.rentalVehicleAppliedTank(form.tankCapacity)}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setExpandAltVehicleInputs(true)}
+                  className="flex-shrink-0 text-[11px] font-bold text-emerald-700 hover:text-emerald-900 underline underline-offset-2"
+                >
+                  {t.calc.rentalChangeVehicle}
+                </button>
+              </div>
             )}
           </>
         ) : (
@@ -717,7 +748,7 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
               setVehicleTankEst(v?.vehicleSpecs?.tankEstGallons);
               setVehicleBodyClass(v?.vehicleSpecs?.bodyClass);
               setPresetLabel('');
-              setPresetIsVin(false);
+              setPresetSourceKind('dropdown');
               // Notify VehicleChip in the native header so it updates immediately
               if (v?.id) window.dispatchEvent(new CustomEvent('gc:vehicle-selected', { detail: { vehicleId: v.id } }));
             }}
@@ -757,26 +788,45 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
             <div className="flex flex-col gap-2 w-full min-w-0 overflow-hidden">
               <div className="min-w-0 overflow-hidden">
                 <label className="block text-[10px] font-bold text-blue-500 mb-0.5">{t.calc.rentalReturnDateLabel}</label>
-                <input
-                  type="date"
-                  className="input-field border-blue-200 bg-white text-sm px-3 py-2"
-                  style={{ width: '148px', maxWidth: '100%', boxSizing: 'border-box' }}
-                  value={rentalReturnDate}
-                  min={new Date().toISOString().slice(0, 10)}
-                  onChange={(e) => setRentalReturnDate(e.target.value)}
-                  aria-label={t.calc.rentalReturnDateLabel}
-                />
+                <div className="relative" style={{ width: '148px', maxWidth: '100%' }}>
+                  <input
+                    type="date"
+                    className="input-field border-blue-200 bg-white text-sm px-3 py-2"
+                    style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}
+                    value={rentalReturnDate}
+                    min={new Date().toISOString().slice(0, 10)}
+                    onChange={(e) => setRentalReturnDate(e.target.value)}
+                    aria-label={t.calc.rentalReturnDateLabel}
+                  />
+                  {/* Native <input type=date> has no functional placeholder attribute —
+                      browsers show their own locale-formatted "mm/dd/yyyy" segments
+                      instead, which the iOS/Android WebView doesn't reliably render.
+                      Web already shows the native version, so this is native-only to
+                      avoid doubling up with it there. */}
+                  {nativePlatform === 'ios' && !rentalReturnDate && (
+                    <span className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-sm text-slate-400">
+                      mm/dd/yyyy
+                    </span>
+                  )}
+                </div>
               </div>
               <div className="min-w-0 overflow-hidden">
                 <label className="block text-[10px] font-bold text-blue-500 mb-0.5">{t.calc.rentalReturnTimeLabel}</label>
-                <input
-                  type="time"
-                  className="input-field border-blue-200 bg-white text-sm px-3 py-2"
-                  style={{ width: '110px', maxWidth: '100%', boxSizing: 'border-box' }}
-                  value={rentalReturnTime}
-                  onChange={(e) => setRentalReturnTime(e.target.value)}
-                  aria-label={t.calc.rentalReturnTimeLabel}
-                />
+                <div className="relative" style={{ width: '110px', maxWidth: '100%' }}>
+                  <input
+                    type="time"
+                    className="input-field border-blue-200 bg-white text-sm px-3 py-2"
+                    style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}
+                    value={rentalReturnTime}
+                    onChange={(e) => setRentalReturnTime(e.target.value)}
+                    aria-label={t.calc.rentalReturnTimeLabel}
+                  />
+                  {nativePlatform === 'ios' && !rentalReturnTime && (
+                    <span className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-sm text-slate-400">
+                      --:-- --
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
             {rentalReturnDate && !rentalReturnTime && (

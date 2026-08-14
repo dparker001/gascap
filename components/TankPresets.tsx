@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { VEHICLE_PRESETS } from '@/lib/calculations';
 import { useTranslation } from '@/contexts/LanguageContext';
 
@@ -29,11 +29,12 @@ interface TankPresetsProps {
    */
   vehicleSourceLabel?: string;
   /**
-   * 'garage' and 'vin' use the prominent green badge (both are exact matches —
-   * a saved vehicle or a decoded VIN); 'preset' uses a slate badge since it's
-   * a guess from a dropdown/class, not a confirmed vehicle.
+   * 'garage', 'vin', and 'lookup' use the prominent green badge (all are exact
+   * matches — a saved vehicle, a decoded VIN, or a Year/Make/Model lookup);
+   * 'preset' uses a slate badge since it's a class average from the dropdown,
+   * not a confirmed vehicle.
    */
-  vehicleSourceType?:  'garage' | 'preset' | 'vin';
+  vehicleSourceType?:  'garage' | 'preset' | 'vin' | 'lookup';
 }
 
 export default function TankPresets({
@@ -49,8 +50,14 @@ export default function TankPresets({
   // Track which preset option is currently selected so the dropdown shows it
   const [selectedPreset, setSelectedPreset] = useState('');
 
-  // When a garage vehicle is loaded externally, reset the dropdown selection
-  // (the parent clears vehicleSourceType to 'garage' at that point)
+  // The dropdown must visually clear whenever the tank size comes from
+  // anywhere else (garage, VIN, or a Year/Make/Model lookup) — otherwise it
+  // keeps showing a stale rental-class selection after the user picks an
+  // exact vehicle a different way, making the real selection (a small badge
+  // below) easy to miss next to a dropdown that looks like it's still active.
+  useEffect(() => {
+    if (vehicleSourceType && vehicleSourceType !== 'preset') setSelectedPreset('');
+  }, [vehicleSourceType, vehicleSourceLabel]);
 
   function handleDropdownChange(e: React.ChangeEvent<HTMLSelectElement>) {
     const val = e.target.value;
@@ -76,7 +83,7 @@ export default function TankPresets({
       {/* Vehicle quick-select — controlled so the selected option stays visible */}
       <select
         className="input-field text-sm text-slate-600 mb-2"
-        value={vehicleSourceType === 'garage' ? '' : selectedPreset}
+        value={vehicleSourceType === 'preset' ? selectedPreset : ''}
         onChange={handleDropdownChange}
         aria-label="Select a common vehicle to auto-fill tank size"
       >
@@ -127,22 +134,24 @@ export default function TankPresets({
         aria-label="Tank capacity in gallons"
       />
 
-      {/* Source badge — clarifies whether the tank size came from the garage, a VIN decode, or a preset */}
+      {/* Source badge — clarifies whether the tank size came from the garage, a VIN decode, a Y/M/M lookup, or a preset */}
       {vehicleSourceLabel && (
         <p className={[
           'mt-1.5 text-[10px] font-semibold leading-snug px-2.5 py-1 rounded-lg inline-flex items-center gap-1.5',
-          vehicleSourceType === 'garage' || vehicleSourceType === 'vin'
+          vehicleSourceType === 'garage' || vehicleSourceType === 'vin' || vehicleSourceType === 'lookup'
             ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
             : 'bg-slate-100 text-slate-500 border border-slate-200',
         ].join(' ')}>
           <span aria-hidden="true">
-            {vehicleSourceType === 'garage' ? '🚗' : vehicleSourceType === 'vin' ? '✅' : '📋'}
+            {vehicleSourceType === 'garage' ? '🚗' : vehicleSourceType === 'vin' || vehicleSourceType === 'lookup' ? '✅' : '📋'}
           </span>
           {vehicleSourceType === 'garage'
             ? t.tankPresets.fromGarage
             : vehicleSourceType === 'vin'
               ? t.tankPresets.fromVin
-              : t.tankPresets.fromList}
+              : vehicleSourceType === 'lookup'
+                ? t.tankPresets.fromLookup
+                : t.tankPresets.fromList}
           <span className="font-bold truncate max-w-[200px]">{vehicleSourceLabel}</span>
         </p>
       )}
