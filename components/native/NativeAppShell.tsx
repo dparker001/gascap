@@ -20,6 +20,7 @@ import { useSession }          from 'next-auth/react';
 import { useTranslation }      from '@/contexts/LanguageContext';
 import { initNativeChrome }    from '@/lib/nativeChrome';
 import { detectNativePlatform } from '@/hooks/useIsNative';
+import { getDeviceId }         from '@/hooks/useDeviceId';
 
 import CalculatorTabs   from '@/components/CalculatorTabs';
 import FillupHistory    from '@/components/FillupHistory';
@@ -152,6 +153,7 @@ export default function NativeAppShell() {
           // Lets admin see when a web signup later starts using the native app —
           // separate from signupPlatform, which is set once and never updated.
           nativePlatform: detectNativePlatform() ?? undefined,
+          deviceId:       getDeviceId() ?? undefined,
         }),
       }).catch(() => { /* streak just won't tick up this time — non-critical */ });
     };

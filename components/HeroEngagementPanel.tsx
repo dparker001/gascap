@@ -20,6 +20,7 @@ import { useEffect, useState } from 'react';
 import { useSession }          from 'next-auth/react';
 import { useTranslation }      from '@/contexts/LanguageContext';
 import { useEntryCountUp }     from '@/hooks/useEntryCountUp';
+import { getDeviceId }         from '@/hooks/useDeviceId';
 
 interface StreakData { streak: number; }
 interface EntryData  { entryCount: number; eligible: boolean; alwaysEligible: boolean; }
@@ -48,7 +49,7 @@ export default function HeroEngagementPanel() {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ event: 'visit', localDate }),
+      body: JSON.stringify({ event: 'visit', localDate, deviceId: getDeviceId() ?? undefined }),
     })
       .then(r => r.ok ? r.json() as Promise<StreakData> : Promise.reject())
       .then(d => setStreak(d.streak ?? 0))

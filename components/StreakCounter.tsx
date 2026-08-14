@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useTranslation } from '@/contexts/LanguageContext';
+import { getDeviceId } from '@/hooks/useDeviceId';
 
 interface ActivityResponse {
   streak: number;
@@ -26,7 +27,7 @@ export default function StreakCounter() {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ event: 'visit', localDate }),
+      body: JSON.stringify({ event: 'visit', localDate, deviceId: getDeviceId() ?? undefined }),
     })
       .then((r) => r.ok ? r.json() as Promise<ActivityResponse> : Promise.reject())
       .then((d) => setStreak(d.streak ?? 0))

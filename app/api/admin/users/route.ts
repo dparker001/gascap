@@ -13,6 +13,7 @@ import { upsertGhlContact } from '@/lib/ghl';
 import { getFillups } from '@/lib/fillups';
 import { sendCompProForLifeEmail } from '@/lib/emailCampaign';
 import { sendMail, accountDeletedEmailHtml } from '@/lib/email';
+import { getActiveDeviceCounts } from '@/lib/deviceSessions';
 
 function auth(req: Request): 'ok' | 'no-env' | 'wrong' {
   const pw = process.env.ADMIN_PASSWORD;
@@ -59,6 +60,7 @@ export async function GET(req: Request) {
     getOneSignalSubscriberIds(),
     prisma.user.findMany({ orderBy: { createdAt: 'desc' } }),
   ]);
+  const deviceCounts = await getActiveDeviceCounts(allUsers.map((u) => u.id));
 
   // Build a map of referralCode → user name for quick lookup
   const codeToName = new Map<string, string>();
@@ -122,6 +124,7 @@ export async function GET(req: Request) {
       signupPlatform: u.signupPlatform ?? null,
       lastNativePlatform: u.lastNativePlatform ?? null,
       lastNativeAt: u.lastNativeAt ?? null,
+      activeDeviceCount: deviceCounts.get(u.id) ?? 0,
     };
   });
   return NextResponse.json({ users, total: users.length });

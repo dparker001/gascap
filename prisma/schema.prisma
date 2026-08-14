@@ -148,6 +148,7 @@ model User {
   gigFillups               GigFillup[]
   gigMileage               GigMileage[]
   favoriteStations         FavoriteStation[]
+  deviceSessions           DeviceSession[]
 }
 
 model OtpCode {
@@ -414,5 +415,23 @@ model FavoriteStation {
   user           User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, placeId])
+  @@index([userId])
+}
+
+// One row per distinct device/browser touching an account (a persistent
+// per-install id, not a login event) — used only for the soft "this account
+// looks shared" signal, never to block or evict anyone. See
+// lib/deviceSessions.ts for the active-device-count query this backs.
+model DeviceSession {
+  id           String  @id
+  userId       String
+  deviceId     String  // random UUID persisted client-side (localStorage / native storage)
+  platform     String  // 'web' | 'ios' | 'android'
+  firstSeenAt  String
+  lastSeenAt   String
+
+  user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, deviceId])
   @@index([userId])
 }

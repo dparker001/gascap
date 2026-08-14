@@ -7,6 +7,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions }     from '@/lib/auth';
 import { findById, recordActivity, calcStreak, STREAK_MILESTONES, type ActivityEvent } from '@/lib/users';
 import { prisma } from '@/lib/prisma';
+import { recordDeviceVisit, getActiveDeviceCount } from '@/lib/deviceSessions';
 import { BADGES, evaluateEarned, type BadgeDef } from '@/lib/badges';
 import { getVehiclesForUser }     from '@/lib/savedVehicles';
 import { streakBonusEntries }     from '@/lib/giveaway';
@@ -28,7 +29,9 @@ export async function GET(req: Request) {
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const userId = (session.user as { id?: string }).id ?? session.user.email ?? '';
-  const [user, vehicles] = await Promise.all([findById(userId), getVehiclesForUser(userId)]);
+  const [user, vehicles, activeDeviceCount] = await Promise.all([
+    findById(userId), getVehiclesForUser(userId), getActiveDeviceCount(userId),
+  ]);
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
   // Accept ?localDate=YYYY-MM-DD so calcStreak uses the viewer's local day boundary
@@ -53,6 +56,7 @@ export async function GET(req: Request) {
       locationLookups: user.locationLookups ?? 0,
       daysActive:      (user.activeDays ?? []).length,
       vehicleCount,
+      activeDeviceCount,
     },
     // Full catalogue with earned flag, so the client can render all badges
     catalogue: BADGES.map((b) => ({ ...b, earned: earned.includes(b.id) })),
@@ -74,8 +78,9 @@ export async function POST(req: Request) {
   let event: ActivityEvent = 'visit';
   let localDate: string | undefined;
   let nativePlatform: 'ios' | 'android' | undefined;
+  let deviceId: string | undefined;
   try {
-    const body = await req.json() as { event?: string; localDate?: string; nativePlatform?: string };
+    const body = await req.json() as { event?: string; localDate?: string; nativePlatform?: string; deviceId?: string };
     if (['calc', 'budget_calc', 'location_lookup', 'visit'].includes(body.event ?? '')) {
       event = body.event as ActivityEvent;
     }
@@ -83,7 +88,16 @@ export async function POST(req: Request) {
     if (body.nativePlatform === 'ios' || body.nativePlatform === 'android') {
       nativePlatform = body.nativePlatform;
     }
+    if (typeof body.deviceId === 'string' && body.deviceId.length > 0 && body.deviceId.length < 100) {
+      deviceId = body.deviceId;
+    }
   } catch { /* empty body is fine */ }
+
+  // Soft anti-abuse signal only — never blocks the request either way.
+  if (deviceId) {
+    recordDeviceVisit(userId, deviceId, nativePlatform ?? 'web')
+      .catch((e) => console.error('[activity] recordDeviceVisit failed:', e));
+  }
 
   // Separate from signupPlatform (set once, at signup, never updated) — this is
   // how a user who signed up on web and later downloads the app becomes visible.

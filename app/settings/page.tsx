@@ -9,6 +9,7 @@ import { DoorMiniPreview, DOOR_STYLE_LABELS, DOOR_DIRECTION_LABELS } from '@/com
 import { useGarageDoorPrefs, type DoorStyle, type DoorDirection } from '@/hooks/useGarageDoorPrefs';
 import { useTranslation } from '@/contexts/LanguageContext';
 import { useIsNative, useNativePlatform } from '@/hooks/useIsNative';
+import DeviceCountNotice from '@/components/DeviceCountNotice';
 
 interface ReferralSummary {
   code:            string;
@@ -1044,6 +1045,8 @@ export default function SettingsPage() {
                 </Link>
               </div>
             </div>
+
+            <DeviceCountNotice />
 
             <div className="border-t border-slate-100 pt-3 space-y-2">
               <button

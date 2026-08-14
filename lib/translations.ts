@@ -1610,6 +1610,8 @@ const en = {
     termsOfUse:         'Terms of Use',
     signOut:            'Sign Out',
     deleteAccount:      'Delete account',
+    manyDevicesTitle:   (n: number) => `Signed in from ${n} devices recently`,
+    manyDevicesSub:     'If you\'re sharing this account with other people, each person should have their own — it keeps pricing this low for everyone. Questions? Contact us.',
     // Plan section
     planTitle:          'Plan',
     planFreeLabel:      'Free',
@@ -4401,6 +4403,8 @@ const es: typeof en = {
     termsOfUse:         'Términos de Uso',
     signOut:            'Cerrar sesión',
     deleteAccount:      'Eliminar cuenta',
+    manyDevicesTitle:   (n: number) => `Inicio de sesión reciente desde ${n} dispositivos`,
+    manyDevicesSub:     'Si estás compartiendo esta cuenta con otras personas, cada una debería tener la suya — así mantenemos precios bajos para todos. ¿Preguntas? Contáctanos.',
     // Plan section
     planTitle:          'Plan',
     planFreeLabel:      'Gratis',

@@ -60,6 +60,7 @@ interface AdminUser {
   lastFillup:       string | null;
   signupPlatform?:  string | null;
   lastNativePlatform?: string | null;
+  activeDeviceCount?: number;
   lastNativeAt?:    string | null;
 }
 
@@ -2079,6 +2080,14 @@ export default function AdminPage() {
                           className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-700"
                         >
                           📱 {u.lastNativePlatform === 'ios' ? 'iOS' : 'ANDROID'} APP
+                        </span>
+                      )}
+                      {(u.activeDeviceCount ?? 0) >= 5 && (
+                        <span
+                          title="Distinct devices active in the last 30 days — high counts can indicate shared credentials, not necessarily abuse"
+                          className="text-[10px] font-black px-2 py-0.5 rounded-full bg-red-50 text-red-600"
+                        >
+                          ⚠️ {u.activeDeviceCount} DEVICES
                         </span>
                       )}
                     </div>
