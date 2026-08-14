@@ -172,6 +172,7 @@ model Vehicle {
   epaId           String?
   currentOdometer   Float?
   vehicleSpecs      Json?
+  isDefault         Boolean @default(false)
   createdAt         String
   user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

@@ -578,6 +578,14 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
   const tankNum     = Number(form.tankCapacity) || undefined;
   const isLive      = isPro && calculated;
   const tankWarning = checkTankSize(Number(form.tankCapacity) || undefined, vehicleTankEst, vehicleBodyClass);
+  // A Y/M/M or VIN lookup selection is Rental Mode-specific — once Rental
+  // Mode is off, the garage's own SavedVehicles list is the source of truth
+  // again, so don't keep attributing the tank number to a rental vehicle
+  // that's no longer active. The dropdown preset (a rental-class average,
+  // not a specific rental lookup) is useful in both modes, so it stays
+  // visible either way. presetLabel/presetSourceKind themselves are
+  // untouched — turning Rental Mode back on restores this badge as-is.
+  const showPreset  = !!presetLabel && (presetSourceKind === 'dropdown' || rentalMode);
 
   return (
     <div className="pb-2">
@@ -693,8 +701,8 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
             setPresetSourceKind('dropdown');
             setExpandAltVehicleInputs(false);
           }}
-          vehicleSourceLabel={form.vehicleId ? form.vehicleName : presetLabel}
-          vehicleSourceType={form.vehicleId ? 'garage' : presetLabel ? (presetSourceKind === 'vin' ? 'vin' : presetSourceKind === 'lookup' ? 'lookup' : 'preset') : undefined}
+          vehicleSourceLabel={form.vehicleId ? form.vehicleName : showPreset ? presetLabel : undefined}
+          vehicleSourceType={form.vehicleId ? 'garage' : showPreset ? (presetSourceKind === 'vin' ? 'vin' : presetSourceKind === 'lookup' ? 'lookup' : 'preset') : undefined}
           rentalMode={rentalMode}
         />
         {errors.tankCapacity && <FieldError msg={errors.tankCapacity} />}
@@ -757,16 +765,16 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
               // these sections collapse — show a real summary right where the
               // user was just interacting, not just a small badge up in the
               // Tank Size field.
-              <div className="flex items-center gap-3 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2.5 mt-2">
+              <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 mt-2">
                 <span className="text-xl flex-shrink-0" aria-hidden="true">✅</span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-black text-emerald-800 truncate">{presetLabel}</p>
-                  <p className="text-[11px] text-emerald-600">{t.calc.rentalVehicleAppliedTank(form.tankCapacity)}</p>
+                  <p className="text-xs font-black text-amber-800 truncate">{presetLabel}</p>
+                  <p className="text-[11px] text-amber-600">{t.calc.rentalVehicleAppliedTank(form.tankCapacity)}</p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setExpandAltVehicleInputs(true)}
-                  className="flex-shrink-0 text-[11px] font-bold text-emerald-700 hover:text-emerald-900 underline underline-offset-2"
+                  className="flex-shrink-0 text-[11px] font-bold text-amber-700 hover:text-amber-900 underline underline-offset-2"
                 >
                   {t.calc.rentalChangeVehicle}
                 </button>

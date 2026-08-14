@@ -26,6 +26,7 @@ export interface Vehicle {
   epaId?:             string;
   currentOdometer?:   number;
   vehicleSpecs?:      VehicleSpecs;
+  isDefault?:         boolean;
 }
 
 interface GarageResponse {
@@ -430,6 +431,23 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
     if (session) load();
   }, [session, load]);
 
+  // Auto-apply the garage's default vehicle whenever this list is showing
+  // with nothing currently selected — most notably right after leaving
+  // Rental Mode, which always clears the active vehicle since a rental
+  // lookup match isn't a garage vehicle. Guarded by autoAppliedRef so it
+  // fires once per empty-selection window rather than fighting a user who
+  // deliberately clears the selection some other way.
+  const autoAppliedRef = useRef(false);
+  useEffect(() => {
+    if (selectedVehicleId) { autoAppliedRef.current = false; return; }
+    if (autoAppliedRef.current) return;
+    const defaultVehicle = data?.vehicles.find((v) => v.isDefault);
+    if (defaultVehicle) {
+      autoAppliedRef.current = true;
+      onSelect(String(defaultVehicle.gallons), defaultVehicle);
+    }
+  }, [data, selectedVehicleId, onSelect]);
+
   // Allow the setup checklist to open the vehicle picker via a custom event
   useEffect(() => {
     const handler = () => setShowPicker(true);
@@ -477,6 +495,21 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
 
   async function handleDelete(id: string) {
     await fetch(`/api/vehicles?id=${id}`, { method: 'DELETE' });
+    load();
+  }
+
+  async function handleSetDefault(v: Vehicle) {
+    const makeDefault = !v.isDefault;
+    // Optimistic — only one vehicle can be default at a time.
+    setData((prev) => prev && {
+      ...prev,
+      vehicles: prev.vehicles.map((x) => ({ ...x, isDefault: x.id === v.id ? makeDefault : false })),
+    });
+    await fetch(`/api/vehicles?id=${v.id}`, {
+      method:  'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ isDefault: makeDefault }),
+    }).catch(() => {});
     load();
   }
 
@@ -936,6 +969,11 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
                                         transition-colors">
                             {v.name}
                           </p>
+                          {v.isDefault && (
+                            <span className="text-[9px] font-bold text-amber-600" title={t.garage.defaultVehicleTitle}>
+                              ⭐ {t.garage.defaultBadge}
+                            </span>
+                          )}
                         </div>
                         <p className="text-xs text-slate-400 mt-0.5 leading-tight">
                           {[v.year, v.make, v.model].filter(Boolean).join(' ') || t.garage.tankFallback(v.gallons)}
@@ -955,6 +993,24 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
                             {t.garage.active}
                           </span>
                         )}
+                      </button>
+
+                      {/* Default toggle — the starred vehicle auto-applies in the
+                          normal calculator whenever nothing else is selected,
+                          most notably right after leaving Rental Mode */}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleSetDefault(v); }}
+                        className={[
+                          'flex-shrink-0 p-1.5 rounded-lg transition-colors',
+                          v.isDefault ? 'text-amber-500' : 'text-slate-300 hover:text-amber-400',
+                        ].join(' ')}
+                        title={v.isDefault ? t.garage.defaultVehicleTitle : t.garage.setDefaultVehicleTitle}
+                        aria-label={v.isDefault ? t.garage.defaultVehicleTitle : t.garage.setDefaultVehicleTitle}
+                      >
+                        <svg viewBox="0 0 24 24" className="w-4 h-4" fill={v.isDefault ? 'currentColor' : 'none'}
+                             stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                          <path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z"/>
+                        </svg>
                       </button>
 
                       {/* Info — orange at rest (not just on hover) so it reads as a

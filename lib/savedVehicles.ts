@@ -27,6 +27,7 @@ export interface SavedVehicle {
   // Baseline odometer when vehicle was added to garage
   currentOdometer?:   number;
   vehicleSpecs?:      VehicleSpecs;
+  isDefault:          boolean;
   createdAt:          string;
 }
 
@@ -45,6 +46,7 @@ function toSavedVehicle(v: {
   epaId: string | null;
   currentOdometer: number | null;
   vehicleSpecs: unknown;
+  isDefault?: boolean;
   createdAt: string;
 }): SavedVehicle {
   return {
@@ -62,6 +64,7 @@ function toSavedVehicle(v: {
     epaId:              v.epaId           ?? undefined,
     currentOdometer:    v.currentOdometer ?? undefined,
     vehicleSpecs:       v.vehicleSpecs    != null ? (v.vehicleSpecs as VehicleSpecs) : undefined,
+    isDefault:          v.isDefault       ?? false,
     createdAt:          v.createdAt,
   };
 }
@@ -115,6 +118,27 @@ export async function deleteVehicle(userId: string, vehicleId: string): Promise<
   await prisma.vehicle.deleteMany({
     where: { id: vehicleId, userId },
   });
+}
+
+// Only one vehicle can be default at a time — clear any existing default
+// before setting the new one, in a single transaction so a mid-request
+// failure can't leave two vehicles (or zero) marked default.
+export async function setDefaultVehicle(userId: string, vehicleId: string): Promise<SavedVehicle | undefined> {
+  const existing = await prisma.vehicle.findFirst({ where: { id: vehicleId, userId } });
+  if (!existing) return undefined;
+
+  const [, row] = await prisma.$transaction([
+    prisma.vehicle.updateMany({ where: { userId, isDefault: true }, data: { isDefault: false } }),
+    prisma.vehicle.update({ where: { id: vehicleId }, data: { isDefault: true } }),
+  ]);
+  return toSavedVehicle(row);
+}
+
+export async function clearDefaultVehicle(userId: string, vehicleId: string): Promise<SavedVehicle | undefined> {
+  const existing = await prisma.vehicle.findFirst({ where: { id: vehicleId, userId } });
+  if (!existing) return undefined;
+  const row = await prisma.vehicle.update({ where: { id: vehicleId }, data: { isDefault: false } });
+  return toSavedVehicle(row);
 }
 
 export async function updateVehicle(

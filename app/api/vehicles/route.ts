@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { findById } from '@/lib/users';
-import { getVehiclesForUser, addVehicle, deleteVehicle, updateVehicle } from '@/lib/savedVehicles';
+import { getVehiclesForUser, addVehicle, deleteVehicle, updateVehicle, setDefaultVehicle, clearDefaultVehicle } from '@/lib/savedVehicles';
 import { isElectric, type VehicleSpecs } from '@/lib/vehicleSpecs';
 
 // Pro is unlimited; free is capped at 1
@@ -114,10 +114,16 @@ export async function PATCH(req: Request) {
 
   const body = await req.json() as {
     name?: string; gallons?: number; vin?: string; currentOdometer?: number; vehicleSpecs?: VehicleSpecs;
-    fuelType?: string; fuelTypeConfirmedByUser?: boolean;
+    fuelType?: string; fuelTypeConfirmedByUser?: boolean; isDefault?: boolean;
   };
   if (body.gallons !== undefined && body.gallons <= 0) {
     return NextResponse.json({ error: 'Invalid tank size.' }, { status: 400 });
+  }
+
+  if (body.isDefault !== undefined) {
+    const updated = body.isDefault ? await setDefaultVehicle(userId, id) : await clearDefaultVehicle(userId, id);
+    if (!updated) return NextResponse.json({ error: 'Vehicle not found.' }, { status: 404 });
+    return NextResponse.json(updated);
   }
 
   const updated = await updateVehicle(userId, id, {

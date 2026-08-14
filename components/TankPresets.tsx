@@ -133,7 +133,7 @@ export default function TankPresets({
               inputMode="decimal"
               className={[
                 'input-field pr-16',
-                isConfirmed ? 'border-emerald-300 bg-emerald-50 text-emerald-800 focus:border-emerald-400' : '',
+                isConfirmed ? 'border-amber-300 bg-amber-50 text-amber-800 focus:border-amber-400' : '',
               ].join(' ')}
               placeholder={t.tankPresets.typePlaceholder}
               value={value}
@@ -145,7 +145,7 @@ export default function TankPresets({
               aria-label="Tank capacity in gallons"
             />
             {isConfirmed && value && (
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-emerald-600 pointer-events-none">
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-amber-600 pointer-events-none">
                 {t.tankPresets.galTankSuffix}
               </span>
             )}
@@ -158,7 +158,7 @@ export default function TankPresets({
         <p className={[
           'mt-1.5 text-[10px] font-semibold leading-snug px-2.5 py-1 rounded-lg inline-flex items-center gap-1.5',
           vehicleSourceType === 'garage' || vehicleSourceType === 'vin' || vehicleSourceType === 'lookup'
-            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+            ? 'bg-amber-50 text-amber-700 border border-amber-200'
             : 'bg-slate-100 text-slate-500 border border-slate-200',
         ].join(' ')}>
           <span aria-hidden="true">
