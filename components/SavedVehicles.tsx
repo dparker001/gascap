@@ -1150,6 +1150,28 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
             </a>
           )}
 
+          {/* Soft nudge for accounts with an unusually large garage — Pro has
+              no hard vehicle cap (a real multi-car household is legitimate),
+              but this is also the shape shared-credential abuse takes, so
+              flag it without blocking. No Fleet CTA here since Fleet isn't
+              purchasable yet — point to support instead of a dead end. */}
+          {plan === 'pro' && vehicles.length >= 7 && (
+            <a href="/contact"
+              className="mt-3 flex items-start gap-2 bg-amber-50 border border-amber-200
+                         rounded-xl px-3 py-2.5 hover:bg-amber-100 transition-colors group"
+            >
+              <span className="text-base flex-shrink-0" aria-hidden="true">🚗</span>
+              <div>
+                <p className="text-xs font-semibold text-amber-800 group-hover:text-amber-900">
+                  {t.garage.manyVehiclesTitle(vehicles.length)}
+                </p>
+                <p className="text-[11px] text-amber-600 mt-0.5">
+                  {t.garage.manyVehiclesSub}
+                </p>
+              </div>
+            </a>
+          )}
+
           {/* "1 slot remaining" nudge for Pro users at 4/5 vehicles */}
           {plan === 'pro' && !atLimit && vehicles.length === limit - 1 && (
             <a href="/upgrade#fleet"
