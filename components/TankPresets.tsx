@@ -120,19 +120,38 @@ export default function TankPresets({
         )}
       </select>
 
-      <input
-        type="number"
-        inputMode="decimal"
-        className="input-field"
-        placeholder={t.tankPresets.typePlaceholder}
-        value={value}
-        min="1" max="200" step="0.1"
-        onChange={(e) => {
-          setSelectedPreset(''); // typing clears the dropdown selection
-          onChange(e.target.value);
-        }}
-        aria-label="Tank capacity in gallons"
-      />
+      {(() => {
+        // Same "confirmed vehicle" sources the badge below treats as exact
+        // matches (garage / VIN / Y-M-M lookup) — echoed here on the input
+        // itself so the number reads as "this vehicle's tank," not just a
+        // plain editable field, without having to look down at the badge.
+        const isConfirmed = vehicleSourceType === 'garage' || vehicleSourceType === 'vin' || vehicleSourceType === 'lookup';
+        return (
+          <div className="relative">
+            <input
+              type="number"
+              inputMode="decimal"
+              className={[
+                'input-field pr-16',
+                isConfirmed ? 'border-emerald-300 bg-emerald-50 text-emerald-800 focus:border-emerald-400' : '',
+              ].join(' ')}
+              placeholder={t.tankPresets.typePlaceholder}
+              value={value}
+              min="1" max="200" step="0.1"
+              onChange={(e) => {
+                setSelectedPreset(''); // typing clears the dropdown selection
+                onChange(e.target.value);
+              }}
+              aria-label="Tank capacity in gallons"
+            />
+            {isConfirmed && value && (
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-emerald-600 pointer-events-none">
+                {t.tankPresets.galTankSuffix}
+              </span>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Source badge — clarifies whether the tank size came from the garage, a VIN decode, a Y/M/M lookup, or a preset */}
       {vehicleSourceLabel && (

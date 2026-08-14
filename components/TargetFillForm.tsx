@@ -702,6 +702,25 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
           <>
             {(!presetLabel || expandAltVehicleInputs) ? (
               <>
+                {/* "Change" reopens this section without clearing the current
+                    selection (tankCapacity/presetLabel are untouched until a
+                    new lookup actually resolves) — surface a way back out so
+                    the user isn't forced to redo the search just to keep what
+                    they already picked. */}
+                {presetLabel && (
+                  <div className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 mb-2">
+                    <p className="text-[11px] text-slate-500 truncate">
+                      {t.calc.rentalKeepCurrentVehicle(presetLabel)}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setExpandAltVehicleInputs(false)}
+                      className="flex-shrink-0 text-[11px] font-bold text-teal-600 hover:text-teal-800 ml-2"
+                    >
+                      {t.calc.rentalCancelChange}
+                    </button>
+                  </div>
+                )}
                 <RentalVehicleLookup
                   onTankSize={(g, label) => {
                     patch({ tankCapacity: g, vehicleId: '', vehicleName: '', vehicleOdometer: undefined });
