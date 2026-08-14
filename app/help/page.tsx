@@ -118,6 +118,10 @@ const SECTIONS = [
         a: 'Yes. If a station is permanently closed or you just want to clean up the list, tap the × button on the station card to hide it from your results. Hidden stations are remembered on your device. If you hide all stations, a "Restore hidden stations" link appears to bring them back.',
       },
       {
+        q: 'Can I save a favorite gas station?',
+        a: 'Yes. Tap the ⭐ star on any station card in the Find Gas tab to save it as a favorite. Favorites show at the top of the Find Gas tab with their last-known price and when it was captured — even before you run a new search. Tap a favorite to fill the calculator with its saved price, or tap the star again to remove it. Available to Pro and Fleet users.',
+      },
+      {
         q: 'How do I report a gas price?',
         a: 'In the Find Gas tab, tap "⛽ Report Price" at the bottom of any station card. You\'ll see a small form — pick the fuel grade (Regular, Midgrade, Premium, or Diesel) and enter the price you see on the pump, then tap Submit. You earn +5 giveaway entries for each report. You must be within 0.5 miles of the station to submit. You can report up to 5 stations per day.',
       },
@@ -387,7 +391,7 @@ const SECTIONS = [
       },
       {
         q: 'Where do I find my referral link?',
-        a: 'Your referral link is in Settings → Refer & Earn, and also on the Ambassador Program page (gascap.app/ambassador). You can copy the link or share it directly. Your link looks like: gascap.app/signup?ref=YOURCODE.',
+        a: 'Your referral link is in Settings → Refer & Earn, and also on the Ambassador Program page (gascap.app/ambassador). You can copy the link, share it directly, or tap "Show QR Code" for a branded scannable QR — use "Share QR" to send the image itself (with the same invite text) via text or social apps, or "Download QR Image" to save it. Your link looks like: gascap.app/signup?ref=YOURCODE.',
       },
       {
         q: 'What counts as a paying referral?',
