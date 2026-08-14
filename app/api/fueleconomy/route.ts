@@ -34,8 +34,13 @@ export async function GET(req: Request) {
 
   try {
     if (action === 'years') {
+      // EPA's own /menu/year already returns newest-first — the .reverse()
+      // that used to be here actually flipped it to oldest-first, contradicting
+      // its own comment. Had no visible effect while every year was shown
+      // regardless of order; became a real bug once RentalVehicleLookup started
+      // slicing this list down to the most recent 10.
       const items = await fetchMenu('/menu/year');
-      return NextResponse.json(items.reverse()); // newest first
+      return NextResponse.json(items);
     }
 
     if (action === 'makes') {

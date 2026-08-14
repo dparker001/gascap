@@ -49,7 +49,11 @@ export default function RentalVehicleLookup({ onTankSize }: RentalVehicleLookupP
 
   useEffect(() => {
     setLoading('years');
-    fetchMenu('years').then((items) => { setYears(items); setLoading(null); });
+    // Rental fleets are essentially never more than a few years old — scoped
+    // to the most recent 10 model years (already newest-first from the API)
+    // instead of the full ~45-year EPA range, which is only relevant for a
+    // personal vehicle someone's had a long time (the garage Add Vehicle flow).
+    fetchMenu('years').then((items) => { setYears(items.slice(0, 10)); setLoading(null); });
   }, []);
 
   useEffect(() => {

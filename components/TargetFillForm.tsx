@@ -841,10 +841,11 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
               <p className="text-xs font-black text-blue-800">{t.calc.rentalPickupLevelLabel}</p>
             </div>
             <p className="text-[11px] text-blue-600 leading-snug mb-2">{t.calc.rentalPickupLevelHint}</p>
-            <div className="flex gap-1.5 flex-wrap">
-              {([0, 13, 25, 38, 50, 63, 75, 88, 100] as const).map((pct) => {
-                const label = pct === 100 ? 'Full' : pct === 88 ? '⅞' : pct === 75 ? '¾' : pct === 63 ? '⅝'
-                  : pct === 50 ? '½' : pct === 38 ? '⅜' : pct === 25 ? '¼' : pct === 13 ? '⅛' : 'E';
+            {/* No "Empty" option — a rental is never handed over with 0 fuel. */}
+            <div className="flex gap-1.5 mb-1.5">
+              {([13, 25, 38, 50, 63, 75, 88] as const).map((pct) => {
+                const label = pct === 88 ? '⅞' : pct === 75 ? '¾' : pct === 63 ? '⅝'
+                  : pct === 50 ? '½' : pct === 38 ? '⅜' : pct === 25 ? '¼' : '⅛';
                 const active = rentalPickupLevel === pct;
                 return (
                   <button
@@ -855,7 +856,7 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
                       liveRecalc({ targetPreset: pct, customTarget: '' });
                     }}
                     className={[
-                      'flex-1 min-w-[44px] py-1.5 rounded-lg text-xs font-black border transition-colors',
+                      'flex-1 min-w-[36px] py-1.5 rounded-lg text-xs font-black border transition-colors',
                       active
                         ? 'bg-blue-600 text-white border-blue-600'
                         : 'bg-white text-blue-700 border-blue-200 hover:border-blue-400',
@@ -866,6 +867,21 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
                 );
               })}
             </div>
+            <button
+              type="button"
+              onClick={() => {
+                setRentalPickupLevel(100);
+                liveRecalc({ targetPreset: 100, customTarget: '' });
+              }}
+              className={[
+                'w-full py-1.5 rounded-lg text-xs font-black border transition-colors',
+                rentalPickupLevel === 100
+                  ? 'bg-blue-600 text-white border-blue-600'
+                  : 'bg-white text-blue-700 border-blue-200 hover:border-blue-400',
+              ].join(' ')}
+            >
+              Full
+            </button>
           </div>
 
           {/* Rental company rate */}
