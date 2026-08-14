@@ -30,6 +30,10 @@ const SECTIONS = [
         a: 'Tap "Saved Vehicles" on the main screen, then tap "+ Add Vehicle." Search by Year/Make/Model, enter your VIN manually, or tap the camera icon to scan your VIN. Saving a vehicle pre-fills your tank size and MPG estimates in the calculator automatically.',
       },
       {
+        q: 'Can I set a default vehicle?',
+        a: 'Yes — tap the ⭐ star on any saved vehicle in Saved Vehicles to make it your default. It auto-fills the calculator whenever no other vehicle is currently selected, which is especially useful right after turning off Rental Car Return Mode — your regular vehicle is applied automatically instead of you having to reselect it. Only one vehicle can be default at a time.',
+      },
+      {
         q: 'What is a VIN and where do I find it?',
         a: 'A Vehicle Identification Number (VIN) is a 17-character code unique to your car. Find it on the driver-side dashboard (visible through the windshield), the driver-side door jamb sticker, or your vehicle registration / insurance card.',
       },
