@@ -44,6 +44,8 @@ export default function RentalVehicleLookup({ onTankSize }: RentalVehicleLookupP
   const [model,  setModel]  = useState('');
   const [trimId, setTrimId] = useState('');
   const [loading, setLoading] = useState<string | null>(null);
+  const [foundVehicle, setFoundVehicle] = useState<{ label: string; tank: string } | null>(null);
+  const [lookupError,  setLookupError]  = useState(false);
 
   useEffect(() => {
     setLoading('years');
@@ -53,6 +55,7 @@ export default function RentalVehicleLookup({ onTankSize }: RentalVehicleLookupP
   useEffect(() => {
     if (!year) { setMakes([]); setMake(''); return; }
     setMake(''); setModel(''); setTrimId('');
+    setFoundVehicle(null); setLookupError(false);
     setLoading('makes');
     fetchMenu('makes', { year }).then((items) => { setMakes(items); setLoading(null); });
   }, [year]);
@@ -60,6 +63,7 @@ export default function RentalVehicleLookup({ onTankSize }: RentalVehicleLookupP
   useEffect(() => {
     if (!year || !make) { setModels([]); setModel(''); return; }
     setModel(''); setTrimId('');
+    setFoundVehicle(null); setLookupError(false);
     setLoading('models');
     fetchMenu('models', { year, make }).then((items) => { setModels(items); setLoading(null); });
   }, [year, make]);
@@ -67,6 +71,7 @@ export default function RentalVehicleLookup({ onTankSize }: RentalVehicleLookupP
   useEffect(() => {
     if (!year || !make || !model) { setTrims([]); setTrimId(''); return; }
     setTrimId('');
+    setFoundVehicle(null); setLookupError(false);
     setLoading('trims');
     fetchMenu('trims', { year, make, model }).then((items) => {
       setTrims(items); setLoading(null);
@@ -76,13 +81,21 @@ export default function RentalVehicleLookup({ onTankSize }: RentalVehicleLookupP
 
   useEffect(() => {
     if (!trimId) return;
+    setFoundVehicle(null); setLookupError(false);
     setLoading('vehicle');
     fetch(`/api/fueleconomy?action=vehicle&id=${trimId}`)
       .then((r) => r.json())
       .then((d: VehicleDetails) => {
         setLoading(null);
-        if (d.tankEst) onTankSize(String(d.tankEst), `${d.year} ${d.make} ${d.model}`);
-      });
+        if (d.tankEst) {
+          const label = `${d.year} ${d.make} ${d.model}`;
+          onTankSize(String(d.tankEst), label);
+          setFoundVehicle({ label, tank: String(d.tankEst) });
+        } else {
+          setLookupError(true);
+        }
+      })
+      .catch(() => { setLoading(null); setLookupError(true); });
   }, [trimId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
@@ -116,6 +129,20 @@ export default function RentalVehicleLookup({ onTankSize }: RentalVehicleLookupP
 
       {loading === 'vehicle' && (
         <p className="text-[10px] text-blue-500">{t.rentalLookup.looking}</p>
+      )}
+
+      {foundVehicle && (
+        <div className="flex items-start gap-2 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2.5">
+          <span className="text-base flex-shrink-0" aria-hidden="true">✅</span>
+          <p className="text-[11px] text-emerald-700 leading-snug">
+            <span className="font-black block">{t.rentalLookup.vehicleFoundTitle(foundVehicle.label)}</span>
+            {t.rentalLookup.vehicleFoundTank(foundVehicle.tank)}
+          </p>
+        </div>
+      )}
+
+      {lookupError && (
+        <p className="text-[11px] text-red-600 font-semibold">❌ {t.rentalLookup.vehicleLookupError}</p>
       )}
     </div>
   );

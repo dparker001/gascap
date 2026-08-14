@@ -155,6 +155,11 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
   // Tank-size source tracking — drives the "From garage / VIN match / From list" badge in TankPresets
   const [presetLabel, setPresetLabel] = useState('');
   const [presetIsVin, setPresetIsVin] = useState(false);
+  // Once a vehicle source is set in Rental Mode, the Year/Make/Model and VIN
+  // lookup sections collapse behind a toggle instead of staying visible
+  // alongside the already-resolved tank size — was confusing users into
+  // thinking they needed to fill in every option.
+  const [expandAltVehicleInputs, setExpandAltVehicleInputs] = useState(false);
   const calcStartFired  = useRef(false);
   // Stable ref so the gc:inject-gas-price event handler always calls the latest liveRecalc
   const liveRecalcRef   = useRef<(p: Partial<FormState>) => void>(() => {});
@@ -647,6 +652,7 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
             setVehicleBodyClass(undefined);
             setPresetLabel(label);
             setPresetIsVin(false);
+            setExpandAltVehicleInputs(false);
           }}
           vehicleSourceLabel={form.vehicleId ? form.vehicleName : presetLabel}
           vehicleSourceType={form.vehicleId ? 'garage' : presetLabel ? (presetIsVin ? 'vin' : 'preset') : undefined}
@@ -655,30 +661,46 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
         {errors.tankCapacity && <FieldError msg={errors.tankCapacity} />}
         {rentalMode ? (
           <>
-            <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-xl px-3 py-2.5 mt-1">
-              <span className="text-base flex-shrink-0" aria-hidden="true">🚪</span>
-              <p className="text-[11px] text-blue-600 leading-snug">
-                <span className="font-black">{t.calc.garageClosedTitle}</span>{t.calc.garageClosedHint}
-              </p>
-            </div>
-            <RentalVehicleLookup
-              onTankSize={(g, label) => {
-                patch({ tankCapacity: g, vehicleId: '', vehicleName: '', vehicleOdometer: undefined });
-                setVehicleTankEst(undefined);
-                setVehicleBodyClass(undefined);
-                setPresetLabel(label);
-                setPresetIsVin(false);
-              }}
-            />
-            <RentalVinLookup
-              onTankSize={(g, label) => {
-                patch({ tankCapacity: g, vehicleId: '', vehicleName: '', vehicleOdometer: undefined });
-                setVehicleTankEst(undefined);
-                setVehicleBodyClass(undefined);
-                setPresetLabel(label);
-                setPresetIsVin(true);
-              }}
-            />
+            {isLoggedIn && (
+              <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-xl px-3 py-2.5 mt-1">
+                <span className="text-base flex-shrink-0" aria-hidden="true">🚪</span>
+                <p className="text-[11px] text-blue-600 leading-snug">
+                  <span className="font-black">{t.calc.garageClosedTitle}</span>{t.calc.garageClosedHint}
+                </p>
+              </div>
+            )}
+            {(!presetLabel || expandAltVehicleInputs) ? (
+              <>
+                <RentalVehicleLookup
+                  onTankSize={(g, label) => {
+                    patch({ tankCapacity: g, vehicleId: '', vehicleName: '', vehicleOdometer: undefined });
+                    setVehicleTankEst(undefined);
+                    setVehicleBodyClass(undefined);
+                    setPresetLabel(label);
+                    setPresetIsVin(false);
+                    setExpandAltVehicleInputs(false);
+                  }}
+                />
+                <RentalVinLookup
+                  onTankSize={(g, label) => {
+                    patch({ tankCapacity: g, vehicleId: '', vehicleName: '', vehicleOdometer: undefined });
+                    setVehicleTankEst(undefined);
+                    setVehicleBodyClass(undefined);
+                    setPresetLabel(label);
+                    setPresetIsVin(true);
+                    setExpandAltVehicleInputs(false);
+                  }}
+                />
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setExpandAltVehicleInputs(true)}
+                className="text-[11px] font-bold text-blue-600 hover:text-blue-800 mt-2"
+              >
+                {t.calc.rentalShowOtherVehicleOptions}
+              </button>
+            )}
           </>
         ) : (
           <SavedVehicles
@@ -770,8 +792,9 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
             </div>
             <p className="text-[11px] text-blue-600 leading-snug mb-2">{t.calc.rentalPickupLevelHint}</p>
             <div className="flex gap-1.5 flex-wrap">
-              {([0, 25, 50, 75, 100] as const).map((pct) => {
-                const label = pct === 100 ? 'Full' : pct === 75 ? '¾' : pct === 50 ? '½' : pct === 25 ? '¼' : 'E';
+              {([0, 13, 25, 38, 50, 63, 75, 88, 100] as const).map((pct) => {
+                const label = pct === 100 ? 'Full' : pct === 88 ? '⅞' : pct === 75 ? '¾' : pct === 63 ? '⅝'
+                  : pct === 50 ? '½' : pct === 38 ? '⅜' : pct === 25 ? '¼' : pct === 13 ? '⅛' : 'E';
                 const active = rentalPickupLevel === pct;
                 return (
                   <button
