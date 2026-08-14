@@ -239,13 +239,30 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
   }, []);
   const userMode = localUserMode !== undefined ? localUserMode : sessionUserMode;
   const isGigMode = userMode === 'gig';
+  // Rental Mode already persists across sessions via useLocalStorage above —
+  // that's correct, it should survive a close/reopen exactly as the user left
+  // it. The bug this ref fixes: this effect's job is to auto-activate rental
+  // mode for accounts whose Driver Mode default is 'rental', but it used to
+  // ALSO auto-deactivate it on every single mount whenever the account's
+  // default wasn't 'rental' — silently undoing a manual toggle for anyone
+  // who isn't a rental-by-default user but turned it on for one trip.
+  // "Only disabled manually" means the auto-off should fire for a genuine
+  // LIVE account-mode change away from 'rental' during this session, never
+  // for the initial resolution of whatever the account's mode already was.
+  const prevUserModeRef = useRef<string | null | undefined>(undefined);
   useEffect(() => {
     const fromRentalPage = typeof window !== 'undefined' &&
       new URLSearchParams(window.location.search).get('rental') === '1';
+    const isFirstResolution = prevUserModeRef.current === undefined;
+    const wasRental = prevUserModeRef.current === 'rental';
+    prevUserModeRef.current = userMode;
+
     if ((userMode === 'rental' || fromRentalPage) && !rentalMode) {
       setRentalMode(true);
       setForm(prev => ({ ...prev, targetPreset: rentalPickupLevel, customTarget: '' }));
-    } else if (userMode !== 'rental' && userMode != null && !fromRentalPage && rentalMode) {
+    } else if (!isFirstResolution && wasRental && userMode !== 'rental' && !fromRentalPage && rentalMode) {
+      // A real switch away from 'rental' happened while the app was open —
+      // safe to turn rental mode off since it was tracking the account default.
       setRentalMode(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
