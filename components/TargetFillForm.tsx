@@ -163,8 +163,12 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
   // kept distinct from 'dropdown' so TankPresets knows to blank its own
   // <select> display when the tank size came from somewhere else instead of
   // showing a stale rental-class selection next to the real (exact) one.
-  const [presetLabel, setPresetLabel] = useState('');
-  const [presetSourceKind, setPresetSourceKind] = useState<'dropdown' | 'lookup' | 'vin'>('dropdown');
+  // Persisted — form.tankCapacity (the actual gallons number) already
+  // survives a close/reopen via its own useLocalStorage, but this label was
+  // plain useState, so the number would survive while the vehicle identity
+  // attached to it silently vanished, making the selection look cleared.
+  const [presetLabel, setPresetLabel] = useLocalStorage<string>('gc_target_preset_label', '');
+  const [presetSourceKind, setPresetSourceKind] = useLocalStorage<'dropdown' | 'lookup' | 'vin'>('gc_target_preset_source', 'dropdown');
   // Once a vehicle source is set in Rental Mode, the Year/Make/Model and VIN
   // lookup sections collapse behind a toggle instead of staying visible
   // alongside the already-resolved tank size — was confusing users into
