@@ -135,3 +135,16 @@ export const trackRentalReturnToggled = (isRental: boolean) =>
 /** User ran the Smart Fill-Up Optimizer */
 export const trackFillupOptimizerRun = (state: string) =>
   gtagEvent('fillup_optimizer_run', { state });
+
+// ── /upgrade funnel — lightweight instrumentation to see where people drop
+// off (or whether the getaway promo is actually correlated with lifetime
+// clicks) instead of guessing from zero Lifetime conversions. ────────────
+export const trackUpgradePageView = (params: { plan: string; showGetaway: boolean; wb: boolean; founding: boolean }) =>
+  gtagEvent('view_upgrade_page', {
+    plan: params.plan, show_getaway: params.showGetaway, wb: params.wb, founding: params.founding,
+  });
+
+export const trackUpgradeCheckoutStarted = (params: { billing: 'monthly' | 'lifetime'; showGetaway: boolean; method: 'stripe' | 'iap' }) =>
+  gtagEvent('upgrade_checkout_started', {
+    billing: params.billing, show_getaway: params.showGetaway, method: params.method,
+  });

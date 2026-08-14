@@ -10,6 +10,7 @@ import { getawayPromoActive, getawayDaysLeft } from '@/lib/getawayPromo';
 import BrandBar from '@/components/BrandBar';
 import { detectNativePlatform } from '@/hooks/useIsNative';
 import { purchasePro, restorePurchases } from '@/lib/iap';
+import { trackUpgradePageView, trackUpgradeCheckoutStarted } from '@/lib/gtag';
 
 // ── Feature lists are defined inside UpgradePageInner (need t)
 
@@ -64,6 +65,16 @@ function UpgradePageInner() {
   const showGetaway   = getawayPromoActive() && !isProLifetime;
   const getawayDays   = getawayDaysLeft();
 
+  // Fires once per page load, after plan/session state is known, so the
+  // event carries real segmentation data rather than a placeholder.
+  const viewTracked = useRef(false);
+  useEffect(() => {
+    if (viewTracked.current || sessionStatus === 'loading') return;
+    viewTracked.current = true;
+    trackUpgradePageView({ plan: userPlan, showGetaway, wb, founding });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionStatus]);
+
   // Auto-continue checkout after a fresh signup: when a signed-out visitor clicks
   // Get Lifetime/Pro, we send them to /signup?next=/upgrade?auto=<billing> instead
   // of just /upgrade. Once they land back here already authenticated, this fires
@@ -94,6 +105,7 @@ function UpgradePageInner() {
         : '/signup?next=' + encodeURIComponent(`/upgrade?auto=${billing}`);
       return;
     }
+    trackUpgradeCheckoutStarted({ billing, showGetaway, method: 'stripe' });
     setLoading(billing === 'lifetime' ? 'pro-lifetime' : 'pro-monthly');
     setError('');
     try {
@@ -124,6 +136,7 @@ function UpgradePageInner() {
   // everywhere (web + app), exactly like the Stripe path.
   async function handleIap(which: 'monthly' | 'lifetime') {
     if (!session) { window.location.href = '/signup?next=' + encodeURIComponent(`/upgrade?auto=${which}`); return; }
+    trackUpgradeCheckoutStarted({ billing: which, showGetaway, method: 'iap' });
     setLoading(which === 'lifetime' ? 'pro-lifetime' : 'pro-monthly');
     setError('');
     const res = await purchasePro(which);
