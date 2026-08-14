@@ -119,6 +119,35 @@ export default function ReferralCard() {
     }
   }
 
+  async function handleShareQr() {
+    if (!data) return;
+    const qrUrl = `/api/qr?size=900&data=${encodeURIComponent(data.referralUrl)}`;
+    // Share the image itself (with the same caption text as the link share)
+    // when the platform supports file sharing — falls back to a plain
+    // download, since downloading the QR alone previously gave no caption.
+    if (navigator.share && navigator.canShare) {
+      try {
+        const res  = await fetch(qrUrl);
+        const blob = await res.blob();
+        const file = new File([blob], 'gascap-referral-qr.png', { type: 'image/png' });
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            title: t.referralCard.shareTitle,
+            text:  t.referralCard.shareText,
+            files: [file],
+          });
+          return;
+        }
+      } catch { /* fall through to download */ }
+    }
+    const a = document.createElement('a');
+    a.href = qrUrl;
+    a.download = 'gascap-referral-qr.png';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
+
   if (!session) return null;
 
   const tierLabel: Record<string, string> = {
@@ -319,7 +348,7 @@ export default function ReferralCard() {
                 >
                   <p className="text-sm font-black text-slate-700">{t.referralCard.qrTitle}</p>
                   <img
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=280x280&margin=6&color=0f1f34&bgcolor=ffffff&data=${encodeURIComponent(data.referralUrl)}`}
+                    src={`/api/qr?size=560&data=${encodeURIComponent(data.referralUrl)}`}
                     alt={t.referralCard.qrAlt}
                     width={240}
                     height={240}
@@ -328,13 +357,22 @@ export default function ReferralCard() {
                   <p className="text-[11px] text-slate-400 text-center leading-relaxed">
                     {t.referralCard.qrScanHint}
                   </p>
-                  <a
-                    href={`https://api.qrserver.com/v1/create-qr-code/?size=600x600&margin=20&color=0f1f34&bgcolor=ffffff&data=${encodeURIComponent(data.referralUrl)}`}
-                    download="gascap-referral-qr.png"
-                    className="text-[11px] font-bold text-amber-600 hover:text-amber-500 transition-colors"
-                  >
-                    {t.referralCard.downloadQr}
-                  </a>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={handleShareQr}
+                      className="text-[11px] font-bold text-amber-600 hover:text-amber-500 transition-colors"
+                    >
+                      {t.referralCard.shareQr}
+                    </button>
+                    <span className="text-slate-200">|</span>
+                    <a
+                      href={`/api/qr?size=900&data=${encodeURIComponent(data.referralUrl)}`}
+                      download="gascap-referral-qr.png"
+                      className="text-[11px] font-bold text-amber-600 hover:text-amber-500 transition-colors"
+                    >
+                      {t.referralCard.downloadQr}
+                    </a>
+                  </div>
                   <button
                     onClick={() => setShowQR(false)}
                     className="w-full py-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-sm font-black text-slate-600 transition-colors"

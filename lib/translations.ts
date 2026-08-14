@@ -1463,6 +1463,10 @@ const en = {
     minutesAgo:           (m: number) => `${m}m ago`,
     hoursAgo:             (h: number) => `${h}h ago`,
     daysAgo:              (d: number) => `${d}d ago`,
+    favoritesTitle:       '⭐ Favorites',
+    addFavoriteAria:      'Save to favorites',
+    removeFavoriteAria:   'Remove from favorites',
+    savedPriceAsOf:       (when: string) => `Saved price · ${when}`,
   },
 
   // ── Aggregate activity stats toast — AggregateStatsToast.tsx ─────────────────
@@ -2533,6 +2537,7 @@ const en = {
     qrTitle: 'Your Referral QR Code',
     qrAlt: 'Referral QR code',
     qrScanHint: 'Have a friend scan this to sign up with your referral link',
+    shareQr: '📤 Share QR',
     downloadQr: '⬇ Download QR Image',
     closeQr: 'Close QR Code',
     shareTitle: 'GasCap™ — Know before you go',
@@ -4240,6 +4245,10 @@ const es: typeof en = {
     minutesAgo:           (m: number) => `hace ${m}m`,
     hoursAgo:             (h: number) => `hace ${h}h`,
     daysAgo:              (d: number) => `hace ${d}d`,
+    favoritesTitle:       '⭐ Favoritos',
+    addFavoriteAria:      'Guardar en favoritos',
+    removeFavoriteAria:   'Quitar de favoritos',
+    savedPriceAsOf:       (when: string) => `Precio guardado · ${when}`,
   },
 
   // ── Aggregate activity stats toast — AggregateStatsToast.tsx ─────────────────
@@ -5310,6 +5319,7 @@ const es: typeof en = {
     qrTitle: 'Tu código QR de referido',
     qrAlt: 'Código QR de referido',
     qrScanHint: 'Pide a un amigo que lo escanee para registrarse con tu enlace de referido',
+    shareQr: '📤 Compartir QR',
     downloadQr: '⬇ Descargar imagen QR',
     closeQr: 'Cerrar código QR',
     shareTitle: 'GasCap™ — Conoce antes de ir',

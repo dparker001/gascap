@@ -147,6 +147,7 @@ model User {
   priceReports             PriceReport[]
   gigFillups               GigFillup[]
   gigMileage               GigMileage[]
+  favoriteStations         FavoriteStation[]
 }
 
 model OtpCode {
@@ -390,4 +391,27 @@ model PriceReport {
   @@index([userId])
   @@index([placeId])
   @@index([createdAt])
+}
+
+// A saved gas station. Shows on the Find Gas tab regardless of search state
+// (including before any search has run) with the LAST-KNOWN price snapshot,
+// not a live re-fetch — cheap, no extra Google Places calls on every tab
+// open. `prices`/`priceUpdatedAt` are refreshed opportunistically whenever
+// the station shows up again in a live nearby-stations result.
+model FavoriteStation {
+  id             String  @id
+  userId         String
+  placeId        String
+  name           String
+  address        String
+  lat            Float
+  lng            Float
+  prices         Json    // FuelPrice[] snapshot — see lib/nearbyGas.ts
+  priceUpdatedAt String? // when the snapshot above was captured
+  createdAt      String
+
+  user           User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, placeId])
+  @@index([userId])
 }

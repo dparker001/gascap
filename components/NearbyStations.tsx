@@ -62,6 +62,16 @@ interface CommunityPrice {
 // placeId → list of recent community prices (< 2h old)
 type CommunityMap = Record<string, CommunityPrice[]>;
 
+interface FavoriteStationData {
+  placeId:        string;
+  name:           string;
+  address:        string;
+  lat:            number;
+  lng:            number;
+  prices:         FuelPrice[];
+  priceUpdatedAt: string | null;
+}
+
 interface Props {
   /** Called when the user selects a price to use in the calculator */
   onApply?: (price: string, lat: number, lng: number, stationName: string, distanceMi: number, grade: string) => void;
@@ -329,6 +339,17 @@ interface StationCardLabels {
   gradeMidgrade: string;
   gradePremium: string;
   gradeDiesel: string;
+  addFavoriteAria: string;
+  removeFavoriteAria: string;
+}
+
+function StarIcon({ className, filled }: { className?: string; filled?: boolean }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'}
+         stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z"/>
+    </svg>
+  );
 }
 
 function StationCard({
@@ -339,6 +360,8 @@ function StationCard({
   communityPrices,
   onPriceReported,
   labels,
+  isFavorite,
+  onToggleFavorite,
 }: {
   station:         NearbyStation;
   onApply?:        (price: string, lat: number, lng: number, stationName: string, distanceMi: number, grade: string) => void;
@@ -347,6 +370,8 @@ function StationCard({
   communityPrices: CommunityPrice[];
   onPriceReported: (placeId: string, grade: string, price: number) => void;
   labels:          StationCardLabels;
+  isFavorite?:      boolean;
+  onToggleFavorite?: (station: NearbyStation) => void;
 }) {
   const [showReportForm, setShowReportForm] = useState(false);
   const [reportToast,    setReportToast]    = useState('');
@@ -403,6 +428,17 @@ function StationCard({
             {station.isOpen === false && <span className="text-[10px] font-bold text-red-500">{labels.closed}</span>}
           </div>
         </div>
+        {onToggleFavorite && (
+          <button
+            type="button"
+            onClick={() => onToggleFavorite(station)}
+            aria-label={isFavorite ? labels.removeFavoriteAria : labels.addFavoriteAria}
+            className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center transition-colors
+              ${isFavorite ? 'text-amber-400' : 'text-slate-300 hover:text-amber-400'}`}
+          >
+            <StarIcon className="w-4 h-4" filled={isFavorite} />
+          </button>
+        )}
         {onHide && (
           confirmRemove ? (
             <div className="flex items-center gap-1 flex-shrink-0">
@@ -577,6 +613,64 @@ function StationCard({
   );
 }
 
+// ── Favorites section ────────────────────────────────────────────────────────
+// Last-known price + timestamp, not a live re-fetch — shown regardless of
+// search state (including before any search has run).
+
+function FavoritesSection({
+  favorites,
+  onApply,
+  onRemove,
+  title,
+  savedPriceAsOf,
+  removeFavoriteAria,
+  labels,
+}: {
+  favorites: FavoriteStationData[];
+  onApply?:  (price: string, lat: number, lng: number, stationName: string, distanceMi: number, grade: string) => void;
+  onRemove:  (placeId: string) => void;
+  title:     string;
+  savedPriceAsOf: (when: string) => string;
+  removeFavoriteAria: string;
+  labels: TimeAgoLabels;
+}) {
+  if (favorites.length === 0) return null;
+  return (
+    <div className="space-y-2 mb-4">
+      <p className="text-xs font-bold text-slate-500 uppercase tracking-wide px-1">{title}</p>
+      {favorites.map((fav) => {
+        const bestPrice = fav.prices.find((p) => p.type === 'REGULAR') ?? fav.prices[0] ?? null;
+        return (
+          <div key={fav.placeId} className="bg-white rounded-2xl border border-amber-200 shadow-sm px-4 py-3 flex items-start justify-between gap-2">
+            <button
+              type="button"
+              onClick={() => bestPrice && onApply?.(bestPrice.price.toFixed(2), fav.lat, fav.lng, fav.name, 0, bestPrice.label)}
+              className="flex-1 min-w-0 text-left"
+              disabled={!bestPrice || !onApply}
+            >
+              <p className="font-bold text-slate-900 text-sm truncate">{fav.name}</p>
+              <p className="text-[11px] text-slate-400 mt-0.5 truncate">{fav.address}</p>
+              <p className="text-[10px] text-amber-600 font-bold mt-1">
+                {bestPrice
+                  ? `${savedPriceAsOf(timeAgo(fav.priceUpdatedAt, labels))} · $${bestPrice.price.toFixed(2)}`
+                  : savedPriceAsOf(timeAgo(fav.priceUpdatedAt, labels))}
+              </p>
+            </button>
+            <button
+              type="button"
+              onClick={() => onRemove(fav.placeId)}
+              aria-label={removeFavoriteAria}
+              className="flex-shrink-0 w-6 h-6 rounded-full text-amber-400 flex items-center justify-center"
+            >
+              <StarIcon className="w-4 h-4" filled />
+            </button>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function NearbyStations({ onApply, isActive = true }: Props) {
@@ -594,6 +688,40 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
   const [coords,         setCoords]         = useState<{ lat: number; lng: number } | null>(null);
   const [hiddenPlaceIds, setHiddenPlaceIds] = useState<Set<string>>(new Set());
   const [communityMap,   setCommunityMap]   = useState<CommunityMap>({});
+  const [favorites,      setFavorites]      = useState<FavoriteStationData[]>([]);
+
+  useEffect(() => {
+    if (isGuest || !isPro) return;
+    fetch('/api/favorites')
+      .then((r) => r.ok ? r.json() : null)
+      .then((d: { favorites?: FavoriteStationData[] } | null) => { if (d?.favorites) setFavorites(d.favorites); })
+      .catch(() => {});
+  }, [isGuest, isPro]);
+
+  const toggleFavorite = useCallback((station: NearbyStation) => {
+    const already = favorites.some((f) => f.placeId === station.placeId);
+    if (already) {
+      setFavorites((prev) => prev.filter((f) => f.placeId !== station.placeId));
+      fetch(`/api/favorites?placeId=${encodeURIComponent(station.placeId)}`, { method: 'DELETE' }).catch(() => {});
+    } else {
+      const fav: FavoriteStationData = {
+        placeId: station.placeId, name: station.name, address: station.address,
+        lat: station.lat, lng: station.lng, prices: station.prices,
+        priceUpdatedAt: new Date().toISOString(),
+      };
+      setFavorites((prev) => [fav, ...prev]);
+      fetch('/api/favorites', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(fav),
+      }).catch(() => {});
+    }
+  }, [favorites]);
+
+  const removeFavorite = useCallback((placeId: string) => {
+    setFavorites((prev) => prev.filter((f) => f.placeId !== placeId));
+    fetch(`/api/favorites?placeId=${encodeURIComponent(placeId)}`, { method: 'DELETE' }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     try {
@@ -1033,6 +1161,8 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
     gradeMidgrade:      t.findGasTab.gradeMidgrade,
     gradePremium:       t.findGasTab.gradePremium,
     gradeDiesel:        t.findGasTab.gradeDiesel,
+    addFavoriteAria:    t.findGasTab.addFavoriteAria,
+    removeFavoriteAria: t.findGasTab.removeFavoriteAria,
   };
 
   if (isGuest) {
@@ -1136,6 +1266,19 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
   if (status === 'idle') {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] px-6 text-center">
+        {favorites.length > 0 && (
+          <div className="w-full max-w-xs mb-2 text-left">
+            <FavoritesSection
+              favorites={favorites}
+              onApply={onApply}
+              onRemove={removeFavorite}
+              title={t.findGasTab.favoritesTitle}
+              savedPriceAsOf={t.findGasTab.savedPriceAsOf}
+              removeFavoriteAria={t.findGasTab.removeFavoriteAria}
+              labels={t.findGasTab}
+            />
+          </div>
+        )}
         <PumpIcon className="w-14 h-14 text-slate-300 mb-4" />
         <p className="text-slate-500 text-sm mb-4">{t.findGasTab.tapToFind}</p>
         <button
@@ -1156,6 +1299,15 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
   // ── Results ─────────────────────────────────────────────────────────────────
   return (
     <div className="px-4 pt-4 pb-6 max-w-lg mx-auto w-full space-y-3">
+      <FavoritesSection
+        favorites={favorites}
+        onApply={onApply}
+        onRemove={removeFavorite}
+        title={t.findGasTab.favoritesTitle}
+        savedPriceAsOf={t.findGasTab.savedPriceAsOf}
+        removeFavoriteAria={t.findGasTab.removeFavoriteAria}
+        labels={t.findGasTab}
+      />
       <p className="text-xs font-semibold text-teal-600 text-center bg-teal-50 rounded-xl py-2 px-3 mb-2">
         {t.findGasTab.tapAnyPrice}
       </p>
@@ -1207,6 +1359,8 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
             userCoords={coords}
             communityPrices={communityMap[s.placeId] ?? []}
             labels={stationCardLabels}
+            isFavorite={favorites.some((f) => f.placeId === s.placeId)}
+            onToggleFavorite={toggleFavorite}
             onPriceReported={(placeId, grade, price) => {
               const report: CommunityPrice = { grade, price, reportedAt: new Date().toISOString() };
               setCommunityMap((prev) => ({
