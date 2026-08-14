@@ -118,7 +118,7 @@ export function engS1EmailHtml(name: string, userId: string): string {
 
       <table style="width:100%;border-collapse:collapse;margin-bottom:24px;">
         ${featureRow('📊', 'Your MPG trend chart', 'Open the Charts tab. If you\'ve added odometer readings, you\'ll see your fuel efficiency over time. A sudden dip often means a tune-up is overdue — catching it early saves real money.')}
-        ${featureRow('🤖', 'Ask the AI Fuel Advisor', 'Tap the AI tab and ask: "Based on my fill-up history, what\'s costing me the most?" It reads your actual data and gives you a personalized answer.')}
+        ${featureRow('🤖', 'Ask the GasCap Assistant', 'Tap the AI tab and ask: "Based on my fill-up history, what\'s costing me the most?" It reads your actual data and gives you a personalized answer.')}
         ${featureRow('🔔', 'Set a gas price alert', 'Go to Settings → Gas Price Alert and enter your target price. When the national average drops below it, you\'ll get notified so you can fill up at the right time.')}
       </table>
 
@@ -234,7 +234,7 @@ export function engS4EmailHtml(name: string, userId: string, isMonthly = true): 
 
       <table style="width:100%;border-collapse:collapse;margin-bottom:20px;">
         ${featureRow('🎯', 'Monthly gas card giveaway', 'As a Pro member you\'re automatically entered every month you\'re active — no extra steps. Active days and referrals increase your entries. Check your entry count in the app.')}
-        ${featureRow('🤖', 'AI Fuel Advisor tip', 'Try asking: "What\'s my average cost per mile this year?" or "When should I expect to need a fill-up based on my history?" It gets smarter the more data you have.')}
+        ${featureRow('🤖', 'GasCap Assistant tip', 'Try asking: "What\'s my average cost per mile this year?" or "When should I expect to need a fill-up based on my history?" It gets smarter the more data you have.')}
         ${featureRow('🔗', 'Referrals add up fast', '6 months in, you likely know a few drivers who could use this. Each verified referral earns you a free Pro month and boosts your giveaway entries.')}
       </table>
 
@@ -484,7 +484,7 @@ export function milestoneM1EmailHtml(name: string, userId: string, plan: string 
       <table style="width:100%;border-collapse:collapse;margin-bottom:24px;">
         ${featureRow('📊', 'Your MPG trend is meaningful now', 'With 10+ fill-ups, the Charts tab shows a real trend line — not just a point. Open Charts and look for the MPG curve. Is it steady? Climbing? Dropping?')}
         ${featureRow('💰', 'Your cost-per-mile is accurate', 'The dashboard now has enough data to calculate your true cost per mile. Open the app and check your Fuel Savings card — it\'s now personalized to your actual driving.')}
-        ${featureRow('🤖', 'AI Fuel Advisor gets smarter', 'More data means better answers. Ask the AI Advisor: "What\'s my average MPG this month compared to last?" — it now has enough history to answer accurately.')}
+        ${featureRow('🤖', 'GasCap Assistant gets smarter', 'More data means better answers. Ask the GasCap Assistant: "What\'s my average MPG this month compared to last?" — it now has enough history to answer accurately.')}
       </table>
 
       ${ctaButton('See my fuel history →', BASE_URL)}
@@ -527,7 +527,7 @@ export function milestoneM2EmailHtml(name: string, userId: string, plan: string 
       ${ctaButton('View my MPG chart →', BASE_URL)}
 
       <p style="margin:28px 0 0;font-size:13px;color:#94a3b8;line-height:1.6;">
-        Questions about what your MPG data means? Ask the AI Fuel Advisor — or just reply to this email.
+        Questions about what your MPG data means? Ask the GasCap Assistant — or just reply to this email.
       </p>
       <p style="margin:10px 0 0;font-size:13px;color:#475569;">
         — The GasCap™ Team

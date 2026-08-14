@@ -139,7 +139,7 @@ export async function GET(req: Request) {
         to:             user.email,
         subject:        SUBJECTS[nextStep](firstName),
         html:           winbackEmailHtml(firstName, nextStep, withGetaway),
-        text:           `Hi ${firstName}, your GasCap™ garage is still here — saved vehicles and fill-up history included. Get Pro Lifetime for $9.99 instead of $19.99 (one payment, no subscription)${withGetaway ? ', plus a complimentary resort getaway certificate' : ''}. Rental Car Return Mode, live station prices, the AI Fuel Advisor, MPG tracking and +25 monthly giveaway entries all unlock again. Offer ends ${DEADLINE}. The discount applies automatically at checkout: https://www.gascap.app/upgrade?wb=1`,
+        text:           `Hi ${firstName}, your GasCap™ garage is still here — saved vehicles and fill-up history included. Get Pro Lifetime for $9.99 instead of $19.99 (one payment, no subscription)${withGetaway ? ', plus a complimentary resort getaway certificate' : ''}. Rental Car Return Mode, live station prices, the GasCap Assistant, MPG tracking and +25 monthly giveaway entries all unlock again. Offer ends ${DEADLINE}. The discount applies automatically at checkout: https://www.gascap.app/upgrade?wb=1`,
         unsubscribeUrl: UNSUB,
       });
 

@@ -9,6 +9,10 @@ import { authOptions }               from '@/lib/auth';
 import { prisma }                    from '@/lib/prisma';
 import { randomUUID }                from 'crypto';
 
+// Keeps the Find Gas idle/results screen from pushing its primary CTA out of
+// view when a user favorites a lot of stations.
+const MAX_FAVORITES = 3;
+
 async function requireUserId(): Promise<string | null> {
   const session = await getServerSession(authOptions);
   if (!session?.user) return null;
@@ -43,6 +47,16 @@ export async function POST(req: NextRequest) {
     typeof lng     !== 'number'
   ) {
     return NextResponse.json({ error: 'Missing or invalid fields' }, { status: 400 });
+  }
+
+  const existing = await prisma.favoriteStation.findUnique({
+    where: { userId_placeId: { userId, placeId } },
+  });
+  if (!existing) {
+    const count = await prisma.favoriteStation.count({ where: { userId } });
+    if (count >= MAX_FAVORITES) {
+      return NextResponse.json({ error: 'favorite_limit', limit: MAX_FAVORITES }, { status: 409 });
+    }
   }
 
   const favorite = await prisma.favoriteStation.upsert({

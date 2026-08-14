@@ -133,11 +133,11 @@ export function upgradeConfirmEmailHtml(
           ['👥', 'Multiple driver profiles',  'Separate fill-up tracking for each driver in your fleet.'],
           ['📊', 'Fleet dashboard',           'Centralized fuel spend, MPG, and efficiency across all vehicles.'],
           ['📄', 'Annual tax report',         'One-click PDF of annual fuel costs, ready for filing.'],
-          ['🤖', 'AI Fuel Advisor',           'Unlimited questions on any vehicle — costs, MPG, trips, maintenance.'],
+          ['🤖', 'GasCap Assistant',           'Unlimited questions on any vehicle — costs, MPG, trips, maintenance.'],
           ['🗺️', 'Route Trip Planner + Google Maps', 'Fuel cost planning for any route, with live fuel stop search and Google Maps/Waze handoff.'],
           ['🔧', 'Maintenance reminders',     'Service intervals and alerts for every vehicle in your fleet.'],
         ] : [
-          ['🤖', 'AI Fuel Advisor',       'Unlimited questions — fuel costs, MPG, trips, maintenance.'],
+          ['🤖', 'GasCap Assistant',       'Unlimited questions — fuel costs, MPG, trips, maintenance.'],
           ['🗺️', 'Route Trip Planner + Google Maps', 'Real route distance, exact fuel cost, and fuel stops found along the way — open in Google Maps or Waze.'],
           ['📊', 'MPG + spending charts', 'Full history, trends, and predictive drop alerts.'],
           ['🎯', 'Budget + alerts',        'Monthly fuel budget tracker with overspend notifications.'],
@@ -297,7 +297,7 @@ export function paidSpotlightEmailHtml(name: string, userId: string, tier: 'pro'
 
       <div style="background:#1e2d4a;border-radius:16px;padding:28px 26px;margin:0 0 24px;">
         <p style="margin:0 0 10px;font-size:19px;font-weight:900;color:#fbbf24;">
-          🤖 The AI Fuel Advisor knows your car
+          🤖 The GasCap Assistant knows your car
         </p>
         <p style="margin:0 0 16px;font-size:13px;color:rgba(255,255,255,.75);line-height:1.6;">
           Most people use it for one thing and never go deeper. But the AI has your vehicle
@@ -328,14 +328,14 @@ export function paidSpotlightEmailHtml(name: string, userId: string, tier: 'pro'
           💚 From a Pro member
         </p>
         <p style="margin:0;font-size:13px;color:#78350f;line-height:1.6;font-style:italic;">
-          "I drive a lot for work and never tracked my gas spend closely. The AI Advisor
+          "I drive a lot for work and never tracked my gas spend closely. The GasCap Assistant
           flagged that my F-150 was burning about 12% more than expected. Tires were 8 PSI
           low — fixed in 10 minutes at the pump. Saves me roughly $40 a month now."
         </p>
         <p style="margin:8px 0 0;font-size:12px;color:#92400e;font-weight:700;">— Derek T., Houston</p>
       </div>
 
-      ${ctaButton('Ask the AI Advisor →', BASE_URL)}
+      ${ctaButton('Ask the GasCap Assistant →', BASE_URL)}
 
       <p style="margin:26px 0 0;font-size:13px;color:#94a3b8;line-height:1.6;">
         Reply to this email with any questions or feedback — we read every one.
@@ -349,7 +349,7 @@ export function paidSpotlightEmailHtml(name: string, userId: string, tier: 'pro'
 }
 
 export const paidSpotlightEmailText = (name: string) =>
-  `Hi ${name.split(' ')[0]}, two months in. The most underused Pro feature: the AI Fuel Advisor knows your vehicle, fill-up history, MPG trend, and budget — ask it anything. "Why did my MPG drop?" "How much to drive to Atlanta?" "Am I on track this month?" Open the app: ${BASE_URL}`;
+  `Hi ${name.split(' ')[0]}, two months in. The most underused Pro feature: the GasCap Assistant knows your vehicle, fill-up history, MPG trend, and budget — ask it anything. "Why did my MPG drop?" "How much to drive to Atlanta?" "Am I on track this month?" Open the app: ${BASE_URL}`;
 
 // ── P4 — Annual Renewal Reminder (annual only, day 330) ──────────────────────
 // P4 — Annual renewal reminder (DEAD CODE — no annual plan exists; safe to leave as-is or remove later)

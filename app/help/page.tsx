@@ -134,8 +134,8 @@ const SECTIONS = [
         a: 'Gas Price Alert (Pro and Fleet) lets you set a price threshold — for example, $3.50/gal. When the national average price drops at or below your threshold, a banner appears at the top of the app letting you know it\'s a good time to fill up. Set your alert in Settings → Gas Price Alert.',
       },
       {
-        q: 'What is the AI Fuel Advisor?',
-        a: 'The AI Fuel Advisor (Pro and Fleet) is a conversational AI assistant powered by Claude (Anthropic). Ask it anything about fuel efficiency, trip planning, vehicle maintenance, cost estimates, money-saving tips, or how any part of the GasCap™ app works. It has context about your saved vehicles and recent fill-up history, so its answers are personalized to your actual driving.',
+        q: 'What is the GasCap Assistant?',
+        a: 'The GasCap Assistant (Pro and Fleet) is a conversational AI assistant powered by Claude (Anthropic). Ask it anything about fuel efficiency, trip planning, vehicle maintenance, cost estimates, money-saving tips, or how any part of the GasCap™ app works. It has context about your saved vehicles and recent fill-up history, so its answers are personalized to your actual driving.',
       },
     ],
   },
@@ -287,11 +287,11 @@ const SECTIONS = [
       },
       {
         q: 'How do I get 30 days of Pro free?',
-        a: 'All new users who create a GasCap™ account automatically receive 30 days of Pro features — no credit card required. Your free trial gives full access to fill-up tracking, MPG insights, receipt scanning, AI Fuel Advisor, Gas Price Alert, stats, streak rewards, referral program, and daily gas card giveaway entries. When there are 15 days left in your trial, a banner appears in the app to remind you. After the 30-day trial ends, your account automatically downgrades to the free plan — you are never charged. To keep Pro features, upgrade before the trial expires: $2.99/month, or own Pro forever with the $19.99 Pro Lifetime Membership (one payment, no subscription) — which also includes a complimentary vacation getaway certificate.',
+        a: 'All new users who create a GasCap™ account automatically receive 30 days of Pro features — no credit card required. Your free trial gives full access to fill-up tracking, MPG insights, receipt scanning, GasCap Assistant, Gas Price Alert, stats, streak rewards, referral program, and daily gas card giveaway entries. When there are 15 days left in your trial, a banner appears in the app to remind you. After the 30-day trial ends, your account automatically downgrades to the free plan — you are never charged. To keep Pro features, upgrade before the trial expires: $2.99/month, or own Pro forever with the $19.99 Pro Lifetime Membership (one payment, no subscription) — which also includes a complimentary vacation getaway certificate.',
       },
       {
         q: 'What does Pro add?',
-        a: 'Pro adds unlimited saved vehicles, VIN photo scan, fill-up history & MPG tracking, receipt scanning, MPG Insight Card, AI Fuel Advisor, Gas Price Alert, fuel savings dashboard, streak counter, monthly report card, gas price trend predictions, vehicle health alerts, Annual Wrapped, referral rewards, Route Trip Planner with Google Maps, and daily gas card giveaway entries. Available as Pro Monthly ($2.99/mo) or Pro Lifetime Membership ($19.99 one-time).',
+        a: 'Pro adds unlimited saved vehicles, VIN photo scan, fill-up history & MPG tracking, receipt scanning, MPG Insight Card, GasCap Assistant, Gas Price Alert, fuel savings dashboard, streak counter, monthly report card, gas price trend predictions, vehicle health alerts, Annual Wrapped, referral rewards, Route Trip Planner with Google Maps, and daily gas card giveaway entries. Available as Pro Monthly ($2.99/mo) or Pro Lifetime Membership ($19.99 one-time).',
       },
       {
         q: 'What are the differences between Pro Monthly and Pro Lifetime?',
@@ -520,8 +520,8 @@ const SECTIONS = [
         a: 'At the end of the 30-day free trial, your account automatically reverts to the free plan. No charge is ever applied — you simply lose access to Pro-only features (fill-up tracking, MPG charts, AI Advisor, etc.). To restore Pro access, go to Settings → Plan → "Upgrade to Pro" ($2.99/mo or $19.99 Lifetime). A reminder banner appears in the app starting 15 days before your trial expires so you have plenty of notice.',
       },
       {
-        q: 'The AI Fuel Advisor isn\'t responding.',
-        a: 'The AI Fuel Advisor requires an internet connection and an active Pro or Fleet plan. If you\'re connected and subscribed and it\'s still unresponsive, try refreshing the app. If the issue continues, email support@gascap.app.',
+        q: 'The GasCap Assistant isn\'t responding.',
+        a: 'The GasCap Assistant requires an internet connection and an active Pro or Fleet plan. If you\'re connected and subscribed and it\'s still unresponsive, try refreshing the app. If the issue continues, email support@gascap.app.',
       },
       {
         q: 'I\'m having a different issue not listed here.',

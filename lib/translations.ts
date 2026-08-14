@@ -51,8 +51,8 @@ const en = {
     },
     tools: {
       title:    'Unlock your fuel tools',
-      subtitle: 'Sign in to use the AI Fuel Advisor, trip planner, MPG charts, and station comparison.',
-      bullets:  ['AI Fuel Advisor', 'Trip & budget planning', 'MPG charts & stats'],
+      subtitle: 'Sign in to use the GasCap Assistant, trip planner, MPG charts, and station comparison.',
+      bullets:  ['GasCap Assistant', 'Trip & budget planning', 'MPG charts & stats'],
     },
   },
   rewardsHub: {
@@ -201,7 +201,7 @@ const en = {
         badge: 'Pro',
       },
       {
-        title: 'AI fuel advisor',
+        title: 'GasCap Assistant',
         body:  'Ask anything — best fill strategy, octane grade, or how to improve your MPG.',
         badge: 'Pro',
       },
@@ -423,7 +423,7 @@ const en = {
       '🔮  Smart Fill-Up Optimizer',
       '🔔  Gas Price Drop Alerts',
       '🎁  Weekly gas card giveaway entries',
-      '🤖  AI Fuel Advisor',
+      '🤖  GasCap Assistant',
     ],
     successFeaturesLifetime: [
       '🚗  Unlimited saved vehicles',
@@ -432,7 +432,7 @@ const en = {
       '🧾  Receipt photo scan (AI-powered)',
       '🔮  Smart Fill-Up Optimizer',
       '🔔  Gas Price Drop Alerts',
-      '🤖  AI Fuel Advisor',
+      '🤖  GasCap Assistant',
     ],
     successFleetFeatures: [
       '🚗  Unlimited vehicles',
@@ -607,7 +607,7 @@ const en = {
       'Fill-up logging & fuel history',
       'VIN photo scan',
       'Receipt photo scan (AI)',
-      'AI Fuel Advisor (GPT-4o)',
+      'GasCap Assistant',
       'Gas price drop alerts',
       'Weekly gas card giveaway entries',
       'Manual entry + auto spec lookup',
@@ -875,9 +875,9 @@ const en = {
     },
   },
 
-  // ── AI Advisor ─────────────────────────────────────────────────────────────
+  // ── GasCap Assistant ─────────────────────────────────────────────────────────────
   ai: {
-    greeting:      "Hi! I'm your GasCap™ AI Advisor.",
+    greeting:      "Hi! I'm your GasCap™ Assistant.",
     greetingSub:   'Tap a suggested question below to get started.',
     greetingProSub:'I can see your vehicle and fill-up data. Ask me anything!',
     suggestedLabel:'SUGGESTED QUESTIONS',
@@ -1303,7 +1303,7 @@ const en = {
 
   // ── Tools panel headers ────────────────────────────────────────────────────
   toolsPanelHeaders: {
-    ai:          { title: 'AI Fuel Advisor',        description: 'Get personalized fuel-saving tips, trip estimates, and smart driving advice.' },
+    ai:          { title: 'GasCap Assistant',        description: 'Get personalized fuel-saving tips, trip estimates, and smart driving advice.' },
     trip:        { title: 'Trip Cost Estimator',    description: 'Calculate fuel costs and find gas stations for your road trip.' },
     station:     { title: 'Station Comparison',     description: 'Compare gas prices at nearby stations to find the best deal before you pull in.' },
     log:         { title: 'Fill-Up Log',            description: 'Track every fill-up, monitor your fuel spending, and build your MPG history.' },
@@ -1467,6 +1467,7 @@ const en = {
     addFavoriteAria:      'Save to favorites',
     removeFavoriteAria:   'Remove from favorites',
     savedPriceAsOf:       (when: string) => `Saved price · ${when}`,
+    favoriteLimitReached: (max: number) => `You can save up to ${max} favorites — remove one to add another.`,
   },
 
   // ── Aggregate activity stats toast — AggregateStatsToast.tsx ─────────────────
@@ -2672,7 +2673,7 @@ const en = {
   },
   aiAdvisor: {
     headerSubtitle: 'Ask anything about fuel, MPG, or your spending',
-    setupTitle: 'AI Advisor needs setup',
+    setupTitle: 'GasCap Assistant needs setup',
     setupBodyPre: 'Add your',
     setupBodyMid: 'to',
     setupBodyPost: 'to enable AI-powered insights.',
@@ -2869,8 +2870,8 @@ const es: typeof en = {
     },
     tools: {
       title:    'Desbloquea tus herramientas',
-      subtitle: 'Inicia sesión para usar el Asesor de Combustible IA, el planificador de viajes, los gráficos de MPG y la comparación de estaciones.',
-      bullets:  ['Asesor de Combustible IA', 'Planificación de viajes y presupuesto', 'Gráficos y estadísticas de MPG'],
+      subtitle: 'Inicia sesión para usar el Asistente de GasCap, el planificador de viajes, los gráficos de MPG y la comparación de estaciones.',
+      bullets:  ['Asistente de GasCap', 'Planificación de viajes y presupuesto', 'Gráficos y estadísticas de MPG'],
     },
   },
   rewardsHub: {
@@ -2962,7 +2963,7 @@ const es: typeof en = {
     pill_prices:    'Precios locales',
     pill_rental:    'Modo auto rentado',
     pill_mpg:       'Seguimiento MPG',
-    pill_ai:        'Asesor IA',
+    pill_ai:        'Asistente',
     pill_garage:    'Garaje de vehículos',
     pill_fillups:   'Historial de llenados',
     offerStrip:     'Regístrate hoy — primeros 30 días de Pro GRATIS',
@@ -3012,7 +3013,7 @@ const es: typeof en = {
         badge: 'Pro',
       },
       {
-        title: 'Asesor de combustible IA',
+        title: 'Asistente de GasCap',
         body:  'Pregunta lo que quieras — mejor estrategia de llenado, grado de octano o cómo mejorar tu MPG.',
         badge: 'Pro',
       },
@@ -3070,7 +3071,7 @@ const es: typeof en = {
       },
       {
         q: '¿GasCap™ es gratuito?',
-        a: 'Sí — la calculadora básica, los precios de gasolina en tiempo real y el acceso sin conexión son gratuitos para siempre sin tarjeta de crédito. Pro ($2.99/mes o $19.99 de por vida) agrega historial de llenados, gráficas de MPG, vehículos ilimitados, asesor IA y exportación PDF.',
+        a: 'Sí — la calculadora básica, los precios de gasolina en tiempo real y el acceso sin conexión son gratuitos para siempre sin tarjeta de crédito. Pro ($2.99/mes o $19.99 de por vida) agrega historial de llenados, gráficas de MPG, vehículos ilimitados, asistente y exportación PDF.',
       },
       {
         q: '¿Cómo descargo GasCap en mi teléfono?',
@@ -3226,7 +3227,7 @@ const es: typeof en = {
       '🔮  Optimizador inteligente de carga',
       '🔔  Alertas de bajada del precio de la gasolina',
       '🎁  Participaciones en el sorteo semanal de tarjetas de gasolina',
-      '🤖  Asesor de combustible con IA',
+      '🤖  Asistente de GasCap con IA',
     ],
     successFeaturesLifetime: [
       '🚗  Vehículos guardados ilimitados',
@@ -3235,7 +3236,7 @@ const es: typeof en = {
       '🧾  Escaneo de recibos por foto (IA)',
       '🔮  Optimizador inteligente de carga',
       '🔔  Alertas de bajada del precio de la gasolina',
-      '🤖  Asesor de combustible con IA',
+      '🤖  Asistente de GasCap con IA',
     ],
     successFleetFeatures: [
       '🚗  Vehículos ilimitados',
@@ -3406,7 +3407,7 @@ const es: typeof en = {
       'Registro de cargas e historial de combustible',
       'Escaneo de VIN por foto',
       'Escaneo de recibo por foto (IA)',
-      'Asesor de Combustible IA (GPT-4o)',
+      'Asistente de GasCap',
       'Alertas de baja de precio de gasolina',
       'Entradas al sorteo semanal de tarjeta de gasolina',
       'Entrada manual + búsqueda automática de especificaciones',
@@ -3672,7 +3673,7 @@ const es: typeof en = {
   },
 
   ai: {
-    greeting:      '¡Hola! Soy tu asesor de combustible IA de GasCap™.',
+    greeting:      '¡Hola! Soy tu Asistente de GasCap™.',
     greetingSub:   'Toca una pregunta sugerida para empezar.',
     greetingProSub:'Puedo ver los datos de tu vehículo y llenados. ¡Pregúntame lo que quieras!',
     suggestedLabel:'PREGUNTAS SUGERIDAS',
@@ -4085,7 +4086,7 @@ const es: typeof en = {
 
   // ── Tools panel headers ────────────────────────────────────────────────────
   toolsPanelHeaders: {
-    ai:          { title: 'Asesor de combustible IA',       description: 'Obtén consejos personalizados para ahorrar combustible, estimaciones de viaje y consejos de conducción inteligente.' },
+    ai:          { title: 'Asistente de GasCap',       description: 'Obtén consejos personalizados para ahorrar combustible, estimaciones de viaje y consejos de conducción inteligente.' },
     trip:        { title: 'Estimador de costo de viaje',    description: 'Calcula costos de combustible y encuentra gasolineras para tu viaje.' },
     station:     { title: 'Comparación de gasolineras',     description: 'Compara precios en gasolineras cercanas para encontrar la mejor oferta antes de llegar.' },
     log:         { title: 'Registro de recargas',           description: 'Registra cada recarga, monitorea tu gasto y construye tu historial de MPG.' },
@@ -4249,6 +4250,7 @@ const es: typeof en = {
     addFavoriteAria:      'Guardar en favoritos',
     removeFavoriteAria:   'Quitar de favoritos',
     savedPriceAsOf:       (when: string) => `Precio guardado · ${when}`,
+    favoriteLimitReached: (max: number) => `Puedes guardar hasta ${max} favoritos — elimina uno para agregar otro.`,
   },
 
   // ── Aggregate activity stats toast — AggregateStatsToast.tsx ─────────────────
@@ -5454,7 +5456,7 @@ const es: typeof en = {
   },
   aiAdvisor: {
     headerSubtitle: 'Pregunta lo que quieras sobre combustible, MPG o tus gastos',
-    setupTitle: 'El Asesor IA necesita configuración',
+    setupTitle: 'El Asistente necesita configuración',
     setupBodyPre: 'Agrega tu',
     setupBodyMid: 'a',
     setupBodyPost: 'para habilitar los análisis con IA.',

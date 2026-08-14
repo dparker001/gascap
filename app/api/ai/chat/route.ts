@@ -1,6 +1,6 @@
 /**
  * POST /api/ai/chat
- * GasCap AI Advisor — powered by Claude.
+ * GasCap Assistant — powered by Claude.
  * Accepts user context + a question, returns a concise fuel/vehicle insight.
  */
 import { NextResponse }     from 'next/server';
@@ -34,7 +34,7 @@ interface ChatRequest {
 export async function POST(req: Request) {
   if (!process.env.GASCAP_ANTHROPIC_KEY || process.env.GASCAP_ANTHROPIC_KEY === 'your-key-here') {
     return NextResponse.json(
-      { error: 'AI Advisor is not configured. Add ANTHROPIC_API_KEY to .env.local.' },
+      { error: 'GasCap Assistant is not configured. Add ANTHROPIC_API_KEY to .env.local.' },
       { status: 503 }
     );
   }
@@ -118,7 +118,7 @@ USER DATA CONTEXT:
     contextBlock = 'USER DATA CONTEXT: User is not signed in — no personal data available.';
   }
 
-  const systemPrompt = `You are GasCap AI, an expert fuel economy and vehicle advisor built into the GasCap™ app — a smart fuel calculator that helps drivers know before they go.
+  const systemPrompt = `You are the GasCap Assistant, an expert fuel economy and vehicle advisor built into the GasCap™ app — a smart fuel calculator that helps drivers know before they go.
 
 Your role: Help users optimize their fuel spending, understand MPG trends, make smart decisions at the pump, and get more out of their vehicle data.
 
@@ -133,7 +133,7 @@ APP FEATURES YOU CAN EXPLAIN:
 - Streak Rewards: milestones at 30/60/120/365 days — Monthly members earn free Pro months; Lifetime members earn bonus giveaway entries instead. Every milestone (any plan) also earns a one-time Parker Select Rewards voucher, sent automatically by email: $25 Dining Voucher (30 days), $50 Dining Voucher (60 days), $100 Hotel Savings Card (120 days), $500 Hotel Savings Card (365 days)
 - Monthly gas card giveaway ($50, drawn at month end): Pro users earn daily entries based on usage + ambassador tier; bonus entries for streaks, plan level, referrals. One-time bonuses: verifying a phone number in Settings earns +25 entries; first calculation earns +5
 - Ambassador Program tiers (cumulative paying referrals) also earn one-time Parker Select Rewards vouchers, sent automatically the moment a referrer first reaches each tier: Supporter (5+ referrals) → $100 Dining Voucher; Ambassador (15+ referrals) → $200 Hotel Savings Card; Elite (30+ referrals) → $500 Hotel Savings Card + $200 Dining Voucher. Pro Lifetime members below Ambassador tier earn bonus giveaway entries instead of free Pro month credits (a credit is meaningless with no subscription to apply it to)
-- Trip Cost Estimator with Google Maps route mode, Station Comparison, Gas Price Alert, EV Charge calculator, AI Fuel Advisor (this feature)
+- Trip Cost Estimator with Google Maps route mode, Station Comparison, Gas Price Alert, EV Charge calculator, GasCap Assistant (this feature)
 - Getaway promo: anyone who purchases Pro Lifetime receives a complimentary resort hotel getaway (fulfilled by Marketing Boost / RedeemVacations). Hotel room rate is free (up to $350/night); traveler covers nightly taxes & fees and their own travel. Choose from destinations across the U.S. and worldwide, including Las Vegas, Denver, Miami, San Antonio, Orlando, Nashville, Cancún, Puerto Vallarta, Bali, Phuket, and Dubai. Activate at gascap.app/getaway within 7 days; travel within 18 months. Lifetime Perks ($9.99/yr add-on) renews the getaway certificate annually.
 - Upgrading / In-App Purchase: on the iPhone app, purchases go through Apple In-App Purchase (Apple Account billing); on the Android app, purchases go through Google Play In-App Purchase (Google Account billing); on the web, checkout is handled by Stripe. Pro unlocks everywhere regardless of where it was purchased.
 - App download: gascap.app/download is the single link to send anyone who wants the app — it detects iPhone vs Android and takes them straight to the right store listing (App Store or Google Play), with a QR code for desktop visitors.

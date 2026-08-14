@@ -83,6 +83,9 @@ type Status = 'idle' | 'locating' | 'fetching' | 'done' | 'error' | 'no_key' | '
 
 const LOC_ASKED_KEY = 'gc_loc_asked';
 const GRADE_ORDER: FuelPrice['type'][] = ['REGULAR', 'MIDGRADE', 'PREMIUM', 'DIESEL'];
+// Keeps the idle/results screen's primary CTA from getting pushed out of
+// view as favorites accumulate — mirrors the server-side cap in /api/favorites.
+const MAX_FAVORITES = 3;
 
 interface TimeAgoLabels {
   justNow: string;
@@ -704,6 +707,7 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
   const [hiddenPlaceIds, setHiddenPlaceIds] = useState<Set<string>>(new Set());
   const [communityMap,   setCommunityMap]   = useState<CommunityMap>({});
   const [favorites,      setFavorites]      = useState<FavoriteStationData[]>([]);
+  const [favLimitMsg,    setFavLimitMsg]    = useState('');
 
   useEffect(() => {
     if (isGuest || !isPro) return;
@@ -719,6 +723,11 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
       setFavorites((prev) => prev.filter((f) => f.placeId !== station.placeId));
       fetch(`/api/favorites?placeId=${encodeURIComponent(station.placeId)}`, { method: 'DELETE' }).catch(() => {});
     } else {
+      if (favorites.length >= MAX_FAVORITES) {
+        setFavLimitMsg(t.findGasTab.favoriteLimitReached(MAX_FAVORITES));
+        setTimeout(() => setFavLimitMsg(''), 3500);
+        return;
+      }
       const fav: FavoriteStationData = {
         placeId: station.placeId, name: station.name, address: station.address,
         lat: station.lat, lng: station.lng, prices: station.prices,
@@ -729,9 +738,16 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify(fav),
+      }).then((r) => {
+        // Race with another tab/device already at the cap — roll back.
+        if (r.status === 409) {
+          setFavorites((prev) => prev.filter((f) => f.placeId !== station.placeId));
+          setFavLimitMsg(t.findGasTab.favoriteLimitReached(MAX_FAVORITES));
+          setTimeout(() => setFavLimitMsg(''), 3500);
+        }
       }).catch(() => {});
     }
-  }, [favorites]);
+  }, [favorites, t]);
 
   const removeFavorite = useCallback((placeId: string) => {
     setFavorites((prev) => prev.filter((f) => f.placeId !== placeId));
@@ -1314,6 +1330,11 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
   // ── Results ─────────────────────────────────────────────────────────────────
   return (
     <div className="px-4 pt-4 pb-6 max-w-lg mx-auto w-full space-y-3">
+      {favLimitMsg && (
+        <p className="text-xs font-semibold text-amber-700 text-center bg-amber-50 border border-amber-200 rounded-xl py-2 px-3">
+          {favLimitMsg}
+        </p>
+      )}
       <FavoritesSection
         favorites={favorites}
         onApply={onApply}

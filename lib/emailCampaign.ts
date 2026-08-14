@@ -155,7 +155,7 @@ export function welcomeEmailHtml(name: string, userId: string, verifyUrl?: strin
           <tr>
             <td style="padding:6px 0;vertical-align:top;width:28px;font-size:16px;">🤖</td>
             <td style="padding:6px 0 6px 10px;vertical-align:top;color:#fff;">
-              <p style="margin:0;font-size:13px;font-weight:700;">GasCap™ AI Fuel Advisor</p>
+              <p style="margin:0;font-size:13px;font-weight:700;">GasCap™ Assistant</p>
               <p style="margin:0;font-size:12px;color:rgba(255,255,255,.65);line-height:1.5;">Ask anything about MPG, costs, or upcoming trips.</p>
             </td>
           </tr>
@@ -258,7 +258,7 @@ export function welcomeEmailHtml(name: string, userId: string, verifyUrl?: strin
         <li><strong>Set your Driver Mode</strong> in Settings — Personal, Gig Driver, Rental Car, or Fleet — to personalize your dashboard and tools.</li>
         <li><strong>Run a Target Fill calc</strong> — see exactly what a fill-up will cost before you pull in.</li>
         <li><strong>Try Rental Car Return Mode</strong> next time you rent — avoid the $12/gal refuel trap.</li>
-        <li><strong>Try the AI Advisor</strong> — ask it "How much fuel will I need for a 300-mile trip?"</li>
+        <li><strong>Try the GasCap Assistant</strong> — ask it "How much fuel will I need for a 300-mile trip?"</li>
         <li><strong>Set a monthly budget</strong> — GasCap™ will watch your spending for you.</li>
       </ol>
 
@@ -303,7 +303,7 @@ export function welcomeEmailHtml(name: string, userId: string, verifyUrl?: strin
 }
 
 export const welcomeEmailText = (name: string) =>
-  `Hi ${name.split(' ')[0]}, welcome to GasCap™! Your 30-day free Pro trial is now active — unlimited saved vehicles, Rental Car Return Mode (avoid $12/gal refuel fees), Route Trip Planner (Google Maps integration), AI Fuel Advisor, MPG charts, budget tracking, maintenance reminders, and PDF exports are all unlocked. Tip: set your Driver Mode in Settings (Personal, Gig Driver, Rental Car, or Fleet) to personalize your dashboard. No credit card needed, auto-reverts to free after 30 days. Open the app: ${BASE_URL}`;
+  `Hi ${name.split(' ')[0]}, welcome to GasCap™! Your 30-day free Pro trial is now active — unlimited saved vehicles, Rental Car Return Mode (avoid $12/gal refuel fees), Route Trip Planner (Google Maps integration), GasCap Assistant, MPG charts, budget tracking, maintenance reminders, and PDF exports are all unlocked. Tip: set your Driver Mode in Settings (Personal, Gig Driver, Rental Car, or Fleet) to personalize your dashboard. No credit card needed, auto-reverts to free after 30 days. Open the app: ${BASE_URL}`;
 
 // ── First fill-up nudge (behaviour-triggered, one-time) ────────────────────
 // For users who saved a vehicle but never logged a fill-up — the sharpest
@@ -393,7 +393,7 @@ export function featureTipsEmailHtml(name: string, userId: string): string {
       </div>
 
       <div style="background:#f8fafc;border-radius:14px;padding:20px 24px;margin-bottom:18px;border-left:4px solid #f59e0b;">
-        <p style="margin:0 0 6px;font-size:15px;font-weight:900;color:#1e2d4a;">🤖 Ask the AI Fuel Advisor anything</p>
+        <p style="margin:0 0 6px;font-size:15px;font-weight:900;color:#1e2d4a;">🤖 Ask the GasCap Assistant anything</p>
         <p style="margin:0 0 10px;font-size:13px;color:#64748b;line-height:1.55;">
           The AI has your vehicle specs, your fill-up history, and current gas prices baked in.
           Try asking:
@@ -454,7 +454,7 @@ export function featureTipsEmailHtml(name: string, userId: string): string {
 }
 
 export const featureTipsEmailText = (name: string) =>
-  `Hi ${name.split(' ')[0]}, you're 3 days into your GasCap™ Pro trial. Try these: Rental Car Return Mode (avoid the $12/gal refuel trap on rentals — pays for Pro in a single trip), AI Fuel Advisor (ask anything), MPG trending charts (catch engine issues early), and monthly budget tracker (never overspend). BONUS: verify your phone number in Settings for +25 entries in this month's $50 gas card drawing. Open the app: ${BASE_URL}`;
+  `Hi ${name.split(' ')[0]}, you're 3 days into your GasCap™ Pro trial. Try these: Rental Car Return Mode (avoid the $12/gal refuel trap on rentals — pays for Pro in a single trip), GasCap Assistant (ask anything), MPG trending charts (catch engine issues early), and monthly budget tracker (never overspend). BONUS: verify your phone number in Settings for +25 entries in this month's $50 gas card drawing. Open the app: ${BASE_URL}`;
 
 // ── Email 3 — Mid-Trial Value Check-In (Day 10) ───────────────────────────
 
@@ -688,7 +688,7 @@ export function lastCallEmailHtml(name: string, userId: string): string {
         What you'll keep if you upgrade:
       </p>
       <table cellpadding="0" cellspacing="0" width="100%" style="margin-bottom:24px;">
-        ${featureRow('🤖', 'GasCap™ AI Fuel Advisor', 'Unlimited questions about fuel, MPG, trips, and maintenance.')}
+        ${featureRow('🤖', 'GasCap™ Assistant', 'Unlimited questions about fuel, MPG, trips, and maintenance.')}
         ${featureRow('📊', 'Full MPG + spending charts', 'Trends, history, and predictive alerts across every vehicle.')}
         ${featureRow('🎯', 'Budget + overspend alerts', 'Know when you\'re about to blow your fuel budget before it happens.')}
         ${featureRow('🔧', 'Maintenance reminders', 'Oil change, tire rotation, and service intervals — never forget one.')}
@@ -1061,7 +1061,7 @@ export function compProForLifeEmailHtml(name: string, userId: string): string {
         ${featureRow('📊', 'MPG Tracking & Charts', 'Log every fill-up and watch your fuel efficiency trend over time. Spot drops before they become expensive.')}
         ${featureRow('💰', 'Monthly Budget Tracker', 'See your real fuel spend per month, compare to previous months, and set a target.')}
         ${featureRow('🚗', 'Rental Car Return Mode', 'Avoid the $12/gal refuel trap — calculate exactly how much to pump before returning any rental.')}
-        ${featureRow('🤖', 'AI Fuel Advisor', 'Ask anything about fuel costs, routes, or savings — personalized to your vehicle and fill-up history.')}
+        ${featureRow('🤖', 'GasCap Assistant', 'Ask anything about fuel costs, routes, or savings — personalized to your vehicle and fill-up history.')}
         ${featureRow('🏆', 'Monthly Gas Card Giveaway', 'You&apos;re automatically entered every month you&apos;re active. No extra steps.')}
         ${featureRow('🔗', 'Referral Program', 'Share your link — earn credits and help unlock lifetime Pro access for yourself.')}
       </table>

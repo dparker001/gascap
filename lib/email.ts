@@ -814,7 +814,7 @@ export function winbackEmailHtml(firstName: string, step: 1 | 2 | 3, withGetaway
               </p>
               <p style="margin:0 0 7px;font-size:13px;color:#334155;line-height:1.5;">🚗 <strong>Rental Car Return Mode</strong> — the exact gallons to buy before drop-off, so you skip the $10–12/gal refuel fee</p>
               <p style="margin:0 0 7px;font-size:13px;color:#334155;line-height:1.5;">⛽ <strong>Live prices at nearby stations</strong> — tap any price to fill the calculator instantly</p>
-              <p style="margin:0 0 7px;font-size:13px;color:#334155;line-height:1.5;">🤖 <strong>AI Fuel Advisor</strong> — ask it anything about your mileage, costs, or an upcoming trip</p>
+              <p style="margin:0 0 7px;font-size:13px;color:#334155;line-height:1.5;">🤖 <strong>GasCap Assistant</strong> — ask it anything about your mileage, costs, or an upcoming trip</p>
               <p style="margin:0 0 7px;font-size:13px;color:#334155;line-height:1.5;">📊 <strong>MPG tracking</strong> — a sudden drop is often the first sign of an engine problem</p>
               <p style="margin:0;font-size:13px;color:#334155;line-height:1.5;">🎁 <strong>+25 giveaway entries every month</strong> — better odds in the $50 gas card drawing, for life</p>
             </td></tr>
@@ -1095,7 +1095,7 @@ ${brandHeader('trial')}
                 'Live local gas prices',
                 'MPG trends &amp; fuel insights',
                 '2× monthly giveaway entries (Founding Member)',
-                'AI fuel advisor',
+                'GasCap Assistant',
               ].map(item => `
               <tr>
                 <td style="padding:3px 0;font-size:13px;color:#475569;">

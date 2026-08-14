@@ -118,7 +118,7 @@ function SchemaMarkup() {
     name: 'GasCap™',
     applicationCategory: 'UtilitiesApplication',
     operatingSystem: 'Web, iOS, Android',
-    description: 'Free fuel calculator that tells you exactly how much gas you need and what it will cost — before you pull up to the pump. Live local gas prices, MPG tracking, rental car return mode, and AI fuel advisor.',
+    description: 'Free fuel calculator that tells you exactly how much gas you need and what it will cost — before you pull up to the pump. Live local gas prices, MPG tracking, rental car return mode, and GasCap Assistant.',
     url: 'https://gascap.app',
     offers: [
       { '@type': 'Offer', price: '0', priceCurrency: 'USD', name: 'Free Plan' },

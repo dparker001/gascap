@@ -126,11 +126,11 @@ const CATEGORIES: Category[] = [
   },
   {
     eyebrow: 'Ask Anything',
-    heading: 'Your AI fuel advisor',
+    heading: 'Your GasCap Assistant',
     features: [
       {
         icon: 'bot',
-        title: 'AI Fuel Advisor',
+        title: 'GasCap Assistant',
         body: 'Ask questions about trip costs, MPG drops, maintenance timing, or anything fuel-related — it knows your vehicle and fill-up history and gives specific, practical answers.',
       },
     ],

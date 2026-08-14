@@ -17,7 +17,7 @@ const PERKS = [
   'Unlimited saved vehicles',
   'Fill-up history & MPG tracking',
   'Smart Fill-Up Optimizer & gas price alerts',
-  'AI Fuel Advisor',
+  'GasCap Assistant',
   'Lifetime — no subscription, ever',
 ];
 
