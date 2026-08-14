@@ -114,6 +114,46 @@ export function consistencyBonusEntries(activeDayCount: number): number {
   return activeDayCount >= CONSISTENCY_ACTIVE_DAYS_THRESHOLD ? CONSISTENCY_BONUS_ENTRIES : 0;
 }
 
+// ── Community Milestone Bonus ────────────────────────────────────────────────
+// A second GUARANTEED layer, this one collective: when the whole paying
+// community's combined active-days for the period crosses a threshold,
+// every participant (anyone with at least 1 active day this period) gets a
+// flat bonus — win or lose the drawing, same as the Consistency Bonus, but
+// this one only pays out if the community hits it TOGETHER. Deliberately
+// reframes "invite a friend" from a personal transaction into "help us get
+// there" — every referred member who logs even one active day moves the
+// shared bar.
+//
+// Threshold is env-tunable (not a code deploy) since the right number moves
+// as the paying base grows — calibrated 2026-08 against a real ~41-member,
+// ~150-active-day/month baseline; adjust as the community grows.
+export const COMMUNITY_MILESTONE_THRESHOLD =
+  Number(process.env.GASCAP_COMMUNITY_MILESTONE_THRESHOLD) || 220;
+export const COMMUNITY_MILESTONE_BONUS_ENTRIES = 15;
+
+export function communityBonusEntries(communityActiveDays: number): number {
+  return communityActiveDays >= COMMUNITY_MILESTONE_THRESHOLD ? COMMUNITY_MILESTONE_BONUS_ENTRIES : 0;
+}
+
+// Cheap in-memory cache — this gets hit on every /giveaway page load, and
+// the underlying number only needs to be roughly current, not real-time.
+let communityCache: { period: string; total: number; expiresAt: number } | null = null;
+const COMMUNITY_CACHE_TTL_MS = 2 * 60 * 1000;
+
+/** Combined active-days across every Pro/Fleet (non-test) user for the given period. */
+export async function getCommunityActiveDays(period: string = currentPeriod()): Promise<number> {
+  if (communityCache && communityCache.period === period && communityCache.expiresAt > Date.now()) {
+    return communityCache.total;
+  }
+  const users = await prisma.user.findMany({
+    where: { plan: { in: ['pro', 'fleet'] }, isTestAccount: { not: true } },
+    select: { activeDays: true },
+  });
+  const total = users.reduce((sum, u) => sum + activeDaysInPeriod(u.activeDays ?? [], period), 0);
+  communityCache = { period, total, expiresAt: Date.now() + COMMUNITY_CACHE_TTL_MS };
+  return total;
+}
+
 /** Return the next streak bonus tier above the current streak, or null if at max */
 export function nextStreakTier(streak: number): StreakBonusTier | null {
   return STREAK_BONUS_TIERS.find((t) => t.minStreak > streak) ?? null;
@@ -196,7 +236,9 @@ export interface EntrantRow {
   gigLogEntries:               number; // +5 per gig fill-up or mileage log
   lifetimeBonusEntries:        number; // +40/+25 (Perks/base Lifetime) or +15 (Annual) per period
   referralBonusEntries:        number; // +15 per successful referral (lifetime total)
-  entryCount:      number;        // baseEntries + streakBonus + earlyUpgrade + garageBonus + verifyReminderBonus + phoneBonus + dailyBonus + lifetimeBonus + referralBonus
+  consistencyBonus:            number; // guaranteed +20 for 15+ active days this period (not chance-based)
+  communityBonus:               number; // guaranteed +15 when the whole community crosses its active-days goal
+  entryCount:      number;        // baseEntries + streakBonus + earlyUpgrade + garageBonus + verifyReminderBonus + phoneBonus + dailyBonus + lifetimeBonus + referralBonus + consistencyBonus + communityBonus
   alwaysEligible:  boolean;       // true for Ambassador tier holders — skip win restrictions
   loginCount:      number;        // lifetime login count (engagement signal for draw review)
   lastLoginAt:     string | null; // ISO timestamp of most recent login, or null if never recorded
@@ -451,6 +493,10 @@ export async function getEligibleEntrants(period: string = currentPeriod()): Pro
     },
   });
 
+  // Computed once per draw/request, not per user — it's a flat community-wide
+  // bonus, not something that varies per entrant.
+  const communityBonus = communityBonusEntries(await getCommunityActiveDays(period));
+
   return users
     .map((u) => {
       const refCount      = u.referralCount ?? 0;
@@ -505,7 +551,8 @@ export async function getEligibleEntrants(period: string = currentPeriod()): Pro
         lifetimeBonusEntries,
         referralBonusEntries,
         consistencyBonus,
-        entryCount:      baseEntries + streakBonus + bonusEntries + garageBonusEntries + verifyReminderBonusEntries + phoneBonusEntries + dailyBonusEntries + firstCalcBonusEntries + priceReportEntries + gigLogEntries + streakMilestoneBonusEntries + referralLifetimeBonusEntries + lifetimeBonusEntries + referralBonusEntries + consistencyBonus,
+        communityBonus,
+        entryCount:      baseEntries + streakBonus + bonusEntries + garageBonusEntries + verifyReminderBonusEntries + phoneBonusEntries + dailyBonusEntries + firstCalcBonusEntries + priceReportEntries + gigLogEntries + streakMilestoneBonusEntries + referralLifetimeBonusEntries + lifetimeBonusEntries + referralBonusEntries + consistencyBonus + communityBonus,
         alwaysEligible:  isAlwaysEligible(refCount),
         loginCount:      u.loginCount ?? 0,
         lastLoginAt:     u.lastLoginAt ?? null,

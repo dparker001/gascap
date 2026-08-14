@@ -33,6 +33,9 @@ interface GiveawayEntries {
   referralLifetimeBonusEntries: number;
   consistencyBonus:         number;
   consistencyThreshold:     number;
+  communityBonus:           number;
+  communityActiveDays:      number;
+  communityThreshold:       number;
 }
 
 interface DrawRecord {
@@ -111,6 +114,10 @@ export default function GiveawayPage() {
   const gigLogEntries            = entries?.gigLogEntries      ?? 0;
   const consistencyBonus         = entries?.consistencyBonus     ?? 0;
   const consistencyThreshold     = entries?.consistencyThreshold ?? 15;
+  const communityBonus           = entries?.communityBonus       ?? 0;
+  const communityActiveDays      = entries?.communityActiveDays  ?? 0;
+  const communityThreshold       = entries?.communityThreshold   ?? 220;
+  const communityPct             = Math.min(100, Math.round((communityActiveDays / communityThreshold) * 100));
   const maxDays                  = 31;
   const progressPct              = Math.min(100, Math.round((activeDayCount / maxDays) * 100));
 
@@ -126,6 +133,7 @@ export default function GiveawayPage() {
     },
     { key: 'streak',   emoji: '⚡', label: t.giveawayPage.breakdownStreak(streak),          entries: streakBonus              },
     { key: 'consistency', emoji: '🎯', label: t.giveawayPage.breakdownConsistency(consistencyThreshold), entries: consistencyBonus },
+    { key: 'community', emoji: '🌟', label: t.giveawayPage.breakdownCommunity(communityThreshold), entries: communityBonus },
     { key: 'daily',    emoji: '🎁', label: t.giveawayPage.breakdownDaily,                    entries: dailyBonusEntries        },
     { key: 'garage',   emoji: '🚗', label: t.giveawayPage.breakdownGarage(garageDaysThisMonth), entries: garageBonusEntries   },
     { key: 'verify',   emoji: '✉️', label: t.giveawayPage.breakdownVerify,                  entries: verifyBonusEntries       },
@@ -260,6 +268,45 @@ export default function GiveawayPage() {
                   {activeDayCount}/{consistencyThreshold}
                 </span>
               )}
+            </div>
+
+            {/* Community Milestone — a SHARED guaranteed bonus. Everyone gets
+                it together or not at all, which is the point: inviting a
+                friend who logs even one active day moves this bar for
+                everyone, not just the referrer. */}
+            <div className="bg-white/5 rounded-2xl px-4 py-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">🌟</span>
+                  <p className="text-white text-xs font-bold">{t.giveawayPage.communityTitle}</p>
+                </div>
+                {communityBonus > 0 ? (
+                  <span className="text-xs font-black text-amber-400 bg-amber-500/20 rounded-full px-2 py-0.5">
+                    +{communityBonus}
+                  </span>
+                ) : (
+                  <span className="text-[10px] text-white/60 bg-white/5 rounded-full px-2 py-0.5">
+                    {communityActiveDays}/{communityThreshold}
+                  </span>
+                )}
+              </div>
+              <p className="text-white/70 text-[10px]">
+                {communityBonus > 0
+                  ? t.giveawayPage.communityEarned(communityBonus)
+                  : t.giveawayPage.communityHint}
+              </p>
+              <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all duration-700"
+                  style={{ width: `${communityPct}%`, background: 'linear-gradient(90deg, #FBBF24, #FA7109)' }}
+                />
+              </div>
+              <Link
+                href="/?tab=referral"
+                className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-400 hover:text-amber-300"
+              >
+                {t.giveawayPage.communityShareCta} →
+              </Link>
             </div>
 
             {baseEntries === 0 ? (

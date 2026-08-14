@@ -15,6 +15,9 @@ import {
   nextStreakTier,
   consistencyBonusEntries,
   CONSISTENCY_ACTIVE_DAYS_THRESHOLD,
+  communityBonusEntries,
+  getCommunityActiveDays,
+  COMMUNITY_MILESTONE_THRESHOLD,
   LIFETIME_BONUS_ENTRIES,
   LIFETIME_BASE_BONUS_ENTRIES,
   ANNUAL_BONUS_ENTRIES,
@@ -76,6 +79,8 @@ export async function GET() {
   const garageDaysThisMonth = activeDaysInPeriod(user.garageBonusDays ?? [], period);
   const garageBonusEntries  = garageDaysThisMonth * 10;
   const consistencyBonus    = consistencyBonusEntries(activeDayCount);
+  const communityActiveDays = await getCommunityActiveDays(period);
+  const communityBonus      = communityBonusEntries(communityActiveDays);
   const perksActive = user.stripeInterval === 'lifetime'
     && user.lifetimePerksUntil != null
     && new Date(user.lifetimePerksUntil) > new Date();
@@ -92,7 +97,8 @@ export async function GET() {
                          + gigLogEntries
                          + streakMilestoneBonusEntries
                          + referralLifetimeBonusEntries
-                         + consistencyBonus;
+                         + consistencyBonus
+                         + communityBonus;
   const eligible       = user.plan === 'pro' || user.plan === 'fleet';
   const emailVerified  = user.emailVerified ?? false;
 
@@ -129,5 +135,8 @@ export async function GET() {
     lifetimePerksUntil:  user.lifetimePerksUntil?.toISOString() ?? null,
     consistencyBonus,
     consistencyThreshold: CONSISTENCY_ACTIVE_DAYS_THRESHOLD,
+    communityBonus,
+    communityActiveDays,
+    communityThreshold: COMMUNITY_MILESTONE_THRESHOLD,
   });
 }
