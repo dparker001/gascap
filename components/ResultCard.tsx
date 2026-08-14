@@ -47,7 +47,7 @@ function ShareButton({ text }: { text: string }) {
     }
   }, [text, refUrl]);
 
-  const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=4&color=0f1f34&bgcolor=ffffff&data=${encodeURIComponent(refUrl)}`;
+  const qrSrc = `/api/qr?size=360&data=${encodeURIComponent(refUrl)}`;
 
   return (
     <div className="mt-2 space-y-2">
@@ -100,7 +100,7 @@ function ShareButton({ text }: { text: string }) {
             {session ? t.resultCard.scanToOpenReferral : t.resultCard.scanToOpen}
           </p>
           <a
-            href={`https://api.qrserver.com/v1/create-qr-code/?size=600x600&margin=20&color=0f1f34&bgcolor=ffffff&data=${encodeURIComponent(refUrl)}`}
+            href={`/api/qr?size=900&data=${encodeURIComponent(refUrl)}`}
             download="gascap-share-qr.png"
             target="_blank"
             rel="noopener noreferrer"

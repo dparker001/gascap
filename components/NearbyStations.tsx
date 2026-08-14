@@ -639,31 +639,46 @@ function FavoritesSection({
     <div className="space-y-2 mb-4">
       <p className="text-xs font-bold text-slate-500 uppercase tracking-wide px-1">{title}</p>
       {favorites.map((fav) => {
-        const bestPrice = fav.prices.find((p) => p.type === 'REGULAR') ?? fav.prices[0] ?? null;
+        const hasPrices = fav.prices.length > 0;
         return (
-          <div key={fav.placeId} className="bg-white rounded-2xl border border-amber-200 shadow-sm px-4 py-3 flex items-start justify-between gap-2">
-            <button
-              type="button"
-              onClick={() => bestPrice && onApply?.(bestPrice.price.toFixed(2), fav.lat, fav.lng, fav.name, 0, bestPrice.label)}
-              className="flex-1 min-w-0 text-left"
-              disabled={!bestPrice || !onApply}
-            >
-              <p className="font-bold text-slate-900 text-sm truncate">{fav.name}</p>
-              <p className="text-[11px] text-slate-400 mt-0.5 truncate">{fav.address}</p>
-              <p className="text-[10px] text-amber-600 font-bold mt-1">
-                {bestPrice
-                  ? `${savedPriceAsOf(timeAgo(fav.priceUpdatedAt, labels))} · $${bestPrice.price.toFixed(2)}`
-                  : savedPriceAsOf(timeAgo(fav.priceUpdatedAt, labels))}
-              </p>
-            </button>
-            <button
-              type="button"
-              onClick={() => onRemove(fav.placeId)}
-              aria-label={removeFavoriteAria}
-              className="flex-shrink-0 w-6 h-6 rounded-full text-amber-400 flex items-center justify-center"
-            >
-              <StarIcon className="w-4 h-4" filled />
-            </button>
+          <div key={fav.placeId} className="bg-white rounded-2xl border border-amber-200 shadow-sm overflow-hidden">
+            <div className="px-4 pt-3 pb-2 flex items-start justify-between gap-2">
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-slate-900 text-sm truncate">{fav.name}</p>
+                <p className="text-[11px] text-slate-400 mt-0.5 truncate">{fav.address}</p>
+                <p className="text-[10px] text-amber-600 font-bold mt-1">
+                  {savedPriceAsOf(timeAgo(fav.priceUpdatedAt, labels))}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => onRemove(fav.placeId)}
+                aria-label={removeFavoriteAria}
+                className="flex-shrink-0 w-6 h-6 rounded-full text-amber-400 flex items-center justify-center"
+              >
+                <StarIcon className="w-4 h-4" filled />
+              </button>
+            </div>
+            {hasPrices && (
+              <div className={`px-4 pb-3 grid gap-1.5 ${fav.prices.length > 2 ? 'grid-cols-4' : 'grid-cols-2'}`}>
+                {GRADE_ORDER.map((type) => {
+                  const fp = fav.prices.find((p) => p.type === type);
+                  if (!fp) return null;
+                  return (
+                    <button
+                      key={type}
+                      type="button"
+                      onClick={() => onApply?.(fp.price.toFixed(2), fav.lat, fav.lng, fav.name, 0, fp.label)}
+                      className="rounded-xl px-2 py-1.5 text-center bg-slate-50 hover:bg-slate-100 active:opacity-80 transition-colors"
+                      disabled={!onApply}
+                    >
+                      <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">{fp.label}</p>
+                      <p className="text-sm font-black text-slate-800">${fp.price.toFixed(2)}</p>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
         );
       })}
