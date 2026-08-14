@@ -100,6 +100,20 @@ export function streakTierForStreak(streak: number): StreakBonusTier {
   return active;
 }
 
+// ── Monthly Consistency Bonus ────────────────────────────────────────────────
+// A GUARANTEED reward, not chance-based — reach the active-day threshold in
+// the current draw period and these entries are always added, win or lose
+// the drawing. Meant as the antidote to "I used the app all month and the
+// reset just erased that" — the personal-consistency counterpart to the
+// draw itself, computed live from activeDaysInPeriod so it naturally resets
+// with each new period without needing its own persisted claim state.
+export const CONSISTENCY_ACTIVE_DAYS_THRESHOLD = 15;
+export const CONSISTENCY_BONUS_ENTRIES = 20;
+
+export function consistencyBonusEntries(activeDayCount: number): number {
+  return activeDayCount >= CONSISTENCY_ACTIVE_DAYS_THRESHOLD ? CONSISTENCY_BONUS_ENTRIES : 0;
+}
+
 /** Return the next streak bonus tier above the current streak, or null if at max */
 export function nextStreakTier(streak: number): StreakBonusTier | null {
   return STREAK_BONUS_TIERS.find((t) => t.minStreak > streak) ?? null;
@@ -457,6 +471,7 @@ export async function getEligibleEntrants(period: string = currentPeriod()): Pro
       const streakMilestoneBonusEntries = u.streakMilestoneBonusEntries ?? 0;
       const referralLifetimeBonusEntries = u.referralLifetimeBonusEntries ?? 0;
       const referralBonusEntries       = refCount * REFERRAL_BONUS_ENTRIES;
+      const consistencyBonus           = consistencyBonusEntries(activeDayCount);
       const perksActive          = u.stripeInterval === 'lifetime'
         && u.lifetimePerksUntil != null
         && new Date(u.lifetimePerksUntil) > new Date();
@@ -489,7 +504,8 @@ export async function getEligibleEntrants(period: string = currentPeriod()): Pro
         referralLifetimeBonusEntries,
         lifetimeBonusEntries,
         referralBonusEntries,
-        entryCount:      baseEntries + streakBonus + bonusEntries + garageBonusEntries + verifyReminderBonusEntries + phoneBonusEntries + dailyBonusEntries + firstCalcBonusEntries + priceReportEntries + gigLogEntries + streakMilestoneBonusEntries + referralLifetimeBonusEntries + lifetimeBonusEntries + referralBonusEntries,
+        consistencyBonus,
+        entryCount:      baseEntries + streakBonus + bonusEntries + garageBonusEntries + verifyReminderBonusEntries + phoneBonusEntries + dailyBonusEntries + firstCalcBonusEntries + priceReportEntries + gigLogEntries + streakMilestoneBonusEntries + referralLifetimeBonusEntries + lifetimeBonusEntries + referralBonusEntries + consistencyBonus,
         alwaysEligible:  isAlwaysEligible(refCount),
         loginCount:      u.loginCount ?? 0,
         lastLoginAt:     u.lastLoginAt ?? null,

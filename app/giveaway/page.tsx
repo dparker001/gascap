@@ -31,6 +31,8 @@ interface GiveawayEntries {
   priceReportEntries:       number;
   gigLogEntries:            number;
   referralLifetimeBonusEntries: number;
+  consistencyBonus:         number;
+  consistencyThreshold:     number;
 }
 
 interface DrawRecord {
@@ -107,6 +109,8 @@ export default function GiveawayPage() {
   const lifetimePerksActive      = entries?.lifetimePerksActive ?? false;
   const priceReportEntries       = entries?.priceReportEntries ?? 0;
   const gigLogEntries            = entries?.gigLogEntries      ?? 0;
+  const consistencyBonus         = entries?.consistencyBonus     ?? 0;
+  const consistencyThreshold     = entries?.consistencyThreshold ?? 15;
   const maxDays                  = 31;
   const progressPct              = Math.min(100, Math.round((activeDayCount / maxDays) * 100));
 
@@ -121,6 +125,7 @@ export default function GiveawayPage() {
       entries: baseEntries,
     },
     { key: 'streak',   emoji: '⚡', label: t.giveawayPage.breakdownStreak(streak),          entries: streakBonus              },
+    { key: 'consistency', emoji: '🎯', label: t.giveawayPage.breakdownConsistency(consistencyThreshold), entries: consistencyBonus },
     { key: 'daily',    emoji: '🎁', label: t.giveawayPage.breakdownDaily,                    entries: dailyBonusEntries        },
     { key: 'garage',   emoji: '🚗', label: t.giveawayPage.breakdownGarage(garageDaysThisMonth), entries: garageBonusEntries   },
     { key: 'verify',   emoji: '✉️', label: t.giveawayPage.breakdownVerify,                  entries: verifyBonusEntries       },
@@ -227,6 +232,32 @@ export default function GiveawayPage() {
               {streakBonus === 0 && nextStreakTier && (
                 <span className="text-[10px] text-white/60 bg-white/5 rounded-full px-2 py-0.5">
                   {t.giveawayPage.daysAway(nextStreakTier.minStreak - streak)}
+                </span>
+              )}
+            </div>
+
+            {/* Consistency bonus — GUARANTEED, not chance-based: reach the
+                active-day threshold and these entries are yours regardless
+                of who wins the drawing. */}
+            <div className="bg-white/5 rounded-2xl px-4 py-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-lg">🎯</span>
+                <div>
+                  <p className="text-white text-xs font-bold">{t.giveawayPage.consistencyTitle}</p>
+                  <p className="text-white/70 text-[10px]">
+                    {consistencyBonus > 0
+                      ? t.giveawayPage.consistencyEarned(consistencyBonus)
+                      : t.giveawayPage.consistencyHint(Math.max(0, consistencyThreshold - activeDayCount))}
+                  </p>
+                </div>
+              </div>
+              {consistencyBonus > 0 ? (
+                <span className="text-xs font-black text-amber-400 bg-amber-500/20 rounded-full px-2 py-0.5">
+                  +{consistencyBonus}
+                </span>
+              ) : (
+                <span className="text-[10px] text-white/60 bg-white/5 rounded-full px-2 py-0.5">
+                  {activeDayCount}/{consistencyThreshold}
                 </span>
               )}
             </div>
