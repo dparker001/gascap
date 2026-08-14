@@ -135,7 +135,7 @@ const SECTIONS = [
       },
       {
         q: 'What is the AI Fuel Advisor?',
-        a: 'The AI Fuel Advisor (Pro and Fleet) is a conversational AI assistant powered by GPT-4o. Ask it anything about fuel efficiency, trip planning, vehicle maintenance, cost estimates, or money-saving tips. It has context about your saved vehicles and recent fill-up history, so its answers are personalized to your actual driving.',
+        a: 'The AI Fuel Advisor (Pro and Fleet) is a conversational AI assistant powered by Claude (Anthropic). Ask it anything about fuel efficiency, trip planning, vehicle maintenance, cost estimates, money-saving tips, or how any part of the GasCap™ app works. It has context about your saved vehicles and recent fill-up history, so its answers are personalized to your actual driving.',
       },
     ],
   },
