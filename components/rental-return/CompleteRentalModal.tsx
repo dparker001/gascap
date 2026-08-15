@@ -96,7 +96,7 @@ export default function CompleteRentalModal({ sessionId, onClose, onCompleted, r
           <div className="flex gap-1.5">
             {(['no', 'yes', 'not_sure'] as FeeAnswer[]).map((a) => (
               <button key={a} onClick={() => setFeeAnswer(a)}
-                className={`flex-1 py-2 rounded-lg text-xs font-bold border ${feeAnswer === a ? 'bg-[#005F4A] text-white border-[#005F4A]' : 'bg-white border-slate-200 text-slate-600'}`}>
+                className={`flex-1 py-2 rounded-lg text-xs font-bold border ${feeAnswer === a ? 'bg-blue-600 text-white border-blue-600' : 'bg-white border-slate-200 text-slate-600'}`}>
                 {a === 'no' ? t.rentalReturn.feeNo : a === 'yes' ? t.rentalReturn.feeYes : t.rentalReturn.feeNotSure}
               </button>
             ))}
@@ -134,7 +134,7 @@ export default function CompleteRentalModal({ sessionId, onClose, onCompleted, r
 
         <div className="flex gap-2 pt-1">
           <button onClick={onClose} className="flex-1 py-2.5 rounded-xl bg-slate-100 text-slate-700 text-sm font-bold">{t.rentalReturn.cancel}</button>
-          <button onClick={handleSubmit} disabled={saving} className="flex-1 py-2.5 rounded-xl bg-[#005F4A] text-white text-sm font-bold disabled:opacity-40">
+          <button onClick={handleSubmit} disabled={saving} className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold disabled:opacity-40">
             {saving ? t.rentalReturn.saving : t.rentalReturn.finish}
           </button>
         </div>

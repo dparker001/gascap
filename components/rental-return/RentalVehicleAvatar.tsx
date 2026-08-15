@@ -44,7 +44,7 @@ export default function RentalVehicleAvatar({
           onError={() => setLogoFailed(true)}
         />
       ) : (
-        <VehicleBodyIcon bodyType={bodyType} className={`${icon} text-[#005F4A]`} />
+        <VehicleBodyIcon bodyType={bodyType} className={`${icon} text-blue-700`} />
       )}
     </div>
   );

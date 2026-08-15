@@ -134,7 +134,11 @@ export default function RentalSetupFlow({ onCreated, onCancel }: Props) {
   const canNext1 = !!company;
   const canNext2 = !!vehicleMake.trim() && !!vehicleModel.trim() && Number(tankCapacity) > 0;
   const pickupPreview = resolvePickupFuel();
-  const canNext3 = pickupPreview.gallons != null;
+  // Pickup fuel is intentionally NOT required to advance: a rental entered
+  // ahead of time can't know it yet, and forcing a guess here would poison
+  // the return target (which defaults to same-as-pickup). It's set on the
+  // dashboard at the counter instead.
+  const canNext3 = true;
   const canNext4 = returnPolicy !== 'exact' || Number(exactReturnGallons) > 0;
   const canSubmit = !!returnDateTime;
 
@@ -221,7 +225,7 @@ export default function RentalSetupFlow({ onCreated, onCancel }: Props) {
                 key={c}
                 onClick={() => setRentalCompany(c)}
                 className={`py-3 rounded-xl text-sm font-bold border transition-colors ${
-                  rentalCompany === c ? 'bg-[#005F4A] text-white border-[#005F4A]' : 'bg-white border-slate-200 text-slate-700 hover:border-[#005F4A]'
+                  rentalCompany === c ? 'bg-blue-600 text-white border-blue-600' : 'bg-white border-slate-200 text-slate-700 hover:border-blue-500'
                 }`}
               >
                 {c}
@@ -320,7 +324,7 @@ export default function RentalSetupFlow({ onCreated, onCancel }: Props) {
           <div className="flex gap-2">
             {(['gauge', 'percent', 'gallons'] as FuelInputMethod[]).map((m) => (
               <button key={m} onClick={() => setPickupMethod(m)}
-                className={`flex-1 py-2 rounded-xl text-xs font-bold border ${pickupMethod === m ? 'bg-[#005F4A] text-white border-[#005F4A]' : 'bg-white border-slate-200 text-slate-600'}`}>
+                className={`flex-1 py-2 rounded-xl text-xs font-bold border ${pickupMethod === m ? 'bg-blue-600 text-white border-blue-600' : 'bg-white border-slate-200 text-slate-600'}`}>
                 {m === 'gauge' ? t.rentalReturn.methodGauge : m === 'percent' ? t.rentalReturn.methodPercent : t.rentalReturn.methodGallons}
               </button>
             ))}
@@ -329,7 +333,7 @@ export default function RentalSetupFlow({ onCreated, onCancel }: Props) {
             <div className="grid grid-cols-3 gap-2">
               {GAUGE_OPTIONS.map((g) => (
                 <button key={g} onClick={() => setPickupGauge(g)}
-                  className={`py-2.5 rounded-xl text-sm font-bold border ${pickupGauge === g ? 'bg-[#005F4A] text-white border-[#005F4A]' : 'bg-white border-slate-200 text-slate-700'}`}>
+                  className={`py-2.5 rounded-xl text-sm font-bold border ${pickupGauge === g ? 'bg-blue-600 text-white border-blue-600' : 'bg-white border-slate-200 text-slate-700'}`}>
                   {g}
                 </button>
               ))}
@@ -341,10 +345,12 @@ export default function RentalSetupFlow({ onCreated, onCancel }: Props) {
           {pickupMethod === 'gallons' && (
             <input type="number" inputMode="decimal" min="0" step="0.1" placeholder="14.1" value={pickupGallons} onChange={(e) => setPickupGallons(e.target.value)} className="input-field" />
           )}
-          {pickupPreview.gallons != null && (
+          {pickupPreview.gallons != null ? (
             <p className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2">
               {t.rentalReturn.estimatedStartingFuel(pickupPreview.gallons)}
             </p>
+          ) : (
+            <p className="text-[11px] text-slate-400 leading-snug">{t.rentalReturn.pickupFuelLaterHint}</p>
           )}
         </div>
       )}
@@ -358,7 +364,7 @@ export default function RentalSetupFlow({ onCreated, onCancel }: Props) {
             ['exact',           t.rentalReturn.returnExact],
           ] as [ReturnPolicyType, string][]).map(([val, label]) => (
             <button key={val} onClick={() => setReturnPolicy(val)}
-              className={`w-full text-left px-4 py-3 rounded-xl border text-sm font-semibold ${returnPolicy === val ? 'bg-[#005F4A] text-white border-[#005F4A]' : 'bg-white border-slate-200 text-slate-700'}`}>
+              className={`w-full text-left px-4 py-3 rounded-xl border text-sm font-semibold ${returnPolicy === val ? 'bg-blue-600 text-white border-blue-600' : 'bg-white border-slate-200 text-slate-700'}`}>
               {label}
             </button>
           ))}
@@ -424,7 +430,7 @@ export default function RentalSetupFlow({ onCreated, onCancel }: Props) {
           <button
             onClick={() => setStep((s) => s + 1)}
             disabled={(step === 1 && !canNext1) || (step === 2 && !canNext2) || (step === 3 && !canNext3) || (step === 4 && !canNext4) || (step === 6 && !canSubmit)}
-            className="flex-1 py-3 rounded-2xl bg-[#005F4A] text-white text-sm font-bold disabled:opacity-40"
+            className="flex-1 py-3 rounded-2xl bg-blue-600 text-white text-sm font-bold disabled:opacity-40"
           >
             {t.rentalReturn.next}
           </button>
@@ -432,7 +438,7 @@ export default function RentalSetupFlow({ onCreated, onCancel }: Props) {
           <button
             onClick={handleSubmit}
             disabled={!canSubmit || submitting}
-            className="flex-1 py-3 rounded-2xl bg-[#005F4A] text-white text-sm font-bold disabled:opacity-40"
+            className="flex-1 py-3 rounded-2xl bg-blue-600 text-white text-sm font-bold disabled:opacity-40"
           >
             {submitting ? t.rentalReturn.creating : t.rentalReturn.createSession}
           </button>

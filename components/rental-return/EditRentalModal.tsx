@@ -172,7 +172,7 @@ export default function EditRentalModal({ session, onClose, onSaved }: Props) {
               ['exact',           t.rentalReturn.returnExact],
             ] as [ReturnPolicyType, string][]).map(([val, label]) => (
               <button key={val} type="button" onClick={() => setReturnPolicy(val)}
-                className={`w-full text-left px-3 py-2 rounded-xl border text-xs font-semibold ${returnPolicy === val ? 'bg-[#005F4A] text-white border-[#005F4A]' : 'bg-white border-slate-200 text-slate-700'}`}>
+                className={`w-full text-left px-3 py-2 rounded-xl border text-xs font-semibold ${returnPolicy === val ? 'bg-blue-600 text-white border-blue-600' : 'bg-white border-slate-200 text-slate-700'}`}>
                 {label}
               </button>
             ))}
@@ -208,7 +208,7 @@ export default function EditRentalModal({ session, onClose, onSaved }: Props) {
 
         <div className="flex gap-2 pt-1">
           <button onClick={onClose} className="flex-1 py-2.5 rounded-xl bg-slate-100 text-slate-700 text-sm font-bold">{t.rentalReturn.cancel}</button>
-          <button onClick={handleSave} disabled={saving} className="flex-1 py-2.5 rounded-xl bg-[#005F4A] text-white text-sm font-bold disabled:opacity-40">
+          <button onClick={handleSave} disabled={saving} className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold disabled:opacity-40">
             {saving ? t.rentalReturn.saving : t.rentalReturn.save}
           </button>
         </div>

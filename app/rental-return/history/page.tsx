@@ -7,7 +7,7 @@ import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { useTranslation } from '@/contexts/LanguageContext';
 import BrandBar from '@/components/BrandBar';
-import BackToCalculatorBar from '@/components/rental-return/BackToCalculatorBar';
+import RentalModeHeader from '@/components/rental-return/RentalModeHeader';
 import { formatGallons, rentalRecap } from '@/lib/rentalCalculations';
 import type { RentalSession } from '@/lib/rentalSessions';
 import type { FuelDataSource } from '@/lib/rentalProvider';
@@ -29,7 +29,7 @@ export default function RentalHistoryPage() {
   return (
     <div className="min-h-screen bg-[#eef1f7]">
       <BrandBar />
-      <BackToCalculatorBar />
+      <RentalModeHeader />
       <div className="px-4 max-w-lg mx-auto pb-8 space-y-3">
         <h1 className="text-lg font-black text-navy-700 text-center mb-2">{t.rentalReturn.historyTitle}</h1>
 
@@ -72,7 +72,7 @@ export default function RentalHistoryPage() {
           })
         )}
 
-        <Link href="/rental-return" className="block text-center text-xs font-bold text-teal-600 hover:text-teal-800 pt-2">
+        <Link href="/rental-return" className="block text-center text-xs font-bold text-blue-600 hover:text-blue-800 pt-2">
           ← {t.rentalReturn.backToRentals}
         </Link>
       </div>

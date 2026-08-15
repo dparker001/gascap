@@ -7,7 +7,6 @@ import {
   gallonsNeeded, estimatedRentalCompanyCharge,
   returnReadyStatus, formatGallons, fuelSourceLabel, refuelTotals,
 } from '@/lib/rentalCalculations';
-import { gallonsFromGaugeFraction, gallonsFromPercent } from '@/lib/rentalProvider';
 import { trackRentalGasNearReturnViewed, trackRentalReturnReadyViewed } from '@/lib/gtag';
 import type { FuelDataSource } from '@/lib/rentalProvider';
 import type { RentalSession } from '@/lib/rentalSessions';
@@ -18,8 +17,7 @@ import EditRentalModal from './EditRentalModal';
 import VehicleBodyIcon from './VehicleBodyIcon';
 import RentalVehicleAvatar from './RentalVehicleAvatar';
 import { inferBodyType } from '@/lib/vehicleBodyType';
-
-const GAUGE_OPTIONS = ['Full', '7/8', '3/4', '5/8', '1/2', '3/8', '1/4', '1/8', 'Empty'];
+import FuelLevelInput from './FuelLevelInput';
 
 function returnCountdown(returnDateTime: string | null): string | null {
   if (!returnDateTime) return null;
@@ -39,6 +37,9 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
   const [showComplete, setShowComplete] = useState(false);
   const [showFindGas, setShowFindGas] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
+  const [showPickupFuel, setShowPickupFuel] = useState(false);
+  const [pendingFuel, setPendingFuel] = useState<{ gallons: number; source: FuelDataSource } | null>(null);
+
 
   const load = useCallback(() => {
     fetch(`/api/rental-sessions/${sessionId}`)
@@ -48,6 +49,22 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
   }, [sessionId]);
 
   useEffect(() => { load(); }, [load]);
+  /** Persist a resolved fuel level as either the pickup baseline or the
+   *  current level. Setting pickup also moves the return target when the
+   *  policy is same-as-pickup — handled server-side in updateRentalSession. */
+  const savePickupOrCurrent = useCallback((which: 'pickup' | 'current') => {
+    if (!pendingFuel) return;
+    const body = which === 'pickup'
+      ? { pickupFuelGallons: pendingFuel.gallons, pickupFuelSource: pendingFuel.source,
+          currentFuelGallons: pendingFuel.gallons, currentFuelSource: pendingFuel.source }
+      : { currentFuelGallons: pendingFuel.gallons, currentFuelSource: pendingFuel.source };
+    fetch(`/api/rental-sessions/${sessionId}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    }).then(load).catch(() => {});
+    setPendingFuel(null);
+    setShowPickupFuel(false);
+    setShowUpdateFuel(false);
+  }, [pendingFuel, sessionId, load]);
 
   useEffect(() => {
     if (session) trackRentalReturnReadyViewed(returnReadyStatus(session.currentFuelGallons, session.requiredReturnFuelGallons));
@@ -91,7 +108,7 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
 
   return (
     <div className="max-w-lg mx-auto px-4 py-6 space-y-4">
-      <Link href="/rental-return" className="inline-flex items-center gap-1 text-xs font-bold text-teal-600 hover:text-teal-800">
+      <Link href="/rental-return" className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-800">
         <svg viewBox="0 0 12 12" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
           <path d="M10 6H2M5 2 1 6l4 4" />
         </svg>
@@ -223,22 +240,61 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
           </div>
         )}
 
-        <button onClick={() => setShowUpdateFuel((v) => !v)} className="w-full text-xs font-bold text-teal-600 hover:text-teal-800">
+        <button onClick={() => setShowUpdateFuel((v) => !v)} className="w-full text-xs font-bold text-blue-600 hover:text-blue-800">
           {t.rentalReturn.updateCurrentFuel}
         </button>
         {showUpdateFuel && (
-          <UpdateFuelInline
-            tankCapacity={session.fuelTankCapacityGallons}
-            onSaved={(gallons, source) => {
-              fetch(`/api/rental-sessions/${sessionId}`, {
-                method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ currentFuelGallons: gallons, currentFuelSource: source }),
-              }).then(load);
-              setShowUpdateFuel(false);
-            }}
-          />
+          <div className="bg-slate-50 rounded-xl p-3 space-y-2">
+            <FuelLevelInput
+              tankCapacity={tankCapacity}
+              onResolved={setPendingFuel}
+              compact
+            />
+            <button
+              type="button"
+              disabled={!pendingFuel}
+              onClick={() => savePickupOrCurrent('current')}
+              className="w-full py-2 rounded-lg bg-blue-600 text-white text-xs font-bold disabled:opacity-40"
+            >
+              {t.rentalReturn.save}
+            </button>
+          </div>
         )}
       </div>
+
+      {/* Pickup fuel — the number the whole return target is derived from
+          under the default same-as-pickup policy. A rental entered ahead of
+          time can't know it yet, so it has to be settable (and correctable)
+          here rather than only at setup. */}
+      {(session.pickupFuelGallons == null || showPickupFuel) && (
+        <div className="bg-white rounded-2xl border-2 border-blue-200 shadow-sm p-4 space-y-2">
+          <p className="text-xs font-black text-blue-800">⛽ {t.rentalReturn.setPickupFuelTitle}</p>
+          <p className="text-[11px] text-slate-500 leading-snug">{t.rentalReturn.setPickupFuelHint}</p>
+          <FuelLevelInput tankCapacity={tankCapacity} onResolved={setPendingFuel} compact />
+          <div className="flex gap-2">
+            {session.pickupFuelGallons != null && (
+              <button type="button" onClick={() => { setShowPickupFuel(false); setPendingFuel(null); }}
+                className="flex-1 py-2 rounded-lg bg-slate-100 text-slate-700 text-xs font-bold">
+                {t.rentalReturn.cancel}
+              </button>
+            )}
+            <button
+              type="button"
+              disabled={!pendingFuel}
+              onClick={() => savePickupOrCurrent('pickup')}
+              className="flex-1 py-2 rounded-lg bg-blue-600 text-white text-xs font-bold disabled:opacity-40"
+            >
+              {t.rentalReturn.save}
+            </button>
+          </div>
+        </div>
+      )}
+      {session.pickupFuelGallons != null && !showPickupFuel && (
+        <button type="button" onClick={() => setShowPickupFuel(true)}
+          className="w-full text-[11px] font-bold text-slate-400 hover:text-slate-600">
+          {t.rentalReturn.correctPickupFuel(formatGallons(session.pickupFuelGallons, session.pickupFuelSource as FuelDataSource))}
+        </button>
+      )}
 
       {/* Cost comparison — only if rate is known */}
       {needed > 0 && (
@@ -253,7 +309,7 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
             </>
           )}
           <p className="text-[10px] text-slate-400">{t.rentalReturn.priceDisclaimer}</p>
-          <button onClick={() => { setShowFindGas((v) => !v); trackRentalGasNearReturnViewed(); }} className="w-full py-2.5 rounded-xl bg-[#005F4A] text-white text-sm font-bold mt-1">
+          <button onClick={() => { setShowFindGas((v) => !v); trackRentalGasNearReturnViewed(); }} className="w-full py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold mt-1">
             {t.rentalReturn.findGasNearReturn}
           </button>
         </div>
@@ -271,7 +327,7 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
         <button onClick={() => setShowRefuel(true)} className="flex-1 py-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-700 text-sm font-bold">
           ⛽ {t.rentalReturn.iJustRefueled}
         </button>
-        <button onClick={() => setShowComplete(true)} className="flex-1 py-3 rounded-2xl bg-[#005F4A] text-white text-sm font-bold">
+        <button onClick={() => setShowComplete(true)} className="flex-1 py-3 rounded-2xl bg-blue-600 text-white text-sm font-bold">
           {t.rentalReturn.completeRental}
         </button>
       </div>
@@ -328,65 +384,6 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
           onSaved={() => { setShowEdit(false); load(); }}
         />
       )}
-    </div>
-  );
-}
-
-function UpdateFuelInline({ tankCapacity, onSaved }: { tankCapacity: number | null; onSaved: (gallons: number, source: FuelDataSource) => void }) {
-  const { t } = useTranslation();
-  const [method, setMethod] = useState<'gauge' | 'percent' | 'gallons'>('gauge');
-  const [gauge, setGauge] = useState('3/4');
-  const [percent, setPercent] = useState('');
-  const [gallons, setGallons] = useState('');
-
-  function resolve(): { gallons: number; source: FuelDataSource } | null {
-    if (method === 'gauge') {
-      const g = gallonsFromGaugeFraction(gauge, tankCapacity ?? 0);
-      return g != null ? { gallons: g, source: 'MANUAL_GAUGE' } : null;
-    }
-    if (method === 'percent') {
-      const g = gallonsFromPercent(Number(percent), tankCapacity ?? 0);
-      return g != null ? { gallons: g, source: 'MANUAL_PERCENT' } : null;
-    }
-    const g = Number(gallons);
-    return g > 0 ? { gallons: g, source: 'MANUAL_GALLONS' } : null;
-  }
-
-  const resolved = resolve();
-
-  return (
-    <div className="space-y-2 bg-slate-50 rounded-xl p-3">
-      <div className="flex gap-1.5">
-        {(['gauge', 'percent', 'gallons'] as const).map((m) => (
-          <button key={m} onClick={() => setMethod(m)}
-            className={`flex-1 py-1.5 rounded-lg text-[11px] font-bold ${method === m ? 'bg-[#005F4A] text-white' : 'bg-white text-slate-600 border border-slate-200'}`}>
-            {m === 'gauge' ? t.rentalReturn.methodGauge : m === 'percent' ? t.rentalReturn.methodPercent : t.rentalReturn.methodGallons}
-          </button>
-        ))}
-      </div>
-      {method === 'gauge' && (
-        <div className="grid grid-cols-3 gap-1.5">
-          {GAUGE_OPTIONS.map((g) => (
-            <button key={g} onClick={() => setGauge(g)}
-              className={`py-1.5 rounded-lg text-xs font-bold ${gauge === g ? 'bg-[#005F4A] text-white' : 'bg-white border border-slate-200 text-slate-700'}`}>
-              {g}
-            </button>
-          ))}
-        </div>
-      )}
-      {method === 'percent' && (
-        <input type="number" inputMode="decimal" min="0" max="100" placeholder="80" value={percent} onChange={(e) => setPercent(e.target.value)} className="input-field text-sm" />
-      )}
-      {method === 'gallons' && (
-        <input type="number" inputMode="decimal" min="0" step="0.1" placeholder="12.6" value={gallons} onChange={(e) => setGallons(e.target.value)} className="input-field text-sm" />
-      )}
-      <button
-        disabled={!resolved}
-        onClick={() => resolved && onSaved(resolved.gallons, resolved.source)}
-        className="w-full py-2 rounded-lg bg-[#005F4A] text-white text-xs font-bold disabled:opacity-40"
-      >
-        {t.rentalReturn.save}
-      </button>
     </div>
   );
 }

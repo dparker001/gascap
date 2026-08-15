@@ -70,7 +70,7 @@ export default function AgreementScanButton({ onScanned }: { onScanned: (f: Scan
           'flex items-center gap-2.5 px-3 py-3 rounded-xl border-2 border-dashed cursor-pointer transition-colors',
           scanning
             ? 'border-slate-200 bg-slate-50 text-slate-400 pointer-events-none'
-            : 'border-[#005F4A]/30 bg-[#005F4A]/5 text-[#005F4A] hover:bg-[#005F4A]/10',
+            : 'border-blue-500/30 bg-blue-500/5 text-blue-700 hover:bg-blue-500/10',
         ].join(' ')}
       >
         <input

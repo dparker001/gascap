@@ -163,6 +163,8 @@ export interface UpdateRentalSessionInput {
   vehicleTrim?:                string;
   fuelTankCapacityGallons?:    number;
   pickupDateTime?:             string;
+  pickupFuelGallons?:          number;
+  pickupFuelSource?:           FuelDataSource;
   requiredReturnFuelGallons?:  number;
   requiredReturnPolicyType?:   ReturnPolicyType;
   currentFuelGallons?:        number;
@@ -191,6 +193,22 @@ export async function updateRentalSession(userId: string, id: string, input: Upd
   if (input.vehicleTrim           !== undefined) data.vehicleTrim           = input.vehicleTrim;
   if (input.fuelTankCapacityGallons   !== undefined) data.fuelTankCapacityGallons   = input.fuelTankCapacityGallons;
   if (input.pickupDateTime            !== undefined) data.pickupDateTime            = input.pickupDateTime;
+  if (input.pickupFuelGallons         !== undefined) data.pickupFuelGallons         = input.pickupFuelGallons;
+  if (input.pickupFuelSource          !== undefined) data.pickupFuelSource          = input.pickupFuelSource;
+
+  // Under the default 'same_as_pickup' policy the return target IS the pickup
+  // level, so changing pickup fuel has to move the target with it — otherwise
+  // correcting a pickup reading leaves a stale target silently driving every
+  // gallons-needed calculation for the rest of the rental. Only recompute
+  // when the caller didn't set an explicit target in the same request.
+  const effectivePolicy = (input.requiredReturnPolicyType ?? existing.requiredReturnPolicyType) as ReturnPolicyType | null;
+  if (
+    input.pickupFuelGallons !== undefined &&
+    input.requiredReturnFuelGallons === undefined &&
+    (effectivePolicy ?? 'same_as_pickup') === 'same_as_pickup'
+  ) {
+    data.requiredReturnFuelGallons = input.pickupFuelGallons;
+  }
   if (input.requiredReturnFuelGallons !== undefined) data.requiredReturnFuelGallons = input.requiredReturnFuelGallons;
   if (input.requiredReturnPolicyType  !== undefined) data.requiredReturnPolicyType  = input.requiredReturnPolicyType;
   if (input.currentFuelGallons !== undefined) { data.currentFuelGallons = input.currentFuelGallons; data.currentFuelUpdatedAt = now; }
