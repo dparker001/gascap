@@ -9,6 +9,7 @@ import { RENTAL_RETURN_ASSISTANT_ENABLED } from '@/lib/featureFlags';
 import { createRentalSession, getRentalSessionsForUser, type CreateRentalSessionInput } from '@/lib/rentalSessions';
 import { ManualRentalDataProvider } from '@/lib/rentalProvider';
 import { getLivePlan } from '@/lib/serverPlan';
+import { validateRentalPhotos, photoCapKb, PHOTO_MAX_DATA_URL_BYTES } from '@/lib/photoLimits';
 
 async function requireUserId(): Promise<string | null> {
   const session = await getServerSession(authOptions);
@@ -46,6 +47,19 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => null);
   if (!body) return NextResponse.json({ error: 'Invalid body' }, { status: 400 });
+
+  const photoCheck = validateRentalPhotos(body as Record<string, unknown>);
+  if (!photoCheck.ok) {
+    return NextResponse.json(
+      {
+        error: `That photo is too large to store (limit ${photoCapKb()}KB per photo).`,
+        field: photoCheck.field,
+        bytes: photoCheck.bytes,
+        limitBytes: PHOTO_MAX_DATA_URL_BYTES,
+      },
+      { status: 413 },
+    );
+  }
 
   if (typeof body.rentalCompany !== 'string' || !body.rentalCompany.trim()) {
     return NextResponse.json({ error: 'Rental company is required.' }, { status: 400 });

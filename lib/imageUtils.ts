@@ -44,3 +44,46 @@ export function compressImageForUpload(
     img.src = url;
   });
 }
+
+/**
+ * Compress to a hard byte budget, returning a data URL.
+ *
+ * compressImageForUpload picks a fixed quality and accepts whatever size
+ * falls out — fine when the result is POSTed and discarded, wrong when it's
+ * stored in a database column. A detailed photo at quality 0.7 can still be
+ * several times the size of a plain one, so the only way to actually respect
+ * a budget is to measure and step down.
+ *
+ * Steps quality first (cheap, preserves framing), then dimension as a last
+ * resort. Rejects rather than silently storing something over budget — the
+ * server enforces the same ceiling, so an oversized result would just fail
+ * later with a worse error.
+ */
+export async function compressImageToBudget(
+  file: File,
+  maxBytes: number,
+  maxDimension: number,
+): Promise<string> {
+  const qualities  = [0.75, 0.6, 0.45, 0.32];
+  const dimensions = [maxDimension, Math.round(maxDimension * 0.75), Math.round(maxDimension * 0.55)];
+
+  for (const dim of dimensions) {
+    for (const q of qualities) {
+      const blob    = await compressImageForUpload(file, dim, q);
+      const dataUrl = await blobToDataUrl(blob);
+      // Measure the data URL, not the blob: base64 adds ~33%, and the data
+      // URL is what actually goes in the column.
+      if (dataUrl.length <= maxBytes) return dataUrl;
+    }
+  }
+  throw new Error('Image could not be compressed within budget');
+}
+
+function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload  = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new Error('Read failed'));
+    reader.readAsDataURL(blob);
+  });
+}

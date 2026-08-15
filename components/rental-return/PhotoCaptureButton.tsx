@@ -9,7 +9,8 @@
  */
 
 import { useState } from 'react';
-import { compressImageForUpload } from '@/lib/imageUtils';
+import { compressImageToBudget } from '@/lib/imageUtils';
+import { PHOTO_MAX_DATA_URL_BYTES, PHOTO_MAX_DIMENSION } from '@/lib/photoLimits';
 import { useTranslation } from '@/contexts/LanguageContext';
 
 interface Props {
@@ -21,17 +22,21 @@ interface Props {
 export default function PhotoCaptureButton({ label, value, onChange }: Props) {
   const { t } = useTranslation();
   const [error, setError] = useState('');
+  const [busy,  setBusy]  = useState(false);
 
   async function handleFile(file: File) {
     setError('');
+    setBusy(true);
     try {
-      const compressed = await compressImageForUpload(file);
-      const reader = new FileReader();
-      reader.onload = () => onChange(reader.result as string);
-      reader.onerror = () => setError(t.rentalReturn.photoError);
-      reader.readAsDataURL(compressed);
+      // Compressed to a hard budget rather than a fixed quality: these are
+      // stored as base64 in a Postgres column, so the size IS the storage
+      // cost. The server rejects anything over the same ceiling.
+      const dataUrl = await compressImageToBudget(file, PHOTO_MAX_DATA_URL_BYTES, PHOTO_MAX_DIMENSION);
+      onChange(dataUrl);
     } catch {
       setError(t.rentalReturn.photoError);
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -55,7 +60,7 @@ export default function PhotoCaptureButton({ label, value, onChange }: Props) {
           <span className="text-base flex-shrink-0" aria-hidden="true">📷</span>
         )}
         <span className="text-xs font-bold flex-1">
-          {value ? t.rentalReturn.photoAttached(label) : label}
+          {busy ? t.rentalReturn.photoCompressing : value ? t.rentalReturn.photoAttached(label) : label}
         </span>
         {value && (
           <button
