@@ -92,7 +92,13 @@ export default function RentalSetupFlow({ onCreated, onCancel }: Props) {
 
   // Step 3 — pickup fuel
   const [pickupMethod, setPickupMethod] = useState<FuelInputMethod>('gauge');
-  const [pickupGauge,  setPickupGauge]  = useState('Full');
+  // Deliberately unset. With 'Full' pre-selected, every rental created here
+  // stored a full tank as its pickup level even when the renter never touched
+  // the control — and for a rental booked ahead of pickup that number is pure
+  // invention. Worse, under the default same-as-pickup policy it silently
+  // became the return target, so the app would tell someone to return a car
+  // full because it had assumed so on their behalf.
+  const [pickupGauge,  setPickupGauge]  = useState('');
   const [pickupPercent, setPickupPercent] = useState('');
   const [pickupGallons, setPickupGallons] = useState('');
 
@@ -120,15 +126,17 @@ export default function RentalSetupFlow({ onCreated, onCancel }: Props) {
     const tank = Number(tankCapacity) || 0;
     if (pickupMethod === 'gauge') {
       const g = gallonsFromGaugeFraction(pickupGauge, tank);
-      return { gallons: g, source: 'MANUAL_GAUGE' };
+      // source stays null when there's no reading — a FuelDataSource on a
+      // null level claims we measured something we didn't.
+      return { gallons: g, source: g != null ? 'MANUAL_GAUGE' : null };
     }
     if (pickupMethod === 'percent') {
       const pct = Number(pickupPercent);
       const g = gallonsFromPercent(pct, tank);
-      return { gallons: g, source: 'MANUAL_PERCENT' };
+      return { gallons: g, source: g != null ? 'MANUAL_PERCENT' : null };
     }
     const g = Number(pickupGallons);
-    return { gallons: g > 0 ? g : null, source: 'MANUAL_GALLONS' };
+    return { gallons: g > 0 ? g : null, source: g > 0 ? 'MANUAL_GALLONS' : null };
   }
 
   const canNext1 = !!company;
@@ -158,8 +166,8 @@ export default function RentalSetupFlow({ onCreated, onCancel }: Props) {
           vehicleMake, vehicleModel,
           vehicleTrim: vehicleTrim || undefined,
           fuelTankCapacityGallons: Number(tankCapacity),
-          pickupFuelGallons: pickup.gallons,
-          pickupFuelSource: pickup.source,
+          pickupFuelGallons: pickup.gallons ?? undefined,
+          pickupFuelSource: pickup.source ?? undefined,
           requiredReturnPolicyType: returnPolicy,
           requiredReturnFuelGallons: returnPolicy === 'exact' ? Number(exactReturnGallons) : undefined,
           rentalFuelChargePerGallon: rentalRate ? Number(rentalRate) : undefined,

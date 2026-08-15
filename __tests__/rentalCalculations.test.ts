@@ -53,6 +53,12 @@ describe('gallonsFromGaugeFraction() — Scenario 3', () => {
   it('returns null for unknown fraction or missing tank capacity', () => {
     expect(gallonsFromGaugeFraction('nonsense', 15)).toBeNull();
     expect(gallonsFromGaugeFraction('3/4', 0)).toBeNull();
+    // The unset gauge. Setup and the shared FuelLevelInput both start with no
+    // selection, and that has to stay null all the way through — a default of
+    // 'Full' previously wrote a full tank for rentals nobody had picked up,
+    // which then became the return target under same-as-pickup.
+    expect(gallonsFromGaugeFraction('', 15)).toBeNull();
+    expect(gallonsFromGaugeFraction('   ', 15)).toBeNull();
   });
 });
 

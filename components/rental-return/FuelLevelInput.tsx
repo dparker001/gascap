@@ -46,7 +46,10 @@ export default function FuelLevelInput({
 }) {
   const { t } = useTranslation();
   const [method, setMethod]   = useState<FuelInputMethod>('gauge');
-  const [gauge, setGauge]     = useState('Full');
+  // No pre-selected reading. Defaulting to 'Full' meant the control always
+  // resolved to a real number, so simply opening this form produced a fuel
+  // level the user never entered.
+  const [gauge, setGauge]     = useState('');
   const [percent, setPercent] = useState('');
   const [gallons, setGallons] = useState('');
 
