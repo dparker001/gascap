@@ -13,6 +13,7 @@
  */
 import { NextResponse }          from 'next/server';
 import { getAllUsers }            from '@/lib/users';
+import { isStreakAtRisk }        from '@/lib/streakRisk';
 import { sendPushNotification }  from '@/lib/oneSignal';
 import { sendApns, apnsConfigured } from '@/lib/apns';
 
@@ -37,9 +38,11 @@ export async function GET(req: Request) {
     const streak = user.streak ?? 0;
     if (streak < 3) { skipped++; continue; }
 
-    // Skip users who already logged in today
-    const lastLogin = user.lastLoginAt ?? '';
-    if (lastLogin.startsWith(todayUTC)) { skipped++; continue; }
+    // Skip anyone who has already been active today. Reads activeDays — the
+    // same field the streak itself is computed from — not lastLoginAt, which
+    // only moves on an actual sign-in and so stayed stale for every user with
+    // a live session. See isStreakAtRisk.
+    if (!isStreakAtRisk(user.activeDays, user.lastLoginAt, todayUTC)) { skipped++; continue; }
 
     // Skip test accounts
     if ((user as { isTestAccount?: boolean }).isTestAccount) { skipped++; continue; }
