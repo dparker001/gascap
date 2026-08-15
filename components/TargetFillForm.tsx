@@ -575,7 +575,6 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
             ? 'bg-blue-50 border-blue-400 text-blue-800'
             : 'bg-white border-slate-200 hover:border-blue-300 text-slate-600',
         ].join(' ')}
-        aria-pressed={!!activeRentalSession}
       >
         <span className="text-xl flex-shrink-0" aria-hidden="true">🚗</span>
         <div className="flex-1 text-left">
@@ -588,15 +587,16 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
               : t.calc.rentalModeInactive}
           </p>
         </div>
-        <div className={[
-          'w-9 h-5 rounded-full flex-shrink-0 relative transition-colors',
-          activeRentalSession ? 'bg-blue-500' : 'bg-slate-200',
-        ].join(' ')}>
-          <div className={[
-            'absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform',
-            activeRentalSession ? 'translate-x-4' : 'translate-x-0.5',
-          ].join(' ')} />
-        </div>
+        {/* A chevron, not a switch. This was a toggle, which was a lie: its
+            state reflects whether an active RentalSession EXISTS, which isn't
+            something you can flip off from here. That mismatch was visible —
+            leaving the rental pages sent you back with the switch still "on",
+            because you did still have an active rental. It's navigation, so
+            it now looks like navigation. */}
+        <svg viewBox="0 0 12 12" className={`w-4 h-4 flex-shrink-0 ${activeRentalSession ? 'text-blue-400' : 'text-slate-300'}`}
+             fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+          <path d="M2 6h8M6 2l4 4-4 4" />
+        </svg>
       </button>
 
       {/* ══════════════════════════════════════════════════════════════

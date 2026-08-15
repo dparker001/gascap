@@ -191,9 +191,14 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
                 className="absolute inset-y-0 left-0 rounded-xl transition-all duration-500"
                 style={{
                   width: `${currentPct}%`,
+                  // Amber stays for "needs fuel" — that's a warning, and it
+                  // has to stay distinct from the mode color to be readable
+                  // at a glance. The satisfied state uses the rental blue
+                  // rather than brand green so the gauge belongs to this
+                  // mode; the ✓ and status chip already carry "you're good".
                   background: needed > 0
                     ? 'linear-gradient(90deg,#FBBF24,#FA7109)'
-                    : 'linear-gradient(90deg,#1EB68F,#005F4A)',
+                    : 'linear-gradient(90deg,#3b82f6,#1e40af)',
                 }}
               />
               {/* Required-return marker */}

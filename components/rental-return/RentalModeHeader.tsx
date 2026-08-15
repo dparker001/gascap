@@ -16,10 +16,11 @@ export default function RentalModeHeader({ subtitle }: { subtitle?: string }) {
   const { t } = useTranslation();
   const router = useRouter();
 
+  // Plain navigation. Deliberately does NOT clear 'gc_rental_mode_active':
+  // the gas calculator reads live session state now, not that flag, and the
+  // flag still belongs to the EV Charge tab's own rental flow — clearing it
+  // here would silently switch off an unrelated feature.
   function backToCalculator() {
-    // The calculator redirects straight back here while this flag is set,
-    // so clear it before navigating or the trip is a no-op.
-    try { localStorage.setItem('gc_rental_mode_active', 'false'); } catch { /* ignore */ }
     router.push('/');
   }
 
