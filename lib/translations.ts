@@ -213,7 +213,7 @@ const en = {
     ],
     rentalTitle: 'Renting a car? Never overpay at drop-off.',
     rentalBody:  'Rental companies charge up to $12/gal if you return empty. GasCap™ Rental Car Return Mode tells you exactly how many gallons to buy — and shows your exact savings vs. letting them fill it.',
-    rentalHint:  'Toggle "🚗 Rental Car Return?" in the calculator above.',
+    rentalHint:  'Tap the "🚗 Rental Car Mode" banner in the calculator above.',
   },
 
   // ── Use cases ──────────────────────────────────────────────────────────────
@@ -270,7 +270,7 @@ const en = {
       },
       {
         q: 'What is Rental Car Return Mode?',
-        a: "It's a special mode that helps you avoid rental company refueling fees. Rental agencies charge up to $12/gallon if you return with less than a full tank. Toggle \"Rental Car Return?\" in the calculator, enter the rental rate, and GasCap™ shows your exact savings vs. letting them fill it.",
+        a: "It's a special mode that helps you avoid rental company refueling fees. Rental agencies charge up to $12/gallon if you return with less than a full tank. Tap the \"Rental Car Mode\" banner in the calculator, enter the rental rate, and GasCap™ shows your exact savings vs. letting them fill it.",
       },
       {
         q: 'How accurate are the gas prices?',
@@ -3216,7 +3216,7 @@ const es: typeof en = {
     ],
     rentalTitle: '¿Rentando un auto? Nunca pagues de más al devolverlo.',
     rentalBody:  'Las rentadoras cobran hasta $12/galón si lo devuelves vacío. El Modo Devolución de Auto Rentado de GasCap™ te dice exactamente cuántos galones comprar — y te muestra tu ahorro exacto vs. dejar que lo llenen.',
-    rentalHint:  'Activa "🚗 ¿Devolución de Auto Rentado?" en la calculadora arriba.',
+    rentalHint:  'Toca el banner "🚗 Modo Auto Rentado" en la calculadora arriba.',
   },
 
   useCases: {
@@ -3270,7 +3270,7 @@ const es: typeof en = {
       },
       {
         q: '¿Qué es el Modo Devolución de Auto Rentado?',
-        a: 'Es un modo especial que te ayuda a evitar cargos de recombustible. Las rentadoras cobran hasta $12/galón si devuelves con menos de un tanque lleno. Activa "¿Devolución de Auto Rentado?" en la calculadora, ingresa la tarifa y GasCap™ te muestra tu ahorro exacto vs. dejar que lo llenen.',
+        a: 'Es un modo especial que te ayuda a evitar cargos de recombustible. Las rentadoras cobran hasta $12/galón si devuelves con menos de un tanque lleno. Toca el banner "Modo Auto Rentado" en la calculadora, ingresa la tarifa y GasCap™ te muestra tu ahorro exacto vs. dejar que lo llenen.',
       },
       {
         q: '¿Qué tan precisos son los precios de gasolina?',
