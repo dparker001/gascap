@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useTranslation } from '@/contexts/LanguageContext';
 import {
   gallonsNeeded, estimatedRentalCompanyCharge,
-  returnReadyStatus, formatGallons, fuelSourceLabel,
+  returnReadyStatus, formatGallons, fuelSourceLabel, refuelTotals,
 } from '@/lib/rentalCalculations';
 import { gallonsFromGaugeFraction, gallonsFromPercent } from '@/lib/rentalProvider';
 import { trackRentalGasNearReturnViewed, trackRentalReturnReadyViewed } from '@/lib/gtag';
@@ -180,19 +180,32 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
         </button>
       </div>
 
-      {session.refuelLogs.length > 0 && (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
-          <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">{t.rentalReturn.refuelLog}</p>
-          <div className="space-y-2">
-            {session.refuelLogs.map((r) => (
-              <div key={r.id} className="flex justify-between text-xs text-slate-600">
-                <span>{r.gallons} gal{r.stationName ? ` · ${r.stationName}` : ''}</span>
-                {r.totalPaid != null && <span className="font-bold">${r.totalPaid.toFixed(2)}</span>}
-              </div>
-            ))}
+      {session.refuelLogs.length > 0 && (() => {
+        const totals = refuelTotals(session.refuelLogs);
+        return (
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">{t.rentalReturn.refuelLog}</p>
+            <div className="space-y-2">
+              {session.refuelLogs.map((r) => (
+                <div key={r.id} className="flex justify-between text-xs text-slate-600">
+                  <span>
+                    {r.gallons} gal{r.stationName ? ` · ${r.stationName}` : ''}
+                    <span className="text-slate-400 ml-1">· {new Date(r.timestamp).toLocaleDateString()}</span>
+                  </span>
+                  {r.totalPaid != null && <span className="font-bold">${r.totalPaid.toFixed(2)}</span>}
+                </div>
+              ))}
+            </div>
+            {/* Running total — a long rental can involve several refuels, and
+                "what have I spent on fuel so far?" is otherwise unanswerable
+                without adding the rows up by hand. */}
+            <div className="flex justify-between items-center text-xs font-black text-slate-800 mt-2.5 pt-2.5 border-t border-slate-100">
+              <span>{t.rentalReturn.refuelTotalLabel(totals.count, totals.totalGallons)}</span>
+              {totals.totalPaid > 0 && <span>${totals.totalPaid.toFixed(2)}</span>}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       <p className="text-[10px] text-slate-400 text-center leading-relaxed px-2">{t.rentalReturn.disclaimer}</p>
 
@@ -208,6 +221,8 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
           onClose={() => setShowComplete(false)}
           onCompleted={() => { setShowComplete(false); onCompleted(); }}
           sessionId={sessionId}
+          refuelLogs={session.refuelLogs}
+          rentalFuelChargePerGallon={session.rentalFuelChargePerGallon}
         />
       )}
       {showEdit && (

@@ -4,17 +4,22 @@ import { useState } from 'react';
 import { useTranslation } from '@/contexts/LanguageContext';
 import { trackRentalCompleted, trackRentalFuelFeeReported } from '@/lib/gtag';
 import PhotoCaptureButton from './PhotoCaptureButton';
+import { rentalRecap } from '@/lib/rentalCalculations';
 
 interface Props {
   sessionId:   string;
   onClose:     () => void;
   onCompleted: () => void;
+  /** Refuels logged during this rental — drives the end-of-rental recap. */
+  refuelLogs:  Array<{ gallons: number; totalPaid?: number; pricePerGallon?: number }>;
+  rentalFuelChargePerGallon: number | null;
 }
 
 type FeeAnswer = 'no' | 'yes' | 'not_sure' | null;
 
-export default function CompleteRentalModal({ sessionId, onClose, onCompleted }: Props) {
+export default function CompleteRentalModal({ sessionId, onClose, onCompleted, refuelLogs, rentalFuelChargePerGallon }: Props) {
   const { t } = useTranslation();
+  const recap = rentalRecap(refuelLogs, rentalFuelChargePerGallon);
   const [feeAnswer, setFeeAnswer] = useState<FeeAnswer>(null);
   const [feeAmount, setFeeAmount] = useState('');
   const [feeGallons, setFeeGallons] = useState('');
@@ -52,6 +57,39 @@ export default function CompleteRentalModal({ sessionId, onClose, onCompleted }:
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 px-4" onClick={onClose}>
       <div className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-sm p-5 space-y-4 max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <p className="text-base font-black text-slate-900">{t.rentalReturn.completeRental}</p>
+
+        {/* End-of-rental recap — the payoff moment. Based on what the renter
+            actually logged paying, not estimates. */}
+        {recap.count > 0 && (
+          <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-3 space-y-1.5">
+            <p className="text-[10px] font-bold text-emerald-700 uppercase tracking-wide">{t.rentalReturn.recapTitle}</p>
+            <div className="flex justify-between text-xs text-emerald-800">
+              <span>{t.rentalReturn.recapFuelAdded(recap.count)}</span>
+              <span className="font-bold">{recap.totalGallons} gal</span>
+            </div>
+            {recap.totalPaid > 0 && (
+              <div className="flex justify-between text-xs text-emerald-800">
+                <span>{t.rentalReturn.recapYouPaid}</span>
+                <span className="font-bold">${recap.totalPaid.toFixed(2)}</span>
+              </div>
+            )}
+            {recap.rentalWouldHaveCharged != null && (
+              <>
+                <div className="flex justify-between text-xs text-emerald-800">
+                  <span>{t.rentalReturn.recapRentalWouldCharge}</span>
+                  <span className="font-bold">${recap.rentalWouldHaveCharged.toFixed(2)}</span>
+                </div>
+                {recap.savings != null && (
+                  <div className="flex justify-between text-sm font-black text-emerald-900 pt-1.5 border-t border-emerald-200">
+                    <span>{recap.savings >= 0 ? t.rentalReturn.recapYouSaved : t.rentalReturn.recapYouPaidMore}</span>
+                    <span>${Math.abs(recap.savings).toFixed(2)}</span>
+                  </div>
+                )}
+              </>
+            )}
+            <p className="text-[10px] text-emerald-600 leading-snug pt-0.5">{t.rentalReturn.recapDisclaimer}</p>
+          </div>
+        )}
 
         <div>
           <p className="text-xs font-bold text-slate-600 mb-1.5">{t.rentalReturn.wereYouCharged}</p>

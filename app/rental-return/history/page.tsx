@@ -8,7 +8,7 @@ import Link from 'next/link';
 import { useTranslation } from '@/contexts/LanguageContext';
 import BrandBar from '@/components/BrandBar';
 import BackToCalculatorBar from '@/components/rental-return/BackToCalculatorBar';
-import { formatGallons } from '@/lib/rentalCalculations';
+import { formatGallons, rentalRecap } from '@/lib/rentalCalculations';
 import type { RentalSession } from '@/lib/rentalSessions';
 import type { FuelDataSource } from '@/lib/rentalProvider';
 
@@ -40,24 +40,36 @@ export default function RentalHistoryPage() {
         ) : sessions.length === 0 ? (
           <p className="text-sm text-slate-400 text-center py-10">{t.rentalReturn.noHistory}</p>
         ) : (
-          sessions.map((s) => (
-            <div key={s.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-1.5">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-bold text-slate-800">{s.rentalCompany}</p>
-                <p className="text-[11px] text-slate-400">{s.completedAt ? new Date(s.completedAt).toLocaleDateString() : ''}</p>
+          sessions.map((s) => {
+            const recap = rentalRecap(s.refuelLogs, s.rentalFuelChargePerGallon);
+            return (
+              <div key={s.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-bold text-slate-800">{s.rentalCompany}</p>
+                  <p className="text-[11px] text-slate-400">{s.completedAt ? new Date(s.completedAt).toLocaleDateString() : ''}</p>
+                </div>
+                <p className="text-xs text-slate-500">{[s.vehicleYear, s.vehicleMake, s.vehicleModel].filter(Boolean).join(' ')}</p>
+                <div className="flex items-center gap-3 text-[11px] text-slate-500 pt-1">
+                  <span>{t.rentalReturn.historyPickup}: {formatGallons(s.pickupFuelGallons, s.pickupFuelSource as FuelDataSource)}</span>
+                  <span>{t.rentalReturn.historyFinal}: {formatGallons(s.currentFuelGallons, s.currentFuelSource as FuelDataSource)}</span>
+                </div>
+                {recap.count > 0 && (
+                  <div className="flex items-center gap-3 text-[11px] text-slate-500">
+                    <span>{recap.totalGallons} gal added</span>
+                    {recap.totalPaid > 0 && <span>${recap.totalPaid.toFixed(2)} spent</span>}
+                    {recap.savings != null && recap.savings > 0 && (
+                      <span className="font-bold text-emerald-600">${recap.savings.toFixed(2)} saved</span>
+                    )}
+                  </div>
+                )}
+                {s.fuelFeeCharged != null && (
+                  <p className={`text-[11px] font-bold ${s.fuelFeeCharged ? 'text-red-500' : 'text-emerald-600'}`}>
+                    {s.fuelFeeCharged ? t.rentalReturn.historyFeeCharged(s.fuelFeeAmount) : t.rentalReturn.historyNoFee}
+                  </p>
+                )}
               </div>
-              <p className="text-xs text-slate-500">{[s.vehicleYear, s.vehicleMake, s.vehicleModel].filter(Boolean).join(' ')}</p>
-              <div className="flex items-center gap-3 text-[11px] text-slate-500 pt-1">
-                <span>{t.rentalReturn.historyPickup}: {formatGallons(s.pickupFuelGallons, s.pickupFuelSource as FuelDataSource)}</span>
-                <span>{t.rentalReturn.historyFinal}: {formatGallons(s.currentFuelGallons, s.currentFuelSource as FuelDataSource)}</span>
-              </div>
-              {s.fuelFeeCharged != null && (
-                <p className={`text-[11px] font-bold ${s.fuelFeeCharged ? 'text-red-500' : 'text-emerald-600'}`}>
-                  {s.fuelFeeCharged ? t.rentalReturn.historyFeeCharged(s.fuelFeeAmount) : t.rentalReturn.historyNoFee}
-                </p>
-              )}
-            </div>
-          ))
+            );
+          })
         )}
 
         <Link href="/rental-return" className="block text-center text-xs font-bold text-teal-600 hover:text-teal-800 pt-2">

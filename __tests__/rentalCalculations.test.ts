@@ -9,6 +9,8 @@ import {
   formatGallons,
   roundCurrency,
   roundGallons,
+  refuelTotals,
+  rentalRecap,
 } from '../lib/rentalCalculations';
 import { gallonsFromGaugeFraction, gallonsFromPercent } from '../lib/rentalProvider';
 
@@ -197,5 +199,74 @@ describe('roundCurrency() / roundGallons()', () => {
   it('rounds gallons to tenths', () => {
     expect(roundGallons(11.249999)).toBe(11.2);
     expect(roundGallons(11.25)).toBe(11.3);
+  });
+});
+
+// ── refuel totals + end-of-rental recap ──────────────────────────────────
+
+describe('refuelTotals()', () => {
+  it('sums gallons and cost across multiple refuels (long rental)', () => {
+    const totals = refuelTotals([
+      { gallons: 8.2,  totalPaid: 25.34 },
+      { gallons: 11.5, totalPaid: 35.19 },
+      { gallons: 6.1,  totalPaid: 18.91 },
+    ]);
+    expect(totals.count).toBe(3);
+    expect(totals.totalGallons).toBe(25.8);
+    expect(totals.totalPaid).toBe(79.44);
+  });
+
+  it('falls back to gallons × pricePerGallon when no total was recorded', () => {
+    const totals = refuelTotals([{ gallons: 10, pricePerGallon: 3.10 }]);
+    expect(totals.totalPaid).toBe(31);
+  });
+
+  it('prefers the recorded total over the unit-price fallback', () => {
+    // Pump rounded up / different actual charge — trust what was actually paid.
+    const totals = refuelTotals([{ gallons: 10, pricePerGallon: 3.10, totalPaid: 31.50 }]);
+    expect(totals.totalPaid).toBe(31.5);
+  });
+
+  it('counts gallons even when cost is missing entirely', () => {
+    const totals = refuelTotals([{ gallons: 9.4 }]);
+    expect(totals.totalGallons).toBe(9.4);
+    expect(totals.totalPaid).toBe(0);
+  });
+
+  it('empty log is all zeroes, not NaN', () => {
+    const totals = refuelTotals([]);
+    expect(totals).toEqual({ count: 0, totalGallons: 0, totalPaid: 0 });
+  });
+});
+
+describe('rentalRecap()', () => {
+  it('compares real spend against what the rental company would have charged', () => {
+    const recap = rentalRecap(
+      [{ gallons: 10, totalPaid: 30.90 }, { gallons: 5, totalPaid: 15.45 }],
+      5.11,
+    );
+    expect(recap.totalGallons).toBe(15);
+    expect(recap.totalPaid).toBe(46.35);
+    expect(recap.rentalWouldHaveCharged).toBe(76.65); // 15 × 5.11
+    expect(recap.savings).toBe(30.3);
+  });
+
+  it('unknown rental rate → null comparison, never an invented number', () => {
+    const recap = rentalRecap([{ gallons: 10, totalPaid: 30.90 }], null);
+    expect(recap.totalPaid).toBe(30.9);
+    expect(recap.rentalWouldHaveCharged).toBeNull();
+    expect(recap.savings).toBeNull();
+  });
+
+  it('no refuels logged → no comparison to make', () => {
+    const recap = rentalRecap([], 5.11);
+    expect(recap.totalGallons).toBe(0);
+    expect(recap.rentalWouldHaveCharged).toBeNull();
+    expect(recap.savings).toBeNull();
+  });
+
+  it('savings can be negative if the renter paid more than the rental rate', () => {
+    const recap = rentalRecap([{ gallons: 10, totalPaid: 60 }], 5.11);
+    expect(recap.savings).toBe(-8.9); // 51.10 − 60
   });
 });

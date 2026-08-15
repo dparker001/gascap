@@ -69,6 +69,66 @@ export function estimatedSavings(rentalCompanyCharge: number | null, selfRefuelC
   return roundCurrency(rentalCompanyCharge - selfRefuelCost);
 }
 
+// ── Refuel log totals + end-of-rental recap ─────────────────────────────────
+// The payoff moment: what the renter actually spent across every refuel this
+// rental, versus what the rental company would have charged to put those same
+// gallons in. Deliberately based on REAL logged purchases, not estimates —
+// this runs after the fact, so there's no need to guess at a station price.
+
+export interface RefuelTotals {
+  count:        number;
+  totalGallons: number;
+  totalPaid:    number;
+}
+
+/** Running totals across every logged refuel — `totalPaid` counts only entries
+ *  that actually recorded a cost (gallons-only entries still count toward
+ *  `totalGallons`, so the two figures can legitimately disagree). */
+export function refuelTotals(
+  logs: Array<{ gallons: number; totalPaid?: number; pricePerGallon?: number }>,
+): RefuelTotals {
+  let totalGallons = 0;
+  let totalPaid    = 0;
+  for (const log of logs) {
+    if (log.gallons > 0) totalGallons += log.gallons;
+    // Prefer the recorded total; fall back to gallons × price when the renter
+    // entered a unit price but no total.
+    if (log.totalPaid != null && log.totalPaid > 0) {
+      totalPaid += log.totalPaid;
+    } else if (log.pricePerGallon != null && log.pricePerGallon > 0 && log.gallons > 0) {
+      totalPaid += log.gallons * log.pricePerGallon;
+    }
+  }
+  return {
+    count:        logs.length,
+    totalGallons: roundGallons(totalGallons),
+    totalPaid:    roundCurrency(totalPaid),
+  };
+}
+
+export interface RentalRecap extends RefuelTotals {
+  /** What the rental company would have charged for the same gallons — null when their rate is unknown. */
+  rentalWouldHaveCharged: number | null;
+  /** rentalWouldHaveCharged − totalPaid — null when the rate is unknown. */
+  savings:                number | null;
+}
+
+export function rentalRecap(
+  logs: Array<{ gallons: number; totalPaid?: number; pricePerGallon?: number }>,
+  rentalFuelChargePerGallon: number | null | undefined,
+): RentalRecap {
+  const totals = refuelTotals(logs);
+  const rentalWouldHaveCharged =
+    rentalFuelChargePerGallon != null && rentalFuelChargePerGallon > 0 && totals.totalGallons > 0
+      ? roundCurrency(totals.totalGallons * rentalFuelChargePerGallon)
+      : null;
+  return {
+    ...totals,
+    rentalWouldHaveCharged,
+    savings: rentalWouldHaveCharged != null ? roundCurrency(rentalWouldHaveCharged - totals.totalPaid) : null,
+  };
+}
+
 // ── Return-ready status (section 16–17) ─────────────────────────────────────
 
 export type ReturnReadyStatus = 'needs_fuel' | 'nearly_ready' | 'return_ready';
