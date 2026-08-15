@@ -680,7 +680,7 @@ const en = {
     backToCalculator:    'Back to Calculator',
     modeHeaderTitle:     'Rental Car Mode',
     modeHeaderSubtitle:  'Tracking your rental from pickup to return',
-    exitToCalculator:    'Exit',
+    goToCalculator:      'Calculator',
     myRentals:           'My Rentals',
     edit:                'Edit',
     editRental:          'Edit Rental',
@@ -928,6 +928,15 @@ const en = {
     rentalModeTitle:        'Rental Car Mode',
     rentalModeActive:       'Active — compare pump cost vs. rental company rate',
     rentalModeActiveWith:   (company: string) => `Active rental with ${company} — tap to continue`,
+    rentalModeUpcomingWith: (company: string, when: string) => when
+      ? `Upcoming ${company} rental \u2014 picks up ${when}`
+      : `Upcoming rental with ${company} \u2014 tap to view`,
+    rentalModeMultiple:     (active: number, upcoming: number) => {
+      const parts: string[] = [];
+      if (active > 0)   parts.push(`${active} active`);
+      if (upcoming > 0) parts.push(`${upcoming} upcoming`);
+      return `${parts.join(', ')} \u2014 tap to view`;
+    },
     rentalModeInactive:     'Tap to start tracking a rental car, pickup to return',
     rentalReturnAssistantLinkHint: 'Want to track this whole rental? Try the Rental Return Assistant →',
     rentalRateLabel:        "Rental Company's Gas Rate",
@@ -3688,7 +3697,7 @@ const es: typeof en = {
     backToCalculator:    'Volver a la Calculadora',
     modeHeaderTitle:     'Modo Auto de Alquiler',
     modeHeaderSubtitle:  'Siguiendo tu alquiler de la recogida a la devolución',
-    exitToCalculator:    'Salir',
+    goToCalculator:      'Calculadora',
     myRentals:           'Mis Alquileres',
     edit:                'Editar',
     editRental:          'Editar Alquiler',
@@ -3933,6 +3942,15 @@ const es: typeof en = {
     rentalModeTitle:        'Modo Auto de Alquiler',
     rentalModeActive:       'Activo — compara costo en la bomba vs. tarifa de la rentadora',
     rentalModeActiveWith:   (company: string) => `Alquiler activo con ${company} — toca para continuar`,
+    rentalModeUpcomingWith: (company: string, when: string) => when
+      ? `Alquiler pr\u00f3ximo con ${company} \u2014 se recoge el ${when}`
+      : `Alquiler pr\u00f3ximo con ${company} \u2014 toca para ver`,
+    rentalModeMultiple:     (active: number, upcoming: number) => {
+      const parts: string[] = [];
+      if (active > 0)   parts.push(`${active} activo${active === 1 ? '' : 's'}`);
+      if (upcoming > 0) parts.push(`${upcoming} pr\u00f3ximo${upcoming === 1 ? '' : 's'}`);
+      return `${parts.join(', ')} \u2014 toca para ver`;
+    },
     rentalModeInactive:     'Toca para empezar a seguir un auto de alquiler, de la recogida a la devolución',
     rentalReturnAssistantLinkHint: '¿Quieres seguir todo el alquiler? Prueba el Asistente de Devolución de Alquiler →',
     rentalRateLabel:        'Tarifa de gasolina de la rentadora',

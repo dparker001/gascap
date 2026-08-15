@@ -16,7 +16,7 @@ import {
 } from '@/lib/calculations';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useIsNative, useNativePlatform } from '@/hooks/useIsNative';
-import { useActiveRentalSession } from '@/hooks/useActiveRentalSession';
+import { useRentalSessions } from '@/hooks/useRentalSessions';
 import type { CalcTab } from './CalculatorTabs';
 import { useTranslation } from '@/contexts/LanguageContext';
 import { trackCalculateTarget, trackRentalReturnToggled } from '@/lib/gtag';
@@ -149,7 +149,13 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
   // you away again. The EV Charge tab's own rental flow is untouched —
   // separate component, no equivalent in the new Assistant yet, owns its
   // own 'gc_rental_mode_active' flag independently.
-  const { activeSession: activeRentalSession, loading: activeRentalLoading } = useActiveRentalSession();
+  const {
+    inProgress: rentalsInProgress,
+    upcoming:   rentalsUpcoming,
+    primary:    primaryRental,
+    loading:    activeRentalLoading,
+  } = useRentalSessions();
+  const hasAnyRental = primaryRental != null;
 
   // One-time hand-off from the /rental marketing page — if there's no
   // active session yet, take a fresh visitor straight into setup instead of
@@ -160,8 +166,29 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
     if (activeRentalLoading) return;
     const fromRentalPage = typeof window !== 'undefined' &&
       new URLSearchParams(window.location.search).get('rental') === '1';
-    if (fromRentalPage && !activeRentalSession) router.push('/rental-return');
-  }, [activeRentalLoading, activeRentalSession, router]);
+    if (fromRentalPage && !hasAnyRental) router.push('/rental-return');
+  }, [activeRentalLoading, hasAnyRental, router]);
+
+  /** Banner subtitle. Says what's true for each state rather than asserting
+   *  "active" for anything that exists. */
+  function rentalSummaryText(): string {
+    if (rentalsInProgress.length + rentalsUpcoming.length > 1) {
+      return t.calc.rentalModeMultiple(rentalsInProgress.length, rentalsUpcoming.length);
+    }
+    const active = rentalsInProgress[0];
+    if (active) return t.calc.rentalModeActiveWith(active.rentalCompany);
+
+    const next = rentalsUpcoming[0];
+    if (next) {
+      return t.calc.rentalModeUpcomingWith(
+        next.rentalCompany,
+        next.pickupDateTime
+          ? new Date(next.pickupDateTime).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+          : '',
+      );
+    }
+    return t.calc.rentalModeInactive;
+  }
 
   const [gasCoords,     setGasCoords]     = useState<{ lat: number; lng: number } | null>(null);
   const [nearbyAttrib,  setNearbyAttrib]  = useState<{ name: string; distanceMi: number; grade: string } | null>(null);
@@ -563,37 +590,39 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
            (fetched, not a locally-flipped flag), and only ever navigates on
            an explicit tap so simply landing back here never bounces you
            away again. ───────────────────────────────────────────────── */}
+      {/* Describes the user's real rental state and navigates to it.
+          Not a mode switch — see RentalModeHeader for why "Rental Car Mode"
+          is a place plus a fact, never something you're toggled into.
+
+          The subtitle used to hardcode "Active rental with {company}" off
+          sessions[0]. With two open rentals that named an arbitrary one, and
+          it called a rental "active" that nobody had picked up yet — so a
+          single upcoming Hertz booking could read as "Active rental with
+          Avis". Upcoming and in-progress are different facts and now read
+          differently. */}
       <button
         type="button"
         onClick={() => {
-          trackRentalReturnToggled(!activeRentalSession);
-          router.push(activeRentalSession ? `/rental-return/${activeRentalSession.id}` : '/rental-return');
+          trackRentalReturnToggled(!hasAnyRental);
+          router.push(primaryRental ? `/rental-return/${primaryRental.id}` : '/rental-return');
         }}
         className={[
           'w-full flex items-center gap-3 rounded-2xl px-4 py-3 mb-3 border-2 transition-all',
-          activeRentalSession
+          hasAnyRental
             ? 'bg-blue-50 border-blue-400 text-blue-800'
             : 'bg-white border-slate-200 hover:border-blue-300 text-slate-600',
         ].join(' ')}
       >
         <span className="text-xl flex-shrink-0" aria-hidden="true">🚗</span>
         <div className="flex-1 text-left">
-          <p className={`text-sm font-black leading-none ${activeRentalSession ? 'text-blue-800' : 'text-slate-700'}`}>
+          <p className={`text-sm font-black leading-none ${hasAnyRental ? 'text-blue-800' : 'text-slate-700'}`}>
             {t.calc.rentalModeTitle}
           </p>
-          <p className={`text-[10px] mt-0.5 leading-snug ${activeRentalSession ? 'text-blue-600' : 'text-slate-400'}`}>
-            {activeRentalSession
-              ? t.calc.rentalModeActiveWith(activeRentalSession.rentalCompany)
-              : t.calc.rentalModeInactive}
+          <p className={`text-[10px] mt-0.5 leading-snug ${hasAnyRental ? 'text-blue-600' : 'text-slate-400'}`}>
+            {rentalSummaryText()}
           </p>
         </div>
-        {/* A chevron, not a switch. This was a toggle, which was a lie: its
-            state reflects whether an active RentalSession EXISTS, which isn't
-            something you can flip off from here. That mismatch was visible —
-            leaving the rental pages sent you back with the switch still "on",
-            because you did still have an active rental. It's navigation, so
-            it now looks like navigation. */}
-        <svg viewBox="0 0 12 12" className={`w-4 h-4 flex-shrink-0 ${activeRentalSession ? 'text-blue-400' : 'text-slate-300'}`}
+        <svg viewBox="0 0 12 12" className={`w-4 h-4 flex-shrink-0 ${hasAnyRental ? 'text-blue-400' : 'text-slate-300'}`}
              fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
           <path d="M2 6h8M6 2l4 4-4 4" />
         </svg>

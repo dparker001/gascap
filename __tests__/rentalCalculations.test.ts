@@ -11,6 +11,7 @@ import {
   roundGallons,
   refuelTotals,
   reconcileFuelForNewTank,
+  isUpcomingRental,
   rentalRecap,
 } from '../lib/rentalCalculations';
 import { gallonsFromGaugeFraction, gallonsFromPercent } from '../lib/rentalProvider';
@@ -351,5 +352,39 @@ describe('reconcileFuelForNewTank', () => {
         expect(reconcileFuelForNewTank(g, src, 28, 14)!).toBeLessThanOrEqual(14);
       }
     }
+  });
+});
+
+// ── Upcoming vs in-progress ─────────────────────────────────────────────────
+// Reported: the calculator banner read "Active rental with Avis" when the only
+// rental was an UPCOMING one with Hertz. Two faults met there — the hook took
+// sessions[0] out of several, and nothing distinguished booked from collected.
+// 'active' is the DB status from creation; only pickupDateTime says whether
+// the renter actually has the car.
+describe('isUpcomingRental', () => {
+  const NOW = new Date('2026-08-15T18:00:00Z').getTime();
+  const at  = (iso: string) => isUpcomingRental(iso, NOW);
+
+  it('is upcoming when pickup is still ahead', () => {
+    expect(at('2026-08-20T15:00:00Z')).toBe(true);
+  });
+
+  it('is in progress once pickup has passed', () => {
+    expect(at('2026-08-14T09:00:00Z')).toBe(false);
+  });
+
+  it('treats the exact pickup moment as in progress, not upcoming', () => {
+    expect(at('2026-08-15T18:00:00Z')).toBe(false);
+  });
+
+  it('treats a missing pickup time as in progress — the at-the-counter case', () => {
+    // Set up while standing at the desk: no future pickup, car already in hand.
+    expect(isUpcomingRental(null, NOW)).toBe(false);
+    expect(isUpcomingRental(undefined, NOW)).toBe(false);
+    expect(isUpcomingRental('', NOW)).toBe(false);
+  });
+
+  it('does not call garbage upcoming', () => {
+    expect(isUpcomingRental('not a date', NOW)).toBe(false);
   });
 });

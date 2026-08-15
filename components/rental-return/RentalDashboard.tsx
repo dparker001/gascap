@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useTranslation } from '@/contexts/LanguageContext';
 import {
   gallonsNeeded, estimatedRentalCompanyCharge,
-  returnReadyStatus, formatGallons, fuelSourceLabel, refuelTotals,
+  returnReadyStatus, formatGallons, fuelSourceLabel, refuelTotals, isUpcomingRental,
 } from '@/lib/rentalCalculations';
 import { trackRentalGasNearReturnViewed, trackRentalReturnReadyViewed } from '@/lib/gtag';
 import type { FuelDataSource } from '@/lib/rentalProvider';
@@ -91,7 +91,7 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
   // A rental entered ahead of time hasn't started yet — showing "Needs Fuel"
   // and a return countdown before the renter has even collected the car is
   // just noise, so surface an Upcoming state instead.
-  const isUpcoming = session.pickupDateTime != null && new Date(session.pickupDateTime).getTime() > Date.now();
+  const isUpcoming = isUpcomingRental(session.pickupDateTime);
 
   // Is there a fuel figure at all? Pickup level is optional at setup, so a
   // rental of any age can have none.

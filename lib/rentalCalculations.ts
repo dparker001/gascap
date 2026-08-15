@@ -227,3 +227,23 @@ export function reconcileFuelForNewTank(
 
   return Math.round(Math.min(scaled, newCapacity) * 1_000_000) / 1_000_000;
 }
+
+/**
+ * Has this rental not started yet?
+ *
+ * "Upcoming" is derived, not stored: a session's status is 'active' from
+ * creation, and only pickupDateTime says whether the renter is actually
+ * holding the car. Treating every open session as in-progress is what let a
+ * booked-but-not-collected rental be announced as "Active rental with ...".
+ *
+ * A rental with no pickup time is treated as in progress — that's the
+ * same-day case, where the renter set it up at the counter.
+ */
+export function isUpcomingRental(
+  pickupDateTime: string | null | undefined,
+  now: number = Date.now(),
+): boolean {
+  if (!pickupDateTime) return false;
+  const t = new Date(pickupDateTime).getTime();
+  return Number.isFinite(t) && t > now;
+}

@@ -16,10 +16,18 @@ export default function RentalModeHeader({ subtitle }: { subtitle?: string }) {
   const { t } = useTranslation();
   const router = useRouter();
 
-  // Plain navigation. Deliberately does NOT clear 'gc_rental_mode_active':
-  // the gas calculator reads live session state now, not that flag, and the
-  // flag still belongs to the EV Charge tab's own rental flow — clearing it
-  // here would silently switch off an unrelated feature.
+  // This said "Exit", which promised something it can't deliver. There is no
+  // Rental Car Mode to leave: the "mode" is these pages plus the fact that
+  // you have rentals, and tapping here changes neither — your rentals still
+  // exist and the calculator still shows them. A user who taps Exit and then
+  // sees the rental banner on the calculator has caught the app lying.
+  //
+  // So it names its destination instead. Nothing to exit, nothing to undo:
+  // going to the calculator and coming back is just navigation.
+  //
+  // Still deliberately does NOT clear 'gc_rental_mode_active' — the gas
+  // calculator reads live session state, and that flag belongs to the EV
+  // Charge tab's separate rental flow.
   function backToCalculator() {
     router.push('/');
   }
@@ -39,7 +47,7 @@ export default function RentalModeHeader({ subtitle }: { subtitle?: string }) {
           onClick={backToCalculator}
           className="flex-shrink-0 text-[10px] font-bold text-blue-600 hover:text-blue-800 bg-white border border-blue-200 rounded-lg px-2 py-1.5 transition-colors"
         >
-          {t.rentalReturn.exitToCalculator}
+          {t.rentalReturn.goToCalculator}
         </button>
       </div>
     </div>
