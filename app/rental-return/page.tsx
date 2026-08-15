@@ -13,6 +13,7 @@ import { useTranslation } from '@/contexts/LanguageContext';
 import BrandBar from '@/components/BrandBar';
 import RentalModeHeader from '@/components/rental-return/RentalModeHeader';
 import RentalSetupFlow from '@/components/rental-return/RentalSetupFlow';
+import DeleteRentalButton from '@/components/rental-return/DeleteRentalButton';
 import { trackRentalAssistantOpened, trackRentalSessionCreated } from '@/lib/gtag';
 import type { RentalSession } from '@/lib/rentalSessions';
 
@@ -98,14 +99,22 @@ export default function RentalReturnPage() {
           <div className="space-y-2">
             <p className="text-xs font-bold text-slate-500 uppercase tracking-wide px-1">{t.rentalReturn.activeSessions}</p>
             {sessions.map((s) => (
-              <button
+              <div
                 key={s.id}
-                onClick={() => router.push(`/rental-return/${s.id}`)}
-                className="w-full text-left bg-white rounded-2xl border border-slate-200 shadow-sm px-4 py-3 hover:border-blue-500 transition-colors"
+                className="flex items-center gap-2 flex-wrap bg-white rounded-2xl border border-slate-200 shadow-sm px-4 py-3 hover:border-blue-500 transition-colors"
               >
-                <p className="text-sm font-bold text-slate-800">{s.rentalCompany}</p>
-                <p className="text-xs text-slate-400">{[s.vehicleYear, s.vehicleMake, s.vehicleModel].filter(Boolean).join(' ')}</p>
-              </button>
+                <button
+                  onClick={() => router.push(`/rental-return/${s.id}`)}
+                  className="flex-1 min-w-0 text-left"
+                >
+                  <p className="text-sm font-bold text-slate-800">{s.rentalCompany}</p>
+                  <p className="text-xs text-slate-400">{[s.vehicleYear, s.vehicleMake, s.vehicleModel].filter(Boolean).join(' ')}</p>
+                </button>
+                <DeleteRentalButton
+                  sessionId={s.id}
+                  onDeleted={() => setSessions((prev) => prev.filter((x) => x.id !== s.id))}
+                />
+              </div>
             ))}
           </div>
         )}

@@ -10,6 +10,7 @@ import type { RentalSession } from '@/lib/rentalSessions';
 import ReturnLocationInput from './ReturnLocationInput';
 import RentalVehicleLookup from '@/components/RentalVehicleLookup';
 import RentalVinLookup from '@/components/RentalVinLookup';
+import DeleteRentalButton from './DeleteRentalButton';
 
 interface Props {
   session: RentalSession;
@@ -52,8 +53,6 @@ export default function EditRentalModal({ session, onClose, onSaved }: Props) {
 
   const [saving, setSaving]   = useState(false);
   const [error, setError]     = useState('');
-  const [confirmCancel, setConfirmCancel] = useState(false);
-  const [cancelling, setCancelling] = useState(false);
 
   async function handleSave() {
     setSaving(true);
@@ -91,16 +90,6 @@ export default function EditRentalModal({ session, onClose, onSaved }: Props) {
       setError(t.rentalReturn.setupError);
     } finally {
       setSaving(false);
-    }
-  }
-
-  async function handleCancelRental() {
-    setCancelling(true);
-    try {
-      await fetch(`/api/rental-sessions/${session.id}`, { method: 'DELETE' });
-      router.push('/rental-return');
-    } finally {
-      setCancelling(false);
     }
   }
 
@@ -214,22 +203,11 @@ export default function EditRentalModal({ session, onClose, onSaved }: Props) {
         </div>
 
         <div className="pt-2 border-t border-slate-100">
-          {!confirmCancel ? (
-            <button type="button" onClick={() => setConfirmCancel(true)} className="w-full text-center text-[11px] font-bold text-red-500 hover:text-red-700 py-1">
-              {t.rentalReturn.cancelThisRental}
-            </button>
-          ) : (
-            <div className="flex items-center justify-center gap-2">
-              <span className="text-[11px] text-red-600 font-semibold">{t.rentalReturn.cancelThisRentalConfirm}</span>
-              <button type="button" onClick={handleCancelRental} disabled={cancelling}
-                className="text-[11px] font-black text-white bg-red-500 hover:bg-red-600 rounded-lg px-2 py-1 disabled:opacity-40">
-                {t.rentalReturn.yesRemove}
-              </button>
-              <button type="button" onClick={() => setConfirmCancel(false)} className="text-[11px] font-bold text-slate-500">
-                {t.rentalReturn.keepIt}
-              </button>
-            </div>
-          )}
+          <DeleteRentalButton
+            sessionId={session.id}
+            label={t.rentalReturn.deleteRental}
+            onDeleted={() => router.push('/rental-return')}
+          />
         </div>
     </ModalShell>
   );

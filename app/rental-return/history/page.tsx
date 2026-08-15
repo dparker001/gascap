@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { useTranslation } from '@/contexts/LanguageContext';
 import BrandBar from '@/components/BrandBar';
 import RentalModeHeader from '@/components/rental-return/RentalModeHeader';
+import DeleteRentalButton from '@/components/rental-return/DeleteRentalButton';
 import { formatGallons, rentalRecap } from '@/lib/rentalCalculations';
 import type { RentalSession } from '@/lib/rentalSessions';
 import type { FuelDataSource } from '@/lib/rentalProvider';
@@ -44,9 +45,13 @@ export default function RentalHistoryPage() {
             const recap = rentalRecap(s.refuelLogs, s.rentalFuelChargePerGallon);
             return (
               <div key={s.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-bold text-slate-800">{s.rentalCompany}</p>
-                  <p className="text-[11px] text-slate-400">{s.completedAt ? new Date(s.completedAt).toLocaleDateString() : ''}</p>
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <p className="text-sm font-bold text-slate-800 flex-1 min-w-0">{s.rentalCompany}</p>
+                  <p className="text-[11px] text-slate-400 flex-shrink-0">{s.completedAt ? new Date(s.completedAt).toLocaleDateString() : ''}</p>
+                  <DeleteRentalButton
+                    sessionId={s.id}
+                    onDeleted={() => setSessions((prev) => prev.filter((x) => x.id !== s.id))}
+                  />
                 </div>
                 <p className="text-xs text-slate-500">{[s.vehicleYear, s.vehicleMake, s.vehicleModel].filter(Boolean).join(' ')}</p>
                 <div className="flex items-center gap-3 text-[11px] text-slate-500 pt-1">
