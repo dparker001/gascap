@@ -124,7 +124,14 @@ export async function GET(req: Request) {
       const epaTank = !electric && comb > 0 && range > 0
         ? Math.round((range / comb) * 10) / 10
         : null;
-      const tankEst = electric ? null : (epaTank ?? await aiFallbackTankSize(year, make, model));
+      // Pass EPA's own size class through: it's in this same response and it's
+      // the difference between a grounded estimate and a guess.
+      const tankEst = electric ? null : (epaTank ?? await aiFallbackTankSize(year, make, model, undefined, {
+        vClass:    typeof d.VClass    === 'string' ? d.VClass    : null,
+        displ:     (d.displ     as string | number | undefined) ?? null,
+        cylinders: (d.cylinders as string | number | undefined) ?? null,
+        drive:     typeof d.drive     === 'string' ? d.drive     : null,
+      }));
 
       return NextResponse.json({
         year:       d.year,
@@ -161,6 +168,12 @@ export async function GET(req: Request) {
         : null;
       const tankEst = electric ? null : (epaTank ?? await aiFallbackTankSize(
         String(d.year ?? ''), String(d.make ?? ''), String(d.model ?? ''), String(d.trany ?? ''),
+        {
+          vClass:    typeof d.VClass === 'string' ? d.VClass : null,
+          displ:     (d.displ     as string | number | undefined) ?? null,
+          cylinders: (d.cylinders as string | number | undefined) ?? null,
+          drive:     typeof d.drive === 'string' ? d.drive : null,
+        },
       ));
       return NextResponse.json({
         id:       d.id,

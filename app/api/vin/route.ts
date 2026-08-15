@@ -36,6 +36,10 @@ async function epaLookup(
   rangeMiles?:   number;
   co2GPerMile?:  number;
   fuelType1?:    string;   // EPA's octane-specific grade, e.g. "Premium Gasoline Recommended"
+  vClass?:       string;   // EPA size class — grounds the AI tank fallback
+  displ?:        string | number;
+  cylinders?:    string | number;
+  drive?:        string;
 } | null> {
   try {
     const base = 'https://fueleconomy.gov/ws/rest/vehicle';
@@ -98,6 +102,10 @@ async function epaLookup(
       rangeMiles:  range > 0 ? range : undefined,
       co2GPerMile: co2   > 0 ? co2   : undefined,
       fuelType1,
+      vClass:      typeof d.VClass === 'string' ? d.VClass : undefined,
+      displ:       (d.displ     as string | number | undefined),
+      cylinders:   (d.cylinders as string | number | undefined),
+      drive:       typeof d.drive === 'string' ? d.drive : undefined,
     };
   } catch {
     return null;
@@ -196,7 +204,12 @@ export async function GET(req: Request) {
 
     // ── AI fallback for tank capacity ─────────────────────────────────────
     const epaHasTank = (epa?.tankEst ?? 0) > 0;
-    const aiTank     = epaHasTank ? null : await aiFallbackTankSize(year, make, model, trim ?? '');
+    const aiTank     = epaHasTank ? null : await aiFallbackTankSize(year, make, model, trim ?? '', {
+      vClass:    epa?.vClass    ?? null,
+      displ:     epa?.displ     ?? toNum(displ) ?? null,
+      cylinders: epa?.cylinders ?? toNum(cyls)  ?? null,
+      drive:     epa?.drive     ?? null,
+    });
     const tankEst: number | null  = epa?.tankEst ?? aiTank;
     const tankSource: 'epa' | 'ai' | null = epa?.tankEst ? 'epa' : aiTank ? 'ai' : null;
 
