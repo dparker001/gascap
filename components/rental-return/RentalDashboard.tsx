@@ -98,8 +98,13 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
         {t.rentalReturn.myRentals}
       </Link>
 
-      {/* Hero — vehicle identity, agreement number, countdown, status */}
-      <div className="relative overflow-hidden rounded-2xl shadow-sm bg-gradient-to-br from-[#004638] via-[#005F4A] to-[#1EB68F] p-4 text-white">
+      {/* Hero — vehicle identity, agreement number, countdown, status.
+          Deliberately BLUE, not brand green: blue is the app's established
+          "you are in Rental Car Mode" signal (the calculator's rental toggle
+          uses blue-400/blue-500/blue-800), so matching it here keeps the two
+          surfaces reading as one mode. Brand green stays reserved for
+          primary actions, consistent with the rest of the app. */}
+      <div className="relative overflow-hidden rounded-2xl shadow-sm bg-gradient-to-br from-blue-800 via-blue-600 to-blue-500 p-4 text-white">
         {/* Oversized watermark silhouette — decorative depth, not a control */}
         <VehicleBodyIcon
           bodyType={bodyType}

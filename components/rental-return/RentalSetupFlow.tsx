@@ -197,7 +197,9 @@ export default function RentalSetupFlow({ onCreated, onCancel }: Props) {
         </button>
       </div>
       <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-        <div className="h-full bg-[#005F4A] transition-all duration-300" style={{ width: `${(step / TOTAL_STEPS) * 100}%` }} />
+        {/* Blue matches the calculator's Rental Car Mode signal — see the
+            dashboard hero comment. */}
+        <div className="h-full bg-blue-600 transition-all duration-300" style={{ width: `${(step / TOTAL_STEPS) * 100}%` }} />
       </div>
 
       {error && <p className="text-xs text-red-500 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{error}</p>}

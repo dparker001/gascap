@@ -19,6 +19,24 @@ const CACHE: RequestInit = { next: { revalidate: 86400 } };
 
 type MenuItem = { text: string; value: string };
 
+/**
+ * True for battery-electric vehicles, which have no fuel tank at all.
+ *
+ * This matters because the tank estimate below is `range ÷ comb08`, and for
+ * a BEV those fields mean something completely different: comb08 is MPGe and
+ * range is electric miles. A 2026 Dodge Charger Daytona R/T (263 mi ÷ 85
+ * MPGe) came out as a "3.1 gallon tank" — a real bug this guards against.
+ *
+ * PHEVs are deliberately NOT caught here: they burn gasoline and do have a
+ * tank, so the normal estimate still applies to them.
+ */
+function isBatteryElectric(d: Record<string, unknown>): boolean {
+  const atv  = String(d.atvType ?? '').toLowerCase();
+  const fuel = String(d.fuelType1 ?? '').toLowerCase();
+  if (atv.includes('plug-in')) return false;          // PHEV — has a tank
+  return atv === 'ev' || (fuel.includes('electric') && !fuel.includes('gas'));
+}
+
 async function fetchMenu(path: string): Promise<MenuItem[]> {
   const res = await fetch(`${BASE}${path}`, { headers: JSON_HEADERS, ...CACHE });
   if (!res.ok) return [];
@@ -94,22 +112,26 @@ export async function GET(req: Request) {
       if (!vRes.ok) return NextResponse.json({ error: 'not_found' }, { status: 404 });
 
       const d     = await vRes.json() as Record<string, unknown>;
+      const electric = isBatteryElectric(d);
       const comb  = Number(d.comb08  ?? d.combA08  ?? 0);
       const range = Number(d.range   ?? d.rangeA   ?? 0);
       // EPA's range field is mostly populated for EV/AFV records — for a
       // regular gas vehicle this formula frequently has nothing to divide,
       // which silently produced no tank size at all. Same AI fallback used
       // by /api/vin when EPA has no usable data.
-      const epaTank = comb > 0 && range > 0
+      // A BEV gets no tank estimate at all (and no AI call — it would only
+      // burn tokens to guess at a tank that doesn't exist).
+      const epaTank = !electric && comb > 0 && range > 0
         ? Math.round((range / comb) * 10) / 10
         : null;
-      const tankEst = epaTank ?? await aiFallbackTankSize(year, make, model);
+      const tankEst = electric ? null : (epaTank ?? await aiFallbackTankSize(year, make, model));
 
       return NextResponse.json({
         year:       d.year,
         make:       d.make,
         model:      d.model,
         fuelType:   d.fuelType1,
+        isElectric: electric,
         displ:      d.displ,      // engine displacement (litres)
         cylinders:  d.cylinders,
         tankEst,
@@ -124,18 +146,22 @@ export async function GET(req: Request) {
       const res = await fetch(`${BASE}/${id}`, { headers: JSON_HEADERS, ...CACHE });
       if (!res.ok) return NextResponse.json(null);
       const d = await res.json() as Record<string, unknown>;
+      const electric = isBatteryElectric(d);
       const comb  = Number(d.comb08  ?? d.combA08  ?? 0);
       const range = Number(d.range   ?? d.rangeA   ?? 0);
       // Estimate tank size from EPA range ÷ combined MPG — but EPA's range
       // field is mostly populated for EV/AFV records, so this is frequently
       // empty for a regular gas vehicle. Fall back to the AI estimate used by
       // /api/vin rather than silently returning no tank size at all.
-      const epaTank = comb > 0 && range > 0
+      // Skipped entirely for a BEV: comb08 is MPGe and range is electric
+      // miles there, so the division yields a nonsense "tank" (see
+      // isBatteryElectric).
+      const epaTank = !electric && comb > 0 && range > 0
         ? Math.round((range / comb) * 10) / 10
         : null;
-      const tankEst = epaTank ?? await aiFallbackTankSize(
+      const tankEst = electric ? null : (epaTank ?? await aiFallbackTankSize(
         String(d.year ?? ''), String(d.make ?? ''), String(d.model ?? ''), String(d.trany ?? ''),
-      );
+      ));
       return NextResponse.json({
         id:       d.id,
         year:     d.year,
@@ -143,6 +169,7 @@ export async function GET(req: Request) {
         model:    d.model,
         trim:     d.trany,
         fuelType: d.fuelType1,
+        isElectric: electric,
         comb08:   comb,
         range,
         tankEst,

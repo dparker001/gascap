@@ -2604,6 +2604,8 @@ const en = {
     vinFoundTank: (gallons: string) => `${gallons} gal tank — exact match from the VIN, no guessing.`,
     vehicleFoundTitle: (vehicle: string) => `${vehicle} found`,
     vehicleFoundTank: (gallons: string) => `${gallons} gal tank size applied.`,
+    evNoTankTitle:  "That's an electric vehicle — no fuel tank",
+    evNoTankBody:   'The Rental Return Assistant tracks gallons. For an EV rental, use the EV Charge tab, which handles return charge-level policies instead.',
     vehicleLookupError: "Couldn't find a tank size for that vehicle — try the VIN below, or pick a rental class instead.",
   },
   garageDoor: {
@@ -5569,6 +5571,8 @@ const es: typeof en = {
     vinFoundTank: (gallons: string) => `Tanque de ${gallons} gal — coincidencia exacta del VIN, sin adivinar.`,
     vehicleFoundTitle: (vehicle: string) => `${vehicle} encontrado`,
     vehicleFoundTank: (gallons: string) => `Tamaño de tanque de ${gallons} gal aplicado.`,
+    evNoTankTitle:  'Es un vehículo eléctrico — sin tanque de combustible',
+    evNoTankBody:   'El Asistente de Devolución maneja galones. Para un alquiler eléctrico, usa la pestaña Carga EV, que maneja las políticas de nivel de carga de devolución.',
     vehicleLookupError: 'No pudimos encontrar el tamaño del tanque para ese vehículo — prueba con el VIN abajo, o elige una clase de auto de alquiler.',
   },
   garageDoor: {
