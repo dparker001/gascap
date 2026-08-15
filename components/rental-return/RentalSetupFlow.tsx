@@ -81,6 +81,9 @@ export default function RentalSetupFlow({ onCreated, onCancel }: Props) {
     if (f.vehicleModel) setVehicleModel(f.vehicleModel);
     if (f.returnLocation) setReturnLocation(f.returnLocation);
     // datetime-local needs exactly "YYYY-MM-DDTHH:mm"
+    if (f.pickupDateTime && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(f.pickupDateTime)) {
+      setPickupDateTime(f.pickupDateTime.slice(0, 16));
+    }
     if (f.returnDateTime && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(f.returnDateTime)) {
       setReturnDateTime(f.returnDateTime.slice(0, 16));
     }
@@ -103,6 +106,7 @@ export default function RentalSetupFlow({ onCreated, onCancel }: Props) {
   // Step 6 — return location/time
   const [returnLocation, setReturnLocation] = useState('');
   const [returnCoords, setReturnCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [pickupDateTime, setPickupDateTime] = useState('');
   const [returnDateTime, setReturnDateTime] = useState('');
 
   // Step 7 — pickup documentation (all optional)
@@ -158,6 +162,7 @@ export default function RentalSetupFlow({ onCreated, onCancel }: Props) {
           returnLocation: returnLocation || undefined,
           returnLatitude: returnCoords?.lat,
           returnLongitude: returnCoords?.lng,
+          pickupDateTime: pickupDateTime || undefined,
           returnDateTime,
           pickupVehiclePhotoThumb: pickupVehiclePhoto || undefined,
           pickupGaugePhotoThumb: pickupGaugePhoto || undefined,
@@ -384,6 +389,11 @@ export default function RentalSetupFlow({ onCreated, onCancel }: Props) {
             {returnLocation && !returnCoords && (
               <p className="text-[10px] text-slate-400 mt-1">{t.rentalReturn.returnLocationNoCoordsHint}</p>
             )}
+          </div>
+          <div>
+            <label className="field-label">{t.rentalReturn.pickupDateTimeLabel}</label>
+            <input type="datetime-local" value={pickupDateTime} onChange={(e) => setPickupDateTime(e.target.value)} className="input-field" />
+            <p className="text-[11px] text-slate-400 mt-1">{t.rentalReturn.pickupDateTimeHint}</p>
           </div>
           <div>
             <label className="field-label">{t.rentalReturn.returnDateTimeLabel}</label>

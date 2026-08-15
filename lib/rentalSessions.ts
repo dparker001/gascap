@@ -162,6 +162,7 @@ export interface UpdateRentalSessionInput {
   vehicleModel?:               string;
   vehicleTrim?:                string;
   fuelTankCapacityGallons?:    number;
+  pickupDateTime?:             string;
   requiredReturnFuelGallons?:  number;
   requiredReturnPolicyType?:   ReturnPolicyType;
   currentFuelGallons?:        number;
@@ -189,6 +190,7 @@ export async function updateRentalSession(userId: string, id: string, input: Upd
   if (input.vehicleModel          !== undefined) data.vehicleModel          = input.vehicleModel;
   if (input.vehicleTrim           !== undefined) data.vehicleTrim           = input.vehicleTrim;
   if (input.fuelTankCapacityGallons   !== undefined) data.fuelTankCapacityGallons   = input.fuelTankCapacityGallons;
+  if (input.pickupDateTime            !== undefined) data.pickupDateTime            = input.pickupDateTime;
   if (input.requiredReturnFuelGallons !== undefined) data.requiredReturnFuelGallons = input.requiredReturnFuelGallons;
   if (input.requiredReturnPolicyType  !== undefined) data.requiredReturnPolicyType  = input.requiredReturnPolicyType;
   if (input.currentFuelGallons !== undefined) { data.currentFuelGallons = input.currentFuelGallons; data.currentFuelUpdatedAt = now; }

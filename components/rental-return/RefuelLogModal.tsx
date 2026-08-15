@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useTranslation } from '@/contexts/LanguageContext';
+import ModalShell from './ModalShell';
 import { compressImageForUpload } from '@/lib/imageUtils';
 import { trackRentalRefuelLogged, trackRentalReceiptUploaded } from '@/lib/gtag';
 
@@ -61,8 +62,7 @@ export default function RefuelLogModal({ sessionId, onClose, onSaved }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 px-4" onClick={onClose}>
-      <div className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-sm p-5 space-y-3" onClick={(e) => e.stopPropagation()}>
+    <ModalShell onClose={onClose}>
         <p className="text-base font-black text-slate-900">⛽ {t.rentalReturn.iJustRefueled}</p>
         {error && <p className="text-xs text-red-500">{error}</p>}
         <div>
@@ -92,7 +92,6 @@ export default function RefuelLogModal({ sessionId, onClose, onSaved }: Props) {
             {saving ? t.rentalReturn.saving : t.rentalReturn.save}
           </button>
         </div>
-      </div>
-    </div>
+    </ModalShell>
   );
 }

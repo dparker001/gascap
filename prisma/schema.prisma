@@ -516,7 +516,9 @@ model RentalSession {
   feedbackText                   String?
 
   notes                        String?
-  reminderSentAt                 String? // dedup guard for the daily rental-return-reminder cron
+  reminderSentAt                 String? // dedup guard: return-fuel reminder
+  pickupReminder24SentAt         String? // dedup guard: 24h-before-pickup reminder
+  pickupReminder2SentAt          String? // dedup guard: 2h-before-pickup reminder
   completedAt                   String?
   createdAt                    String
   updatedAt                    String

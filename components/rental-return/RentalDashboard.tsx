@@ -71,6 +71,11 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
     return_ready: { label: t.rentalReturn.statusReturnReady, chip: 'bg-white text-emerald-700' },
   }[status];
 
+  // A rental entered ahead of time hasn't started yet — showing "Needs Fuel"
+  // and a return countdown before the renter has even collected the car is
+  // just noise, so surface an Upcoming state instead.
+  const isUpcoming = session.pickupDateTime != null && new Date(session.pickupDateTime).getTime() > Date.now();
+
   const bodyType = inferBodyType({
     model:       session.vehicleModel,
     tankGallons: session.fuelTankCapacityGallons,
@@ -135,10 +140,15 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
         </div>
 
         <div className="relative flex items-center gap-2 mt-3 flex-wrap">
-          <span className={`text-[10px] font-black px-2.5 py-1 rounded-full ${statusConfig.chip}`}>
-            {statusConfig.label}
+          <span className={`text-[10px] font-black px-2.5 py-1 rounded-full ${isUpcoming ? 'bg-white/90 text-slate-700' : statusConfig.chip}`}>
+            {isUpcoming ? t.rentalReturn.statusUpcoming : statusConfig.label}
           </span>
-          {countdown && (
+          {isUpcoming && session.pickupDateTime && (
+            <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-white/15 text-white">
+              🗓 {t.rentalReturn.picksUp(new Date(session.pickupDateTime).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }))}
+            </span>
+          )}
+          {!isUpcoming && countdown && (
             <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-white/15 text-white">
               ⏱ {t.rentalReturn.returnIn(countdown)}
             </span>

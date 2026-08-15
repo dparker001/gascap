@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useTranslation } from '@/contexts/LanguageContext';
+import ModalShell from './ModalShell';
 import { trackRentalCompleted, trackRentalFuelFeeReported } from '@/lib/gtag';
 import PhotoCaptureButton from './PhotoCaptureButton';
 import { rentalRecap } from '@/lib/rentalCalculations';
@@ -54,8 +55,7 @@ export default function CompleteRentalModal({ sessionId, onClose, onCompleted, r
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 px-4" onClick={onClose}>
-      <div className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-sm p-5 space-y-4 max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+    <ModalShell onClose={onClose}>
         <p className="text-base font-black text-slate-900">{t.rentalReturn.completeRental}</p>
 
         {/* End-of-rental recap — the payoff moment. Based on what the renter
@@ -138,7 +138,6 @@ export default function CompleteRentalModal({ sessionId, onClose, onCompleted, r
             {saving ? t.rentalReturn.saving : t.rentalReturn.finish}
           </button>
         </div>
-      </div>
-    </div>
+    </ModalShell>
   );
 }

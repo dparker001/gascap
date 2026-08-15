@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslation } from '@/contexts/LanguageContext';
+import ModalShell from './ModalShell';
 import { RENTAL_COMPANIES } from '@/lib/rentalProvider';
 import type { ReturnPolicyType } from '@/lib/rentalCalculations';
 import type { RentalSession } from '@/lib/rentalSessions';
@@ -46,6 +47,7 @@ export default function EditRentalModal({ session, onClose, onSaved }: Props) {
       ? { lat: session.returnLatitude, lng: session.returnLongitude }
       : null,
   );
+  const [pickupDateTime, setPickupDateTime] = useState(session.pickupDateTime?.slice(0, 16) ?? '');
   const [returnDateTime, setReturnDateTime] = useState(session.returnDateTime?.slice(0, 16) ?? '');
 
   const [saving, setSaving]   = useState(false);
@@ -79,6 +81,7 @@ export default function EditRentalModal({ session, onClose, onSaved }: Props) {
           returnLocation: returnLocation || undefined,
           returnLatitude: returnCoords?.lat,
           returnLongitude: returnCoords?.lng,
+          pickupDateTime: pickupDateTime || undefined,
           returnDateTime: returnDateTime || undefined,
         }),
       });
@@ -102,10 +105,40 @@ export default function EditRentalModal({ session, onClose, onSaved }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 px-4" onClick={onClose}>
-      <div className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-sm p-5 space-y-3 max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+    <ModalShell onClose={onClose}>
         <p className="text-base font-black text-slate-900">{t.rentalReturn.editRental}</p>
         {error && <p className="text-xs text-red-500">{error}</p>}
+
+        {/* ── Vehicle first: what's currently selected, then how to change it.
+            Identity (year/make/model/trim) is intentionally NOT free-text —
+            it has to come from the EPA lookup or a VIN decode, because a
+            typo'd make/model silently degrades both the tank-size lookup and
+            the body-type inference. Tank size stays editable below, since
+            that's a calculation input a renter may legitimately correct
+            against the actual fuel door. */}
+        <div className="bg-slate-50 rounded-xl p-3 space-y-2">
+          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">{t.rentalReturn.currentVehicle}</p>
+          {vehicleMake || vehicleModel ? (
+            <div className="bg-white rounded-lg px-3 py-2 border border-slate-200">
+              <p className="text-sm font-black text-slate-800">
+                {[vehicleYear, vehicleMake, vehicleModel].filter(Boolean).join(' ')}
+              </p>
+              {vehicleTrim && <p className="text-[11px] text-slate-500">{vehicleTrim}</p>}
+            </div>
+          ) : (
+            <p className="text-[11px] text-slate-400">{t.rentalReturn.vehicleUnknown}</p>
+          )}
+
+          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide pt-1">{t.rentalReturn.changeVehicle}</p>
+          <RentalVehicleLookup onTankSize={() => {}} onVehicleResolved={handleVehicleResolved} />
+          <RentalVinLookup onTankSize={() => {}} onVehicleResolved={handleVehicleResolved} />
+        </div>
+
+        <div>
+          <label className="field-label">{t.rentalReturn.tankCapacity}</label>
+          <input type="number" inputMode="decimal" min="1" max="60" step="0.1" value={tankCapacity} onChange={(e) => setTankCapacity(e.target.value)} className="input-field" />
+          <p className="text-[11px] text-slate-400 mt-1">{t.rentalReturn.tankCapacityEditHint}</p>
+        </div>
 
         <div>
           <label className="field-label">{t.rentalReturn.stepCompany}</label>
@@ -127,31 +160,6 @@ export default function EditRentalModal({ session, onClose, onSaved }: Props) {
             <label className="field-label">{t.rentalReturn.confirmationNumberLabel}</label>
             <input type="text" placeholder={t.rentalReturn.confirmationNumberPlaceholder}
               value={confirmationNumber} onChange={(e) => setConfirmationNumber(e.target.value)} className="input-field" />
-          </div>
-        </div>
-
-        {/* Lookup dropdowns are ALWAYS visible here, not hidden behind a
-            toggle — an earlier version tucked them behind a small "look up
-            instead" link and they were effectively undiscoverable. Picking a
-            vehicle here overwrites the manual fields below, which stay
-            visible so the current values are never hidden. */}
-        <div className="bg-slate-50 rounded-xl p-3 space-y-2">
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">{t.rentalReturn.lookUpVehicle}</p>
-          <RentalVehicleLookup onTankSize={() => {}} onVehicleResolved={handleVehicleResolved} />
-          <RentalVinLookup onTankSize={() => {}} onVehicleResolved={handleVehicleResolved} />
-        </div>
-
-        <div className="space-y-2">
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">{t.rentalReturn.vehicleDetails}</p>
-          <div className="grid grid-cols-3 gap-2">
-            <input type="text" placeholder={t.rentalReturn.year} value={vehicleYear} onChange={(e) => setVehicleYear(e.target.value)} className="input-field col-span-1" />
-            <input type="text" placeholder={t.rentalReturn.make} value={vehicleMake} onChange={(e) => setVehicleMake(e.target.value)} className="input-field col-span-2" />
-          </div>
-          <input type="text" placeholder={t.rentalReturn.model} value={vehicleModel} onChange={(e) => setVehicleModel(e.target.value)} className="input-field" />
-          <input type="text" placeholder={t.rentalReturn.trimOptional} value={vehicleTrim} onChange={(e) => setVehicleTrim(e.target.value)} className="input-field" />
-          <div>
-            <label className="field-label">{t.rentalReturn.tankCapacity}</label>
-            <input type="number" inputMode="decimal" min="1" max="60" step="0.1" value={tankCapacity} onChange={(e) => setTankCapacity(e.target.value)} className="input-field" />
           </div>
         </div>
 
@@ -189,6 +197,11 @@ export default function EditRentalModal({ session, onClose, onSaved }: Props) {
         </div>
 
         <div>
+          <label className="field-label">{t.rentalReturn.pickupDateTimeLabel}</label>
+          <input type="datetime-local" value={pickupDateTime} onChange={(e) => setPickupDateTime(e.target.value)} className="input-field" />
+        </div>
+
+        <div>
           <label className="field-label">{t.rentalReturn.returnDateTimeLabel}</label>
           <input type="datetime-local" value={returnDateTime} onChange={(e) => setReturnDateTime(e.target.value)} className="input-field" />
         </div>
@@ -218,7 +231,6 @@ export default function EditRentalModal({ session, onClose, onSaved }: Props) {
             </div>
           )}
         </div>
-      </div>
-    </div>
+    </ModalShell>
   );
 }
