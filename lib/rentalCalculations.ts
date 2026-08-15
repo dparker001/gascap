@@ -195,3 +195,35 @@ export function fuelSourceLabel(source: FuelDataSource | null | undefined): stri
     default:                    return 'Estimated';
   }
 }
+
+/**
+ * Reconcile a stored fuel level against a NEW tank capacity.
+ *
+ * Levels are stored in gallons, but a gauge or percent entry is really a
+ * fraction of a particular tank — the gallons were derived. Change the
+ * vehicle and those gallons describe a tank that no longer exists, which is
+ * how "~24.5 gal" ended up displayed on a 14 gal tank (7/8 of a previous
+ * 28-gallon vehicle).
+ *
+ * Fractional sources rescale so the fraction the renter actually observed
+ * survives. Absolute sources (typed gallons, a receipt) keep their value but
+ * are still clamped — no tank holds more than its capacity.
+ *
+ * Pure and exported so the behaviour is testable without a database.
+ */
+export function reconcileFuelForNewTank(
+  gallons: number | null,
+  source: FuelDataSource | null,
+  oldCapacity: number | null,
+  newCapacity: number | null,
+): number | null {
+  if (gallons == null) return null;
+  if (newCapacity == null || !(newCapacity > 0)) return gallons;
+
+  const fractional = source === 'MANUAL_GAUGE' || source === 'MANUAL_PERCENT';
+  const scaled = fractional && oldCapacity != null && oldCapacity > 0
+    ? gallons * (newCapacity / oldCapacity)
+    : gallons;
+
+  return Math.round(Math.min(scaled, newCapacity) * 1_000_000) / 1_000_000;
+}

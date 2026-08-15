@@ -93,18 +93,25 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
   // just noise, so surface an Upcoming state instead.
   const isUpcoming = session.pickupDateTime != null && new Date(session.pickupDateTime).getTime() > Date.now();
 
-  // Whether we know ANY real fuel figure for this car yet.
+  // Is there a fuel figure at all? Pickup level is optional at setup, so a
+  // rental of any age can have none.
+  const hasFuelReading = session.currentFuelGallons != null || session.pickupFuelGallons != null;
+
+  // Whether to render live fuel state: the gauge, the current/target figures,
+  // and the needs-fuel / ✓ verdict.
   //
-  // Without this the dashboard invents facts: gallonsNeeded(null ?? 0, null ?? 0)
-  // is 0, which rendered a green "✓ No fuel needed" for a car the renter hasn't
-  // collected, above a gauge drawn at 0% that reads as "the tank is empty."
-  // Both are false, and the ✓ is the dangerous one — it's the app telling
-  // someone they're clear to return.
+  // Two separate ways this went wrong. With no reading at all,
+  // gallonsNeeded(null ?? 0, null ?? 0) is 0, so a green "✓ No fuel needed"
+  // appeared over a gauge drawn at 0% — reading as an empty tank AND a clean
+  // bill of health simultaneously, both invented.
   //
-  // Keyed off the fuel figures rather than isUpcoming on purpose: a rental
-  // that has already started can also have a blank pickup level (it's optional
-  // at setup), and we don't know that car's fuel either.
-  const fuelKnown = session.currentFuelGallons != null || session.pickupFuelGallons != null;
+  // And an UPCOMING rental has no live state even when a pickup level was
+  // recorded ahead of time (an agreement can promise "full at pickup"): until
+  // the car is collected there is no current level to compare against, so a
+  // "you're at or above the required return level" verdict describes a car
+  // nobody is holding. Being told you're clear to return a vehicle you
+  // haven't picked up is nonsense at best and a fuel charge at worst.
+  const showLiveFuel = hasFuelReading && !isUpcoming;
 
   const bodyType = inferBodyType({
     model:       session.vehicleModel,
@@ -181,11 +188,11 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
               no data behind it. Say what's true instead. */}
           <span className={`text-[10px] font-black px-2.5 py-1 rounded-full ${
             isUpcoming ? 'bg-white/90 text-slate-700'
-            : !fuelKnown ? 'bg-white/25 text-white'
+            : !showLiveFuel ? 'bg-white/25 text-white'
             : statusConfig.chip
           }`}>
             {isUpcoming ? t.rentalReturn.statusUpcoming
-             : !fuelKnown ? t.rentalReturn.statusFuelNotSet
+             : !showLiveFuel ? t.rentalReturn.statusFuelNotSet
              : statusConfig.label}
           </span>
           {isUpcoming && session.pickupDateTime && (
@@ -207,7 +214,7 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
       {/* Fuel level — visual gauge + the one number that matters */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-3">
         {/* Tank bar: filled = current fuel, marker = required return level */}
-        {tankCapacity > 0 && fuelKnown && (
+        {tankCapacity > 0 && showLiveFuel && (
           <div>
             <div className="relative h-7 rounded-xl bg-slate-100 overflow-hidden">
               <div
@@ -242,7 +249,7 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
           </div>
         )}
 
-        {fuelKnown && (
+        {showLiveFuel && (
         <div className="grid grid-cols-2 gap-3 text-center">
           <div className="bg-slate-50 rounded-xl py-2">
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{t.rentalReturn.currentEstimated}</p>
@@ -258,13 +265,21 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
           <p className="text-[10px] text-slate-400 text-center">{fuelSourceLabel(session.currentFuelSource as FuelDataSource)}</p>
         )}
 
-        {!fuelKnown ? (
+        {!showLiveFuel ? (
           /* No invented numbers: no gauge, no "✓", no gallons figure. Just
              what we actually know and the one action that resolves it. */
           <div className="bg-blue-50 border border-blue-200 rounded-xl px-3 py-3 text-center">
-            <p className="text-sm font-black text-blue-800">{t.rentalReturn.fuelUnknownTitle}</p>
+            <p className="text-sm font-black text-blue-800">
+              {isUpcoming && hasFuelReading
+                ? t.rentalReturn.fuelPendingPickupTitle
+                : t.rentalReturn.fuelUnknownTitle}
+            </p>
             <p className="text-[11px] text-blue-600 leading-snug mt-0.5">
-              {isUpcoming ? t.rentalReturn.fuelUnknownUpcomingHint : t.rentalReturn.fuelUnknownHint}
+              {isUpcoming && hasFuelReading
+                ? t.rentalReturn.fuelPendingPickupHint(formatGallons(session.pickupFuelGallons, session.pickupFuelSource as FuelDataSource))
+                : isUpcoming
+                  ? t.rentalReturn.fuelUnknownUpcomingHint
+                  : t.rentalReturn.fuelUnknownHint}
             </p>
           </div>
         ) : needed > 0 ? (
@@ -279,7 +294,7 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
           </div>
         )}
 
-        {fuelKnown && (
+        {showLiveFuel && (
         <button onClick={() => setShowUpdateFuel((v) => !v)} className="w-full text-xs font-bold text-blue-600 hover:text-blue-800">
           {t.rentalReturn.updateCurrentFuel}
         </button>

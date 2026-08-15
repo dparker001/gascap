@@ -4,7 +4,7 @@
  */
 import { prisma } from './prisma';
 import type { RefuelLogEntry, FuelDataSource } from './rentalProvider';
-import { gallonsNeeded, resolveRequiredReturnFuel, returnReadyStatus, type ReturnPolicyType, type ReturnReadyStatus } from './rentalCalculations';
+import { gallonsNeeded, resolveRequiredReturnFuel, returnReadyStatus, reconcileFuelForNewTank, type ReturnPolicyType, type ReturnReadyStatus } from './rentalCalculations';
 
 export interface RentalSession {
   id:                          string;
@@ -219,6 +219,54 @@ export async function updateRentalSession(userId: string, id: string, input: Upd
   if (input.returnLatitude    !== undefined) data.returnLatitude    = input.returnLatitude;
   if (input.returnLongitude   !== undefined) data.returnLongitude   = input.returnLongitude;
   if (input.notes             !== undefined) data.notes             = input.notes;
+
+  // ── Tank capacity changed: reconcile the fuel figures ────────────────────
+  //
+  // Every stored level is in GALLONS, but a gauge or percent entry is really a
+  // FRACTION of a specific tank — the gallons were derived from a capacity
+  // that may no longer apply. Swapping the vehicle (a common correction: the
+  // renter picks the right trim, or the EPA lookup is fixed) left the old
+  // gallons in place, producing states like "~24.5 gal" on a 14 gal tank:
+  // 7/8 of the previous 28-gallon vehicle, displayed as an over-full tank and
+  // a satisfied return target.
+  //
+  // Gauge/percent readings are rescaled so the FRACTION the renter actually
+  // observed is preserved — that, not the gallon figure, was their input.
+  // Absolute entries (typed gallons, a receipt) are left alone but clamped,
+  // since a tank cannot hold more than its capacity either way.
+  const newCap = (data.fuelTankCapacityGallons ?? existing.fuelTankCapacityGallons) as number | null;
+  const oldCap = existing.fuelTankCapacityGallons;
+  const capChanged =
+    data.fuelTankCapacityGallons !== undefined &&
+    newCap != null && oldCap != null && newCap > 0 && oldCap > 0 && newCap !== oldCap;
+
+  if (capChanged && newCap != null && oldCap != null) {
+    const reconcile = (gallons: number | null, source: string | null): number | null =>
+      reconcileFuelForNewTank(gallons, source as FuelDataSource | null, oldCap, newCap);
+
+    // Only touch values the caller didn't explicitly set in this same request —
+    // an explicit value is the user's current intent and outranks a rescale.
+    if (input.pickupFuelGallons === undefined) {
+      data.pickupFuelGallons = reconcile(
+        existing.pickupFuelGallons,
+        (data.pickupFuelSource ?? existing.pickupFuelSource) as string | null,
+      );
+    }
+    if (input.currentFuelGallons === undefined) {
+      data.currentFuelGallons = reconcile(
+        existing.currentFuelGallons,
+        (data.currentFuelSource ?? existing.currentFuelSource) as string | null,
+      );
+    }
+    if (input.requiredReturnFuelGallons === undefined && data.requiredReturnFuelGallons === undefined) {
+      // The target follows whatever policy produced it; under same-as-pickup
+      // it tracks the reconciled pickup level, otherwise just clamp it.
+      const policy = (effectivePolicy ?? 'same_as_pickup');
+      data.requiredReturnFuelGallons = policy === 'same_as_pickup'
+        ? (data.pickupFuelGallons ?? reconcile(existing.pickupFuelGallons, (existing.pickupFuelSource as string | null)))
+        : reconcile(existing.requiredReturnFuelGallons, null);
+    }
+  }
 
   const row = await prisma.rentalSession.update({ where: { id }, data });
   return toRentalSession(row);

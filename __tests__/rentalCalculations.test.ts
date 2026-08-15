@@ -10,6 +10,7 @@ import {
   roundCurrency,
   roundGallons,
   refuelTotals,
+  reconcileFuelForNewTank,
   rentalRecap,
 } from '../lib/rentalCalculations';
 import { gallonsFromGaugeFraction, gallonsFromPercent } from '../lib/rentalProvider';
@@ -299,5 +300,56 @@ describe('unknown fuel is not zero fuel', () => {
     expect(formatGallons(null, 'MANUAL_GAUGE')).toBe('—');
     expect(formatGallons(undefined, null)).toBe('—');
     expect(formatGallons(0, 'MANUAL_GAUGE')).toBe('~0 gal');
+  });
+});
+
+// ── Tank capacity changes (regression) ──────────────────────────────────────
+// Reported from the app: "~24.5 gal" shown on a 14 gal tank. The rental was
+// created against a ~28 gal vehicle at 7/8, then the vehicle was corrected to
+// a 14 gal one — the capacity changed and the gallons didn't, so the gauge
+// rendered over-full and the return target read as already satisfied.
+describe('reconcileFuelForNewTank', () => {
+  it('reproduces and fixes the reported 24.5-on-a-14 case', () => {
+    expect(reconcileFuelForNewTank(24.5, 'MANUAL_GAUGE', 28, 14)).toBe(12.25); // 7/8 of 14
+  });
+
+  it('preserves the observed FRACTION for gauge and percent entries', () => {
+    expect(reconcileFuelForNewTank(7.5, 'MANUAL_GAUGE', 15, 20)).toBe(10);     // 1/2 stays 1/2
+    expect(reconcileFuelForNewTank(5, 'MANUAL_PERCENT', 20, 10)).toBe(2.5);    // 25% stays 25%
+  });
+
+  it('leaves absolute entries alone when they still fit', () => {
+    // A typed figure or a receipt is a real quantity, not a fraction — the
+    // number the user stated is still the number they put in.
+    expect(reconcileFuelForNewTank(9, 'MANUAL_GALLONS', 28, 14)).toBe(9);
+    expect(reconcileFuelForNewTank(9, 'RECEIPT', 28, 14)).toBe(9);
+  });
+
+  it('clamps anything that exceeds the new capacity, whatever the source', () => {
+    expect(reconcileFuelForNewTank(26, 'MANUAL_GALLONS', 28, 14)).toBe(14);
+    expect(reconcileFuelForNewTank(26, 'RECEIPT', 28, 14)).toBe(14);
+    expect(reconcileFuelForNewTank(27, 'MANUAL_GAUGE', 28, 14)).toBeLessThanOrEqual(14);
+  });
+
+  it('never invents a level where there was none', () => {
+    expect(reconcileFuelForNewTank(null, 'MANUAL_GAUGE', 28, 14)).toBeNull();
+  });
+
+  it('is a no-op when the new capacity is unusable', () => {
+    expect(reconcileFuelForNewTank(12, 'MANUAL_GAUGE', 28, null)).toBe(12);
+    expect(reconcileFuelForNewTank(12, 'MANUAL_GAUGE', 28, 0)).toBe(12);
+  });
+
+  it('clamps rather than dividing by zero when the old capacity is missing', () => {
+    expect(reconcileFuelForNewTank(20, 'MANUAL_GAUGE', null, 14)).toBe(14);
+    expect(reconcileFuelForNewTank(20, 'MANUAL_GAUGE', 0, 14)).toBe(14);
+  });
+
+  it('result never exceeds the new tank — the invariant the bug violated', () => {
+    for (const g of [0, 1, 13.9, 14, 24.5, 100]) {
+      for (const src of ['MANUAL_GAUGE', 'MANUAL_PERCENT', 'MANUAL_GALLONS', 'RECEIPT'] as const) {
+        expect(reconcileFuelForNewTank(g, src, 28, 14)!).toBeLessThanOrEqual(14);
+      }
+    }
   });
 });
