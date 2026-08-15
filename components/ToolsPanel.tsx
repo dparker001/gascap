@@ -110,7 +110,7 @@ export default function ToolsPanel() {
     { id: 'compare', emoji: '🏪', label: t.tools.tabs.compare, authRequired: false, planRequired: undefined },
     { id: 'log',     emoji: '⛽', label: t.tools.tabs.log,     authRequired: true,  planRequired: undefined },
     { id: 'charts',  emoji: '📊', label: t.tools.tabs.charts,  authRequired: true,  planRequired: 'pro'  },
-    { id: 'stats',   emoji: '📈', label: t.tools.tabs.stats,   authRequired: true,  planRequired: undefined },
+    { id: 'stats',   emoji: '📈', label: t.tools.tabs.stats,   authRequired: true,  planRequired: 'pro'  },
     { id: 'service', emoji: '🔧', label: t.tools.tabs.service, authRequired: true,  planRequired: 'pro'  },
     { id: 'share',   emoji: '🔗', label: t.tools.tabs.share,   authRequired: true,  planRequired: undefined },
     { id: 'review',  emoji: '⭐', label: t.tools.tabs.review,  authRequired: true,  planRequired: undefined },
@@ -329,7 +329,7 @@ export default function ToolsPanel() {
 
       {/* Stats */}
       <div role="tabpanel" id="tabpanel-stats" hidden={effectiveTab !== 'stats'}>
-        {effectiveTab === 'stats' && session && (
+        {effectiveTab === 'stats' && session && isPro && (
           <div className="space-y-3">
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-4 py-3.5 overflow-hidden">
               <ToolHeader
@@ -345,6 +345,7 @@ export default function ToolsPanel() {
             <WorstFillup />
           </div>
         )}
+        {effectiveTab === 'stats' && session && !isPro && <UpgradePrompt feature={t.toolsPrompts.statsLabel} />}
         {effectiveTab === 'stats' && !session && <SignInPrompt feature={t.toolsPrompts.featureStats} />}
       </div>
 

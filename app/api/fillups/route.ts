@@ -8,6 +8,7 @@ import { NextResponse }     from 'next/server';
 import { getServerSession } from 'next-auth';
 import type { Session }     from 'next-auth';
 import { authOptions }      from '@/lib/auth';
+import { getLivePlan, FREE_MONTHLY_FILLUP_LIMIT } from '@/lib/serverPlan';
 import {
   getFillups,
   addFillup,
@@ -40,6 +41,31 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  // Free tier: capped, not closed.
+  //
+  // Logging is the habit loop MPG, charts and streaks all feed on, so locking
+  // it outright would quietly kill the thing that makes Pro worth renewing.
+  // A monthly allowance keeps the loop alive and still makes the ceiling real.
+  // Counted on the DATE the user assigned the fill-up, matching what History
+  // shows them, so the count they see is the count enforced.
+  const { isPro } = await getLivePlan();
+  if (!isPro) {
+    const month    = new Date().toISOString().slice(0, 7);   // YYYY-MM
+    const existing = await getFillups(userId(session));
+    const used     = existing.filter((f) => f.date.startsWith(month)).length;
+    if (used >= FREE_MONTHLY_FILLUP_LIMIT) {
+      return NextResponse.json(
+        {
+          error: `Free accounts can log ${FREE_MONTHLY_FILLUP_LIMIT} fill-ups a month. Upgrade to Pro for unlimited logging.`,
+          proRequired: true,
+          limit: FREE_MONTHLY_FILLUP_LIMIT,
+          used,
+        },
+        { status: 403 },
+      );
+    }
+  }
 
   const body = await req.json() as Omit<Fillup, 'id' | 'userId' | 'totalCost' | 'createdAt'> & {
     force?:       boolean;

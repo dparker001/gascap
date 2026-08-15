@@ -8,6 +8,7 @@ import { authOptions } from '@/lib/auth';
 import { RENTAL_RETURN_ASSISTANT_ENABLED } from '@/lib/featureFlags';
 import { createRentalSession, getRentalSessionsForUser, type CreateRentalSessionInput } from '@/lib/rentalSessions';
 import { ManualRentalDataProvider } from '@/lib/rentalProvider';
+import { getLivePlan } from '@/lib/serverPlan';
 
 async function requireUserId(): Promise<string | null> {
   const session = await getServerSession(authOptions);
@@ -29,6 +30,19 @@ export async function POST(req: NextRequest) {
   if (!RENTAL_RETURN_ASSISTANT_ENABLED) return NextResponse.json({ error: 'Not available' }, { status: 404 });
   const userId = await requireUserId();
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  // Pro gate — STARTING a rental requires Pro. Reading, updating, refuelling
+  // and completing an existing one deliberately stay open: a trial that lapses
+  // mid-rental must not strand someone with a car to return and no numbers,
+  // which is the exact moment this feature exists for. Every new signup gets
+  // 30 days of Pro, so a first-time renter is never blocked here.
+  const { isPro } = await getLivePlan();
+  if (!isPro) {
+    return NextResponse.json(
+      { error: 'Starting a rental requires GasCap\u2122 Pro.', proRequired: true },
+      { status: 403 },
+    );
+  }
 
   const body = await req.json().catch(() => null);
   if (!body) return NextResponse.json({ error: 'Invalid body' }, { status: 400 });

@@ -19,6 +19,8 @@ import type { RentalSession } from '@/lib/rentalSessions';
 
 export default function RentalReturnPage() {
   const { data: authSession, status } = useSession();
+  const plan = (authSession?.user as { plan?: string } | undefined)?.plan ?? 'free';
+  const isPro = plan === 'pro' || plan === 'fleet' || plan === 'lifetime';
   const router = useRouter();
   const { t } = useTranslation();
   const [sessions, setSessions] = useState<RentalSession[]>([]);
@@ -88,12 +90,28 @@ export default function RentalReturnPage() {
           <p className="text-sm text-slate-500 mt-1">{t.rentalReturn.pageSubtitle}</p>
         </div>
 
-        <button
-          onClick={() => setMode('setup')}
-          className="w-full py-3.5 rounded-2xl bg-blue-600 text-white text-sm font-black"
-        >
-          + {t.rentalReturn.newRental}
-        </button>
+        {/* Pro gate on STARTING a rental only. Sessions already underway stay
+            fully usable below — a lapsed trial must never leave someone with a
+            car to return and no numbers. The server enforces the same rule. */}
+        {isPro ? (
+          <button
+            onClick={() => setMode('setup')}
+            className="w-full py-3.5 rounded-2xl bg-blue-600 text-white text-sm font-black"
+          >
+            + {t.rentalReturn.newRental}
+          </button>
+        ) : (
+          <div className="bg-white rounded-2xl border-2 border-amber-200 shadow-sm px-5 py-6 text-center space-y-2.5">
+            <p className="text-2xl">⭐</p>
+            <p className="text-sm font-black text-slate-700">{t.rentalReturn.proToStartTitle}</p>
+            <p className="text-[11px] text-slate-500 leading-relaxed max-w-[280px] mx-auto">
+              {t.rentalReturn.proToStartBody}
+            </p>
+            <a href="/upgrade" className="inline-block mt-1 px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-white text-sm font-black rounded-2xl transition-colors">
+              {t.rentalReturn.proToStartCta}
+            </a>
+          </div>
+        )}
 
         {sessions.length > 0 && (
           <div className="space-y-2">
