@@ -51,6 +51,7 @@ export async function POST(req: NextRequest) {
   const input: CreateRentalSessionInput = {
     rentalCompany:              normalized.rentalCompany,
     rentalAgreementNumber:      body.rentalAgreementNumber,
+    rentalConfirmationNumber:   body.rentalConfirmationNumber,
     vehicleId:                  body.vehicleId,
     vehicleYear:                body.vehicleYear,
     vehicleMake:                body.vehicleMake,

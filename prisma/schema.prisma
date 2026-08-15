@@ -462,7 +462,11 @@ model RentalSession {
   status                      String   @default("active")  // 'active' | 'completed' | 'cancelled'
 
   rentalCompany                String
+  // Companies differ on which identifier they print: Hertz uses a
+  // confirmation number, Avis issues both. Store them separately rather
+  // than forcing one field to mean either.
   rentalAgreementNumber        String?
+  rentalConfirmationNumber     String?
 
   vehicleYear                  String?
   vehicleMake                  String?

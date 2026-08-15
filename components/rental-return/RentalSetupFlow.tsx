@@ -15,6 +15,7 @@ import RentalVehicleLookup from '@/components/RentalVehicleLookup';
 import RentalVinLookup from '@/components/RentalVinLookup';
 import ReturnLocationInput from './ReturnLocationInput';
 import PhotoCaptureButton from './PhotoCaptureButton';
+import AgreementScanButton, { type ScannedAgreementFields } from './AgreementScanButton';
 
 const GAUGE_OPTIONS = ['Full', '7/8', '3/4', '5/8', '1/2', '3/8', '1/4', '1/8', 'Empty'];
 
@@ -35,6 +36,7 @@ export default function RentalSetupFlow({ onCreated, onCancel }: Props) {
   const [rentalCompany, setRentalCompany] = useState('');
   const [customCompany, setCustomCompany] = useState('');
   const [agreementNumber, setAgreementNumber] = useState('');
+  const [confirmationNumber, setConfirmationNumber] = useState('');
 
   // Step 2 — lookup is the primary path (know-exact-car, matches the
   // calculator's proven UX); manual entry is the fallback for renters who
@@ -54,6 +56,35 @@ export default function RentalSetupFlow({ onCreated, onCancel }: Props) {
     if (details.trim) setVehicleTrim(details.trim);
     setTankCapacity(String(details.tankEst));
     setVehicleResolvedLabel(`${details.year} ${details.make} ${details.model}${details.trim ? ' ' + details.trim : ''}`);
+  }
+
+  /** Pre-fill from a scanned agreement. Only overwrites fields the scan
+   *  actually found, so a partial scan never wipes something already typed.
+   *  The company only auto-selects when it matches a known chip — a freeform
+   *  name goes through the "Other" path rather than silently not matching. */
+  function handleScanned(f: ScannedAgreementFields) {
+    if (f.rentalCompany) {
+      const match = RENTAL_COMPANIES.find(
+        (c) => c.toLowerCase() === f.rentalCompany!.toLowerCase().trim(),
+      );
+      if (match) {
+        setRentalCompany(match);
+      } else {
+        setRentalCompany('Other');
+        setCustomCompany(f.rentalCompany);
+      }
+    }
+    if (f.rentalAgreementNumber)    setAgreementNumber(f.rentalAgreementNumber);
+    if (f.rentalConfirmationNumber) setConfirmationNumber(f.rentalConfirmationNumber);
+    if (f.vehicleYear)  setVehicleYear(f.vehicleYear);
+    if (f.vehicleMake)  { setVehicleMake(f.vehicleMake); setVehicleEntryMode('manual'); }
+    if (f.vehicleModel) setVehicleModel(f.vehicleModel);
+    if (f.returnLocation) setReturnLocation(f.returnLocation);
+    // datetime-local needs exactly "YYYY-MM-DDTHH:mm"
+    if (f.returnDateTime && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(f.returnDateTime)) {
+      setReturnDateTime(f.returnDateTime.slice(0, 16));
+    }
+    if (f.rentalFuelChargePerGallon != null) setRentalRate(String(f.rentalFuelChargePerGallon));
   }
 
   // Step 3 — pickup fuel
@@ -114,6 +145,7 @@ export default function RentalSetupFlow({ onCreated, onCancel }: Props) {
         body: JSON.stringify({
           rentalCompany: company,
           rentalAgreementNumber: agreementNumber.trim() || undefined,
+          rentalConfirmationNumber: confirmationNumber.trim() || undefined,
           vehicleYear: vehicleYear || undefined,
           vehicleMake, vehicleModel,
           vehicleTrim: vehicleTrim || undefined,
@@ -168,6 +200,14 @@ export default function RentalSetupFlow({ onCreated, onCancel }: Props) {
       {/* Step 1 — Rental company */}
       {step === 1 && (
         <div className="space-y-3">
+          {/* Shortcut: scan the agreement and let it fill in the rest. Purely
+              optional — every field it touches stays editable. */}
+          <AgreementScanButton onScanned={handleScanned} />
+          <div className="flex items-center gap-2">
+            <div className="flex-1 h-px bg-slate-200" />
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{t.rentalReturn.orEnterManually}</span>
+            <div className="flex-1 h-px bg-slate-200" />
+          </div>
           <div className="grid grid-cols-2 gap-2">
             {RENTAL_COMPANIES.map((c) => (
               <button
@@ -188,15 +228,28 @@ export default function RentalSetupFlow({ onCreated, onCancel }: Props) {
               className="input-field"
             />
           )}
-          <div>
-            <label className="field-label">{t.rentalReturn.agreementNumberLabel}</label>
-            <input
-              type="text" placeholder={t.rentalReturn.agreementNumberPlaceholder}
-              value={agreementNumber} onChange={(e) => setAgreementNumber(e.target.value)}
-              className="input-field"
-            />
-            <p className="text-[11px] text-slate-400 mt-1">{t.rentalReturn.agreementNumberHint}</p>
+          {/* Companies differ on which they print — Hertz gives a
+              confirmation number, Avis often both. Offer both; neither
+              required. */}
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="field-label">{t.rentalReturn.agreementNumberLabel}</label>
+              <input
+                type="text" placeholder={t.rentalReturn.agreementNumberPlaceholder}
+                value={agreementNumber} onChange={(e) => setAgreementNumber(e.target.value)}
+                className="input-field"
+              />
+            </div>
+            <div>
+              <label className="field-label">{t.rentalReturn.confirmationNumberLabel}</label>
+              <input
+                type="text" placeholder={t.rentalReturn.confirmationNumberPlaceholder}
+                value={confirmationNumber} onChange={(e) => setConfirmationNumber(e.target.value)}
+                className="input-field"
+              />
+            </div>
           </div>
+          <p className="text-[11px] text-slate-400 -mt-1">{t.rentalReturn.agreementNumberHint}</p>
         </div>
       )}
 

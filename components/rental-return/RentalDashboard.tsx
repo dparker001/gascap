@@ -16,6 +16,7 @@ import CompleteRentalModal from './CompleteRentalModal';
 import FindGasNearReturn from './FindGasNearReturn';
 import EditRentalModal from './EditRentalModal';
 import VehicleBodyIcon from './VehicleBodyIcon';
+import RentalVehicleAvatar from './RentalVehicleAvatar';
 import { inferBodyType } from '@/lib/vehicleBodyType';
 
 const GAUGE_OPTIONS = ['Full', '7/8', '3/4', '5/8', '1/2', '3/8', '1/4', '1/8', 'Empty'];
@@ -101,19 +102,26 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
         />
 
         <div className="relative flex items-start gap-3">
-          <div className="flex-shrink-0 w-11 h-11 rounded-2xl bg-white/15 backdrop-blur-sm flex items-center justify-center">
-            <VehicleBodyIcon bodyType={bodyType} className="w-7 h-7 text-white" />
-          </div>
+          <RentalVehicleAvatar make={session.vehicleMake} bodyType={bodyType} />
 
           <div className="flex-1 min-w-0">
             <p className="text-sm font-black leading-tight truncate">{session.rentalCompany}</p>
             <p className="text-[11px] text-white/70 truncate">
               {[session.vehicleYear, session.vehicleMake, session.vehicleModel].filter(Boolean).join(' ') || t.rentalReturn.vehicleUnknown}
             </p>
-            {session.rentalAgreementNumber && (
-              <p className="text-[10px] text-white/60 font-mono mt-1 truncate">
-                {t.rentalReturn.agreementNumberShort} {session.rentalAgreementNumber}
-              </p>
+            {(session.rentalAgreementNumber || session.rentalConfirmationNumber) && (
+              <div className="mt-1 space-y-0.5">
+                {session.rentalAgreementNumber && (
+                  <p className="text-[10px] text-white/60 font-mono truncate">
+                    {t.rentalReturn.agreementNumberShort} {session.rentalAgreementNumber}
+                  </p>
+                )}
+                {session.rentalConfirmationNumber && (
+                  <p className="text-[10px] text-white/60 font-mono truncate">
+                    {t.rentalReturn.confirmationNumberShort} {session.rentalConfirmationNumber}
+                  </p>
+                )}
+              </div>
             )}
           </div>
 

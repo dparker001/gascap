@@ -10,6 +10,7 @@ import { checkTankSize } from '@/lib/tankValidation';
 import { compressImageForUpload } from '@/lib/imageUtils';
 import { GarageDoor }                        from './GarageDoor';
 import { useGarageDoorPrefs }                from '@/hooks/useGarageDoorPrefs';
+import { getMakeLogoUrl }                    from '@/lib/makeLogo';
 
 
 export interface Vehicle {
@@ -67,24 +68,7 @@ function LockIcon({ className }: { className?: string }) {
 }
 
 // ── Manufacturer logo ────────────────────────────────────────────────────
-// Source: filippofilip95/car-logos-dataset via jsDelivr CDN (387 brands, no API key)
-// URL pattern: https://cdn.jsdelivr.net/gh/filippofilip95/car-logos-dataset@master/logos/thumb/{slug}.png
-
-// Overrides where the make name doesn't map cleanly to the dataset slug
-const MAKE_SLUG_OVERRIDES: Record<string, string> = {
-  'chevy':           'chevrolet',
-  'vw':              'volkswagen',
-  'mercedes':        'mercedes-benz',
-  'alfa romeo':      'alfa-romeo',
-  'land rover':      'land-rover',
-  'aston martin':    'aston-martin',
-};
-
-function getMakeLogoUrl(make: string): string {
-  const key  = make.toLowerCase().trim();
-  const slug = MAKE_SLUG_OVERRIDES[key] ?? key.replace(/\s+/g, '-');
-  return `https://cdn.jsdelivr.net/gh/filippofilip95/car-logos-dataset@master/logos/thumb/${slug}.png`;
-}
+// getMakeLogoUrl lives in lib/makeLogo.ts — shared with the Rental Return Assistant.
 
 function MakeLogo({ make, selected }: { make: string; selected: boolean }) {
   const [failed, setFailed] = useState(false);

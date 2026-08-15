@@ -14,6 +14,7 @@ export interface RentalSession {
   status:                      'active' | 'completed' | 'cancelled';
   rentalCompany:               string;
   rentalAgreementNumber:       string | null;
+  rentalConfirmationNumber:    string | null;
   vehicleYear:                 string | null;
   vehicleMake:                 string | null;
   vehicleModel:                string | null;
@@ -63,6 +64,7 @@ function toRentalSession(row: any): RentalSession {
 export interface CreateRentalSessionInput {
   rentalCompany:             string;
   rentalAgreementNumber?:    string;
+  rentalConfirmationNumber?: string;
   vehicleId?:                string;
   vehicleYear?:              string;
   vehicleMake?:              string;
@@ -105,6 +107,7 @@ export async function createRentalSession(userId: string, input: CreateRentalSes
       status:                  'active',
       rentalCompany:           input.rentalCompany,
       rentalAgreementNumber:   input.rentalAgreementNumber ?? null,
+      rentalConfirmationNumber: input.rentalConfirmationNumber ?? null,
       vehicleYear:             input.vehicleYear ?? null,
       vehicleMake:             input.vehicleMake ?? null,
       vehicleModel:            input.vehicleModel ?? null,
@@ -153,6 +156,7 @@ export async function getRentalSession(userId: string, id: string): Promise<Rent
 export interface UpdateRentalSessionInput {
   rentalCompany?:              string;
   rentalAgreementNumber?:      string;
+  rentalConfirmationNumber?:   string;
   vehicleYear?:                string;
   vehicleMake?:                string;
   vehicleModel?:               string;
@@ -179,6 +183,7 @@ export async function updateRentalSession(userId: string, id: string, input: Upd
   const data: Record<string, any> = { updatedAt: now };
   if (input.rentalCompany         !== undefined) data.rentalCompany         = input.rentalCompany;
   if (input.rentalAgreementNumber !== undefined) data.rentalAgreementNumber = input.rentalAgreementNumber;
+  if (input.rentalConfirmationNumber !== undefined) data.rentalConfirmationNumber = input.rentalConfirmationNumber;
   if (input.vehicleYear           !== undefined) data.vehicleYear           = input.vehicleYear;
   if (input.vehicleMake           !== undefined) data.vehicleMake           = input.vehicleMake;
   if (input.vehicleModel          !== undefined) data.vehicleModel          = input.vehicleModel;
