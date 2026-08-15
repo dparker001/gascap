@@ -11,6 +11,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTranslation } from '@/contexts/LanguageContext';
 import BrandBar from '@/components/BrandBar';
+import BackToCalculatorBar from '@/components/rental-return/BackToCalculatorBar';
 import RentalSetupFlow from '@/components/rental-return/RentalSetupFlow';
 import { trackRentalAssistantOpened, trackRentalSessionCreated } from '@/lib/gtag';
 import type { RentalSession } from '@/lib/rentalSessions';
@@ -40,7 +41,8 @@ export default function RentalReturnPage() {
     return (
       <div className="min-h-screen bg-[#eef1f7]">
         <BrandBar />
-        <div className="pt-24 px-4"><div className="h-32 bg-white rounded-2xl animate-pulse max-w-lg mx-auto" /></div>
+        <BackToCalculatorBar />
+        <div className="px-4"><div className="h-32 bg-white rounded-2xl animate-pulse max-w-lg mx-auto" /></div>
       </div>
     );
   }
@@ -49,7 +51,8 @@ export default function RentalReturnPage() {
     return (
       <div className="min-h-screen bg-[#eef1f7]">
         <BrandBar />
-        <div className="pt-28 px-4 text-center max-w-sm mx-auto">
+        <BackToCalculatorBar />
+        <div className="px-4 text-center max-w-sm mx-auto">
           <p className="text-sm text-slate-500 mb-4">{t.rentalReturn.signInRequired}</p>
           <Link href="/signin?next=/rental-return" className="inline-block px-6 py-3 rounded-2xl bg-[#005F4A] text-white font-black text-sm">
             {t.rentalReturn.signIn}
@@ -63,7 +66,8 @@ export default function RentalReturnPage() {
     return (
       <div className="min-h-screen bg-[#eef1f7]">
         <BrandBar />
-        <div className="pt-24">
+        <BackToCalculatorBar />
+        <div>
           <RentalSetupFlow
             onCreated={(id) => { trackRentalSessionCreated(); router.push(`/rental-return/${id}`); }}
             onCancel={() => setMode('list')}
@@ -76,7 +80,8 @@ export default function RentalReturnPage() {
   return (
     <div className="min-h-screen bg-[#eef1f7]">
       <BrandBar />
-      <div className="pt-24 px-4 max-w-lg mx-auto pb-8 space-y-4">
+      <BackToCalculatorBar />
+      <div className="px-4 max-w-lg mx-auto pb-8 space-y-4">
         <div className="text-center mb-2">
           <h1 className="text-xl font-black text-navy-700">{t.rentalReturn.pageTitle}</h1>
           <p className="text-sm text-slate-500 mt-1">{t.rentalReturn.pageSubtitle}</p>

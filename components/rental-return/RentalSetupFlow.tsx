@@ -11,6 +11,8 @@ import { useTranslation } from '@/contexts/LanguageContext';
 import { RENTAL_COMPANIES, gallonsFromGaugeFraction, gallonsFromPercent } from '@/lib/rentalProvider';
 import type { FuelDataSource } from '@/lib/rentalProvider';
 import type { ReturnPolicyType } from '@/lib/rentalCalculations';
+import RentalVehicleLookup from '@/components/RentalVehicleLookup';
+import RentalVinLookup from '@/components/RentalVinLookup';
 
 const GAUGE_OPTIONS = ['Full', '7/8', '3/4', '5/8', '1/2', '3/8', '1/4', '1/8', 'Empty'];
 
@@ -31,12 +33,25 @@ export default function RentalSetupFlow({ onCreated, onCancel }: Props) {
   const [rentalCompany, setRentalCompany] = useState('');
   const [customCompany, setCustomCompany] = useState('');
 
-  // Step 2
+  // Step 2 — lookup is the primary path (know-exact-car, matches the
+  // calculator's proven UX); manual entry is the fallback for renters who
+  // don't know the exact trim or whose vehicle isn't in EPA's database.
+  const [vehicleEntryMode, setVehicleEntryMode] = useState<'lookup' | 'manual'>('lookup');
   const [vehicleYear,  setVehicleYear]  = useState('');
   const [vehicleMake,  setVehicleMake]  = useState('');
   const [vehicleModel, setVehicleModel] = useState('');
   const [vehicleTrim,  setVehicleTrim]  = useState('');
   const [tankCapacity, setTankCapacity] = useState('');
+  const [vehicleResolvedLabel, setVehicleResolvedLabel] = useState('');
+
+  function handleVehicleResolved(details: { year: string; make: string; model: string; trim?: string; tankEst: number }) {
+    setVehicleYear(details.year);
+    setVehicleMake(details.make);
+    setVehicleModel(details.model);
+    if (details.trim) setVehicleTrim(details.trim);
+    setTankCapacity(String(details.tankEst));
+    setVehicleResolvedLabel(`${details.year} ${details.make} ${details.model}${details.trim ? ' ' + details.trim : ''}`);
+  }
 
   // Step 3 — pickup fuel
   const [pickupMethod, setPickupMethod] = useState<FuelInputMethod>('gauge');
@@ -162,17 +177,54 @@ export default function RentalSetupFlow({ onCreated, onCancel }: Props) {
       {/* Step 2 — Vehicle */}
       {step === 2 && (
         <div className="space-y-3">
-          <div className="grid grid-cols-3 gap-2">
-            <input type="text" placeholder={t.rentalReturn.year} value={vehicleYear} onChange={(e) => setVehicleYear(e.target.value)} className="input-field col-span-1" />
-            <input type="text" placeholder={t.rentalReturn.make} value={vehicleMake} onChange={(e) => setVehicleMake(e.target.value)} className="input-field col-span-2" />
-          </div>
-          <input type="text" placeholder={t.rentalReturn.model} value={vehicleModel} onChange={(e) => setVehicleModel(e.target.value)} className="input-field" />
-          <input type="text" placeholder={t.rentalReturn.trimOptional} value={vehicleTrim} onChange={(e) => setVehicleTrim(e.target.value)} className="input-field" />
-          <div>
-            <label className="field-label">{t.rentalReturn.tankCapacity}</label>
-            <input type="number" inputMode="decimal" min="1" max="60" step="0.1" placeholder="15.0" value={tankCapacity} onChange={(e) => setTankCapacity(e.target.value)} className="input-field" />
-            <p className="text-[11px] text-slate-400 mt-1">{t.rentalReturn.tankCapacityHint}</p>
-          </div>
+          {vehicleEntryMode === 'lookup' ? (
+            <>
+              <RentalVehicleLookup
+                onTankSize={() => {}}
+                onVehicleResolved={handleVehicleResolved}
+              />
+              <RentalVinLookup
+                onTankSize={() => {}}
+                onVehicleResolved={handleVehicleResolved}
+              />
+              {vehicleResolvedLabel && (
+                <div className="flex items-center justify-between gap-2 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2.5">
+                  <div className="min-w-0">
+                    <p className="text-xs font-black text-emerald-800 truncate">{vehicleResolvedLabel}</p>
+                    <p className="text-[11px] text-emerald-600">{t.rentalReturn.tankCapacityResolved(tankCapacity)}</p>
+                  </div>
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={() => setVehicleEntryMode('manual')}
+                className="text-[11px] font-bold text-blue-600 hover:text-blue-800"
+              >
+                {t.rentalReturn.enterVehicleManually}
+              </button>
+            </>
+          ) : (
+            <>
+              <div className="grid grid-cols-3 gap-2">
+                <input type="text" placeholder={t.rentalReturn.year} value={vehicleYear} onChange={(e) => setVehicleYear(e.target.value)} className="input-field col-span-1" />
+                <input type="text" placeholder={t.rentalReturn.make} value={vehicleMake} onChange={(e) => setVehicleMake(e.target.value)} className="input-field col-span-2" />
+              </div>
+              <input type="text" placeholder={t.rentalReturn.model} value={vehicleModel} onChange={(e) => setVehicleModel(e.target.value)} className="input-field" />
+              <input type="text" placeholder={t.rentalReturn.trimOptional} value={vehicleTrim} onChange={(e) => setVehicleTrim(e.target.value)} className="input-field" />
+              <div>
+                <label className="field-label">{t.rentalReturn.tankCapacity}</label>
+                <input type="number" inputMode="decimal" min="1" max="60" step="0.1" placeholder="15.0" value={tankCapacity} onChange={(e) => setTankCapacity(e.target.value)} className="input-field" />
+                <p className="text-[11px] text-slate-400 mt-1">{t.rentalReturn.tankCapacityHint}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setVehicleEntryMode('lookup')}
+                className="text-[11px] font-bold text-blue-600 hover:text-blue-800"
+              >
+                {t.rentalReturn.lookUpVehicleInstead}
+              </button>
+            </>
+          )}
         </div>
       )}
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import FuelGauge     from './FuelGauge';
 import TankPresets   from './TankPresets';
@@ -106,6 +107,7 @@ interface Props {
 // ── Component ──────────────────────────────────────────────────────────
 
 export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
+  const router = useRouter();
   const { data: session, status } = useSession();
   const { t }               = useTranslation();
   const isPro      = ['pro', 'fleet', 'lifetime'].includes((session?.user as { plan?: string })?.plan ?? '');
@@ -146,6 +148,21 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
   const [rentalPickupLevel, setRentalPickupLevel] = useState(100); // % — 100 = full
   const [rentalReturnDate,  setRentalReturnDate]  = useState('');  // YYYY-MM-DD
   const [rentalReturnTime,  setRentalReturnTime]  = useState('');  // HH:MM (24h)
+
+  // Rental Car Return Mode on the gas calculator now hands off entirely to
+  // the persisted Rental Return Assistant (/rental-return) instead of
+  // tinting this page blue and running an ephemeral in-calculator session —
+  // fires for every path that used to turn rentalMode on here (the manual
+  // toggle, account default 'rental', arriving via ?rental=1, and a value
+  // already persisted from before this change). The EV Charge tab's own
+  // rental flow is untouched — it's a separate component with no
+  // equivalent in the new Assistant yet, and reads the same shared
+  // 'gc_rental_mode_active' flag independently, only while it's the
+  // mounted/active tab.
+  useEffect(() => {
+    if (rentalMode) router.push('/rental-return');
+  }, [rentalMode, router]);
+
   const [gasCoords,     setGasCoords]     = useState<{ lat: number; lng: number } | null>(null);
   const [nearbyAttrib,  setNearbyAttrib]  = useState<{ name: string; distanceMi: number; grade: string } | null>(null);
   const [nearbyStatus,  setNearbyStatus]  = useState<'idle' | 'fetching' | 'found' | 'unavailable'>('idle');
@@ -586,6 +603,17 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
   // visible either way. presetLabel/presetSourceKind themselves are
   // untouched — turning Rental Mode back on restores this badge as-is.
   const showPreset  = !!presetLabel && (presetSourceKind === 'dropdown' || rentalMode);
+
+  // Redirecting to /rental-return (see the effect above) — render a brief
+  // neutral placeholder instead of a flash of the old blue-tinted inline UI.
+  if (rentalMode) {
+    return (
+      <div className="pb-2 flex flex-col items-center justify-center min-h-[40vh] gap-3">
+        <span className="w-8 h-8 border-[3px] border-teal-500 border-t-transparent rounded-full animate-spin" />
+        <p className="text-sm text-slate-500">{t.rentalReturn.pageTitle}…</p>
+      </div>
+    );
+  }
 
   return (
     <div className="pb-2">

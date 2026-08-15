@@ -14,6 +14,7 @@ import {
 import type { SavedVehicle } from '@/lib/savedVehicles';
 import { useTranslation } from '@/contexts/LanguageContext';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { trackRentalReturnToggled } from '@/lib/gtag';
 import type { CalcTab } from './CalculatorTabs';
 
 interface Props {
@@ -364,7 +365,26 @@ export default function EvCalculatorForm({ activeTab, setActiveTab }: Props) {
           Previously this only showed a banner telling EV renters to "switch to
           Target Fill" — the GASOLINE calculator, which asks for gallons. EV
           rentals are governed by a required return CHARGE LEVEL, so the inputs
-          live here now. */}
+          live here now.
+
+          This tab needs its OWN toggle: the gas calculator's toggle used to
+          be the only way to set the shared 'gc_rental_mode_active' flag, but
+          it now redirects straight to the persisted Rental Return Assistant
+          instead (which has no EV support yet) — so without a toggle here,
+          EV renters would have had no way to activate this flow at all. */}
+      {!rentalMode && (
+        <button
+          type="button"
+          onClick={() => { setRentalMode(true); trackRentalReturnToggled(true); }}
+          className="w-full flex items-center gap-3 rounded-2xl px-4 py-3 border-2 border-slate-200 hover:border-blue-300 text-slate-600 transition-all"
+        >
+          <span className="text-xl flex-shrink-0" aria-hidden="true">🚗</span>
+          <div className="flex-1 text-left">
+            <p className="text-sm font-black leading-none text-slate-700">{t.calc.rentalModeTitle}</p>
+            <p className="text-[10px] mt-0.5 leading-snug text-slate-400">{t.ev.rentalEvHint}</p>
+          </div>
+        </button>
+      )}
       {rentalMode && (
         <div className="bg-blue-50 border border-blue-200 rounded-2xl px-4 py-3 space-y-3">
           <div className="flex items-center gap-2">

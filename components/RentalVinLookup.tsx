@@ -16,6 +16,10 @@ interface VinResult {
 interface RentalVinLookupProps {
   /** Fired once the VIN decodes to an EPA tank estimate. */
   onTankSize: (gallons: string, label: string) => void;
+  /** Optional — fired alongside onTankSize with the structured fields, for
+   *  callers (like the Rental Return Assistant setup flow) that need
+   *  separate year/make/model/trim rather than just a combined label. */
+  onVehicleResolved?: (details: { year: string; make: string; model: string; trim?: string; tankEst: number }) => void;
 }
 
 /**
@@ -25,7 +29,7 @@ interface RentalVinLookupProps {
  * of asking the renter to pick from a trim list. No "save to garage"
  * semantics — this only ever fills the rental calculator's tank size.
  */
-export default function RentalVinLookup({ onTankSize }: RentalVinLookupProps) {
+export default function RentalVinLookup({ onTankSize, onVehicleResolved }: RentalVinLookupProps) {
   const { t } = useTranslation();
   const [vin,       setVin]       = useState('');
   const [state,     setState]     = useState<'idle' | 'loading' | 'found' | 'error'>('idle');
@@ -75,6 +79,7 @@ export default function RentalVinLookup({ onTankSize }: RentalVinLookupProps) {
       const label = `${data.year} ${data.make} ${data.model}${data.trim ? ' ' + data.trim : ''}`;
       if (data.tankEst != null) {
         onTankSize(String(data.tankEst), label);
+        onVehicleResolved?.({ year: data.year, make: data.make, model: data.model, trim: data.trim ?? undefined, tankEst: data.tankEst });
         setFoundVehicle({ label, tank: String(data.tankEst) });
       } else {
         // Fallback: try a separate EPA lookup if the VIN API's internal EPA lookup failed
@@ -84,6 +89,7 @@ export default function RentalVinLookup({ onTankSize }: RentalVinLookupProps) {
           const epa = await epaRes.json() as { tankEst?: number | null };
           if (epa.tankEst) {
             onTankSize(String(epa.tankEst), label);
+            onVehicleResolved?.({ year: data.year, make: data.make, model: data.model, trim: data.trim ?? undefined, tankEst: epa.tankEst });
             setFoundVehicle({ label, tank: String(epa.tankEst) });
           }
         }

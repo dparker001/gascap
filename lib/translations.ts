@@ -556,6 +556,9 @@ const en = {
     trimOptional:    'Trim (optional)',
     tankCapacity:    'Tank Capacity (gallons)',
     tankCapacityHint: "This is the manufacturer's tank size, not necessarily what's in the tank right now.",
+    tankCapacityResolved: (g: string) => `${g} gal tank`,
+    enterVehicleManually: 'Enter vehicle manually instead',
+    lookUpVehicleInstead: 'Look up vehicle instead',
     methodGauge:     'Gauge',
     methodPercent:   'Percent',
     methodGallons:   'Gallons',
@@ -615,6 +618,7 @@ const en = {
     historyFeeCharged:   (amount: number | null) => amount != null ? `Charged a fuel fee: $${amount.toFixed(2)}` : 'Charged a fuel fee',
     historyNoFee:        'No fuel fee charged',
     backToRentals:       'Back to Rentals',
+    backToCalculator:    'Back to Calculator',
   },
 
   // ── Pricing section ────────────────────────────────────────────────────────
@@ -3472,6 +3476,9 @@ const es: typeof en = {
     trimOptional:    'Versión (opcional)',
     tankCapacity:    'Capacidad del Tanque (galones)',
     tankCapacityHint: 'Este es el tamaño del tanque del fabricante, no necesariamente lo que hay en el tanque ahora mismo.',
+    tankCapacityResolved: (g: string) => `Tanque de ${g} gal`,
+    enterVehicleManually: 'Ingresar vehículo manualmente',
+    lookUpVehicleInstead: 'Buscar el vehículo en su lugar',
     methodGauge:     'Indicador',
     methodPercent:   'Porcentaje',
     methodGallons:   'Galones',
@@ -3531,6 +3538,7 @@ const es: typeof en = {
     historyFeeCharged:   (amount: number | null) => amount != null ? `Se cobró una tarifa de combustible: $${amount.toFixed(2)}` : 'Se cobró una tarifa de combustible',
     historyNoFee:        'No se cobró tarifa de combustible',
     backToRentals:       'Volver a Alquileres',
+    backToCalculator:    'Volver a la Calculadora',
   },
 
   pricing: {

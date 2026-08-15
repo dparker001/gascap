@@ -23,6 +23,10 @@ async function fetchMenu(action: string, params: Record<string, string> = {}): P
 interface RentalVehicleLookupProps {
   /** Fired once a trim resolves to an EPA tank estimate. */
   onTankSize: (gallons: string, label: string) => void;
+  /** Optional — fired alongside onTankSize with the structured fields, for
+   *  callers (like the Rental Return Assistant setup flow) that need
+   *  separate year/make/model rather than just a combined display label. */
+  onVehicleResolved?: (details: { year: string; make: string; model: string; tankEst: number }) => void;
 }
 
 /**
@@ -32,7 +36,7 @@ interface RentalVehicleLookupProps {
  * average (e.g. "Midsize rental — 15.9 gal"), for renters who know exactly
  * what they were handed at the counter.
  */
-export default function RentalVehicleLookup({ onTankSize }: RentalVehicleLookupProps) {
+export default function RentalVehicleLookup({ onTankSize, onVehicleResolved }: RentalVehicleLookupProps) {
   const { t } = useTranslation();
   const [years,  setYears]  = useState<MenuItem[]>([]);
   const [makes,  setMakes]  = useState<MenuItem[]>([]);
@@ -94,6 +98,7 @@ export default function RentalVehicleLookup({ onTankSize }: RentalVehicleLookupP
         if (d.tankEst) {
           const label = `${d.year} ${d.make} ${d.model}`;
           onTankSize(String(d.tankEst), label);
+          onVehicleResolved?.({ year: String(d.year), make: d.make, model: d.model, tankEst: d.tankEst });
           setFoundVehicle({ label, tank: String(d.tankEst) });
         } else {
           setLookupError(true);
