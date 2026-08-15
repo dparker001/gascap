@@ -270,3 +270,28 @@ describe('rentalRecap()', () => {
     expect(recap.savings).toBe(-8.9); // 51.10 − 60
   });
 });
+
+// ── Unknown-fuel guards (regression) ────────────────────────────────────────
+// A rental can legitimately have no fuel figure yet: entered ahead of pickup,
+// or created with the optional pickup level left blank. These document why
+// RentalDashboard gates its gauge and its "✓ No fuel needed" block on
+// `fuelKnown` instead of trusting the numbers these helpers return.
+describe('unknown fuel is not zero fuel', () => {
+  it('gallonsNeeded returns 0 when nothing is known — which must NOT be shown as "no fuel needed"', () => {
+    // This is the trap: the dashboard used `??  0` on both sides and rendered
+    // a green ✓ for a car the renter had not collected.
+    expect(gallonsNeeded(0, 0)).toBe(0);
+  });
+
+  it('returnReadyStatus reports needs_fuel when either side is unknown', () => {
+    expect(returnReadyStatus(null, null)).toBe('needs_fuel');
+    expect(returnReadyStatus(null, 12)).toBe('needs_fuel');
+    expect(returnReadyStatus(12, null)).toBe('needs_fuel');
+  });
+
+  it('formatGallons renders unknown as an em dash, never 0 gal', () => {
+    expect(formatGallons(null, 'MANUAL_GAUGE')).toBe('—');
+    expect(formatGallons(undefined, null)).toBe('—');
+    expect(formatGallons(0, 'MANUAL_GAUGE')).toBe('~0 gal');
+  });
+});
