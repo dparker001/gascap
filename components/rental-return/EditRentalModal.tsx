@@ -29,12 +29,21 @@ export default function EditRentalModal({ session, onClose, onSaved }: Props) {
   const [vehicleMake,   setVehicleMake]   = useState(session.vehicleMake ?? '');
   const [vehicleModel,  setVehicleModel]  = useState(session.vehicleModel ?? '');
   const [vehicleTrim,   setVehicleTrim]   = useState(session.vehicleTrim ?? '');
+  // Collapsed by default, but open from the start when there's no vehicle to
+  // show — a link labelled "change" reads as optional, and a rental with no
+  // vehicle needs one before any tank or gallons figure means anything.
+  const [showVehicleLookup, setShowVehicleLookup] = useState(
+    !(session.vehicleMake || session.vehicleModel),
+  );
   const [tankCapacity,  setTankCapacity]  = useState(String(session.fuelTankCapacityGallons ?? ''));
   function handleVehicleResolved(details: { year: string; make: string; model: string; trim?: string; tankEst: number }) {
     setVehicleYear(details.year);
     setVehicleMake(details.make);
     setVehicleModel(details.model);
     if (details.trim) setVehicleTrim(details.trim);
+    // Fold the lookups away: the chosen vehicle now shows in the card above,
+    // which is the confirmation that the change took.
+    setShowVehicleLookup(false);
     setTankCapacity(String(details.tankEst));
   }
   const [returnPolicy,  setReturnPolicy]  = useState<ReturnPolicyType>(session.requiredReturnPolicyType ?? 'same_as_pickup');
@@ -98,15 +107,19 @@ export default function EditRentalModal({ session, onClose, onSaved }: Props) {
         <p className="text-base font-black text-slate-900">{t.rentalReturn.editRental}</p>
         {error && <p className="text-xs text-red-500">{error}</p>}
 
-        {/* ── Vehicle first: what's currently selected, then how to change it.
-            Identity (year/make/model/trim) is intentionally NOT free-text —
-            it has to come from the EPA lookup or a VIN decode, because a
-            typo'd make/model silently degrades both the tank-size lookup and
-            the body-type inference. Tank size stays editable below, since
-            that's a calculation input a renter may legitimately correct
-            against the actual fuel door. */}
+        {/* ── Vehicle: the one that's saved, and a link to change it.
+            The lookups are collapsed because the common case is opening this
+            modal to fix something else entirely — a rate, a return time — and
+            two expanded lookup widgets pushed all of that below the fold.
+
+            Identity (year/make/model/trim) is intentionally NOT free-text: it
+            has to come from the EPA lookup or a VIN decode, because a typo'd
+            make/model silently degrades both the tank-size lookup and the
+            body-type inference. Tank size stays editable below, since that's
+            a calculation input a renter may legitimately correct against the
+            actual fuel door. */}
         <div className="bg-slate-50 rounded-xl p-3 space-y-2">
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">{t.rentalReturn.currentVehicle}</p>
+          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">{t.rentalReturn.addedVehicle}</p>
           {vehicleMake || vehicleModel ? (
             <div className="bg-white rounded-lg px-3 py-2 border border-slate-200">
               <p className="text-sm font-black text-slate-800">
@@ -118,9 +131,32 @@ export default function EditRentalModal({ session, onClose, onSaved }: Props) {
             <p className="text-[11px] text-slate-400">{t.rentalReturn.vehicleUnknown}</p>
           )}
 
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide pt-1">{t.rentalReturn.changeVehicle}</p>
-          <RentalVehicleLookup onTankSize={() => {}} onVehicleResolved={handleVehicleResolved} />
-          <RentalVinLookup onTankSize={() => {}} onVehicleResolved={handleVehicleResolved} />
+          {!showVehicleLookup ? (
+            <button
+              type="button"
+              onClick={() => setShowVehicleLookup(true)}
+              className="text-[11px] font-bold text-blue-600 hover:text-blue-800 underline underline-offset-2"
+            >
+              {t.rentalReturn.changeOrUpdateVehicle}
+            </button>
+          ) : (
+            <div className="space-y-2 pt-1">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">
+                  {t.rentalReturn.changeVehicle}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowVehicleLookup(false)}
+                  className="text-[11px] font-bold text-slate-500 hover:text-slate-700"
+                >
+                  {t.rentalReturn.cancel}
+                </button>
+              </div>
+              <RentalVehicleLookup onTankSize={() => {}} onVehicleResolved={handleVehicleResolved} />
+              <RentalVinLookup onTankSize={() => {}} onVehicleResolved={handleVehicleResolved} />
+            </div>
+          )}
         </div>
 
         <div>
