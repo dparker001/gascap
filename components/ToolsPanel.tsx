@@ -223,6 +223,18 @@ export default function ToolsPanel() {
             <TripCostEstimator embedded />
           </div>
         )}
+        {effectiveTab === 'trip' && (
+          <a href="/rental-return"
+             className="mt-3 flex items-center justify-between gap-3 bg-navy-700 rounded-2xl px-4 py-3.5 hover:opacity-95 transition-opacity">
+            <div className="min-w-0">
+              <p className="text-sm font-black text-white leading-tight">{t.tools.rentalReturnLinkTitle}</p>
+              <p className="text-[11px] text-white/60 leading-snug mt-0.5">{t.tools.rentalReturnLinkSub}</p>
+            </div>
+            <svg viewBox="0 0 12 12" className="w-4 h-4 flex-shrink-0 text-white/50" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+              <path d="M2 6h8M6 2l4 4-4 4" />
+            </svg>
+          </a>
+        )}
       </div>
 
       {/* Station Comparison */}

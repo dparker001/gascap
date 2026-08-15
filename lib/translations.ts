@@ -840,6 +840,7 @@ const en = {
     rentalModeTitle:        'Rental Car Return Mode',
     rentalModeActive:       'Active — compare pump cost vs. rental company rate',
     rentalModeInactive:     'Tap to calculate refill cost before dropping off a rental',
+    rentalReturnAssistantLinkHint: 'Want to track this whole rental? Try the Rental Return Assistant →',
     rentalRateLabel:        "Rental Company's Gas Rate",
     rentalRateOptional:     '(optional)',
     rentalRateHint:         'If you return the car empty the rental company charges their rate — often $8–12/gal. Enter it to see exactly how much you save by filling up yourself.',
@@ -958,6 +959,8 @@ const en = {
     signInHint:  'Sign in to access this feature',
     ambassadorLinkTitle: 'Ambassador Program',
     ambassadorLinkSub:   'See your tiers, streak & rewards →',
+    rentalReturnLinkTitle: 'Rental Return Assistant',
+    rentalReturnLinkSub:   'Track a rental start to finish — gallons, cost, and gas near your return →',
     tabs: {
       ai:      'AI',
       trip:    'Trip',
@@ -3750,6 +3753,7 @@ const es: typeof en = {
     rentalModeTitle:        'Modo Devolución de Auto Rentado',
     rentalModeActive:       'Activo — compara costo en la bomba vs. tarifa de la rentadora',
     rentalModeInactive:     'Toca para calcular el costo de llenado antes de devolver el auto',
+    rentalReturnAssistantLinkHint: '¿Quieres seguir todo el alquiler? Prueba el Asistente de Devolución de Alquiler →',
     rentalRateLabel:        'Tarifa de gasolina de la rentadora',
     rentalRateOptional:     '(opcional)',
     rentalRateHint:         'Si devuelves el auto vacío, la rentadora cobra su tarifa — generalmente $8–12/galón. Ingrésala para ver exactamente cuánto ahorras llenando tú mismo.',
@@ -3867,6 +3871,8 @@ const es: typeof en = {
     signInHint:  'Inicia sesión para acceder a esta función',
     ambassadorLinkTitle: 'Programa de embajadores',
     ambassadorLinkSub:   'Ve tus niveles, racha y recompensas →',
+    rentalReturnLinkTitle: 'Asistente de Devolución de Alquiler',
+    rentalReturnLinkSub:   'Sigue un alquiler de principio a fin — galones, costo y gasolina cerca de tu devolución →',
     tabs: {
       ai:      'IA',
       trip:    'Viaje',

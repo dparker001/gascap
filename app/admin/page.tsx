@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import AdminAnalytics from '@/components/AdminAnalytics';
+import RentalPilotMetrics from '@/components/admin/RentalPilotMetrics';
 
 interface EmailLogEntry {
   id:        string;
@@ -866,6 +867,9 @@ export default function AdminPage() {
 
         {/* Analytics — usage charts (custom SVG, computed from loaded users) */}
         <AdminAnalytics users={users} />
+
+        {/* Rental Return Assistant pilot metrics */}
+        <RentalPilotMetrics savedPw={savedPw} />
 
         {/* Flash message */}
         {msg && (

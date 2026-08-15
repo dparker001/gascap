@@ -667,6 +667,18 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
         </div>
       </button>
 
+      {rentalMode && (
+        <a
+          href="/rental-return"
+          className="flex items-center justify-between gap-2 bg-blue-50 border border-blue-200 rounded-xl px-3 py-2 mb-3 -mt-1 hover:bg-blue-100 transition-colors"
+        >
+          <span className="text-[11px] text-blue-700 font-semibold leading-snug">{t.calc.rentalReturnAssistantLinkHint}</span>
+          <svg viewBox="0 0 12 12" className="w-3.5 h-3.5 flex-shrink-0 text-blue-400" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+            <path d="M2 6h8M6 2l4 4-4 4" />
+          </svg>
+        </a>
+      )}
+
       {/* ══════════════════════════════════════════════════════════════
           STEP 1 — Tank size (pick a vehicle or enter gallons)
           Shown first in Rental Mode — you know the vehicle before you know
