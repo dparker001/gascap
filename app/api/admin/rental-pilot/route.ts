@@ -23,10 +23,15 @@ export async function GET(req: Request) {
 
   const sessions = await prisma.rentalSession.findMany({
     select: {
-      status: true, rentalCompany: true, returnLocation: true,
+      id: true, userId: true, status: true, rentalCompany: true, returnLocation: true,
+      vehicleYear: true, vehicleMake: true, vehicleModel: true,
       requiredReturnFuelGallons: true, currentFuelGallons: true, rentalFuelChargePerGallon: true,
       fuelFeeCharged: true, fuelFeeAmount: true, feedbackRating: true, refuelLogs: true,
+      createdAt: true, completedAt: true,
+      pickupVehiclePhotoThumb: true, pickupGaugePhotoThumb: true, pickupAgreementPhotoThumb: true,
+      returnGaugePhotoThumb: true, returnReceiptPhotoThumb: true,
     },
+    orderBy: { createdAt: 'desc' },
   });
 
   const active    = sessions.filter((s) => s.status === 'active').length;
@@ -66,6 +71,33 @@ export async function GET(req: Request) {
   const ratings = sessions.map((s) => s.feedbackRating).filter((r): r is number => r != null);
   const avgRating = ratings.length > 0 ? ratings.reduce((a, b) => a + b, 0) / ratings.length : null;
 
+  // User email/name for the drill-down list — one batched lookup, not N+1.
+  const userIds = [...new Set(sessions.map((s) => s.userId))];
+  const users = await prisma.user.findMany({
+    where:  { id: { in: userIds } },
+    select: { id: true, email: true, name: true },
+  });
+  const userById = new Map(users.map((u) => [u.id, u]));
+
+  // Photos are returned only as a presence flag here (keeps the list light) —
+  // fetch a single session's full detail (with actual images) via
+  // GET /api/admin/rental-pilot/:id when a dispute needs review.
+  const sessionList = sessions.slice(0, 100).map((s) => ({
+    id: s.id,
+    userEmail: userById.get(s.userId)?.email ?? null,
+    userName:  userById.get(s.userId)?.name  ?? null,
+    status: s.status,
+    rentalCompany: s.rentalCompany,
+    vehicle: [s.vehicleYear, s.vehicleMake, s.vehicleModel].filter(Boolean).join(' '),
+    returnLocation: s.returnLocation,
+    fuelFeeCharged: s.fuelFeeCharged,
+    fuelFeeAmount: s.fuelFeeAmount,
+    feedbackRating: s.feedbackRating,
+    createdAt: s.createdAt,
+    completedAt: s.completedAt,
+    hasPhotos: !!(s.pickupVehiclePhotoThumb || s.pickupGaugePhotoThumb || s.pickupAgreementPhotoThumb || s.returnGaugePhotoThumb || s.returnReceiptPhotoThumb),
+  }));
+
   return NextResponse.json({
     totalSessions: sessions.length,
     active, completed,
@@ -78,5 +110,6 @@ export async function GET(req: Request) {
     averageFeeAmount: avgFeeAmount != null ? Math.round(avgFeeAmount * 100) / 100 : null,
     averageFeedbackRating: avgRating != null ? Math.round(avgRating * 10) / 10 : null,
     feedbackCount: ratings.length,
+    sessions: sessionList,
   });
 }

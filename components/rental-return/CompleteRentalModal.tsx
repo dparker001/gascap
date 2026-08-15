@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useTranslation } from '@/contexts/LanguageContext';
 import { trackRentalCompleted, trackRentalFuelFeeReported } from '@/lib/gtag';
+import PhotoCaptureButton from './PhotoCaptureButton';
 
 interface Props {
   sessionId:   string;
@@ -19,6 +20,8 @@ export default function CompleteRentalModal({ sessionId, onClose, onCompleted }:
   const [feeGallons, setFeeGallons] = useState('');
   const [rating, setRating] = useState<number | null>(null);
   const [feedback, setFeedback] = useState('');
+  const [returnGaugePhoto, setReturnGaugePhoto] = useState('');
+  const [returnReceiptPhoto, setReturnReceiptPhoto] = useState('');
   const [saving, setSaving] = useState(false);
 
   async function handleSubmit() {
@@ -33,6 +36,8 @@ export default function CompleteRentalModal({ sessionId, onClose, onCompleted }:
           fuelFeeGallonsClaimed: feeAnswer === 'yes' && feeGallons ? Number(feeGallons) : undefined,
           feedbackRating: rating ?? undefined,
           feedbackText:   feedback || undefined,
+          returnGaugePhotoThumb: returnGaugePhoto || undefined,
+          returnReceiptPhotoThumb: returnReceiptPhoto || undefined,
         }),
       });
       trackRentalCompleted();
@@ -64,6 +69,12 @@ export default function CompleteRentalModal({ sessionId, onClose, onCompleted }:
               <input type="number" inputMode="decimal" min="0" step="0.1" placeholder={t.rentalReturn.gallonsChargedOptional} value={feeGallons} onChange={(e) => setFeeGallons(e.target.value)} className="input-field text-sm" />
             </div>
           )}
+        </div>
+
+        <div className="space-y-2">
+          <p className="text-xs font-bold text-slate-600">{t.rentalReturn.stepDocumentation}</p>
+          <PhotoCaptureButton label={t.rentalReturn.photoReturnGauge} value={returnGaugePhoto} onChange={setReturnGaugePhoto} />
+          <PhotoCaptureButton label={t.rentalReturn.photoReturnReceipt} value={returnReceiptPhoto} onChange={setReturnReceiptPhoto} />
         </div>
 
         <div>

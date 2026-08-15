@@ -7,6 +7,8 @@ import { RENTAL_COMPANIES } from '@/lib/rentalProvider';
 import type { ReturnPolicyType } from '@/lib/rentalCalculations';
 import type { RentalSession } from '@/lib/rentalSessions';
 import ReturnLocationInput from './ReturnLocationInput';
+import RentalVehicleLookup from '@/components/RentalVehicleLookup';
+import RentalVinLookup from '@/components/RentalVinLookup';
 
 interface Props {
   session: RentalSession;
@@ -24,6 +26,19 @@ export default function EditRentalModal({ session, onClose, onSaved }: Props) {
   const [vehicleModel,  setVehicleModel]  = useState(session.vehicleModel ?? '');
   const [vehicleTrim,   setVehicleTrim]   = useState(session.vehicleTrim ?? '');
   const [tankCapacity,  setTankCapacity]  = useState(String(session.fuelTankCapacityGallons ?? ''));
+  // Defaults to manual here (unlike setup) — an edit usually means tweaking
+  // one existing value, not re-picking the whole vehicle from scratch. The
+  // lookup is one tap away for anyone who does want to re-resolve it.
+  const [vehicleEntryMode, setVehicleEntryMode] = useState<'lookup' | 'manual'>('manual');
+
+  function handleVehicleResolved(details: { year: string; make: string; model: string; trim?: string; tankEst: number }) {
+    setVehicleYear(details.year);
+    setVehicleMake(details.make);
+    setVehicleModel(details.model);
+    if (details.trim) setVehicleTrim(details.trim);
+    setTankCapacity(String(details.tankEst));
+    setVehicleEntryMode('manual'); // show the resolved values in the editable fields
+  }
   const [returnPolicy,  setReturnPolicy]  = useState<ReturnPolicyType>(session.requiredReturnPolicyType ?? 'same_as_pickup');
   const [exactReturnGallons, setExactReturnGallons] = useState(
     session.requiredReturnPolicyType === 'exact' ? String(session.requiredReturnFuelGallons ?? '') : '',
@@ -104,17 +119,35 @@ export default function EditRentalModal({ session, onClose, onSaved }: Props) {
           </select>
         </div>
 
-        <div className="grid grid-cols-3 gap-2">
-          <input type="text" placeholder={t.rentalReturn.year} value={vehicleYear} onChange={(e) => setVehicleYear(e.target.value)} className="input-field col-span-1" />
-          <input type="text" placeholder={t.rentalReturn.make} value={vehicleMake} onChange={(e) => setVehicleMake(e.target.value)} className="input-field col-span-2" />
-        </div>
-        <input type="text" placeholder={t.rentalReturn.model} value={vehicleModel} onChange={(e) => setVehicleModel(e.target.value)} className="input-field" />
-        <input type="text" placeholder={t.rentalReturn.trimOptional} value={vehicleTrim} onChange={(e) => setVehicleTrim(e.target.value)} className="input-field" />
+        {vehicleEntryMode === 'lookup' ? (
+          <div className="space-y-2">
+            <RentalVehicleLookup onTankSize={() => {}} onVehicleResolved={handleVehicleResolved} />
+            <RentalVinLookup onTankSize={() => {}} onVehicleResolved={handleVehicleResolved} />
+            <button type="button" onClick={() => setVehicleEntryMode('manual')}
+              className="text-[11px] font-bold text-blue-600 hover:text-blue-800">
+              {t.rentalReturn.enterVehicleManually}
+            </button>
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-3 gap-2">
+              <input type="text" placeholder={t.rentalReturn.year} value={vehicleYear} onChange={(e) => setVehicleYear(e.target.value)} className="input-field col-span-1" />
+              <input type="text" placeholder={t.rentalReturn.make} value={vehicleMake} onChange={(e) => setVehicleMake(e.target.value)} className="input-field col-span-2" />
+            </div>
+            <input type="text" placeholder={t.rentalReturn.model} value={vehicleModel} onChange={(e) => setVehicleModel(e.target.value)} className="input-field" />
+            <input type="text" placeholder={t.rentalReturn.trimOptional} value={vehicleTrim} onChange={(e) => setVehicleTrim(e.target.value)} className="input-field" />
 
-        <div>
-          <label className="field-label">{t.rentalReturn.tankCapacity}</label>
-          <input type="number" inputMode="decimal" min="1" max="60" step="0.1" value={tankCapacity} onChange={(e) => setTankCapacity(e.target.value)} className="input-field" />
-        </div>
+            <div>
+              <label className="field-label">{t.rentalReturn.tankCapacity}</label>
+              <input type="number" inputMode="decimal" min="1" max="60" step="0.1" value={tankCapacity} onChange={(e) => setTankCapacity(e.target.value)} className="input-field" />
+            </div>
+
+            <button type="button" onClick={() => setVehicleEntryMode('lookup')}
+              className="text-[11px] font-bold text-blue-600 hover:text-blue-800">
+              {t.rentalReturn.lookUpVehicleInstead}
+            </button>
+          </>
+        )}
 
         <div>
           <label className="field-label">{t.rentalReturn.stepReturnReq}</label>

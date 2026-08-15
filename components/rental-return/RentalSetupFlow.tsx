@@ -14,6 +14,7 @@ import type { ReturnPolicyType } from '@/lib/rentalCalculations';
 import RentalVehicleLookup from '@/components/RentalVehicleLookup';
 import RentalVinLookup from '@/components/RentalVinLookup';
 import ReturnLocationInput from './ReturnLocationInput';
+import PhotoCaptureButton from './PhotoCaptureButton';
 
 const GAUGE_OPTIONS = ['Full', '7/8', '3/4', '5/8', '1/2', '3/8', '1/4', '1/8', 'Empty'];
 
@@ -72,6 +73,11 @@ export default function RentalSetupFlow({ onCreated, onCancel }: Props) {
   const [returnCoords, setReturnCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [returnDateTime, setReturnDateTime] = useState('');
 
+  // Step 7 — pickup documentation (all optional)
+  const [pickupVehiclePhoto,   setPickupVehiclePhoto]   = useState('');
+  const [pickupGaugePhoto,     setPickupGaugePhoto]     = useState('');
+  const [pickupAgreementPhoto, setPickupAgreementPhoto] = useState('');
+
   const company = rentalCompany === 'Other' ? customCompany.trim() : rentalCompany;
 
   function resolvePickupFuel(): { gallons: number | null; source: FuelDataSource | null } {
@@ -119,6 +125,9 @@ export default function RentalSetupFlow({ onCreated, onCancel }: Props) {
           returnLatitude: returnCoords?.lat,
           returnLongitude: returnCoords?.lng,
           returnDateTime,
+          pickupVehiclePhotoThumb: pickupVehiclePhoto || undefined,
+          pickupGaugePhotoThumb: pickupGaugePhoto || undefined,
+          pickupAgreementPhotoThumb: pickupAgreementPhoto || undefined,
         }),
       });
       const data = await res.json();
@@ -134,20 +143,22 @@ export default function RentalSetupFlow({ onCreated, onCancel }: Props) {
   const stepTitles = [
     t.rentalReturn.stepCompany, t.rentalReturn.stepVehicle, t.rentalReturn.stepPickupFuel,
     t.rentalReturn.stepReturnReq, t.rentalReturn.stepRate, t.rentalReturn.stepReturnDetails,
+    t.rentalReturn.stepDocumentation,
   ];
+  const TOTAL_STEPS = 7;
 
   return (
     <div className="max-w-lg mx-auto px-4 py-6 space-y-5">
       <div className="flex items-center justify-between">
         <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">
-          {t.rentalReturn.stepOf(step, 6)} · {stepTitles[step - 1]}
+          {t.rentalReturn.stepOf(step, TOTAL_STEPS)} · {stepTitles[step - 1]}
         </p>
         <button onClick={onCancel} className="text-xs font-bold text-slate-400 hover:text-slate-600">
           {t.rentalReturn.cancel}
         </button>
       </div>
       <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-        <div className="h-full bg-[#005F4A] transition-all duration-300" style={{ width: `${(step / 6) * 100}%` }} />
+        <div className="h-full bg-[#005F4A] transition-all duration-300" style={{ width: `${(step / TOTAL_STEPS) * 100}%` }} />
       </div>
 
       {error && <p className="text-xs text-red-500 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{error}</p>}
@@ -317,16 +328,26 @@ export default function RentalSetupFlow({ onCreated, onCancel }: Props) {
         </div>
       )}
 
+      {/* Step 7 — Pickup documentation (optional) */}
+      {step === 7 && (
+        <div className="space-y-3">
+          <p className="text-[11px] text-slate-400 leading-relaxed">{t.rentalReturn.documentationHint}</p>
+          <PhotoCaptureButton label={t.rentalReturn.photoVehicle} value={pickupVehiclePhoto} onChange={setPickupVehiclePhoto} />
+          <PhotoCaptureButton label={t.rentalReturn.photoGauge} value={pickupGaugePhoto} onChange={setPickupGaugePhoto} />
+          <PhotoCaptureButton label={t.rentalReturn.photoAgreement} value={pickupAgreementPhoto} onChange={setPickupAgreementPhoto} />
+        </div>
+      )}
+
       <div className="flex gap-2 pt-2">
         {step > 1 && (
           <button onClick={() => setStep((s) => s - 1)} className="flex-1 py-3 rounded-2xl bg-slate-100 text-slate-700 text-sm font-bold">
             {t.rentalReturn.back}
           </button>
         )}
-        {step < 6 ? (
+        {step < TOTAL_STEPS ? (
           <button
             onClick={() => setStep((s) => s + 1)}
-            disabled={(step === 1 && !canNext1) || (step === 2 && !canNext2) || (step === 3 && !canNext3) || (step === 4 && !canNext4)}
+            disabled={(step === 1 && !canNext1) || (step === 2 && !canNext2) || (step === 3 && !canNext3) || (step === 4 && !canNext4) || (step === 6 && !canSubmit)}
             className="flex-1 py-3 rounded-2xl bg-[#005F4A] text-white text-sm font-bold disabled:opacity-40"
           >
             {t.rentalReturn.next}

@@ -1,15 +1,31 @@
 'use client';
 
 /**
- * Admin summary card for the Rental Return Assistant pilot (section 26/38
- * of the pilot spec). Self-contained — fetches its own data from
- * /api/admin/rental-pilot so it doesn't add to the already-large state
- * surface of app/admin/page.tsx. Deliberately minimal: no per-user
- * drill-down, no receipt images, just enough to judge whether the pilot is
- * working.
+ * Admin dashboard for the Rental Return Assistant pilot — aggregate metrics
+ * plus a session drill-down list (most valuable for actually reviewing a
+ * fuel-fee dispute) with a filter for disputes only. Self-contained —
+ * fetches its own data so it doesn't add to admin/page.tsx's already-large
+ * state surface.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
+import RentalSessionDetail from './RentalSessionDetail';
+
+interface SessionRow {
+  id: string;
+  userEmail: string | null;
+  userName: string | null;
+  status: string;
+  rentalCompany: string;
+  vehicle: string;
+  returnLocation: string | null;
+  fuelFeeCharged: boolean | null;
+  fuelFeeAmount: number | null;
+  feedbackRating: number | null;
+  createdAt: string;
+  completedAt: string | null;
+  hasPhotos: boolean;
+}
 
 interface RentalPilotStats {
   totalSessions:              number;
@@ -24,14 +40,17 @@ interface RentalPilotStats {
   averageFeeAmount:           number | null;
   averageFeedbackRating:      number | null;
   feedbackCount:              number;
+  sessions:                   SessionRow[];
 }
 
 export default function RentalPilotMetrics({ savedPw }: { savedPw: string }) {
   const [stats, setStats] = useState<RentalPilotStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [disputesOnly, setDisputesOnly] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  useEffect(() => {
+  const load = useCallback(() => {
     if (!savedPw) return;
     fetch('/api/admin/rental-pilot', { headers: { 'x-admin-password': savedPw } })
       .then((r) => r.ok ? r.json() : Promise.reject(r.status))
@@ -39,6 +58,8 @@ export default function RentalPilotMetrics({ savedPw }: { savedPw: string }) {
       .catch(() => setError('Failed to load rental pilot metrics.'))
       .finally(() => setLoading(false));
   }, [savedPw]);
+
+  useEffect(() => { load(); }, [load]);
 
   if (loading) {
     return <div className="bg-white rounded-2xl shadow-sm p-5"><div className="h-16 bg-slate-100 rounded-xl animate-pulse" /></div>;
@@ -53,6 +74,7 @@ export default function RentalPilotMetrics({ savedPw }: { savedPw: string }) {
   }
 
   const topCompanies = Object.entries(stats.rentalCompanies).sort((a, b) => b[1] - a[1]).slice(0, 6);
+  const visibleSessions = disputesOnly ? stats.sessions.filter((s) => s.fuelFeeCharged === true) : stats.sessions;
 
   return (
     <div className="bg-white rounded-2xl shadow-sm p-5 space-y-4">
@@ -115,6 +137,59 @@ export default function RentalPilotMetrics({ savedPw }: { savedPw: string }) {
           Avg. fee amount when charged: <span className="font-bold text-slate-700">${stats.averageFeeAmount.toFixed(2)}</span>
         </p>
       )}
+
+      {/* Session drill-down */}
+      <div className="pt-2 border-t border-slate-100">
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">
+            Sessions {disputesOnly ? '(disputes only)' : `(${stats.sessions.length})`}
+          </p>
+          <button
+            onClick={() => setDisputesOnly((v) => !v)}
+            className={`text-[10px] font-bold px-2 py-1 rounded-full border transition-colors ${
+              disputesOnly ? 'bg-red-500 text-white border-red-500' : 'bg-white text-slate-500 border-slate-200'
+            }`}
+          >
+            {disputesOnly ? '⚠️ Disputes only' : 'Show disputes only'}
+          </button>
+        </div>
+
+        {visibleSessions.length === 0 ? (
+          <p className="text-xs text-slate-400 py-3 text-center">
+            {disputesOnly ? 'No fuel-fee disputes reported.' : 'No rental sessions yet.'}
+          </p>
+        ) : (
+          <div className="space-y-1.5 max-h-96 overflow-y-auto">
+            {visibleSessions.map((s) => (
+              <div key={s.id} className="border border-slate-100 rounded-xl">
+                <button
+                  onClick={() => setExpandedId(expandedId === s.id ? null : s.id)}
+                  className="w-full text-left px-3 py-2 flex items-center justify-between gap-2 hover:bg-slate-50 transition-colors"
+                >
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-slate-700 truncate">
+                      {s.rentalCompany} · {s.vehicle || '—'}
+                      {s.fuelFeeCharged && <span className="ml-1.5 text-red-500">⚠️</span>}
+                      {s.hasPhotos && <span className="ml-1 text-slate-400">📷</span>}
+                    </p>
+                    <p className="text-[10px] text-slate-400 truncate">{s.userEmail} · {new Date(s.createdAt).toLocaleDateString()}</p>
+                  </div>
+                  <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full flex-shrink-0 ${
+                    s.status === 'active' ? 'bg-blue-100 text-blue-700' : s.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'
+                  }`}>
+                    {s.status}
+                  </span>
+                </button>
+                {expandedId === s.id && (
+                  <div className="px-3 pb-3">
+                    <RentalSessionDetail sessionId={s.id} savedPw={savedPw} onChanged={load} />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
