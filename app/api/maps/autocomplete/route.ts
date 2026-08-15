@@ -9,6 +9,11 @@
  */
 import { NextResponse } from 'next/server';
 
+export interface AutocompleteSuggestion {
+  text:    string;
+  placeId: string;
+}
+
 interface GoogleSuggestion {
   placePrediction?: {
     text?: { text: string };
@@ -59,12 +64,16 @@ export async function POST(req: Request) {
     }
 
     const data = await res.json() as GoogleAutocompleteResponse;
-    const suggestions = (data.suggestions ?? [])
+    const results: AutocompleteSuggestion[] = (data.suggestions ?? [])
       .slice(0, 5)
-      .map((s) => s.placePrediction?.text?.text ?? '')
-      .filter(Boolean);
+      .map((s) => ({ text: s.placePrediction?.text?.text ?? '', placeId: s.placePrediction?.placeId ?? '' }))
+      .filter((s) => s.text && s.placeId);
 
-    return NextResponse.json({ ok: true, suggestions });
+    // `suggestions` (text-only) kept for existing callers (TripCostEstimator);
+    // `results` additionally carries placeId so callers that need real
+    // coordinates (e.g. the Rental Return Assistant's return location) can
+    // resolve a selection via /api/maps/place-location.
+    return NextResponse.json({ ok: true, suggestions: results.map((s) => s.text), results });
   } catch {
     return NextResponse.json({ ok: true, suggestions: [] });
   }

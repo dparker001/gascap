@@ -6,9 +6,6 @@ import { useSession } from 'next-auth/react';
 import FuelGauge     from './FuelGauge';
 import TankPresets   from './TankPresets';
 import SavedVehicles from './SavedVehicles';
-import RentalVehicleLookup from './RentalVehicleLookup';
-import RentalVinLookup from './RentalVinLookup';
-import { scheduleRentalReturnReminder, cancelRentalReturnReminder } from '@/lib/rentalReminder';
 import GasPriceLookup from './GasPriceLookup';
 import { TargetResultCard } from './ResultCard';
 import {
@@ -19,6 +16,7 @@ import {
 } from '@/lib/calculations';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useIsNative, useNativePlatform } from '@/hooks/useIsNative';
+import { useActiveRentalSession } from '@/hooks/useActiveRentalSession';
 import type { CalcTab } from './CalculatorTabs';
 import { useTranslation } from '@/contexts/LanguageContext';
 import { trackCalculateTarget, trackRentalReturnToggled } from '@/lib/gtag';
@@ -141,27 +139,29 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
   const [gaugeScanMsg,  setGaugeScanMsg]  = useState('');
   const [showScanModal,    setShowScanModal]    = useState(false);
   const [scanFromDashboard, setScanFromDashboard] = useState(false);
-  // Persisted (not just component state) so switching to the Budget/EV tab —
-  // which unmounts this component entirely — doesn't silently exit rental mode.
-  const [rentalMode,        setRentalMode]        = useLocalStorage<boolean>('gc_rental_mode_active', false);
-  const [rentalRate,        setRentalRate]        = useState('');
-  const [rentalPickupLevel, setRentalPickupLevel] = useState(100); // % — 100 = full
-  const [rentalReturnDate,  setRentalReturnDate]  = useState('');  // YYYY-MM-DD
-  const [rentalReturnTime,  setRentalReturnTime]  = useState('');  // HH:MM (24h)
+  // Rental Car Mode on the gas calculator hands off entirely to the
+  // persisted Rental Return Assistant (/rental-return) — this component no
+  // longer runs its own inline rental session. The toggle below reflects
+  // whether the user actually HAS an active RentalSession (fetched, not a
+  // locally-toggled flag that can drift from reality), and only ever
+  // navigates on an explicit tap — never a passive effect — so simply
+  // landing back on this page after visiting the Assistant never bounces
+  // you away again. The EV Charge tab's own rental flow is untouched —
+  // separate component, no equivalent in the new Assistant yet, owns its
+  // own 'gc_rental_mode_active' flag independently.
+  const { activeSession: activeRentalSession, loading: activeRentalLoading } = useActiveRentalSession();
 
-  // Rental Car Return Mode on the gas calculator now hands off entirely to
-  // the persisted Rental Return Assistant (/rental-return) instead of
-  // tinting this page blue and running an ephemeral in-calculator session —
-  // fires for every path that used to turn rentalMode on here (the manual
-  // toggle, account default 'rental', arriving via ?rental=1, and a value
-  // already persisted from before this change). The EV Charge tab's own
-  // rental flow is untouched — it's a separate component with no
-  // equivalent in the new Assistant yet, and reads the same shared
-  // 'gc_rental_mode_active' flag independently, only while it's the
-  // mounted/active tab.
+  // One-time hand-off from the /rental marketing page — if there's no
+  // active session yet, take a fresh visitor straight into setup instead of
+  // making them notice and tap the toggle themselves. Waits for the active-
+  // session check to resolve first so a user who DOES have one isn't
+  // bounced into "start a new rental" while that fetch is still in flight.
   useEffect(() => {
-    if (rentalMode) router.push('/rental-return');
-  }, [rentalMode, router]);
+    if (activeRentalLoading) return;
+    const fromRentalPage = typeof window !== 'undefined' &&
+      new URLSearchParams(window.location.search).get('rental') === '1';
+    if (fromRentalPage && !activeRentalSession) router.push('/rental-return');
+  }, [activeRentalLoading, activeRentalSession, router]);
 
   const [gasCoords,     setGasCoords]     = useState<{ lat: number; lng: number } | null>(null);
   const [nearbyAttrib,  setNearbyAttrib]  = useState<{ name: string; distanceMi: number; grade: string } | null>(null);
@@ -186,62 +186,10 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
   // attached to it silently vanished, making the selection look cleared.
   const [presetLabel, setPresetLabel] = useLocalStorage<string>('gc_target_preset_label', '');
   const [presetSourceKind, setPresetSourceKind] = useLocalStorage<'dropdown' | 'lookup' | 'vin'>('gc_target_preset_source', 'dropdown');
-  // Once a vehicle source is set in Rental Mode, the Year/Make/Model and VIN
-  // lookup sections collapse behind a toggle instead of staying visible
-  // alongside the already-resolved tank size — was confusing users into
-  // thinking they needed to fill in every option.
-  const [expandAltVehicleInputs, setExpandAltVehicleInputs] = useState(false);
   const calcStartFired  = useRef(false);
   // Stable ref so the gc:inject-gas-price event handler always calls the latest liveRecalc
   const liveRecalcRef   = useRef<(p: Partial<FormState>) => void>(() => {});
 
-  // Persist rental pickup level + return date/time in localStorage so values survive a page refresh
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const lvl  = localStorage.getItem('gc_rental_pickup_level');
-    const date = localStorage.getItem('gc_rental_return_date');
-    const time = localStorage.getItem('gc_rental_return_time');
-    if (lvl)  setRentalPickupLevel(Number(lvl));
-    if (date) setRentalReturnDate(date);
-    if (time) setRentalReturnTime(time);
-  }, []);
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    localStorage.setItem('gc_rental_pickup_level', String(rentalPickupLevel));
-  }, [rentalPickupLevel]);
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    if (rentalReturnDate) localStorage.setItem('gc_rental_return_date', rentalReturnDate);
-    else localStorage.removeItem('gc_rental_return_date');
-  }, [rentalReturnDate]);
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    if (rentalReturnTime) localStorage.setItem('gc_rental_return_time', rentalReturnTime);
-    else localStorage.removeItem('gc_rental_return_time');
-  }, [rentalReturnTime]);
-
-  // Schedule (or cancel) the 2-hours-before drop-off reminder whenever date/time change
-  useEffect(() => {
-    if (rentalReturnDate && rentalReturnTime) {
-      scheduleRentalReturnReminder(rentalReturnDate, rentalReturnTime);
-    } else {
-      cancelRentalReturnReminder();
-    }
-  }, [rentalReturnDate, rentalReturnTime]);
-
-  // Compute return-day alert (today or tomorrow local date)
-  const rentalReturnAlert: 'today' | 'tomorrow' | null = (() => {
-    if (!rentalReturnDate) return null;
-    const now   = new Date();
-    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    const tomorrow = (() => {
-      const d = new Date(now); d.setDate(d.getDate() + 1);
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    })();
-    if (rentalReturnDate === today)     return 'today';
-    if (rentalReturnDate === tomorrow)  return 'tomorrow';
-    return null;
-  })();
 
   // Auto-activate rental mode for users whose driver mode is 'rental',
   // or when arriving from the /rental landing page via ?rental=1
@@ -260,41 +208,6 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
   }, []);
   const userMode = localUserMode !== undefined ? localUserMode : sessionUserMode;
   const isGigMode = userMode === 'gig';
-  // Rental Mode already persists across sessions via useLocalStorage above —
-  // that's correct, it should survive a close/reopen exactly as the user left
-  // it. The bug this ref fixes: this effect's job is to auto-activate rental
-  // mode for accounts whose Driver Mode default is 'rental', but it used to
-  // ALSO auto-deactivate it on every single mount whenever the account's
-  // default wasn't 'rental' — silently undoing a manual toggle for anyone
-  // who isn't a rental-by-default user but turned it on for one trip.
-  // "Only disabled manually" means the auto-off should fire for a genuine
-  // LIVE account-mode change away from 'rental' during this session, never
-  // for the initial resolution of whatever the account's mode already was.
-  const prevUserModeRef = useRef<string | null | undefined>(undefined);
-  useEffect(() => {
-    const fromRentalPage = typeof window !== 'undefined' &&
-      new URLSearchParams(window.location.search).get('rental') === '1';
-    const isFirstResolution = prevUserModeRef.current === undefined;
-    const wasRental = prevUserModeRef.current === 'rental';
-    prevUserModeRef.current = userMode;
-
-    if ((userMode === 'rental' || fromRentalPage) && !rentalMode) {
-      setRentalMode(true);
-      setForm(prev => ({ ...prev, targetPreset: rentalPickupLevel, customTarget: '' }));
-    } else if (!isFirstResolution && wasRental && userMode !== 'rental' && !fromRentalPage && rentalMode) {
-      // A real switch away from 'rental' happened while the app was open —
-      // safe to turn rental mode off since it was tracking the account default.
-      setRentalMode(false);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userMode]);
-
-  // Let the native header know rental mode's state — it hides the garage
-  // VehicleChip while rental mode is active, since garage vehicles aren't
-  // used for rental calculations.
-  useEffect(() => {
-    window.dispatchEvent(new CustomEvent('gc:rental-mode', { detail: { active: rentalMode } }));
-  }, [rentalMode]);
 
   // Clear stale garage-vehicle data when the user is confirmed logged out.
   // useLocalStorage hydrates from the previous session's JSON, so a logged-in
@@ -414,7 +327,7 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
 
   // Applied to all 4 step cards so rental mode stays visually identifiable
   // while scrolling, not just on the toggle/detail panel up top.
-  const stepCardClass = rentalMode ? 'card border-2 border-blue-200 bg-blue-50/40' : 'card';
+  const stepCardClass = 'card';
 
   // Standard patch — clears result (free/guest behaviour)
   function patch(p: Partial<FormState>) {
@@ -595,25 +508,11 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
   const tankNum     = Number(form.tankCapacity) || undefined;
   const isLive      = isPro && calculated;
   const tankWarning = checkTankSize(Number(form.tankCapacity) || undefined, vehicleTankEst, vehicleBodyClass);
-  // A Y/M/M or VIN lookup selection is Rental Mode-specific — once Rental
-  // Mode is off, the garage's own SavedVehicles list is the source of truth
-  // again, so don't keep attributing the tank number to a rental vehicle
-  // that's no longer active. The dropdown preset (a rental-class average,
-  // not a specific rental lookup) is useful in both modes, so it stays
-  // visible either way. presetLabel/presetSourceKind themselves are
-  // untouched — turning Rental Mode back on restores this badge as-is.
-  const showPreset  = !!presetLabel && (presetSourceKind === 'dropdown' || rentalMode);
-
-  // Redirecting to /rental-return (see the effect above) — render a brief
-  // neutral placeholder instead of a flash of the old blue-tinted inline UI.
-  if (rentalMode) {
-    return (
-      <div className="pb-2 flex flex-col items-center justify-center min-h-[40vh] gap-3">
-        <span className="w-8 h-8 border-[3px] border-teal-500 border-t-transparent rounded-full animate-spin" />
-        <p className="text-sm text-slate-500">{t.rentalReturn.pageTitle}…</p>
-      </div>
-    );
-  }
+  // 'lookup'/'vin' presetSourceKind values were set by the old inline rental
+  // Y/M/M and VIN lookups, now retired in favor of the Rental Return
+  // Assistant's own setup flow — only the dropdown preset (a rental-class
+  // average) still applies here.
+  const showPreset  = !!presetLabel && presetSourceKind === 'dropdown';
 
   return (
     <div className="pb-2">
@@ -658,70 +557,53 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
         {t.calc.howToUse}
       </p>
 
-      {/* ── Rental car mode toggle ───────────────────────────────── */}
+      {/* ── Rental Car Mode — status indicator + entry point, not a toggle
+           that runs its own inline session anymore. Reflects whether the
+           user actually HAS an active Rental Return Assistant session
+           (fetched, not a locally-flipped flag), and only ever navigates on
+           an explicit tap so simply landing back here never bounces you
+           away again. ───────────────────────────────────────────────── */}
       <button
         type="button"
         onClick={() => {
-          const next = !rentalMode;
-          setRentalMode(next);
-          trackRentalReturnToggled(next);
-          if (next) liveRecalc({ targetPreset: rentalPickupLevel, customTarget: '' });
+          trackRentalReturnToggled(!activeRentalSession);
+          router.push(activeRentalSession ? `/rental-return/${activeRentalSession.id}` : '/rental-return');
         }}
         className={[
           'w-full flex items-center gap-3 rounded-2xl px-4 py-3 mb-3 border-2 transition-all',
-          rentalMode
+          activeRentalSession
             ? 'bg-blue-50 border-blue-400 text-blue-800'
             : 'bg-white border-slate-200 hover:border-blue-300 text-slate-600',
         ].join(' ')}
-        aria-pressed={rentalMode}
+        aria-pressed={!!activeRentalSession}
       >
         <span className="text-xl flex-shrink-0" aria-hidden="true">🚗</span>
         <div className="flex-1 text-left">
-          <p className={`text-sm font-black leading-none ${rentalMode ? 'text-blue-800' : 'text-slate-700'}`}>
+          <p className={`text-sm font-black leading-none ${activeRentalSession ? 'text-blue-800' : 'text-slate-700'}`}>
             {t.calc.rentalModeTitle}
           </p>
-          <p className={`text-[10px] mt-0.5 leading-snug ${rentalMode ? 'text-blue-600' : 'text-slate-400'}`}>
-            {rentalMode ? t.calc.rentalModeActive : t.calc.rentalModeInactive}
+          <p className={`text-[10px] mt-0.5 leading-snug ${activeRentalSession ? 'text-blue-600' : 'text-slate-400'}`}>
+            {activeRentalSession
+              ? t.calc.rentalModeActiveWith(activeRentalSession.rentalCompany)
+              : t.calc.rentalModeInactive}
           </p>
         </div>
         <div className={[
           'w-9 h-5 rounded-full flex-shrink-0 relative transition-colors',
-          rentalMode ? 'bg-blue-500' : 'bg-slate-200',
+          activeRentalSession ? 'bg-blue-500' : 'bg-slate-200',
         ].join(' ')}>
           <div className={[
             'absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform',
-            rentalMode ? 'translate-x-4' : 'translate-x-0.5',
+            activeRentalSession ? 'translate-x-4' : 'translate-x-0.5',
           ].join(' ')} />
         </div>
       </button>
 
-      {rentalMode && (
-        <a
-          href="/rental-return"
-          className="flex items-center justify-between gap-2 bg-blue-50 border border-blue-200 rounded-xl px-3 py-2 mb-3 -mt-1 hover:bg-blue-100 transition-colors"
-        >
-          <span className="text-[11px] text-blue-700 font-semibold leading-snug">{t.calc.rentalReturnAssistantLinkHint}</span>
-          <svg viewBox="0 0 12 12" className="w-3.5 h-3.5 flex-shrink-0 text-blue-400" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-            <path d="M2 6h8M6 2l4 4-4 4" />
-          </svg>
-        </a>
-      )}
-
       {/* ══════════════════════════════════════════════════════════════
           STEP 1 — Tank size (pick a vehicle or enter gallons)
-          Shown first in Rental Mode — you know the vehicle before you know
-          the return date or pickup fuel level.
       ══════════════════════════════════════════════════════════════ */}
       <StepLabel n={1} title={t.calc.step1} />
       <div className={stepCardClass}>
-        {rentalMode && isLoggedIn && (
-          <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-xl px-3 py-2.5 mb-2">
-            <span className="text-base flex-shrink-0" aria-hidden="true">🚪</span>
-            <p className="text-[11px] text-blue-600 leading-snug">
-              <span className="font-black">{t.calc.garageClosedTitle}</span>{t.calc.garageClosedHint}
-            </p>
-          </div>
-        )}
         <TankPresets
           value={form.tankCapacity}
           onChange={(v) => {
@@ -739,266 +621,33 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
             setVehicleBodyClass(undefined);
             setPresetLabel(label);
             setPresetSourceKind('dropdown');
-            setExpandAltVehicleInputs(false);
           }}
           vehicleSourceLabel={form.vehicleId ? form.vehicleName : showPreset ? presetLabel : undefined}
-          vehicleSourceType={form.vehicleId ? 'garage' : showPreset ? (presetSourceKind === 'vin' ? 'vin' : presetSourceKind === 'lookup' ? 'lookup' : 'preset') : undefined}
-          rentalMode={rentalMode}
+          vehicleSourceType={form.vehicleId ? 'garage' : showPreset ? 'preset' : undefined}
         />
         {errors.tankCapacity && <FieldError msg={errors.tankCapacity} />}
-        {rentalMode ? (
-          <>
-            {(!presetLabel || expandAltVehicleInputs) ? (
-              <>
-                {/* "Change" reopens this section without clearing the current
-                    selection (tankCapacity/presetLabel are untouched until a
-                    new lookup actually resolves) — surface a way back out so
-                    the user isn't forced to redo the search just to keep what
-                    they already picked. */}
-                {presetLabel && (
-                  <div className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 mb-2">
-                    <p className="text-[11px] text-slate-500 truncate">
-                      {t.calc.rentalKeepCurrentVehicle(presetLabel)}
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => setExpandAltVehicleInputs(false)}
-                      className="flex-shrink-0 text-[11px] font-bold text-teal-600 hover:text-teal-800 ml-2"
-                    >
-                      {t.calc.rentalCancelChange}
-                    </button>
-                  </div>
-                )}
-                <RentalVehicleLookup
-                  onTankSize={(g, label) => {
-                    patch({ tankCapacity: g, vehicleId: '', vehicleName: '', vehicleOdometer: undefined });
-                    setVehicleTankEst(undefined);
-                    setVehicleBodyClass(undefined);
-                    setPresetLabel(label);
-                    setPresetSourceKind('lookup');
-                    setExpandAltVehicleInputs(false);
-                  }}
-                />
-                <RentalVinLookup
-                  onTankSize={(g, label) => {
-                    patch({ tankCapacity: g, vehicleId: '', vehicleName: '', vehicleOdometer: undefined });
-                    setVehicleTankEst(undefined);
-                    setVehicleBodyClass(undefined);
-                    setPresetLabel(label);
-                    setPresetSourceKind('vin');
-                    setExpandAltVehicleInputs(false);
-                  }}
-                />
-              </>
-            ) : presetSourceKind === 'dropdown' ? (
-              // Dropdown-origin selection is already visible in the Tank Size
-              // <select> above — no need for a redundant summary here.
-              <button
-                type="button"
-                onClick={() => setExpandAltVehicleInputs(true)}
-                className="text-[11px] font-bold text-blue-600 hover:text-blue-800 mt-2"
-              >
-                {t.calc.rentalShowOtherVehicleOptions}
-              </button>
-            ) : (
-              // Lookup/VIN-origin selection has no other visible trace once
-              // these sections collapse — show a real summary right where the
-              // user was just interacting, not just a small badge up in the
-              // Tank Size field.
-              <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 mt-2">
-                <span className="text-xl flex-shrink-0" aria-hidden="true">✅</span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-black text-amber-800 truncate">{presetLabel}</p>
-                  <p className="text-[11px] text-amber-600">{t.calc.rentalVehicleAppliedTank(form.tankCapacity)}</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setExpandAltVehicleInputs(true)}
-                  className="flex-shrink-0 text-[11px] font-bold text-amber-700 hover:text-amber-900 underline underline-offset-2"
-                >
-                  {t.calc.rentalChangeVehicle}
-                </button>
-              </div>
-            )}
-          </>
-        ) : (
-          <SavedVehicles
-            currentGallons={form.tankCapacity}
-            onSelect={(g, v) => {
-              patch({
-                tankCapacity: g, vehicleName: v?.name ?? '', vehicleId: v?.id ?? '',
-                vehicleOdometer: v?.currentOdometer,
-                // Prefill the MPG used for distance-to-empty conversion. EPA
-                // combined is the same figure MpgInsightCard prefers, and it's
-                // available immediately for VIN-added vehicles. Still editable.
-                ...(v?.vehicleSpecs?.combMpg ? { mpgForMiles: String(v.vehicleSpecs.combMpg) } : {}),
-              });
-              setVehicleTankEst(v?.vehicleSpecs?.tankEstGallons);
-              setVehicleBodyClass(v?.vehicleSpecs?.bodyClass);
-              setPresetLabel('');
-              setPresetSourceKind('dropdown');
-              // Notify VehicleChip in the native header so it updates immediately
-              if (v?.id) window.dispatchEvent(new CustomEvent('gc:vehicle-selected', { detail: { vehicleId: v.id } }));
-            }}
-            selectedVehicleId={form.vehicleId}
-            calcKey={calcKey}
-          />
-        )}
+        <SavedVehicles
+          currentGallons={form.tankCapacity}
+          onSelect={(g, v) => {
+            patch({
+              tankCapacity: g, vehicleName: v?.name ?? '', vehicleId: v?.id ?? '',
+              vehicleOdometer: v?.currentOdometer,
+              // Prefill the MPG used for distance-to-empty conversion. EPA
+              // combined is the same figure MpgInsightCard prefers, and it's
+              // available immediately for VIN-added vehicles. Still editable.
+              ...(v?.vehicleSpecs?.combMpg ? { mpgForMiles: String(v.vehicleSpecs.combMpg) } : {}),
+            });
+            setVehicleTankEst(v?.vehicleSpecs?.tankEstGallons);
+            setVehicleBodyClass(v?.vehicleSpecs?.bodyClass);
+            setPresetLabel('');
+            setPresetSourceKind('dropdown');
+            // Notify VehicleChip in the native header so it updates immediately
+            if (v?.id) window.dispatchEvent(new CustomEvent('gc:vehicle-selected', { detail: { vehicleId: v.id } }));
+          }}
+          selectedVehicleId={form.vehicleId}
+          calcKey={calcKey}
+        />
       </div>
-
-      {/* Rental detail panel — only when rental mode is on. Ordered to match
-          the actual pickup sequence: return date/time is usually known before
-          you even leave for the counter; pickup fuel level is checked once
-          you're physically in the car; rental rate is optional and last. */}
-      {rentalMode && (
-        <div className="bg-blue-50 border border-blue-200 rounded-2xl px-4 py-3 mb-3 space-y-3">
-
-          {/* Return-day alert */}
-          {rentalReturnAlert && (
-            <div className="flex items-start gap-2 bg-amber-50 border border-amber-300 rounded-xl px-3 py-2">
-              <span className="text-base flex-shrink-0" aria-hidden="true">⏰</span>
-              <p className="text-[11px] font-bold text-amber-800 leading-snug">
-                {rentalReturnAlert === 'today'
-                  ? t.calc.rentalReturnAlertToday
-                  : t.calc.rentalReturnAlertTomorrow}
-              </p>
-            </div>
-          )}
-
-          {/* Return date */}
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-base" aria-hidden="true">📅</span>
-              <p className="text-xs font-black text-blue-800">{t.calc.rentalReturnDateTimeLabel}</p>
-              <span className="text-[10px] text-blue-500 font-medium">{t.calc.rentalRateOptional}</span>
-            </div>
-            <p className="text-[11px] text-blue-600 leading-snug mb-1.5">{t.calc.rentalReturnDateHint}</p>
-            <div className="flex flex-col gap-2 w-full min-w-0 overflow-hidden">
-              <div className="min-w-0 overflow-hidden">
-                <label className="block text-[10px] font-bold text-blue-500 mb-0.5">{t.calc.rentalReturnDateLabel}</label>
-                <div className="relative" style={{ width: '148px', maxWidth: '100%' }}>
-                  <input
-                    type="date"
-                    className="input-field border-blue-200 bg-white text-sm px-3 py-2"
-                    style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}
-                    value={rentalReturnDate}
-                    min={new Date().toISOString().slice(0, 10)}
-                    onChange={(e) => setRentalReturnDate(e.target.value)}
-                    aria-label={t.calc.rentalReturnDateLabel}
-                  />
-                  {/* Native <input type=date> has no functional placeholder attribute —
-                      browsers show their own locale-formatted "mm/dd/yyyy" segments
-                      instead, which the iOS/Android WebView doesn't reliably render.
-                      Web already shows the native version, so this is native-only to
-                      avoid doubling up with it there. */}
-                  {nativePlatform === 'ios' && !rentalReturnDate && (
-                    <span className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-sm text-slate-400">
-                      mm/dd/yyyy
-                    </span>
-                  )}
-                </div>
-              </div>
-              <div className="min-w-0 overflow-hidden">
-                <label className="block text-[10px] font-bold text-blue-500 mb-0.5">{t.calc.rentalReturnTimeLabel}</label>
-                <div className="relative" style={{ width: '110px', maxWidth: '100%' }}>
-                  <input
-                    type="time"
-                    className="input-field border-blue-200 bg-white text-sm px-3 py-2"
-                    style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}
-                    value={rentalReturnTime}
-                    onChange={(e) => setRentalReturnTime(e.target.value)}
-                    aria-label={t.calc.rentalReturnTimeLabel}
-                  />
-                  {nativePlatform === 'ios' && !rentalReturnTime && (
-                    <span className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-sm text-slate-400">
-                      --:-- --
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-            {rentalReturnDate && !rentalReturnTime && (
-              <p className="text-[10px] text-blue-500 mt-1">{t.calc.rentalReturnTimeHint}</p>
-            )}
-          </div>
-
-          {/* Pickup fuel level */}
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-base" aria-hidden="true">⛽</span>
-              <p className="text-xs font-black text-blue-800">{t.calc.rentalPickupLevelLabel}</p>
-            </div>
-            <p className="text-[11px] text-blue-600 leading-snug mb-2">{t.calc.rentalPickupLevelHint}</p>
-            {/* No "Empty" option — a rental is never handed over with 0 fuel. */}
-            <div className="flex gap-1.5 mb-1.5">
-              {([13, 25, 38, 50, 63, 75, 88] as const).map((pct) => {
-                const label = pct === 88 ? '⅞' : pct === 75 ? '¾' : pct === 63 ? '⅝'
-                  : pct === 50 ? '½' : pct === 38 ? '⅜' : pct === 25 ? '¼' : '⅛';
-                const active = rentalPickupLevel === pct;
-                return (
-                  <button
-                    key={pct}
-                    type="button"
-                    onClick={() => {
-                      setRentalPickupLevel(pct);
-                      liveRecalc({ targetPreset: pct, customTarget: '' });
-                    }}
-                    className={[
-                      'flex-1 min-w-[36px] py-1.5 rounded-lg text-xs font-black border transition-colors',
-                      active
-                        ? 'bg-blue-600 text-white border-blue-600'
-                        : 'bg-white text-blue-700 border-blue-200 hover:border-blue-400',
-                    ].join(' ')}
-                  >
-                    {label}
-                  </button>
-                );
-              })}
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                setRentalPickupLevel(100);
-                liveRecalc({ targetPreset: 100, customTarget: '' });
-              }}
-              className={[
-                'w-full py-1.5 rounded-lg text-xs font-black border transition-colors',
-                rentalPickupLevel === 100
-                  ? 'bg-blue-600 text-white border-blue-600'
-                  : 'bg-white text-blue-700 border-blue-200 hover:border-blue-400',
-              ].join(' ')}
-            >
-              Full
-            </button>
-          </div>
-
-          {/* Rental company rate */}
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-base" aria-hidden="true">🏢</span>
-              <p className="text-xs font-black text-blue-800">{t.calc.rentalRateLabel}</p>
-              <span className="text-[10px] text-blue-500 font-medium">{t.calc.rentalRateOptional}</span>
-            </div>
-            <p className="text-[11px] text-blue-600 leading-snug mb-1.5">{t.calc.rentalRateHint}</p>
-            <div className="relative">
-              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-blue-400 font-bold text-sm pointer-events-none">$</span>
-              <input
-                type="number"
-                inputMode="decimal"
-                className="input-field pl-7 border-blue-200 bg-white text-sm"
-                placeholder={t.calc.placeholderRentalRate}
-                value={rentalRate}
-                min="0.01"
-                step="0.01"
-                onChange={(e) => setRentalRate(e.target.value)}
-                aria-label={t.calc.ariaRentalRate}
-              />
-              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-slate-400 pointer-events-none">/gal</span>
-            </div>
-          </div>
-
-        </div>
-      )}
 
       {/* ══════════════════════════════════════════════════════════════
           STEP 2 — Set fuel level
@@ -1360,21 +1009,6 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
         </div>
       )}
 
-      {/* Rental mode active reminder — shown just above the calculate button */}
-      {rentalMode && (
-        <div className="flex items-center gap-2 bg-blue-700 rounded-xl px-3 py-2 mb-2">
-          <span className="text-base flex-shrink-0" aria-hidden="true">🚗</span>
-          <p className="text-xs font-black text-white flex-1">{t.calc.rentalModeActiveReminder}</p>
-          <button
-            type="button"
-            onClick={() => setRentalMode(false)}
-            className="text-blue-200 hover:text-white text-[11px] font-bold underline whitespace-nowrap transition-colors"
-          >
-            {t.calc.rentalModeExit}
-          </button>
-        </div>
-      )}
-
       {/* "You forgot a step" hint — shown right at the button so a tap never feels broken */}
       {tip && (
         <div className="mb-3 flex items-start gap-2 rounded-xl bg-red-50 border border-red-300 px-3.5 py-2.5 animate-fade-in">
@@ -1384,7 +1018,7 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
       )}
 
       <button className="btn-amber" onClick={handleCalculate}>
-        {rentalMode ? t.calc.calculateRental : t.calc.calculate}
+        {t.calc.calculate}
       </button>
       <button className="btn-secondary mt-3" onClick={handleReset}>{t.calc.clearAll}</button>
 
@@ -1398,8 +1032,6 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
             fuelLevelBefore={
               form.fuelMode === 'percent' ? Number(form.currentFuel) : undefined
             }
-            isRental={rentalMode}
-            rentalRate={rentalMode && rentalRate ? Number(rentalRate) : undefined}
             latitude={gasCoords?.lat}
             longitude={gasCoords?.lng}
             stationName={nearbyAttrib?.name}

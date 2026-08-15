@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import Link from 'next/link';
 import { useTranslation } from '@/contexts/LanguageContext';
 import {
   gallonsNeeded, estimatedRentalCompanyCharge,
@@ -13,6 +14,7 @@ import type { RentalSession } from '@/lib/rentalSessions';
 import RefuelLogModal from './RefuelLogModal';
 import CompleteRentalModal from './CompleteRentalModal';
 import FindGasNearReturn from './FindGasNearReturn';
+import EditRentalModal from './EditRentalModal';
 
 const GAUGE_OPTIONS = ['Full', '7/8', '3/4', '5/8', '1/2', '3/8', '1/4', '1/8', 'Empty'];
 
@@ -33,6 +35,7 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
   const [showRefuel, setShowRefuel] = useState(false);
   const [showComplete, setShowComplete] = useState(false);
   const [showFindGas, setShowFindGas] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
 
   const load = useCallback(() => {
     fetch(`/api/rental-sessions/${sessionId}`)
@@ -65,13 +68,29 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
 
   return (
     <div className="max-w-lg mx-auto px-4 py-6 space-y-4">
+      <Link href="/rental-return" className="inline-flex items-center gap-1 text-xs font-bold text-teal-600 hover:text-teal-800">
+        <svg viewBox="0 0 12 12" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+          <path d="M10 6H2M5 2 1 6l4 4" />
+        </svg>
+        {t.rentalReturn.myRentals}
+      </Link>
+
       {/* Header */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-1">
         <div className="flex items-center justify-between">
           <p className="text-sm font-black text-slate-900">{session.rentalCompany}</p>
-          <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border ${statusConfig.color}`}>
-            {statusConfig.label}
-          </span>
+          <div className="flex items-center gap-1.5">
+            <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border ${statusConfig.color}`}>
+              {statusConfig.label}
+            </span>
+            <button
+              type="button"
+              onClick={() => setShowEdit(true)}
+              className="text-[10px] font-bold text-slate-400 hover:text-slate-600 px-1.5 py-0.5"
+            >
+              {t.rentalReturn.edit}
+            </button>
+          </div>
         </div>
         <p className="text-xs text-slate-500">
           {[session.vehicleYear, session.vehicleMake, session.vehicleModel].filter(Boolean).join(' ')}
@@ -189,6 +208,13 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
           onClose={() => setShowComplete(false)}
           onCompleted={() => { setShowComplete(false); onCompleted(); }}
           sessionId={sessionId}
+        />
+      )}
+      {showEdit && (
+        <EditRentalModal
+          session={session}
+          onClose={() => setShowEdit(false)}
+          onSaved={() => { setShowEdit(false); load(); }}
         />
       )}
     </div>

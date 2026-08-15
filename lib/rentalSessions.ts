@@ -151,6 +151,15 @@ export async function getRentalSession(userId: string, id: string): Promise<Rent
 }
 
 export interface UpdateRentalSessionInput {
+  rentalCompany?:              string;
+  rentalAgreementNumber?:      string;
+  vehicleYear?:                string;
+  vehicleMake?:                string;
+  vehicleModel?:               string;
+  vehicleTrim?:                string;
+  fuelTankCapacityGallons?:    number;
+  requiredReturnFuelGallons?:  number;
+  requiredReturnPolicyType?:   ReturnPolicyType;
   currentFuelGallons?:        number;
   currentFuelSource?:         FuelDataSource;
   rentalFuelChargePerGallon?: number;
@@ -168,6 +177,15 @@ export async function updateRentalSession(userId: string, id: string, input: Upd
   const now = new Date().toISOString();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const data: Record<string, any> = { updatedAt: now };
+  if (input.rentalCompany         !== undefined) data.rentalCompany         = input.rentalCompany;
+  if (input.rentalAgreementNumber !== undefined) data.rentalAgreementNumber = input.rentalAgreementNumber;
+  if (input.vehicleYear           !== undefined) data.vehicleYear           = input.vehicleYear;
+  if (input.vehicleMake           !== undefined) data.vehicleMake           = input.vehicleMake;
+  if (input.vehicleModel          !== undefined) data.vehicleModel          = input.vehicleModel;
+  if (input.vehicleTrim           !== undefined) data.vehicleTrim           = input.vehicleTrim;
+  if (input.fuelTankCapacityGallons   !== undefined) data.fuelTankCapacityGallons   = input.fuelTankCapacityGallons;
+  if (input.requiredReturnFuelGallons !== undefined) data.requiredReturnFuelGallons = input.requiredReturnFuelGallons;
+  if (input.requiredReturnPolicyType  !== undefined) data.requiredReturnPolicyType  = input.requiredReturnPolicyType;
   if (input.currentFuelGallons !== undefined) { data.currentFuelGallons = input.currentFuelGallons; data.currentFuelUpdatedAt = now; }
   if (input.currentFuelSource  !== undefined) data.currentFuelSource  = input.currentFuelSource;
   if (input.rentalFuelChargePerGallon !== undefined) data.rentalFuelChargePerGallon = input.rentalFuelChargePerGallon;

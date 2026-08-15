@@ -13,6 +13,7 @@ import type { FuelDataSource } from '@/lib/rentalProvider';
 import type { ReturnPolicyType } from '@/lib/rentalCalculations';
 import RentalVehicleLookup from '@/components/RentalVehicleLookup';
 import RentalVinLookup from '@/components/RentalVinLookup';
+import ReturnLocationInput from './ReturnLocationInput';
 
 const GAUGE_OPTIONS = ['Full', '7/8', '3/4', '5/8', '1/2', '3/8', '1/4', '1/8', 'Empty'];
 
@@ -68,6 +69,7 @@ export default function RentalSetupFlow({ onCreated, onCancel }: Props) {
 
   // Step 6 — return location/time
   const [returnLocation, setReturnLocation] = useState('');
+  const [returnCoords, setReturnCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [returnDateTime, setReturnDateTime] = useState('');
 
   const company = rentalCompany === 'Other' ? customCompany.trim() : rentalCompany;
@@ -114,6 +116,8 @@ export default function RentalSetupFlow({ onCreated, onCancel }: Props) {
           requiredReturnFuelGallons: returnPolicy === 'exact' ? Number(exactReturnGallons) : undefined,
           rentalFuelChargePerGallon: rentalRate ? Number(rentalRate) : undefined,
           returnLocation: returnLocation || undefined,
+          returnLatitude: returnCoords?.lat,
+          returnLongitude: returnCoords?.lng,
           returnDateTime,
         }),
       });
@@ -297,7 +301,14 @@ export default function RentalSetupFlow({ onCreated, onCancel }: Props) {
         <div className="space-y-3">
           <div>
             <label className="field-label">{t.rentalReturn.returnLocationLabel}</label>
-            <input type="text" placeholder={t.rentalReturn.returnLocationPlaceholder} value={returnLocation} onChange={(e) => setReturnLocation(e.target.value)} className="input-field" />
+            <ReturnLocationInput
+              value={returnLocation}
+              placeholder={t.rentalReturn.returnLocationPlaceholder}
+              onChange={(text, coords) => { setReturnLocation(text); setReturnCoords(coords); }}
+            />
+            {returnLocation && !returnCoords && (
+              <p className="text-[10px] text-slate-400 mt-1">{t.rentalReturn.returnLocationNoCoordsHint}</p>
+            )}
           </div>
           <div>
             <label className="field-label">{t.rentalReturn.returnDateTimeLabel}</label>
