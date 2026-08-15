@@ -21,6 +21,7 @@ export default function EditRentalModal({ session, onClose, onSaved }: Props) {
   const router = useRouter();
 
   const [rentalCompany, setRentalCompany] = useState(session.rentalCompany);
+  const [agreementNumber, setAgreementNumber] = useState(session.rentalAgreementNumber ?? '');
   const [vehicleYear,   setVehicleYear]   = useState(session.vehicleYear ?? '');
   const [vehicleMake,   setVehicleMake]   = useState(session.vehicleMake ?? '');
   const [vehicleModel,  setVehicleModel]  = useState(session.vehicleModel ?? '');
@@ -66,6 +67,7 @@ export default function EditRentalModal({ session, onClose, onSaved }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           rentalCompany,
+          rentalAgreementNumber: agreementNumber.trim() || undefined,
           vehicleYear: vehicleYear || undefined,
           vehicleMake: vehicleMake || undefined,
           vehicleModel: vehicleModel || undefined,
@@ -117,6 +119,12 @@ export default function EditRentalModal({ session, onClose, onSaved }: Props) {
               <option value={rentalCompany}>{rentalCompany}</option>
             )}
           </select>
+        </div>
+
+        <div>
+          <label className="field-label">{t.rentalReturn.agreementNumberLabel}</label>
+          <input type="text" placeholder={t.rentalReturn.agreementNumberPlaceholder}
+            value={agreementNumber} onChange={(e) => setAgreementNumber(e.target.value)} className="input-field" />
         </div>
 
         {vehicleEntryMode === 'lookup' ? (

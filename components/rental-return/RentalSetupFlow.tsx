@@ -34,6 +34,7 @@ export default function RentalSetupFlow({ onCreated, onCancel }: Props) {
   // Step 1
   const [rentalCompany, setRentalCompany] = useState('');
   const [customCompany, setCustomCompany] = useState('');
+  const [agreementNumber, setAgreementNumber] = useState('');
 
   // Step 2 — lookup is the primary path (know-exact-car, matches the
   // calculator's proven UX); manual entry is the fallback for renters who
@@ -112,6 +113,7 @@ export default function RentalSetupFlow({ onCreated, onCancel }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           rentalCompany: company,
+          rentalAgreementNumber: agreementNumber.trim() || undefined,
           vehicleYear: vehicleYear || undefined,
           vehicleMake, vehicleModel,
           vehicleTrim: vehicleTrim || undefined,
@@ -186,6 +188,15 @@ export default function RentalSetupFlow({ onCreated, onCancel }: Props) {
               className="input-field"
             />
           )}
+          <div>
+            <label className="field-label">{t.rentalReturn.agreementNumberLabel}</label>
+            <input
+              type="text" placeholder={t.rentalReturn.agreementNumberPlaceholder}
+              value={agreementNumber} onChange={(e) => setAgreementNumber(e.target.value)}
+              className="input-field"
+            />
+            <p className="text-[11px] text-slate-400 mt-1">{t.rentalReturn.agreementNumberHint}</p>
+          </div>
         </div>
       )}
 

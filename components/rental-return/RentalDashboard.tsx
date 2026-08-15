@@ -15,6 +15,8 @@ import RefuelLogModal from './RefuelLogModal';
 import CompleteRentalModal from './CompleteRentalModal';
 import FindGasNearReturn from './FindGasNearReturn';
 import EditRentalModal from './EditRentalModal';
+import VehicleBodyIcon from './VehicleBodyIcon';
+import { inferBodyType } from '@/lib/vehicleBodyType';
 
 const GAUGE_OPTIONS = ['Full', '7/8', '3/4', '5/8', '1/2', '3/8', '1/4', '1/8', 'Empty'];
 
@@ -60,11 +62,26 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
   const rentalCharge = estimatedRentalCompanyCharge(needed, session.rentalFuelChargePerGallon);
   const countdown = returnCountdown(session.returnDateTime);
 
+  // `chip` is for the tinted hero (needs to read against a dark gradient);
+  // plain white/tinted backgrounds elsewhere use the same palette family.
   const statusConfig = {
-    needs_fuel:   { label: t.rentalReturn.statusNeedsFuel,   color: 'bg-red-50 border-red-200 text-red-700' },
-    nearly_ready: { label: t.rentalReturn.statusNearlyReady, color: 'bg-amber-50 border-amber-200 text-amber-700' },
-    return_ready: { label: t.rentalReturn.statusReturnReady, color: 'bg-emerald-50 border-emerald-200 text-emerald-700' },
+    needs_fuel:   { label: t.rentalReturn.statusNeedsFuel,   chip: 'bg-red-400/90 text-white' },
+    nearly_ready: { label: t.rentalReturn.statusNearlyReady, chip: 'bg-amber-400 text-amber-950' },
+    return_ready: { label: t.rentalReturn.statusReturnReady, chip: 'bg-white text-emerald-700' },
   }[status];
+
+  const bodyType = inferBodyType({
+    model:       session.vehicleModel,
+    tankGallons: session.fuelTankCapacityGallons,
+  });
+
+  const tankCapacity = session.fuelTankCapacityGallons ?? 0;
+  const currentPct = tankCapacity > 0
+    ? Math.min(100, Math.max(0, ((session.currentFuelGallons ?? 0) / tankCapacity) * 100))
+    : 0;
+  const targetPct = tankCapacity > 0 && session.requiredReturnFuelGallons != null
+    ? Math.min(100, Math.max(0, (session.requiredReturnFuelGallons / tankCapacity) * 100))
+    : 0;
 
   return (
     <div className="max-w-lg mx-auto px-4 py-6 space-y-4">
@@ -75,42 +92,96 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
         {t.rentalReturn.myRentals}
       </Link>
 
-      {/* Header */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-1">
-        <div className="flex items-center justify-between">
-          <p className="text-sm font-black text-slate-900">{session.rentalCompany}</p>
-          <div className="flex items-center gap-1.5">
-            <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border ${statusConfig.color}`}>
-              {statusConfig.label}
-            </span>
-            <button
-              type="button"
-              onClick={() => setShowEdit(true)}
-              className="text-[10px] font-bold text-slate-400 hover:text-slate-600 px-1.5 py-0.5"
-            >
-              {t.rentalReturn.edit}
-            </button>
+      {/* Hero — vehicle identity, agreement number, countdown, status */}
+      <div className="relative overflow-hidden rounded-2xl shadow-sm bg-gradient-to-br from-[#004638] via-[#005F4A] to-[#1EB68F] p-4 text-white">
+        {/* Oversized watermark silhouette — decorative depth, not a control */}
+        <VehicleBodyIcon
+          bodyType={bodyType}
+          className="absolute -right-4 -bottom-5 w-36 h-36 text-white/10 pointer-events-none"
+        />
+
+        <div className="relative flex items-start gap-3">
+          <div className="flex-shrink-0 w-11 h-11 rounded-2xl bg-white/15 backdrop-blur-sm flex items-center justify-center">
+            <VehicleBodyIcon bodyType={bodyType} className="w-7 h-7 text-white" />
           </div>
+
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-black leading-tight truncate">{session.rentalCompany}</p>
+            <p className="text-[11px] text-white/70 truncate">
+              {[session.vehicleYear, session.vehicleMake, session.vehicleModel].filter(Boolean).join(' ') || t.rentalReturn.vehicleUnknown}
+            </p>
+            {session.rentalAgreementNumber && (
+              <p className="text-[10px] text-white/60 font-mono mt-1 truncate">
+                {t.rentalReturn.agreementNumberShort} {session.rentalAgreementNumber}
+              </p>
+            )}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setShowEdit(true)}
+            className="flex-shrink-0 text-[10px] font-bold text-white/70 hover:text-white bg-white/10 hover:bg-white/20 rounded-lg px-2 py-1 transition-colors"
+          >
+            {t.rentalReturn.edit}
+          </button>
         </div>
-        <p className="text-xs text-slate-500">
-          {[session.vehicleYear, session.vehicleMake, session.vehicleModel].filter(Boolean).join(' ')}
-        </p>
-        {countdown && (
-          <p className="text-xs font-bold text-blue-600 mt-1">{t.rentalReturn.returnIn(countdown)}</p>
-        )}
-        {session.returnLocation && <p className="text-[11px] text-slate-400">{session.returnLocation}</p>}
+
+        <div className="relative flex items-center gap-2 mt-3 flex-wrap">
+          <span className={`text-[10px] font-black px-2.5 py-1 rounded-full ${statusConfig.chip}`}>
+            {statusConfig.label}
+          </span>
+          {countdown && (
+            <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-white/15 text-white">
+              ⏱ {t.rentalReturn.returnIn(countdown)}
+            </span>
+          )}
+          {session.returnLocation && (
+            <span className="text-[10px] text-white/60 truncate max-w-full">📍 {session.returnLocation}</span>
+          )}
+        </div>
       </div>
 
-      {/* Fuel numbers */}
+      {/* Fuel level — visual gauge + the one number that matters */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-3">
-        <div className="grid grid-cols-2 gap-3 text-center">
+        {/* Tank bar: filled = current fuel, marker = required return level */}
+        {tankCapacity > 0 && (
           <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{t.rentalReturn.target}</p>
-            <p className="text-lg font-black text-slate-800">{formatGallons(session.requiredReturnFuelGallons, 'MANUAL_GALLONS')}</p>
+            <div className="relative h-7 rounded-xl bg-slate-100 overflow-hidden">
+              <div
+                className="absolute inset-y-0 left-0 rounded-xl transition-all duration-500"
+                style={{
+                  width: `${currentPct}%`,
+                  background: needed > 0
+                    ? 'linear-gradient(90deg,#FBBF24,#FA7109)'
+                    : 'linear-gradient(90deg,#1EB68F,#005F4A)',
+                }}
+              />
+              {/* Required-return marker */}
+              {targetPct > 0 && targetPct <= 100 && (
+                <div className="absolute inset-y-0 w-0.5 bg-slate-700" style={{ left: `${targetPct}%` }}>
+                  <div className="absolute -top-0.5 -left-[3px] w-2 h-2 rounded-full bg-slate-700" />
+                </div>
+              )}
+              <div className="absolute inset-0 flex items-center justify-between px-2.5 text-[10px] font-black">
+                <span className={currentPct > 12 ? 'text-white' : 'text-slate-500'}>E</span>
+                <span className={currentPct > 92 ? 'text-white' : 'text-slate-400'}>F</span>
+              </div>
+            </div>
+            <div className="flex justify-between text-[10px] text-slate-400 mt-1">
+              <span>{t.rentalReturn.tankSizeLabel(tankCapacity)}</span>
+              <span>▲ {t.rentalReturn.targetMarker}</span>
+            </div>
           </div>
-          <div>
+        )}
+
+        <div className="grid grid-cols-2 gap-3 text-center">
+          <div className="bg-slate-50 rounded-xl py-2">
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{t.rentalReturn.currentEstimated}</p>
             <p className="text-lg font-black text-slate-800">{formatGallons(session.currentFuelGallons, session.currentFuelSource as FuelDataSource)}</p>
+          </div>
+          <div className="bg-slate-50 rounded-xl py-2">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{t.rentalReturn.target}</p>
+            <p className="text-lg font-black text-slate-800">{formatGallons(session.requiredReturnFuelGallons, 'MANUAL_GALLONS')}</p>
           </div>
         </div>
         {session.currentFuelSource && (
@@ -118,12 +189,14 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
         )}
 
         {needed > 0 ? (
-          <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 text-center">
-            <p className="text-sm font-black text-amber-800">{t.rentalReturn.addApprox(needed)}</p>
+          <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl px-3 py-3 text-center">
+            <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wide">{t.rentalReturn.addFuelEyebrow}</p>
+            <p className="text-2xl font-black text-amber-800 leading-tight">{needed} <span className="text-base">gal</span></p>
+            <p className="text-[11px] text-amber-600">{t.rentalReturn.beforeReturning}</p>
           </div>
         ) : (
-          <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2.5 text-center">
-            <p className="text-sm font-black text-emerald-800">{t.rentalReturn.noFuelNeeded}</p>
+          <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-3 text-center">
+            <p className="text-lg font-black text-emerald-800">✓ {t.rentalReturn.noFuelNeeded}</p>
           </div>
         )}
 
