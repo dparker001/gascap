@@ -149,6 +149,7 @@ model User {
   gigMileage               GigMileage[]
   favoriteStations         FavoriteStation[]
   deviceSessions           DeviceSession[]
+  rentalSessions           RentalSession[]
 }
 
 model OtpCode {
@@ -434,4 +435,90 @@ model DeviceSession {
 
   @@unique([userId, deviceId])
   @@index([userId])
+}
+
+// GasCap™ Rental Return Assistant — Level 1.
+//
+// A persisted rental session, distinct from the calculator's ephemeral
+// Rental Car Return Mode (which never saves anything — it's just
+// localStorage state for a single in-progress calculation). This model is
+// provider-independent by design: every fuel-level field is populated today
+// by ManualRentalDataProvider (see lib/rentalProvider.ts), but the shape is
+// meant to also accept authoritative data from a future rental-company API
+// or vehicle telematics feed without changing the UI or calculation engine
+// that consume it. See docs/RENTAL_INTEGRATION_LEVEL2.md.
+//
+// `pickupFuelSource` / `currentFuelSource` hold a FuelDataSource value
+// (MANUAL_GAUGE | MANUAL_PERCENT | MANUAL_GALLONS | RECEIPT |
+// RENTAL_COMPANY_API | VEHICLE_TELEMATICS) — the confidence/precision of
+// that specific reading, independent of `provider`, which identifies which
+// RentalDataProvider populated the session as a whole.
+model RentalSession {
+  id                          String   @id
+  userId                      String
+  vehicleId                   String?  // optional link to an existing garage Vehicle
+
+  provider                    String   @default("manual") // RentalDataProvider id — 'manual' for all of Level 1
+  status                      String   @default("active")  // 'active' | 'completed' | 'cancelled'
+
+  rentalCompany                String
+  rentalAgreementNumber        String?
+
+  vehicleYear                  String?
+  vehicleMake                  String?
+  vehicleModel                 String?
+  vehicleTrim                  String?
+  fuelTankCapacityGallons      Float?
+
+  pickupFuelGallons             Float?
+  pickupFuelSource              String? // FuelDataSource
+  requiredReturnFuelGallons     Float?
+  requiredReturnPolicyType      String? // 'same_as_pickup' | 'full' | 'exact' — see lib/rentalCalculations.ts
+  currentFuelGallons            Float?
+  currentFuelSource             String? // FuelDataSource
+  currentFuelUpdatedAt          String?
+
+  rentalFuelChargePerGallon     Float?
+
+  pickupDateTime                String?
+  returnDateTime                String?
+  pickupLocation                String?
+  returnLocation                 String?
+  returnLatitude                  Float?
+  returnLongitude                 Float?
+
+  // Photos — same compressed-base64-thumbnail pattern as Fillup.receiptThumb,
+  // no new storage infra. All optional and purely for the renter's own
+  // documentation; never presented as legal proof of fuel level.
+  pickupVehiclePhotoThumb        String?
+  pickupGaugePhotoThumb           String?
+  pickupAgreementPhotoThumb        String?
+  returnGaugePhotoThumb             String?
+  returnReceiptPhotoThumb            String?
+
+  // Each "I Just Refueled" log entry as one array item — see
+  // RefuelLogEntry in lib/rentalProvider.ts for the shape.
+  refuelLogs                   Json     @default("[]")
+
+  // Post-completion fuel-dispute tracking (section 24 of the pilot spec) —
+  // the whole point of the pilot is measuring whether GasCap reduces this.
+  fuelFeeCharged                Boolean?
+  fuelFeeAmount                  Float?
+  fuelFeeGallonsClaimed           Float?
+  fuelFeeRentalReportedLevel       Float?
+  disputeNotes                      String?
+
+  feedbackRating                Int?    // 1–5, optional
+  feedbackText                   String?
+
+  notes                        String?
+  reminderSentAt                 String? // dedup guard for the daily rental-return-reminder cron
+  completedAt                   String?
+  createdAt                    String
+  updatedAt                    String
+
+  user  User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, status])
 }

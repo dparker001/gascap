@@ -15,6 +15,7 @@ on:
     - cron: '0 18 * * *'   # fillup-reminder       (18:00 UTC)
     - cron: '0 19 * * *'   # getaway-reminder      (19:00 UTC / 3:00 PM ET)
     - cron: '0 20 * * *'   # price-alerts          (20:00 UTC)
+    - cron: '30 20 * * *'  # rental-return-reminder (20:30 UTC)
     - cron: '0 23 * * *'   # streak-reminder       (23:00 UTC / 7 PM ET)
     - cron: '0 17 * * 1'   # digest                (17:00 UTC, Mondays only)
   workflow_dispatch:
@@ -37,6 +38,7 @@ on:
           - fillup-reminder
           - getaway-reminder
           - price-alerts
+          - rental-return-reminder
           - streak-reminder
           - digest
 
@@ -61,6 +63,7 @@ jobs:
             "0 18 * * *")  echo "endpoint=fillup-reminder"     >> "$GITHUB_OUTPUT" ;;
             "0 19 * * *")  echo "endpoint=getaway-reminder"    >> "$GITHUB_OUTPUT" ;;
             "0 20 * * *")  echo "endpoint=price-alerts"        >> "$GITHUB_OUTPUT" ;;
+            "30 20 * * *") echo "endpoint=rental-return-reminder" >> "$GITHUB_OUTPUT" ;;
             "0 23 * * *")  echo "endpoint=streak-reminder"     >> "$GITHUB_OUTPUT" ;;
             "0 17 * * 1")  echo "endpoint=digest"              >> "$GITHUB_OUTPUT" ;;
             *)             echo "endpoint=${{ inputs.endpoint }}" >> "$GITHUB_OUTPUT" ;;

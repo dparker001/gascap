@@ -148,3 +148,15 @@ export const trackUpgradeCheckoutStarted = (params: { billing: 'monthly' | 'life
   gtagEvent('upgrade_checkout_started', {
     billing: params.billing, show_getaway: params.showGetaway, method: params.method,
   });
+
+// ── Rental Return Assistant pilot analytics (section 25) ────────────────────
+export const trackRentalAssistantOpened   = () => gtagEvent('rental_assistant_opened');
+export const trackRentalSessionCreated    = (rentalCompany?: string) => gtagEvent('rental_session_created', rentalCompany ? { rental_company: rentalCompany } : undefined);
+export const trackRentalFuelNeededCalculated = (gallons: number) => gtagEvent('fuel_needed_calculated', { gallons });
+export const trackRentalGasNearReturnViewed  = () => gtagEvent('gas_near_return_viewed');
+export const trackRentalStationSelected      = () => gtagEvent('station_selected');
+export const trackRentalRefuelLogged         = () => gtagEvent('refuel_logged');
+export const trackRentalReceiptUploaded      = () => gtagEvent('receipt_uploaded');
+export const trackRentalReturnReadyViewed    = (status: string) => gtagEvent('return_ready_viewed', { status });
+export const trackRentalCompleted            = () => gtagEvent('rental_completed');
+export const trackRentalFuelFeeReported      = (charged: boolean) => gtagEvent('fuel_fee_reported', { charged });
