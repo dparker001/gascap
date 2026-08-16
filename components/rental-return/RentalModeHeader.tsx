@@ -33,7 +33,11 @@ export default function RentalModeHeader({ subtitle }: { subtitle?: string }) {
   }
 
   return (
-    <div className="pt-16 px-4 max-w-lg mx-auto">
+    // No top padding: BrandBar already renders a spacer sized to its own
+    // fixed height + safe-area inset. The pt-16 that used to be here applied
+    // that offset a second time, leaving ~4rem of dead space under the green
+    // bar on every rental page.
+    <div className="px-4 max-w-lg mx-auto">
       <div className="flex items-center gap-2.5 bg-blue-50 border-2 border-blue-400 rounded-2xl px-4 py-3">
         <span className="text-xl flex-shrink-0" aria-hidden="true">🚗</span>
         <div className="flex-1 min-w-0">

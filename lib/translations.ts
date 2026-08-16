@@ -526,10 +526,16 @@ const en = {
 
   // ── Rental Return Assistant — Level 1 pilot ─────────────────────────────────
   rentalReturn: {
-    pageTitle:      'Rental Return Assistant',
+    pageTitle:      'My Rentals',
     pageSubtitle:   'Know exactly how much fuel to add before you return your rental.',
     newRental:       'New Rental',
     activeSessions:  'Active Rentals',
+    sectionInProgress: 'In Progress',
+    sectionUpcoming:   'Upcoming',
+    sectionPast:       'Past Rentals',
+    picksUpOn:       (when: string) => `Picks up ${when}`,
+    inProgressHint:  'You have this car now',
+    viewPastRentals: (n: number) => n > 0 ? `View ${n} past rental${n === 1 ? '' : 's'} \u2192` : 'View past rentals \u2192',
     viewHistory:     'View Rental History →',
     signInRequired:  'Sign in to use the Rental Return Assistant.',
     signIn:          'Sign In',
@@ -682,7 +688,7 @@ const en = {
     backToCalculator:    'Back to Calculator',
     modeHeaderTitle:     'Rental Car Mode',
     modeHeaderSubtitle:  'Tracking your rental from pickup to return',
-    goToCalculator:      'Calculator',
+    goToCalculator:      'Back to calculator',
     myRentals:           'My Rentals',
     edit:                'Edit',
     editRental:          'Edit Rental',
@@ -3545,10 +3551,16 @@ const es: typeof en = {
 
   // ── Asistente de Devolución de Alquiler — piloto Nivel 1 ────────────────────
   rentalReturn: {
-    pageTitle:      'Asistente de Devolución de Alquiler',
+    pageTitle:      'Mis Alquileres',
     pageSubtitle:   'Sabe exactamente cuánto combustible agregar antes de devolver tu auto de alquiler.',
     newRental:       'Nuevo Alquiler',
     activeSessions:  'Alquileres Activos',
+    sectionInProgress: 'En Curso',
+    sectionUpcoming:   'Pr\u00f3ximos',
+    sectionPast:       'Alquileres Pasados',
+    picksUpOn:       (when: string) => `Se recoge el ${when}`,
+    inProgressHint:  'Tienes este auto ahora',
+    viewPastRentals: (n: number) => n > 0 ? `Ver ${n} alquiler${n === 1 ? '' : 'es'} pasado${n === 1 ? '' : 's'} \u2192` : 'Ver alquileres pasados \u2192',
     viewHistory:     'Ver Historial de Alquileres →',
     signInRequired:  'Inicia sesión para usar el Asistente de Devolución de Alquiler.',
     signIn:          'Iniciar Sesión',
@@ -3701,7 +3713,7 @@ const es: typeof en = {
     backToCalculator:    'Volver a la Calculadora',
     modeHeaderTitle:     'Modo Auto de Alquiler',
     modeHeaderSubtitle:  'Siguiendo tu alquiler de la recogida a la devolución',
-    goToCalculator:      'Calculadora',
+    goToCalculator:      'Volver a la calculadora',
     myRentals:           'Mis Alquileres',
     edit:                'Editar',
     editRental:          'Editar Alquiler',

@@ -16,6 +16,7 @@ import RentalSetupFlow from '@/components/rental-return/RentalSetupFlow';
 import DeleteRentalButton from '@/components/rental-return/DeleteRentalButton';
 import { trackRentalAssistantOpened, trackRentalSessionCreated } from '@/lib/gtag';
 import type { RentalSession } from '@/lib/rentalSessions';
+import { isUpcomingRental } from '@/lib/rentalCalculations';
 
 export default function RentalReturnPage() {
   const { data: authSession, status } = useSession();
@@ -24,6 +25,7 @@ export default function RentalReturnPage() {
   const router = useRouter();
   const { t } = useTranslation();
   const [sessions, setSessions] = useState<RentalSession[]>([]);
+  const [pastCount, setPastCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [mode, setMode] = useState<'list' | 'setup'>('list');
 
@@ -38,6 +40,12 @@ export default function RentalReturnPage() {
       .then((r) => r.ok ? r.json() : null)
       .then((d) => { if (d?.sessions) setSessions(d.sessions); })
       .finally(() => setLoading(false));
+    // Count only — the past list lives on its own page, but the link should
+    // say how many are there rather than sending people to a maybe-empty page.
+    fetch('/api/rental-sessions?status=completed')
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => setPastCount(d?.sessions?.length ?? 0))
+      .catch(() => {});
   }, [status]);
 
   if (status === 'loading' || loading) {
@@ -64,6 +72,9 @@ export default function RentalReturnPage() {
       </div>
     );
   }
+
+  const rentalsUpcoming   = sessions.filter((s) => isUpcomingRental(s.pickupDateTime));
+  const rentalsInProgress = sessions.filter((s) => !isUpcomingRental(s.pickupDateTime));
 
   if (mode === 'setup') {
     return (
@@ -113,34 +124,69 @@ export default function RentalReturnPage() {
           </div>
         )}
 
-        {sessions.length > 0 && (
+        {/* Grouped, because "Active Rentals" over every open session was
+            wrong in the way that matters: a rental booked for next week
+            appeared under Active, which is the same conflation that had the
+            calculator announcing an unstarted booking as active. A car you're
+            holding and a car you've reserved need different handling, so they
+            get different headings. */}
+        {rentalsInProgress.length > 0 && (
           <div className="space-y-2">
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide px-1">{t.rentalReturn.activeSessions}</p>
-            {sessions.map((s) => (
-              <div
-                key={s.id}
-                className="flex items-center gap-2 flex-wrap bg-white rounded-2xl border border-slate-200 shadow-sm px-4 py-3 hover:border-blue-500 transition-colors"
-              >
-                <button
-                  onClick={() => router.push(`/rental-return/${s.id}`)}
-                  className="flex-1 min-w-0 text-left"
-                >
-                  <p className="text-sm font-bold text-slate-800">{s.rentalCompany}</p>
-                  <p className="text-xs text-slate-400">{[s.vehicleYear, s.vehicleMake, s.vehicleModel].filter(Boolean).join(' ')}</p>
-                </button>
-                <DeleteRentalButton
-                  sessionId={s.id}
-                  onDeleted={() => setSessions((prev) => prev.filter((x) => x.id !== s.id))}
-                />
-              </div>
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide px-1">{t.rentalReturn.sectionInProgress}</p>
+            {rentalsInProgress.map((s) => (
+              <RentalRow key={s.id} s={s} onOpen={() => router.push(`/rental-return/${s.id}`)}
+                         onDeleted={() => setSessions((prev) => prev.filter((x) => x.id !== s.id))}
+                         hint={t.rentalReturn.inProgressHint} accent="blue" />
             ))}
           </div>
         )}
 
-        <Link href="/rental-return/history" className="block text-center text-xs font-bold text-blue-600 hover:text-blue-800 pt-2">
-          {t.rentalReturn.viewHistory}
-        </Link>
+        {rentalsUpcoming.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide px-1">{t.rentalReturn.sectionUpcoming}</p>
+            {rentalsUpcoming.map((s) => (
+              <RentalRow key={s.id} s={s} onOpen={() => router.push(`/rental-return/${s.id}`)}
+                         onDeleted={() => setSessions((prev) => prev.filter((x) => x.id !== s.id))}
+                         hint={s.pickupDateTime
+                           ? t.rentalReturn.picksUpOn(new Date(s.pickupDateTime).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }))
+                           : undefined}
+                         accent="slate" />
+            ))}
+          </div>
+        )}
+
+        <div className="pt-2">
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-wide px-1 mb-1">{t.rentalReturn.sectionPast}</p>
+          <Link href="/rental-return/history" className="block text-center text-xs font-bold text-blue-600 hover:text-blue-800 py-2">
+            {t.rentalReturn.viewPastRentals(pastCount)}
+          </Link>
+        </div>
       </div>
+    </div>
+  );
+}
+
+/** One rental in the list. Extracted so the In Progress and Upcoming groups
+ *  can't drift apart in layout while showing different supporting text. */
+function RentalRow({
+  s, onOpen, onDeleted, hint, accent,
+}: {
+  s: RentalSession;
+  onOpen: () => void;
+  onDeleted: () => void;
+  hint?: string;
+  accent: 'blue' | 'slate';
+}) {
+  return (
+    <div className={`flex items-center gap-2 flex-wrap bg-white rounded-2xl border shadow-sm px-4 py-3 transition-colors ${
+      accent === 'blue' ? 'border-blue-300 hover:border-blue-500' : 'border-slate-200 hover:border-blue-400'
+    }`}>
+      <button onClick={onOpen} className="flex-1 min-w-0 text-left">
+        <p className="text-sm font-bold text-slate-800">{s.rentalCompany}</p>
+        <p className="text-xs text-slate-400">{[s.vehicleYear, s.vehicleMake, s.vehicleModel].filter(Boolean).join(' ')}</p>
+        {hint && <p className={`text-[10px] mt-0.5 font-semibold ${accent === 'blue' ? 'text-blue-600' : 'text-slate-500'}`}>{hint}</p>}
+      </button>
+      <DeleteRentalButton sessionId={s.id} onDeleted={onDeleted} />
     </div>
   );
 }

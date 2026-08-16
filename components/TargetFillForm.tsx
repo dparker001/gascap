@@ -604,7 +604,12 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
         type="button"
         onClick={() => {
           trackRentalReturnToggled(!hasAnyRental);
-          router.push(primaryRental ? `/rental-return/${primaryRental.id}` : '/rental-return');
+          // Always the list, never straight into one rental. Jumping to a
+          // "primary" rental meant picking one on the user's behalf, which is
+          // a guess as soon as they have two — and it hid the fact that the
+          // others exist. The list is one extra tap and always tells the
+          // truth about what they have.
+          router.push('/rental-return');
         }}
         className={[
           'w-full flex items-center gap-3 rounded-2xl px-4 py-3 mb-3 border-2 transition-all',
