@@ -24,6 +24,9 @@
  * Secured with CRON_SECRET. ?dryRun=true returns findings without emailing.
  */
 import { NextResponse } from 'next/server';
+import fs from 'fs';
+import path from 'path';
+import { readAmoeEntries, AMOE_DATA_FILE } from '@/lib/amoeEntries';
 import { prisma }       from '@/lib/prisma';
 import { sendMail }     from '@/lib/email';
 import { getDrawHistory, prevMonth, currentPeriod } from '@/lib/giveaway';
@@ -131,6 +134,29 @@ export async function GET(req: Request) {
     'phone-verified-no-bonus', 'Phone verified but +25 entries never granted',
     verifiedNoBonus,
     'Verification should always pay the one-time +25 unless it was already paid. A non-zero count here means the award condition regressed and these users are owed entries.',
+  ));
+
+  // AMOE store health. The free entry path is a legal requirement, not a
+  // feature: if submissions can't be stored, entrants who are entitled to a
+  // chance never get one. It went unnoticed for four months that the draw
+  // never even read this file, so its health is now asserted daily rather
+  // than assumed. Checks readability and that the directory is writable —
+  // deliberately does NOT create an entry, since a synthetic row in a live
+  // sweepstakes is its own problem.
+  let amoeFault = 0;
+  let amoeDetail = '';
+  try {
+    const entries = readAmoeEntries();               // throws on corrupt/unreadable
+    fs.accessSync(path.dirname(AMOE_DATA_FILE), fs.constants.W_OK);
+    amoeDetail = `${entries.length} free entries stored; store readable and writable.`;
+  } catch (err) {
+    amoeFault = 1;
+    amoeDetail = `Free-entry (AMOE) store is not usable: ${(err as Error).message}. `
+      + 'Submissions may be failing, and no-purchase-necessary entrants would be excluded from the draw.';
+  }
+  findings.push(flag(
+    'amoe-store-unhealthy', 'Free-entry (AMOE) store unreadable or not writable',
+    amoeFault, amoeDetail, 'error',
   ));
 
   // Upstream data providers. Both failed silently before — the electricity
