@@ -81,6 +81,7 @@ export interface StoredUser {
   milestoneReferral1Sent?: boolean;
   earlyUpgradeBonusEntries?: number;
   phoneBonusEntries?:        number;
+  phoneVerifiedAt?:          string;
   lifetimePerksUntil?:       string | null; // ISO timestamp; null = no active Perks renewal
   lifetimePerksSubId?:       string | null;
   userMode?:                 string | null; // 'personal' | 'gig' | 'rental' | 'fleet'
@@ -176,6 +177,7 @@ function toStoredUser(u: PrismaUser): StoredUser {
     milestoneReferral1Sent: u.milestoneReferral1Sent ?? false,
     earlyUpgradeBonusEntries: u.earlyUpgradeBonusEntries ?? 0,
     phoneBonusEntries:        u.phoneBonusEntries        ?? 0,
+    phoneVerifiedAt:          u.phoneVerifiedAt          ?? undefined,
     lifetimePerksUntil:       u.lifetimePerksUntil?.toISOString() ?? null,
     lifetimePerksSubId:       u.lifetimePerksSubId ?? null,
   };
@@ -1156,7 +1158,8 @@ export async function updateUserProfile(
     avatarUrl?:          string | null;
     preferredFillLevel?: number | null;
     monthlyFuelBudget?:  number | null;
-    phoneBonusEntries?:  number;   // set once when user adds phone for first time
+    phoneBonusEntries?:  number;   // one-time +25, paid on first successful verification
+    phoneVerifiedAt?:    string;
     userMode?:           string | null;
   },
 ): Promise<StoredUser | null> {
@@ -1188,6 +1191,7 @@ export async function updateUserProfile(
       ...(fields.monthlyFuelBudget !== undefined
         ? { monthlyFuelBudget: fields.monthlyFuelBudget ?? null }
         : {}),
+      ...(fields.phoneVerifiedAt !== undefined ? { phoneVerifiedAt: fields.phoneVerifiedAt } : {}),
       ...(fields.phoneBonusEntries !== undefined
         ? { phoneBonusEntries: fields.phoneBonusEntries }
         : {}),

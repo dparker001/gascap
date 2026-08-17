@@ -24,12 +24,14 @@ export default function RewardsTab() {
   const [entryCount, setEntryCount] = useState<number | null>(null);
   // Null until loaded, so the nudge never flashes before we know the answer.
   const [phoneBonusEntries, setPhoneBonusEntries] = useState<number | null>(null);
+  const [phoneVerified,     setPhoneVerified]     = useState<boolean | null>(null);
 
   useEffect(() => {
     if (!session) return;
-    const load = (d: { entryCount?: number; phoneBonusEntries?: number } | null) => {
+    const load = (d: { entryCount?: number; phoneBonusEntries?: number; phoneVerified?: boolean } | null) => {
       if (d?.entryCount != null) setEntryCount(d.entryCount);
       if (d?.phoneBonusEntries != null) setPhoneBonusEntries(d.phoneBonusEntries);
+      if (d?.phoneVerified     != null) setPhoneVerified(d.phoneVerified);
     };
     fetch('/api/user/giveaway-entries')
       .then((r) => r.ok ? r.json() : null)
@@ -75,7 +77,12 @@ export default function RewardsTab() {
           passive line item in the /giveaway breakdown, so just 4 of 172 users
           with a phone on file had ever claimed it. Shown only to signed-in
           users who haven't claimed it yet; disappears permanently once they do. */}
-      {!isGuest && phoneBonusEntries === 0 && (
+      {/* Gated on VERIFICATION, not on whether the +25 was paid.
+          phoneBonusEntries === 0 was the wrong proxy: the award had a second
+          condition (no phone previously on file), so 145 users who had
+          verified were told, permanently, to verify. Someone who has verified
+          never sees this again, whether or not the bonus reached them. */}
+      {!isGuest && phoneVerified === false && (
         <Link
           href="/settings#phone"
           className="block rounded-2xl border border-emerald-200 dark:border-emerald-900

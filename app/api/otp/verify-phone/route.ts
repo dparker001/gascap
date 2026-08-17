@@ -39,12 +39,19 @@ export async function POST(req: Request) {
   const user   = await findById(userId);
   if (!user) return NextResponse.json({ error: 'User not found.' }, { status: 404 });
 
-  const isFirstPhone = !user.phone && (user.phoneBonusEntries ?? 0) === 0;
+  // The bonus is for COMPLETING VERIFICATION, so the only thing that should
+  // gate it is whether it's already been paid. This used to also require
+  // `!user.phone`, meaning anyone who had a number saved before verifying got
+  // nothing — 177 users have a phone on file and just 8 ever received the +25.
+  // Worse, the Rewards nudge keys off phoneBonusEntries, so those users were
+  // told to verify a phone they had already verified, permanently.
+  const alreadyPaid = (user.phoneBonusEntries ?? 0) > 0;
 
   await updateUserProfile(userId, {
     phone,
     smsOptIn: true,
-    ...(isFirstPhone ? { phoneBonusEntries: 25 } : {}),
+    phoneVerifiedAt: new Date().toISOString(),
+    ...(alreadyPaid ? {} : { phoneBonusEntries: 25 }),
   });
 
   // Sync to GHL with sms-optin tag (fire-and-forget)

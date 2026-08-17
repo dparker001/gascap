@@ -76,6 +76,9 @@ model User {
   milestoneReferral1Sent   Boolean   @default(false)
   earlyUpgradeBonusEntries Int       @default(0)
   phoneBonusEntries        Int       @default(0)
+  /// ISO string, set when a phone OTP is successfully confirmed. Distinct from
+  /// `phone` (merely stored) and from smsOptIn (a marketing preference).
+  phoneVerifiedAt          String?
   firstCalcBonusEntries    Int       @default(0)   // +entries granted on a user's first calculation (activation reward)
   emailVerifyBonusGranted  Boolean   @default(false)
   smsOptInDate             String?

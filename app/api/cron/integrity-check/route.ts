@@ -119,6 +119,20 @@ export async function GET(req: Request) {
     'recordLogin should fire on every sign-in. When it does not, these users also miss the giveaway entry for that day.',
   ));
 
+  // Phone verified but the +25 never paid. The award used to also require
+  // that no phone was on file, so 145 users completed verification and got
+  // nothing while the Rewards nudge kept telling them to verify. Fixed in
+  // /api/otp/verify-phone; this catches a regression, and any user who slips
+  // through is owed entries.
+  const verifiedNoBonus = await prisma.user.count({
+    where: { phoneVerifiedAt: { not: null }, phoneBonusEntries: 0, isTestAccount: { not: true } },
+  });
+  findings.push(flag(
+    'phone-verified-no-bonus', 'Phone verified but +25 entries never granted',
+    verifiedNoBonus,
+    'Verification should always pay the one-time +25 unless it was already paid. A non-zero count here means the award condition regressed and these users are owed entries.',
+  ));
+
   // Upstream data providers. Both failed silently before — the electricity
   // endpoint returned null for every user for weeks because of a rejected
   // facet name, with no error surfaced anywhere.
