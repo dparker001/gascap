@@ -19,6 +19,7 @@ import { STREAK_BONUS_TIERS, streakBonusEntries, streakTierForStreak, type Strea
 export { STREAK_BONUS_TIERS, streakBonusEntries, streakTierForStreak };
 export type { StreakBonusTier };
 import { getAmbassadorTier, ambassadorEntryMultiplier, isAlwaysEligible, type AmbassadorTier } from '@/lib/ambassador';
+import { amoeEntriesForMonth, amoeEntrantId, normalizeAmoeEmail, AMOE_ENTRY_VALUE } from '@/lib/amoeEntries';
 
 /**
  * Mask a winner's full name to "First L." for all user-facing surfaces.
@@ -208,6 +209,7 @@ export interface EntrantRow {
   lifetimeBonusEntries:        number; // +40/+25 (Perks/base Lifetime) or +15 (Annual) per period
   referralBonusEntries:        number; // +15 per successful referral (lifetime total)
   consistencyBonus:            number; // guaranteed +20 for 15+ active days this period (not chance-based)
+  amoeEntries?:                number; // free No-Purchase-Necessary entries folded in from /amoe
   communityBonus:               number; // guaranteed +15 when the whole community crosses its active-days goal
   entryCount:      number;        // baseEntries + streakBonus + earlyUpgrade + garageBonus + verifyReminderBonus + phoneBonus + dailyBonus + lifetimeBonus + referralBonus + consistencyBonus + communityBonus
   alwaysEligible:  boolean;       // true for Ambassador tier holders — skip win restrictions
@@ -468,7 +470,7 @@ export async function getEligibleEntrants(period: string = currentPeriod()): Pro
   // bonus, not something that varies per entrant.
   const communityBonus = communityBonusEntries(await getCommunityActiveDays(period));
 
-  return users
+  const paidEntrants = users
     .map((u) => {
       const refCount      = u.referralCount ?? 0;
       const multiplier    = ambassadorEntryMultiplier(refCount);
@@ -533,6 +535,78 @@ export async function getEligibleEntrants(period: string = currentPeriod()): Pro
     // Defensive exclusion (in case of any email casing drift past the DB query)
     .filter((u) => !EXCLUDED_EMAILS.has(u.email.toLowerCase()))
     .sort((a, b) => b.entryCount - a.entryCount);
+
+  return mergeAmoeEntrants(paidEntrants, period);
+}
+
+/**
+ * Fold the free-entry submissions into the pool.
+ *
+ * Applied AFTER the `baseEntries > 0` filter on purpose — an AMOE entrant has
+ * no app activity by definition, so running them through that filter is what
+ * would drop them.
+ *
+ * An AMOE submission from someone who is already an entrant adds one entry to
+ * that person rather than creating a second row: one human, one position in
+ * the draw. Building the pool (not just the draw) means the admin preview
+ * shows the true field before anyone pulls the trigger.
+ */
+function mergeAmoeEntrants(paidEntrants: EntrantRow[], month: string): EntrantRow[] {
+  const amoe = amoeEntriesForMonth(month)
+    .filter((e) => !EXCLUDED_EMAILS.has(normalizeAmoeEmail(e.email)));
+  if (amoe.length === 0) return paidEntrants;
+
+  const byEmail = new Map(paidEntrants.map((e) => [e.email.toLowerCase(), e]));
+  const merged  = [...paidEntrants];
+  const seen    = new Set<string>();
+
+  for (const entry of amoe) {
+    const email = normalizeAmoeEmail(entry.email);
+    // The endpoint already enforces one submission per email per month; this
+    // guards the draw against a hand-edited file.
+    if (seen.has(email)) continue;
+    seen.add(email);
+
+    const existing = byEmail.get(email);
+    if (existing) {
+      existing.entryCount    += AMOE_ENTRY_VALUE;
+      existing.amoeEntries    = AMOE_ENTRY_VALUE;
+      continue;
+    }
+
+    merged.push({
+      userId:          amoeEntrantId(email),
+      name:            `${entry.firstName} ${entry.lastName}`.trim(),
+      email:           entry.email,
+      plan:            'amoe',
+      stripeInterval:  null,
+      streak:          0,
+      referralCount:   0,
+      ambassadorTier:  getAmbassadorTier(0),
+      entryMultiplier: 1,
+      baseEntries:     0,
+      streakBonus:                 0,
+      earlyUpgradeBonusEntries:    0,
+      garageBonusEntries:          0,
+      verifyReminderBonusEntries:  0,
+      phoneBonusEntries:           0,
+      dailyBonusEntries:           0,
+      firstCalcBonusEntries:       0,
+      priceReportEntries:          0,
+      gigLogEntries:               0,
+      lifetimeBonusEntries:        0,
+      referralBonusEntries:        0,
+      consistencyBonus:            0,
+      communityBonus:              0,
+      amoeEntries:                 AMOE_ENTRY_VALUE,
+      entryCount:                  AMOE_ENTRY_VALUE,
+      alwaysEligible:              false,
+      loginCount:                  0,
+      lastLoginAt:                 null,
+    });
+  }
+
+  return merged.sort((a, b) => b.entryCount - a.entryCount);
 }
 
 /**

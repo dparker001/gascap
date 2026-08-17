@@ -8,39 +8,13 @@
  *  - No email address is exposed anywhere in the UI
  */
 import { NextRequest, NextResponse } from 'next/server';
-import fs   from 'fs';
-import path from 'path';
 import { randomUUID } from 'crypto';
-
-const DATA_FILE = path.join(process.cwd(), 'data', 'amoe-entries.json');
+import {
+  readAmoeEntries, writeAmoeEntries, normalizeAmoeEmail, type AmoeEntry,
+} from '@/lib/amoeEntries';
 
 function currentMonth(): string {
   return new Date().toISOString().slice(0, 7); // YYYY-MM
-}
-
-function normalizeEmail(e: string): string {
-  return e.trim().toLowerCase();
-}
-
-interface AmoeEntry {
-  id:          string;
-  firstName:   string;
-  lastName:    string;
-  email:       string;
-  month:       string;
-  submittedAt: string;
-}
-
-function readEntries(): AmoeEntry[] {
-  try {
-    return JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')) as AmoeEntry[];
-  } catch {
-    return [];
-  }
-}
-
-function writeEntries(entries: AmoeEntry[]): void {
-  fs.writeFileSync(DATA_FILE, JSON.stringify(entries, null, 2));
 }
 
 export async function POST(req: NextRequest) {
@@ -63,7 +37,7 @@ export async function POST(req: NextRequest) {
   if (!firstName?.trim() || !lastName?.trim()) {
     return NextResponse.json({ error: 'First and last name are required.' }, { status: 400 });
   }
-  const emailTrimmed = normalizeEmail(email ?? '');
+  const emailTrimmed = normalizeAmoeEmail(email ?? '');
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTrimmed)) {
     return NextResponse.json({ error: 'A valid email address is required.' }, { status: 400 });
   }
@@ -71,7 +45,7 @@ export async function POST(req: NextRequest) {
   const month = currentMonth();
 
   // Rate limit — one entry per email per calendar month
-  const entries = readEntries();
+  const entries = readAmoeEntries();
   const alreadyEntered = entries.some(
     (e) => e.email === emailTrimmed && e.month === month,
   );
@@ -92,7 +66,7 @@ export async function POST(req: NextRequest) {
     submittedAt: new Date().toISOString(),
   };
   entries.push(newEntry);
-  writeEntries(entries);
+  writeAmoeEntries(entries);
 
   return NextResponse.json({ ok: true });
 }
