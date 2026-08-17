@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useTranslation } from '@/contexts/LanguageContext';
+import { streakBonusEntries } from '@/lib/streakTiers';
 
 interface StreakCredit {
   id:        string;
@@ -17,7 +18,19 @@ interface ActivityResp {
   streakCredits:       StreakCredit[];
 }
 
+// The ladder starts at 3, not 30.
+//
+// With 30 as the first rung, every new user's progress bar read "Progress to
+// 30-Day Streak — 30 days to go" against a bar sitting near zero. That is the
+// unreachable goal shown to the 94% of users who never get past two
+// consecutive days. 3 and 7 are the rungs people can actually see themselves
+// reaching, and they're what the day-2 nudge is pointing at.
+//
+// 14 is deliberately absent: it grants nothing the 7-day tier didn't already,
+// so listing it would advertise a reward that doesn't exist.
 const MILESTONES = [
+  { days: 3,   emoji: '📅' },
+  { days: 7,   emoji: '✨' },
   { days: 30,  emoji: '⭐' },
   { days: 60,  emoji: '🏆' },
   { days: 120, emoji: '💎' },
@@ -58,9 +71,17 @@ export default function StreakRewards() {
   const allEarned = !nextMilestone;
 
   const milestoneLabel  = (days: number): string => t.streakRewards.milestoneLabel(days);
-  const milestoneReward = (days: number): string =>
-    (isLifetime ? t.streakRewards.milestoneRewardLifetime(days) : t.streakRewards.milestoneReward(days))
-      + ' + ' + t.streakRewards.milestoneVoucher(days);
+  const milestoneReward = (days: number): string => {
+    // Sub-30 tiers carry no Pro month and no voucher — their reward is the
+    // standing draw-entry bonus, read from the same table the draw uses so
+    // the promise can't drift from what's actually awarded.
+    if (days < 30) return t.streakRewards.milestoneRewardEntries(streakBonusEntries(days));
+    const base = isLifetime
+      ? t.streakRewards.milestoneRewardLifetime(days)
+      : t.streakRewards.milestoneReward(days);
+    const voucher = t.streakRewards.milestoneVoucher(days);
+    return voucher ? `${base} + ${voucher}` : base;
+  };
 
   return (
     <div className="rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
