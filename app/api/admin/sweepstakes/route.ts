@@ -76,11 +76,21 @@ export async function GET(req: Request) {
     getCurrentPrizeTier(),
   ]);
   const totalEntries = entrants.reduce((s, e) => s + e.entryCount, 0);
+
+  // Surfaced explicitly rather than left for someone to spot among the
+  // entrant rows. Free entries not appearing in the draw is the defect this
+  // whole path was fixed for, so the count is stated where the draw is run —
+  // an unexpected 0 is now visible before drawing, not discovered after.
+  const amoeEntrantCount = entrants.filter((e) => e.plan === 'amoe').length;
+  const amoeEntryTotal   = entrants.reduce((sum, e) => sum + (e.amoeEntries ?? 0), 0);
+
   return NextResponse.json({
     month,
     entrants,
     totalEntries,
     entrantCount:    entrants.length,
+    amoeEntrantCount,   // free entrants with no paid entries of their own
+    amoeEntryTotal,     // total free entries in the pool, incl. those added to existing entrants
     prize:           tierInfo.currentTier.prize,
     subscriberCount: tierInfo.subscriberCount,
     trialCount:      tierInfo.trialCount,
