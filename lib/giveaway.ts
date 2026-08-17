@@ -13,6 +13,11 @@
  */
 import { randomUUID } from 'crypto';
 import { prisma } from '@/lib/prisma';
+import { STREAK_BONUS_TIERS, streakBonusEntries, streakTierForStreak, type StreakBonusTier } from './streakTiers';
+// Re-exported so existing importers keep working after the tiers moved to
+// their own zero-import module for testability.
+export { STREAK_BONUS_TIERS, streakBonusEntries, streakTierForStreak };
+export type { StreakBonusTier };
 import { getAmbassadorTier, ambassadorEntryMultiplier, isAlwaysEligible, type AmbassadorTier } from '@/lib/ambassador';
 
 /**
@@ -47,11 +52,6 @@ export const PRIZE_TIERS: PrizeTier[] = [
 
 // ─── Streak Bonus Tiers ───────────────────────────────────────────────────────
 
-export interface StreakBonusTier {
-  minStreak: number;
-  bonus:     number;
-  label:     string;   // shown in UI / admin
-}
 
 /**
  * Bonus draw entries awarded based on the user's current login streak.
@@ -70,35 +70,6 @@ export interface StreakBonusTier {
  * while staying in the same order of magnitude as the other stacking bonuses
  * (Lifetime+Perks +40, each referral +15) — see memory/feedback_giveaway_entry_ladder.md.
  */
-export const STREAK_BONUS_TIERS: StreakBonusTier[] = [
-  { minStreak:   0, bonus:   0, label: 'No bonus'        },
-  { minStreak:   7, bonus:   3, label: '1-week streak'   },
-  { minStreak:  30, bonus:   8, label: '1-month streak'  },
-  { minStreak:  90, bonus:  40, label: '3-month streak'  },
-  { minStreak: 180, bonus:  70, label: '6-month streak'  },
-  { minStreak: 365, bonus: 120, label: '1-year streak'   },
-];
-
-/**
- * Return the bonus entries for a given streak length.
- * e.g. streak 45 → 5 bonus entries (1-month tier)
- */
-export function streakBonusEntries(streak: number): number {
-  let bonus = 0;
-  for (const tier of STREAK_BONUS_TIERS) {
-    if (streak >= tier.minStreak) bonus = tier.bonus;
-  }
-  return bonus;
-}
-
-/** Return the streak bonus tier object for a given streak length */
-export function streakTierForStreak(streak: number): StreakBonusTier {
-  let active = STREAK_BONUS_TIERS[0];
-  for (const tier of STREAK_BONUS_TIERS) {
-    if (streak >= tier.minStreak) active = tier;
-  }
-  return active;
-}
 
 // ── Monthly Consistency Bonus ────────────────────────────────────────────────
 // A GUARANTEED reward, not chance-based — reach the active-day threshold in

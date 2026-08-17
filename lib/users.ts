@@ -105,6 +105,11 @@ export interface StreakCredit {
 // free to issue, and 90/180 days was out of reach for most users, so the
 // hotel-tier reward (previously locked behind 180 days) now lands at 120.
 export const STREAK_MILESTONES: { days: number; months: number }[] = [
+  // 3 days is where the funnel actually breaks: of 106 users who ever came
+  // back after signup, 67 returned the very next day but only 15 ever reached
+  // three consecutive days — 62 peaked at exactly two. months: 0, so no Pro
+  // credit; the reward is recognition plus the standing +1 draw entry.
+  { days: 3,   months: 0 },  // habit-forming nudge email
   { days: 7,   months: 0 },  // momentum nudge email
   { days: 14,  months: 0 },  // momentum nudge email — "halfway to +5 entries!"
   { days: 30,  months: 1 },  // 1 free Pro month credit + $25 Dining Voucher
@@ -762,7 +767,15 @@ function awardStreakMilestones(
   const expiry = new Date(now);
   expiry.setFullYear(expiry.getFullYear() + 1);
 
-  const newCredits: StreakCredit[] = newlyHit.map((days) => ({
+  // Only milestones that actually carry a free month (months > 0) mint a
+  // credit. This used to map every newlyHit milestone, so the 7- and 14-day
+  // tiers — documented as momentum nudges worth nothing — minted credits that
+  // StreakRewards displays as "1 free Pro month". Five real users are holding
+  // those; they were shown the promise, so they keep them. This stops new
+  // ones, and it's a prerequisite for any short tier: a 3-day streak must
+  // never hand out a month of Pro.
+  const creditDays = new Set(STREAK_MILESTONES.filter((m) => m.months > 0).map((m) => m.days));
+  const newCredits: StreakCredit[] = newlyHit.filter((days) => creditDays.has(days)).map((days) => ({
     id:        crypto.randomUUID(),
     milestone: days,
     earnedAt:  now.toISOString(),

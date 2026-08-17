@@ -31,12 +31,20 @@ export async function GET(req: Request) {
   let errors  = 0;
 
   for (const user of allUsers) {
-    // Only Pro / Fleet users
-    if (user.plan !== 'pro' && user.plan !== 'fleet') { skipped++; continue; }
-
-    // Only streaks worth saving
+    // Deliberately NOT plan-gated.
+    //
+    // This used to require Pro/Fleet, which excluded 220 of 274 users — the
+    // people who most need a reason to come back. A retention nudge isn't a
+    // paid feature; it's what builds the habit that makes Pro worth buying.
+    // The real-money rewards (dining/hotel vouchers) stay Pro-gated where
+    // they're granted, in /api/activity.
     const streak = user.streak ?? 0;
-    if (streak < 3) { skipped++; continue; }
+
+    // Floor of 2, not 3. The old floor made the target audience unreachable:
+    // 62 users peaked at exactly two consecutive days and, sitting below the
+    // threshold, were never nudged. A milestone at 3 rewards whoever already
+    // got there; this is the message that creates them.
+    if (streak < 2) { skipped++; continue; }
 
     // Skip anyone who has already been active today. Reads activeDays — the
     // same field the streak itself is computed from — not lastLoginAt, which
@@ -48,8 +56,17 @@ export async function GET(req: Request) {
     if ((user as { isTestAccount?: boolean }).isTestAccount) { skipped++; continue; }
 
     const firstName = (user.displayName || user.name || 'there').split(' ')[0];
-    const title = `${streak}-day streak at risk ⏰`;
-    const body  = `Hey ${firstName} — open GasCap™ before midnight to keep your ${streak}-day streak alive.`;
+
+    // Two distinct messages. At streak 2 there is no achievement to protect
+    // yet, so "your 2-day streak is at risk" asks someone to defend something
+    // they don't feel they have. Point at the thing one day away instead.
+    const buildingHabit = streak === 2;
+    const title = buildingHabit
+      ? 'One more day 📅'
+      : `${streak}-day streak at risk ⏰`;
+    const body  = buildingHabit
+      ? `Hey ${firstName} — open GasCap™ today and you've got a 3-day streak.`
+      : `Hey ${firstName} — open GasCap™ before midnight to keep your ${streak}-day streak alive.`;
     const iosToken = (user as { iosPushToken?: string | null }).iosPushToken;
 
     try {
