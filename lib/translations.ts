@@ -936,7 +936,7 @@ const en = {
     rentalModeActive:       'Active — compare pump cost vs. rental company rate',
     rentalModeActiveWith:   (company: string) => `Active rental with ${company} — tap to continue`,
     rentalModeUpcomingWith: (company: string, when: string) => when
-      ? `Upcoming ${company} rental \u2014 picks up ${when}`
+      ? `Upcoming ${company} rental \u2014 pickup ${when}`
       : `Upcoming rental with ${company} \u2014 tap to view`,
     rentalModeMultiple:     (active: number, upcoming: number) => {
       const parts: string[] = [];
@@ -3957,7 +3957,7 @@ const es: typeof en = {
     rentalModeActive:       'Activo — compara costo en la bomba vs. tarifa de la rentadora',
     rentalModeActiveWith:   (company: string) => `Alquiler activo con ${company} — toca para continuar`,
     rentalModeUpcomingWith: (company: string, when: string) => when
-      ? `Alquiler pr\u00f3ximo con ${company} \u2014 se recoge el ${when}`
+      ? `Alquiler pr\u00f3ximo con ${company} \u2014 recogida ${when}`
       : `Alquiler pr\u00f3ximo con ${company} \u2014 toca para ver`,
     rentalModeMultiple:     (active: number, upcoming: number) => {
       const parts: string[] = [];
