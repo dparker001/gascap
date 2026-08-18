@@ -20,6 +20,14 @@ ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "revenueCatActive"    BOOLEAN NOT NU
 ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "revenueCatInterval"  TEXT;
 ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "revenueCatProductId" TEXT;
 
+-- ── Postgres-backed rate limiting ───────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS "RateLimitCounter" (
+  "key"     TEXT PRIMARY KEY,
+  "count"   INTEGER NOT NULL DEFAULT 0,
+  "resetAt" TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS "RateLimitCounter_resetAt_idx" ON "RateLimitCounter"("resetAt");
+
 -- ── RevenueCat webhook idempotency ──────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS "RevenueCatWebhookEvent" (
   "id"          TEXT PRIMARY KEY,       -- RevenueCat's own event.id

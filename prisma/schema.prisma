@@ -182,6 +182,22 @@ model OtpCode {
 /// durable record of "did we actually process this," so a crash between
 /// receiving an event and finishing its side effects is safely retryable
 /// instead of either silently repeating a grant or silently losing one.
+/// Sprint 2 hardening — Postgres-backed rate limiting, replacing the
+/// in-memory Map for security-sensitive flows. The in-memory version resets
+/// on every deploy and doesn't share state across instances if GasCap ever
+/// scales horizontally; both are silent correctness gaps rather than crashes,
+/// which is exactly the kind of bug that goes unnoticed. Key is caller-defined
+/// (e.g. "otp-verify:user@example.com", "pwreset:1.2.3.4") — same convention
+/// as the in-memory checkRateLimit() it complements, not replaces (see
+/// lib/rateLimitDb.ts and docs/RATE_LIMITING_PLAN.md for which is used where).
+model RateLimitCounter {
+  key       String   @id
+  count     Int      @default(0)
+  resetAt   String   // ISO string — window end; a fresh window is started when now > resetAt
+
+  @@index([resetAt])
+}
+
 model RevenueCatWebhookEvent {
   id          String   @id   // RevenueCat's own event.id — the dedup key, not our own uuid
   eventType   String

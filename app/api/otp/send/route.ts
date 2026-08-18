@@ -3,24 +3,25 @@
  * Body: { email: string; name?: string }
  *
  * Generates a 6-digit OTP stored in the DB (10-min TTL) and emails it.
- * Rate-limited to 3 sends per email per 15 minutes (in-memory; acceptable
- * since it's abuse prevention only, not auth-critical).
+ * Rate-limited to 3 sends per email + 20 per IP per 15 minutes.
+ *
+ * Sprint 2: was its own local in-memory Map, redundant with (and slightly
+ * different from) lib/rateLimit.ts's checkRateLimit — two implementations of
+ * the same concept, found during the sprint's inspection pass. Consolidated
+ * onto the Postgres-backed limiter (lib/rateLimitDb.ts) so this survives a
+ * deploy instead of resetting every time, and gained an IP layer it didn't
+ * have before — email-only meant one caller could flood many different
+ * addresses at will, since no single address ever hit its own cap.
  */
 
 import { NextResponse } from 'next/server';
 import { pgPool }       from '@/lib/prisma';
 import { sendMail }     from '@/lib/email';
+import { checkRateLimitDb } from '@/lib/rateLimitDb';
 
-// ── Rate limiting (in-memory, abuse prevention only) ────────────────────────
-const rates = new Map<string, { count: number; windowEnd: number }>();
-function checkRate(email: string): boolean {
-  const now = Date.now();
-  const r   = rates.get(email);
-  if (!r || now > r.windowEnd) { rates.set(email, { count: 1, windowEnd: now + 15 * 60 * 1000 }); return true; }
-  if (r.count >= 3) return false;
-  r.count += 1;
-  return true;
-}
+const OTP_SEND_MAX_PER_EMAIL = 3;
+const OTP_SEND_MAX_PER_IP    = 20;
+const OTP_SEND_WINDOW_MS     = 15 * 60 * 1000;
 
 function generateCode(): string {
   const arr = new Uint32Array(1);
@@ -42,7 +43,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Please enter a valid email address.' }, { status: 400 });
   }
 
-  if (!checkRate(email)) {
+  const forwarded = req.headers.get('x-forwarded-for');
+  const ip = (forwarded ?? req.headers.get('x-real-ip') ?? 'unknown').split(',')[0].trim();
+  const [emailLimit, ipLimit] = await Promise.all([
+    checkRateLimitDb(`otp-send-email:${email}`, OTP_SEND_MAX_PER_EMAIL, OTP_SEND_WINDOW_MS),
+    checkRateLimitDb(`otp-send-ip:${ip}`, OTP_SEND_MAX_PER_IP, OTP_SEND_WINDOW_MS),
+  ]);
+  if (!emailLimit.allowed || !ipLimit.allowed) {
     return NextResponse.json(
       { error: 'Too many codes sent. Please wait 15 minutes before trying again.' },
       { status: 429 },
