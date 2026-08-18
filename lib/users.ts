@@ -11,6 +11,7 @@ import type { User as PrismaUser } from './generated/prisma/client';
 import { Prisma } from './generated/prisma/client';
 import { qualifiesForFreeProForLife, AMBASSADOR_THRESHOLDS, getAmbassadorTier } from './ambassador';
 import { sendHotelSavingsCard, sendDiningVoucher } from './marketingBoost';
+import { resolveUserEntitlements, type ResolvedEntitlement } from './entitlements';
 import { sendMail } from './email';
 
 export { getAmbassadorTier, ambassadorEntryMultiplier, isAlwaysEligible, AMBASSADOR_THRESHOLDS } from './ambassador';
@@ -279,13 +280,28 @@ export async function verifyPassword(plain: string, hash: string | undefined): P
 export async function setUserPlan(
   userId: string,
   plan: 'free' | 'pro' | 'fleet',
-  stripe?: { customerId?: string; subscriptionId?: string; interval?: 'monthly' | 'annual' | 'lifetime' },
+  stripe?: {
+    customerId?: string; subscriptionId?: string; interval?: 'monthly' | 'annual' | 'lifetime';
+    // Sprint 2 — RevenueCat grant provenance. Distinct from `stripe` in name
+    // only (the param predates RevenueCat and callers already pass their own
+    // grant details through it); persisting this is what lets
+    // resolveUserEntitlements() see a RevenueCat grant as a source
+    // independent of Stripe, instead of both providers writing the exact
+    // same plan/stripeInterval columns with no way to tell them apart.
+    revenueCat?: { active: boolean; interval?: 'monthly' | 'lifetime'; productId?: string };
+  },
 ): Promise<void> {
-  // Ambassador Pro-for-life protection: if a Stripe subscription cancels and
-  // the caller tries to revert this user to free, check whether they hold the
-  // Ambassador (15+) or Elite (30+) milestone. If so, keep plan = 'pro' —
-  // their subscription is complimentary and must not be revoked by churn.
-  // We still clear the stripeSubscriptionId so billing stays accurate.
+  // Ambassador Pro-for-life protection: if a caller tries to revert this user
+  // to free, check whether they hold the Ambassador (15+) or Elite (30+)
+  // milestone first. If so, keep plan = 'pro' — their subscription is
+  // complimentary and must not be revoked by churn on any provider.
+  //
+  // This is intentionally still the ONE unconditional protection inside
+  // setUserPlan itself (every other source is checked by the callers below,
+  // via resolveUserEntitlements, before they ever call setUserPlan(_, 'free')
+  // at all) — Ambassador status is a GasCap-internal grant with no
+  // "provider" of its own, so there's no natural call site to put this logic
+  // in other than the write path itself.
   if (plan === 'free') {
     const u = await prisma.user.findUnique({
       where:  { id: userId },
@@ -326,6 +342,17 @@ export async function setUserPlan(
       // paid-campaign enrollment (which also writes it) is skipped. This gates
       // the Lifetime-only getaway promo, so it must never be stale.
       ...(stripe?.interval ? { stripeInterval: stripe.interval } : {}),
+      // Sprint 2 — record RevenueCat's own grant independently of the Stripe
+      // fields above, even though a RevenueCat grant ALSO writes
+      // plan/stripeInterval today (kept for backward compatibility with
+      // every existing plan check in the app, which reads `plan` directly).
+      // The new columns are what makes a later revocation on either
+      // provider safe — see revokeRevenueCatEntitlement below.
+      ...(stripe?.revenueCat ? {
+        revenueCatActive:    stripe.revenueCat.active,
+        revenueCatInterval:  stripe.revenueCat.interval ?? null,
+        revenueCatProductId: stripe.revenueCat.productId ?? null,
+      } : {}),
     },
   });
 
@@ -339,6 +366,77 @@ export async function setUserPlan(
       data:  { lifetimePurchasedAt: new Date().toISOString() },
     });
   }
+}
+
+/**
+ * Sprint 2 — clear RevenueCat's contribution to this user's Pro access
+ * (EXPIRATION/REFUND) and only actually downgrade if no OTHER source
+ * (Stripe, gift, Ambassador) still qualifies.
+ *
+ * This is the fix for the reconciliation gap found during Sprint 2
+ * inspection: the RevenueCat webhook previously called
+ * `setUserPlan(userId, 'free')` unconditionally on revoke, with no
+ * awareness of a coexisting Stripe subscription or Lifetime purchase.
+ */
+export async function revokeRevenueCatEntitlement(userId: string): Promise<ResolvedEntitlement> {
+  // Clear RevenueCat's own fields FIRST, then resolve from the fresh state —
+  // resolveUserEntitlements must never see the entitlement being revoked as
+  // still present, or it would always conclude "still Pro" and the
+  // revocation would be a no-op.
+  const cleared = await prisma.user.update({
+    where: { id: userId },
+    data:  { revenueCatActive: false, revenueCatInterval: null },
+    select: {
+      ambassadorProForLife: true, stripeInterval: true, stripeSubscriptionId: true,
+      revenueCatActive: true, revenueCatInterval: true, isProTrial: true, trialExpiresAt: true,
+    },
+  });
+  const resolved = resolveUserEntitlements(cleared);
+  if (resolved.pro) {
+    // A different source still qualifies — stay Pro, correct the interval to
+    // whatever that surviving source implies (e.g. was 'lifetime' via RC,
+    // still 'monthly' via an independent Stripe sub).
+    await prisma.user.update({
+      where: { id: userId },
+      data:  { plan: 'pro', ...(resolved.effectiveInterval ? { stripeInterval: resolved.effectiveInterval } : {}) },
+    });
+  } else {
+    await setUserPlan(userId, 'free');
+  }
+  return resolved;
+}
+
+/**
+ * Sprint 2 — the Stripe-side mirror of revokeRevenueCatEntitlement. Used by
+ * the Stripe `customer.subscription.deleted` handler in place of its
+ * previous ad-hoc `if (stripeInterval === 'lifetime') skip` check, which
+ * protected Lifetime owners but had no idea a coexisting RevenueCat
+ * entitlement could exist either.
+ */
+export async function revokeStripeSubscriptionEntitlement(userId: string): Promise<ResolvedEntitlement> {
+  const cleared = await prisma.user.update({
+    where: { id: userId },
+    data:  { stripeSubscriptionId: null },
+    select: {
+      ambassadorProForLife: true, stripeInterval: true, stripeSubscriptionId: true,
+      revenueCatActive: true, revenueCatInterval: true, isProTrial: true, trialExpiresAt: true,
+    },
+  });
+  // stripeInterval is intentionally NOT cleared here even for a plain
+  // monthly cancellation — it's a value/label field (what plan they were on
+  // last), and resolveUserEntitlements only treats it as a qualifying source
+  // when it equals 'lifetime', which a genuinely-cancelled subscription
+  // never is. Clearing it would lose useful history for no safety benefit.
+  const resolved = resolveUserEntitlements(cleared);
+  if (resolved.pro) {
+    await prisma.user.update({
+      where: { id: userId },
+      data:  { plan: 'pro', ...(resolved.effectiveInterval ? { stripeInterval: resolved.effectiveInterval } : {}) },
+    });
+  } else {
+    await setUserPlan(userId, 'free');
+  }
+  return resolved;
 }
 
 /**

@@ -18,11 +18,12 @@
  *  - gascap_pro_monthly   → auto-renew sub  → interval 'monthly'
  */
 import { NextResponse } from 'next/server';
-import { setUserPlan, findById, findByEmail, enrollPaidCampaign } from '@/lib/users';
+import { setUserPlan, findById, findByEmail, enrollPaidCampaign, revokeRevenueCatEntitlement } from '@/lib/users';
 import { sendMail } from '@/lib/email';
 import { sendPaidCampaignEmail } from '@/lib/emailCampaignPaid';
 import { sendUserPush } from '@/lib/userPush';
 import { getawayPromoActive, GETAWAY_DISCLOSURE } from '@/lib/getawayPromo';
+import { claimEvent, markProcessed, markFailed } from '@/lib/revenueCatEvents';
 
 export const dynamic = 'force-dynamic';
 
@@ -109,6 +110,14 @@ const INITIAL_GRANT_EVENTS = new Set(['INITIAL_PURCHASE', 'NON_RENEWING_PURCHASE
 const REVOKE_EVENTS = new Set(['EXPIRATION', 'REFUND']);
 
 interface RcEvent {
+  // NOTE: `id` is RevenueCat's documented unique webhook-event identifier —
+  // https://www.revenuecat.com/docs/integrations/webhooks event object shape
+  // — used below as the idempotency key. Verify against a real delivered
+  // payload in the RevenueCat dashboard's webhook event log before relying
+  // on this in a context where being wrong is costly; this was not
+  // independently re-confirmed against RevenueCat's live docs as part of
+  // this change (see docs/reviews for the Sprint 2 packet's open item).
+  id?:                   string;
   type?:                string;
   app_user_id?:         string;
   original_app_user_id?: string;
@@ -197,14 +206,36 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, unmatched: true });
   }
 
+  // Idempotency (Sprint 2). RevenueCat delivers at-least-once, so the same
+  // event.id can arrive more than once — without this, a duplicate delivery
+  // re-ran every side effect (a second welcome email, a second getaway
+  // offer, a second push) for the same purchase. See lib/revenueCatEvents.ts
+  // for the claim/status model, including how a crash mid-processing is
+  // safely retried rather than either repeated or permanently dropped.
+  //
+  // No event.id at all (missing field, or an old RevenueCat integration that
+  // predates this) falls through to processing unconditionally — refusing
+  // to grant/revoke Pro because an id was absent would be a worse failure
+  // mode than the rare double-processing it would prevent.
+  if (ev.id) {
+    const claim = await claimEvent(ev.id, ev.type, user.id);
+    if (claim.outcome !== 'claimed') {
+      console.log(`[revenuecat] ${ev.type} for ${user.email} — ${claim.outcome}, skipping side effects`);
+      return NextResponse.json({ ok: true, duplicate: true });
+    }
+  }
+
   try {
     if (GRANT_EVENTS.has(ev.type)) {
       const interval: 'monthly' | 'lifetime' =
         ev.product_id === LIFETIME_PRODUCT ? 'lifetime' : 'monthly';
-      await setUserPlan(user.id, 'pro', { interval });
+      await setUserPlan(user.id, 'pro', { interval, revenueCat: { active: true, interval, productId: ev.product_id } });
       console.log(`[revenuecat] ${ev.type} → granted Pro (${interval}) to ${user.email}`);
       // First grant only (idempotent): welcome email + paid nurture, mirroring the
       // Stripe path so IAP buyers also get an upgrade-confirmation email.
+      // Kept alongside the event-id claim above as defense in depth — this
+      // check is against durable USER state, the claim is against the EVENT;
+      // either one alone would have caught the reported duplicate-send risk.
       if (INITIAL_GRANT_EVENTS.has(ev.type) && !user.paidCampaignEnrolledAt) {
         await enrollPaidCampaign(user.id, interval)
           .catch((e) => console.error('[revenuecat] paid-campaign enroll failed:', e));
@@ -222,13 +253,18 @@ export async function POST(req: Request) {
       // Lifetime buyers earn the complimentary getaway during the active promo.
       if (interval === 'lifetime') maybeSendGetaway(user, ev.type);
     } else {
-      // EXPIRATION / REFUND → revert to free (setUserPlan protects ambassador Pro-for-life).
-      await setUserPlan(user.id, 'free');
-      console.log(`[revenuecat] ${ev.type} → reverted ${user.email} to free`);
+      // EXPIRATION / REFUND → recompute aggregate entitlement rather than
+      // unconditionally reverting to free (Sprint 2 — see lib/entitlements.ts).
+      // A RevenueCat-side revocation must never wipe a DIFFERENT provider's
+      // legitimate grant (Stripe Lifetime, a gift, Ambassador Pro-for-Life).
+      await revokeRevenueCatEntitlement(user.id);
+      console.log(`[revenuecat] ${ev.type} → cleared RevenueCat entitlement for ${user.email} (plan recalculated)`);
     }
+    if (ev.id) await markProcessed(ev.id);
     return NextResponse.json({ ok: true });
   } catch (e) {
     console.error('[revenuecat] grant/revoke failed:', e);
+    if (ev.id) await markFailed(ev.id, e);
     return NextResponse.json({ error: 'Internal error' }, { status: 500 });
   }
 }

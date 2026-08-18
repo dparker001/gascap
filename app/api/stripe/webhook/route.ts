@@ -9,7 +9,7 @@
 import { NextResponse }                     from 'next/server';
 import type Stripe                          from 'stripe';
 import { stripe }                           from '@/lib/stripe';
-import { setUserPlan, findByStripeCustomer, findById, findByReferralCode, creditVerifiedReferral, getActiveCredits, enrollPaidCampaign, enrollEngagementCampaign, setEarlyUpgradeBonus, markMilestoneSent, updateUserProfile, clearStripeSubscriptionId, setLifetimePerksActive, clearLifetimePerks, markFoundingMember } from '@/lib/users';
+import { setUserPlan, findByStripeCustomer, findById, findByReferralCode, creditVerifiedReferral, getActiveCredits, enrollPaidCampaign, enrollEngagementCampaign, setEarlyUpgradeBonus, markMilestoneSent, updateUserProfile, clearStripeSubscriptionId, setLifetimePerksActive, clearLifetimePerks, markFoundingMember, revokeStripeSubscriptionEntitlement } from '@/lib/users';
 import { updateGhlContactPlan }            from '@/lib/ghl';
 import { sendMail, giftEmailHtml }         from '@/lib/email';
 import { createGift }                      from '@/lib/gifts';
@@ -505,15 +505,25 @@ export async function POST(req: Request) {
           break;
         }
 
-        // Lifetime owners hold a one-time purchase, not a subscription. When a
-        // recurring subscriber upgrades to Lifetime we cancel their old sub,
-        // which fires this event — but they must NOT be reverted to Free. Skip.
-        if (user.stripeInterval === 'lifetime') {
-          console.info(`[GasCap webhook] Ignored ${event.type} for Lifetime owner ${user.id} (no downgrade)`);
+        // Sprint 2: was a single ad-hoc check — "if stripeInterval ===
+        // 'lifetime', skip" — which protected Lifetime owners from THIS
+        // event but had no idea a coexisting RevenueCat entitlement could
+        // also exist (the exact reverse of the bug found in the RevenueCat
+        // webhook: a Stripe-side cancellation blowing away a legitimate
+        // RevenueCat-granted Pro). Now resolves from every known source;
+        // only actually downgrades if nothing else qualifies.
+        const resolved = await revokeStripeSubscriptionEntitlement(user.id);
+
+        if (resolved.pro) {
+          console.info(`[GasCap webhook] ${event.type} for ${user.id} — Stripe subscription ended but Pro retained via: ${resolved.sources.join(', ')}`);
+          sendAdminMail({
+            subject: `ℹ️ Stripe subscription ended, Pro retained — ${user.email}`,
+            html: `<p>${user.name} (${user.email})'s Stripe subscription ended (${event.type}), but they remain Pro via: <strong>${resolved.sources.join(', ')}</strong>. No action needed — this is expected multi-provider behavior, not a billing error.</p>`,
+            text: `${user.name} <${user.email}> — Stripe subscription ended, Pro retained via ${resolved.sources.join(', ')}.`,
+          });
           break;
         }
 
-        await setUserPlan(user.id, 'free');
         updateGhlContactPlan(user.email, 'free')
           .catch((err) => console.error('[GHL] plan revert sync failed:', err));
 

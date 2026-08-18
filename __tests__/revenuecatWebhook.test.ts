@@ -13,15 +13,17 @@
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-const setUserPlan = vi.fn(async () => {});
-const findById    = vi.fn(async (_id: string) => undefined as unknown);
-const findByEmail = vi.fn(async (_e: string) => undefined as unknown);
+const setUserPlan               = vi.fn(async () => {});
+const findById                  = vi.fn(async (_id: string) => undefined as unknown);
+const findByEmail               = vi.fn(async (_e: string) => undefined as unknown);
+const revokeRevenueCatEntitlement = vi.fn(async (): Promise<{ pro: boolean; permanent: boolean; sources: string[]; trial: boolean; effectiveInterval: string | null }> => ({ pro: false, permanent: false, sources: [], trial: false, effectiveInterval: null }));
 
 vi.mock('@/lib/users', () => ({
   setUserPlan:        (...a: unknown[]) => setUserPlan(...(a as [])),
   findById:           (id: string) => findById(id),
   findByEmail:        (e: string) => findByEmail(e),
   enrollPaidCampaign: vi.fn(async () => {}),
+  revokeRevenueCatEntitlement: (...a: unknown[]) => revokeRevenueCatEntitlement(...(a as [])),
 }));
 vi.mock('@/lib/email',              () => ({ sendMail: vi.fn(async () => {}) }));
 vi.mock('@/lib/emailCampaignPaid',  () => ({ sendPaidCampaignEmail: vi.fn(async () => {}) }));
@@ -29,6 +31,28 @@ vi.mock('@/lib/userPush',           () => ({ sendUserPush: vi.fn(async () => {})
 vi.mock('@/lib/getawayPromo',       () => ({
   getawayPromoActive: () => false,
   GETAWAY_DISCLOSURE: '',
+}));
+
+// In-memory stand-in for the RevenueCatWebhookEvent table, matching
+// lib/revenueCatEvents.ts's claim semantics closely enough to test the
+// route's behavior without a database.
+const eventStore = new Map<string, { status: string; receivedAt: number }>();
+const claimEvent = vi.fn(async (eventId: string, _eventType?: string, _userId?: string | null) => {
+  const existing = eventStore.get(eventId);
+  if (!existing) { eventStore.set(eventId, { status: 'processing', receivedAt: Date.now() }); return { outcome: 'claimed' as const }; }
+  if (existing.status === 'processed') return { outcome: 'duplicate-processed' as const };
+  return { outcome: 'duplicate-in-flight' as const };
+});
+const markProcessed = vi.fn(async (eventId: string) => {
+  const e = eventStore.get(eventId); if (e) e.status = 'processed';
+});
+const markFailed = vi.fn(async (eventId: string, _error?: unknown) => {
+  const e = eventStore.get(eventId); if (e) e.status = 'failed';
+});
+vi.mock('@/lib/revenueCatEvents', () => ({
+  claimEvent:    (id: string, t?: string, u?: string | null) => claimEvent(id, t, u),
+  markProcessed: (id: string) => markProcessed(id),
+  markFailed:    (id: string, e: unknown) => markFailed(id, e),
 }));
 
 const SECRET = 'test-webhook-secret-value';
@@ -50,9 +74,11 @@ const USER = { id: 'user-1', email: 'buyer@example.com', name: 'Buyer', plan: 'f
 beforeEach(() => {
   vi.clearAllMocks();
   vi.resetModules();
+  eventStore.clear();
   process.env.REVENUECAT_WEBHOOK_AUTH = SECRET;
   findById.mockResolvedValue(undefined);
   findByEmail.mockResolvedValue(undefined);
+  revokeRevenueCatEntitlement.mockResolvedValue({ pro: false, permanent: false, sources: [], trial: false, effectiveInterval: null });
 });
 
 // ── 1–3: authentication ────────────────────────────────────────────────────
@@ -161,18 +187,36 @@ describe('entitlement transitions', () => {
     expect(setUserPlan).toHaveBeenCalled();
   });
 
-  it('10. revokes on expiration', async () => {
+  it('10. revokes on expiration — via the reconciling revoke path, not a bare setUserPlan(free)', async () => {
+    // Sprint 2: this used to be a direct setUserPlan(userId, 'free') call
+    // with no awareness of a coexisting Stripe entitlement. It now goes
+    // through revokeRevenueCatEntitlement, which recalculates before ever
+    // touching plan — see __tests__/entitlements.test.ts for the resolver
+    // itself and 10b/10c below for the coexistence cases this enables.
     findById.mockResolvedValue({ ...USER, plan: 'pro' });
-    await post({ event: { type: 'EXPIRATION', app_user_id: 'user-1' } }, SECRET);
-    expect(setUserPlan).toHaveBeenCalled();
-    expect(JSON.stringify(setUserPlan.mock.calls[0])).toContain('free');
+    const res = await post({ event: { type: 'EXPIRATION', app_user_id: 'user-1' } }, SECRET);
+    expect(res.status).toBe(200);
+    expect(revokeRevenueCatEntitlement).toHaveBeenCalledWith('user-1');
   });
 
-  it('11. revokes on refund', async () => {
+  it('10b. EXPIRATION with a surviving Stripe entitlement does NOT downgrade', async () => {
     findById.mockResolvedValue({ ...USER, plan: 'pro' });
-    await post({ event: { type: 'REFUND', app_user_id: 'user-1' } }, SECRET);
-    expect(setUserPlan).toHaveBeenCalled();
-    expect(JSON.stringify(setUserPlan.mock.calls[0])).toContain('free');
+    revokeRevenueCatEntitlement.mockResolvedValue({
+      pro: true, permanent: false, sources: ['stripe_subscription'], trial: false, effectiveInterval: 'monthly',
+    });
+    const res = await post({ event: { type: 'EXPIRATION', app_user_id: 'user-1' } }, SECRET);
+    expect(res.status).toBe(200);
+    expect(revokeRevenueCatEntitlement).toHaveBeenCalledWith('user-1');
+    // The route itself never calls setUserPlan directly on the revoke path —
+    // revokeRevenueCatEntitlement owns that decision entirely.
+    expect(setUserPlan).not.toHaveBeenCalled();
+  });
+
+  it('11. revokes on refund — same reconciling path as expiration', async () => {
+    findById.mockResolvedValue({ ...USER, plan: 'pro' });
+    const res = await post({ event: { type: 'REFUND', app_user_id: 'user-1' } }, SECRET);
+    expect(res.status).toBe(200);
+    expect(revokeRevenueCatEntitlement).toHaveBeenCalledWith('user-1');
   });
 
   it('11b. CANCELLATION does not revoke — access runs to EXPIRATION', async () => {
@@ -201,5 +245,78 @@ describe('entitlement transitions', () => {
     findByEmail.mockImplementation(async (e: string) => (e === 'buyer@example.com' ? USER : undefined));
     await post({ event: { type: 'INITIAL_PURCHASE', app_user_id: 'buyer@example.com', product_id: 'gascap_pro_monthly' } }, SECRET);
     expect(setUserPlan).toHaveBeenCalled();
+  });
+});
+
+// ── Idempotency (Sprint 2) ───────────────────────────────────────────────────
+describe('duplicate event delivery', () => {
+  it('the same event.id twice causes exactly ONE entitlement mutation', async () => {
+    findById.mockResolvedValue(USER);
+    const ev = { type: 'INITIAL_PURCHASE', app_user_id: 'user-1', product_id: 'gascap_pro_monthly', id: 'evt_dup_1' };
+    await post({ event: ev }, SECRET);
+    await post({ event: ev }, SECRET);
+    expect(setUserPlan).toHaveBeenCalledTimes(1);
+  });
+
+  it('the same event.id twice causes exactly ONE welcome-email/push side effect', async () => {
+    const { sendPaidCampaignEmail } = await import('@/lib/emailCampaignPaid');
+    const { sendUserPush } = await import('@/lib/userPush');
+    findById.mockResolvedValue(USER);
+    const ev = { type: 'INITIAL_PURCHASE', app_user_id: 'user-1', product_id: 'gascap_pro_monthly', id: 'evt_dup_2' };
+    await post({ event: ev }, SECRET);
+    await post({ event: ev }, SECRET);
+    expect(sendPaidCampaignEmail).toHaveBeenCalledTimes(1);
+    expect(sendUserPush).toHaveBeenCalledTimes(1);
+  });
+
+  it('a duplicate is reported back as ok:true, duplicate:true — RevenueCat should not retry it', async () => {
+    findById.mockResolvedValue(USER);
+    const ev = { type: 'INITIAL_PURCHASE', app_user_id: 'user-1', product_id: 'gascap_pro_monthly', id: 'evt_dup_3' };
+    await post({ event: ev }, SECRET);
+    const second = await post({ event: ev }, SECRET);
+    expect(second.status).toBe(200);
+    expect(second.json).toMatchObject({ ok: true, duplicate: true });
+  });
+
+  it('two DIFFERENT event ids for the same user both process normally (not falsely deduped)', async () => {
+    findById.mockResolvedValue(USER);
+    await post({ event: { type: 'INITIAL_PURCHASE', app_user_id: 'user-1', product_id: 'gascap_pro_monthly', id: 'evt_a' } }, SECRET);
+    await post({ event: { type: 'RENEWAL', app_user_id: 'user-1', product_id: 'gascap_pro_monthly', id: 'evt_b' } }, SECRET);
+    expect(setUserPlan).toHaveBeenCalledTimes(2);
+  });
+
+  it('an event with no id at all is not blocked by idempotency (falls through to processing)', async () => {
+    findById.mockResolvedValue(USER);
+    const res = await post({ event: { type: 'INITIAL_PURCHASE', app_user_id: 'user-1', product_id: 'gascap_pro_monthly' } }, SECRET);
+    expect(res.status).toBe(200);
+    expect(setUserPlan).toHaveBeenCalledTimes(1);
+    expect(claimEvent).not.toHaveBeenCalled();
+  });
+
+  it('a failed attempt is marked failed, not silently swallowed, and the request 500s', async () => {
+    findById.mockResolvedValue(USER);
+    setUserPlan.mockRejectedValueOnce(new Error('db unavailable'));
+    const res = await post({ event: { type: 'INITIAL_PURCHASE', app_user_id: 'user-1', product_id: 'gascap_pro_monthly', id: 'evt_fail' } }, SECRET);
+    expect(res.status).toBe(500);
+    expect(markFailed).toHaveBeenCalledWith('evt_fail', expect.anything());
+    expect(markProcessed).not.toHaveBeenCalled();
+  });
+
+  it('a failed attempt remains safely retryable — a later delivery of the same id processes normally', async () => {
+    findById.mockResolvedValue(USER);
+    setUserPlan.mockRejectedValueOnce(new Error('transient failure'));
+    const ev = { type: 'INITIAL_PURCHASE', app_user_id: 'user-1', product_id: 'gascap_pro_monthly', id: 'evt_retry' };
+    const first = await post({ event: ev }, SECRET);
+    expect(first.status).toBe(500);
+    // Simulate the retry being allowed through by the store (a real 'failed'
+    // row is reclaimed in lib/revenueCatEvents.ts — see its own unit tests).
+    eventStore.delete('evt_retry');
+    const second = await post({ event: ev }, SECRET);
+    expect(second.status).toBe(200);
+    // Called twice — once rejected, once resolved — because a failed attempt
+    // was retried rather than either silently repeated-and-ignored or
+    // permanently blocked. The assertion that matters is the second call
+    // actually went through (200, not another 500).
+    expect(setUserPlan).toHaveBeenCalledTimes(2);
   });
 });
