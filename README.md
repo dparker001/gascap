@@ -11,8 +11,8 @@ GasCap™ is a free, installable Progressive Web App (PWA) that tells drivers ex
 | Framework | Next.js 14 App Router (TypeScript) |
 | Styling | Tailwind CSS |
 | Auth | NextAuth v4 (JWT sessions; password + passwordless email OTP) |
-| Data store | **PostgreSQL via Prisma** — 17 models, system of record |
-| Legacy file stores | **7 active** (+1 dead, +1 seed, +1 historical) — `data/*.json` on the Railway volume; see "Persistence inventory" below |
+| Data store | **PostgreSQL via Prisma** — 21 models, system of record |
+| Legacy file stores | **7 active** (+1 seed, +1 historical) — `data/*.json` on the Railway volume; see "Persistence inventory" below |
 | Native apps | Capacitor iOS + Android shells loading the deployed web app |
 | Native purchases | RevenueCat (Apple IAP / Google Play Billing) |
 | Deployment | Railway (single service, auto-deploy from `main`) |
@@ -52,7 +52,8 @@ GasCap™ is a free, installable Progressive Web App (PWA) that tells drivers ex
 - **`lib/emailCampaign.ts`** — 5-step trial drip sequence (steps 1–5, fired from register API and daily cron).
 - **`lib/emailCampaignPaid.ts`** — 5-step paid subscriber sequence (P1–P5, fired from Stripe webhooks and daily cron).
 - **`lib/gtag.ts`** — GA4 event helpers; all analytics event calls go through here.
-- **`lib/rateLimit.ts`** — in-memory rate limiter (single-instance; replace Map with Redis for multi-instance).
+- **`lib/rateLimit.ts`** — in-memory rate limiter (single-instance; used where a deploy/instance reset is an acceptable cost).
+- **`lib/rateLimitDb.ts`** — Sprint 2, Postgres-backed rate limiter (`RateLimitCounter` table), survives deploys and spans instances. Used for `/api/auth/forgot-password` (previously unlimited) and `/api/otp/send` (previously in-memory, email-only). See `docs/RATE_LIMITING_PLAN.md`.
 
 ---
 
@@ -148,11 +149,11 @@ in earlier revisions of this README is gone; `data/users.json`,
 `data/vehicles.json`, `data/fillups.json` and `data/trips.json` no longer exist
 and nothing reads them.
 
-`prisma/schema.prisma` defines 17 models, including:
+`prisma/schema.prisma` defines 21 models, including:
 
 | Model | Holds |
 |---|---|
-| `User` | accounts, hashed passwords, plan, trial state, streak/activeDays, giveaway bonus counters |
+| `User` | accounts, hashed passwords, plan, trial state, streak/activeDays, giveaway bonus counters, `role` (admin auth), RevenueCat entitlement fields |
 | `Vehicle` | saved vehicles |
 | `Fillup` | fill-up log entries (**not** a JSON file) |
 | `GigFillup`, `GigMileage` | gig-driver logs |
@@ -160,6 +161,10 @@ and nothing reads them.
 | `OtpCode` | passwordless sign-in codes — the single OTP source of truth |
 | `GiveawayDraw` | recorded monthly draws |
 | `FavoriteStation`, `PriceReport`, `Review`, `Gift`, `EmailLog`, … | supporting records |
+| `RateLimitCounter` | Sprint 2 — Postgres-backed rate limiting, replaces per-instance in-memory counters for select endpoints |
+| `RevenueCatWebhookEvent` | Sprint 2 — idempotency claim/status per RevenueCat `event.id`, prevents duplicate grant/revoke on retried deliveries |
+| `AdminAuditLog` | Sprint 2 — who did what for the highest-risk admin actions (user delete/plan-change, sweepstakes draws, AMOE backfill) |
+| `AmoeEntry` | Sprint 2 — dual-write mirror of `data/amoe-entries.json`; the draw still reads the file until the migration is verified in production, see `docs/migrations/2026-08-sprint2-amoe-backfill.md` |
 
 ### Persistence inventory
 
@@ -207,6 +212,15 @@ Because sessions are stateless, a JWT carries a **stale plan** after an upgrade
 or expiry. Anything gating paid access must resolve the plan from the database
 — see `lib/serverPlan.ts`.
 
+**Admin auth (Sprint 2, staged).** `lib/adminAuth.ts` accepts EITHER a
+NextAuth session for a user with `role='admin'` (resolved live from the
+database, never trusted from the client) OR the legacy `x-admin-password`
+header — both work simultaneously so the migration can't lock anyone out.
+`app/admin/page.tsx` no longer writes the password to `localStorage`; a
+signed-in admin session logs in silently. See
+`docs/ADMIN_AUTH_MIGRATION.md` for the staged rollout status and
+`docs/SECURITY_AUDIT.md` for endpoint-by-endpoint coverage.
+
 ### Payments
 
 - **Web** — Stripe Checkout + customer portal; `/api/stripe/webhook` verifies
@@ -214,6 +228,18 @@ or expiry. Anything gating paid access must resolve the plan from the database
 - **iOS / Android** — **RevenueCat only**, never Stripe.
   `/api/native/revenuecat` grants and revokes Pro. It fails closed: a missing
   `REVENUECAT_WEBHOOK_AUTH` refuses the request rather than trusting it.
+  **Sprint 2:** each webhook event is claimed once by `event.id`
+  (`lib/revenueCatEvents.ts`) before any side effect runs, so a retried
+  delivery is a no-op rather than a duplicate grant/revoke. Optional HMAC
+  signature verification exists (`lib/revenueCatHmac.ts`) but ships **off by
+  default** — the exact scheme wasn't independently confirmed against
+  RevenueCat's current docs, so it's gated behind an unset env var rather than
+  presented as trustworthy.
+- **Multi-provider entitlements.** `lib/entitlements.ts`'s
+  `resolveUserEntitlements()` is the single source of truth for "is this user
+  Pro" — a RevenueCat expiration can no longer wipe a legitimate Stripe
+  subscription, or vice versa. Each provider's revoke path only clears its own
+  fields and only downgrades to free if no other source survives.
 
 ---
 

@@ -1,6 +1,9 @@
 # GasCap™ — System Architecture Guide
 
-> **Status: CURRENT** · Last updated: 2026-08-18 (hardening sprint 1)
+> **Status: CURRENT** · Last updated: 2026-08-19 (hardening sprint 2 — admin
+> auth migration, RevenueCat idempotency + entitlement reconciliation,
+> Postgres rate limiting, AMOE dual-write; see `docs/reviews/` for the review
+> packet)
 >
 > The 2026-04-19 revision described fill-ups as living in `data/fillups.json`
 > outside Prisma. That has not been true since fill-ups were migrated to
@@ -22,7 +25,7 @@
 | Styling | Tailwind CSS |
 | Auth | NextAuth v4 — CredentialsProvider + JWT sessions |
 | Database | PostgreSQL on Railway (via Prisma ORM) |
-| File-based store | **7 active** (+1 dead, +1 seed, +1 historical) — see "Persistence inventory" below. On the Railway volume at `/app/data`. |
+| File-based store | **7 active** (+1 seed, +1 historical) — see "Persistence inventory" below. On the Railway volume at `/app/data`. |
 | Native | Capacitor iOS/Android shells + RevenueCat for in-app purchases |
 | Payments | Stripe Checkout + Webhooks |
 | Email | Gmail SMTP primary, Resend API fallback (`lib/email.ts`) |
@@ -106,7 +109,10 @@ Stores anything user-account-related:
 - `Vehicle`, `GigFillup`, `GigMileage`, `RentalSession`, `OtpCode`,
   `GiveawayDraw`, `FavoriteStation`, `PriceReport`, `Review`, `Gift`,
   `EmailLog`, `DeviceSession`, `GaugeScanLog`, `CampaignPlacement`,
-  `DeletedAccountLog` — 17 models total
+  `DeletedAccountLog`
+- Sprint 2: `RateLimitCounter`, `RevenueCatWebhookEvent`, `AdminAuditLog`,
+  `AmoeEntry` (dual-write mirror, see the persistence inventory note below) —
+  21 models total
 
 ### Fill-ups are in PostgreSQL — HISTORICAL note below
 
@@ -131,7 +137,7 @@ Stores anything user-account-related:
 | Store | Module | Class |
 |---|---|---|
 | `data/saved-trips.json` | `lib/savedTrips.ts` | **ACTIVE** — no Prisma model |
-| `data/amoe-entries.json` | `lib/amoeEntries.ts` | **ACTIVE** — compliance-relevant; the draw reads it as of 2026-08-17 (before that it was written and never read, so free entrants could not win) |
+| `data/amoe-entries.json` | `lib/amoeEntries.ts` | **ACTIVE, dual-written to Postgres since Sprint 2** — compliance-relevant; the draw still reads the file (before 2026-08-17 it was written and never read, so free entrants could not win). Every new submission also mirrors to the `AmoeEntry` table (`lib/amoeEntriesDb.ts`, best-effort, never blocks the file write) and an idempotent backfill exists (`POST /api/admin/amoe-backfill`) — but the read-path cutover is deliberately NOT done yet; see `docs/migrations/2026-08-sprint2-amoe-backfill.md` for why and the runbook for finishing it |
 | `data/feedback.json` | `lib/feedback.ts` | **ACTIVE** — session-authenticated writes |
 | `data/budget-goals.json` | `lib/budgetGoals.ts` | **ACTIVE** — session-authenticated writes |
 | `data/maintenance-reminders.json` | `lib/maintenance.ts` | **ACTIVE** — session-authenticated writes |
@@ -174,6 +180,27 @@ Two providers, both NextAuth v4 with JWT sessions.
 
 Phone verification is separate: `/api/otp/send-phone` + `/api/otp/verify-phone`,
 which sets `User.phoneVerifiedAt` and awards the one-time bonus.
+
+### C. Admin authentication (Sprint 2, staged — see `docs/ADMIN_AUTH_MIGRATION.md`)
+
+`lib/adminAuth.ts` gates all `/api/admin/*` routes plus `/api/announcements`
+and `/api/push/{broadcast,digest,fillup-reminder}`:
+
+1. **Primary path.** A valid NextAuth session where `User.role === 'admin'`
+   — resolved live from PostgreSQL on every request via `sessionHasAdminRole()`,
+   never trusted from the JWT (same staleness rule as `plan`, see below).
+   `app/admin/page.tsx` probes this silently on load; a signed-in admin sees
+   no password prompt.
+2. **Legacy fallback.** The pre-Sprint-2 `x-admin-password` header, compared
+   against `ADMIN_PASSWORD` with a constant-time check. Still accepted so the
+   migration can't lock anyone out; not yet removed (blocked on a soak period
+   — see the migration doc's step 5/6 status).
+3. Both paths are OR'd — either is sufficient. Role is never read from
+   request headers or client-supplied state, only the database.
+4. Mutations on the highest-risk endpoints (user delete/plan-change/comp
+   grant, sweepstakes draws, AMOE backfill) are recorded to `AdminAuditLog`
+   via `lib/adminAudit.ts` — best-effort, never blocks the action it's
+   logging.
 
 ### B. Password (`CredentialsProvider`)
 
@@ -236,7 +263,7 @@ Every new signup gets a **30-day Pro trial** automatically (`grantNewSignupProTr
 |---|---|
 | `checkout.session.completed` | Activate plan, sync GHL, notify admin |
 | `invoice.payment_succeeded` | Keep plan active on renewals; award referral credit on first paid invoice |
-| `customer.subscription.deleted` | Revert to free, sync GHL, notify admin |
+| `customer.subscription.deleted` | **Sprint 2:** calls `revokeStripeSubscriptionEntitlement()`, which reverts to free only if no other entitlement source (RevenueCat, Ambassador) survives — otherwise sends an informational admin email and leaves the user Pro. Previously reverted unconditionally except for a hardcoded lifetime-interval check. |
 | `invoice.payment_failed` | Revert to free, sync GHL, notify admin |
 | `customer.updated` | Sync Stripe customer ID |
 | `charge.dispute.created` | Alert admin, flag if referral credit was awarded |
@@ -246,6 +273,48 @@ When upgrading to Fleet, `trial_period_days` is set based on the user's current 
 - Active Pro trial → carry over remaining days
 - No prior subscription → 14-day Fleet trial
 - Already paid Pro subscriber → no trial (Stripe handles proration)
+
+---
+
+## RevenueCat Integration (native IAP)
+
+`POST /api/native/revenuecat` is the only path to Pro on iOS/Android — see
+[`feedback_revenuecat_only.md`](feedback_revenuecat_only.md) memory, never
+Stripe for native features.
+
+1. **Auth.** `Authorization` header checked against `REVENUECAT_WEBHOOK_AUTH`,
+   fails closed (missing secret → 503, not silently trusted). **Sprint 2:**
+   optional HMAC signature check added (`lib/revenueCatHmac.ts`) as
+   defense-in-depth, off by default behind `REVENUECAT_HMAC_SECRET` — the
+   exact RevenueCat signing scheme wasn't independently confirmed from this
+   environment, so it isn't presented as verified until that's done.
+2. **Idempotency (Sprint 2).** The raw body is read once (`req.text()`, kept
+   raw so an eventual HMAC check hashes the exact bytes RevenueCat sent) then
+   parsed. `lib/revenueCatEvents.ts`'s `claimEvent(event.id, ...)` atomically
+   claims the event via a unique-constraint insert before any grant/revoke
+   runs, and a stale-processing reclaim (2 min) lets a mid-crash event retry
+   safely. A duplicate delivery of the same `event.id` is a no-op. Recent
+   events are visible read-only at `GET /api/admin/revenuecat-events`.
+3. **Grant.** `setUserPlan()` persists plan + the three RevenueCat
+   provenance columns on `User` (`revenueCatActive/Interval/ProductId`).
+4. **Revoke (Sprint 2).** Calls `revokeRevenueCatEntitlement()` instead of an
+   unconditional `setUserPlan(userId, 'free')` — clears only the RevenueCat
+   fields, then only actually downgrades if no other entitlement source
+   (Stripe, Ambassador) survives. See "Multi-provider entitlement
+   reconciliation" below.
+
+### Multi-provider entitlement reconciliation (Sprint 2)
+
+`lib/entitlements.ts`'s `resolveUserEntitlements()` is a pure function
+consulted by both the RevenueCat and Stripe webhooks before any downgrade —
+computes aggregate Pro status from Ambassador / Stripe-lifetime /
+Stripe-subscription / RevenueCat-active / trial fields, so a single
+provider's revocation can never wipe another provider's legitimate grant.
+14 table-driven tests in `__tests__/entitlements.test.ts` cover the named
+combinations (Stripe+RC both directions, Lifetime+RC-refund,
+Ambassador+all-expire, gifted-lifetime+Stripe-failure). Known limitation:
+gifted lifetime and real Stripe-purchased lifetime are indistinguishable in
+the current schema — both collapse to `'stripe_or_gift_lifetime'`.
 
 ---
 
@@ -323,7 +392,8 @@ Components communicate across the component tree via `window.dispatchEvent`:
 | `GHL_LOCATION_ID` | ✅ | GHL sub-account location ID |
 | `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | For push | Web Push VAPID public key |
 | `VAPID_PRIVATE_KEY` | For push | Web Push VAPID private key |
-| `ADMIN_PASSWORD_HASH` | ✅ | bcrypt hash of admin panel password |
+| `ADMIN_PASSWORD_HASH` | ✅ | legacy admin panel password hash — Sprint 2 added a `role`-based session path alongside it, see "Admin authentication" above; not yet removed |
+| `REVENUECAT_HMAC_SECRET` | — (unset by default) | Sprint 2 — optional webhook signature verification, off until RevenueCat's exact scheme is independently confirmed; see `lib/revenueCatHmac.ts` |
 
 ---
 
