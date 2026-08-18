@@ -21,7 +21,10 @@ const WORKFLOW = '.github/workflows/crons.yml';
 
 // Endpoints intentionally invoked by something other than the shared schedule.
 const EXEMPT = new Set([
-  'trial-conversion',   // has its own date-gated workflow (trial-conversion.yml)
+  // Retained as a manually-invocable endpoint. Its workflow fired daily all
+  // year to exit 0 on every date outside a May 19-26 2026 campaign window,
+  // and was deleted in hardening sprint 1. No schedule by design.
+  'trial-conversion',
   'winner-claim-check', // invoked from the claim flow, not on a schedule
 ]);
 
