@@ -13,6 +13,11 @@ import { hasEmailBeenSent }  from './emailLog';
 import { checkRateLimit } from './rateLimit';
 import { pgPool }        from './prisma';
 
+/** Wrong-code guesses allowed per email before verification is refused. */
+const OTP_VERIFY_MAX_ATTEMPTS = 5;
+/** Window for the above — matches the 10-minute life of the code itself. */
+const OTP_VERIFY_WINDOW_MS    = 10 * 60 * 1000;
+
 export const authOptions: NextAuthOptions = {
   providers: [
     // ── Google OAuth ────────────────────────────────────────────────────────
@@ -48,6 +53,31 @@ export const authOptions: NextAuthOptions = {
           [email],
         );
         const entry = rows[0];
+
+        // Brute-force ceiling on VERIFICATION attempts.
+        //
+        // /api/otp/send was rate limited; this comparison was not. A 6-digit
+        // code is a 1,000,000-value space with a 10-minute life, and unlimited
+        // guesses against a known email address is a realistic attack on a
+        // passwordless login — success here creates a session.
+        //
+        // Counted per email so one attacker cannot burn another user's budget
+        // by guessing at their address... but note the trade-off: that also
+        // means an attacker CAN lock a specific address out of OTP sign-in for
+        // the window. Chosen deliberately — the alternative (keying on IP)
+        // is trivially bypassed with rotation, and the user retains password
+        // sign-in and a fresh code after the window.
+        //
+        // In-memory, matching the existing limiter. Single-instance today; the
+        // migration path is documented in docs/RATE_LIMITING_PLAN.md. A
+        // process restart clears counters, which is acceptable only because
+        // the code itself expires in 10 minutes and is single-use.
+        const attempt = checkRateLimit(`otp-verify:${email}`, OTP_VERIFY_MAX_ATTEMPTS, OTP_VERIFY_WINDOW_MS);
+        if (!attempt.allowed) {
+          console.warn(`[otp/verify] attempt limit reached for ${email}`);
+          return null;
+        }
+
         if (!entry || entry.code !== code) return null;
         if (new Date() > new Date(entry.expires)) {
           await pgPool.query(`DELETE FROM "OtpCode" WHERE email=$1`, [email]);

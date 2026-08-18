@@ -134,10 +134,47 @@ async function resolveUser(ev: RcEvent) {
   return undefined;
 }
 
+/**
+ * Constant-time string comparison.
+ *
+ * `!==` on secrets leaks length and first-difference position through timing.
+ * The margin is small over a network, but this endpoint grants paid access and
+ * the correct comparison costs nothing.
+ */
+function safeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
 export async function POST(req: Request) {
-  // Auth: RevenueCat sends the Authorization header you configure in its dashboard.
+  // Auth: RevenueCat sends the Authorization header configured in its dashboard.
+  //
+  // FAILS CLOSED. This previously read `if (expected && supplied !== expected)`,
+  // so a missing REVENUECAT_WEBHOOK_AUTH did not disable the check partially —
+  // it disabled it entirely, and any unauthenticated POST could grant or revoke
+  // Pro on any account. An absent secret is a misconfiguration, never a reason
+  // to trust the caller.
+  //
+  // 503, not 401: the request may be perfectly valid: the SERVER is
+  // misconfigured. RevenueCat retries 5xx and does not retry 401, so this also
+  // preserves the delivery that a paying customer's entitlement depends on.
   const expected = process.env.REVENUECAT_WEBHOOK_AUTH;
-  if (expected && req.headers.get('authorization') !== expected) {
+  if (!expected) {
+    console.error(
+      '[revenuecat] REVENUECAT_WEBHOOK_AUTH is not set — refusing to process. ' +
+      'Pro grants/revocations via Apple IAP are halted until it is configured.',
+    );
+    return NextResponse.json(
+      { error: 'Webhook authentication is not configured.' },
+      { status: 503 },
+    );
+  }
+
+  const supplied = req.headers.get('authorization');
+  if (!supplied || !safeEqual(supplied, expected)) {
+    // Deliberately no detail about which part failed, and the value is never logged.
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
