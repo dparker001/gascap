@@ -50,9 +50,15 @@ because the corresponding mistake already happened here. Those are marked
 ## Database
 
 - **PostgreSQL via Prisma is the system of record.**
-- Do not introduce new persistent JSON stores without explicit approval. One
-  exists (`data/amoe-entries.json`, on a Railway volume) and it is a known
-  exception, not a pattern to copy.
+- Do not introduce new persistent JSON stores without explicit approval. **Two
+  legacy ones remain**, both on the Railway volume mounted at `/app/data`:
+  - `data/amoe-entries.json` — free sweepstakes entries (compliance-relevant)
+  - `data/saved-trips.json` — `lib/savedTrips.ts`, still the store for saved
+    trips; there is no `SavedTrip` Prisma model
+
+  Both are known exceptions awaiting migration, not a pattern to copy. Anything
+  living only on that volume is invisible to database backups — treat it as
+  at-risk data.
 - Never run destructive commands against production: `DROP`, `TRUNCATE`, mass
   `DELETE`, `prisma migrate reset`.
 - **Never blind `prisma db push`** — use direct, additive SQL and state the

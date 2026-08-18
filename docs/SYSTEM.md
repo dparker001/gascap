@@ -1,6 +1,13 @@
 # GasCap™ — System Architecture Guide
 
-> Last updated: 2026-04-19  
+> **Status: CURRENT** · Last updated: 2026-08-18 (hardening sprint 1)
+>
+> The 2026-04-19 revision described fill-ups as living in `data/fillups.json`
+> outside Prisma. That has not been true since fill-ups were migrated to
+> PostgreSQL; the claim is corrected throughout rather than deleted, since the
+> migration rationale is still useful history.
+>
+> Previously updated: 2026-04-19  
 > For product feature documentation see [FEATURES.md](./FEATURES.md)  
 > For referral business rules see [REFERRAL_RULES.md](./REFERRAL_RULES.md)  
 > For version history see [../CHANGELOG.md](../CHANGELOG.md)
@@ -15,7 +22,8 @@
 | Styling | Tailwind CSS |
 | Auth | NextAuth v4 — CredentialsProvider + JWT sessions |
 | Database | PostgreSQL on Railway (via Prisma ORM) |
-| File-based store | `data/fillups.json` — fill-up records (not in Prisma) |
+| File-based store | `data/saved-trips.json`, `data/amoe-entries.json` only — on the Railway volume at `/app/data` |
+| Native | Capacitor iOS/Android shells + RevenueCat for in-app purchases |
 | Payments | Stripe Checkout + Webhooks |
 | Email | Gmail SMTP primary, Resend API fallback (`lib/email.ts`) |
 | CRM | GoHighLevel (GHL) via REST API (`lib/ghl.ts`) |
@@ -69,8 +77,10 @@
 ├── prisma/
 │   ├── schema.prisma           # Database schema (source of truth for DB)
 │   └── config.ts               # Prisma client config
-├── data/
-│   └── fillups.json            # Fill-up records (flat JSON, not in Prisma)
+├── data/                       # Railway volume mount (/app/data)
+│   ├── saved-trips.json        # Saved trips — still file-backed, no Prisma model
+│   ├── amoe-entries.json       # Free sweepstakes entries (read by the draw)
+│   └── gas-prices-seed.json    # Build-time seed, not user data
 ├── public/                     # Static assets, PWA icons, videos
 ├── scripts/                    # One-time utility scripts
 ├── docs/                       # This documentation
@@ -86,17 +96,62 @@ GasCap™ uses **two separate data stores** intentionally:
 ### Prisma / PostgreSQL (Railway)
 Stores anything user-account-related:
 - `User` — auth, plan, Stripe IDs, referral, fleet drivers, settings
-- No fill-up records here
+- `Fillup` — fill-up records (**in Prisma**, see below)
+- `Vehicle`, `GigFillup`, `GigMileage`, `RentalSession`, `OtpCode`,
+  `GiveawayDraw`, `FavoriteStation`, `PriceReport`, `Review`, `Gift`,
+  `EmailLog`, `DeviceSession`, `GaugeScanLog`, `CampaignPlacement`,
+  `DeletedAccountLog` — 17 models total
 
-### JSON File Store (`data/fillups.json`)
-Stores fill-up records. Managed entirely by `lib/fillups.ts`.  
-**Why JSON and not Prisma?** Fill-up records were added after the initial DB schema and the JSON approach avoids migrations while keeping reads fast for small-to-medium user counts. The tradeoff is no relational queries — all filtering happens in-process.
+### Fill-ups are in PostgreSQL — HISTORICAL note below
 
-> ⚠️ **If you ever need to migrate fillups to PostgreSQL**, create a `Fillup` Prisma model and run a one-time migration script. All the business logic already lives in `lib/fillups.ts` — only the persistence layer would change.
+`lib/fillups.ts` uses `prisma.fillup` (`findMany` / `create` / `update` /
+`deleteMany`). There is a `Fillup` model in `prisma/schema.prisma`.
+
+> **HISTORICAL.** Fill-ups were originally kept in `data/fillups.json`, outside
+> Prisma, to avoid a migration on a schema that was still moving. That migration
+> has since happened — the file no longer exists and nothing reads it. The
+> rationale is preserved because the same trade-off recurs, and because the two
+> remaining file stores below are the same decision not yet unwound.
+
+### The two file stores that DO remain
+
+- **`data/saved-trips.json`** — `lib/savedTrips.ts`. Saved trips have no Prisma
+  model. Migration candidate.
+- **`data/amoe-entries.json`** — free sweepstakes entries. Compliance-relevant:
+  the draw reads it as of 2026-08-17. Before that it was written and never
+  read, so free entrants could not win.
+
+Both live on the Railway volume at `/app/data` and are therefore **outside
+database backups**.
 
 ---
 
 ## Authentication Flow
+
+Two providers, both NextAuth v4 with JWT sessions.
+
+### A. Passwordless email OTP (`credentials-otp`) — the primary path
+
+1. `/api/otp/send` generates a **6-digit** code, stores it in the **`OtpCode`
+   Postgres table** (10-minute expiry, one row per email, upsert on conflict),
+   and emails it. Sending is rate limited.
+2. The client calls NextAuth `signIn('credentials-otp', …)`.
+3. `authorize()` in `lib/auth.ts` reads `OtpCode` over raw `pg`, validates the
+   code, and **deletes the row** — codes are single-use.
+4. Verification is capped at **5 attempts per email per 10 minutes**. Without
+   that cap a 1,000,000-value space with a 10-minute life is brute-forcible,
+   and a correct guess mints a session.
+5. A user is created on first successful OTP sign-in with
+   `emailVerified: true`.
+
+> **`OtpCode` in PostgreSQL is the single source of truth.** An in-memory
+> `Map` (`lib/otpStore.ts`) reachable only from an uncalled `/api/otp/verify`
+> route was deleted in hardening sprint 1. Do not reintroduce a second store.
+
+Phone verification is separate: `/api/otp/send-phone` + `/api/otp/verify-phone`,
+which sets `User.phoneVerifiedAt` and awards the one-time bonus.
+
+### B. Password (`CredentialsProvider`)
 
 1. User submits email + password on `/signin`
 2. NextAuth `CredentialsProvider` calls `authorize()` in `lib/auth.ts`
@@ -110,10 +165,15 @@ Stores fill-up records. Managed entirely by `lib/fillups.ts`.
 - User clicks the link → token validated → `emailVerified: true` set on user
 - Unverified users see a banner but can still use the app (not hard-blocked, for conversion)
 
-### Session Staleness
-- JWTs are cached — plan changes (upgrade/downgrade) are reflected in the JWT only on next sign-in
-- To get the live plan without re-signing-in, components call `GET /api/vehicles` which returns `{ plan }` from the DB directly
-- This is why `FillupLogger`, `ToolsPanel`, and other components fetch live plan rather than reading from `session.user.plan`
+### Session Staleness — security-relevant
+
+- JWTs are stateless and cached: a plan change (upgrade, downgrade, trial
+  expiry) is **not** reflected in the token until the next sign-in.
+- UI components fetch the live plan rather than reading `session.user.plan`.
+- **For anything that gates paid access, use `lib/serverPlan.ts`
+  (`getLivePlan()`), which resolves the plan from the database.** A stale token
+  otherwise grants Pro to an expired trial, or denies it to someone who just
+  paid. Client-side gating is never sufficient on its own.
 
 ---
 
@@ -287,7 +347,8 @@ model User {
 }
 ```
 
-> Fill-ups are NOT in Prisma. They live in `data/fillups.json` as `Fillup[]` (see `lib/fillups.ts`).
+> Fill-ups **are** in Prisma — see the `Fillup` model. `lib/fillups.ts` is the
+> access layer. (An earlier revision of this document said the opposite.)
 
 ---
 
