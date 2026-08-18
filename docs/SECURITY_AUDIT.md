@@ -1,7 +1,7 @@
 # Security audit — machine-to-machine and admin authentication
 
 **Status: CURRENT.** Audit date 2026-08-18, revised 2026-08-18 (independent
-review) and 2026-08-19 (Sprint 2 — admin auth migration). Scope: every
+review) and 2026-08-18 (Sprint 2 — admin auth migration). Scope: every
 endpoint authenticated by a shared secret and/or an admin role. No secret
 values appear in this document.
 

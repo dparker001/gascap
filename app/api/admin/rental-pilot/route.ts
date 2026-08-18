@@ -8,12 +8,11 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { estimatedFuelCost, estimatedRentalCompanyCharge, estimatedSavings, gallonsNeeded } from '@/lib/rentalCalculations';
-import { sessionHasAdminRole } from '@/lib/adminAuth';
+import { sessionHasAdminRole, legacyAdminPasswordOk } from '@/lib/adminAuth';
 
 async function auth(req: Request): Promise<'ok' | 'no-env' | 'wrong'> {
   const pw = process.env.ADMIN_PASSWORD;
-  const header = req.headers.get('x-admin-password') ?? '';
-  if (pw && header === pw) return 'ok';
+  if (legacyAdminPasswordOk(req, pw)) return 'ok';
   if (await sessionHasAdminRole()) return 'ok';
   return pw ? 'wrong' : 'no-env';
 }

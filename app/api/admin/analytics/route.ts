@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchAnalyticsSummary }     from '@/lib/ga4-data';
-import { sessionHasAdminRole }       from '@/lib/adminAuth';
+import { sessionHasAdminRole, legacyAdminPasswordOk } from '@/lib/adminAuth';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,8 +11,7 @@ export async function GET(req: NextRequest) {
   // the Referer header of any outbound request the page makes; moved to the
   // header to match everything else and stop that leakage.
   const days = parseInt(req.nextUrl.searchParams.get('days') ?? '30', 10);
-  const pw = req.headers.get('x-admin-password') ?? '';
-  const legacyOk = !!process.env.ADMIN_PASSWORD && pw === process.env.ADMIN_PASSWORD;
+  const legacyOk = legacyAdminPasswordOk(req, process.env.ADMIN_PASSWORD);
   if (!legacyOk && !(await sessionHasAdminRole())) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }

@@ -25,6 +25,8 @@ vi.mock('@/lib/users', () => ({
   enrollPaidCampaign: vi.fn(async () => {}),
   revokeRevenueCatEntitlement: (...a: unknown[]) => revokeRevenueCatEntitlement(...(a as [])),
 }));
+const userUpdateMany = vi.fn(async () => ({ count: 1 })); // getaway-email claim always "wins" unless a test overrides it
+vi.mock('@/lib/prisma', () => ({ prisma: { user: { updateMany: (...a: unknown[]) => userUpdateMany(...(a as [])) } } }));
 vi.mock('@/lib/email',              () => ({ sendMail: vi.fn(async () => {}) }));
 vi.mock('@/lib/emailCampaignPaid',  () => ({ sendPaidCampaignEmail: vi.fn(async () => {}) }));
 vi.mock('@/lib/userPush',           () => ({ sendUserPush: vi.fn(async () => {}) }));
@@ -36,23 +38,24 @@ vi.mock('@/lib/getawayPromo',       () => ({
 // In-memory stand-in for the RevenueCatWebhookEvent table, matching
 // lib/revenueCatEvents.ts's claim semantics closely enough to test the
 // route's behavior without a database.
-const eventStore = new Map<string, { status: string; receivedAt: number }>();
+const eventStore = new Map<string, { status: string; receivedAt: number; claimToken: string }>();
 const claimEvent = vi.fn(async (eventId: string, _eventType?: string, _userId?: string | null) => {
   const existing = eventStore.get(eventId);
-  if (!existing) { eventStore.set(eventId, { status: 'processing', receivedAt: Date.now() }); return { outcome: 'claimed' as const }; }
+  const token = `token-${eventId}-${Math.random().toString(36).slice(2, 8)}`;
+  if (!existing) { eventStore.set(eventId, { status: 'processing', receivedAt: Date.now(), claimToken: token }); return { outcome: 'claimed' as const, claimToken: token }; }
   if (existing.status === 'processed') return { outcome: 'duplicate-processed' as const };
   return { outcome: 'duplicate-in-flight' as const };
 });
-const markProcessed = vi.fn(async (eventId: string) => {
+const markProcessed = vi.fn(async (eventId: string, _claimToken: string) => {
   const e = eventStore.get(eventId); if (e) e.status = 'processed';
 });
-const markFailed = vi.fn(async (eventId: string, _error?: unknown) => {
+const markFailed = vi.fn(async (eventId: string, _claimToken: string, _error?: unknown) => {
   const e = eventStore.get(eventId); if (e) e.status = 'failed';
 });
 vi.mock('@/lib/revenueCatEvents', () => ({
   claimEvent:    (id: string, t?: string, u?: string | null) => claimEvent(id, t, u),
-  markProcessed: (id: string) => markProcessed(id),
-  markFailed:    (id: string, e: unknown) => markFailed(id, e),
+  markProcessed: (id: string, tok: string) => markProcessed(id, tok),
+  markFailed:    (id: string, tok: string, e: unknown) => markFailed(id, tok, e),
 }));
 
 const SECRET = 'test-webhook-secret-value';
@@ -121,7 +124,7 @@ describe('authentication fails closed', () => {
 
   it('3. accepts the correct secret', async () => {
     findById.mockResolvedValue(USER);
-    const res = await post({ event: { type: 'INITIAL_PURCHASE', app_user_id: 'user-1', product_id: 'gascap_pro_monthly' } }, SECRET);
+    const res = await post({ event: { type: 'INITIAL_PURCHASE', app_user_id: 'user-1', product_id: 'gascap_pro_monthly', id: 'evt_3' } }, SECRET);
     expect(res.status).toBe(200);
     expect(setUserPlan).toHaveBeenCalled();
   });
@@ -167,7 +170,7 @@ describe('input handling', () => {
 describe('entitlement transitions', () => {
   it('8. grants Pro on a monthly purchase', async () => {
     findById.mockResolvedValue(USER);
-    await post({ event: { type: 'INITIAL_PURCHASE', app_user_id: 'user-1', product_id: 'gascap_pro_monthly' } }, SECRET);
+    await post({ event: { type: 'INITIAL_PURCHASE', app_user_id: 'user-1', product_id: 'gascap_pro_monthly', id: 'evt_8' } }, SECRET);
     expect(setUserPlan).toHaveBeenCalled();
     const args = JSON.stringify(setUserPlan.mock.calls[0]);
     expect(args).toContain('pro');
@@ -176,14 +179,14 @@ describe('entitlement transitions', () => {
 
   it('9. grants lifetime on the non-consumable product', async () => {
     findById.mockResolvedValue(USER);
-    await post({ event: { type: 'NON_RENEWING_PURCHASE', app_user_id: 'user-1', product_id: 'gascap_pro_lifetime' } }, SECRET);
+    await post({ event: { type: 'NON_RENEWING_PURCHASE', app_user_id: 'user-1', product_id: 'gascap_pro_lifetime', id: 'evt_9' } }, SECRET);
     expect(setUserPlan).toHaveBeenCalled();
     expect(JSON.stringify(setUserPlan.mock.calls[0])).toContain('lifetime');
   });
 
   it('9b. treats RENEWAL as a continued grant', async () => {
     findById.mockResolvedValue(USER);
-    await post({ event: { type: 'RENEWAL', app_user_id: 'user-1', product_id: 'gascap_pro_monthly' } }, SECRET);
+    await post({ event: { type: 'RENEWAL', app_user_id: 'user-1', product_id: 'gascap_pro_monthly', id: 'evt_9b' } }, SECRET);
     expect(setUserPlan).toHaveBeenCalled();
   });
 
@@ -194,7 +197,7 @@ describe('entitlement transitions', () => {
     // touching plan — see __tests__/entitlements.test.ts for the resolver
     // itself and 10b/10c below for the coexistence cases this enables.
     findById.mockResolvedValue({ ...USER, plan: 'pro' });
-    const res = await post({ event: { type: 'EXPIRATION', app_user_id: 'user-1' } }, SECRET);
+    const res = await post({ event: { type: 'EXPIRATION', app_user_id: 'user-1', id: 'evt_10' } }, SECRET);
     expect(res.status).toBe(200);
     expect(revokeRevenueCatEntitlement).toHaveBeenCalledWith('user-1');
   });
@@ -204,7 +207,7 @@ describe('entitlement transitions', () => {
     revokeRevenueCatEntitlement.mockResolvedValue({
       pro: true, permanent: false, sources: ['stripe_subscription'], trial: false, effectiveInterval: 'monthly',
     });
-    const res = await post({ event: { type: 'EXPIRATION', app_user_id: 'user-1' } }, SECRET);
+    const res = await post({ event: { type: 'EXPIRATION', app_user_id: 'user-1', id: 'evt_10b' } }, SECRET);
     expect(res.status).toBe(200);
     expect(revokeRevenueCatEntitlement).toHaveBeenCalledWith('user-1');
     // The route itself never calls setUserPlan directly on the revoke path —
@@ -214,7 +217,7 @@ describe('entitlement transitions', () => {
 
   it('11. revokes on refund — same reconciling path as expiration', async () => {
     findById.mockResolvedValue({ ...USER, plan: 'pro' });
-    const res = await post({ event: { type: 'REFUND', app_user_id: 'user-1' } }, SECRET);
+    const res = await post({ event: { type: 'REFUND', app_user_id: 'user-1', id: 'evt_11' } }, SECRET);
     expect(res.status).toBe(200);
     expect(revokeRevenueCatEntitlement).toHaveBeenCalledWith('user-1');
   });
@@ -230,20 +233,20 @@ describe('entitlement transitions', () => {
 
   it('12. grants on TRANSFER (restore to a new app_user_id)', async () => {
     findById.mockResolvedValue(USER);
-    await post({ event: { type: 'TRANSFER', app_user_id: 'user-1', product_id: 'gascap_pro_lifetime' } }, SECRET);
+    await post({ event: { type: 'TRANSFER', app_user_id: 'user-1', product_id: 'gascap_pro_lifetime', id: 'evt_12' } }, SECRET);
     expect(setUserPlan).toHaveBeenCalled();
   });
 
   it('12b. resolves the user via original_app_user_id and aliases', async () => {
     findById.mockImplementation(async (id: string) => (id === 'legacy-id' ? USER : undefined));
-    await post({ event: { type: 'INITIAL_PURCHASE', app_user_id: 'new-id', original_app_user_id: 'legacy-id', product_id: 'gascap_pro_monthly' } }, SECRET);
+    await post({ event: { type: 'INITIAL_PURCHASE', app_user_id: 'new-id', original_app_user_id: 'legacy-id', product_id: 'gascap_pro_monthly', id: 'evt_12b' } }, SECRET);
     expect(setUserPlan).toHaveBeenCalled();
   });
 
   it('12c. falls back to email lookup when the id is an email', async () => {
     findById.mockResolvedValue(undefined);
     findByEmail.mockImplementation(async (e: string) => (e === 'buyer@example.com' ? USER : undefined));
-    await post({ event: { type: 'INITIAL_PURCHASE', app_user_id: 'buyer@example.com', product_id: 'gascap_pro_monthly' } }, SECRET);
+    await post({ event: { type: 'INITIAL_PURCHASE', app_user_id: 'buyer@example.com', product_id: 'gascap_pro_monthly', id: 'evt_12c' } }, SECRET);
     expect(setUserPlan).toHaveBeenCalled();
   });
 });
@@ -285,11 +288,17 @@ describe('duplicate event delivery', () => {
     expect(setUserPlan).toHaveBeenCalledTimes(2);
   });
 
-  it('an event with no id at all is not blocked by idempotency (falls through to processing)', async () => {
+  it('post-Sprint-2 Revision 1: an actionable event with no id is now REJECTED (fail-safe), not processed', async () => {
+    // event.id is confirmed always-present per RevenueCat's current docs, so
+    // its absence on an actionable grant/revoke event is anomalous — the
+    // route now skips granting/revoking rather than trusting an
+    // unverifiable payload. This replaces the old "falls through to
+    // processing unconditionally" behavior.
     findById.mockResolvedValue(USER);
     const res = await post({ event: { type: 'INITIAL_PURCHASE', app_user_id: 'user-1', product_id: 'gascap_pro_monthly' } }, SECRET);
     expect(res.status).toBe(200);
-    expect(setUserPlan).toHaveBeenCalledTimes(1);
+    expect(res.json).toEqual({ ok: true, skipped: 'missing_event_id' });
+    expect(setUserPlan).not.toHaveBeenCalled();
     expect(claimEvent).not.toHaveBeenCalled();
   });
 
@@ -298,7 +307,7 @@ describe('duplicate event delivery', () => {
     setUserPlan.mockRejectedValueOnce(new Error('db unavailable'));
     const res = await post({ event: { type: 'INITIAL_PURCHASE', app_user_id: 'user-1', product_id: 'gascap_pro_monthly', id: 'evt_fail' } }, SECRET);
     expect(res.status).toBe(500);
-    expect(markFailed).toHaveBeenCalledWith('evt_fail', expect.anything());
+    expect(markFailed).toHaveBeenCalledWith('evt_fail', expect.any(String), expect.anything());
     expect(markProcessed).not.toHaveBeenCalled();
   });
 

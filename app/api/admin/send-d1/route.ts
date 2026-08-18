@@ -15,11 +15,10 @@
 import { NextResponse }          from 'next/server';
 import { prisma }                from '@/lib/prisma';
 import { sendCampaignEmail }     from '@/lib/emailCampaign';
-import { sessionHasAdminRole } from '@/lib/adminAuth';
+import { sessionHasAdminRole, legacyAdminPasswordOk } from '@/lib/adminAuth';
 
 async function auth(req: Request): Promise<boolean> {
-  const pw = process.env.ADMIN_PASSWORD;
-  const legacyOk = !!pw && req.headers.get('x-admin-password') === pw;
+  const legacyOk = legacyAdminPasswordOk(req, process.env.ADMIN_PASSWORD);
   return legacyOk || await sessionHasAdminRole();
 }
 

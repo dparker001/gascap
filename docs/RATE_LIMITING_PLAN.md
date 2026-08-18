@@ -1,7 +1,7 @@
 # Rate limiting — current state and migration path
 
 **Status: PARTIALLY IMPLEMENTED.** Sprint 1 (2026-08-18) was analysis only.
-Sprint 2 (2026-08-19) implemented Option A below (PostgreSQL) and applied it
+Sprint 2 (2026-08-18) implemented Option A below (PostgreSQL) and applied it
 to the two confirmed real gaps — password reset (had none) and OTP send
 (consolidated off a redundant in-memory implementation). No new
 infrastructure dependency was added.

@@ -31,6 +31,21 @@
  * this does not create an incorrect-downgrade risk, only an incomplete
  * `sources` label — recorded here as `stripe_or_gift_lifetime` rather than
  * asserting a provenance the data doesn't actually contain.
+ *
+ * PROVENANCE INVARIANT (post-Sprint-2 Revision 1 — do not violate this):
+ * `stripeInterval` is written ONLY from a genuine Stripe/gift grant, never
+ * from a RevenueCat grant and never from this resolver's own
+ * `effectiveInterval` output. RevenueCat's grant/revoke provenance lives
+ * entirely in `revenueCatActive`/`revenueCatInterval`. A caller that writes
+ * `effectiveInterval` (or any RC-sourced value) back into `stripeInterval`
+ * reintroduces the exact corruption this file exists to prevent: it can
+ * either destroy a real Stripe/gift Lifetime's provenance, or manufacture a
+ * fake one from a source (RevenueCat, Ambassador) that a later, unrelated
+ * event on that OTHER source could then incorrectly treat as permanent. See
+ * lib/users.ts's setUserPlan/revokeRevenueCatEntitlement/
+ * revokeStripeSubscriptionEntitlement/revokeAmbassadorEntitlement and
+ * __tests__/entitlementProvenance.test.ts for the enforcement and the
+ * regression coverage.
  */
 
 export interface EntitlementInput {

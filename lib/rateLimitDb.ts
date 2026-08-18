@@ -14,9 +14,47 @@
  * reset (had no rate limiting of any kind, found during Sprint 2
  * inspection) and OTP send (consolidated off its own redundant local
  * implementation, see app/api/otp/send/route.ts).
+ *
+ * POST-SPRINT-2 REVISION 1 FIX — the original implementation here read the
+ * row (`findUnique`), decided in application code whether the window had
+ * expired, and then wrote a plain `upsert` reflecting that decision. That
+ * read-then-decide-then-write sequence is not atomic: two concurrent
+ * requests arriving right at a window rollover could both read the SAME
+ * expired row, both conclude "start fresh," and both write `count: 1` —
+ * losing one of the two requests from the count entirely (2 requests
+ * occurred, the stored count says 1). Rewritten as a single atomic
+ * `INSERT ... ON CONFLICT ... DO UPDATE` with the expiry check INSIDE the
+ * SQL statement itself (a `CASE` on the row's own current `resetAt`,
+ * evaluated atomically by Postgres as part of the same statement) — there
+ * is no window between "read" and "write" for a second request to land in.
  */
 
+import crypto from 'crypto';
 import { prisma } from '@/lib/prisma';
+
+/**
+ * Post-Sprint-2 Revision 1 fix — hash a PII identifier (an email address)
+ * before it becomes part of a durable rate-limit key. Before this,
+ * `RateLimitCounter.key` stored plaintext normalized emails
+ * (`otp-send-email:user@example.com`, `pwreset-email:user@example.com`) as
+ * durable Postgres rows — real, if minor, PII exposure in a table that
+ * exists purely for counting, not identity.
+ *
+ * Deterministic (same email always hashes to the same key, so the limiter
+ * still works) but NOT HMAC'd with a secret — this is table hygiene against
+ * casual plaintext exposure (a DB dump, an admin query, a backup), not a
+ * defense against a determined attacker with a list of candidate emails
+ * hashing each one to check membership. That tradeoff is acceptable here:
+ * the data these rows protect is "how many times has X requested a
+ * password reset recently," not something where a false-positive
+ * membership guess is itself damaging, and the rows are short-lived (see
+ * app/api/cron/cleanup-rate-limits/route.ts). If a stronger guarantee is
+ * ever needed, switch to HMAC-SHA256 with a dedicated secret — do not
+ * reuse another secret already used for auth/signing.
+ */
+export function hashRateLimitIdentifier(identifier: string): string {
+  return crypto.createHash('sha256').update(identifier.toLowerCase().trim()).digest('hex');
+}
 
 export interface DbRateLimitResult {
   allowed:        boolean;
@@ -25,59 +63,38 @@ export interface DbRateLimitResult {
 }
 
 /**
- * Atomic check-and-increment against Postgres.
- *
- * Uses a single UPDATE ... RETURNING when the window is still open (atomic —
- * no read-then-write race between concurrent requests), and falls back to an
- * upsert only when starting a fresh window. Two concurrent requests starting
- * the very first window for a brand-new key could both attempt the initial
- * insert; the unique key constraint means only one wins, and the loser's
- * catch reads the winner's row and increments it instead — still correct,
- * just one extra round trip in the rare first-request-ever race.
+ * Atomic check-and-increment against Postgres. Single round trip, single
+ * statement — see the file header for why this must be one atomic
+ * statement rather than a read followed by a conditional write.
  */
 export async function checkRateLimitDb(
   key: string,
   limit: number,
   windowMs: number,
 ): Promise<DbRateLimitResult> {
-  const now = Date.now();
-  const nowIso = new Date(now).toISOString();
+  const now = new Date();
+  const freshResetAt = new Date(now.getTime() + windowMs);
 
-  const existing = await prisma.rateLimitCounter.findUnique({ where: { key } });
+  const rows = await prisma.$queryRaw<{ count: number; resetAt: Date }[]>`
+    INSERT INTO "RateLimitCounter" ("key", "count", "resetAt")
+    VALUES (${key}, 1, ${freshResetAt})
+    ON CONFLICT ("key") DO UPDATE SET
+      "count"   = CASE WHEN "RateLimitCounter"."resetAt" <= ${now}
+                        THEN 1
+                        ELSE "RateLimitCounter"."count" + 1
+                   END,
+      "resetAt" = CASE WHEN "RateLimitCounter"."resetAt" <= ${now}
+                        THEN ${freshResetAt}
+                        ELSE "RateLimitCounter"."resetAt"
+                   END
+    RETURNING "count", "resetAt"
+  `;
 
-  if (existing && new Date(existing.resetAt).getTime() > now) {
-    // Window still open — atomic increment.
-    const updated = await prisma.rateLimitCounter.update({
-      where: { key },
-      data:  { count: { increment: 1 } },
-    });
-    const allowed = updated.count <= limit;
-    return {
-      allowed,
-      remaining: Math.max(0, limit - updated.count),
-      resetInSeconds: Math.ceil((new Date(updated.resetAt).getTime() - now) / 1000),
-    };
-  }
-
-  // No row, or the previous window has expired — start a fresh one.
-  const resetAt = new Date(now + windowMs).toISOString();
-  try {
-    const created = await prisma.rateLimitCounter.upsert({
-      where:  { key },
-      create: { key, count: 1, resetAt },
-      update: { count: 1, resetAt },
-    });
-    return { allowed: created.count <= limit, remaining: Math.max(0, limit - created.count), resetInSeconds: Math.ceil(windowMs / 1000) };
-  } catch {
-    // Lost a fresh-window race to a concurrent request — increment theirs.
-    const updated = await prisma.rateLimitCounter.update({
-      where: { key },
-      data:  { count: { increment: 1 } },
-    });
-    return {
-      allowed: updated.count <= limit,
-      remaining: Math.max(0, limit - updated.count),
-      resetInSeconds: Math.ceil((new Date(updated.resetAt).getTime() - now) / 1000),
-    };
-  }
+  const row = rows[0];
+  const allowed = row.count <= limit;
+  return {
+    allowed,
+    remaining: Math.max(0, limit - row.count),
+    resetInSeconds: Math.max(0, Math.ceil((new Date(row.resetAt).getTime() - now.getTime()) / 1000)),
+  };
 }

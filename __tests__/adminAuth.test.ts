@@ -111,3 +111,42 @@ describe('requireAdmin / sessionHasAdminRole', () => {
     );
   });
 });
+
+describe('legacyAdminPasswordOk — post-Sprint-2 Revision 1, the shared comparison every route-local auth() now calls', () => {
+  it('correct header + configured secret — true', async () => {
+    const { legacyAdminPasswordOk } = await import('@/lib/adminAuth');
+    expect(legacyAdminPasswordOk(req({ 'x-admin-password': SECRET }), SECRET)).toBe(true);
+  });
+
+  it('wrong header — false', async () => {
+    const { legacyAdminPasswordOk } = await import('@/lib/adminAuth');
+    expect(legacyAdminPasswordOk(req({ 'x-admin-password': 'wrong' }), SECRET)).toBe(false);
+  });
+
+  it('no header — false', async () => {
+    const { legacyAdminPasswordOk } = await import('@/lib/adminAuth');
+    expect(legacyAdminPasswordOk(req(), SECRET)).toBe(false);
+  });
+
+  it('undefined/empty configured secret — false, never treated as "any header passes"', async () => {
+    const { legacyAdminPasswordOk } = await import('@/lib/adminAuth');
+    expect(legacyAdminPasswordOk(req({ 'x-admin-password': '' }), undefined)).toBe(false);
+    expect(legacyAdminPasswordOk(req({ 'x-admin-password': 'anything' }), '')).toBe(false);
+  });
+
+  it('logs a warning on every successful legacy use, so usage is observable regardless of which route called it', async () => {
+    const { legacyAdminPasswordOk } = await import('@/lib/adminAuth');
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    legacyAdminPasswordOk(req({ 'x-admin-password': SECRET }), SECRET);
+    expect(warnSpy).toHaveBeenCalled();
+    warnSpy.mockRestore();
+  });
+
+  it('does not log on a failed attempt', async () => {
+    const { legacyAdminPasswordOk } = await import('@/lib/adminAuth');
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    legacyAdminPasswordOk(req({ 'x-admin-password': 'wrong' }), SECRET);
+    expect(warnSpy).not.toHaveBeenCalled();
+    warnSpy.mockRestore();
+  });
+});

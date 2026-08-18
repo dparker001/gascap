@@ -88,6 +88,35 @@ export async function isAdmin(req: NextRequest | Request): Promise<boolean> {
 }
 
 /**
+ * Post-Sprint-2 Revision 1 fix — the shared legacy-password check every
+ * route-local `auth()` helper should call, instead of reimplementing the
+ * comparison inline.
+ *
+ * Before this, all 21 dual-auth routes each reimplemented
+ * `header === configuredSecret` themselves: a plain `===`, not constant-time
+ * (the timing-attack class this codebase otherwise takes seriously — see
+ * `safeEqual` above and its Sprint 1 precedent), and none of them logged the
+ * legacy-path warning `requireAdmin()` emits — meaning "has the legacy path
+ * gone quiet" (the actual removal criterion in
+ * docs/ADMIN_AUTH_MIGRATION.md) was only observable for routes calling
+ * `requireAdmin()` directly, silently blind to the other 21.
+ *
+ * Deliberately does NOT restructure the 21 routes' own `auth()` return types
+ * or call sites (several return a 3-state `'ok' | 'no-env' | 'wrong'` for a
+ * distinct "not configured" HTTP status, which this helper isn't trying to
+ * replace) — same minimal-diff philosophy as `sessionHasAdminRole()`'s own
+ * doc comment. Each route still decides its own "is a secret configured at
+ * all" branching; this function owns only the comparison itself.
+ */
+export function legacyAdminPasswordOk(req: NextRequest | Request, configuredSecret: string | undefined | null): boolean {
+  if (!configuredSecret) return false;
+  const supplied = req.headers.get('x-admin-password');
+  if (!supplied || !safeEqual(supplied, configuredSecret)) return false;
+  console.warn('[adminAuth] legacy ADMIN_PASSWORD path used — see docs/ADMIN_AUTH_MIGRATION.md removal criteria');
+  return true;
+}
+
+/**
  * Session-only half of requireAdmin, with no legacy fallback.
  *
  * Every one of the 21 ADMIN_PASSWORD-gated routes (audited in

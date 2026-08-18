@@ -6,12 +6,10 @@
  */
 import { NextResponse } from 'next/server';
 import { getAllFeedback, markRead, deleteFeedback } from '@/lib/feedback';
-import { sessionHasAdminRole } from '@/lib/adminAuth';
+import { sessionHasAdminRole, legacyAdminPasswordOk } from '@/lib/adminAuth';
 
 async function auth(req: Request): Promise<boolean> {
-  const pw     = process.env.ADMIN_PASSWORD;
-  const header = req.headers.get('x-admin-password') ?? '';
-  const legacyOk = !!pw && header === pw;
+  const legacyOk = legacyAdminPasswordOk(req, process.env.ADMIN_PASSWORD);
   return legacyOk || await sessionHasAdminRole();
 }
 

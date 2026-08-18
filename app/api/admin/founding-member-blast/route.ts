@@ -18,7 +18,7 @@ import { NextResponse }       from 'next/server';
 import { prisma }             from '@/lib/prisma';
 import { sendMail, foundingMemberBlastHtml } from '@/lib/email';
 import { logEmail, logEmailError }           from '@/lib/emailLog';
-import { sessionHasAdminRole } from '@/lib/adminAuth';
+import { sessionHasAdminRole, legacyAdminPasswordOk } from '@/lib/adminAuth';
 
 /** ms delay between sends to stay inside Resend rate limits */
 const SEND_DELAY_MS = 300;
@@ -29,8 +29,7 @@ function sleep(ms: number) {
 
 export async function POST(req: Request) {
   /* ── Auth ──────────────────────────────────────────────────────────── */
-  const pwd = req.headers.get('x-admin-password');
-  const legacyOk = !!pwd && !!process.env.ADMIN_PASSWORD && pwd === process.env.ADMIN_PASSWORD;
+  const legacyOk = legacyAdminPasswordOk(req, process.env.ADMIN_PASSWORD);
   if (!legacyOk && !(await sessionHasAdminRole())) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }

@@ -1,7 +1,8 @@
 import { NextResponse }        from 'next/server';
 import { createPasswordResetToken } from '@/lib/users';
 import { sendMail, passwordResetEmailHtml } from '@/lib/email';
-import { checkRateLimitDb } from '@/lib/rateLimitDb';
+import { checkRateLimitDb, hashRateLimitIdentifier } from '@/lib/rateLimitDb';
+import { getTrustedClientIp } from '@/lib/clientIp';
 
 // Sprint 2 — this endpoint had NO rate limiting at all before, found during
 // the sprint's inspection pass. Layered per the brief: per-email (a specific
@@ -33,12 +34,20 @@ export async function POST(req: Request) {
   // deliberate: a different status code on rate-limit would itself leak
   // "this address is being hammered," which is its own enumeration signal.
   const normalizedEmail = email.trim().toLowerCase();
-  const forwarded = req.headers.get('x-forwarded-for');
-  const ip = (forwarded ?? req.headers.get('x-real-ip') ?? 'unknown').split(',')[0].trim();
+  // Post-Sprint-2 Revision 1: X-Real-IP (Railway's trusted header) preferred
+  // over the caller-influenceable X-Forwarded-For — see lib/clientIp.ts.
+  // When no trusted IP signal exists at all, the IP-layer check is skipped
+  // entirely for this request rather than lumped into one shared "unknown"
+  // bucket — a shared bucket would let a single client with no IP headers
+  // lock out every other such client under the same limit. The email-layer
+  // check still applies regardless.
+  const ip = getTrustedClientIp(req);
 
   const [emailLimit, ipLimit] = await Promise.all([
-    checkRateLimitDb(`pwreset-email:${normalizedEmail}`, RESET_MAX_PER_EMAIL, RESET_WINDOW_MS),
-    checkRateLimitDb(`pwreset-ip:${ip}`, RESET_MAX_PER_IP, RESET_WINDOW_MS),
+    // Hashed — see lib/rateLimitDb.ts's hashRateLimitIdentifier doc comment
+    // for why a plaintext email should not become a durable Postgres row.
+    checkRateLimitDb(`pwreset-email:${hashRateLimitIdentifier(normalizedEmail)}`, RESET_MAX_PER_EMAIL, RESET_WINDOW_MS),
+    ip ? checkRateLimitDb(`pwreset-ip:${ip}`, RESET_MAX_PER_IP, RESET_WINDOW_MS) : Promise.resolve({ allowed: true, remaining: RESET_MAX_PER_IP, resetInSeconds: 0 }),
   ]);
   if (!emailLimit.allowed || !ipLimit.allowed) {
     return NextResponse.json({ ok: true });

@@ -45,12 +45,12 @@ import { sendMail, winnerNotificationEmailHtml, nonWinnerNotificationEmailHtml }
 import { findById } from '@/lib/users';
 import { sendApns, apnsConfigured } from '@/lib/apns';
 import { prisma } from '@/lib/prisma';
-import { sessionHasAdminRole, requireAdmin } from '@/lib/adminAuth';
+import { sessionHasAdminRole, requireAdmin, legacyAdminPasswordOk } from '@/lib/adminAuth';
 import { logAdminActionFor } from '@/lib/adminAudit';
 
 async function auth(req: Request): Promise<'ok' | 'no-env' | 'wrong'> {
   const pw = process.env.ADMIN_PASSWORD;
-  if (pw && req.headers.get('x-admin-password') === pw) return 'ok';
+  if (legacyAdminPasswordOk(req, pw)) return 'ok';
   if (await sessionHasAdminRole()) return 'ok';
   return pw ? 'wrong' : 'no-env';
 }

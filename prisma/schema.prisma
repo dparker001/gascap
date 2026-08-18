@@ -132,6 +132,13 @@ model User {
   getawayDestinationId     String?
   getawayDestinationChosenAt String?
   getawayReminderSentAt    String?
+  /// Post-Sprint-2 Revision 1 fix — durable one-time marker so a crash
+  /// between sending this email and marking the triggering webhook event
+  /// processed can't cause a retry to send it twice. Claimed atomically
+  /// (updateMany WHERE this is null) immediately before sending, by both
+  /// the RevenueCat and Stripe getaway-choose email paths. See
+  /// app/api/native/revenuecat/route.ts's maybeSendGetaway().
+  getawayChooseEmailSentAt String?
   // OTP passwordless sign-in — one-time session token issued after code verification,
   // consumed by the credentials-otp NextAuth provider (2-min TTL).
   otpSessionToken          String?
@@ -193,7 +200,12 @@ model OtpCode {
 model RateLimitCounter {
   key       String   @id
   count     Int      @default(0)
-  resetAt   String   // ISO string — window end; a fresh window is started when now > resetAt
+  /// Post-Sprint-2 Revision 1: real Postgres timestamp, not a String — this
+  /// table had not been deployed to production yet, so changing the type
+  /// carries no migration-data risk. A window end; a fresh window is
+  /// started when now > resetAt. See lib/rateLimitDb.ts for the atomic
+  /// single-statement INSERT ... ON CONFLICT this drives.
+  resetAt   DateTime
 
   @@index([resetAt])
 }
@@ -208,6 +220,14 @@ model RevenueCatWebhookEvent {
   /// processed: side effects completed successfully.
   /// failed: attempted and errored; safe to retry, not permanently stuck.
   status      String   @default("received")
+  /// Post-Sprint-2 Revision 1 fix. Assigned fresh on every successful claim
+  /// (initial or reclaim) and required to match on markProcessed/markFailed —
+  /// this is the compare-and-swap ownership token that makes concurrent
+  /// reclaim of a failed/stale-processing row safe. An old claimant whose
+  /// token no longer matches (because a newer claimant already reclaimed the
+  /// row) cannot overwrite that newer claimant's state. See
+  /// lib/revenueCatEvents.ts.
+  claimToken  String?
   receivedAt  String
   processedAt String?
   error       String?

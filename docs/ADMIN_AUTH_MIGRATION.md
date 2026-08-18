@@ -2,7 +2,7 @@
 
 **Status: STEPS 1–4 IMPLEMENTED, staged (steps 5–6 pending soak).** Designed
 in Hardening Sprint 1 (2026-08-18); implemented in Hardening Sprint 2
-(2026-08-19) on branch `hardening/sprint-2`, not yet merged to `main`. See
+(2026-08-18) on branch `hardening/sprint-2`, not yet merged to `main`. See
 `docs/SECURITY_AUDIT.md`'s "Sprint 2 — admin auth migration" entry and
 `lib/adminAuth.ts` / `__tests__/adminAuth.test.ts`.
 

@@ -17,7 +17,7 @@
 import { NextResponse }  from 'next/server';
 import fs                from 'fs';
 import path              from 'path';
-import { sessionHasAdminRole } from '@/lib/adminAuth';
+import { sessionHasAdminRole, legacyAdminPasswordOk } from '@/lib/adminAuth';
 
 const FILE = path.join(process.cwd(), 'data', 'announcements.json');
 
@@ -52,9 +52,7 @@ export async function GET(req: Request) {
 
   // Admin-only: return raw list
   if (isAll) {
-    const adminPw = process.env.ADMIN_PASSWORD ?? '';
-    const header  = req.headers.get('x-admin-password') ?? '';
-    const legacyOk = !!adminPw && header === adminPw;
+    const legacyOk = legacyAdminPasswordOk(req, process.env.ADMIN_PASSWORD);
     if (!legacyOk && !(await sessionHasAdminRole())) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -74,9 +72,11 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const adminPw = process.env.ADMIN_PASSWORD ?? '';
-  const header  = req.headers.get('x-admin-password') ?? '';
-  if (!adminPw || header !== adminPw) {
+  // Post-Sprint-2 Revision 1 fix — this was legacy-header-only (missed in
+  // the original Sprint 2 sweep, which widened GET's `?all=1` branch but not
+  // POST). Now dual-auth like every other admin-gated route.
+  const legacyOk = legacyAdminPasswordOk(req, process.env.ADMIN_PASSWORD);
+  if (!legacyOk && !(await sessionHasAdminRole())) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

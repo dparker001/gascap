@@ -16,9 +16,59 @@
  * Product IDs (App Store Connect):
  *  - gascap_pro_lifetime  → non-consumable  → interval 'lifetime'
  *  - gascap_pro_monthly   → auto-renew sub  → interval 'monthly'
+ *
+ * EXTERNAL SIDE-EFFECT SEMANTICS — stated honestly, post-Sprint-2 Revision 1.
+ * The entitlement mutation itself (setUserPlan / revokeRevenueCatEntitlement)
+ * IS exactly-once per event, guaranteed by the atomic claim in
+ * lib/revenueCatEvents.ts. The SIDE EFFECTS fired alongside it are not all
+ * equally protected — do not assume "idempotent event" implies "idempotent
+ * everything that runs during it":
+ *
+ *  - Getaway choose-email (maybeSendGetaway): DURABLE one-time, via the
+ *    getawayChooseEmailSentAt atomic claim (see that function). Chosen
+ *    because this is the highest-consequence one-time business
+ *    communication here — a duplicate would be a visibly broken customer
+ *    experience for a Lifetime purchase, and the fix was cheap.
+ *  - Welcome email / paid-campaign enrollment (sendPaidCampaignEmail,
+ *    enrollPaidCampaign): protected by a durable USER-state check
+ *    (`!user.paidCampaignEnrolledAt`) BEFORE firing, which is itself
+ *    read-then-act (not atomic) — a sufficiently tight race between two
+ *    concurrent deliveries for the same user's first purchase could send
+ *    it twice. In practice this requires two GRANT events for the same
+ *    user resolving concurrently, which the event-level claim already
+ *    prevents for the SAME event.id but not for two genuinely different
+ *    event ids (e.g. a real double-delivery from RevenueCat using
+ *    different ids, which shouldn't happen but isn't structurally
+ *    impossible). Not given a durable atomic claim in this revision — the
+ *    existing user-state check meaningfully narrows the window and a
+ *    duplicate welcome email is a much lower-consequence failure than a
+ *    duplicate getaway offer.
+ *  - Welcome/getaway push notifications (sendUserPush): best-effort,
+ *    fire-and-forget, NOT deduplicated beyond whatever the email checks
+ *    above already provide as a side effect of running in the same branch.
+ *    A push arriving twice is a minor annoyance, not a business-consequence
+ *    bug — deliberately not hardened further.
+ *  - Admin notification emails (sendAdminMail): not deduplicated at all.
+ *    These exist purely to inform a human; a duplicate costs nothing beyond
+ *    an extra email in an inbox.
+ *
+ * Crash-window truth for anything NOT durably marked above: if the process
+ * crashes after firing one of these (they are not awaited before
+ * markProcessed runs) but the claim still succeeds in reaching
+ * markProcessed, a retry of the same event is blocked by the event-level
+ * claim and the side effect will NOT re-fire — but if the crash happens
+ * BEFORE markProcessed (or markProcessed itself fails), a retry WILL re-run
+ * this handler and re-fire every non-durably-marked side effect. This is
+ * the same class of gap the getaway email had before this revision; it was
+ * fixed there specifically because that side effect's consequence severity
+ * justified it, not because every side effect in this handler is now safe.
+ * If a future addition here is similarly consequential (e.g. a paid
+ * one-time credit grant), give it the same atomic-claim treatment rather
+ * than assuming the event-level idempotency covers it.
  */
 import { NextResponse } from 'next/server';
 import { setUserPlan, findById, findByEmail, enrollPaidCampaign, revokeRevenueCatEntitlement } from '@/lib/users';
+import { prisma } from '@/lib/prisma';
 import { sendMail } from '@/lib/email';
 import { sendPaidCampaignEmail } from '@/lib/emailCampaignPaid';
 import { sendUserPush } from '@/lib/userPush';
@@ -41,12 +91,33 @@ function sendAdminMail(opts: { subject: string; html: string; text: string }) {
  * Lifetime purchase during the active promo earns a complimentary resort getaway;
  * the buyer picks a destination at /getaway (or via the success-page picker),
  * which fires the actionable "ISSUE GETAWAY CERT" email. Here we give the admin a
- * heads-up and email the buyer the choose link. Only on the initial lifetime
- * purchase event so it can't fire twice.
+ * heads-up and email the buyer the choose link.
+ *
+ * Post-Sprint-2 Revision 1 fix — durable idempotency, not just "only on the
+ * initial lifetime event type." Being keyed on event TYPE alone was not
+ * actually crash-safe: if the process died after this function ran but
+ * before the triggering webhook event was marked processed, a retry of that
+ * SAME event would re-run this function and send a second getaway email —
+ * the exact scenario named in the Sprint 2 review (send email → crash before
+ * markProcessed → retry re-sends). `getawayChooseEmailSentAt` is claimed
+ * atomically (a conditional UPDATE, not a plain write) immediately before
+ * sending, so only one caller — ever, across any number of retries or
+ * concurrent deliveries — can win the claim and actually send.
  */
-function maybeSendGetaway(user: { id: string; email: string; name?: string | null }, eventType: string) {
+async function maybeSendGetaway(user: { id: string; email: string; name?: string | null }, eventType: string) {
   if (!getawayPromoActive()) return;
   if (!INITIAL_GRANT_EVENTS.has(eventType)) return;
+
+  const claim = await prisma.user.updateMany({
+    where: { id: user.id, getawayChooseEmailSentAt: null },
+    data:  { getawayChooseEmailSentAt: new Date().toISOString() },
+  });
+  if (claim.count === 0) {
+    // Already sent (or a concurrent call just won the claim) — no-op.
+    console.info(`[revenuecat] Getaway choose email already sent for ${user.email}, skipping duplicate.`);
+    return;
+  }
+
   const baseUrl   = (process.env.NEXTAUTH_URL ?? 'https://www.gascap.app').replace(/\/$/, '');
   const chooseUrl = `${baseUrl}/getaway`;
   const name      = user.name ?? 'there';
@@ -111,13 +182,15 @@ const INITIAL_GRANT_EVENTS = new Set(['INITIAL_PURCHASE', 'NON_RENEWING_PURCHASE
 const REVOKE_EVENTS = new Set(['EXPIRATION', 'REFUND']);
 
 interface RcEvent {
-  // NOTE: `id` is RevenueCat's documented unique webhook-event identifier —
-  // https://www.revenuecat.com/docs/integrations/webhooks event object shape
-  // — used below as the idempotency key. Verify against a real delivered
-  // payload in the RevenueCat dashboard's webhook event log before relying
-  // on this in a context where being wrong is costly; this was not
-  // independently re-confirmed against RevenueCat's live docs as part of
-  // this change (see docs/reviews for the Sprint 2 packet's open item).
+  // `id` is RevenueCat's documented unique webhook-event identifier —
+  // https://www.revenuecat.com/docs/integrations/webhooks — an
+  // always-present field on every event, per RevenueCat's current
+  // documentation (independently confirmed post-Sprint-2 Revision 1;
+  // RevenueCat explicitly recommends it for dedup). Used below as the
+  // idempotency key. Still typed optional because the payload is
+  // attacker/network-observable input, not because presence is genuinely in
+  // doubt — see the `!ev.id` fail-safe branch below for what happens if a
+  // real payload ever violates this contract.
   id?:                   string;
   type?:                string;
   app_user_id?:         string;
@@ -235,23 +308,43 @@ export async function POST(req: Request) {
   // for the claim/status model, including how a crash mid-processing is
   // safely retried rather than either repeated or permanently dropped.
   //
-  // No event.id at all (missing field, or an old RevenueCat integration that
-  // predates this) falls through to processing unconditionally — refusing
-  // to grant/revoke Pro because an id was absent would be a worse failure
-  // mode than the rare double-processing it would prevent.
-  if (ev.id) {
-    const claim = await claimEvent(ev.id, ev.type, user.id);
-    if (claim.outcome !== 'claimed') {
-      console.log(`[revenuecat] ${ev.type} for ${user.email} — ${claim.outcome}, skipping side effects`);
-      return NextResponse.json({ ok: true, duplicate: true });
-    }
+  // event.id IS CONFIRMED — post-Sprint-2 Revision 1: independently checked
+  // against RevenueCat's current documentation, `event.id` is an
+  // always-present field on every webhook event, and RevenueCat explicitly
+  // recommends using it for dedup. The earlier "not independently verified"
+  // caveat is removed.
+  //
+  // Because the id is now guaranteed by the provider's contract, a GRANT or
+  // REVOKE event arriving WITHOUT one is anomalous, not an expected legacy
+  // case — it no longer falls through to processing unconditionally.
+  // Fail-safe instead: skip the grant/revoke, log it loudly, and return 200
+  // (not 5xx — RevenueCat would just retry the same malformed payload).
+  // Silently granting or revoking Pro from a payload that doesn't match the
+  // provider's own documented shape is a worse failure mode than a rare
+  // dropped event, especially given this endpoint can grant paid access.
+  if (!ev.id) {
+    console.error(`[revenuecat] actionable event (${ev.type}) for ${user.email} has NO event.id — this contradicts RevenueCat's documented contract (id is always present). Skipping to avoid processing an unverifiable/malformed payload.`);
+    return NextResponse.json({ ok: true, skipped: 'missing_event_id' });
   }
+  const claim = await claimEvent(ev.id, ev.type, user.id);
+  if (claim.outcome !== 'claimed') {
+    console.log(`[revenuecat] ${ev.type} for ${user.email} — ${claim.outcome}, skipping side effects`);
+    return NextResponse.json({ ok: true, duplicate: true });
+  }
+  const claimToken = claim.claimToken;
 
   try {
     if (GRANT_EVENTS.has(ev.type)) {
       const interval: 'monthly' | 'lifetime' =
         ev.product_id === LIFETIME_PRODUCT ? 'lifetime' : 'monthly';
-      await setUserPlan(user.id, 'pro', { interval, revenueCat: { active: true, interval, productId: ev.product_id } });
+      // Deliberately NOT passing `interval` as the top-level Stripe param —
+      // that would write it into `stripeInterval`, GasCap's Stripe/gift-only
+      // provenance field, corrupting it with a RevenueCat value. Only the
+      // `revenueCat` sub-object is populated; see setUserPlan's doc comment
+      // and lib/entitlements.ts for the provenance-separation invariant this
+      // depends on (ChatGPT Sprint 2 Revision 1 finding — provenance
+      // corruption).
+      await setUserPlan(user.id, 'pro', { revenueCat: { active: true, interval, productId: ev.product_id } });
       console.log(`[revenuecat] ${ev.type} → granted Pro (${interval}) to ${user.email}`);
       // First grant only (idempotent): welcome email + paid nurture, mirroring the
       // Stripe path so IAP buyers also get an upgrade-confirmation email.
@@ -273,7 +366,7 @@ export async function POST(req: Request) {
         ).catch(() => { /* best-effort */ });
       }
       // Lifetime buyers earn the complimentary getaway during the active promo.
-      if (interval === 'lifetime') maybeSendGetaway(user, ev.type);
+      if (interval === 'lifetime') await maybeSendGetaway(user, ev.type);
     } else {
       // EXPIRATION / REFUND → recompute aggregate entitlement rather than
       // unconditionally reverting to free (Sprint 2 — see lib/entitlements.ts).
@@ -282,11 +375,11 @@ export async function POST(req: Request) {
       await revokeRevenueCatEntitlement(user.id);
       console.log(`[revenuecat] ${ev.type} → cleared RevenueCat entitlement for ${user.email} (plan recalculated)`);
     }
-    if (ev.id) await markProcessed(ev.id);
+    await markProcessed(ev.id, claimToken);
     return NextResponse.json({ ok: true });
   } catch (e) {
     console.error('[revenuecat] grant/revoke failed:', e);
-    if (ev.id) await markFailed(ev.id, e);
+    await markFailed(ev.id, claimToken, e);
     return NextResponse.json({ error: 'Internal error' }, { status: 500 });
   }
 }

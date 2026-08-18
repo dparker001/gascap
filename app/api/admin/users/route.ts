@@ -8,19 +8,18 @@
 import { NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
 import { prisma } from '@/lib/prisma';
-import { findById, enrollCompCampaign } from '@/lib/users';
+import { findById, enrollCompCampaign, revokeAmbassadorEntitlement } from '@/lib/users';
 import { upsertGhlContact } from '@/lib/ghl';
 import { getFillups } from '@/lib/fillups';
 import { sendCompProForLifeEmail } from '@/lib/emailCampaign';
 import { sendMail, accountDeletedEmailHtml } from '@/lib/email';
 import { getActiveDeviceCounts } from '@/lib/deviceSessions';
-import { sessionHasAdminRole, requireAdmin } from '@/lib/adminAuth';
+import { sessionHasAdminRole, requireAdmin, legacyAdminPasswordOk } from '@/lib/adminAuth';
 import { logAdminActionFor } from '@/lib/adminAudit';
 
 async function auth(req: Request): Promise<'ok' | 'no-env' | 'wrong'> {
   const pw = process.env.ADMIN_PASSWORD;
-  const header = req.headers.get('x-admin-password') ?? '';
-  if (pw && header === pw) return 'ok';
+  if (legacyAdminPasswordOk(req, pw)) return 'ok';
   if (await sessionHasAdminRole()) return 'ok';
   return pw ? 'wrong' : 'no-env';
 }
@@ -241,16 +240,21 @@ export async function PATCH(req: Request) {
   }
 
   if (body.revokeCompProForLife) {
-    await prisma.user.update({
-      where: { id },
-      data: { ambassadorProForLife: false, plan: 'free' },
-    });
-    upsertGhlContact({ name: user.name, email: user.email, plan: 'free', source: 'GasCap Comp Pro Revoked' })
-      .catch((e) => console.error('[GHL] comp revoke sync failed:', e));
+    // Post-Sprint-2 Revision 1 fix: this previously wrote
+    // `ambassadorProForLife: false, plan: 'free'` directly, which could
+    // wrongly downgrade a user who also held a valid Stripe or RevenueCat
+    // entitlement. Goes through the resolver now — only actually downgrades
+    // if no other source survives.
+    const resolved = await revokeAmbassadorEntitlement(id);
+    upsertGhlContact({
+      name: user.name, email: user.email, plan: resolved.pro ? 'pro' : 'free',
+      source: 'GasCap Comp Pro Revoked',
+    }).catch((e) => console.error('[GHL] comp revoke sync failed:', e));
     await logAdminActionFor(identity, 'user.revoke_comp_pro_for_life', {
-      targetType: 'User', targetId: id, success: true, metadata: { email: user.email },
+      targetType: 'User', targetId: id, success: true,
+      metadata: { email: user.email, remainedPro: resolved.pro, survivingSources: resolved.sources },
     });
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, remainedPro: resolved.pro });
   }
 
   const data: Record<string, unknown> = {};

@@ -12,13 +12,12 @@ import { NextResponse } from 'next/server';
 import { findByEmail }   from '@/lib/users';
 import { prisma }        from '@/lib/prisma';
 import { sendUserDigest } from '@/lib/digest';
-import { sessionHasAdminRole } from '@/lib/adminAuth';
+import { sessionHasAdminRole, legacyAdminPasswordOk } from '@/lib/adminAuth';
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? '';
 
 export async function POST(req: Request) {
-  const pw = req.headers.get('x-admin-password') ?? '';
-  const legacyOk = !!ADMIN_PASSWORD && pw === ADMIN_PASSWORD;
+  const legacyOk = legacyAdminPasswordOk(req, ADMIN_PASSWORD);
   if (!legacyOk && !(await sessionHasAdminRole())) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }

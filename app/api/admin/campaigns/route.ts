@@ -22,7 +22,7 @@ import {
   clearEventsForPlacement,
 } from '@/lib/campaigns';
 import { getBaseUrl as resolveBaseUrl } from '@/lib/getBaseUrl';
-import { sessionHasAdminRole } from '@/lib/adminAuth';
+import { sessionHasAdminRole, legacyAdminPasswordOk } from '@/lib/adminAuth';
 
 /**
  * Campaign analytics uses ADMIN_PASSWORD by default so a solo founder can
@@ -36,7 +36,7 @@ async function auth(req: NextRequest): Promise<boolean> {
   // to ADMIN_PASSWORD. Railway treats "set but empty" as a real value, which
   // would otherwise lock out the main admin password entirely.
   const pw = process.env.CAMPAIGN_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD;
-  const legacyOk = !!pw && (req.headers.get('x-admin-password') ?? '') === pw;
+  const legacyOk = legacyAdminPasswordOk(req, pw);
   return legacyOk || await sessionHasAdminRole();
 }
 

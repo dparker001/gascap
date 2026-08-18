@@ -281,13 +281,20 @@ export async function setUserPlan(
   userId: string,
   plan: 'free' | 'pro' | 'fleet',
   stripe?: {
+    // `interval` here is STRICTLY Stripe/gift provenance. It is written
+    // directly to `stripeInterval`, so it must NEVER be populated with a
+    // RevenueCat-sourced value — pass RC's interval only inside the
+    // `revenueCat` sub-object below. (Fixed post-Sprint-2 Revision 1: the
+    // RevenueCat webhook previously passed its own interval through this
+    // exact field, corrupting Stripe/gift Lifetime provenance and, on
+    // revoke, letting an RC-only Lifetime survive its own refund. See
+    // lib/entitlements.ts and the ChatGPT Sprint 2 review packet.)
     customerId?: string; subscriptionId?: string; interval?: 'monthly' | 'annual' | 'lifetime';
-    // Sprint 2 — RevenueCat grant provenance. Distinct from `stripe` in name
-    // only (the param predates RevenueCat and callers already pass their own
-    // grant details through it); persisting this is what lets
-    // resolveUserEntitlements() see a RevenueCat grant as a source
-    // independent of Stripe, instead of both providers writing the exact
-    // same plan/stripeInterval columns with no way to tell them apart.
+    // RevenueCat grant provenance — always independent of `interval` above.
+    // Persisting this is what lets resolveUserEntitlements() see a
+    // RevenueCat grant as a source independent of Stripe, instead of both
+    // providers writing the same plan/stripeInterval columns with no way to
+    // tell them apart.
     revenueCat?: { active: boolean; interval?: 'monthly' | 'lifetime'; productId?: string };
   },
 ): Promise<void> {
@@ -328,7 +335,11 @@ export async function setUserPlan(
   // the account up), so the user ended up stuck with free Pro access forever
   // and dropped out of the trial-conversion email drip. Found 2026-07-23 via a
   // real account (servant4hire@gmail.com) stuck exactly this way.
-  const isRealPurchaseOrRenewal = !!(stripe?.subscriptionId || stripe?.interval);
+  // A RevenueCat grant counts as "a real purchase" too, even though (as of
+  // the provenance fix below) it no longer writes `stripe.interval` — check
+  // `revenueCat.active` explicitly so an RC purchase still correctly ends
+  // the trial.
+  const isRealPurchaseOrRenewal = !!(stripe?.subscriptionId || stripe?.interval || stripe?.revenueCat?.active);
 
   await prisma.user.update({
     where: { id: userId },
@@ -337,17 +348,25 @@ export async function setUserPlan(
       ...(plan !== 'free' && isRealPurchaseOrRenewal ? { isProTrial: false, trialExpiresAt: null } : {}),
       ...(stripe?.customerId     ? { stripeCustomerId:     stripe.customerId }     : {}),
       ...(stripe?.subscriptionId ? { stripeSubscriptionId: stripe.subscriptionId } : {}),
-      // Persist the billing interval authoritatively on every paid upgrade so
-      // stripeInterval is always correct — even for repeat upgraders where the
-      // paid-campaign enrollment (which also writes it) is skipped. This gates
-      // the Lifetime-only getaway promo, so it must never be stale.
+      // Persist the billing interval authoritatively on every paid Stripe
+      // upgrade so `stripeInterval` is always correct — even for repeat
+      // upgraders where the paid-campaign enrollment (which also writes it)
+      // is skipped. This gates the Lifetime-only getaway promo, so it must
+      // never be stale.
+      //
+      // STRICTLY Stripe/gift provenance — see the parameter doc comment
+      // above. A RevenueCat grant must never reach this line (it doesn't
+      // pass `stripe.interval` at all, only `stripe.revenueCat`), or a
+      // Stripe/gift Lifetime purchase's provenance can be silently
+      // overwritten by an unrelated RC event later. This was a real bug
+      // (Sprint 2 Revision 1 finding) — do not reintroduce it by having a
+      // future caller pass RC data through this field for convenience.
       ...(stripe?.interval ? { stripeInterval: stripe.interval } : {}),
-      // Sprint 2 — record RevenueCat's own grant independently of the Stripe
-      // fields above, even though a RevenueCat grant ALSO writes
-      // plan/stripeInterval today (kept for backward compatibility with
-      // every existing plan check in the app, which reads `plan` directly).
-      // The new columns are what makes a later revocation on either
-      // provider safe — see revokeRevenueCatEntitlement below.
+      // Record RevenueCat's own grant in its own, separate columns —
+      // deliberately NEVER also written to `plan`'s Stripe-provenance
+      // siblings (`stripeInterval`, `stripeSubscriptionId`). These are what
+      // makes a later revocation on either provider safe — see
+      // revokeRevenueCatEntitlement below.
       ...(stripe?.revenueCat ? {
         revenueCatActive:    stripe.revenueCat.active,
         revenueCatInterval:  stripe.revenueCat.interval ?? null,
@@ -393,12 +412,18 @@ export async function revokeRevenueCatEntitlement(userId: string): Promise<Resol
   });
   const resolved = resolveUserEntitlements(cleared);
   if (resolved.pro) {
-    // A different source still qualifies — stay Pro, correct the interval to
-    // whatever that surviving source implies (e.g. was 'lifetime' via RC,
-    // still 'monthly' via an independent Stripe sub).
+    // A different source still qualifies — stay Pro. Deliberately does NOT
+    // write `resolved.effectiveInterval` (or anything derived from it) back
+    // into `stripeInterval` — that field is Stripe/gift provenance ONLY.
+    // Writing the aggregate/display interval into a provider-provenance
+    // field is exactly the corruption this function exists to prevent (a
+    // surviving Ambassador-only or RevenueCat-only source could otherwise
+    // manufacture a fake permanent "Stripe/gift Lifetime" that no future RC
+    // event could ever legitimately clear). `stripeInterval` is left
+    // untouched — whatever genuine Stripe state it already reflected.
     await prisma.user.update({
       where: { id: userId },
-      data:  { plan: 'pro', ...(resolved.effectiveInterval ? { stripeInterval: resolved.effectiveInterval } : {}) },
+      data:  { plan: 'pro' },
     });
   } else {
     await setUserPlan(userId, 'free');
@@ -429,9 +454,46 @@ export async function revokeStripeSubscriptionEntitlement(userId: string): Promi
   // never is. Clearing it would lose useful history for no safety benefit.
   const resolved = resolveUserEntitlements(cleared);
   if (resolved.pro) {
+    // Same rule as revokeRevenueCatEntitlement above: never write the
+    // aggregate/display interval back into `stripeInterval`. A surviving
+    // Ambassador or RevenueCat source must not be able to fabricate a fake
+    // Stripe/gift Lifetime provenance.
     await prisma.user.update({
       where: { id: userId },
-      data:  { plan: 'pro', ...(resolved.effectiveInterval ? { stripeInterval: resolved.effectiveInterval } : {}) },
+      data:  { plan: 'pro' },
+    });
+  } else {
+    await setUserPlan(userId, 'free');
+  }
+  return resolved;
+}
+
+/**
+ * Post-Sprint-2 Revision 1 fix — the third and final revoke mirror. The
+ * admin "revoke complimentary Pro for life" action previously wrote
+ * `ambassadorProForLife: false, plan: 'free'` directly, bypassing the
+ * resolver entirely — a user who ALSO held a valid Stripe or RevenueCat
+ * entitlement could be wrongly downgraded to free by an admin action meant
+ * only to remove their Ambassador grant. Same shape as the other two revoke
+ * functions: clear only the Ambassador field, resolve from the fresh state,
+ * only downgrade if no other source survives.
+ */
+export async function revokeAmbassadorEntitlement(userId: string): Promise<ResolvedEntitlement> {
+  const cleared = await prisma.user.update({
+    where: { id: userId },
+    data:  { ambassadorProForLife: false },
+    select: {
+      ambassadorProForLife: true, stripeInterval: true, stripeSubscriptionId: true,
+      revenueCatActive: true, revenueCatInterval: true, isProTrial: true, trialExpiresAt: true,
+    },
+  });
+  const resolved = resolveUserEntitlements(cleared);
+  if (resolved.pro) {
+    // A Stripe or RevenueCat source still qualifies — stay Pro. Never write
+    // effectiveInterval into stripeInterval, same rule as the other revokes.
+    await prisma.user.update({
+      where: { id: userId },
+      data:  { plan: 'pro' },
     });
   } else {
     await setUserPlan(userId, 'free');

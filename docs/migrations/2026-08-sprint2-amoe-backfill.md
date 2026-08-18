@@ -1,21 +1,36 @@
 # AMOE entries: file → Postgres migration
 
-**Status: STAGED — dual-write live, backfill built, read-path cutover NOT
-done.** Sprint 2, 2026-08-19.
+**Status: STAGED — file authoritative, Postgres mirror attempted per
+submission, backfill built with real reconciliation, read-path cutover NOT
+done.** Sprint 2, 2026-08-18. Revised 2026-08-18 (Revision 1, independent
+review) — corrected the "lands in both" wording below and strengthened the
+backfill's verification; see the revision packet in `docs/reviews/`.
 
 ---
 
 ## What shipped this sprint
 
 - `AmoeEntry` Prisma table (additive, in `docs/migrations/2026-08-sprint2-schema.sql`).
-- **Dual-write.** `POST /api/amoe` writes the file exactly as before
-  (unconditional, primary) and now also mirrors to Postgres (best-effort,
-  never blocks or fails the real submission — see `lib/amoeEntriesDb.ts`).
-  Every entry submitted from this deploy onward lands in both places.
-- **Idempotent backfill**, exposed as `POST /api/admin/amoe-backfill`
-  (admin-authenticated, audit-logged). Reads the file, upserts each entry
-  into Postgres by `(email, month)`, and reports `fileCount` /
-  `dbCountBefore` / `dbCountAfter` / `inserted` / `alreadyPresent`.
+- **The file is authoritative. A PostgreSQL mirror is ATTEMPTED for every
+  successful submission**, not guaranteed. `POST /api/amoe` writes the file
+  exactly as before (unconditional, primary) and then attempts a best-effort
+  mirror to Postgres — see `lib/amoeEntriesDb.ts`'s `mirrorAmoeEntryToDb`.
+  That mirror can fail (a transient Postgres error, for example) without
+  blocking or failing the real submission, which is the entire point of
+  keeping the file primary — but it means NOT every submission actually
+  lands in both places, only every submission for which the mirror
+  succeeded. **Any missed mirrors are recoverable by re-running the
+  backfill below**, which is why this distinction matters operationally,
+  not just as a wording nitpick.
+- **Idempotent, concurrency-safe backfill**, exposed as
+  `POST /api/admin/amoe-backfill` (admin-authenticated, audit-logged). Reads
+  the file, inserts missing entries into Postgres via a single atomic
+  `createMany({ skipDuplicates: true })` batch (not a per-row
+  read-then-write race), and reconciles by `(email, month)` key **plus**
+  field content — not just a count comparison, which two differently-composed
+  sets of the same size would satisfy without containing the same entries.
+  Reports `fileCount` / `dbCount` / `inserted` / `alreadyPresent` /
+  `missingInDb` / `extraInDb` / `fieldMismatchCount` / `verified`.
 
 ## What did NOT ship — and why
 
@@ -43,11 +58,13 @@ it would be worse than not finishing the migration.
    ```
    (Or via a signed-in admin session — no header needed once Don's `role`
    backfill from this sprint's admin-auth migration is applied.)
-3. **Check the response.** `verified: true` means `fileCount === dbCountAfter`
-   — every file entry is now in Postgres. If `verified: false`, **stop** and
+3. **Check the response.** `verified: true` means the file and database
+   fully reconcile by `(email, month)` key AND field content — not merely a
+   count match. If `verified: false`, check `missingInDb` / `extraInDb` /
+   `fieldMismatchCount` to see exactly what's wrong, and **stop** —
    investigate before doing anything else; do not proceed to step 4.
 4. **Spot-check a few entries** in Postgres against the file directly, for
-   peace of mind beyond the count match.
+   peace of mind beyond the automated reconciliation.
 5. Only then: switch `lib/amoeEntries.ts`'s read functions (or
    `lib/giveaway.ts`'s call site) to query `AmoeEntry` instead of the file.
    Small, mechanical change once steps 1–4 are done — add a regression test

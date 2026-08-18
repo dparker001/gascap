@@ -1,6 +1,6 @@
 # GasCap™ — System Architecture Guide
 
-> **Status: CURRENT** · Last updated: 2026-08-19 (hardening sprint 2 — admin
+> **Status: CURRENT** · Last updated: 2026-08-18 (hardening sprint 2 — admin
 > auth migration, RevenueCat idempotency + entitlement reconciliation,
 > Postgres rate limiting, AMOE dual-write; see `docs/reviews/` for the review
 > packet)

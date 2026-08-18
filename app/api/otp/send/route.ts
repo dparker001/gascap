@@ -17,7 +17,8 @@
 import { NextResponse } from 'next/server';
 import { pgPool }       from '@/lib/prisma';
 import { sendMail }     from '@/lib/email';
-import { checkRateLimitDb } from '@/lib/rateLimitDb';
+import { checkRateLimitDb, hashRateLimitIdentifier } from '@/lib/rateLimitDb';
+import { getTrustedClientIp } from '@/lib/clientIp';
 
 const OTP_SEND_MAX_PER_EMAIL = 3;
 const OTP_SEND_MAX_PER_IP    = 20;
@@ -43,11 +44,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Please enter a valid email address.' }, { status: 400 });
   }
 
-  const forwarded = req.headers.get('x-forwarded-for');
-  const ip = (forwarded ?? req.headers.get('x-real-ip') ?? 'unknown').split(',')[0].trim();
+  // Post-Sprint-2 Revision 1: X-Real-IP (Railway's trusted header) preferred
+  // over the caller-influenceable X-Forwarded-For — see lib/clientIp.ts. No
+  // trusted IP at all → skip the IP-layer check for this request rather than
+  // share one "unknown" bucket across every such caller.
+  const ip = getTrustedClientIp(req);
   const [emailLimit, ipLimit] = await Promise.all([
-    checkRateLimitDb(`otp-send-email:${email}`, OTP_SEND_MAX_PER_EMAIL, OTP_SEND_WINDOW_MS),
-    checkRateLimitDb(`otp-send-ip:${ip}`, OTP_SEND_MAX_PER_IP, OTP_SEND_WINDOW_MS),
+    // Hashed — see lib/rateLimitDb.ts's hashRateLimitIdentifier doc comment.
+    checkRateLimitDb(`otp-send-email:${hashRateLimitIdentifier(email)}`, OTP_SEND_MAX_PER_EMAIL, OTP_SEND_WINDOW_MS),
+    ip ? checkRateLimitDb(`otp-send-ip:${ip}`, OTP_SEND_MAX_PER_IP, OTP_SEND_WINDOW_MS) : Promise.resolve({ allowed: true, remaining: OTP_SEND_MAX_PER_IP, resetInSeconds: 0 }),
   ]);
   if (!emailLimit.allowed || !ipLimit.allowed) {
     return NextResponse.json(

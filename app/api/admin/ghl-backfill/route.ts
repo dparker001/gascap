@@ -25,12 +25,10 @@
 import { NextResponse } from 'next/server';
 import { getAllUsers }  from '@/lib/users';
 import { upsertGhlContact } from '@/lib/ghl';
-import { sessionHasAdminRole } from '@/lib/adminAuth';
+import { sessionHasAdminRole, legacyAdminPasswordOk } from '@/lib/adminAuth';
 
 async function auth(req: Request): Promise<boolean> {
-  const adminPw = process.env.ADMIN_PASSWORD ?? '';
-  const header  = req.headers.get('x-admin-password') ?? '';
-  const legacyOk = Boolean(adminPw && header === adminPw);
+  const legacyOk = legacyAdminPasswordOk(req, process.env.ADMIN_PASSWORD);
   return legacyOk || await sessionHasAdminRole();
 }
 

@@ -13,12 +13,20 @@
  * retired" — none of which can be honestly claimed satisfied without seeing
  * real counts.
  *
- * So: this sprint ships dual-write (every new submission lands in BOTH the
- * file and Postgres, from the moment this deploys) plus an idempotent
- * backfill for history, but the DRAW keeps reading the file as its source of
- * truth (see lib/giveaway.ts / lib/amoeEntries.ts — unchanged). Switching the
- * draw's read to Postgres is a Sprint 3 item, gated on Don running the
- * backfill in production and confirming the row count matches the file.
+ * So: this sprint ships dual-write plus an idempotent backfill for history,
+ * but the DRAW keeps reading the file as its ONLY source of truth (see
+ * lib/giveaway.ts / lib/amoeEntries.ts — unchanged). Switching the draw's
+ * read to Postgres is a Sprint 3 item, gated on Don running the backfill in
+ * production and confirming a real reconciliation (not just a count match —
+ * see AmoeBackfillResult below).
+ *
+ * PRECISE WORDING (post-Sprint-2 Revision 1 correction): the file is
+ * authoritative. A PostgreSQL mirror is ATTEMPTED for every successful
+ * submission (`mirrorAmoeEntryToDb`, best-effort, can fail without blocking
+ * or losing the real submission) — do not describe this as every submission
+ * "landing in both," since a mirror failure means it does not. Any missed
+ * mirrors are recoverable via the backfill below, which is why the file
+ * write staying primary and unconditional matters.
  *
  * This is a smaller, safer migration than the brief's ideal end state, named
  * explicitly rather than silently shipped as "done" — see
@@ -46,36 +54,80 @@ export async function mirrorAmoeEntryToDb(entry: AmoeEntry): Promise<void> {
 }
 
 export interface AmoeBackfillResult {
-  fileCount:      number;
-  dbCountBefore:  number;
-  dbCountAfter:   number;
-  inserted:       number;
-  alreadyPresent: number;
+  fileCount:          number;
+  dbCount:            number;
+  inserted:           number;
+  alreadyPresent:     number;
+  /** File entries with no matching (email, month) row in Postgres, AFTER the insert attempt. Should be 0 if `verified`. */
+  missingInDb:        number;
+  /** Postgres rows with no matching (email, month) entry in the file — abnormal; the file should always be a superset. */
+  extraInDb:          number;
+  /** Same (email, month) key present in both, but firstName/lastName/submittedAt differ — a genuine data discrepancy, not just a missing row. */
+  fieldMismatchCount: number;
+  /** True only when the datasets actually reconcile by key AND field content — not just a count match, which two different sets of the same SIZE would satisfy without actually being the same data. */
+  verified:           boolean;
+}
+
+function entryKey(e: { email: string; month: string }): string {
+  return `${e.email.trim().toLowerCase()}|${e.month}`;
+}
+
+function fieldsMatch(a: AmoeEntry, b: AmoeEntry): boolean {
+  return a.firstName === b.firstName && a.lastName === b.lastName && a.submittedAt === b.submittedAt;
 }
 
 /**
- * Idempotent backfill: read every entry the caller provides (from the file,
- * via readAmoeEntries()) and upsert each into Postgres. Safe to run multiple
- * times — a re-run inserts nothing new and reports inserted:0.
+ * Post-Sprint-2 Revision 1 fix — idempotent, concurrency-safe backfill with
+ * REAL reconciliation, not just a count comparison.
  *
- * Verification is the return value, not a side effect: the caller (the admin
- * backfill endpoint) is responsible for surfacing fileCount vs dbCountAfter
- * to Don so a mismatch is visible before anyone considers the file retired.
+ * Two independent problems in the original version, both fixed here:
+ *
+ * 1. `fileCount === dbCountAfter` proved nothing about whether the two
+ *    datasets actually contained the SAME entries — two sets of equal size
+ *    could differ entirely and still "pass." Now reconciles by the actual
+ *    (email, month) key, plus the entry's other fields, and reports exactly
+ *    what's missing/extra/mismatched, not just whether the totals happen to
+ *    agree.
+ * 2. The original `findUnique` then `create` per entry was a genuine race
+ *    for concurrent or overlapping invocations — two backfill runs (or a
+ *    retry racing an in-flight run) could both see "missing" for the same
+ *    entry and both attempt to create it, throwing on the second. Replaced
+ *    with a single `createMany({ skipDuplicates: true })` batch insert,
+ *    which Postgres executes as one atomic `INSERT ... ON CONFLICT DO
+ *    NOTHING` — safe for concurrent or repeated invocation by construction,
+ *    not by careful sequencing in application code.
  */
 export async function backfillAmoeEntries(entries: AmoeEntry[]): Promise<AmoeBackfillResult> {
-  const dbCountBefore = await prisma.amoeEntry.count();
+  const dbBefore = await prisma.amoeEntry.findMany();
+  const dbBeforeByKey = new Map(dbBefore.map((e) => [entryKey(e), e]));
 
-  let inserted = 0;
-  let alreadyPresent = 0;
+  const missing: AmoeEntry[] = [];
+  let fieldMismatchCount = 0;
   for (const entry of entries) {
-    const before = await prisma.amoeEntry.findUnique({
-      where: { email_month: { email: entry.email, month: entry.month } },
-    });
-    if (before) { alreadyPresent++; continue; }
-    await prisma.amoeEntry.create({ data: entry });
-    inserted++;
+    const existing = dbBeforeByKey.get(entryKey(entry));
+    if (!existing) { missing.push(entry); continue; }
+    if (!fieldsMatch(entry, existing)) fieldMismatchCount++;
   }
 
-  const dbCountAfter = await prisma.amoeEntry.count();
-  return { fileCount: entries.length, dbCountBefore, dbCountAfter, inserted, alreadyPresent };
+  const { count: inserted } = missing.length
+    ? await prisma.amoeEntry.createMany({ data: missing, skipDuplicates: true })
+    : { count: 0 };
+
+  const dbAfter = await prisma.amoeEntry.findMany();
+  const dbAfterByKey = new Map(dbAfter.map((e) => [entryKey(e), e]));
+  const fileKeys = new Set(entries.map(entryKey));
+
+  const missingInDb = entries.filter((e) => !dbAfterByKey.has(entryKey(e))).length;
+  const extraInDb   = dbAfter.filter((e) => !fileKeys.has(entryKey(e))).length;
+
+  return {
+    fileCount:      entries.length,
+    dbCount:        dbAfter.length,
+    inserted,
+    alreadyPresent: entries.length - missing.length,
+    missingInDb,
+    extraInDb,
+    fieldMismatchCount,
+    verified: missingInDb === 0 && extraInDb === 0 && fieldMismatchCount === 0,
+  };
 }

@@ -40,7 +40,7 @@ import {
   paidSpotlightEmailHtml,
   cancellationEmailHtml,
 } from '@/lib/emailCampaignPaid';
-import { sessionHasAdminRole } from '@/lib/adminAuth';
+import { sessionHasAdminRole, legacyAdminPasswordOk } from '@/lib/adminAuth';
 import {
   engS1EmailHtml,
   engS2EmailHtml,
@@ -63,8 +63,7 @@ const PREVIEW_USER = {
 };
 
 async function auth(req: Request): Promise<boolean> {
-  const pw = process.env.ADMIN_PASSWORD;
-  const legacyOk = !!pw && (req.headers.get('x-admin-password') ?? '') === pw;
+  const legacyOk = legacyAdminPasswordOk(req, process.env.ADMIN_PASSWORD);
   return legacyOk || await sessionHasAdminRole();
 }
 

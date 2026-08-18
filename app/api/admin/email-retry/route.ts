@@ -13,11 +13,10 @@ import { prisma }                  from '@/lib/prisma';
 import { sendCampaignEmail }       from '@/lib/emailCampaign';
 import { advanceEmailCampaignStep } from '@/lib/users';
 import { CAMPAIGN_STEP_META }      from '@/lib/emailLog';
-import { sessionHasAdminRole } from '@/lib/adminAuth';
+import { sessionHasAdminRole, legacyAdminPasswordOk } from '@/lib/adminAuth';
 
 async function auth(req: Request): Promise<boolean> {
-  const pw = process.env.ADMIN_PASSWORD;
-  const legacyOk = !!pw && req.headers.get('x-admin-password') === pw;
+  const legacyOk = legacyAdminPasswordOk(req, process.env.ADMIN_PASSWORD);
   return legacyOk || await sessionHasAdminRole();
 }
 
