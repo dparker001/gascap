@@ -1,14 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchAnalyticsSummary }     from '@/lib/ga4-data';
+import { sessionHasAdminRole }       from '@/lib/adminAuth';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
-  // Reuse the same ADMIN_PASSWORD gate as other admin routes
-  const pw   = req.nextUrl.searchParams.get('pw') ?? '';
+  // Sprint 2: was `?pw=` in the query string — the one admin route that
+  // didn't use the x-admin-password header like every other endpoint. A
+  // query-string secret lands in server access logs, browser history, and
+  // the Referer header of any outbound request the page makes; moved to the
+  // header to match everything else and stop that leakage.
   const days = parseInt(req.nextUrl.searchParams.get('days') ?? '30', 10);
-
-  if (pw !== process.env.ADMIN_PASSWORD) {
+  const pw = req.headers.get('x-admin-password') ?? '';
+  const legacyOk = !!process.env.ADMIN_PASSWORD && pw === process.env.ADMIN_PASSWORD;
+  if (!legacyOk && !(await sessionHasAdminRole())) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

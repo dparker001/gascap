@@ -61,6 +61,21 @@ model User {
   verifyReminderSentAt           String?
   verifyReminderBonusEntries     Int       @default(0)
   ambassadorProForLife     Boolean   @default(false)
+  // Sprint 2 hardening — server-authorized admin access. Never trust a client-
+  // supplied role; always resolve this column live from the DB (see
+  // lib/adminAuth.ts). 'user' | 'admin'. No 'support' tier yet — nothing in
+  // the product needs a read-only admin role today; add one later without a
+  // migration if that changes, since this is a plain string, not an enum.
+  role                     String    @default("user")
+  // Sprint 2 hardening — RevenueCat's contribution to this user's Pro access,
+  // tracked independently of Stripe/gifted/Ambassador so a RevenueCat-side
+  // EXPIRATION/REFUND can never wipe a DIFFERENT provider's legitimate grant.
+  // See lib/entitlements.ts. Defaults preserve current behavior for every
+  // existing user — nothing here is backfilled from history because no
+  // history was recorded before this shipped (see RevenueCatWebhookEvent).
+  revenueCatActive         Boolean   @default(false)
+  revenueCatInterval       String?   // 'monthly' | 'lifetime'
+  revenueCatProductId      String?
   // Which Ambassador tiers ('supporter'|'ambassador'|'elite') have already had their
   // one-time Marketing Boost voucher reward sent — prevents duplicate sends on
   // Stripe webhook retries. See app/api/stripe/webhook/route.ts referral-credit block.
@@ -160,6 +175,62 @@ model OtpCode {
   code    String
   name    String   @default("")
   expires DateTime
+}
+
+/// Sprint 2 hardening — RevenueCat delivers webhooks at-least-once, so the
+/// same event.id can arrive more than once. This is the dedup key AND the
+/// durable record of "did we actually process this," so a crash between
+/// receiving an event and finishing its side effects is safely retryable
+/// instead of either silently repeating a grant or silently losing one.
+model RevenueCatWebhookEvent {
+  id          String   @id   // RevenueCat's own event.id — the dedup key, not our own uuid
+  eventType   String
+  userId      String?
+  /// received: row exists, nothing done yet.
+  /// processing: claimed by a request in flight — lets a retry tell "still
+  ///   working" apart from "crashed mid-flight," see lib/revenueCatEvents.ts.
+  /// processed: side effects completed successfully.
+  /// failed: attempted and errored; safe to retry, not permanently stuck.
+  status      String   @default("received")
+  receivedAt  String
+  processedAt String?
+  error       String?
+
+  @@index([userId])
+}
+
+/// Sprint 2 hardening — who did what, for the highest-risk admin mutations
+/// (plan changes, giveaway/draw actions, deletions). Never stores secrets or
+/// full payloads — metadata is for context like "which user" or "which
+/// draw month," not request bodies.
+model AdminAuditLog {
+  id          String   @id
+  actorUserId String
+  action      String
+  targetType  String?
+  targetId    String?
+  metadata    Json?
+  success     Boolean
+  createdAt   String
+
+  @@index([actorUserId])
+  @@index([createdAt])
+}
+
+/// Sprint 2 hardening — AMOE (Alternative Method of Entry, "No Purchase
+/// Necessary") free sweepstakes entries, migrated off data/amoe-entries.json.
+/// One entry per person per Entry Month, enforced here at the database level
+/// via the unique constraint rather than only in application code.
+model AmoeEntry {
+  id          String   @id
+  firstName   String
+  lastName    String
+  email       String
+  month       String   // YYYY-MM
+  submittedAt String
+
+  @@unique([email, month])
+  @@index([month])
 }
 
 model Vehicle {

@@ -17,6 +17,7 @@
 import { NextResponse }  from 'next/server';
 import fs                from 'fs';
 import path              from 'path';
+import { sessionHasAdminRole } from '@/lib/adminAuth';
 
 const FILE = path.join(process.cwd(), 'data', 'announcements.json');
 
@@ -53,7 +54,8 @@ export async function GET(req: Request) {
   if (isAll) {
     const adminPw = process.env.ADMIN_PASSWORD ?? '';
     const header  = req.headers.get('x-admin-password') ?? '';
-    if (!adminPw || header !== adminPw) {
+    const legacyOk = !!adminPw && header === adminPw;
+    if (!legacyOk && !(await sessionHasAdminRole())) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     return NextResponse.json(readAll());

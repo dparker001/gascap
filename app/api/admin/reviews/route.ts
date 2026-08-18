@@ -9,16 +9,18 @@
  */
 import { NextResponse } from 'next/server';
 import { getAllReviews, setReviewApproval, deleteReview } from '@/lib/reviews';
+import { sessionHasAdminRole } from '@/lib/adminAuth';
 
-function auth(req: Request): 'ok' | 'no-env' | 'wrong' {
+async function auth(req: Request): Promise<'ok' | 'no-env' | 'wrong'> {
   const pw = process.env.ADMIN_PASSWORD;
-  if (!pw) return 'no-env';
   const header = req.headers.get('x-admin-password') ?? '';
-  return header === pw ? 'ok' : 'wrong';
+  if (pw && header === pw) return 'ok';
+  if (await sessionHasAdminRole()) return 'ok';
+  return pw ? 'wrong' : 'no-env';
 }
 
 export async function GET(req: Request) {
-  const status = auth(req);
+  const status = await auth(req);
   if (status === 'no-env') return NextResponse.json({ error: 'ADMIN_PASSWORD not set' }, { status: 500 });
   if (status === 'wrong')  return NextResponse.json({ error: 'Unauthorized' },            { status: 401 });
 
@@ -27,7 +29,7 @@ export async function GET(req: Request) {
 }
 
 export async function PATCH(req: Request) {
-  const status = auth(req);
+  const status = await auth(req);
   if (status === 'no-env') return NextResponse.json({ error: 'ADMIN_PASSWORD not set' }, { status: 500 });
   if (status === 'wrong')  return NextResponse.json({ error: 'Unauthorized' },            { status: 401 });
 
@@ -46,7 +48,7 @@ export async function PATCH(req: Request) {
 }
 
 export async function DELETE(req: Request) {
-  const status = auth(req);
+  const status = await auth(req);
   if (status === 'no-env') return NextResponse.json({ error: 'ADMIN_PASSWORD not set' }, { status: 500 });
   if (status === 'wrong')  return NextResponse.json({ error: 'Unauthorized' },            { status: 401 });
 

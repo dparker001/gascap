@@ -11,15 +11,16 @@
  */
 import { NextResponse } from 'next/server';
 import { prisma }       from '@/lib/prisma';
+import { sessionHasAdminRole } from '@/lib/adminAuth';
 
-function auth(req: Request): boolean {
+async function auth(req: Request): Promise<boolean> {
   const pw = process.env.ADMIN_PASSWORD;
-  if (!pw) return false;
-  return req.headers.get('x-admin-password') === pw;
+  const legacyOk = !!pw && req.headers.get('x-admin-password') === pw;
+  return legacyOk || await sessionHasAdminRole();
 }
 
 export async function GET(req: Request) {
-  if (!auth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!await auth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
   const search = searchParams.get('search')?.trim() || undefined;

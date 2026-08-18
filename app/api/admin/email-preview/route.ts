@@ -40,6 +40,7 @@ import {
   paidSpotlightEmailHtml,
   cancellationEmailHtml,
 } from '@/lib/emailCampaignPaid';
+import { sessionHasAdminRole } from '@/lib/adminAuth';
 import {
   engS1EmailHtml,
   engS2EmailHtml,
@@ -61,14 +62,14 @@ const PREVIEW_USER = {
   email: 'alex@example.com',
 };
 
-function auth(req: Request): boolean {
+async function auth(req: Request): Promise<boolean> {
   const pw = process.env.ADMIN_PASSWORD;
-  if (!pw) return false;
-  return (req.headers.get('x-admin-password') ?? '') === pw;
+  const legacyOk = !!pw && (req.headers.get('x-admin-password') ?? '') === pw;
+  return legacyOk || await sessionHasAdminRole();
 }
 
 export async function GET(req: Request) {
-  if (!auth(req)) {
+  if (!await auth(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

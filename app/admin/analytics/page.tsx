@@ -38,7 +38,9 @@ export default function AnalyticsPage() {
     setLoading(true);
     setError('');
     try {
-      const res = await fetch(`/api/admin/analytics?pw=${encodeURIComponent(password)}&days=${days}`);
+      const res = await fetch(`/api/admin/analytics?days=${days}`, {
+        headers: { 'x-admin-password': password },
+      });
       if (res.status === 401) { setAuthed(false); setError('Wrong password.'); return; }
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));

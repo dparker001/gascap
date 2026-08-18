@@ -3,6 +3,7 @@ import { findByEmail }            from '@/lib/users';
 import { sendPushNotification }   from '@/lib/oneSignal';
 import { prisma }                 from '@/lib/prisma';
 import { sendApns, apnsConfigured } from '@/lib/apns';
+import { sessionHasAdminRole } from '@/lib/adminAuth';
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? '';
 
@@ -12,7 +13,8 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? '';
  */
 export async function POST(req: Request) {
   const pw = req.headers.get('x-admin-password') ?? '';
-  if (!ADMIN_PASSWORD || pw !== ADMIN_PASSWORD) {
+  const legacyOk = !!ADMIN_PASSWORD && pw === ADMIN_PASSWORD;
+  if (!legacyOk && !(await sessionHasAdminRole())) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -76,7 +78,8 @@ export async function POST(req: Request) {
 /** GET /api/push/broadcast — subscriber count via OneSignal API */
 export async function GET(req: Request) {
   const pw = req.headers.get('x-admin-password') ?? '';
-  if (!ADMIN_PASSWORD || pw !== ADMIN_PASSWORD) {
+  const legacyOk = !!ADMIN_PASSWORD && pw === ADMIN_PASSWORD;
+  if (!legacyOk && !(await sessionHasAdminRole())) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

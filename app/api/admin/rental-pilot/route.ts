@@ -8,16 +8,18 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { estimatedFuelCost, estimatedRentalCompanyCharge, estimatedSavings, gallonsNeeded } from '@/lib/rentalCalculations';
+import { sessionHasAdminRole } from '@/lib/adminAuth';
 
-function auth(req: Request): 'ok' | 'no-env' | 'wrong' {
+async function auth(req: Request): Promise<'ok' | 'no-env' | 'wrong'> {
   const pw = process.env.ADMIN_PASSWORD;
-  if (!pw) return 'no-env';
   const header = req.headers.get('x-admin-password') ?? '';
-  return header === pw ? 'ok' : 'wrong';
+  if (pw && header === pw) return 'ok';
+  if (await sessionHasAdminRole()) return 'ok';
+  return pw ? 'wrong' : 'no-env';
 }
 
 export async function GET(req: Request) {
-  const _auth = auth(req);
+  const _auth = await auth(req);
   if (_auth === 'no-env') return NextResponse.json({ error: 'Misconfigured' }, { status: 503 });
   if (_auth === 'wrong')  return NextResponse.json({ error: 'Unauthorized' },   { status: 401 });
 

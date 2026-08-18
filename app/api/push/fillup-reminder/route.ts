@@ -18,6 +18,7 @@ import {
 } from '@/lib/users';
 import { getFillups }            from '@/lib/fillups';
 import { sendPushNotification }  from '@/lib/oneSignal';
+import { sessionHasAdminRole }   from '@/lib/adminAuth';
 
 // ── GET — return current user's reminder setting ──────────────────────────────
 
@@ -54,7 +55,8 @@ export async function PATCH(req: Request) {
 
 export async function POST(req: Request) {
   const adminPw = req.headers.get('x-admin-password');
-  if (!adminPw || adminPw !== process.env.ADMIN_PASSWORD) {
+  const legacyOk = !!adminPw && !!process.env.ADMIN_PASSWORD && adminPw === process.env.ADMIN_PASSWORD;
+  if (!legacyOk && !(await sessionHasAdminRole())) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 

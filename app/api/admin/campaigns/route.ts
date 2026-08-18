@@ -22,6 +22,7 @@ import {
   clearEventsForPlacement,
 } from '@/lib/campaigns';
 import { getBaseUrl as resolveBaseUrl } from '@/lib/getBaseUrl';
+import { sessionHasAdminRole } from '@/lib/adminAuth';
 
 /**
  * Campaign analytics uses ADMIN_PASSWORD by default so a solo founder can
@@ -30,13 +31,13 @@ import { getBaseUrl as resolveBaseUrl } from '@/lib/getBaseUrl';
  * data, set CAMPAIGN_ADMIN_PASSWORD in Railway — it overrides ADMIN_PASSWORD
  * for this route only, no code change needed.
  */
-function auth(req: NextRequest): boolean {
+async function auth(req: NextRequest): Promise<boolean> {
   // Use || (not ??) so an empty CAMPAIGN_ADMIN_PASSWORD env var falls through
   // to ADMIN_PASSWORD. Railway treats "set but empty" as a real value, which
   // would otherwise lock out the main admin password entirely.
   const pw = process.env.CAMPAIGN_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD;
-  if (!pw) return false;
-  return (req.headers.get('x-admin-password') ?? '') === pw;
+  const legacyOk = !!pw && (req.headers.get('x-admin-password') ?? '') === pw;
+  return legacyOk || await sessionHasAdminRole();
 }
 
 function baseUrl(req: NextRequest): string {
@@ -44,7 +45,7 @@ function baseUrl(req: NextRequest): string {
 }
 
 export async function GET(req: NextRequest) {
-  if (!auth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!await auth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
   const group = searchParams.get('group') as 'station' | 'placement' | 'headlineVariant' | 'city' | null;
@@ -88,7 +89,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  if (!auth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!await auth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   let body: Record<string, unknown> = {};
   try { body = await req.json(); } catch {
@@ -126,7 +127,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  if (!auth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!await auth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const id = new URL(req.url).searchParams.get('id');
   if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 });
 
@@ -141,7 +142,7 @@ export async function PATCH(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  if (!auth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!await auth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
 

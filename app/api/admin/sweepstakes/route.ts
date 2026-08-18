@@ -45,15 +45,17 @@ import { sendMail, winnerNotificationEmailHtml, nonWinnerNotificationEmailHtml }
 import { findById } from '@/lib/users';
 import { sendApns, apnsConfigured } from '@/lib/apns';
 import { prisma } from '@/lib/prisma';
+import { sessionHasAdminRole } from '@/lib/adminAuth';
 
-function auth(req: Request): 'ok' | 'no-env' | 'wrong' {
+async function auth(req: Request): Promise<'ok' | 'no-env' | 'wrong'> {
   const pw = process.env.ADMIN_PASSWORD;
-  if (!pw) return 'no-env';
-  return req.headers.get('x-admin-password') === pw ? 'ok' : 'wrong';
+  if (pw && req.headers.get('x-admin-password') === pw) return 'ok';
+  if (await sessionHasAdminRole()) return 'ok';
+  return pw ? 'wrong' : 'no-env';
 }
 
 export async function GET(req: Request) {
-  const _auth = auth(req);
+  const _auth = await auth(req);
   if (_auth === 'no-env') return NextResponse.json({ error: 'Misconfigured' }, { status: 503 });
   if (_auth === 'wrong')  return NextResponse.json({ error: 'Unauthorized'  }, { status: 401 });
 
@@ -100,7 +102,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const _auth = auth(req);
+  const _auth = await auth(req);
   if (_auth === 'no-env') return NextResponse.json({ error: 'Misconfigured' }, { status: 503 });
   if (_auth === 'wrong')  return NextResponse.json({ error: 'Unauthorized'  }, { status: 401 });
 
@@ -218,7 +220,7 @@ export async function POST(req: Request) {
  * Optional body: { suppressWinnerEmail?: boolean, suppressSms?: boolean, notes?: string }
  */
 export async function PUT(req: Request) {
-  const _auth = auth(req);
+  const _auth = await auth(req);
   if (_auth === 'no-env') return NextResponse.json({ error: 'Misconfigured' }, { status: 503 });
   if (_auth === 'wrong')  return NextResponse.json({ error: 'Unauthorized'  }, { status: 401 });
 
@@ -467,7 +469,7 @@ export async function PUT(req: Request) {
  * Returns: { ok, claimedAt, tremendousSent, tremendousOrderId? }
  */
 export async function PATCH(req: Request) {
-  const _auth = auth(req);
+  const _auth = await auth(req);
   if (_auth === 'no-env') return NextResponse.json({ error: 'Misconfigured' }, { status: 503 });
   if (_auth === 'wrong')  return NextResponse.json({ error: 'Unauthorized'  }, { status: 401 });
 

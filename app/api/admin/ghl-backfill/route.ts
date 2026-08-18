@@ -25,11 +25,13 @@
 import { NextResponse } from 'next/server';
 import { getAllUsers }  from '@/lib/users';
 import { upsertGhlContact } from '@/lib/ghl';
+import { sessionHasAdminRole } from '@/lib/adminAuth';
 
-function auth(req: Request): boolean {
+async function auth(req: Request): Promise<boolean> {
   const adminPw = process.env.ADMIN_PASSWORD ?? '';
   const header  = req.headers.get('x-admin-password') ?? '';
-  return Boolean(adminPw && header === adminPw);
+  const legacyOk = Boolean(adminPw && header === adminPw);
+  return legacyOk || await sessionHasAdminRole();
 }
 
 // Each contact now makes TWO GHL calls (upsert + additive add-tags), so keep the
@@ -38,7 +40,7 @@ const BATCH_SIZE  = 3; // 3 contacts × 2 calls = ~6 reqs per batch
 const PAGE_LIMIT  = 30; // default page size — keeps a page's total runtime well under 30s
 
 export async function POST(req: Request) {
-  if (!auth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!await auth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
   const smsOnly = searchParams.get('smsOnly') === 'true';

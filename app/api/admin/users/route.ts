@@ -14,12 +14,14 @@ import { getFillups } from '@/lib/fillups';
 import { sendCompProForLifeEmail } from '@/lib/emailCampaign';
 import { sendMail, accountDeletedEmailHtml } from '@/lib/email';
 import { getActiveDeviceCounts } from '@/lib/deviceSessions';
+import { sessionHasAdminRole } from '@/lib/adminAuth';
 
-function auth(req: Request): 'ok' | 'no-env' | 'wrong' {
+async function auth(req: Request): Promise<'ok' | 'no-env' | 'wrong'> {
   const pw = process.env.ADMIN_PASSWORD;
-  if (!pw) return 'no-env';
   const header = req.headers.get('x-admin-password') ?? '';
-  return header === pw ? 'ok' : 'wrong';
+  if (pw && header === pw) return 'ok';
+  if (await sessionHasAdminRole()) return 'ok';
+  return pw ? 'wrong' : 'no-env';
 }
 
 /** Fetch external_user_ids of all active OneSignal subscribers (up to 1 000) */
@@ -53,7 +55,7 @@ async function getOneSignalSubscriberIds(): Promise<Set<string>> {
 }
 
 export async function GET(req: Request) {
-  const _auth = auth(req);
+  const _auth = await auth(req);
   if (_auth === 'no-env') return NextResponse.json({ error: 'Misconfigured' }, { status: 503 });
   if (_auth === 'wrong')  return NextResponse.json({ error: 'Unauthorized' },   { status: 401 });
   const [subscribedUserIds, allUsers] = await Promise.all([
@@ -131,7 +133,7 @@ export async function GET(req: Request) {
 }
 
 export async function DELETE(req: Request) {
-  const _auth = auth(req);
+  const _auth = await auth(req);
   if (_auth === 'no-env') return NextResponse.json({ error: 'Misconfigured' }, { status: 503 });
   if (_auth === 'wrong')  return NextResponse.json({ error: 'Unauthorized' },   { status: 401 });
 
@@ -188,7 +190,7 @@ export async function DELETE(req: Request) {
 }
 
 export async function PATCH(req: Request) {
-  const _auth = auth(req);
+  const _auth = await auth(req);
   if (_auth === 'no-env') return NextResponse.json({ error: 'Misconfigured' }, { status: 503 });
   if (_auth === 'wrong')  return NextResponse.json({ error: 'Unauthorized' },   { status: 401 });
   const id = new URL(req.url).searchParams.get('id');
