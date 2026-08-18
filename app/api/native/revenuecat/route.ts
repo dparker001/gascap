@@ -24,6 +24,7 @@ import { sendPaidCampaignEmail } from '@/lib/emailCampaignPaid';
 import { sendUserPush } from '@/lib/userPush';
 import { getawayPromoActive, GETAWAY_DISCLOSURE } from '@/lib/getawayPromo';
 import { claimEvent, markProcessed, markFailed } from '@/lib/revenueCatEvents';
+import { verifyRevenueCatHmac, HMAC_SIGNATURE_HEADER } from '@/lib/revenueCatHmac';
 
 export const dynamic = 'force-dynamic';
 
@@ -190,7 +191,28 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const body = await req.json().catch(() => null) as { event?: RcEvent } | null;
+  // HMAC verification (Sprint 2) — additive defense in depth, OFF by default.
+  // See lib/revenueCatHmac.ts for why this is gated behind an unset-by-default
+  // env var rather than enabled: the exact header/algorithm were not
+  // independently verified against RevenueCat's current live docs from this
+  // environment. When REVENUECAT_HMAC_SECRET is unset, `checked` is false and
+  // this is a complete no-op — the Authorization header check above remains
+  // the sole auth mechanism, exactly as before this change.
+  //
+  // Read as raw text FIRST: HMAC needs the exact original bytes, and
+  // req.json() would consume the stream before a signature could be computed
+  // over it. Re-parsing this string below is the ONLY JSON parse — never
+  // re-serialize-then-hash, which would silently break the signature.
+  const rawBody = await req.text();
+  const hmacResult = verifyRevenueCatHmac(rawBody, req.headers.get(HMAC_SIGNATURE_HEADER));
+  if (hmacResult.checked && !hmacResult.valid) {
+    console.error(`[revenuecat] HMAC verification failed: ${hmacResult.reason}`);
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const body = ((): { event?: RcEvent } | null => {
+    try { return JSON.parse(rawBody) as { event?: RcEvent }; } catch { return null; }
+  })();
   const ev = body?.event;
   if (!ev?.type) return NextResponse.json({ ok: true, skipped: 'no event' });
 
