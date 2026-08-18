@@ -175,9 +175,10 @@ and nothing reads them.
 `data/budget-goals.json` · `data/maintenance-reminders.json` ·
 `data/announcements.json` · `data/campaign-events.json`
 
-**Dead / unreferenced write-capable store — 1:**
-`data/push-subscriptions.json` — `saveSub`/`removeSub`/`getSubs`/`getAllSubs`
-in `lib/pushSubscriptions.ts` have zero callers anywhere in the repository.
+**Removed Sprint 2:** `lib/pushSubscriptions.ts` / `data/push-subscriptions.json`
+— re-confirmed zero callers anywhere in the repo, then deleted. Live push
+delivery (OneSignal, APNs) is untouched; this was a dead, unrelated module
+that happened to sit alongside it.
 
 **Static / build-time data — 1:**
 `data/gas-prices-seed.json` — imported by `lib/gasPrices.ts` at build time,

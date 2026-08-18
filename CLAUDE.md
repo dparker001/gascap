@@ -57,12 +57,11 @@ because the corresponding mistake already happened here. Those are marked
 - **PostgreSQL via Prisma is the system of record.**
 - Do not introduce new persistent JSON stores without explicit approval.
   **Seven active production file-backed stores currently exist** (corrected
-  2026-08-18, in two passes the same day — an earlier pass found only two; a full
-  sweep of `fs.writeFile(Sync)`/`fs.appendFile(Sync)` found nine JSON files
-  total, one of which turned out to be a one-time historical migration
-  source, not live persistence). One additional file-store implementation
-  (`data/push-subscriptions.json`) is dead/unreferenced code that should
-  probably just be deleted rather than migrated. Full inventory and
+  2026-08-18, in two passes the same day — an earlier pass found only two; a
+  full sweep of `fs.writeFile(Sync)`/`fs.appendFile(Sync)` found nine JSON
+  files total: one turned out to be a one-time historical migration source,
+  and one — `data/push-subscriptions.json` — was dead/unreferenced code,
+  removed outright in Sprint 2 rather than migrated). Full inventory and
   classification in `README.md` → "Persistence inventory" and
   `docs/SYSTEM.md`. All active stores are known exceptions awaiting
   migration, not a pattern to copy. Anything living only on the Railway

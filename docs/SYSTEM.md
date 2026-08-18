@@ -85,7 +85,6 @@
 │   ├── maintenance-reminders.json # ACTIVE — per-user maintenance reminders
 │   ├── announcements.json        # ACTIVE — admin-authored, read by every client
 │   ├── campaign-events.json      # ACTIVE — campaign tracking event log
-│   ├── push-subscriptions.json   # DEAD — zero callers, candidate for deletion
 │   ├── campaign-placements.json  # HISTORICAL — one-time seed source only, see below
 │   └── gas-prices-seed.json      # STATIC — build-time seed, not user data
 ├── public/                     # Static assets, PWA icons, videos
@@ -138,7 +137,7 @@ Stores anything user-account-related:
 | `data/maintenance-reminders.json` | `lib/maintenance.ts` | **ACTIVE** — session-authenticated writes |
 | `data/announcements.json` | `app/api/announcements/route.ts` | **ACTIVE** — `ADMIN_PASSWORD`-gated write, public read |
 | `data/campaign-events.json` | `lib/campaigns.ts` | **ACTIVE** — event log, multiple writers |
-| `data/push-subscriptions.json` | `lib/pushSubscriptions.ts` | **DEAD** — `saveSub`/`removeSub`/`getSubs`/`getAllSubs` have zero callers anywhere in the repo |
+| ~~`data/push-subscriptions.json`~~ | ~~`lib/pushSubscriptions.ts`~~ | **REMOVED Sprint 2** — re-confirmed zero callers, then deleted |
 | `data/campaign-placements.json` | `scripts/seed-campaign-placements.js` | **HISTORICAL MIGRATION SOURCE** — read once to seed the `CampaignPlacement` Prisma table; nothing in the running app reads or writes it |
 | `data/gas-prices-seed.json` | `lib/gasPrices.ts` (import) | **STATIC** — build-time seed, not user data |
 
