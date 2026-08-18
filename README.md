@@ -12,7 +12,7 @@ GasCap™ is a free, installable Progressive Web App (PWA) that tells drivers ex
 | Styling | Tailwind CSS |
 | Auth | NextAuth v4 (JWT sessions; password + passwordless email OTP) |
 | Data store | **PostgreSQL via Prisma** — 17 models, system of record |
-| Legacy file stores | **9 found** — `data/*.json` on the Railway volume; see "Nine runtime JSON stores" below |
+| Legacy file stores | **7 active** (+1 dead, +1 seed, +1 historical) — `data/*.json` on the Railway volume; see "Persistence inventory" below |
 | Native apps | Capacitor iOS + Android shells loading the deployed web app |
 | Native purchases | RevenueCat (Apple IAP / Google Play Billing) |
 | Deployment | Railway (single service, auto-deploy from `main`) |
@@ -131,7 +131,7 @@ Push to `main` triggers an automatic deploy. The Railway service is bound to `ww
 
 Key Railway details:
 - Project: **`caring-integrity`** — the only project serving www.gascap.app.
-- A volume is mounted at `/app/data` for the two remaining file stores.
+- A volume is mounted at `/app/data` for the 7 active file-backed stores (see "Persistence inventory" above).
 - **Scheduled jobs run from GitHub Actions** (`.github/workflows/crons.yml`),
   not Railway's scheduler — 18 `/api/cron/*` endpoints, 16 scheduled. Each is
   authenticated with `CRON_SECRET` and fails closed without it.
@@ -161,62 +161,37 @@ and nothing reads them.
 | `GiveawayDraw` | recorded monthly draws |
 | `FavoriteStation`, `PriceReport`, `Review`, `Gift`, `EmailLog`, … | supporting records |
 
-### Nine runtime JSON stores remain — not two
+### Persistence inventory — corrected 2026-08-18, refined 2026-08-19
 
-> **Corrected 2026-08-18 after independent review.** An earlier revision of
-> this section named only two file stores. A full sweep for
-> `fs.writeFile(Sync)`/`fs.appendFile(Sync)` across `lib/` and `app/api/`
-> found seven more. See `docs/SCRIPTS_INVENTORY.md` history and
-> `docs/SECURITY_AUDIT.md` for the audit method.
+> Two correction passes. The first (2026-08-18) found this document had
+> undercounted "two file stores" against an actual grep result of nine JSON
+> files. A second independent pass resolved one of those nine:
+> `campaign-placements.json` is read only by `scripts/seed-campaign-placements.js`,
+> a one-time migration into the `CampaignPlacement` Prisma table — historical,
+> not live persistence. The active count is **7**, not 9.
 
-| Store | Module | Written by | Class |
-|---|---|---|---|
-| `data/saved-trips.json` | `lib/savedTrips.ts` | `POST /api/trips` | **ACTIVE PRODUCTION PERSISTENCE** — user data, no Prisma model |
-| `data/amoe-entries.json` | `lib/amoeEntries.ts` | `POST /api/amoe` | **ACTIVE PRODUCTION PERSISTENCE** — compliance-relevant, read by the sweepstakes draw |
-| `data/feedback.json` | `lib/feedback.ts` | `POST /api/feedback` | **ACTIVE PRODUCTION PERSISTENCE** — user-submitted, read by `/api/admin/feedback` |
-| `data/budget-goals.json` | `lib/budgetGoals.ts` | `POST /api/budget-goal` | **ACTIVE PRODUCTION PERSISTENCE** — per-user, session-authenticated |
-| `data/maintenance-reminders.json` | `lib/maintenance.ts` | `POST /api/maintenance` | **ACTIVE PRODUCTION PERSISTENCE** — per-user, session-authenticated |
-| `data/announcements.json` | `app/api/announcements/route.ts` (inline) | `POST /api/announcements` | **ACTIVE PRODUCTION PERSISTENCE** — admin-authored, read by every client on load |
-| `data/campaign-events.json` | `lib/campaigns.ts` | multiple campaign-tracking routes | **ACTIVE PRODUCTION PERSISTENCE** — event log, several writers |
-| `data/push-subscriptions.json` | `lib/pushSubscriptions.ts` | *(none found)* | **DEAD / UNREFERENCED CODE** — `saveSub`/`removeSub`/`getSubs`/`getAllSubs` have zero callers anywhere in the repo |
-| `data/gas-prices-seed.json` | `lib/gasPrices.ts` (import) | build-time only | **STATIC / SEED DATA** — not user data, imported at build |
-| `data/campaign-placements.json` | — | — | present in repo tree; not yet traced to a specific writer/reader as part of this pass — **UNKNOWN**, needs its own check |
+**Active production file-backed stores — 7:**
+`data/saved-trips.json` · `data/amoe-entries.json` · `data/feedback.json` ·
+`data/budget-goals.json` · `data/maintenance-reminders.json` ·
+`data/announcements.json` · `data/campaign-events.json`
 
-**Nine distinct runtime JSON stores were found, not two.** Seven are active
-production persistence, one (`push-subscriptions.json`) is dead code with a
-plausible live-looking module around it, one is a build-time seed, and one
-(`campaign-placements.json`) is unclassified pending further inspection.
+**Dead / unreferenced write-capable store — 1:**
+`data/push-subscriptions.json` — `saveSub`/`removeSub`/`getSubs`/`getAllSubs`
+in `lib/pushSubscriptions.ts` have zero callers anywhere in the repository.
 
-All active stores live on the Railway volume mounted at `/app/data` and are
-therefore **outside database backups.** `.dockerignore` excludes `data/*.json`
-from the image except the seed file, confirming these are runtime-only,
-volume-persisted files, not baked into deploys.
+**Static / build-time data — 1:**
+`data/gas-prices-seed.json` — imported by `lib/gasPrices.ts` at build time,
+not user data.
 
-None of these were migrated this sprint — inventory and classification only,
-per sprint scope. See `CLAUDE.md` → Database for the standing rule.
+**Historical migration source — 1:**
+`data/campaign-placements.json` — read once by
+`scripts/seed-campaign-placements.js` to seed the `CampaignPlacement` table.
+Nothing in the running application reads or writes it.
 
-### Authentication
+All 7 active stores live on the Railway volume mounted at `/app/data` and are
+therefore **outside database backups**. None were migrated this sprint —
+inventory and classification only.
 
-NextAuth v4 with JWT (stateless — no server session table), offering:
-
-- **Password** — bcrypt hash on `User.passwordHash`
-- **Passwordless email OTP** — `/api/otp/send` writes a 6-digit code to
-  `OtpCode`; the `credentials-otp` provider in `lib/auth.ts` reads, validates
-  and consumes it. Capped at 5 verification attempts per email per 10 minutes.
-
-Because sessions are stateless, a JWT carries a **stale plan** after an upgrade
-or expiry. Anything gating paid access must resolve the plan from the database
-— see `lib/serverPlan.ts`.
-
-### Payments
-
-- **Web** — Stripe Checkout + customer portal; `/api/stripe/webhook` verifies
-  the signature.
-- **iOS / Android** — **RevenueCat only**, never Stripe.
-  `/api/native/revenuecat` grants and revokes Pro. It fails closed: a missing
-  `REVENUECAT_WEBHOOK_AUTH` refuses the request rather than trusting it.
-
----
 
 ## Pricing
 

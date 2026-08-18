@@ -56,15 +56,19 @@ because the corresponding mistake already happened here. Those are marked
 
 - **PostgreSQL via Prisma is the system of record.**
 - Do not introduce new persistent JSON stores without explicit approval.
-  **Nine already exist** (corrected 2026-08-18 — an earlier pass found only
-  two; a full sweep of `fs.writeFile(Sync)`/`fs.appendFile(Sync)` found seven
-  more). Full inventory and classification in `README.md` → "Nine runtime
-  JSON stores remain" and `docs/SECURITY_AUDIT.md`. All are known exceptions
-  awaiting migration, not a pattern to copy — and one (`push-subscriptions.json`)
-  is dead code that should probably just be deleted rather than migrated.
-  Anything living only on the Railway volume is invisible to database
-  backups — treat it as at-risk data. **Before claiming a "complete" file
-  inventory in any doc, re-run the actual grep — don't trust a prior count.**
+  **Seven active production file-backed stores currently exist** (corrected
+  2026-08-18, refined 2026-08-19 — an earlier pass found only two; a full
+  sweep of `fs.writeFile(Sync)`/`fs.appendFile(Sync)` found nine JSON files
+  total, one of which turned out to be a one-time historical migration
+  source, not live persistence). One additional file-store implementation
+  (`data/push-subscriptions.json`) is dead/unreferenced code that should
+  probably just be deleted rather than migrated. Full inventory and
+  classification in `README.md` → "Persistence inventory" and
+  `docs/SYSTEM.md`. All active stores are known exceptions awaiting
+  migration, not a pattern to copy. Anything living only on the Railway
+  volume is invisible to database backups — treat it as at-risk data.
+  **Before claiming a "complete" file inventory in any doc, re-run the
+  actual grep — don't trust a prior count, including this one.**
 - Never run destructive commands against production: `DROP`, `TRUNCATE`, mass
   `DELETE`, `prisma migrate reset`.
 - **Never blind `prisma db push`** — use direct, additive SQL and state the

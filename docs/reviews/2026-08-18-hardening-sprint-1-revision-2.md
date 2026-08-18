@@ -1,5 +1,18 @@
 # ChatGPT Review Packet — Hardening Sprint 1 — REVISION 2
 
+> **Corrected 2026-08-19, in place, per ChatGPT's explicit instruction to
+> update this packet rather than issue a Revision 3.** The correction:
+> `data/campaign-placements.json`, previously marked UNKNOWN in this document,
+> was independently traced by ChatGPT to `scripts/seed-campaign-placements.js`
+> — a one-time migration into the `CampaignPlacement` Prisma table. Verified
+> against the repository (the script's own header states exactly this, and it
+> is the only file anywhere that references `campaign-placements.json`).
+> Reclassified **HISTORICAL MIGRATION SOURCE**. This also corrects the "9
+> stores" framing used throughout the original text below to **7 active**
+> (+1 dead, +1 static seed, +1 historical) — the paragraphs below are left as
+> originally written, with corrections marked inline, rather than silently
+> rewritten, so the record of what changed and why is visible.
+
 Response to ChatGPT's independent review (verdict: **READY FOR REVISION — NOT
 READY TO MERGE**). Every finding was verified against the repository before
 any code or doc change was made — see §3 for how, and §11 for anything
@@ -45,12 +58,17 @@ Verified each finding independently before acting:
 - **"Only two" file stores (finding 4):** ran the actual sweep ChatGPT
   specified (`fs.writeFile(Sync)`/`fs.appendFile(Sync)` across `lib/` and
   `app/api/`) rather than trusting either the original doc or ChatGPT's list.
-  **Found a 9th store ChatGPT's own list didn't mention:**
+  **Found a store ChatGPT's own list didn't mention:**
   `lib/pushSubscriptions.ts` → `data/push-subscriptions.json`, and confirmed
   by a separate grep that `saveSub`/`removeSub`/`getSubs`/`getAllSubs` have
   **zero callers anywhere in the repository** — dead code, not documented
-  live persistence. `data/campaign-placements.json` remains unclassified;
-  flagged, not resolved.
+  live persistence. `data/campaign-placements.json` was left unclassified at
+  this point in the review. **[Corrected 2026-08-19:** ChatGPT independently
+  traced it to `scripts/seed-campaign-placements.js` — verified: the script's
+  own header reads "One-time seed: migrate campaign-placements.json →
+  CampaignPlacement table," it is the sole reader of that file anywhere in the
+  repo, and `CampaignPlacement` is a real, populated Prisma model. Reclassified
+  **HISTORICAL MIGRATION SOURCE**. The active count is **7**, not 9.**]**
 - **"35 endpoints" claim (finding 5):** re-ran the endpoint audit by
   authentication mechanism instead of directory, as instructed. Confirmed all
   three specific errors ChatGPT named (`/api/announcements` absent; three
@@ -105,9 +123,13 @@ all pass.
 "email only," with a note added.
 
 **`README.md`, `docs/SYSTEM.md`, `CLAUDE.md`** — persistence sections
-rewritten with the full 9-store table (7 active, 1 dead, 1 unclassified),
-replacing every "two legacy stores" claim. `CLAUDE.md` gained an explicit
-warning against asserting a file-store count without re-running the grep.
+rewritten, replacing every "two legacy stores" claim. **[Corrected 2026-08-19:**
+now show **7 active** stores, 1 dead (`push-subscriptions.json`), 1 static
+seed (`gas-prices-seed.json`), and 1 historical migration source
+(`campaign-placements.json`) — the original commit under review here had
+these last two as "1 dead, 1 unclassified," which is what this correction
+pass resolves.**]** `CLAUDE.md` gained an explicit warning against asserting a
+file-store count without re-running the grep.
 
 **`docs/SECURITY_AUDIT.md`** — rewritten from directory-based to
 mechanism-based classification. All 42 endpoints listed; the three
@@ -170,8 +192,10 @@ already-existing checks. No endpoint's actual accept/reject behavior changed.
 
 ## 7. Data / Database Impact
 **No schema changes. No migrations. No backfills. No destructive operation.**
-The 9-store persistence inventory is documentation of existing state, not a
-migration — explicitly deferred per §5.
+The persistence inventory (7 active stores, corrected from an original
+9-JSON-file count once `campaign-placements.json` was reclassified
+HISTORICAL — see the 2026-08-19 correction note above) is documentation of
+existing state, not a migration — explicitly deferred per §5.
 
 ## 8. User / Business Impact
 None. All changes are code comments, test additions, log-line content, check
@@ -245,9 +269,13 @@ noting it here rather than letting it recur silently).
    creation sits with Don per the established workflow. This is the one
    finding I could not act on at all, not partially — flagging clearly rather
    than claiming partial credit.
-3. **`data/campaign-placements.json` is still UNKNOWN.** I did not trace it.
-   If it turns out to be active production persistence, the "9 stores, 7
-   active" framing in this revision needs another correction.
+3. ~~`data/campaign-placements.json` is still UNKNOWN.~~ **[Resolved
+   2026-08-19]** Traced to `scripts/seed-campaign-placements.js`, a one-time
+   migration source. Not active production persistence. The corrected framing
+   is **7 active stores** (not 9), with `campaign-placements.json` in its own
+   HISTORICAL category alongside the DEAD (`push-subscriptions.json`) and
+   STATIC (`gas-prices-seed.json`) categories. See the canonical table in
+   `README.md` and `docs/SYSTEM.md`.
 4. **I did not audit for a *third* class of endpoint beyond the six
    mechanisms found** (NextAuth session, `ADMIN_PASSWORD`, `CRON_SECRET`,
    Stripe signature, `REVENUECAT_WEBHOOK_AUTH`, `WEBHOOK_SECRET`). The method
@@ -275,9 +303,11 @@ ChatGPT pass on this revision.
 1. Do the corrected 503/401 comments in `app/api/native/revenuecat/route.ts`
    and its test file now accurately reflect RevenueCat's real retry behavior,
    or did I introduce a new inaccuracy while fixing the old one?
-2. Is the 9-store persistence inventory (§3) now actually complete, or does
-   your own independent grep find a 10th store mine missed — particularly
-   given `data/campaign-placements.json` remains unclassified?
+2. ~~Is the 9-store persistence inventory (§3) now actually complete~~
+   **[Answered by ChatGPT 2026-08-19]** — resolved to **7 active** stores
+   with `campaign-placements.json` reclassified HISTORICAL. Open question for
+   any further review: is there a 10th store (active or otherwise) that two
+   independent passes both missed?
 3. Is 42 the correct total endpoint count, or does the "diff the two grep
    passes" method still miss a mechanism (see §11.4)?
 4. Does the new CLAUDE.md "Working with ChatGPT" section correctly capture
