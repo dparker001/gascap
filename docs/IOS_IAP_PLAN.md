@@ -1,5 +1,40 @@
 # iOS In-App Purchase (Pro) — Build Plan
 
+> ## ⚠️ STATUS: LARGELY **IMPLEMENTED** — this document is part plan, part history
+>
+> Audited 2026-08-18 (hardening sprint 1). Written as a forward plan and never
+> updated after the work shipped, so read it with this header in mind.
+>
+> ### IMPLEMENTED and ACTIVE
+> - `@revenuecat/purchases-capacitor` **v13.3.0 is installed** — the "Next
+>   steps" instruction below to `npm i …@^8` is **DEPRECATED**. Do not run it;
+>   it would downgrade a working integration by five majors.
+> - `lib/iap.ts` exists and is wired into `app/upgrade/page.tsx`
+>   (`purchasePro`, `restorePurchases`) and `components/NativeIapInit.tsx`
+>   (`initIap`). Not scaffolding — this is the live purchase path.
+> - `/api/native/revenuecat` is live and grants/revokes Pro. Hardened in
+>   sprint 1 to fail closed; 19 regression tests in
+>   `__tests__/revenuecatWebhook.test.ts`.
+> - `REVENUECAT_API_KEY`, `REVENUECAT_IOS_KEY`, `REVENUECAT_ANDROID_KEY` and
+>   `REVENUECAT_WEBHOOK_AUTH` are all configured in production.
+> - Both products ship: `gascap_pro_monthly` and `gascap_pro_lifetime`.
+> - iOS shipped; Android uses the same RevenueCat path via Play Billing.
+>
+> ### Still worth reading as PLANNED / reference
+> - App Store Connect prerequisites (agreements, banking, tax) — useful when
+>   adding a product or renewing agreements.
+> - The Annual product was never added on native. Web-only decision.
+>
+> ### HISTORICAL
+> - Sections describing code as "scaffolded, NOT yet live" describe the state
+>   in ~May 2026. That code is live now.
+>
+> **Product IDs and prices in this document are recorded as fact, not
+> proposals. Do not change them here or anywhere else without explicit
+> instruction.**
+
+---
+
 **Why:** App Store rejection 3.1.1. Apple requires that Pro (sold on the web via Stripe)
 be **purchasable inside the iOS app via In-App Purchase**, since the app delivers Pro
 features. This adds IAP on iOS while keeping web Stripe; the entitlement syncs so Pro is
@@ -22,7 +57,7 @@ entitlements to the user's account). Commission: **15%** (Apple Small Business P
    - Create an **Entitlement** `pro`, and **Offerings/Packages** mapping to the two product IDs above.
    - Grab the **RevenueCat public SDK (Apple) API key** for the app.
 
-## Scaffolded so far (code committed, NOT yet live)
+## Scaffolded so far (code committed, NOT yet live) — **HISTORICAL: all of this is now live**
 - **`app/api/native/revenuecat/route.ts`** — entitlement webhook. Verifies `REVENUECAT_WEBHOOK_AUTH`, maps RevenueCat `app_user_id` → GasCap user, grants Pro on purchase/renewal (`setUserPlan(userId,'pro',{interval})`) and reverts on expiration/refund. Cross-platform with Stripe. **Testable now** (POST a sample RC payload).
 - **`lib/iap.ts`** — client helper (iOS-native only; no-op on web): `initIap(userId)`, `purchasePro('monthly'|'lifetime')`, `restorePurchases()`, `hasProEntitlement()`. Lazy-loads the RevenueCat plugin so it compiles/builds before the package is installed.
 
@@ -35,7 +70,7 @@ entitlements to the user's account). Commission: **15%** (Apple Small Business P
 - Entitlement id must be **`pro`**; attach products `gascap_pro_monthly` + `gascap_pro_lifetime`.
 
 ### Build-time steps (do during the Codemagic build, NOT now — keeps Railway `npm ci` green)
-- `npm i @revenuecat/purchases-capacitor@^8` (Capacitor 6 compatible) + commit the lockfile.
+- ~~`npm i @revenuecat/purchases-capacitor@^8`~~ **DEPRECATED — already done, and v13.3.0 is installed. Running this would downgrade the live integration.**
 - `npx cap sync ios` so the native plugin links; new Codemagic build.
 
 ### Remaining engineering (next, with products live + sandbox)

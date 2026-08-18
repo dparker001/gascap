@@ -1,0 +1,74 @@
+name: CI
+
+# Gate for anything heading to main. Production deploys follow main, so a
+# merge is a production event — this is the last automated check before that.
+#
+# No production secrets. The build needs a handful of env vars to exist, not to
+# be valid: placeholders below are obvious fakes and must never be real values.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches:
+      - main
+      - 'hardening/**'
+      - 'feat/**'
+      - 'fix/**'
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    env:
+      # Build-time only. `prisma generate` wants a DATABASE_URL shaped like a
+      # URL; it never connects during generate, and no test touches a database.
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+      # next build evaluates modules that construct SDK clients at import time.
+      # These are placeholders so construction succeeds — they authorize nothing.
+      NEXTAUTH_URL: http://localhost:3000
+      NEXTAUTH_SECRET: ci-placeholder-not-a-real-secret
+      STRIPE_SECRET_KEY: sk_test_ci_placeholder
+      GASCAP_ANTHROPIC_KEY: ci-placeholder-not-a-real-key
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20        # package.json engines: node >=20
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Cron inventory guard
+        # Existing build-time guard; cheap and catches a scheduled job being
+        # added without an endpoint (or vice versa).
+        run: npm run check:crons
+
+      - name: Tests
+        run: npm test
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Build
+        run: npm run build
+
+# LINT IS DELIBERATELY ABSENT.
+#
+# `npm run lint` is `next lint`, and this repository has no ESLint config, so
+# the command drops into an interactive prompt ("How would you like to
+# configure ESLint?") and would hang the job until timeout rather than fail.
+#
+# Documented rather than hidden, per the sprint brief. Adding a config is a
+# real task — it will surface a backlog of findings across the codebase and
+# deserves its own sprint, not a rushed inclusion here that either hangs CI or
+# lands with every rule disabled. Tracked as a Sprint 2 candidate.

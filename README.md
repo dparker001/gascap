@@ -10,9 +10,11 @@ GasCap™ is a free, installable Progressive Web App (PWA) that tells drivers ex
 |---|---|
 | Framework | Next.js 14 App Router (TypeScript) |
 | Styling | Tailwind CSS |
-| Auth | NextAuth v4 (JWT, CredentialsProvider) |
-| Data store | JSON flat-file (users, vehicles, fill-ups, trips) in `data/` |
-| Analytics DB | Prisma + PostgreSQL (analytics events only) |
+| Auth | NextAuth v4 (JWT sessions; password + passwordless email OTP) |
+| Data store | **PostgreSQL via Prisma** — 17 models, system of record |
+| Legacy file stores | **7 active** (+1 dead, +1 seed, +1 historical) — `data/*.json` on the Railway volume; see "Persistence inventory" below |
+| Native apps | Capacitor iOS + Android shells loading the deployed web app |
+| Native purchases | RevenueCat (Apple IAP / Google Play Billing) |
 | Deployment | Railway (single service, auto-deploy from `main`) |
 | Payments | Stripe (subscriptions, webhooks, customer portal) |
 | Email | Resend (transactional + drip campaigns) |
@@ -100,7 +102,24 @@ npm run dev
 npm test
 ```
 
-Runs the Vitest test suite targeting `lib/calculations.ts`. Tests cover `round()`, `calcTargetFill()`, `calcBudget()`, `validateTargetFill()`, and `validateBudget()` — including edge cases (already full, overfill, price=0, gallons precedence over percent).
+Runs the Vitest suite in `__tests__/`. Coverage spans the fuel calculators,
+rental-return calculations, the RevenueCat webhook's authentication and
+entitlement transitions, sweepstakes/AMOE entrant identity, streak tiers, photo
+size limits and tank-size plausibility.
+
+Also run, for any material change:
+
+```bash
+npx tsc --noEmit
+npm run build
+```
+
+`npm run lint` is currently **not usable** — `next lint` with no ESLint config
+drops into an interactive setup prompt. It is deliberately excluded from CI;
+see `.github/workflows/ci.yml`.
+
+CI (`.github/workflows/ci.yml`) runs install → cron-inventory guard → tests →
+typecheck → build on every PR to `main`.
 
 ---
 
@@ -111,21 +130,89 @@ The app runs on **Railway** as a single service. All environment variables are s
 Push to `main` triggers an automatic deploy. The Railway service is bound to `www.gascap.app`.
 
 Key Railway details:
-- Project: `caring-integrity`
-- Cron jobs for email drip (`/api/cron/email-campaign`) and paid sequence (`/api/cron/paid-campaign`) run on Railway's cron scheduler.
+- Project: **`caring-integrity`** — the only project serving www.gascap.app.
+- A volume is mounted at `/app/data` for the 7 active file-backed stores (see "Persistence inventory" above).
+- **Scheduled jobs run from GitHub Actions** (`.github/workflows/crons.yml`),
+  not Railway's scheduler — 18 `/api/cron/*` endpoints, 16 scheduled. Each is
+  authenticated with `CRON_SECRET` and fails closed without it.
+  `npm run check:crons` guards route/schedule drift at build time.
+
+**Merging to `main` is a production deploy.** See `/CLAUDE.md`.
 
 ---
 
 ## Data
 
-User data is stored in flat JSON files in the `data/` directory:
+**PostgreSQL via Prisma is the system of record.** The flat-file store described
+in earlier revisions of this README is gone; `data/users.json`,
+`data/vehicles.json`, `data/fillups.json` and `data/trips.json` no longer exist
+and nothing reads them.
 
-- `data/users.json` — accounts, hashed passwords, plan, trial status
-- `data/vehicles.json` — saved vehicles per user
-- `data/fillups.json` — fill-up log entries
-- `data/trips.json` — trip planner saved routes
+`prisma/schema.prisma` defines 17 models, including:
 
-**Prisma** is used exclusively for analytics event logging (a separate PostgreSQL database). No PII beyond email, name, and optional phone is stored.
+| Model | Holds |
+|---|---|
+| `User` | accounts, hashed passwords, plan, trial state, streak/activeDays, giveaway bonus counters |
+| `Vehicle` | saved vehicles |
+| `Fillup` | fill-up log entries (**not** a JSON file) |
+| `GigFillup`, `GigMileage` | gig-driver logs |
+| `RentalSession` | Rental Return Assistant sessions |
+| `OtpCode` | passwordless sign-in codes — the single OTP source of truth |
+| `GiveawayDraw` | recorded monthly draws |
+| `FavoriteStation`, `PriceReport`, `Review`, `Gift`, `EmailLog`, … | supporting records |
+
+### Persistence inventory
+
+> Two correction passes, same day. The first found this section had
+> undercounted "two file stores" against an actual grep result of nine JSON
+> files. A second pass resolved one of those nine: `campaign-placements.json`
+> is read only by `scripts/seed-campaign-placements.js`, a one-time migration
+> into the `CampaignPlacement` Prisma table — historical, not live
+> persistence. The active count is **7**, not 9.
+
+**Active production file-backed stores — 7:**
+`data/saved-trips.json` · `data/amoe-entries.json` · `data/feedback.json` ·
+`data/budget-goals.json` · `data/maintenance-reminders.json` ·
+`data/announcements.json` · `data/campaign-events.json`
+
+**Dead / unreferenced write-capable store — 1:**
+`data/push-subscriptions.json` — `saveSub`/`removeSub`/`getSubs`/`getAllSubs`
+in `lib/pushSubscriptions.ts` have zero callers anywhere in the repository.
+
+**Static / build-time data — 1:**
+`data/gas-prices-seed.json` — imported by `lib/gasPrices.ts` at build time,
+not user data.
+
+**Historical migration source — 1:**
+`data/campaign-placements.json` — read once by
+`scripts/seed-campaign-placements.js` to seed the `CampaignPlacement` table.
+Nothing in the running application reads or writes it.
+
+All 7 active stores live on the Railway volume mounted at `/app/data` and are
+therefore **outside database backups**. None were migrated this sprint —
+inventory and classification only. See `CLAUDE.md` → Database for the
+standing rule.
+
+### Authentication
+
+NextAuth v4 with JWT (stateless — no server session table), offering:
+
+- **Password** — bcrypt hash on `User.passwordHash`
+- **Passwordless email OTP** — `/api/otp/send` writes a 6-digit code to
+  `OtpCode`; the `credentials-otp` provider in `lib/auth.ts` reads, validates
+  and consumes it. Capped at 5 verification attempts per email per 10 minutes.
+
+Because sessions are stateless, a JWT carries a **stale plan** after an upgrade
+or expiry. Anything gating paid access must resolve the plan from the database
+— see `lib/serverPlan.ts`.
+
+### Payments
+
+- **Web** — Stripe Checkout + customer portal; `/api/stripe/webhook` verifies
+  the signature.
+- **iOS / Android** — **RevenueCat only**, never Stripe.
+  `/api/native/revenuecat` grants and revokes Pro. It fails closed: a missing
+  `REVENUECAT_WEBHOOK_AUTH` refuses the request rather than trusting it.
 
 ---
 
