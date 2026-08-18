@@ -62,8 +62,10 @@ describe('authentication fails closed', () => {
     findById.mockResolvedValue(USER);
     const res = await post({ event: { type: 'INITIAL_PURCHASE', app_user_id: 'user-1' } }, SECRET);
 
-    // 503 (misconfiguration), not 401 — and RevenueCat retries 5xx, so a real
-    // purchase is not silently dropped once the secret is restored.
+    // 503 (misconfiguration), not 401 — the failure is OUR server's config,
+    // not the caller's fault. RevenueCat retries any non-200 response up to
+    // 5 times, so the status code doesn't change retry behavior here; it's
+    // about returning an honest status, not about steering RevenueCat.
     expect(res.status).toBe(503);
     // The critical assertion: no entitlement change occurred.
     expect(setUserPlan).not.toHaveBeenCalled();

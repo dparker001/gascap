@@ -15,9 +15,23 @@ What Don asked Claude to accomplish, in his words or a faithful paraphrase.
 
 ## 2. Repository State
 - **Branch:**
-- **Commit SHA:**
+- **Review Target SHA:** the functional/code commit whose *behavior* is under
+  review — i.e. the last commit that changed application code, tests, or
+  config, not documentation about the review itself.
+- **Packet Commit SHA (optional):** the commit that records this packet, if
+  different from the Review Target SHA. **These are often different, and
+  that's expected, not an error:** saving a filled-in packet to the repo is
+  itself a commit, so if a packet reports "the current HEAD" as its target and
+  is then committed, the act of committing moves HEAD past the SHA the packet
+  describes. Name the two explicitly instead of relying on "current branch
+  HEAD" to mean one stable thing.
 - **Base branch:**
 - **Relevant PR, if one exists:**
+- **Review this diff:** `git diff --name-status <base>...<Review Target SHA>`
+  — generate this list mechanically and paste the real output. Do not hand-
+  count or hand-summarize file changes; a manually-typed count silently drifts
+  from the actual diff (this happened in the sprint-1 packet: 27 reported vs.
+  29 actual after a docs-only follow-up commit).
 
 ## 3. What I Found
 Actual repository state *before* changes. Call out anything that differed from
@@ -62,7 +76,9 @@ npm run build      →
 Other tests:
 
 ## 10. Files Changed
-Complete list. Not a summary.
+Output of `git diff --name-status <base>...<Review Target SHA>`, pasted
+verbatim. Not hand-typed, not summarized — see the note in §2 about why a
+manual count drifts.
 
 ## 11. Known Risks / Remaining Questions
 Candid, even though implementation is "done." Include process mistakes made

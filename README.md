@@ -12,7 +12,7 @@ GasCap™ is a free, installable Progressive Web App (PWA) that tells drivers ex
 | Styling | Tailwind CSS |
 | Auth | NextAuth v4 (JWT sessions; password + passwordless email OTP) |
 | Data store | **PostgreSQL via Prisma** — 17 models, system of record |
-| Legacy file stores | `data/saved-trips.json`, `data/amoe-entries.json` (Railway volume) |
+| Legacy file stores | **9 found** — `data/*.json` on the Railway volume; see "Nine runtime JSON stores" below |
 | Native apps | Capacitor iOS + Android shells loading the deployed web app |
 | Native purchases | RevenueCat (Apple IAP / Google Play Billing) |
 | Deployment | Railway (single service, auto-deploy from `main`) |
@@ -161,18 +161,39 @@ and nothing reads them.
 | `GiveawayDraw` | recorded monthly draws |
 | `FavoriteStation`, `PriceReport`, `Review`, `Gift`, `EmailLog`, … | supporting records |
 
-### Two legacy JSON stores remain
+### Nine runtime JSON stores remain — not two
 
-Both live on the Railway volume mounted at `/app/data`:
+> **Corrected 2026-08-18 after independent review.** An earlier revision of
+> this section named only two file stores. A full sweep for
+> `fs.writeFile(Sync)`/`fs.appendFile(Sync)` across `lib/` and `app/api/`
+> found seven more. See `docs/SCRIPTS_INVENTORY.md` history and
+> `docs/SECURITY_AUDIT.md` for the audit method.
 
-- **`data/saved-trips.json`** (`lib/savedTrips.ts`) — saved trips still use a
-  file. There is no `SavedTrip` Prisma model. Migration candidate.
-- **`data/amoe-entries.json`** — free sweepstakes entries. Compliance-relevant;
-  read by the draw as of 2026-08-17.
+| Store | Module | Written by | Class |
+|---|---|---|---|
+| `data/saved-trips.json` | `lib/savedTrips.ts` | `POST /api/trips` | **ACTIVE PRODUCTION PERSISTENCE** — user data, no Prisma model |
+| `data/amoe-entries.json` | `lib/amoeEntries.ts` | `POST /api/amoe` | **ACTIVE PRODUCTION PERSISTENCE** — compliance-relevant, read by the sweepstakes draw |
+| `data/feedback.json` | `lib/feedback.ts` | `POST /api/feedback` | **ACTIVE PRODUCTION PERSISTENCE** — user-submitted, read by `/api/admin/feedback` |
+| `data/budget-goals.json` | `lib/budgetGoals.ts` | `POST /api/budget-goal` | **ACTIVE PRODUCTION PERSISTENCE** — per-user, session-authenticated |
+| `data/maintenance-reminders.json` | `lib/maintenance.ts` | `POST /api/maintenance` | **ACTIVE PRODUCTION PERSISTENCE** — per-user, session-authenticated |
+| `data/announcements.json` | `app/api/announcements/route.ts` (inline) | `POST /api/announcements` | **ACTIVE PRODUCTION PERSISTENCE** — admin-authored, read by every client on load |
+| `data/campaign-events.json` | `lib/campaigns.ts` | multiple campaign-tracking routes | **ACTIVE PRODUCTION PERSISTENCE** — event log, several writers |
+| `data/push-subscriptions.json` | `lib/pushSubscriptions.ts` | *(none found)* | **DEAD / UNREFERENCED CODE** — `saveSub`/`removeSub`/`getSubs`/`getAllSubs` have zero callers anywhere in the repo |
+| `data/gas-prices-seed.json` | `lib/gasPrices.ts` (import) | build-time only | **STATIC / SEED DATA** — not user data, imported at build |
+| `data/campaign-placements.json` | — | — | present in repo tree; not yet traced to a specific writer/reader as part of this pass — **UNKNOWN**, needs its own check |
 
-Data on that volume is **not** covered by database backups. Treat it as at-risk.
+**Nine distinct runtime JSON stores were found, not two.** Seven are active
+production persistence, one (`push-subscriptions.json`) is dead code with a
+plausible live-looking module around it, one is a build-time seed, and one
+(`campaign-placements.json`) is unclassified pending further inspection.
 
-`data/gas-prices-seed.json` is a build-time seed, not user data.
+All active stores live on the Railway volume mounted at `/app/data` and are
+therefore **outside database backups.** `.dockerignore` excludes `data/*.json`
+from the image except the seed file, confirming these are runtime-only,
+volume-persisted files, not baked into deploys.
+
+None of these were migrated this sprint — inventory and classification only,
+per sprint scope. See `CLAUDE.md` → Database for the standing rule.
 
 ### Authentication
 

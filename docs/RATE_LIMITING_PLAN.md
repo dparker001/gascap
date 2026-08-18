@@ -26,7 +26,7 @@ the concerning part.
 | # | Surface | Limited today | Key | Assessment |
 |---|---|---|---|---|
 | 1 | **OTP verify** | ✅ added sprint 1 | email | 5 / 10 min. Was unlimited: a 6-digit code, 10-minute life, and a correct guess mints a session. |
-| 2 | OTP send | ✅ pre-existing | email + IP | Adequate. |
+| 2 | OTP send | ✅ pre-existing | **email only** | Corrected 2026-08-18 — an earlier revision of this row said "email + IP"; `app/api/otp/send/route.ts` (`checkRate(email)`) keys solely on the address. No IP component exists. Same targeted-lockout trade-off as OTP verify (#1), not currently mitigated by an IP layer. |
 | 3 | Password sign-in | ✅ pre-existing | IP | 15 / 15 min (`lib/auth.ts`). IP-keyed, so rotation defeats it; acceptable given bcrypt cost. |
 | 4 | Password reset | ⚠️ verify | — | Confirm before Sprint 2; token-based, so exposure is lower. |
 | 5 | Registration | ✅ pre-existing | IP | Adequate. |

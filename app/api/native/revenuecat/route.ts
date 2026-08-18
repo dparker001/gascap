@@ -157,9 +157,12 @@ export async function POST(req: Request) {
   // Pro on any account. An absent secret is a misconfiguration, never a reason
   // to trust the caller.
   //
-  // 503, not 401: the request may be perfectly valid: the SERVER is
-  // misconfigured. RevenueCat retries 5xx and does not retry 401, so this also
-  // preserves the delivery that a paying customer's entitlement depends on.
+  // 503, not 401: the request may be perfectly valid — the SERVER is
+  // misconfigured, so the response should say that rather than blame the
+  // caller. (RevenueCat's documented webhook behavior treats ANY non-200
+  // response as a failure and retries up to 5 times regardless of status
+  // code, so 503 doesn't earn extra retries over 401 here — the choice is
+  // about honest semantics, not about influencing whether RevenueCat retries.)
   const expected = process.env.REVENUECAT_WEBHOOK_AUTH;
   if (!expected) {
     console.error(

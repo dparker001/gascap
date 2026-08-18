@@ -42,3 +42,32 @@ describe('OTP verify attempt ceiling', () => {
     expect(checkRateLimit(b, MAX, WINDOW).allowed).toBe(true);
   });
 });
+
+// ── Wiring assertions (regression) ──────────────────────────────────────────
+// The ceiling above is only as good as how lib/auth.ts actually calls it.
+// Independent review caught two defects in the original wiring: the throttle
+// ran AFTER the Postgres lookup (wasting a DB round trip on every attempt past
+// the limit) and the log line printed the full email on a hit. Source
+// inspection is used here because authorize() can't be invoked without a live
+// database — see the file header.
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
+describe('OTP verify wiring in lib/auth.ts', () => {
+  const src = readFileSync(join(process.cwd(), 'lib/auth.ts'), 'utf8');
+
+  it('checks the rate limit before querying the database', () => {
+    const rateLimitAt = src.indexOf('checkRateLimit(`otp-verify:');
+    const queryAt     = src.indexOf('SELECT code, name, expires FROM "OtpCode"');
+    expect(rateLimitAt).toBeGreaterThan(-1);
+    expect(queryAt).toBeGreaterThan(-1);
+    expect(rateLimitAt).toBeLessThan(queryAt);
+  });
+
+  it('does not log the email address when the limit is hit', () => {
+    const logLine = src.match(/console\.warn\('\[otp\/verify\][^\n]*/)?.[0] ?? '';
+    expect(logLine).not.toBe('');
+    expect(logLine).not.toContain('${email}');
+    expect(logLine.toLowerCase()).toContain('redacted');
+  });
+});

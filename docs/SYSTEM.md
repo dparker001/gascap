@@ -22,7 +22,7 @@
 | Styling | Tailwind CSS |
 | Auth | NextAuth v4 — CredentialsProvider + JWT sessions |
 | Database | PostgreSQL on Railway (via Prisma ORM) |
-| File-based store | `data/saved-trips.json`, `data/amoe-entries.json` only — on the Railway volume at `/app/data` |
+| File-based store | **9 found** — see "Persistence inventory" below. On the Railway volume at `/app/data`. |
 | Native | Capacitor iOS/Android shells + RevenueCat for in-app purchases |
 | Payments | Stripe Checkout + Webhooks |
 | Email | Gmail SMTP primary, Resend API fallback (`lib/email.ts`) |
@@ -78,9 +78,16 @@
 │   ├── schema.prisma           # Database schema (source of truth for DB)
 │   └── config.ts               # Prisma client config
 ├── data/                       # Railway volume mount (/app/data)
-│   ├── saved-trips.json        # Saved trips — still file-backed, no Prisma model
-│   ├── amoe-entries.json       # Free sweepstakes entries (read by the draw)
-│   └── gas-prices-seed.json    # Build-time seed, not user data
+│   ├── saved-trips.json          # Saved trips — no Prisma model
+│   ├── amoe-entries.json         # Free sweepstakes entries (read by the draw)
+│   ├── feedback.json             # User-submitted feedback
+│   ├── budget-goals.json         # Per-user budget goals
+│   ├── maintenance-reminders.json # Per-user maintenance reminders
+│   ├── announcements.json        # Admin-authored, read by every client
+│   ├── campaign-events.json      # Campaign tracking event log
+│   ├── push-subscriptions.json   # DEAD — zero callers, candidate for deletion
+│   ├── campaign-placements.json  # UNKNOWN — not yet traced, needs its own check
+│   └── gas-prices-seed.json      # Build-time seed, not user data
 ├── public/                     # Static assets, PWA icons, videos
 ├── scripts/                    # One-time utility scripts
 ├── docs/                       # This documentation
@@ -113,16 +120,30 @@ Stores anything user-account-related:
 > rationale is preserved because the same trade-off recurs, and because the two
 > remaining file stores below are the same decision not yet unwound.
 
-### The two file stores that DO remain
+### Persistence inventory — corrected 2026-08-18
 
-- **`data/saved-trips.json`** — `lib/savedTrips.ts`. Saved trips have no Prisma
-  model. Migration candidate.
-- **`data/amoe-entries.json`** — free sweepstakes entries. Compliance-relevant:
-  the draw reads it as of 2026-08-17. Before that it was written and never
-  read, so free entrants could not win.
+> An earlier revision of this document said "two file stores remain." An
+> independent review found that undercounted. A full sweep for
+> `fs.writeFile(Sync)`/`fs.appendFile(Sync)` across `lib/` and `app/api/`
+> found **nine** runtime JSON stores, not two.
 
-Both live on the Railway volume at `/app/data` and are therefore **outside
-database backups**.
+| Store | Module | Class |
+|---|---|---|
+| `data/saved-trips.json` | `lib/savedTrips.ts` | ACTIVE — no Prisma model |
+| `data/amoe-entries.json` | `lib/amoeEntries.ts` | ACTIVE — compliance-relevant; the draw reads it as of 2026-08-17 (before that it was written and never read, so free entrants could not win) |
+| `data/feedback.json` | `lib/feedback.ts` | ACTIVE — session-authenticated writes |
+| `data/budget-goals.json` | `lib/budgetGoals.ts` | ACTIVE — session-authenticated writes |
+| `data/maintenance-reminders.json` | `lib/maintenance.ts` | ACTIVE — session-authenticated writes |
+| `data/announcements.json` | `app/api/announcements/route.ts` | ACTIVE — `ADMIN_PASSWORD`-gated write, public read |
+| `data/campaign-events.json` | `lib/campaigns.ts` | ACTIVE — event log, multiple writers |
+| `data/push-subscriptions.json` | `lib/pushSubscriptions.ts` | **DEAD** — `saveSub`/`removeSub`/`getSubs`/`getAllSubs` have zero callers anywhere in the repo |
+| `data/campaign-placements.json` | — | **UNKNOWN** — present in the tree, not yet traced to a writer/reader |
+
+All active stores live on the Railway volume at `/app/data` and are therefore
+**outside database backups**. None were migrated this sprint — inventory and
+classification only. See `docs/SCRIPTS_INVENTORY.md` for the equivalent
+treatment of one-off scripts, and `/CLAUDE.md` for the standing rule this
+produced: don't assert a file-store count without re-running the grep.
 
 ---
 
