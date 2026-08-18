@@ -45,7 +45,8 @@ import { sendMail, winnerNotificationEmailHtml, nonWinnerNotificationEmailHtml }
 import { findById } from '@/lib/users';
 import { sendApns, apnsConfigured } from '@/lib/apns';
 import { prisma } from '@/lib/prisma';
-import { sessionHasAdminRole } from '@/lib/adminAuth';
+import { sessionHasAdminRole, requireAdmin } from '@/lib/adminAuth';
+import { logAdminActionFor } from '@/lib/adminAudit';
 
 async function auth(req: Request): Promise<'ok' | 'no-env' | 'wrong'> {
   const pw = process.env.ADMIN_PASSWORD;
@@ -105,6 +106,11 @@ export async function POST(req: Request) {
   const _auth = await auth(req);
   if (_auth === 'no-env') return NextResponse.json({ error: 'Misconfigured' }, { status: 503 });
   if (_auth === 'wrong')  return NextResponse.json({ error: 'Unauthorized'  }, { status: 401 });
+  // Sprint 2 — a second resolution, purely to attribute the audit log below.
+  // Not the access-control gate (that's the auth() check above, unchanged);
+  // this function is delicate enough that restructuring its existing gate
+  // wasn't worth the risk for a logging-only need.
+  const identity = await requireAdmin(req);
 
   const body        = await req.json() as {
     month?: string; notes?: string; dryRun?: boolean;
@@ -141,6 +147,10 @@ export async function POST(req: Request) {
       notes:        draw.notes ?? null,
       suppressSms,
       claimToken:   draw.claimToken,
+    });
+    await logAdminActionFor(identity, 'sweepstakes.release_winner_email', {
+      targetType: 'GiveawayDraw', targetId: month, success: true,
+      metadata: { winnerEmail: draw.winnerEmail },
     });
     return NextResponse.json({ ok: true, sent: true });
   }
@@ -189,6 +199,11 @@ export async function POST(req: Request) {
         suppressSms,
       });
     }
+
+    await logAdminActionFor(identity, 'sweepstakes.run_draw', {
+      targetType: 'GiveawayDraw', targetId: month, success: true,
+      metadata: { winnerEmail: result.winner.email, entryCount: result.winner.entryCount, held: holdEmails },
+    });
 
     return NextResponse.json({ ok: true, draw, held: holdEmails });
   } catch (err) {
