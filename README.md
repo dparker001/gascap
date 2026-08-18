@@ -161,14 +161,14 @@ and nothing reads them.
 | `GiveawayDraw` | recorded monthly draws |
 | `FavoriteStation`, `PriceReport`, `Review`, `Gift`, `EmailLog`, … | supporting records |
 
-### Persistence inventory — corrected 2026-08-18, refined 2026-08-19
+### Persistence inventory
 
-> Two correction passes. The first (2026-08-18) found this document had
+> Two correction passes, same day. The first found this section had
 > undercounted "two file stores" against an actual grep result of nine JSON
-> files. A second independent pass resolved one of those nine:
-> `campaign-placements.json` is read only by `scripts/seed-campaign-placements.js`,
-> a one-time migration into the `CampaignPlacement` Prisma table — historical,
-> not live persistence. The active count is **7**, not 9.
+> files. A second pass resolved one of those nine: `campaign-placements.json`
+> is read only by `scripts/seed-campaign-placements.js`, a one-time migration
+> into the `CampaignPlacement` Prisma table — historical, not live
+> persistence. The active count is **7**, not 9.
 
 **Active production file-backed stores — 7:**
 `data/saved-trips.json` · `data/amoe-entries.json` · `data/feedback.json` ·
@@ -190,8 +190,31 @@ Nothing in the running application reads or writes it.
 
 All 7 active stores live on the Railway volume mounted at `/app/data` and are
 therefore **outside database backups**. None were migrated this sprint —
-inventory and classification only.
+inventory and classification only. See `CLAUDE.md` → Database for the
+standing rule.
 
+### Authentication
+
+NextAuth v4 with JWT (stateless — no server session table), offering:
+
+- **Password** — bcrypt hash on `User.passwordHash`
+- **Passwordless email OTP** — `/api/otp/send` writes a 6-digit code to
+  `OtpCode`; the `credentials-otp` provider in `lib/auth.ts` reads, validates
+  and consumes it. Capped at 5 verification attempts per email per 10 minutes.
+
+Because sessions are stateless, a JWT carries a **stale plan** after an upgrade
+or expiry. Anything gating paid access must resolve the plan from the database
+— see `lib/serverPlan.ts`.
+
+### Payments
+
+- **Web** — Stripe Checkout + customer portal; `/api/stripe/webhook` verifies
+  the signature.
+- **iOS / Android** — **RevenueCat only**, never Stripe.
+  `/api/native/revenuecat` grants and revokes Pro. It fails closed: a missing
+  `REVENUECAT_WEBHOOK_AUTH` refuses the request rather than trusting it.
+
+---
 
 ## Pricing
 

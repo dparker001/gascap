@@ -1,6 +1,6 @@
 # ChatGPT Review Packet — Hardening Sprint 1 — REVISION 2
 
-> **Corrected 2026-08-19, in place, per ChatGPT's explicit instruction to
+> **Corrected 2026-08-18, in place, per ChatGPT's explicit instruction to
 > update this packet rather than issue a Revision 3.** The correction:
 > `data/campaign-placements.json`, previously marked UNKNOWN in this document,
 > was independently traced by ChatGPT to `scripts/seed-campaign-placements.js`
@@ -63,7 +63,7 @@ Verified each finding independently before acting:
   by a separate grep that `saveSub`/`removeSub`/`getSubs`/`getAllSubs` have
   **zero callers anywhere in the repository** — dead code, not documented
   live persistence. `data/campaign-placements.json` was left unclassified at
-  this point in the review. **[Corrected 2026-08-19:** ChatGPT independently
+  this point in the review. **[Corrected 2026-08-18:** ChatGPT independently
   traced it to `scripts/seed-campaign-placements.js` — verified: the script's
   own header reads "One-time seed: migrate campaign-placements.json →
   CampaignPlacement table," it is the sole reader of that file anywhere in the
@@ -123,7 +123,7 @@ all pass.
 "email only," with a note added.
 
 **`README.md`, `docs/SYSTEM.md`, `CLAUDE.md`** — persistence sections
-rewritten, replacing every "two legacy stores" claim. **[Corrected 2026-08-19:**
+rewritten, replacing every "two legacy stores" claim. **[Corrected 2026-08-18:**
 now show **7 active** stores, 1 dead (`push-subscriptions.json`), 1 static
 seed (`gas-prices-seed.json`), and 1 historical migration source
 (`campaign-placements.json`) — the original commit under review here had
@@ -194,7 +194,7 @@ already-existing checks. No endpoint's actual accept/reject behavior changed.
 **No schema changes. No migrations. No backfills. No destructive operation.**
 The persistence inventory (7 active stores, corrected from an original
 9-JSON-file count once `campaign-placements.json` was reclassified
-HISTORICAL — see the 2026-08-19 correction note above) is documentation of
+HISTORICAL — see the 2026-08-18 correction note above) is documentation of
 existing state, not a migration — explicitly deferred per §5.
 
 ## 8. User / Business Impact
@@ -270,7 +270,7 @@ noting it here rather than letting it recur silently).
    finding I could not act on at all, not partially — flagging clearly rather
    than claiming partial credit.
 3. ~~`data/campaign-placements.json` is still UNKNOWN.~~ **[Resolved
-   2026-08-19]** Traced to `scripts/seed-campaign-placements.js`, a one-time
+   2026-08-18]** Traced to `scripts/seed-campaign-placements.js`, a one-time
    migration source. Not active production persistence. The corrected framing
    is **7 active stores** (not 9), with `campaign-placements.json` in its own
    HISTORICAL category alongside the DEAD (`push-subscriptions.json`) and
@@ -304,7 +304,7 @@ ChatGPT pass on this revision.
    and its test file now accurately reflect RevenueCat's real retry behavior,
    or did I introduce a new inaccuracy while fixing the old one?
 2. ~~Is the 9-store persistence inventory (§3) now actually complete~~
-   **[Answered by ChatGPT 2026-08-19]** — resolved to **7 active** stores
+   **[Answered by ChatGPT 2026-08-18]** — resolved to **7 active** stores
    with `campaign-placements.json` reclassified HISTORICAL. Open question for
    any further review: is there a 10th store (active or otherwise) that two
    independent passes both missed?
