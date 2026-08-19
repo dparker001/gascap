@@ -3,6 +3,7 @@
 import { useSession } from 'next-auth/react';
 import { useState, useEffect } from 'react';
 import { useTranslation } from '@/contexts/LanguageContext';
+import { hasLifetimeEntitlement } from '@/lib/entitlements';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -26,6 +27,8 @@ export default function WelcomeBanner() {
   const plan          = (session?.user as { plan?: string })?.plan ?? 'free';
   const isProTrial    = (session?.user as { isProTrial?: boolean })?.isProTrial ?? false;
   const stripeInterval = (session?.user as { stripeInterval?: string | null })?.stripeInterval ?? null;
+  const revenueCatActive   = (session?.user as { revenueCatActive?: boolean })?.revenueCatActive ?? false;
+  const revenueCatInterval = (session?.user as { revenueCatInterval?: string | null })?.revenueCatInterval ?? null;
   const rawName       = session?.user?.name ?? '';
   const firstName     = rawName.split(' ')[0] || 'there';
 
@@ -59,10 +62,12 @@ export default function WelcomeBanner() {
   // Don't render until session is resolved and client is hydrated
   if (status === 'loading' || !session || !mounted) return null;
 
+  // Post-Revision-2 fix: provider-neutral Lifetime check.
+  const isLifetime = plan === 'pro' && hasLifetimeEntitlement({ stripeInterval, revenueCatActive, revenueCatInterval });
   const planLabel =
     plan === 'fleet' ? '🚛 Fleet'
     : isProTrial     ? '⭐ Pro Trial'
-    : (plan === 'pro' && stripeInterval === 'lifetime') ? '🏅 Pro Lifetime'
+    : isLifetime     ? '🏅 Pro Lifetime'
     : plan === 'pro' ? '⭐ Pro'
     : null;
 

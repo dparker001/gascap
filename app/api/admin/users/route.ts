@@ -8,18 +8,20 @@
 import { NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
 import { prisma } from '@/lib/prisma';
-import { findById, enrollCompCampaign } from '@/lib/users';
+import { findById, enrollCompCampaign, revokeAmbassadorEntitlement } from '@/lib/users';
 import { upsertGhlContact } from '@/lib/ghl';
 import { getFillups } from '@/lib/fillups';
 import { sendCompProForLifeEmail } from '@/lib/emailCampaign';
 import { sendMail, accountDeletedEmailHtml } from '@/lib/email';
 import { getActiveDeviceCounts } from '@/lib/deviceSessions';
+import { sessionHasAdminRole, requireAdmin, legacyAdminPasswordOk } from '@/lib/adminAuth';
+import { logAdminActionFor } from '@/lib/adminAudit';
 
-function auth(req: Request): 'ok' | 'no-env' | 'wrong' {
+async function auth(req: Request): Promise<'ok' | 'no-env' | 'wrong'> {
   const pw = process.env.ADMIN_PASSWORD;
-  if (!pw) return 'no-env';
-  const header = req.headers.get('x-admin-password') ?? '';
-  return header === pw ? 'ok' : 'wrong';
+  if (legacyAdminPasswordOk(req, pw)) return 'ok';
+  if (await sessionHasAdminRole()) return 'ok';
+  return pw ? 'wrong' : 'no-env';
 }
 
 /** Fetch external_user_ids of all active OneSignal subscribers (up to 1 000) */
@@ -53,7 +55,7 @@ async function getOneSignalSubscriberIds(): Promise<Set<string>> {
 }
 
 export async function GET(req: Request) {
-  const _auth = auth(req);
+  const _auth = await auth(req);
   if (_auth === 'no-env') return NextResponse.json({ error: 'Misconfigured' }, { status: 503 });
   if (_auth === 'wrong')  return NextResponse.json({ error: 'Unauthorized' },   { status: 401 });
   const [subscribedUserIds, allUsers] = await Promise.all([
@@ -131,9 +133,12 @@ export async function GET(req: Request) {
 }
 
 export async function DELETE(req: Request) {
-  const _auth = auth(req);
-  if (_auth === 'no-env') return NextResponse.json({ error: 'Misconfigured' }, { status: 503 });
-  if (_auth === 'wrong')  return NextResponse.json({ error: 'Unauthorized' },   { status: 401 });
+  // Sprint 2: resolves via requireAdmin() (same dual-auth as the local
+  // auth() helper other handlers in this file use) specifically because
+  // this handler needs an ACTOR identity for the audit log below, not just
+  // a yes/no.
+  const identity = await requireAdmin(req);
+  if (!identity.ok) return NextResponse.json({ error: 'Unauthorized' }, { status: identity.status });
 
   const { searchParams } = new URL(req.url);
   const id = searchParams.get('id');
@@ -184,13 +189,19 @@ export async function DELETE(req: Request) {
     }).catch((err: unknown) => console.error('[Admin] DeletedAccountLog write failed:', err));
   }
 
+  await logAdminActionFor(identity, 'user.delete', {
+    targetType: 'User', targetId: id, success: true,
+    metadata: { reason, email: user?.email },
+  });
+
   return NextResponse.json({ ok: true });
 }
 
 export async function PATCH(req: Request) {
-  const _auth = auth(req);
-  if (_auth === 'no-env') return NextResponse.json({ error: 'Misconfigured' }, { status: 503 });
-  if (_auth === 'wrong')  return NextResponse.json({ error: 'Unauthorized' },   { status: 401 });
+  // Sprint 2: same reasoning as DELETE above — needs an actor identity for
+  // the plan-change audit log.
+  const identity = await requireAdmin(req);
+  if (!identity.ok) return NextResponse.json({ error: 'Unauthorized' }, { status: identity.status });
   const id = new URL(req.url).searchParams.get('id');
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
   const body = await req.json() as {
@@ -222,17 +233,28 @@ export async function PATCH(req: Request) {
       .catch((e) => console.error('[CompPro] enroll comp campaign failed:', e));
     upsertGhlContact({ name: user.name, email: user.email, plan: 'pro', source: 'GasCap Comp Pro For Life', extraTags: ['gascap-comp-ambassador'] })
       .catch((e) => console.error('[GHL] comp pro sync failed:', e));
+    await logAdminActionFor(identity, 'user.grant_comp_pro_for_life', {
+      targetType: 'User', targetId: id, success: true, metadata: { email: user.email },
+    });
     return NextResponse.json({ ok: true });
   }
 
   if (body.revokeCompProForLife) {
-    await prisma.user.update({
-      where: { id },
-      data: { ambassadorProForLife: false, plan: 'free' },
+    // Post-Sprint-2 Revision 1 fix: this previously wrote
+    // `ambassadorProForLife: false, plan: 'free'` directly, which could
+    // wrongly downgrade a user who also held a valid Stripe or RevenueCat
+    // entitlement. Goes through the resolver now — only actually downgrades
+    // if no other source survives.
+    const resolved = await revokeAmbassadorEntitlement(id);
+    upsertGhlContact({
+      name: user.name, email: user.email, plan: resolved.pro ? 'pro' : 'free',
+      source: 'GasCap Comp Pro Revoked',
+    }).catch((e) => console.error('[GHL] comp revoke sync failed:', e));
+    await logAdminActionFor(identity, 'user.revoke_comp_pro_for_life', {
+      targetType: 'User', targetId: id, success: true,
+      metadata: { email: user.email, remainedPro: resolved.pro, survivingSources: resolved.sources },
     });
-    upsertGhlContact({ name: user.name, email: user.email, plan: 'free', source: 'GasCap Comp Pro Revoked' })
-      .catch((e) => console.error('[GHL] comp revoke sync failed:', e));
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, remainedPro: resolved.pro });
   }
 
   const data: Record<string, unknown> = {};
@@ -243,5 +265,14 @@ export async function PATCH(req: Request) {
   if (body.isTestAccount  !== undefined) data.isTestAccount  = body.isTestAccount;
 
   await prisma.user.update({ where: { id }, data });
+  // Only logged when something plan-relevant actually changed — this PATCH
+  // also fires for emailVerified/isTestAccount toggles, which don't carry
+  // the same "who touched this person's entitlement" weight.
+  if (body.plan !== undefined || body.stripeInterval !== undefined || body.isProTrial !== undefined) {
+    await logAdminActionFor(identity, 'user.plan_change', {
+      targetType: 'User', targetId: id, success: true,
+      metadata: { email: user.email, plan: body.plan, stripeInterval: body.stripeInterval, isProTrial: body.isProTrial },
+    });
+  }
   return NextResponse.json({ ok: true });
 }

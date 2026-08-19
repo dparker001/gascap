@@ -3,6 +3,7 @@
  * title bar so they stay in sync. Pro-trial users show a live "Pro Trial · Nd" countdown.
  */
 import type { Translations } from './translations';
+import { hasLifetimeEntitlement } from './entitlements';
 
 export interface PlanBadge {
   text:   string;
@@ -11,10 +12,18 @@ export interface PlanBadge {
 }
 
 export interface PlanUser {
-  plan?:           string;
-  isProTrial?:     boolean;
-  stripeInterval?: string | null;
-  trialExpiresAt?: string | null;
+  plan?:               string;
+  isProTrial?:         boolean;
+  stripeInterval?:     string | null;
+  // Post-Revision-2 fix: needed so an RC-only Lifetime purchaser (native
+  // IAP) still shows the Lifetime badge — stripeInterval alone no longer
+  // reflects them, by design (see lib/entitlements.ts's provenance
+  // invariant). Optional so existing callers that don't have these fields
+  // yet (and can't easily get them) degrade to the old Stripe-only check
+  // rather than breaking.
+  revenueCatActive?:   boolean;
+  revenueCatInterval?: string | null;
+  trialExpiresAt?:     string | null;
 }
 
 /** Whole days left in the trial (rounded up, min 0), or null if no/invalid expiry. */
@@ -28,7 +37,11 @@ export function trialDaysLeft(iso?: string | null): number | null {
 export function getPlanBadge(u: PlanUser | null | undefined, t: Translations): PlanBadge | null {
   const plan           = u?.plan ?? 'free';
   const isProTrial     = u?.isProTrial ?? false;
-  const isLifetime     = plan === 'pro' && !isProTrial && u?.stripeInterval === 'lifetime';
+  const isLifetime     = plan === 'pro' && !isProTrial && hasLifetimeEntitlement({
+    stripeInterval:     u?.stripeInterval ?? null,
+    revenueCatActive:   u?.revenueCatActive ?? false,
+    revenueCatInterval: u?.revenueCatInterval ?? null,
+  });
 
   if (isLifetime) return { text: t.plan.lifetimeShort, bg: 'bg-teal-600', medal: true };
 

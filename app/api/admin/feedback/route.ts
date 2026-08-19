@@ -6,21 +6,20 @@
  */
 import { NextResponse } from 'next/server';
 import { getAllFeedback, markRead, deleteFeedback } from '@/lib/feedback';
+import { sessionHasAdminRole, legacyAdminPasswordOk } from '@/lib/adminAuth';
 
-function auth(req: Request): boolean {
-  const pw     = process.env.ADMIN_PASSWORD;
-  if (!pw) return false;
-  const header = req.headers.get('x-admin-password') ?? '';
-  return header === pw;
+async function auth(req: Request): Promise<boolean> {
+  const legacyOk = legacyAdminPasswordOk(req, process.env.ADMIN_PASSWORD);
+  return legacyOk || await sessionHasAdminRole();
 }
 
 export async function GET(req: Request) {
-  if (!auth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!await auth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   return NextResponse.json({ feedback: getAllFeedback() });
 }
 
 export async function PATCH(req: Request) {
-  if (!auth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!await auth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const { searchParams } = new URL(req.url);
   const id = searchParams.get('id');
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
@@ -29,7 +28,7 @@ export async function PATCH(req: Request) {
 }
 
 export async function DELETE(req: Request) {
-  if (!auth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!await auth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const { searchParams } = new URL(req.url);
   const id = searchParams.get('id');
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });

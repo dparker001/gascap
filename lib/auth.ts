@@ -284,6 +284,13 @@ export const authOptions: NextAuthOptions = {
         token.trialExpiresAt  = (user as { trialExpiresAt?: string }).trialExpiresAt ?? null;
         token.createdAt       = (user as { createdAt?: string }).createdAt ?? null;
         token.stripeInterval  = (user as { stripeInterval?: string }).stripeInterval ?? null;
+        // Post-Revision-2 fix: expose RevenueCat provenance on the session
+        // too, so client-side "is this a Lifetime member" checks can be
+        // provider-neutral (see lib/entitlements.ts's hasLifetimeEntitlement
+        // and lib/planBadge.ts) instead of only ever seeing stripeInterval,
+        // which no longer reflects an RC-only Lifetime purchaser.
+        token.revenueCatActive   = (user as { revenueCatActive?: boolean }).revenueCatActive ?? false;
+        token.revenueCatInterval = (user as { revenueCatInterval?: string | null }).revenueCatInterval ?? null;
         token.userMode        = (user as { userMode?: string | null }).userMode ?? null;
       }
       // Re-fetch plan on session refresh so upgrades are reflected immediately
@@ -296,6 +303,8 @@ export const authOptions: NextAuthOptions = {
           token.trialExpiresAt = fresh.trialExpiresAt ?? null;
           token.createdAt      = fresh.createdAt      ?? null;
           token.stripeInterval = fresh.stripeInterval ?? null;
+          token.revenueCatActive   = fresh.revenueCatActive   ?? false;
+          token.revenueCatInterval = fresh.revenueCatInterval ?? null;
           token.userMode       = fresh.userMode       ?? null;
         }
       }
@@ -310,6 +319,8 @@ export const authOptions: NextAuthOptions = {
         (session.user as { trialExpiresAt?: string | null }).trialExpiresAt   = token.trialExpiresAt as string | null ?? null;
         (session.user as { createdAt?: string | null }).createdAt             = token.createdAt     as string | null ?? null;
         (session.user as { stripeInterval?: string | null }).stripeInterval   = token.stripeInterval as string | null ?? null;
+        (session.user as { revenueCatActive?: boolean }).revenueCatActive     = token.revenueCatActive as boolean ?? false;
+        (session.user as { revenueCatInterval?: string | null }).revenueCatInterval = token.revenueCatInterval as string | null ?? null;
         (session.user as { userMode?: string | null }).userMode               = token.userMode       as string | null ?? null;
       }
       return session;

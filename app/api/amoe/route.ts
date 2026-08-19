@@ -12,6 +12,7 @@ import { randomUUID } from 'crypto';
 import {
   readAmoeEntries, writeAmoeEntries, normalizeAmoeEmail, type AmoeEntry,
 } from '@/lib/amoeEntries';
+import { mirrorAmoeEntryToDb } from '@/lib/amoeEntriesDb';
 
 function currentMonth(): string {
   return new Date().toISOString().slice(0, 7); // YYYY-MM
@@ -67,6 +68,11 @@ export async function POST(req: NextRequest) {
   };
   entries.push(newEntry);
   writeAmoeEntries(entries);
+
+  // Sprint 2 — best-effort mirror to Postgres, staged ahead of a future
+  // read-path cutover. The file write above is unconditional and unaffected;
+  // this never blocks or fails the actual submission. See lib/amoeEntriesDb.ts.
+  void mirrorAmoeEntryToDb(newEntry);
 
   return NextResponse.json({ ok: true });
 }

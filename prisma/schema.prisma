@@ -61,6 +61,21 @@ model User {
   verifyReminderSentAt           String?
   verifyReminderBonusEntries     Int       @default(0)
   ambassadorProForLife     Boolean   @default(false)
+  // Sprint 2 hardening — server-authorized admin access. Never trust a client-
+  // supplied role; always resolve this column live from the DB (see
+  // lib/adminAuth.ts). 'user' | 'admin'. No 'support' tier yet — nothing in
+  // the product needs a read-only admin role today; add one later without a
+  // migration if that changes, since this is a plain string, not an enum.
+  role                     String    @default("user")
+  // Sprint 2 hardening — RevenueCat's contribution to this user's Pro access,
+  // tracked independently of Stripe/gifted/Ambassador so a RevenueCat-side
+  // EXPIRATION/REFUND can never wipe a DIFFERENT provider's legitimate grant.
+  // See lib/entitlements.ts. Defaults preserve current behavior for every
+  // existing user — nothing here is backfilled from history because no
+  // history was recorded before this shipped (see RevenueCatWebhookEvent).
+  revenueCatActive         Boolean   @default(false)
+  revenueCatInterval       String?   // 'monthly' | 'lifetime'
+  revenueCatProductId      String?
   // Which Ambassador tiers ('supporter'|'ambassador'|'elite') have already had their
   // one-time Marketing Boost voucher reward sent — prevents duplicate sends on
   // Stripe webhook retries. See app/api/stripe/webhook/route.ts referral-credit block.
@@ -117,6 +132,13 @@ model User {
   getawayDestinationId     String?
   getawayDestinationChosenAt String?
   getawayReminderSentAt    String?
+  /// Post-Sprint-2 Revision 1 fix — durable one-time marker so a crash
+  /// between sending this email and marking the triggering webhook event
+  /// processed can't cause a retry to send it twice. Claimed atomically
+  /// (updateMany WHERE this is null) immediately before sending, by both
+  /// the RevenueCat and Stripe getaway-choose email paths. See
+  /// app/api/native/revenuecat/route.ts's maybeSendGetaway().
+  getawayChooseEmailSentAt String?
   // OTP passwordless sign-in — one-time session token issued after code verification,
   // consumed by the credentials-otp NextAuth provider (2-min TTL).
   otpSessionToken          String?
@@ -160,6 +182,91 @@ model OtpCode {
   code    String
   name    String   @default("")
   expires DateTime
+}
+
+/// Sprint 2 hardening — RevenueCat delivers webhooks at-least-once, so the
+/// same event.id can arrive more than once. This is the dedup key AND the
+/// durable record of "did we actually process this," so a crash between
+/// receiving an event and finishing its side effects is safely retryable
+/// instead of either silently repeating a grant or silently losing one.
+/// Sprint 2 hardening — Postgres-backed rate limiting, replacing the
+/// in-memory Map for security-sensitive flows. The in-memory version resets
+/// on every deploy and doesn't share state across instances if GasCap ever
+/// scales horizontally; both are silent correctness gaps rather than crashes,
+/// which is exactly the kind of bug that goes unnoticed. Key is caller-defined
+/// (e.g. "otp-verify:user@example.com", "pwreset:1.2.3.4") — same convention
+/// as the in-memory checkRateLimit() it complements, not replaces (see
+/// lib/rateLimitDb.ts and docs/RATE_LIMITING_PLAN.md for which is used where).
+model RateLimitCounter {
+  key       String   @id
+  count     Int      @default(0)
+  /// Post-Sprint-2 Revision 1: real Postgres timestamp, not a String — this
+  /// table had not been deployed to production yet, so changing the type
+  /// carries no migration-data risk. A window end; a fresh window is
+  /// started when now > resetAt. See lib/rateLimitDb.ts for the atomic
+  /// single-statement INSERT ... ON CONFLICT this drives.
+  resetAt   DateTime
+
+  @@index([resetAt])
+}
+
+model RevenueCatWebhookEvent {
+  id          String   @id   // RevenueCat's own event.id — the dedup key, not our own uuid
+  eventType   String
+  userId      String?
+  /// received: row exists, nothing done yet.
+  /// processing: claimed by a request in flight — lets a retry tell "still
+  ///   working" apart from "crashed mid-flight," see lib/revenueCatEvents.ts.
+  /// processed: side effects completed successfully.
+  /// failed: attempted and errored; safe to retry, not permanently stuck.
+  status      String   @default("received")
+  /// Post-Sprint-2 Revision 1 fix. Assigned fresh on every successful claim
+  /// (initial or reclaim) and required to match on markProcessed/markFailed —
+  /// this is the compare-and-swap ownership token that makes concurrent
+  /// reclaim of a failed/stale-processing row safe. An old claimant whose
+  /// token no longer matches (because a newer claimant already reclaimed the
+  /// row) cannot overwrite that newer claimant's state. See
+  /// lib/revenueCatEvents.ts.
+  claimToken  String?
+  receivedAt  String
+  processedAt String?
+  error       String?
+
+  @@index([userId])
+}
+
+/// Sprint 2 hardening — who did what, for the highest-risk admin mutations
+/// (plan changes, giveaway/draw actions, deletions). Never stores secrets or
+/// full payloads — metadata is for context like "which user" or "which
+/// draw month," not request bodies.
+model AdminAuditLog {
+  id          String   @id
+  actorUserId String
+  action      String
+  targetType  String?
+  targetId    String?
+  metadata    Json?
+  success     Boolean
+  createdAt   String
+
+  @@index([actorUserId])
+  @@index([createdAt])
+}
+
+/// Sprint 2 hardening — AMOE (Alternative Method of Entry, "No Purchase
+/// Necessary") free sweepstakes entries, migrated off data/amoe-entries.json.
+/// One entry per person per Entry Month, enforced here at the database level
+/// via the unique constraint rather than only in application code.
+model AmoeEntry {
+  id          String   @id
+  firstName   String
+  lastName    String
+  email       String
+  month       String   // YYYY-MM
+  submittedAt String
+
+  @@unique([email, month])
+  @@index([month])
 }
 
 model Vehicle {

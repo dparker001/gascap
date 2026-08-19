@@ -5,14 +5,15 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { sendApns, apnsConfigured } from '@/lib/apns';
+import { sessionHasAdminRole, legacyAdminPasswordOk } from '@/lib/adminAuth';
 
-function auth(req: Request): boolean {
-  const pw = process.env.ADMIN_PASSWORD ?? '';
-  return Boolean(pw && req.headers.get('x-admin-password') === pw);
+async function auth(req: Request): Promise<boolean> {
+  const legacyOk = legacyAdminPasswordOk(req, process.env.ADMIN_PASSWORD);
+  return legacyOk || await sessionHasAdminRole();
 }
 
 export async function POST(req: Request) {
-  if (!auth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!await auth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   if (!apnsConfigured()) {
     return NextResponse.json({ error: 'APNs not configured — set APNS_KEY_ID, APNS_TEAM_ID, APNS_PRIVATE_KEY in Railway' }, { status: 503 });
   }

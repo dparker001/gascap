@@ -3,24 +3,26 @@
  * Body: { email: string; name?: string }
  *
  * Generates a 6-digit OTP stored in the DB (10-min TTL) and emails it.
- * Rate-limited to 3 sends per email per 15 minutes (in-memory; acceptable
- * since it's abuse prevention only, not auth-critical).
+ * Rate-limited to 3 sends per email + 20 per IP per 15 minutes.
+ *
+ * Sprint 2: was its own local in-memory Map, redundant with (and slightly
+ * different from) lib/rateLimit.ts's checkRateLimit — two implementations of
+ * the same concept, found during the sprint's inspection pass. Consolidated
+ * onto the Postgres-backed limiter (lib/rateLimitDb.ts) so this survives a
+ * deploy instead of resetting every time, and gained an IP layer it didn't
+ * have before — email-only meant one caller could flood many different
+ * addresses at will, since no single address ever hit its own cap.
  */
 
 import { NextResponse } from 'next/server';
 import { pgPool }       from '@/lib/prisma';
 import { sendMail }     from '@/lib/email';
+import { checkRateLimitDb, hashRateLimitIdentifier } from '@/lib/rateLimitDb';
+import { getTrustedClientIp } from '@/lib/clientIp';
 
-// ── Rate limiting (in-memory, abuse prevention only) ────────────────────────
-const rates = new Map<string, { count: number; windowEnd: number }>();
-function checkRate(email: string): boolean {
-  const now = Date.now();
-  const r   = rates.get(email);
-  if (!r || now > r.windowEnd) { rates.set(email, { count: 1, windowEnd: now + 15 * 60 * 1000 }); return true; }
-  if (r.count >= 3) return false;
-  r.count += 1;
-  return true;
-}
+const OTP_SEND_MAX_PER_EMAIL = 3;
+const OTP_SEND_MAX_PER_IP    = 20;
+const OTP_SEND_WINDOW_MS     = 15 * 60 * 1000;
 
 function generateCode(): string {
   const arr = new Uint32Array(1);
@@ -42,7 +44,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Please enter a valid email address.' }, { status: 400 });
   }
 
-  if (!checkRate(email)) {
+  // Post-Sprint-2 Revision 1: X-Real-IP (Railway's trusted header) preferred
+  // over the caller-influenceable X-Forwarded-For — see lib/clientIp.ts. No
+  // trusted IP at all → skip the IP-layer check for this request rather than
+  // share one "unknown" bucket across every such caller.
+  const ip = getTrustedClientIp(req);
+  const [emailLimit, ipLimit] = await Promise.all([
+    // Hashed — see lib/rateLimitDb.ts's hashRateLimitIdentifier doc comment.
+    checkRateLimitDb(`otp-send-email:${hashRateLimitIdentifier(email)}`, OTP_SEND_MAX_PER_EMAIL, OTP_SEND_WINDOW_MS),
+    ip ? checkRateLimitDb(`otp-send-ip:${ip}`, OTP_SEND_MAX_PER_IP, OTP_SEND_WINDOW_MS) : Promise.resolve({ allowed: true, remaining: OTP_SEND_MAX_PER_IP, resetInSeconds: 0 }),
+  ]);
+  if (!emailLimit.allowed || !ipLimit.allowed) {
     return NextResponse.json(
       { error: 'Too many codes sent. Please wait 15 minutes before trying again.' },
       { status: 429 },

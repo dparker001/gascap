@@ -3,6 +3,7 @@
 import { useSession } from 'next-auth/react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from '@/contexts/LanguageContext';
+import { hasLifetimeEntitlement } from '@/lib/entitlements';
 
 /**
  * Displays a contextual pill in the hero section:
@@ -17,10 +18,12 @@ import { useTranslation } from '@/contexts/LanguageContext';
  */
 
 interface LivePlanData {
-  plan:           string;
-  isProTrial:     boolean;
-  trialExpiresAt: string | null;
-  stripeInterval: string | null;
+  plan:               string;
+  isProTrial:         boolean;
+  trialExpiresAt:     string | null;
+  stripeInterval:     string | null;
+  revenueCatActive?:  boolean;
+  revenueCatInterval?: string | null;
 }
 
 export default function PlanBadge() {
@@ -41,12 +44,18 @@ export default function PlanBadge() {
   }
 
   // Live server data takes priority over JWT — always reflects current billing state
-  const jwtUser       = session?.user as { plan?: string; isProTrial?: boolean; trialExpiresAt?: string | null; stripeInterval?: string | null } | undefined;
+  const jwtUser       = session?.user as { plan?: string; isProTrial?: boolean; trialExpiresAt?: string | null; stripeInterval?: string | null; revenueCatActive?: boolean; revenueCatInterval?: string | null } | undefined;
   const plan          = liveData?.plan          ?? jwtUser?.plan          ?? null;
   const isProTrial    = liveData?.isProTrial    ?? jwtUser?.isProTrial    ?? false;
   const trialExpiresAt = liveData?.trialExpiresAt ?? jwtUser?.trialExpiresAt ?? null;
   const stripeInterval = liveData?.stripeInterval ?? jwtUser?.stripeInterval ?? null;
-  const isLifetime     = plan === 'pro' && !isProTrial && stripeInterval === 'lifetime';
+  // Post-Revision-2 fix: provider-neutral — an RC-only Lifetime purchaser
+  // still gets the "🏅 Pro Lifetime" pill.
+  const revenueCatActive   = liveData?.revenueCatActive   ?? jwtUser?.revenueCatActive   ?? false;
+  const revenueCatInterval = liveData?.revenueCatInterval ?? jwtUser?.revenueCatInterval ?? null;
+  const isLifetime     = plan === 'pro' && !isProTrial && hasLifetimeEntitlement({
+    stripeInterval, revenueCatActive, revenueCatInterval,
+  });
 
   /* ── Pro Trial ── */
   if (plan === 'pro' && isProTrial && trialExpiresAt) {

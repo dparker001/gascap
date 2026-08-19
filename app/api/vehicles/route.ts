@@ -22,6 +22,8 @@ export async function GET() {
     isProTrial:       user?.isProTrial       ?? false,
     trialExpiresAt:   user?.trialExpiresAt   ?? null,
     stripeInterval:   user?.stripeInterval   ?? null,
+    revenueCatActive:   user?.revenueCatActive   ?? false,
+    revenueCatInterval: user?.revenueCatInterval ?? null,
     fleetCompanyName: user?.fleetCompanyName ?? null,
     fleetLogoUrl:     user?.fleetLogoUrl     ?? null,
     userName:         user?.displayName || user?.name || null,

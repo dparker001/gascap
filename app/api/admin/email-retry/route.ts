@@ -13,11 +13,11 @@ import { prisma }                  from '@/lib/prisma';
 import { sendCampaignEmail }       from '@/lib/emailCampaign';
 import { advanceEmailCampaignStep } from '@/lib/users';
 import { CAMPAIGN_STEP_META }      from '@/lib/emailLog';
+import { sessionHasAdminRole, legacyAdminPasswordOk } from '@/lib/adminAuth';
 
-function auth(req: Request): boolean {
-  const pw = process.env.ADMIN_PASSWORD;
-  if (!pw) return false;
-  return req.headers.get('x-admin-password') === pw;
+async function auth(req: Request): Promise<boolean> {
+  const legacyOk = legacyAdminPasswordOk(req, process.env.ADMIN_PASSWORD);
+  return legacyOk || await sessionHasAdminRole();
 }
 
 // Derive campaign step number from email type string (e.g. 'trial-d2' → 2)
@@ -27,7 +27,7 @@ function stepFromType(type: string): number | null {
 }
 
 export async function POST(req: Request) {
-  if (!auth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!await auth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const body = await req.json() as { logId?: string };
   const { logId } = body;

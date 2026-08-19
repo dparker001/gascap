@@ -18,6 +18,7 @@ on:
     - cron: '5 * * * *'    # rental-return-reminder (hourly — pickup 24h/2h tiers + return check; each tier dedups via its own column)
     - cron: '0 23 * * *'   # streak-reminder       (23:00 UTC / 7 PM ET)
     - cron: '0 17 * * 1'   # digest                (17:00 UTC, Mondays only)
+    - cron: '0 21 * * *'   # cleanup-rate-limits   (21:00 UTC — deletes expired RateLimitCounter rows)
   workflow_dispatch:
     inputs:
       endpoint:
@@ -41,6 +42,7 @@ on:
           - rental-return-reminder
           - streak-reminder
           - digest
+          - cleanup-rate-limits
 
 jobs:
   cron:
@@ -66,6 +68,7 @@ jobs:
             "5 * * * *")   echo "endpoint=rental-return-reminder" >> "$GITHUB_OUTPUT" ;;
             "0 23 * * *")  echo "endpoint=streak-reminder"     >> "$GITHUB_OUTPUT" ;;
             "0 17 * * 1")  echo "endpoint=digest"              >> "$GITHUB_OUTPUT" ;;
+            "0 21 * * *")  echo "endpoint=cleanup-rate-limits" >> "$GITHUB_OUTPUT" ;;
             *)             echo "endpoint=${{ inputs.endpoint }}" >> "$GITHUB_OUTPUT" ;;
           esac
 

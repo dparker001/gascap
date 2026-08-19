@@ -15,15 +15,15 @@
 import { NextResponse }          from 'next/server';
 import { prisma }                from '@/lib/prisma';
 import { sendCampaignEmail }     from '@/lib/emailCampaign';
+import { sessionHasAdminRole, legacyAdminPasswordOk } from '@/lib/adminAuth';
 
-function auth(req: Request): boolean {
-  const pw = process.env.ADMIN_PASSWORD;
-  if (!pw) return false;
-  return req.headers.get('x-admin-password') === pw;
+async function auth(req: Request): Promise<boolean> {
+  const legacyOk = legacyAdminPasswordOk(req, process.env.ADMIN_PASSWORD);
+  return legacyOk || await sessionHasAdminRole();
 }
 
 export async function POST(req: Request) {
-  if (!auth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!await auth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const body = await req.json() as { userIds?: string[]; force?: boolean };
   const { userIds, force = false } = body;

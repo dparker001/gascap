@@ -1,7 +1,10 @@
 # Rate limiting — current state and migration path
 
-**Status: PLANNED (analysis CURRENT).** Hardening sprint 1, 2026-08-18.
-No new infrastructure dependency is proposed for adoption without approval.
+**Status: PARTIALLY IMPLEMENTED.** Sprint 1 (2026-08-18) was analysis only.
+Sprint 2 (2026-08-18) implemented Option A below (PostgreSQL) and applied it
+to the two confirmed real gaps — password reset (had none) and OTP send
+(consolidated off a redundant in-memory implementation). No new
+infrastructure dependency was added.
 
 ---
 
@@ -23,20 +26,34 @@ the concerning part.
 
 ## Coverage audit
 
-| # | Surface | Limited today | Key | Assessment |
-|---|---|---|---|---|
-| 1 | **OTP verify** | ✅ added sprint 1 | email | 5 / 10 min. Was unlimited: a 6-digit code, 10-minute life, and a correct guess mints a session. |
-| 2 | OTP send | ✅ pre-existing | **email only** | Corrected 2026-08-18 — an earlier revision of this row said "email + IP"; `app/api/otp/send/route.ts` (`checkRate(email)`) keys solely on the address. No IP component exists. Same targeted-lockout trade-off as OTP verify (#1), not currently mitigated by an IP layer. |
-| 3 | Password sign-in | ✅ pre-existing | IP | 15 / 15 min (`lib/auth.ts`). IP-keyed, so rotation defeats it; acceptable given bcrypt cost. |
-| 4 | Password reset | ⚠️ verify | — | Confirm before Sprint 2; token-based, so exposure is lower. |
-| 5 | Registration | ✅ pre-existing | IP | Adequate. |
-| 6 | AI endpoints | ⚠️ partial | plan gate | Open-ended questions are Pro-gated, which bounds cost by subscription rather than by rate. A compromised Pro account could still run up Anthropic spend. |
-| 7 | Receipt / gauge / VIN scan | ⚠️ partial | plan gate | Same as above — these spend real tokens per call. |
-| 8 | Referral / giveaway | ⚠️ verify | — | Compliance-sensitive: entry inflation is a sweepstakes-integrity issue, not just abuse. Audit in Sprint 2. |
+| # | Surface | Limited today | Key | Backing store | Assessment |
+|---|---|---|---|---|---|
+| 1 | **OTP verify** | ✅ | email | in-memory (Sprint 1) | 5 / 10 min. Was unlimited: a 6-digit code, 10-minute life, and a correct guess mints a session. Not moved to Postgres this sprint — see note below. |
+| 2 | OTP send | ✅ | email **+ IP** (Sprint 2) | **Postgres** | Was its own separate in-memory implementation (redundant with `lib/rateLimit.ts`), email-only. Consolidated onto `checkRateLimitDb`, gained an IP layer — email-only meant one caller could flood many different addresses since no single one ever hit its own cap. |
+| 3 | Password sign-in | ✅ | IP | in-memory (pre-existing) | 15 / 15 min (`lib/auth.ts`). IP-keyed, so rotation defeats it; acceptable given bcrypt cost. |
+| 4 | **Password reset** | ✅ **added Sprint 2** | email **+ IP** | **Postgres** | Confirmed to have NO rate limiting at all before Sprint 2's inspection. 3/email + 10/IP per hour, matching the reset token's own 1-hour expiry. Rate-limited requests still return the same generic `{ok:true}` as a real send — a different response shape on rate-limit would itself be an enumeration signal. |
+| 5 | Registration | ✅ | IP | in-memory (pre-existing) | Adequate. |
+| 6 | AI endpoints | ⚠️ partial | plan gate | — | Open-ended questions are Pro-gated, which bounds cost by subscription rather than by rate. A compromised Pro account could still run up Anthropic spend. **Deferred to Sprint 3** — see note below. |
+| 7 | Receipt / gauge / VIN scan | ⚠️ partial | plan gate | — | Same as above — these spend real tokens per call. **Deferred to Sprint 3.** |
+| 8 | Referral / giveaway | ⚠️ not audited | — | — | Compliance-sensitive: entry inflation is a sweepstakes-integrity issue, not just abuse. **Deferred to Sprint 3** — not touched this sprint; scoping it properly (which endpoints, what abuse pattern, what limit is even correct for a sweepstakes) is its own piece of work, not something to bolt on at the end of an already-large sprint. |
 
-Priorities 6–8 are the meaningful gaps. All three are **cost or integrity**
-risks rather than account-takeover risks, which is why sprint 1 addressed #1
-first.
+### Why #6–8 were not done this sprint
+
+Sprint 2 already carried admin-auth migration, RevenueCat idempotency, and
+entitlement reconciliation — all higher-consequence than these three. Rather
+than rush a mechanical sweep across endpoints this pass didn't otherwise touch
+(and risk a shallow, box-checking implementation), #6–8 are named explicitly
+as deferred rather than silently left out. `checkRateLimitDb` is a stable,
+tested primitive now — applying it to these three is mechanical work for
+whoever picks it up next, not a design problem.
+
+### Why OTP verify (#1) stayed on the in-memory limiter
+
+Deliberately not moved to Postgres this sprint. It already works — Sprint 1
+closed the actual vulnerability (unlimited guessing) — and moving a working
+control for infrastructure-purity reasons alone is exactly the kind of churn
+`/CLAUDE.md` and this sprint's brief both warn against. Worth doing eventually
+for consistency, not urgent.
 
 ## Why not Redis this sprint
 
@@ -49,12 +66,13 @@ The brief said not to over-engineer, and it is right:
 
 ## Migration path, in order of preference
 
-**Option A — PostgreSQL (recommended first step).** A `RateLimit` table keyed
-`(key, windowStart)` with an atomic `INSERT … ON CONFLICT DO UPDATE … RETURNING
-count`. No new dependency: the database is already there, already backed up,
-already survives deploys. Slower than Redis, but these are auth and AI paths
-measured in requests per minute, not per millisecond. **Fixes both current
-weaknesses (deploy resets, multi-instance) with infrastructure already owned.**
+**Option A — PostgreSQL. IMPLEMENTED Sprint 2** as `lib/rateLimitDb.ts` +
+the `RateLimitCounter` table (additive, see
+`docs/migrations/2026-08-sprint2-schema.sql`). `checkRateLimitDb(key, limit,
+windowMs)` — same signature shape as the in-memory `checkRateLimit`, on
+purpose, so callers read identically regardless of which backs them. Applied
+to OTP send and password reset (§ above); #6–8 are the remaining surfaces to
+point at it.
 
 **Option B — Upstash Redis.** Serverless, HTTP, free tier. Correct if limits
 ever need sub-millisecond checks or very high volume. Adds a vendor.

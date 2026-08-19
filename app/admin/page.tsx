@@ -134,23 +134,18 @@ function planBadge(u: AdminUser): { label: string; cls: string } {
   return                         { label: 'PRO',      cls: 'bg-green-100 text-green-700' };
 }
 
-const SESSION_KEY = 'gascap_admin_session';
-const SESSION_TTL = 8 * 60 * 60 * 1000; // 8 hours — survives tab closes, expires after a full work day
-
-function saveSession(pw: string) {
-  localStorage.setItem(SESSION_KEY, JSON.stringify({ pw, ts: Date.now() }));
-}
+// Sprint 2 hardening: the raw admin password is no longer persisted anywhere
+// in the browser — not localStorage, not sessionStorage. It previously lived
+// in localStorage for up to 8 hours as a permanent, XSS-readable credential.
+// It now lives only in React state for the lifetime of the tab; a reload
+// means re-entering it, UNLESS the signed-in NextAuth session already has
+// role='admin' in the database (see lib/adminAuth.ts) — in which case the
+// silent session check below logs the admin in with no password at all,
+// which is the actual end-state this migration is working toward.
 function clearSession() {
-  localStorage.removeItem(SESSION_KEY);
-}
-function loadSession(): string | null {
-  try {
-    const raw = localStorage.getItem(SESSION_KEY);
-    if (!raw) return null;
-    const { pw, ts } = JSON.parse(raw) as { pw: string; ts: number };
-    if (Date.now() - ts > SESSION_TTL) { clearSession(); return null; }
-    return pw;
-  } catch { return null; }
+  // Best-effort cleanup of the OLD storage key from before this migration,
+  // so a browser that still has it from an earlier visit gets it wiped.
+  try { localStorage.removeItem('gascap_admin_session'); } catch { /* ignore */ }
 }
 
 export default function AdminPage() {
@@ -230,8 +225,11 @@ export default function AdminPage() {
   const [deleteReason,     setDeleteReason]     = useState('user_request');
   const [deleteNotes,      setDeleteNotes]      = useState('');
 
-  const load = useCallback(async (pw: string) => {
-    setLoading(true);
+  const load = useCallback(async (pw: string, silent = false) => {
+    // `silent` covers the on-mount session probe: a 401 there means "not
+    // signed in with an admin session yet," not "you typed the wrong
+    // password" — the user hasn't typed anything, so no error should show.
+    if (!silent) setLoading(true);
     const [usersRes, fbRes, emailMapRes, giftsRes] = await Promise.all([
       fetch('/api/admin/users',                       { headers: { 'x-admin-password': pw } }),
       fetch('/api/admin/feedback',                    { headers: { 'x-admin-password': pw } }),
@@ -239,7 +237,11 @@ export default function AdminPage() {
       fetch('/api/admin/gifts',                       { headers: { 'x-admin-password': pw } }),
     ]);
     setLoading(false);
-    if (usersRes.status === 401) { setAuthErr('Wrong password.'); clearSession(); return; }
+    if (usersRes.status === 401) {
+      if (!silent) setAuthErr('Wrong password.');
+      clearSession();
+      return;
+    }
     const usersData = await usersRes.json() as { users: AdminUser[] };
     setUsers(usersData.users);
     if (giftsRes.ok) {
@@ -263,15 +265,22 @@ export default function AdminPage() {
       setUserEmailMap(map);
     }
     setSavedPw(pw);
-    saveSession(pw);
     setAuthed(true);
     setAuthErr('');
   }, []);
 
-  // Auto-login from sessionStorage on mount
+  // Silent session-based login on mount. If Don is already signed into
+  // gascap.app with his admin-role account, this succeeds with an empty
+  // password — the server's dual-auth check (lib/adminAuth.ts) accepts a
+  // valid admin session independently of the x-admin-password header, so an
+  // empty header here still authenticates via the NextAuth session cookie
+  // that rides along on every same-origin fetch automatically. No prompt is
+  // shown in that case. If it 401s (no session, or a non-admin session), the
+  // password form below is shown exactly as before — nothing is broken for
+  // anyone not yet migrated to the session path.
   useEffect(() => {
-    const pw = loadSession();
-    if (pw) load(pw);
+    clearSession(); // one-time cleanup of the old localStorage key, harmless if absent
+    load('', /* silent */ true).catch(() => { /* stay on the password form, no error shown */ });
   }, [load]);
 
   useEffect(() => {
