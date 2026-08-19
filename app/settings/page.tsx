@@ -10,6 +10,7 @@ import { useGarageDoorPrefs, type DoorStyle, type DoorDirection } from '@/hooks/
 import { useTranslation } from '@/contexts/LanguageContext';
 import { useIsNative, useNativePlatform } from '@/hooks/useIsNative';
 import DeviceCountNotice from '@/components/DeviceCountNotice';
+import { resolvePlanCardCta, resolvePlanLabel } from '@/lib/planDisplay';
 
 interface ReferralSummary {
   code:            string;
@@ -394,10 +395,14 @@ export default function SettingsPage() {
   const lifetimePerksUntil  = giveaway?.lifetimePerksUntil ?? null;
   const canUploadPhoto = plan === 'pro' || plan === 'fleet' || isProTrial;
 
-  const planConfig = isProLifetime
+  const planCardCta = resolvePlanCardCta({ plan, isProTrial, isProLifetime, isIos });
+  const planLabelKind = resolvePlanLabel({ plan, isProTrial, isProLifetime, isProAnnual });
+  const planConfig = planLabelKind === 'lifetime'
     ? { label: t.settings.planProLifetimeLabel, bg: 'bg-teal-50', text: 'text-teal-700', border: 'border-teal-200' }
-    : isProAnnual
+    : planLabelKind === 'annual'
     ? { label: 'Pro Annual', bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' }
+    : planLabelKind === 'trial'
+    ? { label: t.settings.planProTrialLabel, bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' }
     : ({
         free:  { label: t.settings.planFreeLabel,  bg: 'bg-slate-100',   text: 'text-slate-600', border: 'border-slate-200' },
         pro:   { label: t.settings.planProLabel,   bg: 'bg-amber-50',    text: 'text-amber-700', border: 'border-amber-200' },
@@ -1193,7 +1198,27 @@ export default function SettingsPage() {
             </>
           )}
 
-          {plan === 'pro' && !isProLifetime && (
+          {/* Pro Trial on iOS: must NOT show "manage your subscription in iPhone
+              Settings" — there is no Apple subscription to manage yet. Route to
+              the existing /upgrade Apple IAP flow instead. Web and Android trial
+              behavior is unchanged (out of scope for this fix). */}
+          {planCardCta === 'ios-trial-upgrade' && (
+            <>
+              <p className="text-sm text-slate-500">
+                {t.settings.proTrialDesc}
+              </p>
+              <Link
+                href="/upgrade"
+                className="flex items-center justify-between w-full py-3 px-4 rounded-2xl
+                           bg-amber-500 hover:bg-amber-400 text-white font-bold text-sm transition-colors"
+              >
+                <span>{t.settings.upgradeToProBtn}</span>
+                <span>{t.settings.proPriceArrow}</span>
+              </Link>
+            </>
+          )}
+
+          {(planCardCta === 'apple-manage' || planCardCta === 'other-pro-block') && (
             <>
               <p className="text-sm text-slate-500">
                 {t.settings.proDesc}
@@ -1203,7 +1228,7 @@ export default function SettingsPage() {
                   <span>🏅</span><span>+10 bonus giveaway entries per draw period</span>
                 </div>
               )}
-              {isIos ? (
+              {planCardCta === 'apple-manage' ? (
                 <p className="text-center text-[11px] text-slate-400">
                   {t.settings.manageSubApple}
                 </p>
