@@ -17,6 +17,7 @@ const setUserPlan               = vi.fn(async () => {});
 const findById                  = vi.fn(async (_id: string) => undefined as unknown);
 const findByEmail               = vi.fn(async (_e: string) => undefined as unknown);
 const revokeRevenueCatEntitlement = vi.fn(async (): Promise<{ pro: boolean; permanent: boolean; sources: string[]; trial: boolean; effectiveInterval: string | null }> => ({ pro: false, permanent: false, sources: [], trial: false, effectiveInterval: null }));
+const syncRevenueCatEntitlementFromProvider = vi.fn(async (): Promise<{ pro: boolean; permanent: boolean; sources: string[]; trial: boolean; effectiveInterval: string | null }> => ({ pro: false, permanent: false, sources: [], trial: false, effectiveInterval: null }));
 
 vi.mock('@/lib/users', () => ({
   setUserPlan:        (...a: unknown[]) => setUserPlan(...(a as [])),
@@ -24,6 +25,12 @@ vi.mock('@/lib/users', () => ({
   findByEmail:        (e: string) => findByEmail(e),
   enrollPaidCampaign: vi.fn(async () => {}),
   revokeRevenueCatEntitlement: (...a: unknown[]) => revokeRevenueCatEntitlement(...(a as [])),
+  syncRevenueCatEntitlementFromProvider: (...a: unknown[]) => syncRevenueCatEntitlementFromProvider(...(a as [])),
+}));
+
+const fetchAuthoritativeRevenueCatState = vi.fn();
+vi.mock('@/lib/revenueCatApi', () => ({
+  fetchAuthoritativeRevenueCatState: (id: string) => fetchAuthoritativeRevenueCatState(id),
 }));
 const userUpdateMany = vi.fn(async () => ({ count: 1 })); // getaway-email claim always "wins" unless a test overrides it
 vi.mock('@/lib/prisma', () => ({ prisma: { user: { updateMany: (...a: unknown[]) => userUpdateMany(...(a as [])) } } }));
@@ -82,6 +89,8 @@ beforeEach(() => {
   findById.mockResolvedValue(undefined);
   findByEmail.mockResolvedValue(undefined);
   revokeRevenueCatEntitlement.mockResolvedValue({ pro: false, permanent: false, sources: [], trial: false, effectiveInterval: null });
+  syncRevenueCatEntitlementFromProvider.mockResolvedValue({ pro: true, permanent: false, sources: ['revenuecat'], trial: false, effectiveInterval: 'monthly' });
+  fetchAuthoritativeRevenueCatState.mockResolvedValue({ customerFound: true, active: true, interval: 'monthly', productId: 'gascap_pro_monthly', customerId: 'rc_1' });
 });
 
 // ── 1–3: authentication ────────────────────────────────────────────────────
@@ -232,31 +241,65 @@ describe('entitlement transitions', () => {
     expect(revokeRevenueCatEntitlement).not.toHaveBeenCalled();
   });
 
-  it('11c. post-Revision-2: CANCELLATION with cancel_reason=CUSTOMER_SUPPORT (a support refund) DOES revoke immediately', async () => {
-    // RevenueCat reports a support-initiated refund of a subscription/
-    // non-renewing purchase through CANCELLATION, not a distinct lifecycle
-    // REFUND event — this must not be treated the same as a plain
-    // auto-renew-off cancellation.
+  it('11c. post-Revision-4: CANCELLATION with cancel_reason=CUSTOMER_SUPPORT syncs against AUTHORITATIVE RC state, not a blind revoke', async () => {
+    // RevenueCat's docs explicitly warn that CUSTOMER_SUPPORT does not
+    // necessarily mean the subscription was actually deactivated — check
+    // current status rather than assume revocation.
     findById.mockResolvedValue({ ...USER, plan: 'pro' });
     const res = await post({ event: { type: 'CANCELLATION', app_user_id: 'user-1', cancel_reason: 'CUSTOMER_SUPPORT', id: 'evt_11c' } }, SECRET);
     expect(res.status).toBe(200);
-    expect(revokeRevenueCatEntitlement).toHaveBeenCalledWith('user-1');
+    expect(syncRevenueCatEntitlementFromProvider).toHaveBeenCalledWith('user-1');
+    expect(revokeRevenueCatEntitlement).not.toHaveBeenCalled(); // no longer a blind revoke
   });
 
-  it('11d. CANCELLATION with no cancel_reason at all defaults to the safe no-op (does not revoke)', async () => {
+  it('11c2. CUSTOMER_SUPPORT + RC lookup confirms STILL ACTIVE => entitlement remains (this is exactly what syncRevenueCatEntitlementFromProvider does internally, asserted at the route level via the mock)', async () => {
+    findById.mockResolvedValue({ ...USER, plan: 'pro' });
+    syncRevenueCatEntitlementFromProvider.mockResolvedValue({ pro: true, permanent: false, sources: ['revenuecat'], trial: false, effectiveInterval: 'monthly' });
+    const res = await post({ event: { type: 'CANCELLATION', app_user_id: 'user-1', cancel_reason: 'CUSTOMER_SUPPORT', id: 'evt_11c2' } }, SECRET);
+    expect(res.status).toBe(200);
+    expect(syncRevenueCatEntitlementFromProvider).toHaveBeenCalledWith('user-1');
+  });
+
+  it('11c3. CUSTOMER_SUPPORT + RC lookup confirms inactive, but a surviving Stripe Lifetime keeps the user Pro — asserted via the sync function\'s own return, which the route trusts without a second downgrade path', async () => {
+    findById.mockResolvedValue({ ...USER, plan: 'pro' });
+    syncRevenueCatEntitlementFromProvider.mockResolvedValue({ pro: true, permanent: true, sources: ['stripe_or_gift_lifetime'], trial: false, effectiveInterval: 'lifetime' });
+    const res = await post({ event: { type: 'CANCELLATION', app_user_id: 'user-1', cancel_reason: 'CUSTOMER_SUPPORT', id: 'evt_11c3' } }, SECRET);
+    expect(res.status).toBe(200);
+    expect(syncRevenueCatEntitlementFromProvider).toHaveBeenCalledWith('user-1');
+    expect(setUserPlan).not.toHaveBeenCalled(); // the route itself never second-guesses the sync's decision
+  });
+
+  it('11c4. CUSTOMER_SUPPORT + provider lookup FAILS => the event 500s and is marked failed, no guessed mutation', async () => {
+    findById.mockResolvedValue({ ...USER, plan: 'pro' });
+    syncRevenueCatEntitlementFromProvider.mockRejectedValue(new Error('RevenueCat lookup failed'));
+    const res = await post({ event: { type: 'CANCELLATION', app_user_id: 'user-1', cancel_reason: 'CUSTOMER_SUPPORT', id: 'evt_11c4' } }, SECRET);
+    expect(res.status).toBe(500);
+    expect(markFailed).toHaveBeenCalledWith('evt_11c4', expect.any(String), expect.anything());
+    expect(markProcessed).not.toHaveBeenCalled();
+  });
+
+  it('11d. CANCELLATION with no cancel_reason at all defaults to the safe no-op (does not revoke, does not sync)', async () => {
     findById.mockResolvedValue({ ...USER, plan: 'pro' });
     const res = await post({ event: { type: 'CANCELLATION', app_user_id: 'user-1', id: 'evt_11d' } }, SECRET);
     expect(res.status).toBe(200);
     expect(revokeRevenueCatEntitlement).not.toHaveBeenCalled();
+    expect(syncRevenueCatEntitlementFromProvider).not.toHaveBeenCalled();
   });
 
-  it('11e. REFUND_REVERSED restores the entitlement via the grant path, but is NOT treated as a first-time grant', async () => {
+  it('11e. REFUND_REVERSED syncs against authoritative RC state (not product_id) via the same sync helper, and is NOT treated as a first-time grant', async () => {
     findById.mockResolvedValue(USER);
     const res = await post({ event: { type: 'REFUND_REVERSED', app_user_id: 'user-1', product_id: 'gascap_pro_monthly', id: 'evt_11e' } }, SECRET);
     expect(res.status).toBe(200);
-    expect(setUserPlan).toHaveBeenCalled();
-    const args = JSON.stringify(setUserPlan.mock.calls[0]);
-    expect(args).toContain('monthly');
+    expect(syncRevenueCatEntitlementFromProvider).toHaveBeenCalledWith('user-1');
+    expect(setUserPlan).not.toHaveBeenCalled(); // no welcome-path grant call from the route itself
+  });
+
+  it('11e2. REFUND_REVERSED + provider lookup fails => 500, marked failed, no guessed mutation', async () => {
+    findById.mockResolvedValue(USER);
+    syncRevenueCatEntitlementFromProvider.mockRejectedValue(new Error('RevenueCat lookup failed'));
+    const res = await post({ event: { type: 'REFUND_REVERSED', app_user_id: 'user-1', product_id: 'gascap_pro_monthly', id: 'evt_11e2' } }, SECRET);
+    expect(res.status).toBe(500);
+    expect(markProcessed).not.toHaveBeenCalled();
   });
 
   it('11f. PRODUCT_CHANGE is ignored entirely — no grant/revoke, product_id may not be the effective product yet', async () => {
@@ -268,18 +311,113 @@ describe('entitlement transitions', () => {
     expect(setUserPlan).not.toHaveBeenCalled();
   });
 
-  it('12. TRANSFER grants a conservative default (monthly), using the REAL documented payload shape (transferred_to, not app_user_id)', async () => {
-    findById.mockImplementation(async (id: string) => (id === 'new-identity' ? USER : undefined));
+  it('12. TRANSFER — monthly transfer: source loses RC, destination gets RC monthly (real transferred_to shape, authoritative state, no guessing)', async () => {
+    const SOURCE = { id: 'source-user', email: 'source@example.com', name: 'Source', plan: 'pro' };
+    const DEST   = { id: 'dest-user',   email: 'dest@example.com',   name: 'Dest',   plan: 'free' };
+    findById.mockImplementation(async (id: string) => (id === 'old-identity' ? SOURCE : id === 'new-identity' ? DEST : undefined));
+    fetchAuthoritativeRevenueCatState.mockImplementation(async (id: string) =>
+      id === 'old-identity'
+        ? { customerFound: true, active: false, interval: null, productId: null, customerId: 'rc_old' }   // source lost it
+        : { customerFound: true, active: true, interval: 'monthly', productId: 'gascap_pro_monthly', customerId: 'rc_new' }, // destination has it
+    );
     const res = await post({ event: { type: 'TRANSFER', transferred_from: ['old-identity'], transferred_to: ['new-identity'], id: 'evt_12' } }, SECRET);
     expect(res.status).toBe(200);
-    expect(setUserPlan).toHaveBeenCalled();
-    const args = JSON.stringify(setUserPlan.mock.calls[0]);
-    // Must NOT guess lifetime from an unreliable TRANSFER payload.
-    expect(args).toContain('monthly');
-    expect(args).not.toContain('lifetime');
+    // Destination gets the EXACT authoritative interval — never guessed.
+    expect(setUserPlan).toHaveBeenCalledWith('dest-user', 'pro', expect.objectContaining({ revenueCat: expect.objectContaining({ interval: 'monthly' }) }));
+    // Source's RC contribution is cleared via the same reconciling revoke used elsewhere.
+    expect(revokeRevenueCatEntitlement).toHaveBeenCalledWith('source-user');
   });
 
-  it('12d. TRANSFER with no transferred_to at all is unmatched, not a crash', async () => {
+  it('12b. TRANSFER — Lifetime transfer: source loses RC, destination gets RC lifetime EXACTLY, never guessed as monthly', async () => {
+    const SOURCE = { id: 'source-user', email: 'source@example.com', name: 'Source', plan: 'pro' };
+    const DEST   = { id: 'dest-user',   email: 'dest@example.com',   name: 'Dest',   plan: 'free' };
+    findById.mockImplementation(async (id: string) => (id === 'old-identity' ? SOURCE : id === 'new-identity' ? DEST : undefined));
+    fetchAuthoritativeRevenueCatState.mockImplementation(async (id: string) =>
+      id === 'old-identity'
+        ? { customerFound: true, active: false, interval: null, productId: null, customerId: 'rc_old' }
+        : { customerFound: true, active: true, interval: 'lifetime', productId: 'gascap_pro_lifetime', customerId: 'rc_new' },
+    );
+    const res = await post({ event: { type: 'TRANSFER', transferred_from: ['old-identity'], transferred_to: ['new-identity'], id: 'evt_12b' } }, SECRET);
+    expect(res.status).toBe(200);
+    expect(setUserPlan).toHaveBeenCalledWith('dest-user', 'pro', expect.objectContaining({ revenueCat: expect.objectContaining({ interval: 'lifetime' }) }));
+  });
+
+  it('12c. TRANSFER — source ALSO has Stripe Lifetime: RC contribution removed, but revokeRevenueCatEntitlement (which preserves surviving sources) is still what\'s called, never a bare downgrade', async () => {
+    const SOURCE = { id: 'source-user', email: 'source@example.com', name: 'Source', plan: 'pro' };
+    const DEST   = { id: 'dest-user',   email: 'dest@example.com',   name: 'Dest',   plan: 'free' };
+    findById.mockImplementation(async (id: string) => (id === 'old-identity' ? SOURCE : id === 'new-identity' ? DEST : undefined));
+    fetchAuthoritativeRevenueCatState.mockImplementation(async (id: string) =>
+      id === 'old-identity'
+        ? { customerFound: true, active: false, interval: null, productId: null, customerId: 'rc_old' }
+        : { customerFound: true, active: true, interval: 'monthly', productId: 'gascap_pro_monthly', customerId: 'rc_new' },
+    );
+    revokeRevenueCatEntitlement.mockResolvedValue({ pro: true, permanent: true, sources: ['stripe_or_gift_lifetime'], trial: false, effectiveInterval: 'lifetime' });
+    const res = await post({ event: { type: 'TRANSFER', transferred_from: ['old-identity'], transferred_to: ['new-identity'], id: 'evt_12c' } }, SECRET);
+    expect(res.status).toBe(200);
+    expect(revokeRevenueCatEntitlement).toHaveBeenCalledWith('source-user');
+    // The route trusts revokeRevenueCatEntitlement's own surviving-source logic — it never independently touches source-user's plan.
+    expect(setUserPlan).not.toHaveBeenCalledWith('source-user', expect.anything(), expect.anything());
+  });
+
+  it('12e. TRANSFER — destination already has its own Stripe subscription: setUserPlan is still called with the RC grant, ending with multiple valid sources (resolver-level concern, not this route\'s)', async () => {
+    const DEST = { id: 'dest-user', email: 'dest@example.com', name: 'Dest', plan: 'pro' };
+    findById.mockImplementation(async (id: string) => (id === 'new-identity' ? DEST : undefined));
+    fetchAuthoritativeRevenueCatState.mockResolvedValue({ customerFound: true, active: true, interval: 'monthly', productId: 'gascap_pro_monthly', customerId: 'rc_new' });
+    const res = await post({ event: { type: 'TRANSFER', transferred_to: ['new-identity'], id: 'evt_12e' } }, SECRET);
+    expect(res.status).toBe(200);
+    expect(setUserPlan).toHaveBeenCalledWith('dest-user', 'pro', expect.objectContaining({ revenueCat: expect.objectContaining({ active: true }) }));
+  });
+
+  it('12f. TRANSFER — multiple transferred_from/to identities: every resolvable GasCap identity is reconciled', async () => {
+    const SOURCE1 = { id: 'source-1', email: 's1@example.com', name: 'S1', plan: 'pro' };
+    const SOURCE2 = { id: 'source-2', email: 's2@example.com', name: 'S2', plan: 'pro' };
+    const DEST    = { id: 'dest-1',   email: 'd1@example.com', name: 'D1', plan: 'free' };
+    findById.mockImplementation(async (id: string) => {
+      if (id === 'old-1') return SOURCE1;
+      if (id === 'old-2') return SOURCE2;
+      if (id === 'new-1') return DEST;
+      return undefined;
+    });
+    fetchAuthoritativeRevenueCatState.mockImplementation(async (id: string) =>
+      id === 'new-1'
+        ? { customerFound: true, active: true, interval: 'monthly', productId: 'gascap_pro_monthly', customerId: 'rc_new' }
+        : { customerFound: true, active: false, interval: null, productId: null, customerId: `rc_${id}` },
+    );
+    const res = await post({ event: { type: 'TRANSFER', transferred_from: ['old-1', 'old-2'], transferred_to: ['new-1'], id: 'evt_12f' } }, SECRET);
+    expect(res.status).toBe(200);
+    expect(revokeRevenueCatEntitlement).toHaveBeenCalledWith('source-1');
+    expect(revokeRevenueCatEntitlement).toHaveBeenCalledWith('source-2');
+    expect(setUserPlan).toHaveBeenCalledWith('dest-1', 'pro', expect.anything());
+  });
+
+  it('12g. TRANSFER — an RC API failure BEFORE any mutation => no partial guessed update, event 500s and is marked failed', async () => {
+    const DEST = { id: 'dest-user', email: 'dest@example.com', name: 'Dest', plan: 'free' };
+    findById.mockImplementation(async (id: string) => (id === 'new-identity' ? DEST : undefined));
+    fetchAuthoritativeRevenueCatState.mockRejectedValue(new Error('RevenueCat API unreachable'));
+    const res = await post({ event: { type: 'TRANSFER', transferred_to: ['new-identity'], id: 'evt_12g' } }, SECRET);
+    expect(res.status).toBe(500);
+    expect(setUserPlan).not.toHaveBeenCalled(); // gather-before-mutate: the failed lookup happens before any write
+    expect(markProcessed).not.toHaveBeenCalled();
+  });
+
+  it('12h. TRANSFER — a lookup failure for the SECOND identity still prevents the FIRST from being left in a guessed state (gather-all-before-mutate)', async () => {
+    const SOURCE = { id: 'source-user', email: 'source@example.com', name: 'Source', plan: 'pro' };
+    const DEST   = { id: 'dest-user',   email: 'dest@example.com',   name: 'Dest',   plan: 'free' };
+    findById.mockImplementation(async (id: string) => (id === 'old-identity' ? SOURCE : id === 'new-identity' ? DEST : undefined));
+    fetchAuthoritativeRevenueCatState.mockImplementation(async (id: string) => {
+      if (id === 'old-identity') return { customerFound: true, active: false, interval: null, productId: null, customerId: 'rc_old' };
+      throw new Error('lookup failed for the destination');
+    });
+    const res = await post({ event: { type: 'TRANSFER', transferred_from: ['old-identity'], transferred_to: ['new-identity'], id: 'evt_12h' } }, SECRET);
+    expect(res.status).toBe(500);
+    // Neither side was mutated — the source's clear never happened either,
+    // even though ITS lookup succeeded, because mutation only starts after
+    // ALL lookups succeed.
+    expect(setUserPlan).not.toHaveBeenCalled();
+    expect(revokeRevenueCatEntitlement).not.toHaveBeenCalled();
+  });
+
+  it('12d. TRANSFER with no resolvable identities at all is unmatched, not a crash', async () => {
     findById.mockResolvedValue(undefined);
     findByEmail.mockResolvedValue(undefined);
     const res = await post({ event: { type: 'TRANSFER', transferred_from: ['old-identity'], id: 'evt_12d' } }, SECRET);

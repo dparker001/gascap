@@ -1,124 +1,192 @@
 /**
- * Post-Revision-2 P0 — historical RevenueCat entitlement reconciliation.
- * Tests that pre-Sprint-2 rows (where an RC grant may have historically
- * written into stripeInterval, and revenueCatActive/Interval default to
- * false/null regardless of the user's real current state) classify and
- * reconcile correctly, and — critically — that ambiguous rows are NEVER
- * guessed at or downgraded.
+ * Post-Sprint-2 Revision 4 P0 — historical RevenueCat entitlement
+ * reconciliation. Covers: multi-source RC reconciliation (RC lookup is now
+ * ALWAYS attempted, not skipped when internal evidence exists), broadened
+ * candidate scope (not gated on current plan), verified Stripe-Lifetime
+ * evidence (no more customerId-alone heuristic), confirmed legacy RC
+ * contamination detection + proposed cleanup, and plan-repair proposals.
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { classifyProvenance } from '../lib/revenueCatHistoricalReconciliation';
+import type { AuthoritativeRevenueCatState } from '../lib/revenueCatApi';
+
+function rc(overrides: Partial<AuthoritativeRevenueCatState>): AuthoritativeRevenueCatState {
+  return { customerFound: true, active: false, interval: null, productId: null, customerId: 'cust_1', ...overrides };
+}
 
 describe('classifyProvenance — pure classification from evidence', () => {
-  it('confirmed_stripe_subscription — a real stripeSubscriptionId is decisive', () => {
+  it('confirmed_stripe_subscription — real stripeSubscriptionId, no RC', () => {
     const r = classifyProvenance({
       stripeInterval: 'monthly', stripeSubscriptionId: 'sub_123', stripeCustomerId: 'cus_123',
-      ambassadorProForLife: false, hasRedeemedGift: false, rc: null,
+      ambassadorProForLife: false, hasRedeemedGift: false, stripeLifetimeVerified: false, rc: null,
     });
     expect(r.classification).toBe('confirmed_stripe_subscription');
-    expect(r.proposedRevenueCatActive).toBeNull(); // no RC field change proposed
+    expect(r.proposedRevenueCatActive).toBeNull();
+    expect(r.proposedClearLegacyStripeInterval).toBe(false);
   });
 
-  it('confirmed_stripe_lifetime — customer id, no subscription, no gift, lifetime interval', () => {
+  it('confirmed_stripe_lifetime — ONLY when Stripe purchase is VERIFIED, not merely inferred from customerId', () => {
     const r = classifyProvenance({
       stripeInterval: 'lifetime', stripeSubscriptionId: null, stripeCustomerId: 'cus_456',
-      ambassadorProForLife: false, hasRedeemedGift: false, rc: null,
+      ambassadorProForLife: false, hasRedeemedGift: false, stripeLifetimeVerified: true, rc: null,
     });
     expect(r.classification).toBe('confirmed_stripe_lifetime');
   });
 
-  it('confirmed_gifted_lifetime — a redeemed Gift record explains it, even with a Stripe customer id present', () => {
+  it('customerId + stripeInterval=lifetime WITHOUT verification is NOT confirmed_stripe_lifetime — the exact heuristic the review rejected', () => {
+    const r = classifyProvenance({
+      stripeInterval: 'lifetime', stripeSubscriptionId: null, stripeCustomerId: 'cus_456',
+      ambassadorProForLife: false, hasRedeemedGift: false, stripeLifetimeVerified: false, rc: null,
+    });
+    expect(r.classification).not.toBe('confirmed_stripe_lifetime');
+    expect(r.classification).toBe('ambiguous_legacy_provenance');
+  });
+
+  it('confirmed_gifted_lifetime — a redeemed Gift record explains it', () => {
     const r = classifyProvenance({
       stripeInterval: 'lifetime', stripeSubscriptionId: null, stripeCustomerId: 'cus_purchaser',
-      ambassadorProForLife: false, hasRedeemedGift: true, rc: null,
+      ambassadorProForLife: false, hasRedeemedGift: true, stripeLifetimeVerified: false, rc: null,
     });
     expect(r.classification).toBe('confirmed_gifted_lifetime');
   });
 
-  it('confirmed_ambassador — the flag alone is decisive regardless of stripeInterval', () => {
+  it('confirmed_ambassador — the flag alone is decisive', () => {
     const r = classifyProvenance({
       stripeInterval: 'lifetime', stripeSubscriptionId: null, stripeCustomerId: null,
-      ambassadorProForLife: true, hasRedeemedGift: false, rc: null,
+      ambassadorProForLife: true, hasRedeemedGift: false, stripeLifetimeVerified: false, rc: null,
     });
     expect(r.classification).toBe('confirmed_ambassador');
   });
 
-  it('confirmed_active_rc_lifetime — no internal evidence, but RC confirms an active lifetime entitlement', () => {
+  it('confirmed_active_rc_lifetime — RC Lifetime + no stripeInterval at all (nothing to explain)', () => {
     const r = classifyProvenance({
-      stripeInterval: 'lifetime', stripeSubscriptionId: null, stripeCustomerId: null,
-      ambassadorProForLife: false, hasRedeemedGift: false,
-      rc: { active: true, interval: 'lifetime', productId: 'gascap_pro_lifetime' },
+      stripeInterval: null, stripeSubscriptionId: null, stripeCustomerId: null,
+      ambassadorProForLife: false, hasRedeemedGift: false, stripeLifetimeVerified: false,
+      rc: rc({ active: true, interval: 'lifetime', productId: 'gascap_pro_lifetime' }),
     });
     expect(r.classification).toBe('confirmed_active_rc_lifetime');
     expect(r.proposedRevenueCatActive).toBe(true);
-    expect(r.proposedRevenueCatInterval).toBe('lifetime');
-    expect(r.proposedRevenueCatProductId).toBe('gascap_pro_lifetime');
   });
 
-  it('confirmed_active_rc_monthly — no internal evidence, RC confirms active monthly', () => {
-    const r = classifyProvenance({
-      stripeInterval: 'monthly', stripeSubscriptionId: null, stripeCustomerId: null,
-      ambassadorProForLife: false, hasRedeemedGift: false,
-      rc: { active: true, interval: 'monthly', productId: 'gascap_pro_monthly' },
-    });
-    expect(r.classification).toBe('confirmed_active_rc_monthly');
-    expect(r.proposedRevenueCatInterval).toBe('monthly');
-  });
-
-  it('multiple_legitimate_sources — Ambassador AND an active Stripe subscription both apply', () => {
-    const r = classifyProvenance({
-      stripeInterval: 'monthly', stripeSubscriptionId: 'sub_1', stripeCustomerId: 'cus_1',
-      ambassadorProForLife: true, hasRedeemedGift: false, rc: null,
-    });
-    expect(r.classification).toBe('multiple_legitimate_sources');
-  });
-
-  it('multiple_legitimate_sources also proposes the RC fields if RC additionally confirms active', () => {
+  it('confirmed_legacy_rc_contamination — stripeInterval set, no other explanation, RC positively confirms active — proposes clearing stripeInterval', () => {
     const r = classifyProvenance({
       stripeInterval: 'lifetime', stripeSubscriptionId: null, stripeCustomerId: null,
-      ambassadorProForLife: true, hasRedeemedGift: false,
-      rc: { active: true, interval: 'lifetime', productId: 'gascap_pro_lifetime' },
+      ambassadorProForLife: false, hasRedeemedGift: false, stripeLifetimeVerified: false,
+      rc: rc({ active: true, interval: 'lifetime', productId: 'gascap_pro_lifetime' }),
+    });
+    expect(r.classification).toBe('confirmed_legacy_rc_contamination');
+    expect(r.proposedClearLegacyStripeInterval).toBe(true);
+    expect(r.proposedRevenueCatActive).toBe(true);
+    expect(r.proposedRevenueCatInterval).toBe('lifetime');
+  });
+
+  it('genuine multi-source (Stripe Lifetime verified + RC active) preserves stripeInterval — NOT proposed for clearing', () => {
+    const r = classifyProvenance({
+      stripeInterval: 'lifetime', stripeSubscriptionId: null, stripeCustomerId: 'cus_1',
+      ambassadorProForLife: false, hasRedeemedGift: false, stripeLifetimeVerified: true,
+      rc: rc({ active: true, interval: 'monthly', productId: 'gascap_pro_monthly' }),
     });
     expect(r.classification).toBe('multiple_legitimate_sources');
+    expect(r.proposedClearLegacyStripeInterval).toBe(false);
     expect(r.proposedRevenueCatActive).toBe(true);
   });
 
-  it('ambiguous_legacy_provenance — NO evidence anywhere, RC lookup unavailable (null) — proposes NOTHING', () => {
+  it('ambiguous_legacy_provenance — RC lookup FAILED (null), not merely inactive — still proposes nothing', () => {
     const r = classifyProvenance({
       stripeInterval: 'lifetime', stripeSubscriptionId: null, stripeCustomerId: null,
-      ambassadorProForLife: false, hasRedeemedGift: false, rc: null,
+      ambassadorProForLife: false, hasRedeemedGift: false, stripeLifetimeVerified: false, rc: null,
     });
     expect(r.classification).toBe('ambiguous_legacy_provenance');
-    expect(r.proposedRevenueCatActive).toBeNull();
-    expect(r.proposedRevenueCatInterval).toBeNull();
+    expect(r.proposedClearLegacyStripeInterval).toBe(false);
   });
 
-  it('ambiguous_legacy_provenance — RC was reachable but has no record either — still proposes NOTHING (not assumed free)', () => {
+  it('ambiguous_legacy_provenance — RC reachable but customer not found / inactive — still proposes nothing (not assumed contamination)', () => {
     const r = classifyProvenance({
       stripeInterval: 'lifetime', stripeSubscriptionId: null, stripeCustomerId: null,
-      ambassadorProForLife: false, hasRedeemedGift: false,
-      rc: { active: false, interval: null, productId: null },
+      ambassadorProForLife: false, hasRedeemedGift: false, stripeLifetimeVerified: false,
+      rc: rc({ customerFound: false, active: false }),
     });
     expect(r.classification).toBe('ambiguous_legacy_provenance');
-    expect(r.proposedRevenueCatActive).toBeNull();
-  });
-
-  it('a Stripe customer id WITH an active subscription is classified by the subscription, not miscounted as a Lifetime purchase', () => {
-    const r = classifyProvenance({
-      stripeInterval: 'monthly', stripeSubscriptionId: 'sub_active', stripeCustomerId: 'cus_1',
-      ambassadorProForLife: false, hasRedeemedGift: false, rc: null,
-    });
-    expect(r.classification).toBe('confirmed_stripe_subscription');
   });
 });
 
-// ── buildDryRunReport / applyReconciliation — integration against mocked Prisma ──
+describe('classifyProvenance — required multi-source test matrix (Revision 4 §2)', () => {
+  it('Stripe monthly + RC monthly => multiple sources, RC fields proposed', () => {
+    const r = classifyProvenance({
+      stripeInterval: 'monthly', stripeSubscriptionId: 'sub_1', stripeCustomerId: 'cus_1',
+      ambassadorProForLife: false, hasRedeemedGift: false, stripeLifetimeVerified: false,
+      rc: rc({ active: true, interval: 'monthly', productId: 'gascap_pro_monthly' }),
+    });
+    expect(r.classification).toBe('multiple_legitimate_sources');
+    expect(r.proposedRevenueCatActive).toBe(true);
+    expect(r.proposedRevenueCatInterval).toBe('monthly');
+  });
+
+  it('Stripe Lifetime (verified) + RC monthly => multiple sources, RC fields proposed, stripeInterval preserved', () => {
+    const r = classifyProvenance({
+      stripeInterval: 'lifetime', stripeSubscriptionId: null, stripeCustomerId: 'cus_1',
+      ambassadorProForLife: false, hasRedeemedGift: false, stripeLifetimeVerified: true,
+      rc: rc({ active: true, interval: 'monthly', productId: 'gascap_pro_monthly' }),
+    });
+    expect(r.classification).toBe('multiple_legitimate_sources');
+    expect(r.proposedRevenueCatActive).toBe(true);
+    expect(r.proposedClearLegacyStripeInterval).toBe(false);
+  });
+
+  it('Gift Lifetime + RC monthly => multiple sources', () => {
+    const r = classifyProvenance({
+      stripeInterval: 'lifetime', stripeSubscriptionId: null, stripeCustomerId: 'cus_purchaser',
+      ambassadorProForLife: false, hasRedeemedGift: true, stripeLifetimeVerified: false,
+      rc: rc({ active: true, interval: 'monthly', productId: 'gascap_pro_monthly' }),
+    });
+    expect(r.classification).toBe('multiple_legitimate_sources');
+  });
+
+  it('Ambassador + RC Lifetime => multiple sources', () => {
+    const r = classifyProvenance({
+      stripeInterval: null, stripeSubscriptionId: null, stripeCustomerId: null,
+      ambassadorProForLife: true, hasRedeemedGift: false, stripeLifetimeVerified: false,
+      rc: rc({ active: true, interval: 'lifetime', productId: 'gascap_pro_lifetime' }),
+    });
+    expect(r.classification).toBe('multiple_legitimate_sources');
+  });
+
+  it('Stripe subscription + no RC => Stripe only', () => {
+    const r = classifyProvenance({
+      stripeInterval: 'monthly', stripeSubscriptionId: 'sub_1', stripeCustomerId: 'cus_1',
+      ambassadorProForLife: false, hasRedeemedGift: false, stripeLifetimeVerified: false,
+      rc: rc({ active: false }),
+    });
+    expect(r.classification).toBe('confirmed_stripe_subscription');
+  });
+
+  it('RC Lifetime + no Stripe/gift => RC only', () => {
+    const r = classifyProvenance({
+      stripeInterval: null, stripeSubscriptionId: null, stripeCustomerId: null,
+      ambassadorProForLife: false, hasRedeemedGift: false, stripeLifetimeVerified: false,
+      rc: rc({ active: true, interval: 'lifetime', productId: 'gascap_pro_lifetime' }),
+    });
+    expect(r.classification).toBe('confirmed_active_rc_lifetime');
+  });
+});
+
+// ── buildDryRunReport / applyReconciliation — integration against mocked Prisma/RC/Stripe ──
 
 interface UserRow {
   id: string; email: string; plan: string;
   stripeInterval: string | null; stripeSubscriptionId: string | null; stripeCustomerId: string | null;
   ambassadorProForLife: boolean;
-  revenueCatActive?: boolean; revenueCatInterval?: string | null; revenueCatProductId?: string | null;
+  revenueCatActive: boolean; revenueCatInterval: string | null;
+  isProTrial: boolean; trialExpiresAt: string | null;
+}
+
+function makeUser(overrides: Partial<UserRow> & { id: string; email: string }): UserRow {
+  return {
+    plan: 'free', stripeInterval: null, stripeSubscriptionId: null, stripeCustomerId: null,
+    ambassadorProForLife: false, revenueCatActive: false, revenueCatInterval: null,
+    isProTrial: false, trialExpiresAt: null,
+    ...overrides,
+  };
 }
 
 const state = vi.hoisted(() => ({
@@ -131,7 +199,14 @@ const state = vi.hoisted(() => ({
 vi.mock('@/lib/prisma', () => ({
   prisma: {
     user: {
-      findMany: vi.fn(async () => state.users.filter((u) => (u.plan === 'pro' || u.plan === 'fleet') && u.stripeInterval !== null)),
+      findMany: vi.fn(async ({ where }: { where: { OR?: unknown[]; id?: { in: string[] } } }) => {
+        if (where.id) return state.users.filter((u) => where.id!.in.includes(u.id));
+        // Emulate the broadened OR-scope query.
+        return state.users.filter((u) =>
+          u.stripeInterval !== null || u.stripeSubscriptionId !== null || u.ambassadorProForLife
+          || u.plan === 'pro' || u.plan === 'fleet',
+        );
+      }),
       update: vi.fn(async ({ where, data }: { where: { id: string }; data: Record<string, unknown> }) => {
         if (state.failNextUpdate) { state.failNextUpdate = false; throw new Error('db error'); }
         state.updateCalls.push({ where, data });
@@ -146,9 +221,14 @@ vi.mock('@/lib/prisma', () => ({
   },
 }));
 
-const fetchRevenueCatSubscriberInfo = vi.fn();
+const fetchAuthoritativeRevenueCatState = vi.fn();
 vi.mock('@/lib/revenueCatApi', () => ({
-  fetchRevenueCatSubscriberInfo: (id: string) => fetchRevenueCatSubscriberInfo(id),
+  fetchAuthoritativeRevenueCatState: (id: string) => fetchAuthoritativeRevenueCatState(id),
+}));
+
+const verifyStripeLifetimePurchase = vi.fn();
+vi.mock('@/lib/stripeEvidence', () => ({
+  verifyStripeLifetimePurchase: (id: string | null) => verifyStripeLifetimePurchase(id),
 }));
 
 beforeEach(async () => {
@@ -157,116 +237,147 @@ beforeEach(async () => {
   state.updateCalls = [];
   state.failNextUpdate = false;
   vi.clearAllMocks();
-  delete process.env.REVENUECAT_SECRET_API_KEY;
+  fetchAuthoritativeRevenueCatState.mockResolvedValue({ customerFound: false, active: false, interval: null, productId: null, customerId: null });
+  verifyStripeLifetimePurchase.mockResolvedValue({ verified: false, sessionId: null });
 });
 
-describe('buildDryRunReport — read-only, makes zero writes', () => {
-  it('classifies a mix of confirmed and ambiguous rows correctly, with no RC lookup configured', async () => {
+describe('buildDryRunReport — broadened scope, always-attempt RC lookup, zero writes', () => {
+  it('attempts an RC lookup for EVERY candidate, even one with clear internal evidence — post-Revision-4 fix', async () => {
     const { buildDryRunReport } = await import('../lib/revenueCatHistoricalReconciliation');
-    state.users = [
-      { id: 'stripe-sub', email: 'a@example.com', plan: 'pro', stripeInterval: 'monthly', stripeSubscriptionId: 'sub_1', stripeCustomerId: 'cus_1', ambassadorProForLife: false },
-      { id: 'ambiguous-1', email: 'b@example.com', plan: 'pro', stripeInterval: 'lifetime', stripeSubscriptionId: null, stripeCustomerId: null, ambassadorProForLife: false },
-    ];
-    const report = await buildDryRunReport();
-    expect(report.totalCandidates).toBe(2);
-    expect(report.classifications.confirmed_stripe_subscription).toBe(1);
-    expect(report.classifications.ambiguous_legacy_provenance).toBe(1);
-    expect(report.ambiguousCount).toBe(1);
-    expect(report.rcLookupConfigured).toBe(false);
-    expect(report.rcLookupAttempted).toBe(0);
-    expect(state.updateCalls).toHaveLength(0); // read-only
+    state.users = [makeUser({ id: 'has-sub', email: 'a@example.com', plan: 'pro', stripeInterval: 'monthly', stripeSubscriptionId: 'sub_1', stripeCustomerId: 'cus_1' })];
+    await buildDryRunReport();
+    expect(fetchAuthoritativeRevenueCatState).toHaveBeenCalledWith('has-sub');
   });
 
-  it('only attempts an RC lookup for candidates with NO internal evidence, and only when configured', async () => {
-    process.env.REVENUECAT_SECRET_API_KEY = 'test-key';
-    fetchRevenueCatSubscriberInfo.mockResolvedValue({ active: true, interval: 'lifetime', productId: 'gascap_pro_lifetime' });
+  it('a Stripe-subscription user who ALSO has an active RC subscription is correctly flagged multiple_legitimate_sources, not silently missed', async () => {
     const { buildDryRunReport } = await import('../lib/revenueCatHistoricalReconciliation');
-    state.users = [
-      { id: 'has-sub', email: 'a@example.com', plan: 'pro', stripeInterval: 'monthly', stripeSubscriptionId: 'sub_1', stripeCustomerId: 'cus_1', ambassadorProForLife: false },
-      { id: 'needs-lookup', email: 'b@example.com', plan: 'pro', stripeInterval: 'lifetime', stripeSubscriptionId: null, stripeCustomerId: null, ambassadorProForLife: false },
-    ];
+    state.users = [makeUser({ id: 'both', email: 'a@example.com', plan: 'pro', stripeInterval: 'monthly', stripeSubscriptionId: 'sub_1', stripeCustomerId: 'cus_1' })];
+    fetchAuthoritativeRevenueCatState.mockResolvedValue({ customerFound: true, active: true, interval: 'monthly', productId: 'gascap_pro_monthly', customerId: 'rc_1' });
     const report = await buildDryRunReport();
-    expect(fetchRevenueCatSubscriberInfo).toHaveBeenCalledTimes(1);
-    expect(fetchRevenueCatSubscriberInfo).toHaveBeenCalledWith('needs-lookup');
-    expect(report.classifications.confirmed_active_rc_lifetime).toBe(1);
-    expect(report.rcLookupAttempted).toBe(1);
+    expect(report.classifications.multiple_legitimate_sources).toBe(1);
+    expect(report.candidates[0].proposedRevenueCatActive).toBe(true);
   });
 
-  it('a failed RC lookup is treated as ambiguous, not as "not active" — and counted in rcLookupFailed', async () => {
-    process.env.REVENUECAT_SECRET_API_KEY = 'test-key';
-    fetchRevenueCatSubscriberInfo.mockRejectedValue(new Error('network error'));
+  it('includes a plan=free user with a leftover stripeInterval — the broadened scope fix', async () => {
     const { buildDryRunReport } = await import('../lib/revenueCatHistoricalReconciliation');
-    state.users = [{ id: 'lookup-fails', email: 'c@example.com', plan: 'pro', stripeInterval: 'lifetime', stripeSubscriptionId: null, stripeCustomerId: null, ambassadorProForLife: false }];
+    // Simulates: old RC EXPIRATION/REFUND set plan=free but never cleared
+    // stripeInterval, which was genuine Stripe Lifetime provenance.
+    state.users = [makeUser({ id: 'wrongly-downgraded', email: 'a@example.com', plan: 'free', stripeInterval: 'lifetime', stripeCustomerId: 'cus_1' })];
+    verifyStripeLifetimePurchase.mockResolvedValue({ verified: true, sessionId: 'cs_123' });
+    const report = await buildDryRunReport();
+    expect(report.totalCandidates).toBe(1);
+    const candidate = report.candidates[0];
+    expect(candidate.classification).toBe('confirmed_stripe_lifetime');
+    expect(candidate.historicalPlanInconsistency).toBe(true);
+    expect(candidate.proposedPlanRepair).toBe('pro');
+  });
+
+  it('never proposes a plan repair for someone resolved as NOT pro — only ever proposes toward Pro', async () => {
+    const { buildDryRunReport } = await import('../lib/revenueCatHistoricalReconciliation');
+    state.users = [makeUser({ id: 'genuinely-free', email: 'a@example.com', plan: 'free' })];
+    const report = await buildDryRunReport();
+    expect(report.candidates).toHaveLength(0); // no evidence at all => not even a candidate
+  });
+
+  it('a failed RC lookup is treated as ambiguous, counted in rcLookupFailed, never as "confirmed inactive"', async () => {
+    const { buildDryRunReport } = await import('../lib/revenueCatHistoricalReconciliation');
+    state.users = [makeUser({ id: 'lookup-fails', email: 'c@example.com', plan: 'pro', stripeInterval: 'lifetime' })];
+    fetchAuthoritativeRevenueCatState.mockRejectedValue(new Error('network error'));
     const report = await buildDryRunReport();
     expect(report.classifications.ambiguous_legacy_provenance).toBe(1);
     expect(report.rcLookupFailed).toBe(1);
   });
 
-  it('a gift redemption correctly explains a Stripe-customer-id-bearing lifetime row', async () => {
+  it('makes zero writes — read-only', async () => {
     const { buildDryRunReport } = await import('../lib/revenueCatHistoricalReconciliation');
-    state.users = [{ id: 'gifted', email: 'd@example.com', plan: 'pro', stripeInterval: 'lifetime', stripeSubscriptionId: null, stripeCustomerId: 'cus_purchaser', ambassadorProForLife: false }];
-    state.gifts = [{ redeemedByUserId: 'gifted', status: 'redeemed' }];
-    const report = await buildDryRunReport();
-    expect(report.classifications.confirmed_gifted_lifetime).toBe(1);
-  });
-});
-
-describe('applyReconciliation — additive only, never touches ambiguous rows', () => {
-  it('updates only confirmed-active-RC candidates, leaves everyone else untouched', async () => {
-    process.env.REVENUECAT_SECRET_API_KEY = 'test-key';
-    fetchRevenueCatSubscriberInfo.mockResolvedValue({ active: true, interval: 'lifetime', productId: 'gascap_pro_lifetime' });
-    const { buildDryRunReport, applyReconciliation } = await import('../lib/revenueCatHistoricalReconciliation');
-    state.users = [
-      { id: 'confirmed-rc', email: 'a@example.com', plan: 'pro', stripeInterval: 'lifetime', stripeSubscriptionId: null, stripeCustomerId: null, ambassadorProForLife: false },
-      { id: 'stripe-sub-untouched', email: 'b@example.com', plan: 'pro', stripeInterval: 'monthly', stripeSubscriptionId: 'sub_1', stripeCustomerId: 'cus_1', ambassadorProForLife: false },
-    ];
-    const report = await buildDryRunReport();
-    const result = await applyReconciliation(report);
-    expect(result.attempted).toBe(1);
-    expect(result.updated).toBe(1);
-    expect(state.updateCalls).toHaveLength(1);
-    expect(state.updateCalls[0].where.id).toBe('confirmed-rc');
-    expect(state.updateCalls[0].data).toMatchObject({ revenueCatActive: true, revenueCatInterval: 'lifetime' });
-  });
-
-  it('NEVER updates an ambiguous_legacy_provenance candidate — the core safety guarantee', async () => {
-    const { buildDryRunReport, applyReconciliation } = await import('../lib/revenueCatHistoricalReconciliation');
-    state.users = [{ id: 'ambiguous', email: 'a@example.com', plan: 'pro', stripeInterval: 'lifetime', stripeSubscriptionId: null, stripeCustomerId: null, ambassadorProForLife: false }];
-    const report = await buildDryRunReport();
-    expect(report.classifications.ambiguous_legacy_provenance).toBe(1);
-    const result = await applyReconciliation(report);
-    expect(result.attempted).toBe(0);
-    expect(result.updated).toBe(0);
+    state.users = [makeUser({ id: 'a', email: 'a@example.com', plan: 'pro', stripeInterval: 'lifetime', stripeCustomerId: 'cus_1' })];
+    await buildDryRunReport();
     expect(state.updateCalls).toHaveLength(0);
   });
 
-  it('never writes to stripeInterval or any non-RC field, even for a confirmed-active-RC candidate', async () => {
-    process.env.REVENUECAT_SECRET_API_KEY = 'test-key';
-    fetchRevenueCatSubscriberInfo.mockResolvedValue({ active: true, interval: 'monthly', productId: 'gascap_pro_monthly' });
-    const { buildDryRunReport, applyReconciliation } = await import('../lib/revenueCatHistoricalReconciliation');
-    state.users = [{ id: 'confirmed-rc', email: 'a@example.com', plan: 'pro', stripeInterval: 'lifetime', stripeSubscriptionId: null, stripeCustomerId: null, ambassadorProForLife: false }];
+  it('does not create a RevenueCat customer for an unknown identity — the v2 client only searches, per lib/revenueCatApi.ts', async () => {
+    // This is enforced by mocking fetchAuthoritativeRevenueCatState to
+    // return "not found" and confirming the reconciliation module never
+    // calls any write-shaped function — there is none imported, which this
+    // test documents structurally: only fetchAuthoritativeRevenueCatState
+    // is ever called against RevenueCat.
+    const { buildDryRunReport } = await import('../lib/revenueCatHistoricalReconciliation');
+    state.users = [makeUser({ id: 'unknown-to-rc', email: 'a@example.com', plan: 'pro', stripeInterval: 'lifetime' })];
+    fetchAuthoritativeRevenueCatState.mockResolvedValue({ customerFound: false, active: false, interval: null, productId: null, customerId: null });
     const report = await buildDryRunReport();
-    await applyReconciliation(report);
-    expect(state.updateCalls[0].data).not.toHaveProperty('stripeInterval');
-    expect(state.updateCalls[0].data).not.toHaveProperty('plan');
-    // stripeInterval on the underlying row is untouched (still 'lifetime',
-    // the original legacy value — not cleared or overwritten).
-    expect(state.users.find((u) => u.id === 'confirmed-rc')!.stripeInterval).toBe('lifetime');
+    expect(report.candidates[0].rcLookup).toMatchObject({ customerFound: false });
+    expect(fetchAuthoritativeRevenueCatState).toHaveBeenCalledTimes(1); // never a second "create" call
+  });
+});
+
+describe('applyReconciliation — three independent additive operations, ambiguous rows always untouched', () => {
+  it('backfills RC fields for a confirmed-active-RC candidate', async () => {
+    const { buildDryRunReport, applyReconciliation } = await import('../lib/revenueCatHistoricalReconciliation');
+    state.users = [makeUser({ id: 'confirmed-rc', email: 'a@example.com', plan: 'pro' })];
+    fetchAuthoritativeRevenueCatState.mockResolvedValue({ customerFound: true, active: true, interval: 'lifetime', productId: 'gascap_pro_lifetime', customerId: 'rc_1' });
+    const report = await buildDryRunReport();
+    const result = await applyReconciliation(report);
+    expect(result.rcFieldsUpdated).toBe(1);
+    expect(state.updateCalls[0].data).toMatchObject({ revenueCatActive: true, revenueCatInterval: 'lifetime' });
   });
 
-  it('a write failure for one candidate is reported as skipped, does not throw or block other candidates', async () => {
-    process.env.REVENUECAT_SECRET_API_KEY = 'test-key';
-    fetchRevenueCatSubscriberInfo.mockResolvedValue({ active: true, interval: 'lifetime', productId: 'gascap_pro_lifetime' });
+  it('clears stripeInterval ONLY for confirmed_legacy_rc_contamination', async () => {
     const { buildDryRunReport, applyReconciliation } = await import('../lib/revenueCatHistoricalReconciliation');
-    state.users = [
-      { id: 'will-fail', email: 'a@example.com', plan: 'pro', stripeInterval: 'lifetime', stripeSubscriptionId: null, stripeCustomerId: null, ambassadorProForLife: false },
-      { id: 'will-succeed', email: 'b@example.com', plan: 'pro', stripeInterval: 'lifetime', stripeSubscriptionId: null, stripeCustomerId: null, ambassadorProForLife: false },
-    ];
+    state.users = [makeUser({ id: 'contaminated', email: 'a@example.com', plan: 'pro', stripeInterval: 'lifetime' })];
+    fetchAuthoritativeRevenueCatState.mockResolvedValue({ customerFound: true, active: true, interval: 'lifetime', productId: 'gascap_pro_lifetime', customerId: 'rc_1' });
+    const report = await buildDryRunReport();
+    expect(report.classifications.confirmed_legacy_rc_contamination).toBe(1);
+    const result = await applyReconciliation(report);
+    expect(result.legacyClearUpdated).toBe(1);
+    const clearCall = state.updateCalls.find((c) => 'stripeInterval' in c.data);
+    expect(clearCall!.data.stripeInterval).toBeNull();
+  });
+
+  it('NEVER clears stripeInterval for a multi-source (genuine Stripe Lifetime + RC) candidate', async () => {
+    const { buildDryRunReport, applyReconciliation } = await import('../lib/revenueCatHistoricalReconciliation');
+    state.users = [makeUser({ id: 'multi', email: 'a@example.com', plan: 'pro', stripeInterval: 'lifetime', stripeCustomerId: 'cus_1' })];
+    verifyStripeLifetimePurchase.mockResolvedValue({ verified: true, sessionId: 'cs_1' });
+    fetchAuthoritativeRevenueCatState.mockResolvedValue({ customerFound: true, active: true, interval: 'monthly', productId: 'gascap_pro_monthly', customerId: 'rc_1' });
+    const report = await buildDryRunReport();
+    expect(report.classifications.multiple_legitimate_sources).toBe(1);
+    const result = await applyReconciliation(report);
+    expect(result.legacyClearAttempted).toBe(0);
+    const clearCall = state.updateCalls.find((c) => 'stripeInterval' in c.data);
+    expect(clearCall).toBeUndefined();
+  });
+
+  it('NEVER touches an ambiguous_legacy_provenance candidate — the core safety guarantee', async () => {
+    const { buildDryRunReport, applyReconciliation } = await import('../lib/revenueCatHistoricalReconciliation');
+    state.users = [makeUser({ id: 'ambiguous', email: 'a@example.com', plan: 'pro', stripeInterval: 'lifetime' })];
+    const report = await buildDryRunReport();
+    expect(report.classifications.ambiguous_legacy_provenance).toBe(1);
+    const result = await applyReconciliation(report);
+    expect(result.rcFieldsAttempted).toBe(0);
+    expect(result.legacyClearAttempted).toBe(0);
+    expect(result.planRepairAttempted).toBe(0);
+    expect(state.updateCalls).toHaveLength(0);
+  });
+
+  it('applies a plan repair (free -> pro) ONLY when the resolved aggregate proves it', async () => {
+    const { buildDryRunReport, applyReconciliation } = await import('../lib/revenueCatHistoricalReconciliation');
+    state.users = [makeUser({ id: 'stale-plan', email: 'a@example.com', plan: 'free', ambassadorProForLife: true })];
+    const report = await buildDryRunReport();
+    expect(report.candidates[0].historicalPlanInconsistency).toBe(true);
+    const result = await applyReconciliation(report);
+    expect(result.planRepairUpdated).toBe(1);
+    const planCall = state.updateCalls.find((c) => c.data.plan === 'pro');
+    expect(planCall).toBeDefined();
+  });
+
+  it('a write failure for one operation is reported as skipped, does not throw or block others', async () => {
+    const { buildDryRunReport, applyReconciliation } = await import('../lib/revenueCatHistoricalReconciliation');
+    state.users = [makeUser({ id: 'confirmed-rc', email: 'a@example.com', plan: 'pro' })];
+    fetchAuthoritativeRevenueCatState.mockResolvedValue({ customerFound: true, active: true, interval: 'lifetime', productId: 'gascap_pro_lifetime', customerId: 'rc_1' });
     const report = await buildDryRunReport();
     state.failNextUpdate = true;
     const result = await applyReconciliation(report);
-    expect(result.attempted).toBe(2);
-    expect(result.updated).toBe(1);
-    expect(result.skipped).toBe(1);
+    expect(result.rcFieldsAttempted).toBe(1);
+    expect(result.rcFieldsSkipped).toBe(1);
+    expect(result.rcFieldsUpdated).toBe(0);
   });
 });

@@ -12,6 +12,7 @@ import { Prisma } from './generated/prisma/client';
 import { qualifiesForFreeProForLife, AMBASSADOR_THRESHOLDS, getAmbassadorTier } from './ambassador';
 import { sendHotelSavingsCard, sendDiningVoucher } from './marketingBoost';
 import { resolveUserEntitlements, type ResolvedEntitlement } from './entitlements';
+import { fetchAuthoritativeRevenueCatState } from './revenueCatApi';
 import { sendMail } from './email';
 
 export { getAmbassadorTier, ambassadorEntryMultiplier, isAlwaysEligible, AMBASSADOR_THRESHOLDS } from './ambassador';
@@ -501,6 +502,61 @@ export async function revokeAmbassadorEntitlement(userId: string): Promise<Resol
     await setUserPlan(userId, 'free');
   }
   return resolved;
+}
+
+/**
+ * Post-Sprint-2 Revision 4 fix — THE authoritative RevenueCat sync path.
+ *
+ * Replaces blind `revokeRevenueCatEntitlement()` calls for cases where
+ * RevenueCat's own event doesn't reliably imply the entitlement is
+ * actually gone. Two concrete cases (see app/api/native/revenuecat/route.ts):
+ *
+ *  - CANCELLATION with cancel_reason=CUSTOMER_SUPPORT: RevenueCat's docs
+ *    explicitly warn this does not necessarily mean the subscription's
+ *    auto-renewal was deactivated, and instruct clients to check current
+ *    subscription status rather than assume revocation.
+ *  - TRANSFER: the identity losing/gaining the entitlement needs its ACTUAL
+ *    current state, not a guess derived from the event payload.
+ *
+ * Fetches authoritative current state directly from RevenueCat
+ * (`lib/revenueCatApi.ts`, v2 read-only) and reconciles GasCap's stored
+ * state to match exactly:
+ *
+ *  - RC confirms still active: persists the EXACT current interval/
+ *    product — never guessed — and ensures `plan: 'pro'`.
+ *  - RC confirms inactive (or the identity has no RC customer at all):
+ *    clears only RC's own contribution and recomputes the aggregate
+ *    entitlement via `revokeRevenueCatEntitlement()`'s existing logic — a
+ *    surviving Stripe/gift/Ambassador source is never affected.
+ *
+ * THROWS if the RevenueCat lookup itself fails (network error, missing
+ * config) — deliberately does NOT catch this. A lookup failure must never
+ * be treated as "confirmed inactive" and silently downgrade someone; the
+ * caller (the webhook route) is expected to let this propagate so the
+ * event is marked failed and RevenueCat retries, rather than the mutation
+ * happening on unverifiable information.
+ */
+export async function syncRevenueCatEntitlementFromProvider(userId: string): Promise<ResolvedEntitlement> {
+  const rcState = await fetchAuthoritativeRevenueCatState(userId); // throws on failure — intentionally not caught here
+
+  if (rcState.active) {
+    await setUserPlan(userId, 'pro', {
+      revenueCat: { active: true, interval: rcState.interval as 'monthly' | 'lifetime', productId: rcState.productId ?? undefined },
+    });
+    const fresh = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        ambassadorProForLife: true, stripeInterval: true, stripeSubscriptionId: true,
+        revenueCatActive: true, revenueCatInterval: true, isProTrial: true, trialExpiresAt: true,
+      },
+    });
+    // fresh is non-null — we just wrote to this exact row above.
+    return resolveUserEntitlements(fresh!);
+  }
+
+  // RC confirms inactive (or no customer at all) — same reconciling clear
+  // used by the ordinary EXPIRATION/REFUND path.
+  return revokeRevenueCatEntitlement(userId);
 }
 
 /**

@@ -1,33 +1,30 @@
 /**
  * GET  /api/admin/revenuecat-historical-reconciliation — DRY-RUN report only.
  * POST /api/admin/revenuecat-historical-reconciliation { confirm: true }
- *   — apply the dry-run's proposed changes (ADDITIVE ONLY, see below).
+ *   — apply the dry-run's proposed changes.
  *
- * Post-Revision-2 addition — see lib/revenueCatHistoricalReconciliation.ts
+ * Post-Sprint-2 Revision 4 — see lib/revenueCatHistoricalReconciliation.ts
  * for the full design rationale. Summary: before this hardening sprint's
  * provenance fix, RevenueCat grants wrote into `stripeInterval`
- * (Stripe/gift-only provenance), so an existing production row's
- * `stripeInterval` value may or may not represent a genuine Stripe/gift
- * purchase, and every existing row defaults `revenueCatActive = false`
- * regardless of whether the user is a currently-active RevenueCat customer.
+ * (Stripe/gift-only provenance), and RevenueCat revokes downgraded `plan`
+ * without ever clearing `stripeInterval` — so an existing production row
+ * may have an unexplained `stripeInterval` value, a stale `plan='free'`
+ * despite a surviving entitlement, or both.
  *
- * GET produces a classification report using evidence already in GasCap's
- * database (Stripe subscription/customer ids, a redeemed Gift record, the
- * ambassador flag), falling back to a live, read-only RevenueCat subscriber
- * lookup only for candidates that remain ambiguous after that — and makes
- * ZERO writes.
+ * GET runs a live, read-only RevenueCat lookup (v2 API — cannot create a
+ * RevenueCat customer, see lib/revenueCatApi.ts) and, where relevant, a
+ * read-only Stripe Checkout Session check (lib/stripeEvidence.ts) for
+ * EVERY candidate — not just ones lacking internal evidence, since GasCap
+ * supports simultaneous entitlement sources. Makes ZERO writes to GasCap's
+ * database or to RevenueCat.
  *
- * POST applies ONLY the dry-run's proposed additions — populating
- * `revenueCatActive`/`revenueCatInterval`/`revenueCatProductId` for
- * candidates RevenueCat (or unambiguous internal evidence) CONFIRMS are
- * currently active. It NEVER clears, downgrades, or overwrites
- * `stripeInterval` or any other provenance field, and it NEVER touches a
- * candidate still classified `ambiguous_legacy_provenance` — those are
- * left exactly as they are, reported, and require separate manual review.
+ * POST applies three independent, additive-only operations — see
+ * `applyReconciliation`'s doc comment for exactly which candidates qualify
+ * for each. It NEVER touches a candidate still classified
+ * `ambiguous_legacy_provenance`, and NEVER downgrades anyone's plan.
  *
  * Requires an explicit `{ confirm: true }` body — a bare POST with no body
- * is rejected, so applying this can't happen by accident (e.g. a
- * copy-pasted curl command missing its body).
+ * is rejected, so applying this can't happen by accident.
  */
 import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/adminAuth';
@@ -71,9 +68,8 @@ export async function POST(req: Request) {
     metadata: {
       totalCandidates: report.totalCandidates,
       ambiguousCount:  report.ambiguousCount,
-      attempted:       result.attempted,
-      updated:         result.updated,
-      skipped:         result.skipped,
+      historicalPlanInconsistencyCount: report.historicalPlanInconsistencyCount,
+      ...result,
     },
   });
 
@@ -83,6 +79,6 @@ export async function POST(req: Request) {
     totalCandidates: report.totalCandidates,
     ambiguousCount:  report.ambiguousCount,
     ...result,
-    message: `Applied ${result.updated} confirmed-active-RC update(s). ${report.ambiguousCount} candidate(s) remain ambiguous and were left untouched — see the dry-run report for details.`,
+    message: `RC field backfill: ${result.rcFieldsUpdated}/${result.rcFieldsAttempted}. Legacy stripeInterval clears: ${result.legacyClearUpdated}/${result.legacyClearAttempted}. Plan repairs: ${result.planRepairUpdated}/${result.planRepairAttempted}. ${report.ambiguousCount} candidate(s) remain ambiguous and were left completely untouched.`,
   });
 }

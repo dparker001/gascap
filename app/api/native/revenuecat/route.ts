@@ -67,7 +67,7 @@
  * than assuming the event-level idempotency covers it.
  */
 import { NextResponse } from 'next/server';
-import { setUserPlan, findById, findByEmail, enrollPaidCampaign, revokeRevenueCatEntitlement } from '@/lib/users';
+import { setUserPlan, findById, findByEmail, enrollPaidCampaign, revokeRevenueCatEntitlement, syncRevenueCatEntitlementFromProvider, type StoredUser } from '@/lib/users';
 import { prisma } from '@/lib/prisma';
 import { sendMail } from '@/lib/email';
 import { sendPaidCampaignEmail } from '@/lib/emailCampaignPaid';
@@ -75,6 +75,7 @@ import { sendUserPush } from '@/lib/userPush';
 import { getawayPromoActive, GETAWAY_DISCLOSURE } from '@/lib/getawayPromo';
 import { claimEvent, markProcessed, markFailed } from '@/lib/revenueCatEvents';
 import { verifyRevenueCatHmac, HMAC_SIGNATURE_HEADER } from '@/lib/revenueCatHmac';
+import { fetchAuthoritativeRevenueCatState } from '@/lib/revenueCatApi';
 
 export const dynamic = 'force-dynamic';
 
@@ -193,11 +194,16 @@ const INITIAL_GRANT_EVENTS = new Set(['INITIAL_PURCHASE', 'NON_RENEWING_PURCHASE
 // response.
 const REVOKE_EVENTS = new Set(['EXPIRATION', 'REFUND']);
 
-// A reversed refund restores whatever was refunded. Treated as a grant using
-// the event's product_id (same mechanism as GRANT_EVENTS), but NOT added to
-// INITIAL_GRANT_EVENTS — the user already had this entitlement before the
-// erroneous refund, so re-sending the welcome email / getaway offer would be
-// confusing, not helpful.
+// A reversed refund restores whatever was refunded.
+//
+// Post-Sprint-2 Revision 4 fix: previously trusted the event's product_id
+// (the same mechanism as GRANT_EVENTS). Now uses the same authoritative
+// RevenueCat state-sync helper as CANCELLATION/TRANSFER
+// (`syncRevenueCatEntitlementFromProvider`) instead — architecturally
+// consistent with those, and doesn't rely on product_id being reliable for
+// this event either. Never sends a welcome email / getaway offer — the user
+// already had this entitlement before the erroneous refund, so that would
+// be confusing, not helpful.
 const RESTORE_EVENTS = new Set(['REFUND_REVERSED']);
 
 // CANCELLATION and TRANSFER are handled by dedicated branches below, not the
@@ -261,6 +267,133 @@ async function resolveUserByIds(candidates: (string | undefined)[]) {
 /** Resolve the GasCap user from RevenueCat's app_user_id (we set it = userId). */
 async function resolveUser(ev: RcEvent) {
   return resolveUserByIds([ev.app_user_id, ev.original_app_user_id, ...(ev.aliases ?? [])]);
+}
+
+/**
+ * Post-Sprint-2 Revision 4 fix — TRANSFER handling, rewritten entirely
+ * against RevenueCat's actual documented contract: a TRANSFER moves
+ * transactions/entitlements AWAY FROM every identity in `transferred_from`
+ * and ADDS them TO every identity in `transferred_to`. The previous
+ * revision granted the destination a conservative "monthly" guess and left
+ * the source(s) untouched — this replaces both with authoritative
+ * RevenueCat state for every resolvable GasCap identity on both sides.
+ *
+ * ORDERING GUARANTEE — gather before mutate: every RevenueCat lookup for
+ * every involved identity happens FIRST, before any GasCap user is
+ * mutated. If ANY required lookup fails, this function throws before
+ * touching the database at all, so a partial-lookup failure can never
+ * leave one user updated with authoritative data while another is left in
+ * a guessed or stale state. The caller (POST) catches this exactly like
+ * every other event-handling failure: the event is marked failed and the
+ * response is 500, so RevenueCat retries the whole TRANSFER cleanly rather
+ * than resuming from a half-applied state.
+ *
+ * Not wrapped in a single all-or-nothing SQL transaction (this codebase has
+ * no existing multi-row `$transaction` usage to build on, and every
+ * individual mutation below — via `syncRevenueCatEntitlementFromProvider`/
+ * `revokeRevenueCatEntitlement` — is itself idempotent and safe to re-run).
+ * A crash between mutating two different users' rows would leave a
+ * genuinely correct (not guessed) partial state for whichever rows were
+ * already written, and a retry of the same event would safely re-derive
+ * and re-apply the same actions to the rest.
+ */
+async function handleTransfer(ev: RcEvent): Promise<Response> {
+  const fromIds = ev.transferred_from ?? [];
+  const toIds   = ev.transferred_to   ?? [];
+  const allIds  = [...new Set([...fromIds, ...toIds])];
+
+  const resolvedById = new Map<string, StoredUser>(); // keyed by the RC app_user_id from the event, not the GasCap user id
+  for (const id of allIds) {
+    const u = await resolveUserByIds([id]);
+    if (u) resolvedById.set(id, u);
+  }
+
+  if (resolvedById.size === 0) {
+    console.error('[revenuecat] TRANSFER — no resolvable GasCap identities in transferred_from/transferred_to:', fromIds, toIds);
+    return NextResponse.json({ ok: true, unmatched: true });
+  }
+
+  if (!ev.id) {
+    console.error(`[revenuecat] TRANSFER has NO event.id — this contradicts RevenueCat's documented contract (id is always present). Skipping to avoid processing an unverifiable/malformed payload.`);
+    return NextResponse.json({ ok: true, skipped: 'missing_event_id' });
+  }
+
+  // The claim is keyed on the event, not any one user — the `userId`
+  // parameter is purely informational for the claim row's own log, so any
+  // one resolved identity is a fine choice.
+  const anyResolvedUser = [...resolvedById.values()][0];
+  const claim = await claimEvent(ev.id, ev.type ?? 'TRANSFER', anyResolvedUser.id);
+  if (claim.outcome !== 'claimed') {
+    console.log(`[revenuecat] TRANSFER for event ${ev.id} — ${claim.outcome}, skipping side effects`);
+    return NextResponse.json({ ok: true, duplicate: true });
+  }
+  const claimToken = claim.claimToken;
+
+  try {
+    // STEP 1 — gather authoritative state for every resolvable identity on
+    // EITHER side, before mutating anything. Deduped by GasCap user id
+    // (not RC app_user_id) since resolveUserByIds already handles alias
+    // resolution and two different RC ids could resolve to the same
+    // GasCap account.
+    const statesByGcUserId = new Map<string, Awaited<ReturnType<typeof fetchAuthoritativeRevenueCatState>>>();
+    for (const rcAppUserId of resolvedById.keys()) {
+      const gcUser = resolvedById.get(rcAppUserId)!;
+      if (statesByGcUserId.has(gcUser.id)) continue; // already looked up via another alias
+      // Throws on failure — intentionally uncaught here, propagates to the
+      // outer catch below, which marks the event failed (not processed)
+      // and returns 500 so RevenueCat retries rather than this function
+      // proceeding to mutate anyone on unverifiable information.
+      statesByGcUserId.set(gcUser.id, await fetchAuthoritativeRevenueCatState(rcAppUserId));
+    }
+
+    const destinationGcUserIds = new Set(
+      toIds.map((id) => resolvedById.get(id)?.id).filter((v): v is string => !!v),
+    );
+    const sourceGcUserIds = new Set(
+      fromIds.map((id) => resolvedById.get(id)?.id).filter((v): v is string => !!v),
+    );
+
+    // STEP 2 — mutate. Destinations first: persist EXACTLY what RevenueCat
+    // says, never a guessed interval.
+    for (const gcUserId of destinationGcUserIds) {
+      const state = statesByGcUserId.get(gcUserId)!;
+      if (state.active) {
+        await setUserPlan(gcUserId, 'pro', {
+          revenueCat: { active: true, interval: state.interval as 'monthly' | 'lifetime', productId: state.productId ?? undefined },
+        });
+        console.log(`[revenuecat] TRANSFER → destination ${gcUserId} granted Pro (${state.interval}, authoritative RC state) — no guessing`);
+      } else {
+        console.log(`[revenuecat] TRANSFER → destination ${gcUserId} has no active RC entitlement per authoritative lookup; no grant applied.`);
+      }
+    }
+
+    // Sources: only clear if this identity ISN'T also a destination in the
+    // same event (rare, but don't clear-then-immediately-need-to-re-add),
+    // and only if RevenueCat confirms the entitlement is genuinely gone —
+    // clearing only ever touches RC's own contribution
+    // (revokeRevenueCatEntitlement), so a surviving Stripe/gift/Ambassador
+    // source on the source identity is never affected.
+    for (const gcUserId of sourceGcUserIds) {
+      if (destinationGcUserIds.has(gcUserId)) continue;
+      const state = statesByGcUserId.get(gcUserId)!;
+      if (!state.active) {
+        await revokeRevenueCatEntitlement(gcUserId);
+        console.log(`[revenuecat] TRANSFER → source ${gcUserId} no longer has an active RC entitlement; RC contribution cleared, aggregate recomputed.`);
+      } else {
+        console.log(`[revenuecat] TRANSFER → source ${gcUserId} still shows an active RC entitlement per authoritative lookup; left untouched.`);
+      }
+    }
+
+    await markProcessed(ev.id, claimToken);
+    return NextResponse.json({
+      ok: true,
+      transferred: { from: [...sourceGcUserIds], to: [...destinationGcUserIds] },
+    });
+  } catch (e) {
+    console.error('[revenuecat] TRANSFER handling failed:', e);
+    await markFailed(ev.id, claimToken, e);
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 });
+  }
 }
 
 /**
@@ -358,15 +491,18 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, ignored: ev.type });
   }
 
-  // TRANSFER has a genuinely different payload shape — `transferred_from` /
-  // `transferred_to` arrays of app_user_ids, not `app_user_id` — per
-  // RevenueCat's actual documented sample (post-Revision-2 fix; an earlier
-  // revision's TRANSFER handling and its regression test both assumed the
-  // wrong shape). Resolve against the FIRST id in `transferred_to` — the
-  // identity gaining the entitlement.
-  const user = ev.type === 'TRANSFER'
-    ? await resolveUserByIds(ev.transferred_to ?? [])
-    : await resolveUser(ev);
+  // TRANSFER has a genuinely different payload shape (transferred_from/
+  // transferred_to arrays, potentially multiple GasCap identities on either
+  // side) AND a genuinely different reconciliation model (both sides need
+  // authoritative RevenueCat state, gathered before any GasCap mutation —
+  // see handleTransfer's own doc comment) — routed to its own handler
+  // entirely separate from the single-user model the rest of this function
+  // uses, rather than shoehorned into it.
+  if (ev.type === 'TRANSFER') {
+    return handleTransfer(ev);
+  }
+
+  const user = await resolveUser(ev);
   if (!user) {
     console.error('[revenuecat] no matching user for event:', ev.type, ev.app_user_id ?? ev.transferred_to);
     // 200 so RevenueCat doesn't retry forever on an unmatched id.
@@ -411,10 +547,11 @@ export async function POST(req: Request) {
   const resolvedEv   = ev;
 
   /**
-   * Shared grant path for GRANT_EVENTS and RESTORE_EVENTS (REFUND_REVERSED)
-   * — both trust product_id and use the same interval-resolution logic.
-   * `sendWelcome` controls whether this counts as a first-time grant for
-   * welcome-email/getaway purposes.
+   * Grant path for GRANT_EVENTS — trusts product_id (a genuine
+   * INITIAL_PURCHASE/RENEWAL/NON_RENEWING_PURCHASE/UNCANCELLATION always
+   * carries reliable product info per RevenueCat's docs). `sendWelcome`
+   * controls whether this counts as a first-time grant for welcome-email/
+   * getaway purposes.
    */
   async function doGrant(interval: 'monthly' | 'lifetime', productId: string | undefined, sendWelcome: boolean) {
     const user = resolvedUser;
@@ -455,50 +592,38 @@ export async function POST(req: Request) {
       await doGrant(interval, ev.product_id, INITIAL_GRANT_EVENTS.has(ev.type));
 
     } else if (RESTORE_EVENTS.has(ev.type)) {
-      // REFUND_REVERSED — RevenueCat restoring an entitlement it previously
-      // refunded. Trusts product_id (same as a normal grant event) but is
-      // NOT a first-time grant: the user already had this entitlement
-      // before the erroneous refund, so no welcome email / getaway re-fire.
-      const interval: 'monthly' | 'lifetime' =
-        ev.product_id === LIFETIME_PRODUCT ? 'lifetime' : 'monthly';
-      await doGrant(interval, ev.product_id, false);
+      // REFUND_REVERSED — post-Revision-4 fix: uses the same authoritative
+      // RevenueCat state-sync as CANCELLATION/TRANSFER instead of trusting
+      // product_id. Never sends a welcome email / getaway offer — the user
+      // already had this entitlement before the erroneous refund.
+      await syncRevenueCatEntitlementFromProvider(user.id);
+      console.log(`[revenuecat] REFUND_REVERSED → synced RevenueCat entitlement for ${user.email} against authoritative state (plan recalculated)`);
 
     } else if (ev.type === 'CANCELLATION') {
-      // Post-Revision-2 fix — CANCELLATION is not a single behavior.
-      // Auto-renew-off (the common UNSUBSCRIBE case, or any reason other
-      // than CUSTOMER_SUPPORT) means access continues until EXPIRATION —
-      // correctly a no-op, unchanged from before. But RevenueCat reports a
-      // support-initiated refund of a subscription/non-renewing purchase
-      // through THIS event type with cancel_reason=CUSTOMER_SUPPORT, not
-      // through a distinct lifecycle REFUND event — a paying customer who
-      // was refunded by support must lose access immediately, not run out
-      // their remaining paid period.
+      // Post-Revision-4 fix — RevenueCat's docs explicitly warn that
+      // cancel_reason=CUSTOMER_SUPPORT does not necessarily mean the
+      // subscription's auto-renewal preference was deactivated, and
+      // instruct clients to check current subscription status rather than
+      // assume revocation. Replaced the previous unconditional
+      // revokeRevenueCatEntitlement() with a live authoritative-state sync
+      // — if RevenueCat still shows the entitlement active, it's persisted
+      // exactly as-is (not silently revoked on a signal that turned out not
+      // to mean what it looked like); only if RevenueCat confirms inactive
+      // is the RC contribution cleared and the aggregate recomputed.
+      //
+      // Any OTHER cancel_reason (UNSUBSCRIBE, etc.) is still the existing
+      // no-op — auto-renew off is not loss of access; that's EXPIRATION's
+      // job. Unchanged from Revision 2/3.
       if (ev.cancel_reason === 'CUSTOMER_SUPPORT') {
-        await revokeRevenueCatEntitlement(user.id);
-        console.log(`[revenuecat] CANCELLATION (cancel_reason=CUSTOMER_SUPPORT, i.e. a support refund) → cleared RevenueCat entitlement for ${user.email} (plan recalculated)`);
+        // syncRevenueCatEntitlementFromProvider THROWS on a lookup failure
+        // (deliberately not caught here) — propagates to the outer catch,
+        // which marks the event failed and returns 500 so RevenueCat
+        // retries, rather than guessing at a state we couldn't confirm.
+        await syncRevenueCatEntitlementFromProvider(user.id);
+        console.log(`[revenuecat] CANCELLATION (cancel_reason=CUSTOMER_SUPPORT) → synced RevenueCat entitlement for ${user.email} against authoritative state (plan recalculated)`);
       } else {
         console.log(`[revenuecat] CANCELLATION (cancel_reason=${ev.cancel_reason ?? 'unknown'}) — auto-renew off, access continues until EXPIRATION. No action taken.`);
       }
-
-    } else if (ev.type === 'TRANSFER') {
-      // Post-Revision-2 fix — real TRANSFER payload has no reliable
-      // product_id to derive an interval from (see the RcEvent doc comment).
-      // Rather than guess and risk an incorrect grant (e.g. wrongly
-      // assuming Lifetime), grant a conservative default (monthly) so the
-      // transferred identity isn't left with zero access, and flag it for
-      // manual confirmation — the correct interval will also self-correct
-      // at the next RENEWAL if this was actually a subscription transfer.
-      await setUserPlan(user.id, 'pro', { revenueCat: { active: true, interval: 'monthly', productId: ev.product_id } });
-      console.log(`[revenuecat] TRANSFER → granted Pro (monthly, conservative default) to ${user.email}; product/interval needs manual confirmation`);
-      sendAdminMail({
-        subject: `⚠️ RevenueCat TRANSFER — confirm entitlement for ${user.email}`,
-        html: `<div style="font-family:system-ui,sans-serif;max-width:480px;">
-          <p style="font-size:16px;margin:0 0 8px;">A RevenueCat TRANSFER event moved an entitlement to <strong>${user.email}</strong>.</p>
-          <p style="font-size:14px;color:#334155;margin:0 0 8px;">Granted Pro (monthly) as a conservative default — TRANSFER's payload doesn't reliably indicate the correct product/interval. Please confirm the actual entitlement (e.g. in the RevenueCat dashboard) and correct manually if it should be Lifetime.</p>
-          <p style="font-size:13px;color:#64748b;margin:0;">transferred_from: ${(ev.transferred_from ?? []).join(', ') || '(none)'}<br>transferred_to: ${(ev.transferred_to ?? []).join(', ') || '(none)'}</p>
-        </div>`,
-        text: `RevenueCat TRANSFER moved an entitlement to ${user.email}. Granted Pro (monthly) as a conservative default — please confirm the actual product/interval manually.`,
-      });
 
     } else {
       // EXPIRATION / REFUND → recompute aggregate entitlement rather than
