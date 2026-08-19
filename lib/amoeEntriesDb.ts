@@ -72,8 +72,17 @@ function entryKey(e: { email: string; month: string }): string {
   return `${e.email.trim().toLowerCase()}|${e.month}`;
 }
 
+/**
+ * Post-Revision-2 fix: `id` is now included. The prior review explicitly
+ * required entry-ID verification as part of reconciliation — comparing only
+ * firstName/lastName/submittedAt could report `verified: true` for a file
+ * entry and a DB row that happen to share those three values but are
+ * actually different records (a different `id`, e.g. from an edit or a
+ * data-repair script), which is exactly the kind of mismatch reconciliation
+ * exists to catch.
+ */
 function fieldsMatch(a: AmoeEntry, b: AmoeEntry): boolean {
-  return a.firstName === b.firstName && a.lastName === b.lastName && a.submittedAt === b.submittedAt;
+  return a.id === b.id && a.firstName === b.firstName && a.lastName === b.lastName && a.submittedAt === b.submittedAt;
 }
 
 /**

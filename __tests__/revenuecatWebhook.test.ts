@@ -222,19 +222,70 @@ describe('entitlement transitions', () => {
     expect(revokeRevenueCatEntitlement).toHaveBeenCalledWith('user-1');
   });
 
-  it('11b. CANCELLATION does not revoke — access runs to EXPIRATION', async () => {
+  it('11b. CANCELLATION (auto-renew off, e.g. UNSUBSCRIBE) does not revoke — access runs to EXPIRATION', async () => {
     // Auto-renew off is not loss of access. Revoking here would cut a paying
     // customer off early, for the remainder they already paid for.
     findById.mockResolvedValue({ ...USER, plan: 'pro' });
-    const res = await post({ event: { type: 'CANCELLATION', app_user_id: 'user-1' } }, SECRET);
+    const res = await post({ event: { type: 'CANCELLATION', app_user_id: 'user-1', cancel_reason: 'UNSUBSCRIBE', id: 'evt_11b' } }, SECRET);
     expect(res.status).toBe(200);
+    expect(setUserPlan).not.toHaveBeenCalled();
+    expect(revokeRevenueCatEntitlement).not.toHaveBeenCalled();
+  });
+
+  it('11c. post-Revision-2: CANCELLATION with cancel_reason=CUSTOMER_SUPPORT (a support refund) DOES revoke immediately', async () => {
+    // RevenueCat reports a support-initiated refund of a subscription/
+    // non-renewing purchase through CANCELLATION, not a distinct lifecycle
+    // REFUND event — this must not be treated the same as a plain
+    // auto-renew-off cancellation.
+    findById.mockResolvedValue({ ...USER, plan: 'pro' });
+    const res = await post({ event: { type: 'CANCELLATION', app_user_id: 'user-1', cancel_reason: 'CUSTOMER_SUPPORT', id: 'evt_11c' } }, SECRET);
+    expect(res.status).toBe(200);
+    expect(revokeRevenueCatEntitlement).toHaveBeenCalledWith('user-1');
+  });
+
+  it('11d. CANCELLATION with no cancel_reason at all defaults to the safe no-op (does not revoke)', async () => {
+    findById.mockResolvedValue({ ...USER, plan: 'pro' });
+    const res = await post({ event: { type: 'CANCELLATION', app_user_id: 'user-1', id: 'evt_11d' } }, SECRET);
+    expect(res.status).toBe(200);
+    expect(revokeRevenueCatEntitlement).not.toHaveBeenCalled();
+  });
+
+  it('11e. REFUND_REVERSED restores the entitlement via the grant path, but is NOT treated as a first-time grant', async () => {
+    findById.mockResolvedValue(USER);
+    const res = await post({ event: { type: 'REFUND_REVERSED', app_user_id: 'user-1', product_id: 'gascap_pro_monthly', id: 'evt_11e' } }, SECRET);
+    expect(res.status).toBe(200);
+    expect(setUserPlan).toHaveBeenCalled();
+    const args = JSON.stringify(setUserPlan.mock.calls[0]);
+    expect(args).toContain('monthly');
+  });
+
+  it('11f. PRODUCT_CHANGE is ignored entirely — no grant/revoke, product_id may not be the effective product yet', async () => {
+    findById.mockResolvedValue(USER);
+    const res = await post({ event: { type: 'PRODUCT_CHANGE', app_user_id: 'user-1', product_id: 'gascap_pro_lifetime', id: 'evt_11f' } }, SECRET);
+    expect(res.status).toBe(200);
+    const json = res.json as { ok: boolean; ignored: string };
+    expect(json.ignored).toBe('PRODUCT_CHANGE');
     expect(setUserPlan).not.toHaveBeenCalled();
   });
 
-  it('12. grants on TRANSFER (restore to a new app_user_id)', async () => {
-    findById.mockResolvedValue(USER);
-    await post({ event: { type: 'TRANSFER', app_user_id: 'user-1', product_id: 'gascap_pro_lifetime', id: 'evt_12' } }, SECRET);
+  it('12. TRANSFER grants a conservative default (monthly), using the REAL documented payload shape (transferred_to, not app_user_id)', async () => {
+    findById.mockImplementation(async (id: string) => (id === 'new-identity' ? USER : undefined));
+    const res = await post({ event: { type: 'TRANSFER', transferred_from: ['old-identity'], transferred_to: ['new-identity'], id: 'evt_12' } }, SECRET);
+    expect(res.status).toBe(200);
     expect(setUserPlan).toHaveBeenCalled();
+    const args = JSON.stringify(setUserPlan.mock.calls[0]);
+    // Must NOT guess lifetime from an unreliable TRANSFER payload.
+    expect(args).toContain('monthly');
+    expect(args).not.toContain('lifetime');
+  });
+
+  it('12d. TRANSFER with no transferred_to at all is unmatched, not a crash', async () => {
+    findById.mockResolvedValue(undefined);
+    findByEmail.mockResolvedValue(undefined);
+    const res = await post({ event: { type: 'TRANSFER', transferred_from: ['old-identity'], id: 'evt_12d' } }, SECRET);
+    expect(res.status).toBe(200);
+    const json = res.json as { unmatched?: boolean };
+    expect(json.unmatched).toBe(true);
   });
 
   it('12b. resolves the user via original_app_user_id and aliases', async () => {

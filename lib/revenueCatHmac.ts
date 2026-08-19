@@ -42,10 +42,15 @@ export const HMAC_SIGNATURE_HEADER = 'x-revenuecat-webhook-signature';
 
 /**
  * How far a signed timestamp may drift from "now" before being rejected as
- * stale — basic replay protection. RevenueCat's own retry window (up to 5
- * attempts) is well under this; 5 minutes leaves generous headroom for
- * legitimate clock skew and delivery latency without meaningfully weakening
- * the replay defense.
+ * stale — basic replay protection, evaluated once per request against the
+ * time the SIGNATURE claims to have been generated. This is NOT a claim
+ * about RevenueCat's total webhook retry window/schedule — a retried
+ * delivery can legitimately arrive well after 5 minutes have passed since
+ * the ORIGINAL event occurred, and that's fine, because RevenueCat is
+ * expected to re-sign each retry with a fresh, current timestamp — this
+ * tolerance only bounds clock skew and network delivery latency for a
+ * single signed request, not how long RevenueCat may keep retrying the
+ * underlying event overall. Do not conflate the two.
  */
 const TIMESTAMP_TOLERANCE_MS = 5 * 60 * 1000;
 

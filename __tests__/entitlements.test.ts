@@ -8,7 +8,7 @@
  * Pure function, no mocks needed — see lib/entitlements.ts.
  */
 import { describe, it, expect } from 'vitest';
-import { resolveUserEntitlements, type EntitlementInput } from '../lib/entitlements';
+import { resolveUserEntitlements, hasLifetimeEntitlement, type EntitlementInput } from '../lib/entitlements';
 
 const NOW = new Date('2026-08-19T12:00:00Z').getTime();
 
@@ -141,5 +141,35 @@ describe('resolveUserEntitlements — additional coverage', () => {
   it('a trial expiring at exactly `now` is treated as expired, not active', () => {
     const r = resolve({ isProTrial: true, trialExpiresAt: new Date(NOW).toISOString() });
     expect(r.trial).toBe(false);
+  });
+});
+
+describe('hasLifetimeEntitlement — post-Revision-2 provider-neutral Lifetime check', () => {
+  it('Stripe/gift Lifetime provenance alone => true', () => {
+    expect(hasLifetimeEntitlement({ stripeInterval: 'lifetime', revenueCatActive: false, revenueCatInterval: null })).toBe(true);
+  });
+
+  it('active RevenueCat Lifetime alone => true — the exact case the fix was for', () => {
+    expect(hasLifetimeEntitlement({ stripeInterval: null, revenueCatActive: true, revenueCatInterval: 'lifetime' })).toBe(true);
+  });
+
+  it('both sources simultaneously => true', () => {
+    expect(hasLifetimeEntitlement({ stripeInterval: 'lifetime', revenueCatActive: true, revenueCatInterval: 'lifetime' })).toBe(true);
+  });
+
+  it('RevenueCat active but NOT lifetime interval (monthly) => false', () => {
+    expect(hasLifetimeEntitlement({ stripeInterval: null, revenueCatActive: true, revenueCatInterval: 'monthly' })).toBe(false);
+  });
+
+  it('RevenueCat has a lifetime interval recorded but is not currently active (e.g. refunded) => false', () => {
+    expect(hasLifetimeEntitlement({ stripeInterval: null, revenueCatActive: false, revenueCatInterval: 'lifetime' })).toBe(false);
+  });
+
+  it('Stripe monthly subscription alone => false (not Lifetime)', () => {
+    expect(hasLifetimeEntitlement({ stripeInterval: 'monthly', revenueCatActive: false, revenueCatInterval: null })).toBe(false);
+  });
+
+  it('nothing at all => false', () => {
+    expect(hasLifetimeEntitlement({ stripeInterval: null, revenueCatActive: false, revenueCatInterval: null })).toBe(false);
   });
 });

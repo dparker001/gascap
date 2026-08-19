@@ -66,6 +66,8 @@ export interface StoredUser {
   paidCampaignStep?:        number;
   paidCampaignEnrolledAt?:  string;
   stripeInterval?:          string;
+  revenueCatActive?:        boolean;
+  revenueCatInterval?:      string | null;
   verifyReminderSentAt?:    string;
   ambassadorProForLife?: boolean;
   isTestAccount?: boolean;

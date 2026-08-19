@@ -70,7 +70,18 @@ export interface ResolvedEntitlement {
   permanent:  boolean;
   sources:    EntitlementSource[];
   trial:      boolean;
-  /** The interval to persist on User.plan/stripeInterval if `pro` is true. */
+  /**
+   * The user's AGGREGATE, PROVIDER-NEUTRAL interval — for callers that need
+   * a provider-agnostic classification (e.g. "is this person effectively a
+   * Lifetime member, from any source"). This is NOT tied to any storage
+   * location and must NEVER be written back into `User.stripeInterval` —
+   * that field is Stripe/gift-only provenance (see the file header's
+   * PROVENANCE INVARIANT). Writing this value into a provider-specific
+   * field is exactly the corruption this module exists to prevent. If a
+   * caller needs to persist a provider-neutral "is Lifetime" classification,
+   * use a dedicated helper/field for that, not this value written into
+   * someone else's provenance column.
+   */
   effectiveInterval: 'monthly' | 'lifetime' | null;
 }
 
@@ -89,6 +100,37 @@ function trialActive(input: EntitlementInput, now: number): boolean {
  * revokeStripeSubscriptionEntitlement, and app/api/native/revenuecat and
  * app/api/stripe/webhook for the call sites).
  */
+export interface LifetimeCheckInput {
+  stripeInterval:     string | null;
+  revenueCatActive:   boolean;
+  revenueCatInterval: string | null;
+}
+
+/**
+ * Post-Revision-2 fix — provider-neutral "is this user a Lifetime member"
+ * check, separate from `stripeInterval` provenance and separate from the
+ * fuller `resolveUserEntitlements()` resolution.
+ *
+ * Several existing consumers check `stripeInterval === 'lifetime'` to mean
+ * "is this customer Lifetime" for purposes that have nothing to do with
+ * which provider they bought through — the giveaway's Lifetime bonus
+ * entries, the Lifetime badge, Lifetime-tier perks eligibility copy. Once
+ * `stripeInterval` was correctly narrowed to Stripe/gift-only provenance
+ * (see the PROVENANCE INVARIANT above), those consumers would silently
+ * stop recognizing a genuine RevenueCat Lifetime (native IAP) purchaser as
+ * Lifetime at all — an entitlement-semantic regression, not a provenance
+ * fix. Use this function for that class of consumer instead of reading
+ * `stripeInterval` directly.
+ *
+ * Do NOT use this to decide what to WRITE to `stripeInterval` — provenance
+ * writes must still go through the rules in setUserPlan/the revoke
+ * functions, never through this check.
+ */
+export function hasLifetimeEntitlement(input: LifetimeCheckInput): boolean {
+  return input.stripeInterval === 'lifetime'
+    || (input.revenueCatActive && input.revenueCatInterval === 'lifetime');
+}
+
 export function resolveUserEntitlements(
   input: EntitlementInput,
   now: number = Date.now(),

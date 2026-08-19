@@ -139,6 +139,17 @@ describe('backfillAmoeEntries', () => {
     expect(res.inserted).toBe(0);
   });
 
+  it('post-Revision-2: detects an id mismatch even when name/submittedAt are identical — the exact gap the prior review flagged', async () => {
+    const { backfillAmoeEntries } = await import('../lib/amoeEntriesDb');
+    // Same email+month, same firstName/lastName/submittedAt, but a DIFFERENT
+    // id — e.g. a different actual record that happens to share those
+    // display fields, or a repair script that regenerated the id.
+    table.set('jane@example.com|2026-08', entry({ id: 'db-side-id' }));
+    const res = await backfillAmoeEntries([entry({ id: 'file-side-id' })]);
+    expect(res.fieldMismatchCount).toBe(1);
+    expect(res.verified).toBe(false);
+  });
+
   it('detects entries genuinely missing from the DB after the insert attempt', async () => {
     const { backfillAmoeEntries } = await import('../lib/amoeEntriesDb');
     // Force createMany to silently fail to insert (simulating a DB-level

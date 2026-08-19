@@ -78,12 +78,23 @@ export async function claimEvent(eventId: string, eventType: string, userId: str
     // Vanishingly unlikely (deleted between the failed create and this read).
     // Use the same atomic upsert-as-CAS shape as everywhere else rather than
     // a plain upsert, so a genuinely concurrent recreation can't double-claim.
+    //
+    // Post-Revision-2 fix: only a genuine P2002 (someone else's concurrent
+    // create won this exact race) collapses into 'duplicate-in-flight'. An
+    // arbitrary DB error here (connection drop, timeout, anything else) must
+    // NOT be silently treated as "someone else claimed it" — that would
+    // convert a real outage into a false-positive successful no-op, telling
+    // the caller to skip processing an event that was never actually
+    // claimed by anyone. Unexpected errors are re-thrown so the webhook
+    // handler 500s and RevenueCat retries, exactly as an unrecoverable
+    // failure should be handled.
     try {
       await prisma.revenueCatWebhookEvent.create({
         data: { id: eventId, eventType, userId, status: 'processing', claimToken: token, receivedAt: now },
       });
       return { outcome: 'claimed', claimToken: token };
-    } catch {
+    } catch (err) {
+      if (!(err instanceof Prisma.PrismaClientKnownRequestError) || err.code !== 'P2002') throw err;
       return { outcome: 'duplicate-in-flight' };
     }
   }

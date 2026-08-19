@@ -123,6 +123,27 @@ describe('claimEvent', () => {
     await expect(claimEvent('evt_err', 'INITIAL_PURCHASE', 'user-1')).rejects.toThrow('connection reset');
   });
 
+  it('post-Revision-2 fix: in the "row vanished" fallback path (P2002 then findUnique returns null), a genuine DB outage on the retry create is RE-THROWN, not swallowed into a false duplicate-in-flight', async () => {
+    const { claimEvent } = await import('../lib/revenueCatEvents');
+    // First create: simulate the P2002 race (row exists per Postgres, but...).
+    prismaMock.revenueCatWebhookEvent.create.mockRejectedValueOnce(new KnownRequestError('Unique constraint failed', 'P2002'));
+    // ...findUnique doesn't see it (the vanishingly-unlikely deleted-between case).
+    prismaMock.revenueCatWebhookEvent.findUnique.mockResolvedValueOnce(null);
+    // The fallback retry create then hits a genuine, unrelated DB error —
+    // this must propagate, not be reported as if a concurrent claimant won.
+    prismaMock.revenueCatWebhookEvent.create.mockRejectedValueOnce(new Error('connection reset'));
+    await expect(claimEvent('evt_vanished', 'INITIAL_PURCHASE', 'user-1')).rejects.toThrow('connection reset');
+  });
+
+  it('the "row vanished" fallback path still correctly reports duplicate-in-flight for an ACTUAL P2002 on the retry create', async () => {
+    const { claimEvent } = await import('../lib/revenueCatEvents');
+    prismaMock.revenueCatWebhookEvent.create.mockRejectedValueOnce(new KnownRequestError('Unique constraint failed', 'P2002'));
+    prismaMock.revenueCatWebhookEvent.findUnique.mockResolvedValueOnce(null);
+    prismaMock.revenueCatWebhookEvent.create.mockRejectedValueOnce(new KnownRequestError('Unique constraint failed', 'P2002'));
+    const res = await claimEvent('evt_vanished_2', 'INITIAL_PURCHASE', 'user-1');
+    expect(res.outcome).toBe('duplicate-in-flight');
+  });
+
   it('two simultaneous failed-event reclaim attempts => exactly 1 claimed', async () => {
     const { claimEvent, markFailed } = await import('../lib/revenueCatEvents');
     const first = await claimEvent('evt_race_failed', 'INITIAL_PURCHASE', 'user-1');

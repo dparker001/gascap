@@ -28,6 +28,7 @@ import {
   ambassadorEntryMultiplier,
   isAlwaysEligible,
 } from '@/lib/ambassador';
+import { hasLifetimeEntitlement } from '@/lib/entitlements';
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -42,6 +43,8 @@ export async function GET() {
       activeDays: true,
       plan: true,
       stripeInterval: true,
+      revenueCatActive: true,
+      revenueCatInterval: true,
       lifetimePerksUntil: true,
       streak: true,
       referralCount: true,
@@ -82,10 +85,17 @@ export async function GET() {
   const consistencyBonus    = consistencyBonusEntries(activeDayCount);
   const communityActiveDays = await getCommunityActiveDays(period);
   const communityBonus      = communityBonusEntries(communityActiveDays);
+  // Lifetime Perks is a Stripe-billed add-on — stays provider-specific.
   const perksActive = user.stripeInterval === 'lifetime'
     && user.lifetimePerksUntil != null
     && new Date(user.lifetimePerksUntil) > new Date();
-  const lifetimeBonusEntries = user.stripeInterval === 'lifetime'
+  // Post-Revision-2 fix: Lifetime status itself is provider-neutral — same
+  // fix as lib/giveaway.ts's getEligibleEntrants(), kept consistent so this
+  // user-facing breakdown matches what the actual draw computes.
+  const isLifetime = hasLifetimeEntitlement({
+    stripeInterval: user.stripeInterval, revenueCatActive: user.revenueCatActive, revenueCatInterval: user.revenueCatInterval,
+  });
+  const lifetimeBonusEntries = isLifetime
     ? (perksActive ? LIFETIME_BONUS_ENTRIES : LIFETIME_BASE_BONUS_ENTRIES)
     : user.stripeInterval === 'annual'
     ? ANNUAL_BONUS_ENTRIES

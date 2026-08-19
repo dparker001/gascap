@@ -20,6 +20,7 @@ export { STREAK_BONUS_TIERS, streakBonusEntries, streakTierForStreak };
 export type { StreakBonusTier };
 import { getAmbassadorTier, ambassadorEntryMultiplier, isAlwaysEligible, type AmbassadorTier } from '@/lib/ambassador';
 import { amoeEntriesForMonth, amoeEntrantId, normalizeAmoeEmail, AMOE_ENTRY_VALUE } from '@/lib/amoeEntries';
+import { hasLifetimeEntitlement } from '@/lib/entitlements';
 
 /**
  * Mask a winner's full name to "First L." for all user-facing surfaces.
@@ -449,6 +450,7 @@ export async function getEligibleEntrants(period: string = currentPeriod()): Pro
     },
     select: {
       id: true, name: true, email: true, plan: true, stripeInterval: true,
+      revenueCatActive: true, revenueCatInterval: true,
       lifetimePerksUntil: true,
       activeDays: true, streak: true, referralCount: true,
       earlyUpgradeBonusEntries: true,
@@ -491,10 +493,22 @@ export async function getEligibleEntrants(period: string = currentPeriod()): Pro
       const referralLifetimeBonusEntries = u.referralLifetimeBonusEntries ?? 0;
       const referralBonusEntries       = refCount * REFERRAL_BONUS_ENTRIES;
       const consistencyBonus           = consistencyBonusEntries(activeDayCount);
+      // Lifetime Perks is a Stripe-billed annual add-on ($9.99/yr) — it can
+      // only exist for a Stripe/gift Lifetime purchaser, so this check
+      // correctly stays provider-specific (stripeInterval), unlike the
+      // Lifetime-status gate below.
       const perksActive          = u.stripeInterval === 'lifetime'
         && u.lifetimePerksUntil != null
         && new Date(u.lifetimePerksUntil) > new Date();
-      const lifetimeBonusEntries = u.stripeInterval === 'lifetime'
+      // Post-Revision-2 fix: "is this entrant Lifetime" is provider-neutral
+      // — a RevenueCat Lifetime (native IAP) purchaser earns the exact same
+      // giveaway bonus as a Stripe/gift Lifetime purchaser. Reward amounts
+      // are unchanged; only the eligibility source is now correct. See
+      // lib/entitlements.ts's hasLifetimeEntitlement().
+      const isLifetime = hasLifetimeEntitlement({
+        stripeInterval: u.stripeInterval, revenueCatActive: u.revenueCatActive, revenueCatInterval: u.revenueCatInterval,
+      });
+      const lifetimeBonusEntries = isLifetime
         ? (perksActive ? LIFETIME_BONUS_ENTRIES : LIFETIME_BASE_BONUS_ENTRIES)
         : u.stripeInterval === 'annual'
         ? ANNUAL_BONUS_ENTRIES

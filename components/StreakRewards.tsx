@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useTranslation } from '@/contexts/LanguageContext';
 import { streakBonusEntries } from '@/lib/streakTiers';
+import { hasLifetimeEntitlement } from '@/lib/entitlements';
 
 interface StreakCredit {
   id:        string;
@@ -40,7 +41,15 @@ const MILESTONES = [
 export default function StreakRewards() {
   const { data: session } = useSession();
   const { t } = useTranslation();
-  const isLifetime = (session?.user as { stripeInterval?: string } | null)?.stripeInterval === 'lifetime';
+  // Post-Revision-2 fix: provider-neutral — an RC-only Lifetime purchaser
+  // (native IAP) gets the same "bonus giveaway entries instead of a free
+  // month" treatment as a Stripe/gift Lifetime purchaser.
+  const sessionUser = session?.user as { stripeInterval?: string; revenueCatActive?: boolean; revenueCatInterval?: string | null } | null;
+  const isLifetime = hasLifetimeEntitlement({
+    stripeInterval:     sessionUser?.stripeInterval ?? null,
+    revenueCatActive:   sessionUser?.revenueCatActive ?? false,
+    revenueCatInterval: sessionUser?.revenueCatInterval ?? null,
+  });
   const [streak,       setStreak]       = useState<number>(0);
   const [milestonesHit, setMilestonesHit] = useState<number[]>([]);
   const [credits,      setCredits]      = useState<StreakCredit[]>([]);

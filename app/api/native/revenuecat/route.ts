@@ -166,20 +166,47 @@ async function maybeSendGetaway(user: { id: string; email: string; name?: string
   console.info(`[revenuecat] Getaway promo — choose-destination email sent to ${user.email}`);
 }
 
-// Events that should GRANT / extend Pro.
+/**
+ * POST-REVISION-2 EVENT MODEL — rewritten against RevenueCat's actual
+ * documented event contract, independently rechecked. The Revision 2
+ * assumptions here were wrong in several ways; each is corrected below with
+ * the reasoning, not just the new set membership.
+ *
+ * Straightforward grant events — `product_id` is trustworthy for these, the
+ * purchase/renewal is confirmed and immediately effective.
+ */
 const GRANT_EVENTS = new Set([
   'INITIAL_PURCHASE',
   'RENEWAL',
   'NON_RENEWING_PURCHASE',   // lifetime (non-consumable)
   'UNCANCELLATION',
-  'PRODUCT_CHANGE',
-  'TRANSFER',                // non-consumable restored/transferred to a new app_user_id
 ]);
 // First-time grant events → trigger the welcome email + getaway (once).
-const INITIAL_GRANT_EVENTS = new Set(['INITIAL_PURCHASE', 'NON_RENEWING_PURCHASE', 'TRANSFER']);
-// Events that should REVOKE Pro. (CANCELLATION = auto-renew off but still active →
-// NOT revoked here; access ends at EXPIRATION.)
+const INITIAL_GRANT_EVENTS = new Set(['INITIAL_PURCHASE', 'NON_RENEWING_PURCHASE']);
+
+// Straightforward revoke events. `REFUND` is kept defensively — RevenueCat's
+// current documentation reports a typical support-initiated refund via
+// CANCELLATION with cancel_reason=CUSTOMER_SUPPORT (see the CANCELLATION
+// handling below), not a distinct lifecycle REFUND event, so this branch may
+// rarely or never fire in practice. It's harmless to keep: if RevenueCat
+// ever does send a literal `REFUND` type, revoking is still the correct
+// response.
 const REVOKE_EVENTS = new Set(['EXPIRATION', 'REFUND']);
+
+// A reversed refund restores whatever was refunded. Treated as a grant using
+// the event's product_id (same mechanism as GRANT_EVENTS), but NOT added to
+// INITIAL_GRANT_EVENTS — the user already had this entitlement before the
+// erroneous refund, so re-sending the welcome email / getaway offer would be
+// confusing, not helpful.
+const RESTORE_EVENTS = new Set(['REFUND_REVERSED']);
+
+// CANCELLATION and TRANSFER are handled by dedicated branches below, not the
+// generic grant/revoke sets — see the POST handler. PRODUCT_CHANGE is
+// deliberately NOT actionable at all (falls through to `ignored`) — see the
+// comment at its check.
+const ACTIONABLE_EVENTS = new Set([
+  ...GRANT_EVENTS, ...REVOKE_EVENTS, ...RESTORE_EVENTS, 'CANCELLATION', 'TRANSFER',
+]);
 
 interface RcEvent {
   // `id` is RevenueCat's documented unique webhook-event identifier —
@@ -191,30 +218,49 @@ interface RcEvent {
   // attacker/network-observable input, not because presence is genuinely in
   // doubt — see the `!ev.id` fail-safe branch below for what happens if a
   // real payload ever violates this contract.
-  id?:                   string;
-  type?:                string;
-  app_user_id?:         string;
-  original_app_user_id?: string;
-  aliases?:             string[];
-  product_id?:          string;
+  id?:                    string;
+  type?:                  string;
+  app_user_id?:           string;
+  original_app_user_id?:  string;
+  aliases?:               string[];
+  product_id?:            string;
+  // CANCELLATION-specific: RevenueCat's documented reason code. Only
+  // 'CUSTOMER_SUPPORT' is treated as a revoke trigger here — see the
+  // CANCELLATION branch in the POST handler for why the others are not.
+  cancel_reason?:         string;
+  // TRANSFER-specific — the REAL documented shape (arrays of app_user_ids
+  // whose entitlements moved), not `app_user_id`/`product_id` as an earlier
+  // revision incorrectly assumed. See the TRANSFER branch below.
+  transferred_from?:      string[];
+  transferred_to?:        string[];
+  // PRODUCT_CHANGE-specific, unused by this handler (PRODUCT_CHANGE is not
+  // actionable — see its comment) but documented here for completeness:
+  // RevenueCat's docs state `product_id` on a PRODUCT_CHANGE event may
+  // represent the OLD product for a deferred change, with the future
+  // product in `new_product_id` instead.
+  new_product_id?:        string;
 }
 
-/** Resolve the GasCap user from RevenueCat's app_user_id (we set it = userId). */
-async function resolveUser(ev: RcEvent) {
-  const candidates = [ev.app_user_id, ev.original_app_user_id, ...(ev.aliases ?? [])]
-    .filter((v): v is string => !!v);
-  for (const c of candidates) {
+/** Resolve a GasCap user from a list of candidate RevenueCat app_user_ids. */
+async function resolveUserByIds(candidates: (string | undefined)[]) {
+  const ids = candidates.filter((v): v is string => !!v);
+  for (const c of ids) {
     const byId = await findById(c);
     if (byId) return byId;
   }
   // Fallback: some setups use email as the app_user_id.
-  for (const c of candidates) {
+  for (const c of ids) {
     if (c.includes('@')) {
       const byEmail = await findByEmail(c);
       if (byEmail) return byEmail;
     }
   }
   return undefined;
+}
+
+/** Resolve the GasCap user from RevenueCat's app_user_id (we set it = userId). */
+async function resolveUser(ev: RcEvent) {
+  return resolveUserByIds([ev.app_user_id, ev.original_app_user_id, ...(ev.aliases ?? [])]);
 }
 
 /**
@@ -289,14 +335,40 @@ export async function POST(req: Request) {
   const ev = body?.event;
   if (!ev?.type) return NextResponse.json({ ok: true, skipped: 'no event' });
 
-  // Ignore test/non-actionable event types we don't handle.
-  if (!GRANT_EVENTS.has(ev.type) && !REVOKE_EVENTS.has(ev.type)) {
+  // PRODUCT_CHANGE is deliberately NOT actionable — post-Revision-2 fix.
+  // RevenueCat's documentation states the new subscription from a
+  // PRODUCT_CHANGE may not be effective immediately: for a deferred change,
+  // `product_id` can represent the OLD (still-active) product, with the
+  // future product in `new_product_id`. Guessing an interval from this
+  // event's product_id risks granting/recording the WRONG interval before
+  // the change has actually taken effect. Rather than build a live
+  // RevenueCat customer-state API integration (not present in this
+  // codebase) just to resolve that ambiguity, this waits for the
+  // corresponding lifecycle event instead — an immediate change arrives
+  // with its own RENEWAL/INITIAL_PURCHASE-shaped confirmation, and a
+  // deferred change is confirmed by the eventual RENEWAL when it actually
+  // takes effect. Logged as ignored, not silently dropped.
+  if (ev.type === 'PRODUCT_CHANGE') {
+    console.info(`[revenuecat] PRODUCT_CHANGE ignored (product_id may not reflect the effective product yet — waiting for the confirming lifecycle event instead of guessing). app_user_id=${ev.app_user_id}`);
     return NextResponse.json({ ok: true, ignored: ev.type });
   }
 
-  const user = await resolveUser(ev);
+  // Ignore test/other event types we don't handle.
+  if (!ACTIONABLE_EVENTS.has(ev.type)) {
+    return NextResponse.json({ ok: true, ignored: ev.type });
+  }
+
+  // TRANSFER has a genuinely different payload shape — `transferred_from` /
+  // `transferred_to` arrays of app_user_ids, not `app_user_id` — per
+  // RevenueCat's actual documented sample (post-Revision-2 fix; an earlier
+  // revision's TRANSFER handling and its regression test both assumed the
+  // wrong shape). Resolve against the FIRST id in `transferred_to` — the
+  // identity gaining the entitlement.
+  const user = ev.type === 'TRANSFER'
+    ? await resolveUserByIds(ev.transferred_to ?? [])
+    : await resolveUser(ev);
   if (!user) {
-    console.error('[revenuecat] no matching user for app_user_id:', ev.app_user_id);
+    console.error('[revenuecat] no matching user for event:', ev.type, ev.app_user_id ?? ev.transferred_to);
     // 200 so RevenueCat doesn't retry forever on an unmatched id.
     return NextResponse.json({ ok: true, unmatched: true });
   }
@@ -332,41 +404,102 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, duplicate: true });
   }
   const claimToken = claim.claimToken;
+  // Stable, non-optional bindings for the closure below — `user`/`ev` are
+  // already validated non-null above, but TS can't carry that narrowing
+  // into a nested function declaration.
+  const resolvedUser = user;
+  const resolvedEv   = ev;
+
+  /**
+   * Shared grant path for GRANT_EVENTS and RESTORE_EVENTS (REFUND_REVERSED)
+   * — both trust product_id and use the same interval-resolution logic.
+   * `sendWelcome` controls whether this counts as a first-time grant for
+   * welcome-email/getaway purposes.
+   */
+  async function doGrant(interval: 'monthly' | 'lifetime', productId: string | undefined, sendWelcome: boolean) {
+    const user = resolvedUser;
+    const ev   = resolvedEv;
+    // Deliberately NOT passing `interval` as the top-level Stripe param —
+    // that would write it into `stripeInterval`, GasCap's Stripe/gift-only
+    // provenance field, corrupting it with a RevenueCat value. Only the
+    // `revenueCat` sub-object is populated; see setUserPlan's doc comment
+    // and lib/entitlements.ts for the provenance-separation invariant this
+    // depends on (Sprint 2 Revision 1 finding — provenance corruption).
+    await setUserPlan(user.id, 'pro', { revenueCat: { active: true, interval, productId } });
+    console.log(`[revenuecat] ${ev.type} → granted Pro (${interval}) to ${user.email}`);
+    if (sendWelcome && !user.paidCampaignEnrolledAt) {
+      await enrollPaidCampaign(user.id, interval)
+        .catch((e) => console.error('[revenuecat] paid-campaign enroll failed:', e));
+      sendPaidCampaignEmail('P1', {
+        id: user.id, name: user.name, email: user.email, tier: 'pro', interval,
+      }).catch((e) => console.error('[revenuecat] P1 welcome send failed:', e));
+      sendUserPush(
+        user.id,
+        "You're officially GasCap™ Pro 🎉",
+        'Welcome! Your Pro features are unlocked — tap to start tracking your fill-ups.',
+        '/',
+      ).catch(() => { /* best-effort */ });
+    }
+    if (interval === 'lifetime') await maybeSendGetaway(user, ev.type ?? '');
+  }
 
   try {
     if (GRANT_EVENTS.has(ev.type)) {
       const interval: 'monthly' | 'lifetime' =
         ev.product_id === LIFETIME_PRODUCT ? 'lifetime' : 'monthly';
-      // Deliberately NOT passing `interval` as the top-level Stripe param —
-      // that would write it into `stripeInterval`, GasCap's Stripe/gift-only
-      // provenance field, corrupting it with a RevenueCat value. Only the
-      // `revenueCat` sub-object is populated; see setUserPlan's doc comment
-      // and lib/entitlements.ts for the provenance-separation invariant this
-      // depends on (ChatGPT Sprint 2 Revision 1 finding — provenance
-      // corruption).
-      await setUserPlan(user.id, 'pro', { revenueCat: { active: true, interval, productId: ev.product_id } });
-      console.log(`[revenuecat] ${ev.type} → granted Pro (${interval}) to ${user.email}`);
       // First grant only (idempotent): welcome email + paid nurture, mirroring the
       // Stripe path so IAP buyers also get an upgrade-confirmation email.
       // Kept alongside the event-id claim above as defense in depth — this
       // check is against durable USER state, the claim is against the EVENT;
       // either one alone would have caught the reported duplicate-send risk.
-      if (INITIAL_GRANT_EVENTS.has(ev.type) && !user.paidCampaignEnrolledAt) {
-        await enrollPaidCampaign(user.id, interval)
-          .catch((e) => console.error('[revenuecat] paid-campaign enroll failed:', e));
-        sendPaidCampaignEmail('P1', {
-          id: user.id, name: user.name, email: user.email, tier: 'pro', interval,
-        }).catch((e) => console.error('[revenuecat] P1 welcome send failed:', e));
-        // Bonus welcome push alongside the P1 email (app users w/ notifications).
-        sendUserPush(
-          user.id,
-          "You're officially GasCap™ Pro 🎉",
-          'Welcome! Your Pro features are unlocked — tap to start tracking your fill-ups.',
-          '/',
-        ).catch(() => { /* best-effort */ });
+      await doGrant(interval, ev.product_id, INITIAL_GRANT_EVENTS.has(ev.type));
+
+    } else if (RESTORE_EVENTS.has(ev.type)) {
+      // REFUND_REVERSED — RevenueCat restoring an entitlement it previously
+      // refunded. Trusts product_id (same as a normal grant event) but is
+      // NOT a first-time grant: the user already had this entitlement
+      // before the erroneous refund, so no welcome email / getaway re-fire.
+      const interval: 'monthly' | 'lifetime' =
+        ev.product_id === LIFETIME_PRODUCT ? 'lifetime' : 'monthly';
+      await doGrant(interval, ev.product_id, false);
+
+    } else if (ev.type === 'CANCELLATION') {
+      // Post-Revision-2 fix — CANCELLATION is not a single behavior.
+      // Auto-renew-off (the common UNSUBSCRIBE case, or any reason other
+      // than CUSTOMER_SUPPORT) means access continues until EXPIRATION —
+      // correctly a no-op, unchanged from before. But RevenueCat reports a
+      // support-initiated refund of a subscription/non-renewing purchase
+      // through THIS event type with cancel_reason=CUSTOMER_SUPPORT, not
+      // through a distinct lifecycle REFUND event — a paying customer who
+      // was refunded by support must lose access immediately, not run out
+      // their remaining paid period.
+      if (ev.cancel_reason === 'CUSTOMER_SUPPORT') {
+        await revokeRevenueCatEntitlement(user.id);
+        console.log(`[revenuecat] CANCELLATION (cancel_reason=CUSTOMER_SUPPORT, i.e. a support refund) → cleared RevenueCat entitlement for ${user.email} (plan recalculated)`);
+      } else {
+        console.log(`[revenuecat] CANCELLATION (cancel_reason=${ev.cancel_reason ?? 'unknown'}) — auto-renew off, access continues until EXPIRATION. No action taken.`);
       }
-      // Lifetime buyers earn the complimentary getaway during the active promo.
-      if (interval === 'lifetime') await maybeSendGetaway(user, ev.type);
+
+    } else if (ev.type === 'TRANSFER') {
+      // Post-Revision-2 fix — real TRANSFER payload has no reliable
+      // product_id to derive an interval from (see the RcEvent doc comment).
+      // Rather than guess and risk an incorrect grant (e.g. wrongly
+      // assuming Lifetime), grant a conservative default (monthly) so the
+      // transferred identity isn't left with zero access, and flag it for
+      // manual confirmation — the correct interval will also self-correct
+      // at the next RENEWAL if this was actually a subscription transfer.
+      await setUserPlan(user.id, 'pro', { revenueCat: { active: true, interval: 'monthly', productId: ev.product_id } });
+      console.log(`[revenuecat] TRANSFER → granted Pro (monthly, conservative default) to ${user.email}; product/interval needs manual confirmation`);
+      sendAdminMail({
+        subject: `⚠️ RevenueCat TRANSFER — confirm entitlement for ${user.email}`,
+        html: `<div style="font-family:system-ui,sans-serif;max-width:480px;">
+          <p style="font-size:16px;margin:0 0 8px;">A RevenueCat TRANSFER event moved an entitlement to <strong>${user.email}</strong>.</p>
+          <p style="font-size:14px;color:#334155;margin:0 0 8px;">Granted Pro (monthly) as a conservative default — TRANSFER's payload doesn't reliably indicate the correct product/interval. Please confirm the actual entitlement (e.g. in the RevenueCat dashboard) and correct manually if it should be Lifetime.</p>
+          <p style="font-size:13px;color:#64748b;margin:0;">transferred_from: ${(ev.transferred_from ?? []).join(', ') || '(none)'}<br>transferred_to: ${(ev.transferred_to ?? []).join(', ') || '(none)'}</p>
+        </div>`,
+        text: `RevenueCat TRANSFER moved an entitlement to ${user.email}. Granted Pro (monthly) as a conservative default — please confirm the actual product/interval manually.`,
+      });
+
     } else {
       // EXPIRATION / REFUND → recompute aggregate entitlement rather than
       // unconditionally reverting to free (Sprint 2 — see lib/entitlements.ts).
@@ -378,7 +511,7 @@ export async function POST(req: Request) {
     await markProcessed(ev.id, claimToken);
     return NextResponse.json({ ok: true });
   } catch (e) {
-    console.error('[revenuecat] grant/revoke failed:', e);
+    console.error('[revenuecat] event handling failed:', e);
     await markFailed(ev.id, claimToken, e);
     return NextResponse.json({ error: 'Internal error' }, { status: 500 });
   }
