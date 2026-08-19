@@ -24,12 +24,28 @@
  *       --no-entitlement=<app_user_id> \
  *       --unknown=<app_user_id_that_should_not_exist> \
  *       --alias=<a_known_non-canonical_app_user_id> \
+ *       --subscription-path=<app_user_id> \
  *       --environment=production|sandbox
  *
  * Every identity flag is optional — pass whichever real identities you
  * have on hand. At minimum, pass one known real customer id and one
  * `--unknown=...` id (any string you're confident isn't a real RevenueCat
  * app_user_id) to confirm the "does not create a customer" guarantee.
+ *
+ * `--subscription-path` is a DIAGNOSTIC-ONLY flag, separate from
+ * `--active-monthly`/`--lifetime`/etc. It exists to validate the
+ * subscription.gives_access + embedded EntitlementList interpretation path
+ * specifically, for a customer whose Lifetime purchase would otherwise
+ * take precedence (production's actual, correct behavior — Lifetime is
+ * the stronger, permanent grant) and mask whether the subscription
+ * interpretation logic itself is correct. It resolves the customer via
+ * the exact same lookup/alias logic as every other flag, but then IGNORES
+ * purchase/Lifetime records entirely and evaluates ONLY the subscription
+ * response — this does NOT change production Lifetime-over-subscription
+ * precedence anywhere; it only lets this one diagnostic check see past it
+ * for a customer who happens to have both. Output is clearly labeled
+ * "DIAGNOSTIC SUBSCRIPTION PATH" so it's never mistaken for the real
+ * customerFound/active/interval decision the other flags report.
  *
  * `--environment` selects which RevenueCat environment the subscriptions/
  * purchases lookups query (`?environment=production|sandbox`, the exact
@@ -237,6 +253,54 @@ async function checkIdentity(label, appUserId, apiKey, projectId, proEntitlement
   console.log(`  RESULT: customerFound=true active=false (${purchases.length} ${environment} purchase(s), ${subscriptions.length} ${environment} subscription(s) found — none grant the resolved pro entitlement)`);
 }
 
+/**
+ * DIAGNOSTIC SUBSCRIPTION PATH ONLY — not the production entitlement
+ * decision. See the module header comment for --subscription-path. Uses
+ * the exact same customer/alias resolution as checkIdentity, then
+ * evaluates ONLY the subscriptions response (subscription.gives_access +
+ * the embedded EntitlementList), ignoring purchases/Lifetime entirely,
+ * so this can be exercised on a mixed Lifetime+Monthly customer where
+ * production's real Lifetime-over-subscription precedence would otherwise
+ * mask this path in the normal checkIdentity flow.
+ */
+async function checkSubscriptionPathDiagnostic(appUserId, apiKey, projectId, proEntitlementId, environment) {
+  console.log(`\n--- DIAGNOSTIC SUBSCRIPTION PATH [ref:${shortRef(appUserId)}] ---`);
+  console.log('  (ignores purchases/Lifetime entirely — NOT the production entitlement decision)');
+  let resolution;
+  try {
+    resolution = await findCustomerId(appUserId, apiKey, projectId);
+  } catch (err) {
+    console.log(`  RESULT: LOOKUP FAILED — ${err.message}`);
+    return;
+  }
+  if (!resolution.customerId) {
+    console.log('  RESULT: customerFound=false');
+    return;
+  }
+
+  let subscriptions;
+  try {
+    ({ items: subscriptions } = await fetchAllPages(
+      `/projects/${encodeURIComponent(projectId)}/customers/${encodeURIComponent(resolution.customerId)}/subscriptions?environment=${environment}`,
+      apiKey, `${environment} subscriptions`,
+    ));
+  } catch (err) {
+    console.log(`  RESULT: subscriptions FETCH FAILED — ${err.message}`);
+    return;
+  }
+
+  for (const subscription of subscriptions) {
+    if (!subscription.gives_access) continue;
+    const entitlementIds = await collectEmbeddedEntitlementIds(subscription.entitlements, apiKey);
+    if (entitlementIds.includes(proEntitlementId)) {
+      const productId = await resolveProductStoreIdentifier(subscription.product_id, apiKey, projectId);
+      console.log(`  RESULT: customerFound=true subscriptionAccess=true interval=monthly productId=${productId ?? '(unresolved — check /products response shape)'}`);
+      return;
+    }
+  }
+  console.log(`  RESULT: customerFound=true subscriptionAccess=false (${subscriptions.length} ${environment} subscription(s) found — none grant the resolved pro entitlement via gives_access)`);
+}
+
 async function main() {
   const { apiKey, projectId } = requireConfig();
   const args = parseArgs();
@@ -257,8 +321,8 @@ async function main() {
     process.exit(1);
   }
 
-  if (!args['active-monthly'] && !args['lifetime'] && !args['no-entitlement'] && !args['unknown'] && !args['alias']) {
-    console.log('\nNo --active-monthly / --lifetime / --no-entitlement / --unknown / --alias flags passed.');
+  if (!args['active-monthly'] && !args['lifetime'] && !args['no-entitlement'] && !args['unknown'] && !args['alias'] && !args['subscription-path']) {
+    console.log('\nNo --active-monthly / --lifetime / --no-entitlement / --unknown / --alias / --subscription-path flags passed.');
     console.log('Nothing to check. See the header comment for usage.');
     return;
   }
@@ -268,6 +332,7 @@ async function main() {
   if (args['no-entitlement']) await checkIdentity('3. Known customer with NO active entitlement', args['no-entitlement'], apiKey, projectId, proEntitlementId, environment);
   if (args['unknown']) await checkIdentity('4. Genuinely UNKNOWN app_user_id (expect not found, and confirms nothing gets created)', args['unknown'], apiKey, projectId, proEntitlementId, environment);
   if (args['alias']) await checkIdentity('5/6. ALIAS / non-canonical app_user_id (e.g. a pre-transfer identity)', args['alias'], apiKey, projectId, proEntitlementId, environment);
+  if (args['subscription-path']) await checkSubscriptionPathDiagnostic(args['subscription-path'], apiKey, projectId, proEntitlementId, environment);
 
   console.log(`\nDone. Every subscriptions/purchases call above included ?environment=${environment}.`);
   if (environment === 'production') {
