@@ -23,12 +23,24 @@
  *       --lifetime=<app_user_id> \
  *       --no-entitlement=<app_user_id> \
  *       --unknown=<app_user_id_that_should_not_exist> \
- *       --alias=<a_known_non-canonical_app_user_id>
+ *       --alias=<a_known_non-canonical_app_user_id> \
+ *       --environment=production|sandbox
  *
- * Every flag is optional — pass whichever real identities you have on
- * hand. At minimum, pass one known real customer id and one
+ * Every identity flag is optional — pass whichever real identities you
+ * have on hand. At minimum, pass one known real customer id and one
  * `--unknown=...` id (any string you're confident isn't a real RevenueCat
  * app_user_id) to confirm the "does not create a customer" guarantee.
+ *
+ * `--environment` selects which RevenueCat environment the subscriptions/
+ * purchases lookups query (`?environment=production|sandbox`, the exact
+ * same query param `lib/revenueCatApi.ts` uses in the real code path).
+ * DEFAULTS TO `production` if omitted — matching real runtime behavior.
+ * Pass `--environment=sandbox` only to deliberately exercise the positive
+ * monthly/Lifetime path against a RevenueCat SANDBOX test customer, before
+ * GasCap has any real production purchaser to test against safely. Any
+ * value other than exactly `production` or `sandbox` fails closed with a
+ * clear error — this script never silently falls back to a default on a
+ * typo.
  *
  * SAFETY:
  *   - Never logs the secret key, the Authorization header, a full raw
@@ -59,6 +71,21 @@ function parseArgs() {
     if (match) out[match[1]] = match[2];
   }
   return out;
+}
+
+const VALID_ENVIRONMENTS = new Set(['production', 'sandbox']);
+
+/**
+ * Validates the --environment flag. FAILS CLOSED: any value other than
+ * exactly 'production' or 'sandbox' exits with an error rather than
+ * silently defaulting. Omitting the flag entirely defaults to
+ * 'production', matching lib/revenueCatApi.ts's real runtime behavior.
+ */
+function resolveEnvironment(args) {
+  if (args.environment === undefined) return 'production';
+  if (VALID_ENVIRONMENTS.has(args.environment)) return args.environment;
+  console.error(`ERROR: --environment must be exactly "production" or "sandbox" (got "${args.environment}").`);
+  process.exit(1);
 }
 
 function requireConfig() {
@@ -159,7 +186,7 @@ function shortRef(value) {
   return createHash('sha256').update(value).digest('hex').slice(0, 8);
 }
 
-async function checkIdentity(label, appUserId, apiKey, projectId, proEntitlementId) {
+async function checkIdentity(label, appUserId, apiKey, projectId, proEntitlementId, environment) {
   console.log(`\n--- ${label} [ref:${shortRef(appUserId)}] ---`);
   let resolution;
   try {
@@ -177,12 +204,12 @@ async function checkIdentity(label, appUserId, apiKey, projectId, proEntitlement
   let purchases, subscriptions;
   try {
     ({ items: purchases } = await fetchAllPages(
-      `/projects/${encodeURIComponent(projectId)}/customers/${encodeURIComponent(resolution.customerId)}/purchases?environment=production`,
-      apiKey, 'production purchases',
+      `/projects/${encodeURIComponent(projectId)}/customers/${encodeURIComponent(resolution.customerId)}/purchases?environment=${environment}`,
+      apiKey, `${environment} purchases`,
     ));
     ({ items: subscriptions } = await fetchAllPages(
-      `/projects/${encodeURIComponent(projectId)}/customers/${encodeURIComponent(resolution.customerId)}/subscriptions?environment=production`,
-      apiKey, 'production subscriptions',
+      `/projects/${encodeURIComponent(projectId)}/customers/${encodeURIComponent(resolution.customerId)}/subscriptions?environment=${environment}`,
+      apiKey, `${environment} subscriptions`,
     ));
   } catch (err) {
     console.log(`  RESULT: subscriptions/purchases FETCH FAILED — ${err.message}`);
@@ -207,14 +234,16 @@ async function checkIdentity(label, appUserId, apiKey, projectId, proEntitlement
       return;
     }
   }
-  console.log(`  RESULT: customerFound=true active=false (${purchases.length} production purchase(s), ${subscriptions.length} production subscription(s) found — none grant the resolved pro entitlement)`);
+  console.log(`  RESULT: customerFound=true active=false (${purchases.length} ${environment} purchase(s), ${subscriptions.length} ${environment} subscription(s) found — none grant the resolved pro entitlement)`);
 }
 
 async function main() {
   const { apiKey, projectId } = requireConfig();
   const args = parseArgs();
+  const environment = resolveEnvironment(args);
 
   console.log('RevenueCat v2 READ-ONLY smoke test');
+  console.log(`Smoke environment: ${environment.toUpperCase()}`);
   console.log(`Project: ${projectId} (secret key not logged)`);
   console.log(`Pro entitlement lookup key: "${PRO_ENTITLEMENT_LOOKUP_KEY}"`);
 
@@ -234,13 +263,18 @@ async function main() {
     return;
   }
 
-  if (args['active-monthly']) await checkIdentity('1. Known active MONTHLY customer', args['active-monthly'], apiKey, projectId, proEntitlementId);
-  if (args['lifetime']) await checkIdentity('2. Known LIFETIME customer', args['lifetime'], apiKey, projectId, proEntitlementId);
-  if (args['no-entitlement']) await checkIdentity('3. Known customer with NO active entitlement', args['no-entitlement'], apiKey, projectId, proEntitlementId);
-  if (args['unknown']) await checkIdentity('4. Genuinely UNKNOWN app_user_id (expect not found, and confirms nothing gets created)', args['unknown'], apiKey, projectId, proEntitlementId);
-  if (args['alias']) await checkIdentity('5/6. ALIAS / non-canonical app_user_id (e.g. a pre-transfer identity)', args['alias'], apiKey, projectId, proEntitlementId);
+  if (args['active-monthly']) await checkIdentity('1. Known active MONTHLY customer', args['active-monthly'], apiKey, projectId, proEntitlementId, environment);
+  if (args['lifetime']) await checkIdentity('2. Known LIFETIME customer', args['lifetime'], apiKey, projectId, proEntitlementId, environment);
+  if (args['no-entitlement']) await checkIdentity('3. Known customer with NO active entitlement', args['no-entitlement'], apiKey, projectId, proEntitlementId, environment);
+  if (args['unknown']) await checkIdentity('4. Genuinely UNKNOWN app_user_id (expect not found, and confirms nothing gets created)', args['unknown'], apiKey, projectId, proEntitlementId, environment);
+  if (args['alias']) await checkIdentity('5/6. ALIAS / non-canonical app_user_id (e.g. a pre-transfer identity)', args['alias'], apiKey, projectId, proEntitlementId, environment);
 
-  console.log('\nDone. Every subscriptions/purchases call above included ?environment=production (item 7: production-only filtering) — confirm this manually by re-running with a sandbox test account and checking it reports active=false.');
+  console.log(`\nDone. Every subscriptions/purchases call above included ?environment=${environment}.`);
+  if (environment === 'production') {
+    console.log('To deliberately test the positive monthly/Lifetime path against a RevenueCat SANDBOX customer instead, re-run with --environment=sandbox.');
+  } else {
+    console.log('This run queried SANDBOX data only — results here do NOT reflect production entitlement state. Re-run with --environment=production (or omit the flag) to check real production data.');
+  }
   console.log('Zero writes were made to RevenueCat or to GasCap\'s database.');
 }
 
