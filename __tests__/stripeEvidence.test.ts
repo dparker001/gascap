@@ -65,22 +65,22 @@ describe('verifyStripeLifetimePurchase', () => {
   it('a non-succeeded PaymentIntent does not verify', async () => {
     search.mockResolvedValue({ data: [pi({ status: 'requires_payment_method' })], has_more: false });
     const result = await verifyStripeLifetimePurchase('user-1');
-    expect(result.status).toBe('VERIFIED_NO_LIFETIME');
+    expect(result.status).toBe('NO_MATCH');
   });
 
   it('a succeeded PaymentIntent for a MONTHLY purchase (billing !== lifetime) does not verify', async () => {
     search.mockResolvedValue({ data: [pi({ metadata: { userId: 'user-1', tier: 'pro', billing: 'monthly' } })], has_more: false });
     const result = await verifyStripeLifetimePurchase('user-1');
-    expect(result.status).toBe('VERIFIED_NO_LIFETIME');
+    expect(result.status).toBe('NO_MATCH');
   });
 
-  it('no matching PaymentIntents at all reports VERIFIED_NO_LIFETIME (positively checked, not merely assumed)', async () => {
+  it('no matching PaymentIntents at all reports NO_MATCH (positively checked, not merely assumed)', async () => {
     search.mockResolvedValue({ data: [], has_more: false });
     const result = await verifyStripeLifetimePurchase('user-1');
-    expect(result).toEqual({ status: 'VERIFIED_NO_LIFETIME', paymentIntentId: null });
+    expect(result).toEqual({ status: 'NO_MATCH', paymentIntentId: null });
   });
 
-  it('a genuine Stripe API error reports INCONCLUSIVE, never VERIFIED_NO_LIFETIME', async () => {
+  it('a genuine Stripe API error reports INCONCLUSIVE, never NO_MATCH', async () => {
     search.mockRejectedValue(new Error('Stripe API unavailable'));
     const result = await verifyStripeLifetimePurchase('user-1');
     expect(result).toEqual({ status: 'INCONCLUSIVE', paymentIntentId: null });
@@ -97,13 +97,13 @@ describe('verifyStripeLifetimePurchase', () => {
       expect(search.mock.calls[1][0]).toMatchObject({ page: 'page_cursor_1' });
     });
 
-    it('does not miss a match past the first page — verifies 3 pages are followed before concluding VERIFIED_NO_LIFETIME', async () => {
+    it('does not miss a match past the first page — verifies 3 pages are followed before concluding NO_MATCH', async () => {
       search
         .mockResolvedValueOnce({ data: [pi({ id: 'pi_1', metadata: { userId: 'user-1', tier: 'pro', billing: 'monthly' } })], has_more: true, next_page: 'cursor_1' })
         .mockResolvedValueOnce({ data: [pi({ id: 'pi_2', metadata: { userId: 'user-1', tier: 'pro', billing: 'monthly' } })], has_more: true, next_page: 'cursor_2' })
         .mockResolvedValueOnce({ data: [pi({ id: 'pi_3', metadata: { userId: 'user-1', tier: 'pro', billing: 'monthly' } })], has_more: false });
       const result = await verifyStripeLifetimePurchase('user-1');
-      expect(result.status).toBe('VERIFIED_NO_LIFETIME');
+      expect(result.status).toBe('NO_MATCH');
       expect(search).toHaveBeenCalledTimes(3);
     });
   });

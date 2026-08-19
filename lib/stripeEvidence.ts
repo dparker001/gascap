@@ -1,7 +1,27 @@
 /**
- * Post-Revision-3/5/6 fix — verified, tri-state, paginated, guest-checkout-
- * safe Stripe Lifetime purchase evidence, plus a conservative live Stripe
- * subscription status check for historical plan repairs only.
+ * Post-Revision-3/5/6/7 fix — verified, paginated, guest-checkout-safe,
+ * POSITIVE-EVIDENCE-ONLY Stripe Lifetime purchase evidence, plus a
+ * conservative live Stripe subscription status check for historical plan
+ * repairs only.
+ *
+ * REVISION 7 FIX — search absence is not proof of absence.
+ *
+ * Independent review flagged that Stripe's Search API is explicitly
+ * documented as EVENTUALLY CONSISTENT — a negative search result is not
+ * authoritative enough to support a DESTRUCTIVE deletion of a user's
+ * Lifetime provenance marker. Separately, this codebase can only prove
+ * that TODAY's Checkout Session creation writes
+ * `payment_intent_data.metadata`; it cannot prove every historical GasCap
+ * Lifetime sale, across every prior version of this code, used the same
+ * metadata convention. For both reasons, "no matching PaymentIntent found"
+ * must never be treated as proof no historical purchase exists.
+ *
+ * This is why `lib/revenueCatHistoricalReconciliation.ts` no longer
+ * automatically clears a legacy `stripeInterval` value at all — see that
+ * module's doc comment. This function's result type reflects the same
+ * restriction directly in its naming: `NO_MATCH` (renamed from
+ * `VERIFIED_NO_LIFETIME`) makes it structurally harder for a future caller
+ * to mistake "we didn't find a match" for "we proved there is none."
  *
  * WHY THIS EXISTS: the historical reconciliation previously treated
  * `stripeCustomerId` present + no `stripeSubscriptionId` + `stripeInterval
@@ -60,7 +80,17 @@
 
 import { stripe } from '@/lib/stripe';
 
-export type StripeLifetimeEvidenceStatus = 'VERIFIED_LIFETIME' | 'VERIFIED_NO_LIFETIME' | 'INCONCLUSIVE';
+/**
+ * `VERIFIED_LIFETIME` — positive evidence: a genuine succeeded PaymentIntent
+ *   for the Lifetime purchase was found. May be used as evidence.
+ * `NO_MATCH` — no matching PaymentIntent was found. This is NOT proof no
+ *   historical Lifetime purchase exists (Stripe Search is eventually
+ *   consistent; historical checkout code may have used a different
+ *   metadata convention) — must NEVER authorize a destructive cleanup.
+ * `INCONCLUSIVE` — Stripe isn't configured, or an API/pagination failure
+ *   occurred. Also never authorizes a destructive cleanup.
+ */
+export type StripeLifetimeEvidenceStatus = 'VERIFIED_LIFETIME' | 'NO_MATCH' | 'INCONCLUSIVE';
 
 export interface StripeLifetimeEvidence {
   status: StripeLifetimeEvidenceStatus;
@@ -112,10 +142,11 @@ async function listAllPaymentIntentsByUserId(gascapUserId: string): Promise<Stri
  *
  * Returns `INCONCLUSIVE` — never a thrown error — if Stripe isn't
  * configured, `gascapUserId` is empty, or a Stripe API call fails at any
- * point (including partway through pagination). Callers MUST treat
- * `INCONCLUSIVE` as "cannot confirm or rule out a Stripe Lifetime
- * purchase," never as evidence of absence — an incomplete scan must never
- * become `VERIFIED_NO_LIFETIME`.
+ * point (including partway through pagination). A completed scan that
+ * finds nothing returns `NO_MATCH`, not proof of absence — see the module
+ * doc comment. Callers MUST treat both `INCONCLUSIVE` and `NO_MATCH` as
+ * "cannot use this as destructive evidence" — only `VERIFIED_LIFETIME` is
+ * usable as positive evidence.
  */
 export async function verifyStripeLifetimePurchase(gascapUserId: string | null): Promise<StripeLifetimeEvidence> {
   if (!gascapUserId || !stripe) {
@@ -137,7 +168,7 @@ export async function verifyStripeLifetimePurchase(gascapUserId: string | null):
     return { status: 'VERIFIED_LIFETIME', paymentIntentId: match.id };
   }
 
-  return { status: 'VERIFIED_NO_LIFETIME', paymentIntentId: null };
+  return { status: 'NO_MATCH', paymentIntentId: null };
 }
 
 export type StripeSubscriptionVerificationStatus = 'VERIFIED_ACTIVE' | 'VERIFIED_INACTIVE' | 'INCONCLUSIVE';

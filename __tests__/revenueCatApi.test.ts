@@ -78,7 +78,11 @@ describe('fetchAuthoritativeRevenueCatState', () => {
     expect(url).not.toContain('/v1/subscribers/');
   });
 
-  describe('customer resolution / alias handling', () => {
+  function aliasesPage(ids: string[], nextPage: string | null = null) {
+    return jsonResponse({ items: ids.map((id) => ({ object: 'customer.alias', id })), next_page: nextPage });
+  }
+
+  describe('customer resolution / alias handling — via the dedicated /aliases endpoint', () => {
     it('canonical appUserId === customer.id resolves immediately, with no extra alias-verification call', async () => {
       fetchMock
         .mockResolvedValueOnce(customersPage([{ id: 'user-1' }]))
@@ -89,16 +93,15 @@ describe('fetchAuthoritativeRevenueCatState', () => {
       const result = await fetchAuthoritativeRevenueCatState('user-1');
       expect(result.customerFound).toBe(true);
       expect(result.customerId).toBe('user-1');
-      // No customer-detail (alias) fetch was needed.
       for (const call of fetchMock.mock.calls) {
-        expect(String(call[0])).not.toMatch(/\/customers\/user-1$/);
+        expect(String(call[0])).not.toContain('/aliases');
       }
     });
 
-    it('a searched id that is an ALIAS of a differently-canonical-id customer resolves to the canonical id, after verifying the alias', async () => {
+    it('a searched id that is an ALIAS of a differently-canonical-id customer resolves to the canonical id, after verifying via /aliases', async () => {
       fetchMock
         .mockResolvedValueOnce(customersPage([{ id: 'canonical-customer-id' }])) // search returns the canonical customer, not matching searched id
-        .mockResolvedValueOnce(jsonResponse({ id: 'canonical-customer-id', aliases: ['old-alias-id', 'transferred-alias-id'] })) // alias verification
+        .mockResolvedValueOnce(aliasesPage(['old-alias-id', 'transferred-alias-id'])) // GET /customers/{id}/aliases
         .mockResolvedValueOnce(entitlementsPage([{ id: PRO_ID, lookup_key: 'pro' }]))
         .mockResolvedValueOnce(purchasesPage([]))
         .mockResolvedValueOnce(subscriptionsPage([]));
@@ -106,18 +109,35 @@ describe('fetchAuthoritativeRevenueCatState', () => {
       const result = await fetchAuthoritativeRevenueCatState('transferred-alias-id');
       expect(result.customerFound).toBe(true);
       expect(result.customerId).toBe('canonical-customer-id');
+      const aliasCall = fetchMock.mock.calls.find((c) => String(c[0]).includes('/aliases'));
+      expect(String(aliasCall![0])).toContain('/customers/canonical-customer-id/aliases');
     });
 
-    it('a search result that does NOT actually correspond to the requested id (alias list does not contain it) resolves to no match, not a guess', async () => {
+    it('follows next_page on the /aliases list to find a matching alias on the second page', async () => {
+      fetchMock
+        .mockResolvedValueOnce(customersPage([{ id: 'canonical-customer-id' }]))
+        .mockResolvedValueOnce(aliasesPage(['old-alias-id'], '/v2/projects/proj_test/customers/canonical-customer-id/aliases?starting_after=old-alias-id'))
+        .mockResolvedValueOnce(aliasesPage(['transferred-alias-id']))
+        .mockResolvedValueOnce(entitlementsPage([{ id: PRO_ID, lookup_key: 'pro' }]))
+        .mockResolvedValueOnce(purchasesPage([]))
+        .mockResolvedValueOnce(subscriptionsPage([]));
+      const { fetchAuthoritativeRevenueCatState } = await import('../lib/revenueCatApi');
+      const result = await fetchAuthoritativeRevenueCatState('transferred-alias-id');
+      expect(result.customerId).toBe('canonical-customer-id');
+      const aliasCalls = fetchMock.mock.calls.filter((c) => String(c[0]).includes('/aliases'));
+      expect(aliasCalls.length).toBe(2);
+    });
+
+    it('a search result whose alias list does NOT contain the requested id resolves to no match, not a guess', async () => {
       fetchMock
         .mockResolvedValueOnce(customersPage([{ id: 'unrelated-customer-id' }]))
-        .mockResolvedValueOnce(jsonResponse({ id: 'unrelated-customer-id', aliases: ['some-other-id'] }));
+        .mockResolvedValueOnce(aliasesPage(['some-other-id']));
       const { fetchAuthoritativeRevenueCatState } = await import('../lib/revenueCatApi');
       const result = await fetchAuthoritativeRevenueCatState('searched-id-not-in-aliases');
       expect(result).toEqual({ customerFound: false, active: false, interval: null, productId: null, customerId: null });
     });
 
-    it('an alias-verification lookup failure throws — never silently treated as "no match" / "confirmed inactive"', async () => {
+    it('an alias-list lookup failure throws — never silently treated as "no match" / "confirmed inactive"', async () => {
       fetchMock
         .mockResolvedValueOnce(customersPage([{ id: 'some-customer-id' }]))
         .mockResolvedValueOnce(jsonResponse({}, false, 500));
@@ -125,11 +145,27 @@ describe('fetchAuthoritativeRevenueCatState', () => {
       await expect(fetchAuthoritativeRevenueCatState('searched-id')).rejects.toThrow();
     });
 
-    it('more than one distinct candidate with no exact id match is never guessed at — resolves to no match', async () => {
-      fetchMock.mockResolvedValueOnce(customersPage([{ id: 'candidate-a' }, { id: 'candidate-b' }]));
+    it('more than one distinct candidate, and NEITHER alias list contains the searched id, resolves to no match — not a guess', async () => {
+      fetchMock
+        .mockResolvedValueOnce(customersPage([{ id: 'candidate-a' }, { id: 'candidate-b' }]))
+        .mockResolvedValueOnce(aliasesPage(['unrelated-1']))
+        .mockResolvedValueOnce(aliasesPage(['unrelated-2']));
       const { fetchAuthoritativeRevenueCatState } = await import('../lib/revenueCatApi');
       const result = await fetchAuthoritativeRevenueCatState('ambiguous-id');
       expect(result.customerFound).toBe(false);
+    });
+
+    it('every non-exact candidate is verified — a match on the SECOND candidate is still found, not skipped after the first fails', async () => {
+      fetchMock
+        .mockResolvedValueOnce(customersPage([{ id: 'candidate-a' }, { id: 'candidate-b' }]))
+        .mockResolvedValueOnce(aliasesPage(['unrelated-1']))
+        .mockResolvedValueOnce(aliasesPage(['searched-id']))
+        .mockResolvedValueOnce(entitlementsPage([{ id: PRO_ID, lookup_key: 'pro' }]))
+        .mockResolvedValueOnce(purchasesPage([]))
+        .mockResolvedValueOnce(subscriptionsPage([]));
+      const { fetchAuthoritativeRevenueCatState } = await import('../lib/revenueCatApi');
+      const result = await fetchAuthoritativeRevenueCatState('searched-id');
+      expect(result.customerId).toBe('candidate-b');
     });
   });
 

@@ -1,0 +1,236 @@
+#!/usr/bin/env node
+/**
+ * READ-ONLY RevenueCat v2 smoke test.
+ *
+ * Reads or writes: READS ONLY. Makes zero writes to RevenueCat or to
+ * GasCap's database — this script does not import Prisma or touch the
+ * database at all. It only issues GET requests to RevenueCat's v2 API
+ * using the same request logic as lib/revenueCatApi.ts, mirrored here
+ * standalone so this script has no dependency on the Next.js build.
+ *
+ * WHY THIS EXISTS: three consecutive independent-review rounds
+ * (ChatGPT, Hardening Sprint 2 Revisions 4-6) each found the RevenueCat v2
+ * client's assumed response shapes were wrong in some way, discovered only
+ * by re-reading RevenueCat's documentation more carefully — never by
+ * checking a real response. This script checks a real response. Run it
+ * before trusting lib/revenueCatApi.ts's output for any real user, per
+ * docs/migrations/2026-08-sprint2-revenuecat-historical-reconciliation.md.
+ *
+ * USAGE:
+ *   REVENUECAT_V2_SECRET_KEY=... REVENUECAT_PROJECT_ID=... \
+ *     node scripts/revenuecat-smoke-test.mjs \
+ *       --active-monthly=<app_user_id> \
+ *       --lifetime=<app_user_id> \
+ *       --no-entitlement=<app_user_id> \
+ *       --unknown=<app_user_id_that_should_not_exist> \
+ *       --alias=<a_known_non-canonical_app_user_id>
+ *
+ * Every flag is optional — pass whichever real identities you have on
+ * hand. At minimum, pass one known real customer id and one
+ * `--unknown=...` id (any string you're confident isn't a real RevenueCat
+ * app_user_id) to confirm the "does not create a customer" guarantee.
+ *
+ * SAFETY:
+ *   - Never logs the secret key, the Authorization header, or a full raw
+ *     provider payload — only the sanitized classification fields this
+ *     script derives (customerFound / active / interval / productId /
+ *     customerId), plus HTTP status codes on failure.
+ *   - Makes NO writes to RevenueCat (every call is GET) or to GasCap's
+ *     database (this script never imports Prisma).
+ *   - Do NOT run this without real REVENUECAT_V2_SECRET_KEY /
+ *     REVENUECAT_PROJECT_ID credentials — it will simply fail fast with a
+ *     clear error if they're missing.
+ */
+
+const ORIGIN = 'https://api.revenuecat.com';
+const API_BASE = `${ORIGIN}/v2`;
+const PRO_ENTITLEMENT_LOOKUP_KEY = process.env.REVENUECAT_PRO_ENTITLEMENT_ID || 'pro';
+
+function parseArgs() {
+  const out = {};
+  for (const arg of process.argv.slice(2)) {
+    const match = arg.match(/^--([a-z-]+)=(.+)$/);
+    if (match) out[match[1]] = match[2];
+  }
+  return out;
+}
+
+function requireConfig() {
+  const apiKey = process.env.REVENUECAT_V2_SECRET_KEY;
+  const projectId = process.env.REVENUECAT_PROJECT_ID;
+  if (!apiKey || !projectId) {
+    console.error('ERROR: REVENUECAT_V2_SECRET_KEY and REVENUECAT_PROJECT_ID must both be set in the environment.');
+    process.exit(1);
+  }
+  return { apiKey, projectId };
+}
+
+async function fetchAllPages(path, apiKey, what) {
+  const items = [];
+  let url = `${API_BASE}${path}`;
+  let pageCount = 0;
+  while (url) {
+    pageCount++;
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${apiKey}` } });
+    if (!res.ok) throw new Error(`${what} fetch failed: HTTP ${res.status}`);
+    const json = await res.json();
+    items.push(...(json.items ?? []));
+    url = json.next_page ? `${ORIGIN}${json.next_page}` : null;
+  }
+  return { items, pageCount };
+}
+
+async function collectEmbeddedEntitlementIds(list, apiKey) {
+  if (!list) return [];
+  const ids = (list.items ?? []).map((e) => e.id);
+  let nextPage = list.next_page ?? null;
+  while (nextPage) {
+    const res = await fetch(`${ORIGIN}${nextPage}`, { headers: { Authorization: `Bearer ${apiKey}` } });
+    if (!res.ok) throw new Error(`embedded entitlement list fetch failed: HTTP ${res.status}`);
+    const page = await res.json();
+    ids.push(...(page.items ?? []).map((e) => e.id));
+    nextPage = page.next_page ?? null;
+  }
+  return ids;
+}
+
+async function verifyAlias(customerId, appUserId, apiKey, projectId) {
+  const { items } = await fetchAllPages(
+    `/projects/${encodeURIComponent(projectId)}/customers/${encodeURIComponent(customerId)}/aliases`,
+    apiKey, 'customer aliases',
+  );
+  return items.some((a) => a.id === appUserId);
+}
+
+async function findCustomerId(appUserId, apiKey, projectId) {
+  const candidateIds = new Set();
+  let url = `${API_BASE}/projects/${encodeURIComponent(projectId)}/customers?search=${encodeURIComponent(appUserId)}`;
+  while (url) {
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${apiKey}` } });
+    if (!res.ok) throw new Error(`customer search failed: HTTP ${res.status}`);
+    const json = await res.json();
+    const pageItems = json.items ?? [];
+    for (const c of pageItems) {
+      if (c.id === appUserId) return { customerId: c.id, viaAlias: false };
+      candidateIds.add(c.id);
+    }
+    url = json.next_page ? `${ORIGIN}${json.next_page}` : null;
+  }
+  if (candidateIds.size === 0) return { customerId: null, viaAlias: false };
+  const verified = [];
+  for (const candidateId of candidateIds) {
+    if (await verifyAlias(candidateId, appUserId, apiKey, projectId)) verified.push(candidateId);
+  }
+  if (verified.length === 1) return { customerId: verified[0], viaAlias: true };
+  return { customerId: null, viaAlias: false };
+}
+
+async function resolveEntitlementInternalId(lookupKey, apiKey, projectId) {
+  const { items } = await fetchAllPages(`/projects/${encodeURIComponent(projectId)}/entitlements`, apiKey, 'entitlements catalog');
+  const match = items.find((e) => e.lookup_key === lookupKey);
+  if (!match) throw new Error(`No RevenueCat entitlement configured with lookup_key="${lookupKey}" in this project.`);
+  return match.id;
+}
+
+async function resolveProductStoreIdentifier(internalProductId, apiKey, projectId) {
+  try {
+    const res = await fetch(`${API_BASE}/projects/${encodeURIComponent(projectId)}/products/${encodeURIComponent(internalProductId)}`, {
+      headers: { Authorization: `Bearer ${apiKey}` },
+    });
+    if (!res.ok) return null;
+    const json = await res.json();
+    return json.store_identifier ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function checkIdentity(label, appUserId, apiKey, projectId, proEntitlementId) {
+  console.log(`\n--- ${label} (${appUserId}) ---`);
+  let resolution;
+  try {
+    resolution = await findCustomerId(appUserId, apiKey, projectId);
+  } catch (err) {
+    console.log(`  RESULT: LOOKUP FAILED — ${err.message}`);
+    return;
+  }
+  if (!resolution.customerId) {
+    console.log('  RESULT: customerFound=false (not found — confirms no customer was created for an unknown identity)');
+    return;
+  }
+  console.log(`  resolved canonical customerId (sanitized, not logging full payload)${resolution.viaAlias ? ' — resolved via alias verification, NOT an exact id match' : ''}`);
+
+  let purchases, subscriptions;
+  try {
+    ({ items: purchases } = await fetchAllPages(
+      `/projects/${encodeURIComponent(projectId)}/customers/${encodeURIComponent(resolution.customerId)}/purchases?environment=production`,
+      apiKey, 'production purchases',
+    ));
+    ({ items: subscriptions } = await fetchAllPages(
+      `/projects/${encodeURIComponent(projectId)}/customers/${encodeURIComponent(resolution.customerId)}/subscriptions?environment=production`,
+      apiKey, 'production subscriptions',
+    ));
+  } catch (err) {
+    console.log(`  RESULT: subscriptions/purchases FETCH FAILED — ${err.message}`);
+    return;
+  }
+
+  for (const purchase of purchases) {
+    if (purchase.status !== 'owned') continue;
+    const entitlementIds = await collectEmbeddedEntitlementIds(purchase.entitlements, apiKey);
+    if (entitlementIds.includes(proEntitlementId)) {
+      const productId = await resolveProductStoreIdentifier(purchase.product_id, apiKey, projectId);
+      console.log(`  RESULT: customerFound=true active=true interval=lifetime productId=${productId ?? '(unresolved — check /products response shape)'}`);
+      return;
+    }
+  }
+  for (const subscription of subscriptions) {
+    if (!subscription.gives_access) continue;
+    const entitlementIds = await collectEmbeddedEntitlementIds(subscription.entitlements, apiKey);
+    if (entitlementIds.includes(proEntitlementId)) {
+      const productId = await resolveProductStoreIdentifier(subscription.product_id, apiKey, projectId);
+      console.log(`  RESULT: customerFound=true active=true interval=monthly productId=${productId ?? '(unresolved — check /products response shape)'}`);
+      return;
+    }
+  }
+  console.log(`  RESULT: customerFound=true active=false (${purchases.length} production purchase(s), ${subscriptions.length} production subscription(s) found — none grant the resolved pro entitlement)`);
+}
+
+async function main() {
+  const { apiKey, projectId } = requireConfig();
+  const args = parseArgs();
+
+  console.log('RevenueCat v2 READ-ONLY smoke test');
+  console.log(`Project: ${projectId} (secret key not logged)`);
+  console.log(`Pro entitlement lookup key: "${PRO_ENTITLEMENT_LOOKUP_KEY}"`);
+
+  let proEntitlementId;
+  try {
+    proEntitlementId = await resolveEntitlementInternalId(PRO_ENTITLEMENT_LOOKUP_KEY, apiKey, projectId);
+    console.log(`Resolved entitlement catalog: lookup_key="${PRO_ENTITLEMENT_LOOKUP_KEY}" -> found (internal id not logged)`);
+  } catch (err) {
+    console.error(`FATAL: could not resolve the pro entitlement — ${err.message}`);
+    console.error('This alone is diagnostic: it means REVENUECAT_PRO_ENTITLEMENT_ID does not match any entitlement lookup_key in this project.');
+    process.exit(1);
+  }
+
+  if (!args['active-monthly'] && !args['lifetime'] && !args['no-entitlement'] && !args['unknown'] && !args['alias']) {
+    console.log('\nNo --active-monthly / --lifetime / --no-entitlement / --unknown / --alias flags passed.');
+    console.log('Nothing to check. See the header comment for usage.');
+    return;
+  }
+
+  if (args['active-monthly']) await checkIdentity('1. Known active MONTHLY customer', args['active-monthly'], apiKey, projectId, proEntitlementId);
+  if (args['lifetime']) await checkIdentity('2. Known LIFETIME customer', args['lifetime'], apiKey, projectId, proEntitlementId);
+  if (args['no-entitlement']) await checkIdentity('3. Known customer with NO active entitlement', args['no-entitlement'], apiKey, projectId, proEntitlementId);
+  if (args['unknown']) await checkIdentity('4. Genuinely UNKNOWN app_user_id (expect not found, and confirms nothing gets created)', args['unknown'], apiKey, projectId, proEntitlementId);
+  if (args['alias']) await checkIdentity('5/6. ALIAS / non-canonical app_user_id (e.g. a pre-transfer identity)', args['alias'], apiKey, projectId, proEntitlementId);
+
+  console.log('\nDone. Every subscriptions/purchases call above included ?environment=production (item 7: production-only filtering) — confirm this manually by re-running with a sandbox test account and checking it reports active=false.');
+  console.log('Zero writes were made to RevenueCat or to GasCap\'s database.');
+}
+
+main().catch((err) => {
+  console.error('FATAL:', err.message);
+  process.exit(1);
+});

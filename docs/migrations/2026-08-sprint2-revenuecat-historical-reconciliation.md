@@ -1,15 +1,14 @@
 # Historical RevenueCat entitlement reconciliation — rollout sequence
 
-**Status: BUILT, NOT RUN.** Post-Sprint-2 Revision 6, 2026-08-19. Nothing in
+**Status: BUILT, NOT RUN.** Post-Sprint-2 Revision 7, 2026-08-19. Nothing in
 this document has been executed against production. This document
-supersedes the Revision 5 version — the RevenueCat provider shapes
-(`gives_access`, documented Purchase `status`, nested `EntitlementList`
-pagination, customer-alias resolution), the Stripe Lifetime evidence
-correlation key (userId, not `stripeCustomerId` — see "guest checkout"
-below), the historical Stripe subscription status matrix, and the apply
-endpoint's precondition binding were all corrected in Revision 6 in
-response to ChatGPT's independent review; see
-`docs/reviews/2026-08-19-hardening-sprint-2-revision-6.md` for the full
+supersedes the Revision 6 version. Two changes matter most in Revision 7:
+**the bulk apply endpoint no longer clears `stripeInterval` under any
+circumstance** (see "Suspected legacy contamination is now report-only"
+below), and the RevenueCat customer-alias lookup was corrected to use the
+actual documented `/aliases` endpoint instead of an assumed field on the
+Customer resource. See
+`docs/reviews/2026-08-19-hardening-sprint-2-revision-7.md` for the full
 findings and fixes.
 
 ---
@@ -67,15 +66,18 @@ RevenueCat customer aliases — which matters directly for TRANSFER, since a
 transfer's `transferred_from`/`transferred_to` identities are exactly the
 kind of alias a search can return under a different canonical customer.
 
-Revision 6's corrected set of v2 resources:
+Revision 6's corrected set of v2 resources (alias resolution further
+corrected in Revision 7 — see below):
 
 1. `GET /v2/projects/{project_id}/customers?search={app_user_id}` — resolve
-   a customer id without creating one. Paginated. **Alias-aware**: if no
-   search result's `id` exactly matches the searched id but exactly one
-   distinct customer was returned, a separate customer-detail fetch
-   positively verifies the searched id is in that customer's alias list
-   before trusting it. Ambiguous results (zero or multiple distinct
-   candidates with no exact match) resolve to "not found," never a guess.
+   a customer id without creating one. Paginated. **Alias-aware**: if a
+   search result's `id` doesn't exactly match the searched id, EVERY
+   non-exact distinct candidate is verified via
+   `GET /v2/projects/{project_id}/customers/{customer_id}/aliases` (see
+   below — this is the Revision 7 fix; Revision 6 incorrectly assumed alias
+   data lived on the Customer detail resource). Exactly one verified match
+   resolves to that canonical customer id; zero or more than one verified
+   match resolves to "not found," never a guess.
 2. `GET /v2/projects/{project_id}/entitlements` — the project's entitlement
    catalog; resolves the configured lookup key (`pro`) to RevenueCat's
    internal entitlement id. Paginated.
@@ -98,9 +100,25 @@ Revision 6's corrected set of v2 resources:
    fails, `productId` is reported as `null` — RevenueCat's internal id
    (`prod...`) is never allowed to leak into that column.
 
-Every list response's pagination (top-level AND nested/embedded) is
-followed via its own `next_page` value — never a hand-constructed
-offset/cursor — until exhausted.
+Every list response's pagination (top-level, nested/embedded, AND the
+`/aliases` list) is followed via its own `next_page` value — never a
+hand-constructed offset/cursor — until exhausted.
+
+### Alias resolution — the dedicated `/aliases` endpoint (Revision 7)
+
+Revision 6's alias verification fetched the Customer detail resource
+(`GET .../customers/{customer_id}`) and assumed it carried an `aliases:
+string[]` field. Independent review found RevenueCat's actual v2 API
+exposes a **dedicated, separately-paginated** alias list resource instead:
+`GET /v2/projects/{project_id}/customers/{customer_id}/aliases`, returning
+`{ object: 'list', items: [{ object: 'customer.alias', id, created_at }],
+next_page }`. `lib/revenueCatApi.ts`'s `verifyAlias` now calls this
+endpoint and paginates it fully — a matching alias on the second page is
+not missed. Every non-exact search candidate is checked individually
+(rather than only checking when exactly one candidate exists), per the
+review's explicit algorithm: exact match wins immediately; otherwise every
+non-exact candidate's alias list is checked; exactly one verified match
+resolves; zero or multiple verified matches resolve to "not found."
 
 Required env vars, distinct from `REVENUECAT_WEBHOOK_AUTH`:
 
@@ -169,12 +187,51 @@ more than one confirmed source exists.
   authoritative RevenueCat lookup confirms an active `pro` entitlement.
 - `confirmed_legacy_rc_contamination` — exactly one confirmed source, and
   it's a lone active RC entitlement, with a `stripeInterval` value that
-  nothing else explains.
+  nothing else explains. **As of Revision 7, this classification (and the
+  `suspectedLegacyStripeIntervalContamination` flag it implies) is
+  REPORT-ONLY — see below.**
 - `multiple_legitimate_sources` — more than one confirmed source (e.g.
   Stripe subscription + RC monthly, gift Lifetime + RC monthly, Ambassador +
   RC Lifetime).
 - `ambiguous_legacy_provenance` — nothing could be confirmed. Left
   completely untouched by apply, always.
+
+## Suspected legacy contamination is now REPORT-ONLY — never auto-cleared (Revision 7)
+
+Revisions 4–6 each tried a progressively narrower rule for WHEN it's safe
+to AUTOMATICALLY clear a `stripeInterval` value believed to be legacy
+RevenueCat contamination. Independent review concluded no such rule is
+safe enough for an automatic, destructive, bulk operation, for two reasons:
+
+1. Stripe's Search API (which `verifyStripeLifetimePurchase` uses) is
+   **documented as eventually consistent** — a negative search result
+   (`NO_MATCH`, renamed from `VERIFIED_NO_LIFETIME` specifically so the
+   type can't be mistaken for proof of absence) is not authoritative
+   enough to justify deleting a marker.
+2. This repository can only prove **today's** Checkout Session code writes
+   `payment_intent_data.metadata` — it cannot prove every historical
+   GasCap Lifetime sale, across every prior version of this code, used the
+   same metadata convention. `NO_MATCH` could just as easily mean "this
+   purchase predates that convention" as "this purchase never happened."
+
+**The bulk apply endpoint therefore NEVER clears `stripeInterval`, period.**
+The contamination-DETECTION logic is kept — it's still the only way to
+identify the finite set of accounts worth a human looking at — but its
+output is now purely informational:
+`suspectedLegacyStripeIntervalContamination: boolean` on each candidate.
+If Don later approves a specific user's cleanup after manually verifying
+against the RevenueCat and Stripe dashboards, that's a targeted, one-off
+operation performed outside this bulk tool — not something this migration
+does automatically.
+
+What the migration STILL does automatically (with explicit approval per
+the dry-run report and `reportHash`/optimistic-concurrency binding):
+
+- Backfill confirmed RevenueCat fields (`revenueCatActive`/
+  `revenueCatInterval`/`revenueCatProductId`) when a live RC lookup
+  confirms an active entitlement.
+- Repair `plan` from `'free'` to `'pro'` — but only from confirmed,
+  NON-TRIAL sources (see "Historical plan repair excludes trial" below).
 
 ### Field-specific legacy contamination logic (Revision 5)
 
@@ -202,13 +259,15 @@ Revision 5 separates two questions:
   backfill and the genuine second source are both preserved; only the
   unexplained marker is cleared.
 
-**Stripe Lifetime evidence is tri-state**, not a boolean
-(`VERIFIED_LIFETIME` / `VERIFIED_NO_LIFETIME` / `INCONCLUSIVE` — see
-`lib/stripeEvidence.ts`). Only `VERIFIED_NO_LIFETIME` may ever support a
-destructive clear; `INCONCLUSIVE` (a Stripe API failure, pagination error,
-etc.) makes that specific field's contamination proposal ineligible, even
-when RevenueCat's state would otherwise support it — a Stripe outage must
-never be read as proof of absence.
+**Stripe Lifetime evidence is a 3-state, positive-evidence-only result**
+(`VERIFIED_LIFETIME` / `NO_MATCH` / `INCONCLUSIVE` — see
+`lib/stripeEvidence.ts`; `NO_MATCH` was renamed from `VERIFIED_NO_LIFETIME`
+in Revision 7 specifically so the type can't be mistaken for destructive
+proof). Only `VERIFIED_LIFETIME` is ever usable as positive evidence.
+Neither `NO_MATCH` nor `INCONCLUSIVE` may ever justify a destructive
+action — moot now that this migration performs no destructive
+`stripeInterval` action at all, but the type still enforces the
+discipline for anything built on top of this evidence in the future.
 
 ### Guest checkout — correlate by userId, never by stripeCustomerId (Revision 6)
 
@@ -271,21 +330,46 @@ source (Ambassador, verified Stripe Lifetime, gift, active RC) can still
 justify it on its own. This only changes historical repair evidence — it
 does not alter GasCap's normal runtime billing policy.
 
+## Historical plan repair excludes trial as a source (Revision 7)
+
+`resolveUserEntitlements()`'s normal aggregate treats an active trial as
+sufficient for Pro access — correct for the app's live runtime behavior,
+but not for this repair tool. An active trial by itself must never
+generate a historical `plan='free' → 'pro'` repair: this is a payment/
+provenance reconciliation tool, not a trial-extension mechanism, and a
+trial is wall-clock dependent — it can expire between the dry-run report
+and the apply call with no database field changing at all, unlike every
+other source this tool reasons about.
+
+The repair-specific resolver call (`repairResolved` in `buildDryRunReport`)
+therefore hard-codes `isProTrial: false, trialExpiresAt: null` regardless
+of the candidate's actual stored trial state. A repair can still fire from
+any of: a verified active Stripe subscription, verified Stripe/gift
+Lifetime, Ambassador, or an authoritative active RevenueCat entitlement —
+just never from trial status alone, and never from a stale/unverified
+subscription id (see "Historical plan repair requires LIVE Stripe
+subscription verification" above). The informational `resolvedShouldBePro`/
+`resolvedSources` fields on the report still reflect the FULL evidence
+picture including trial status, for human visibility — only the repair
+decision itself excludes it.
+
 ## Proposed repairs, computed per candidate
 
 After classification, the dry run recomputes the central
 `resolveUserEntitlements()` resolver using the *proposed* RC fields, a
-possibly-nulled `stripeInterval`, and — for the repair decision specifically
-— a `stripeSubscriptionId` that's only included if it was live-verified
-active. If that recomputation says Pro but the stored `plan` says free, the
-candidate is flagged `historicalPlanInconsistency: true` with
-`proposedPlanRepair: 'pro'`. A repair is **never** proposed in the other
-direction — this migration cannot downgrade anyone.
+possibly-nulled `stripeInterval` (for reporting the informational aggregate
+only — never actually cleared, see above), and — for the repair decision
+specifically — a `stripeSubscriptionId` that's only included if it was
+live-verified active, with trial fields excluded entirely (see above). If
+that recomputation says Pro but the stored `plan` says free, the candidate
+is flagged `historicalPlanInconsistency: true` with `proposedPlanRepair:
+'pro'`. A repair is **never** proposed in the other direction — this
+migration cannot downgrade anyone.
 
 ## Apply is atomic per candidate, bound to the reviewed report, AND optimistically concurrency-checked
 
-Every candidate's approved changes — RC field backfill, legacy
-`stripeInterval` clear, plan repair — are combined into exactly **one**
+Every candidate's approved changes — RC field backfill and/or plan repair
+only, never a `stripeInterval` clear — are combined into exactly **one**
 conditional update call. Either all of that candidate's proposed changes
 land, or none do; one candidate's DB failure never leaves it in a partial,
 mixed state, and never blocks another candidate's independent update.
@@ -295,7 +379,8 @@ mixed state, and never blocks another candidate's independent update.
 **both** every candidate's PRECONDITION (the stored state the proposal was
 computed from — `currentPlan`, `stripeInterval`, `stripeCustomerId`,
 `stripeSubscriptionId`, `ambassadorProForLife`, `hasRedeemedGift`, the
-stored `revenueCatActive`/`revenueCatInterval`, and the live
+stored `revenueCatActive`/`revenueCatInterval`/`revenueCatProductId`
+(`currentRevenueCatProductId` added in Revision 7), and the live
 provider-verification classifications) **and** its proposed mutation —
 never volatile counters or log text. `POST` recomputes the dry run live and
 compares hashes; if anything safety-relevant changed between GET and POST,
@@ -319,12 +404,14 @@ report itself would have proposed.
 
 ## What it does NOT do
 
-It never downgrades anyone. It never clears `stripeInterval` except when a
-specific value is positively proven unexplained. It never guesses — a
-candidate whose provenance can't be confirmed from GasCap's own records or a
-live RevenueCat/Stripe lookup is left completely untouched and reported as
+It never downgrades anyone. It never clears `stripeInterval`, ever, under
+any circumstance (Revision 7). It never lets an active trial by itself
+justify a plan repair (Revision 7). It never guesses — a candidate whose
+provenance can't be confirmed from GasCap's own records or a live
+RevenueCat/Stripe lookup is left completely untouched and reported as
 `ambiguous_legacy_provenance`. It never applies a proposal that wasn't the
-one actually reviewed (`reportHash` binding).
+one actually reviewed (`reportHash` binding), and never mutates a row that
+changed since the report was built (optimistic-concurrency binding).
 
 ## Rollout sequence
 
@@ -337,25 +424,37 @@ one actually reviewed (`reportHash` binding).
    internal-evidence-only classification — this is intentional, since a
    degraded run without a clear signal risks under-classifying
    `multiple_legitimate_sources` candidates as single-source.
-3. **Smoke-test the v2 client against a real RevenueCat account before
-   trusting it operationally** — this has not been independently verified
-   against a live account from this environment, and is now the single
-   highest-priority open item after three rounds of provider-contract
-   corrections. Specifically confirm:
-   - a known active-subscription customer resolves `active: true,
-     interval: 'monthly'`;
-   - a known Lifetime-purchase customer resolves `active: true, interval:
-     'lifetime'`;
-   - a genuinely unknown `app_user_id` returns `customerFound: false`
-     **without** creating a customer in the RevenueCat dashboard;
-   - a known TRANSFER alias (an old `app_user_id` RevenueCat has merged
-     into a different canonical customer) resolves to the canonical
-     customer id, not "not found";
-   - the actual JSON shape of a real `subscriptions`/`purchases` response
-     matches this client's assumptions (`entitlements` as a paginated
-     `EntitlementList`, `gives_access` boolean, `status: 'owned'` on
-     purchases) — if it doesn't, this needs a fourth correction round
-     before being trusted.
+3. **Run the read-only live smoke test — this is now a HARD GATE.** After
+   four rounds of provider-contract corrections (each caught by re-reading
+   documentation more carefully, never by checking a real response), the
+   next highest-value step is checking one real response, not another
+   round of abstract design review. Run:
+   ```bash
+   REVENUECAT_V2_SECRET_KEY=... REVENUECAT_PROJECT_ID=... \
+     node scripts/revenuecat-smoke-test.mjs \
+       --active-monthly=<known active monthly app_user_id> \
+       --lifetime=<known Lifetime app_user_id, if one exists> \
+       --no-entitlement=<known customer with no active entitlement> \
+       --unknown=<any app_user_id you're confident doesn't exist> \
+       --alias=<a known non-canonical / pre-transfer app_user_id, if available>
+   ```
+   It's READ-ONLY — every call is a GET, it makes zero writes to RevenueCat
+   or to GasCap's database, and it never logs the secret key or a full raw
+   payload (only the sanitized `customerFound`/`active`/`interval`/
+   `productId` classification per identity). Specifically confirm:
+   - a known active-subscription customer resolves `active=true
+     interval=monthly`;
+   - a known Lifetime-purchase customer resolves `active=true
+     interval=lifetime`;
+   - a genuinely unknown `app_user_id` resolves "not found" (confirming no
+     customer gets created);
+   - a known TRANSFER alias resolves to its canonical customer, not "not
+     found" (proves the alias-resolution fix);
+   - production-only filtering: re-run against a sandbox test account and
+     confirm it reports `active=false` even if that account has an active
+     sandbox subscription.
+   If any result doesn't match this client's assumptions, do NOT proceed —
+   file a correction round before trusting this tool's output.
 4. **Run the dry-run report** (read-only, makes zero writes to GasCap's
    database or to RevenueCat):
    ```bash
@@ -366,19 +465,25 @@ one actually reviewed (`reportHash` binding).
 5. **Review the report before doing anything else.** Check:
    - `totalCandidates` — the full candidate pool under the broadened scope.
    - Classification breakdown, especially `multiple_legitimate_sources`
-     count (this category did not exist as a distinct signal before
-     Revision 4) and `confirmed_legacy_rc_contamination` count (the only
-     category that proposes a destructive `stripeInterval` clear).
+     count and `confirmed_legacy_rc_contamination` count —
+     `suspectedLegacyStripeIntervalContamination: true` candidates are
+     **report-only** (see above); they are never touched by apply. Use this
+     list to plan any future manual, targeted cleanup — never as an
+     automatic bulk action.
    - `historicalPlanInconsistencyCount` — accounts currently `plan='free'`
-     that resolved evidence says should be Pro. Inspect these individually.
+     that CONFIRMED, NON-TRIAL evidence says should be Pro. Inspect these
+     individually.
    - `ambiguousCount` — never touched by apply, automatically.
    - Any RC lookup failure count — a failed lookup is reported distinctly
      from a confirmed-inactive result; a spike here means fix the API
      configuration and re-run before trusting a high ambiguous count.
-6. **Manually inspect a sample of `confirmed_active_rc_*`,
-   `confirmed_legacy_rc_contamination`, and `historicalPlanInconsistency`
-   candidates** against the RevenueCat dashboard and Stripe dashboard
-   directly before trusting the automated classification at scale.
+6. **Manually inspect a sample of `confirmed_active_rc_*` and
+   `historicalPlanInconsistency` candidates** against the RevenueCat
+   dashboard and Stripe dashboard directly before trusting the automated
+   classification at scale. Separately, review the
+   `suspectedLegacyStripeIntervalContamination` list as its own manual
+   follow-up task — this migration does not, and will not, act on it
+   automatically.
 7. **Only after Don explicitly approves**, apply — echoing back the EXACT
    `reportHash` from the GET response just reviewed:
    ```bash
@@ -391,21 +496,30 @@ one actually reviewed (`reportHash` binding).
    proposal-relevant change occurred), the live hash won't match and this
    returns **409** with `"Reconciliation report changed. Run/review GET
    again."` — applying nothing. On a match, each candidate's approved
-   changes (RC field backfill, legacy `stripeInterval` clear, plan repair —
-   whichever apply to that specific candidate) are combined into ONE atomic
-   update per candidate; a failure on one candidate never partially mutates
-   it and never blocks another candidate's independent update.
+   changes (RC field backfill and/or plan repair — never a `stripeInterval`
+   clear) are combined into ONE atomic, optimistically-concurrency-checked
+   update per candidate; a failure — or a row that changed since the report
+   was built (`stale: true`) — on one candidate never partially mutates it
+   and never blocks another candidate's independent update.
 
-   Every `ambiguous_legacy_provenance` row, and every candidate with no
-   proposed changes at all, is left exactly as it was.
+   Every `ambiguous_legacy_provenance` row, every
+   `suspectedLegacyStripeIntervalContamination` candidate (as far as
+   `stripeInterval` itself is concerned — an RC backfill or plan repair can
+   still apply to it independently), and every candidate with no proposed
+   changes at all, is left exactly as it was.
 8. **Re-run the GET afterward** to confirm the apply's effect and that
    `ambiguousCount` reflects the expected remainder.
-9. **Ambiguous rows are a separate, manual follow-up** — not automatable
-   from GasCap's data alone. Options for a future pass: request a full
-   RevenueCat customer export and cross-reference by email, or accept the
-   remaining ambiguity as permanent (the provenance fix means
-   `stripeInterval` can no longer be corrupted going forward — ambiguity
-   here is strictly about the past, not an ongoing risk).
+9. **Ambiguous rows AND suspected-contamination rows are both separate,
+   manual follow-ups** — neither is automatable from GasCap's data alone.
+   For ambiguous rows: a future pass could request a full RevenueCat
+   customer export and cross-reference by email, or accept the remaining
+   ambiguity as permanent (the provenance fix means `stripeInterval` can no
+   longer be corrupted going forward — ambiguity here is strictly about the
+   past). For suspected-contamination rows: if Don wants to pursue cleanup
+   for a specific account, that means manually confirming against the
+   RevenueCat and Stripe dashboards directly, then performing a targeted,
+   one-off `stripeInterval` update for that single user — never a re-run of
+   this bulk tool with a changed rule.
 
 ## Live webhook edge cases now use this same authoritative lookup
 

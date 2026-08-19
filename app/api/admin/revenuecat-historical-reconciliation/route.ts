@@ -4,7 +4,7 @@
  *   — apply the dry-run's proposed changes, but ONLY if the live proposal
  *     still matches exactly what was reviewed.
  *
- * Post-Sprint-2 Revision 5 — see lib/revenueCatHistoricalReconciliation.ts
+ * Post-Sprint-2 Revision 7 — see lib/revenueCatHistoricalReconciliation.ts
  * for the full design rationale. Summary: before this hardening sprint's
  * provenance fix, RevenueCat grants wrote into `stripeInterval`
  * (Stripe/gift-only provenance), and RevenueCat revokes downgraded `plan`
@@ -17,16 +17,24 @@
  * customer) and, where relevant, read-only Stripe checks (lib/stripeEvidence.ts)
  * for every candidate. Makes ZERO writes to GasCap's database or to
  * RevenueCat. Returns a deterministic `reportHash` over every candidate's
- * proposed mutation.
+ * precondition and proposed mutation.
  *
  * POST requires `{ confirm: true, reportHash: "<the GET response's reportHash>" }`.
  * It recomputes the dry run live and compares hashes — if provider state
  * changed since the report was reviewed (or anything else changed the
  * proposal), it returns 409 and applies NOTHING. Only on an exact hash
- * match does it apply, atomically per candidate — see
+ * match does it apply, atomically per candidate (with an additional
+ * per-candidate optimistic-concurrency check at write time) — see
  * `applyReconciliation`'s doc comment for exactly which candidates qualify.
  * It NEVER touches a candidate still classified
- * `ambiguous_legacy_provenance`, and NEVER downgrades anyone's plan.
+ * `ambiguous_legacy_provenance`, NEVER downgrades anyone's plan, and — as
+ * of Revision 7 — NEVER clears `stripeInterval`. Suspected legacy
+ * `stripeInterval` contamination is reported (`suspectedLegacyStripeIntervalContamination`
+ * on each candidate) for MANUAL review only; this bulk endpoint cannot act
+ * on it. See `lib/revenueCatHistoricalReconciliation.ts`'s module doc
+ * comment for why: Stripe's Search API is documented as eventually
+ * consistent, and this repository can only prove today's Checkout code
+ * writes the metadata this tool correlates on — not every historical sale.
  */
 import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/adminAuth';
@@ -98,6 +106,6 @@ export async function POST(req: Request) {
     totalCandidates: report.totalCandidates,
     ambiguousCount:  report.ambiguousCount,
     ...result,
-    message: `${result.candidatesUpdated}/${result.candidatesWithProposedChanges} candidates with proposed changes updated atomically (${result.candidatesFailed} failed, ${result.candidatesStale} stale — their row changed since the report was built and were left untouched). RC field backfills: ${result.rcFieldsProposed}. Legacy stripeInterval clears: ${result.legacyClearProposed}. Plan repairs: ${result.planRepairProposed}. ${report.ambiguousCount} candidate(s) remain ambiguous and were left completely untouched.`,
+    message: `${result.candidatesUpdated}/${result.candidatesWithProposedChanges} candidates with proposed changes updated atomically (${result.candidatesFailed} failed, ${result.candidatesStale} stale — their row changed since the report was built and were left untouched). RC field backfills: ${result.rcFieldsProposed}. Plan repairs: ${result.planRepairProposed}. This bulk apply NEVER clears stripeInterval — ${result.suspectedContaminationCount} candidate(s) are flagged suspectedLegacyStripeIntervalContamination for MANUAL review only, not touched by this operation. ${report.ambiguousCount} candidate(s) remain ambiguous and were left completely untouched.`,
   });
 }

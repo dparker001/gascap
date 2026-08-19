@@ -1,7 +1,10 @@
 /**
- * Post-Revision-5/6 fix — RevenueCat v2 authoritative, production-only,
+ * Post-Revision-5/6/7 fix — RevenueCat v2 authoritative, production-only,
  * correctly-shaped, fully-paginated (including nested resources) state
- * lookup, with real customer-alias resolution.
+ * lookup, with real customer-alias resolution via RevenueCat's actual
+ * dedicated `/aliases` endpoint (Revision 7 — see `verifyAlias` below;
+ * Revision 6 incorrectly assumed alias data lived on the Customer detail
+ * resource itself).
  *
  * HISTORY: v1 → v2 (Revision 3, endpoint had a write side effect on unknown
  * identities) → v2 via active_entitlements (Revision 4, invented fields
@@ -103,7 +106,8 @@ interface V2Page<T> {
   next_page?: string | null;
 }
 
-interface V2Customer { id: string; aliases?: string[] }
+interface V2Customer { id: string }
+interface V2Alias { id: string }
 interface V2Entitlement { id: string; lookup_key: string }
 /** RevenueCat's documented EntitlementList — a paginated list embedded in a Subscription or Purchase, NOT a bare array. */
 interface V2EntitlementList { object?: 'list'; items?: V2Entitlement[]; next_page?: string | null }
@@ -162,23 +166,26 @@ async function collectEmbeddedEntitlementIds(list: V2EntitlementList | undefined
 }
 
 /**
- * Fetch a RevenueCat customer's own alias list to positively confirm a
- * searched app_user_id belongs to this customer, when the search result's
- * `id` didn't match the searched id directly. Throws on failure — an alias
- * lookup failure must never be silently treated as "no match" (which could
- * read as "confirmed inactive" downstream); the caller propagates this as
- * an inconclusive lookup.
+ * Fetch a RevenueCat customer's alias list via the documented dedicated
+ * endpoint (`GET .../customers/{customer_id}/aliases`) to positively
+ * confirm a searched app_user_id belongs to this customer, when the search
+ * result's `id` didn't match the searched id directly. Paginated. Throws
+ * on failure — an alias lookup failure must never be silently treated as
+ * "no match" (which could read as "confirmed inactive" downstream); the
+ * caller propagates this as an inconclusive lookup.
+ *
+ * Post-Revision-7 fix: previously this fetched the Customer detail
+ * resource and assumed it carried an `aliases: string[]` field.
+ * RevenueCat's actual v2 API exposes a dedicated, separately-paginated
+ * `customer.alias` list resource instead — corrected here.
  */
 async function verifyAlias(customerId: string, appUserId: string, apiKey: string, projectId: string): Promise<boolean> {
-  const res = await fetch(
-    `${API_BASE}/projects/${encodeURIComponent(projectId)}/customers/${encodeURIComponent(customerId)}`,
-    { headers: { Authorization: `Bearer ${apiKey}` } },
+  const aliases = await fetchAllPages<V2Alias>(
+    `/projects/${encodeURIComponent(projectId)}/customers/${encodeURIComponent(customerId)}/aliases`,
+    apiKey,
+    'customer aliases',
   );
-  if (!res.ok) {
-    throw new Error(`RevenueCat v2 customer detail fetch failed: HTTP ${res.status}`);
-  }
-  const json = await res.json() as V2Customer;
-  return Array.isArray(json.aliases) && json.aliases.includes(appUserId);
+  return aliases.some((a) => a.id === appUserId);
 }
 
 /**
@@ -193,13 +200,21 @@ async function verifyAlias(customerId: string, appUserId: string, apiKey: string
  * OTHER app-user id happened to match unrelated criteria, not one that
  * actually corresponds to the searched identity.
  *
- * Design: if any search result's `id` field exactly matches the searched
- * app_user_id, that's an immediate, unambiguous match. Otherwise, if
- * exactly one distinct customer was returned across all pages, positively
- * verify the searched id appears in THAT customer's alias list (a separate
- * customer-detail fetch) before trusting it. If zero or more than one
- * distinct customer was returned with no exact match, this is NOT resolved
- * (ambiguous search results are never guessed at).
+ * Design (per independent review):
+ *   1. If any search result's `id` field exactly matches the searched
+ *      app_user_id, accept immediately — unambiguous.
+ *   2. Otherwise, collect every distinct candidate customer id across all
+ *      search-result pages.
+ *   3. Verify the searched id against EACH non-exact candidate's actual
+ *      alias list (the dedicated `/aliases` endpoint).
+ *   4. Exactly one candidate whose alias list contains the searched id ->
+ *      return that canonical customer id.
+ *   5. Zero verified matches -> not found.
+ *   6. More than one verified match -> never guess; treat as unresolved
+ *      (this should not be possible under RevenueCat's own data model, but
+ *      is handled defensively rather than assumed away).
+ *   7. Any alias-list lookup failure propagates (throws) — never silently
+ *      "no match."
  */
 async function findCustomerId(appUserId: string, apiKey: string, projectId: string): Promise<string | null> {
   const candidateIds = new Set<string>();
@@ -218,14 +233,17 @@ async function findCustomerId(appUserId: string, apiKey: string, projectId: stri
     url = json.next_page ? `${ORIGIN}${json.next_page}` : null;
   }
 
-  if (candidateIds.size === 1) {
-    const [onlyCandidate] = [...candidateIds];
-    const isAlias = await verifyAlias(onlyCandidate, appUserId, apiKey, projectId);
-    return isAlias ? onlyCandidate : null;
+  if (candidateIds.size === 0) return null;
+
+  const verifiedMatches: string[] = [];
+  for (const candidateId of candidateIds) {
+    const isAlias = await verifyAlias(candidateId, appUserId, apiKey, projectId);
+    if (isAlias) verifiedMatches.push(candidateId);
   }
 
-  // Zero candidates, or more than one distinct customer with no exact
-  // match — never guess which one (if any) the searched id actually belongs to.
+  if (verifiedMatches.length === 1) return verifiedMatches[0];
+
+  // Zero verified matches, or (defensively) more than one — never guess.
   return null;
 }
 
