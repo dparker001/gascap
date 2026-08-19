@@ -3,36 +3,53 @@
  * OFF BY DEFAULT until REVENUECAT_HMAC_SECRET is configured in production.
  *
  * ============================================================================
- * SCHEME — per RevenueCat's current documented webhook signing protocol
+ * SCHEME — confirmed against RevenueCat's current official documentation
  * ============================================================================
- * Post-Sprint-2 Revision 1: the original implementation here (plain
- * `X-RevenueCat-Signature: HMAC-SHA256(rawBody)` hex, modeled on Stripe/
- * GitHub's simpler pattern) was an assumption, not a confirmed spec, and the
- * independent review that caught the entitlement-provenance bugs
- * (docs/reviews/) separately checked RevenueCat's current documentation and
- * found it does NOT match. Rewritten against the reported spec:
+ * Post-Sprint-2 Revision 1 rewrote this against a REPORTED spec (not yet
+ * independently checked from this environment at the time). Independent
+ * review (ChatGPT, Sprint 2 preflight round) has since directly verified
+ * RevenueCat's current official documentation and CONFIRMED this
+ * implementation matches the real, current contract:
  *
  *   Header:        X-RevenueCat-Webhook-Signature
- *   Header format:  t=<unix_timestamp>,v1=<signature>
+ *   Header format:  t=<unix_timestamp>,v1=<hmac_sha256_hex>
  *   Signed message: <unix_timestamp>.<raw_request_body>
  *   Algorithm:      HMAC-SHA256, hex-encoded
+ *   Comparison:     constant-time (see crypto.timingSafeEqual below)
+ *   Timestamp tolerance: an optional window (this implementation uses 5
+ *                        minutes) to bound replay/clock-skew — RevenueCat's
+ *                        docs note a tolerance is expected but don't mandate
+ *                        an exact value.
  *
- * This still was not independently re-confirmed against RevenueCat's live
- * dashboard/docs FROM THIS ENVIRONMENT — this file implements what was
- * reported, not something browsed and verified firsthand here. Per the
- * standing rule (do not merge fixes to a codebase this security-sensitive
- * on secondhand claims without a chance to verify), REVENUECAT_HMAC_SECRET
- * MUST remain unset in production until Don (or whoever configures it) has:
+ * The SPECIFICATION itself is no longer an open question. What remains
+ * unverified is a LIVE SIGNED DELIVERY — this code has not yet processed a
+ * real webhook RevenueCat actually signed, only synthetic test data. Spec
+ * research and live-delivery validation are different kinds of evidence;
+ * confirming the former does not substitute for the latter.
+ *
+ * REVENUECAT_HMAC_SECRET MUST remain unset in production until Don (or
+ * whoever configures it) has:
  *   1. Confirmed in the RevenueCat dashboard that webhook signing is enabled
  *      and generated a signing secret.
- *   2. Sent a real test webhook delivery (RevenueCat's dashboard can resend
- *      a past event) and confirmed this code accepts it.
- *   3. Only then set the env var in Railway.
+ *   2. Set REVENUECAT_HMAC_SECRET in Railway — this step is unavoidable
+ *      before step 3 can mean anything: `verifyRevenueCatHmac` returns
+ *      `{ checked: false }` (a complete no-op) whenever the secret is
+ *      unset, so a delivery CANNOT be validated while it remains unset. Do
+ *      not read "test before enabling" as "the secret can stay unset during
+ *      the test" — it cannot.
+ *   3. Immediately sent a real test webhook delivery (RevenueCat's
+ *      dashboard can resend a past event) and confirmed this code accepts
+ *      it (`{ checked: true, valid: true }` in logs, and the request not
+ *      rejected).
+ *   4. If step 3 fails, unset REVENUECAT_HMAC_SECRET again immediately —
+ *      reverting to the no-op state — rather than leaving a broken
+ *      enforcement path live in production while debugging it.
  *
- * Until REVENUECAT_HMAC_SECRET is set, this module is a complete no-op — the
- * existing Authorization-header check (Sprint 1) remains the sole auth
- * mechanism, unchanged and unaffected. HMAC here is additive defense in
- * depth, never a replacement for it.
+ * Until REVENUECAT_HMAC_SECRET is set (or after it's unset again per step
+ * 4), this module is a complete no-op — the existing Authorization-header
+ * check (Sprint 1) remains the sole auth mechanism, unchanged and
+ * unaffected. HMAC here is additive defense in depth, never a replacement
+ * for it.
  * ============================================================================
  */
 

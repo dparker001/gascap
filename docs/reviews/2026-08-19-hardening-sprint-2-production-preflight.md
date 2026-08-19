@@ -1,4 +1,4 @@
-# Sprint 2 Production Preflight Packet
+# Sprint 2 Production Preflight Packet (Revision 2)
 
 **Purpose:** REVIEW/PREFLIGHT ONLY. No production action was taken to
 produce this document — every SQL statement, command, and Railway variable
@@ -7,11 +7,27 @@ independent reviewer (ChatGPT) can perform a final production-readiness
 review of Hardening Sprint 2 without reconstructing the sprint from commit
 history.
 
+**SHA terminology, precise (per Revision 2 correction):**
+- **Review Target / code SHA:** `e07bd0865388534903b7fb54c6c746ab6697782c` —
+  the application code state this packet's findings are actually about.
+  Every §2–§10 finding below was verified against this exact code, not a
+  later one.
+- **Revision 1 packet commit:** `8dad1b8` — the first version of this
+  document, reviewed by ChatGPT and superseded by this revision.
+- **This revision's packet commit:** documentation-only; see this task's
+  final commit SHA in the summary at the end of this file. It does NOT
+  change the Review Target SHA above — no application code was re-reviewed
+  beyond the one comment fix in §5 below (HMAC doc-comment correction, no
+  behavioral change).
+- **Current `hardening/sprint-2` branch HEAD** at the time this revision
+  was written is documented in §1 below, separately from the Review Target
+  SHA — they are the same only until a future commit changes that.
+
 ---
 
 ## 1. Current Branch / Commit State
 
-- **`hardening/sprint-2` HEAD:** `e07bd0865388534903b7fb54c6c746ab6697782c`
+- **`hardening/sprint-2` HEAD (at Review Target time):** `e07bd0865388534903b7fb54c6c746ab6697782c`
 - **`main` HEAD (origin, just fetched):** `3ff64267d69e3e6d0a4a155fd6ea8792be183943`
 - **Merge-base** (where `hardening/sprint-2` diverged from `main`): `39de76a40b227ec97799f196deddbaffd1a3fcaa`
 - **Commits added since the merge-base (28 total, oldest first):**
@@ -194,13 +210,22 @@ alone rather than "behavior changed."
 
 ### 2e. Locking / risky operations
 
-- **`ALTER TABLE "User" ADD COLUMN`** (×5): Postgres can add a column with
-  a constant default without a full-table rewrite in modern versions
-  (11+) for columns with a fixed default — this is a fast, effectively
-  metadata-only operation, not a risk that scales with `User` table size.
-  This has NOT been independently confirmed against GasCap's actual
-  Postgres version/Railway configuration in this environment — flagged as
-  an open item in §13.
+- **`ALTER TABLE "User" ADD COLUMN`** (×5, corrected wording in Revision
+  2): on PostgreSQL 11+, adding a column with a constant default does
+  **not** physically rewrite every existing row. The default is stored
+  once, in the table's metadata (`pg_attribute`); existing rows simply
+  read that stored default logically when queried, without Postgres
+  writing the value into each row's actual storage. (This is distinct
+  from pre-11 Postgres, where `ADD COLUMN ... DEFAULT` genuinely did
+  rewrite the whole table — the "avoid this" folklore predates 11 and is
+  often repeated without the version caveat.) So this is a fast,
+  effectively metadata-only operation regardless of `User` table size, on
+  any reasonably current Postgres version. **This has still NOT been
+  independently confirmed against GasCap's actual production Postgres
+  version** — `SHOW server_version;` remains a required pre-SQL
+  verification gate (added to §12 below), not because the mechanism is in
+  doubt, but because no operation should proceed on an unconfirmed
+  assumption about the target database's actual version.
 - **`CREATE TABLE IF NOT EXISTS`** (×4): no lock risk — creating a new,
   empty table takes at most a brief catalog lock, not a table-level lock
   on any existing data.
@@ -392,7 +417,7 @@ SELECT id, email, role FROM "User" WHERE role = 'admin';   -- expect exactly 1 r
 |---|---|---|---|---|
 | `REVENUECAT_V2_SECRET_KEY` | **New** | Yes | RevenueCat v2 Secret API Key string, scoped **read-only** (`customer_information:customers/subscriptions/purchases:read`, `project_configuration:entitlements/products:read` — no `read_write`) | Any production dry-run or live sync (`syncRevenueCatEntitlementFromProvider`, `CUSTOMER_SUPPORT`/`TRANSFER` webhook handling, historical reconciliation) |
 | `REVENUECAT_PROJECT_ID` | **New** | No (an identifier, not a credential) | RevenueCat project id string | Same as above |
-| `REVENUECAT_PRO_ENTITLEMENT_ID` | **New, optional** | No | Entitlement lookup key string (defaults to `'pro'` if unset) | Only needed if GasCap's actual RevenueCat entitlement lookup key differs from `'pro'` — confirm against the RevenueCat dashboard before assuming the default is correct |
+| `REVENUECAT_PRO_ENTITLEMENT_ID` | **New, REQUIRED (corrected in Revision 2 — NOT optional)** | No | Entitlement lookup key string — the code's `'pro'` default is **confirmed wrong** for GasCap's actual project | **Before Sprint 2 deploy AND before any production reconciliation.** The live sandbox smoke test in this task's prior turn proved `lookup_key="pro"` does not resolve against GasCap's real RevenueCat project — the actual configured entitlement identifier is exactly `GasCap Pro`. Every code path that resolves the pro entitlement (`lib/revenueCatApi.ts`'s `resolveEntitlementInternalId`, and by extension every RC sync/reconciliation call) throws if this doesn't match a real entitlement lookup_key in the project — so leaving this unset (falling back to the wrong `'pro'` default) would make every production RC lookup fail closed with an error, not silently misbehave, but it would still block Sprint 2 from functioning at all until corrected. **Set `REVENUECAT_PRO_ENTITLEMENT_ID` to the exact value `GasCap Pro` in Railway before deploy.** (Not a secret — this is a configuration identifier, not a credential; stating the value here is not a secret disclosure.) |
 | `REVENUECAT_HMAC_SECRET` | **New, intentionally NOT set yet** | Yes | HMAC signing secret from RevenueCat's webhook signing configuration | Only before HMAC enablement (§5) — must remain **unset** until the dashboard/test-delivery sequence in §5 is completed |
 | `REVENUECAT_WEBHOOK_AUTH` | **Existing** (already live on `main`/production — the webhook route predates this sprint) | Yes | Shared secret string, compared via `Authorization` header | Already required; unaffected by this sprint |
 | `ADMIN_PASSWORD` | **Existing** | Yes | Shared secret string | Already required; the dual-auth design keeps this working unchanged throughout the migration |
@@ -406,6 +431,16 @@ SELECT id, email, role FROM "User" WHERE role = 'admin';   -- expect exactly 1 r
 configuration and did not check it. `ADMIN_PASSWORD`, `CAMPAIGN_ADMIN_PASSWORD`,
 and `DATABASE_URL` **are** present locally, consistent with them being
 pre-existing, already-required variables.
+
+**Revision 2 correction:** since `REVENUECAT_PRO_ENTITLEMENT_ID` is now
+confirmed REQUIRED (not optional — see the table above), its absence from
+`.env.local` is not merely "not yet confirmed," it is a genuine
+configuration gap that must be closed before Sprint 2's RevenueCat code
+paths can function at all in whichever environment lacks it. This applies
+equally to Railway production, which was not directly inspected in this
+session — do not assume Railway already has the correct value configured
+just because the sandbox smoke test eventually succeeded once the correct
+value was supplied to the smoke-test script directly.
 
 **No `.env.example` exists at the repository root** — flagged as a gap in
 §13; there is no single source of truth in the repo for "here is the
@@ -423,15 +458,26 @@ tests (see the summary at the top of this task), but **have not yet been
 independently confirmed configured for PRODUCTION** RevenueCat traffic in
 Railway.
 
-### Entitlement lookup key expected by GasCap
+### Entitlement lookup key expected by GasCap — CORRECTED in Revision 2
 
-`'pro'` (the default of `REVENUECAT_PRO_ENTITLEMENT_ID`) — confirmed
-working against the sandbox project in this session's smoke tests
-(`Resolved entitlement catalog: lookup_key="pro" -> found`). Not yet
-independently re-confirmed this is the exact same lookup key configured on
-the **production** RevenueCat project (sandbox and production share a
-project in RevenueCat's model, so this is very likely already confirmed by
-the sandbox test succeeding — but flagged for completeness).
+**The code's default (`'pro'`) is confirmed WRONG.** The live RevenueCat
+sandbox smoke test in this task's prior turn proved `lookup_key="pro"`
+does **not** resolve against GasCap's real RevenueCat project — it fails
+lookup entirely, since no entitlement in the project's catalog has that
+exact lookup key. The actual configured entitlement identifier is exactly:
+
+```
+GasCap Pro
+```
+
+**Production requires `REVENUECAT_PRO_ENTITLEMENT_ID=GasCap Pro`** set in
+Railway before Sprint 2 deploy or any production reconciliation — leaving
+it unset (falling back to the code's `'pro'` default) will cause
+`resolveEntitlementInternalId` to throw for every single RC lookup, which
+in turn fails closed (never silently guesses) but blocks every RC-dependent
+Sprint 2 feature from functioning until corrected. This is not a secret —
+stating the value here is a configuration fact, not a credential
+disclosure.
 
 ### Webhook / HMAC readiness state
 
@@ -443,11 +489,25 @@ the sandbox test succeeding — but flagged for completeness).
   existing auth check. When the env var is unset, `verifyRevenueCatHmac`
   returns `{ checked: false }` and the caller proceeds exactly as before —
   a complete no-op.
-- **Explicitly documented as NOT independently re-verified against
-  RevenueCat's live signing scheme from this environment** — the exact
-  header format (`X-RevenueCat-Webhook-Signature: t=<ts>,v1=<sig>`) is
-  implemented per a reported spec, not confirmed firsthand against
-  RevenueCat's dashboard/docs by browsing them in this environment.
+- **Revision 2 correction — the SPECIFICATION is now confirmed, only LIVE
+  DELIVERY validation remains.** Independent review (ChatGPT) has directly
+  verified RevenueCat's current official documentation and confirmed the
+  implemented scheme matches exactly:
+  - Header: `X-RevenueCat-Webhook-Signature`
+  - Format: `t=<unix_timestamp>,v1=<hmac_sha256_hex>`
+  - Signed message: `<timestamp>.<raw request body>`
+  - HMAC-SHA256, constant-time comparison (`crypto.timingSafeEqual`)
+  - An optional timestamp tolerance window (this implementation uses 5
+    minutes) — RevenueCat's docs expect a tolerance without mandating an
+    exact value.
+
+  `lib/revenueCatHmac.ts`'s header comment has been updated (this
+  revision, comment-only, no behavioral change) to state this plainly
+  rather than describe the scheme as an unverified "reported spec." What
+  is genuinely still unverified is different in kind: this code has never
+  processed a real, RevenueCat-signed webhook delivery — only synthetic
+  test data in unit tests. Confirming the specification on paper does not
+  substitute for confirming a live signed request is actually accepted.
 
 ### What remains intentionally disabled/staged
 
@@ -458,26 +518,55 @@ the sandbox test succeeding — but flagged for completeness).
 - AMOE read path — still reads the file, not `AmoeEntry` (dual-write only,
   see §7/§9).
 
-### Exact sequence for enabling HMAC later (no dashboard changes made now)
+### Exact sequence for enabling HMAC later (no dashboard changes made now) — CORRECTED in Revision 2
+
+Revision 1 of this packet had the ordering backwards: it proposed sending
+a test delivery to "confirm the code accepts it" *before* setting
+`REVENUECAT_HMAC_SECRET`. That's not possible —
+`verifyRevenueCatHmac` returns `{ checked: false }` (a complete no-op,
+correctly, since HMAC is meant to be off by default) whenever the secret
+is unset, so no delivery can be validated while it remains unset. Testing
+cannot happen "before" enabling; enabling and testing must be the same
+short window, corrected order:
 
 1. In the RevenueCat dashboard, confirm webhook signing is enabled for the
    GasCap project and generate/copy a signing secret.
-2. Send a real test webhook delivery (RevenueCat's dashboard supports
-   resending a past event) and confirm the deployed webhook handler
-   **accepts** it — i.e., verify `verifyRevenueCatHmac` returns
-   `{ checked: true, valid: true }` for a real delivery, not just in
-   unit tests against synthetic data.
-3. **Only then** set `REVENUECAT_HMAC_SECRET` in Railway.
-4. Re-send another test delivery post-configuration to confirm end-to-end
-   behavior with the secret live.
+2. Set `REVENUECAT_HMAC_SECRET` in Railway — this makes verification
+   possible for the first time; the specification is already confirmed
+   correct (§ above), so this is the point where live-delivery evidence
+   starts actually meaning something.
+3. **Immediately** send a real test webhook delivery (RevenueCat's
+   dashboard supports resending a past event) and confirm the deployed
+   webhook handler **accepts** it — verify `verifyRevenueCatHmac` returns
+   `{ checked: true, valid: true }` for the real delivery, in production
+   logs, not just in unit tests against synthetic data.
+4. **If step 3 fails** (any `valid: false` reason, or the request is
+   rejected), **unset `REVENUECAT_HMAC_SECRET` again immediately** —
+   reverting to the no-op state — rather than leaving a broken enforcement
+   path live in production while debugging it. Do not attempt to debug
+   with the secret live and webhook traffic still flowing.
+5. If step 3 succeeds, send at least one additional test delivery to
+   confirm the result is repeatable, not a one-off coincidence.
 
-No RevenueCat dashboard changes were made in preparing this packet.
+HMAC stays disabled until this sequence is actually run. No RevenueCat
+dashboard changes and no Railway variable changes were made in preparing
+this packet or this revision.
 
 ---
 
 ## 6. Production Reconciliation Dry Run
 
-### Exact command(s) — DRY RUN ONLY, GET request
+**Sequencing note (Revision 2 correction):** this command targets
+`www.gascap.app`, which serves whatever `main` currently deploys. The
+route below **does not exist on current `main`** — it is Sprint 2
+application code. This command is only meaningful **after** Sprint 2 has
+been merged and deployed (§11 steps I–M) — it is step O in the corrected
+release sequence, not something to run at packet-review time or
+immediately after the schema migration. It is documented here, in its own
+section, for completeness and for the reviewer's benefit — not as
+something runnable today.
+
+### Exact command(s) — DRY RUN ONLY, GET request (run only after Sprint 2 is deployed — see §11)
 
 ```bash
 curl https://www.gascap.app/api/admin/revenuecat-historical-reconciliation \
@@ -855,32 +944,82 @@ this section can function without its schema counterpart existing first.
 
 ---
 
-## 11. Release Sequence
+## 11. Release Sequence — CORRECTED in Revision 2
+
+**Revision 1 had a real ordering flaw**, identified on independent review:
+it placed "production reconciliation dry run" (step F) *before* the PR/
+merge/deploy steps (I–M). But
+`/api/admin/revenuecat-historical-reconciliation` **does not exist on
+current `main`** — it is Sprint 2 application code, confirmed directly
+(`git show origin/main:app/api/admin/revenuecat-historical-reconciliation/route.ts`
+fails). A `curl` to that production URL cannot return anything meaningful
+— there is no route there to hit — until Sprint 2's code has actually been
+deployed. Schema being applied is necessary but not sufficient: the route
+handler itself must be running. The corrected sequence:
 
 A. Review this preflight packet (this document).
 B. Explicit Product Owner (Don) approval to proceed.
 C. Apply the additive production schema SQL (§2g) — NOT executed yet.
 D. Verify schema (§3's verification queries) — NOT executed yet.
-E. Configure required Railway environment variables (§4) —
-   `REVENUECAT_V2_SECRET_KEY` / `REVENUECAT_PROJECT_ID` at minimum;
-   `REVENUECAT_HMAC_SECRET` deliberately deferred (§5/§11-O).
-F. Production reconciliation **DRY RUN ONLY** (§6) — read-only, zero writes.
-G. Independent review of the dry-run results (ChatGPT and/or Don).
-H. Explicit approval before any reconciliation **apply** — a fully
-   separate decision from B, not implied by it.
+E. **Admin role backfill and verification** — the separate, one-row
+   `UPDATE "User" SET role = 'admin' WHERE email = 'dparker001@gmail.com'`
+   (§2g), applied and verified (`SELECT ... WHERE role = 'admin'` returns
+   exactly 1 row) immediately after D and before anything else depends on
+   it. The legacy `ADMIN_PASSWORD` fallback stays active throughout this
+   entire sequence and beyond (§8) — this step adds session-based admin
+   access, it does not remove the password path.
+F. Configure required Railway environment variables (§4) —
+   `REVENUECAT_V2_SECRET_KEY`, `REVENUECAT_PROJECT_ID`, and
+   `REVENUECAT_PRO_ENTITLEMENT_ID=GasCap Pro` (§4/§5 — **required**, not
+   optional, corrected in this revision) at minimum;
+   `REVENUECAT_HMAC_SECRET` deliberately deferred (§5's corrected
+   sequence, step O below).
+G. **Sync `hardening/sprint-2` with current `origin/main`.** `main` now
+   contains the separately-merged iOS trial hotfix (`3ff6426`, PR #2) that
+   `hardening/sprint-2` does not yet have (both branches contain
+   equivalent fix content under different commit SHAs — `464e1ea` on
+   `hardening/sprint-2`, `a225e22`/`3ff6426` on `main` — so this is
+   expected to merge cleanly, but must be done and verified, not assumed).
+   Use a **normal `git merge origin/main` into `hardening/sprint-2`** —
+   do **not** rebase or rewrite history on this shared branch. **This
+   step is NOT performed as part of this documentation revision** — it is
+   listed here as a required step for whenever the release is actually
+   authorized to proceed past this point.
+H. **Full validation** at the merged state — `npm test`, `npx tsc
+   --noEmit`, `npm run build`, `npm run check:crons`, `npx prisma
+   validate` all passing at the post-merge commit, not merely at the
+   pre-merge `hardening/sprint-2` HEAD this packet was written against.
 I. Open the Sprint 2 PR (`hardening/sprint-2` → `main`).
-J. GitHub CI (test/build checks — currently no CI workflow beyond
-   `npm run check:crons` verified in this repo; confirm what actually runs
-   in CI before relying on this step to catch anything).
+J. GitHub CI — confirmed (Revision 2 correction; see §13 risk #9)
+   `.github/workflows/ci.yml` triggers on PRs to `main` and on
+   `hardening/**` pushes, running `npm run check:crons`, `npm test`, `npx
+   tsc --noEmit`, `npm run build` in that order.
 K. Independent PR review.
-L. Product Owner merge approval.
+L. Product Owner merge approval — per `/CLAUDE.md`, "ChatGPT approved
+   this" is never itself permission to merge.
 M. Railway deployment (merge to `main` **is** the deploy, per
-   `/CLAUDE.md`).
+   `/CLAUDE.md`). **Deploying the reconciliation route performs no
+   reconciliation itself** — the route existing and being deployed is
+   necessary before F (below) can run, but deployment alone makes zero
+   database writes related to reconciliation; the route only acts on an
+   explicit authenticated request.
 N. Production smoke tests (§10).
-O. HMAC enablement — **only** after the provider delivery/signature
-   validation sequence in §5, independently of and after the main
-   deployment; not a blocking step for M.
-P. Final cleanup/closeout — admin-role soak monitoring continues (§8);
+O. **Production reconciliation GET — DRY RUN ONLY** (§6), now correctly
+   sequenced *after* deploy, since the route must actually exist and be
+   running in production first. Read-only, zero writes.
+P. Independent review of the dry-run results / manual spot-checks (§6).
+Q. **Separate, explicit approval before any reconciliation apply** — a
+   fully distinct decision from B, and from P — not implied by either.
+R. Reconciliation **apply** (only after Q; not proposed as runnable
+   anywhere in this packet).
+S. **Post-apply verification** — re-run the GET dry run and confirm the
+   applied changes match what was reviewed in P/Q; spot-check a sample of
+   affected accounts directly.
+T. HMAC enablement — **only** after the corrected provider
+   delivery/signature validation sequence in §5, independently of and
+   well after the main deployment (M); not a blocking step for M or for
+   any reconciliation step (O–S).
+U. Final cleanup/closeout — admin-role soak monitoring continues (§8);
    AMOE read-path cutover remains a deliberately separate, later decision
    (§9); `suspected_legacy_rc_contamination` follow-up (§7) if any is
    found, handled as a manual, targeted action outside this release.
@@ -898,10 +1037,13 @@ P. Final cleanup/closeout — admin-role soak monitoring continues (§8);
 - [ ] A recent production database backup/snapshot exists (standard
       practice before any schema change, even an additive one) — **not
       independently confirmed in this session.**
-- [ ] Postgres version/Railway configuration has been confirmed to support
-      fast additive `ALTER TABLE ... ADD COLUMN ... DEFAULT` without a
-      full-table rewrite (§2e) — **not independently confirmed in this
-      session.**
+- [ ] Run `SHOW server_version;` against the production database and
+      confirm it is PostgreSQL 11 or later — the version where
+      `ADD COLUMN ... DEFAULT` became a metadata-only operation instead of
+      a full-table rewrite (§2e). **Not run in this session** — this
+      remains a required pre-SQL gate specifically so §2e's "fast,
+      metadata-only" characterization is confirmed against the real
+      target, not assumed from general Postgres behavior.
 
 ### Must be TRUE before reconciliation **apply** (not just the dry run)
 
@@ -920,14 +1062,23 @@ P. Final cleanup/closeout — admin-role soak monitoring continues (§8);
       supplied to the POST call (the endpoint 409s on mismatch, but this
       should be a deliberate step, not relied upon as the only safeguard).
 
-### Must be TRUE before merge/deploy (§11-L/M)
+### Must be TRUE before merge/deploy (§11-I through M)
 
 - [ ] Schema (§2g) has been applied and verified in production (§3).
-- [ ] Required Railway env vars (§4) are configured.
-- [ ] `npm test`, `npx tsc --noEmit`, and `npm run build` all pass at the
-      exact commit being merged (see §"Test/build status" at the end of
-      this packet for the values as of `e07bd08` — must be re-verified at
-      whatever the actual merge-commit SHA ends up being, if it differs).
+- [ ] Admin role backfill (§2g/§11-E) has been applied and verified
+      (exactly 1 row with `role='admin'`).
+- [ ] Required Railway env vars (§4) are configured, **including
+      `REVENUECAT_PRO_ENTITLEMENT_ID=GasCap Pro`** (corrected in this
+      revision — this is required, not optional; its absence blocks every
+      RC-dependent Sprint 2 code path from functioning).
+- [ ] `hardening/sprint-2` has been synced with current `origin/main` via
+      a normal merge (§11-G) — not performed as part of this revision.
+- [ ] `npm test`, `npx tsc --noEmit`, `npm run build`, `npm run
+      check:crons`, and `npx prisma validate` all pass at the exact
+      **post-merge** commit being submitted for PR (see §"Test/build
+      status" at the end of this packet for the values as of the Review
+      Target SHA `e07bd08` — those results predate the §11-G sync and
+      MUST be re-verified fresh at whatever commit actually gets merged).
 - [ ] PR has been opened, reviewed, and approved per §11-I through L.
 - [ ] Don has given explicit merge approval — per `/CLAUDE.md`, "ChatGPT
       approved this" is never itself permission to merge.
@@ -939,23 +1090,39 @@ P. Final cleanup/closeout — admin-role soak monitoring continues (§8);
 | # | Risk | Rank | Status |
 |---|---|---|---|
 | 1 | RevenueCat v2 client's exact response shapes have now been LIVE-validated in SANDBOX (unknown/Lifetime/subscription paths all confirmed per this task's summary) but **not yet against PRODUCTION RevenueCat traffic** | Medium | Live-tested in sandbox only; production behavior is very likely identical (same API, same project) but not independently confirmed |
-| 2 | HMAC scheme (`lib/revenueCatHmac.ts`) implements a reported spec, not one independently confirmed against RevenueCat's live dashboard/docs from this environment | Medium | Intentionally deferred — `REVENUECAT_HMAC_SECRET` remains unset until the §5 sequence is completed; no production risk while unset |
+| 2 | ~~HMAC scheme implements a reported spec~~ **RESOLVED in Revision 2** — independent review confirmed the implemented scheme matches RevenueCat's current official documentation exactly (§5). Remaining gap is narrower: no LIVE signed delivery has been processed yet. | Low (downgraded from Medium) | `REVENUECAT_HMAC_SECRET` remains unset until the corrected §5 sequence is completed; no production risk while unset |
 | 3 | No production database backup/snapshot freshness was confirmed in this session before proposing schema changes | Medium | Standard practice, not verified here — should be confirmed as part of §12's pre-SQL checklist |
-| 4 | Postgres version/Railway config's exact behavior for additive `ALTER TABLE ... ADD COLUMN ... DEFAULT` (fast vs. full rewrite) was not independently confirmed | Low | Believed safe for any reasonably modern Postgres (11+), but not verified against GasCap's actual instance |
+| 4 | ~~Postgres `ADD COLUMN DEFAULT` behavior unclear~~ **CLARIFIED in Revision 2** — confirmed metadata-only on Postgres 11+, no full-table rewrite (§2e). Remaining gap is narrower: GasCap's actual production Postgres version has not been confirmed. | Low | `SHOW server_version;` added as an explicit pre-SQL gate in §12 |
 | 5 | AMOE read path still reads the file, not the database — a real production entry count has never been confirmed reconciled, since this dev environment can't read the Railway volume | Medium | Intentionally deferred (§9); the file remains authoritative and safe in the meantime; no data-loss risk from this specific gap |
 | 6 | `docs/ADMIN_AUTH_MIGRATION.md` contains a stale claim (legacy-path warning logging "not added yet," when it already exists in code) | Low | Documentation drift only, no functional impact; not corrected in this packet (out of scope — review only) |
 | 7 | No `.env.example` exists — no single source of truth in-repo for the complete list of required production variables | Low | Operational convenience gap, not a correctness risk; the variables are individually documented across code comments and this packet |
 | 8 | `suspected_legacy_rc_contamination` candidates, if any exist in production, have no built-in remediation path — only manual, one-off action | Low | Deliberate scope decision (§7); not blocking, since the tool correctly does nothing automatic here |
-| 9 | GitHub CI's actual scope for this repo was not independently confirmed in this session (what runs on PR open, beyond `npm run check:crons` verified locally) | Low | Should be confirmed before relying on §11-J as a real gate |
-| 10 | `admin` role backfill (Don's account) has not been applied to production — until it is, the session-based admin login has no effect for anyone, silently falling back to the password prompt (safe, but not the intended end state) | Low | Expected, staged step (§2g/§8), not itself a risk beyond "not yet done" |
-| 11 | The production reconciliation dry run itself has never been run against real production data — every test to date is against mocked dependencies (unit tests) or the live RevenueCat sandbox API directly (not through GasCap's DB) | Medium | This is the next concrete step per §11-F, explicitly not taken in this packet |
+| 9 | ~~GitHub CI's actual scope not independently confirmed~~ **RESOLVED in Revision 2** — `.github/workflows/ci.yml` read directly and confirmed: triggers on PRs to `main` and on pushes to `hardening/**` (and `feat/**`/`fix/**`); runs `npm run check:crons`, `npm test`, `npx tsc --noEmit`, `npm run build` in that order. | Closed | CI scope is now a confirmed, real gate for §11-J |
+| 10 | `admin` role backfill (Don's account) has not been applied to production — until it is, the session-based admin login has no effect for anyone, silently falling back to the password prompt (safe, but not the intended end state) | Low | Expected, staged step (§2g/§8/§11), not itself a risk beyond "not yet done" |
+| 11 | The production reconciliation dry run itself has never been run against real production data — every test to date is against mocked dependencies (unit tests) or the live RevenueCat sandbox API directly (not through GasCap's DB) | Medium | This is a later step in the corrected §11 sequence, explicitly not taken in this packet |
+| 12 | **NEW in Revision 2:** `REVENUECAT_PRO_ENTITLEMENT_ID` was incorrectly documented as optional in Revision 1; the code's `'pro'` default is confirmed wrong for GasCap's real project (the actual value is `GasCap Pro`) | High (was undiscovered in Revision 1) | Corrected throughout this revision (§4, §5); must be set in Railway before Sprint 2 deploy — see §11/§12 |
+| 13 | **NEW in Revision 2:** `hardening/sprint-2` has not yet absorbed `origin/main`'s separately-merged iOS trial hotfix (`3ff6426`, PR #2) — the branches have diverged since the packet's original merge-base | Medium | Required pre-PR sync step added to §11 (normal merge, not rebase); not performed as part of this documentation-only revision |
 
 ---
 
-## Final Summary
+## Final Summary (Revision 2)
 
-- **Current HEAD SHA:** `e07bd0865388534903b7fb54c6c746ab6697782c` (branch `hardening/sprint-2`)
+- **Review Target / code SHA:** `e07bd0865388534903b7fb54c6c746ab6697782c`
+  (branch `hardening/sprint-2`) — the application code this packet's
+  findings describe. Unchanged from Revision 1; this revision corrects
+  documentation and one comment (§5's HMAC doc-comment fix, no behavioral
+  change), it does not re-target a different code state.
+- **`hardening/sprint-2` branch HEAD at the time this revision's packet
+  document itself was committed:** will be one commit past
+  `e07bd0865388534903b7fb54c6c746ab6697782c` (the comment fix +
+  this document) — see the task-level report for the exact commit SHA,
+  since a document cannot self-reference the SHA of the commit that
+  contains it.
+- **Revision 1 packet commit:** `8dad1b8` (superseded by this revision).
 - **`main` HEAD SHA (for comparison):** `3ff64267d69e3e6d0a4a155fd6ea8792be183943`
+  — corrected note: this now includes the iOS trial hotfix (PR #2,
+  `3ff6426`) that `hardening/sprint-2` does not yet have; see §11-G and
+  §13 risk #13.
 
 **Exact files reviewed for this packet** (read directly, this session):
 `prisma/schema.prisma` (full diff against merge-base `39de76a`),
@@ -964,26 +1131,37 @@ P. Final cleanup/closeout — admin-role soak monitoring continues (§8);
 `lib/adminAuth.ts`, `docs/ADMIN_AUTH_MIGRATION.md`,
 `lib/rateLimitDb.ts`, `lib/revenueCatHmac.ts`,
 `app/api/native/revenuecat/route.ts` (HMAC/auth sections),
-`lib/entitlements.ts`,
+`lib/entitlements.ts`, `lib/revenueCatApi.ts` (entitlement lookup key
+resolution),
 `lib/revenueCatHistoricalReconciliation.ts` (module doc comment +
 `applyReconciliation`'s `data`-payload construction, grepped for every
 `stripeInterval` reference),
 `app/api/admin/revenuecat-historical-reconciliation/route.ts`,
+`.github/workflows/ci.yml` (Revision 2 — confirmed CI scope directly),
 `README.md` (Persistence inventory section),
 `.env.local` (existence-only check per variable, no values read/printed),
-`.gitignore`, full `git log`/`git diff` history since the merge-base.
+`.gitignore`, full `git log`/`git diff` history since the merge-base,
+including `origin/main`'s current state (`3ff6426`, confirmed to include
+PR #2's iOS hotfix merge).
 
 **Exact proposed production actions — NONE EXECUTED, all clearly marked
 above:**
 1. The additive schema SQL in §2g (`ALTER TABLE`/`CREATE TABLE`/`CREATE INDEX`) — **NOT EXECUTED**.
 2. Don's admin-role `UPDATE` (§2g, separate) — **NOT EXECUTED**.
-3. Railway environment variable configuration (§4) — **NOT PERFORMED**.
+3. Railway environment variable configuration (§4), including the
+   corrected **required** `REVENUECAT_PRO_ENTITLEMENT_ID=GasCap Pro` — **NOT PERFORMED**.
 4. RevenueCat dashboard HMAC configuration (§5) — **NOT PERFORMED**.
-5. Production reconciliation dry-run GET call (§6) — **NOT EXECUTED**.
+5. Production reconciliation dry-run GET call (§6) — **NOT EXECUTED** (and
+   per the §11 correction, not runnable-as-meaningful until after Sprint 2
+   is deployed — the route doesn't exist on current `main`).
 6. Any reconciliation apply — **NOT EXECUTED, not even proposed as runnable in this packet**.
-7. PR open / merge / deploy — **NOT PERFORMED**.
+7. `git merge origin/main` into `hardening/sprint-2` (§11-G) — **NOT PERFORMED** as part of this documentation-only revision.
+8. PR open / merge / deploy — **NOT PERFORMED**.
 
-**Test/build status, verified fresh in this session at `e07bd08`:**
+**Test/build status, verified fresh in this session at the Review Target
+SHA `e07bd08`** (pre-dating the required §11-G branch sync — must be
+re-verified fresh at the post-merge commit before that commit is actually
+submitted for PR, per §12):
 ```
 npm test           → Test Files: 30 passed (30) / Tests: 451 passed (451)
 npx tsc --noEmit    → clean, no output, exit 0
@@ -994,19 +1172,26 @@ npx prisma validate → The schema at prisma/schema.prisma is valid 🚀
 
 **Recommendation:**
 
-# READY FOR PREFLIGHT REVIEW
+# READY FOR SECOND PREFLIGHT REVIEW
 
-Every schema change is additive, nullable-or-inert by default, and has an
-exact proposed (not executed) SQL statement. Every historical-data safety
-rule is verified by direct code inspection, not assumption — most notably
-that `stripeInterval` is structurally never written by the bulk
-reconciliation apply path. The RevenueCat v2 provider contract has now
-been live-validated in sandbox across all three code paths (unknown
-identity, Lifetime, subscription). Admin auth, rate limiting, webhook
-idempotency, and AMOE dual-write are each independently staged with
-explicit, documented rollout sequences and no destructive operations
-anywhere in the current plan. The open risks in §13 are real but are
+Every correction ChatGPT's independent review identified has been applied:
+`REVENUECAT_PRO_ENTITLEMENT_ID` is now correctly documented as required,
+with the actual value (`GasCap Pro`); the release sequence now correctly
+places the reconciliation dry run after deployment, not before; the HMAC
+section now reflects the confirmed-correct specification and the corrected
+enable-then-test ordering; a required branch-sync step against
+`origin/main` has been added; CI scope is now confirmed rather than
+flagged unknown; the Postgres `ADD COLUMN DEFAULT` wording no longer
+implies a full-table rewrite while still gating on a live version check;
+and SHA terminology throughout now distinguishes the reviewed code state
+from the packet's own documentation commits. No production action was
+taken to produce this revision, beyond the one comment-only code fix
+described in §5. Every schema change remains additive, nullable-or-inert
+by default, and has an exact proposed (not executed) SQL statement. Every
+historical-data safety rule remains verified by direct code inspection —
+most notably that `stripeInterval` is structurally never written by the
+bulk reconciliation apply path. The open risks in §13 are real but are
 either Low-rank operational gaps or Medium-rank items whose next concrete
-step is explicitly the following stage of the release sequence (§11-F, the
-dry run) — not blockers to an independent reviewer beginning that final
-review now.
+step is explicitly a later stage of the corrected release sequence
+(§11-G onward — branch sync, then deploy, then §11-O's dry run) — not
+blockers to an independent reviewer beginning that final review now.
