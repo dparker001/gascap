@@ -1,64 +1,117 @@
 /**
- * Post-Revision-3 fix — true read-only RevenueCat lookup.
+ * Post-Revision-4 fix — RevenueCat v2 authoritative, production-only,
+ * paginated state lookup.
  *
- * The original version of this file used `GET /v1/subscribers/{app_user_id}`.
- * Independent review confirmed against RevenueCat's current official API
- * documentation that this v1 endpoint is titled "Get **or Create** Customer"
- * — calling it for an unknown `app_user_id` CREATES a RevenueCat customer as
- * a side effect. That makes the historical reconciliation's "dry run" not
- * actually read-only with respect to RevenueCat, which defeats the entire
- * point of a dry run.
+ * HISTORY:
  *
- * Replaced with RevenueCat's v2 API, which has genuinely read-only lookup
- * endpoints:
+ *   Revision 3 review found the original v1 client used
+ *   `GET /v1/subscribers/{app_user_id}` — titled "Get **or Create**
+ *   Customer" in RevenueCat's own docs, i.e. it can CREATE a RevenueCat
+ *   customer as a side effect of an unknown lookup. Replaced with v2.
  *
- *   GET /v2/projects/{project_id}/customers?search={app_user_id}
- *     — resolves an app_user_id to a RevenueCat customer WITHOUT creating
- *       one if it doesn't exist. Returns an empty list for an unknown id.
+ *   Revision 4 review found the FIRST v2 implementation was itself wrong on
+ *   three independent points, all fixed here:
  *
- *   GET /v2/projects/{project_id}/customers/{customer_id}/active_entitlements
- *     — the customer's currently active entitlements, by entitlement
- *       identifier (GasCap's RevenueCat project should have a `pro`
- *       entitlement — see ENTITLEMENT_ID below).
+ *   1. `GET .../active_entitlements` items do NOT contain a `product_id`
+ *      field per RevenueCat's current v2 docs — only `entitlement_id` and
+ *      `expires_at`. The prior code invented a `product_id` field on that
+ *      response and used it to guess monthly-vs-lifetime. That field does
+ *      not exist there.
+ *   2. `entitlement_id` on that response is RevenueCat's INTERNAL
+ *      entitlement id (e.g. `entla1b2c3d4e5`), NOT the configured lookup
+ *      key (`pro`). Comparing it directly against the string `'pro'` is
+ *      never a valid check — it can only ever be false, meaning the
+ *      previous implementation could never actually detect an active
+ *      entitlement in real use, despite passing its own (mocked) tests.
+ *   3. `active_entitlements` does not distinguish sandbox from production
+ *      transactions, and GasCap's production authorization state must
+ *      never be kept alive by a sandbox/test purchase.
+ *
+ * REVISION 4 ARCHITECTURE — abandons `active_entitlements` entirely in
+ * favor of the authoritative, production-filterable, entitlement-explicit
+ * resources:
+ *
+ *   1. `GET /v2/projects/{project_id}/customers?search={app_user_id}`
+ *      — resolves an app_user_id to a RevenueCat customer id WITHOUT
+ *        creating one. Paginated; exact-id match only.
+ *
+ *   2. `GET /v2/projects/{project_id}/entitlements`
+ *      — the project's entitlement catalog. Each item exposes `id`
+ *        (RevenueCat's internal entitlement id) and `lookup_key` (the
+ *        human-configured key, e.g. `pro`). Resolves
+ *        GASCAP_PRO_ENTITLEMENT_LOOKUP_KEY to its internal id — this is
+ *        the mapping step Revision 4's original code skipped entirely.
+ *        Paginated.
+ *
+ *   3. `GET /v2/projects/{project_id}/customers/{customer_id}/subscriptions?environment=production`
+ *      — the customer's PRODUCTION subscriptions only. Paginated. Each
+ *        item's `entitlements` field lists which entitlement ids it
+ *        grants; only counts if it grants the resolved pro entitlement id
+ *        AND its `status` is one of the "still has access" states.
+ *
+ *   4. `GET /v2/projects/{project_id}/customers/{customer_id}/purchases?environment=production`
+ *      — the customer's PRODUCTION one-time (non-consumable) purchases
+ *        only, e.g. the Lifetime product. Paginated. A matching,
+ *        non-refunded purchase grants Pro permanently (no expiry check —
+ *        that's the nature of a non-consumable purchase).
+ *
+ *   5. `GET /v2/projects/{project_id}/products/{product_id}`
+ *      — resolves RevenueCat's INTERNAL product id (from step 3/4) to the
+ *        store-facing product identifier (`store_identifier`, e.g.
+ *        `gascap_pro_monthly` / `gascap_pro_lifetime`) — the SAME
+ *        identifier convention GasCap's webhook-event code already uses
+ *        for `revenueCatProductId`. If this resolution fails for any
+ *        reason, `productId` is reported as `null` rather than silently
+ *        falling back to RevenueCat's internal id — a `prod...`-shaped
+ *        value must never leak into `revenueCatProductId`, since every
+ *        other write path treats that column as a store identifier.
+ *
+ * A Lifetime purchase and an active monthly subscription are not expected
+ * to coexist for the same GasCap identity, but if RevenueCat ever reports
+ * both, Lifetime (the stronger, permanent grant) takes priority.
  *
  * Requires a v2 Secret API Key scoped to READ-ONLY permissions
  * (`REVENUECAT_V2_SECRET_KEY`) and the RevenueCat project id
- * (`REVENUECAT_PROJECT_ID`) — both distinct from `REVENUECAT_WEBHOOK_AUTH`
- * (this app's own webhook-auth secret, not an RC credential) and from the
- * old v1 key this file previously used. When creating the v2 key in the
- * RevenueCat dashboard, grant it ONLY the customer-read permissions this
- * client needs — never a key with write/create scope, so a bug in this
- * client (or a future caller) cannot mutate RevenueCat even by accident.
+ * (`REVENUECAT_PROJECT_ID`). Minimal permission categories this client
+ * needs (grant ONLY these — never read_write):
+ *
+ *   customer_information:customers:read
+ *   customer_information:subscriptions:read
+ *   customer_information:purchases:read
+ *   project_configuration:entitlements:read
+ *   project_configuration:products:read
  *
  * NOT independently verified against a live RevenueCat account from this
  * environment — the request/response shapes follow RevenueCat's public v2
- * API reference, but should be smoke-tested against a real project (a known
- * test customer, and a genuinely unknown app_user_id to confirm no customer
- * is created) before the historical reconciliation's output is trusted for
- * any specific user. See the smoke-test checklist in
+ * API reference as best understood, but should be smoke-tested against a
+ * real project (a known test customer with both a live subscription and a
+ * Lifetime purchase, plus a genuinely unknown app_user_id to confirm no
+ * customer is created) before the historical reconciliation's output is
+ * trusted for any specific user. See the smoke-test checklist in
  * docs/migrations/2026-08-sprint2-revenuecat-historical-reconciliation.md.
  */
 
-const API_BASE = 'https://api.revenuecat.com/v2';
-const LIFETIME_PRODUCT = 'gascap_pro_lifetime';
+const ORIGIN = 'https://api.revenuecat.com';
+const API_BASE = `${ORIGIN}/v2`;
 
 /**
- * The RevenueCat entitlement identifier that represents GasCap Pro access.
- * MUST match the entitlement configured in the RevenueCat dashboard for
- * this project — an unrelated entitlement (if this project ever has more
- * than one) must never be treated as GasCap Pro. Confirm this value against
- * the actual RevenueCat project configuration before enabling
- * REVENUECAT_V2_SECRET_KEY in production; 'pro' is this codebase's naming
- * convention, not independently confirmed against the live dashboard.
+ * The RevenueCat entitlement LOOKUP KEY (not RevenueCat's internal id) that
+ * represents GasCap Pro access, as configured in the RevenueCat dashboard.
+ * Resolved to an internal entitlement id via the entitlements catalog on
+ * every call — see `resolveEntitlementInternalId`.
  */
-const GASCAP_PRO_ENTITLEMENT_ID = process.env.REVENUECAT_PRO_ENTITLEMENT_ID || 'pro';
+const GASCAP_PRO_ENTITLEMENT_LOOKUP_KEY = process.env.REVENUECAT_PRO_ENTITLEMENT_ID || 'pro';
+
+/** Subscription statuses that RevenueCat documents as still granting access. */
+const ACTIVE_SUBSCRIPTION_STATUSES = new Set(['active', 'in_grace_period', 'in_billing_retry', 'trialing']);
 
 export interface AuthoritativeRevenueCatState {
   /** False if RevenueCat has no customer record for this app_user_id at all — distinct from "found but not entitled." */
   customerFound: boolean;
-  /** True only if the GasCap `pro` entitlement (see GASCAP_PRO_ENTITLEMENT_ID) is currently active for this customer. */
+  /** True only if a PRODUCTION record (subscription or purchase) currently grants the resolved GasCap pro entitlement. */
   active: boolean;
   interval: 'monthly' | 'lifetime' | null;
+  /** Store-facing product identifier (e.g. gascap_pro_monthly) — never RevenueCat's internal product id. Null if it couldn't be resolved. */
   productId: string | null;
   /** The RevenueCat customer id, if found — needed by callers reconciling multiple identities (e.g. TRANSFER). */
   customerId: string | null;
@@ -73,51 +126,119 @@ function requireConfig(): { apiKey: string; projectId: string } {
   return { apiKey, projectId };
 }
 
-interface V2CustomerListResponse {
-  items?: { id: string }[];
+interface V2Page<T> {
+  items?: T[];
+  next_page?: string | null;
 }
 
-interface V2ActiveEntitlementsResponse {
-  items?: {
-    entitlement_id: string;
-    expires_at: number | null; // ms epoch, null = does not expire (e.g. non-consumable)
-    product_id: string;
-  }[];
+interface V2Customer { id: string }
+interface V2Entitlement { id: string; lookup_key: string }
+interface V2Subscription {
+  product_id: string;
+  status: string;
+  entitlements?: string[];
+  refunded_at?: number | null;
+}
+interface V2Purchase {
+  product_id: string;
+  entitlements?: string[];
+  refunded_at?: number | null;
+}
+interface V2Product { store_identifier?: string | null }
+
+/**
+ * Follow every page of a RevenueCat v2 list endpoint using the response's
+ * own `next_page` value — never a hand-constructed offset/cursor — so
+ * pagination behavior tracks whatever RevenueCat actually returns rather
+ * than an assumption about its shape.
+ */
+async function fetchAllPages<T>(path: string, apiKey: string, what: string): Promise<T[]> {
+  const items: T[] = [];
+  let url: string | null = `${API_BASE}${path}`;
+  while (url) {
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${apiKey}` } });
+    if (!res.ok) {
+      throw new Error(`RevenueCat v2 ${what} fetch failed: HTTP ${res.status}`);
+    }
+    const json = await res.json() as V2Page<T>;
+    items.push(...(json.items ?? []));
+    url = json.next_page ? `${ORIGIN}${json.next_page}` : null;
+  }
+  return items;
 }
 
 /**
  * Resolve an app_user_id to a RevenueCat customer id, WITHOUT creating one.
- * Returns null if RevenueCat has no customer matching this identity.
+ * Returns null if RevenueCat has no customer exactly matching this identity
+ * across every page of search results.
  */
 async function findCustomerId(appUserId: string, apiKey: string, projectId: string): Promise<string | null> {
-  const res = await fetch(
-    `${API_BASE}/projects/${encodeURIComponent(projectId)}/customers?search=${encodeURIComponent(appUserId)}`,
-    { headers: { Authorization: `Bearer ${apiKey}` } },
-  );
-  if (!res.ok) {
-    throw new Error(`RevenueCat v2 customer search failed: HTTP ${res.status}`);
+  const items: V2Customer[] = [];
+  let url: string | null = `${API_BASE}/projects/${encodeURIComponent(projectId)}/customers?search=${encodeURIComponent(appUserId)}`;
+  while (url) {
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${apiKey}` } });
+    if (!res.ok) {
+      throw new Error(`RevenueCat v2 customer search failed: HTTP ${res.status}`);
+    }
+    const json = await res.json() as V2Page<V2Customer>;
+    const pageItems = json.items ?? [];
+    const exact = pageItems.find((c) => c.id === appUserId);
+    if (exact) return exact.id;
+    items.push(...pageItems);
+    url = json.next_page ? `${ORIGIN}${json.next_page}` : null;
   }
-  const json = await res.json() as V2CustomerListResponse;
-  const items = json.items ?? [];
-  // Exact match on the search term — the search endpoint can return
-  // near-matches; only trust an exact app_user_id match as "found."
-  const match = items.find((c) => c.id === appUserId) ?? (items.length === 1 ? items[0] : undefined);
-  return match?.id ?? null;
+  return null;
 }
 
 /**
- * Fetch a customer's currently active entitlements.
+ * Resolve GasCap's configured entitlement lookup key (e.g. "pro") to
+ * RevenueCat's internal entitlement id (e.g. "entla1b2c3d4e5"). This
+ * mapping is required because subscription/purchase `entitlements` arrays
+ * are populated with internal ids, never lookup keys.
+ *
+ * Deliberately not cached across calls — this client is used for
+ * infrequent, explicit sync operations (an admin migration, a handful of
+ * webhook edge cases), not a hot request path, so the extra round trip is
+ * an acceptable cost for guaranteed freshness and simpler, fully
+ * deterministic tests.
  */
-async function fetchActiveEntitlements(customerId: string, apiKey: string, projectId: string): Promise<V2ActiveEntitlementsResponse['items']> {
-  const res = await fetch(
-    `${API_BASE}/projects/${encodeURIComponent(projectId)}/customers/${encodeURIComponent(customerId)}/active_entitlements`,
-    { headers: { Authorization: `Bearer ${apiKey}` } },
+async function resolveEntitlementInternalId(lookupKey: string, apiKey: string, projectId: string): Promise<string> {
+  const entitlements = await fetchAllPages<V2Entitlement>(
+    `/projects/${encodeURIComponent(projectId)}/entitlements`,
+    apiKey,
+    'entitlements catalog',
   );
-  if (!res.ok) {
-    throw new Error(`RevenueCat v2 active_entitlements fetch failed: HTTP ${res.status}`);
+  const match = entitlements.find((e) => e.lookup_key === lookupKey);
+  if (!match) {
+    throw new Error(`No RevenueCat entitlement configured with lookup_key="${lookupKey}" in this project — cannot resolve authoritative state.`);
   }
-  const json = await res.json() as V2ActiveEntitlementsResponse;
-  return json.items ?? [];
+  return match.id;
+}
+
+/**
+ * Resolve RevenueCat's internal product id to the store-facing product
+ * identifier GasCap's webhook code already uses for `revenueCatProductId`
+ * (e.g. `gascap_pro_monthly`). Returns null (never the raw internal id) if
+ * resolution fails for any reason — a failed lookup here must never leak
+ * RevenueCat's internal id into a column every other write path treats as
+ * a store identifier.
+ */
+async function resolveProductStoreIdentifier(internalProductId: string, apiKey: string, projectId: string): Promise<string | null> {
+  try {
+    const res = await fetch(
+      `${API_BASE}/projects/${encodeURIComponent(projectId)}/products/${encodeURIComponent(internalProductId)}`,
+      { headers: { Authorization: `Bearer ${apiKey}` } },
+    );
+    if (!res.ok) return null;
+    const json = await res.json() as V2Product;
+    return json.store_identifier ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function grantsEntitlement(entitlements: string[] | undefined, entitlementId: string): boolean {
+  return Array.isArray(entitlements) && entitlements.includes(entitlementId);
 }
 
 /**
@@ -129,13 +250,15 @@ async function fetchActiveEntitlements(customerId: string, apiKey: string, proje
  *
  * Read-only — makes zero writes to RevenueCat. An unknown app_user_id
  * returns `{ customerFound: false, active: false, ... }`, never creates
- * anything (this is the entire reason this file was rewritten against v2).
+ * anything. Only PRODUCTION subscriptions/purchases are considered —
+ * sandbox/test transactions never grant real access.
  *
  * THROWS on any lookup failure (missing config, network error, non-2xx
- * response) — callers MUST treat a thrown error as "inconclusive; do not
- * mutate entitlement state," never as "confirmed inactive." This is a
- * deliberate design choice: a lookup failure and a genuine "not entitled"
- * result must never be conflated by any caller.
+ * response, unresolvable entitlement lookup key) — callers MUST treat a
+ * thrown error as "inconclusive; do not mutate entitlement state," never as
+ * "confirmed inactive." This is a deliberate design choice: a lookup
+ * failure and a genuine "not entitled" result must never be conflated by
+ * any caller.
  */
 export async function fetchAuthoritativeRevenueCatState(appUserId: string): Promise<AuthoritativeRevenueCatState> {
   const { apiKey, projectId } = requireConfig();
@@ -145,16 +268,41 @@ export async function fetchAuthoritativeRevenueCatState(appUserId: string): Prom
     return { customerFound: false, active: false, interval: null, productId: null, customerId: null };
   }
 
-  const entitlements = await fetchActiveEntitlements(customerId, apiKey, projectId);
-  const now = Date.now();
-  const proEntitlement = (entitlements ?? []).find(
-    (e) => e.entitlement_id === GASCAP_PRO_ENTITLEMENT_ID && (e.expires_at === null || e.expires_at > now),
+  const proEntitlementId = await resolveEntitlementInternalId(GASCAP_PRO_ENTITLEMENT_LOOKUP_KEY, apiKey, projectId);
+
+  // Sequential, not Promise.all — this is an infrequent, explicit-sync code
+  // path (admin migration, a handful of webhook edge cases), not a hot
+  // request path, and sequential calls keep pagination behavior fully
+  // deterministic for both real use and tests.
+  const subscriptions = await fetchAllPages<V2Subscription>(
+    `/projects/${encodeURIComponent(projectId)}/customers/${encodeURIComponent(customerId)}/subscriptions?environment=production`,
+    apiKey,
+    'production subscriptions',
+  );
+  const purchases = await fetchAllPages<V2Purchase>(
+    `/projects/${encodeURIComponent(projectId)}/customers/${encodeURIComponent(customerId)}/purchases?environment=production`,
+    apiKey,
+    'production purchases',
   );
 
-  if (!proEntitlement) {
-    return { customerFound: true, active: false, interval: null, productId: null, customerId };
+  // Lifetime (non-consumable purchase) takes priority — it's the stronger,
+  // permanent grant, and GasCap doesn't expect it to coexist with an active
+  // subscription for the same identity.
+  const activeLifetimePurchase = purchases.find(
+    (p) => grantsEntitlement(p.entitlements, proEntitlementId) && !p.refunded_at,
+  );
+  if (activeLifetimePurchase) {
+    const productId = await resolveProductStoreIdentifier(activeLifetimePurchase.product_id, apiKey, projectId);
+    return { customerFound: true, active: true, interval: 'lifetime', productId, customerId };
   }
 
-  const interval: 'monthly' | 'lifetime' = proEntitlement.product_id === LIFETIME_PRODUCT ? 'lifetime' : 'monthly';
-  return { customerFound: true, active: true, interval, productId: proEntitlement.product_id, customerId };
+  const activeSubscription = subscriptions.find(
+    (s) => grantsEntitlement(s.entitlements, proEntitlementId) && ACTIVE_SUBSCRIPTION_STATUSES.has(s.status) && !s.refunded_at,
+  );
+  if (activeSubscription) {
+    const productId = await resolveProductStoreIdentifier(activeSubscription.product_id, apiKey, projectId);
+    return { customerFound: true, active: true, interval: 'monthly', productId, customerId };
+  }
+
+  return { customerFound: true, active: false, interval: null, productId: null, customerId };
 }

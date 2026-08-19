@@ -1,6 +1,8 @@
 /**
- * Revision 3/4 P0 — verified Stripe Lifetime purchase evidence, replacing
- * the insufficient `stripeCustomerId + stripeInterval==='lifetime'` heuristic.
+ * Revision 3/5 P0 — verified, tri-state, paginated Stripe Lifetime purchase
+ * evidence, replacing the insufficient `stripeCustomerId +
+ * stripeInterval==='lifetime'` heuristic and the earlier boolean-only design
+ * that collapsed a Stripe API failure into "not verified."
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
@@ -27,48 +29,98 @@ beforeEach(() => {
 });
 
 describe('verifyStripeLifetimePurchase', () => {
-  it('returns not-verified without calling Stripe when stripeCustomerId is null', async () => {
+  it('returns INCONCLUSIVE without calling Stripe when stripeCustomerId is null', async () => {
     const result = await verifyStripeLifetimePurchase(null);
-    expect(result).toEqual({ verified: false, sessionId: null });
+    expect(result).toEqual({ status: 'INCONCLUSIVE', sessionId: null });
     expect(listSessions).not.toHaveBeenCalled();
   });
 
-  it('a completed payment-mode session with a Lifetime line item verifies true', async () => {
-    listSessions.mockResolvedValue({ data: [{ id: 'cs_1', mode: 'payment', payment_status: 'paid' }] });
-    listLineItems.mockResolvedValue({ data: [{ price: { id: 'price_lifetime_123' } }] });
+  it('a completed payment-mode session with a Lifetime line item verifies VERIFIED_LIFETIME', async () => {
+    listSessions.mockResolvedValue({ data: [{ id: 'cs_1', mode: 'payment', payment_status: 'paid' }], has_more: false });
+    listLineItems.mockResolvedValue({ data: [{ price: { id: 'price_lifetime_123' } }], has_more: false });
     const result = await verifyStripeLifetimePurchase('cus_1');
-    expect(result).toEqual({ verified: true, sessionId: 'cs_1' });
+    expect(result).toEqual({ status: 'VERIFIED_LIFETIME', sessionId: 'cs_1' });
   });
 
-  it('a session in subscription mode (not "payment") does not verify, even if paid', async () => {
-    listSessions.mockResolvedValue({ data: [{ id: 'cs_1', mode: 'subscription', payment_status: 'paid' }] });
+  it('a session in subscription mode (not "payment") does not verify — reports VERIFIED_NO_LIFETIME', async () => {
+    listSessions.mockResolvedValue({ data: [{ id: 'cs_1', mode: 'subscription', payment_status: 'paid' }], has_more: false });
     const result = await verifyStripeLifetimePurchase('cus_1');
-    expect(result.verified).toBe(false);
+    expect(result.status).toBe('VERIFIED_NO_LIFETIME');
     expect(listLineItems).not.toHaveBeenCalled();
   });
 
-  it('an unpaid payment-mode session does not verify', async () => {
-    listSessions.mockResolvedValue({ data: [{ id: 'cs_1', mode: 'payment', payment_status: 'unpaid' }] });
+  it('an unpaid payment-mode session does not verify — reports VERIFIED_NO_LIFETIME', async () => {
+    listSessions.mockResolvedValue({ data: [{ id: 'cs_1', mode: 'payment', payment_status: 'unpaid' }], has_more: false });
     const result = await verifyStripeLifetimePurchase('cus_1');
-    expect(result.verified).toBe(false);
+    expect(result.status).toBe('VERIFIED_NO_LIFETIME');
     expect(listLineItems).not.toHaveBeenCalled();
   });
 
-  it('a paid payment-mode session whose line items do NOT include the Lifetime price does not verify — the exact scenario a bare stripeCustomerId cannot distinguish (e.g. billing-portal-only customer, or a paid non-Lifetime purchase)', async () => {
-    listSessions.mockResolvedValue({ data: [{ id: 'cs_1', mode: 'payment', payment_status: 'paid' }] });
-    listLineItems.mockResolvedValue({ data: [{ price: { id: 'price_some_other_thing' } }] });
+  it('a paid payment-mode session whose line items do NOT include the Lifetime price reports VERIFIED_NO_LIFETIME — the exact scenario a bare stripeCustomerId cannot distinguish', async () => {
+    listSessions.mockResolvedValue({ data: [{ id: 'cs_1', mode: 'payment', payment_status: 'paid' }], has_more: false });
+    listLineItems.mockResolvedValue({ data: [{ price: { id: 'price_some_other_thing' } }], has_more: false });
     const result = await verifyStripeLifetimePurchase('cus_1');
-    expect(result).toEqual({ verified: false, sessionId: null });
+    expect(result).toEqual({ status: 'VERIFIED_NO_LIFETIME', sessionId: null });
   });
 
-  it('no sessions at all returns not-verified', async () => {
-    listSessions.mockResolvedValue({ data: [] });
+  it('no sessions at all reports VERIFIED_NO_LIFETIME (positively checked, not merely assumed)', async () => {
+    listSessions.mockResolvedValue({ data: [], has_more: false });
     const result = await verifyStripeLifetimePurchase('cus_1');
-    expect(result).toEqual({ verified: false, sessionId: null });
+    expect(result).toEqual({ status: 'VERIFIED_NO_LIFETIME', sessionId: null });
   });
 
-  it('propagates a genuine Stripe API error rather than treating it as not-verified', async () => {
+  it('a genuine Stripe API error on the session list reports INCONCLUSIVE, never VERIFIED_NO_LIFETIME', async () => {
     listSessions.mockRejectedValue(new Error('Stripe API unavailable'));
-    await expect(verifyStripeLifetimePurchase('cus_1')).rejects.toThrow('Stripe API unavailable');
+    const result = await verifyStripeLifetimePurchase('cus_1');
+    expect(result).toEqual({ status: 'INCONCLUSIVE', sessionId: null });
+  });
+
+  it('a Stripe API error on line-item pagination reports INCONCLUSIVE, not VERIFIED_NO_LIFETIME, even though the session list itself succeeded', async () => {
+    listSessions.mockResolvedValue({ data: [{ id: 'cs_1', mode: 'payment', payment_status: 'paid' }], has_more: false });
+    listLineItems.mockRejectedValue(new Error('line items unavailable'));
+    const result = await verifyStripeLifetimePurchase('cus_1');
+    expect(result.status).toBe('INCONCLUSIVE');
+  });
+
+  describe('pagination', () => {
+    it('follows has_more/starting_after across session list pages to find a Lifetime purchase on the second page', async () => {
+      listSessions
+        .mockResolvedValueOnce({ data: [{ id: 'cs_1', mode: 'payment', payment_status: 'paid' }], has_more: true })
+        .mockResolvedValueOnce({ data: [{ id: 'cs_2', mode: 'payment', payment_status: 'paid' }], has_more: false });
+      listLineItems
+        .mockResolvedValueOnce({ data: [{ price: { id: 'price_some_other_thing' } }], has_more: false })
+        .mockResolvedValueOnce({ data: [{ price: { id: 'price_lifetime_123' } }], has_more: false });
+      const result = await verifyStripeLifetimePurchase('cus_1');
+      expect(result).toEqual({ status: 'VERIFIED_LIFETIME', sessionId: 'cs_2' });
+      expect(listSessions).toHaveBeenCalledTimes(2);
+      expect(listSessions.mock.calls[1][0]).toMatchObject({ starting_after: 'cs_1' });
+    });
+
+    it('does not miss a session-101+ purchase — verifies at least 3 pages are followed', async () => {
+      listSessions
+        .mockResolvedValueOnce({ data: [{ id: 'cs_1', mode: 'payment', payment_status: 'paid' }], has_more: true })
+        .mockResolvedValueOnce({ data: [{ id: 'cs_2', mode: 'payment', payment_status: 'paid' }], has_more: true })
+        .mockResolvedValueOnce({ data: [{ id: 'cs_3', mode: 'payment', payment_status: 'paid' }], has_more: false });
+      listLineItems.mockResolvedValue({ data: [{ price: { id: 'price_lifetime_123' } }], has_more: false });
+      // Non-matching first two, matching on the third page — proves all 3 pages are actually consulted in order.
+      listLineItems
+        .mockResolvedValueOnce({ data: [{ price: { id: 'price_other' } }], has_more: false })
+        .mockResolvedValueOnce({ data: [{ price: { id: 'price_other' } }], has_more: false })
+        .mockResolvedValueOnce({ data: [{ price: { id: 'price_lifetime_123' } }], has_more: false });
+      const result = await verifyStripeLifetimePurchase('cus_1');
+      expect(result).toEqual({ status: 'VERIFIED_LIFETIME', sessionId: 'cs_3' });
+      expect(listSessions).toHaveBeenCalledTimes(3);
+    });
+
+    it('follows has_more/starting_after across a single session\'s line-item pages to find the Lifetime price', async () => {
+      listSessions.mockResolvedValue({ data: [{ id: 'cs_1', mode: 'payment', payment_status: 'paid' }], has_more: false });
+      listLineItems
+        .mockResolvedValueOnce({ data: [{ id: 'li_1', price: { id: 'price_other' } }], has_more: true })
+        .mockResolvedValueOnce({ data: [{ id: 'li_2', price: { id: 'price_lifetime_123' } }], has_more: false });
+      const result = await verifyStripeLifetimePurchase('cus_1');
+      expect(result).toEqual({ status: 'VERIFIED_LIFETIME', sessionId: 'cs_1' });
+      expect(listLineItems).toHaveBeenCalledTimes(2);
+      expect(listLineItems.mock.calls[1][1]).toMatchObject({ starting_after: 'li_1' });
+    });
   });
 });
