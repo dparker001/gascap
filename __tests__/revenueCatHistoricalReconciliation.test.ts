@@ -202,10 +202,27 @@ describe('classifyProvenance — field-specific contamination logic (Revision 5 
     expect(r.classification).toBe('confirmed_legacy_rc_contamination');
     expect(r.proposedClearLegacyStripeInterval).toBe(true);
   });
+
+  it('Revision 6: a VERIFIED guest-checkout Lifetime purchase (NO stripeCustomerId at all) still explains stripeInterval=lifetime — absence of stripeCustomerId is no longer proof of absence', () => {
+    const r = classifyProvenance({
+      ...BASE, stripeInterval: 'lifetime', stripeCustomerId: null, stripeLifetimeEvidence: 'VERIFIED_LIFETIME',
+    });
+    expect(r.classification).toBe('confirmed_stripe_lifetime');
+    expect(r.proposedClearLegacyStripeInterval).toBe(false);
+  });
+
+  it('Revision 6: NO stripeCustomerId + VERIFIED_NO_LIFETIME + a lone active RC entitlement is still legitimately proven contamination (the guest-checkout-safe check ran and found nothing)', () => {
+    const r = classifyProvenance({
+      ...BASE, stripeInterval: 'lifetime', stripeCustomerId: null, stripeLifetimeEvidence: 'VERIFIED_NO_LIFETIME',
+      rc: rc({ active: true, interval: 'lifetime', productId: 'gascap_pro_lifetime' }),
+    });
+    expect(r.classification).toBe('confirmed_legacy_rc_contamination');
+    expect(r.proposedClearLegacyStripeInterval).toBe(true);
+  });
 });
 
 describe('computeReportHash — canonical, order-independent, proposal-sensitive', () => {
-  const c1 = { userId: 'a', email: 'a@x.com', currentPlan: 'free', stripeInterval: null, stripeSubscriptionId: null, stripeCustomerId: null, ambassadorProForLife: false, hasRedeemedGift: false, stripeLifetimeEvidence: 'not_checked' as const, rcLookup: 'lookup_failed' as const, classification: 'confirmed_ambassador' as const, proposedRevenueCatActive: true, proposedRevenueCatInterval: 'lifetime', proposedRevenueCatProductId: 'gascap_pro_lifetime', proposedClearLegacyStripeInterval: false, resolvedShouldBePro: true, resolvedSources: ['ambassador'], stripeSubscriptionVerification: 'not_checked' as const, historicalPlanInconsistency: true, proposedPlanRepair: 'pro' as const, reason: 'x' };
+  const c1 = { userId: 'a', email: 'a@x.com', currentPlan: 'free', stripeInterval: null, stripeSubscriptionId: null, stripeCustomerId: null, ambassadorProForLife: false, hasRedeemedGift: false, currentRevenueCatActive: false, currentRevenueCatInterval: null, stripeLifetimeEvidence: 'not_checked' as const, rcLookup: 'lookup_failed' as const, classification: 'confirmed_ambassador' as const, proposedRevenueCatActive: true, proposedRevenueCatInterval: 'lifetime', proposedRevenueCatProductId: 'gascap_pro_lifetime', proposedClearLegacyStripeInterval: false, resolvedShouldBePro: true, resolvedSources: ['ambassador'], stripeSubscriptionVerification: 'not_checked' as const, historicalPlanInconsistency: true, proposedPlanRepair: 'pro' as const, reason: 'x' };
   const c2 = { ...c1, userId: 'b', proposedRevenueCatInterval: 'monthly' };
 
   it('the same proposal produces the same hash', () => {
@@ -224,6 +241,21 @@ describe('computeReportHash — canonical, order-independent, proposal-sensitive
   it('a changed non-proposal field (e.g. reason text) does NOT change the hash', () => {
     const c1ReasonChanged = { ...c1, reason: 'a completely different explanation string' };
     expect(computeReportHash([c1ReasonChanged, c2])).toBe(computeReportHash([c1, c2]));
+  });
+
+  it('a changed PRECONDITION field (e.g. currentPlan) changes the hash even when the proposed mutation looks identical — Revision 6 fix', () => {
+    const c1PlanChanged = { ...c1, currentPlan: 'pro' };
+    expect(computeReportHash([c1PlanChanged, c2])).not.toBe(computeReportHash([c1, c2]));
+  });
+
+  it('a changed currentRevenueCatActive precondition changes the hash', () => {
+    const c1RcChanged = { ...c1, currentRevenueCatActive: true };
+    expect(computeReportHash([c1RcChanged, c2])).not.toBe(computeReportHash([c1, c2]));
+  });
+
+  it('a changed provider-verification classification (stripeSubscriptionVerification) changes the hash', () => {
+    const c1VerificationChanged = { ...c1, stripeSubscriptionVerification: 'VERIFIED_ACTIVE' as const };
+    expect(computeReportHash([c1VerificationChanged, c2])).not.toBe(computeReportHash([c1, c2]));
   });
 });
 
@@ -263,12 +295,18 @@ vi.mock('@/lib/prisma', () => ({
           || u.plan === 'pro' || u.plan === 'fleet',
         );
       }),
-      update: vi.fn(async ({ where, data }: { where: { id: string }; data: Record<string, unknown> }) => {
+      // Emulates Prisma's conditional updateMany: only mutates + returns
+      // count:1 if EVERY field in `where` (not just `id`) still matches the
+      // live row — the optimistic-concurrency precondition check.
+      updateMany: vi.fn(async ({ where, data }: { where: Record<string, unknown>; data: Record<string, unknown> }) => {
         if (state.failForUserId === where.id) throw new Error('db error');
-        state.updateCalls.push({ where, data });
         const row = state.users.find((u) => u.id === where.id);
-        if (row) Object.assign(row, data);
-        return row;
+        if (!row) return { count: 0 };
+        const matches = Object.entries(where).every(([key, value]) => (row as unknown as Record<string, unknown>)[key] === value);
+        if (!matches) return { count: 0 };
+        state.updateCalls.push({ where: { id: where.id as string }, data });
+        Object.assign(row, data);
+        return { count: 1 };
       }),
     },
     gift: {
@@ -514,5 +552,74 @@ describe('applyReconciliation — ONE atomic update per candidate, ambiguous row
     expect(result.candidatesFailed).toBe(1);
     expect(result.candidatesUpdated).toBe(1);
     expect(state.updateCalls.some((c) => c.where.id === 'will-succeed')).toBe(true);
+  });
+
+  describe('optimistic concurrency — a row that changed between report and apply is never mutated (Revision 6 fix)', () => {
+    it('state unchanged since the report was built => the atomic update succeeds normally', async () => {
+      const { buildDryRunReport, applyReconciliation } = await import('../lib/revenueCatHistoricalReconciliation');
+      state.users = [makeUser({ id: 'unchanged', email: 'a@example.com', plan: 'pro' })];
+      fetchAuthoritativeRevenueCatState.mockResolvedValue({ customerFound: true, active: true, interval: 'lifetime', productId: 'gascap_pro_lifetime', customerId: 'rc_1' });
+      const report = await buildDryRunReport();
+      const result = await applyReconciliation(report);
+      expect(result.candidatesUpdated).toBe(1);
+      expect(result.candidatesStale).toBe(0);
+    });
+
+    it('stripeInterval changes on the live row between report and apply => the update matches count=0, applies NOTHING for that candidate', async () => {
+      const { buildDryRunReport, applyReconciliation } = await import('../lib/revenueCatHistoricalReconciliation');
+      state.users = [makeUser({ id: 'row-changed', email: 'a@example.com', plan: 'pro', stripeInterval: 'lifetime' })];
+      fetchAuthoritativeRevenueCatState.mockResolvedValue({ customerFound: true, active: true, interval: 'lifetime', productId: 'gascap_pro_lifetime', customerId: 'rc_1' });
+      const report = await buildDryRunReport();
+      expect(report.candidates[0].proposedClearLegacyStripeInterval).toBe(true);
+      // Simulate the row changing in the DB after the report was built but before apply runs.
+      state.users[0].stripeInterval = 'monthly';
+      const result = await applyReconciliation(report);
+      expect(result.candidatesStale).toBe(1);
+      expect(result.candidatesUpdated).toBe(0);
+      expect(state.updateCalls).toHaveLength(0);
+      // The newly-changed value must survive untouched — never cleared just because the report was correct milliseconds earlier.
+      expect(state.users[0].stripeInterval).toBe('monthly');
+      const staleResult = result.results.find((r) => r.userId === 'row-changed');
+      expect(staleResult!.stale).toBe(true);
+      expect(staleResult!.applied).toBe(false);
+    });
+
+    it('plan changes on the live row between report and apply => count=0, no mutation', async () => {
+      const { buildDryRunReport, applyReconciliation } = await import('../lib/revenueCatHistoricalReconciliation');
+      state.users = [makeUser({ id: 'plan-changed', email: 'a@example.com', plan: 'free', ambassadorProForLife: true })];
+      const report = await buildDryRunReport();
+      expect(report.candidates[0].proposedPlanRepair).toBe('pro');
+      state.users[0].plan = 'pro'; // e.g. a concurrent admin action already fixed it
+      const result = await applyReconciliation(report);
+      expect(result.candidatesStale).toBe(1);
+      expect(state.updateCalls).toHaveLength(0);
+    });
+
+    it('an entitlement/provenance field (revenueCatActive) changes on the live row between report and apply => count=0, no mutation', async () => {
+      const { buildDryRunReport, applyReconciliation } = await import('../lib/revenueCatHistoricalReconciliation');
+      state.users = [makeUser({ id: 'rc-changed', email: 'a@example.com', plan: 'pro' })];
+      fetchAuthoritativeRevenueCatState.mockResolvedValue({ customerFound: true, active: true, interval: 'lifetime', productId: 'gascap_pro_lifetime', customerId: 'rc_1' });
+      const report = await buildDryRunReport();
+      expect(report.candidates[0].proposedRevenueCatActive).toBe(true);
+      state.users[0].revenueCatActive = true; // e.g. a concurrent webhook already backfilled it
+      const result = await applyReconciliation(report);
+      expect(result.candidatesStale).toBe(1);
+      expect(state.updateCalls).toHaveLength(0);
+    });
+
+    it('one candidate being stale does not block another unrelated candidate from applying normally', async () => {
+      const { buildDryRunReport, applyReconciliation } = await import('../lib/revenueCatHistoricalReconciliation');
+      state.users = [
+        makeUser({ id: 'stale-one', email: 'a@example.com', plan: 'pro', stripeInterval: 'lifetime' }),
+        makeUser({ id: 'fine-one', email: 'b@example.com', plan: 'pro' }),
+      ];
+      fetchAuthoritativeRevenueCatState.mockResolvedValue({ customerFound: true, active: true, interval: 'lifetime', productId: 'gascap_pro_lifetime', customerId: 'rc_1' });
+      const report = await buildDryRunReport();
+      state.users.find((u) => u.id === 'stale-one')!.stripeInterval = 'monthly';
+      const result = await applyReconciliation(report);
+      expect(result.candidatesStale).toBe(1);
+      expect(result.candidatesUpdated).toBe(1);
+      expect(state.updateCalls.some((c) => c.where.id === 'fine-one')).toBe(true);
+    });
   });
 });

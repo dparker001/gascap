@@ -96,6 +96,9 @@ export interface ReconciliationCandidate {
   stripeCustomerId:                  string | null;
   ambassadorProForLife:              boolean;
   hasRedeemedGift:                   boolean;
+  /** Stored values AT REPORT TIME — the precondition snapshot the apply endpoint's optimistic-concurrency check verifies is still true before mutating. */
+  currentRevenueCatActive:           boolean;
+  currentRevenueCatInterval:         string | null;
   stripeLifetimeEvidence:            StripeLifetimeEvidenceStatus | 'not_checked';
   rcLookup:                          AuthoritativeRevenueCatState | 'lookup_failed';
   classification:                    ProvenanceClassification;
@@ -137,11 +140,17 @@ function explainStripeIntervalValue(input: ClassifyInput): 'explained' | 'not_ex
   if (input.stripeInterval === 'lifetime') {
     if (input.hasRedeemedGift) return 'explained';
     if (input.stripeLifetimeEvidence === 'VERIFIED_LIFETIME') return 'explained';
-    // No Stripe customer at all — there is no possible Stripe purchase to
-    // have missed, so this is definitively not explained, not inconclusive.
-    if (!input.stripeCustomerId) return 'not_explained';
+    // Post-Revision-6 fix: the absence of stripeCustomerId is NOT proof of
+    // absence of a Stripe purchase. GasCap's Lifetime Checkout Session does
+    // not set customer_creation:'always' — a user with no prior
+    // stripeCustomerId can complete a genuine paid guest checkout with
+    // session.customer === null. Evidence is now correlated by GasCap
+    // userId (always present, unlike stripeCustomerId), so 'not_checked'
+    // should never occur in practice once stripeInterval === 'lifetime' —
+    // but is treated as inconclusive defensively if it ever does, same as
+    // an outright INCONCLUSIVE verification result.
     if (input.stripeLifetimeEvidence === 'INCONCLUSIVE' || input.stripeLifetimeEvidence === 'not_checked') return 'inconclusive';
-    return 'not_explained'; // VERIFIED_NO_LIFETIME
+    return 'not_explained'; // VERIFIED_NO_LIFETIME — a full, successful scan found no matching purchase
   }
   // 'monthly' / 'annual' / any other non-null, non-lifetime value.
   return input.stripeSubscriptionId ? 'explained' : 'not_explained';
@@ -258,11 +267,13 @@ export interface DryRunReport {
   stripeSubscriptionVerificationAttempted: number;
   stripeSubscriptionVerificationInconclusive: number;
   /**
-   * Deterministic, canonical hash over every candidate's proposed mutation
-   * (userId + proposed fields only — never volatile counters/logging).
-   * Candidates are sorted by userId before hashing, so ordering never
-   * affects the result. The apply endpoint requires this exact value to be
-   * echoed back — see `computeReportHash` and module doc comment point 5.
+   * Deterministic, canonical hash over every candidate's PRECONDITION
+   * (the stored state that made the proposed mutation safe) AND its
+   * proposed mutation — never volatile counters/logging/free-text. Binds
+   * apply not just to "these are the changes reviewed" but to "this is the
+   * state the reviewed changes were computed FROM" — see
+   * `computeReportHash` and module doc comment point 5/6. Candidates are
+   * sorted by userId before hashing, so ordering never affects the result.
    */
   reportHash:                    string;
   candidates:                    ReconciliationCandidate[];
@@ -277,18 +288,40 @@ interface CandidateUserRow {
 }
 
 /**
- * Canonical, order-independent hash of a report's proposed mutations only —
- * excludes counters, lookup-failure tallies, and any other field that could
- * change between two runs without the actual PROPOSAL changing. Two reports
- * with identical proposals hash identically regardless of candidate array
- * order; any proposal-relevant field changing (e.g. because RevenueCat or
- * Stripe state changed between GET and POST) changes the hash.
+ * Canonical, order-independent hash over each candidate's PRECONDITION (the
+ * stored, safety-relevant state the proposal was computed from) PLUS its
+ * proposed mutation — never volatile counters, lookup-failure tallies, or
+ * free-text `reason` strings.
+ *
+ * Post-Revision-6 fix: Revision 5's hash bound only the proposed
+ * mutations, not the state that made them safe — a TOCTOU window existed
+ * where `POST` could recompute an identical-looking proposal even though
+ * the underlying row had changed in a way the proposal didn't happen to
+ * depend on. Binding the precondition snapshot too means ANY safety-
+ * relevant change between GET and POST (not just ones that flip the
+ * proposal) changes the hash. This is belt-and-suspenders with the
+ * per-candidate optimistic-concurrency check in `applyReconciliation` —
+ * the hash catches a stale REPORT; the optimistic write catches a stale
+ * ROW at the moment of the actual update.
  */
 export function computeReportHash(candidates: ReconciliationCandidate[]): string {
   const canonical = [...candidates]
     .map((c) => ({
       userId: c.userId,
+      // Precondition — the stored state this candidate's proposal depends on.
+      currentPlan: c.currentPlan,
+      stripeInterval: c.stripeInterval,
+      stripeCustomerId: c.stripeCustomerId,
+      stripeSubscriptionId: c.stripeSubscriptionId,
+      ambassadorProForLife: c.ambassadorProForLife,
+      hasRedeemedGift: c.hasRedeemedGift,
+      currentRevenueCatActive: c.currentRevenueCatActive,
+      currentRevenueCatInterval: c.currentRevenueCatInterval,
+      // Provider-verification classifications — the live evidence gathered.
       classification: c.classification,
+      stripeLifetimeEvidence: c.stripeLifetimeEvidence,
+      stripeSubscriptionVerification: c.stripeSubscriptionVerification,
+      // Proposed mutation.
       proposedRevenueCatActive: c.proposedRevenueCatActive,
       proposedRevenueCatInterval: c.proposedRevenueCatInterval,
       proposedRevenueCatProductId: c.proposedRevenueCatProductId,
@@ -375,15 +408,16 @@ export async function buildDryRunReport(): Promise<DryRunReport> {
     }
 
     // Verify Stripe Lifetime purchase evidence whenever stripeInterval is
-    // 'lifetime' and there's a Stripe customer to check — NOT gated on the
-    // absence of a stripeSubscriptionId, since a monthly subscription does
-    // not explain a Lifetime marker either (see explainStripeIntervalValue,
-    // module doc comment point 1) — a user can genuinely have both.
+    // 'lifetime' — NOT gated on stripeCustomerId presence (a genuine guest
+    // checkout can be a real Lifetime purchase with no stripeCustomerId at
+    // all — see lib/stripeEvidence.ts) and NOT gated on the absence of a
+    // stripeSubscriptionId (a monthly subscription doesn't explain a
+    // Lifetime marker either — see explainStripeIntervalValue). Correlated
+    // by GasCap's own userId, which every candidate has.
     let stripeLifetimeEvidence: StripeLifetimeEvidenceStatus | 'not_checked' = 'not_checked';
-    const stripeLifetimePatternPresent = !!u.stripeCustomerId && u.stripeInterval === 'lifetime';
-    if (stripeLifetimePatternPresent) {
+    if (u.stripeInterval === 'lifetime') {
       stripeLifetimeAttempted++;
-      const evidence = await verifyStripeLifetimePurchase(u.stripeCustomerId);
+      const evidence = await verifyStripeLifetimePurchase(u.id);
       stripeLifetimeEvidence = evidence.status;
       if (evidence.status === 'INCONCLUSIVE') stripeLifetimeInconclusive++;
     }
@@ -448,6 +482,7 @@ export async function buildDryRunReport(): Promise<DryRunReport> {
       userId: u.id, email: u.email, currentPlan: u.plan,
       stripeInterval: u.stripeInterval, stripeSubscriptionId: u.stripeSubscriptionId, stripeCustomerId: u.stripeCustomerId,
       ambassadorProForLife: u.ambassadorProForLife, hasRedeemedGift,
+      currentRevenueCatActive: u.revenueCatActive, currentRevenueCatInterval: u.revenueCatInterval,
       stripeLifetimeEvidence,
       rcLookup: rc ?? 'lookup_failed',
       classification: result.classification,
@@ -489,6 +524,8 @@ export interface CandidateApplyResult {
   /** False if this candidate had no proposed changes at all — never attempted. */
   attempted: boolean;
   applied: boolean;
+  /** True when the optimistic-concurrency precondition no longer matched the live row — the candidate's row changed between report and apply, so NOTHING was mutated for it. */
+  stale: boolean;
   appliedFields: string[];
   error?: string;
 }
@@ -496,6 +533,7 @@ export interface CandidateApplyResult {
 export interface BackfillResult {
   candidatesWithProposedChanges: number;
   candidatesUpdated:             number;
+  candidatesStale:               number;
   candidatesFailed:              number;
   rcFieldsProposed:              number;
   legacyClearProposed:           number;
@@ -508,10 +546,24 @@ export interface BackfillResult {
  *
  * Post-Revision-5 fix: every candidate's approved changes (RC field
  * backfill, legacy stripeInterval clear, plan repair — whichever apply) are
- * combined into exactly ONE `prisma.user.update` call. Either all of that
- * candidate's proposed changes land, or none do — a partial failure can
- * never leave one candidate in a mixed, invalid state. Other candidates
- * continue independently; one candidate's failure never blocks another's.
+ * combined into exactly ONE update call. Either all of that candidate's
+ * proposed changes land, or none do.
+ *
+ * Post-Revision-6 fix — optimistic concurrency against a TOCTOU window:
+ * `reportHash` (see `computeReportHash`) binds the REPORT the caller
+ * reviewed, but a row can still change in the moments between POST
+ * recomputing that report and this function's actual write. Every update
+ * is therefore a conditional `prisma.user.updateMany` whose `where` clause
+ * includes not just `id` but every safety-relevant field this candidate's
+ * proposal was computed from (`currentPlan`, `stripeInterval`,
+ * `stripeCustomerId`, `stripeSubscriptionId`, `ambassadorProForLife`,
+ * `currentRevenueCatActive`, `currentRevenueCatInterval`) — the exact same
+ * precondition snapshot baked into `reportHash`. If the live row no longer
+ * matches (`count === 0`), NOTHING is mutated for that candidate and it is
+ * reported `stale: true` — a newly-changed Lifetime/provenance field is
+ * never cleared just because the report was correct milliseconds earlier.
+ * Other candidates are entirely unaffected by one candidate being stale or
+ * failing.
  *
  * `ambiguous_legacy_provenance` candidates, and any candidate with no
  * proposed changes at all, are never touched (not even attempted).
@@ -519,7 +571,7 @@ export interface BackfillResult {
 export async function applyReconciliation(report: DryRunReport): Promise<BackfillResult> {
   const results: CandidateApplyResult[] = [];
   let rcFieldsProposed = 0, legacyClearProposed = 0, planRepairProposed = 0;
-  let candidatesUpdated = 0, candidatesFailed = 0;
+  let candidatesUpdated = 0, candidatesStale = 0, candidatesFailed = 0;
 
   for (const c of report.candidates) {
     const data: { revenueCatActive?: boolean; revenueCatInterval?: string | null; revenueCatProductId?: string | null; stripeInterval?: null; plan?: string } = {};
@@ -544,19 +596,39 @@ export async function applyReconciliation(report: DryRunReport): Promise<Backfil
     }
 
     if (appliedFields.length === 0) {
-      results.push({ userId: c.userId, email: c.email, attempted: false, applied: false, appliedFields: [] });
+      results.push({ userId: c.userId, email: c.email, attempted: false, applied: false, stale: false, appliedFields: [] });
       continue;
     }
 
     try {
-      await prisma.user.update({ where: { id: c.userId }, data });
-      candidatesUpdated++;
-      results.push({ userId: c.userId, email: c.email, attempted: true, applied: true, appliedFields });
+      const { count } = await prisma.user.updateMany({
+        where: {
+          id: c.userId,
+          plan: c.currentPlan,
+          stripeInterval: c.stripeInterval,
+          stripeCustomerId: c.stripeCustomerId,
+          stripeSubscriptionId: c.stripeSubscriptionId,
+          ambassadorProForLife: c.ambassadorProForLife,
+          revenueCatActive: c.currentRevenueCatActive,
+          revenueCatInterval: c.currentRevenueCatInterval,
+        },
+        data,
+      });
+      if (count === 1) {
+        candidatesUpdated++;
+        results.push({ userId: c.userId, email: c.email, attempted: true, applied: true, stale: false, appliedFields });
+      } else {
+        // count === 0: the row no longer matches the precondition this
+        // proposal was computed from — apply NOTHING for this candidate.
+        candidatesStale++;
+        console.warn(`[revenueCatHistoricalReconciliation] stale precondition for ${c.email} — row changed since the report was built, no mutation applied.`);
+        results.push({ userId: c.userId, email: c.email, attempted: true, applied: false, stale: true, appliedFields });
+      }
     } catch (err) {
       candidatesFailed++;
       console.error(`[revenueCatHistoricalReconciliation] atomic apply failed for ${c.email}:`, err);
       results.push({
-        userId: c.userId, email: c.email, attempted: true, applied: false, appliedFields,
+        userId: c.userId, email: c.email, attempted: true, applied: false, stale: false, appliedFields,
         error: err instanceof Error ? err.message : String(err),
       });
     }
@@ -564,7 +636,7 @@ export async function applyReconciliation(report: DryRunReport): Promise<Backfil
 
   return {
     candidatesWithProposedChanges: results.filter((r) => r.attempted).length,
-    candidatesUpdated, candidatesFailed,
+    candidatesUpdated, candidatesStale, candidatesFailed,
     rcFieldsProposed, legacyClearProposed, planRepairProposed,
     results,
   };

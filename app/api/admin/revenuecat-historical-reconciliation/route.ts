@@ -98,6 +98,6 @@ export async function POST(req: Request) {
     totalCandidates: report.totalCandidates,
     ambiguousCount:  report.ambiguousCount,
     ...result,
-    message: `${result.candidatesUpdated}/${result.candidatesWithProposedChanges} candidates with proposed changes updated atomically (${result.candidatesFailed} failed, changing nothing for that candidate). RC field backfills: ${result.rcFieldsProposed}. Legacy stripeInterval clears: ${result.legacyClearProposed}. Plan repairs: ${result.planRepairProposed}. ${report.ambiguousCount} candidate(s) remain ambiguous and were left completely untouched.`,
+    message: `${result.candidatesUpdated}/${result.candidatesWithProposedChanges} candidates with proposed changes updated atomically (${result.candidatesFailed} failed, ${result.candidatesStale} stale — their row changed since the report was built and were left untouched). RC field backfills: ${result.rcFieldsProposed}. Legacy stripeInterval clears: ${result.legacyClearProposed}. Plan repairs: ${result.planRepairProposed}. ${report.ambiguousCount} candidate(s) remain ambiguous and were left completely untouched.`,
   });
 }

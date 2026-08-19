@@ -1,12 +1,15 @@
 # Historical RevenueCat entitlement reconciliation — rollout sequence
 
-**Status: BUILT, NOT RUN.** Post-Sprint-2 Revision 5, 2026-08-19. Nothing in
+**Status: BUILT, NOT RUN.** Post-Sprint-2 Revision 6, 2026-08-19. Nothing in
 this document has been executed against production. This document
-supersedes the Revision 4 version — the RevenueCat lookup client's actual
-API contract, the legacy-contamination logic, Stripe evidence handling, and
-the apply endpoint's atomicity/safety were all substantially rewritten in
-Revision 5 in response to ChatGPT's independent review; see
-`docs/reviews/2026-08-19-hardening-sprint-2-revision-5.md` for the full
+supersedes the Revision 5 version — the RevenueCat provider shapes
+(`gives_access`, documented Purchase `status`, nested `EntitlementList`
+pagination, customer-alias resolution), the Stripe Lifetime evidence
+correlation key (userId, not `stripeCustomerId` — see "guest checkout"
+below), the historical Stripe subscription status matrix, and the apply
+endpoint's precondition binding were all corrected in Revision 6 in
+response to ChatGPT's independent review; see
+`docs/reviews/2026-08-19-hardening-sprint-2-revision-6.md` for the full
 findings and fixes.
 
 ---
@@ -47,21 +50,47 @@ entitlement id (not the configured lookup key like `pro` — comparing it
 against `'pro'` directly could never actually match in real use), and the
 endpoint doesn't distinguish sandbox from production transactions.
 
-Revision 5 abandons `active_entitlements` entirely for a different, more
-authoritative set of v2 resources:
+Revision 5 abandoned `active_entitlements` for subscriptions/purchases, but
+independent Revision 6 review found that FIRST rewrite still modeled the
+provider shapes incorrectly: it treated `entitlements` as a bare
+`string[]` (RevenueCat actually returns a paginated `EntitlementList` —
+`{ object: 'list', items: [{id, lookup_key}], next_page }` — embedded on
+each Subscription/Purchase, itself independently paginated), it
+reimplemented RevenueCat's access rules with a hand-picked `status`
+allowlist that incorrectly treated `in_billing_retry` as access-granting
+(RevenueCat documents access as SUSPENDED in that state) instead of using
+RevenueCat's own documented `gives_access: boolean` field, it modeled
+Purchase with a fabricated `refunded_at` field instead of RevenueCat's
+documented `status` field (`'owned'` = currently owned), and it resolved
+customers via a raw "first search result wins" with no handling for
+RevenueCat customer aliases — which matters directly for TRANSFER, since a
+transfer's `transferred_from`/`transferred_to` identities are exactly the
+kind of alias a search can return under a different canonical customer.
+
+Revision 6's corrected set of v2 resources:
 
 1. `GET /v2/projects/{project_id}/customers?search={app_user_id}` — resolve
-   a customer id without creating one. Paginated.
+   a customer id without creating one. Paginated. **Alias-aware**: if no
+   search result's `id` exactly matches the searched id but exactly one
+   distinct customer was returned, a separate customer-detail fetch
+   positively verifies the searched id is in that customer's alias list
+   before trusting it. Ambiguous results (zero or multiple distinct
+   candidates with no exact match) resolve to "not found," never a guess.
 2. `GET /v2/projects/{project_id}/entitlements` — the project's entitlement
    catalog; resolves the configured lookup key (`pro`) to RevenueCat's
    internal entitlement id. Paginated.
 3. `GET /v2/projects/{project_id}/customers/{customer_id}/subscriptions?environment=production`
-   — the customer's PRODUCTION subscriptions only. Paginated. Only counts if
-   an item's `entitlements` array includes the resolved internal entitlement
-   id and its `status` is one of the "still has access" states.
+   — the customer's PRODUCTION subscriptions only. Paginated. An item's
+   embedded `entitlements` `EntitlementList` is independently paginated and
+   fully followed — a target entitlement id on that NESTED list's second
+   page is never missed. Only counts if that list includes the resolved
+   internal entitlement id AND the subscription's own `gives_access` field
+   is `true` — never a hand-picked status set.
 4. `GET /v2/projects/{project_id}/customers/{customer_id}/purchases?environment=production`
    — the customer's PRODUCTION one-time purchases (e.g. Lifetime) only.
-   Paginated. A non-refunded matching purchase grants Pro permanently.
+   Paginated, same embedded-list handling. Ownership is determined by
+   RevenueCat's documented `status: 'owned'` field — never a fabricated
+   `refunded_at` field.
 5. `GET /v2/projects/{project_id}/products/{product_id}` — resolves
    RevenueCat's internal product id to the store-facing identifier
    (`gascap_pro_monthly` / `gascap_pro_lifetime`) already used everywhere
@@ -69,8 +98,9 @@ authoritative set of v2 resources:
    fails, `productId` is reported as `null` — RevenueCat's internal id
    (`prod...`) is never allowed to leak into that column.
 
-Every list response's pagination is followed via its own `next_page` value
-— never a hand-constructed offset/cursor — until exhausted.
+Every list response's pagination (top-level AND nested/embedded) is
+followed via its own `next_page` value — never a hand-constructed
+offset/cursor — until exhausted.
 
 Required env vars, distinct from `REVENUECAT_WEBHOOK_AUTH`:
 
@@ -178,10 +208,36 @@ Revision 5 separates two questions:
 destructive clear; `INCONCLUSIVE` (a Stripe API failure, pagination error,
 etc.) makes that specific field's contamination proposal ineligible, even
 when RevenueCat's state would otherwise support it — a Stripe outage must
-never be read as proof of absence. `verifyStripeLifetimePurchase` fully
-paginates both the Checkout Session list and each session's line items
-before concluding `VERIFIED_NO_LIFETIME`, so an older purchase past the
-first 100 sessions is never missed.
+never be read as proof of absence.
+
+### Guest checkout — correlate by userId, never by stripeCustomerId (Revision 6)
+
+Revision 5 gated the Lifetime evidence check on `stripeCustomerId` being
+present, and Revision 6 review found this unsafe: GasCap's Lifetime
+Checkout Session (`app/api/stripe/checkout/route.ts`) does **not** set
+`customer_creation: 'always'` — when a user has no existing
+`stripeCustomerId`, the session is created with `customer_email` and no
+`customer` field, which Stripe's default payment-mode behavior can fulfill
+as a **guest checkout**, producing a genuine paid purchase with
+`session.customer === null` and no Stripe Customer object at all. That
+means a real Lifetime purchaser can legitimately have
+`stripeInterval='lifetime'` **and** `stripeCustomerId=null` at the same
+time — the prior design would have treated that combination as
+automatically unexplained and proposed clearing a genuine customer's
+Lifetime marker.
+
+`verifyStripeLifetimePurchase` now correlates by GasCap's own `userId`
+instead (every checkout GasCap creates sets `metadata.userId`
+unconditionally, both in payment and subscription mode). The Stripe Node
+SDK has no `checkout.sessions.search` method — Search API only covers a
+fixed resource list — so this uses `stripe.paymentIntents.search()`
+against `payment_intent_data.metadata.userId`, which GasCap's Lifetime
+checkout also sets on the underlying PaymentIntent (along with `tier` and
+`billing: 'lifetime'`, which the check matches on directly rather than a
+price line item — arguably more robust since it doesn't depend on the
+Lifetime price id staying constant over time). Fully paginated
+(`has_more`/`page`) before concluding `VERIFIED_NO_LIFETIME`, so an older
+purchase past the first 100 results is never missed.
 
 ## Historical plan repair requires LIVE Stripe subscription verification
 
@@ -193,11 +249,27 @@ fire off a stale id that Stripe would actually report as canceled (e.g.
 from a missed webhook delivery, which this repair tool exists specifically
 to catch and correct for other fields). Whenever a repair might depend on a
 stored `stripeSubscriptionId`, `verifyStripeSubscriptionActive` checks
-Stripe live before that specific decision (tri-state: `VERIFIED_ACTIVE` /
-`VERIFIED_INACTIVE` / `INCONCLUSIVE`). If the check is inconclusive or
-reports inactive, the repair is not proposed **on that evidence alone** —
-another independently confirmed source (Ambassador, verified Stripe
-Lifetime, gift, active RC) can still justify it on its own.
+Stripe live before that specific decision.
+
+**Revision 6 tightened the status matrix.** Revision 5's `status !==
+'canceled' => VERIFIED_ACTIVE` was too permissive — it would have allowed a
+repair to fire from `incomplete`, `incomplete_expired`, `unpaid`, or
+`paused`, none of which represent a subscription anyone is actually paying
+for right now. The explicit matrix:
+
+- `active`, `trialing` → `VERIFIED_ACTIVE`
+- `canceled`, `unpaid`, `incomplete`, `incomplete_expired`, `paused` →
+  `VERIFIED_INACTIVE`
+- `past_due`, or any unrecognized/future status → `INCONCLUSIVE` —
+  deliberately, since GasCap has no existing documented policy on whether a
+  past-due subscription should retain Pro access, and this migration must
+  not invent one for a *repair* decision.
+
+If the check is inconclusive or reports inactive, the repair is not
+proposed **on that evidence alone** — another independently confirmed
+source (Ambassador, verified Stripe Lifetime, gift, active RC) can still
+justify it on its own. This only changes historical repair evidence — it
+does not alter GasCap's normal runtime billing policy.
 
 ## Proposed repairs, computed per candidate
 
@@ -210,22 +282,40 @@ candidate is flagged `historicalPlanInconsistency: true` with
 `proposedPlanRepair: 'pro'`. A repair is **never** proposed in the other
 direction — this migration cannot downgrade anyone.
 
-## Apply is atomic per candidate and bound to the reviewed report
+## Apply is atomic per candidate, bound to the reviewed report, AND optimistically concurrency-checked
 
 Every candidate's approved changes — RC field backfill, legacy
 `stripeInterval` clear, plan repair — are combined into exactly **one**
-`prisma.user.update` call. Either all of that candidate's proposed changes
+conditional update call. Either all of that candidate's proposed changes
 land, or none do; one candidate's DB failure never leaves it in a partial,
 mixed state, and never blocks another candidate's independent update.
 
 `POST` requires `{ "confirm": true, "reportHash": "<the GET response's reportHash>" }`.
 `reportHash` is a deterministic, canonical (order-independent) hash over
-every candidate's proposed mutation only — never volatile counters or log
-text. `POST` recomputes the dry run live and compares hashes; if RevenueCat
-or Stripe state changed between GET and POST (or anything else changed the
-proposal) since the report was reviewed, the hash won't match and the
-request is refused with **409**, applying nothing. Only an exact match
-proceeds to apply.
+**both** every candidate's PRECONDITION (the stored state the proposal was
+computed from — `currentPlan`, `stripeInterval`, `stripeCustomerId`,
+`stripeSubscriptionId`, `ambassadorProForLife`, `hasRedeemedGift`, the
+stored `revenueCatActive`/`revenueCatInterval`, and the live
+provider-verification classifications) **and** its proposed mutation —
+never volatile counters or log text. `POST` recomputes the dry run live and
+compares hashes; if anything safety-relevant changed between GET and POST,
+the hash won't match and the request is refused with **409**, applying
+nothing.
+
+**Revision 6 closed a remaining TOCTOU window:** Revision 5's hash bound
+only the proposed mutations, not the state that made them safe — a row
+could still change in the moments between `POST` recomputing an
+identical-looking report and the actual database write. Every update is
+now an **optimistic-concurrency conditional update** (`updateMany` with a
+`where` clause matching not just `id` but every precondition field the
+proposal depended on). If the live row no longer matches
+(`count === 0`) — because *anything* changed it since the report was
+built, including a concurrent webhook or admin action — **nothing is
+mutated for that candidate**, and it's reported `stale: true` in the
+response. This is belt-and-suspenders with `reportHash`: the hash catches
+a stale *report*; the optimistic write catches a stale *row* at the moment
+of the actual write, even if a change happened to not alter what the
+report itself would have proposed.
 
 ## What it does NOT do
 
@@ -248,11 +338,24 @@ one actually reviewed (`reportHash` binding).
    degraded run without a clear signal risks under-classifying
    `multiple_legitimate_sources` candidates as single-source.
 3. **Smoke-test the v2 client against a real RevenueCat account before
-   trusting it operationally** — specifically confirm a known active
-   customer resolves correctly, and a genuinely unknown `app_user_id`
-   returns `customerFound: false` **without** creating a customer in the
-   RevenueCat dashboard. This has not been independently verified against a
-   live account from this environment.
+   trusting it operationally** — this has not been independently verified
+   against a live account from this environment, and is now the single
+   highest-priority open item after three rounds of provider-contract
+   corrections. Specifically confirm:
+   - a known active-subscription customer resolves `active: true,
+     interval: 'monthly'`;
+   - a known Lifetime-purchase customer resolves `active: true, interval:
+     'lifetime'`;
+   - a genuinely unknown `app_user_id` returns `customerFound: false`
+     **without** creating a customer in the RevenueCat dashboard;
+   - a known TRANSFER alias (an old `app_user_id` RevenueCat has merged
+     into a different canonical customer) resolves to the canonical
+     customer id, not "not found";
+   - the actual JSON shape of a real `subscriptions`/`purchases` response
+     matches this client's assumptions (`entitlements` as a paginated
+     `EntitlementList`, `gives_access` boolean, `status: 'owned'` on
+     purchases) — if it doesn't, this needs a fourth correction round
+     before being trusted.
 4. **Run the dry-run report** (read-only, makes zero writes to GasCap's
    database or to RevenueCat):
    ```bash

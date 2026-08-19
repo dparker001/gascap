@@ -1,6 +1,7 @@
 /**
- * Post-Revision-3/5 fix — verified, tri-state, paginated Stripe Lifetime
- * purchase evidence.
+ * Post-Revision-3/5/6 fix — verified, tri-state, paginated, guest-checkout-
+ * safe Stripe Lifetime purchase evidence, plus a conservative live Stripe
+ * subscription status check for historical plan repairs only.
  *
  * WHY THIS EXISTS: the historical reconciliation previously treated
  * `stripeCustomerId` present + no `stripeSubscriptionId` + `stripeInterval
@@ -8,171 +9,173 @@
  * sufficient evidence: `stripeCustomerId` gets attached to a User row
  * whenever they merely open Stripe's billing portal ("Manage Billing"), with
  * no purchase involved (see `lib/users.ts`'s `isRealPurchaseOrRenewal`
- * guard, added specifically because this already caused a real bug — a
- * trial user who only opened billing management had their trial silently
- * and permanently wiped). Combined with historical RevenueCat code having
- * separately written `stripeInterval='lifetime'`, `stripeCustomerId` +
- * `stripeInterval==='lifetime'` can exist with NO Stripe Lifetime purchase
- * behind it at all. This checks for an ACTUAL completed Stripe Checkout
- * Session for the Lifetime price — real, verifiable purchase evidence
- * Stripe itself recorded.
+ * guard). This checks for an ACTUAL completed Stripe Checkout Session for
+ * the Lifetime price — real, verifiable purchase evidence Stripe itself
+ * recorded.
  *
- * REVISION 5 FIX — tri-state result, not a boolean:
+ * REVISION 6 FIX — correlate by GasCap userId, not by stripeCustomerId.
  *
- * The prior version collapsed "Stripe API failed" into `verified: false`,
- * which is unsafe: a caller using `!verified` as evidence that NO Lifetime
- * purchase exists would treat an outage as proof of absence, and could
- * propose clearing a legitimate customer's `stripeInterval`. This now
- * returns one of three states:
+ * Independent review confirmed against `app/api/stripe/checkout/route.ts`
+ * that GasCap's Lifetime Checkout Session creation does NOT set
+ * `customer_creation: 'always'` — when a user has no existing
+ * `stripeCustomerId`, the session is created with `customer_email` and no
+ * `customer` field, which Stripe's default payment-mode behavior can
+ * fulfill as a GUEST checkout, creating a paid Checkout Session with
+ * `session.customer === null` and no Stripe Customer object at all. Every
+ * checkout session GasCap creates DOES set `metadata.userId`, unconditionally
+ * (both payment and subscription mode) — see the same route.
  *
- *   VERIFIED_LIFETIME    — a completed, paid Checkout Session for the
- *                           Lifetime price was found. Positive evidence.
- *   VERIFIED_NO_LIFETIME — every Checkout Session for this customer (all
- *                           pages) was successfully checked and none
- *                           matched. Positive evidence of absence.
- *   INCONCLUSIVE          — Stripe isn't configured, the customer id is
- *                           empty, the Lifetime price id is unavailable, or
- *                           a pagination/request error occurred partway
- *                           through. NOT evidence either way.
+ * That means "no `stripeCustomerId`" does NOT prove "no Stripe Lifetime
+ * purchase" — a genuine guest-checkout Lifetime purchaser can legitimately
+ * have `stripeInterval='lifetime'` and `stripeCustomerId=null` at the same
+ * time. The previous design would have treated that combination as
+ * automatically "not explained" and proposed clearing a real customer's
+ * Lifetime marker.
  *
- * Only VERIFIED_NO_LIFETIME may ever be used as evidence supporting a
- * destructive legacy `stripeInterval` clear — see
- * `lib/revenueCatHistoricalReconciliation.ts`. INCONCLUSIVE must make that
- * cleanup ineligible, the same discipline `lib/revenueCatApi.ts` applies to
- * a failed RevenueCat lookup.
+ * `verifyStripeLifetimePurchase` correlates by GasCap's own `userId`,
+ * finding evidence regardless of whether the purchase went through a guest
+ * checkout or an existing Stripe Customer. `stripeCustomerId` is no longer
+ * used at all for this check — the metadata correlation is authoritative
+ * and customer-agnostic.
  *
- * REVISION 5 FIX — full pagination: the prior version listed only the first
- * 100 Checkout Sessions and 10 line items per session, silently missing an
- * older Lifetime purchase past that cutoff. This now exhausts Stripe's
- * `has_more` pagination on both the session list and each session's line
- * items before concluding VERIFIED_NO_LIFETIME.
+ * IMPLEMENTATION NOTE — documented deviation from a literal
+ * "paginate Checkout Sessions globally" design: the Stripe Node SDK has no
+ * `checkout.sessions.search` method at all — Stripe's Search API only
+ * covers a fixed resource list (PaymentIntents, Charges, Customers,
+ * Invoices, Subscriptions, Prices, Products), which does not include
+ * Checkout Sessions. Enumerating ALL of GasCap's Checkout Sessions
+ * unfiltered (via `.list()`) for every migration candidate would be
+ * O(candidates × total-sessions-ever-created) — not viable at any real
+ * scale. Instead, this correlates via `stripe.paymentIntents.search()`:
+ * GasCap's Lifetime checkout (`app/api/stripe/checkout/route.ts`) sets
+ * `payment_intent_data.metadata` with the SAME `userId` (plus `tier` and
+ * `billing: 'lifetime'`) on the PaymentIntent that backs every payment-mode
+ * Checkout Session — a payment-mode session cannot exist without one. This
+ * achieves the identical guarantee the review required (guest-checkout-safe,
+ * global, userId-correlated, not gated on stripeCustomerId) via a resource
+ * Stripe's Search API actually supports, and is arguably more robust than a
+ * price-line-item check since it doesn't depend on the Lifetime price id
+ * staying constant over time.
  */
 
-import { stripe, PRICES } from '@/lib/stripe';
+import { stripe } from '@/lib/stripe';
 
 export type StripeLifetimeEvidenceStatus = 'VERIFIED_LIFETIME' | 'VERIFIED_NO_LIFETIME' | 'INCONCLUSIVE';
 
 export interface StripeLifetimeEvidence {
   status: StripeLifetimeEvidenceStatus;
-  /** The Checkout Session id, only set when status === 'VERIFIED_LIFETIME' — for audit-trail purposes. */
-  sessionId: string | null;
+  /** The PaymentIntent id, only set when status === 'VERIFIED_LIFETIME' — for audit-trail purposes. */
+  paymentIntentId: string | null;
 }
 
-interface StripeCheckoutSession {
+interface StripePaymentIntentEvidence {
   id: string;
-  mode: string | null;
-  payment_status: string | null;
+  status: string;
+  metadata: { userId?: string; tier?: string; billing?: string } | null;
+}
+
+/** Escapes a value for safe inclusion in a Stripe Search API query string (single-quoted). */
+function escapeSearchQueryValue(value: string): string {
+  return value.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 }
 
 /**
- * Page through every Checkout Session for a customer via Stripe's cursor
- * pagination (`starting_after` + `has_more`), never assuming the first page
- * is complete.
+ * Page through EVERY PaymentIntent correlated to this GasCap user via
+ * `metadata.userId` — set unconditionally on GasCap's Lifetime checkout,
+ * regardless of whether it went through a guest checkout
+ * (`session.customer === null`) or an existing Stripe Customer.
  */
-async function listAllCheckoutSessions(customerId: string): Promise<StripeCheckoutSession[]> {
-  const sessions: StripeCheckoutSession[] = [];
-  let startingAfter: string | undefined;
+async function listAllPaymentIntentsByUserId(gascapUserId: string): Promise<StripePaymentIntentEvidence[]> {
+  const results: StripePaymentIntentEvidence[] = [];
+  let page: string | undefined;
+  const query = `metadata['userId']:'${escapeSearchQueryValue(gascapUserId)}'`;
   for (;;) {
-    const page = await stripe!.checkout.sessions.list({
-      customer: customerId,
+    const result = await stripe!.paymentIntents.search({
+      query,
       limit: 100,
-      ...(startingAfter ? { starting_after: startingAfter } : {}),
+      ...(page ? { page } : {}),
     });
-    sessions.push(...(page.data as StripeCheckoutSession[]));
-    if (!page.has_more || page.data.length === 0) break;
-    startingAfter = page.data[page.data.length - 1].id;
+    results.push(...(result.data as unknown as StripePaymentIntentEvidence[]));
+    if (!result.has_more || !result.next_page) break;
+    page = result.next_page;
   }
-  return sessions;
+  return results;
 }
 
 /**
- * Page through every line item of a single Checkout Session, checking for
- * the Lifetime price on each page rather than only the first.
- */
-async function sessionHasLifetimeLineItem(sessionId: string): Promise<boolean> {
-  let startingAfter: string | undefined;
-  for (;;) {
-    const page = await stripe!.checkout.sessions.listLineItems(sessionId, {
-      limit: 100,
-      ...(startingAfter ? { starting_after: startingAfter } : {}),
-    });
-    if (page.data.some((li) => li.price?.id === PRICES.proLifetime)) return true;
-    if (!page.has_more || page.data.length === 0) break;
-    startingAfter = page.data[page.data.length - 1].id;
-  }
-  return false;
-}
-
-/**
- * Look for a genuine completed Stripe Checkout Session for the GasCap Pro
- * Lifetime price under the given customer. Read-only (list calls only).
- * Exhausts pagination on both the session list and each session's line
- * items before concluding `VERIFIED_NO_LIFETIME`.
+ * Look for a genuine, succeeded PaymentIntent for the GasCap Pro Lifetime
+ * purchase, correlated by GasCap's own `userId` (via `metadata.userId`,
+ * set on every checkout GasCap creates) — NOT by `stripeCustomerId`, which
+ * a genuine guest-checkout Lifetime purchaser may never have. Read-only
+ * (search calls only). Exhausts pagination before concluding
+ * `VERIFIED_NO_LIFETIME`.
  *
  * Returns `INCONCLUSIVE` — never a thrown error — if Stripe isn't
- * configured, the customer id is empty, the Lifetime price id is
- * unavailable, or a Stripe API call fails partway through. Callers MUST
- * treat `INCONCLUSIVE` as "cannot confirm or rule out a Stripe Lifetime
- * purchase," never as evidence of absence.
+ * configured, `gascapUserId` is empty, or a Stripe API call fails at any
+ * point (including partway through pagination). Callers MUST treat
+ * `INCONCLUSIVE` as "cannot confirm or rule out a Stripe Lifetime
+ * purchase," never as evidence of absence — an incomplete scan must never
+ * become `VERIFIED_NO_LIFETIME`.
  */
-export async function verifyStripeLifetimePurchase(stripeCustomerId: string | null): Promise<StripeLifetimeEvidence> {
-  if (!stripeCustomerId || !stripe || !PRICES.proLifetime) {
-    return { status: 'INCONCLUSIVE', sessionId: null };
+export async function verifyStripeLifetimePurchase(gascapUserId: string | null): Promise<StripeLifetimeEvidence> {
+  if (!gascapUserId || !stripe) {
+    return { status: 'INCONCLUSIVE', paymentIntentId: null };
   }
 
-  let sessions: StripeCheckoutSession[];
+  let intents: StripePaymentIntentEvidence[];
   try {
-    sessions = await listAllCheckoutSessions(stripeCustomerId);
+    intents = await listAllPaymentIntentsByUserId(gascapUserId);
   } catch (err) {
-    console.error(`[stripeEvidence] Checkout Session list failed for ${stripeCustomerId}:`, err);
-    return { status: 'INCONCLUSIVE', sessionId: null };
+    console.error(`[stripeEvidence] PaymentIntent search failed for userId ${gascapUserId}:`, err);
+    return { status: 'INCONCLUSIVE', paymentIntentId: null };
   }
 
-  const candidateSessions = sessions.filter((s) => s.mode === 'payment' && s.payment_status === 'paid');
-
-  for (const session of candidateSessions) {
-    let hasLifetimeLine: boolean;
-    try {
-      hasLifetimeLine = await sessionHasLifetimeLineItem(session.id);
-    } catch (err) {
-      console.error(`[stripeEvidence] line item check failed for session ${session.id}:`, err);
-      return { status: 'INCONCLUSIVE', sessionId: null };
-    }
-    if (hasLifetimeLine) {
-      return { status: 'VERIFIED_LIFETIME', sessionId: session.id };
-    }
+  const match = intents.find(
+    (pi) => pi.status === 'succeeded' && pi.metadata?.billing === 'lifetime' && pi.metadata?.tier === 'pro',
+  );
+  if (match) {
+    return { status: 'VERIFIED_LIFETIME', paymentIntentId: match.id };
   }
 
-  return { status: 'VERIFIED_NO_LIFETIME', sessionId: null };
+  return { status: 'VERIFIED_NO_LIFETIME', paymentIntentId: null };
 }
 
 export type StripeSubscriptionVerificationStatus = 'VERIFIED_ACTIVE' | 'VERIFIED_INACTIVE' | 'INCONCLUSIVE';
 
 /**
- * Post-Revision-5 fix — for HISTORICAL PLAN REPAIR ONLY, verify a stored
- * `stripeSubscriptionId` against Stripe's live subscription status, rather
- * than trusting the stored id's mere presence.
+ * Post-Revision-6 fix — a CONSERVATIVE, explicit status matrix for the
+ * HISTORICAL PLAN REPAIR tool only. Revision 5's `status !== 'canceled' =>
+ * active` was too permissive — it would have allowed a repair (free ->
+ * pro) to fire from `incomplete`, `incomplete_expired`, `unpaid`, or
+ * `paused`, none of which represent a subscription a customer is actually
+ * paying for right now.
  *
- * During normal runtime, GasCap's existing billing/access policy DOES treat
- * `stripeSubscriptionId != null` as sufficient — the Stripe webhook keeps it
- * fresh, clearing it on `customer.subscription.deleted`. This function does
- * NOT change that policy (see `lib/entitlements.ts`).
+ * This does NOT change GasCap's normal runtime billing policy (see
+ * `lib/entitlements.ts`, which still treats `stripeSubscriptionId != null`
+ * as sufficient during normal operation — the webhook keeps that field
+ * fresh). This function is used ONLY to gate a historical repair decision.
  *
- * But the historical reconciliation is a REPAIR tool operating on
- * potentially stale legacy data — a `plan='free' → plan='pro'` repair must
- * not fire off a stale subscription id that Stripe would actually report as
- * canceled (e.g. from an ever-missed webhook delivery). This checks Stripe
- * directly, live, before that specific kind of decision.
+ * `past_due` is deliberately `INCONCLUSIVE`, not `VERIFIED_ACTIVE` or
+ * `VERIFIED_INACTIVE` — GasCap has no existing, documented policy on
+ * whether a past-due subscription should retain Pro access, and this
+ * migration must not invent one. An `INCONCLUSIVE` result here simply means
+ * this SPECIFIC evidence can't justify an automatic repair on its own;
+ * another independently confirmed source still can.
+ */
+const VERIFIED_ACTIVE_STATUSES = new Set(['active', 'trialing']);
+const VERIFIED_INACTIVE_STATUSES = new Set(['canceled', 'unpaid', 'incomplete', 'incomplete_expired', 'paused']);
+
+/**
+ * For HISTORICAL PLAN REPAIR ONLY, verify a stored `stripeSubscriptionId`
+ * against Stripe's live subscription status, rather than trusting the
+ * stored id's mere presence — see the module doc comment and
+ * `VERIFIED_ACTIVE_STATUSES`/`VERIFIED_INACTIVE_STATUSES` above for exactly
+ * which statuses count as which, and why `past_due` is neither.
  *
- * GasCap's policy only ever clears `stripeSubscriptionId` on Stripe's
- * `customer.subscription.deleted` event — so any status other than
- * `'canceled'` is treated as still granting access, matching that same
- * policy rather than introducing a new one.
- *
- * Returns `INCONCLUSIVE` (never a thrown error) if Stripe isn't configured
- * or the retrieval fails for any reason — callers MUST treat that as "do
- * not repair the plan on this evidence alone," never as confirmation either
- * way.
+ * Returns `INCONCLUSIVE` (never a thrown error) if Stripe isn't configured,
+ * the retrieval fails for any reason, or the status isn't one of the
+ * explicitly-classified values above — callers MUST treat that as "do not
+ * repair the plan on this evidence alone."
  */
 export async function verifyStripeSubscriptionActive(subscriptionId: string | null): Promise<StripeSubscriptionVerificationStatus> {
   if (!subscriptionId || !stripe) {
@@ -180,7 +183,9 @@ export async function verifyStripeSubscriptionActive(subscriptionId: string | nu
   }
   try {
     const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-    return subscription.status === 'canceled' ? 'VERIFIED_INACTIVE' : 'VERIFIED_ACTIVE';
+    if (VERIFIED_ACTIVE_STATUSES.has(subscription.status)) return 'VERIFIED_ACTIVE';
+    if (VERIFIED_INACTIVE_STATUSES.has(subscription.status)) return 'VERIFIED_INACTIVE';
+    return 'INCONCLUSIVE'; // e.g. past_due, or any future/unrecognized status
   } catch (err) {
     console.error(`[stripeEvidence] subscription status retrieval failed for ${subscriptionId}:`, err);
     return 'INCONCLUSIVE';
