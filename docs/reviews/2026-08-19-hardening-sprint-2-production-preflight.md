@@ -186,28 +186,40 @@ INDEX (month)
 - `AmoeEntry`: required for the AMOE dual-write mirror and its
   reconciliation backfill (`app/api/admin/amoe-backfill/route.ts`).
 
-### 2d. Nullable / backward-compatible?
+### 2d. Nullable / backward-compatible? — CORRECTED in this revision
 
 **Yes, every single change is additive.** No column is dropped, renamed,
-or has its type changed on an existing column. No existing table is
-altered. `role`'s `NOT NULL DEFAULT 'user'` is the only column that writes
-a real (non-null) value to every existing row — every other new column is
-either nullable or defaults to a value that reproduces current behavior
-exactly (`revenueCatActive DEFAULT false`, `RateLimitCounter`/
-`RevenueCatWebhookEvent`/`AdminAuditLog`/`AmoeEntry` are entirely new
-tables with no existing rows to affect).
+or destructively type-changed on an existing column. `User` is
+additively altered — no existing column is dropped, renamed, or
+destructively type-changed — every new column is either nullable or
+carries a constant default (`role` → `'user'`, `revenueCatActive` →
+`false`); `RateLimitCounter`/`RevenueCatWebhookEvent`/`AdminAuditLog`/
+`AmoeEntry` are entirely new tables with no existing rows to affect.
 
-**Important nuance already documented in the migration file itself**
-(`docs/migrations/2026-08-sprint2-schema.sql`, corrected on review): saying
-"no existing row changes value" for the `role` column is not quite
-accurate. `ADD COLUMN role TEXT NOT NULL DEFAULT 'user'` **does** write a
-real value (`'user'`) to every existing row — the column didn't exist
-before, so every row moves from "no role column at all" to "role = user."
-What's true and load-bearing is narrower: **no row's effective application
+**Corrected wording, matching §2e and the migration file's own comments**
+(`docs/migrations/2026-08-sprint2-schema.sql`): a prior draft of this
+section said `role`'s default "writes a real value to every existing
+row," implying a physical per-row write. That's not accurate on
+PostgreSQL 11+. What's true:
+- **Logically**, every existing row reads `role = 'user'` after this
+  runs — the application sees a real, queryable value on every row.
+- **Physically**, on PostgreSQL 11+, `ADD COLUMN ... DEFAULT` with a
+  constant default does **not** rewrite existing row storage; the
+  default is recorded once in the table's own metadata (`pg_attribute`)
+  and returned for existing rows at read time (§2e has the full
+  explanation, including the still-required `SHOW server_version;` gate
+  and the separate `ACCESS EXCLUSIVE` DDL-lock caveat).
+- The same logical/physical distinction applies to
+  `revenueCatActive BOOLEAN NOT NULL DEFAULT false` — existing rows
+  logically gain a non-null `false` default without a physical rewrite,
+  for the same reason.
+
+What's load-bearing either way: **no row's effective application
 behavior changes**, because every pre-migration user was already being
-treated as a non-admin everywhere role is checked today. The distinction
-matters for anyone reasoning about migration risk from "value changed"
-alone rather than "behavior changed."
+treated as a non-admin, and as not having an active RevenueCat
+entitlement, everywhere those checks happen today. The distinction
+matters for anyone reasoning about migration risk from "does this write
+row data" rather than "does this change behavior."
 
 ### 2e. Locking / risky operations
 
@@ -980,11 +992,40 @@ this section can function without its schema counterpart existing first.
 - Re-deliver the same event (RevenueCat dashboard resend) and confirm it's
   detected as a duplicate, not double-processed.
 
-**Stripe webhook verification:**
-- Confirm existing Stripe webhook behavior is unaffected (Sprint 2 did not
-  modify Stripe webhook logic — `app/api/stripe/webhook/route.ts` is
-  outside this sprint's changes) — a basic smoke check, not a new
-  requirement introduced by this sprint.
+**Stripe webhook verification — CORRECTED in this revision:** a prior
+draft of this section claimed Sprint 2 did not modify
+`app/api/stripe/webhook/route.ts`. That's false — Sprint 2 intentionally
+changes the `customer.subscription.deleted` / `invoice.payment_failed`
+cancellation path (see the route's own inline comment at that block).
+Before Sprint 2, that path protected only
+`stripeInterval === 'lifetime'`, and otherwise unconditionally reverted
+the user to Free on any Stripe cancellation/payment failure — with no
+awareness that a legitimate, independently-active RevenueCat entitlement
+could coexist. Sprint 2 replaces that single ad-hoc check with
+`revokeStripeSubscriptionEntitlement()` (`lib/users.ts`), which resolves
+**every** currently-known entitlement source (Ambassador Pro-for-Life,
+RevenueCat, an active trial, and Stripe Lifetime) via the same
+`resolveUserEntitlements()` used everywhere else, and downgrades to Free
+**only if no surviving source qualifies**. This is a deliberate fix to
+the mirror-image bug already documented for the RevenueCat webhook side
+(a Stripe-side cancellation blowing away a legitimate RevenueCat-granted
+Pro) — not an accidental scope expansion. `stripeInterval` itself is
+never rewritten by this path (see `lib/users.ts`'s inline comment at
+`revokeStripeSubscriptionEntitlement`), consistent with §7's
+historical-data safety rule.
+
+Verify explicitly, as three separate smoke-test cases:
+  a. **Stripe cancellation + an active RevenueCat entitlement survives**
+     → user's `plan` remains `'pro'` after the webhook fires; confirm via
+     the admin panel or a direct read that `resolved.sources` included
+     `revenuecat` and the user was NOT reverted to Free.
+  b. **Stripe cancellation + no surviving entitlement source** → user is
+     reverted to Free, exactly as before Sprint 2 for a plain single-
+     provider cancellation.
+  c. **Stripe Lifetime remains protected** → a Stripe Lifetime purchaser
+     (`stripeInterval === 'lifetime'`) never reaches the downgrade branch
+     regardless of RevenueCat state, matching pre-Sprint-2 behavior for
+     that specific case.
 
 **Admin auth verification:**
 - Confirm `app/admin/page.tsx` still logs in via the legacy password
@@ -1048,7 +1089,8 @@ F. Configure required Railway environment variables (§4) —
    `REVENUECAT_PRO_ENTITLEMENT_ID=GasCap Pro` (§4/§5 — **required**, not
    optional, corrected in this revision) at minimum;
    `REVENUECAT_HMAC_SECRET` deliberately deferred (§5's corrected
-   sequence, step O below).
+   sequence, step T below — corrected in this revision; a prior draft
+   pointed to step O, which is the reconciliation dry run, not HMAC).
 G. **Sync `hardening/sprint-2` with current `origin/main`.** `main` now
    contains the separately-merged iOS trial hotfix (`3ff6426`, PR #2) that
    `hardening/sprint-2` does not yet have (both branches contain
@@ -1075,9 +1117,11 @@ L. Product Owner merge approval — per `/CLAUDE.md`, "ChatGPT approved
 M. Railway deployment (merge to `main` **is** the deploy, per
    `/CLAUDE.md`). **Deploying the reconciliation route performs no
    reconciliation itself** — the route existing and being deployed is
-   necessary before F (below) can run, but deployment alone makes zero
-   database writes related to reconciliation; the route only acts on an
-   explicit authenticated request.
+   necessary before step O (below) can run, but deployment alone makes
+   zero database writes related to reconciliation; the route only acts on
+   an explicit authenticated request. (Corrected in this revision — a
+   prior draft misreferenced this as "F," which is the Railway
+   env-var-configuration step, not the reconciliation dry run.)
 N. Production smoke tests (§10).
 O. **Production reconciliation GET — DRY RUN ONLY** (§6), now correctly
    sequenced *after* deploy, since the route must actually exist and be
