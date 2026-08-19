@@ -5,11 +5,11 @@ import { GlowIcon, type GlowIconName } from '@/components/marketing/GlowIcon';
 export const metadata: Metadata = {
   title: 'Earn Rewards — Dining Vouchers & Hotel Savings Cards | GasCap™',
   description:
-    'Earn real Dining Vouchers and Hotel Savings Cards just for using GasCap™ every day or referring friends. Free and automatic — a small activation fee applies to redeem Dining Vouchers.',
+    'Earn real Dining Vouchers and Hotel Savings Cards just for using GasCap™ every day or referring friends. Free, automatic, no purchase necessary.',
   openGraph: {
     title: 'Earn Real Rewards with GasCap™',
     description:
-      'Daily streaks and referrals earn you real Dining Vouchers and Hotel Savings Cards — sent automatically by email. A small activation fee applies to redeem Dining Vouchers.',
+      'Daily streaks and referrals earn you real Dining Vouchers and Hotel Savings Cards — sent automatically by email, no purchase necessary.',
   },
 };
 
@@ -94,7 +94,7 @@ export default function RewardsPage() {
           >
             Start Earning Rewards
           </Link>
-          <p className="text-slate-500 text-[11px] mt-3">No purchase necessary — sent automatically. A small activation fee applies to redeem Dining Vouchers.</p>
+          <p className="text-slate-500 text-[11px] mt-3">Free — no purchase necessary — sent automatically</p>
         </div>
       </section>
 
@@ -212,15 +212,7 @@ export default function RewardsPage() {
         <p className="text-sm text-slate-500 leading-relaxed max-w-sm mx-auto">
           Every Dining Voucher and Hotel Savings Card is a real reward, fulfilled automatically by
           Parker Select Rewards and sent straight to your inbox within about 24 hours of hitting a
-          milestone. No purchase, credit card, or extra steps are required to <em>earn</em> them.
-        </p>
-        <p className="text-sm text-slate-500 leading-relaxed max-w-sm mx-auto mt-3">
-          <strong className="text-slate-700">Dining Vouchers require a small activation fee to
-          redeem</strong> — currently $9.50 per $100 of voucher value, charged by our fulfillment
-          partner (not GasCap™) when you use the voucher. Hotel Savings Cards do not require an
-          activation fee. Both are third-party certificates fulfilled by Marketing Boost / Dining
-          Advantage; redemption terms, participating locations, and discount availability are set by
-          that provider.
+          milestone. No purchase, no credit card, and no extra steps required to earn them.
         </p>
         <p className="text-[11px] text-slate-400 mt-4 max-w-sm mx-auto">
           Rewards and reward amounts are subject to change.
