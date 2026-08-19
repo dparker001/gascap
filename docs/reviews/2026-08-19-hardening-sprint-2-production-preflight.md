@@ -1,4 +1,4 @@
-# Sprint 2 Production Preflight Packet (Revision 2)
+# Sprint 2 Production Preflight Packet (Revision 3)
 
 **Purpose:** REVIEW/PREFLIGHT ONLY. No production action was taken to
 produce this document — every SQL statement, command, and Railway variable
@@ -7,21 +7,22 @@ independent reviewer (ChatGPT) can perform a final production-readiness
 review of Hardening Sprint 2 without reconstructing the sprint from commit
 history.
 
-**SHA terminology, precise (per Revision 2 correction):**
+**SHA terminology, precise (Revision 2 convention, continued in
+Revision 3):**
 - **Review Target / code SHA:** `e07bd0865388534903b7fb54c6c746ab6697782c` —
   the application code state this packet's findings are actually about.
   Every §2–§10 finding below was verified against this exact code, not a
-  later one.
-- **Revision 1 packet commit:** `8dad1b8` — the first version of this
-  document, reviewed by ChatGPT and superseded by this revision.
-- **This revision's packet commit:** documentation-only; see this task's
-  final commit SHA in the summary at the end of this file. It does NOT
-  change the Review Target SHA above — no application code was re-reviewed
-  beyond the one comment fix in §5 below (HMAC doc-comment correction, no
-  behavioral change).
+  later one. Unchanged since Revision 1/2 — Revision 3 is documentation
+  and comment corrections only (§3, the migration SQL's comments, and
+  `lib/revenueCatHmac.ts`'s comment — no behavioral code change anywhere).
+- **Revision 1 packet commit:** `8dad1b8`.
+- **Revision 2 packet commit:** `dfd38a9` (also includes the §5 HMAC
+  doc-comment fix from that round).
+- **This revision (3)'s packet commit:** documentation/comment-only; see
+  this task's final commit SHA in the summary at the end of this file.
 - **Current `hardening/sprint-2` branch HEAD** at the time this revision
-  was written is documented in §1 below, separately from the Review Target
-  SHA — they are the same only until a future commit changes that.
+  was written is documented in §1 below, separately from the Review
+  Target SHA — they are the same only until a future commit changes that.
 
 ---
 
@@ -225,7 +226,15 @@ alone rather than "behavior changed."
   version** — `SHOW server_version;` remains a required pre-SQL
   verification gate (added to §12 below), not because the mechanism is in
   doubt, but because no operation should proceed on an unconfirmed
-  assumption about the target database's actual version.
+  assumption about the target database's actual version. **Added in
+  Revision 3 — this section's own title notwithstanding, it previously
+  didn't actually name the lock:** even with no row rewrite, `ALTER TABLE
+  ... ADD COLUMN` still normally acquires a brief `ACCESS EXCLUSIVE` lock
+  on `User` for the duration of the DDL statement, blocking concurrent
+  reads/writes to that table for that window. "No table rewrite" and "no
+  lock" are separate claims — do not conflate them. See §3's execution
+  recommendations (low-traffic window, short `lock_timeout`) for how this
+  is handled operationally.
 - **`CREATE TABLE IF NOT EXISTS`** (×4): no lock risk — creating a new,
   empty table takes at most a brief catalog lock, not a table-level lock
   on any existing data.
@@ -331,22 +340,45 @@ UPDATE "User" SET role = 'admin' WHERE email = 'dparker001@gmail.com';
 
 ## 3. Migration Safety / Ordering
 
-### Required order
+### Required order — CORRECTED in Revision 3 to match §11
+
+Revision 2 left this section's ordering stale relative to the corrected
+§11 release sequence: it listed "deploy" (step 4) before "configure
+Railway env vars" (step 5), which contradicts §11's corrected order
+(env vars configured before deploy, since Sprint 2 code fails immediately
+without them — e.g. `resolveEntitlementInternalId` throws on every RC
+lookup without a correct `REVENUECAT_PRO_ENTITLEMENT_ID`). Corrected:
 
 1. Apply all `ALTER TABLE`/`CREATE TABLE` statements in §2g together, in
    any order relative to each other (no statement depends on another —
    they touch disjoint columns/tables). A single transaction is fine
-   given the operations are all fast/metadata-level per §2e.
+   given the operations are all fast/metadata-level per §2e — see the
+   locking caveat immediately below, however.
 2. Run the verification queries (below) to confirm the schema applied as
    expected.
 3. **Only after 1–2 are confirmed:** apply the Don admin-role `UPDATE`
    separately, then verify it independently (exactly 1 row with
    `role='admin'`).
-4. Deploy Sprint 2 application code (merge to `main`) — see §11 for where
-   this sits relative to the schema step.
-5. Configure new Railway environment variables (§4) — some can happen
-   before the deploy, some are only needed for optional features (HMAC)
-   and can wait indefinitely.
+4. **Configure required Railway environment variables** (§4) —
+   `REVENUECAT_V2_SECRET_KEY`, `REVENUECAT_PROJECT_ID`, and
+   `REVENUECAT_PRO_ENTITLEMENT_ID=GasCap Pro` **before** deploy, not after.
+   `REVENUECAT_HMAC_SECRET` remains intentionally deferred — see §5's
+   corrected enablement sequence, unaffected by this correction.
+5. Deploy Sprint 2 application code (merge to `main`) — see §11 for the
+   full sequence this step sits within (branch sync, PR, CI, review,
+   merge approval, then this deploy step).
+
+### A note on lock behavior during step 1 — added in Revision 3
+
+Even when no table rewrite occurs (§2e — confirmed metadata-only on
+PostgreSQL 11+), `ALTER TABLE ... ADD COLUMN` still normally acquires an
+`ACCESS EXCLUSIVE` lock on the table for the (brief) duration of the DDL
+statement itself — this blocks concurrent reads and writes to `User` for
+that window, distinct from the separate question of whether the operation
+rewrites existing row data. On an empty or lightly-loaded table this is
+negligible; on `User` (GasCap's largest, most actively-written table) it
+is still worth treating deliberately rather than assuming "metadata-only"
+means "lock-free." See the updated pre-SQL execution plan in §12/below.
 
 ### Application compatibility before/after each step
 
@@ -365,30 +397,71 @@ UPDATE "User" SET role = 'admin' WHERE email = 'dparker001@gmail.com';
   would fail at the database level) — this is why schema must precede
   code deploy, not the reverse.
 
-### Rollback / forward-fix strategy
+### Rollback / forward-fix strategy — CORRECTED in Revision 3
+
+Revision 2 tied code-rollback safety to "before the admin-role UPDATE,"
+which no longer describes the corrected sequence — §11/§3 above now
+perform that UPDATE (step 3) *before* deploy (step 5), so by the time
+there's any deployed code to roll back, the admin-role backfill has
+already happened. The admin-role backfill and code-rollback safety are
+actually independent concerns; corrected:
 
 - **Schema rollback** (if ever needed before code depends on it): each
   statement's rollback is `ALTER TABLE ... DROP COLUMN "x"` /
   `DROP TABLE "x"` — safe specifically because nothing reads/writes these
   columns until the corresponding application code is also deployed.
-- **Code rollback** (reverting the `main` merge after deploy): safe at any
-  point **before** the admin-role UPDATE and before any real RevenueCat
-  traffic writes to the new columns — reverting the app code while the
-  schema remains is inert (old code ignores columns it doesn't know
-  about). After real traffic has written to `revenueCatActive`/etc., a
-  code rollback would mean the OLD code stops reading those columns
-  again — not a data-loss risk (the columns keep their values, ready to
-  be read again on a forward-fix), but a functional regression back to
-  pre-Sprint-2 entitlement resolution until re-deployed forward.
-- **Forward-fix is the preferred remediation** per `/CLAUDE.md`'s general
-  git discipline — new commits and a new deploy, not `git reset` on a
-  shared branch.
+- **The admin-role backfill does not itself make a code rollback
+  unsafe.** Old `main` (pre-Sprint-2) has no code path that reads or
+  writes the `role` column at all — it simply ignores an additive column
+  it doesn't know about. Whether or not Don's row has `role='admin'` set
+  has no bearing on whether rolling the application code back is safe.
+- **Code rollback (reverting the `main` merge after deploy) is
+  schema-compatible at any point** — leaving the additive schema in place
+  while rolling application code back is always safe in the sense that no
+  rollback can ever *break* against the schema (old code simply doesn't
+  reference the new columns/tables).
+- **The real risk is functional, not structural, and appears only after
+  real RevenueCat traffic starts writing provider-state fields.** Once
+  `revenueCatActive`/`revenueCatInterval`/`revenueCatProductId` have been
+  written by real webhook/sync activity, rolling the application code back
+  to pre-Sprint-2 means the OLD code no longer consults those fields at
+  all — `lib/entitlements.ts`'s pre-Sprint-2 predecessor never checked
+  them. This is not a data-loss risk (the columns retain their values,
+  ready to be read again the moment a forward-fix redeploys), but it can
+  open a **functional entitlement-regression window**: a user whose Pro
+  access depends specifically on a RevenueCat-sourced grant (and no other
+  source) could appear to lose Pro access under the old code, for exactly
+  the duration between the rollback and the next forward-fix deploy.
+- **Forward-fix remains the preferred remediation** per `/CLAUDE.md`'s
+  general git discipline — new commits and a new deploy, not `git reset`
+  on a shared branch — and is doubly preferred here given the functional
+  regression window a rollback can introduce once real RC traffic exists.
 
 ### Confirmation: no destructive drops/renames anywhere in this rollout
 
 Confirmed directly against the SQL in §2g and the Prisma schema diff — zero
 `DROP`, `RENAME`, `TRUNCATE`, or destructive `UPDATE`/`DELETE` statements
 appear anywhere in the proposed rollout.
+
+### Recommended execution conditions for step 1 — added in Revision 3
+
+Given the `ACCESS EXCLUSIVE` lock behavior noted above, even though the
+lock duration itself should be brief:
+
+- **Perform the schema migration during a controlled, low-traffic
+  window** rather than at an arbitrary time — minimizes the chance of the
+  lock, however brief, colliding with peak write activity on `User`.
+- **Set a short `lock_timeout`** (e.g. `SET lock_timeout = '5s';` before
+  the `ALTER TABLE`/`CREATE TABLE` statements, in the same session) so
+  that if the migration happens to queue behind an unexpectedly
+  long-running transaction already holding a conflicting lock, it **fails
+  fast with a clear error** rather than waiting indefinitely and
+  potentially queuing behind it while blocking new queries in turn. A
+  fast, clear failure is safe and re-runnable; an indefinite wait holding
+  a lock queue is not.
+- **This has NOT been executed** — these are recommended conditions for
+  whenever the migration is actually authorized to run, not something
+  performed in preparing this packet.
 
 ### What must be verified immediately after migration
 
@@ -497,9 +570,11 @@ disclosure.
   - Format: `t=<unix_timestamp>,v1=<hmac_sha256_hex>`
   - Signed message: `<timestamp>.<raw request body>`
   - HMAC-SHA256, constant-time comparison (`crypto.timingSafeEqual`)
-  - An optional timestamp tolerance window (this implementation uses 5
-    minutes) — RevenueCat's docs expect a tolerance without mandating an
-    exact value.
+  - RevenueCat documents optional timestamp tolerance for replay
+    protection and gives 5 minutes as an example — this implementation
+    uses that same 5-minute window, corrected wording in Revision 3 (a
+    prior draft of this packet said RevenueCat "expects" a tolerance,
+    which overstated it as something closer to a requirement).
 
   `lib/revenueCatHmac.ts`'s header comment has been updated (this
   revision, comment-only, no behavioral change) to state this plainly
@@ -1044,6 +1119,11 @@ U. Final cleanup/closeout — admin-role soak monitoring continues (§8);
       remains a required pre-SQL gate specifically so §2e's "fast,
       metadata-only" characterization is confirmed against the real
       target, not assumed from general Postgres behavior.
+- [ ] **Added in Revision 3:** the migration is scheduled for a
+      controlled, low-traffic window, and the executing session will set
+      a short `lock_timeout` (e.g. 5s) before running the `ALTER
+      TABLE`/`CREATE TABLE` statements, so the migration fails fast
+      rather than queuing indefinitely behind a conflicting lock (§3).
 
 ### Must be TRUE before reconciliation **apply** (not just the dry run)
 
@@ -1105,24 +1185,29 @@ U. Final cleanup/closeout — admin-role soak monitoring continues (§8);
 
 ---
 
-## Final Summary (Revision 2)
+## Final Summary (Revision 3)
 
 - **Review Target / code SHA:** `e07bd0865388534903b7fb54c6c746ab6697782c`
   (branch `hardening/sprint-2`) — the application code this packet's
-  findings describe. Unchanged from Revision 1; this revision corrects
-  documentation and one comment (§5's HMAC doc-comment fix, no behavioral
-  change), it does not re-target a different code state.
+  findings describe. Unchanged since Revision 1; Revisions 2 and 3 are
+  both documentation/comment corrections (Revision 2: the HMAC doc-comment
+  fix; Revision 3: this round's `lib/revenueCatHmac.ts` timestamp-wording
+  fix and the `docs/migrations/2026-08-sprint2-schema.sql` comment
+  corrections) — no behavioral code change in either revision, and neither
+  re-targets a different code state.
 - **`hardening/sprint-2` branch HEAD at the time this revision's packet
-  document itself was committed:** will be one commit past
-  `e07bd0865388534903b7fb54c6c746ab6697782c` (the comment fix +
-  this document) — see the task-level report for the exact commit SHA,
-  since a document cannot self-reference the SHA of the commit that
-  contains it.
-- **Revision 1 packet commit:** `8dad1b8` (superseded by this revision).
+  document itself was committed:** will be one commit past Revision 2's
+  packet commit (`dfd38a9`) — see the task-level report for this
+  revision's exact commit SHA, since a document cannot self-reference the
+  SHA of the commit that contains it.
+- **Revision 1 packet commit:** `8dad1b8`.
+- **Revision 2 packet commit:** `dfd38a9` (superseded by this revision).
 - **`main` HEAD SHA (for comparison):** `3ff64267d69e3e6d0a4a155fd6ea8792be183943`
-  — corrected note: this now includes the iOS trial hotfix (PR #2,
-  `3ff6426`) that `hardening/sprint-2` does not yet have; see §11-G and
-  §13 risk #13.
+  — this now includes the iOS trial hotfix (PR #2, `3ff6426`) that
+  `hardening/sprint-2` does not yet have; see §11-G and §13 risk #13.
+  Unchanged since Revision 2 — `origin/main` was not re-fetched for this
+  documentation-only revision, since nothing in this round's corrections
+  depends on it having moved further.
 
 **Exact files reviewed for this packet** (read directly, this session):
 `prisma/schema.prisma` (full diff against merge-base `39de76a`),
@@ -1157,41 +1242,84 @@ above:**
 6. Any reconciliation apply — **NOT EXECUTED, not even proposed as runnable in this packet**.
 7. `git merge origin/main` into `hardening/sprint-2` (§11-G) — **NOT PERFORMED** as part of this documentation-only revision.
 8. PR open / merge / deploy — **NOT PERFORMED**.
+9. **This revision's own edits** — comment/wording corrections only, to
+   `docs/reviews/2026-08-19-hardening-sprint-2-production-preflight.md`,
+   `docs/migrations/2026-08-sprint2-schema.sql`, and
+   `lib/revenueCatHmac.ts`. No `ALTER TABLE`/`CREATE TABLE` statement text
+   changed (verified via `git diff ... | grep -E "^\+ALTER|^\+CREATE|^\-ALTER|^\-CREATE"`
+   returning empty for the migration file), and no logic in
+   `verifyRevenueCatHmac` or `TIMESTAMP_TOLERANCE_MS` changed — **NOTHING
+   EXECUTED, NOTHING BEHAVIORAL**.
 
-**Test/build status, verified fresh in this session at the Review Target
-SHA `e07bd08`** (pre-dating the required §11-G branch sync — must be
-re-verified fresh at the post-merge commit before that commit is actually
-submitted for PR, per §12):
+**Test/build status, re-verified fresh in this session for Revision 3**
+(re-run after this round's comment-only edits, since `lib/revenueCatHmac.ts`
+was touched; still at the unchanged Review Target SHA `e07bd08` plus this
+revision's comment-only commit — pre-dating the required §11-G branch
+sync, which must still be re-verified fresh at the post-merge commit
+before that commit is actually submitted for PR, per §12):
 ```
-npm test           → Test Files: 30 passed (30) / Tests: 451 passed (451)
-npx tsc --noEmit    → clean, no output, exit 0
-npm run build       → succeeded (full Next.js production build)
-npm run check:crons → ✓ cron inventory: 19 routes, 17 scheduled, 2 exempt
-npx prisma validate → The schema at prisma/schema.prisma is valid 🚀
+node --check scripts/revenuecat-smoke-test.mjs → syntax OK
+npx tsc --noEmit    → clean, no output, exit 0                    [re-run this revision]
+npm test            → Test Files: 30 passed (30) / Tests: 451 passed (451)  [re-run this revision]
+npm run build       → succeeded (full Next.js production build)  [carried over from Revision 2 — this
+                       revision's edits are comments/wording only in .ts/.sql/.md files with no import-
+                       graph or bundling impact, so a fresh full build was judged unnecessary; tsc
+                       --noEmit and the test suite were re-run because they're fast and directly cover
+                       the touched .ts file]
+npm run check:crons → ✓ cron inventory: 19 routes, 17 scheduled, 2 exempt  [carried over from Revision 2, unaffected by this revision's edits]
+npx prisma validate → The schema at prisma/schema.prisma is valid 🚀       [carried over from Revision 2 — .sql migration file is a proposed script, not the Prisma schema itself, so this revision's edits to it don't affect prisma validate]
 ```
+
+**Revision 3 changes from Revision 2, summarized:** all four
+documentation/comment corrections this round requested were applied —
+§3's required-order list now configures Railway env vars (step 4) before
+deploy (step 5), matching §11's already-corrected sequence; the `role`
+column's migration comments (top-of-file and inline) now distinguish
+logical read-default from PostgreSQL 11+'s metadata-only physical write,
+name the brief `ACCESS EXCLUSIVE` DDL lock explicitly (a real gap §2e's
+own title had promised but not delivered), and recommend a low-traffic
+window with a short `lock_timeout`; §5's HMAC timestamp-tolerance wording
+no longer implies RevenueCat "expects" a tolerance, matching RevenueCat's
+actual optional/example-value framing (code behavior — the 5-minute
+`TIMESTAMP_TOLERANCE_MS` — is unchanged); and §3's rollback/forward-fix
+wording now correctly ties code-rollback risk to whether RevenueCat
+provider-state fields have actually been written, not to whether the
+admin-role backfill has run. Nothing about the underlying release
+sequence, risk ranking, or required pre-deploy steps changed as a result
+— this revision corrects internal accuracy and consistency, it does not
+change what must happen before deploy.
 
 **Recommendation:**
 
-# READY FOR SECOND PREFLIGHT REVIEW
+# READY FOR FINAL PREFLIGHT APPROVAL
 
-Every correction ChatGPT's independent review identified has been applied:
-`REVENUECAT_PRO_ENTITLEMENT_ID` is now correctly documented as required,
-with the actual value (`GasCap Pro`); the release sequence now correctly
-places the reconciliation dry run after deployment, not before; the HMAC
-section now reflects the confirmed-correct specification and the corrected
-enable-then-test ordering; a required branch-sync step against
-`origin/main` has been added; CI scope is now confirmed rather than
-flagged unknown; the Postgres `ADD COLUMN DEFAULT` wording no longer
-implies a full-table rewrite while still gating on a live version check;
-and SHA terminology throughout now distinguishes the reviewed code state
-from the packet's own documentation commits. No production action was
-taken to produce this revision, beyond the one comment-only code fix
-described in §5. Every schema change remains additive, nullable-or-inert
-by default, and has an exact proposed (not executed) SQL statement. Every
-historical-data safety rule remains verified by direct code inspection —
-most notably that `stripeInterval` is structurally never written by the
-bulk reconciliation apply path. The open risks in §13 are real but are
-either Low-rank operational gaps or Medium-rank items whose next concrete
-step is explicitly a later stage of the corrected release sequence
-(§11-G onward — branch sync, then deploy, then §11-O's dry run) — not
-blockers to an independent reviewer beginning that final review now.
+Every correction from both independent review rounds has been applied and
+cross-checked for consistency: `REVENUECAT_PRO_ENTITLEMENT_ID` is
+documented as required with its actual value (`GasCap Pro`) and now
+correctly ordered before deploy in both §3 and §11; the reconciliation
+dry run correctly follows deployment, not precedes it; the HMAC section
+reflects the confirmed-correct specification, the corrected
+enable-then-test ordering, and now-accurate timestamp-tolerance wording;
+the required `origin/main` branch-sync step is documented; CI scope is
+confirmed rather than flagged unknown; the Postgres `ADD COLUMN DEFAULT`
+wording correctly separates the (non-)rewrite question from the DDL lock
+question, with both a version gate and a lock-timeout/low-traffic-window
+recommendation; SHA terminology throughout distinguishes the reviewed
+code state from the packet's own documentation commits across all three
+revisions; and the rollback-safety wording no longer misattributes risk
+to the admin-role backfill. No production action was taken to produce
+this revision — every change across all three revisions has been
+comments, wording, and documentation only, confirmed by direct `git diff`
+inspection showing zero SQL statement or executable-logic changes. Every
+schema change remains additive, nullable-or-inert by default, with an
+exact proposed (not executed) SQL statement. Every historical-data safety
+rule remains verified by direct code inspection — most notably that
+`stripeInterval` is structurally never written by the bulk reconciliation
+apply path. `npx tsc --noEmit` and the full test suite (451 tests, 30
+files) were re-run fresh against this revision's edits and pass cleanly.
+The open risks in §13 are real but are either Low-rank operational gaps
+or Medium-rank items whose next concrete step is explicitly a later stage
+of the corrected release sequence (§11-G onward — branch sync, then
+deploy, then §11-O's dry run) — not blockers to this packet being
+considered complete and internally consistent for a final independent
+review pass before Don's own release-sequence execution begins.

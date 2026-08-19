@@ -20,18 +20,45 @@
 -- application code (this same sprint) is deployed to read/write them.
 --
 -- Revision 1 correction on the "role" column below: describing this as
--- "no existing row changes value" was ambiguous and is corrected here.
--- `ADD COLUMN ... DEFAULT 'user'` DOES set a real value — `'user'` — on
--- EVERY existing row; the column did not exist before, so every row moves
--- from "no role column at all" to "role = 'user'". What's true is narrower:
--- no row's *effective application behavior* changes, because every
--- pre-migration user was already being treated as a non-admin everywhere
--- role is checked. The column addition makes that implicit state explicit
--- and queryable — it is still a real write to every row, not a no-op.
+-- "no existing row changes value" was ambiguous. What's accurate, corrected
+-- again in Revision 3 of the accompanying preflight packet after further
+-- independent review of actual PostgreSQL behavior:
+--   - LOGICALLY, every existing row reads role='user' after this runs —
+--     from the application's point of view, every row now has a real,
+--     queryable role value it didn't have before.
+--   - PHYSICALLY, on PostgreSQL 11+, this does NOT rewrite existing row
+--     data. A non-volatile constant DEFAULT ('user' here) is recorded once
+--     in the table's own metadata (pg_attribute); existing rows are not
+--     touched on disk — Postgres returns the metadata default for them at
+--     read time. (Pre-11 Postgres genuinely did rewrite the whole table for
+--     this; that older behavior is not what a current, reasonably modern
+--     Postgres actually does, and this codebase should not assume the old
+--     behavior without checking.)
+--   - `SHOW server_version;` against the actual production database
+--     remains a REQUIRED pre-execution check — this comment describes
+--     PostgreSQL 11+ behavior; it does not substitute for confirming which
+--     version production is actually running.
+--   - Separately from the above: even when no row rewrite occurs, this
+--     statement still normally acquires a brief ACCESS EXCLUSIVE lock on
+--     "User" for the duration of the DDL itself, which blocks concurrent
+--     reads/writes to that table for that window. This is a distinct
+--     concern from row-rewrite cost — do not conflate "no table rewrite"
+--     with "no lock." Run during a controlled, low-traffic window, and set
+--     a short lock_timeout (e.g. `SET lock_timeout = '5s';` in the same
+--     session before this statement) so the migration fails fast rather
+--     than queuing indefinitely behind an unexpected long-running
+--     transaction.
+--   - No row's *effective application behavior* changes either way,
+--     because every pre-migration user was already being treated as a
+--     non-admin everywhere role is checked — this remains true regardless
+--     of the physical-write question above.
 
 -- ── User: admin role ────────────────────────────────────────────────────────
--- Sets role='user' on every existing row (see the Revision 1 note above —
--- a real value is written, even though no row's effective behavior changes).
+-- Every existing row logically reads role='user' after this runs (see the
+-- corrected note above — physically, PostgreSQL 11+ stores this as a
+-- metadata-level default, not a per-row rewrite; SHOW server_version is
+-- still a required pre-execution check, and a brief ACCESS EXCLUSIVE lock
+-- still applies regardless of row-rewrite cost).
 ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "role" TEXT NOT NULL DEFAULT 'user';
 
 -- ── User: RevenueCat entitlement provenance ─────────────────────────────────

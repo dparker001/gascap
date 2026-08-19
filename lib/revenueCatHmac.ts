@@ -16,10 +16,11 @@
  *   Signed message: <unix_timestamp>.<raw_request_body>
  *   Algorithm:      HMAC-SHA256, hex-encoded
  *   Comparison:     constant-time (see crypto.timingSafeEqual below)
- *   Timestamp tolerance: an optional window (this implementation uses 5
- *                        minutes) to bound replay/clock-skew — RevenueCat's
- *                        docs note a tolerance is expected but don't mandate
- *                        an exact value.
+ *   Timestamp tolerance: RevenueCat documents optional timestamp tolerance
+ *                        for replay protection and gives 5 minutes as an
+ *                        example — this implementation uses that same 5
+ *                        minute window (TIMESTAMP_TOLERANCE_MS below), not
+ *                        a value RevenueCat mandates.
  *
  * The SPECIFICATION itself is no longer an open question. What remains
  * unverified is a LIVE SIGNED DELIVERY — this code has not yet processed a
