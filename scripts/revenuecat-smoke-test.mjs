@@ -31,16 +31,22 @@
  * app_user_id) to confirm the "does not create a customer" guarantee.
  *
  * SAFETY:
- *   - Never logs the secret key, the Authorization header, or a full raw
- *     provider payload — only the sanitized classification fields this
- *     script derives (customerFound / active / interval / productId /
- *     customerId), plus HTTP status codes on failure.
+ *   - Never logs the secret key, the Authorization header, a full raw
+ *     provider payload, or a raw app_user_id/alias (an identifier may be
+ *     an email or otherwise customer-identifying) — only the sanitized
+ *     classification fields this script derives (customerFound / active /
+ *     interval / productId), a short irreversible SHA-256-derived
+ *     reference for each identity (not reversible back to the input), and
+ *     HTTP status codes on failure. Project id and the configured
+ *     entitlement lookup key are logged since they're not credentials.
  *   - Makes NO writes to RevenueCat (every call is GET) or to GasCap's
  *     database (this script never imports Prisma).
  *   - Do NOT run this without real REVENUECAT_V2_SECRET_KEY /
  *     REVENUECAT_PROJECT_ID credentials — it will simply fail fast with a
  *     clear error if they're missing.
  */
+
+import { createHash } from 'node:crypto';
 
 const ORIGIN = 'https://api.revenuecat.com';
 const API_BASE = `${ORIGIN}/v2`;
@@ -122,7 +128,10 @@ async function findCustomerId(appUserId, apiKey, projectId) {
     if (await verifyAlias(candidateId, appUserId, apiKey, projectId)) verified.push(candidateId);
   }
   if (verified.length === 1) return { customerId: verified[0], viaAlias: true };
-  return { customerId: null, viaAlias: false };
+  if (verified.length > 1) {
+    throw new Error(`alias resolution ambiguous: ${verified.length} distinct customers each claim this app_user_id via their alias list`);
+  }
+  return { customerId: null, viaAlias: false }; // zero verified matches — not found.
 }
 
 async function resolveEntitlementInternalId(lookupKey, apiKey, projectId) {
@@ -145,8 +154,13 @@ async function resolveProductStoreIdentifier(internalProductId, apiKey, projectI
   }
 }
 
+/** Short, irreversible reference for a log line — never the raw identifier itself, which may be an email or otherwise customer-identifying. */
+function shortRef(value) {
+  return createHash('sha256').update(value).digest('hex').slice(0, 8);
+}
+
 async function checkIdentity(label, appUserId, apiKey, projectId, proEntitlementId) {
-  console.log(`\n--- ${label} (${appUserId}) ---`);
+  console.log(`\n--- ${label} [ref:${shortRef(appUserId)}] ---`);
   let resolution;
   try {
     resolution = await findCustomerId(appUserId, apiKey, projectId);

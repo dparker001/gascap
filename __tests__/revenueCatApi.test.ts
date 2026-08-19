@@ -155,6 +155,15 @@ describe('fetchAuthoritativeRevenueCatState', () => {
       expect(result.customerFound).toBe(false);
     });
 
+    it('TWO candidates BOTH verify via their alias list => throws (ambiguous), NEVER returns customerFound:false', async () => {
+      fetchMock
+        .mockResolvedValueOnce(customersPage([{ id: 'candidate-a' }, { id: 'candidate-b' }]))
+        .mockResolvedValueOnce(aliasesPage(['searched-id'])) // candidate-a's alias list ALSO contains the searched id
+        .mockResolvedValueOnce(aliasesPage(['searched-id'])); // candidate-b's alias list too
+      const { fetchAuthoritativeRevenueCatState } = await import('../lib/revenueCatApi');
+      await expect(fetchAuthoritativeRevenueCatState('searched-id')).rejects.toThrow(/ambiguous/i);
+    });
+
     it('every non-exact candidate is verified — a match on the SECOND candidate is still found, not skipped after the first fails', async () => {
       fetchMock
         .mockResolvedValueOnce(customersPage([{ id: 'candidate-a' }, { id: 'candidate-b' }]))

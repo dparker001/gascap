@@ -210,9 +210,10 @@ async function verifyAlias(customerId: string, appUserId: string, apiKey: string
  *   4. Exactly one candidate whose alias list contains the searched id ->
  *      return that canonical customer id.
  *   5. Zero verified matches -> not found.
- *   6. More than one verified match -> never guess; treat as unresolved
- *      (this should not be possible under RevenueCat's own data model, but
- *      is handled defensively rather than assumed away).
+ *   6. More than one verified match -> THROWS (ambiguous). This is
+ *      distinct from "not found" — a caller must never conflate "we found
+ *      two customers claiming this identity" with "we found no customer,"
+ *      since the former is inconclusive, not evidence of absence.
  *   7. Any alias-list lookup failure propagates (throws) — never silently
  *      "no match."
  */
@@ -242,9 +243,11 @@ async function findCustomerId(appUserId: string, apiKey: string, projectId: stri
   }
 
   if (verifiedMatches.length === 1) return verifiedMatches[0];
+  if (verifiedMatches.length > 1) {
+    throw new Error(`RevenueCat v2 alias resolution ambiguous: ${verifiedMatches.length} distinct customers each claim app_user_id via their alias list.`);
+  }
 
-  // Zero verified matches, or (defensively) more than one — never guess.
-  return null;
+  return null; // zero verified matches — not found.
 }
 
 async function resolveEntitlementInternalId(lookupKey: string, apiKey: string, projectId: string): Promise<string> {

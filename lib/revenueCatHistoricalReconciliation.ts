@@ -106,7 +106,7 @@ export type ProvenanceClassification =
   | 'confirmed_ambassador'                  // ambassadorProForLife — GasCap-internal grant, no provider involved
   | 'confirmed_active_rc_monthly'           // RC API confirms an active monthly entitlement, no other source
   | 'confirmed_active_rc_lifetime'          // RC API confirms an active lifetime entitlement, no other source
-  | 'confirmed_legacy_rc_contamination'     // stripeInterval unexplained by anything else, RC positively suggests it originated from RC, and it's the SOLE confirmed source — SUSPECTED, report-only, never auto-cleared (Revision 7)
+  | 'suspected_legacy_rc_contamination'     // stripeInterval unexplained by anything else, RC positively suggests it originated from RC, and it's the SOLE confirmed source — SUSPECTED, report-only, never auto-cleared (Revision 7)
   | 'multiple_legitimate_sources'           // more than one CONFIRMED source applies (genuine Stripe/gift/Ambassador AND/OR active RC) — may STILL carry suspectedLegacyStripeIntervalContamination:true, see module doc comment
   | 'ambiguous_legacy_provenance';          // no internal evidence, RC inconclusive — DO NOT TOUCH
 
@@ -267,7 +267,7 @@ export function classifyProvenance(input: ClassifyInput): {
 
     if (isLoneRc && suspectedLegacyStripeIntervalContamination) {
       return {
-        classification: 'confirmed_legacy_rc_contamination',
+        classification: 'suspected_legacy_rc_contamination',
         ...rcFieldProposals,
         suspectedLegacyStripeIntervalContamination: true,
         reason: `stripeInterval='${input.stripeInterval}' has no explanation other than RevenueCat — RC's live state confirms an active entitlement for this identity and no genuine Stripe/gift/Ambassador source exists. SUSPECTED legacy contamination — flagged for manual review, NOT automatically cleared (see module doc comment).`,

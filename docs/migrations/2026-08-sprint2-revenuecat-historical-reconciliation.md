@@ -185,7 +185,7 @@ more than one confirmed source exists.
 - `confirmed_ambassador` — `ambassadorProForLife`.
 - `confirmed_active_rc_monthly` / `confirmed_active_rc_lifetime` — a live,
   authoritative RevenueCat lookup confirms an active `pro` entitlement.
-- `confirmed_legacy_rc_contamination` — exactly one confirmed source, and
+- `suspected_legacy_rc_contamination` — exactly one confirmed source, and
   it's a lone active RC entitlement, with a `stripeInterval` value that
   nothing else explains. **As of Revision 7, this classification (and the
   `suspectedLegacyStripeIntervalContamination` flag it implies) is
@@ -465,7 +465,7 @@ changed since the report was built (optimistic-concurrency binding).
 5. **Review the report before doing anything else.** Check:
    - `totalCandidates` — the full candidate pool under the broadened scope.
    - Classification breakdown, especially `multiple_legitimate_sources`
-     count and `confirmed_legacy_rc_contamination` count —
+     count and `suspected_legacy_rc_contamination` count —
      `suspectedLegacyStripeIntervalContamination: true` candidates are
      **report-only** (see above); they are never touched by apply. Use this
      list to plan any future manual, targeted cleanup — never as an

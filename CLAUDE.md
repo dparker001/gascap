@@ -144,6 +144,19 @@ npm run build
 - Never claim tests pass without running them; report exact counts.
 - `npm run lint` is currently unusable — `next lint` with no ESLint config
   drops into an interactive prompt. Do not add it to CI until configured.
+- **Provider-contract testing rule.** For external provider integrations
+  whose response controls billing, authorization, entitlements, or
+  destructive data changes: mocks must be based on current official
+  provider schemas/sample payloads, not assumed shapes; include at least
+  one positive provider-real-contract path (not only negative/not-found
+  cases — a mock that only ever exercises the negative path can hide a
+  check that would always silently fail against the real shape); include
+  negative/error/pagination paths where applicable; and perform a
+  read-only live smoke test before first production reliance when
+  practical. **(happened:** three consecutive independent-review rounds on
+  the RevenueCat v2 client each found a real provider-shape mismatch,
+  including one alias-verification check that likely always silently
+  failed because its test suite only exercised the "no match" path.**)**
 
 ## Documentation
 

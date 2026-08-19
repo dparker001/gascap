@@ -62,12 +62,12 @@ describe('classifyProvenance — pure classification from evidence', () => {
     expect(r.proposedRevenueCatActive).toBe(true);
   });
 
-  it('confirmed_legacy_rc_contamination — stripeInterval set, no other explanation, RC positively confirms active, sole confirmed source — flags SUSPECTED contamination (report-only)', () => {
+  it('suspected_legacy_rc_contamination — stripeInterval set, no other explanation, RC positively confirms active, sole confirmed source — flags SUSPECTED contamination (report-only)', () => {
     const r = classifyProvenance({
       ...BASE, stripeInterval: 'lifetime', stripeLifetimeEvidence: 'NO_MATCH',
       rc: rc({ active: true, interval: 'lifetime', productId: 'gascap_pro_lifetime' }),
     });
-    expect(r.classification).toBe('confirmed_legacy_rc_contamination');
+    expect(r.classification).toBe('suspected_legacy_rc_contamination');
     expect(r.suspectedLegacyStripeIntervalContamination).toBe(true);
     expect(r.proposedRevenueCatActive).toBe(true);
     expect(r.proposedRevenueCatInterval).toBe('lifetime');
@@ -198,7 +198,7 @@ describe('classifyProvenance — field-specific contamination detection (report-
 
   it('stripeInterval=monthly with NO stripeSubscriptionId, but a lone active RC entitlement => flags suspected contamination', () => {
     const r = classifyProvenance({ ...BASE, stripeInterval: 'monthly', rc: rc({ active: true, interval: 'monthly', productId: 'gascap_pro_monthly' }) });
-    expect(r.classification).toBe('confirmed_legacy_rc_contamination');
+    expect(r.classification).toBe('suspected_legacy_rc_contamination');
     expect(r.suspectedLegacyStripeIntervalContamination).toBe(true);
   });
 
@@ -215,7 +215,7 @@ describe('classifyProvenance — field-specific contamination detection (report-
       ...BASE, stripeInterval: 'lifetime', stripeCustomerId: null, stripeLifetimeEvidence: 'NO_MATCH',
       rc: rc({ active: true, interval: 'lifetime', productId: 'gascap_pro_lifetime' }),
     });
-    expect(r.classification).toBe('confirmed_legacy_rc_contamination');
+    expect(r.classification).toBe('suspected_legacy_rc_contamination');
     expect(r.suspectedLegacyStripeIntervalContamination).toBe(true);
   });
 });
@@ -534,12 +534,12 @@ describe('applyReconciliation — RC backfill + trial-excluded plan repair ONLY,
     expect(state.updateCalls[0].data).toMatchObject({ revenueCatActive: true, revenueCatInterval: 'lifetime' });
   });
 
-  it('a candidate classified confirmed_legacy_rc_contamination gets its RC fields backfilled but stripeInterval is NEVER touched — the core Revision 7 de-scope', async () => {
+  it('a candidate classified suspected_legacy_rc_contamination gets its RC fields backfilled but stripeInterval is NEVER touched — the core Revision 7 de-scope', async () => {
     const { buildDryRunReport, applyReconciliation } = await import('../lib/revenueCatHistoricalReconciliation');
     state.users = [makeUser({ id: 'suspected', email: 'a@example.com', plan: 'pro', stripeInterval: 'lifetime' })];
     fetchAuthoritativeRevenueCatState.mockResolvedValue({ customerFound: true, active: true, interval: 'lifetime', productId: 'gascap_pro_lifetime', customerId: 'rc_1' });
     const report = await buildDryRunReport();
-    expect(report.classifications.confirmed_legacy_rc_contamination).toBe(1);
+    expect(report.classifications.suspected_legacy_rc_contamination).toBe(1);
     expect(report.candidates[0].suspectedLegacyStripeIntervalContamination).toBe(true);
     const result = await applyReconciliation(report);
     expect(result.candidatesUpdated).toBe(1);
