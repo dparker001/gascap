@@ -7,8 +7,16 @@
  * generates a redemption code, stores a Gift record, and emails the code.
  * Body: {
  *   purchaserEmail, recipientEmail?, recipientName?, giftMessage?,
- *   occasion?, deliverToRecipient?, coupon?
+ *   occasion?, deliverToRecipient?
  * }
+ *
+ * Stripe Payment Authorization Hardening — no raw caller-supplied Coupon ID
+ * is accepted. app/gift/page.tsx (the only first-party caller) never sent
+ * `coupon`, so there was no functional dependency to preserve; an arbitrary
+ * valid Stripe coupon ID could otherwise have been applied to a gift
+ * purchase by anyone who knew or guessed one. `allow_promotion_codes:true`
+ * (below) is unchanged — that's Stripe's own customer-facing promo-code
+ * entry field at checkout, not an API-level coupon override.
  */
 import { NextResponse }   from 'next/server';
 import { stripe, PRICES } from '@/lib/stripe';
@@ -31,7 +39,6 @@ export async function POST(req: Request) {
     giftMessage?:        string;
     occasion?:           string;
     deliverToRecipient?: boolean;
-    coupon?:             string;
   };
 
   const purchaserEmail     = (body.purchaserEmail ?? '').trim().toLowerCase();
@@ -41,7 +48,6 @@ export async function POST(req: Request) {
   const occasion           = ['gift', 'fathers-day', 'birthday', 'holiday'].includes(body.occasion ?? '')
     ? body.occasion! : 'gift';
   const deliverToRecipient = !!body.deliverToRecipient;
-  const coupon             = body.coupon?.trim() || null;
 
   // ── Validation ──────────────────────────────────────────────────────────
   if (!EMAIL_RE.test(purchaserEmail)) {
@@ -69,11 +75,9 @@ export async function POST(req: Request) {
   };
 
   const checkoutSession = await stripe.checkout.sessions.create({
-    mode:                 'payment',   // one-time payment for a Lifetime gift
-    payment_method_types: ['card'],
-    ...(coupon
-      ? { discounts: [{ coupon }] }
-      : { allow_promotion_codes: true }),
+    mode:                  'payment',   // one-time payment for a Lifetime gift
+    payment_method_types:  ['card'],
+    allow_promotion_codes: true,
     line_items:     [{ price: priceId, quantity: 1 }],
     customer_email: purchaserEmail,
     success_url:    `${origin}/gift/success?session_id={CHECKOUT_SESSION_ID}`,

@@ -342,7 +342,14 @@ export function conversionC3Text(name: string): string {
 // Sent to engaged trial users (calcCount ≥ 2 OR streak ≥ 3) only.
 // 48-hour urgency. Links to upgrade page with lifetime billing pre-selected.
 
-const OFFER_URL = `${BASE_URL}/upgrade?coupon=LIFETIME19`;
+// Stripe Payment Authorization Hardening — exported so
+// app/api/stripe/checkout/route.ts can allowlist EXACTLY this one known
+// campaign coupon rather than accepting an arbitrary caller-supplied
+// Stripe Coupon ID. Single source of truth — do not hardcode this literal
+// a second time anywhere else.
+export const C4_LIFETIME_COUPON = 'LIFETIME19';
+
+const OFFER_URL = `${BASE_URL}/upgrade?coupon=${C4_LIFETIME_COUPON}`;
 
 export function conversionC4Html(name: string, userId: string): string {
   const first = name.split(' ')[0];

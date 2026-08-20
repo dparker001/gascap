@@ -27,6 +27,119 @@ function sendAdminMail(opts: { subject: string; html: string; text: string }) {
     .catch((e) => console.error('[GasCap] Admin notify failed:', e));
 }
 
+// ── Stripe Payment Authorization Hardening ──────────────────────────────────
+// checkout.session.completed previously granted entitlement purely from
+// session.metadata (tier/billing) — values that originate from the checkout
+// REQUEST, not from what Stripe actually sold. Before any entitlement
+// mutation for a normal Pro checkout, independently confirm the actual
+// purchased Stripe Price via the Checkout Session's own line items and
+// require it to agree with the metadata. A mismatch (or an unrecognized
+// Price entirely) is a deterministic rejection, never a "correct and grant
+// anyway."
+type VerifiedCheckoutOutcome =
+  | { kind: 'pro'; billing: 'monthly' | 'lifetime' }
+  | { kind: 'lifetime-perks' }
+  | { kind: 'rejected'; reason: string }
+  /** The Stripe API call itself failed (network/outage/etc) — distinct from
+   *  a successful lookup that simply didn't match anything expected. Callers
+   *  must fail closed: do NOT treat this the same as a deterministic
+   *  mismatch, and do NOT acknowledge the event as handled. */
+  | { kind: 'lookup-failed'; error: unknown };
+
+type PurchaseEvidence =
+  | { kind: 'ok'; priceId: string }
+  /** A deterministic integrity problem with the line-item SHAPE itself
+   *  (more than one item, or a quantity other than 1) — distinct from an
+   *  unrecognized Price, which verifyCheckoutPurchase() classifies. Not a
+   *  lookup failure: Stripe answered fine, the answer is just invalid for
+   *  GasCap's one-Price-one-quantity entitlement contract. */
+  | { kind: 'rejected'; reason: string }
+  /** Provider/API failure OR incomplete evidence (zero line items, or a
+   *  line item with no resolvable Price ID) — callers must fail closed:
+   *  do not acknowledge the event as processed. */
+  | { kind: 'lookup-failed'; error: unknown };
+
+/** Retrieves and validates the actual line-item evidence for a completed
+ *  Checkout Session, straight from Stripe — never from metadata. Requires
+ *  exactly one line item with quantity 1 and a resolvable Price ID. Using
+ *  `limit: 2` (not 1) is deliberate: it's the minimum needed to prove
+ *  "exactly one" rather than merely "at least one" — a second item makes
+ *  the session invalid for GasCap's simple one-Price entitlement contract
+ *  no matter what the first item is, so pagination beyond 2 is never
+ *  needed. */
+async function getPurchaseEvidence(session: Stripe.Checkout.Session): Promise<PurchaseEvidence> {
+  if (!stripe) return { kind: 'lookup-failed', error: new Error('Stripe not configured') };
+
+  let items: Stripe.LineItem[];
+  try {
+    const lineItems = await stripe.checkout.sessions.listLineItems(session.id, { limit: 2 });
+    items = lineItems.data;
+  } catch (err) {
+    return { kind: 'lookup-failed', error: err };
+  }
+
+  if (items.length === 0) {
+    // Incomplete evidence, not proof of anything — treat the same as a
+    // provider failure rather than guessing.
+    return { kind: 'lookup-failed', error: new Error('Checkout Session returned zero line items') };
+  }
+  if (items.length > 1) {
+    return { kind: 'rejected', reason: 'Checkout Session has more than one line item' };
+  }
+
+  const [item] = items;
+  const priceId = item.price?.id ?? '';
+  if (!priceId) {
+    return { kind: 'lookup-failed', error: new Error('Checkout Session line item has no resolvable Price ID') };
+  }
+  if (item.quantity !== 1) {
+    return { kind: 'rejected', reason: 'Checkout Session line item quantity was not exactly 1' };
+  }
+
+  return { kind: 'ok', priceId };
+}
+
+// Stripe Payment Authorization Hardening — explicit payment_status policy.
+// 'paid' and 'no_payment_required' both authorize entitlement:
+// 'no_payment_required' covers an intentionally-configured, Stripe
+// Dashboard-administered 100%-off Promotion Code entered by the customer at
+// Stripe's own hosted checkout (allow_promotion_codes:true) — a deliberate
+// product/security policy distinct from the raw-Coupon-ID vulnerability
+// closed elsewhere in this hardening pass (a Promotion Code is something
+// Stripe itself validates and Stripe itself decides was actually redeemed;
+// it is never a value GasCap's API accepts and forwards on the caller's
+// say-so). 'unpaid' and any other/unexpected value are NOT authorized —
+// fail closed rather than assume a new Stripe status is safe to grant.
+function isEntitlementAuthorizedPaymentStatus(status: Stripe.Checkout.Session.PaymentStatus): boolean {
+  return status === 'paid' || status === 'no_payment_required';
+}
+
+async function verifyCheckoutPurchase(
+  session: Stripe.Checkout.Session,
+): Promise<VerifiedCheckoutOutcome> {
+  const evidence = await getPurchaseEvidence(session);
+  if (evidence.kind !== 'ok') return evidence;
+  const actualPriceId = evidence.priceId;
+
+  const metaTier    = session.metadata?.tier;
+  const metaBilling = session.metadata?.billing;
+
+  if (actualPriceId === PRICES.proMonthly) {
+    if (metaTier === 'pro' && metaBilling === 'monthly') return { kind: 'pro', billing: 'monthly' };
+    return { kind: 'rejected', reason: 'actual Price was Pro Monthly but metadata did not match' };
+  }
+  if (actualPriceId === PRICES.proLifetime) {
+    if (metaTier === 'pro' && metaBilling === 'lifetime') return { kind: 'pro', billing: 'lifetime' };
+    return { kind: 'rejected', reason: 'actual Price was Pro Lifetime but metadata did not match' };
+  }
+  if (actualPriceId === PRICES.lifetimePerks) {
+    if (metaTier === 'pro' && metaBilling === 'lifetime-perks') return { kind: 'lifetime-perks' };
+    return { kind: 'rejected', reason: 'actual Price was Lifetime Perks but metadata did not match' };
+  }
+
+  return { kind: 'rejected', reason: 'actual Price did not match any canonical GasCap product' };
+}
+
 // Next.js App Router reads the raw body via req.text() — no body-parser config needed
 
 export async function POST(req: Request) {
@@ -64,6 +177,36 @@ export async function POST(req: Request) {
       // account later, via a redemption code. Handle it and return early so
       // the normal upgrade logic below never mis-grants the buyer.
       if (session.metadata?.isGift === 'true') {
+        // Stripe Payment Authorization Hardening — payment_status policy
+        // applies to gift completions too: 'paid' or 'no_payment_required'
+        // (an intentional 100%-off Stripe Promotion Code) authorize gift
+        // creation; 'unpaid' or anything unexpected does not.
+        if (!isEntitlementAuthorizedPaymentStatus(session.payment_status)) {
+          console.warn(`[GasCap webhook] Gift completion payment_status not authorized (${session.payment_status}) — no Gift record created.`);
+          break;
+        }
+
+        // Stripe Payment Authorization Hardening — a gift completion must
+        // actually have purchased exactly one canonical Pro Lifetime line
+        // item (quantity 1) before a redeemable Gift record is created.
+        // A lookup failure OR incomplete evidence fails closed (non-200,
+        // Stripe retries); a resolved-but-invalid shape (extra line item,
+        // wrong quantity) or wrong Price is a deterministic rejection — no
+        // gift code is minted for it.
+        const giftEvidence = await getPurchaseEvidence(session);
+        if (giftEvidence.kind === 'lookup-failed') {
+          console.error('[GasCap webhook] Gift Price lookup failed — failing closed for retry:', giftEvidence.error);
+          return NextResponse.json({ error: 'Unable to verify purchased Price.' }, { status: 502 });
+        }
+        if (giftEvidence.kind === 'rejected') {
+          console.warn(`[GasCap webhook] Gift completion line-item evidence invalid — ${giftEvidence.reason}. No Gift record created.`);
+          break;
+        }
+        if (giftEvidence.priceId !== PRICES.proLifetime) {
+          console.warn('[GasCap webhook] Gift completion Price did not match canonical Pro Lifetime — rejecting, no Gift record created.');
+          break;
+        }
+
         const m = session.metadata;
         const deliverToRecipient = m.deliverToRecipient === 'true';
         const purchaserEmail = m.purchaserEmail ?? (session.customer_details?.email ?? '');
@@ -149,16 +292,64 @@ export async function POST(req: Request) {
       const userId  = session.metadata?.userId;
       if (!userId) break;
 
+      // Stripe Payment Authorization Hardening — explicit payment_status
+      // gate, checked before any entitlement-bearing work (Price
+      // verification, setUserPlan, onboarding, purchase_completed,
+      // referral logic). See isEntitlementAuthorizedPaymentStatus() above
+      // for the exact policy and rationale.
+      if (!isEntitlementAuthorizedPaymentStatus(session.payment_status)) {
+        console.warn(`[GasCap webhook] checkout.session.completed payment_status not authorized (${session.payment_status}) for user ${userId} — no entitlement granted.`);
+        break;
+      }
+
+      // Stripe Payment Authorization Hardening — verify the ACTUAL Stripe
+      // Price purchased (via the Checkout Session's own line items) before
+      // any entitlement mutation. session.metadata.tier/billing is REQUEST
+      // context, not proof of what was bought — a prior legacy checkout
+      // escape hatch let those diverge from the real Price. See
+      // verifyCheckoutPurchase() above for the exact classification.
+      const verified = await verifyCheckoutPurchase(session);
+
+      if (verified.kind === 'lookup-failed') {
+        // Provider/API lookup failure — distinct from a resolved-but-wrong
+        // Price. Fail closed: do not acknowledge this event as processed,
+        // so Stripe retries per its normal webhook retry schedule. Do NOT
+        // log the actual Price ID or user PII.
+        console.error(`[GasCap webhook] checkout.session.completed Price lookup failed for user ${userId} — failing closed for retry:`, verified.error);
+        return NextResponse.json({ error: 'Unable to verify purchased Price.' }, { status: 502 });
+      }
+
+      if (verified.kind === 'rejected') {
+        // Deterministic Price/metadata mismatch — not a transient failure.
+        // Acknowledge (200) so Stripe doesn't retry a permanently invalid
+        // session forever; grant nothing. Redacted warning only — never
+        // print the actual Price ID.
+        console.warn(`[GasCap webhook] checkout.session.completed REJECTED for user ${userId} — ${verified.reason}. No entitlement granted.`);
+        break;
+      }
+
+      if (verified.kind === 'lifetime-perks') {
+        // Lifetime Perks is an ADD-ON, never a normal Pro upgrade — it must
+        // never call setUserPlan(), overwrite stripeInterval, clear/replace
+        // Lifetime ownership, emit purchase_completed, or run any of the
+        // ordinary paid-campaign/engagement/admin-notify/early-upgrade-bonus
+        // side effects below. invoice.payment_succeeded already owns Perks
+        // activation via its own canonical-Price check (setLifetimePerksActive,
+        // see that handler below) — duplicating a one-year extension here
+        // would be both redundant and a second, driftable source of truth.
+        console.info(`[GasCap webhook] checkout.session.completed — Lifetime Perks initial checkout confirmed for user ${userId}; activation deferred to invoice.payment_succeeded.`);
+        break;
+      }
+
+      // verified.kind === 'pro' from here on — the only remaining case.
+      // `verified.billing` is Stripe-Price-confirmed, not merely
+      // metadata-echoed, and is exactly 'monthly' | 'lifetime' (never
+      // 'annual' — Annual is rejected before a checkout session can even be
+      // created; never 'fleet' — no canonical Fleet Price exists to match).
       const customerId     = typeof session.customer     === 'string' ? session.customer     : null;
       const subscriptionId = typeof session.subscription === 'string' ? session.subscription : null;
-      const planTier       = (session.metadata?.tier ?? 'pro') as 'pro' | 'fleet';
-
-      // Billing interval from checkout metadata — persisted authoritatively below
-      // so stripeInterval is correct even for repeat upgraders (gates the
-      // Lifetime-only getaway promo).
-      const billingMeta = session.metadata?.billing as string | undefined;
-      const interval: 'monthly' | 'annual' | 'lifetime' =
-        billingMeta === 'lifetime' ? 'lifetime' : billingMeta === 'annual' ? 'annual' : 'monthly';
+      const planTier: 'pro' = 'pro';
+      const interval: 'monthly' | 'lifetime' = verified.billing;
 
       // Fetch BEFORE setUserPlan so we can check isProTrial before it's cleared
       const userBeforeUpgrade = await findById(userId);
@@ -173,18 +364,12 @@ export async function POST(req: Request) {
       // ── Growth Sprint 1, P0B — first-party purchase_completed analytics ──
       // Entitlement (setUserPlan, above) has already completed successfully
       // by this point — this write is strictly additive and must never be
-      // able to affect it. Deliberately does NOT reuse `interval` (which
-      // collapses any non-lifetime/non-annual billing metadata, including
-      // 'lifetime-perks', into 'monthly') — classifies directly from the
-      // raw `billingMeta` string instead, so an unrecognized or add-on
-      // billing value (e.g. the Lifetime Perks subscription, which is a
-      // separate purchase path entirely, not a Pro upgrade) correctly
-      // produces no analytics event rather than being miscounted as a
-      // monthly Pro conversion.
-      const analyticsBilling: 'monthly' | 'lifetime' | null =
-        billingMeta === 'monthly' ? 'monthly' : billingMeta === 'lifetime' ? 'lifetime' : null;
+      // able to affect it. `interval` here is already Price-verified (see
+      // verifyCheckoutPurchase above), so every purchase_completed event
+      // from here on reflects a genuine, canonical Pro Monthly/Lifetime sale.
+      const analyticsBilling: 'monthly' | 'lifetime' = interval;
 
-      if (analyticsBilling && session.payment_status === 'paid') {
+      if (session.payment_status === 'paid') {
         try {
           const result = await recordAnalyticsEvent({
             eventType:      'purchase_completed',
@@ -259,11 +444,12 @@ export async function POST(req: Request) {
         updateGhlContactPlan(upgradedUser.email, planTier)
           .catch((err) => console.error('[GHL] plan sync failed:', err));
 
+        // interval is Price-verified 'monthly' | 'lifetime' only at this
+        // point (see verifyCheckoutPurchase) — Annual/Fleet labels are
+        // unreachable and were removed rather than left as dead branches.
         const tierLabel = interval === 'lifetime'
           ? 'Pro Lifetime Membership ($19.99)'
-          : interval === 'annual'
-          ? 'Pro Annual ($26.99/yr)'
-          : planTier === 'fleet' ? 'Fleet (coming soon)' : 'Pro Monthly ($2.99/mo)';
+          : 'Pro Monthly ($2.99/mo)';
 
         sendAdminMail({
           subject: `⬆️ GasCap™ upgrade: ${upgradedUser.name} → ${interval === 'lifetime' ? 'PRO LIFETIME' : planTier.toUpperCase()}`,
@@ -345,7 +531,7 @@ export async function POST(req: Request) {
         }
 
         if (!upgradedUser.engagementEnrolledAt) {
-          await enrollEngagementCampaign(upgradedUser.id, planTier === 'fleet' ? 'fleet' : 'pro');
+          await enrollEngagementCampaign(upgradedUser.id, 'pro');
         }
 
         sendPaidCampaignEmail('P1', {
@@ -359,7 +545,7 @@ export async function POST(req: Request) {
         // Bonus welcome push alongside the P1 email (app users w/ notifications).
         sendUserPush(
           upgradedUser.id,
-          `You're officially GasCap™ ${planTier === 'fleet' ? 'Fleet' : 'Pro'} 🎉`,
+          `You're officially GasCap™ Pro 🎉`,
           'Welcome! Your Pro features are unlocked — tap to start tracking your fill-ups.',
           '/',
         ).catch(() => { /* best-effort */ });

@@ -20,13 +20,40 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 // ── Mocks ────────────────────────────────────────────────────────────────
 
 const constructEvent = vi.fn((..._args: unknown[]) => ({}) as unknown);
+// Stripe Payment Authorization Hardening — checkout.session.completed now
+// verifies the actual purchased Price via stripe.checkout.sessions.listLineItems
+// before granting anything. Default resolves to Pro Monthly; individual
+// tests override via listLineItems.mockResolvedValueOnce(...) (see
+// priceLineItems() helper below) to simulate a specific actual Price.
+const listLineItems = vi.fn(async (..._a: unknown[]) => ({ data: [{ price: { id: 'price_pro_monthly_test' }, quantity: 1 }] }));
 vi.mock('@/lib/stripe', () => ({
   stripe: {
     webhooks: { constructEvent: (...a: unknown[]) => constructEvent(...(a as [])) },
     subscriptions: { cancel: vi.fn(async () => ({})) },
+    checkout: { sessions: { listLineItems: (...a: unknown[]) => listLineItems(...(a as [])) } },
   },
-  PRICES: { lifetimePerks: 'price_perks_test' },
+  PRICES: {
+    proMonthly:    'price_pro_monthly_test',
+    proLifetime:   'price_pro_lifetime_test',
+    lifetimePerks: 'price_perks_test',
+  },
 }));
+
+/** Sets the default listLineItems() response to the given actual Price ID —
+ *  use to simulate what Stripe says was really purchased, independent of
+ *  what a test's session.metadata claims. Deliberately NOT a `*Once` mock:
+ *  the payment_status gate (see Stripe Payment Authorization Hardening) can
+ *  now short-circuit BEFORE listLineItems is ever called (e.g. 'unpaid'),
+ *  which would otherwise leave an unconsumed queued value to leak into and
+ *  pollute the next test. A persistent default, re-set on every
+ *  postWebhook() call, has no queue to leak. */
+function priceLineItems(priceId: string | null) {
+  if (priceId === null) {
+    listLineItems.mockResolvedValue({ data: [] });
+  } else {
+    listLineItems.mockResolvedValue({ data: [{ price: { id: priceId }, quantity: 1 }] });
+  }
+}
 
 const setUserPlan = vi.fn(async (..._args: unknown[]) => ({}));
 const findByStripeCustomer = vi.fn(async () => null as unknown);
@@ -125,7 +152,18 @@ function makeEvent(eventId: string, session: unknown) {
   return { id: eventId, type: 'checkout.session.completed', data: { object: session } };
 }
 
-async function postWebhook(eventId: string, session: unknown) {
+// Default actual-Price-purchased-per-billing, used unless a test explicitly
+// passes `actualPriceId` to simulate a mismatch/unknown Price.
+const DEFAULT_PRICE_FOR_BILLING: Record<string, string> = {
+  monthly:          'price_pro_monthly_test',
+  lifetime:         'price_pro_lifetime_test',
+  'lifetime-perks': 'price_perks_test',
+};
+
+async function postWebhook(eventId: string, session: unknown, actualPriceId?: string | null) {
+  const billing = (session as { metadata?: { billing?: string } })?.metadata?.billing ?? '';
+  const resolvedPriceId = actualPriceId !== undefined ? actualPriceId : (DEFAULT_PRICE_FOR_BILLING[billing] ?? 'price_unmapped_test');
+  priceLineItems(resolvedPriceId);
   constructEvent.mockReturnValueOnce(makeEvent(eventId, session));
   const { POST } = await import('@/app/api/stripe/webhook/route');
   const req = new Request('https://www.gascap.app/api/stripe/webhook', {
@@ -178,14 +216,16 @@ describe('Stripe webhook — purchase_completed analytics', () => {
     expect(recordAnalyticsEvent).not.toHaveBeenCalled();
   });
 
-  it('D. unpaid — entitlement still runs, no analytics call', async () => {
-    await postWebhook('evt_unpaid_1', makeSession({ billing: 'monthly', paymentStatus: 'unpaid' }));
-    expect(setUserPlan).toHaveBeenCalledTimes(1);
+  it('D. unpaid — Stripe Payment Authorization Hardening: NO entitlement, no analytics call (superseded prior behavior where entitlement still ran)', async () => {
+    const res = await postWebhook('evt_unpaid_1', makeSession({ billing: 'monthly', paymentStatus: 'unpaid' }));
+    expect(res.status).toBe(200);
+    expect(setUserPlan).not.toHaveBeenCalled();
     expect(recordAnalyticsEvent).not.toHaveBeenCalled();
   });
 
-  it('E. no_payment_required — no analytics call', async () => {
+  it('E. no_payment_required — entitlement DOES grant (Stripe Payment Authorization Hardening policy), no analytics call', async () => {
     await postWebhook('evt_free_1', makeSession({ billing: 'monthly', paymentStatus: 'no_payment_required' }));
+    expect(setUserPlan).toHaveBeenCalledTimes(1);
     expect(recordAnalyticsEvent).not.toHaveBeenCalled();
   });
 

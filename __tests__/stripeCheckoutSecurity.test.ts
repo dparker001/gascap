@@ -1,0 +1,201 @@
+/**
+ * Stripe Payment Authorization Hardening — regression coverage for
+ * app/api/stripe/checkout/route.ts's removal of the caller-controlled
+ * `body.priceId` override and the new runtime tier/billing allowlist.
+ *
+ * Before this hardening, a caller could supply an arbitrary body.priceId
+ * that overrode the server's own canonical Price lookup, and an unknown
+ * billing string silently fell through to Pro Monthly. This file proves:
+ * (1) normal Monthly/Lifetime checkout always uses the canonical server
+ * Price regardless of what a caller sends as `priceId` (now a no-op field,
+ * since it's no longer read at all), (2) unknown billing/tier are rejected
+ * with 400 rather than mapped to any entitlement, (3) Annual is still
+ * rejected, and (4) Lifetime Perks still creates only its own canonical
+ * Perks session.
+ *
+ * No real Stripe call is made.
+ */
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+
+const sessionsCreate = vi.fn(async (..._a: unknown[]) => ({ id: 'cs_test_default', url: 'https://checkout.example/default' }) as unknown);
+vi.mock('@/lib/stripe', () => ({
+  stripe: { checkout: { sessions: { create: (...a: unknown[]) => sessionsCreate(...(a as [])) } } },
+  PRICES: { proMonthly: 'price_pro_monthly_canonical', proLifetime: 'price_pro_lifetime_canonical', lifetimePerks: 'price_perks_canonical' },
+}));
+
+vi.mock('next-auth', () => ({ getServerSession: vi.fn(async () => ({ user: { id: 'user-1', email: 'buyer@example.com' } })) }));
+vi.mock('@/lib/auth', () => ({ authOptions: {} }));
+
+const findById = vi.fn(async () => ({
+  id: 'user-1', email: 'buyer@example.com', stripeCustomerId: null,
+  stripeInterval: null, stripeSubscriptionId: null, isProTrial: false, trialExpiresAt: null,
+  createdAt: '2026-01-01T00:00:00.000Z',
+}) as unknown);
+vi.mock('@/lib/users', () => ({ findById: (...a: unknown[]) => findById(...(a as [])) }));
+
+vi.mock('@/lib/getBaseUrl', () => ({ getBaseUrl: () => 'https://www.gascap.app' }));
+
+const newMemberOfferStatus = vi.fn(() => ({ eligible: false }));
+vi.mock('@/lib/newMemberOffer', () => ({
+  newMemberOfferStatus: (...a: unknown[]) => newMemberOfferStatus(...(a as [])),
+  NEW_MEMBER_LIFETIME_COUPON: 'coupon_new_member',
+}));
+const winbackOfferAvailable = vi.fn(() => false);
+vi.mock('@/lib/winbackOffer', () => ({
+  winbackOfferAvailable: (...a: unknown[]) => winbackOfferAvailable(...(a as [])),
+  WINBACK_LIFETIME_COUPON: 'coupon_winback',
+}));
+vi.mock('@/lib/foundingPromo', () => ({
+  foundingStatus: async () => ({ active: false }),
+  FOUNDING_LIFETIME_COUPON: 'coupon_founding',
+}));
+vi.mock('@/lib/emailTrialConversion', () => ({ C4_LIFETIME_COUPON: 'coupon_c4_test' }));
+
+function req(body: Record<string, unknown>) {
+  return new Request('https://www.gascap.app/api/stripe/checkout', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+
+beforeEach(() => {
+  vi.resetModules();
+  vi.clearAllMocks();
+  sessionsCreate.mockResolvedValue({ id: 'cs_test_default', url: 'https://checkout.example/default' });
+  findById.mockResolvedValue({
+    id: 'user-1', email: 'buyer@example.com', stripeCustomerId: null,
+    stripeInterval: null, stripeSubscriptionId: null, isProTrial: false, trialExpiresAt: null,
+    createdAt: '2026-01-01T00:00:00.000Z',
+  });
+  newMemberOfferStatus.mockReturnValue({ eligible: false });
+  winbackOfferAvailable.mockReturnValue(false);
+});
+
+async function callRoute(body: Record<string, unknown>) {
+  const { POST } = await import('@/app/api/stripe/checkout/route');
+  return POST(req(body));
+}
+
+describe('POST /api/stripe/checkout — Stripe Payment Authorization Hardening', () => {
+  it('SEC-C1. Normal Pro Monthly uses the canonical server Price', async () => {
+    const res = await callRoute({ tier: 'pro', billing: 'monthly' });
+    expect(res.status).toBe(200);
+    expect(sessionsCreate).toHaveBeenCalledTimes(1);
+    const createCall = sessionsCreate.mock.calls[0][0] as { line_items: { price: string }[] };
+    expect(createCall.line_items[0].price).toBe('price_pro_monthly_canonical');
+  });
+
+  it('SEC-C2. Normal Pro Lifetime uses the canonical server Price', async () => {
+    const res = await callRoute({ tier: 'pro', billing: 'lifetime' });
+    expect(res.status).toBe(200);
+    const createCall = sessionsCreate.mock.calls[0][0] as { line_items: { price: string }[] };
+    expect(createCall.line_items[0].price).toBe('price_pro_lifetime_canonical');
+  });
+
+  it('SEC-C3. Caller-supplied priceId cannot override the canonical Monthly price (field is ignored)', async () => {
+    const res = await callRoute({ tier: 'pro', billing: 'monthly', priceId: 'price_attacker_supplied' });
+    expect(res.status).toBe(200);
+    const createCall = sessionsCreate.mock.calls[0][0] as { line_items: { price: string }[] };
+    expect(createCall.line_items[0].price).toBe('price_pro_monthly_canonical');
+    expect(createCall.line_items[0].price).not.toBe('price_attacker_supplied');
+  });
+
+  it('SEC-C4. Caller-supplied priceId cannot override the canonical Lifetime price (field is ignored)', async () => {
+    const res = await callRoute({ tier: 'pro', billing: 'lifetime', priceId: 'price_attacker_supplied' });
+    expect(res.status).toBe(200);
+    const createCall = sessionsCreate.mock.calls[0][0] as { line_items: { price: string }[] };
+    expect(createCall.line_items[0].price).toBe('price_pro_lifetime_canonical');
+    expect(createCall.line_items[0].price).not.toBe('price_attacker_supplied');
+  });
+
+  it('SEC-C5. Unknown billing cannot silently become Monthly — 400, no session created', async () => {
+    const res = await callRoute({ tier: 'pro', billing: 'mystery-plan' });
+    expect(res.status).toBe(400);
+    expect(sessionsCreate).not.toHaveBeenCalled();
+  });
+
+  it('SEC-C6. Unknown tier cannot create an arbitrary checkout even with a supplied Price — 400, no session created', async () => {
+    const res = await callRoute({ tier: 'fleet', billing: 'monthly', priceId: 'price_attacker_supplied' });
+    expect(res.status).toBe(400);
+    expect(sessionsCreate).not.toHaveBeenCalled();
+  });
+
+  it('SEC-C6b. A wholly unrecognized tier string is also rejected — 400, no session created', async () => {
+    const res = await callRoute({ tier: 'mystery-tier', billing: 'monthly' });
+    expect(res.status).toBe(400);
+    expect(sessionsCreate).not.toHaveBeenCalled();
+  });
+
+  it('SEC-C7. Annual still has the existing rejection behavior — 400, no session created', async () => {
+    const res = await callRoute({ tier: 'pro', billing: 'annual' });
+    expect(res.status).toBe(400);
+    expect(sessionsCreate).not.toHaveBeenCalled();
+  });
+
+  it('SEC-C8. Lifetime Perks still creates only its own canonical Perks Checkout Session', async () => {
+    findById.mockResolvedValueOnce({
+      id: 'user-1', email: 'buyer@example.com', stripeCustomerId: null,
+      stripeInterval: 'lifetime', stripeSubscriptionId: null, isProTrial: false, trialExpiresAt: null,
+      createdAt: '2026-01-01T00:00:00.000Z',
+    });
+    const res = await callRoute({ tier: 'pro', billing: 'lifetime-perks' });
+    expect(res.status).toBe(200);
+    expect(sessionsCreate).toHaveBeenCalledTimes(1);
+    const createCall = sessionsCreate.mock.calls[0][0] as { line_items: { price: string }[] };
+    expect(createCall.line_items[0].price).toBe('price_perks_canonical');
+  });
+
+  it('SEC-C9. request body no longer has any effect from a priceId field — response identical with or without it', async () => {
+    const withPriceId    = await callRoute({ tier: 'pro', billing: 'monthly', priceId: 'price_whatever' });
+    const withoutPriceId = await callRoute({ tier: 'pro', billing: 'monthly' });
+    expect(withPriceId.status).toBe(withoutPriceId.status);
+    const call1 = sessionsCreate.mock.calls[0][0] as { line_items: { price: string }[] };
+    const call2 = sessionsCreate.mock.calls[1][0] as { line_items: { price: string }[] };
+    expect(call1.line_items[0].price).toBe(call2.line_items[0].price);
+  });
+
+  // ── Coupon trust boundary ──────────────────────────────────────────────
+  // The normal checkout route does NOT accept an arbitrary caller-selected
+  // Stripe Coupon ID. Exactly one raw coupon value is allowlisted — the
+  // known C4 trial-conversion campaign coupon (lib/emailTrialConversion.ts,
+  // exported as C4_LIFETIME_COUPON, mocked here as 'coupon_c4_test') —
+  // because that is the one genuine active first-party dependency on a raw
+  // coupon (the C4 email links to /upgrade?coupon=<that value>, forwarded
+  // by handleUpgrade()). Anything else is silently dropped, never reaches
+  // Stripe. Server-controlled offers (new-member/winback/founding) remain
+  // fully independent of this allowlist and always win when eligible.
+
+  it('SEC-C10. Arbitrary caller-selected Coupon ID is never sent to Stripe — checkout still succeeds, falls back to allow_promotion_codes', async () => {
+    const res = await callRoute({ tier: 'pro', billing: 'monthly', coupon: 'attacker-selected-value' });
+    expect(res.status).toBe(200);
+    const createCall = sessionsCreate.mock.calls[0][0] as { discounts?: unknown; allow_promotion_codes?: boolean };
+    expect(createCall.discounts).toBeUndefined();
+    expect(createCall.allow_promotion_codes).toBe(true);
+  });
+
+  it('SEC-C10b. The exact allowlisted C4 coupon still reaches discounts — existing campaign behavior preserved', async () => {
+    const res = await callRoute({ tier: 'pro', billing: 'monthly', coupon: 'coupon_c4_test' });
+    expect(res.status).toBe(200);
+    const createCall = sessionsCreate.mock.calls[0][0] as { discounts?: { coupon: string }[]; allow_promotion_codes?: boolean };
+    expect(createCall.discounts).toEqual([{ coupon: 'coupon_c4_test' }]);
+    expect(createCall.allow_promotion_codes).toBeUndefined();
+  });
+
+  it('SEC-C11. Server-controlled offer (new-member) still applies its own resolved coupon, independent of any caller-supplied coupon', async () => {
+    newMemberOfferStatus.mockReturnValue({ eligible: true });
+    await callRoute({ tier: 'pro', billing: 'lifetime', newMemberOffer: true, coupon: 'attacker_supplied_coupon' });
+
+    const createCall = sessionsCreate.mock.calls[0][0] as { discounts?: { coupon: string }[] };
+    // The server-resolved new-member coupon constant is applied — the
+    // caller-supplied `coupon` field is fully overwritten by the eligible
+    // offer branch (lib/newMemberOffer), never reaches Stripe unmodified.
+    expect(createCall.discounts).toEqual([{ coupon: 'coupon_new_member' }]);
+  });
+
+  it('SEC-C13. No coupon and no eligible offer — allow_promotion_codes:true is preserved exactly as before', async () => {
+    await callRoute({ tier: 'pro', billing: 'monthly' });
+    const createCall = sessionsCreate.mock.calls[0][0] as { allow_promotion_codes?: boolean; discounts?: unknown };
+    expect(createCall.allow_promotion_codes).toBe(true);
+    expect(createCall.discounts).toBeUndefined();
+  });
+});
