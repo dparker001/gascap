@@ -102,7 +102,13 @@ const DENYLIST_PATTERNS: RegExp[] = [
   /\bhttps?:\/\//i,                     // arbitrary URL
 ];
 
-type MetadataSchema = Record<string, (v: unknown) => boolean>;
+interface MetadataSchema {
+  fields:   Record<string, (v: unknown) => boolean>;
+  /** Keys in `fields` that MUST be present — an omitted or empty metadata
+   *  object is rejected for a schema with any required field. A schema
+   *  with no required fields (paywall_viewed) may omit metadata entirely. */
+  required: string[];
+}
 
 /**
  * Strict per-eventType metadata contracts. An event not listed here (i.e.
@@ -111,15 +117,24 @@ type MetadataSchema = Record<string, (v: unknown) => boolean>;
  */
 const METADATA_SCHEMAS: Record<string, MetadataSchema> = {
   rental_setup_step_viewed: {
-    step: (v) => typeof v === 'number' && Number.isInteger(v) && v >= 1 && v <= 7,
+    fields: {
+      step: (v) => typeof v === 'number' && Number.isInteger(v) && v >= 1 && v <= 7,
+    },
+    required: ['step'],
   },
   checkout_started: {
-    billing: (v) => v === 'monthly' || v === 'lifetime',
-    method:  (v) => v === 'stripe' || v === 'iap',
+    fields: {
+      billing: (v) => v === 'monthly' || v === 'lifetime',
+      method:  (v) => v === 'stripe' || v === 'iap',
+    },
+    required: ['billing', 'method'],
   },
   paywall_viewed: {
-    showGetaway: (v) => typeof v === 'boolean',
-    wb:          (v) => typeof v === 'boolean',
+    fields: {
+      showGetaway: (v) => typeof v === 'boolean',
+      wb:          (v) => typeof v === 'boolean',
+    },
+    required: [],
   },
 };
 
@@ -134,6 +149,15 @@ function containsDenylistedContent(value: unknown): boolean {
   return false;
 }
 
+/** Own-property check that cannot be fooled by prototype-chain-inherited
+ *  properties (`toString`, `constructor`, `hasOwnProperty`, etc.) or by a
+ *  crafted `__proto__` key — `key in schema.fields` would treat any of
+ *  those as "present" even though the caller never actually set them,
+ *  since `in` also matches inherited properties. */
+function hasOwnKey(obj: Record<string, unknown>, key: string): boolean {
+  return Object.prototype.hasOwnProperty.call(obj, key);
+}
+
 function validateMetadata(eventType: string, metadata: unknown): { ok: true; value: Record<string, unknown> | null } | { ok: false; error: string } {
   const schema = METADATA_SCHEMAS[eventType];
 
@@ -143,9 +167,11 @@ function validateMetadata(eventType: string, metadata: unknown): { ok: true; val
   }
 
   if (metadata === undefined || metadata === null) {
-    // Every field in every current schema is optional at the type level
-    // (paywall_viewed in particular has none required) — an event with an
-    // all-optional schema may omit metadata entirely.
+    if (schema.required.length > 0) {
+      return { ok: false, error: `${eventType} requires metadata: ${schema.required.join(', ')}` };
+    }
+    // No required fields (paywall_viewed) — an all-optional schema may
+    // omit metadata entirely.
     return { ok: true, value: null };
   }
 
@@ -154,9 +180,22 @@ function validateMetadata(eventType: string, metadata: unknown): { ok: true; val
   }
 
   const obj = metadata as Record<string, unknown>;
+
+  for (const requiredKey of schema.required) {
+    if (!hasOwnKey(obj, requiredKey)) {
+      return { ok: false, error: `${eventType} requires metadata.${requiredKey}` };
+    }
+  }
+
   for (const key of Object.keys(obj)) {
-    if (!(key in schema)) return { ok: false, error: `unknown metadata key: ${key}` };
-    if (!schema[key](obj[key])) return { ok: false, error: `invalid value for metadata.${key}` };
+    // Object.keys() only ever returns the object's own enumerable string
+    // keys, so this loop already can't be tricked by inherited/prototype
+    // properties — the hasOwnKey check below is what protects the
+    // schema.fields lookup itself (a plain `key in schema.fields` would
+    // incorrectly treat 'toString'/'constructor'/etc. as valid schema
+    // fields, since `in` matches inherited properties too).
+    if (!hasOwnKey(schema.fields, key)) return { ok: false, error: `unknown metadata key: ${key}` };
+    if (!schema.fields[key](obj[key])) return { ok: false, error: `invalid value for metadata.${key}` };
   }
 
   if (containsDenylistedContent(obj)) {
@@ -168,7 +207,11 @@ function validateMetadata(eventType: string, metadata: unknown): { ok: true; val
 
 export async function POST(req: Request) {
   const raw = await req.text();
-  if (raw.length > MAX_BODY_BYTES) {
+  // `raw.length` is a JS UTF-16 code-unit count, not a byte count — a body
+  // whose character count is under MAX_BODY_BYTES can still exceed it in
+  // actual UTF-8 bytes once multibyte characters are involved. Measure the
+  // real wire size instead.
+  if (Buffer.byteLength(raw, 'utf8') > MAX_BODY_BYTES) {
     return NextResponse.json({ error: 'payload too large' }, { status: 413 });
   }
 

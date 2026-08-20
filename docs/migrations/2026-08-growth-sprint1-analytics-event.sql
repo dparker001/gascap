@@ -19,8 +19,27 @@
 -- against prisma/schema.prisma's `AnalyticsEvent.user` relation, which is
 -- the only SetNull relation in the current schema — everything else here
 -- (Vehicle, Fillup, RentalSession, etc.) cascades on user delete.
+--
+-- FAIL-CLOSED, TRANSACTIONAL, NO "IF NOT EXISTS". The production
+-- precondition this migration expects is that "AnalyticsEvent" does not
+-- exist at all — this is a brand-new table, never previously created here
+-- or anywhere else. Deliberately NOT using `CREATE TABLE IF NOT EXISTS` /
+-- `CREATE INDEX IF NOT EXISTS`: those forms silently no-op against an
+-- unexpectedly pre-existing object of the same name, which could mean this
+-- migration is quietly running against a table with the wrong shape (wrong
+-- columns, wrong constraints, wrong FK behavior) rather than the one
+-- actually defined below — a false "success" that's worse than an honest
+-- failure. Wrapped in BEGIN/COMMIT so that if ANY statement fails (the
+-- table already exists, an index name collides, a constraint is rejected),
+-- Postgres rolls back the whole transaction — no partial schema (e.g. the
+-- table created but an index missing) is ever left behind. If this
+-- transaction fails for any reason, STOP and investigate why "AnalyticsEvent"
+-- already exists or why a statement was rejected, rather than re-running
+-- with IF NOT EXISTS added back in to "fix" it.
 
-CREATE TABLE IF NOT EXISTS "AnalyticsEvent" (
+BEGIN;
+
+CREATE TABLE "AnalyticsEvent" (
   "id"             TEXT      PRIMARY KEY,
   "userId"         TEXT,
   "eventType"      TEXT      NOT NULL,
@@ -37,17 +56,23 @@ CREATE TABLE IF NOT EXISTS "AnalyticsEvent" (
   CONSTRAINT "AnalyticsEvent_idempotencyKey_key" UNIQUE ("idempotencyKey")
 );
 
-CREATE INDEX IF NOT EXISTS "AnalyticsEvent_userId_idx"
+CREATE INDEX "AnalyticsEvent_userId_idx"
   ON "AnalyticsEvent"("userId");
-CREATE INDEX IF NOT EXISTS "AnalyticsEvent_userId_eventType_idx"
+CREATE INDEX "AnalyticsEvent_userId_eventType_idx"
   ON "AnalyticsEvent"("userId", "eventType");
-CREATE INDEX IF NOT EXISTS "AnalyticsEvent_eventType_createdAt_idx"
+CREATE INDEX "AnalyticsEvent_eventType_createdAt_idx"
   ON "AnalyticsEvent"("eventType", "createdAt");
-CREATE INDEX IF NOT EXISTS "AnalyticsEvent_createdAt_idx"
+CREATE INDEX "AnalyticsEvent_createdAt_idx"
   ON "AnalyticsEvent"("createdAt");
 
--- ── Verification queries — run after the above, before any application code
---    depends on this, to confirm the migration applied as expected ──────────
+COMMIT;
+
+-- ── Verification queries — run AFTER the COMMIT above (i.e. only once the
+--    transaction has actually succeeded), before any application code
+--    depends on this, to confirm the migration applied as expected. If the
+--    transaction rolled back, none of these will find anything — that is
+--    the correct, fail-closed outcome, not a reason to retry with
+--    IF NOT EXISTS added back in. ─────────────────────────────────────────
 
 -- 1. Table exists:
 -- SELECT table_name FROM information_schema.tables

@@ -152,6 +152,93 @@ describe('POST /api/analytics/event', () => {
     expect(recordAnalyticsEvent).not.toHaveBeenCalled();
   });
 
+  it('rejects rental_setup_step_viewed with omitted metadata — step is required', async () => {
+    getServerSession.mockResolvedValue({ user: { id: 'u1' } });
+    const res = await post({ eventType: 'rental_setup_step_viewed', originPlatform: 'web' });
+    expect(res.status).toBe(400);
+    expect(recordAnalyticsEvent).not.toHaveBeenCalled();
+  });
+
+  it('rejects rental_setup_step_viewed with an empty metadata object', async () => {
+    getServerSession.mockResolvedValue({ user: { id: 'u1' } });
+    const res = await post({ eventType: 'rental_setup_step_viewed', originPlatform: 'web', metadata: {} });
+    expect(res.status).toBe(400);
+    expect(recordAnalyticsEvent).not.toHaveBeenCalled();
+  });
+
+  it('rejects checkout_started with omitted metadata — billing and method are required', async () => {
+    getServerSession.mockResolvedValue({ user: { id: 'u1' } });
+    const res = await post({ eventType: 'checkout_started', originPlatform: 'web' });
+    expect(res.status).toBe(400);
+    expect(recordAnalyticsEvent).not.toHaveBeenCalled();
+  });
+
+  it('rejects checkout_started missing billing', async () => {
+    getServerSession.mockResolvedValue({ user: { id: 'u1' } });
+    const res = await post({ eventType: 'checkout_started', originPlatform: 'web', metadata: { method: 'stripe' } });
+    expect(res.status).toBe(400);
+    expect(recordAnalyticsEvent).not.toHaveBeenCalled();
+  });
+
+  it('rejects checkout_started missing method', async () => {
+    getServerSession.mockResolvedValue({ user: { id: 'u1' } });
+    const res = await post({ eventType: 'checkout_started', originPlatform: 'web', metadata: { billing: 'monthly' } });
+    expect(res.status).toBe(400);
+    expect(recordAnalyticsEvent).not.toHaveBeenCalled();
+  });
+
+  it('accepts a valid checkout_started with both required fields', async () => {
+    getServerSession.mockResolvedValue({ user: { id: 'u1' } });
+    const res = await post({ eventType: 'checkout_started', originPlatform: 'web', metadata: { billing: 'lifetime', method: 'stripe' } });
+    expect(res.status).toBe(202);
+    expect(recordAnalyticsEvent).toHaveBeenCalledTimes(1);
+  });
+
+  it('paywall_viewed remains valid with no metadata at all — it has no required fields', async () => {
+    const res = await post({ eventType: 'paywall_viewed', originPlatform: 'web' });
+    expect(res.status).toBe(202);
+  });
+
+  it('rejects metadata containing a "toString" key rather than treating it as a valid schema field via prototype-chain matching', async () => {
+    getServerSession.mockResolvedValue({ user: { id: 'u1' } });
+    const req = new Request('https://www.gascap.app/api/analytics/event', {
+      method: 'POST',
+      headers: new Headers({ 'content-type': 'application/json' }),
+      body: '{"eventType":"checkout_started","originPlatform":"web","metadata":{"billing":"monthly","method":"stripe","toString":"x"}}',
+    });
+    const { POST } = await import('@/app/api/analytics/event/route');
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+    expect(recordAnalyticsEvent).not.toHaveBeenCalled();
+  });
+
+  it('rejects metadata containing a "constructor" key', async () => {
+    getServerSession.mockResolvedValue({ user: { id: 'u1' } });
+    const req = new Request('https://www.gascap.app/api/analytics/event', {
+      method: 'POST',
+      headers: new Headers({ 'content-type': 'application/json' }),
+      body: '{"eventType":"checkout_started","originPlatform":"web","metadata":{"billing":"monthly","method":"stripe","constructor":"x"}}',
+    });
+    const { POST } = await import('@/app/api/analytics/event/route');
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+    expect(recordAnalyticsEvent).not.toHaveBeenCalled();
+  });
+
+  it('rejects metadata containing a "__proto__" key without throwing and without polluting Object.prototype', async () => {
+    getServerSession.mockResolvedValue({ user: { id: 'u1' } });
+    const req = new Request('https://www.gascap.app/api/analytics/event', {
+      method: 'POST',
+      headers: new Headers({ 'content-type': 'application/json' }),
+      body: '{"eventType":"checkout_started","originPlatform":"web","metadata":{"billing":"monthly","method":"stripe","__proto__":{"polluted":true}}}',
+    });
+    const { POST } = await import('@/app/api/analytics/event/route');
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+    expect(recordAnalyticsEvent).not.toHaveBeenCalled();
+    expect((Object.prototype as unknown as Record<string, unknown>).polluted).toBeUndefined();
+  });
+
   it('rejects metadata on an event that accepts none', async () => {
     const res = await post({ eventType: 'calculator_completed', originPlatform: 'web', metadata: { anything: 1 } });
     expect(res.status).toBe(400);
@@ -195,6 +282,27 @@ describe('POST /api/analytics/event', () => {
   it('rejects a source field over the max length even when the overall payload is small', async () => {
     const res = await post({ eventType: 'calculator_completed', originPlatform: 'web', source: 'x'.repeat(100) });
     expect(res.status).toBe(400);
+  });
+
+  it('measures the body limit in real UTF-8 bytes, not JS string length — a multibyte body under 2048 characters but over 2048 bytes is rejected', async () => {
+    // '中' is one UTF-16 code unit (JS string length 1) but 3 bytes in UTF-8.
+    // 1000 repeats: string length ~1000 (well under 2048), but byte length
+    // ~3000 (over 2048). A byte-blind `raw.length > MAX_BODY_BYTES` check
+    // would incorrectly accept this; Buffer.byteLength must catch it.
+    const multibyteSource = '中'.repeat(1000);
+    const rawBody = JSON.stringify({ eventType: 'calculator_completed', originPlatform: 'web', source: multibyteSource });
+    expect(rawBody.length).toBeLessThan(2048);
+    expect(Buffer.byteLength(rawBody, 'utf8')).toBeGreaterThan(2048);
+
+    const { POST } = await import('@/app/api/analytics/event/route');
+    const req = new Request('https://www.gascap.app/api/analytics/event', {
+      method: 'POST',
+      headers: new Headers({ 'content-type': 'application/json' }),
+      body: rawBody,
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(413);
+    expect(recordAnalyticsEvent).not.toHaveBeenCalled();
   });
 
   it('enforces rate limiting', async () => {

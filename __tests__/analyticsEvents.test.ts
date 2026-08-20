@@ -73,11 +73,14 @@ describe('recordAnalyticsEvent', () => {
     })).rejects.toThrow('db unavailable');
   });
 
-  it('re-throws a P2002 that is a real, unrelated unique-constraint hit wrapped in the same error class — this is the correct current behavior given the table has only one unique constraint (idempotencyKey), documented so a future second unique constraint does not silently get misclassified as an idempotency dup', async () => {
-    // This test intentionally just re-asserts the same behavior as the
-    // duplicate-key test above — it exists to make the single-unique-
-    // constraint assumption explicit and easy to find if AnalyticsEvent
-    // ever gains a second @@unique.
+  it('documents that ANY P2002 is currently treated as a duplicate-in-flight, not just a genuine idempotencyKey collision — correct today because idempotencyKey is the table\'s only unique constraint, but this assumption breaks silently if a second @@unique is ever added', async () => {
+    // This test intentionally re-asserts the same behavior as the
+    // duplicate-key test above (recordAnalyticsEvent has no way to
+    // distinguish "which constraint fired" from a generic P2002) — it
+    // exists to make the single-unique-constraint assumption explicit and
+    // easy to find if AnalyticsEvent ever gains a second @@unique, at which
+    // point a P2002 on THAT constraint would also be misclassified as an
+    // idempotency duplicate rather than re-thrown.
     const { recordAnalyticsEvent } = await import('../lib/analyticsEvents');
     create.mockRejectedValueOnce(new KnownRequestError('Unique constraint failed', 'P2002'));
     const result = await recordAnalyticsEvent({
