@@ -11,6 +11,7 @@ import type Stripe                          from 'stripe';
 import { stripe }                           from '@/lib/stripe';
 import { setUserPlan, findByStripeCustomer, findById, findByReferralCode, creditVerifiedReferral, getActiveCredits, enrollPaidCampaign, enrollEngagementCampaign, setEarlyUpgradeBonus, markMilestoneSent, updateUserProfile, clearStripeSubscriptionId, setLifetimePerksActive, clearLifetimePerks, markFoundingMember, revokeStripeSubscriptionEntitlement } from '@/lib/users';
 import { updateGhlContactPlan }            from '@/lib/ghl';
+import { recordAnalyticsEvent }            from '@/lib/analyticsEvents';
 import { sendMail, giftEmailHtml }         from '@/lib/email';
 import { createGift }                      from '@/lib/gifts';
 import { getawayPromoActive, GETAWAY_DISCLOSURE } from '@/lib/getawayPromo';
@@ -168,6 +169,47 @@ export async function POST(req: Request) {
         subscriptionId: subscriptionId ?? undefined,
         interval,
       });
+
+      // ── Growth Sprint 1, P0B — first-party purchase_completed analytics ──
+      // Entitlement (setUserPlan, above) has already completed successfully
+      // by this point — this write is strictly additive and must never be
+      // able to affect it. Deliberately does NOT reuse `interval` (which
+      // collapses any non-lifetime/non-annual billing metadata, including
+      // 'lifetime-perks', into 'monthly') — classifies directly from the
+      // raw `billingMeta` string instead, so an unrecognized or add-on
+      // billing value (e.g. the Lifetime Perks subscription, which is a
+      // separate purchase path entirely, not a Pro upgrade) correctly
+      // produces no analytics event rather than being miscounted as a
+      // monthly Pro conversion.
+      const analyticsBilling: 'monthly' | 'lifetime' | null =
+        billingMeta === 'monthly' ? 'monthly' : billingMeta === 'lifetime' ? 'lifetime' : null;
+
+      if (analyticsBilling && session.payment_status === 'paid') {
+        try {
+          const result = await recordAnalyticsEvent({
+            eventType:      'purchase_completed',
+            originPlatform: 'web',
+            emitter:        'webhook',
+            userId,
+            provider:       'stripe',
+            billing:        analyticsBilling,
+            source:         'stripe_checkout',
+            idempotencyKey: `stripe:${event.id}`,
+            metadata: {
+              tier: planTier,
+              ...(typeof session.amount_total === 'number' ? { amountTotal: session.amount_total } : {}),
+              ...(session.currency ? { currency: session.currency } : {}),
+              ...(session.metadata?.offerSource ? { offerSource: session.metadata.offerSource } : {}),
+            },
+          });
+          console.log(`[GasCap analytics] Stripe purchase_completed ${result.outcome} for event ${event.id}`);
+        } catch (err) {
+          // Analytics failure must never affect entitlement, GHL, emails, or
+          // referral processing — all of which run below this point and are
+          // completely unaffected by this catch. Logged only.
+          console.error('[GasCap analytics] Stripe purchase event write failed:', err);
+        }
+      }
 
       // Founding Member launch promo — record the REAL redemption so the "X of
       // 100 spots left" banner counts actual $9.99 Lifetime purchases, not just
