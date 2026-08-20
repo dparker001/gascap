@@ -15,6 +15,7 @@ import type { SavedVehicle } from '@/lib/savedVehicles';
 import { useTranslation } from '@/contexts/LanguageContext';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { trackRentalReturnToggled } from '@/lib/gtag';
+import { trackClientEvent } from '@/lib/clientAnalytics';
 import type { CalcTab } from './CalculatorTabs';
 
 interface Props {
@@ -350,6 +351,12 @@ export default function EvCalculatorForm({ activeTab, setActiveTab }: Props) {
     });
     setResult(res);
     setCalcKey((k) => k + 1);
+    // Growth Sprint 1, P0C-2B1 — first-party AnalyticsEvent. EV has no
+    // GA4 calculate-tracking today (pre-existing, out of scope here) and
+    // no live-recalc path — every field edit after a result clears it via
+    // setResult(null) elsewhere, so this only ever fires from a genuine
+    // explicit successful Calculate press.
+    trackClientEvent('calculator_completed', { calculator: 'ev' });
   }
 
   const stateName = rateResult?.state ? (STATE_NAMES[rateResult.state] ?? rateResult.state) : '';

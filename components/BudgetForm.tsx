@@ -17,6 +17,7 @@ import { useLocalStorage } from '@/hooks/useLocalStorage';
 import type { CalcTab } from './CalculatorTabs';
 import { useTranslation } from '@/contexts/LanguageContext';
 import { trackCalculateBudget } from '@/lib/gtag';
+import { trackClientEvent } from '@/lib/clientAnalytics';
 import { checkTankSize } from '@/lib/tankValidation';
 
 // ── Types ──────────────────────────────────────────────────────────────
@@ -170,6 +171,11 @@ export default function BudgetForm({ activeTab, setActiveTab }: Props) {
     setShowLiveNudge(false);
     setValidationAttempted(false);
     trackCalculateBudget();
+    // Growth Sprint 1, P0C-2B1 — first-party AnalyticsEvent, additive to
+    // the GA4 call above. Only from an explicit successful Calculate press
+    // — never from liveRecalc(), so a Pro user's post-calculation field
+    // edits never produce additional events.
+    trackClientEvent('calculator_completed', { calculator: 'budget' });
     if (typeof window !== 'undefined') window.dispatchEvent(new Event('gascap:calculated'));
     // Record the calc server-side (also fixes budget-calc tracking) + first-calc reward
     fetch('/api/activity', {
