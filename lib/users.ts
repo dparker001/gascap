@@ -8,6 +8,7 @@ import { prisma } from './prisma';
 import { findNewBadges, type UserStats } from './badges';
 import { getVehiclesForUser } from './savedVehicles';
 import type { User as PrismaUser } from './generated/prisma/client';
+import { recordAnalyticsEvent } from './analyticsEvents';
 import { Prisma } from './generated/prisma/client';
 import { qualifiesForFreeProForLife, AMBASSADOR_THRESHOLDS, getAmbassadorTier } from './ambassador';
 import { sendHotelSavingsCard, sendDiningVoucher } from './marketingBoost';
@@ -270,6 +271,20 @@ export async function createGoogleUser(
       ...(avatarUrl ? { avatarUrl } : {}),
     },
   });
+  // Growth Sprint 1, P0C-1A — signup_completed only for a genuine new
+  // account (this line is unreachable for the existing-user early return
+  // above). Does not change this function's return contract.
+  try {
+    await recordAnalyticsEvent({
+      eventType: 'signup_completed',
+      originPlatform: 'unknown',
+      emitter: 'server',
+      userId: user.id,
+      source: 'auth_signup',
+      idempotencyKey: `signup_completed:${user.id}`,
+      metadata: { signupMethod: 'google' },
+    });
+  } catch (e) { console.error('[GasCap analytics] Google signup_completed write failed:', e); }
   return toStoredUser(user);
 }
 

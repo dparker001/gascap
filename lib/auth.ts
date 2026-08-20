@@ -12,6 +12,7 @@ import { sendCampaignEmail } from './emailCampaign';
 import { hasEmailBeenSent }  from './emailLog';
 import { checkRateLimit } from './rateLimit';
 import { pgPool }        from './prisma';
+import { recordAnalyticsEvent } from './analyticsEvents';
 
 /** Wrong-code guesses allowed per email before verification is refused. */
 const OTP_VERIFY_MAX_ATTEMPTS = 5;
@@ -113,6 +114,23 @@ export const authOptions: NextAuthOptions = {
             [crypto.randomUUID(), email, verifiedName || nameFromEmail(email),
              new Date().toISOString(), locale === 'es' ? 'es' : 'en', platform],
           );
+          // Growth Sprint 1, P0C-1A — signup_completed fires immediately after
+          // the INSERT succeeds, using its own RETURNING id as the
+          // authoritative new-user id, deliberately BEFORE the trial grant
+          // below — signup and trial-grant success are independent facts,
+          // and this event must record the former regardless of the latter.
+          const newUserId = created[0].id as string;
+          try {
+            await recordAnalyticsEvent({
+              eventType: 'signup_completed',
+              originPlatform: platform,
+              emitter: 'server',
+              userId: newUserId,
+              source: 'auth_signup',
+              idempotencyKey: `signup_completed:${newUserId}`,
+              metadata: { signupMethod: 'otp' },
+            });
+          } catch (e) { console.error('[GasCap analytics] OTP signup_completed write failed:', e); }
           user = await findByEmail(email);
           if (!user) return null;
         } else {
@@ -121,7 +139,24 @@ export const authOptions: NextAuthOptions = {
 
         if (isNew) {
           // Grant trial synchronously so badge shows PRO TRIAL on first login
-          await grantNewSignupProTrial(user!.id, 30).catch((e) => console.error('[otp] trial grant failed:', e));
+          const grantedTrial = await grantNewSignupProTrial(user!.id, 30).catch((e) => { console.error('[otp] trial grant failed:', e); return null; });
+          // Growth Sprint 1, P0C-1A — trial_started only fires when the grant
+          // itself actually succeeded (grantNewSignupProTrial catches its own
+          // Prisma error and returns null on failure — awaiting a `.catch()`
+          // wrapper alone would never observe that, since a caught rejection
+          // never rejects). Explicitly capturing the return value is required.
+          if (grantedTrial !== null) {
+            try {
+              await recordAnalyticsEvent({
+                eventType: 'trial_started',
+                originPlatform: platform,
+                emitter: 'server',
+                userId: user!.id,
+                source: 'signup_trial',
+                idempotencyKey: `trial_started:${user!.id}`,
+              });
+            } catch (e) { console.error('[GasCap analytics] OTP trial_started write failed:', e); }
+          }
           user = await findByEmail(email) ?? user; // refresh to get updated plan/isProTrial
           // Remaining onboarding fire-and-forget
           ;(async () => {
@@ -221,7 +256,22 @@ export const authOptions: NextAuthOptions = {
             const googleName = user.name ?? nameFromEmail(email);
             const avatarUrl  = (profile as { picture?: string })?.picture ?? null;
             dbUser = await createGoogleUser(email, googleName, avatarUrl);
-            await grantNewSignupProTrial(dbUser.id, 30);
+            const grantedTrial = await grantNewSignupProTrial(dbUser.id, 30);
+            // Growth Sprint 1, P0C-1A — trial_started only when the grant
+            // itself actually succeeded (grantNewSignupProTrial catches its
+            // own Prisma error and returns null on failure, never rejects).
+            if (grantedTrial !== null) {
+              try {
+                await recordAnalyticsEvent({
+                  eventType: 'trial_started',
+                  originPlatform: 'unknown',
+                  emitter: 'server',
+                  userId: dbUser.id,
+                  source: 'signup_trial',
+                  idempotencyKey: `trial_started:${dbUser.id}`,
+                });
+              } catch (e) { console.error('[GasCap analytics] Google trial_started write failed:', e); }
+            }
             await enrollEmailCampaign(dbUser.id);
             await recordLogin(dbUser.id);
 

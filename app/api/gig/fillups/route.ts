@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { recordAnalyticsEvent } from '@/lib/analyticsEvents';
 
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -75,6 +76,22 @@ export async function POST(req: NextRequest) {
       data:  { gigLogEntries: { increment: GIG_LOG_ENTRIES } },
     }),
   ]);
+
+  // Growth Sprint 1, P0C-1A — only reached once the whole transaction above
+  // has resolved successfully (a thrown/rolled-back transaction exits via
+  // the `await` before this line, so the response is never 201 without a
+  // genuine GigFillup row existing). Isolated so an analytics failure can
+  // never change this already-successful response.
+  try {
+    await recordAnalyticsEvent({
+      eventType: 'fillup_logged',
+      originPlatform: 'unknown',
+      emitter: 'server',
+      userId: uid,
+      source: 'gig_fillup_create',
+      idempotencyKey: `fillup_logged:gig:${record.id}`,
+    });
+  } catch (e) { console.error('[GasCap analytics] gig fillup_logged write failed:', e); }
 
   return NextResponse.json({ fillup: record, entriesAwarded: GIG_LOG_ENTRIES }, { status: 201 });
 }
