@@ -83,10 +83,11 @@ describe('POST /api/analytics/event', () => {
     expect(recordAnalyticsEvent).not.toHaveBeenCalled();
   });
 
-  it('rejects every server/webhook-only event type through this route, not just purchase_completed', async () => {
+  it('AUTH-CS5. rejects every server/webhook-only event type through this route, not just purchase_completed — includes checkout_started', async () => {
     const serverOnly = [
       'signup_completed', 'trial_started', 'vehicle_saved', 'fillup_logged',
       'rental_setup_completed', 'trial_expired', 'subscription_renewed',
+      'checkout_started',
     ];
     for (const eventType of serverOnly) {
       const res = await post({ eventType, originPlatform: 'web' });
@@ -166,32 +167,51 @@ describe('POST /api/analytics/event', () => {
     expect(recordAnalyticsEvent).not.toHaveBeenCalled();
   });
 
-  it('rejects checkout_started with omitted metadata — billing and method are required', async () => {
+  // ── Analytics Authority Correction — checkout_started is now strictly
+  // server-authoritative (app/api/stripe/checkout/route.ts only). It was
+  // briefly client-emittable here during early P0C-1B design; an
+  // authenticated client submitting it here could never grant Stripe
+  // entitlement, but could still pollute first-party funnel counts with a
+  // self-reported "checkout started" that never touched Stripe. These
+  // tests replace the old "accepts a valid checkout_started" coverage.
+
+  it('AUTH-CS1. authenticated client submits checkout_started (Monthly-shaped metadata) → 400, no write', async () => {
     getServerSession.mockResolvedValue({ user: { id: 'u1' } });
+    const res = await post({
+      eventType: 'checkout_started',
+      originPlatform: 'web',
+      metadata: { billing: 'monthly', method: 'stripe' },
+    });
+    expect(res.status).toBe(400);
+    expect(recordAnalyticsEvent).not.toHaveBeenCalled();
+  });
+
+  it('AUTH-CS2. authenticated client submits checkout_started (Lifetime-shaped metadata) → 400, no write', async () => {
+    getServerSession.mockResolvedValue({ user: { id: 'u1' } });
+    const res = await post({
+      eventType: 'checkout_started',
+      originPlatform: 'web',
+      metadata: { billing: 'lifetime', method: 'stripe' },
+    });
+    expect(res.status).toBe(400);
+    expect(recordAnalyticsEvent).not.toHaveBeenCalled();
+  });
+
+  it('AUTH-CS3. anonymous checkout_started → 400, no write', async () => {
     const res = await post({ eventType: 'checkout_started', originPlatform: 'web' });
     expect(res.status).toBe(400);
     expect(recordAnalyticsEvent).not.toHaveBeenCalled();
   });
 
-  it('rejects checkout_started missing billing', async () => {
+  it('AUTH-CS4. checkout_started is rejected even with otherwise-schema-valid client metadata — the eventType allowlist rejects it before metadata is ever inspected', async () => {
     getServerSession.mockResolvedValue({ user: { id: 'u1' } });
-    const res = await post({ eventType: 'checkout_started', originPlatform: 'web', metadata: { method: 'stripe' } });
+    const res = await post({
+      eventType: 'checkout_started',
+      originPlatform: 'web',
+      metadata: { billing: 'monthly', method: 'iap' },
+    });
     expect(res.status).toBe(400);
     expect(recordAnalyticsEvent).not.toHaveBeenCalled();
-  });
-
-  it('rejects checkout_started missing method', async () => {
-    getServerSession.mockResolvedValue({ user: { id: 'u1' } });
-    const res = await post({ eventType: 'checkout_started', originPlatform: 'web', metadata: { billing: 'monthly' } });
-    expect(res.status).toBe(400);
-    expect(recordAnalyticsEvent).not.toHaveBeenCalled();
-  });
-
-  it('accepts a valid checkout_started with both required fields', async () => {
-    getServerSession.mockResolvedValue({ user: { id: 'u1' } });
-    const res = await post({ eventType: 'checkout_started', originPlatform: 'web', metadata: { billing: 'lifetime', method: 'stripe' } });
-    expect(res.status).toBe(202);
-    expect(recordAnalyticsEvent).toHaveBeenCalledTimes(1);
   });
 
   it('paywall_viewed remains valid with no metadata at all — it has no required fields', async () => {
@@ -200,11 +220,14 @@ describe('POST /api/analytics/event', () => {
   });
 
   it('rejects metadata containing a "toString" key rather than treating it as a valid schema field via prototype-chain matching', async () => {
-    getServerSession.mockResolvedValue({ user: { id: 'u1' } });
+    // Growth Sprint 1, Analytics Authority Correction — moved off
+    // checkout_started (now server-only, rejected before metadata is ever
+    // inspected) onto calculator_completed, a remaining metadata-bearing
+    // CLIENT event, so this protection is still meaningfully exercised.
     const req = new Request('https://www.gascap.app/api/analytics/event', {
       method: 'POST',
       headers: new Headers({ 'content-type': 'application/json' }),
-      body: '{"eventType":"checkout_started","originPlatform":"web","metadata":{"billing":"monthly","method":"stripe","toString":"x"}}',
+      body: '{"eventType":"calculator_completed","originPlatform":"web","metadata":{"calculator":"target","toString":"x"}}',
     });
     const { POST } = await import('@/app/api/analytics/event/route');
     const res = await POST(req);
@@ -213,11 +236,10 @@ describe('POST /api/analytics/event', () => {
   });
 
   it('rejects metadata containing a "constructor" key', async () => {
-    getServerSession.mockResolvedValue({ user: { id: 'u1' } });
     const req = new Request('https://www.gascap.app/api/analytics/event', {
       method: 'POST',
       headers: new Headers({ 'content-type': 'application/json' }),
-      body: '{"eventType":"checkout_started","originPlatform":"web","metadata":{"billing":"monthly","method":"stripe","constructor":"x"}}',
+      body: '{"eventType":"calculator_completed","originPlatform":"web","metadata":{"calculator":"target","constructor":"x"}}',
     });
     const { POST } = await import('@/app/api/analytics/event/route');
     const res = await POST(req);
@@ -226,11 +248,10 @@ describe('POST /api/analytics/event', () => {
   });
 
   it('rejects metadata containing a "__proto__" key without throwing and without polluting Object.prototype', async () => {
-    getServerSession.mockResolvedValue({ user: { id: 'u1' } });
     const req = new Request('https://www.gascap.app/api/analytics/event', {
       method: 'POST',
       headers: new Headers({ 'content-type': 'application/json' }),
-      body: '{"eventType":"checkout_started","originPlatform":"web","metadata":{"billing":"monthly","method":"stripe","__proto__":{"polluted":true}}}',
+      body: '{"eventType":"calculator_completed","originPlatform":"web","metadata":{"calculator":"target","__proto__":{"polluted":true}}}',
     });
     const { POST } = await import('@/app/api/analytics/event/route');
     const res = await POST(req);
@@ -259,15 +280,14 @@ describe('POST /api/analytics/event', () => {
   });
 
   it('rejects metadata containing a bearer-token-shaped string', async () => {
-    getServerSession.mockResolvedValue({ user: { id: 'u1' } });
-    // checkout_started's schema only allows enum-valued fields, so this
+    // calculator_completed's schema only allows enum-valued fields, so this
     // exercises the enum check rejecting the string outright — the denylist
     // is defense in depth for a future looser schema, tested at the
     // metadata-object level via containsDenylistedContent below.
     const res = await post({
-      eventType: 'checkout_started',
+      eventType: 'calculator_completed',
       originPlatform: 'web',
-      metadata: { billing: 'monthly', method: 'Bearer abc.def.ghi' },
+      metadata: { calculator: 'Bearer abc.def.ghi' },
     });
     expect(res.status).toBe(400);
   });
