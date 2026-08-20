@@ -1,10 +1,22 @@
 /**
  * POST /api/stripe/checkout
- * Creates a Stripe Checkout Session for upgrading to Pro or Fleet, or adding Lifetime Perks.
- * Body: { tier: 'pro' | 'fleet', billing: 'monthly' | 'annual' | 'lifetime' | 'lifetime-perks' }
+ * Creates a Stripe Checkout Session for upgrading to Pro, or adding Lifetime Perks.
+ * Body: { tier?: 'pro', billing?: 'monthly' | 'annual' | 'lifetime' | 'lifetime-perks' }
  * 'annual' is accepted for type/legacy compat only — always rejected below (see block).
+ * Fleet is shelved — any other tier value is rejected (see validation block).
  *
  * Lifetime uses mode:'payment' (one-time); all others use mode:'subscription'.
+ *
+ * Stripe Payment Authorization Hardening — the Price ID for every session
+ * created here is ALWAYS the server's own canonical PRICES lookup. There is
+ * no caller-supplied price override: a prior legacy `body.priceId` escape
+ * hatch let a caller redirect a genuine tier/billing selection to an
+ * arbitrary Stripe Price, which checkout.session.completed would then grant
+ * entitlement for based on request-echoed metadata alone. No first-party
+ * caller (app/upgrade, app/settings) ever sent priceId — see the hardening
+ * report for the full caller inventory. The webhook additionally verifies
+ * the actual purchased Price server-side before granting anything; this
+ * checkout-side removal is defense-in-depth, not the only guard.
  */
 import { NextResponse }    from 'next/server';
 import { getServerSession } from 'next-auth';
@@ -15,6 +27,7 @@ import { getBaseUrl }      from '@/lib/getBaseUrl';
 import { newMemberOfferStatus, NEW_MEMBER_LIFETIME_COUPON } from '@/lib/newMemberOffer';
 import { winbackOfferAvailable, WINBACK_LIFETIME_COUPON } from '@/lib/winbackOffer';
 import { foundingStatus, FOUNDING_LIFETIME_COUPON } from '@/lib/foundingPromo';
+import { C4_LIFETIME_COUPON } from '@/lib/emailTrialConversion';
 
 export async function POST(req: Request) {
   if (!stripe) {
@@ -39,11 +52,16 @@ export async function POST(req: Request) {
   // and verifies the buyer's email at checkout and sends its own receipts, so a
   // deliverable address is guaranteed regardless of our app-side verified flag.
 
+  // Deliberately untyped-union here — a TypeScript cast on the request body
+  // is not runtime validation (Stripe Payment Authorization Hardening).
+  // `tier`/`billing` are runtime-checked against an explicit allowlist
+  // below before anything derived from them can reach Stripe. No
+  // `priceId` field exists in this contract — Price selection is entirely
+  // server-owned (see file header).
   const body = await req.json() as {
-    tier?:    'pro' | 'fleet';
-    billing?: 'monthly' | 'annual' | 'lifetime' | 'lifetime-perks';
-    priceId?: string; // legacy direct price ID override
-    coupon?:  string; // Stripe coupon ID to pre-apply (e.g. from C4 promo email)
+    tier?:    string;
+    billing?: string;
+    coupon?:  string; // Stripe Coupon ID — allowlisted below, see Stripe Payment Authorization Hardening note
     newMemberOffer?: boolean; // request the 7-day new-member Lifetime discount
     winbackOffer?:   boolean; // request the win-back Lifetime discount ($9.99)
     foundingOffer?:  boolean; // request the Founding Member launch discount ($9.99)
@@ -51,7 +69,17 @@ export async function POST(req: Request) {
 
   const tier    = body.tier    ?? 'pro';
   const billing = body.billing ?? 'monthly';
-  let   coupon  = body.coupon  ?? null;
+
+  // Stripe Payment Authorization Hardening — `body.coupon` is NOT passed to
+  // Stripe as an arbitrary caller-selected Coupon ID. The only currently
+  // active first-party dependency on a raw coupon value is the C4
+  // trial-conversion email (lib/emailTrialConversion.ts), which always
+  // links to exactly one known campaign coupon. Anything else a caller
+  // sends here is silently ignored — never forwarded to Stripe. This is
+  // deliberately narrower than a general "any coupon the caller names is
+  // fine" contract: an arbitrary valid Stripe coupon ID must not be
+  // applicable to a checkout merely by naming it in the request body.
+  let coupon: string | null = body.coupon === C4_LIFETIME_COUPON ? C4_LIFETIME_COUPON : null;
 
   // Annual is no longer offered — Lifetime ($19.99 one-time) was strictly cheaper
   // AND better (forever access, more giveaway entries, the vacation getaway) than
@@ -65,6 +93,24 @@ export async function POST(req: Request) {
       { status: 400 },
     );
   }
+
+  // Stripe Payment Authorization Hardening — explicit runtime allowlist.
+  // Fleet is shelved (no canonical Price exists for it) and must never be
+  // reachable again via a caller-supplied tier, and an unrecognized billing
+  // string must never silently fall through to Pro Monthly (the previous
+  // `if (!priceId) { ... else priceId = PRICES.proMonthly }` shape made
+  // exactly that mistake possible). Anything outside this allowlist is a
+  // deterministic 400, not a guess.
+  const SUPPORTED_BILLING = ['monthly', 'lifetime', 'lifetime-perks'] as const;
+  type SupportedBilling = typeof SUPPORTED_BILLING[number];
+  if (tier !== 'pro' || !SUPPORTED_BILLING.includes(billing as SupportedBilling)) {
+    return NextResponse.json(
+      { error: `Unsupported plan selection. Choose Pro Monthly, Pro Lifetime, or Lifetime Perks.` },
+      { status: 400 },
+    );
+  }
+  const validatedBilling = billing as SupportedBilling;
+
   // Tags which campaign the coupon came from — the founding, win-back, and
   // new-member offers all currently share the same Stripe coupon ID, so this is
   // the only way to attribute a purchase to a specific campaign after the fact.
@@ -129,50 +175,25 @@ export async function POST(req: Request) {
     return NextResponse.json({ url: perksSession.url });
   }
 
-  // Resolve price ID
-  let priceId = body.priceId ?? '';
-  if (!priceId) {
-    if (tier === 'pro') {
-      if (billing === 'lifetime') priceId = PRICES.proLifetime;
-      else                        priceId = PRICES.proMonthly;
-    }
-    // Fleet plan is shelved — no active price IDs
-  }
+  // Resolve price ID — server-owned only. `validatedBilling` is narrowed to
+  // 'monthly' | 'lifetime' at this point ('lifetime-perks' already returned
+  // above, 'annual' already rejected above), so this is an exhaustive
+  // two-way canonical lookup with no caller-influenced fallback.
+  const priceId = validatedBilling === 'lifetime' ? PRICES.proLifetime : PRICES.proMonthly;
 
   if (!priceId) {
     return NextResponse.json(
-      { error: `No price configured for ${tier}/${billing}. Add the STRIPE_PRICE_* vars to .env.local.` },
+      { error: `No price configured for pro/${validatedBilling}. Add the STRIPE_PRICE_* vars to .env.local.` },
       { status: 503 },
     );
   }
 
   const origin = getBaseUrl(req);
 
-  // ── Fleet trial days ──────────────────────────────────────────────────────
-  // • If the user is on an active pro trial and hasn't paid for anything yet,
-  //   carry those remaining days over as the fleet trial so upgrading mid-trial
-  //   doesn't forfeit the free period.
-  // • If they have no subscription at all (brand-new or expired-trial free user),
-  //   give them a 14-day fleet trial.
-  // • Paid pro subscribers upgrading to fleet get no trial — Stripe prorates
-  //   the current billing period automatically.
-  let trialDays = 0;
-  if (tier === 'fleet') {
-    const hasTrial     = user.isProTrial && !!user.trialExpiresAt;
-    const hasActiveSub = !!user.stripeSubscriptionId;
+  // Fleet is shelved (rejected above, before this point is ever reached) —
+  // no trial-carryover logic is needed here anymore.
 
-    if (hasTrial && !hasActiveSub) {
-      // Carry over remaining pro-trial days (floor to whole days, min 1)
-      const remainingMs = new Date(user.trialExpiresAt!).getTime() - Date.now();
-      trialDays = Math.max(1, Math.floor(remainingMs / 86_400_000));
-    } else if (!hasActiveSub) {
-      // No prior trial and no paid sub → fresh 14-day fleet trial
-      trialDays = 14;
-    }
-    // hasActiveSub (paid pro) → trialDays stays 0; Stripe handles proration
-  }
-
-  const isLifetime = billing === 'lifetime';
+  const isLifetime = validatedBilling === 'lifetime';
 
   const checkoutSession = await stripe.checkout.sessions.create({
     // One-time payment for lifetime; recurring subscription for monthly
@@ -186,25 +207,24 @@ export async function POST(req: Request) {
     line_items:  [{ price: priceId, quantity: 1 }],
     customer_email: user.stripeCustomerId ? undefined : user.email,
     customer:       user.stripeCustomerId ?? undefined,
-    success_url: `${origin}/upgrade/success?session_id={CHECKOUT_SESSION_ID}&tier=${tier}&billing=${billing}`,
+    success_url: `${origin}/upgrade/success?session_id={CHECKOUT_SESSION_ID}&tier=pro&billing=${validatedBilling}`,
     cancel_url:  `${origin}/upgrade`,
     metadata: {
       userId,
       userEmail: user.email,
-      tier,
-      billing,
+      tier: 'pro',
+      billing: validatedBilling,
       ...(offerSource ? { offerSource } : {}),
     },
     // subscription_data only valid for mode:'subscription'
     ...(!isLifetime ? {
       subscription_data: {
-        metadata: { userId, tier },
-        ...(trialDays > 0 ? { trial_period_days: trialDays } : {}),
+        metadata: { userId, tier: 'pro' },
       },
     } : {
       // payment_intent_data carries metadata for one-time payments
       payment_intent_data: {
-        metadata: { userId, tier, billing, ...(offerSource ? { offerSource } : {}) },
+        metadata: { userId, tier: 'pro', billing: validatedBilling, ...(offerSource ? { offerSource } : {}) },
       },
     }),
   });
