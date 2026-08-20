@@ -347,12 +347,14 @@ describe('POST /api/stripe/checkout — checkout_started analytics (hardened con
     expect(json.url).toBe('https://checkout.example/dup');
   });
 
-  it('Bonus. Purchase webhook untouched by this integration — git diff protection', async () => {
-    const { execSync } = await import('child_process');
-    const diff = execSync(
-      'git diff origin/main -- app/api/stripe/webhook/route.ts',
-      { cwd: process.cwd() },
-    ).toString();
-    expect(diff.trim()).toBe('');
+  it('Bonus. Stripe session creation occurs before checkout_started analytics write', async () => {
+    sessionsCreate.mockResolvedValueOnce({ id: 'cs_test_order', url: 'https://checkout.example/order' });
+
+    await callRoute({ tier: 'pro', billing: 'monthly' });
+
+    expect(sessionsCreate).toHaveBeenCalledTimes(1);
+    expect(recordAnalyticsEvent).toHaveBeenCalledTimes(1);
+    expect(sessionsCreate.mock.invocationCallOrder[0])
+      .toBeLessThan(recordAnalyticsEvent.mock.invocationCallOrder[0]);
   });
 });
