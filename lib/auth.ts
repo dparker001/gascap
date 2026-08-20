@@ -252,59 +252,84 @@ export const authOptions: NextAuthOptions = {
             // Existing account — link Google to it (trust Google's verified email)
             await recordLogin(dbUser.id);
           } else {
-            // New Google user — create account, grant Pro trial, start drip
+            // Growth Sprint 1, P0C-1A correction — createGoogleUser() now
+            // returns { user, created } so this callback never has to GUESS
+            // whether it just created a brand-new account. Before this fix,
+            // reaching this `else` branch (outer findByEmail found nothing)
+            // was wrongly treated as proof of a fresh signup — but two
+            // concurrent Google sign-ins for the same brand-new email could
+            // both pass that outer check before either INSERT lands; the
+            // race loser's createGoogleUser() call would take its OWN
+            // internal existing-user early return and hand back a real,
+            // already-created account. Unconditionally granting/extending a
+            // trial and emitting trial_started in that case would corrupt
+            // an existing user's trial state on every such race. `created`
+            // makes the distinction explicit and authoritative.
             const googleName = user.name ?? nameFromEmail(email);
             const avatarUrl  = (profile as { picture?: string })?.picture ?? null;
-            dbUser = await createGoogleUser(email, googleName, avatarUrl);
-            const grantedTrial = await grantNewSignupProTrial(dbUser.id, 30);
-            // Growth Sprint 1, P0C-1A — trial_started only when the grant
-            // itself actually succeeded (grantNewSignupProTrial catches its
-            // own Prisma error and returns null on failure, never rejects).
-            if (grantedTrial !== null) {
-              try {
-                await recordAnalyticsEvent({
-                  eventType: 'trial_started',
-                  originPlatform: 'unknown',
-                  emitter: 'server',
-                  userId: dbUser.id,
-                  source: 'signup_trial',
-                  idempotencyKey: `trial_started:${dbUser.id}`,
+            const result = await createGoogleUser(email, googleName, avatarUrl);
+            dbUser = result.user;
+
+            if (result.created) {
+              // Genuine new account — full new-user sequence.
+              const grantedTrial = await grantNewSignupProTrial(dbUser.id, 30);
+              // trial_started only when the grant itself actually succeeded
+              // (grantNewSignupProTrial catches its own Prisma error and
+              // returns null on failure, never rejects).
+              if (grantedTrial !== null) {
+                try {
+                  await recordAnalyticsEvent({
+                    eventType: 'trial_started',
+                    originPlatform: 'unknown',
+                    emitter: 'server',
+                    userId: dbUser.id,
+                    source: 'signup_trial',
+                    idempotencyKey: `trial_started:${dbUser.id}`,
+                  });
+                } catch (e) { console.error('[GasCap analytics] Google trial_started write failed:', e); }
+              }
+              await enrollEmailCampaign(dbUser.id);
+              await recordLogin(dbUser.id);
+
+              // Welcome drip email (fire-and-forget)
+              // Google users have verified emails — omit verifyUrl so the verify
+              // block does not render in the D1 email.
+              ;(async () => {
+                if (await hasEmailBeenSent(dbUser!.id, 'trial-d1')) return;
+                await sendCampaignEmail(1, {
+                  id:    dbUser!.id,
+                  name:  dbUser!.name,
+                  email: dbUser!.email,
+                  // verifyUrl intentionally omitted: Google accounts are pre-verified
                 });
-              } catch (e) { console.error('[GasCap analytics] Google trial_started write failed:', e); }
+              })().catch((e) => console.error('[GasCap] Google welcome drip failed:', e));
+
+              // Admin notify (fire-and-forget)
+              sendMail({
+                to:      'info@gascap.app',
+                subject: `🎉 New GasCap™ signup via Google: ${dbUser.name} (Pro trial activated)`,
+                html:    `<p><strong>${dbUser.name}</strong> (${dbUser.email}) signed up with Google — Pro trial active.</p>`,
+                text:    `New Google signup: ${dbUser.name} <${dbUser.email}> — Pro trial (30 days)`,
+              }).catch(() => {});
+
+              // GHL sync (fire-and-forget)
+              upsertGhlContact({
+                name:      dbUser.name,
+                email:     dbUser.email,
+                plan:      'pro',
+                locale:    'en',
+                source:    'GasCap Google Signup',
+                extraTags: ['gascap-new-signup', 'gascap-trial-30day', 'gascap-google-auth'],
+              }).catch(() => {});
+            } else {
+              // Race loser — createGoogleUser() found the account had
+              // already been created by a concurrent request. Treat exactly
+              // like a returning login: no trial grant, no trial_started,
+              // no signup_completed, no campaign enrollment, no new-signup
+              // email/admin/GHL side effects. Only the login itself is
+              // recorded — this outcome must never mutate trial state.
+              await recordLogin(dbUser.id);
             }
-            await enrollEmailCampaign(dbUser.id);
-            await recordLogin(dbUser.id);
-
-            // Welcome drip email (fire-and-forget)
-            // Google users have verified emails — omit verifyUrl so the verify
-            // block does not render in the D1 email.
-            ;(async () => {
-              if (await hasEmailBeenSent(dbUser!.id, 'trial-d1')) return;
-              await sendCampaignEmail(1, {
-                id:    dbUser!.id,
-                name:  dbUser!.name,
-                email: dbUser!.email,
-                // verifyUrl intentionally omitted: Google accounts are pre-verified
-              });
-            })().catch((e) => console.error('[GasCap] Google welcome drip failed:', e));
-
-            // Admin notify (fire-and-forget)
-            sendMail({
-              to:      'info@gascap.app',
-              subject: `🎉 New GasCap™ signup via Google: ${dbUser.name} (Pro trial activated)`,
-              html:    `<p><strong>${dbUser.name}</strong> (${dbUser.email}) signed up with Google — Pro trial active.</p>`,
-              text:    `New Google signup: ${dbUser.name} <${dbUser.email}> — Pro trial (30 days)`,
-            }).catch(() => {});
-
-            // GHL sync (fire-and-forget)
-            upsertGhlContact({
-              name:      dbUser.name,
-              email:     dbUser.email,
-              plan:      'pro',
-              locale:    'en',
-              source:    'GasCap Google Signup',
-              extraTags: ['gascap-new-signup', 'gascap-trial-30day', 'gascap-google-auth'],
-            }).catch(() => {});
           }
 
           // Override NextAuth's Google user ID with our DB user ID so the JWT

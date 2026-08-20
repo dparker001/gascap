@@ -2,19 +2,25 @@
  * Growth Sprint 1, P0C-1A — regression coverage for signup_completed and
  * trial_started.
  *
- * Google path: createGoogleUser() is a plain exported function with a
- * mockable prisma client, tested directly below.
+ * Google path (createGoogleUser): a plain exported function with a
+ * mockable prisma client, tested directly below — including its
+ * { user, created } return contract from the P0C-1A Google-race
+ * correction (a race-losing call must report created: false, never a bare
+ * StoredUser indistinguishable from a genuine new signup).
  *
- * OTP path: the PRIMARY behavioral proof for the OTP authorize() callback
- * (new user, returning user, null trial grant, analytics-failure isolation)
- * now lives in __tests__/otpSignupBehavioral.test.ts, which invokes the
- * actual captured authorize() function with mocked pgPool/findByEmail/
- * grantNewSignupProTrial — no live database. The source-inspection block
- * below (and the Google signIn() callback ordering checks, which remain
- * source-inspection since createGoogleUser() itself is covered behaviorally
- * above but the outer signIn() callback still isn't) are SUPPLEMENTAL
- * guardrails against a future refactor silently reordering the wiring —
- * not the primary evidence of correctness.
+ * Both major behavioral surfaces now have PRIMARY behavioral proof, not
+ * source-inspection:
+ *   - OTP's authorize() callback — __tests__/otpSignupBehavioral.test.ts,
+ *     invoking the actual captured authorize() function with mocked
+ *     pgPool/findByEmail/grantNewSignupProTrial. No live database.
+ *   - Google's outer signIn() callback (including the race-case
+ *     regression that motivated the P0C-1A correction) —
+ *     __tests__/googleSigninBehavioral.test.ts, invoking the actual
+ *     captured signIn() callback with a mocked createGoogleUser().
+ *
+ * The source-inspection block below is SUPPLEMENTAL — a guardrail against
+ * a future refactor silently reordering the wiring — not the primary
+ * evidence of correctness for either path.
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
@@ -37,6 +43,14 @@ vi.mock('@/lib/prisma', () => ({
   },
 }));
 
+class MockPrismaKnownRequestError extends Error {
+  code: string;
+  constructor(message: string, code: string) { super(message); this.code = code; }
+}
+vi.mock('@/lib/generated/prisma/client', () => ({
+  Prisma: { PrismaClientKnownRequestError: MockPrismaKnownRequestError },
+}));
+
 const recordAnalyticsEvent = vi.fn(async (..._a: unknown[]) => ({ outcome: 'written' as const, id: 'evt_1' }));
 vi.mock('@/lib/analyticsEvents', () => ({
   recordAnalyticsEvent: (...a: unknown[]) => recordAnalyticsEvent(...(a as [])),
@@ -52,35 +66,76 @@ beforeEach(() => {
 describe('signup_completed — lib/users.ts createGoogleUser()', () => {
   it('S5. actual prisma.user.create — exactly one signup_completed, signupMethod google, originPlatform unknown', async () => {
     const { createGoogleUser } = await import('@/lib/users');
-    const user = await createGoogleUser('new@example.com', 'New User', null);
+    const result = await createGoogleUser('new@example.com', 'New User', null);
+    expect(result.created).toBe(true);
     expect(recordAnalyticsEvent).toHaveBeenCalledTimes(1);
     const call = recordAnalyticsEvent.mock.calls[0][0] as Record<string, unknown>;
     expect(call).toMatchObject({
       eventType: 'signup_completed', emitter: 'server', originPlatform: 'unknown',
-      userId: user.id, source: 'auth_signup',
-      idempotencyKey: `signup_completed:${user.id}`,
+      userId: result.user.id, source: 'auth_signup',
+      idempotencyKey: `signup_completed:${result.user.id}`,
     });
     expect((call.metadata as Record<string, unknown>).signupMethod).toBe('google');
   });
 
-  it('S6. existing-user early return — no signup_completed', async () => {
+  it('S6. existing-user early return — no signup_completed, created is false', async () => {
     userFindFirst.mockResolvedValueOnce({
       id: 'existing-1', email: 'existing@example.com', name: 'Existing', plan: 'pro',
       createdAt: '2026-01-01T00:00:00.000Z', isProTrial: false, trialExpiresAt: null,
       activeDays: [], badges: [], ambassadorTierRewardsSent: [],
     });
     const { createGoogleUser } = await import('@/lib/users');
-    const user = await createGoogleUser('existing@example.com', 'Existing', null);
-    expect(user.id).toBe('existing-1');
+    const result = await createGoogleUser('existing@example.com', 'Existing', null);
+    expect(result.created).toBe(false);
+    expect(result.user.id).toBe('existing-1');
     expect(userCreate).not.toHaveBeenCalled();
     expect(recordAnalyticsEvent).not.toHaveBeenCalled();
   });
 
-  it('analytics writer throws — account creation still returns normally, return contract unchanged', async () => {
+  it('GOOGLE6. DB-level unique-constraint race — this call\'s own findByEmail found nothing, but prisma.user.create hits a P2002 because a concurrent request\'s INSERT landed first; recovers by re-reading the row and reports created:false, no signup_completed', async () => {
+    // First findFirst (this call's own pre-create existence check): nothing yet.
+    userFindFirst.mockResolvedValueOnce(null);
+    // create() loses the race — a concurrent request's INSERT already landed.
+    userCreate.mockRejectedValueOnce(new MockPrismaKnownRequestError('Unique constraint failed on the fields: (`email`)', 'P2002'));
+    // Re-read after the P2002: the concurrent request's row is now visible.
+    userFindFirst.mockResolvedValueOnce({
+      id: 'raced-user-1', email: 'race@example.com', name: 'Race Winner', plan: 'free',
+      createdAt: '2026-08-20T00:00:00.000Z', isProTrial: false, trialExpiresAt: null,
+      activeDays: [], badges: [], ambassadorTierRewardsSent: [],
+    });
+
+    const { createGoogleUser } = await import('@/lib/users');
+    const result = await createGoogleUser('race@example.com', 'Race Loser', null);
+
+    expect(result.created).toBe(false);
+    expect(result.user.id).toBe('raced-user-1');
+    expect(recordAnalyticsEvent).not.toHaveBeenCalled(); // no signup_completed for the race loser
+  });
+
+  it('GOOGLE7. non-unique create failure — NOT converted into created:false, error propagates unchanged, no analytics falsely emitted', async () => {
+    userFindFirst.mockResolvedValueOnce(null); // no existing user
+    userCreate.mockRejectedValueOnce(new Error('connection terminated unexpectedly')); // unrelated DB error, not P2002
+
+    const { createGoogleUser } = await import('@/lib/users');
+    await expect(createGoogleUser('outage@example.com', 'Outage User', null)).rejects.toThrow('connection terminated unexpectedly');
+    expect(recordAnalyticsEvent).not.toHaveBeenCalled();
+  });
+
+  it('GOOGLE7b. a P2002 that is NOT actually recoverable (re-read still finds nothing) re-throws rather than silently returning a bogus result', async () => {
+    userFindFirst.mockResolvedValueOnce(null);
+    userCreate.mockRejectedValueOnce(new MockPrismaKnownRequestError('Unique constraint failed on the fields: (`email`)', 'P2002'));
+    userFindFirst.mockResolvedValueOnce(null); // re-read still finds nothing — genuinely unexpected
+
+    const { createGoogleUser } = await import('@/lib/users');
+    await expect(createGoogleUser('ghost@example.com', 'Ghost User', null)).rejects.toThrow('Unique constraint failed');
+  });
+
+  it('analytics writer throws — account creation still returns normally, created remains true', async () => {
     recordAnalyticsEvent.mockRejectedValueOnce(new Error('db unavailable'));
     const { createGoogleUser } = await import('@/lib/users');
-    const user = await createGoogleUser('new2@example.com', 'New User Two', null);
-    expect(user.email).toBe('new2@example.com');
+    const result = await createGoogleUser('new2@example.com', 'New User Two', null);
+    expect(result.created).toBe(true);
+    expect(result.user.email).toBe('new2@example.com');
   });
 
   it('no email/name/PII beyond userId in metadata', async () => {
@@ -167,13 +222,17 @@ describe('signup_completed / trial_started wiring in lib/auth.ts (source inspect
     expect(trialEventAt).toBeGreaterThan(isNewBranchAt);
   });
 
-  it('S7. Google: both events are inside the `else` (new-user) branch of the dbUser check, not the existing-account branch', () => {
+  it('S7/GOOGLE-race guardrail: trial_started sits inside the `if (result.created)` branch, not merely inside the outer dbUser-not-found else — a race-losing createGoogleUser() result must never reach it', () => {
     const dbUserCheckAt = src.indexOf('if (dbUser) {');
-    const elseAt = src.indexOf('} else {\n            // New Google user', dbUserCheckAt);
-    const trialEventAt = src.indexOf("eventType: 'trial_started'", elseAt);
+    const outerElseAt = src.indexOf('} else {', dbUserCheckAt);
+    const createdCheckAt = src.indexOf('if (result.created) {', outerElseAt);
+    const trialEventAt = src.indexOf("eventType: 'trial_started'", createdCheckAt);
+    const raceElseAt = src.indexOf('} else {', createdCheckAt); // the result.created === false branch
     expect(dbUserCheckAt).toBeGreaterThan(-1);
-    expect(elseAt).toBeGreaterThan(dbUserCheckAt);
-    expect(trialEventAt).toBeGreaterThan(elseAt);
+    expect(outerElseAt).toBeGreaterThan(dbUserCheckAt);
+    expect(createdCheckAt).toBeGreaterThan(outerElseAt);
+    expect(trialEventAt).toBeGreaterThan(createdCheckAt);
+    expect(trialEventAt).toBeLessThan(raceElseAt);
   });
 });
 
