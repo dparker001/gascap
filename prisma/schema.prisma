@@ -175,6 +175,10 @@ model User {
   favoriteStations         FavoriteStation[]
   deviceSessions           DeviceSession[]
   rentalSessions           RentalSession[]
+  /// Growth Sprint 1 — historical events survive account deletion (onDelete:
+  /// SetNull on the other side), so this relation exists for query
+  /// convenience only; it is never used to cascade-delete analytics history.
+  analyticsEvents          AnalyticsEvent[]
 }
 
 model OtpCode {
@@ -637,4 +641,63 @@ model RentalSession {
 
   @@index([userId])
   @@index([userId, status])
+}
+
+/// Growth Sprint 1 — first-party funnel/conversion event log. GasCap's own
+/// authoritative record of funnel-critical events, independent of GA4/Meta/
+/// GHL (none of which can reliably answer basic conversion questions today).
+/// Append-only.
+///
+/// P0A ships the table, the trusted internal writer, and the hardened public
+/// ingest route ONLY — no business event is wired into a real mutation path
+/// yet (that's P0B/P0C/P0D). Anything writing here today only exists to
+/// prove the ingest infrastructure itself.
+model AnalyticsEvent {
+  id              String    @id @default(cuid())
+  /// Nullable: some events (e.g. an anonymous guest's calculator use before
+  /// signup) have no user yet. Also stays nullable — not required — after
+  /// the referenced User is deleted (see the SetNull relation below): the
+  /// aggregate event survives account deletion, only the direct user link
+  /// is severed. Never cascade-delete analytics history.
+  userId          String?
+  eventType       String
+  /// Where the underlying customer/action actually originated:
+  /// 'web' | 'ios' | 'android' | 'unknown'. NOT the same axis as `emitter`
+  /// below — a server-authoritative event still describes a web/iOS/Android
+  /// customer, and collapsing that distinction would destroy exactly the
+  /// platform breakdown this table exists to provide.
+  originPlatform  String
+  /// HOW this row was written: 'client' | 'server' | 'webhook'.
+  emitter         String
+  /// Free-form attribution/context, e.g. which screen/entry-point fired
+  /// this (only populated where meaningful).
+  source          String?
+  /// 'stripe' | 'revenuecat' — only populated for payment-related events.
+  provider        String?
+  /// 'monthly' | 'lifetime' — only populated for checkout/purchase events.
+  billing         String?
+  /// Small, non-secret context only — same rule as AdminAuditLog: never
+  /// request bodies, never secrets, never full payloads, never PII beyond
+  /// what's already in userId. Per-eventType shape constraints are enforced
+  /// at the application layer (lib/analyticsEvents.ts), not here.
+  metadata        Json?
+  /// Required for any event that must never be double-counted from an
+  /// at-least-once webhook redelivery or a legitimately-repeatable business
+  /// event. Client-fired pure-UX events leave this null. Postgres treats
+  /// multiple NULLs as distinct for a unique constraint, so null-keyed rows
+  /// never collide with each other.
+  idempotencyKey  String?
+  createdAt       DateTime  @default(now())
+
+  /// SetNull, not Cascade — deliberately different from every other
+  /// User-owned table in this schema (Vehicle/Fillup/etc. all cascade).
+  /// Deleting a GasCap account must not erase historical aggregate funnel
+  /// data; it only severs the direct user association.
+  user            User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@unique([idempotencyKey])
+  @@index([userId])
+  @@index([userId, eventType])
+  @@index([eventType, createdAt])
+  @@index([createdAt])
 }
