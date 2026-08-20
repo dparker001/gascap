@@ -28,6 +28,7 @@ import { newMemberOfferStatus, NEW_MEMBER_LIFETIME_COUPON } from '@/lib/newMembe
 import { winbackOfferAvailable, WINBACK_LIFETIME_COUPON } from '@/lib/winbackOffer';
 import { foundingStatus, FOUNDING_LIFETIME_COUPON } from '@/lib/foundingPromo';
 import { C4_LIFETIME_COUPON } from '@/lib/emailTrialConversion';
+import { recordAnalyticsEvent } from '@/lib/analyticsEvents';
 
 export async function POST(req: Request) {
   if (!stripe) {
@@ -228,6 +229,38 @@ export async function POST(req: Request) {
       },
     }),
   });
+
+  // Growth Sprint 1, P0C-1B — checkout_started fires only for a genuine
+  // canonical Pro Monthly or Pro Lifetime checkout, only after the real
+  // Stripe Checkout Session above has been created. `tier`/`validatedBilling`
+  // are already runtime-validated and `priceId` is already server-owned
+  // (Stripe Payment Authorization Hardening — see file header; there is no
+  // caller-supplied priceId contract to re-derive from anymore). The
+  // `priceId === PRICES.x` equality check below is kept anyway as
+  // defense-in-depth: it costs nothing and means this classifier stays
+  // correct even if the price-resolution logic above it ever changes
+  // shape. This is an analytics-purity check only — it never affects
+  // whether checkout itself succeeds.
+  const analyticsBilling =
+    validatedBilling === 'monthly'  && priceId === PRICES.proMonthly  ? 'monthly' :
+    validatedBilling === 'lifetime' && priceId === PRICES.proLifetime ? 'lifetime' :
+    null;
+
+  if (analyticsBilling) {
+    try {
+      await recordAnalyticsEvent({
+        eventType:      'checkout_started',
+        originPlatform: 'web',
+        emitter:        'server',
+        userId,
+        provider:       'stripe',
+        billing:        analyticsBilling,
+        source:         'stripe_checkout',
+        idempotencyKey: `checkout_started:stripe:${checkoutSession.id}`,
+        ...(offerSource ? { metadata: { offerSource } } : {}),
+      });
+    } catch (e) { console.error('[GasCap analytics] checkout_started write failed:', e); }
+  }
 
   return NextResponse.json({ url: checkoutSession.url });
 }
