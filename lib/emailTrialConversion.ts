@@ -338,9 +338,14 @@ export function conversionC3Text(name: string): string {
 
 // ── Dispatcher ────────────────────────────────────────────────────────────────
 
-// ── C4: Special offer — $19.99 Lifetime (own Pro forever) ───────────────────
-// Sent to engaged trial users (calcCount ≥ 2 OR streak ≥ 3) only.
-// 48-hour urgency. Links to upgrade page with lifetime billing pre-selected.
+// ── C4: Own it forever — $19.99 Lifetime (last trial-conversion email) ──────
+// Sent to engaged trial users (calcCount ≥ 2 OR streak ≥ 3) only, near the
+// end of the trial window. The urgency here is the user's own trial
+// expiring — NOT a temporary price reduction. $19.99 is the regular,
+// standing Lifetime price and stays available after the trial ends; do not
+// reintroduce "special offer"/"expires in N hours" framing around the price
+// itself unless a real, server-enforced temporary promotion exists. Links to
+// the plain upgrade page (no query param — see OFFER_URL below).
 
 // C4 has no discount code — Lifetime already sells at $19.99 flat, so the
 // email just points at the existing Lifetime purchase flow. (A LIFETIME19
@@ -356,27 +361,27 @@ export function conversionC4Html(name: string, userId: string): string {
     ${brandHeader('trial')}
     <tr><td style="padding:32px;">
 
-      <!-- Special offer banner -->
+      <!-- Own it forever banner -->
       <div style="background:linear-gradient(135deg,#005F4A,#1EB68F);border-radius:14px;padding:22px 24px;margin:0 0 24px;text-align:center;">
         <p style="margin:0 0 4px;font-size:12px;font-weight:800;color:rgba(255,255,255,0.8);text-transform:uppercase;letter-spacing:1px;">
-          Special Offer — 48 Hours Only
+          Own GasCap™ Pro Forever
         </p>
         <p style="margin:0;font-size:32px;font-weight:900;color:#fff;line-height:1.1;">
-          $19.99
+          $19.99 One Time
         </p>
         <p style="margin:6px 0 0;font-size:14px;color:rgba(255,255,255,0.85);">
-          One-time payment · Own GasCap™ Pro forever · No subscription ever
+          Own GasCap™ Pro forever · No subscription ever
         </p>
       </div>
 
       <p style="margin:0 0 6px;font-size:22px;font-weight:900;color:#1e2d4a;line-height:1.2;">
-        ${first}, we'd like to keep you — forever.
+        ${first}, your trial is ending — here's how to keep Pro.
       </p>
       <p style="margin:0 0 22px;font-size:15px;color:#475569;line-height:1.6;">
-        You've been one of our most active trial members. We don't want to lose you — so
-        here's a one-time offer reserved for engaged users like you:
-        <strong>own GasCap™ Pro forever</strong> for a single payment of $19.99.
-        No monthly bill. No annual renewal. Just Pro — for life.
+        You've been one of our most active trial members, and your Pro trial is about to
+        end. You have two ways to keep everything you've been using: <strong>$2.99/month</strong>,
+        cancel anytime — or pay once and <strong>own GasCap™ Pro forever</strong> for a single
+        payment of $19.99. No monthly bill, ever, on that path.
       </p>
 
       <!-- Offer detail -->
@@ -433,20 +438,20 @@ export function conversionC4Html(name: string, userId: string): string {
         </tr>
       </table>
 
-      <!-- Expiry -->
+      <!-- Trial expiring -->
       <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:14px 18px;margin:0 0 22px;">
         <p style="margin:0;font-size:13px;color:#9a3412;font-weight:700;">
-          ⏰ This offer expires in 48 hours — it will not be extended.
+          ⏰ Your Pro trial is ending soon — upgrade to keep your streak, giveaway entries, and Pro features.
         </p>
       </div>
 
       <div style="text-align:center;padding:8px 0;">
         <a href="${OFFER_URL}" style="display:inline-block;background:#16a34a;color:#fff;font-weight:900;
            font-size:16px;padding:16px 36px;border-radius:12px;text-decoration:none;">
-          Own GasCap™ Forever — $19.99 →
+          Own GasCap™ Pro Forever — $19.99 One Time →
         </a>
         <p style="margin:14px 0 0;font-size:12px;color:#94a3b8;">
-          One-time payment. No subscription, no renewals.
+          $19.99 is our regular Lifetime price — no monthly bill, ever, once you own it.
         </p>
       </div>
 
@@ -457,7 +462,7 @@ export function conversionC4Html(name: string, userId: string): string {
 
 export function conversionC4Text(name: string): string {
   const first = name.split(' ')[0];
-  return `Hi ${first}, we'd like to keep you as a GasCap™ Pro member — forever. Here's a one-time offer just for you: own GasCap™ Pro for life with a single payment of $19.99. No monthly bill, no renewals. Break even in 7 months vs. the $2.99/mo plan — after that, you pay nothing ever. This offer expires in 48 hours. Claim it here: ${OFFER_URL}`;
+  return `Hi ${first}, your GasCap™ Pro trial is ending soon. Keep everything you've been using: $2.99/month, cancel anytime — or own GasCap™ Pro forever with a single payment of $19.99, our regular Lifetime price, no monthly bill ever after that. Break even vs. Monthly in about 7 months. Upgrade before your trial ends: ${OFFER_URL}`;
 }
 
 export interface ConversionRecipient {
@@ -498,7 +503,7 @@ const CONVERSION_META: Record<number, ConversionMeta> = {
   },
   4: {
     subject: "Own GasCap™ Pro forever — one payment, no subscription",
-    preview: '$19.99 Lifetime offer. 48 hours only.',
+    preview: 'Your trial is ending. $19.99 once, or $2.99/mo — your call.',
     htmlFn:  conversionC4Html,
     textFn:  conversionC4Text,
     type:    'trial-c4',
