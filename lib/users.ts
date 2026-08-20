@@ -781,18 +781,40 @@ export async function getUsersPendingCampaignStep(step: number, minDays: number)
 
 /**
  * Enroll a user in the paid drip sequence on their first upgrade.
- * Sets step=1 (P1 already sent), records enrollment timestamp + billing interval.
+ * Sets step=1 (P1 already sent), records enrollment timestamp.
+ *
+ * Growth Sprint 1, P0B fix — provider-provenance bug. This function used to
+ * unconditionally write `interval` into `stripeInterval`, and was called
+ * from BOTH the Stripe webhook AND the RevenueCat webhook (each passing its
+ * own provider's interval). `stripeInterval` is supposed to be Stripe/gift
+ * provenance ONLY — `lib/entitlements.ts` treats `stripeInterval ===
+ * 'lifetime'` as a PERMANENT, unrevocable entitlement, independent of every
+ * other provider. A RevenueCat-only purchaser's first grant was silently
+ * stamping that same field, meaning a RevenueCat Lifetime purchase that was
+ * later refunded/revoked would survive its own revocation forever —
+ * `revokeRevenueCatEntitlement()` clears only the `revenueCat*` fields
+ * before re-resolving entitlements, so a contaminated `stripeInterval`
+ * would still resolve to permanent Pro. `persistStripeProvenance` makes
+ * this explicit and required at every call site: `true` for the Stripe
+ * webhook (this is a genuine Stripe billing interval), `false` for the
+ * RevenueCat webhook (this value must never reach `stripeInterval` at all —
+ * RevenueCat's own provenance lives exclusively in `revenueCatActive`/
+ * `revenueCatInterval`/`revenueCatProductId`, written elsewhere).
+ * `paidCampaignStep`/`paidCampaignEnrolledAt` and all nurture-email
+ * behavior are unaffected either way — this only gates the one
+ * provenance-sensitive field.
  */
 export async function enrollPaidCampaign(
   userId: string,
   interval: 'monthly' | 'annual' | 'lifetime',
+  opts: { persistStripeProvenance: boolean },
 ): Promise<void> {
   await prisma.user.update({
     where: { id: userId },
     data: {
       paidCampaignStep:       1,
       paidCampaignEnrolledAt: new Date().toISOString(),
-      stripeInterval:         interval,
+      ...(opts.persistStripeProvenance ? { stripeInterval: interval } : {}),
     },
   });
 }

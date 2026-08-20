@@ -32,6 +32,8 @@ interface Row {
   isProTrial: boolean;
   trialExpiresAt: string | null;
   lifetimePurchasedAt: string | null;
+  paidCampaignEnrolledAt: string | null;
+  paidCampaignStep: number | null;
 }
 
 const table = new Map<string, Row>();
@@ -42,6 +44,7 @@ function makeRow(overrides: Partial<Row> = {}): Row {
     stripeInterval: null, stripeSubscriptionId: null, stripeCustomerId: null,
     revenueCatActive: false, revenueCatInterval: null, revenueCatProductId: null,
     isProTrial: false, trialExpiresAt: null, lifetimePurchasedAt: null,
+    paidCampaignEnrolledAt: null, paidCampaignStep: null,
     ...overrides,
   };
 }
@@ -223,5 +226,87 @@ describe('entitlement provenance — integration', () => {
     await setUserPlan('user-1', 'pro', { revenueCat: { active: true, interval: 'monthly', productId: 'gascap_pro_monthly' } });
     expect(table.get('user-1')!.isProTrial).toBe(false);
     expect(table.get('user-1')!.trialExpiresAt).toBeNull();
+  });
+});
+
+describe('enrollPaidCampaign — provider-provenance fix (Growth Sprint 1, P0B)', () => {
+  // The original bug lived HERE, not in setUserPlan/revokeRevenueCatEntitlement
+  // above — enrollPaidCampaign unconditionally wrote `interval` into
+  // stripeInterval, and was called from both the Stripe AND RevenueCat
+  // webhooks with each provider's own interval. None of the tests above
+  // would have caught this, because none of them call enrollPaidCampaign —
+  // exactly why the bug survived despite this file's existing coverage.
+
+  it('P1. Stripe Monthly paid flow still writes/retains Stripe Monthly provenance', async () => {
+    table.set('user-1', makeRow({ stripeInterval: null }));
+    const { enrollPaidCampaign } = await getUsersModule();
+    await enrollPaidCampaign('user-1', 'monthly', { persistStripeProvenance: true });
+    expect(table.get('user-1')!.stripeInterval).toBe('monthly');
+    expect(table.get('user-1')!.paidCampaignStep).toBe(1);
+    expect(table.get('user-1')!.paidCampaignEnrolledAt).not.toBeNull();
+  });
+
+  it('P2. Stripe Lifetime paid flow still writes/retains Stripe Lifetime provenance', async () => {
+    table.set('user-1', makeRow({ stripeInterval: null }));
+    const { enrollPaidCampaign } = await getUsersModule();
+    await enrollPaidCampaign('user-1', 'lifetime', { persistStripeProvenance: true });
+    expect(table.get('user-1')!.stripeInterval).toBe('lifetime');
+  });
+
+  it('P3. RevenueCat Monthly first purchase does NOT create/change stripeInterval', async () => {
+    table.set('user-1', makeRow({ stripeInterval: null }));
+    const { enrollPaidCampaign } = await getUsersModule();
+    await enrollPaidCampaign('user-1', 'monthly', { persistStripeProvenance: false });
+    expect(table.get('user-1')!.stripeInterval).toBeNull();
+    // Paid-campaign enrollment itself is unaffected by the provenance flag.
+    expect(table.get('user-1')!.paidCampaignStep).toBe(1);
+    expect(table.get('user-1')!.paidCampaignEnrolledAt).not.toBeNull();
+  });
+
+  it('P4. RevenueCat Lifetime first purchase does NOT create/change stripeInterval', async () => {
+    table.set('user-1', makeRow({ stripeInterval: null }));
+    const { enrollPaidCampaign } = await getUsersModule();
+    await enrollPaidCampaign('user-1', 'lifetime', { persistStripeProvenance: false });
+    expect(table.get('user-1')!.stripeInterval).toBeNull();
+  });
+
+  it('P5. If a RevenueCat buyer already has legitimate Stripe Lifetime provenance, RevenueCat paid-campaign enrollment does NOT overwrite or clear it', async () => {
+    table.set('user-1', makeRow({ stripeInterval: 'lifetime' }));
+    const { enrollPaidCampaign } = await getUsersModule();
+    // A RevenueCat monthly grant enrolling this same (already Stripe-Lifetime) user.
+    await enrollPaidCampaign('user-1', 'monthly', { persistStripeProvenance: false });
+    expect(table.get('user-1')!.stripeInterval).toBe('lifetime'); // untouched, not overwritten with 'monthly' or cleared
+  });
+
+  it('P6. RevenueCat Lifetime followed by RevenueCat revocation cannot survive solely because RevenueCat polluted stripeInterval — this is the exact bug scenario', async () => {
+    table.set('user-1', makeRow({ stripeInterval: null }));
+    const { setUserPlan, enrollPaidCampaign, revokeRevenueCatEntitlement } = await getUsersModule();
+
+    // Full realistic sequence: RC Lifetime grant (setUserPlan), then the
+    // welcome-campaign enrollment that used to corrupt stripeInterval.
+    await setUserPlan('user-1', 'pro', { revenueCat: { active: true, interval: 'lifetime', productId: 'gascap_pro_lifetime' } });
+    await enrollPaidCampaign('user-1', 'lifetime', { persistStripeProvenance: false });
+    expect(table.get('user-1')!.stripeInterval).toBeNull(); // the fix: never contaminated
+
+    // RevenueCat later revokes/refunds. With the bug, stripeInterval='lifetime'
+    // would have made this a permanent, unrevocable entitlement — resolved.pro
+    // would incorrectly stay true forever. With the fix, no independent
+    // entitlement source survives, so the user correctly downgrades.
+    const resolved = await revokeRevenueCatEntitlement('user-1');
+    expect(resolved.pro).toBe(false);
+    expect(table.get('user-1')!.plan).toBe('free');
+  });
+
+  it('P6b. the same revocation, but a genuine independent Stripe Lifetime DOES survive — proves the fix does not over-correct into destroying real provenance', async () => {
+    table.set('user-1', makeRow({ stripeInterval: 'lifetime' })); // genuine prior Stripe purchase
+    const { setUserPlan, enrollPaidCampaign, revokeRevenueCatEntitlement } = await getUsersModule();
+
+    await setUserPlan('user-1', 'pro', { revenueCat: { active: true, interval: 'monthly', productId: 'gascap_pro_monthly' } });
+    await enrollPaidCampaign('user-1', 'monthly', { persistStripeProvenance: false });
+    expect(table.get('user-1')!.stripeInterval).toBe('lifetime'); // the real Stripe provenance, untouched
+
+    const resolved = await revokeRevenueCatEntitlement('user-1');
+    expect(resolved.pro).toBe(true); // genuinely still Pro via the real Stripe Lifetime
+    expect(table.get('user-1')!.plan).toBe('pro');
   });
 });
