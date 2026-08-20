@@ -88,6 +88,16 @@ const CLIENT_EVENT_TYPES = new Set([
   'rental_setup_step_viewed',
   'rental_fuel_needed_calculated',
   'paywall_viewed',
+  // Growth Sprint 1 — native IAP funnel. Deliberately a DIFFERENT event name
+  // from the web `checkout_started` (which is server-authoritative, fired
+  // only after a real Stripe Checkout Session exists — see the removed-entry
+  // comment below). Native purchases run entirely in the RevenueCat
+  // Capacitor SDK inside the WebView; there is no server round-trip at
+  // "purchase attempt started" time to hook into, so this can only ever be
+  // a self-reported client signal, same trust class as paywall_viewed —
+  // never used to gate or verify entitlement. Fired from lib/iap.ts's
+  // purchasePro(), immediately before the native purchase sheet is invoked.
+  'iap_checkout_started',
 ]);
 
 /**
@@ -150,6 +160,12 @@ const METADATA_SCHEMAS: Record<string, MetadataSchema> = {
   // checkout_started has no entry here — it is server-authoritative
   // (app/api/stripe/checkout/route.ts) and structurally unreachable through
   // this route now that it's absent from CLIENT_EVENT_TYPES above.
+  iap_checkout_started: {
+    fields: {
+      billing: (v) => v === 'monthly' || v === 'lifetime',
+    },
+    required: ['billing'],
+  },
   paywall_viewed: {
     fields: {
       showGetaway: (v) => typeof v === 'boolean',
