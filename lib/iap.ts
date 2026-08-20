@@ -108,13 +108,21 @@ export async function purchasePro(which: 'monthly' | 'lifetime'): Promise<Purcha
     // IAP products aren't approved/"Ready to Submit" yet, or the Paid Apps
     // Agreement just activated and hasn't propagated to sandbox.
     if (!pkgs.length) return { ok: false, error: 'no-offerings' };
+    // Purchase Integrity — must resolve the EXACT requested product only. A
+    // `?? pkgs[0]` fallback here previously meant a caller who requested
+    // Lifetime, with the Lifetime package unavailable, could silently
+    // purchase whatever package happened to be first (e.g. Monthly) instead
+    // — same risk in reverse for a Monthly request. No fallback: an exact
+    // miss is a hard 'no-package', never a substitute purchase.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const pkg = pkgs.find((p: any) => p?.product?.identifier === productId) ?? pkgs[0];
+    const pkg = pkgs.find((p: any) => p?.product?.identifier === productId);
     if (!pkg) return { ok: false, error: 'no-package' };
     // Fires only once a real product package resolved and the native purchase
     // sheet is genuinely about to be invoked — not on 'no-offerings'/'no-package'
-    // failures above, which aren't a real purchase attempt.
-    trackClientEvent('iap_checkout_started', { billing: which });
+    // failures above, which aren't a real purchase attempt. trackClientEvent
+    // itself never throws by contract, but wrapped defensively anyway — an
+    // analytics failure must never be able to block or fail a real purchase.
+    try { trackClientEvent('iap_checkout_started', { billing: which }); } catch { /* analytics must never break a purchase */ }
     const { customerInfo } = await rc.Purchases.purchasePackage({ aPackage: pkg });
     return { ok: hasActiveEntitlement(customerInfo) };
   } catch (e) {
