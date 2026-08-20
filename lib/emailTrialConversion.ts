@@ -342,14 +342,13 @@ export function conversionC3Text(name: string): string {
 // Sent to engaged trial users (calcCount ≥ 2 OR streak ≥ 3) only.
 // 48-hour urgency. Links to upgrade page with lifetime billing pre-selected.
 
-// Stripe Payment Authorization Hardening — exported so
-// app/api/stripe/checkout/route.ts can allowlist EXACTLY this one known
-// campaign coupon rather than accepting an arbitrary caller-supplied
-// Stripe Coupon ID. Single source of truth — do not hardcode this literal
-// a second time anywhere else.
-export const C4_LIFETIME_COUPON = 'LIFETIME19';
-
-const OFFER_URL = `${BASE_URL}/upgrade?coupon=${C4_LIFETIME_COUPON}`;
+// C4 has no discount code — Lifetime already sells at $19.99 flat, so the
+// email just points at the existing Lifetime purchase flow. (A LIFETIME19
+// coupon/query-param mechanism existed here previously but never existed
+// as a real Stripe coupon — removed 2026-08-20 after it was found to be
+// dead and, worse, could 500 a real checkout if a recipient's browser ever
+// reached the code path that forwarded it.)
+const OFFER_URL = `${BASE_URL}/upgrade`;
 
 export function conversionC4Html(name: string, userId: string): string {
   const first = name.split(' ')[0];
@@ -447,7 +446,7 @@ export function conversionC4Html(name: string, userId: string): string {
           Own GasCap™ Forever — $19.99 →
         </a>
         <p style="margin:14px 0 0;font-size:12px;color:#94a3b8;">
-          Use code <strong>LIFETIME19</strong> at checkout. One-time payment. No subscription, no renewals.
+          One-time payment. No subscription, no renewals.
         </p>
       </div>
 
@@ -458,7 +457,7 @@ export function conversionC4Html(name: string, userId: string): string {
 
 export function conversionC4Text(name: string): string {
   const first = name.split(' ')[0];
-  return `Hi ${first}, we'd like to keep you as a GasCap™ Pro member — forever. Here's a one-time offer just for you: own GasCap™ Pro for life with a single payment of $19.99. No monthly bill, no renewals. Break even in 7 months vs. the $2.99/mo plan — after that, you pay nothing ever. Use code LIFETIME19 at checkout. This offer expires in 48 hours. Claim it here: ${OFFER_URL}`;
+  return `Hi ${first}, we'd like to keep you as a GasCap™ Pro member — forever. Here's a one-time offer just for you: own GasCap™ Pro for life with a single payment of $19.99. No monthly bill, no renewals. Break even in 7 months vs. the $2.99/mo plan — after that, you pay nothing ever. This offer expires in 48 hours. Claim it here: ${OFFER_URL}`;
 }
 
 export interface ConversionRecipient {

@@ -44,7 +44,6 @@ function UpgradePageInner() {
   ];
 
   const searchParams = useSearchParams();
-  const coupon = searchParams.get('coupon') ?? undefined;
   const wb       = searchParams.get('wb') === '1';       // win-back $9.99 Lifetime offer
   const founding = searchParams.get('founding') === '1'; // Founding Member $9.99 Lifetime
   // Resolve platform once on mount. We render a neutral loader until this is
@@ -116,8 +115,6 @@ function UpgradePageInner() {
     setLoading(billing === 'lifetime' ? 'pro-lifetime' : 'pro-monthly');
     setError('');
     try {
-      // Only apply promo coupon on monthly — lifetime is already a one-time deal
-      const applyCoupon = coupon && billing === 'monthly' ? { coupon } : {};
       // Win-back $9.99 Lifetime — request the server-validated discount on lifetime
       const applyWinback  = wb && billing === 'lifetime' ? { winbackOffer: true } : {};
       // Founding Member $9.99 Lifetime — server-validated while the launch promo is on
@@ -125,7 +122,7 @@ function UpgradePageInner() {
       const res  = await fetch('/api/stripe/checkout', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ tier: 'pro', billing, ...applyCoupon, ...applyWinback, ...applyFounding }),
+        body:    JSON.stringify({ tier: 'pro', billing, ...applyWinback, ...applyFounding }),
       });
       const data = await res.json() as { url?: string; error?: string };
       if (data.url) { window.location.href = data.url; }
@@ -386,15 +383,6 @@ function UpgradePageInner() {
               <p className="text-xs text-teal-700 mt-0.5">
                 Choose <span className="font-bold">Pro Lifetime</span> below — $9.99 (reg. $19.99) is applied automatically at checkout.
               </p>
-            </div>
-          </div>
-        )}
-
-        {/* Promo notice */}
-        {coupon && (
-          <div className="flex items-center justify-center mb-6">
-            <div className="bg-amber-50 border border-amber-300 rounded-xl px-5 py-2 text-sm font-bold text-amber-800">
-              {t.upgrade.promoApplied}
             </div>
           </div>
         )}

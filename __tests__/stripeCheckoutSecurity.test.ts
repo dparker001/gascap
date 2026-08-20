@@ -49,8 +49,6 @@ vi.mock('@/lib/foundingPromo', () => ({
   foundingStatus: async () => ({ active: false }),
   FOUNDING_LIFETIME_COUPON: 'coupon_founding',
 }));
-vi.mock('@/lib/emailTrialConversion', () => ({ C4_LIFETIME_COUPON: 'coupon_c4_test' }));
-
 function req(body: Record<string, unknown>) {
   return new Request('https://www.gascap.app/api/stripe/checkout', {
     method: 'POST',
@@ -155,17 +153,16 @@ describe('POST /api/stripe/checkout — Stripe Payment Authorization Hardening',
   });
 
   // ── Coupon trust boundary ──────────────────────────────────────────────
-  // The normal checkout route does NOT accept an arbitrary caller-selected
-  // Stripe Coupon ID. Exactly one raw coupon value is allowlisted — the
-  // known C4 trial-conversion campaign coupon (lib/emailTrialConversion.ts,
-  // exported as C4_LIFETIME_COUPON, mocked here as 'coupon_c4_test') —
-  // because that is the one genuine active first-party dependency on a raw
-  // coupon (the C4 email links to /upgrade?coupon=<that value>, forwarded
-  // by handleUpgrade()). Anything else is silently dropped, never reaches
-  // Stripe. Server-controlled offers (new-member/winback/founding) remain
-  // fully independent of this allowlist and always win when eligible.
+  // The checkout route has no `body.coupon` contract at all — there is no
+  // caller-controlled way to name a Stripe Coupon ID. A coupon is only ever
+  // set from a server-validated offer flag (new-member/winback/founding).
+  // (A prior allowlist for exactly one raw campaign coupon — C4/LIFETIME19 —
+  // was removed 2026-08-20: that coupon never existed in Stripe, and the
+  // client-side gating that was supposed to route it only through Lifetime
+  // billing was itself wired to the wrong billing type, so the dead path
+  // could 500 a real Monthly checkout if ever reached.)
 
-  it('SEC-C10. Arbitrary caller-selected Coupon ID is never sent to Stripe — checkout still succeeds, falls back to allow_promotion_codes', async () => {
+  it('SEC-C10. Arbitrary caller-selected Coupon ID field is never sent to Stripe — checkout still succeeds, falls back to allow_promotion_codes', async () => {
     const res = await callRoute({ tier: 'pro', billing: 'monthly', coupon: 'attacker-selected-value' });
     expect(res.status).toBe(200);
     const createCall = sessionsCreate.mock.calls[0][0] as { discounts?: unknown; allow_promotion_codes?: boolean };
@@ -173,12 +170,12 @@ describe('POST /api/stripe/checkout — Stripe Payment Authorization Hardening',
     expect(createCall.allow_promotion_codes).toBe(true);
   });
 
-  it('SEC-C10b. The exact allowlisted C4 coupon still reaches discounts — existing campaign behavior preserved', async () => {
-    const res = await callRoute({ tier: 'pro', billing: 'monthly', coupon: 'coupon_c4_test' });
+  it('SEC-C10b. Even a value matching the historical C4 coupon literal is ignored — no coupon allowlist survives the removal', async () => {
+    const res = await callRoute({ tier: 'pro', billing: 'monthly', coupon: 'LIFETIME19' });
     expect(res.status).toBe(200);
-    const createCall = sessionsCreate.mock.calls[0][0] as { discounts?: { coupon: string }[]; allow_promotion_codes?: boolean };
-    expect(createCall.discounts).toEqual([{ coupon: 'coupon_c4_test' }]);
-    expect(createCall.allow_promotion_codes).toBeUndefined();
+    const createCall = sessionsCreate.mock.calls[0][0] as { discounts?: unknown; allow_promotion_codes?: boolean };
+    expect(createCall.discounts).toBeUndefined();
+    expect(createCall.allow_promotion_codes).toBe(true);
   });
 
   it('SEC-C11. Server-controlled offer (new-member) still applies its own resolved coupon, independent of any caller-supplied coupon', async () => {

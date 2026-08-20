@@ -27,7 +27,6 @@ import { getBaseUrl }      from '@/lib/getBaseUrl';
 import { newMemberOfferStatus, NEW_MEMBER_LIFETIME_COUPON } from '@/lib/newMemberOffer';
 import { winbackOfferAvailable, WINBACK_LIFETIME_COUPON } from '@/lib/winbackOffer';
 import { foundingStatus, FOUNDING_LIFETIME_COUPON } from '@/lib/foundingPromo';
-import { C4_LIFETIME_COUPON } from '@/lib/emailTrialConversion';
 import { recordAnalyticsEvent } from '@/lib/analyticsEvents';
 
 export async function POST(req: Request) {
@@ -62,7 +61,6 @@ export async function POST(req: Request) {
   const body = await req.json() as {
     tier?:    string;
     billing?: string;
-    coupon?:  string; // Stripe Coupon ID — allowlisted below, see Stripe Payment Authorization Hardening note
     newMemberOffer?: boolean; // request the 7-day new-member Lifetime discount
     winbackOffer?:   boolean; // request the win-back Lifetime discount ($9.99)
     foundingOffer?:  boolean; // request the Founding Member launch discount ($9.99)
@@ -71,16 +69,15 @@ export async function POST(req: Request) {
   const tier    = body.tier    ?? 'pro';
   const billing = body.billing ?? 'monthly';
 
-  // Stripe Payment Authorization Hardening — `body.coupon` is NOT passed to
-  // Stripe as an arbitrary caller-selected Coupon ID. The only currently
-  // active first-party dependency on a raw coupon value is the C4
-  // trial-conversion email (lib/emailTrialConversion.ts), which always
-  // links to exactly one known campaign coupon. Anything else a caller
-  // sends here is silently ignored — never forwarded to Stripe. This is
-  // deliberately narrower than a general "any coupon the caller names is
-  // fine" contract: an arbitrary valid Stripe coupon ID must not be
-  // applicable to a checkout merely by naming it in the request body.
-  let coupon: string | null = body.coupon === C4_LIFETIME_COUPON ? C4_LIFETIME_COUPON : null;
+  // Stripe Payment Authorization Hardening — there is no caller-supplied
+  // Coupon ID contract at all. A coupon is only ever set below, from a
+  // server-validated offer flag (newMemberOffer/winbackOffer/foundingOffer),
+  // never from a raw client-named coupon string. (A prior `body.coupon`
+  // allowlist for a single campaign coupon, C4/LIFETIME19, was removed
+  // 2026-08-20 — that coupon never existed in Stripe, so the path was dead
+  // and, worse, could 500 a real checkout if reached. See git history for
+  // the removed code if this is ever revisited.)
+  let coupon: string | null = null;
 
   // Annual is no longer offered — Lifetime ($19.99 one-time) was strictly cheaper
   // AND better (forever access, more giveaway entries, the vacation getaway) than

@@ -66,8 +66,6 @@ vi.mock('@/lib/foundingPromo', () => ({
   FOUNDING_LIFETIME_COUPON: 'coupon_founding',
 }));
 
-vi.mock('@/lib/emailTrialConversion', () => ({ C4_LIFETIME_COUPON: 'coupon_c4_test' }));
-
 const recordAnalyticsEvent = vi.fn(async (..._a: unknown[]) =>
   ({ outcome: 'written', id: 'evt_1' }) as { outcome: 'written'; id: string } | { outcome: 'duplicate' });
 vi.mock('@/lib/analyticsEvents', () => ({ recordAnalyticsEvent: (...a: unknown[]) => recordAnalyticsEvent(...(a as [])) }));
@@ -273,12 +271,15 @@ describe('POST /api/stripe/checkout — checkout_started analytics (hardened con
     expect(call.metadata).toEqual({ offerSource: 'founding' });
   });
 
-  it('SC16. C4 allowed coupon path — session and analytics both fire, no offerSource (C4 is not an offerSource-tagged campaign)', async () => {
+  it('SC16. A coupon value matching the historical C4 literal has no special handling — session and analytics fire exactly like any other ignored coupon', async () => {
     sessionsCreate.mockResolvedValueOnce({ id: 'cs_test_c4', url: 'https://checkout.example/c4' });
 
-    const res = await callRoute({ tier: 'pro', billing: 'monthly', coupon: 'coupon_c4_test' });
+    const res = await callRoute({ tier: 'pro', billing: 'monthly', coupon: 'LIFETIME19' });
 
     expect(res.status).toBe(200);
+    const createCall = sessionsCreate.mock.calls[0][0] as { discounts?: unknown; allow_promotion_codes?: boolean };
+    expect(createCall.discounts).toBeUndefined();
+    expect(createCall.allow_promotion_codes).toBe(true);
     expect(recordAnalyticsEvent).toHaveBeenCalledTimes(1);
     const call = recordAnalyticsEvent.mock.calls[0][0] as Record<string, unknown>;
     expect(call).toMatchObject({ eventType: 'checkout_started', billing: 'monthly' });
