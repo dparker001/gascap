@@ -339,7 +339,9 @@ export async function POST(req: Request) {
 
         // Only enroll if not already in the paid campaign (idempotent guard)
         if (!upgradedUser.paidCampaignEnrolledAt) {
-          await enrollPaidCampaign(userId, interval);
+          // Growth Sprint 1, P0B provenance fix — this IS a genuine Stripe
+          // billing interval, safe to persist into stripeInterval.
+          await enrollPaidCampaign(userId, interval, { persistStripeProvenance: true });
         }
 
         if (!upgradedUser.engagementEnrolledAt) {

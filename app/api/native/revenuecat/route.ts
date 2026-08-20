@@ -76,10 +76,65 @@ import { getawayPromoActive, GETAWAY_DISCLOSURE } from '@/lib/getawayPromo';
 import { claimEvent, markProcessed, markFailed } from '@/lib/revenueCatEvents';
 import { verifyRevenueCatHmac, HMAC_SIGNATURE_HEADER } from '@/lib/revenueCatHmac';
 import { fetchAuthoritativeRevenueCatState } from '@/lib/revenueCatApi';
+import { recordAnalyticsEvent, type OriginPlatform } from '@/lib/analyticsEvents';
 
 export const dynamic = 'force-dynamic';
 
 const LIFETIME_PRODUCT = 'gascap_pro_lifetime';
+const MONTHLY_PRODUCT  = 'gascap_pro_monthly';
+
+/**
+ * Growth Sprint 1, P0B — production-only purchase_completed classifier.
+ *
+ * Fail-closed by design: every ambiguous or unconfirmed case returns null
+ * (no analytics event), never a guess. GasCap's internal 30-day trial
+ * (grantNewSignupProTrial) is a SEPARATE mechanism from RevenueCat's own
+ * period_type=TRIAL/is_trial_conversion — this classifier does not use
+ * either of those RC fields to detect GasCap's trial (see
+ * wasOnGasCapTrial, captured separately from the resolved user's own
+ * isProTrial before the grant clears it).
+ *
+ * - environment must be exactly 'PRODUCTION' — SANDBOX (or any other/missing
+ *   value) is fully excluded, not tagged-and-included, per the explicit
+ *   fail-closed requirement: a sandbox/test transaction must never enter
+ *   the same aggregate purchase_completed count real revenue is measured
+ *   against.
+ * - Monthly requires INITIAL_PURCHASE + the exact monthly product id +
+ *   period_type === 'NORMAL'. A missing/other period_type (TRIAL, INTRO, or
+ *   simply absent) is excluded — undercounting a genuine edge case is a far
+ *   smaller cost than counting a trial start as a paid conversion.
+ * - Lifetime requires NON_RENEWING_PURCHASE + the exact lifetime product id.
+ *   period_type is intentionally not required for Lifetime; the exact event
+ *   type + product id + PRODUCTION environment are the classification gates.
+ */
+function classifyRevenueCatPurchase(ev: RcEvent): 'monthly' | 'lifetime' | null {
+  if (ev.environment !== 'PRODUCTION') return null;
+
+  if (ev.type === 'INITIAL_PURCHASE' && ev.product_id === MONTHLY_PRODUCT && ev.period_type === 'NORMAL') {
+    return 'monthly';
+  }
+  if (ev.type === 'NON_RENEWING_PURCHASE' && ev.product_id === LIFETIME_PRODUCT) {
+    return 'lifetime';
+  }
+  return null;
+}
+
+/**
+ * Explicit mapping only — never a heuristic. Any store value other than the
+ * two confirmed here (APP_STORE from real GasCap payload evidence;
+ * PLAY_STORE per RevenueCat's documented enum, not yet observed in a real
+ * GasCap payload) resolves to 'unknown', including MAC_APP_STORE — not
+ * mapped in this change per explicit instruction, since no current project
+ * evidence requires it.
+ */
+const STORE_TO_ORIGIN_PLATFORM: Record<string, OriginPlatform> = {
+  APP_STORE:  'ios',
+  PLAY_STORE: 'android',
+};
+
+function resolveOriginPlatform(store: string | undefined): OriginPlatform {
+  return (store && STORE_TO_ORIGIN_PLATFORM[store]) || 'unknown';
+}
 
 /** Fire-and-forget admin notification (mirrors the Stripe webhook). */
 function sendAdminMail(opts: { subject: string; html: string; text: string }) {
@@ -245,6 +300,15 @@ interface RcEvent {
   // represent the OLD product for a deferred change, with the future
   // product in `new_product_id` instead.
   new_product_id?:        string;
+  // Growth Sprint 1, P0B — purchase_completed analytics classifier fields.
+  // Added only because each is actually read by the classifier/metadata
+  // below; not added speculatively. See the classifier comment near
+  // classifyRevenueCatPurchase() for what each one gates.
+  store?:                 string;
+  period_type?:           string;
+  environment?:           string;
+  price?:                 number;
+  currency?:              string;
 }
 
 /** Resolve a GasCap user from a list of candidate RevenueCat app_user_ids. */
@@ -545,6 +609,13 @@ export async function POST(req: Request) {
   // into a nested function declaration.
   const resolvedUser = user;
   const resolvedEv   = ev;
+  // Growth Sprint 1, P0B — must be captured HERE, before doGrant()/
+  // setUserPlan() ever runs, since the grant unconditionally clears
+  // isProTrial/trialExpiresAt. Refers ONLY to GasCap's own internal 30-day
+  // trial (grantNewSignupProTrial) — never derived from RevenueCat's
+  // period_type/is_trial_conversion, which describe a different, currently
+  // unused Apple/Google-native trial lifecycle.
+  const wasOnGasCapTrial = resolvedUser.isProTrial === true;
 
   /**
    * Grant path for GRANT_EVENTS — trusts product_id (a genuine
@@ -564,8 +635,52 @@ export async function POST(req: Request) {
     // depends on (Sprint 2 Revision 1 finding — provenance corruption).
     await setUserPlan(user.id, 'pro', { revenueCat: { active: true, interval, productId } });
     console.log(`[revenuecat] ${ev.type} → granted Pro (${interval}) to ${user.email}`);
+
+    // ── Growth Sprint 1, P0B — first-party purchase_completed analytics ──
+    // Entitlement has already completed successfully above — this write is
+    // strictly additive. Isolated in its own try/catch so an analytics
+    // failure can NEVER cause markFailed()/a retry — the outer handler's
+    // try/catch exists to retry genuine entitlement failures, and this must
+    // never trigger it. See classifyRevenueCatPurchase() for the full
+    // fail-closed rationale (production-only, exact product id, exact
+    // period_type for monthly).
+    const billing = classifyRevenueCatPurchase(ev);
+    if (billing) {
+      try {
+        const result = await recordAnalyticsEvent({
+          eventType:      'purchase_completed',
+          originPlatform: resolveOriginPlatform(ev.store),
+          emitter:        'webhook',
+          userId:         user.id,
+          provider:       'revenuecat',
+          billing,
+          source:         'revenuecat_iap',
+          idempotencyKey: `revenuecat:${ev.id}`,
+          metadata: {
+            productId: ev.product_id,
+            wasOnGasCapTrial,
+            environment: ev.environment,
+            ...(typeof ev.price === 'number' ? { price: ev.price } : {}),
+            ...(ev.currency ? { currency: ev.currency } : {}),
+          },
+        });
+        console.log(`[GasCap analytics] RevenueCat purchase_completed ${result.outcome} for event ${ev.id}`);
+      } catch (err) {
+        // Analytics failure must never affect entitlement, markProcessed,
+        // or cause RevenueCat to retry this event. Logged only.
+        console.error('[GasCap analytics] RevenueCat purchase event write failed:', err);
+      }
+    }
+
     if (sendWelcome && !user.paidCampaignEnrolledAt) {
-      await enrollPaidCampaign(user.id, interval)
+      // Growth Sprint 1, P0B provenance fix — enrollPaidCampaign used to
+      // unconditionally write `interval` into stripeInterval regardless of
+      // caller, silently violating the exact provenance invariant the
+      // comment above this function already documents. persistStripeProvenance:
+      // false keeps paid-campaign enrollment (step/timestamp/nurture email)
+      // unchanged while guaranteeing this RevenueCat-sourced interval never
+      // reaches stripeInterval.
+      await enrollPaidCampaign(user.id, interval, { persistStripeProvenance: false })
         .catch((e) => console.error('[revenuecat] paid-campaign enroll failed:', e));
       sendPaidCampaignEmail('P1', {
         id: user.id, name: user.name, email: user.email, tier: 'pro', interval,
