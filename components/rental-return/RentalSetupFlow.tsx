@@ -6,8 +6,9 @@
  * requirement → Rate → Return location/time → create.
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from '@/contexts/LanguageContext';
+import { trackClientEvent } from '@/lib/clientAnalytics';
 import { RENTAL_COMPANIES, gallonsFromGaugeFraction, gallonsFromPercent } from '@/lib/rentalProvider';
 import type { FuelDataSource } from '@/lib/rentalProvider';
 import type { ReturnPolicyType } from '@/lib/rentalCalculations';
@@ -31,6 +32,17 @@ export default function RentalSetupFlow({ onCreated, onCancel }: Props) {
   const [step, setStep] = useState(1);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  // Growth Sprint 1, P0C-2A — once per wizard mount, a genuine setup
+  // attempt (the wizard is only ever mounted once an eligible authenticated
+  // user has entered setup mode — see app/rental-return/page.tsx).
+  useEffect(() => { trackClientEvent('rental_setup_started'); }, []);
+
+  // Growth Sprint 1, P0C-2A — a VIEW observation, not a unique-visit
+  // milestone: fires on the initial step and every subsequent step change,
+  // including revisiting a step via Back. Deliberately not deduplicated —
+  // see lib/clientAnalytics.ts and the P0C-2A audit for the rationale.
+  useEffect(() => { trackClientEvent('rental_setup_step_viewed', { step }); }, [step]);
 
   // Step 1
   const [rentalCompany, setRentalCompany] = useState('');

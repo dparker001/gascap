@@ -6,8 +6,10 @@ import { useTranslation } from '@/contexts/LanguageContext';
 import {
   gallonsNeeded, estimatedRentalCompanyCharge,
   returnReadyStatus, formatGallons, fuelSourceLabel, refuelTotals, isUpcomingRental,
+  shouldTrackFuelNeededCalculated,
 } from '@/lib/rentalCalculations';
 import { trackRentalGasNearReturnViewed, trackRentalReturnReadyViewed } from '@/lib/gtag';
+import { trackClientEvent } from '@/lib/clientAnalytics';
 import type { FuelDataSource } from '@/lib/rentalProvider';
 import type { RentalSession } from '@/lib/rentalSessions';
 import RefuelLogModal from './RefuelLogModal';
@@ -70,6 +72,20 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
     if (session) trackRentalReturnReadyViewed(returnReadyStatus(session.currentFuelGallons, session.requiredReturnFuelGallons));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.currentFuelGallons, session?.requiredReturnFuelGallons]);
+
+  // Growth Sprint 1, P0C-2A — first-party rental_fuel_needed_calculated,
+  // effect-based (not inline beside the render-time gallonsNeeded() call
+  // below) so this never fires as a render side effect, never refires on
+  // an unrelated rerender, and never records a "calculation" when the
+  // inputs were merely coerced to 0 by the render's `?? 0` fallback. Fires
+  // only once GasCap actually has a genuine, meaningful fuel-needed
+  // calculation to report: a non-upcoming rental with both a real current
+  // reading and a real return requirement on record.
+  useEffect(() => {
+    if (!shouldTrackFuelNeededCalculated(session)) return;
+    trackClientEvent('rental_fuel_needed_calculated');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.id, session?.currentFuelGallons, session?.requiredReturnFuelGallons, session?.pickupDateTime]);
 
   if (loading || !session) {
     return <div className="max-w-lg mx-auto px-4 py-10"><div className="h-40 bg-slate-100 rounded-2xl animate-pulse" /></div>;

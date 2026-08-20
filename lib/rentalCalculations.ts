@@ -247,3 +247,24 @@ export function isUpcomingRental(
   const t = new Date(pickupDateTime).getTime();
   return Number.isFinite(t) && t > now;
 }
+
+/**
+ * Growth Sprint 1, P0C-2A — the eligibility gate for the client-observed
+ * `rental_fuel_needed_calculated` analytics event. Extracted as a pure
+ * predicate (domain logic belongs here, not inline in a React component's
+ * effect body — see this file's header) so it's independently testable
+ * without rendering RentalDashboard: a genuine, meaningful fuel-needed
+ * calculation exists only when the rental has actually started and both
+ * the current reading and the return requirement are real (not the
+ * render-time `?? 0` fallback used elsewhere for display purposes).
+ */
+export function shouldTrackFuelNeededCalculated(session: {
+  currentFuelGallons:        number | null;
+  requiredReturnFuelGallons: number | null;
+  pickupDateTime:            string | null;
+} | null | undefined): boolean {
+  if (!session) return false;
+  if (isUpcomingRental(session.pickupDateTime)) return false;
+  if (session.currentFuelGallons == null || session.requiredReturnFuelGallons == null) return false;
+  return true;
+}
