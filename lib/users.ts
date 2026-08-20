@@ -628,6 +628,36 @@ export async function markFoundingMember(userId: string): Promise<void> {
  * Sets lifetimePerksUntil to one year from now and stores the subscription ID.
  * Does NOT touch plan or stripeInterval — Lifetime access is permanent regardless.
  */
+/**
+ * Stripe Payment Authorization Hardening — narrowly-scoped Stripe Customer
+ * ID binding, used ONLY for the Lifetime Perks activation path where a
+ * verified subscription's Customer may be genuinely new for a user whose
+ * original Lifetime purchase went through a guest Checkout Session (no
+ * stripeCustomerId ever stored). Deliberately NOT a generic write:
+ *
+ *   - Writes ONLY stripeCustomerId. Never plan, stripeInterval,
+ *     stripeSubscriptionId, trial provenance, or RevenueCat provenance.
+ *   - Never overwrites an existing, DIFFERENT stripeCustomerId — the
+ *     `where: { stripeCustomerId: null }` clause makes this race-safe: if
+ *     a concurrent write already bound a value between the caller's read
+ *     and this call, `count` comes back 0 and this function reports
+ *     `bound: false` rather than silently clobbering it.
+ *
+ * Callers must treat `bound: false` as "do not proceed with whatever this
+ * binding was meant to unlock" — see checkout.session.completed's Lifetime
+ * Perks Customer-ID consistency checks.
+ */
+export async function bindStripeCustomerIdIfMissing(
+  userId: string,
+  customerId: string,
+): Promise<{ bound: boolean }> {
+  const result = await prisma.user.updateMany({
+    where: { id: userId, stripeCustomerId: null },
+    data:  { stripeCustomerId: customerId },
+  });
+  return { bound: result.count > 0 };
+}
+
 export async function setLifetimePerksActive(userId: string, subId: string): Promise<void> {
   const until = new Date();
   until.setFullYear(until.getFullYear() + 1);

@@ -9,7 +9,7 @@
 import { NextResponse }                     from 'next/server';
 import type Stripe                          from 'stripe';
 import { stripe }                           from '@/lib/stripe';
-import { setUserPlan, findByStripeCustomer, findById, findByReferralCode, creditVerifiedReferral, getActiveCredits, enrollPaidCampaign, enrollEngagementCampaign, setEarlyUpgradeBonus, markMilestoneSent, updateUserProfile, clearStripeSubscriptionId, setLifetimePerksActive, clearLifetimePerks, markFoundingMember, revokeStripeSubscriptionEntitlement } from '@/lib/users';
+import { setUserPlan, findByStripeCustomer, findById, findByReferralCode, creditVerifiedReferral, getActiveCredits, enrollPaidCampaign, enrollEngagementCampaign, setEarlyUpgradeBonus, markMilestoneSent, updateUserProfile, clearStripeSubscriptionId, setLifetimePerksActive, clearLifetimePerks, markFoundingMember, revokeStripeSubscriptionEntitlement, bindStripeCustomerIdIfMissing } from '@/lib/users';
 import { updateGhlContactPlan }            from '@/lib/ghl';
 import { recordAnalyticsEvent }            from '@/lib/analyticsEvents';
 import { sendMail, giftEmailHtml }         from '@/lib/email';
@@ -587,49 +587,118 @@ export async function POST(req: Request) {
       const customerId = typeof invoice.customer === 'string' ? invoice.customer : null;
       if (!customerId) break;
 
-      const user = await findByStripeCustomer(customerId);
-      if (!user) break;
+      const subId = typeof invoice.subscription === 'string' ? invoice.subscription : undefined;
 
-      const subId   = typeof invoice.subscription === 'string' ? invoice.subscription : undefined;
-      let   priceId = '';
-
+      // Stripe Payment Authorization Hardening — retrieve the Subscription
+      // BEFORE resolving a GasCap user via findByStripeCustomer(). A
+      // genuine Lifetime owner can legitimately have stripeCustomerId=null
+      // (their original Lifetime purchase went through a guest,
+      // payment-mode Checkout Session — see lib/users.ts), so a brand-new
+      // Stripe Customer created for their FIRST Lifetime Perks subscription
+      // would never resolve through the old customer-first lookup: the
+      // handler used to exit before ever learning it was looking at a
+      // Perks subscription. Resolving provider evidence first, then the
+      // user, fixes that without reintroducing a generic entitlement write
+      // into the Perks path.
+      let sub: Stripe.Subscription | null = null;
       if (stripe && subId) {
         try {
-          const sub = await stripe.subscriptions.retrieve(subId);
-          priceId   = sub.items.data[0]?.price?.id ?? '';
-        } catch { /* non-fatal */ }
+          sub = await stripe.subscriptions.retrieve(subId);
+        } catch (err) {
+          // Provider/API failure — distinct from "this isn't a Perks
+          // subscription". Fail closed: do not fall through into generic
+          // renewal logic when GasCap cannot establish what was actually
+          // paid for. No Stripe IDs logged.
+          console.error('[GasCap webhook] invoice.payment_succeeded subscription retrieval failed — failing closed for retry:', err);
+          return NextResponse.json({ error: 'Unable to verify subscription.' }, { status: 502 });
+        }
       }
 
-      // ── Lifetime Perks renewal ─────────────────────────────────────────────
-      // A separate annual subscription ($9.99/yr) for Lifetime members.
-      // Does NOT change plan or stripeInterval — just extends lifetimePerksUntil.
-      if (priceId && priceId === PRICES.lifetimePerks && subId) {
-        await setLifetimePerksActive(user.id, subId);
+      const priceId = sub?.items.data[0]?.price?.id ?? '';
+
+      // ── Lifetime Perks activation (provider-authoritative) ─────────────────
+      // A separate annual subscription ($9.99/yr) for Lifetime members. This
+      // remains the SINGLE owner of setLifetimePerksActive() — checkout.
+      // session.completed's Perks branch deliberately never calls it (see
+      // that handler above), so activation can never double-fire or race
+      // against itself across the two event types. Never calls
+      // setUserPlan(); never touches plan/stripeInterval.
+      if (sub && priceId === PRICES.lifetimePerks && subId) {
+        const items = sub.items.data;
+        const shapeOk = items.length === 1 && items[0].quantity === 1;
+        const metaUserId = sub.metadata?.userId;
+        const metaOk = shapeOk && !!metaUserId
+          && sub.metadata?.tier === 'pro'
+          && sub.metadata?.billing === 'lifetime-perks';
+
+        if (!metaOk) {
+          console.warn('[GasCap webhook] invoice.payment_succeeded — Lifetime Perks subscription failed shape/metadata verification. No activation.');
+          break;
+        }
+
+        // Resolve identity from the subscription's own trusted metadata —
+        // never from email, never guessed. Do not fall back if this
+        // lookup misses.
+        const metadataUser = await findById(metaUserId!);
+        if (!metadataUser) {
+          console.warn('[GasCap webhook] invoice.payment_succeeded — Lifetime Perks metadata.userId did not resolve to a GasCap user. No activation.');
+          break;
+        }
+
+        // Customer mapping vs. subscription metadata must agree — never
+        // activate for one identity based on a signal that points at
+        // another.
+        const customerMappedUser = await findByStripeCustomer(customerId);
+        if (customerMappedUser && customerMappedUser.id !== metadataUser.id) {
+          console.warn('[GasCap webhook] invoice.payment_succeeded — Lifetime Perks Customer mapping and subscription metadata identify different users. No activation.');
+          break;
+        }
+
+        if (metadataUser.stripeCustomerId && metadataUser.stripeCustomerId !== customerId) {
+          console.warn('[GasCap webhook] invoice.payment_succeeded — Lifetime Perks Customer ID does not match the stored user. No activation, no overwrite.');
+          break;
+        }
+
+        if (!metadataUser.stripeCustomerId) {
+          // Guest-Lifetime-purchase user — this is the first Stripe
+          // Customer ID ever seen for them. Bind it via the narrowly-scoped
+          // helper (writes ONLY stripeCustomerId, race-safe).
+          const { bound } = await bindStripeCustomerIdIfMissing(metadataUser.id, customerId);
+          if (!bound) {
+            const recheck = await findById(metadataUser.id);
+            if (recheck?.stripeCustomerId !== customerId) {
+              console.warn('[GasCap webhook] invoice.payment_succeeded — Lifetime Perks Customer ID binding lost a race and does not match. No activation.');
+              break;
+            }
+          }
+        }
+
+        await setLifetimePerksActive(metadataUser.id, subId);
 
         const baseUrl   = (process.env.NEXTAUTH_URL ?? 'https://www.gascap.app').replace(/\/$/, '');
         const chooseUrl = `${baseUrl}/getaway`;
 
         sendAdminMail({
-          subject: `🏅 Lifetime Perks renewed — ${user.email} will choose a destination`,
+          subject: `🏅 Lifetime Perks renewed — ${metadataUser.email} will choose a destination`,
           html: `<div style="font-family:system-ui,sans-serif;max-width:480px;">
             <p style="font-size:20px;margin:0 0 8px;">🏅 Lifetime Perks renewal</p>
-            <p style="font-size:15px;color:#334155;margin:0 0 4px;"><strong>${user.name}</strong> renewed their Lifetime Perks ($9.99).</p>
-            <p style="font-size:14px;color:#64748b;margin:0 0 12px;">${user.email}</p>
+            <p style="font-size:15px;color:#334155;margin:0 0 4px;"><strong>${metadataUser.name}</strong> renewed their Lifetime Perks ($9.99).</p>
+            <p style="font-size:14px;color:#64748b;margin:0 0 12px;">${metadataUser.email}</p>
             <p style="font-size:14px;color:#334155;margin:0 0 4px;">They'll pick a destination at /getaway — sent automatically via Marketing Boost if it's in the live API catalog, otherwise you'll get a separate <strong>"ISSUE GETAWAY CERT"</strong> email. No action needed yet.</p>
             <p style="font-size:12px;color:#94a3b8;">${new Date().toLocaleString('en-US',{timeZone:'America/New_York'})} ET</p>
           </div>`,
-          text: `Lifetime Perks renewal: ${user.name} <${user.email}> — awaiting destination choice (auto-sent via MB API if available, otherwise separate ISSUE email to follow).`,
+          text: `Lifetime Perks renewal: ${metadataUser.name} <${metadataUser.email}> — awaiting destination choice (auto-sent via MB API if available, otherwise separate ISSUE email to follow).`,
         });
 
         sendMail({
-          to:      user.email,
+          to:      metadataUser.email,
           subject: `🏝️ Your Lifetime Perks are renewed — choose your getaway`,
           html: `<div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;">
             <div style="background:linear-gradient(135deg,#005F4A,#1EB68F);border-radius:16px 16px 0 0;padding:24px;text-align:center;">
               <p style="font-size:26px;margin:0;color:#fff;font-weight:800;">🏅 Lifetime Perks renewed!</p>
             </div>
             <div style="background:#fff;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 16px 16px;padding:24px;">
-              <p style="font-size:15px;color:#334155;margin:0 0 12px;">Hi ${user.name}, your GasCap™ Lifetime Perks are active for another year. That means +20 bonus giveaway entries every week — and another complimentary resort getaway on us!</p>
+              <p style="font-size:15px;color:#334155;margin:0 0 12px;">Hi ${metadataUser.name}, your GasCap™ Lifetime Perks are active for another year. That means +20 bonus giveaway entries every week — and another complimentary resort getaway on us!</p>
               <p style="text-align:center;margin:0 0 16px;">
                 <a href="${chooseUrl}" style="display:inline-block;background:#1EB68F;color:#fff;font-weight:800;font-size:15px;text-decoration:none;padding:12px 28px;border-radius:12px;">Choose my getaway →</a>
               </p>
@@ -639,11 +708,14 @@ export async function POST(req: Request) {
           text: `Your Lifetime Perks are renewed! Choose your complimentary getaway: ${chooseUrl}`,
         }).catch((e) => console.error('[GasCap] Lifetime Perks renewal email failed:', e));
 
-        console.info(`[GasCap webhook] Lifetime Perks renewed for ${user.id}`);
+        console.info(`[GasCap webhook] Lifetime Perks renewed for ${metadataUser.id}`);
         break;
       }
 
       // ── Standard Pro / Annual renewal ─────────────────────────────────────
+      const user = await findByStripeCustomer(customerId);
+      if (!user) break;
+
       let tier: 'pro' | 'fleet' = user.plan === 'fleet' ? 'fleet' : 'pro';
 
       if (priceId) {
