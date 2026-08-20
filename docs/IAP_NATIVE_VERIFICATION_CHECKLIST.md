@@ -2,22 +2,26 @@
 
 **Status: PLANNED — not yet executed.** This document defines the on-device
 verification procedure required before `iap_checkout_started` data (shipped
-in PR #16) is trusted as decision-grade funnel analytics, per ChatGPT's
-review of the Post-P0C Cleanup packet. Nothing in this file has been run.
-No claim is made anywhere in this repo that on-device verification has
-happened — unit tests (`__tests__/iapCheckoutStarted.test.ts`) prove the
-mocked logic is correct; they do not prove StoreKit/Play Billing, the
-RevenueCat bridge, or a real native build behave the same way.
+in PR #16, `iap_checkout_started` exact-package-selection fix shipped in
+PR #17, both merged into `main` as of 2026-08-20) is trusted as
+decision-grade funnel analytics, per ChatGPT's review of the Post-P0C
+Cleanup packet. Nothing in this file has been run. No claim is made
+anywhere in this repo that on-device verification has happened — unit
+tests (`__tests__/iapCheckoutStarted.test.ts`) prove the mocked logic is
+correct; they do not prove StoreKit/Play Billing, the RevenueCat bridge, or
+a real native build behave the same way.
 
-Run this **after** `fix/iap-exact-package-selection` has merged and shipped
-into a native build that has gone through Codemagic (a native-config-only
-web deploy is not sufficient — see `/CLAUDE.md`: "web changes need no
-Codemagic rebuild — but a native-config change does"; this change touches
-`lib/iap.ts`, which the WebView loads from the live web app, so no
-Codemagic rebuild should actually be required here — confirm this
-assumption before skipping a rebuild, since it directly determines whether
-the checklist below can run against TestFlight as-is or needs a fresh
-build first).
+**Confirmed 2026-08-20 (code/config review, no device access): no new
+native build is required.** `capacitor.config.json`'s `server.url` points
+at the live remote web app (`https://www.gascap.app/?native=ios` /
+`.../?native=android`) — the installed TestFlight build loads `lib/iap.ts`
+and all other app code live from `gascap.app` at runtime, not bundled into
+the binary. PR #16/#17 touched only web code, no native config — see
+`/CLAUDE.md`: "web changes need no Codemagic rebuild — but a native-config
+change does." The last native-config-relevant change was the iOS 1.1.1
+marketing-version bump (already shipped), with no drift since. The
+currently-installed TestFlight build should already be running the fixed
+`lib/iap.ts`.
 
 ## Prerequisites
 - A TestFlight build (or Xcode-run debug build on a physical device/
@@ -40,10 +44,11 @@ build first).
    one row, `metadata.billing = 'lifetime'`, `originPlatform = 'ios'`.
 3. **Cancel the StoreKit purchase sheet** (do not complete the transaction).
 4. **Confirm no authoritative `purchase_completed`.** Query `AnalyticsEvent`
-   for `eventType = 'purchase_completed'` (or whatever event RevenueCat's
-   webhook writes on grant) for this user — expect zero rows. Also confirm
-   the account's `plan`/`stripeInterval`/entitlement fields are unchanged
-   (still not Pro).
+   for `eventType = 'purchase_completed'` — confirmed as the exact event
+   name the RevenueCat webhook writes on grant
+   (`app/api/native/revenuecat/route.ts`'s `doGrant()`) — for this user;
+   expect zero rows. Also confirm the account's `plan`/`stripeInterval`/
+   entitlement fields are unchanged (still not Pro).
 5. **Start Lifetime again and complete the sandbox transaction** this time.
 6. **Confirm the start → completion relationship.** Expect: the `iap_checkout_started`
    row from step 5 (a second one, since step 2's was for the cancelled
