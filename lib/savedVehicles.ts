@@ -3,6 +3,7 @@
  */
 import { prisma } from './prisma';
 import type { VehicleSpecs } from './vehicleSpecs';
+import { recordAnalyticsEvent } from './analyticsEvents';
 
 export interface SavedVehicle {
   id:                 string;
@@ -111,6 +112,19 @@ export async function addVehicle(
       vehicleSpecs:    (extra?.vehicleSpecs ?? undefined) as unknown as object | undefined,
     },
   });
+  // Growth Sprint 1, P0C-1A — fires for every genuine Vehicle creation
+  // (manual save, VIN-derived save, and CSV/Fleet import all funnel through
+  // this single function). No VIN/name/vehicle-identifying metadata.
+  try {
+    await recordAnalyticsEvent({
+      eventType: 'vehicle_saved',
+      originPlatform: 'unknown',
+      emitter: 'server',
+      userId,
+      source: 'vehicle_create',
+      idempotencyKey: `vehicle_saved:${row.id}`,
+    });
+  } catch (e) { console.error('[GasCap analytics] vehicle_saved write failed:', e); }
   return toSavedVehicle(row);
 }
 

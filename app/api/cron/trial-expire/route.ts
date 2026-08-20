@@ -12,6 +12,7 @@ import { getExpiredTrialUsers, expireTrial }   from '@/lib/users';
 import { sendMail }                            from '@/lib/email';
 import { trialEndedEmailHtml, trialEndedEmailText } from '@/lib/emailCampaign';
 import { logEmail }                            from '@/lib/emailLog';
+import { recordAnalyticsEvent }                from '@/lib/analyticsEvents';
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -38,9 +39,28 @@ export async function GET(req: Request) {
 
   for (const user of expired) {
     try {
+      // Growth Sprint 1, P0C-1A — captured BEFORE expireTrial() clears it.
+      const originalTrialExpiry = user.trialExpiresAt;
+
       // 1. Downgrade the account
       await expireTrial(user.id);
       downgraded++;
+
+      // Growth Sprint 1, P0C-1A — trial_expired only after expireTrial()
+      // has actually succeeded (a throw above skips this via the outer
+      // catch, per the existing per-user error handling). Isolated in its
+      // own try/catch so an analytics failure can never be mistaken for a
+      // downgrade failure, and never skips the "trial ended" email below.
+      try {
+        await recordAnalyticsEvent({
+          eventType: 'trial_expired',
+          originPlatform: 'unknown',
+          emitter: 'server',
+          userId: user.id,
+          source: 'trial_expire_cron',
+          idempotencyKey: `trial_expired:${user.id}:${originalTrialExpiry}`,
+        });
+      } catch (e) { console.error('[GasCap analytics] trial_expired write failed:', e); }
 
       // 2. Send "trial ended" email — only to users who accept email.
       //    The opt-out check belongs HERE, not in the query that decides who

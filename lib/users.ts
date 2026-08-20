@@ -8,6 +8,7 @@ import { prisma } from './prisma';
 import { findNewBadges, type UserStats } from './badges';
 import { getVehiclesForUser } from './savedVehicles';
 import type { User as PrismaUser } from './generated/prisma/client';
+import { recordAnalyticsEvent } from './analyticsEvents';
 import { Prisma } from './generated/prisma/client';
 import { qualifiesForFreeProForLife, AMBASSADOR_THRESHOLDS, getAmbassadorTier } from './ambassador';
 import { sendHotelSavingsCard, sendDiningVoucher } from './marketingBoost';
@@ -244,33 +245,82 @@ export function nameFromEmail(email: string): string {
  * - emailVerified = true (Google already verified it)
  * - Idempotent: returns existing user if the email is already in the DB
  */
+export interface CreateGoogleUserResult {
+  user:    StoredUser;
+  /** True only when THIS invocation's prisma.user.create actually ran.
+   *  Growth Sprint 1, P0C-1A correction — a caller that assumed "this
+   *  function returned" meant "this call created the account" was racing
+   *  the internal existing-user lookup below: two concurrent Google
+   *  sign-ins for the same brand-new email could both pass the OUTER
+   *  findByEmail check before either INSERT lands, and the second caller
+   *  into this function would take the early-return branch — returning a
+   *  real user, but NOT one this call created. `created` makes that
+   *  distinction explicit so the caller can never mistake a race-losing
+   *  early return for a genuine new signup (and, e.g., re-grant/extend a
+   *  trial on an existing account). See lib/auth.ts's signIn() callback. */
+  created: boolean;
+}
+
 export async function createGoogleUser(
   email:     string,
   name:      string,
   avatarUrl: string | null = null,
   locale:    'en' | 'es'  = 'en',
-): Promise<StoredUser> {
+): Promise<CreateGoogleUserResult> {
   const existing = await findByEmail(email);
-  if (existing) return existing;
+  if (existing) return { user: existing, created: false };
 
-  const user = await prisma.user.create({
-    data: {
-      id:            crypto.randomUUID(),
-      email:         email.toLowerCase().trim(),
-      name:          name.trim() || nameFromEmail(email),
-      passwordHash:  null,
-      plan:          'free',
-      createdAt:     new Date().toISOString(),
-      emailVerified: true,
-      // Google has already verified the email — award the same bonus
-      // that email/password users earn for verifying within 48 hours.
-      verifyReminderBonusEntries: 25,
-      emailVerifyBonusGranted:    true,   // prevents double-grant if flow ever changes
-      locale,
-      ...(avatarUrl ? { avatarUrl } : {}),
-    },
-  });
-  return toStoredUser(user);
+  let user;
+  try {
+    user = await prisma.user.create({
+      data: {
+        id:            crypto.randomUUID(),
+        email:         email.toLowerCase().trim(),
+        name:          name.trim() || nameFromEmail(email),
+        passwordHash:  null,
+        plan:          'free',
+        createdAt:     new Date().toISOString(),
+        emailVerified: true,
+        // Google has already verified the email — award the same bonus
+        // that email/password users earn for verifying within 48 hours.
+        verifyReminderBonusEntries: 25,
+        emailVerifyBonusGranted:    true,   // prevents double-grant if flow ever changes
+        locale,
+        ...(avatarUrl ? { avatarUrl } : {}),
+      },
+    });
+  } catch (err) {
+    // Growth Sprint 1, P0C-1A correction — the SECOND concurrency window,
+    // narrower than the early-return race above: this call's OWN findByEmail
+    // (just above) found nothing, but a concurrent request's INSERT can
+    // still land in the gap between that read and this create, producing a
+    // genuine unique-constraint (P2002) violation on email — the same
+    // classification pattern already established in lib/analyticsEvents.ts
+    // and lib/revenueCatEvents.ts. Recover ONLY from that specific,
+    // confirmed case by re-reading the row the concurrent request just
+    // created; any other error (a real DB outage, an unrelated constraint)
+    // is deliberately NOT caught here and propagates exactly as before.
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+      const raced = await findByEmail(email);
+      if (raced) return { user: raced, created: false };
+    }
+    throw err;
+  }
+  // Growth Sprint 1, P0C-1A — signup_completed only for a genuine new
+  // account (this line is unreachable for either race-recovery path
+  // above).
+  try {
+    await recordAnalyticsEvent({
+      eventType: 'signup_completed',
+      originPlatform: 'unknown',
+      emitter: 'server',
+      userId: user.id,
+      source: 'auth_signup',
+      idempotencyKey: `signup_completed:${user.id}`,
+      metadata: { signupMethod: 'google' },
+    });
+  } catch (e) { console.error('[GasCap analytics] Google signup_completed write failed:', e); }
+  return { user: toStoredUser(user), created: true };
 }
 
 export async function verifyPassword(plain: string, hash: string | undefined): Promise<boolean> {

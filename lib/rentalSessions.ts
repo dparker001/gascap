@@ -5,6 +5,7 @@
 import { prisma } from './prisma';
 import type { RefuelLogEntry, FuelDataSource } from './rentalProvider';
 import { gallonsNeeded, resolveRequiredReturnFuel, returnReadyStatus, reconcileFuelForNewTank, type ReturnPolicyType, type ReturnReadyStatus } from './rentalCalculations';
+import { recordAnalyticsEvent } from './analyticsEvents';
 
 export interface RentalSession {
   id:                          string;
@@ -137,6 +138,23 @@ export async function createRentalSession(userId: string, input: CreateRentalSes
       updatedAt:               now,
     },
   });
+  // Growth Sprint 1, P0C-1A — no rental company/agreement/confirmation/
+  // address/lat-long/vehicle/photo/fuel/notes data in metadata. Known
+  // limitation, not addressed here: this create path has no request-level
+  // dedup, so a client retry after a lost response can produce a second,
+  // genuinely distinct RentalSession row — each still correctly gets its
+  // own non-duplicate event, but the underlying source data itself carries
+  // that separate risk (tracked as a backlog item, not fixed in P0C-1A).
+  try {
+    await recordAnalyticsEvent({
+      eventType: 'rental_setup_completed',
+      originPlatform: 'unknown',
+      emitter: 'server',
+      userId,
+      source: 'rental_setup',
+      idempotencyKey: `rental_setup_completed:${row.id}`,
+    });
+  } catch (e) { console.error('[GasCap analytics] rental_setup_completed write failed:', e); }
   return toRentalSession(row);
 }
 

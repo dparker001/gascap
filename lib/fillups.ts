@@ -4,6 +4,7 @@
  */
 import { randomUUID } from 'crypto';
 import { prisma }     from './prisma';
+import { recordAnalyticsEvent } from './analyticsEvents';
 
 // Re-exported for server-side callers that import these from lib/fillups —
 // the actual implementation lives in lib/mpgResolver.ts (a pure, client-safe
@@ -229,6 +230,19 @@ export async function addFillup(
       createdAt:       new Date().toISOString(),
     },
   });
+  // Growth Sprint 1, P0C-1A — fires only for a genuine new Fillup row (this
+  // function never handles updates — see updateFillup below, a structurally
+  // separate function). No gallons/price/station/odometer/receipt data.
+  try {
+    await recordAnalyticsEvent({
+      eventType: 'fillup_logged',
+      originPlatform: 'unknown',
+      emitter: 'server',
+      userId,
+      source: 'fillup_create',
+      idempotencyKey: `fillup_logged:personal:${entry.id}`,
+    });
+  } catch (e) { console.error('[GasCap analytics] fillup_logged write failed:', e); }
   return fromPrisma(entry);
 }
 
