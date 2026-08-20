@@ -6,7 +6,11 @@
  * This route is deliberately NOT a generic arbitrary event sink:
  *
  *   - userId is NEVER accepted from the client body — resolved exclusively
- *     from the authenticated server session.
+ *     from the authenticated server session. Enforced structurally: the
+ *     top-level request body is validated against a strict key allowlist
+ *     (ALLOWED_TOP_LEVEL_KEYS below), so `userId` (or any other unexpected
+ *     field — `provider`, `idempotencyKey`, `emitter`, etc.) is rejected
+ *     with 400 rather than silently ignored.
  *   - Anonymous (no session) writes are allowed only for an explicit
  *     allowlist of events.
  *   - eventType must be one of a fixed, client-emittable allowlist —
@@ -40,6 +44,18 @@ import { checkRateLimitDb, hashRateLimitIdentifier } from '@/lib/rateLimitDb';
 import { getTrustedClientIp } from '@/lib/clientIp';
 
 const VALID_ORIGIN_PLATFORMS = new Set<OriginPlatform>(['web', 'ios', 'android']);
+
+/**
+ * Strict top-level request-body allowlist. Any key outside this set —
+ * userId, provider, billing, emitter, idempotencyKey, or anything else —
+ * causes the whole request to be rejected with 400. This is what makes
+ * "userId is never accepted from the client" an enforced structural
+ * property rather than a convention the handler happens to follow: a
+ * caller cannot smuggle in a field this route simply never reads, because
+ * the field's mere presence fails validation before any per-field logic
+ * runs.
+ */
+const ALLOWED_TOP_LEVEL_KEYS = new Set(['eventType', 'originPlatform', 'source', 'metadata']);
 
 /**
  * Fixed allowlist of event types a client is permitted to submit through
@@ -167,8 +183,19 @@ export async function POST(req: Request) {
   }
   const input = body as Record<string, unknown>;
 
+  // Strict top-level schema: reject the whole request if it carries any key
+  // outside the allowlist — this is the structural enforcement for "userId
+  // (or provider/idempotencyKey/emitter/anything else) is never accepted
+  // from the client," not a per-field special case.
+  for (const key of Object.keys(input)) {
+    if (!ALLOWED_TOP_LEVEL_KEYS.has(key)) {
+      return NextResponse.json({ error: `unknown field: ${key}` }, { status: 400 });
+    }
+  }
+
   // userId is never read from the client body — resolved from the session
-  // only. Any `userId` key the client sent is simply ignored below.
+  // only. A client-supplied `userId` key is rejected above, before this
+  // point is ever reached.
   const session = await getServerSession(authOptions);
   const sessionUserId = (session?.user as { id?: string } | undefined)?.id ?? null;
 

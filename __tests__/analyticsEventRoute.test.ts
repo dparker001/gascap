@@ -50,11 +50,31 @@ describe('POST /api/analytics/event', () => {
     expect(call.emitter).toBe('client');
   });
 
-  it('ignores a client-supplied userId and resolves it from the session instead', async () => {
+  it('rejects a client-supplied userId — the strict top-level schema rejects the whole request, not just that field', async () => {
     getServerSession.mockResolvedValue({ user: { id: 'real-session-user' } });
-    await post({ eventType: 'calculator_completed', originPlatform: 'web', userId: 'attacker-supplied-id' });
+    const res = await post({ eventType: 'calculator_completed', originPlatform: 'web', userId: 'attacker-supplied-id' });
+    expect(res.status).toBe(400);
+    expect(recordAnalyticsEvent).not.toHaveBeenCalled();
+  });
+
+  it('resolves userId from the session for a legitimate request with no userId field at all', async () => {
+    getServerSession.mockResolvedValue({ user: { id: 'real-session-user' } });
+    const res = await post({ eventType: 'calculator_completed', originPlatform: 'web' });
+    expect(res.status).toBe(202);
     const call = recordAnalyticsEvent.mock.calls[0][0] as Record<string, unknown>;
     expect(call.userId).toBe('real-session-user');
+  });
+
+  it('rejects any other unexpected top-level field, e.g. a client trying to claim provider', async () => {
+    const res = await post({ eventType: 'calculator_completed', originPlatform: 'web', provider: 'stripe' });
+    expect(res.status).toBe(400);
+    expect(recordAnalyticsEvent).not.toHaveBeenCalled();
+  });
+
+  it('rejects a client-supplied idempotencyKey', async () => {
+    const res = await post({ eventType: 'calculator_completed', originPlatform: 'web', idempotencyKey: 'fake-key' });
+    expect(res.status).toBe(400);
+    expect(recordAnalyticsEvent).not.toHaveBeenCalled();
   });
 
   it('rejects an eventType not in the client allowlist', async () => {
@@ -75,8 +95,14 @@ describe('POST /api/analytics/event', () => {
     expect(recordAnalyticsEvent).not.toHaveBeenCalled();
   });
 
-  it('never lets a client-supplied emitter override "client"', async () => {
-    await post({ eventType: 'calculator_completed', originPlatform: 'web', emitter: 'webhook' });
+  it('rejects a client-supplied emitter field outright — the strict schema does not even let it through to be overridden', async () => {
+    const res = await post({ eventType: 'calculator_completed', originPlatform: 'web', emitter: 'webhook' });
+    expect(res.status).toBe(400);
+    expect(recordAnalyticsEvent).not.toHaveBeenCalled();
+  });
+
+  it('always writes emitter: "client" for a legitimate request, since the caller has no way to supply it', async () => {
+    await post({ eventType: 'calculator_completed', originPlatform: 'web' });
     const call = recordAnalyticsEvent.mock.calls[0][0] as Record<string, unknown>;
     expect(call.emitter).toBe('client');
   });
