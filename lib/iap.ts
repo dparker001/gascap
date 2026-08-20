@@ -13,6 +13,7 @@
  */
 
 import { detectNativePlatform } from '@/hooks/useIsNative';
+import { trackClientEvent } from '@/lib/clientAnalytics';
 
 // RevenueCat PUBLIC SDK keys — public by design (shipped in the app bundle).
 // Env vars win when set (key rotation without a code change); hardcoded fallbacks
@@ -110,6 +111,10 @@ export async function purchasePro(which: 'monthly' | 'lifetime'): Promise<Purcha
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const pkg = pkgs.find((p: any) => p?.product?.identifier === productId) ?? pkgs[0];
     if (!pkg) return { ok: false, error: 'no-package' };
+    // Fires only once a real product package resolved and the native purchase
+    // sheet is genuinely about to be invoked — not on 'no-offerings'/'no-package'
+    // failures above, which aren't a real purchase attempt.
+    trackClientEvent('iap_checkout_started', { billing: which });
     const { customerInfo } = await rc.Purchases.purchasePackage({ aPackage: pkg });
     return { ok: hasActiveEntitlement(customerInfo) };
   } catch (e) {

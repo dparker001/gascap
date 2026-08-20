@@ -219,6 +219,53 @@ describe('POST /api/analytics/event', () => {
     expect(res.status).toBe(202);
   });
 
+  // ── iap_checkout_started — native purchase-attempt funnel signal ────────
+  // Deliberately NOT the same event type as the server-authoritative web
+  // checkout_started (AUTH-CS1-5 above) — this is a self-reported client
+  // event, requires an authenticated session (native purchase requires
+  // sign-in), and requires `billing`.
+
+  it('IAP1. authenticated iap_checkout_started with valid billing → 202, written', async () => {
+    getServerSession.mockResolvedValue({ user: { id: 'u1' } });
+    const res = await post({
+      eventType: 'iap_checkout_started',
+      originPlatform: 'ios',
+      metadata: { billing: 'lifetime' },
+    });
+    expect(res.status).toBe(202);
+    expect(recordAnalyticsEvent).toHaveBeenCalledTimes(1);
+    const call = recordAnalyticsEvent.mock.calls[0][0] as Record<string, unknown>;
+    expect(call).toMatchObject({ eventType: 'iap_checkout_started', emitter: 'client', userId: 'u1' });
+  });
+
+  it('IAP2. anonymous iap_checkout_started → rejected, no write (not in ANONYMOUS_ALLOWED_EVENT_TYPES)', async () => {
+    const res = await post({
+      eventType: 'iap_checkout_started',
+      originPlatform: 'ios',
+      metadata: { billing: 'monthly' },
+    });
+    expect(res.status).toBe(401);
+    expect(recordAnalyticsEvent).not.toHaveBeenCalled();
+  });
+
+  it('IAP3. authenticated iap_checkout_started missing billing → 400, no write', async () => {
+    getServerSession.mockResolvedValue({ user: { id: 'u1' } });
+    const res = await post({ eventType: 'iap_checkout_started', originPlatform: 'ios' });
+    expect(res.status).toBe(400);
+    expect(recordAnalyticsEvent).not.toHaveBeenCalled();
+  });
+
+  it('IAP4. authenticated iap_checkout_started with invalid billing value → 400, no write', async () => {
+    getServerSession.mockResolvedValue({ user: { id: 'u1' } });
+    const res = await post({
+      eventType: 'iap_checkout_started',
+      originPlatform: 'android',
+      metadata: { billing: 'annual' },
+    });
+    expect(res.status).toBe(400);
+    expect(recordAnalyticsEvent).not.toHaveBeenCalled();
+  });
+
   it('rejects metadata containing a "toString" key rather than treating it as a valid schema field via prototype-chain matching', async () => {
     // Growth Sprint 1, Analytics Authority Correction — moved off
     // checkout_started (now server-only, rejected before metadata is ever
