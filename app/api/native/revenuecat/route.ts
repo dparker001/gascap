@@ -104,8 +104,8 @@ const MONTHLY_PRODUCT  = 'gascap_pro_monthly';
  *   simply absent) is excluded — undercounting a genuine edge case is a far
  *   smaller cost than counting a trial start as a paid conversion.
  * - Lifetime requires NON_RENEWING_PURCHASE + the exact lifetime product id.
- *   period_type is not required for Lifetime (NON_RENEWING_PURCHASE has no
- *   renewal concept), but is not ignored either — see the guard below.
+ *   period_type is intentionally not required for Lifetime; the exact event
+ *   type + product id + PRODUCTION environment are the classification gates.
  */
 function classifyRevenueCatPurchase(ev: RcEvent): 'monthly' | 'lifetime' | null {
   if (ev.environment !== 'PRODUCTION') return null;
