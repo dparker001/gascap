@@ -20,6 +20,7 @@ import { useRentalSessions } from '@/hooks/useRentalSessions';
 import type { CalcTab } from './CalculatorTabs';
 import { useTranslation } from '@/contexts/LanguageContext';
 import { trackCalculateTarget, trackRentalReturnToggled } from '@/lib/gtag';
+import { trackClientEvent } from '@/lib/clientAnalytics';
 import { checkTankSize } from '@/lib/tankValidation';
 import GaugeScanModal from './GaugeScanModal';
 
@@ -488,6 +489,11 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
     setShowLiveNudge(false);
     setCalcKey((k) => k + 1);
     trackCalculateTarget();
+    // Growth Sprint 1, P0C-2B1 — first-party AnalyticsEvent, additive to
+    // the GA4 call above. Only from an explicit successful Calculate press
+    // — never from liveRecalc(), so a Pro user's post-calculation field
+    // edits never produce additional events.
+    trackClientEvent('calculator_completed', { calculator: 'target' });
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new Event('gascap:calculated'));
       const prefillData = {

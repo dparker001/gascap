@@ -116,6 +116,16 @@ interface MetadataSchema {
  * metadata — any provided object is rejected, not silently passed through.
  */
 const METADATA_SCHEMAS: Record<string, MetadataSchema> = {
+  // Growth Sprint 1, P0C-2B1 — bounded to the three existing calculator
+  // modes only. No dollar amounts, fuel/gallon/vehicle data, or any other
+  // input value is ever accepted here — see components/TargetFillForm.tsx,
+  // BudgetForm.tsx, EvCalculatorForm.tsx.
+  calculator_completed: {
+    fields: {
+      calculator: (v) => v === 'target' || v === 'budget' || v === 'ev',
+    },
+    required: ['calculator'],
+  },
   rental_setup_step_viewed: {
     fields: {
       step: (v) => typeof v === 'number' && Number.isInteger(v) && v >= 1 && v <= 7,

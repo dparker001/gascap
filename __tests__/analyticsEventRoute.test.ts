@@ -42,7 +42,7 @@ beforeEach(() => {
 
 describe('POST /api/analytics/event', () => {
   it('accepts a valid anonymous calculator_completed event', async () => {
-    const res = await post({ eventType: 'calculator_completed', originPlatform: 'web' });
+    const res = await post({ eventType: 'calculator_completed', originPlatform: 'web', metadata: { calculator: 'target' } });
     expect(res.status).toBe(202);
     expect(recordAnalyticsEvent).toHaveBeenCalledTimes(1);
     const call = recordAnalyticsEvent.mock.calls[0][0] as Record<string, unknown>;
@@ -59,7 +59,7 @@ describe('POST /api/analytics/event', () => {
 
   it('resolves userId from the session for a legitimate request with no userId field at all', async () => {
     getServerSession.mockResolvedValue({ user: { id: 'real-session-user' } });
-    const res = await post({ eventType: 'calculator_completed', originPlatform: 'web' });
+    const res = await post({ eventType: 'calculator_completed', originPlatform: 'web', metadata: { calculator: 'target' } });
     expect(res.status).toBe(202);
     const call = recordAnalyticsEvent.mock.calls[0][0] as Record<string, unknown>;
     expect(call.userId).toBe('real-session-user');
@@ -102,7 +102,7 @@ describe('POST /api/analytics/event', () => {
   });
 
   it('always writes emitter: "client" for a legitimate request, since the caller has no way to supply it', async () => {
-    await post({ eventType: 'calculator_completed', originPlatform: 'web' });
+    await post({ eventType: 'calculator_completed', originPlatform: 'web', metadata: { calculator: 'target' } });
     const call = recordAnalyticsEvent.mock.calls[0][0] as Record<string, unknown>;
     expect(call.emitter).toBe('client');
   });
@@ -240,7 +240,10 @@ describe('POST /api/analytics/event', () => {
   });
 
   it('rejects metadata on an event that accepts none', async () => {
-    const res = await post({ eventType: 'calculator_completed', originPlatform: 'web', metadata: { anything: 1 } });
+    // Growth Sprint 1, P0C-2B1 — calculator_completed now has a required
+    // schema (see below), so an event that genuinely accepts NO metadata
+    // is needed here instead.
+    const res = await post({ eventType: 'rental_assistant_opened', originPlatform: 'web', metadata: { anything: 1 } });
     expect(res.status).toBe(400);
   });
 
@@ -334,5 +337,80 @@ describe('POST /api/analytics/event', () => {
     });
     const res = await POST(req);
     expect(res.status).toBe(400);
+  });
+
+  // ── Growth Sprint 1, P0C-2B1 — calculator_completed metadata contract ────
+
+  it('ING-CALC1. calculator_completed + {calculator:"target"} → accepted', async () => {
+    const res = await post({ eventType: 'calculator_completed', originPlatform: 'web', metadata: { calculator: 'target' } });
+    expect(res.status).toBe(202);
+    expect(recordAnalyticsEvent).toHaveBeenCalledTimes(1);
+    const call = recordAnalyticsEvent.mock.calls[0][0] as Record<string, unknown>;
+    expect(call.metadata).toEqual({ calculator: 'target' });
+  });
+
+  it('ING-CALC2. calculator_completed + {calculator:"budget"} → accepted', async () => {
+    const res = await post({ eventType: 'calculator_completed', originPlatform: 'web', metadata: { calculator: 'budget' } });
+    expect(res.status).toBe(202);
+    const call = recordAnalyticsEvent.mock.calls[0][0] as Record<string, unknown>;
+    expect(call.metadata).toEqual({ calculator: 'budget' });
+  });
+
+  it('ING-CALC3. calculator_completed + {calculator:"ev"} → accepted', async () => {
+    const res = await post({ eventType: 'calculator_completed', originPlatform: 'web', metadata: { calculator: 'ev' } });
+    expect(res.status).toBe(202);
+    const call = recordAnalyticsEvent.mock.calls[0][0] as Record<string, unknown>;
+    expect(call.metadata).toEqual({ calculator: 'ev' });
+  });
+
+  it('ING-CALC4. calculator_completed with no metadata → 400 (calculator is required)', async () => {
+    const res = await post({ eventType: 'calculator_completed', originPlatform: 'web' });
+    expect(res.status).toBe(400);
+    expect(recordAnalyticsEvent).not.toHaveBeenCalled();
+  });
+
+  it('ING-CALC5. unknown calculator enum value → 400', async () => {
+    const res = await post({ eventType: 'calculator_completed', originPlatform: 'web', metadata: { calculator: 'trip' } });
+    expect(res.status).toBe(400);
+    expect(recordAnalyticsEvent).not.toHaveBeenCalled();
+  });
+
+  it('ING-CALC6. extra metadata field beyond calculator → 400, not silently stripped', async () => {
+    const res = await post({
+      eventType: 'calculator_completed',
+      originPlatform: 'web',
+      metadata: { calculator: 'target', gallons: 12 },
+    });
+    expect(res.status).toBe(400);
+    expect(recordAnalyticsEvent).not.toHaveBeenCalled();
+  });
+
+  it('ING-CALC7. PII/secret-shaped unexpected metadata cannot bypass the strict schema', async () => {
+    const res = await post({
+      eventType: 'calculator_completed',
+      originPlatform: 'web',
+      metadata: { calculator: 'target', email: 'someone@example.com' },
+    });
+    expect(res.status).toBe(400);
+    expect(recordAnalyticsEvent).not.toHaveBeenCalled();
+  });
+
+  it('ING-CALC8. anonymous calculator_completed remains accepted', async () => {
+    const res = await post({ eventType: 'calculator_completed', originPlatform: 'web', metadata: { calculator: 'budget' } });
+    expect(res.status).toBe(202);
+    const call = recordAnalyticsEvent.mock.calls[0][0] as Record<string, unknown>;
+    expect(call.userId).toBeNull();
+  });
+
+  it('ING-CALC9. client-supplied userId is still rejected at the top level, even with valid calculator metadata', async () => {
+    getServerSession.mockResolvedValue({ user: { id: 'real-session-user' } });
+    const res = await post({
+      eventType: 'calculator_completed',
+      originPlatform: 'web',
+      userId: 'attacker-supplied-id',
+      metadata: { calculator: 'target' },
+    });
+    expect(res.status).toBe(400);
+    expect(recordAnalyticsEvent).not.toHaveBeenCalled();
   });
 });
