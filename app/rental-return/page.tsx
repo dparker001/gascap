@@ -15,6 +15,7 @@ import RentalModeHeader from '@/components/rental-return/RentalModeHeader';
 import RentalSetupFlow from '@/components/rental-return/RentalSetupFlow';
 import DeleteRentalButton from '@/components/rental-return/DeleteRentalButton';
 import { trackRentalAssistantOpened, trackRentalSessionCreated } from '@/lib/gtag';
+import { trackClientEvent } from '@/lib/clientAnalytics';
 import type { RentalSession } from '@/lib/rentalSessions';
 import { isUpcomingRental } from '@/lib/rentalCalculations';
 
@@ -29,7 +30,13 @@ export default function RentalReturnPage() {
   const [loading, setLoading] = useState(true);
   const [mode, setMode] = useState<'list' | 'setup'>('list');
 
-  useEffect(() => { trackRentalAssistantOpened(); }, []);
+  useEffect(() => {
+    trackRentalAssistantOpened();
+    // Growth Sprint 1, P0C-2A — first-party AnalyticsEvent write, additive
+    // to the existing GA4 call above. Once per Rental Return page mount;
+    // deliberately no cross-mount dedup (see lib/clientAnalytics.ts).
+    trackClientEvent('rental_assistant_opened');
+  }, []);
 
   useEffect(() => {
     // Guests never fire the sessions fetch, so loading must resolve for
