@@ -11,6 +11,7 @@ import BrandBar from '@/components/BrandBar';
 import { detectNativePlatform } from '@/hooks/useIsNative';
 import { purchasePro, restorePurchases } from '@/lib/iap';
 import { trackUpgradePageView, trackUpgradeCheckoutStarted } from '@/lib/gtag';
+import { trackClientEvent } from '@/lib/clientAnalytics';
 
 // ── Feature lists are defined inside UpgradePageInner (need t)
 
@@ -72,6 +73,12 @@ function UpgradePageInner() {
     if (viewTracked.current || sessionStatus === 'loading') return;
     viewTracked.current = true;
     trackUpgradePageView({ plan: userPlan, showGetaway, wb, founding });
+    // Growth Sprint 1, P0C-2B2 — first-party AnalyticsEvent, additive to
+    // the GA4 call above, reusing the same one-shot ref/effect rather than
+    // introducing a second competing lifecycle. Deliberately narrower
+    // metadata than GA4 — no plan/coupon/founding here, see
+    // app/api/analytics/event/route.ts's existing paywall_viewed schema.
+    trackClientEvent('paywall_viewed', { showGetaway, wb });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionStatus]);
 
