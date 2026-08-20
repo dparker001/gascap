@@ -16,11 +16,16 @@
  *   - eventType must be one of a fixed, client-emittable allowlist —
  *     server/webhook-only event types (purchase_completed, signup_completed,
  *     trial_started, vehicle_saved, fillup_logged, rental_setup_completed,
- *     trial_expired, subscription_renewed) are structurally unreachable
- *     here: they are not in CLIENT_EVENT_TYPES, so they're rejected by the
- *     allowlist check before anything else runs, AND this route never calls
- *     recordAnalyticsEvent() with emitter other than 'client' — a caller
- *     cannot claim to be a server/webhook write through this endpoint.
+ *     trial_expired, subscription_renewed, checkout_started) are
+ *     structurally unreachable here: they are not in CLIENT_EVENT_TYPES, so
+ *     they're rejected by the allowlist check before anything else runs,
+ *     AND this route never calls recordAnalyticsEvent() with emitter other
+ *     than 'client' — a caller cannot claim to be a server/webhook write
+ *     through this endpoint. checkout_started specifically is authoritative
+ *     from app/api/stripe/checkout/route.ts only, fired exclusively after a
+ *     genuine Stripe Checkout Session is created — see the Analytics
+ *     Authority Correction note on CLIENT_EVENT_TYPES below for why it was
+ *     removed from client-emittable status.
  *   - originPlatform must be exactly 'web' | 'ios' | 'android' — the client
  *     never gets to claim 'unknown' (that value is reserved for server-side
  *     resolution failures, not a client shortcut).
@@ -62,8 +67,19 @@ const ALLOWED_TOP_LEVEL_KEYS = new Set(['eventType', 'originPlatform', 'source',
  * this route. Every other event type in the Growth Sprint 1 taxonomy
  * (purchase_completed, signup_completed, trial_started, vehicle_saved,
  * fillup_logged, rental_setup_completed, trial_expired,
- * subscription_renewed) is server/webhook-authoritative and intentionally
- * absent from this set — see lib/analyticsEvents.ts's header.
+ * subscription_renewed, checkout_started) is server/webhook-authoritative
+ * and intentionally absent from this set — see lib/analyticsEvents.ts's
+ * header.
+ *
+ * Analytics Authority Correction — checkout_started was briefly present
+ * here during early P0C-1B design, before app/api/stripe/checkout/route.ts
+ * became its sole authoritative source (fired only after a genuine Stripe
+ * Checkout Session is created — see that file). Leaving it client-emittable
+ * here let an authenticated client submit a self-reported checkout_started
+ * that was never a real Stripe session — it couldn't grant entitlement
+ * (Stripe/webhook logic doesn't read this route's writes), but it could
+ * pollute first-party funnel counts. Removed to match the same
+ * server-only authority class as the other events listed above.
  */
 const CLIENT_EVENT_TYPES = new Set([
   'calculator_completed',
@@ -72,7 +88,6 @@ const CLIENT_EVENT_TYPES = new Set([
   'rental_setup_step_viewed',
   'rental_fuel_needed_calculated',
   'paywall_viewed',
-  'checkout_started',
 ]);
 
 /**
@@ -132,13 +147,9 @@ const METADATA_SCHEMAS: Record<string, MetadataSchema> = {
     },
     required: ['step'],
   },
-  checkout_started: {
-    fields: {
-      billing: (v) => v === 'monthly' || v === 'lifetime',
-      method:  (v) => v === 'stripe' || v === 'iap',
-    },
-    required: ['billing', 'method'],
-  },
+  // checkout_started has no entry here — it is server-authoritative
+  // (app/api/stripe/checkout/route.ts) and structurally unreachable through
+  // this route now that it's absent from CLIENT_EVENT_TYPES above.
   paywall_viewed: {
     fields: {
       showGetaway: (v) => typeof v === 'boolean',
