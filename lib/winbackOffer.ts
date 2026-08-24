@@ -1,3 +1,5 @@
+import { hasLifetimeEntitlement } from './entitlements';
+
 /**
  * Win-back Lifetime offer.
  *
@@ -75,6 +77,8 @@ export function winbackDaysLeft(): number {
 export interface WinbackUser {
   plan?:                    string | null;
   stripeInterval?:          string | null;
+  revenueCatActive?:        boolean;
+  revenueCatInterval?:      string | null;
   emailCampaignEnrolledAt?: string | null;
   emailCampaignStep?:       number | null;
   winbackStartedAt?:        string | null;
@@ -93,7 +97,17 @@ export interface WinbackUser {
  * so plan='free' already excludes them; Lifetime owners are excluded too.
  */
 export function winbackEligible(user: WinbackUser): boolean {
-  if (user.stripeInterval === 'lifetime') return false; // already owns Lifetime
+  // Provider-neutral — a RevenueCat (native IAP) Lifetime owner already owns
+  // Lifetime just as much as a Stripe/gift one (see lib/entitlements.ts).
+  // In practice `plan !== 'free'` below already excludes any active
+  // RevenueCat Lifetime owner (their plan is 'pro', never 'free'), so this
+  // is defense-in-depth / correctness rather than a live exploitable gap —
+  // fixed for consistency per the 2026-08-24 provider-neutral audit.
+  if (hasLifetimeEntitlement({
+    stripeInterval:     user.stripeInterval     ?? null,
+    revenueCatActive:   user.revenueCatActive   ?? false,
+    revenueCatInterval: user.revenueCatInterval ?? null,
+  })) return false;
   if (user.plan !== 'free')               return false; // only lapsed free users
   const wentThroughTrial =
     !!user.emailCampaignEnrolledAt || (user.emailCampaignStep ?? 0) >= 5;

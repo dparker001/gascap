@@ -7,6 +7,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions }      from '@/lib/auth';
 import { findById }         from '@/lib/users';
 import { getPublicReviews, upsertReview } from '@/lib/reviews';
+import { hasLifetimeEntitlement } from '@/lib/entitlements';
 
 export async function GET() {
   const reviews = await getPublicReviews();
@@ -21,7 +22,13 @@ export async function POST(req: Request) {
   const user     = await findById(userId);
   const userName = session.user.name ?? user?.name ?? 'GasCap User';
   const plan     = (user?.plan ?? 'free') as 'free' | 'pro' | 'fleet';
-  const lifetime = user?.plan === 'pro' && user?.stripeInterval === 'lifetime' && !user?.isProTrial;
+  // Provider-neutral — a RevenueCat (native IAP) Lifetime reviewer should
+  // show the same badge a Stripe/gift Lifetime reviewer gets.
+  const lifetime = user?.plan === 'pro' && !user?.isProTrial && hasLifetimeEntitlement({
+    stripeInterval:     user?.stripeInterval     ?? null,
+    revenueCatActive:   user?.revenueCatActive   ?? false,
+    revenueCatInterval: user?.revenueCatInterval ?? null,
+  });
 
   const body = await req.json() as { rating?: number; text?: string; vehicleName?: string };
 

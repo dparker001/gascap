@@ -45,8 +45,9 @@ vi.mock('@/lib/winbackOffer', () => ({
   winbackOfferAvailable: (...a: unknown[]) => winbackOfferAvailable(...(a as [])),
   WINBACK_LIFETIME_COUPON: 'coupon_winback',
 }));
+const foundingStatus = vi.fn(async () => ({ active: false }));
 vi.mock('@/lib/foundingPromo', () => ({
-  foundingStatus: async () => ({ active: false }),
+  foundingStatus: (...a: unknown[]) => foundingStatus(...(a as [])),
   FOUNDING_LIFETIME_COUPON: 'coupon_founding',
 }));
 function req(body: Record<string, unknown>) {
@@ -67,6 +68,7 @@ beforeEach(() => {
   });
   newMemberOfferStatus.mockReturnValue({ eligible: false });
   winbackOfferAvailable.mockReturnValue(false);
+  foundingStatus.mockResolvedValue({ active: false });
 });
 
 async function callRoute(body: Record<string, unknown>) {
@@ -141,6 +143,85 @@ describe('POST /api/stripe/checkout — Stripe Payment Authorization Hardening',
     expect(sessionsCreate).toHaveBeenCalledTimes(1);
     const createCall = sessionsCreate.mock.calls[0][0] as { line_items: { price: string }[] };
     expect(createCall.line_items[0].price).toBe('price_perks_canonical');
+  });
+
+  // ── Provider-neutral Lifetime Perks eligibility ──────────────────────────
+  // Found via live native IAP testing (2026-08-24): the gate previously
+  // checked `user.stripeInterval === 'lifetime'` only, which permanently
+  // 403'd a genuine RevenueCat (native IAP) Lifetime owner trying to buy the
+  // Stripe-billed Perks add-on. See
+  // docs/reviews/2026-08-24-lifetime-entitlement-check-gap.md. Perks itself
+  // is unchanged — still only ever purchasable here via Stripe; only the
+  // "already Lifetime" prerequisite is now provider-neutral.
+
+  it('SEC-C8b. A RevenueCat (native IAP) Lifetime owner can also buy Lifetime Perks', async () => {
+    findById.mockResolvedValueOnce({
+      id: 'user-1', email: 'buyer@example.com', stripeCustomerId: null,
+      stripeInterval: null, revenueCatActive: true, revenueCatInterval: 'lifetime',
+      stripeSubscriptionId: null, isProTrial: false, trialExpiresAt: null,
+      createdAt: '2026-01-01T00:00:00.000Z',
+    });
+    const res = await callRoute({ tier: 'pro', billing: 'lifetime-perks' });
+    expect(res.status).toBe(200);
+    expect(sessionsCreate).toHaveBeenCalledTimes(1);
+    const createCall = sessionsCreate.mock.calls[0][0] as { line_items: { price: string }[] };
+    expect(createCall.line_items[0].price).toBe('price_perks_canonical');
+  });
+
+  it('SEC-C8c. A RevenueCat Monthly (not Lifetime) subscriber is still rejected from Lifetime Perks', async () => {
+    findById.mockResolvedValueOnce({
+      id: 'user-1', email: 'buyer@example.com', stripeCustomerId: null,
+      stripeInterval: null, revenueCatActive: true, revenueCatInterval: 'monthly',
+      stripeSubscriptionId: null, isProTrial: false, trialExpiresAt: null,
+      createdAt: '2026-01-01T00:00:00.000Z',
+    });
+    const res = await callRoute({ tier: 'pro', billing: 'lifetime-perks' });
+    expect(res.status).toBe(403);
+    expect(sessionsCreate).not.toHaveBeenCalled();
+  });
+
+  it('SEC-C8d. A non-Lifetime, non-RevenueCat user is still rejected from Lifetime Perks', async () => {
+    findById.mockResolvedValueOnce({
+      id: 'user-1', email: 'buyer@example.com', stripeCustomerId: null,
+      stripeInterval: null, revenueCatActive: false, revenueCatInterval: null,
+      stripeSubscriptionId: null, isProTrial: false, trialExpiresAt: null,
+      createdAt: '2026-01-01T00:00:00.000Z',
+    });
+    const res = await callRoute({ tier: 'pro', billing: 'lifetime-perks' });
+    expect(res.status).toBe(403);
+    expect(sessionsCreate).not.toHaveBeenCalled();
+  });
+
+  it('SEC-C8e. A RevenueCat Lifetime owner is excluded from the founding discount even while the promo is active — already Lifetime', async () => {
+    foundingStatus.mockResolvedValue({ active: true });
+    findById.mockResolvedValueOnce({
+      id: 'user-1', email: 'buyer@example.com', stripeCustomerId: null,
+      stripeInterval: null, revenueCatActive: true, revenueCatInterval: 'lifetime',
+      stripeSubscriptionId: null, isProTrial: false, trialExpiresAt: null,
+      createdAt: '2026-01-01T00:00:00.000Z',
+    });
+    const res = await callRoute({ tier: 'pro', billing: 'lifetime', foundingOffer: true });
+    expect(res.status).toBe(200);
+    // Before the fix, a RevenueCat Lifetime owner's stripeInterval (null)
+    // !== 'lifetime' would pass the old check and apply the founding
+    // coupon anyway, despite already owning Lifetime.
+    const createCall = sessionsCreate.mock.calls[0][0] as { discounts?: unknown; allow_promotion_codes?: boolean };
+    expect(createCall.discounts).toBeUndefined();
+    expect(createCall.allow_promotion_codes).toBe(true);
+  });
+
+  it('SEC-C8f. A genuinely non-Lifetime user still gets the founding discount while the promo is active', async () => {
+    foundingStatus.mockResolvedValue({ active: true });
+    findById.mockResolvedValueOnce({
+      id: 'user-1', email: 'buyer@example.com', stripeCustomerId: null,
+      stripeInterval: null, revenueCatActive: false, revenueCatInterval: null,
+      stripeSubscriptionId: null, isProTrial: false, trialExpiresAt: null,
+      createdAt: '2026-01-01T00:00:00.000Z',
+    });
+    const res = await callRoute({ tier: 'pro', billing: 'lifetime', foundingOffer: true });
+    expect(res.status).toBe(200);
+    const createCall = sessionsCreate.mock.calls[0][0] as { discounts?: { coupon: string }[] };
+    expect(createCall.discounts).toEqual([{ coupon: 'coupon_founding' }]);
   });
 
   it('SEC-C9. request body no longer has any effect from a priceId field — response identical with or without it', async () => {

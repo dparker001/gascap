@@ -21,6 +21,7 @@ import { sendMail, brandHeader } from './email';
 import { logEmail }              from './emailLog';
 import { REFERRAL_BONUS_ENTRIES } from './giveaway';
 import { findById }              from './users';
+import { hasLifetimeEntitlement } from './entitlements';
 
 // ── Shared layout helpers ──────────────────────────────────────────────────
 
@@ -1003,7 +1004,14 @@ export async function sendReferralCreditEmail(
   // Lifetime referrer was told they'd earned a month that never existed.
   // They do earn something real — recurring giveaway entries — so say that.
   const referrer   = await findById(referrerId).catch(() => null);
-  const isLifetime = referrer?.stripeInterval === 'lifetime';
+  // Provider-neutral — a RevenueCat (native IAP) Lifetime referrer should
+  // get the same "bonus entries" copy a Stripe/gift Lifetime referrer gets,
+  // not the "free month" copy that's meaningless to any Lifetime member.
+  const isLifetime = !!referrer && hasLifetimeEntitlement({
+    stripeInterval:     referrer.stripeInterval     ?? null,
+    revenueCatActive:   referrer.revenueCatActive   ?? false,
+    revenueCatInterval: referrer.revenueCatInterval ?? null,
+  });
 
   if (isLifetime) {
     const count   = referrer?.referralCount ?? 1;

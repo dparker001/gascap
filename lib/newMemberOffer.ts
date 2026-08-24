@@ -6,6 +6,7 @@
  * server-side from the account's createdAt, so there's no coupon code to share
  * and the discount can't be abused via a copied checkout link.
  */
+import { hasLifetimeEntitlement } from './entitlements';
 
 // Stripe coupon: "$5 off, once". Applied server-side ONLY, on the Lifetime
 // checkout, and ONLY for eligible users (see app/api/stripe/checkout/route.ts).
@@ -29,9 +30,19 @@ export interface NewMemberOfferStatus {
 export function newMemberOfferStatus(user: {
   createdAt?: string | null;
   stripeInterval?: string | null;
+  revenueCatActive?: boolean;
+  revenueCatInterval?: string | null;
 }): NewMemberOfferStatus {
-  // Already Lifetime → nothing to offer
-  if (user.stripeInterval === 'lifetime') return { eligible: false, daysLeft: 0 };
+  // Already Lifetime → nothing to offer. Provider-neutral — a RevenueCat
+  // (native IAP) Lifetime purchaser within their first 7 days would
+  // otherwise still be shown this discount despite already owning
+  // Lifetime (see lib/entitlements.ts's PROVENANCE INVARIANT; found via
+  // the 2026-08-24 provider-neutral audit).
+  if (hasLifetimeEntitlement({
+    stripeInterval:     user.stripeInterval     ?? null,
+    revenueCatActive:   user.revenueCatActive   ?? false,
+    revenueCatInterval: user.revenueCatInterval ?? null,
+  })) return { eligible: false, daysLeft: 0 };
   if (!user.createdAt) return { eligible: false, daysLeft: 0 };
 
   const createdMs = new Date(user.createdAt).getTime();

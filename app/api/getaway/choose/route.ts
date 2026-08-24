@@ -31,6 +31,7 @@ import { prisma }           from '@/lib/prisma';
 import { sendMail }         from '@/lib/email';
 import { getawayPromoActive, findGetawayDestination, GETAWAY_DISCLOSURE } from '@/lib/getawayPromo';
 import { sendVacationIncentive } from '@/lib/marketingBoost';
+import { hasLifetimeEntitlement } from '@/lib/entitlements';
 
 /** Fire-and-forget admin notification */
 function notifyAdmin(opts: { subject: string; html: string; text: string }) {
@@ -67,7 +68,17 @@ export async function POST(req: Request) {
   }
 
   // Only Lifetime owners earn the getaway. (Defensive — the picker only shows to them.)
-  if (user.stripeInterval !== 'lifetime') {
+  // Provider-neutral: a native IAP (RevenueCat) Lifetime purchase is just as
+  // valid as a Stripe/gift one — see lib/entitlements.ts's PROVENANCE
+  // INVARIANT. A raw `stripeInterval` check here permanently rejects a
+  // genuine RevenueCat Lifetime owner (found via live native IAP testing,
+  // 2026-08-24 — see docs/reviews/2026-08-24-lifetime-entitlement-check-gap.md).
+  const isLifetime = hasLifetimeEntitlement({
+    stripeInterval:     user.stripeInterval     ?? null,
+    revenueCatActive:   user.revenueCatActive   ?? false,
+    revenueCatInterval: user.revenueCatInterval ?? null,
+  });
+  if (!isLifetime) {
     return NextResponse.json({ error: 'The getaway is included with Pro Lifetime.' }, { status: 403 });
   }
 

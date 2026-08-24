@@ -85,16 +85,24 @@ export async function GET() {
   const consistencyBonus    = consistencyBonusEntries(activeDayCount);
   const communityActiveDays = await getCommunityActiveDays(period);
   const communityBonus      = communityBonusEntries(communityActiveDays);
-  // Lifetime Perks is a Stripe-billed add-on — stays provider-specific.
-  const perksActive = user.stripeInterval === 'lifetime'
-    && user.lifetimePerksUntil != null
-    && new Date(user.lifetimePerksUntil) > new Date();
   // Post-Revision-2 fix: Lifetime status itself is provider-neutral — same
   // fix as lib/giveaway.ts's getEligibleEntrants(), kept consistent so this
   // user-facing breakdown matches what the actual draw computes.
   const isLifetime = hasLifetimeEntitlement({
     stripeInterval: user.stripeInterval, revenueCatActive: user.revenueCatActive, revenueCatInterval: user.revenueCatInterval,
   });
+  // Lifetime Perks itself is only ever PURCHASED via Stripe (no native IAP
+  // path) and `lifetimePerksUntil`/`lifetimePerksSubId` are always
+  // Stripe-set fields regardless of who owns it — but base Lifetime
+  // OWNERSHIP is provider-neutral (a RevenueCat Lifetime owner can also buy
+  // Perks, per the 2026-08-24 checkout-gate fix). A raw `stripeInterval ===
+  // 'lifetime'` check here would let a RevenueCat Lifetime member PAY for
+  // Perks but never actually receive the benefit — found via ChatGPT's
+  // review of that fix. See
+  // docs/reviews/2026-08-24-provider-neutral-lifetime-audit.md.
+  const perksActive = isLifetime
+    && user.lifetimePerksUntil != null
+    && new Date(user.lifetimePerksUntil) > new Date();
   const lifetimeBonusEntries = isLifetime
     ? (perksActive ? LIFETIME_BONUS_ENTRIES : LIFETIME_BASE_BONUS_ENTRIES)
     : user.stripeInterval === 'annual'

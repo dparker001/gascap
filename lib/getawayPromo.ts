@@ -24,6 +24,7 @@
  * Unlimited certificates can be issued (no supply cap), so the promo is
  * time-boxed for urgency, not quantity-capped.
  */
+import { hasLifetimeEntitlement } from './entitlements';
 
 // ── Set GETAWAY_ACTIVE=false in Railway env to kill the promo without a redeploy ─
 const GETAWAY_ACTIVE = process.env.GETAWAY_ACTIVE !== 'false';
@@ -254,14 +255,25 @@ export function getawayDaysLeft(): number | null {
 
 /**
  * Per-user eligibility. Anyone who isn't already on Lifetime can claim the
- * getaway by buying Lifetime while the promo is active. `stripeInterval` is the
- * billing interval from the user record.
+ * getaway by buying Lifetime while the promo is active. Provider-neutral —
+ * a RevenueCat (native IAP) Lifetime owner already has Lifetime just as
+ * much as a Stripe/gift one (see lib/entitlements.ts's PROVENANCE
+ * INVARIANT), so `alreadyLifetime` must not be judged from `stripeInterval`
+ * alone or a native IAP Lifetime owner is incorrectly still shown the "buy
+ * Lifetime to get this free getaway" enticement (found via the 2026-08-24
+ * provider-neutral audit).
  */
 export function getawayOfferStatus(user: {
   stripeInterval?: string | null;
+  revenueCatActive?: boolean;
+  revenueCatInterval?: string | null;
 }): GetawayOfferStatus {
   const active = getawayPromoActive();
-  const alreadyLifetime = user.stripeInterval === 'lifetime';
+  const alreadyLifetime = hasLifetimeEntitlement({
+    stripeInterval:     user.stripeInterval     ?? null,
+    revenueCatActive:   user.revenueCatActive   ?? false,
+    revenueCatInterval: user.revenueCatInterval ?? null,
+  });
   return {
     active,
     eligible: active && !alreadyLifetime,
