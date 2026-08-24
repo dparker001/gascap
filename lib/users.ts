@@ -70,6 +70,10 @@ export interface StoredUser {
   stripeInterval?:          string;
   revenueCatActive?:        boolean;
   revenueCatInterval?:      string | null;
+  getawayDestinationId?:        string | null;
+  getawayDestinationChosenAt?:  string | null;
+  getawayFulfillmentStatus?:    string | null;
+  getawayFulfilledAt?:          string | null;
   verifyReminderSentAt?:    string;
   ambassadorProForLife?: boolean;
   isTestAccount?: boolean;

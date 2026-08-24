@@ -94,6 +94,26 @@ export interface SendVacationResult {
   error?:   string;
 }
 
+/**
+ * Vacation-incentive send outcome — deliberately richer than the plain
+ * `SendVacationResult` used by hotel/dining below (scoped to this one
+ * caller so those unrelated reward flows are never affected).
+ *
+ * A definitive rejected/sent classification is only possible when Marketing
+ * Boost's HTTP response was actually read — a genuine `fetch` throw (network
+ * error, timeout, connection reset, process interruption) gives NO evidence
+ * either way: MB may have already accepted and sent the certificate before
+ * the exception occurred. Collapsing that into "failed" (as the old
+ * `{ok:false}` contract did) let a caller safely assume "safe to tell the
+ * customer/admin this failed and needs manual reissue" — which is exactly
+ * the assumption that risks a duplicate certificate. 'unknown' exists so
+ * the caller (app/api/getaway/choose) can refuse to make that assumption.
+ */
+export type VacationIncentiveOutcome =
+  | { outcome: 'sent';     message?: string }
+  | { outcome: 'rejected'; error: string }
+  | { outcome: 'unknown';  error: string };
+
 /** Send a vacation-incentive redemption link via Marketing Boost. */
 export async function sendVacationIncentive(opts: {
   destinationId: string;
@@ -102,9 +122,11 @@ export async function sendVacationIncentive(opts: {
   countrycode?:  string;
   phone?:        string;
   message?:      string;
-}): Promise<SendVacationResult> {
+}): Promise<VacationIncentiveOutcome> {
+  // No request was ever made — this is a definitive configuration problem,
+  // not an ambiguous transport outcome, so 'rejected' is correct here.
   if (!API_KEY || !SENDER || !BUSINESS_ID) {
-    return { ok: false, error: 'Marketing Boost not configured (missing API key, sender, or business ID)' };
+    return { outcome: 'rejected', error: 'Marketing Boost not configured (missing API key, sender, or business ID)' };
   }
   try {
     const res = await fetch(`${API_BASE}/vacation-incentives/send`, {
@@ -121,13 +143,43 @@ export async function sendVacationIncentive(opts: {
         ...(opts.message     ? { message: opts.message }         : {}),
       }),
     });
-    const json = await res.json().catch(() => ({})) as { status?: boolean; message?: string; errors?: string };
-    if (!res.ok || json.status !== true) {
-      return { ok: false, error: json.errors ?? json.message ?? `HTTP ${res.status}` };
+    // A response arrived, but that alone is not proof of anything — see the
+    // classification table below. `!res.ok` (a 4xx/5xx status) on its own is
+    // NOT sufficient evidence of a definitive rejection: a 5xx or a
+    // malformed/truncated body can occur AFTER Marketing Boost has already
+    // processed the send, so treating every non-2xx as 'rejected' risks
+    // exactly the duplicate-certificate outcome this contract exists to
+    // prevent. Only an explicitly parsed `status: false` in the body is
+    // definitive proof of rejection, regardless of the HTTP status code.
+    //
+    // Classification table:
+    //   body fails to parse as JSON              -> unknown  (can't prove either way)
+    //   parsed, explicit status === false         -> rejected (provider's own definitive answer)
+    //   parsed, explicit status === true, res.ok  -> sent
+    //   parsed, status is anything else (missing,
+    //     not boolean, or status===true w/ !res.ok) -> unknown (ambiguous — no clear proof)
+    let json: { status?: unknown; message?: string; errors?: string };
+    try {
+      json = await res.json() as { status?: unknown; message?: string; errors?: string };
+    } catch (parseErr) {
+      // 2xx (or any status) but the body couldn't be read/parsed — cannot
+      // prove Marketing Boost didn't already process the send.
+      return { outcome: 'unknown', error: `response body unreadable: ${String(parseErr)}` };
     }
-    return { ok: true, message: json.message };
+    if (json.status === false) {
+      return { outcome: 'rejected', error: json.errors ?? json.message ?? `HTTP ${res.status}` };
+    }
+    if (json.status === true && res.ok) {
+      return { outcome: 'sent', message: json.message };
+    }
+    // Anything else — e.g. a 5xx with a parseable-but-inconclusive body, or
+    // a 2xx missing the expected `status` field entirely — is ambiguous,
+    // not a proven failure.
+    return { outcome: 'unknown', error: json.errors ?? json.message ?? `HTTP ${res.status}, inconclusive response body` };
   } catch (err) {
-    return { ok: false, error: String(err) };
+    // fetch threw before any response was read — genuinely ambiguous.
+    // Never classify this as 'rejected'.
+    return { outcome: 'unknown', error: String(err) };
   }
 }
 
