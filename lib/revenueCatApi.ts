@@ -90,6 +90,15 @@ export interface AuthoritativeRevenueCatState {
   productId: string | null;
   /** The RESOLVED, CANONICAL RevenueCat customer id — may differ from the app_user_id searched for (alias resolution). */
   customerId: string | null;
+  /** Only populated when `interval === 'lifetime'` — the RAW RevenueCat
+   *  `original_customer_id` for this purchase's underlying receipt, returned
+   *  EXACTLY as RevenueCat supplied it. This is NOT normalized: it is
+   *  returned even when it equals `customerId` (proven same-owner) — only
+   *  `null` when RevenueCat did not supply the field at all (ownership
+   *  unproven). Callers granting a permanent Lifetime entitlement MUST
+   *  treat `null` as "cannot verify ownership," not as "no conflict" — see
+   *  the fail-closed ownership guard in app/api/user/sync-revenuecat. */
+  originalCustomerId: string | null;
 }
 
 function requireConfig(): { apiKey: string; projectId: string } {
@@ -123,6 +132,13 @@ interface V2Purchase {
   /** RevenueCat's documented ownership state, e.g. 'owned'. */
   status: string;
   entitlements?: V2EntitlementList;
+  /** The RevenueCat customer this purchase's underlying receipt originally
+   *  belonged to — may differ from the customer_id currently being queried
+   *  when a store receipt (e.g. a shared/reused sandbox Apple ID) has been
+   *  associated with a different app_user_id than the one that first
+   *  purchased it. See the cross-account ownership guard in
+   *  syncRevenueCatEntitlementFromProvider's caller. */
+  original_customer_id?: string;
 }
 interface V2Product { store_identifier?: string | null }
 
@@ -296,7 +312,7 @@ export async function fetchAuthoritativeRevenueCatState(appUserId: string): Prom
 
   const customerId = await findCustomerId(appUserId, apiKey, projectId);
   if (!customerId) {
-    return { customerFound: false, active: false, interval: null, productId: null, customerId: null };
+    return { customerFound: false, active: false, interval: null, productId: null, customerId: null, originalCustomerId: null };
   }
 
   const proEntitlementId = await resolveEntitlementInternalId(GASCAP_PRO_ENTITLEMENT_LOOKUP_KEY, apiKey, projectId);
@@ -324,7 +340,18 @@ export async function fetchAuthoritativeRevenueCatState(appUserId: string): Prom
     const entitlementIds = await collectEmbeddedEntitlementIds(purchase.entitlements, apiKey);
     if (entitlementIds.includes(proEntitlementId)) {
       const productId = await resolveProductStoreIdentifier(purchase.product_id, apiKey, projectId);
-      return { customerFound: true, active: true, interval: 'lifetime', productId, customerId };
+      // originalCustomerId is only meaningful (and only ever surfaced) for
+      // Lifetime — it's the raw ownership signal a caller uses to detect a
+      // purchase whose underlying receipt was first associated with a
+      // DIFFERENT RevenueCat customer than the one just resolved. Return it
+      // EXACTLY as RevenueCat supplied it, including when it equals
+      // customerId (legitimate same-owner) — collapsing that case to null
+      // would make "proven same owner" indistinguishable from "ownership
+      // unknown," which is exactly the ambiguity a caller doing fail-closed
+      // ownership verification must not have. Only genuinely missing field
+      // data becomes null.
+      const originalCustomerId = purchase.original_customer_id ?? null;
+      return { customerFound: true, active: true, interval: 'lifetime', productId, customerId, originalCustomerId };
     }
   }
 
@@ -337,9 +364,9 @@ export async function fetchAuthoritativeRevenueCatState(appUserId: string): Prom
     const entitlementIds = await collectEmbeddedEntitlementIds(subscription.entitlements, apiKey);
     if (entitlementIds.includes(proEntitlementId)) {
       const productId = await resolveProductStoreIdentifier(subscription.product_id, apiKey, projectId);
-      return { customerFound: true, active: true, interval: 'monthly', productId, customerId };
+      return { customerFound: true, active: true, interval: 'monthly', productId, customerId, originalCustomerId: null };
     }
   }
 
-  return { customerFound: true, active: false, interval: null, productId: null, customerId };
+  return { customerFound: true, active: false, interval: null, productId: null, customerId, originalCustomerId: null };
 }

@@ -65,7 +65,7 @@ describe('fetchAuthoritativeRevenueCatState', () => {
     fetchMock.mockResolvedValueOnce(customersPage([]));
     const { fetchAuthoritativeRevenueCatState } = await import('../lib/revenueCatApi');
     const result = await fetchAuthoritativeRevenueCatState('unknown-user');
-    expect(result).toEqual({ customerFound: false, active: false, interval: null, productId: null, customerId: null });
+    expect(result).toEqual({ customerFound: false, active: false, interval: null, productId: null, customerId: null, originalCustomerId: null });
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
@@ -134,7 +134,7 @@ describe('fetchAuthoritativeRevenueCatState', () => {
         .mockResolvedValueOnce(aliasesPage(['some-other-id']));
       const { fetchAuthoritativeRevenueCatState } = await import('../lib/revenueCatApi');
       const result = await fetchAuthoritativeRevenueCatState('searched-id-not-in-aliases');
-      expect(result).toEqual({ customerFound: false, active: false, interval: null, productId: null, customerId: null });
+      expect(result).toEqual({ customerFound: false, active: false, interval: null, productId: null, customerId: null, originalCustomerId: null });
     });
 
     it('an alias-list lookup failure throws — never silently treated as "no match" / "confirmed inactive"', async () => {
@@ -228,6 +228,51 @@ describe('fetchAuthoritativeRevenueCatState', () => {
       const { fetchAuthoritativeRevenueCatState } = await import('../lib/revenueCatApi');
       const result = await fetchAuthoritativeRevenueCatState('user-1');
       expect(result.active).toBe(false);
+    });
+  });
+
+  describe('originalCustomerId — raw ownership passthrough, never normalized (2026-08-24 fail-closed fix)', () => {
+    it('same-owner Lifetime purchase: original_customer_id equals the resolved customerId → returned AS-IS, not collapsed to null', async () => {
+      fetchMock
+        .mockResolvedValueOnce(customersPage([{ id: 'user-1' }]))
+        .mockResolvedValueOnce(entitlementsPage([{ id: PRO_ID, lookup_key: 'pro' }]))
+        .mockResolvedValueOnce(purchasesPage([{
+          product_id: 'prod_lifetime', status: 'owned', entitlements: entitlementList([PRO_ID]),
+          original_customer_id: 'user-1',
+        }]))
+        .mockResolvedValueOnce(subscriptionsPage([]))
+        .mockResolvedValueOnce(jsonResponse({ store_identifier: 'gascap_pro_lifetime' }));
+      const { fetchAuthoritativeRevenueCatState } = await import('../lib/revenueCatApi');
+      const result = await fetchAuthoritativeRevenueCatState('user-1');
+      expect(result.customerId).toBe('user-1');
+      expect(result.originalCustomerId).toBe('user-1'); // proven same-owner — NOT null
+    });
+
+    it('cross-account Lifetime purchase: original_customer_id names a different customer → returned exactly', async () => {
+      fetchMock
+        .mockResolvedValueOnce(customersPage([{ id: 'user-1' }]))
+        .mockResolvedValueOnce(entitlementsPage([{ id: PRO_ID, lookup_key: 'pro' }]))
+        .mockResolvedValueOnce(purchasesPage([{
+          product_id: 'prod_lifetime', status: 'owned', entitlements: entitlementList([PRO_ID]),
+          original_customer_id: 'user-0-original-owner',
+        }]))
+        .mockResolvedValueOnce(subscriptionsPage([]))
+        .mockResolvedValueOnce(jsonResponse({ store_identifier: 'gascap_pro_lifetime' }));
+      const { fetchAuthoritativeRevenueCatState } = await import('../lib/revenueCatApi');
+      const result = await fetchAuthoritativeRevenueCatState('user-1');
+      expect(result.originalCustomerId).toBe('user-0-original-owner');
+    });
+
+    it('Lifetime purchase with no original_customer_id field at all → null (ownership unproven, not "no conflict")', async () => {
+      fetchMock
+        .mockResolvedValueOnce(customersPage([{ id: 'user-1' }]))
+        .mockResolvedValueOnce(entitlementsPage([{ id: PRO_ID, lookup_key: 'pro' }]))
+        .mockResolvedValueOnce(purchasesPage([{ product_id: 'prod_lifetime', status: 'owned', entitlements: entitlementList([PRO_ID]) }]))
+        .mockResolvedValueOnce(subscriptionsPage([]))
+        .mockResolvedValueOnce(jsonResponse({ store_identifier: 'gascap_pro_lifetime' }));
+      const { fetchAuthoritativeRevenueCatState } = await import('../lib/revenueCatApi');
+      const result = await fetchAuthoritativeRevenueCatState('user-1');
+      expect(result.originalCustomerId).toBeNull();
     });
   });
 
