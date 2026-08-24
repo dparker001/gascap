@@ -131,6 +131,18 @@ model User {
   lifetimePurchasedAt      String?
   getawayDestinationId     String?
   getawayDestinationChosenAt String?
+  /// 'pending' | 'sent' | 'manual_required'. Null means either "no
+  /// destination chosen yet" OR a historical row from before this field
+  /// existed — the app/api/getaway/choose GET endpoint distinguishes those
+  /// two null cases by computing a client-facing 'legacy' status when
+  /// getawayDestinationId is set but this is null. Never backfilled to
+  /// 'sent' for historical rows — no durable record exists distinguishing
+  /// which historical sends actually succeeded on Marketing Boost's side
+  /// vs. fell back to manual fulfillment (see
+  /// docs/reviews/2026-08-24-getaway-fulfillment-idempotency.md).
+  getawayFulfillmentStatus String?
+  /// Set only on the 'pending' -> 'sent' transition.
+  getawayFulfilledAt       String?
   getawayReminderSentAt    String?
   /// Post-Sprint-2 Revision 1 fix — durable one-time marker so a crash
   /// between sending this email and marking the triggering webhook event

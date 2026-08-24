@@ -201,6 +201,31 @@ export async function GET(req: Request) {
     'error',
   ));
 
+  // Getaway fulfillment stuck 'pending' — Marketing Boost's send API has no
+  // idempotency key and no lookup endpoint (verified 2026-08-24 — see
+  // docs/reviews/2026-08-24-getaway-fulfillment-idempotency.md), so a crash
+  // between MB accepting a send and GasCap recording the outcome is a real,
+  // unresolvable-in-band window: automatically resending risks a duplicate
+  // certificate, so app/api/getaway/choose deliberately never does. This
+  // check exists purely to make that ambiguous window operationally
+  // visible — it never resends, never changes the destination, and (same as
+  // every other finding in this file) re-alerts daily for as long as the
+  // row stays stuck, which is correct here: a genuinely stuck fulfillment
+  // is not "expected state" the way a quiet inbox would misleadingly imply.
+  const stalePendingGetaways = await prisma.user.findMany({
+    where: {
+      getawayFulfillmentStatus:   'pending',
+      getawayDestinationChosenAt: { lt: new Date(Date.now() - 60 * 60 * 1000).toISOString() },
+    },
+    select: { email: true, getawayDestinationId: true, getawayDestinationChosenAt: true },
+  });
+  findings.push(flag(
+    'getaway-stale-pending', 'Getaway fulfillment stuck pending for over an hour',
+    stalePendingGetaways.length,
+    'Marketing Boost has no idempotency key or lookup endpoint, so this is never auto-resent or auto-resolved — verify manually with Marketing Boost whether the certificate was actually sent, then update getawayFulfillmentStatus by hand.',
+    'error', stalePendingGetaways.slice(0, 5).map((u) => `${u.email} (${u.getawayDestinationId})`),
+  ));
+
   // Winback: eligible users sitting untouched means the cron is not running.
   const staleWinback = await prisma.user.count({
     where: {

@@ -102,6 +102,37 @@ currently-installed TestFlight build should already be running the fixed
   Console themselves — assumed already correct; this checklist verifies
   GasCap's own event instrumentation and package-selection logic only.
 
+## Getaway fulfillment client recovery — manual verification (2026-08-24)
+
+`components/GetawayDestinationPicker.tsx`'s server-authoritative recovery
+logic (GET-on-mount, timeout/resume reconciliation, the `verifyFailed`
+"couldn't verify, tap to recheck" state) has **no automated test coverage**
+— this repo has no jsdom/@testing-library/react component-render
+infrastructure (a standing, explicit constraint — see this file's own
+earlier note and `CLAUDE.md`). The server-side idempotency logic it relies
+on IS fully covered (`__tests__/getawayChooseRoute.test.ts`). The following
+must be verified manually/on-device before this UI logic is trusted:
+
+1. **Genuinely offline device, fresh page load** (airplane mode or blocked
+   `/api/getaway/choose`): confirm the picker does NOT render at all —
+   expect the "couldn't confirm your getaway status" state with a
+   "Check status" button, never the destination picker and never a
+   (potentially stale) confirmed view.
+2. **Tap "Check status" after reconnecting:** confirm it correctly
+   transitions to the real server state (picker, confirmed, pending, or
+   manual_required, whichever is actually true for the account).
+3. **Interrupt a POST mid-flight** (e.g., toggle airplane mode right after
+   tapping the destination-confirm button) and wait past the 15s client
+   timeout: confirm the UI does NOT show a hard "something went wrong"
+   error — expect the "couldn't verify" recheck state instead, since
+   backend idempotency means the request may have actually succeeded.
+4. **Confirm no stale localStorage value survives a server disagreement:**
+   manually set `localStorage.gc_getaway_destination` to an incorrect
+   destination id via devtools (or restore from a device backup where the
+   value is stale), then reload — confirm the rendered state matches the
+   server's real answer (via a `GET /api/getaway/choose` check), never the
+   stale localStorage value.
+
 ## Execution log
 _(Append entries here each time this checklist is actually run — date,
 platform, tester, pass/fail per step, and a link to or copy of any
