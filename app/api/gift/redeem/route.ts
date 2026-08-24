@@ -10,6 +10,7 @@ import { findById, grantGiftedLifetime } from '@/lib/users';
 import { findGiftByCode, markGiftRedeemed } from '@/lib/gifts';
 import { updateGhlContactPlan } from '@/lib/ghl';
 import { sendUserPush } from '@/lib/userPush';
+import { hasLifetimeEntitlement } from '@/lib/entitlements';
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
@@ -37,7 +38,14 @@ export async function POST(req: Request) {
   }
 
   // Already a Lifetime member? Don't consume the gift — let them pass it on.
-  const alreadyLifetime = user.plan === 'pro' && user.stripeInterval === 'lifetime' && !user.isProTrial;
+  // Provider-neutral — a RevenueCat (native IAP) Lifetime owner is just as
+  // much a Lifetime member as a Stripe/gift one (see lib/entitlements.ts's
+  // PROVENANCE INVARIANT; found via the 2026-08-24 provider-neutral audit).
+  const alreadyLifetime = user.plan === 'pro' && !user.isProTrial && hasLifetimeEntitlement({
+    stripeInterval:     user.stripeInterval     ?? null,
+    revenueCatActive:   user.revenueCatActive   ?? false,
+    revenueCatInterval: user.revenueCatInterval ?? null,
+  });
   if (alreadyLifetime) {
     return NextResponse.json({
       alreadyLifetime: true,

@@ -98,20 +98,81 @@ describe('getEligibleEntrants — Lifetime bonus parity across providers', () =>
     expect(rcMonthly.entryCount).toBe(none.entryCount);
   });
 
-  it('Lifetime Perks bonus (the higher tier) still requires genuine Stripe provenance — an RC Lifetime purchaser gets the BASE Lifetime bonus, not the Perks bonus, even with a stray lifetimePerksUntil value', async () => {
+  // ── Lifetime Perks eligibility — 2026-08-24 ChatGPT-review fix ───────────
+  // Perks is only ever PURCHASED via Stripe (no native IAP path), and
+  // `lifetimePerksUntil` is always a Stripe-set field regardless of who
+  // owns it — but base Lifetime OWNERSHIP is provider-neutral (a RevenueCat
+  // Lifetime owner can also buy Perks, per the checkout-gate fix). The
+  // superseded test below asserted the OLD (buggy) behavior — a RevenueCat
+  // Lifetime member with a genuinely active lifetimePerksUntil got only the
+  // base bonus, meaning a customer could PAY for Perks but never receive
+  // the Perks-tier benefit. Perks activation itself
+  // (setLifetimePerksActive) is unconditional once the checkout completes,
+  // so a real `lifetimePerksUntil` value on an RC Lifetime account
+  // represents a genuine paid Perks subscription, not a "stray" value.
+
+  it('LP1. Stripe Lifetime + active Perks → Perks bonus tier', async () => {
     const { getEligibleEntrants } = await import('../lib/giveaway');
     const future = new Date(Date.now() + 30 * 86_400_000).toISOString();
     users = [
-      // Genuine Stripe Lifetime + Perks — should get the HIGHER Perks bonus.
       makeUser({ id: 'stripe-perks', email: 'sp@example.com', stripeInterval: 'lifetime', lifetimePerksUntil: future }),
-      // RC Lifetime with a stray (shouldn't-exist) lifetimePerksUntil value —
-      // Perks is a Stripe-only add-on, so this must NOT elevate them to the
-      // Perks tier just because the field happens to be set.
-      makeUser({ id: 'rc-lifetime-stray-perks', email: 'rcp@example.com', revenueCatActive: true, revenueCatInterval: 'lifetime', lifetimePerksUntil: future }),
+      makeUser({ id: 'stripe-base',  email: 'sb@example.com', stripeInterval: 'lifetime' }),
+    ];
+    const entrants = await getEligibleEntrants('2026-08');
+    const perks = entrants.find((e) => e.userId === 'stripe-perks')!;
+    const base  = entrants.find((e) => e.userId === 'stripe-base')!;
+    expect(perks.entryCount).toBeGreaterThan(base.entryCount);
+  });
+
+  it('LP2. RevenueCat Lifetime + active Perks → Perks bonus tier (matches Stripe Lifetime + Perks)', async () => {
+    const { getEligibleEntrants } = await import('../lib/giveaway');
+    const future = new Date(Date.now() + 30 * 86_400_000).toISOString();
+    users = [
+      makeUser({ id: 'stripe-perks', email: 'sp@example.com', stripeInterval: 'lifetime', lifetimePerksUntil: future }),
+      makeUser({ id: 'rc-perks',     email: 'rcp@example.com', revenueCatActive: true, revenueCatInterval: 'lifetime', lifetimePerksUntil: future }),
     ];
     const entrants = await getEligibleEntrants('2026-08');
     const stripePerks = entrants.find((e) => e.userId === 'stripe-perks')!;
-    const rcStray      = entrants.find((e) => e.userId === 'rc-lifetime-stray-perks')!;
-    expect(stripePerks.entryCount).toBeGreaterThan(rcStray.entryCount);
+    const rcPerks      = entrants.find((e) => e.userId === 'rc-perks')!;
+    expect(rcPerks.entryCount).toBe(stripePerks.entryCount);
+  });
+
+  it('LP3. RevenueCat Lifetime + expired Perks → base Lifetime bonus only, not Perks tier', async () => {
+    const { getEligibleEntrants } = await import('../lib/giveaway');
+    const past = new Date(Date.now() - 30 * 86_400_000).toISOString();
+    users = [
+      makeUser({ id: 'rc-expired-perks', email: 'rce@example.com', revenueCatActive: true, revenueCatInterval: 'lifetime', lifetimePerksUntil: past }),
+      makeUser({ id: 'rc-base',          email: 'rcb@example.com', revenueCatActive: true, revenueCatInterval: 'lifetime' }),
+    ];
+    const entrants = await getEligibleEntrants('2026-08');
+    const expired = entrants.find((e) => e.userId === 'rc-expired-perks')!;
+    const base     = entrants.find((e) => e.userId === 'rc-base')!;
+    expect(expired.entryCount).toBe(base.entryCount);
+  });
+
+  it('LP4. RevenueCat Lifetime + no Perks → base Lifetime bonus only', async () => {
+    const { getEligibleEntrants } = await import('../lib/giveaway');
+    users = [
+      makeUser({ id: 'rc-no-perks', email: 'rcn@example.com', revenueCatActive: true, revenueCatInterval: 'lifetime' }),
+    ];
+    const entrants = await getEligibleEntrants('2026-08');
+    const entrant = entrants.find((e) => e.userId === 'rc-no-perks')!;
+    expect(entrant.entryCount).toBeGreaterThan(0); // gets the base bonus...
+    // ...but confirmed less than the Perks tier via LP1/LP2's own numbers.
+  });
+
+  it('LP5. RevenueCat Monthly (not Lifetime) + even a stale/future lifetimePerksUntil → Perks inactive, no bonus at all', async () => {
+    const { getEligibleEntrants } = await import('../lib/giveaway');
+    const future = new Date(Date.now() + 30 * 86_400_000).toISOString();
+    users = [
+      makeUser({ id: 'rc-monthly-stray-perks', email: 'rcms@example.com', revenueCatActive: true, revenueCatInterval: 'monthly', lifetimePerksUntil: future }),
+      makeUser({ id: 'no-entitlement',          email: 'none2@example.com' }),
+    ];
+    const entrants = await getEligibleEntrants('2026-08');
+    const rcMonthly = entrants.find((e) => e.userId === 'rc-monthly-stray-perks')!;
+    const none       = entrants.find((e) => e.userId === 'no-entitlement')!;
+    // Not Lifetime at all → gets neither the base nor the Perks bonus,
+    // regardless of the stray lifetimePerksUntil value.
+    expect(rcMonthly.entryCount).toBe(none.entryCount);
   });
 });

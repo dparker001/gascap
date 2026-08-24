@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import AdminAnalytics from '@/components/AdminAnalytics';
 import RentalPilotMetrics from '@/components/admin/RentalPilotMetrics';
+import { hasLifetimeEntitlement } from '@/lib/entitlements';
 
 interface EmailLogEntry {
   id:        string;
@@ -41,6 +42,8 @@ interface AdminUser {
   verifiedReferralCount?: number;
   stripeCustomerId: string | null;
   stripeInterval:   string | null;
+  revenueCatActive?:   boolean;
+  revenueCatInterval?: string | null;
   isProTrial:       boolean;
   trialExpiresAt?:  string | null;
   pushSubscribed?:  boolean;
@@ -124,12 +127,28 @@ const PLAN_COLORS = {
   fleet: 'bg-blue-100 text-blue-700',
 };
 
+/**
+ * Provider-neutral "is this user Lifetime" for display/reporting purposes
+ * (badges, counts, filters) — recognizes a RevenueCat (native IAP) Lifetime
+ * member the same as a Stripe/gift one. Read-only; the plan-EDIT dropdown
+ * further down intentionally stays Stripe/gift-provenance-specific (it can
+ * only write Stripe-provenance values), so it is NOT migrated to this
+ * helper — see docs/reviews/2026-08-24-provider-neutral-lifetime-audit.md.
+ */
+function isLifetimeUser(u: AdminUser): boolean {
+  return hasLifetimeEntitlement({
+    stripeInterval:     u.stripeInterval,
+    revenueCatActive:   u.revenueCatActive   ?? false,
+    revenueCatInterval: u.revenueCatInterval ?? null,
+  });
+}
+
 /** Returns badge label + color for a user's actual plan state */
 function planBadge(u: AdminUser): { label: string; cls: string } {
   if (u.plan === 'free')  return { label: 'FREE',     cls: 'bg-slate-100 text-slate-600' };
   if (u.plan === 'fleet') return { label: 'FLEET',    cls: 'bg-blue-100 text-blue-700' };
   if (u.isProTrial)       return { label: 'PRO TRIAL', cls: 'bg-amber-100 text-amber-700' };
-  if (u.stripeInterval === 'lifetime')
+  if (isLifetimeUser(u))
                           return { label: 'LIFETIME', cls: 'bg-teal-100 text-teal-700' };
   return                         { label: 'PRO',      cls: 'bg-green-100 text-green-700' };
 }
@@ -731,8 +750,8 @@ export default function AdminPage() {
       const q = search.toLowerCase();
       if (q && !u.name.toLowerCase().includes(q) && !u.email.toLowerCase().includes(q)) return false;
       if (filterPlan === 'trial'    && !(u.plan === 'pro' &&  u.isProTrial))                                    return false;
-      if (filterPlan === 'paid-pro' && !(u.plan === 'pro' && !u.isProTrial && u.stripeInterval !== 'lifetime')) return false;
-      if (filterPlan === 'lifetime' && !(u.plan === 'pro' && !u.isProTrial && u.stripeInterval === 'lifetime')) return false;
+      if (filterPlan === 'paid-pro' && !(u.plan === 'pro' && !u.isProTrial && !isLifetimeUser(u))) return false;
+      if (filterPlan === 'lifetime' && !(u.plan === 'pro' && !u.isProTrial && isLifetimeUser(u))) return false;
       if (filterPlan === 'pro'      &&   u.plan !== 'pro')                                                      return false;
       if (filterPlan === 'free'     &&   u.plan !== 'free')                                                     return false;
       if (filterPlan === 'fleet'    &&   u.plan !== 'fleet')                                                    return false;
@@ -768,8 +787,8 @@ export default function AdminPage() {
     free:         users.filter((u) => u.plan === 'free').length,
     pro:          users.filter((u) => u.plan === 'pro').length,
     trial:        users.filter((u) => u.plan === 'pro' &&  u.isProTrial).length,
-    paidPro:      users.filter((u) => u.plan === 'pro' && !u.isProTrial && u.stripeInterval !== 'lifetime').length,
-    lifetime:     users.filter((u) => u.plan === 'pro' && !u.isProTrial && u.stripeInterval === 'lifetime').length,
+    paidPro:      users.filter((u) => u.plan === 'pro' && !u.isProTrial && !isLifetimeUser(u)).length,
+    lifetime:     users.filter((u) => u.plan === 'pro' && !u.isProTrial && isLifetimeUser(u)).length,
     fleet:        users.filter((u) => u.plan === 'fleet').length,
     // Email status
     verified:     users.filter((u) =>  u.emailVerified).length,

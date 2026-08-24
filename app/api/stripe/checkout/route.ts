@@ -28,6 +28,7 @@ import { newMemberOfferStatus, NEW_MEMBER_LIFETIME_COUPON } from '@/lib/newMembe
 import { winbackOfferAvailable, WINBACK_LIFETIME_COUPON } from '@/lib/winbackOffer';
 import { foundingStatus, FOUNDING_LIFETIME_COUPON } from '@/lib/foundingPromo';
 import { recordAnalyticsEvent } from '@/lib/analyticsEvents';
+import { hasLifetimeEntitlement } from '@/lib/entitlements';
 
 export async function POST(req: Request) {
   if (!stripe) {
@@ -130,20 +131,35 @@ export async function POST(req: Request) {
     offerSource = 'winback';
   }
 
+  // Provider-neutral Lifetime check — a RevenueCat (native IAP) Lifetime
+  // owner is just as much a Lifetime member as a Stripe/gift one for
+  // eligibility purposes below (see lib/entitlements.ts's PROVENANCE
+  // INVARIANT; raw `user.stripeInterval === 'lifetime'` checks here missed
+  // this, found via live native IAP testing 2026-08-24 — see
+  // docs/reviews/2026-08-24-lifetime-entitlement-check-gap.md).
+  const isLifetimeAnyProvider = hasLifetimeEntitlement({
+    stripeInterval:     user.stripeInterval     ?? null,
+    revenueCatActive:   user.revenueCatActive   ?? false,
+    revenueCatInterval: user.revenueCatInterval ?? null,
+  });
+
   // Founding Member launch promo — $9.99 Lifetime for any non-Lifetime account while
   // the promo is active (spots remain). This is the reactivation-campaign path: it
   // covers trial users and lapsed users who fall outside the 7-day new-member window.
   // Re-validated server-side (promo active) so a copied /upgrade?founding=1 link
   // can't outlive the launch.
-  if (body.foundingOffer && billing === 'lifetime' && user.stripeInterval !== 'lifetime') {
+  if (body.foundingOffer && billing === 'lifetime' && !isLifetimeAnyProvider) {
     const { active } = await foundingStatus();
     if (active) { coupon = FOUNDING_LIFETIME_COUPON; offerSource = 'founding'; }
   }
 
   // ── Lifetime Perks add-on ─────────────────────────────────────────────────
-  // Only available to existing Pro Lifetime Membership holders.
+  // Only available to existing Pro Lifetime Membership holders — from any
+  // provider. Perks itself is only ever purchasable here via Stripe (native
+  // IAP has no equivalent purchase path), but the prerequisite "already
+  // Lifetime" must recognize a RevenueCat Lifetime owner too.
   if (billing === 'lifetime-perks') {
-    if (user.stripeInterval !== 'lifetime') {
+    if (!isLifetimeAnyProvider) {
       return NextResponse.json(
         { error: 'Lifetime Perks are only available to Pro Lifetime Membership holders.' },
         { status: 403 },

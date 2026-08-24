@@ -493,13 +493,6 @@ export async function getEligibleEntrants(period: string = currentPeriod()): Pro
       const referralLifetimeBonusEntries = u.referralLifetimeBonusEntries ?? 0;
       const referralBonusEntries       = refCount * REFERRAL_BONUS_ENTRIES;
       const consistencyBonus           = consistencyBonusEntries(activeDayCount);
-      // Lifetime Perks is a Stripe-billed annual add-on ($9.99/yr) — it can
-      // only exist for a Stripe/gift Lifetime purchaser, so this check
-      // correctly stays provider-specific (stripeInterval), unlike the
-      // Lifetime-status gate below.
-      const perksActive          = u.stripeInterval === 'lifetime'
-        && u.lifetimePerksUntil != null
-        && new Date(u.lifetimePerksUntil) > new Date();
       // Post-Revision-2 fix: "is this entrant Lifetime" is provider-neutral
       // — a RevenueCat Lifetime (native IAP) purchaser earns the exact same
       // giveaway bonus as a Stripe/gift Lifetime purchaser. Reward amounts
@@ -508,6 +501,18 @@ export async function getEligibleEntrants(period: string = currentPeriod()): Pro
       const isLifetime = hasLifetimeEntitlement({
         stripeInterval: u.stripeInterval, revenueCatActive: u.revenueCatActive, revenueCatInterval: u.revenueCatInterval,
       });
+      // Lifetime Perks itself is only ever PURCHASED via Stripe (no native
+      // IAP path) and `lifetimePerksUntil` is always a Stripe-set field
+      // regardless of who owns it — but base Lifetime OWNERSHIP is
+      // provider-neutral (a RevenueCat Lifetime owner can also buy Perks,
+      // per the 2026-08-24 checkout-gate fix). A raw `stripeInterval ===
+      // 'lifetime'` check here would let a RevenueCat Lifetime member PAY
+      // for Perks but never actually receive the benefit — found via
+      // ChatGPT's review of that fix. See
+      // docs/reviews/2026-08-24-provider-neutral-lifetime-audit.md.
+      const perksActive          = isLifetime
+        && u.lifetimePerksUntil != null
+        && new Date(u.lifetimePerksUntil) > new Date();
       const lifetimeBonusEntries = isLifetime
         ? (perksActive ? LIFETIME_BONUS_ENTRIES : LIFETIME_BASE_BONUS_ENTRIES)
         : u.stripeInterval === 'annual'

@@ -11,6 +11,7 @@ import { useTranslation } from '@/contexts/LanguageContext';
 import { useIsNative, useNativePlatform } from '@/hooks/useIsNative';
 import DeviceCountNotice from '@/components/DeviceCountNotice';
 import { resolvePlanCardCta, resolvePlanLabel } from '@/lib/planDisplay';
+import { hasLifetimeEntitlement } from '@/lib/entitlements';
 
 interface ReferralSummary {
   code:            string;
@@ -116,6 +117,8 @@ export default function SettingsPage() {
   const [alertSaving,      setAlertSaving]      = useState(false);
   const [livePlan,         setLivePlan]         = useState<string | null>(null);
   const [liveInterval,     setLiveInterval]     = useState<string | null>(null);
+  const [liveRevenueCatActive,   setLiveRevenueCatActive]   = useState<boolean | null>(null);
+  const [liveRevenueCatInterval, setLiveRevenueCatInterval] = useState<string | null>(null);
   const [giveaway,         setGiveaway]         = useState<GiveawayEntries | null>(null);
   const [perksLoading,     setPerksLoading]     = useState(false);
   const [preferredFillLevel, setPreferredFillLevel] = useState<number | null>(null);
@@ -132,9 +135,11 @@ export default function SettingsPage() {
     if (!session) return;
     fetch('/api/vehicles')
       .then((r) => r.json())
-      .then((d: { plan?: string; stripeInterval?: string | null }) => {
+      .then((d: { plan?: string; stripeInterval?: string | null; revenueCatActive?: boolean; revenueCatInterval?: string | null }) => {
         if (d.plan) setLivePlan(d.plan);
         setLiveInterval(d.stripeInterval ?? null);
+        setLiveRevenueCatActive(d.revenueCatActive ?? false);
+        setLiveRevenueCatInterval(d.revenueCatInterval ?? null);
       })
       .catch(() => {});
     // Fleet branding is fetched here when session plan is already 'fleet';
@@ -389,7 +394,15 @@ export default function SettingsPage() {
   const plan         = livePlan ?? session.user?.plan ?? 'free';
   const isProTrial   = (session.user as { isProTrial?: boolean })?.isProTrial ?? false;
   const stripeInterval = liveInterval ?? (session.user as { stripeInterval?: string | null })?.stripeInterval ?? null;
-  const isProLifetime  = plan === 'pro' && !isProTrial && stripeInterval === 'lifetime';
+  const revenueCatActive   = liveRevenueCatActive   ?? (session.user as { revenueCatActive?: boolean })?.revenueCatActive ?? false;
+  const revenueCatInterval = liveRevenueCatInterval ?? (session.user as { revenueCatInterval?: string | null })?.revenueCatInterval ?? null;
+  // Provider-neutral — a RevenueCat (native IAP) Lifetime member must see
+  // the same Lifetime settings UI (CTA card, label) a Stripe/gift Lifetime
+  // member sees; this previously only recognized stripeInterval (found via
+  // the 2026-08-24 provider-neutral audit).
+  const isProLifetime  = plan === 'pro' && !isProTrial && hasLifetimeEntitlement({
+    stripeInterval, revenueCatActive, revenueCatInterval,
+  });
   const isProAnnual    = plan === 'pro' && !isProTrial && stripeInterval === 'annual';
   const lifetimePerksActive = giveaway?.lifetimePerksActive ?? false;
   const lifetimePerksUntil  = giveaway?.lifetimePerksUntil ?? null;

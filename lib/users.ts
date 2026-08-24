@@ -12,7 +12,7 @@ import { recordAnalyticsEvent } from './analyticsEvents';
 import { Prisma } from './generated/prisma/client';
 import { qualifiesForFreeProForLife, AMBASSADOR_THRESHOLDS, getAmbassadorTier } from './ambassador';
 import { sendHotelSavingsCard, sendDiningVoucher } from './marketingBoost';
-import { resolveUserEntitlements, type ResolvedEntitlement } from './entitlements';
+import { resolveUserEntitlements, hasLifetimeEntitlement, type ResolvedEntitlement } from './entitlements';
 import { fetchAuthoritativeRevenueCatState } from './revenueCatApi';
 import { sendMail } from './email';
 
@@ -1172,7 +1172,16 @@ export async function recordActivity(
     user.streakMilestonesHit ?? [],
     (user.streakCredits as unknown as StreakCredit[]) ?? [],
     streak,
-    user.stripeInterval === 'lifetime',
+    // Provider-neutral — a RevenueCat (native IAP) Lifetime owner should
+    // get the same bonus-entries substitute a Stripe/gift Lifetime owner
+    // gets, instead of a useless free-month credit they have no
+    // subscription to apply (see lib/entitlements.ts's PROVENANCE
+    // INVARIANT; found via the 2026-08-24 provider-neutral audit).
+    hasLifetimeEntitlement({
+      stripeInterval:     user.stripeInterval     ?? null,
+      revenueCatActive:   user.revenueCatActive   ?? false,
+      revenueCatInterval: user.revenueCatInterval ?? null,
+    }),
   );
 
   await prisma.user.update({
@@ -1252,8 +1261,14 @@ export function getActiveCredits(user: StoredUser): ReferralCredit[] {
   // banking NEW credits once a referrer is Lifetime, but credits banked
   // BEFORE they upgraded stay in the DB and would otherwise still show as
   // an active "months banked" reward on the Rewards page. Hide them rather
-  // than delete the underlying records.
-  if (user.stripeInterval === 'lifetime') return [];
+  // than delete the underlying records. Provider-neutral — a RevenueCat
+  // (native IAP) Lifetime member has no subscription either (found via the
+  // 2026-08-24 provider-neutral audit).
+  if (hasLifetimeEntitlement({
+    stripeInterval:     user.stripeInterval     ?? null,
+    revenueCatActive:   user.revenueCatActive   ?? false,
+    revenueCatInterval: user.revenueCatInterval ?? null,
+  })) return [];
   const now = new Date();
   return (user.referralCredits ?? []).filter(
     (c) => !c.redeemedAt && new Date(c.expiresAt) > now,
@@ -1290,7 +1305,14 @@ export async function recordReferral(referrerId: string): Promise<void> {
   const monthsEarned     = user.referralProMonthsEarned ?? 0;
   const underCreditCap   = monthsEarned < MAX_REFERRAL_CREDITS;
   const belowProForLife  = !qualifiesForFreeProForLife(newCount);
-  const alreadyLifetime  = user.stripeInterval === 'lifetime';
+  // Provider-neutral — a RevenueCat (native IAP) Lifetime referrer earns
+  // the same bonus-entries substitute a Stripe/gift Lifetime referrer gets
+  // (found via the 2026-08-24 provider-neutral audit).
+  const alreadyLifetime  = hasLifetimeEntitlement({
+    stripeInterval:     user.stripeInterval     ?? null,
+    revenueCatActive:   user.revenueCatActive   ?? false,
+    revenueCatInterval: user.revenueCatInterval ?? null,
+  });
 
   let updatedCredits = existing;
   let earnedMonth    = false;
