@@ -10,6 +10,7 @@ import { getawayPromoActive, getawayDaysLeft } from '@/lib/getawayPromo';
 import BrandBar from '@/components/BrandBar';
 import { detectNativePlatform } from '@/hooks/useIsNative';
 import { purchasePro, restorePurchases } from '@/lib/iap';
+import { shouldAllowIapSuccess, type ReconciledEntitlement } from '@/lib/iapNavigationGate';
 import { trackUpgradePageView, trackUpgradeCheckoutStarted } from '@/lib/gtag';
 import { trackClientEvent } from '@/lib/clientAnalytics';
 
@@ -144,15 +145,36 @@ function UpgradePageInner() {
     setLoading(which === 'lifetime' ? 'pro-lifetime' : 'pro-monthly');
     setError('');
     const res = await purchasePro(which);
+    if (res.cancelled) { setLoading(null); return; } // user backed out — no error
+    if (!res.ok) {
+      setLoading(null);
+      setError(res.error === 'unavailable'
+        ? t.upgrade.iapUnavailable
+        // Surface the underlying reason so store-config issues are diagnosable.
+        : `${t.upgrade.iapFailed}${res.error ? ` (${res.error})` : ''}`);
+      return;
+    }
+    // Client CustomerInfo said the purchase succeeded — that is NEVER by
+    // itself sufficient to unlock Lifetime UI/getaway eligibility (see
+    // lib/iapNavigationGate.ts). Wait for the server's own reconciled
+    // entitlement before navigating.
+    let server: ReconciledEntitlement | null = null;
+    try {
+      const syncRes = await fetch('/api/user/sync-revenuecat', { method: 'POST' });
+      if (syncRes.ok) server = await syncRes.json() as ReconciledEntitlement;
+    } catch { /* server unreachable — server stays null, handled below */ }
     setLoading(null);
-    // Pass the plan so the success page shows the right headline (Lifetime vs Pro)
-    // and the Lifetime getaway picker.
-    if (res.ok) { window.location.href = `/upgrade/success?tier=pro&billing=${which}`; return; }
-    if (res.cancelled) return; // user backed out — no error
-    setError(res.error === 'unavailable'
-      ? t.upgrade.iapUnavailable
-      // Surface the underlying reason so store-config issues are diagnosable.
-      : `${t.upgrade.iapFailed}${res.error ? ` (${res.error})` : ''}`);
+
+    if (shouldAllowIapSuccess(which, server)) {
+      // Pass the plan so the success page shows the right headline (Lifetime vs Pro)
+      // and the Lifetime getaway picker.
+      window.location.href = `/upgrade/success?tier=pro&billing=${which}`;
+      return;
+    }
+    // Provider processing may still be completing — never tell the user
+    // the purchase failed here; the existing retry/purchase action remains
+    // available.
+    setError(t.upgrade.iapFinalizing);
   }
   async function handleRestore() {
     setError('');

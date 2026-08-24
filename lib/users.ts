@@ -592,6 +592,68 @@ export async function revokeAmbassadorEntitlement(userId: string): Promise<Resol
  */
 export async function syncRevenueCatEntitlementFromProvider(userId: string): Promise<ResolvedEntitlement> {
   const rcState = await fetchAuthoritativeRevenueCatState(userId); // throws on failure — intentionally not caught here
+  return reconcileRevenueCatState(userId, rcState);
+}
+
+/**
+ * Thrown by reconcileRevenueCatState() when a RevenueCat-reported active
+ * Lifetime purchase's originalCustomerId names a DIFFERENT GasCap identity
+ * than the one being reconciled. A shared/reused Apple sandbox receipt can
+ * make RevenueCat report an active Lifetime purchase under the wrong
+ * app_user_id — this must never become a real grant. No write occurs.
+ */
+export class CrossAccountLifetimeOwnershipError extends Error {
+  constructor(public readonly userId: string, public readonly originalCustomerId: string) {
+    super(`Lifetime purchase for ${userId} originally belongs to a different GasCap identity (${originalCustomerId}) — refusing to reconcile.`);
+    this.name = 'CrossAccountLifetimeOwnershipError';
+  }
+}
+
+/**
+ * Thrown by reconcileRevenueCatState() when RevenueCat reports an active
+ * Lifetime purchase but supplied no originalCustomerId at all — ownership
+ * cannot be proven either way. Fail closed: never treat missing ownership
+ * metadata as legitimate ownership. No write occurs.
+ */
+export class UnverifiableLifetimeOwnershipError extends Error {
+  constructor(public readonly userId: string) {
+    super(`Lifetime purchase for ${userId} has no ownership metadata (original_customer_id missing) — ownership unverifiable, refusing to reconcile.`);
+    this.name = 'UnverifiableLifetimeOwnershipError';
+  }
+}
+
+/**
+ * Reconcile an ALREADY-FETCHED AuthoritativeRevenueCatState for userId.
+ *
+ * Split out of syncRevenueCatEntitlementFromProvider() so a caller that
+ * needs to inspect the provider state before deciding whether to write
+ * (e.g. the cross-account Lifetime ownership guard in
+ * app/api/user/sync-revenuecat) reconciles the EXACT snapshot it validated,
+ * instead of re-fetching RevenueCat a second time and risking the state
+ * changing between the check and the write (TOCTOU).
+ *
+ * Lifetime ownership invariant is enforced HERE, not only in the HTTP route
+ * — this is the single choke point every caller goes through (on-demand
+ * sync AND webhook reconciliation via syncRevenueCatEntitlementFromProvider,
+ * e.g. CANCELLATION/REFUND_REVERSED), so no current or future caller can
+ * bypass it. Throws BEFORE any write:
+ *   - originalCustomerId === userId  → ownership proven, proceed.
+ *   - originalCustomerId set, other  → CrossAccountLifetimeOwnershipError.
+ *   - originalCustomerId === null    → UnverifiableLifetimeOwnershipError.
+ * Monthly is unaffected — this check only applies when interval === 'lifetime'.
+ */
+export async function reconcileRevenueCatState(
+  userId: string,
+  rcState: Awaited<ReturnType<typeof fetchAuthoritativeRevenueCatState>>,
+): Promise<ResolvedEntitlement> {
+  if (rcState.active && rcState.interval === 'lifetime') {
+    if (rcState.originalCustomerId === null) {
+      throw new UnverifiableLifetimeOwnershipError(userId);
+    }
+    if (rcState.originalCustomerId !== userId) {
+      throw new CrossAccountLifetimeOwnershipError(userId, rcState.originalCustomerId);
+    }
+  }
 
   if (rcState.active) {
     await setUserPlan(userId, 'pro', {

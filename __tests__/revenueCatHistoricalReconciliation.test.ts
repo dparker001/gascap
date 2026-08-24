@@ -14,7 +14,7 @@ import { classifyProvenance, computeReportHash } from '../lib/revenueCatHistoric
 import type { AuthoritativeRevenueCatState } from '../lib/revenueCatApi';
 
 function rc(overrides: Partial<AuthoritativeRevenueCatState>): AuthoritativeRevenueCatState {
-  return { customerFound: true, active: false, interval: null, productId: null, customerId: 'cust_1', ...overrides };
+  return { customerFound: true, active: false, interval: null, productId: null, customerId: 'cust_1', originalCustomerId: null, ...overrides };
 }
 
 const BASE = {
