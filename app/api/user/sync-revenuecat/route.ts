@@ -36,6 +36,17 @@
  * state than what was validated (TOCTOU). The original account's
  * entitlement is never touched by this route, and stripeInterval is never
  * written here.
+ *
+ * Sandbox test-account allowlist (2026-08-25): TestFlight purchases are
+ * created in Apple's SANDBOX environment, which the production-only lookup
+ * above never sees by design — that's correct for every real user, but it
+ * means no TestFlight purchase can ever reconcile. The ONLY exception is a
+ * server-side allowlist of known tester emails (REVENUECAT_SANDBOX_TEST_EMAILS,
+ * comma-separated, never hardcoded). The CURRENT AUTHENTICATED user's own
+ * email — resolved server-side from the session, never from request input —
+ * is checked against it; the client has no way to request or influence which
+ * environment is queried. Everything else (ownership guard, single-snapshot
+ * fetch, provenance) is identical for both environments.
  */
 import { NextResponse }     from 'next/server';
 import { getServerSession } from 'next-auth';
@@ -45,6 +56,15 @@ import {
   CrossAccountLifetimeOwnershipError, UnverifiableLifetimeOwnershipError,
 } from '@/lib/users';
 import { fetchAuthoritativeRevenueCatState } from '@/lib/revenueCatApi';
+
+function isSandboxTestAccount(email: string | null | undefined): boolean {
+  if (!email) return false;
+  const allowlist = (process.env.REVENUECAT_SANDBOX_TEST_EMAILS ?? '')
+    .split(',')
+    .map(e => e.trim().toLowerCase())
+    .filter(Boolean);
+  return allowlist.includes(email.toLowerCase());
+}
 
 export async function POST() {
   const session = await getServerSession(authOptions);
@@ -61,10 +81,15 @@ export async function POST() {
     return NextResponse.json({ error: 'Account not found.' }, { status: 404 });
   }
 
+  // Environment is decided ENTIRELY server-side from the authenticated
+  // user's own canonical email — never from request body/query, so a client
+  // can never ask for a sandbox lookup on someone else's behalf or its own.
+  const environment = isSandboxTestAccount(user.email) ? 'sandbox' : 'production';
+
   try {
     // The ONE authoritative provider read for this request — reconcile
     // below uses this same snapshot, never re-fetching before persisting.
-    const state = await fetchAuthoritativeRevenueCatState(user.id);
+    const state = await fetchAuthoritativeRevenueCatState(user.id, environment);
     const resolved = await reconcileRevenueCatState(user.id, state);
     return NextResponse.json({
       pro:               resolved.pro,
