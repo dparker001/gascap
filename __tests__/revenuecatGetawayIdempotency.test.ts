@@ -33,6 +33,17 @@ vi.mock('@/lib/getawayPromo', () => ({
   getawayPromoActive: () => true, // active for every test in this file
   GETAWAY_DISCLOSURE: { full: [], short: '' },
 }));
+// Mocked as a no-op — this file tests ONLY the getawayChooseEmailSentAt
+// claim's own idempotency (maybeSendGetaway). stampGetawayHoldUntil() uses
+// a SEPARATE conditional column (getawayHoldUntil) via its own updateMany
+// call; letting the real module run here would otherwise collide with this
+// file's single-column `claimedUsers` stand-in below and falsely appear to
+// have already claimed the getaway-email send. See
+// __tests__/getawayFulfillment.test.ts for stampGetawayHoldUntil's own coverage.
+vi.mock('@/lib/getawayFulfillment', () => ({
+  stampGetawayHoldUntil: vi.fn(async () => {}),
+  maybeRevokeGetawayQualification: vi.fn(async () => {}),
+}));
 
 // Real check-and-set semantics: only the FIRST claim on a given user id wins.
 const claimedUsers = new Set<string>();

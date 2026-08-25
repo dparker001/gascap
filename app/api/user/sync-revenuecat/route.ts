@@ -55,16 +55,7 @@ import {
   findById, findByEmail, reconcileRevenueCatState,
   CrossAccountLifetimeOwnershipError, UnverifiableLifetimeOwnershipError,
 } from '@/lib/users';
-import { fetchAuthoritativeRevenueCatState } from '@/lib/revenueCatApi';
-
-function isSandboxTestAccount(email: string | null | undefined): boolean {
-  if (!email) return false;
-  const allowlist = (process.env.REVENUECAT_SANDBOX_TEST_EMAILS ?? '')
-    .split(',')
-    .map(e => e.trim().toLowerCase())
-    .filter(Boolean);
-  return allowlist.includes(email.toLowerCase());
-}
+import { fetchAuthoritativeRevenueCatState, isSandboxTestAccount } from '@/lib/revenueCatApi';
 
 export async function POST() {
   const session = await getServerSession(authOptions);

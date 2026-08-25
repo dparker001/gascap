@@ -33,10 +33,13 @@ interface FakeUser {
   id: string; email: string; name: string;
   plan: string; isProTrial: boolean;
   stripeInterval: string | null; revenueCatActive: boolean; revenueCatInterval: string | null;
+  ambassadorProForLife: boolean;
   getawayDestinationId: string | null;
   getawayDestinationChosenAt: string | null;
   getawayFulfillmentStatus: string | null;
   getawayFulfilledAt: string | null;
+  getawayHoldUntil: string | null;
+  getawayQualificationRevokedAt: string | null;
 }
 
 let db: Record<string, FakeUser> = {};
@@ -46,14 +49,46 @@ function baseUser(overrides: Partial<FakeUser>): FakeUser {
     id: 'u1', email: 'buyer@example.com', name: 'Buyer',
     plan: 'pro', isProTrial: false,
     stripeInterval: null, revenueCatActive: false, revenueCatInterval: null,
+    ambassadorProForLife: false,
     getawayDestinationId: null, getawayDestinationChosenAt: null,
     getawayFulfillmentStatus: null, getawayFulfilledAt: null,
+    // Elapsed by default (grandfathered / pre-feature-shaped default) so
+    // every pre-existing FP* test below exercises the SAME immediate
+    // fulfillment behavior it always did — the 72-hour hold tests explicitly
+    // override this to a future timestamp.
+    getawayHoldUntil: new Date(Date.now() - 60_000).toISOString(),
+    getawayQualificationRevokedAt: null,
     ...overrides,
   };
 }
 
+interface FakeResolved { pro: boolean; permanent: boolean; effectiveInterval: 'monthly' | 'lifetime' | null; sources: string[]; trial: boolean; }
+class CrossAccountLifetimeOwnershipError extends Error {
+  constructor(public readonly userId: string, public readonly originalCustomerId: string) { super('cross-account'); this.name = 'CrossAccountLifetimeOwnershipError'; }
+}
+class UnverifiableLifetimeOwnershipError extends Error {
+  constructor(public readonly userId: string) { super('unverifiable'); this.name = 'UnverifiableLifetimeOwnershipError'; }
+}
 const findById = vi.fn(async (id: string) => db[id] ?? null);
-vi.mock('@/lib/users', () => ({ findById: (id: string) => findById(id) }));
+const reconcileRevenueCatState = vi.fn(async (_id: string, _state: unknown): Promise<FakeResolved> => ({
+  pro: true, permanent: false, effectiveInterval: 'lifetime', sources: ['revenuecat'], trial: false,
+}));
+vi.mock('@/lib/users', () => ({
+  findById: (id: string) => findById(id),
+  reconcileRevenueCatState: (id: string, state: unknown) => reconcileRevenueCatState(id, state),
+  CrossAccountLifetimeOwnershipError,
+  UnverifiableLifetimeOwnershipError,
+}));
+
+const fetchAuthoritativeRevenueCatState = vi.fn(async (id: string, _env?: string) => ({
+  customerFound: true, active: true, interval: 'lifetime', productId: 'gascap_pro_lifetime',
+  customerId: id, originalCustomerId: id,
+}));
+const isSandboxTestAccount = vi.fn((_email?: string | null) => false);
+vi.mock('@/lib/revenueCatApi', () => ({
+  fetchAuthoritativeRevenueCatState: (id: string, env?: string) => fetchAuthoritativeRevenueCatState(id, env),
+  isSandboxTestAccount: (email: string | null | undefined) => isSandboxTestAccount(email),
+}));
 
 const updateMany = vi.fn(async (args: { where: Record<string, unknown>; data: Record<string, unknown> }) => {
   const { where, data } = args;
@@ -61,13 +96,21 @@ const updateMany = vi.fn(async (args: { where: Record<string, unknown>; data: Re
   if (!row) return { count: 0 };
   for (const [key, val] of Object.entries(where)) {
     if (key === 'id') continue;
-    if ((row as unknown as Record<string, unknown>)[key] !== val) return { count: 0 };
+    if (val && typeof val === 'object' && 'in' in (val as object)) {
+      if (!(val as { in: unknown[] }).in.includes((row as unknown as Record<string, unknown>)[key])) return { count: 0 };
+    } else if ((row as unknown as Record<string, unknown>)[key] !== val) {
+      return { count: 0 };
+    }
   }
   Object.assign(row, data);
   return { count: 1 };
 });
+const findUnique = vi.fn(async (args: { where: { id: string } }) => db[args.where.id] ?? null);
 vi.mock('@/lib/prisma', () => ({
-  prisma: { user: { updateMany: (...a: unknown[]) => updateMany(...(a as [{ where: Record<string, unknown>; data: Record<string, unknown> }])) } },
+  prisma: { user: {
+    updateMany: (...a: unknown[]) => updateMany(...(a as [{ where: Record<string, unknown>; data: Record<string, unknown> }])),
+    findUnique: (...a: unknown[]) => findUnique(...(a as [{ where: { id: string } }])),
+  } },
 }));
 
 vi.mock('@/lib/email', () => ({ sendMail: vi.fn(async () => ({})) }));
@@ -108,6 +151,12 @@ beforeEach(() => {
   db = {};
   getServerSession.mockResolvedValue({ user: { id: 'u1', email: 'buyer@example.com' } });
   sendVacationIncentive.mockResolvedValue({ outcome: 'sent' });
+  reconcileRevenueCatState.mockResolvedValue({ pro: true, permanent: false, effectiveInterval: 'lifetime', sources: ['revenuecat'], trial: false });
+  fetchAuthoritativeRevenueCatState.mockResolvedValue({
+    customerFound: true, active: true, interval: 'lifetime', productId: 'gascap_pro_lifetime',
+    customerId: 'u1', originalCustomerId: 'u1',
+  });
+  isSandboxTestAccount.mockReturnValue(false);
 });
 
 describe('POST /api/getaway/choose — provider-neutral Lifetime eligibility', () => {
@@ -365,6 +414,53 @@ describe('POST /api/getaway/choose — fulfillment idempotency (atomic claim + c
     const json = await res.json();
     expect(json.alreadyChosen).toBeUndefined();
     expect(json.destination).toBeUndefined();
+  });
+});
+
+describe('POST /api/getaway/choose — 72-hour verification hold (2026-08-25)', () => {
+  it('HOLD1. Destination selection succeeds immediately even when the hold has NOT elapsed — but Marketing Boost is never called', async () => {
+    db.u1 = baseUser({ stripeInterval: 'lifetime', getawayHoldUntil: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString() });
+    const res = await post('orlando');
+    const json = await res.json();
+    expect(res.status).toBe(200);
+    expect(json).toMatchObject({ ok: true, destination: 'orlando', fulfillmentStatus: 'pending' });
+    expect(db.u1.getawayDestinationId).toBe('orlando'); // choice IS recorded
+    expect(db.u1.getawayFulfillmentStatus).toBe('pending');
+    expect(sendVacationIncentive).not.toHaveBeenCalled();
+  });
+
+  it('HOLD2. Hold already elapsed at selection time → fulfills immediately via the same re-verified path (unchanged end-to-end behavior)', async () => {
+    db.u1 = baseUser({ stripeInterval: 'lifetime', getawayHoldUntil: new Date(Date.now() - 1000).toISOString() });
+    const res = await post('orlando');
+    const json = await res.json();
+    expect(json).toMatchObject({ ok: true, destination: 'orlando', fulfillmentStatus: 'sent' });
+    expect(sendVacationIncentive).toHaveBeenCalledTimes(1);
+  });
+
+  it('HOLD3. Null getawayHoldUntil (grandfathered pre-feature account) → treated as already elapsed, fulfills immediately', async () => {
+    db.u1 = baseUser({ stripeInterval: 'lifetime', getawayHoldUntil: null });
+    const res = await post('orlando');
+    expect((await res.json())).toMatchObject({ fulfillmentStatus: 'sent' });
+    expect(sendVacationIncentive).toHaveBeenCalledTimes(1);
+  });
+
+  it('HOLD4. A RevenueCat-provenance Lifetime whose hold has elapsed is re-verified authoritatively before fulfillment — cross-account ownership still blocks even after 72 hours', async () => {
+    db.u1 = baseUser({ revenueCatActive: true, revenueCatInterval: 'lifetime', getawayHoldUntil: new Date(Date.now() - 1000).toISOString() });
+    reconcileRevenueCatState.mockRejectedValue(new CrossAccountLifetimeOwnershipError('u1', 'someone-else'));
+    const res = await post('orlando');
+    const json = await res.json();
+    expect(sendVacationIncentive).not.toHaveBeenCalled();
+    expect(json.fulfillmentStatus).not.toBe('sent');
+    expect(db.u1.getawayFulfillmentStatus).toBe('pending'); // never transitioned
+  });
+
+  it('HOLD5. A RevenueCat-provenance Lifetime refunded before the hold elapses is caught at fulfillment time — never sent', async () => {
+    db.u1 = baseUser({ revenueCatActive: true, revenueCatInterval: 'lifetime', getawayHoldUntil: new Date(Date.now() - 1000).toISOString() });
+    reconcileRevenueCatState.mockResolvedValue({ pro: false, permanent: false, effectiveInterval: null, sources: [], trial: false });
+    const res = await post('orlando');
+    const json = await res.json();
+    expect(sendVacationIncentive).not.toHaveBeenCalled();
+    expect(json.fulfillmentStatus).not.toBe('sent');
   });
 });
 

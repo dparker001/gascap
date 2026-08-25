@@ -151,6 +151,26 @@ model User {
   /// the RevenueCat and Stripe getaway-choose email paths. See
   /// app/api/native/revenuecat/route.ts's maybeSendGetaway().
   getawayChooseEmailSentAt String?
+  /// 7-day verification hold (2026-08-25) — set once, at the same moment the
+  /// qualifying Lifetime grant is processed (grant timestamp + 7 days).
+  /// getawayFulfillmentStatus transitions to 'sent'/'manual_required' are
+  /// blocked until now >= getawayHoldUntil, so a fast RevenueCat/Apple
+  /// refund is caught by the authoritative re-verify BEFORE an external,
+  /// unrecoverable Marketing Boost certificate send. Null for any account
+  /// granted Lifetime before this shipped — treated as "hold already
+  /// satisfied" (grandfathered) rather than blocking existing members
+  /// forever; see lib/getawayFulfillment.ts.
+  getawayHoldUntil         String?
+  /// Durable, auditable marker: the qualifying Lifetime purchase behind a
+  /// getaway record was refunded/revoked (Apple/RevenueCat only — this repo
+  /// never writes this from a Stripe signal) before Marketing Boost
+  /// fulfillment occurred. Deliberately NOT a getawayFulfillmentStatus value
+  /// — qualification and fulfillment are separate concerns; the existing
+  /// pending/sent/manual_required external-send state machine and its
+  /// ambiguity protections are unchanged. Once set, fulfillment must never
+  /// proceed, but the row (and any prior getawayFulfilledAt/sent history) is
+  /// never deleted or overwritten.
+  getawayQualificationRevokedAt String?
   // OTP passwordless sign-in — one-time session token issued after code verification,
   // consumed by the credentials-otp NextAuth provider (2-min TTL).
   otpSessionToken          String?

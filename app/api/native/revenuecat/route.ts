@@ -73,6 +73,7 @@ import { sendMail } from '@/lib/email';
 import { sendPaidCampaignEmail } from '@/lib/emailCampaignPaid';
 import { sendUserPush } from '@/lib/userPush';
 import { getawayPromoActive, GETAWAY_DISCLOSURE } from '@/lib/getawayPromo';
+import { stampGetawayHoldUntil, maybeRevokeGetawayQualification } from '@/lib/getawayFulfillment';
 import { claimEvent, markProcessed, markFailed } from '@/lib/revenueCatEvents';
 import { verifyRevenueCatHmac, HMAC_SIGNATURE_HEADER } from '@/lib/revenueCatHmac';
 import { fetchAuthoritativeRevenueCatState } from '@/lib/revenueCatApi';
@@ -442,6 +443,7 @@ async function handleTransfer(ev: RcEvent): Promise<Response> {
       const state = statesByGcUserId.get(gcUserId)!;
       if (!state.active) {
         await revokeRevenueCatEntitlement(gcUserId);
+        await maybeRevokeGetawayQualification(gcUserId);
         console.log(`[revenuecat] TRANSFER → source ${gcUserId} no longer has an active RC entitlement; RC contribution cleared, aggregate recomputed.`);
       } else {
         console.log(`[revenuecat] TRANSFER → source ${gcUserId} still shows an active RC entitlement per authoritative lookup; left untouched.`);
@@ -692,7 +694,15 @@ export async function POST(req: Request) {
         '/',
       ).catch(() => { /* best-effort */ });
     }
-    if (interval === 'lifetime') await maybeSendGetaway(user, ev.type ?? '');
+    if (interval === 'lifetime') {
+      // 72-hour verification hold (2026-08-25) — stamped once, idempotently,
+      // at the same moment as the getaway choose-email. Fulfillment
+      // (app/api/getaway/choose, lib/getawayFulfillment.ts) is blocked
+      // until this elapses AND a fresh authoritative RevenueCat re-check
+      // still confirms the entitlement.
+      await stampGetawayHoldUntil(user.id);
+      await maybeSendGetaway(user, ev.type ?? '');
+    }
   }
 
   try {
@@ -736,17 +746,31 @@ export async function POST(req: Request) {
         // retries, rather than guessing at a state we couldn't confirm.
         await syncRevenueCatEntitlementFromProvider(user.id);
         console.log(`[revenuecat] CANCELLATION (cancel_reason=CUSTOMER_SUPPORT) → synced RevenueCat entitlement for ${user.email} against authoritative state (plan recalculated)`);
+        // This is GasCap's real-world Apple-refund signal (see REVOKE_EVENTS
+        // comment) — a Lifetime purchase revoked here, before its getaway
+        // was fulfilled, must permanently block that certificate send.
+        await maybeRevokeGetawayQualification(user.id);
       } else {
         console.log(`[revenuecat] CANCELLATION (cancel_reason=${ev.cancel_reason ?? 'unknown'}) — auto-renew off, access continues until EXPIRATION. No action taken.`);
       }
 
     } else {
-      // EXPIRATION / REFUND → recompute aggregate entitlement rather than
-      // unconditionally reverting to free (Sprint 2 — see lib/entitlements.ts).
-      // A RevenueCat-side revocation must never wipe a DIFFERENT provider's
-      // legitimate grant (Stripe Lifetime, a gift, Ambassador Pro-for-Life).
-      await revokeRevenueCatEntitlement(user.id);
-      console.log(`[revenuecat] ${ev.type} → cleared RevenueCat entitlement for ${user.email} (plan recalculated)`);
+      // EXPIRATION / REFUND — 2026-08-25 fix: previously trusted the event
+      // TYPE alone (revokeRevenueCatEntitlement(user.id), no re-query).
+      // Replaced with the same authoritative RevenueCat state-sync as
+      // CANCELLATION/RESTORE_EVENTS/TRANSFER — never blindly revoke (or
+      // blindly leave granted) from a webhook payload field when a live
+      // provider re-check is available. Still recomputes the aggregate
+      // entitlement rather than unconditionally reverting to free (Sprint 2
+      // — see lib/entitlements.ts): a RevenueCat-side revocation must never
+      // wipe a DIFFERENT provider's legitimate grant (Stripe Lifetime, a
+      // gift, Ambassador Pro-for-Life) — reconcileRevenueCatState()/
+      // syncRevenueCatEntitlementFromProvider() only ever touch RC's own
+      // contribution. THROWS on lookup failure — deliberately not caught
+      // here, propagates to the outer catch (markFailed, 500, retry).
+      await syncRevenueCatEntitlementFromProvider(user.id);
+      console.log(`[revenuecat] ${ev.type} → synced RevenueCat entitlement for ${user.email} against authoritative state (plan recalculated)`);
+      await maybeRevokeGetawayQualification(user.id);
     }
     await markProcessed(ev.id, claimToken);
     return NextResponse.json({ ok: true });

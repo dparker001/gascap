@@ -167,8 +167,10 @@ function UpgradePageInner() {
 
     if (shouldAllowIapSuccess(which, server)) {
       // Pass the plan so the success page shows the right headline (Lifetime vs Pro)
-      // and the Lifetime getaway picker.
-      window.location.href = `/upgrade/success?tier=pro&billing=${which}`;
+      // and the Lifetime getaway picker. method=iap tells the success page this
+      // is a native purchase (vs. Stripe, which carries session_id instead) —
+      // see app/upgrade/success/page.tsx's native recovery path.
+      window.location.href = `/upgrade/success?tier=pro&billing=${which}&method=iap`;
       return;
     }
     // Provider processing may still be completing — never tell the user
@@ -179,7 +181,7 @@ function UpgradePageInner() {
   async function handleRestore() {
     setError('');
     const res = await restorePurchases();
-    if (res.ok) { window.location.href = '/upgrade/success'; return; }
+    if (res.ok) { window.location.href = '/upgrade/success?method=iap'; return; }
     setError(t.upgrade.iapNoRestore);
   }
 

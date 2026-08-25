@@ -51,6 +51,7 @@ export const GETAWAY_DISCLOSURE = {
     'You must live at least 100 miles from your chosen destination, and present a major credit/debit card + government ID at check-in.',
     'Activation fees are non-refundable and the certificate is non-transferable. One incentive per household every 12 months.',
     'Fulfilled by our travel partner — you\'ll receive your certificate from Marketing Boost / RedeemVacations. Full terms at RedeemVacations.com.',
+    'Vacation incentive eligibility requires an active, non-refunded Lifetime purchase. Lifetime membership activates immediately. Complimentary vacation fulfillment is subject to a brief purchase-verification period (currently 72 hours). If the qualifying Lifetime purchase is refunded, reversed, disputed, or revoked before fulfillment, the promotional vacation benefit may be cancelled. If a qualifying purchase is refunded after a vacation certificate has already been issued, GasCap Lifetime access may be revoked, while any third-party taxes, fees, reservations, redemptions, or travel arrangements remain subject to the third-party provider\'s terms.',
   ],
 } as const;
 

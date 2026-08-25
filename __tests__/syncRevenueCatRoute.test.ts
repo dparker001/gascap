@@ -58,8 +58,15 @@ const fetchAuthoritativeRevenueCatState = vi.fn(async (appUserId: string, _envir
   customerFound: true, active: true, interval: 'lifetime', productId: 'gascap_pro_lifetime',
   customerId: appUserId, originalCustomerId: appUserId,
 }));
+function isSandboxTestAccount(email: string | null | undefined): boolean {
+  if (!email) return false;
+  const allowlist = (process.env.REVENUECAT_SANDBOX_TEST_EMAILS ?? '')
+    .split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
+  return allowlist.includes(email.toLowerCase());
+}
 vi.mock('@/lib/revenueCatApi', () => ({
   fetchAuthoritativeRevenueCatState: (id: string, environment?: 'production' | 'sandbox') => fetchAuthoritativeRevenueCatState(id, environment),
+  isSandboxTestAccount: (email: string | null | undefined) => isSandboxTestAccount(email),
 }));
 
 async function post() {
