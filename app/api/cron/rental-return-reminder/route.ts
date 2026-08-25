@@ -35,6 +35,13 @@ const RETURN_WINDOW_HOURS = 36;
 // hourly pass (plus Actions drift) can't skip a session entirely.
 const PICKUP_24H = { lowerHours: 20, upperHours: 26 };
 const PICKUP_2H  = { lowerHours: 0,  upperHours: 3  };
+// 2026-08-25 P0 fix — dedicated "2h before RETURN" tier (previously only the
+// broad 0-36h RETURN_WINDOW_HOURS tier existed; nothing fired specifically
+// at the 2h mark). Compared against returnDateTimeUtc (the timezone-correct
+// instant — see lib/rentalTimezone.ts), never the naive local-time
+// returnDateTime string. Same one-hour-wider-than-nominal padding as the
+// pickup tiers, for the same reason.
+const RETURN_2H   = { lowerHours: 0,  upperHours: 3  };
 
 interface Recipient { id: string; email: string; name: string | null; locale: string | null }
 
@@ -65,11 +72,12 @@ export async function GET(req: Request) {
   let returnDue: Array<{ id: string; user: Recipient }> = [];
   let pickup24:  Array<{ id: string; user: Recipient }> = [];
   let pickup2:   Array<{ id: string; user: Recipient }> = [];
+  let return2:   Array<{ id: string; user: Recipient }> = [];
 
   const userSelect = { user: { select: { id: true, email: true, name: true, locale: true } } };
 
   try {
-    [returnDue, pickup24, pickup2] = await Promise.all([
+    [returnDue, pickup24, pickup2, return2] = await Promise.all([
       prisma.rentalSession.findMany({
         where: {
           status: 'active',
@@ -94,6 +102,18 @@ export async function GET(req: Request) {
         },
         include: userSelect,
       }),
+      // Compared against returnDateTimeUtc — a row written before the
+      // 2026-08-25 timezone fix (null returnDateTimeUtc) simply never
+      // matches this tier; it's still covered by the broad `returnDue`
+      // window above, so no one loses their only reminder.
+      prisma.rentalSession.findMany({
+        where: {
+          status: 'active',
+          returnDateTimeUtc: { not: null, gte: iso(RETURN_2H.lowerHours), lte: iso(RETURN_2H.upperHours) },
+          returnReminder2SentAt: null,
+        },
+        include: userSelect,
+      }),
     ]);
   } catch (err) {
     console.error('[rental-return-reminder] DB query failed:', err);
@@ -103,7 +123,7 @@ export async function GET(req: Request) {
   let sent = 0, errors = 0;
 
   type Job = {
-    kind:      'return' | 'pickup24' | 'pickup2';
+    kind:      'return' | 'pickup24' | 'pickup2' | 'return2';
     sessionId: string;
     user:      Recipient;
   };
@@ -111,6 +131,7 @@ export async function GET(req: Request) {
   const jobs: Job[] = [
     ...pickup24.map((s)  => ({ kind: 'pickup24' as const, sessionId: s.id, user: s.user })),
     ...pickup2.map((s)   => ({ kind: 'pickup2'  as const, sessionId: s.id, user: s.user })),
+    ...return2.map((s)   => ({ kind: 'return2'  as const, sessionId: s.id, user: s.user })),
     ...returnDue.map((s) => ({ kind: 'return'   as const, sessionId: s.id, user: s.user })),
   ];
 
@@ -142,6 +163,13 @@ export async function GET(req: Request) {
           ? 'tu recogida es pronto. En el mostrador, revisa el indicador de combustible antes de salir y regístralo en GasCap — también puedes tomarle una foto como respaldo.'
           : "your pickup is coming up. At the counter, check the fuel gauge before you drive off and record it in GasCap — you can snap a photo of it as backup too.";
         cta = locale === 'es' ? 'Registrar nivel de combustible →' : 'Record pickup fuel →';
+      } else if (job.kind === 'return2') {
+        subject = locale === 'es' ? '⛽ Devolución de alquiler en ~2 horas' : '⛽ Rental due back in ~2 hours';
+        pushBody = locale === 'es'
+          ? 'Tu alquiler vence en unas 2 horas. Llena el tanque antes de devolverlo para evitar el cargo de combustible.'
+          : 'Your rental is due back in about 2 hours. Fill up before drop-off to avoid the refuel fee.';
+        emailBody = pushBody;
+        cta = locale === 'es' ? 'Abrir el Asistente →' : 'Open Rental Return Assistant →';
       } else {
         subject = locale === 'es'
           ? '⛽ Revisa tu combustible antes de devolver el auto de alquiler'
@@ -171,6 +199,7 @@ export async function GET(req: Request) {
         data:
           job.kind === 'pickup24' ? { pickupReminder24SentAt: new Date().toISOString() }
           : job.kind === 'pickup2' ? { pickupReminder2SentAt: new Date().toISOString() }
+          : job.kind === 'return2' ? { returnReminder2SentAt: new Date().toISOString() }
           : { reminderSentAt: new Date().toISOString() },
       });
       await logEmail(logEntry);
@@ -185,10 +214,10 @@ export async function GET(req: Request) {
     }
   }
 
-  console.log(`[rental-return-reminder] ${sent} sent, ${errors} errors (pickup24=${pickup24.length}, pickup2=${pickup2.length}, return=${returnDue.length})`);
+  console.log(`[rental-return-reminder] ${sent} sent, ${errors} errors (pickup24=${pickup24.length}, pickup2=${pickup2.length}, return2=${return2.length}, return=${returnDue.length})`);
   return NextResponse.json({
     ok: true, sent, errors,
-    candidates: { pickup24: pickup24.length, pickup2: pickup2.length, return: returnDue.length },
+    candidates: { pickup24: pickup24.length, pickup2: pickup2.length, return2: return2.length, return: returnDue.length },
     ran: new Date().toISOString(),
   });
 }

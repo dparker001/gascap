@@ -17,6 +17,8 @@ import RentalVinLookup from '@/components/RentalVinLookup';
 import ReturnLocationInput from './ReturnLocationInput';
 import PhotoCaptureButton from './PhotoCaptureButton';
 import AgreementScanButton, { type ScannedAgreementFields } from './AgreementScanButton';
+import { scheduleRentalReturnReminder } from '@/lib/rentalReminder';
+import { detectBrowserTimeZone } from '@/lib/rentalTimezone';
 
 const GAUGE_OPTIONS = ['Full', '7/8', '3/4', '5/8', '1/2', '3/8', '1/4', '1/8', 'Empty'];
 
@@ -188,6 +190,7 @@ export default function RentalSetupFlow({ onCreated, onCancel }: Props) {
           returnLongitude: returnCoords?.lng,
           pickupDateTime: pickupDateTime || undefined,
           returnDateTime,
+          timeZone: detectBrowserTimeZone(),
           pickupVehiclePhotoThumb: pickupVehiclePhoto || undefined,
           pickupGaugePhotoThumb: pickupGaugePhoto || undefined,
           pickupAgreementPhotoThumb: pickupAgreementPhoto || undefined,
@@ -195,6 +198,16 @@ export default function RentalSetupFlow({ onCreated, onCancel }: Props) {
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error ?? t.rentalReturn.setupError); return; }
+      // Local (device-side) 2h-before-return notification — the server cron
+      // is the backup, this is the primary path since it fires even if the
+      // app is closed and doesn't depend on push infra. Uses the device's
+      // own local clock, which is the correct frame for a local
+      // notification (no server round-trip/timezone translation needed
+      // here — that's only required for the server-side cron comparison).
+      if (returnDateTime) {
+        const [d, tm] = returnDateTime.split('T');
+        if (d && tm) void scheduleRentalReturnReminder(d, tm);
+      }
       onCreated(data.session.id);
     } catch {
       setError(t.rentalReturn.setupError);

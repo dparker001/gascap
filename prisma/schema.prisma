@@ -648,6 +648,21 @@ model RentalSession {
 
   pickupDateTime                String?
   returnDateTime                String?
+  /// IANA timezone (e.g. "America/New_York"), captured from the browser at
+  /// write time — used ONLY to derive pickupDateTimeUtc/returnDateTimeUtc
+  /// below. pickupDateTime/returnDateTime themselves stay naive local
+  /// strings unchanged, for backward compatibility with existing rows/UI.
+  timeZone                      String?
+  /// 2026-08-25 P0 fix — the actual UTC instant for pickupDateTime, derived
+  /// via lib/rentalTimezone.ts from pickupDateTime + timeZone. Null for any
+  /// row written before this shipped, or if timeZone was unavailable at
+  /// write time. The server cron compares against THIS field, never the
+  /// naive local string, so reminder timing is correct for any user
+  /// timezone (previously compared a naive local-time string directly
+  /// against a UTC ISO timestamp).
+  pickupDateTimeUtc             String?
+  /// Same as pickupDateTimeUtc, for returnDateTime.
+  returnDateTimeUtc             String?
   pickupLocation                String?
   returnLocation                 String?
   returnLatitude                  Float?
@@ -678,9 +693,15 @@ model RentalSession {
   feedbackText                   String?
 
   notes                        String?
-  reminderSentAt                 String? // dedup guard: return-fuel reminder
+  reminderSentAt                 String? // dedup guard: return-fuel reminder (broad 0-36h window)
   pickupReminder24SentAt         String? // dedup guard: 24h-before-pickup reminder
   pickupReminder2SentAt          String? // dedup guard: 2h-before-pickup reminder
+  /// 2026-08-25 P0 fix — dedup guard: the dedicated 2h-before-RETURN tier
+  /// (distinct from `reminderSentAt`'s broad 0-36h window). Reset (set back
+  /// to null) whenever returnDateTime or timeZone changes on an update, so
+  /// a rescheduled rental gets a correctly-retimed reminder rather than
+  /// silently losing it because the OLD time already consumed the dedup.
+  returnReminder2SentAt          String?
   completedAt                   String?
   createdAt                    String
   updatedAt                    String

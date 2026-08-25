@@ -249,7 +249,19 @@ export async function addFillup(
 /** Fields that users are allowed to edit after logging */
 export type FillupPatch = Partial<Pick<Fillup,
   'date' | 'gallonsPumped' | 'pricePerGallon' | 'odometerReading' | 'stationName' | 'notes' | 'driverLabel' | 'fuelGrade' | 'receiptThumb'
->>;
+>> & {
+  /**
+   * Actual amount paid. 2026-08-25 P0 fix — previously `updateFillup`
+   * unconditionally recomputed `totalCost = gallons * price` on every edit,
+   * silently discarding a manually-entered actual payment (e.g. a rounded
+   * pump total, a coupon/discount) any time gallons/price/anything else was
+   * edited. Semantics now:
+   *   - a positive number  → use exactly this value (explicit, preserved)
+   *   - `null`             → explicit recompute request (gallons × price)
+   *   - omitted (`undefined`) → leave the existing stored value untouched
+   */
+  totalCost?: number | null;
+};
 
 /** Update an existing fillup (only if it belongs to the user). Returns updated record or null. */
 export async function updateFillup(
@@ -263,6 +275,12 @@ export async function updateFillup(
 
   const gallons = patch.gallonsPumped ?? existing.gallonsPumped;
   const price   = patch.pricePerGallon ?? existing.pricePerGallon;
+  // See FillupPatch's totalCost doc comment — never silently recompute over
+  // an existing actual-payment value just because some other field changed.
+  const totalCost =
+    patch.totalCost === null    ? Math.round(gallons * price * 100) / 100  // explicit recompute request
+    : patch.totalCost !== undefined ? patch.totalCost                      // explicit value — preserved exactly
+    : existing.totalCost;                                                  // omitted — leave untouched
   const updated = await prisma.fillup.update({
     where: { id: fillupId },
     data: {
@@ -275,7 +293,7 @@ export async function updateFillup(
       ...(patch.driverLabel     !== undefined && { driverLabel:     patch.driverLabel     ?? null }),
       ...(patch.fuelGrade       !== undefined && { fuelGrade:       patch.fuelGrade       ?? null }),
       ...(patch.receiptThumb    !== undefined && { receiptThumb:    patch.receiptThumb    ?? null }),
-      totalCost: Math.round(gallons * price * 100) / 100,
+      totalCost,
     },
   });
   return fromPrisma(updated);

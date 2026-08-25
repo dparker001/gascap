@@ -118,6 +118,23 @@ body {
     @apply input-field border-red-400 focus:ring-red-400 focus:border-red-400;
   }
 
+  /* Native date/time picker controls (Rental Return Mode pickup/return
+     fields) can render internal segments wider than their intrinsic CSS
+     width on some mobile browsers/WebView engines, overflowing a
+     `w-full`-only container even though no flex/grid min-width collapse is
+     involved. box-sizing is normally covered by Tailwind's preflight, but
+     mobile Safari/Chrome don't always apply the CSS width to a
+     datetime-local control's own internal layout without an explicit
+     max-width + min-width:0 — harmless/no-op on desktop, where these
+     controls already stay within their container. */
+  input[type="date"],
+  input[type="time"],
+  input[type="datetime-local"] {
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
   /* ── Section card */
   .card {
     @apply bg-white rounded-2xl shadow-card p-5;

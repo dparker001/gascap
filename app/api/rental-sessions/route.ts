@@ -93,6 +93,7 @@ export async function POST(req: NextRequest) {
     rentalFuelChargePerGallon:   body.rentalFuelChargePerGallon,
     pickupDateTime:              body.pickupDateTime,
     returnDateTime:              body.returnDateTime,
+    timeZone:                    body.timeZone,
     pickupLocation:              body.pickupLocation,
     returnLocation:               body.returnLocation,
     returnLatitude:               body.returnLatitude,
