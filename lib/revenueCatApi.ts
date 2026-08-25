@@ -300,14 +300,24 @@ async function resolveProductStoreIdentifier(internalProductId: string, apiKey: 
  *
  * Read-only — makes zero writes to RevenueCat. An unknown app_user_id
  * returns `{ customerFound: false, active: false, ... }`, never creates
- * anything. Only PRODUCTION subscriptions/purchases are considered.
+ * anything.
+ *
+ * `environment` defaults to (and for virtually every caller MUST stay)
+ * `'production'` — real users' entitlement must only ever be resolved
+ * against real purchases. The `'sandbox'` value exists solely so a narrow,
+ * server-side-only allowlist (see app/api/user/sync-revenuecat) can let a
+ * known TestFlight tester's own sandbox purchase reconcile during testing;
+ * it is never derived from client input.
  *
  * THROWS on any lookup failure (missing config, network error, non-2xx
  * response, unresolvable entitlement lookup key, a failed alias
  * verification) — callers MUST treat a thrown error as "inconclusive; do
  * not mutate entitlement state," never as "confirmed inactive."
  */
-export async function fetchAuthoritativeRevenueCatState(appUserId: string): Promise<AuthoritativeRevenueCatState> {
+export async function fetchAuthoritativeRevenueCatState(
+  appUserId: string,
+  environment: 'production' | 'sandbox' = 'production',
+): Promise<AuthoritativeRevenueCatState> {
   const { apiKey, projectId } = requireConfig();
 
   const customerId = await findCustomerId(appUserId, apiKey, projectId);
@@ -323,14 +333,14 @@ export async function fetchAuthoritativeRevenueCatState(appUserId: string): Prom
   // Purchases fetched first — Lifetime purchases take priority in the
   // checks below, so fetching in that same order keeps call order intuitive.
   const purchases = await fetchAllPages<V2Purchase>(
-    `/projects/${encodeURIComponent(projectId)}/customers/${encodeURIComponent(customerId)}/purchases?environment=production`,
+    `/projects/${encodeURIComponent(projectId)}/customers/${encodeURIComponent(customerId)}/purchases?environment=${environment}`,
     apiKey,
-    'production purchases',
+    `${environment} purchases`,
   );
   const subscriptions = await fetchAllPages<V2Subscription>(
-    `/projects/${encodeURIComponent(projectId)}/customers/${encodeURIComponent(customerId)}/subscriptions?environment=production`,
+    `/projects/${encodeURIComponent(projectId)}/customers/${encodeURIComponent(customerId)}/subscriptions?environment=${environment}`,
     apiKey,
-    'production subscriptions',
+    `${environment} subscriptions`,
   );
 
   // Lifetime (non-consumable purchase) takes priority — the stronger,
