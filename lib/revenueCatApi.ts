@@ -380,3 +380,23 @@ export async function fetchAuthoritativeRevenueCatState(
 
   return { customerFound: true, active: false, interval: null, productId: null, customerId, originalCustomerId: null };
 }
+
+/**
+ * Sandbox test-account allowlist (2026-08-25) — TestFlight purchases are
+ * created in Apple's SANDBOX environment, which fetchAuthoritativeRevenueCatState's
+ * production-only default never sees by design (correct for every real
+ * user). The ONLY exception is a server-side allowlist of known tester
+ * emails (REVENUECAT_SANDBOX_TEST_EMAILS, comma-separated, never
+ * hardcoded). Shared by app/api/user/sync-revenuecat (on-demand client
+ * sync) and lib/getawayFulfillment.ts (delayed authoritative re-verify at
+ * fulfillment time) so both call sites resolve environment identically —
+ * never derived from client/request input in either caller.
+ */
+export function isSandboxTestAccount(email: string | null | undefined): boolean {
+  if (!email) return false;
+  const allowlist = (process.env.REVENUECAT_SANDBOX_TEST_EMAILS ?? '')
+    .split(',')
+    .map(e => e.trim().toLowerCase())
+    .filter(Boolean);
+  return allowlist.includes(email.toLowerCase());
+}

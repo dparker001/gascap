@@ -41,6 +41,12 @@ vi.mock('@/lib/getawayPromo',       () => ({
   getawayPromoActive: () => false,
   GETAWAY_DISCLOSURE: '',
 }));
+const stampGetawayHoldUntil = vi.fn(async (_id: string) => {});
+const maybeRevokeGetawayQualification = vi.fn(async (_id: string) => {});
+vi.mock('@/lib/getawayFulfillment', () => ({
+  stampGetawayHoldUntil: (id: string) => stampGetawayHoldUntil(id),
+  maybeRevokeGetawayQualification: (id: string) => maybeRevokeGetawayQualification(id),
+}));
 
 // In-memory stand-in for the RevenueCatWebhookEvent table, matching
 // lib/revenueCatEvents.ts's claim semantics closely enough to test the
@@ -191,6 +197,10 @@ describe('entitlement transitions', () => {
     await post({ event: { type: 'NON_RENEWING_PURCHASE', app_user_id: 'user-1', product_id: 'gascap_pro_lifetime', id: 'evt_9' } }, SECRET);
     expect(setUserPlan).toHaveBeenCalled();
     expect(JSON.stringify(setUserPlan.mock.calls[0])).toContain('lifetime');
+    // Lifetime app access is immediate — but the 72-hour verification hold is
+    // stamped at the same moment (2026-08-25), so getaway CERTIFICATE
+    // fulfillment stays gated even though access is instant.
+    expect(stampGetawayHoldUntil).toHaveBeenCalledWith('user-1');
   });
 
   it('9b. treats RENEWAL as a continued grant', async () => {
@@ -199,36 +209,48 @@ describe('entitlement transitions', () => {
     expect(setUserPlan).toHaveBeenCalled();
   });
 
-  it('10. revokes on expiration — via the reconciling revoke path, not a bare setUserPlan(free)', async () => {
-    // Sprint 2: this used to be a direct setUserPlan(userId, 'free') call
-    // with no awareness of a coexisting Stripe entitlement. It now goes
-    // through revokeRevenueCatEntitlement, which recalculates before ever
-    // touching plan — see __tests__/entitlements.test.ts for the resolver
-    // itself and 10b/10c below for the coexistence cases this enables.
+  it('10. EXPIRATION re-verifies via the SAME authoritative RevenueCat state-sync as CANCELLATION/REFUND_REVERSED (2026-08-25 fix — no longer a blind revokeRevenueCatEntitlement(user.id) from the event type alone)', async () => {
+    // Sprint 2: this used to be a direct setUserPlan(userId, 'free') call.
+    // 2026-08-25: replaced the intermediate revokeRevenueCatEntitlement(user.id)
+    // (which trusted the event TYPE with no re-query) with
+    // syncRevenueCatEntitlementFromProvider — the same authoritative-state-sync
+    // helper CANCELLATION/REFUND_REVERSED/TRANSFER already use. See
+    // __tests__/entitlements.test.ts for the resolver itself.
     findById.mockResolvedValue({ ...USER, plan: 'pro' });
     const res = await post({ event: { type: 'EXPIRATION', app_user_id: 'user-1', id: 'evt_10' } }, SECRET);
     expect(res.status).toBe(200);
-    expect(revokeRevenueCatEntitlement).toHaveBeenCalledWith('user-1');
+    expect(syncRevenueCatEntitlementFromProvider).toHaveBeenCalledWith('user-1');
+    expect(revokeRevenueCatEntitlement).not.toHaveBeenCalled();
   });
 
   it('10b. EXPIRATION with a surviving Stripe entitlement does NOT downgrade', async () => {
     findById.mockResolvedValue({ ...USER, plan: 'pro' });
-    revokeRevenueCatEntitlement.mockResolvedValue({
+    syncRevenueCatEntitlementFromProvider.mockResolvedValue({
       pro: true, permanent: false, sources: ['stripe_subscription'], trial: false, effectiveInterval: 'monthly',
     });
     const res = await post({ event: { type: 'EXPIRATION', app_user_id: 'user-1', id: 'evt_10b' } }, SECRET);
     expect(res.status).toBe(200);
-    expect(revokeRevenueCatEntitlement).toHaveBeenCalledWith('user-1');
+    expect(syncRevenueCatEntitlementFromProvider).toHaveBeenCalledWith('user-1');
     // The route itself never calls setUserPlan directly on the revoke path —
-    // revokeRevenueCatEntitlement owns that decision entirely.
+    // syncRevenueCatEntitlementFromProvider/reconcileRevenueCatState own that
+    // decision entirely.
     expect(setUserPlan).not.toHaveBeenCalled();
   });
 
-  it('11. revokes on refund — same reconciling path as expiration', async () => {
+  it('10c. EXPIRATION + authoritative RevenueCat lookup fails => 500, marked failed, no guessed mutation (never blindly revoked from the event type alone)', async () => {
+    findById.mockResolvedValue({ ...USER, plan: 'pro' });
+    syncRevenueCatEntitlementFromProvider.mockRejectedValue(new Error('RevenueCat lookup failed'));
+    const res = await post({ event: { type: 'EXPIRATION', app_user_id: 'user-1', id: 'evt_10c' } }, SECRET);
+    expect(res.status).toBe(500);
+    expect(revokeRevenueCatEntitlement).not.toHaveBeenCalled();
+  });
+
+  it('11. REFUND re-verifies via the same authoritative RevenueCat state-sync as EXPIRATION — never a blind revoke from the event type alone', async () => {
     findById.mockResolvedValue({ ...USER, plan: 'pro' });
     const res = await post({ event: { type: 'REFUND', app_user_id: 'user-1', id: 'evt_11' } }, SECRET);
     expect(res.status).toBe(200);
-    expect(revokeRevenueCatEntitlement).toHaveBeenCalledWith('user-1');
+    expect(syncRevenueCatEntitlementFromProvider).toHaveBeenCalledWith('user-1');
+    expect(revokeRevenueCatEntitlement).not.toHaveBeenCalled();
   });
 
   it('11b. CANCELLATION (auto-renew off, e.g. UNSUBSCRIBE) does not revoke — access runs to EXPIRATION', async () => {
@@ -267,6 +289,22 @@ describe('entitlement transitions', () => {
     expect(res.status).toBe(200);
     expect(syncRevenueCatEntitlementFromProvider).toHaveBeenCalledWith('user-1');
     expect(setUserPlan).not.toHaveBeenCalled(); // the route itself never second-guesses the sync's decision
+  });
+
+  it('11f. EXPIRATION/REFUND-triggered revoke checks getaway qualification (2026-08-25 72-hour hold correction)', async () => {
+    findById.mockResolvedValue({ ...USER, plan: 'pro' });
+    syncRevenueCatEntitlementFromProvider.mockResolvedValue({ pro: false, permanent: false, sources: [], trial: false, effectiveInterval: null });
+    const res = await post({ event: { type: 'EXPIRATION', app_user_id: 'user-1', id: 'evt_11f' } }, SECRET);
+    expect(res.status).toBe(200);
+    expect(maybeRevokeGetawayQualification).toHaveBeenCalledWith('user-1');
+  });
+
+  it('11g. CANCELLATION/CUSTOMER_SUPPORT-triggered revoke also checks getaway qualification', async () => {
+    findById.mockResolvedValue({ ...USER, plan: 'pro' });
+    syncRevenueCatEntitlementFromProvider.mockResolvedValue({ pro: false, permanent: false, sources: [], trial: false, effectiveInterval: null });
+    const res = await post({ event: { type: 'CANCELLATION', app_user_id: 'user-1', cancel_reason: 'CUSTOMER_SUPPORT', id: 'evt_11g' } }, SECRET);
+    expect(res.status).toBe(200);
+    expect(maybeRevokeGetawayQualification).toHaveBeenCalledWith('user-1');
   });
 
   it('11c4. CUSTOMER_SUPPORT + provider lookup FAILS => the event 500s and is marked failed, no guessed mutation', async () => {

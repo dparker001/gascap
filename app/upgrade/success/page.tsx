@@ -7,6 +7,7 @@ import { useTranslation } from '@/contexts/LanguageContext';
 import { getawayPromoActive } from '@/lib/getawayPromo';
 import GetawayDestinationPicker from '@/components/GetawayDestinationPicker';
 import { fbTrack } from '@/lib/gtag';
+import { isNativeIapSuccess, resolveNativeIapConfirmation, type ReconciledEntitlement } from '@/lib/iapNavigationGate';
 
 // ── Per-plan content ────────────────────────────────────────────────────────
 // Plan content (headline/intro/perks) is built from translations inside the
@@ -53,14 +54,81 @@ function SuccessContent() {
   const sessionId = params.get('session_id');
   const tier      = params.get('tier') ?? 'pro';
   const billing   = params.get('billing') ?? 'monthly';
+  // 'method=iap' is set ONLY by app/upgrade/page.tsx's native handleIap()/
+  // handleRestore() — a Stripe Checkout redirect always carries session_id
+  // instead and never this param. This page is shared by both flows; the
+  // distinction matters because native purchases already went through
+  // server-authoritative reconciliation (POST /api/user/sync-revenuecat,
+  // gated by shouldAllowIapSuccess()) before ever navigating here, and a
+  // Capacitor WebView's useSession().update() has been observed to stall
+  // indefinitely in production (2026-08-25 — a real Lifetime purchase for
+  // info.bodycamfiles@gmail.com stuck on "Activating your account…" despite
+  // a fully correct, already-granted entitlement). Stripe/web success is
+  // NOT affected by any of this — its own polling loop below is unchanged.
+  const isNativeIap = isNativeIapSuccess(params);
   const [ready, setReady] = useState(false);
+  // 'ready' means ONLY "stop the spinner" — it is NEVER read as proof of
+  // entitlement. For native IAP, whether the requested purchase is actually
+  // server-confirmed lives in this SEPARATE state (2026-08-25 correction —
+  // query params like method=iap/billing=lifetime must never by themselves
+  // authorize the success UI or getaway eligibility; a directly-visited or
+  // spoofed success URL must not visually assert a purchase the server
+  // hasn't confirmed). 'pending' only applies mid-flight for native; Stripe/
+  // web never sets this and is unaffected — see below.
+  const [nativeConfirmed, setNativeConfirmed] = useState<'pending' | 'confirmed' | 'unconfirmed'>('pending');
 
+  // ── Native IAP recovery path ─────────────────────────────────────────────
+  // Never depends on useSession().update() — asks the existing
+  // server-authoritative endpoint directly, bounded by a client-side timeout
+  // so a network stall still converges deterministically instead of
+  // spinning. The purchase was AUTHORIZED client-side before navigating here
+  // (handleIap() already gated the initial navigation on shouldAllowIapSuccess),
+  // but that is not durable proof for THIS page load — a direct/refreshed/
+  // spoofed visit to this URL carries no such guarantee, so this endpoint's
+  // response is re-evaluated through the SAME shouldAllowIapSuccess() gate
+  // every time. Only a response that reconciles with the REQUESTED tier
+  // (`billing`) sets nativeConfirmed='confirmed'; anything else — timeout,
+  // non-2xx, no entitlement, or an entitlement that doesn't match what was
+  // requested — sets 'unconfirmed'. The spinner still always stops.
+  function runNativeReconciliation() {
+    setNativeConfirmed('pending');
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+
+    fetch('/api/user/sync-revenuecat', { method: 'POST', signal: controller.signal })
+      .then(async (res) => {
+        if (!res.ok) return null;
+        return await res.json() as ReconciledEntitlement;
+      })
+      .catch(() => null)
+      .then((server) => {
+        const state = resolveNativeIapConfirmation(billing === 'lifetime' ? 'lifetime' : 'monthly', server);
+        setNativeConfirmed(state);
+        // Best-effort JWT refresh — never gates the confirmation decision above.
+        if (state === 'confirmed') refreshSession().catch(() => {});
+      })
+      .finally(() => {
+        clearTimeout(timeout);
+        setReady(true); // stop the spinner regardless — never the entitlement signal
+      });
+
+    return () => { clearTimeout(timeout); controller.abort(); };
+  }
+
+  useEffect(() => {
+    if (!isNativeIap) return;
+    return runNativeReconciliation();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isNativeIap]);
+
+  // ── Stripe/web success path (unchanged) ──────────────────────────────────
   // Poll the session until the webhook has applied the upgrade, instead of a
   // single fixed wait. The Stripe webhook (checkout.session.completed) can take
   // a few seconds — a one-shot 2.5s refresh often raced it, leaving the user on
   // a "You're Pro!" page whose session still said trial/free. We refresh the JWT
   // repeatedly until plan reflects the purchase (or we hit a safety timeout).
   useEffect(() => {
+    if (isNativeIap) return; // handled by the native recovery effect above
     let cancelled = false;
     let attempts  = 0;
     const MAX_ATTEMPTS = 8;     // ~1.2s + 8×1.8s ≈ 15s worst case
@@ -89,7 +157,7 @@ function SuccessContent() {
     // what (e.g. if a session refresh stalls on the native WebView).
     const hardStop = setTimeout(() => { if (!cancelled) setReady(true); }, 4000);
     return () => { cancelled = true; clearTimeout(first); clearTimeout(hardStop); };
-  }, [refreshSession, tier]);
+  }, [refreshSession, tier, isNativeIap]);
 
   // Meta Pixel Purchase event — fires once per checkout session (never again on
   // refresh/re-render). Stripe has already confirmed payment before redirecting
@@ -149,6 +217,43 @@ function SuccessContent() {
       ]
     : null;
 
+  // Native IAP, spinner stopped, but the server did NOT confirm the
+  // requested entitlement (timeout, non-2xx, no entitlement, or a mismatch
+  // between what was requested and what the server actually granted). Never
+  // render the Lifetime/Pro success template in this state — query params
+  // alone must never visually assert a purchase the server hasn't confirmed.
+  if (ready && isNativeIap && nativeConfirmed === 'unconfirmed') {
+    return (
+      <div className="bg-white rounded-3xl shadow-card p-8 max-w-sm w-full text-center space-y-5">
+        <div className="w-20 h-20 rounded-full bg-amber-100 flex items-center justify-center mx-auto">
+          <svg className="w-10 h-10 text-amber-500" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="9" />
+            <path d="M12 8v5" /><path d="M12 16h.01" />
+          </svg>
+        </div>
+        <h1 className="text-2xl font-black text-navy-700">{t.upgrade.successUnconfirmedTitle}</h1>
+        <p className="text-slate-500 text-sm leading-relaxed">{t.upgrade.successUnconfirmedBody}</p>
+        <button
+          onClick={runNativeReconciliation}
+          className="block w-full py-3.5 rounded-2xl font-black text-base transition-colors text-center bg-amber-500 hover:bg-amber-400 text-white"
+        >
+          {t.upgrade.successUnconfirmedRetry}
+        </button>
+        <button onClick={() => router.push('/')}
+          className="block w-full py-3 rounded-2xl border-2 border-slate-200 text-sm font-bold
+                     text-slate-600 hover:border-slate-300 hover:bg-slate-50 transition-colors">
+          {t.upgrade.backToApp}
+        </button>
+      </div>
+    );
+  }
+
+  // Lifetime getaway UI requires server-authoritative confirmation for a
+  // native purchase — for Stripe/web, checkout + the existing webhook
+  // already gate this upstream, unchanged.
+  const lifetimeConfirmedForGetaway = isNativeIap ? nativeConfirmed === 'confirmed' : true;
+
   return (
     <div className="bg-white rounded-3xl shadow-card p-8 max-w-sm w-full text-center space-y-5">
 
@@ -197,7 +302,7 @@ function SuccessContent() {
       {/* Getaway promo — Lifetime buyers choose their complimentary getaway.
           Always shown for lifetime; the picker handles the brief post-purchase
           window gracefully (the grant webhook is async) with a retry message. */}
-      {billing === 'lifetime' && getawayPromoActive() && <GetawayDestinationPicker />}
+      {billing === 'lifetime' && getawayPromoActive() && lifetimeConfirmedForGetaway && <GetawayDestinationPicker />}
 
       {sessionId && (
         <p className="text-[11px] text-slate-300 font-mono break-all">

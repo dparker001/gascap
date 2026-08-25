@@ -53,17 +53,11 @@ import { findById }         from '@/lib/users';
 import { prisma }           from '@/lib/prisma';
 import { sendMail }         from '@/lib/email';
 import { getawayPromoActive, findGetawayDestination, GETAWAY_DISCLOSURE } from '@/lib/getawayPromo';
-import { sendVacationIncentive, type VacationIncentiveOutcome } from '@/lib/marketingBoost';
 import { hasLifetimeEntitlement } from '@/lib/entitlements';
+import { attemptGetawayFulfillment } from '@/lib/getawayFulfillment';
 
 export type GetawayFulfillmentStatus = 'pending' | 'sent' | 'manual_required';
 export type GetawayClientStatus = GetawayFulfillmentStatus | 'legacy' | null;
-
-/** Fire-and-forget admin notification */
-function notifyAdmin(opts: { subject: string; html: string; text: string }) {
-  sendMail({ to: 'info@gascap.app', ...opts })
-    .catch((e) => console.error('[GasCap] Getaway admin notify failed:', e));
-}
 
 /** getawayFulfillmentStatus=null + a destination present means a pre-fix
  *  historical row — computed as 'legacy' for clients, never stored as such. */
@@ -176,158 +170,66 @@ export async function POST(req: Request) {
     });
   }
 
-  // This request owns fulfillment — call Marketing Boost exactly once.
-  // sendVacationIncentive() distinguishes a definitive provider response
-  // ('sent'/'rejected') from a genuinely ambiguous transport failure
-  // ('unknown' — fetch threw before any response was read, so Marketing
-  // Boost may already have accepted and sent the certificate). Only
-  // 'unknown' must never be treated as a reason to tell the customer/admin
-  // this failed — see lib/marketingBoost.ts's VacationIncentiveOutcome.
-  let mb: VacationIncentiveOutcome;
-  try {
-    mb = await sendVacationIncentive({
-      destinationId: dest.mbDestinationId,
-      name:          user.name,
-      email:         user.email,
-    });
-  } catch (err) {
-    // sendVacationIncentive() is documented to always catch internally and
-    // never throw — but defensively treated as 'unknown' regardless, so a
-    // future violation of that contract still fails safe (ambiguous, not a
-    // fabricated 'rejected') rather than stranding the row with zero
-    // notification.
-    console.error(`[GasCap] sendVacationIncentive threw unexpectedly for ${user.email} → ${dest.name}:`, err);
-    mb = { outcome: 'unknown', error: `threw: ${String(err)}` };
-  }
+  // ── 7-day verification hold (2026-08-25) ─────────────────────────────────
+  // Destination selection is immediate — the claim above already happened.
+  // Certificate FULFILLMENT (the external, unrecoverable Marketing Boost
+  // call) must not occur until the hold has elapsed. `user.getawayHoldUntil`
+  // was stamped once at the qualifying grant (see lib/getawayFulfillment.ts);
+  // null means granted before this feature shipped — grandfathered as
+  // already-satisfied. If the hold hasn't elapsed yet, record the choice and
+  // stop here — no Marketing Boost call, no attemptGetawayFulfillment().
+  const holdUntil    = user.getawayHoldUntil ?? null;
+  const holdElapsed  = !holdUntil || Number.isNaN(Date.parse(holdUntil)) || Date.parse(holdUntil) <= Date.now();
 
-  if (mb.outcome === 'unknown') {
-    // Genuinely ambiguous — Marketing Boost may already have sent the
-    // certificate. LEAVE the durable row 'pending'. Never auto-resend,
-    // never send the "ISSUE GETAWAY CERT" manual-fulfillment fallback
-    // (that fallback tells an admin to issue a NEW certificate by hand,
-    // which would risk a duplicate if MB actually did receive this one).
-    // Alert admin with language that makes the ambiguity explicit instead.
-    console.error(`[GasCap] MB send outcome UNKNOWN (ambiguous transport failure) for ${user.email} → ${dest.name}:`, mb.error);
-    notifyAdmin({
-      subject: `⚠️ AMBIGUOUS getaway send — verify before issuing → ${dest.name} → ${user.email}`,
-      html: `<div style="font-family:system-ui,sans-serif;max-width:480px;">
-        <p style="font-size:16px;margin:0 0 8px;color:#b45309;">⚠️ The Marketing Boost API call for this getaway did not return a definitive response (network/transport error) — it may or may not have actually sent.</p>
-        <p style="font-size:14px;color:#334155;margin:0 0 8px;"><strong>${user.name}</strong> (${user.email}) chose <strong>${dest.name}</strong>.</p>
-        <p style="font-size:14px;color:#0f766e;margin:0;"><strong>Action:</strong> Check the Marketing Boost portal directly for whether a certificate for ${user.email} / ${dest.name} already exists BEFORE issuing a new one — issuing without checking risks a duplicate.</p>
-        <p style="font-size:12px;color:#94a3b8;margin-top:8px;">Transport error: ${mb.error}</p>
+  if (!holdElapsed) {
+    // Copy deliberately does not name "72 hours" or attribute the wait to
+    // Apple — this is GasCap's own brief fraud/refund verification, not an
+    // Apple deadline or the point a purchase becomes "final."
+    sendMail({
+      to:      user.email,
+      subject: `🏝️ Your ${dest.name} getaway is reserved`,
+      html: `<div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;">
+        <div style="background:linear-gradient(135deg,#005F4A,#1EB68F);border-radius:16px 16px 0 0;padding:24px;text-align:center;">
+          <p style="font-size:26px;margin:0;color:#fff;font-weight:800;">${dest.emoji} ${dest.name}</p>
+        </div>
+        <div style="background:#fff;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 16px 16px;padding:24px;">
+          <p style="font-size:15px;color:#334155;margin:0 0 12px;">Your vacation choice is reserved, ${user.name}! Your GasCap Lifetime membership is active now. We'll email your <strong>${dest.name}</strong> vacation certificate after a brief purchase-verification period.</p>
+          <div style="background:#f0fdf9;border:1px solid #99f6e4;border-radius:12px;padding:14px 16px;margin:0 0 12px;">
+            <p style="font-size:12px;color:#0f766e;font-weight:800;text-transform:uppercase;letter-spacing:.05em;margin:0 0 6px;">Good to know</p>
+            ${GETAWAY_DISCLOSURE.full.map((l) => `<p style="font-size:13px;color:#334155;margin:0 0 4px;">• ${l}</p>`).join('')}
+          </div>
+          <p style="font-size:13px;color:#64748b;margin:0;">Questions? Just reply to this email.</p>
+        </div>
       </div>`,
-      text: `AMBIGUOUS getaway send (transport error, no definitive MB response) — ${dest.name} → ${user.name} <${user.email}>. Verify in the Marketing Boost portal before issuing manually. Error: ${mb.error}`,
-    });
-    console.info(`[GasCap] Getaway destination chosen: ${dest.name} by ${user.email} (pending — ambiguous send outcome)`);
+      text: `Your vacation choice (${dest.name}) is reserved! Your GasCap Lifetime membership is active now. We'll email your vacation certificate after a brief purchase-verification period. ${GETAWAY_DISCLOSURE.short}`,
+    }).catch((e) => console.error('[GasCap] Getaway pending-verification email failed:', e));
+
+    console.info(`[GasCap] Getaway destination chosen: ${dest.name} by ${user.email} (pending — 72-hour verification hold not yet elapsed)`);
     return NextResponse.json({ ok: true, destination: dest.id, fulfillmentStatus: 'pending' });
   }
 
-  const nextStatus: GetawayFulfillmentStatus = mb.outcome === 'sent' ? 'sent' : 'manual_required';
-  const transition = await prisma.user.updateMany({
-    where: { id: userId, getawayDestinationId: dest.id, getawayFulfillmentStatus: 'pending' },
-    data:  nextStatus === 'sent'
-      ? { getawayFulfillmentStatus: 'sent', getawayFulfilledAt: new Date().toISOString() }
-      : { getawayFulfillmentStatus: 'manual_required' },
-  });
-
-  if (transition.count === 0) {
-    // The durable row is no longer 'pending' for this destination —
-    // something else changed it between the claim and now (should not
-    // happen given the single-writer design, but this is the compare-and-
-    // set safety net, not a log-and-ignore). Never fabricate a response
-    // status from the in-memory MB result when the DB disagrees — re-read
-    // and return what's actually durable. The external send may genuinely
-    // have succeeded even though the DB transition didn't land; that fact
-    // is preserved in the alert, not silently discarded, but it is NOT
-    // reported to the customer as fact unless the DB itself says so.
-    const recheck = await findById(userId);
-    const durableStatus = computeClientStatus(recheck?.getawayDestinationId ?? null, recheck?.getawayFulfillmentStatus ?? null);
-
-    if (!recheck?.getawayDestinationId) {
-      // Fail closed — same principle as the claim-loser branch above. If
-      // the re-read shows NO durable destination at all, substituting
-      // `dest.id` and claiming alreadyChosen:true would fabricate a fact
-      // the database does not actually contain.
-      console.error(
-        `[GasCap] Getaway pending->${nextStatus} transition matched 0 rows for ${user.email}, AND the re-read ` +
-        `shows no durable getawayDestinationId at all. Marketing Boost outcome was '${mb.outcome}'. ` +
-        `Contradictory durable state — investigate. No notification sent for this attempt.`,
-      );
-      notifyAdmin({
-        subject: `🚨 Getaway contradictory state — no durable destination after transition mismatch → ${user.email}`,
-        html: `<div style="font-family:system-ui,sans-serif;max-width:480px;">
-          <p style="font-size:16px;margin:0 0 8px;color:#b91c1c;">🚨 Marketing Boost outcome was '${mb.outcome}' for <strong>${user.email}</strong> / <strong>${dest.name}</strong>, the pending→${nextStatus} transition matched 0 rows, AND the re-read shows no destination on the account at all. This is a contradictory state — investigate before taking any action.</p>
-        </div>`,
-        text: `Getaway contradictory state for ${user.email} / ${dest.name}: MB outcome '${mb.outcome}', transition matched 0 rows, re-read shows no destination. Investigate.`,
-      });
-      return NextResponse.json(
-        { error: 'Could not confirm your getaway selection — please try again in a moment.' },
-        { status: 503 },
-      );
-    }
-
-    console.error(
-      `[GasCap] Getaway pending->${nextStatus} transition matched 0 rows for ${user.email} — ` +
-      `Marketing Boost outcome was '${mb.outcome}' but durable status is actually '${durableStatus}'. ` +
-      `State divergence — investigate. No notification sent for this attempt.`,
+  // Hold already elapsed at the moment of selection (e.g. a late chooser
+  // reached via the reminder cron) — fulfill immediately via the same
+  // shared, re-verified path the recurring cron uses. No logic is
+  // duplicated here; see lib/getawayFulfillment.ts for the full
+  // authoritative-reconciliation + Marketing Boost + state-machine flow.
+  const result = await attemptGetawayFulfillment(userId);
+  if (result.outcome === 'sent' || result.outcome === 'manual_required' || result.outcome === 'ambiguous') {
+    return NextResponse.json({ ok: true, destination: result.destination, fulfillmentStatus: result.outcome === 'ambiguous' ? 'pending' : result.outcome });
+  }
+  // 'not_ready' at this point (hold just proven elapsed, claim just won) is
+  // unexpected but not fabricated — re-read and report actual durable state.
+  const recheck = await findById(userId);
+  console.error(`[GasCap] Getaway immediate fulfillment returned '${result.reason}' for ${user.email} right after a successful claim — investigate.`);
+  if (!recheck?.getawayDestinationId) {
+    // Fail closed — same principle as the claim-loser branch above. If the
+    // re-read shows NO durable destination at all, fabricating alreadyChosen
+    // would claim a fact the database does not actually contain.
+    return NextResponse.json(
+      { error: 'Could not confirm your getaway selection — please try again in a moment.' },
+      { status: 503 },
     );
-    notifyAdmin({
-      subject: `⚠️ Getaway state divergence — durable status disagrees with MB outcome → ${user.email}`,
-      html: `<div style="font-family:system-ui,sans-serif;max-width:480px;">
-        <p style="font-size:16px;margin:0 0 8px;color:#b45309;">⚠️ Marketing Boost outcome was '${mb.outcome}' for <strong>${user.email}</strong> / <strong>${dest.name}</strong>, but the durable database transition did not apply (durable status is now '${durableStatus}'). Investigate before assuming either outcome.</p>
-      </div>`,
-      text: `Getaway state divergence for ${user.email} / ${dest.name}: MB outcome '${mb.outcome}', durable status '${durableStatus}'. Investigate.`,
-    });
-    return NextResponse.json({ ok: true, destination: recheck.getawayDestinationId, alreadyChosen: true, fulfillmentStatus: durableStatus });
   }
-
-  if (nextStatus === 'sent') {
-    notifyAdmin({
-      subject: `🏝️ Getaway cert auto-sent → ${dest.name} → ${user.email}`,
-      html: `<div style="font-family:system-ui,sans-serif;max-width:480px;">
-        <p style="font-size:16px;margin:0 0 8px;">✅ No action needed — sent automatically via Marketing Boost API.</p>
-        <p style="font-size:14px;color:#334155;margin:0;"><strong>${user.name}</strong> (${user.email}) chose <strong>${dest.name}</strong>.</p>
-      </div>`,
-      text: `Getaway cert auto-sent via MB API: ${dest.name} → ${user.name} <${user.email}>`,
-    });
-  } else {
-    const rejectedError = mb.outcome === 'rejected' ? mb.error : 'unknown error';
-    console.error(`[GasCap] MB auto-send rejected for ${user.email} → ${dest.name}:`, rejectedError);
-    // ── Fallback: MB definitively rejected — issue manually so the buyer isn't left empty-handed ──
-    notifyAdmin({
-      subject: `🏝️ ISSUE GETAWAY CERT → ${dest.name} → ${user.email}`,
-      html: `<div style="font-family:system-ui,sans-serif;max-width:480px;">
-        <p style="font-size:20px;margin:0 0 8px;">🏝️ Issue a getaway certificate</p>
-        <p style="font-size:15px;color:#334155;margin:0 0 4px;"><strong>${user.name}</strong> chose <strong>${dest.name}</strong>.</p>
-        <p style="font-size:14px;color:#0f766e;margin:0 0 12px;"><strong>Action:</strong> In Marketing Boost → online-bookings vacation → issue a destination-based <strong>${dest.name}</strong> getaway to <strong>${user.email}</strong>.</p>
-        <p style="font-size:13px;color:#64748b;margin:0 0 4px;">Recipient: <strong>${user.email}</strong> · Destination: <strong>${dest.name}</strong> (${dest.id})</p>
-        <p style="font-size:12px;color:#94a3b8;">${new Date().toLocaleString('en-US',{timeZone:'America/New_York'})} ET</p>
-        <p style="font-size:12px;color:#b45309;margin-top:8px;">(Marketing Boost rejected the request: ${rejectedError} — needs manual fulfillment.)</p>
-      </div>`,
-      text: `ISSUE GETAWAY CERT in Marketing Boost (online-bookings) — destination ${dest.name} → ${user.name} <${user.email}> (rejected: ${rejectedError})`,
-    });
-  }
-
-  // ── Buyer confirmation ───────────────────────────────────────────────────────
-  sendMail({
-    to:      user.email,
-    subject: `🏝️ Your ${dest.name} getaway is being sent`,
-    html: `<div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;">
-      <div style="background:linear-gradient(135deg,#005F4A,#1EB68F);border-radius:16px 16px 0 0;padding:24px;text-align:center;">
-        <p style="font-size:26px;margin:0;color:#fff;font-weight:800;">${dest.emoji} ${dest.name}</p>
-      </div>
-      <div style="background:#fff;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 16px 16px;padding:24px;">
-        <p style="font-size:15px;color:#334155;margin:0 0 12px;">Great pick, ${user.name}! Your complimentary <strong>${dest.name}</strong> resort getaway certificate is being issued — watch your inbox (and spam folder) over the next <strong>24 hours</strong> for an email from Marketing Boost / RedeemVacations.</p>
-        <div style="background:#f0fdf9;border:1px solid #99f6e4;border-radius:12px;padding:14px 16px;margin:0 0 12px;">
-          <p style="font-size:12px;color:#0f766e;font-weight:800;text-transform:uppercase;letter-spacing:.05em;margin:0 0 6px;">Good to know</p>
-          ${GETAWAY_DISCLOSURE.full.map((l) => `<p style="font-size:13px;color:#334155;margin:0 0 4px;">• ${l}</p>`).join('')}
-        </div>
-        <p style="font-size:13px;color:#64748b;margin:0;">Questions? Just reply to this email.</p>
-      </div>
-    </div>`,
-    text: `Your ${dest.name} getaway certificate is being issued — watch your inbox within 24 hours. ${GETAWAY_DISCLOSURE.short}`,
-  }).catch((e) => console.error('[GasCap] Getaway buyer confirmation failed:', e));
-
-  console.info(`[GasCap] Getaway destination chosen: ${dest.name} by ${user.email} (${nextStatus})`);
-  return NextResponse.json({ ok: true, destination: dest.id, fulfillmentStatus: nextStatus });
+  const durableStatus = computeClientStatus(recheck.getawayDestinationId, recheck.getawayFulfillmentStatus ?? null);
+  return NextResponse.json({ ok: true, destination: recheck.getawayDestinationId, alreadyChosen: true, fulfillmentStatus: durableStatus });
 }

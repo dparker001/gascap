@@ -151,6 +151,42 @@ model User {
   /// the RevenueCat and Stripe getaway-choose email paths. See
   /// app/api/native/revenuecat/route.ts's maybeSendGetaway().
   getawayChooseEmailSentAt String?
+  /// 72-hour verification hold (2026-08-25, revised same day after direct
+  /// Marketing Boost support confirmation) — set once, at the same moment
+  /// the qualifying Lifetime grant is processed (grant timestamp + 72
+  /// hours). This is a GasCap-only fraud/refund safeguard, never an
+  /// Apple-required wait. getawayFulfillmentStatus transitions to
+  /// 'sent'/'manual_required' are blocked until now >= getawayHoldUntil, so
+  /// a fast RevenueCat/Apple refund is caught by the authoritative
+  /// re-verify BEFORE an external, unrecoverable Marketing Boost
+  /// certificate send. Null for any account granted Lifetime before this
+  /// shipped — treated as "hold already satisfied" (grandfathered) rather
+  /// than blocking existing members forever; see lib/getawayFulfillment.ts.
+  getawayHoldUntil         String?
+  /// Durable, auditable marker: the qualifying Lifetime purchase behind a
+  /// getaway record was refunded/revoked (Apple/RevenueCat only — this repo
+  /// never writes this from a Stripe signal) before Marketing Boost
+  /// fulfillment occurred. Deliberately NOT a getawayFulfillmentStatus value
+  /// — qualification and fulfillment are separate concerns; the existing
+  /// pending/sent/manual_required external-send state machine and its
+  /// ambiguity protections are unchanged. Once set, fulfillment must never
+  /// proceed, but the row (and any prior getawayFulfilledAt/sent history) is
+  /// never deleted or overwritten.
+  getawayQualificationRevokedAt String?
+  /// Durable pre-send claim (2026-08-25 merge-blocker fix). Set atomically,
+  /// immediately before the Marketing Boost API call, by whichever caller
+  /// (the choose route or the recurring cron) wins the claim — see
+  /// lib/getawayFulfillment.ts's attemptGetawayFulfillment(). Never cleared
+  /// automatically. `pending` + this set (non-null) means an external send
+  /// was attempted with no definitive result (Marketing Boost's outcome was
+  /// ambiguous) — automatic fulfillment is permanently blocked for that
+  /// record until a human resolves it in the Marketing Boost portal; the
+  /// cron's candidate query excludes any row where this is non-null so an
+  /// ambiguous send is never auto-retried. Left null (and the record stays
+  /// retryable) when a fulfillment attempt was aborted BEFORE the external
+  /// call — e.g. entitlement/ownership verification failed or the provider
+  /// lookup itself errored.
+  getawayFulfillmentAttemptedAt String?
   // OTP passwordless sign-in — one-time session token issued after code verification,
   // consumed by the credentials-otp NextAuth provider (2-min TTL).
   otpSessionToken          String?

@@ -15,6 +15,7 @@ import { recordAnalyticsEvent }            from '@/lib/analyticsEvents';
 import { sendMail, giftEmailHtml }         from '@/lib/email';
 import { createGift }                      from '@/lib/gifts';
 import { getawayPromoActive, GETAWAY_DISCLOSURE } from '@/lib/getawayPromo';
+import { stampGetawayHoldUntil } from '@/lib/getawayFulfillment';
 import { sendReferralCreditEmail }         from '@/lib/emailCampaign';
 import { sendPaidCampaignEmail }           from '@/lib/emailCampaignPaid';
 import { sendMilestoneEmail }              from '@/lib/emailEngagement';
@@ -475,6 +476,12 @@ export async function POST(req: Request) {
         // (see app/api/getaway/choose). Here we just invite them to choose and
         // give the admin a heads-up.
         if (interval === 'lifetime' && getawayPromoActive()) {
+          // 72-hour verification hold (2026-08-25) — same idempotent stamp as
+          // the RevenueCat grant path (see lib/getawayFulfillment.ts). A
+          // Stripe Lifetime purchase's own webhook remains its source of
+          // truth for entitlement re-checks at fulfillment time — this only
+          // records WHEN the hold started.
+          await stampGetawayHoldUntil(userId);
           const baseUrl   = (process.env.NEXTAUTH_URL ?? 'https://www.gascap.app').replace(/\/$/, '');
           const chooseUrl = `${baseUrl}/getaway`;
 

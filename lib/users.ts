@@ -74,6 +74,9 @@ export interface StoredUser {
   getawayDestinationChosenAt?:  string | null;
   getawayFulfillmentStatus?:    string | null;
   getawayFulfilledAt?:          string | null;
+  getawayHoldUntil?:                string | null;
+  getawayQualificationRevokedAt?:  string | null;
+  getawayFulfillmentAttemptedAt?:  string | null;
   verifyReminderSentAt?:    string;
   ambassadorProForLife?: boolean;
   isTestAccount?: boolean;
