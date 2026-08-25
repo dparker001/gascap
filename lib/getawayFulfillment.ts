@@ -64,6 +64,7 @@ interface GetawayFulfillmentRow {
   getawayFulfillmentStatus: string | null;
   getawayHoldUntil: string | null;
   getawayQualificationRevokedAt: string | null;
+  getawayFulfillmentAttemptedAt: string | null;
 }
 
 const GETAWAY_ROW_SELECT = {
@@ -72,6 +73,7 @@ const GETAWAY_ROW_SELECT = {
   revenueCatActive: true, revenueCatInterval: true,
   getawayDestinationId: true, getawayFulfillmentStatus: true,
   getawayHoldUntil: true, getawayQualificationRevokedAt: true,
+  getawayFulfillmentAttemptedAt: true,
 } as const;
 
 function notifyAdmin(opts: { subject: string; html: string; text: string }) {
@@ -141,7 +143,7 @@ export type AttemptFulfillmentOutcome =
   | { outcome: 'sent';            destination: string }
   | { outcome: 'manual_required'; destination: string }
   | { outcome: 'ambiguous';       destination: string }
-  | { outcome: 'not_ready'; reason: 'no_destination' | 'not_pending' | 'hold_not_elapsed' | 'qualification_revoked' | 'entitlement_lost' | 'provider_unverifiable' };
+  | { outcome: 'not_ready'; reason: 'no_destination' | 'not_pending' | 'hold_not_elapsed' | 'qualification_revoked' | 'entitlement_lost' | 'provider_unverifiable' | 'already_claimed' };
 
 function holdElapsed(row: GetawayFulfillmentRow): boolean {
   // Null getawayHoldUntil = granted before this feature shipped — grandfathered
@@ -168,9 +170,24 @@ function holdElapsed(row: GetawayFulfillmentRow): boolean {
  * shows the Lifetime purchase belongs to a different GasCap identity
  * (CrossAccountLifetimeOwnershipError) or has no provable owner
  * (UnverifiableLifetimeOwnershipError) — NEVER send. The record is left
- * exactly as it was (still 'pending') for the next scheduled run / manual
- * review; provider unavailability is never interpreted as entitlement
- * validity.
+ * exactly as it was (still 'pending', getawayFulfillmentAttemptedAt still
+ * null) for the next scheduled run / manual review; provider unavailability
+ * is never interpreted as entitlement validity.
+ *
+ * DURABLE PRE-SEND CLAIM (2026-08-25 merge-blocker fix): the choose route
+ * and the recurring cron both call this same function, so without an atomic
+ * claim they could both read the same 'pending' row and both call Marketing
+ * Boost before either performs the post-send status transition — and an
+ * 'ambiguous' Marketing Boost outcome leaves getawayFulfillmentStatus
+ * exactly 'pending', which is also the cron's own candidate filter, so an
+ * ambiguous send could otherwise be auto-retried on the very next run.
+ * Immediately before the Marketing Boost call (after every check above has
+ * passed), this claims getawayFulfillmentAttemptedAt via a conditional
+ * updateMany (WHERE ...AttemptedAt IS NULL); only the caller that wins that
+ * claim (count===1) may proceed to call Marketing Boost. This field is
+ * NEVER cleared automatically — pending + a non-null AttemptedAt means an
+ * external send was attempted with no definitive result, and the cron's
+ * candidate query excludes it permanently until a human resolves it.
  */
 export async function attemptGetawayFulfillment(userId: string): Promise<AttemptFulfillmentOutcome> {
   const user = await prisma.user.findUnique({ where: { id: userId }, select: GETAWAY_ROW_SELECT });
@@ -226,8 +243,27 @@ export async function attemptGetawayFulfillment(userId: string): Promise<Attempt
     }
   }
 
-  // ── Entitlement confirmed — proceed with the existing atomic Marketing
-  // Boost fulfillment logic (unchanged from app/api/getaway/choose/route.ts). ──
+  // ── Durable pre-send claim — the ONLY thing that decides who may call
+  // Marketing Boost. Conditional on getawayFulfillmentAttemptedAt being
+  // null so a concurrent choose-route/cron invocation (or two overlapping
+  // cron runs) can never both send. Happens AFTER hold/entitlement/
+  // ownership checks, BEFORE the external call.
+  const claim = await prisma.user.updateMany({
+    where: {
+      id: userId, getawayDestinationId: dest.id, getawayFulfillmentStatus: 'pending',
+      getawayFulfillmentAttemptedAt: null, getawayQualificationRevokedAt: null,
+    },
+    data: { getawayFulfillmentAttemptedAt: new Date().toISOString() },
+  });
+  if (claim.count === 0) {
+    // Another caller already claimed this record (or it changed underneath
+    // us since the read above) — never call Marketing Boost again.
+    console.info(`[GasCap] Getaway fulfillment — claim lost for ${user.email} (already attempted or state changed). Not calling Marketing Boost.`);
+    return { outcome: 'not_ready', reason: 'already_claimed' };
+  }
+
+  // ── Entitlement confirmed, claim won — proceed with the existing atomic
+  // Marketing Boost fulfillment logic (unchanged from app/api/getaway/choose/route.ts). ──
   let mb: VacationIncentiveOutcome;
   try {
     mb = await sendVacationIncentive({ destinationId: dest.mbDestinationId, name: user.name, email: user.email });

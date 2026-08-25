@@ -21,6 +21,7 @@ interface Row {
   getawayHoldUntil: string | null;
   getawayQualificationRevokedAt: string | null;
   getawayFulfilledAt: string | null;
+  getawayFulfillmentAttemptedAt: string | null;
 }
 
 const table = new Map<string, Row>();
@@ -33,6 +34,7 @@ function makeRow(overrides: Partial<Row> = {}): Row {
     getawayDestinationId: 'atlanta', getawayFulfillmentStatus: 'pending',
     getawayHoldUntil: new Date(Date.now() - 60_000).toISOString(), // elapsed by default
     getawayQualificationRevokedAt: null, getawayFulfilledAt: null,
+    getawayFulfillmentAttemptedAt: null,
     ...overrides,
   };
 }
@@ -258,22 +260,24 @@ describe('attemptGetawayFulfillment — RevenueCat-provenance authoritative re-v
     expect(result.outcome).toBe('sent');
   });
 
-  it('ambiguous Marketing Boost result leaves the record pending — no automatic duplicate send', async () => {
+  it('2c. ambiguous Marketing Boost result leaves the record pending, stamps the durable claim, and PERMANENTLY blocks automatic retry (2026-08-25 merge-blocker fix)', async () => {
     table.set('user-1', makeRow());
     sendVacationIncentive.mockResolvedValue({ outcome: 'unknown', error: 'network blip' });
     const { attemptGetawayFulfillment } = await getModule();
     const result = await attemptGetawayFulfillment('user-1');
     expect(result).toEqual({ outcome: 'ambiguous', destination: 'atlanta' });
     expect(table.get('user-1')!.getawayFulfillmentStatus).toBe('pending');
+    expect(table.get('user-1')!.getawayFulfillmentAttemptedAt).not.toBeNull(); // durable claim stamped
 
-    // A second attempt with an ambiguous-again result must not resend either —
-    // idempotent because status is still exactly 'pending', proven by asserting
-    // sendVacationIncentive is called again (not blocked) but the status still
-    // only ever transitions via the same conditional guard.
+    // A second attempt — even if Marketing Boost would now definitively
+    // succeed — must NEVER call Marketing Boost again. The durable claim
+    // (getawayFulfillmentAttemptedAt) is never cleared automatically.
+    sendVacationIncentive.mockClear();
     sendVacationIncentive.mockResolvedValue({ outcome: 'sent', message: 'ok' });
     const second = await attemptGetawayFulfillment('user-1');
-    expect(second).toEqual({ outcome: 'sent', destination: 'atlanta' });
-    expect(sendVacationIncentive).toHaveBeenCalledTimes(2);
+    expect(second).toEqual({ outcome: 'not_ready', reason: 'already_claimed' });
+    expect(sendVacationIncentive).not.toHaveBeenCalled();
+    expect(table.get('user-1')!.getawayFulfillmentStatus).toBe('pending'); // never fabricated as sent
   });
 
   it('marketing boost rejected → manual_required, not resent on a later call', async () => {
@@ -339,5 +343,72 @@ describe('maybeRevokeGetawayQualification — durable, auditable revocation mark
     const row = table.get('user-1')!;
     expect(row.getawayQualificationRevokedAt).not.toBeNull();
     expect(row.getawayFulfillmentStatus).toBe('pending');
+  });
+});
+
+describe('Durable pre-send claim (getawayFulfillmentAttemptedAt) — merge-blocker regression suite (2026-08-25)', () => {
+  it('1. two concurrent fulfillment attempts for the same user — only one wins the claim and only one Marketing Boost call occurs', async () => {
+    table.set('user-1', makeRow());
+    const { attemptGetawayFulfillment } = await getModule();
+    const [r1, r2] = await Promise.all([attemptGetawayFulfillment('user-1'), attemptGetawayFulfillment('user-1')]);
+    const winner = [r1, r2].find((r) => r.outcome !== 'not_ready');
+    const loser  = [r1, r2].find((r) => r.outcome === 'not_ready');
+    expect(winner).toEqual({ outcome: 'sent', destination: 'atlanta' });
+    expect(loser).toEqual({ outcome: 'not_ready', reason: 'already_claimed' });
+    expect(sendVacationIncentive).toHaveBeenCalledTimes(1);
+  });
+
+  it('4. provider lookup failure BEFORE the claim — getawayFulfillmentAttemptedAt stays null, record remains eligible for later retry', async () => {
+    table.set('user-1', makeRow());
+    fetchAuthoritativeRevenueCatState.mockRejectedValue(new Error('RevenueCat API down'));
+    const { attemptGetawayFulfillment } = await getModule();
+    const result = await attemptGetawayFulfillment('user-1');
+    expect(result).toEqual({ outcome: 'not_ready', reason: 'provider_unverifiable' });
+    expect(table.get('user-1')!.getawayFulfillmentAttemptedAt).toBeNull();
+    expect(sendVacationIncentive).not.toHaveBeenCalled();
+
+    // Retryable: a later call with the provider healthy again succeeds normally.
+    fetchAuthoritativeRevenueCatState.mockResolvedValue({
+      customerFound: true, active: true, interval: 'lifetime', productId: 'gascap_pro_lifetime',
+      customerId: 'user-1', originalCustomerId: 'user-1',
+    });
+    const retry = await attemptGetawayFulfillment('user-1');
+    expect(retry).toEqual({ outcome: 'sent', destination: 'atlanta' });
+  });
+
+  it('5. definite Marketing Boost rejection — manual_required AND getawayFulfillmentAttemptedAt set, preserved (not cleared)', async () => {
+    table.set('user-1', makeRow());
+    sendVacationIncentive.mockResolvedValue({ outcome: 'rejected', error: 'destination sold out' });
+    const { attemptGetawayFulfillment } = await getModule();
+    const result = await attemptGetawayFulfillment('user-1');
+    expect(result).toEqual({ outcome: 'manual_required', destination: 'atlanta' });
+    const row = table.get('user-1')!;
+    expect(row.getawayFulfillmentStatus).toBe('manual_required');
+    expect(row.getawayFulfillmentAttemptedAt).not.toBeNull();
+  });
+
+  it('6. definite Marketing Boost success — sent AND getawayFulfillmentAttemptedAt set, preserved (not cleared)', async () => {
+    table.set('user-1', makeRow());
+    const { attemptGetawayFulfillment } = await getModule();
+    const result = await attemptGetawayFulfillment('user-1');
+    expect(result).toEqual({ outcome: 'sent', destination: 'atlanta' });
+    const row = table.get('user-1')!;
+    expect(row.getawayFulfillmentStatus).toBe('sent');
+    expect(row.getawayFulfillmentAttemptedAt).not.toBeNull();
+  });
+
+  it('8. an already-sent record is untouched by a later fulfillment attempt — attemptedAt/fulfilledAt/status all preserved', async () => {
+    table.set('user-1', makeRow({
+      getawayFulfillmentStatus: 'sent', getawayFulfilledAt: '2026-08-20T00:00:00.000Z',
+      getawayFulfillmentAttemptedAt: '2026-08-19T23:59:00.000Z',
+    }));
+    const { attemptGetawayFulfillment } = await getModule();
+    const result = await attemptGetawayFulfillment('user-1');
+    expect(result).toEqual({ outcome: 'not_ready', reason: 'not_pending' });
+    const row = table.get('user-1')!;
+    expect(row.getawayFulfillmentStatus).toBe('sent');
+    expect(row.getawayFulfilledAt).toBe('2026-08-20T00:00:00.000Z');
+    expect(row.getawayFulfillmentAttemptedAt).toBe('2026-08-19T23:59:00.000Z');
+    expect(sendVacationIncentive).not.toHaveBeenCalled();
   });
 });

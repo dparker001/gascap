@@ -1,6 +1,6 @@
 // WRITES (schema only) + a read-only verification query. Additive,
-// idempotent (IF NOT EXISTS) columns for the 7-day getaway verification
-// hold — see docs/reviews (getaway 7-day hold). No existing column, row, or
+// idempotent (IF NOT EXISTS) columns for the 72-hour getaway verification
+// hold and its durable pre-send claim marker. No existing column, row, or
 // entitlement data is touched. NOT run yet — awaiting approval to deploy.
 //
 // Uses `pg` directly, same pattern as scripts/add-getaway-fulfillment-columns.mjs.
@@ -13,25 +13,29 @@ const pool = new Pool({
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined,
 });
 
+const COLUMNS = ['getawayHoldUntil', 'getawayQualificationRevokedAt', 'getawayFulfillmentAttemptedAt'];
+
 async function run() {
   try {
-    await pool.query('ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "getawayHoldUntil" TEXT');
-    await pool.query('ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "getawayQualificationRevokedAt" TEXT');
-    console.log('getawayHoldUntil / getawayQualificationRevokedAt columns added (or already existed).');
+    for (const col of COLUMNS) {
+      await pool.query(`ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "${col}" TEXT`);
+    }
+    console.log(`${COLUMNS.join(' / ')} columns added (or already existed).`);
 
-    // Read-only verification — confirms both columns actually exist now,
-    // rather than trusting the ADD COLUMN calls silently succeeded.
+    // Read-only verification — confirms all three columns actually exist
+    // now, rather than trusting the ADD COLUMN calls silently succeeded.
     const { rows } = await pool.query(
       `SELECT column_name, data_type, is_nullable
        FROM information_schema.columns
        WHERE table_name = 'User'
-         AND column_name IN ('getawayHoldUntil', 'getawayQualificationRevokedAt')
+         AND column_name = ANY($1)
        ORDER BY column_name`,
+      [COLUMNS],
     );
     console.log('Verification query result:');
     console.table(rows);
-    if (rows.length !== 2) {
-      console.error(`Expected 2 columns, found ${rows.length}. Investigate before relying on this migration.`);
+    if (rows.length !== COLUMNS.length) {
+      console.error(`Expected ${COLUMNS.length} columns, found ${rows.length}. Investigate before relying on this migration.`);
       process.exitCode = 1;
     }
   } finally {

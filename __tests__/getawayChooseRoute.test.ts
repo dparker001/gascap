@@ -40,6 +40,7 @@ interface FakeUser {
   getawayFulfilledAt: string | null;
   getawayHoldUntil: string | null;
   getawayQualificationRevokedAt: string | null;
+  getawayFulfillmentAttemptedAt: string | null;
 }
 
 let db: Record<string, FakeUser> = {};
@@ -58,6 +59,7 @@ function baseUser(overrides: Partial<FakeUser>): FakeUser {
     // override this to a future timestamp.
     getawayHoldUntil: new Date(Date.now() - 60_000).toISOString(),
     getawayQualificationRevokedAt: null,
+    getawayFulfillmentAttemptedAt: null,
     ...overrides,
   };
 }
@@ -461,6 +463,23 @@ describe('POST /api/getaway/choose — 72-hour verification hold (2026-08-25)', 
     const json = await res.json();
     expect(sendVacationIncentive).not.toHaveBeenCalled();
     expect(json.fulfillmentStatus).not.toBe('sent');
+  });
+
+  it('7. Choose route and the recurring cron both target the same user — the shared durable claim in attemptGetawayFulfillment() permits only one Marketing Boost call', async () => {
+    db.u1 = baseUser({ stripeInterval: 'lifetime', getawayHoldUntil: new Date(Date.now() - 1000).toISOString() });
+    // Simulate the cron calling the exact same shared helper the choose
+    // route uses, "concurrently" with a user's own late-chooser POST.
+    const { attemptGetawayFulfillment } = await import('@/lib/getawayFulfillment');
+    const [routeRes, cronResult] = await Promise.all([
+      post('orlando'),
+      attemptGetawayFulfillment('u1'),
+    ]);
+    const routeJson = await routeRes.json();
+    // Exactly one of the two actually reached Marketing Boost.
+    expect(sendVacationIncentive).toHaveBeenCalledTimes(1);
+    // Whichever one lost the claim must not report a fabricated 'sent'.
+    const outcomes = [routeJson.fulfillmentStatus, cronResult.outcome];
+    expect(outcomes.filter((o) => o === 'sent').length).toBe(1);
   });
 });
 

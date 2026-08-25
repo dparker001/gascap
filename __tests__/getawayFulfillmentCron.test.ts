@@ -44,18 +44,30 @@ describe('GET /api/cron/getaway-fulfillment', () => {
     expect(findMany).not.toHaveBeenCalled();
   });
 
-  it('queries only pending, destination-chosen, non-revoked, hold-elapsed-or-null rows', async () => {
+  it('queries only pending, destination-chosen, non-revoked, not-yet-attempted, hold-elapsed-or-null rows', async () => {
     await get('test-cron-secret');
     const args = findMany.mock.calls[0][0] as { where: Record<string, unknown> };
     expect(args.where).toMatchObject({
       getawayFulfillmentStatus: 'pending',
       getawayDestinationId: { not: null },
       getawayQualificationRevokedAt: null,
+      getawayFulfillmentAttemptedAt: null,
     });
     expect(args.where.OR).toEqual([
       { getawayHoldUntil: null },
       { getawayHoldUntil: { lte: expect.any(String) } },
     ]);
+  });
+
+  it('3. a record left with a durable claim by a prior ambiguous run (getawayFulfillmentAttemptedAt non-null) is excluded from the candidate query entirely — never re-selected, Marketing Boost never called again', async () => {
+    // The cron itself only builds the query — this proves the query SHAPE
+    // that makes exclusion possible. The actual filtering happens in
+    // Postgres via this exact where clause; a candidate whose
+    // getawayFulfillmentAttemptedAt is non-null (set by a previous
+    // ambiguous attempt) will never match `getawayFulfillmentAttemptedAt: null`.
+    await get('test-cron-secret');
+    const args = findMany.mock.calls[0][0] as { where: Record<string, unknown> };
+    expect(args.where.getawayFulfillmentAttemptedAt).toBe(null);
   });
 
   it('15. idempotent — a candidate already fulfilled by a prior run (attemptGetawayFulfillment returns not_ready/not_pending) is simply skipped, not re-sent', async () => {

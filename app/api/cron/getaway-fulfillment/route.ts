@@ -13,9 +13,20 @@
  *
  * A candidate whose entitlement no longer holds is marked
  * getawayQualificationRevokedAt and skipped — never sent. A candidate whose
- * RevenueCat lookup fails/is ambiguous is left exactly as-is ('pending') for
- * the next run — provider unavailability is never treated as entitlement
- * validity, and never auto-marked as revoked.
+ * RevenueCat lookup fails BEFORE the pre-send claim is left exactly as-is
+ * ('pending', getawayFulfillmentAttemptedAt still null) and stays eligible
+ * for the next run — provider unavailability is never treated as
+ * entitlement validity, and never auto-marked as revoked.
+ *
+ * getawayFulfillmentAttemptedAt IS NULL is a required candidate filter
+ * (2026-08-25 merge-blocker fix): once attemptGetawayFulfillment() has
+ * claimed a record and actually called Marketing Boost, an 'ambiguous'
+ * outcome leaves getawayFulfillmentStatus exactly 'pending' — without this
+ * filter the SAME record would be selected again on the next run and
+ * Marketing Boost could be called a second time for a send that may have
+ * already succeeded. This filter is what makes that impossible: the claim
+ * is never cleared automatically, so an ambiguous/ attempted record is
+ * permanently excluded until a human resolves it.
  *
  * Runs every 4 hours (see .github/workflows/crons.yml). With a 72-hour hold,
  * actual issuance therefore lands roughly between 72 and 76 hours after
@@ -44,6 +55,7 @@ export async function GET(req: Request) {
         getawayFulfillmentStatus:     'pending',
         getawayDestinationId:         { not: null },
         getawayQualificationRevokedAt: null,
+        getawayFulfillmentAttemptedAt: null,
         OR: [
           { getawayHoldUntil: null },        // grandfathered pre-feature Lifetime — eligible immediately
           { getawayHoldUntil: { lte: now } },
