@@ -100,6 +100,20 @@ GasCap™'s product strategy follows three principles:
 
 ---
 
+## Phase 6: Rental Enterprise / White-Label Platform (Future — B2B Pilot Gated)
+
+> Goal: Turn Rental Return Mode into a licensable rental-company platform once a real B2B pilot/customer requires it. **Not started** — planning only, no implementation in this repo yet.
+
+| Level | Feature | Business Value | Acquisition Value | Status | Priority | Notes |
+|---|---|---|---|---|---|---|
+| Level 1 — GasCap Partner Pilot | QR/link entry into GasCap Rental Return Mode | Partner value | High | Planned | Low | Minimal rental-company integration; no code changes required to existing Rental Return Mode |
+| Level 2 — Embedded/API Integration | Pre-populated vehicle/rental/fuel/return data | Partner value | Very High | Planned | Low | "Powered by GasCap"; includes reminders, fill calculations, rental fuel ledger, analytics |
+| Level 3 — White-Label Enterprise | Configurable company branding (logo/colors/name/domain) | Partnership | Very High | Planned | Low | Branded email/notifications, configurable rental fuel policies, company/location administration, enterprise analytics, API/webhooks, optional "Powered by GasCap" attribution |
+
+**Architecture principle:** keep future components/configuration white-label-ready where inexpensive (e.g. avoid hardcoding "GasCap" branding strings deep in shared components where a prop/config would cost nothing extra), but do **not** introduce multi-tenant/white-label architecture into production until a real B2B pilot/customer requires it. This is the same "Rental Company Integration" line already listed under Phase 3 above, expanded into its own tiered rollout — not a new commitment, a more detailed shape for the same future item.
+
+---
+
 ## Decision Gate: End-of-May 2026
 
 Per MEMORY.md, the following decision will be made around May 26–31, 2026 based on trial→paid conversion data:
