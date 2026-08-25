@@ -263,7 +263,7 @@ describe('Stripe webhook — purchase_completed analytics', () => {
     await postWebhook('evt_meta_1', makeSession({ billing: 'monthly', paymentStatus: 'paid', offerSource: 'founding' }));
     const call = recordAnalyticsEvent.mock.calls[0][0] as Record<string, unknown>;
     const metadata = call.metadata as Record<string, unknown>;
-    expect(metadata).toEqual({ tier: 'pro', amountTotal: 299, currency: 'usd', offerSource: 'founding' });
+    expect(metadata).toEqual({ tier: 'pro', wasOnTrial: false, amountTotal: 299, currency: 'usd', offerSource: 'founding' });
     const serialized = JSON.stringify(call);
     expect(serialized).not.toContain('buyer@example.com');
     expect(serialized).not.toContain('cus_test_1');
@@ -281,5 +281,32 @@ describe('Stripe webhook — purchase_completed analytics', () => {
     });
     await postWebhook('evt_await_1', makeSession({ billing: 'monthly', paymentStatus: 'paid' }));
     expect(resolved).toBe(true);
+  });
+
+  // Phase 2A conversion analytics (2026-08-25)
+  it('S. wasOnTrial reflects isProTrial captured before setUserPlan clears it', async () => {
+    findById.mockResolvedValueOnce({
+      id: 'user-1', email: 'buyer@example.com', name: 'Test Buyer',
+      phone: '555-0100', isProTrial: true, paidCampaignEnrolledAt: '2026-01-01',
+      engagementEnrolledAt: '2026-01-01', referredBy: null, referralRewardCredited: false,
+      isTestAccount: false, stripeSubscriptionId: null,
+    });
+    await postWebhook('evt_trial_1', makeSession({ billing: 'monthly', paymentStatus: 'paid' }));
+    const call = recordAnalyticsEvent.mock.calls[0][0] as Record<string, unknown>;
+    expect((call.metadata as Record<string, unknown>).wasOnTrial).toBe(true);
+  });
+
+  it('T. getawayOfferActive is present and true for lifetime when the promo is active', async () => {
+    const { getawayPromoActive } = await import('@/lib/getawayPromo');
+    (getawayPromoActive as unknown as ReturnType<typeof vi.fn>).mockReturnValueOnce(true);
+    await postWebhook('evt_getaway_1', makeSession({ billing: 'lifetime', paymentStatus: 'paid' }));
+    const call = recordAnalyticsEvent.mock.calls[0][0] as Record<string, unknown>;
+    expect((call.metadata as Record<string, unknown>).getawayOfferActive).toBe(true);
+  });
+
+  it('U. getawayOfferActive is omitted entirely for monthly (never claimed for a non-lifetime purchase)', async () => {
+    await postWebhook('evt_monthly_no_getaway', makeSession({ billing: 'monthly', paymentStatus: 'paid' }));
+    const call = recordAnalyticsEvent.mock.calls[0][0] as Record<string, unknown>;
+    expect('getawayOfferActive' in (call.metadata as Record<string, unknown>)).toBe(false);
   });
 });

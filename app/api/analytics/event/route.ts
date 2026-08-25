@@ -98,6 +98,14 @@ const CLIENT_EVENT_TYPES = new Set([
   // never used to gate or verify entitlement. Fired from lib/iap.ts's
   // purchasePro(), immediately before the native purchase sheet is invoked.
   'iap_checkout_started',
+  // Phase 2A conversion analytics (2026-08-25) — fired client-side, before
+  // the existing purchase flow starts; never gates or verifies entitlement,
+  // same trust class as iap_checkout_started/paywall_viewed.
+  'upgrade_plan_selected',
+  // Fired once per page load when the Rental Return Mode line renders on
+  // the upgrade page — an impression, not a measured-visibility "viewed"
+  // event (no IntersectionObserver here), named accordingly.
+  'rental_return_feature_impression',
 ]);
 
 /**
@@ -113,6 +121,10 @@ const ANONYMOUS_ALLOWED_EVENT_TYPES = new Set([
   'calculator_completed',
   'paywall_viewed',
   'rental_assistant_opened',
+  // Same page context as paywall_viewed — the upgrade page and its Rental
+  // Return Mode line are both visible pre-signup.
+  'upgrade_plan_selected',
+  'rental_return_feature_impression',
 ]);
 
 const MAX_SOURCE_LENGTH = 64;
@@ -171,6 +183,18 @@ const METADATA_SCHEMAS: Record<string, MetadataSchema> = {
       showGetaway: (v) => typeof v === 'boolean',
       wb:          (v) => typeof v === 'boolean',
     },
+    required: [],
+  },
+  upgrade_plan_selected: {
+    fields: {
+      billing: (v) => v === 'monthly' || v === 'lifetime',
+    },
+    required: ['billing'],
+  },
+  // No metadata needed — fired once per page render, originPlatform (the
+  // top-level, already-validated field) is sufficient.
+  rental_return_feature_impression: {
+    fields: {},
     required: [],
   },
 };
