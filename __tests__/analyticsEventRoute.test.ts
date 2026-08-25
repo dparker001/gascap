@@ -481,3 +481,65 @@ describe('POST /api/analytics/event', () => {
     expect(recordAnalyticsEvent).not.toHaveBeenCalled();
   });
 });
+
+// ── Phase 2A conversion analytics (2026-08-25) ──────────────────────────────
+describe('POST /api/analytics/event — upgrade_plan_selected', () => {
+  it('accepts a valid anonymous upgrade_plan_selected event with billing metadata', async () => {
+    const res = await post({ eventType: 'upgrade_plan_selected', originPlatform: 'web', metadata: { billing: 'lifetime' } });
+    expect(res.status).toBe(202);
+    const call = recordAnalyticsEvent.mock.calls[0][0] as Record<string, unknown>;
+    expect(call.userId).toBeNull();
+    expect(call.emitter).toBe('client');
+  });
+
+  it('accepts billing: monthly too', async () => {
+    const res = await post({ eventType: 'upgrade_plan_selected', originPlatform: 'ios', metadata: { billing: 'monthly' } });
+    expect(res.status).toBe(202);
+  });
+
+  it('rejects a missing billing field', async () => {
+    const res = await post({ eventType: 'upgrade_plan_selected', originPlatform: 'web' });
+    expect(res.status).toBe(400);
+    expect(recordAnalyticsEvent).not.toHaveBeenCalled();
+  });
+
+  it('rejects an invalid billing value', async () => {
+    const res = await post({ eventType: 'upgrade_plan_selected', originPlatform: 'web', metadata: { billing: 'annual' } });
+    expect(res.status).toBe(400);
+    expect(recordAnalyticsEvent).not.toHaveBeenCalled();
+  });
+
+  it('rejects an unknown metadata key (e.g. an attempted getawayShown claim)', async () => {
+    const res = await post({ eventType: 'upgrade_plan_selected', originPlatform: 'web', metadata: { billing: 'lifetime', getawayShown: true } });
+    expect(res.status).toBe(400);
+    expect(recordAnalyticsEvent).not.toHaveBeenCalled();
+  });
+
+  it('does not accept a client-supplied userId', async () => {
+    getServerSession.mockResolvedValue({ user: { id: 'real-session-user' } });
+    const res = await post({ eventType: 'upgrade_plan_selected', originPlatform: 'web', userId: 'attacker', metadata: { billing: 'lifetime' } });
+    expect(res.status).toBe(400);
+    expect(recordAnalyticsEvent).not.toHaveBeenCalled();
+  });
+});
+
+describe('POST /api/analytics/event — rental_return_feature_impression', () => {
+  it('accepts the event with no metadata at all (impression, not a measured-visibility event)', async () => {
+    const res = await post({ eventType: 'rental_return_feature_impression', originPlatform: 'web' });
+    expect(res.status).toBe(202);
+    const call = recordAnalyticsEvent.mock.calls[0][0] as Record<string, unknown>;
+    expect(call.userId).toBeNull();
+  });
+
+  it('rejects any metadata, since this event carries none', async () => {
+    const res = await post({ eventType: 'rental_return_feature_impression', originPlatform: 'web', metadata: { anything: true } });
+    expect(res.status).toBe(400);
+    expect(recordAnalyticsEvent).not.toHaveBeenCalled();
+  });
+
+  it('is anonymous-allowed, same page context as paywall_viewed', async () => {
+    getServerSession.mockResolvedValue(null);
+    const res = await post({ eventType: 'rental_return_feature_impression', originPlatform: 'web' });
+    expect(res.status).toBe(202);
+  });
+});

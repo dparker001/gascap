@@ -664,6 +664,11 @@ export async function POST(req: Request) {
             environment: ev.environment,
             ...(typeof ev.price === 'number' ? { price: ev.price } : {}),
             ...(ev.currency ? { currency: ev.currency } : {}),
+            // Phase 2A conversion analytics — whether the getaway promo was
+            // ELIGIBLE/active server-side at grant time. Deliberately NOT
+            // named "getawayShown": this only reflects a server-side flag,
+            // never proof the buyer actually saw the promo UI.
+            ...(billing === 'lifetime' ? { getawayOfferActive: getawayPromoActive() } : {}),
           },
         });
         console.log(`[GasCap analytics] RevenueCat purchase_completed ${result.outcome} for event ${ev.id}`);

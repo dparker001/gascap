@@ -685,6 +685,11 @@ export function lastCallEmailHtml(name: string, userId: string): string {
         </p>
       </div>
 
+      <p style="margin:0 0 24px;font-size:14px;color:#475569;line-height:1.6;text-align:center;">
+        Prefer to make one payment? <strong>Lifetime is $19.99</strong> — less than 7 months of Monthly —
+        with no recurring subscription.
+      </p>
+
       <p style="margin:0 0 12px;font-size:15px;font-weight:700;color:#1e2d4a;">
         What you'll keep if you upgrade:
       </p>
@@ -716,7 +721,7 @@ export function lastCallEmailHtml(name: string, userId: string): string {
 }
 
 export const lastCallEmailText = (name: string) =>
-  `Hi ${name.split(' ')[0]}, your GasCap™ Pro trial ends in 48 hours. Keep everything you've been using for just $2.99/month — cancel anytime, less than a dime a day. Or own Pro forever with the $19.99 Lifetime plan (one payment, no subscription) — it also comes with a free vacation getaway certificate. Upgrade before your account reverts to free: ${BASE_URL}/upgrade`;
+  `Hi ${name.split(' ')[0]}, your GasCap™ Pro trial ends in 48 hours. Keep everything you've been using for just $2.99/month — cancel anytime, less than a dime a day. Or own Pro forever with the $19.99 Lifetime plan (one payment, no subscription) — it also comes with a free vacation getaway certificate. Prefer to make one payment? Lifetime is $19.99 — less than 7 months of Monthly — with no recurring subscription. Upgrade before your account reverts to free: ${BASE_URL}/upgrade`;
 
 // ── Email 6 — Trial Ended (fires from expiry cron on downgrade) ────────────
 

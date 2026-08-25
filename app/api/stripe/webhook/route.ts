@@ -383,9 +383,15 @@ export async function POST(req: Request) {
             idempotencyKey: `stripe:${event.id}`,
             metadata: {
               tier: planTier,
+              wasOnTrial,
               ...(typeof session.amount_total === 'number' ? { amountTotal: session.amount_total } : {}),
               ...(session.currency ? { currency: session.currency } : {}),
               ...(session.metadata?.offerSource ? { offerSource: session.metadata.offerSource } : {}),
+              // Phase 2A conversion analytics — whether the getaway promo was
+              // ELIGIBLE/active server-side at grant time. Deliberately NOT
+              // named "getawayShown": this only reflects a server-side flag,
+              // never proof the buyer actually saw the promo UI.
+              ...(analyticsBilling === 'lifetime' ? { getawayOfferActive: getawayPromoActive() } : {}),
             },
           });
           console.log(`[GasCap analytics] Stripe purchase_completed ${result.outcome} for event ${event.id}`);

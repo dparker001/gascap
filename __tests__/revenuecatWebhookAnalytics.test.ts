@@ -39,8 +39,9 @@ vi.mock('@/lib/prisma', () => ({ prisma: { user: { updateMany: (...a: unknown[])
 vi.mock('@/lib/email',              () => ({ sendMail: vi.fn(async () => {}) }));
 vi.mock('@/lib/emailCampaignPaid',  () => ({ sendPaidCampaignEmail: vi.fn(async () => {}) }));
 vi.mock('@/lib/userPush',           () => ({ sendUserPush: vi.fn(async () => {}) }));
+const getawayPromoActive = vi.fn(() => false);
 vi.mock('@/lib/getawayPromo',       () => ({
-  getawayPromoActive: () => false,
+  getawayPromoActive: () => getawayPromoActive(),
   GETAWAY_DISCLOSURE: '',
 }));
 
@@ -302,5 +303,25 @@ describe('RevenueCat webhook — purchase_completed analytics', () => {
     const serialized = JSON.stringify(call);
     expect(serialized).not.toContain('buyer@example.com');
     expect(serialized).not.toContain('app_user_id');
+  });
+
+  // Phase 2A conversion analytics (2026-08-25)
+  it('getawayOfferActive is present and true for lifetime when the promo is active', async () => {
+    getawayPromoActive.mockReturnValueOnce(true);
+    await post(makeEvent({
+      id: 'evt_getaway_1', type: 'NON_RENEWING_PURCHASE', productId: 'gascap_pro_lifetime',
+      periodType: 'NORMAL', environment: 'PRODUCTION', store: 'APP_STORE',
+    }));
+    const call = recordAnalyticsEvent.mock.calls[0][0] as Record<string, unknown>;
+    expect((call.metadata as Record<string, unknown>).getawayOfferActive).toBe(true);
+  });
+
+  it('getawayOfferActive is omitted entirely for monthly (never claimed for a non-lifetime purchase)', async () => {
+    await post(makeEvent({
+      id: 'evt_monthly_no_getaway', type: 'INITIAL_PURCHASE', productId: 'gascap_pro_monthly',
+      periodType: 'NORMAL', environment: 'PRODUCTION', store: 'APP_STORE',
+    }));
+    const call = recordAnalyticsEvent.mock.calls[0][0] as Record<string, unknown>;
+    expect('getawayOfferActive' in (call.metadata as Record<string, unknown>)).toBe(false);
   });
 });

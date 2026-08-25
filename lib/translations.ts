@@ -742,9 +742,9 @@ const en = {
     newMemberSent:     'Sent! Check your inbox',
     // Lifetime + complimentary getaway promo
     getawayTitle:      'Limited-time bonus',
-    getawayPill:       'Free getaway included',
+    getawayPill:       'Lifetime bonus: vacation getaway',
     getawayMsg:        'Own GasCap™ Pro for life — and we\'ll send you on a complimentary resort getaway, with destinations across the U.S. and worldwide to choose from',
-    getawayCardMsg:    'Buy Lifetime now and we\'ll send you a complimentary resort getaway certificate — choose from destinations across the U.S. and worldwide.',
+    getawayCardMsg:    'Your Lifetime membership includes a vacation getaway certificate, issued after a brief purchase-verification period — choose from destinations across the U.S. and worldwide.',
     getawayCta:        'Get Lifetime + Getaway',
     getawayHeroLine:   'Pro Lifetime + a complimentary resort getaway',
     getawayMini:       'Hotel stay only · flights not incl. · terms apply',
@@ -801,6 +801,7 @@ const en = {
     proFeatures: [
       'Everything in Free',
       'Unlimited saved vehicles',
+      'Rental Return Mode — know exactly what to put back before you return the keys',
       'Fill-up logging & fuel history',
       'VIN photo scan',
       'Receipt photo scan (AI)',
@@ -848,6 +849,7 @@ const en = {
     getLifetime:         'Get Lifetime',
     giftThis:            'Gift this to someone',
     everythingInPro:     'Everything in Pro',
+    rentalReturnModeHighlight: 'Rental Return Mode included',
 
     // Guarantee & refund
     guaranteeTitle:      '30-Day Money-Back Guarantee',
@@ -3777,9 +3779,9 @@ const es: typeof en = {
     newMemberSent:     '¡Enviado! Revisa tu correo',
     // Promo Pro de por vida + escapada de cortesía
     getawayTitle:      'Bono por tiempo limitado',
-    getawayPill:       'Escapada gratis incluida',
+    getawayPill:       'Bono de por vida: escapada vacacional',
     getawayMsg:        'Posee GasCap™ Pro de por vida — y te enviaremos una escapada de cortesía a un resort, con destinos en EE. UU. y alrededor del mundo para elegir',
-    getawayCardMsg:    'Compra el plan de por vida ahora y te enviaremos un certificado de escapada de cortesía a un resort — elige entre destinos en EE. UU. y alrededor del mundo.',
+    getawayCardMsg:    'Tu membresía De Por Vida incluye un certificado de escapada vacacional, emitido tras un breve período de verificación de compra — elige entre destinos en EE. UU. y alrededor del mundo.',
     getawayCta:        'Obtén De Por Vida + Escapada',
     getawayHeroLine:   'Pro De Por Vida + una escapada de cortesía',
     getawayMini:       'Solo hotel · vuelos no incl. · aplican términos',
@@ -3836,6 +3838,7 @@ const es: typeof en = {
     proFeatures: [
       'Todo en Gratis',
       'Vehículos ilimitados',
+      'Modo de Devolución de Auto de Alquiler — sabe exactamente cuánto combustible agregar antes de devolver las llaves',
       'Registro de cargas e historial de combustible',
       'Escaneo de VIN por foto',
       'Escaneo de recibo por foto (IA)',
@@ -3883,6 +3886,7 @@ const es: typeof en = {
     getLifetime:         'Obtener de por vida',
     giftThis:            'Regala esto a alguien',
     everythingInPro:     'Todo en Pro',
+    rentalReturnModeHighlight: 'Incluye Modo Devolución de Auto Rentado',
 
     // Guarantee & refund
     guaranteeTitle:      'Garantía de devolución de 30 días',

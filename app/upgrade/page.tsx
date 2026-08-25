@@ -79,6 +79,12 @@ function UpgradePageInner() {
     // metadata than GA4 — no plan/coupon/founding here, see
     // app/api/analytics/event/route.ts's existing paywall_viewed schema.
     trackClientEvent('paywall_viewed', { showGetaway, wb });
+    // Phase 2A conversion analytics — an impression, not a measured-visibility
+    // "viewed" event (no IntersectionObserver here): the Rental Return Mode
+    // line is always present in the Pro feature list this page renders, so
+    // "the page rendered" is an accurate proxy. Fired once per page load,
+    // same guard as the paywall_viewed call above.
+    trackClientEvent('rental_return_feature_impression');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionStatus]);
 
@@ -104,6 +110,9 @@ function UpgradePageInner() {
   }, [sessionStatus, resolved, isNative, isProLifetime, isProMonthly, isProAnnual]);
 
   async function handleUpgrade(billing: 'monthly' | 'lifetime') {
+    // Phase 2A conversion analytics — fired immediately, before the existing
+    // purchase flow starts; purely additive, never gates/changes checkout.
+    trackClientEvent('upgrade_plan_selected', { billing });
     if (!session) {
       // Founding/reactivation recipients already have accounts → send to sign-in and
       // return them to the founding offer; everyone else takes the new-signup path.
@@ -140,6 +149,9 @@ function UpgradePageInner() {
   // grants Pro on the account server-side (RevenueCat webhook), so it unlocks
   // everywhere (web + app), exactly like the Stripe path.
   async function handleIap(which: 'monthly' | 'lifetime') {
+    // Phase 2A conversion analytics — fired immediately, before the existing
+    // purchase flow starts; purely additive, never gates/changes checkout.
+    trackClientEvent('upgrade_plan_selected', { billing: which });
     if (!session) { window.location.href = '/signup?next=' + encodeURIComponent(`/upgrade?auto=${which}`); return; }
     trackUpgradeCheckoutStarted({ billing: which, showGetaway, method: 'iap' });
     setLoading(which === 'lifetime' ? 'pro-lifetime' : 'pro-monthly');
@@ -522,8 +534,44 @@ function UpgradePageInner() {
             <p className="text-xs text-teal-300 font-semibold mb-4 leading-relaxed">
               {t.upgrade.onePaymentForever}
             </p>
+            <div className="border-t border-white/10 mb-5" />
+            {/* Everything in Pro — Rental Return Mode called out explicitly;
+                Lifetime includes every Pro feature, this just surfaces the
+                strongest one rather than leaving it implicit. */}
+            <ul className="space-y-2">
+              <li className="flex items-start gap-2 text-sm text-white/80">
+                <Check color="teal" /> {t.pricing.everythingInPro}
+              </li>
+              <li className="flex items-start gap-2 text-sm text-white/80">
+                <Check color="teal" /> 🚗 {t.pricing.rentalReturnModeHighlight}
+              </li>
+            </ul>
+            {/* Lifetime-exclusive perks */}
+            <div className="mt-5 mb-2">
+              <div className="flex items-center gap-2">
+                <div className="flex-1 border-t border-teal-400/30" />
+                <span className="text-[10px] font-black text-teal-300 uppercase tracking-widest whitespace-nowrap">
+                  {t.pricing.lifetimeExclusives}
+                </span>
+                <div className="flex-1 border-t border-teal-400/30" />
+              </div>
+            </div>
+            <ul className="space-y-2">
+              {LIFETIME_EXCLUSIVES.map((f) => (
+                <li key={f.text} className="flex items-start gap-2 text-sm">
+                  <span className="flex-shrink-0 mt-0.5">{f.icon}</span>
+                  <span className="text-teal-200 font-semibold">{f.text}</span>
+                </li>
+              ))}
+              <li className="text-[11px] text-white/40 leading-relaxed pl-6">
+                {t.pricing.lifetimePerksNote}
+              </li>
+            </ul>
+            {/* Vacation getaway — presented as a bonus AFTER the core Lifetime
+                value (Pro features, Rental Return Mode, Lifetime exclusives),
+                never as the headline reason to buy. */}
             {showGetaway && (
-              <div className="mb-5 rounded-2xl bg-gradient-to-r from-[#005F4A] to-[#1EB68F] px-3.5 py-3">
+              <div className="mt-5 rounded-2xl bg-gradient-to-r from-[#005F4A] to-[#1EB68F] px-3.5 py-3">
                 <p className="flex items-center flex-wrap gap-1.5 text-[10px] font-black uppercase tracking-widest text-amber-300">
                   🏝️ {t.pricing.getawayPill}
                   {getawayDays !== null && (
@@ -543,7 +591,7 @@ function UpgradePageInner() {
             <button
               onClick={() => !isProLifetime && handleUpgrade('lifetime')}
               disabled={loading !== null || isProLifetime || isProAnnual}
-              className={`w-full py-3 rounded-2xl font-black text-sm transition-colors mb-5 ${
+              className={`w-full py-3 rounded-2xl font-black text-sm transition-colors mt-5 mb-3 ${
                 isProLifetime
                   ? 'bg-green-400 text-navy-900 cursor-default'
                   : 'bg-teal-400 hover:bg-teal-300 text-navy-900 disabled:opacity-50'
@@ -558,38 +606,10 @@ function UpgradePageInner() {
                       ? `${t.pricing.upgradeFromTrial} — $${PRICING.pro.lifetime}`
                       : `${t.pricing.getLifetime} — $${PRICING.pro.lifetime}`}
             </button>
-            <a href="/gift" className="block text-center text-xs font-semibold text-teal-300 hover:text-teal-200 -mt-3 mb-4">
+            <a href="/gift" className="block text-center text-xs font-semibold text-teal-300 hover:text-teal-200 mb-1">
               🎁 {t.pricing.giftThis ?? 'Gift this to someone'}
             </a>
-            <div className="border-t border-white/10 mb-5" />
-            {/* Everything in Pro */}
-            <ul className="space-y-2">
-              <li className="flex items-start gap-2 text-sm text-white/80">
-                <Check color="teal" /> {t.pricing.everythingInPro}
-              </li>
-            </ul>
-            {/* Lifetime-exclusive perks */}
-            <div className="mt-5 mb-2">
-              <div className="flex items-center gap-2">
-                <div className="flex-1 border-t border-teal-400/30" />
-                <span className="text-[10px] font-black text-teal-300 uppercase tracking-widest whitespace-nowrap">
-                  {t.pricing.lifetimeExclusives}
-                </span>
-                <div className="flex-1 border-t border-teal-400/30" />
-              </div>
-            </div>
-            <ul className="space-y-2 flex-1">
-              {LIFETIME_EXCLUSIVES.map((f) => (
-                <li key={f.text} className="flex items-start gap-2 text-sm">
-                  <span className="flex-shrink-0 mt-0.5">{f.icon}</span>
-                  <span className="text-teal-200 font-semibold">{f.text}</span>
-                </li>
-              ))}
-              <li className="text-[11px] text-white/40 leading-relaxed pl-6">
-                {t.pricing.lifetimePerksNote}
-              </li>
-            </ul>
-            <p className="mt-4 text-center text-[11px] text-white/40 leading-relaxed">
+            <p className="mt-3 text-center text-[11px] text-white/40 leading-relaxed">
               {t.pricing.breakEven}
             </p>
           </div>
