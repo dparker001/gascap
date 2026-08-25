@@ -37,6 +37,11 @@ interface EditDraft {
   fuelGrade:       EditFuelGrade;
   receiptThumb:    string;   // base64 data URL or ''
   driverLabel:     string;   // Fleet Phase 1 — empty string = unassigned
+  /** Actual amount paid. 2026-08-25 P0 fix — empty string here means
+   *  "recompute from gallons × price" (mirrors FillupLogger's create-time
+   *  behavior); a non-empty value is preserved exactly, never silently
+   *  overwritten by the gallons/price calculation. */
+  totalCost:       string;
 }
 
 type EditFuelGradeKey = 'gradeRegular' | 'gradeMidGrade' | 'gradePremium' | 'gradeDiesel';
@@ -324,6 +329,7 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
       fuelGrade:       (f.fuelGrade ?? '') as EditFuelGrade,
       receiptThumb:    f.receiptThumb ?? '',
       driverLabel:     f.driverLabel ?? '',
+      totalCost:       String(f.totalCost),
     });
   }
 
@@ -352,6 +358,14 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
     body.fuelGrade    = editDraft.fuelGrade    || undefined;
     body.receiptThumb = editDraft.receiptThumb || undefined;
     body.driverLabel  = editDraft.driverLabel  || undefined;
+    // Actual amount paid — explicit value round-trips exactly (never
+    // silently recomputed); an intentionally-cleared field explicitly asks
+    // the server to recompute from gallons × price (mirrors FillupLogger's
+    // create-time "leave blank to auto-calculate" behavior). See
+    // lib/fillups.ts's FillupPatch.totalCost doc comment.
+    body.totalCost = editDraft.totalCost.trim() === ''
+      ? null
+      : parseFloat(editDraft.totalCost);
     try {
       const res = await fetch('/api/fillups', {
         method:  'PATCH',
@@ -780,6 +794,28 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
                                   value={editDraft.pricePerGallon}
                                   onChange={(e) => setEditDraft((d) => d ? { ...d, pricePerGallon: e.target.value } : d)}
                                   className="w-full text-xs px-2.5 py-2 border border-slate-200 rounded-xl
+                                             focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white"
+                                />
+                              </div>
+                            </div>
+
+                            {/* Actual amount paid — 2026-08-25 P0 fix: previously exposed
+                                only on create, silently absent (and silently recomputed
+                                server-side) on edit. Empty = recompute from gallons × price. */}
+                            <div>
+                              <label className="block text-[10px] font-semibold text-slate-500 mb-1">
+                                {t.fillup.amountActuallyPaidLabel} <span className="font-normal text-slate-400">{t.fillupHistory.opt}</span>
+                              </label>
+                              <div className="relative">
+                                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 font-semibold pointer-events-none text-xs">$</span>
+                                <input
+                                  type="number" inputMode="decimal" min="0.01" step="0.01"
+                                  value={editDraft.totalCost}
+                                  placeholder={(parseFloat(editDraft.gallonsPumped) > 0 && parseFloat(editDraft.pricePerGallon) > 0)
+                                    ? (Math.round(parseFloat(editDraft.gallonsPumped) * parseFloat(editDraft.pricePerGallon) * 100) / 100).toFixed(2)
+                                    : '0.00'}
+                                  onChange={(e) => setEditDraft((d) => d ? { ...d, totalCost: e.target.value } : d)}
+                                  className="w-full text-xs pl-5 pr-2.5 py-2 border border-slate-200 rounded-xl
                                              focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white"
                                 />
                               </div>

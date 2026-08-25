@@ -186,6 +186,7 @@ function SignUpForm() {
                 <input
                   ref={otpInputRef}
                   id="otp-code"
+                  name="one-time-code"
                   type="text"
                   inputMode="numeric"
                   autoComplete="one-time-code"

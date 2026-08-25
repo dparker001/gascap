@@ -11,6 +11,8 @@ import ReturnLocationInput from './ReturnLocationInput';
 import RentalVehicleLookup from '@/components/RentalVehicleLookup';
 import RentalVinLookup from '@/components/RentalVinLookup';
 import DeleteRentalButton from './DeleteRentalButton';
+import { scheduleRentalReturnReminder, cancelRentalReturnReminder } from '@/lib/rentalReminder';
+import { detectBrowserTimeZone } from '@/lib/rentalTimezone';
 
 interface Props {
   session: RentalSession;
@@ -91,9 +93,19 @@ export default function EditRentalModal({ session, onClose, onSaved }: Props) {
           returnLongitude: returnCoords?.lng,
           pickupDateTime: pickupDateTime || undefined,
           returnDateTime: returnDateTime || undefined,
+          timeZone: detectBrowserTimeZone(),
         }),
       });
       if (!res.ok) { setError(t.rentalReturn.setupError); return; }
+      // Reschedule the local (device-side) reminder for the (possibly new)
+      // return time — mirrors RentalSetupFlow.tsx. If the return date/time
+      // was cleared, cancel any previously-scheduled reminder instead.
+      if (returnDateTime) {
+        const [d, tm] = returnDateTime.split('T');
+        if (d && tm) void scheduleRentalReturnReminder(d, tm);
+      } else {
+        void cancelRentalReturnReminder();
+      }
       onSaved();
     } catch {
       setError(t.rentalReturn.setupError);

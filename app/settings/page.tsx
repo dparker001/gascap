@@ -895,6 +895,7 @@ export default function SettingsPage() {
                 <div className="flex gap-2">
                   <input
                     type="text"
+                    name="one-time-code"
                     inputMode="numeric"
                     autoComplete="one-time-code"
                     maxLength={6}

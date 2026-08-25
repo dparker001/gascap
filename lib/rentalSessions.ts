@@ -6,6 +6,7 @@ import { prisma } from './prisma';
 import type { RefuelLogEntry, FuelDataSource } from './rentalProvider';
 import { gallonsNeeded, resolveRequiredReturnFuel, returnReadyStatus, reconcileFuelForNewTank, type ReturnPolicyType, type ReturnReadyStatus } from './rentalCalculations';
 import { recordAnalyticsEvent } from './analyticsEvents';
+import { localDateTimeToUtcIso } from './rentalTimezone';
 
 export interface RentalSession {
   id:                          string;
@@ -31,6 +32,9 @@ export interface RentalSession {
   rentalFuelChargePerGallon:   number | null;
   pickupDateTime:              string | null;
   returnDateTime:              string | null;
+  timeZone:                    string | null;
+  pickupDateTimeUtc:           string | null;
+  returnDateTimeUtc:           string | null;
   pickupLocation:              string | null;
   returnLocation:              string | null;
   returnLatitude:              number | null;
@@ -49,6 +53,10 @@ export interface RentalSession {
   feedbackRating:               number | null;
   feedbackText:                 string | null;
   notes:                        string | null;
+  reminderSentAt:               string | null;
+  pickupReminder24SentAt:       string | null;
+  pickupReminder2SentAt:        string | null;
+  returnReminder2SentAt:        string | null;
   completedAt:                  string | null;
   createdAt:                    string;
   updatedAt:                    string;
@@ -79,6 +87,8 @@ export interface CreateRentalSessionInput {
   rentalFuelChargePerGallon?: number;
   pickupDateTime?:           string;
   returnDateTime?:           string;
+  /** IANA timezone captured from the browser at creation time — see lib/rentalTimezone.ts. */
+  timeZone?:                 string;
   pickupLocation?:           string;
   returnLocation?:           string;
   returnLatitude?:           number;
@@ -126,6 +136,9 @@ export async function createRentalSession(userId: string, input: CreateRentalSes
       rentalFuelChargePerGallon: input.rentalFuelChargePerGallon ?? null,
       pickupDateTime:          input.pickupDateTime ?? null,
       returnDateTime:          input.returnDateTime ?? null,
+      timeZone:                input.timeZone ?? null,
+      pickupDateTimeUtc:       localDateTimeToUtcIso(input.pickupDateTime, input.timeZone),
+      returnDateTimeUtc:       localDateTimeToUtcIso(input.returnDateTime, input.timeZone),
       pickupLocation:          input.pickupLocation ?? null,
       returnLocation:          input.returnLocation ?? null,
       returnLatitude:          input.returnLatitude ?? null,
@@ -181,6 +194,8 @@ export interface UpdateRentalSessionInput {
   vehicleTrim?:                string;
   fuelTankCapacityGallons?:    number;
   pickupDateTime?:             string;
+  /** IANA timezone captured from the browser at edit time — see lib/rentalTimezone.ts. */
+  timeZone?:                   string;
   pickupFuelGallons?:          number;
   pickupFuelSource?:           FuelDataSource;
   requiredReturnFuelGallons?:  number;
@@ -211,6 +226,7 @@ export async function updateRentalSession(userId: string, id: string, input: Upd
   if (input.vehicleTrim           !== undefined) data.vehicleTrim           = input.vehicleTrim;
   if (input.fuelTankCapacityGallons   !== undefined) data.fuelTankCapacityGallons   = input.fuelTankCapacityGallons;
   if (input.pickupDateTime            !== undefined) data.pickupDateTime            = input.pickupDateTime;
+  if (input.timeZone                  !== undefined) data.timeZone                  = input.timeZone;
   if (input.pickupFuelGallons         !== undefined) data.pickupFuelGallons         = input.pickupFuelGallons;
   if (input.pickupFuelSource          !== undefined) data.pickupFuelSource          = input.pickupFuelSource;
 
@@ -237,6 +253,34 @@ export async function updateRentalSession(userId: string, id: string, input: Upd
   if (input.returnLatitude    !== undefined) data.returnLatitude    = input.returnLatitude;
   if (input.returnLongitude   !== undefined) data.returnLongitude   = input.returnLongitude;
   if (input.notes             !== undefined) data.notes             = input.notes;
+
+  // ── Reminder timezone/UTC recompute + dedup reset (2026-08-25 P0 fix) ───
+  // Only trigger on an ACTUAL value change (not merely "the caller included
+  // this field"), so resubmitting an unchanged rental never resets a dedup
+  // flag or reschedules a reminder that already correctly fired.
+  const pickupDateTimeChanged = input.pickupDateTime !== undefined && input.pickupDateTime !== existing.pickupDateTime;
+  const returnDateTimeChanged = input.returnDateTime !== undefined && input.returnDateTime !== existing.returnDateTime;
+  const timeZoneChanged       = input.timeZone       !== undefined && input.timeZone       !== existing.timeZone;
+
+  if (pickupDateTimeChanged || returnDateTimeChanged || timeZoneChanged) {
+    const effectivePickup = (data.pickupDateTime ?? existing.pickupDateTime) as string | null;
+    const effectiveReturn = (data.returnDateTime ?? existing.returnDateTime) as string | null;
+    const effectiveTz     = (data.timeZone ?? existing.timeZone) as string | null;
+    data.pickupDateTimeUtc = localDateTimeToUtcIso(effectivePickup, effectiveTz);
+    data.returnDateTimeUtc = localDateTimeToUtcIso(effectiveReturn, effectiveTz);
+  }
+  // Pickup-side dedup only resets when the PICKUP time (or the timezone
+  // interpreting it) actually changed — a return-time-only edit must not
+  // re-nag someone who already got their pickup reminders.
+  if (pickupDateTimeChanged || timeZoneChanged) {
+    data.pickupReminder24SentAt = null;
+    data.pickupReminder2SentAt  = null;
+  }
+  // Return-side dedup only resets when the RETURN time (or timezone) changed.
+  if (returnDateTimeChanged || timeZoneChanged) {
+    data.reminderSentAt        = null;
+    data.returnReminder2SentAt = null;
+  }
 
   // ── Tank capacity changed: reconcile the fuel figures ────────────────────
   //

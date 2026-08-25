@@ -157,6 +157,8 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: 'Gallons must be greater than zero.' }, { status: 400 });
   if (body.pricePerGallon != null && body.pricePerGallon <= 0)
     return NextResponse.json({ error: 'Price must be greater than zero.' }, { status: 400 });
+  if (body.totalCost != null && body.totalCost <= 0)
+    return NextResponse.json({ error: 'Amount paid must be greater than zero.' }, { status: 400 });
   if (body.receiptThumb != null && body.receiptThumb.length > 275_000)
     return NextResponse.json({ error: 'Receipt image is too large. Please try again.' }, { status: 413 });
 
