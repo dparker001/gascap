@@ -866,6 +866,7 @@ export default function AdminPage() {
             <a href="/admin/campaigns" className="text-xs text-slate-500 hover:text-slate-700 transition-colors">Campaigns</a>
             <a href="/admin/sweepstakes" className="text-xs text-slate-500 hover:text-slate-700 transition-colors">Sweepstakes</a>
             <a href="/admin/reviews" className="text-xs text-slate-500 hover:text-slate-700 transition-colors">⭐ Reviews</a>
+            <a href="/admin/feedback-campaign" className="text-xs text-slate-500 hover:text-slate-700 transition-colors">📝 Feedback Campaign</a>
             <button onClick={handleLogout} className="text-xs text-slate-500 hover:text-red-500 transition-colors">
               Sign out
             </button>

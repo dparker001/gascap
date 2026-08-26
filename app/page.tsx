@@ -9,6 +9,7 @@ import TrustStrip              from '@/components/TrustStrip';
 import Header                  from '@/components/Header';
 import CalculatorTabs          from '@/components/CalculatorTabs';
 import FirstCalcNudge          from '@/components/FirstCalcNudge';
+import FeedbackInvitation      from '@/components/FeedbackInvitation';
 import ToolsPanel              from '@/components/ToolsPanel';
 import PricingSection          from '@/components/PricingSection';
 import { useIsNative }          from '@/hooks/useIsNative';
@@ -673,6 +674,10 @@ export default function Home() {
 
             {/* First-calc activation nudge — instant value + CTA, self-hides on calc */}
             <FirstCalcNudge />
+
+            {/* Phase 5A Feedback Campaign invitation — server-authoritative,
+                renders nothing unless GET /api/feedback/status says eligible */}
+            <FeedbackInvitation />
 
             {/* Calculator — lifted to the top of the content (above the insight widgets,
                 which are mostly empty for brand-new users) so the core action is the
