@@ -30,6 +30,13 @@ export interface Fillup {
   fuelGrade?:     string;   // "regular" | "midgrade" | "premium" | "diesel" | "e85"
   receiptThumb?:  string;   // base64 data URL of compressed receipt thumbnail
   createdAt:      string;   // ISO timestamp
+  /** Phase 3A — set only for a rental-linked fillup. See lib/rentalFillups.ts. */
+  rentalSessionId?: string;
+  fillupType?:      'trip' | 'final_return';
+  filledAt?:        string; // full ISO transaction timestamp, rental fillups only
+  stationLat?:      number;
+  stationLng?:      number;
+  clientRefuelId?:  string;
 }
 
 // ── Type adapter ────────────────────────────────────────────────────────────
@@ -38,13 +45,15 @@ export interface Fillup {
  * Prisma returns nullable fields as `null`; our Fillup interface uses
  * optional (undefined). This adapter normalises the two.
  */
-function fromPrisma(r: {
+export function fromPrisma(r: {
   id: string; userId: string; vehicleId: string | null; vehicleName: string;
   date: string; gallonsPumped: number; pricePerGallon: number; totalCost: number;
   odometerReading: number | null; fuelLevelBefore: number | null;
   stationName: string | null; notes: string | null; driverLabel: string | null;
   fuelGrade: string | null; receiptThumb: string | null;
   createdAt: string;
+  rentalSessionId?: string | null; fillupType?: string | null; filledAt?: string | null;
+  stationLat?: number | null; stationLng?: number | null; clientRefuelId?: string | null;
 }): Fillup {
   return {
     id:              r.id,
@@ -63,6 +72,12 @@ function fromPrisma(r: {
     fuelGrade:       r.fuelGrade       ?? undefined,
     receiptThumb:    r.receiptThumb    ?? undefined,
     createdAt:       r.createdAt,
+    rentalSessionId: r.rentalSessionId ?? undefined,
+    fillupType:      (r.fillupType as 'trip' | 'final_return' | null) ?? undefined,
+    filledAt:        r.filledAt        ?? undefined,
+    stationLat:      r.stationLat      ?? undefined,
+    stationLng:      r.stationLng      ?? undefined,
+    clientRefuelId:  r.clientRefuelId  ?? undefined,
   };
 }
 
@@ -261,6 +276,12 @@ export type FillupPatch = Partial<Pick<Fillup,
    *   - omitted (`undefined`) → leave the existing stored value untouched
    */
   totalCost?: number | null;
+  /** Phase 3A — rental-fillup correction fields. Only ever set by rental-
+   *  linked edit paths (lib/rentalFillups.ts); a personal fillup patch never
+   *  includes these. */
+  fillupType?: 'trip' | 'final_return';
+  stationLat?: number | null;
+  stationLng?: number | null;
 };
 
 /** Update an existing fillup (only if it belongs to the user). Returns updated record or null. */
@@ -293,6 +314,9 @@ export async function updateFillup(
       ...(patch.driverLabel     !== undefined && { driverLabel:     patch.driverLabel     ?? null }),
       ...(patch.fuelGrade       !== undefined && { fuelGrade:       patch.fuelGrade       ?? null }),
       ...(patch.receiptThumb    !== undefined && { receiptThumb:    patch.receiptThumb    ?? null }),
+      ...(patch.fillupType      !== undefined && { fillupType:      patch.fillupType }),
+      ...(patch.stationLat      !== undefined && { stationLat:      patch.stationLat      ?? null }),
+      ...(patch.stationLng      !== undefined && { stationLng:      patch.stationLng      ?? null }),
       totalCost,
     },
   });

@@ -106,6 +106,14 @@ const CLIENT_EVENT_TYPES = new Set([
   // the upgrade page — an impression, not a measured-visibility "viewed"
   // event (no IntersectionObserver here), named accordingly.
   'rental_return_feature_impression',
+  // Phase 3A (2026-08-25) — fired once per Calculate Fill interaction inside
+  // Rental Return Mode. No gallons/price/cost values — those are the user's
+  // own transaction data, not funnel metadata. rental_fill_logged /
+  // rental_final_fill_logged / rental_session_completed are server-
+  // authoritative (fired from lib/rentalFillups.ts / lib/rentalSessions.ts
+  // directly) and deliberately absent from this client-facing allowlist,
+  // same pattern as rental_setup_completed and purchase_completed.
+  'rental_fill_calculated',
 ]);
 
 /**

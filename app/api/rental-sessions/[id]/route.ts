@@ -9,6 +9,7 @@ import { authOptions } from '@/lib/auth';
 import { RENTAL_RETURN_ASSISTANT_ENABLED } from '@/lib/featureFlags';
 import { getRentalSession, updateRentalSession, deleteRentalSession, type UpdateRentalSessionInput } from '@/lib/rentalSessions';
 import { validateRentalPhotos, photoCapKb, PHOTO_MAX_DATA_URL_BYTES } from '@/lib/photoLimits';
+import { getRentalFillups } from '@/lib/rentalFillups';
 
 async function requireUserId(): Promise<string | null> {
   const session = await getServerSession(authOptions);
@@ -23,7 +24,11 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
 
   const session = await getRentalSession(userId, params.id);
   if (!session) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-  return NextResponse.json({ session });
+  // Phase 3A — canonical Fillup rows for this rental, alongside the legacy
+  // session.refuelLogs already on `session`. Empty for a pre-cutover session
+  // that only has legacy entries; the client falls back to refuelLogs then.
+  const fillups = await getRentalFillups(userId, params.id);
+  return NextResponse.json({ session, fillups });
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {

@@ -11,15 +11,16 @@
  * finer than any manual estimate can honestly claim.
  */
 import type { FuelDataSource } from './rentalProvider';
+import { roundTo, gallonsToFill, costForGallons } from './fuelMath';
 
 // ── Rounding ─────────────────────────────────────────────────────────────
 
 export function roundCurrency(n: number): number {
-  return Math.round(n * 100) / 100;
+  return roundTo(n, 2);
 }
 
 export function roundGallons(n: number): number {
-  return Math.round(n * 10) / 10;
+  return roundTo(n, 1);
 }
 
 // ── Return requirement resolution ───────────────────────────────────────────
@@ -47,13 +48,13 @@ export function resolveRequiredReturnFuel(
 /** Gallons needed to reach the required return level — never negative. */
 export function gallonsNeeded(requiredReturnFuelGallons: number, currentFuelGallons: number): number {
   if (!(requiredReturnFuelGallons >= 0) || !(currentFuelGallons >= 0)) return 0;
-  return roundGallons(Math.max(requiredReturnFuelGallons - currentFuelGallons, 0));
+  return gallonsToFill(requiredReturnFuelGallons, currentFuelGallons, 1);
 }
 
 /** Estimated out-of-pocket cost to refuel at a given nearby station price. */
 export function estimatedFuelCost(gallonsNeededVal: number, stationPricePerGallon: number): number {
   if (!(gallonsNeededVal > 0) || !(stationPricePerGallon > 0)) return 0;
-  return roundCurrency(gallonsNeededVal * stationPricePerGallon);
+  return costForGallons(gallonsNeededVal, stationPricePerGallon, 2);
 }
 
 /** Estimated rental-company refueling charge, if their rate is known — null means "unknown," never invented. */
