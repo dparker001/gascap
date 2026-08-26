@@ -9,7 +9,12 @@ interface FeedbackAdminData {
     key: string; name: string; startsAt: string; endsAt: string | null;
     drawingAt: string | null; timezone: string; drawingStatus: string;
   } | null;
-  funnel: { eligible: number; inviteShown: number; started: number; submitted: number; completionRate: number | null; drawingEntries: number };
+  funnel: {
+    eligible: number; inviteShown: number; started: number; submitted: number;
+    completionRate: number | null; drawingEntries: number;
+  };
+  /** kind -> state -> count, scoped to this campaign — see CampaignCommunication. */
+  communications: Record<string, Record<string, number>>;
   avgSatisfaction: number | null;
   featureBreakdown: Record<string, number>;
   pmfBreakdown: Record<string, number>;
@@ -104,13 +109,38 @@ export default function AdminFeedbackCampaignPage() {
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         <StatCard label="Eligible" value={funnel.eligible} />
-        <StatCard label="Invites Shown" value={funnel.inviteShown} />
+        <StatCard label="Invites Shown (in-app)" value={funnel.inviteShown} />
         <StatCard label="Started" value={funnel.started} />
         <StatCard label="Submitted" value={funnel.submitted} />
         <StatCard label="Completion Rate" value={funnel.completionRate != null ? `${Math.round(funnel.completionRate * 100)}%` : '—'} />
         <StatCard label="Drawing Entries" value={funnel.drawingEntries} />
         <StatCard label="Avg Satisfaction" value={data.avgSatisfaction != null ? data.avgSatisfaction.toFixed(1) : '—'} />
         <StatCard label="Reported Issues" value={data.issueCount} />
+      </div>
+
+      <div className="bg-white rounded-2xl border border-slate-100 p-4">
+        <p className="font-black text-navy-800 text-sm mb-1">Communications (this campaign only)</p>
+        <p className="text-[10px] text-slate-400 mb-3">
+          Only "sent" means the provider confirmed acceptance. "claimed"/"ambiguous" rows are stuck or uncertain and are never auto-retried.
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {(['invite_email', 'reminder_email', 'reminder_push'] as const).map((kind) => (
+            <div key={kind} className="border border-slate-100 rounded-xl p-3">
+              <p className="text-xs font-bold text-navy-700 mb-1.5">
+                {kind === 'invite_email' ? 'Invite Email' : kind === 'reminder_email' ? 'Reminder Email' : 'Reminder Push'}
+              </p>
+              {Object.entries(data.communications[kind] ?? {}).length === 0 && (
+                <p className="text-[11px] text-slate-400">No attempts yet</p>
+              )}
+              {Object.entries(data.communications[kind] ?? {}).map(([state, count]) => (
+                <div key={state} className="flex justify-between text-xs py-0.5">
+                  <span className={state === 'sent' ? 'text-emerald-600 font-semibold' : 'text-slate-500'}>{state}</span>
+                  <span className="font-bold">{count}</span>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-100 p-4">

@@ -13,6 +13,7 @@ on:
     - cron: '30 16 * * *'  # winback               (16:30 UTC / 12:30 PM ET)
     - cron: '30 17 * * *'  # first-fillup-nudge    (17:30 UTC / 1:30 PM ET)
     - cron: '0 18 * * *'   # fillup-reminder       (18:00 UTC)
+    - cron: '30 18 * * *'  # feedback-campaign-comms (18:30 UTC — Phase 5C invite/reminder/push; no-ops with zero active Campaign rows)
     - cron: '0 19 * * *'   # getaway-reminder      (19:00 UTC / 3:00 PM ET)
     - cron: '0 */4 * * *'  # getaway-fulfillment   (every 4h — 7-day hold re-verify + fulfill)
     - cron: '0 20 * * *'   # price-alerts          (20:00 UTC)
@@ -38,6 +39,7 @@ on:
           - winback
           - first-fillup-nudge
           - fillup-reminder
+          - feedback-campaign-comms
           - getaway-reminder
           - getaway-fulfillment
           - price-alerts
@@ -65,6 +67,7 @@ jobs:
             "30 16 * * *") echo "endpoint=winback"             >> "$GITHUB_OUTPUT" ;;
             "30 17 * * *") echo "endpoint=first-fillup-nudge" >> "$GITHUB_OUTPUT" ;;
             "0 18 * * *")  echo "endpoint=fillup-reminder"     >> "$GITHUB_OUTPUT" ;;
+            "30 18 * * *") echo "endpoint=feedback-campaign-comms" >> "$GITHUB_OUTPUT" ;;
             "0 19 * * *")  echo "endpoint=getaway-reminder"    >> "$GITHUB_OUTPUT" ;;
             "0 */4 * * *") echo "endpoint=getaway-fulfillment" >> "$GITHUB_OUTPUT" ;;
             "0 20 * * *")  echo "endpoint=price-alerts"        >> "$GITHUB_OUTPUT" ;;

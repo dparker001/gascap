@@ -1196,6 +1196,24 @@ const en = {
     offerNativeComingSoon: "This offer isn't available in the app yet — check back soon.",
   },
 
+  // ── Phase 5C — Feedback Campaign email/push copy ──────────────────────────
+  feedbackCampaignEmail: {
+    inviteSubject:  'Help us improve GasCap™',
+    inviteHeading:  (name: string) => `Got 2 minutes, ${name}?`,
+    inviteBody1:    "Thanks for using GasCap™. We'd like to hear directly from you — what's working, what isn't, and what you'd like to see next.",
+    inviteBody2:    'The survey takes about 2 minutes.',
+    inviteDrawingLine: (date: string) => `Complete our short GasCap™ feedback survey for a chance to win a $50 gas card in a separate Feedback Drawing — closes ${date}.`,
+    inviteThankYouLine: "We'll also have a special thank-you offer available after you complete the survey.",
+    inviteCta:      'Share Your Feedback',
+    reminderSubject: 'Still have 2 minutes to help improve GasCap™?',
+    reminderHeading: 'A quick reminder',
+    reminderBody:   "We haven't heard from you yet on our short feedback survey — it only takes about 2 minutes, and your input directly shapes what we build next.",
+    reminderDrawingLine: (date: string) => `The separate $50 Feedback Gas Card Drawing closes ${date}.`,
+    reminderCta:    'Share Your Feedback',
+    pushTitle:      'Help improve GasCap™',
+    pushBody:       (date: string) => `Share your 2-minute feedback before ${date} for a chance to win a $50 gas card.`,
+  },
+
   // ── Onboarding modal ───────────────────────────────────────────────────────
   onboarding: {
     closeAria:  'Close onboarding',
@@ -4299,6 +4317,24 @@ const es: typeof en = {
     offerCtaLoading: 'Iniciando el pago…',
     offerError:      'Ocurrió un error al iniciar el pago — inténtalo de nuevo.',
     offerNativeComingSoon: 'Esta oferta aún no está disponible en la app — vuelve pronto.',
+  },
+
+  // ── Fase 5C — copia de correo/push de la Campaña de comentarios ───────────
+  feedbackCampaignEmail: {
+    inviteSubject:  'Ayúdanos a mejorar GasCap™',
+    inviteHeading:  (name: string) => `¿Tienes 2 minutos, ${name}?`,
+    inviteBody1:    'Gracias por usar GasCap™. Nos gustaría escucharte directamente — qué funciona, qué no, y qué te gustaría ver a continuación.',
+    inviteBody2:    'La encuesta toma unos 2 minutos.',
+    inviteDrawingLine: (date: string) => `Completa nuestra breve encuesta de comentarios de GasCap™ para tener la oportunidad de ganar una tarjeta de gasolina de $50 en un sorteo independiente — cierra el ${date}.`,
+    inviteThankYouLine: 'También tendremos una oferta especial de agradecimiento disponible después de que completes la encuesta.',
+    inviteCta:      'Compartir mis comentarios',
+    reminderSubject: '¿Aún tienes 2 minutos para ayudar a mejorar GasCap™?',
+    reminderHeading: 'Un breve recordatorio',
+    reminderBody:   'Aún no hemos sabido de ti en nuestra breve encuesta de comentarios — toma solo unos 2 minutos, y tu opinión da forma directamente a lo que construimos a continuación.',
+    reminderDrawingLine: (date: string) => `El sorteo independiente de $50 de comentarios cierra el ${date}.`,
+    reminderCta:    'Compartir mis comentarios',
+    pushTitle:      'Ayuda a mejorar GasCap™',
+    pushBody:       (date: string) => `Comparte tus comentarios de 2 minutos antes del ${date} para tener la oportunidad de ganar una tarjeta de gasolina de $50.`,
   },
 
   onboarding: {
