@@ -21,6 +21,7 @@ import { sendPaidCampaignEmail }           from '@/lib/emailCampaignPaid';
 import { sendMilestoneEmail }              from '@/lib/emailEngagement';
 import { sendUserPush }                    from '@/lib/userPush';
 import { PRICES }                          from '@/lib/stripe';
+import { markLifetimeOfferConverted }      from '@/lib/feedbackCampaign';
 
 /** Fire-and-forget admin notification */
 function sendAdminMail(opts: { subject: string; html: string; text: string }) {
@@ -409,6 +410,26 @@ export async function POST(req: Request) {
       // this metadata tag is the only way to attribute the purchase correctly).
       if (interval === 'lifetime' && session.metadata?.offerSource === 'founding') {
         await markFoundingMember(userId);
+      }
+
+      // Phase 5B — authoritative conversion marker for the post-feedback
+      // $9.99 Lifetime offer. Safe to call unconditionally on every Lifetime
+      // grant (not just offerSource==='feedback' ones): it's a no-op unless
+      // this user has an actual unconverted CampaignParticipation, and
+      // conditioned on lifetimeOfferConvertedAt IS NULL so a webhook retry
+      // can never double-mark. Deliberately not gated on offerSource, so a
+      // feedback-eligible user who happens to buy Lifetime at full price (or
+      // via a different coupon) still gets correctly attributed — the
+      // ENTITLEMENT grant above is identical either way; this only affects
+      // internal funnel reporting. Best-effort, like the analytics write
+      // above — must never be able to fail the webhook or block the
+      // entitlement grant that already succeeded.
+      if (interval === 'lifetime') {
+        try {
+          await markLifetimeOfferConverted(userId);
+        } catch (err) {
+          console.error('[GasCap feedback offer] conversion marker failed (entitlement unaffected):', err);
+        }
       }
 
       // Lifetime is a one-time payment (mode:'payment') with no subscription of

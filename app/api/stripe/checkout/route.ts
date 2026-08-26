@@ -29,6 +29,8 @@ import { winbackOfferAvailable, WINBACK_LIFETIME_COUPON } from '@/lib/winbackOff
 import { foundingStatus, FOUNDING_LIFETIME_COUPON } from '@/lib/foundingPromo';
 import { recordAnalyticsEvent } from '@/lib/analyticsEvents';
 import { hasLifetimeEntitlement } from '@/lib/entitlements';
+import { FEEDBACK_LIFETIME_COUPON } from '@/lib/feedbackLifetimeOffer';
+import { getLifetimeOfferStatus, markLifetimeOfferRedeemStarted } from '@/lib/feedbackCampaign';
 
 export async function POST(req: Request) {
   if (!stripe) {
@@ -65,6 +67,7 @@ export async function POST(req: Request) {
     newMemberOffer?: boolean; // request the 7-day new-member Lifetime discount
     winbackOffer?:   boolean; // request the win-back Lifetime discount ($9.99)
     foundingOffer?:  boolean; // request the Founding Member launch discount ($9.99)
+    feedbackOffer?:  boolean; // request the post-feedback-submission Lifetime discount ($9.99, Phase 5B)
   };
 
   const tier    = body.tier    ?? 'pro';
@@ -113,7 +116,32 @@ export async function POST(req: Request) {
   // Tags which campaign the coupon came from — the founding, win-back, and
   // new-member offers all currently share the same Stripe coupon ID, so this is
   // the only way to attribute a purchase to a specific campaign after the fact.
-  let   offerSource: 'founding' | 'winback' | 'new_member' | null = null;
+  let   offerSource: 'founding' | 'winback' | 'new_member' | 'feedback' | null = null;
+
+  // Phase 5B — post-Feedback-Campaign-submission $9.99 Lifetime offer.
+  // Eligibility (submitted feedback, not already Lifetime, not already
+  // converted, within the 72-hour server-stamped window) is fully
+  // re-validated here via getLifetimeOfferStatus — a copied/replayed
+  // request can't extend or fake eligibility. FEEDBACK_LIFETIME_COUPON is
+  // null until that coupon is actually created in Stripe (see
+  // lib/feedbackLifetimeOffer.ts) — this path fails closed (503) rather
+  // than silently falling through to full price if that manual step
+  // hasn't happened yet.
+  if (body.feedbackOffer && billing === 'lifetime') {
+    const offerStatus = await getLifetimeOfferStatus(userId);
+    if (!offerStatus.lifetimeOfferEligible) {
+      return NextResponse.json({ error: 'This feedback offer is no longer available.' }, { status: 403 });
+    }
+    if (!FEEDBACK_LIFETIME_COUPON) {
+      return NextResponse.json(
+        { error: 'Feedback Lifetime offer is not configured. Add STRIPE_FEEDBACK_LIFETIME_COUPON.' },
+        { status: 503 },
+      );
+    }
+    coupon = FEEDBACK_LIFETIME_COUPON;
+    offerSource = 'feedback';
+    await markLifetimeOfferRedeemStarted(userId);
+  }
 
   // New-member 7-day Lifetime discount ($5 off). Server-validates eligibility
   // (createdAt within 7 days, not already Lifetime) so the discount can't be

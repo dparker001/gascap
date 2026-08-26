@@ -1183,6 +1183,17 @@ const en = {
     thankYouBody:     "You're entered in the GasCap Feedback Drawing. The winner will be selected after the feedback campaign closes.",
     thankYouNotMonthly: 'This is separate from the regular monthly GasCap $50 Gas Card Drawing — you stay entered in that one too.',
     thankYouDone:     'Done',
+    // Phase 5B — post-submission $9.99 Lifetime offer
+    offerEyebrow:    'Special Feedback Thank-You Offer',
+    offerTitle:      'GasCap Pro Lifetime',
+    offerPrice:      '$9.99',
+    offerNormalPrice: 'Normally $19.99',
+    offerExpiresIn:  (time: string) => `Offer expires in ${time}`,
+    offerGetawayNote: 'Includes the applicable GasCap Lifetime benefits, including the vacation getaway.',
+    offerCta:        'Get Lifetime for $9.99',
+    offerCtaLoading: 'Starting checkout…',
+    offerError:      'Something went wrong starting checkout — please try again.',
+    offerNativeComingSoon: "This offer isn't available in the app yet — check back soon.",
   },
 
   // ── Onboarding modal ───────────────────────────────────────────────────────
@@ -4277,6 +4288,17 @@ const es: typeof en = {
     thankYouBody:     'Estás participando en el sorteo de comentarios de GasCap. El ganador se seleccionará después de que cierre la campaña.',
     thankYouNotMonthly: 'Esto es independiente del sorteo mensual regular de $50 de GasCap — también sigues participando en ese.',
     thankYouDone:     'Listo',
+    // Fase 5B — oferta especial de Lifetime por $9.99 tras el envío
+    offerEyebrow:    'Oferta especial de agradecimiento por tus comentarios',
+    offerTitle:      'GasCap Pro Lifetime',
+    offerPrice:      '$9.99',
+    offerNormalPrice: 'Normalmente $19.99',
+    offerExpiresIn:  (time: string) => `La oferta expira en ${time}`,
+    offerGetawayNote: 'Incluye los beneficios aplicables de GasCap Lifetime, incluida la escapada vacacional.',
+    offerCta:        'Obtener Lifetime por $9.99',
+    offerCtaLoading: 'Iniciando el pago…',
+    offerError:      'Ocurrió un error al iniciar el pago — inténtalo de nuevo.',
+    offerNativeComingSoon: 'Esta oferta aún no está disponible en la app — vuelve pronto.',
   },
 
   onboarding: {
