@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { findById, updateUserProfile } from '@/lib/users';
 import { upsertGhlContact, removeGhlTags } from '@/lib/ghl';
+import { isGaugeStyle } from '@/lib/gaugeStyles';
 
 /** GET /api/user/profile — returns current displayName, phone, smsOptIn, and avatarUrl */
 export async function GET(_req: NextRequest) {
@@ -22,6 +23,7 @@ export async function GET(_req: NextRequest) {
     preferredFillLevel: (user as { preferredFillLevel?: number | null }).preferredFillLevel ?? null,
     monthlyFuelBudget:  (user as { monthlyFuelBudget?: number | null }).monthlyFuelBudget   ?? null,
     userMode:           user.userMode ?? null,
+    fuelGaugeStyle:     (user as { fuelGaugeStyle?: string | null }).fuelGaugeStyle ?? null,
   });
 }
 
@@ -40,11 +42,19 @@ export async function PATCH(req: NextRequest) {
     preferredFillLevel?: number | null;
     monthlyFuelBudget?:  number | null;
     userMode?:           string | null;
+    /** Phase 4B — null explicitly clears the global default. Any other
+     *  value must be a canonical GaugeStyle; unrecognized strings are
+     *  rejected below rather than silently coerced. */
+    fuelGaugeStyle?:     string | null;
   };
 
   // Guard against oversized avatar payloads (base64 128×128 JPEG ≈ 10KB; 100KB is very generous)
   if (body.avatarUrl && body.avatarUrl.length > 100_000) {
     return NextResponse.json({ error: 'Avatar image too large' }, { status: 413 });
+  }
+
+  if (body.fuelGaugeStyle !== undefined && body.fuelGaugeStyle !== null && !isGaugeStyle(body.fuelGaugeStyle)) {
+    return NextResponse.json({ error: 'Invalid gauge style.' }, { status: 400 });
   }
 
   const userId = (session.user as { id?: string })?.id ?? '';
@@ -74,6 +84,7 @@ export async function PATCH(req: NextRequest) {
     monthlyFuelBudget:  body.monthlyFuelBudget,
     phoneBonusEntries,
     userMode:           safeUserMode,
+    fuelGaugeStyle:     body.fuelGaugeStyle,
   });
 
   if (!updated) {

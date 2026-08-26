@@ -8,7 +8,143 @@ import { describe, it, expect } from 'vitest';
 import {
   GAUGE_STYLES, DEFAULT_GAUGE_STYLE, isGaugeStyle, resolveGaugeStyle,
   resolveRentalGaugeStyle, resolveVehicleGaugeStyle, GAUGE_POINTER_MAP,
+  resolveGaugeStyleChain, GAUGE_STYLE_LABELS,
 } from '@/lib/gaugeStyles';
+import { getTranslations } from '@/lib/translations';
+
+// Phase 4B — the registry now has six canonical styles.
+describe('GAUGE_STYLES — Phase 4B six-style registry', () => {
+  it('has exactly six supported style keys', () => {
+    expect(GAUGE_STYLES).toHaveLength(6);
+    expect([...GAUGE_STYLES].sort()).toEqual([
+      'analog_needle', 'horizontal_segments', 'quarter_marks',
+      'vertical_curved_needle', 'vertical_curved_segments', 'vertical_segments',
+    ].sort());
+  });
+
+  it('an unknown style still falls back to analog_needle', () => {
+    expect(resolveGaugeStyle('digital_percentage')).toBe('analog_needle');
+    expect(DEFAULT_GAUGE_STYLE).toBe('analog_needle');
+  });
+
+  it('every style has an English fallback label', () => {
+    for (const s of GAUGE_STYLES) expect(GAUGE_STYLE_LABELS[s]).toBeTruthy();
+  });
+
+  it.each(['en', 'es'] as const)('%s has a localized gaugeStyles label for every canonical style plus useGlobalDefault', (locale) => {
+    const t = getTranslations(locale).gaugeStyles;
+    expect(t.useGlobalDefault.trim()).not.toBe('');
+    for (const s of GAUGE_STYLES) expect(t[s]?.trim(), `${locale}.gaugeStyles.${s}`).toBeTruthy();
+  });
+});
+
+describe('resolveGaugeStyleChain — the one shared precedence resolver', () => {
+  it('returns the first valid value in order', () => {
+    expect(resolveGaugeStyleChain('vertical_curved_needle', 'quarter_marks')).toBe('vertical_curved_needle');
+  });
+
+  it('skips invalid/null/undefined values and falls through to the next', () => {
+    expect(resolveGaugeStyleChain(null, 'quarter_marks')).toBe('quarter_marks');
+    expect(resolveGaugeStyleChain(undefined, undefined, 'vertical_segments')).toBe('vertical_segments');
+    expect(resolveGaugeStyleChain('not_real', 'horizontal_segments')).toBe('horizontal_segments');
+  });
+
+  it('falls back to the default when nothing in the chain is valid', () => {
+    expect(resolveGaugeStyleChain(null, undefined, 'nope')).toBe(DEFAULT_GAUGE_STYLE);
+    expect(resolveGaugeStyleChain()).toBe(DEFAULT_GAUGE_STYLE);
+  });
+});
+
+describe('normal-calculator precedence — Vehicle > User global > analog (Phase 4B)', () => {
+  const vehicles = [
+    { id: 'v-explicit', fuelGaugeStyle: 'quarter_marks' },
+    { id: 'v-inherit', fuelGaugeStyle: null },
+  ];
+
+  it('an explicit Vehicle style wins over the user global preference', () => {
+    expect(resolveVehicleGaugeStyle(vehicles, 'v-explicit', 'vertical_curved_needle')).toBe('quarter_marks');
+  });
+
+  it('a null Vehicle override falls back to the user global preference', () => {
+    expect(resolveVehicleGaugeStyle(vehicles, 'v-inherit', 'vertical_curved_needle')).toBe('vertical_curved_needle');
+  });
+
+  it('falls back to analog_needle when neither Vehicle nor global is set', () => {
+    expect(resolveVehicleGaugeStyle(vehicles, 'v-inherit', null)).toBe(DEFAULT_GAUGE_STYLE);
+    expect(resolveVehicleGaugeStyle(vehicles, 'v-inherit', undefined)).toBe(DEFAULT_GAUGE_STYLE);
+  });
+
+  it('with no vehicle selected, the user global preference still applies (Phase 4B behavior change from Phase 4)', () => {
+    expect(resolveVehicleGaugeStyle(vehicles, null, 'vertical_curved_segments')).toBe('vertical_curved_segments');
+  });
+
+  it('existing 2-arg call sites are unaffected (no global passed = same as before)', () => {
+    expect(resolveVehicleGaugeStyle(vehicles, 'v-explicit')).toBe('quarter_marks');
+    expect(resolveVehicleGaugeStyle(vehicles, 'v-inherit')).toBe(DEFAULT_GAUGE_STYLE);
+    expect(resolveVehicleGaugeStyle(vehicles, null)).toBe(DEFAULT_GAUGE_STYLE);
+  });
+
+  it('changing the global preference affects a vehicle with a null override, but never an explicit one', () => {
+    const before = resolveVehicleGaugeStyle(vehicles, 'v-inherit', 'analog_needle');
+    const after  = resolveVehicleGaugeStyle(vehicles, 'v-inherit', 'horizontal_segments');
+    expect(before).toBe('analog_needle');
+    expect(after).toBe('horizontal_segments');
+
+    const explicitBefore = resolveVehicleGaugeStyle(vehicles, 'v-explicit', 'analog_needle');
+    const explicitAfter  = resolveVehicleGaugeStyle(vehicles, 'v-explicit', 'horizontal_segments');
+    expect(explicitBefore).toBe('quarter_marks');
+    expect(explicitAfter).toBe('quarter_marks');
+  });
+});
+
+describe('rental precedence — Rental > Vehicle > User global > analog (Phase 4B)', () => {
+  it('an explicit rental override wins over everything else', () => {
+    expect(resolveRentalGaugeStyle('quarter_marks', 'vertical_segments', 'vertical_curved_needle')).toBe('quarter_marks');
+  });
+
+  it('a null rental override falls back to the linked Vehicle style', () => {
+    expect(resolveRentalGaugeStyle(null, 'vertical_segments', 'vertical_curved_needle')).toBe('vertical_segments');
+  });
+
+  it('null rental AND null vehicle fall back to the user global preference', () => {
+    expect(resolveRentalGaugeStyle(null, null, 'vertical_curved_segments')).toBe('vertical_curved_segments');
+  });
+
+  it('falls back to analog_needle when nothing in the chain is set', () => {
+    expect(resolveRentalGaugeStyle(null, null, null)).toBe(DEFAULT_GAUGE_STYLE);
+    expect(resolveRentalGaugeStyle(undefined, undefined, undefined)).toBe(DEFAULT_GAUGE_STYLE);
+  });
+
+  it('existing 2-arg call sites are unaffected (no global passed = same as Phase 4 behavior)', () => {
+    expect(resolveRentalGaugeStyle('quarter_marks', 'horizontal_segments')).toBe('quarter_marks');
+    expect(resolveRentalGaugeStyle(null, 'vertical_segments')).toBe('vertical_segments');
+    expect(resolveRentalGaugeStyle(null, null)).toBe(DEFAULT_GAUGE_STYLE);
+  });
+
+  it('changing the global preference affects a rental with no override and no linked-vehicle style, but never an explicit rental override', () => {
+    const inheritBefore = resolveRentalGaugeStyle(null, null, 'analog_needle');
+    const inheritAfter  = resolveRentalGaugeStyle(null, null, 'vertical_curved_needle');
+    expect(inheritBefore).toBe('analog_needle');
+    expect(inheritAfter).toBe('vertical_curved_needle');
+
+    const explicitBefore = resolveRentalGaugeStyle('quarter_marks', null, 'analog_needle');
+    const explicitAfter  = resolveRentalGaugeStyle('quarter_marks', null, 'vertical_curved_needle');
+    expect(explicitBefore).toBe('quarter_marks');
+    expect(explicitAfter).toBe('quarter_marks');
+  });
+});
+
+describe('GAUGE_POINTER_MAP — Phase 4B curved styles', () => {
+  it('vertical_curved_needle: bottom is 0%, top is 100% (same vertical model as vertical_segments)', () => {
+    expect(GAUGE_POINTER_MAP.vertical_curved_needle(0.5, 1)).toBe(0);
+    expect(GAUGE_POINTER_MAP.vertical_curved_needle(0.5, 0)).toBe(100);
+  });
+
+  it('vertical_curved_segments: bottom is 0%, top is 100%', () => {
+    expect(GAUGE_POINTER_MAP.vertical_curved_segments(0.5, 1)).toBe(0);
+    expect(GAUGE_POINTER_MAP.vertical_curved_segments(0.5, 0)).toBe(100);
+  });
+});
 
 describe('isGaugeStyle / resolveGaugeStyle', () => {
   it('accepts every canonical style', () => {

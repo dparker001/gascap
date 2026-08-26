@@ -36,7 +36,10 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   const linkedVehicleGaugeStyle = session.vehicleId
     ? (await prisma.vehicle.findUnique({ where: { id: session.vehicleId }, select: { fuelGaugeStyle: true } }))?.fuelGaugeStyle ?? null
     : null;
-  return NextResponse.json({ session, fillups, linkedVehicleGaugeStyle });
+  // Phase 4B — the final fallback in resolveRentalGaugeStyle's precedence
+  // chain (session override → linked Vehicle → user global → analog).
+  const userGlobalGaugeStyle = (await prisma.user.findUnique({ where: { id: userId }, select: { fuelGaugeStyle: true } }))?.fuelGaugeStyle ?? null;
+  return NextResponse.json({ session, fillups, linkedVehicleGaugeStyle, userGlobalGaugeStyle });
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
@@ -46,7 +49,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
   const body = await req.json().catch(() => null) as UpdateRentalSessionInput | null;
   if (!body) return NextResponse.json({ error: 'Invalid body' }, { status: 400 });
-  if (body.fuelGaugeStyle !== undefined && !isGaugeStyle(body.fuelGaugeStyle)) {
+  if (body.fuelGaugeStyle !== undefined && body.fuelGaugeStyle !== null && !isGaugeStyle(body.fuelGaugeStyle)) {
     return NextResponse.json({ error: 'Invalid gauge style.' }, { status: 400 });
   }
 

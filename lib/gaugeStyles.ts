@@ -17,6 +17,8 @@ export const GAUGE_STYLES = [
   'horizontal_segments',
   'vertical_segments',
   'quarter_marks',
+  'vertical_curved_needle',
+  'vertical_curved_segments',
 ] as const;
 
 export type GaugeStyle = typeof GAUGE_STYLES[number];
@@ -49,9 +51,24 @@ export function resolveGaugeStyle(value: unknown): GaugeStyle {
 export function resolveRentalGaugeStyle(
   rentalSessionStyle: unknown,
   linkedVehicleStyle: unknown,
+  userGlobalStyle?: unknown,
 ): GaugeStyle {
-  if (isGaugeStyle(rentalSessionStyle)) return rentalSessionStyle;
-  if (isGaugeStyle(linkedVehicleStyle)) return linkedVehicleStyle;
+  return resolveGaugeStyleChain(rentalSessionStyle, linkedVehicleStyle, userGlobalStyle);
+}
+
+/**
+ * Phase 4B — the ONE shared precedence resolver backing every "which gauge
+ * style wins" decision in the app. Returns the first argument that is a
+ * valid GaugeStyle, in the order given, falling back to DEFAULT_GAUGE_STYLE
+ * if none are. Callers pass their own precedence order as positional args —
+ * this function has no opinion about what those levels mean, so
+ * resolveVehicleGaugeStyle/resolveRentalGaugeStyle (below/above) are just
+ * named call sites of this one chain, not separate logic to keep in sync.
+ */
+export function resolveGaugeStyleChain(...values: unknown[]): GaugeStyle {
+  for (const v of values) {
+    if (isGaugeStyle(v)) return v;
+  }
   return DEFAULT_GAUGE_STYLE;
 }
 
@@ -86,17 +103,21 @@ export const GAUGE_NUDGE_STEP = 100 / 64; // ≈ 1.5625 %
 export function resolveVehicleGaugeStyle(
   vehicles: Array<{ id: string; fuelGaugeStyle?: string | null }>,
   selectedVehicleId: string | null | undefined,
+  userGlobalStyle?: unknown,
 ): GaugeStyle {
-  if (!selectedVehicleId) return DEFAULT_GAUGE_STYLE;
+  if (!selectedVehicleId) return resolveGaugeStyleChain(userGlobalStyle);
   const vehicle = vehicles.find((v) => v.id === selectedVehicleId);
-  return resolveGaugeStyle(vehicle?.fuelGaugeStyle);
+  return resolveGaugeStyleChain(vehicle?.fuelGaugeStyle, userGlobalStyle);
 }
 
+/** English fallback labels — used only where translations aren't available (e.g. non-React contexts). UI components should prefer gaugeStyleLabel() below for localized text. */
 export const GAUGE_STYLE_LABELS: Record<GaugeStyle, string> = {
-  analog_needle:        'Analog Needle',
-  horizontal_segments:  'Horizontal Bars',
-  vertical_segments:    'Vertical Bars',
-  quarter_marks:        'Quarter Marks',
+  analog_needle:             'Analog Needle',
+  horizontal_segments:       'Horizontal Bars',
+  vertical_segments:         'Vertical Bars',
+  quarter_marks:             'Quarter Marks',
+  vertical_curved_needle:    'Vertical Curved Needle',
+  vertical_curved_segments:  'Vertical Curved Segments',
 };
 
 /**
@@ -130,4 +151,12 @@ export const GAUGE_POINTER_MAP: Record<GaugeStyle, (relX: number, relY: number) 
   vertical_segments: (_relX, relY) => (1 - relY) * 100,
   // Quarter-mark linear scale: left = empty, right = full (same as horizontal).
   quarter_marks: (relX) => relX * 100,
+  // Both curved-vertical styles use the same simple bottom=empty/top=full
+  // mapping as vertical_segments rather than tracing the decorative arc's
+  // exact radial geometry — the curvature is presentation only (per the
+  // core invariant), and a linear vertical approximation for drag/tap
+  // tracks a vertically-oriented control correctly without adding
+  // trigonometry that has no effect on the snapped/clamped output anyway.
+  vertical_curved_needle: (_relX, relY) => (1 - relY) * 100,
+  vertical_curved_segments: (_relX, relY) => (1 - relY) * 100,
 };

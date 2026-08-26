@@ -11,7 +11,7 @@ import { compressImageForUpload } from '@/lib/imageUtils';
 import { GarageDoor }                        from './GarageDoor';
 import { useGarageDoorPrefs }                from '@/hooks/useGarageDoorPrefs';
 import { getMakeLogoUrl }                    from '@/lib/makeLogo';
-import { resolveGaugeStyle, type GaugeStyle } from '@/lib/gaugeStyles';
+import { isGaugeStyle, type GaugeStyle } from '@/lib/gaugeStyles';
 import GaugeStylePicker from './gauge-styles/GaugeStylePicker';
 import { trackClientEvent } from '@/lib/clientAnalytics';
 
@@ -400,7 +400,10 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
   const [editGallons,     setEditGallons]     = useState('');
   const [editVin,         setEditVin]         = useState('');
   const [editFuelType,    setEditFuelType]    = useState('');
-  const [editGaugeStyle,  setEditGaugeStyle]  = useState<GaugeStyle>('analog_needle');
+  // Phase 4B — nullable: null means "inherit the user's global default,"
+  // a real, storable choice, not merely "not yet chosen." See
+  // GaugeStylePicker's allowInherit option.
+  const [editGaugeStyle,  setEditGaugeStyle]  = useState<GaugeStyle | null>(null);
   const [editSaving,      setEditSaving]      = useState(false);
   const [editVinStatus,   setEditVinStatus]   = useState<'idle' | 'fetching' | 'done' | 'error'>('idle');
   const [editVinScanning, setEditVinScanning] = useState(false);
@@ -512,7 +515,9 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
     // guess should NOT show as if the user had already chosen it (that would let
     // an unrelated save silently "confirm" our estimate without them noticing).
     setEditFuelType(v.fuelTypeConfirmedByUser ? (v.fuelType ?? '') : '');
-    setEditGaugeStyle(resolveGaugeStyle(v.fuelGaugeStyle));
+    // Preserve null (isGaugeStyle guards against a stray invalid string
+    // without collapsing "inherit" into a concrete default).
+    setEditGaugeStyle(isGaugeStyle(v.fuelGaugeStyle) ? v.fuelGaugeStyle : null);
     setEditVinStatus('idle');
     setEditVinScanning(false);
     setEditVinScanErr('');
@@ -558,7 +563,13 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
     const priorFuelType   = currentVehicle?.fuelTypeConfirmedByUser ? (currentVehicle.fuelType ?? '') : '';
     const fuelTypeChanged = editFuelType.trim() !== priorFuelType;
 
-    const priorGaugeStyle   = resolveGaugeStyle(currentVehicle?.fuelGaugeStyle);
+    // Compare RAW stored values (both may be null/"inherit") — resolving to
+    // a concrete default before comparing would make picking "Use Global
+    // Default" on an already-null vehicle look like a no-op change, but
+    // would also make it impossible to detect switching FROM an explicit
+    // style BACK TO inherit (both resolve to the same value if the global
+    // happens to match).
+    const priorGaugeStyle: GaugeStyle | null = isGaugeStyle(currentVehicle?.fuelGaugeStyle) ? currentVehicle!.fuelGaugeStyle : null;
     const gaugeStyleChanged = editGaugeStyle !== priorGaugeStyle;
 
     // 1. Persist name, gallons, VIN, fuel type, and gauge style
@@ -583,7 +594,7 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
     // Fire only on an actual, confirmed style change — never on preview
     // taps or when the value resolved to the default without user action.
     if (gaugeStyleChanged) {
-      trackClientEvent('fuel_gauge_style_selected', { style: editGaugeStyle, context: 'vehicle' });
+      trackClientEvent('fuel_gauge_style_selected', { style: editGaugeStyle ?? 'inherit', context: 'vehicle' });
     }
 
     // 2. If a VIN was newly added or changed, fetch & persist the decoded specs
@@ -928,7 +939,7 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
                         <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">
                           {t.savedVehicles.gaugeStyleLabel}
                         </label>
-                        <GaugeStylePicker value={editGaugeStyle} onSelect={setEditGaugeStyle} />
+                        <GaugeStylePicker value={editGaugeStyle} onSelect={setEditGaugeStyle} allowInherit />
                       </div>
 
                       <div className="flex gap-2 pt-1">

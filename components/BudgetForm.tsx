@@ -80,7 +80,7 @@ export default function BudgetForm({ activeTab, setActiveTab }: Props) {
     const fetchVehicles = () => {
       fetch('/api/vehicles')
         .then((r) => (r.ok ? r.json() : null))
-        .then((d: { vehicles?: Vehicle[] } | null) => { if (!cancelled && d?.vehicles) setVehicles(d.vehicles); })
+        .then((d: { vehicles?: Vehicle[]; fuelGaugeStyle?: string | null } | null) => { if (!cancelled && d?.vehicles) { setVehicles(d.vehicles); setUserGaugeStyle(d.fuelGaugeStyle ?? null); } })
         .catch(() => {});
     };
     fetchVehicles();
@@ -113,6 +113,7 @@ export default function BudgetForm({ activeTab, setActiveTab }: Props) {
   // and derive the style live at render time from whichever vehicle is
   // currently selected — see the FuelGauge call site below.
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [userGaugeStyle, setUserGaugeStyle] = useState<string | null>(null);
   const [vehicleBodyClass, setVehicleBodyClass] = useState<string | undefined>(undefined);
   // Tank-size source tracking — drives the "From garage / From list" badge in TankPresets
   const [presetLabel, setPresetLabel] = useState('');
@@ -341,7 +342,7 @@ export default function BudgetForm({ activeTab, setActiveTab }: Props) {
             percent={gaugePercent}
             onChange={(pct) => liveRecalc({ currentFuel: String(pct) })}
             tankCapacity={tankNum}
-            style={resolveVehicleGaugeStyle(vehicles, form.vehicleId)}
+            style={resolveVehicleGaugeStyle(vehicles, form.vehicleId, userGaugeStyle)}
           />
         ) : (
           <div className="relative">

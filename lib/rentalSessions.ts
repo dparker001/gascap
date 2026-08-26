@@ -211,8 +211,9 @@ export interface UpdateRentalSessionInput {
   notes?:                     string;
   /** Phase 4 — VISUAL fuel gauge style override for this rental only. Never
    *  affects currentFuelGallons or any other fuel value. Validated against
-   *  the canonical GAUGE_STYLES list at the API layer. */
-  fuelGaugeStyle?:            string;
+   *  the canonical GAUGE_STYLES list at the API layer. Phase 4B: explicit
+   *  null clears the override (inherit linked Vehicle / user global). */
+  fuelGaugeStyle?:            string | null;
 }
 
 export async function updateRentalSession(userId: string, id: string, input: UpdateRentalSessionInput): Promise<RentalSession | undefined> {

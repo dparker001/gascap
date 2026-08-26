@@ -170,7 +170,7 @@ export async function updateVehicle(
     fuelType?: string; fuelTypeConfirmedByUser?: boolean;
     /** Phase 4 — VISUAL preference only; validated against the canonical
      *  GAUGE_STYLES list at the API layer before reaching here. */
-    fuelGaugeStyle?: string;
+    fuelGaugeStyle?: string | null;
   },
 ): Promise<SavedVehicle | undefined> {
   // Verify ownership first

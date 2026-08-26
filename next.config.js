@@ -18,9 +18,25 @@ const defaultCache = require('next-pwa/cache');
 // requests are more likely to cross that 10s threshold than a fast local/
 // wifi web session. No native rebuild is required: this is the hosted
 // service worker the native shell loads, same as the /gas/nearby fix below.
+//
+// Phase 4B (2026-08-26) — /api/user/profile now also serves the global
+// fuel-gauge-style preference (same "changing it should show up immediately
+// on native/PWA" requirement), so it gets the identical NetworkOnly
+// treatment preemptively rather than waiting to reproduce the same bug a
+// third time.
+//
+// IMPORTANT: urlPattern predicates below use INLINE STRING LITERALS, not a
+// shared array constant — a prior attempt to reference an outer-scope
+// NETWORK_ONLY_PATHS array here did not survive next-pwa/workbox-webpack-
+// plugin's serialization of the compiled predicate into public/sw.js
+// (verified by inspecting the built file directly). Any future addition
+// here must follow the same inline-literal pattern.
 const runtimeCaching = [
   {
-    urlPattern: ({ url }) => url.pathname.startsWith('/gas/') || url.pathname.startsWith('/api/vehicles'),
+    urlPattern: ({ url }) =>
+      url.pathname.startsWith('/gas/') ||
+      url.pathname.startsWith('/api/vehicles') ||
+      url.pathname.startsWith('/api/user/profile'),
     handler: 'NetworkOnly',
   },
   ...defaultCache.map((entry) => {
@@ -35,6 +51,7 @@ const runtimeCaching = [
           const { pathname } = ctx.url ?? {};
           if (pathname?.startsWith('/api/nearby-gas')) return false;
           if (pathname?.startsWith('/api/vehicles')) return false;
+          if (pathname?.startsWith('/api/user/profile')) return false;
           return origPattern(ctx);
         },
       };
