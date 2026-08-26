@@ -11,6 +11,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useTranslation } from '@/contexts/LanguageContext';
+import { useIsNative } from '@/hooks/useIsNative';
 import {
   PRIMARY_FEATURE_OPTIONS, PMF_OPTIONS, RENTAL_HELPFULNESS_OPTIONS,
   type PrimaryFeature, type PmfResponse, type RentalHelpfulness,
@@ -22,6 +23,11 @@ interface FeedbackStatus {
   alreadySubmitted: boolean;
   hasRentalUsage: boolean;
   campaignEndsAt: string | null;
+  // Phase 5B
+  lifetimeOfferEligible: boolean;
+  lifetimeOfferExpiresAt: string | null;
+  alreadyLifetime: boolean;
+  converted: boolean;
 }
 
 interface FormState {
@@ -79,6 +85,81 @@ function OptionList<T extends string>({ options, labels, value, onChange }: {
           {labels[opt]}
         </button>
       ))}
+    </div>
+  );
+}
+
+/** Human-readable remaining time, e.g. "2d 4h" / "3h 12m" / "under a minute" — server-derived expiresAt, client only formats it. */
+function formatRemaining(ms: number): string {
+  if (ms <= 0) return '';
+  const totalMinutes = Math.floor(ms / 60_000);
+  const days = Math.floor(totalMinutes / (60 * 24));
+  const hours = Math.floor((totalMinutes % (60 * 24)) / 60);
+  const minutes = totalMinutes % 60;
+  if (days > 0) return `${days}d ${hours}h`;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  if (minutes > 0) return `${minutes}m`;
+  return 'under a minute';
+}
+
+function LifetimeOfferBox({ expiresAt }: { expiresAt: string | null }) {
+  const { t } = useTranslation();
+  const isNative = useIsNative();
+  const [now, setNow] = useState(() => Date.now());
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(id);
+  }, []);
+
+  const remainingMs = expiresAt ? new Date(expiresAt).getTime() - now : 0;
+  if (remainingMs <= 0) return null; // client display only — the server re-checks expiry independently on checkout
+
+  async function startCheckout() {
+    setLoading(true);
+    setError(false);
+    try {
+      const res = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tier: 'pro', billing: 'lifetime', feedbackOffer: true }),
+      });
+      const data = await res.json() as { url?: string; error?: string };
+      if (!res.ok || !data.url) throw new Error(data.error ?? 'checkout failed');
+      window.location.href = data.url;
+    } catch {
+      setError(true);
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="bg-gradient-to-br from-amber-50 to-white border-2 border-amber-200 rounded-2xl p-4 text-left space-y-2">
+      <p className="text-[10px] font-black uppercase tracking-widest text-amber-600 text-center">
+        {t.feedbackCampaign.offerEyebrow}
+      </p>
+      <p className="text-navy-800 font-black text-center">{t.feedbackCampaign.offerTitle}</p>
+      <p className="text-center">
+        <span className="text-3xl font-black text-amber-600">{t.feedbackCampaign.offerPrice}</span>{' '}
+        <span className="text-xs text-slate-400 line-through">{t.feedbackCampaign.offerNormalPrice}</span>
+      </p>
+      <p className="text-[11px] text-slate-500 text-center">{t.feedbackCampaign.offerExpiresIn(formatRemaining(remainingMs))}</p>
+      <p className="text-[11px] text-slate-600 leading-relaxed text-center">{t.feedbackCampaign.offerGetawayNote}</p>
+
+      {isNative ? (
+        <p className="text-[11px] text-slate-400 text-center italic">{t.feedbackCampaign.offerNativeComingSoon}</p>
+      ) : (
+        <button
+          onClick={startCheckout}
+          disabled={loading}
+          className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-white font-black text-sm"
+        >
+          {loading ? t.feedbackCampaign.offerCtaLoading : t.feedbackCampaign.offerCta}
+        </button>
+      )}
+      {error && <p className="text-xs text-red-500 text-center">{t.feedbackCampaign.offerError}</p>}
     </div>
   );
 }
@@ -160,6 +241,11 @@ export default function FeedbackPage() {
         }),
       });
       if (!res.ok) throw new Error('submit failed');
+      // Re-fetch status so the Phase 5B Lifetime offer fields (stamped
+      // server-side inside the submit transaction) reflect this submission —
+      // the status fetched on page load predates it.
+      const fresh = await fetch('/api/feedback/status').then((r) => (r.ok ? r.json() : null)).catch(() => null);
+      if (fresh) setStatus(fresh);
       setSubmitted(true);
     } catch {
       setSubmitError(true);
@@ -182,12 +268,15 @@ export default function FeedbackPage() {
 
   if (submitted || status?.alreadySubmitted) {
     return (
-      <div className="min-h-screen bg-[#eef1f7] flex items-center justify-center px-4">
+      <div className="min-h-screen bg-[#eef1f7] flex items-center justify-center px-4 py-8">
         <div className="bg-white rounded-3xl shadow-card p-6 max-w-sm w-full text-center space-y-3">
           <p className="text-3xl" aria-hidden="true">🎉</p>
           <p className="text-navy-800 font-black text-lg">{t.feedbackCampaign.thankYouTitle}</p>
           <p className="text-sm text-slate-600 leading-relaxed">{t.feedbackCampaign.thankYouBody}</p>
           <p className="text-xs text-slate-400 leading-relaxed">{t.feedbackCampaign.thankYouNotMonthly}</p>
+
+          {status?.lifetimeOfferEligible && <LifetimeOfferBox expiresAt={status.lifetimeOfferExpiresAt} />}
+
           <button
             onClick={() => router.push('/')}
             className="w-full mt-2 py-3 rounded-2xl bg-navy-700 hover:bg-navy-800 text-white font-black text-sm"

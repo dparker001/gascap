@@ -74,6 +74,7 @@ import { sendPaidCampaignEmail } from '@/lib/emailCampaignPaid';
 import { sendUserPush } from '@/lib/userPush';
 import { getawayPromoActive, GETAWAY_DISCLOSURE } from '@/lib/getawayPromo';
 import { stampGetawayHoldUntil, maybeRevokeGetawayQualification } from '@/lib/getawayFulfillment';
+import { markLifetimeOfferConverted } from '@/lib/feedbackCampaign';
 import { claimEvent, markProcessed, markFailed } from '@/lib/revenueCatEvents';
 import { verifyRevenueCatHmac, HMAC_SIGNATURE_HEADER } from '@/lib/revenueCatHmac';
 import { fetchAuthoritativeRevenueCatState } from '@/lib/revenueCatApi';
@@ -707,6 +708,18 @@ export async function POST(req: Request) {
       // still confirms the entitlement.
       await stampGetawayHoldUntil(user.id);
       await maybeSendGetaway(user, ev.type ?? '');
+      // Phase 5B — see the matching comment in app/api/stripe/webhook/route.ts.
+      // Safe to call unconditionally: a no-op unless this user has an actual
+      // unconverted feedback-offer CampaignParticipation. Applies regardless
+      // of whether the purchase used an Apple Offer Code or was bought at
+      // full price — this only affects internal funnel attribution, never
+      // the entitlement grant itself. Best-effort — must never fail the
+      // webhook or block the entitlement grant that already succeeded.
+      try {
+        await markLifetimeOfferConverted(user.id);
+      } catch (err) {
+        console.error('[GasCap feedback offer] conversion marker failed (entitlement unaffected):', err);
+      }
     }
   }
 

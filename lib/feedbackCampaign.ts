@@ -14,10 +14,13 @@
 import { prisma } from './prisma';
 import { Prisma } from './generated/prisma/client';
 import { recordAnalyticsEvent } from './analyticsEvents';
+import { hasLifetimeEntitlement } from './entitlements';
 import {
   PRIMARY_FEATURE_OPTIONS, PMF_OPTIONS, RENTAL_HELPFULNESS_OPTIONS,
   type PrimaryFeature, type PmfResponse, type RentalHelpfulness,
 } from './feedbackCampaignShared';
+
+const LIFETIME_OFFER_WINDOW_MS = 72 * 60 * 60 * 1000;
 
 // Re-exported for existing server-side importers — new client-side code
 // (e.g. app/feedback/page.tsx) must import these from
@@ -263,10 +266,25 @@ export async function submitFeedback(
         data: { campaignId: campaign.id, userId, kind: 'feedback_campaign', source: 'feedback_submission' },
       });
 
+      // Phase 5B — the 72-hour Lifetime offer window starts here, at the
+      // server submission timestamp, and is stamped exactly once. Re-viewing
+      // the thank-you screen, refreshing, or reopening the app never touches
+      // this value — see getLifetimeOfferStatus(), which only ever reads it.
       await tx.campaignParticipation.upsert({
         where: { campaignId_userId: { campaignId: campaign.id, userId } },
-        create: { campaignId: campaign.id, userId, submittedAt: now, drawingEntryGrantedAt: now },
-        update: { submittedAt: now, drawingEntryGrantedAt: now },
+        create: {
+          campaignId: campaign.id, userId, submittedAt: now, drawingEntryGrantedAt: now,
+          lifetimeOfferExpiresAt: new Date(now.getTime() + LIFETIME_OFFER_WINDOW_MS),
+        },
+        // This upsert only ever fires once per (campaignId, userId) with a
+        // non-null submittedAt (guarded by status.alreadySubmitted above) —
+        // the `update` branch only runs when a row already existed from an
+        // earlier eligibleAt stamp, so this is still this user's first-ever
+        // submission and the offer window is stamped here too.
+        update: {
+          submittedAt: now, drawingEntryGrantedAt: now,
+          lifetimeOfferExpiresAt: new Date(now.getTime() + LIFETIME_OFFER_WINDOW_MS),
+        },
       });
 
       return response.id;
@@ -299,4 +317,133 @@ export async function submitFeedback(
     }
     throw err;
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Phase 5B — post-feedback $9.99 Lifetime offer.
+//
+// The offer is scoped to a user's *participation row*, not to whichever
+// campaign is currently "active" — a campaign's submission window can close
+// (endsAt passes) while a participant's personal 72-hour purchase window is
+// still open, so this deliberately does NOT re-check getActiveCampaign().
+// ─────────────────────────────────────────────────────────────────────────
+
+interface LifetimeEntitlementFields {
+  stripeInterval: string | null;
+  revenueCatActive: boolean;
+  revenueCatInterval: string | null;
+}
+
+export interface LifetimeOfferStatus {
+  lifetimeOfferEligible: boolean;
+  lifetimeOfferExpiresAt: string | null;
+  alreadyLifetime: boolean;
+  converted: boolean;
+}
+
+/** The participation row this user's Lifetime offer (if any) lives on — their most recent submitted campaign. */
+async function findOfferParticipation(userId: string) {
+  return prisma.campaignParticipation.findFirst({
+    where: { userId, submittedAt: { not: null } },
+    orderBy: { submittedAt: 'desc' },
+  });
+}
+
+/** Server-authoritative — never derive eligibility/expiration from a client-supplied clock. */
+export async function getLifetimeOfferStatus(userId: string, now: Date = new Date()): Promise<LifetimeOfferStatus> {
+  const [user, participation] = await Promise.all([
+    prisma.user.findUnique({ where: { id: userId }, select: { stripeInterval: true, revenueCatActive: true, revenueCatInterval: true } }),
+    findOfferParticipation(userId),
+  ]);
+
+  const alreadyLifetime = user
+    ? hasLifetimeEntitlement(user as LifetimeEntitlementFields)
+    : false;
+  const converted = participation?.lifetimeOfferConvertedAt != null;
+  const expiresAt = participation?.lifetimeOfferExpiresAt ?? null;
+  const expired = !expiresAt || expiresAt.getTime() <= now.getTime();
+
+  if (participation && !converted && expired) {
+    // Lazy, idempotent — fires once per participation via its own
+    // idempotencyKey, the first time anyone's status read observes the
+    // window has closed. No persisted "expired" column needed.
+    await recordAnalyticsEvent({
+      eventType: 'feedback_lifetime_offer_expired',
+      originPlatform: 'unknown',
+      emitter: 'server',
+      userId,
+      source: 'feedback_campaign',
+      idempotencyKey: `feedback_lifetime_offer_expired:${participation.id}`,
+    });
+  }
+
+  const eligible = !!participation && !alreadyLifetime && !converted && !expired;
+
+  if (eligible && !participation!.lifetimeOfferShownAt) {
+    const row = await prisma.campaignParticipation.update({
+      where: { id: participation!.id },
+      data: { lifetimeOfferShownAt: now },
+    });
+    await recordAnalyticsEvent({
+      eventType: 'feedback_lifetime_offer_shown',
+      originPlatform: 'unknown',
+      emitter: 'server',
+      userId,
+      source: 'feedback_campaign',
+      idempotencyKey: `feedback_lifetime_offer_shown:${row.id}`,
+    });
+  }
+
+  return {
+    lifetimeOfferEligible: eligible,
+    lifetimeOfferExpiresAt: expiresAt?.toISOString() ?? null,
+    alreadyLifetime,
+    converted,
+  };
+}
+
+/** Called when a checkout/redemption attempt actually begins — not on every status poll. */
+export async function markLifetimeOfferRedeemStarted(userId: string, now: Date = new Date()) {
+  const participation = await findOfferParticipation(userId);
+  if (!participation) return;
+  await recordAnalyticsEvent({
+    eventType: 'feedback_lifetime_offer_redeem_started',
+    originPlatform: 'unknown',
+    emitter: 'server',
+    userId,
+    source: 'feedback_campaign',
+    idempotencyKey: `feedback_lifetime_offer_redeem_started:${participation.id}`,
+  });
+  void now;
+}
+
+/**
+ * Authoritative conversion marker — call ONLY from a verified purchase
+ * confirmation path (Stripe webhook after a real checkout.session.completed,
+ * or RevenueCat webhook after a real INITIAL_PURCHASE grant), never from a
+ * client success-screen request. Conditioned on `lifetimeOfferConvertedAt
+ * IS NULL` so a replayed/duplicate webhook delivery can never mark a second
+ * conversion. Not expiry-gated deliberately — a legitimately-initiated
+ * purchase whose webhook is delayed past the 72-hour mark should still be
+ * attributed; expiry only blocks *starting* a new checkout/redemption
+ * (see the web/native gates), not recording one already in flight.
+ */
+export async function markLifetimeOfferConverted(userId: string, now: Date = new Date()): Promise<void> {
+  const participation = await findOfferParticipation(userId);
+  if (!participation || participation.lifetimeOfferConvertedAt != null) return;
+
+  const result = await prisma.campaignParticipation.updateMany({
+    where: { id: participation.id, lifetimeOfferConvertedAt: null },
+    data: { lifetimeOfferConvertedAt: now },
+  });
+  if (result.count === 0) return; // lost a race to another concurrent webhook delivery — already marked
+
+  await recordAnalyticsEvent({
+    eventType: 'feedback_lifetime_offer_redeemed',
+    originPlatform: 'unknown',
+    emitter: 'server',
+    userId,
+    source: 'feedback_campaign',
+    idempotencyKey: `feedback_lifetime_offer_redeemed:${participation.id}`,
+  });
 }
