@@ -13,7 +13,7 @@ import { metersToMiles }                     from '@/lib/tripFuelPlanner';
 import { resolveVehicleMpg }                 from '@/lib/mpgResolver';
 import type { RouteResult, FuelStop }        from '@/lib/mapsProvider/types';
 import type { Vehicle }                      from './SavedVehicles';
-import { resolveGaugeStyle } from '@/lib/gaugeStyles';
+import { resolveVehicleGaugeStyle } from '@/lib/gaugeStyles';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -1001,9 +1001,7 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
               percent={Number(fuelPct)}
               onChange={(pct) => { setFuelPct(String(pct)); setResult(null); }}
               tankCapacity={tankGal ? parseFloat(tankGal) || undefined : undefined}
-              style={resolveGaugeStyle(
-                garageVehicleLocked ? vehicles.find((v) => v.id === selectedVehicleId)?.fuelGaugeStyle : undefined,
-              )}
+              style={resolveVehicleGaugeStyle(vehicles, garageVehicleLocked ? selectedVehicleId : null)}
             />
             {errors.fuelPct && <p className="mt-1 text-xs text-red-500">{errors.fuelPct}</p>}
             <p className="text-[10px] text-slate-400 mt-1">

@@ -13,6 +13,7 @@ import RentalVinLookup from '@/components/RentalVinLookup';
 import DeleteRentalButton from './DeleteRentalButton';
 import { scheduleRentalReturnReminder, cancelRentalReturnReminder } from '@/lib/rentalReminder';
 import { detectBrowserTimeZone } from '@/lib/rentalTimezone';
+import DateTimeSplitInput from './DateTimeSplitInput';
 
 interface Props {
   session: RentalSession;
@@ -235,12 +236,12 @@ export default function EditRentalModal({ session, onClose, onSaved }: Props) {
 
         <div>
           <label className="field-label">{t.rentalReturn.pickupDateTimeLabel}</label>
-          <input type="datetime-local" value={pickupDateTime} onChange={(e) => setPickupDateTime(e.target.value)} className="input-field" />
+          <DateTimeSplitInput value={pickupDateTime} onChange={setPickupDateTime} />
         </div>
 
         <div>
           <label className="field-label">{t.rentalReturn.returnDateTimeLabel}</label>
-          <input type="datetime-local" value={returnDateTime} onChange={(e) => setReturnDateTime(e.target.value)} className="input-field" />
+          <DateTimeSplitInput value={returnDateTime} onChange={setReturnDateTime} />
         </div>
 
         <div className="flex gap-2 pt-1">

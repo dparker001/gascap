@@ -6,7 +6,7 @@ import { useTranslation } from '@/contexts/LanguageContext';
 import {
   gallonsNeeded, estimatedRentalCompanyCharge, estimatedFuelCost,
   returnReadyStatus, formatGallons, fuelSourceLabel, refuelTotals, isUpcomingRental,
-  shouldTrackFuelNeededCalculated,
+  shouldTrackFuelNeededCalculated, resolveCalculateFillState,
 } from '@/lib/rentalCalculations';
 import { trackRentalGasNearReturnViewed, trackRentalReturnReadyViewed } from '@/lib/gtag';
 import { trackClientEvent } from '@/lib/clientAnalytics';
@@ -154,6 +154,11 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
   // nobody is holding. Being told you're clear to return a vehicle you
   // haven't picked up is nonsense at best and a fuel charge at worst.
   const showLiveFuel = hasFuelReading && !isUpcoming;
+
+  // Post-release fix (2026-08-26) — see lib/rentalCalculations.ts's
+  // resolveCalculateFillState() doc comment for why this replaced the old
+  // `showLiveFuel && needed > 0` gate that hid the section entirely.
+  const calculateFillState = resolveCalculateFillState({ isUpcoming, hasFuelReading, needed });
 
   const bodyType = inferBodyType({
     model:       session.vehicleModel,
@@ -402,93 +407,81 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
         </button>
       )}
 
-      {/* Cost comparison — only if rate is known */}
-      {needed > 0 && (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-2">
-          <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">{t.rentalReturn.costComparison}</p>
-          {session.rentalFuelChargePerGallon != null && rentalCharge != null && (
-            <>
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-600">{t.rentalReturn.rentalCompanyEstimate}</span>
-                <span className="font-black text-red-600">~${rentalCharge.toFixed(2)}</span>
-              </div>
-            </>
-          )}
-          <p className="text-[10px] text-slate-400">{t.rentalReturn.priceDisclaimer}</p>
-          <button onClick={() => { setShowFindGas((v) => !v); trackRentalGasNearReturnViewed(); }} className="w-full py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold mt-1">
-            {t.rentalReturn.findGasNearReturn}
-          </button>
-        </div>
-      )}
-
-      {showFindGas && (
-        <FindGasNearReturn
-          returnLat={session.returnLatitude} returnLng={session.returnLongitude}
-          gallonsNeeded={needed} rentalRatePerGallon={session.rentalFuelChargePerGallon}
-        />
-      )}
-
-      {/* Calculate Fill — an inline calculator so the renter never has to
-          leave Rental Return Mode to work out how much to add. Reuses the
-          same gallonsNeeded()/estimatedFuelCost() the hero figures above are
-          built from; the only new input here is a price/gallon so a real
-          cost estimate (not just a gallons figure) can be shown before
-          logging. */}
-      {showLiveFuel && needed > 0 && (
+      {/* ══════════════════════════════════════════════════════════════════
+          CALCULATE FILL — an inline calculator so the renter never has to
+          leave Rental Return Mode to work out how much to add. Deliberately
+          NOT gated behind `needed > 0` (2026-08-25 post-release fix) — that
+          hid the entire feature whenever the tank already met the return
+          level, or before any fuel reading existed at all, which is exactly
+          when most users first open a freshly-created rental. It now always
+          renders for a started rental, in one of three states, per the
+          section's own state below. Moved above Return Preparation/Actions
+          per the same fix — this is the section users were reporting they
+          couldn't find. ══════════════════════════════════════════════════ */}
+      {calculateFillState !== 'upcoming' && (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-2">
           <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">{t.rentalReturn.calculateFillTitle}</p>
-          <div className="grid grid-cols-2 gap-3 text-center">
-            <div className="bg-slate-50 rounded-xl py-2">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{t.rentalReturn.addFuelEyebrow}</p>
-              <p className="text-lg font-black text-slate-800">{needed} gal</p>
+
+          {calculateFillState === 'needs_fuel_reading' ? (
+            // State A — no current fuel reading yet: prompt instead of hiding.
+            <div className="bg-blue-50 border border-blue-200 rounded-xl px-3 py-3 text-center">
+              <p className="text-[11px] text-blue-700 leading-snug">{t.rentalReturn.calculateFillNeedsFuelPrompt}</p>
             </div>
-            <div className="bg-slate-50 rounded-xl py-2 flex flex-col justify-center">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{t.rentalReturn.pricePerGallon}</label>
-              <input
-                type="number" inputMode="decimal" min="0" step="0.01" placeholder="3.19"
-                value={calcPricePerGal}
-                onChange={(e) => setCalcPricePerGal(e.target.value)}
-                onBlur={() => {
-                  if (!calculatedOnceRef.current && Number(calcPricePerGal) > 0) {
-                    calculatedOnceRef.current = true;
-                    trackClientEvent('rental_fill_calculated');
-                  }
-                }}
-                className="w-full text-center text-sm font-bold bg-transparent border-b border-slate-300 focus:outline-none"
-              />
+          ) : calculateFillState === 'needs_fill' ? (
+            // State B — fuel needed: the full calculator.
+            <>
+              <div className="grid grid-cols-2 gap-3 text-center">
+                <div className="bg-slate-50 rounded-xl py-2">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{t.rentalReturn.addFuelEyebrow}</p>
+                  <p className="text-lg font-black text-slate-800">{needed} gal</p>
+                </div>
+                <div className="bg-slate-50 rounded-xl py-2 flex flex-col justify-center">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{t.rentalReturn.pricePerGallon}</label>
+                  <input
+                    type="number" inputMode="decimal" min="0" step="0.01" placeholder="3.19"
+                    value={calcPricePerGal}
+                    onChange={(e) => setCalcPricePerGal(e.target.value)}
+                    onBlur={() => {
+                      if (!calculatedOnceRef.current && Number(calcPricePerGal) > 0) {
+                        calculatedOnceRef.current = true;
+                        trackClientEvent('rental_fill_calculated');
+                      }
+                    }}
+                    className="w-full text-center text-sm font-bold bg-transparent border-b border-slate-300 focus:outline-none"
+                  />
+                </div>
+              </div>
+              {Number(calcPricePerGal) > 0 && (
+                <p className="text-center text-sm text-slate-600">
+                  {t.rentalReturn.estCostHere(estimatedFuelCost(needed, Number(calcPricePerGal)))}
+                </p>
+              )}
+            </>
+          ) : (
+            // State C ('at_or_above_target') — still logging-capable.
+            <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-3 text-center">
+              <p className="text-[11px] text-emerald-700 leading-snug">{t.rentalReturn.calculateFillAtOrAboveTarget}</p>
             </div>
-          </div>
-          {Number(calcPricePerGal) > 0 && (
-            <p className="text-center text-sm text-slate-600">
-              {t.rentalReturn.estCostHere(estimatedFuelCost(needed, Number(calcPricePerGal)))}
-            </p>
           )}
-          <div className="flex gap-2">
-            <button
-              onClick={() => { setRefuelDefaultType('trip'); setShowRefuel(true); }}
-              className="flex-1 py-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-sm font-bold"
-            >
-              {t.rentalReturn.calculateFillCta} — {t.rentalReturn.tripFillUp}
-            </button>
-            <button
-              onClick={() => { setRefuelDefaultType('final_return'); setShowRefuel(true); }}
-              className="flex-1 py-2.5 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 text-sm font-bold"
-            >
-              {t.rentalReturn.calculateFillCta} — {t.rentalReturn.finalReturnFillUp}
-            </button>
-          </div>
+
+          {calculateFillState !== 'needs_fuel_reading' && (
+            <div className="flex gap-2">
+              <button
+                onClick={() => { setRefuelDefaultType('trip'); setShowRefuel(true); }}
+                className="flex-1 py-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-sm font-bold"
+              >
+                {t.rentalReturn.calculateFillCta} — {t.rentalReturn.tripFillUp}
+              </button>
+              <button
+                onClick={() => { setRefuelDefaultType('final_return'); setShowRefuel(true); }}
+                className="flex-1 py-2.5 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 text-sm font-bold"
+              >
+                {t.rentalReturn.calculateFillCta} — {t.rentalReturn.finalReturnFillUp}
+              </button>
+            </div>
+          )}
         </div>
       )}
-
-      {/* Actions */}
-      <div className="flex gap-2">
-        <button onClick={() => { setRefuelDefaultType('trip'); setShowRefuel(true); }} className="flex-1 py-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-700 text-sm font-bold">
-          ⛽ {t.rentalReturn.iJustRefueled}
-        </button>
-        <button onClick={() => setShowComplete(true)} className="flex-1 py-3 rounded-2xl bg-blue-600 text-white text-sm font-bold">
-          {t.rentalReturn.completeRental}
-        </button>
-      </div>
 
       {/* Rental Fuel Log — Phase 3A canonical Fillup rows when this session
           has any (every rental created after the cutover); falls back to the
@@ -599,6 +592,44 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
           </div>
         );
       })()}
+
+      {/* ══════════════════════════════════════════════════════════════════
+          RETURN PREPARATION — cost comparison + nearby gas, only meaningful
+          once fuel is actually needed. ═══════════════════════════════════ */}
+      {needed > 0 && (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-2">
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">{t.rentalReturn.costComparison}</p>
+          {session.rentalFuelChargePerGallon != null && rentalCharge != null && (
+            <>
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-600">{t.rentalReturn.rentalCompanyEstimate}</span>
+                <span className="font-black text-red-600">~${rentalCharge.toFixed(2)}</span>
+              </div>
+            </>
+          )}
+          <p className="text-[10px] text-slate-400">{t.rentalReturn.priceDisclaimer}</p>
+          <button onClick={() => { setShowFindGas((v) => !v); trackRentalGasNearReturnViewed(); }} className="w-full py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold mt-1">
+            {t.rentalReturn.findGasNearReturn}
+          </button>
+        </div>
+      )}
+
+      {showFindGas && (
+        <FindGasNearReturn
+          returnLat={session.returnLatitude} returnLng={session.returnLongitude}
+          gallonsNeeded={needed} rentalRatePerGallon={session.rentalFuelChargePerGallon}
+        />
+      )}
+
+      {/* Actions */}
+      <div className="flex gap-2">
+        <button onClick={() => { setRefuelDefaultType('trip'); setShowRefuel(true); }} className="flex-1 py-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-700 text-sm font-bold">
+          ⛽ {t.rentalReturn.iJustRefueled}
+        </button>
+        <button onClick={() => setShowComplete(true)} className="flex-1 py-3 rounded-2xl bg-blue-600 text-white text-sm font-bold">
+          {t.rentalReturn.completeRental}
+        </button>
+      </div>
 
       <p className="text-[10px] text-slate-400 text-center leading-relaxed px-2">{t.rentalReturn.disclaimer}</p>
 

@@ -75,6 +75,31 @@ export function localDateTimeToUtcIso(dateTimeLocal: string | null | undefined, 
 }
 
 /** Best-effort browser IANA timezone name; undefined server-side/unsupported. */
+/**
+ * Split a combined "YYYY-MM-DDTHH:mm" local-datetime string (the format a
+ * native `<input type="datetime-local">` produces, and what
+ * pickupDateTime/returnDateTime are stored as) into its date and time
+ * halves — the formats native `<input type="date">` (YYYY-MM-DD) and
+ * `<input type="time">` (HH:mm) each expect. Introduced 2026-08-25 when the
+ * combined datetime-local control was replaced with two separate inputs
+ * (a WebKit rendering-width limitation on iOS) — the underlying stored
+ * string format is unchanged, only the input UI split.
+ */
+export function splitLocalDateTime(value: string): { date: string; time: string } {
+  const m = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/.exec(value);
+  return m ? { date: m[1], time: m[2] } : { date: '', time: '' };
+}
+
+/** Inverse of splitLocalDateTime — recombines a date-input value and a
+ *  time-input value back into the single "YYYY-MM-DDTHH:mm" string every
+ *  downstream consumer (validation, submit payloads, localDateTimeToUtcIso)
+ *  already expects. Returns '' if either half is missing — a rental can't
+ *  have a return date with no time or vice versa. */
+export function combineLocalDateTime(date: string, time: string): string {
+  if (!date || !time) return '';
+  return `${date}T${time}`;
+}
+
 export function detectBrowserTimeZone(): string | undefined {
   try {
     return Intl.DateTimeFormat().resolvedOptions().timeZone || undefined;

@@ -70,6 +70,28 @@ export function snapToEighth(pct: number): number {
 /** ± nudge step: 1/64 of the full tank — identical for every style. */
 export const GAUGE_NUDGE_STEP = 100 / 64; // ≈ 1.5625 %
 
+/**
+ * Resolve the gauge style for whichever vehicle is currently selected in a
+ * calculator, given the CURRENT vehicle list. Deliberately takes the list
+ * and an id — never a single cached vehicle object — so callers are
+ * structurally prevented from repeating the 2026-08-25 post-release bug:
+ * BudgetForm/TargetFillForm previously cached the resolved style in its own
+ * `useState`, set only inside a `<SavedVehicles onSelect>` callback, which
+ * never re-synced after a page reload with an already-selected vehicle (the
+ * callback never re-fires) or after editing that same vehicle's style in
+ * place (no listener re-derived it). TripCostEstimator never had this bug
+ * because it always recomputed the style from its live vehicle list at
+ * render time — this helper generalizes that pattern for every caller.
+ */
+export function resolveVehicleGaugeStyle(
+  vehicles: Array<{ id: string; fuelGaugeStyle?: string | null }>,
+  selectedVehicleId: string | null | undefined,
+): GaugeStyle {
+  if (!selectedVehicleId) return DEFAULT_GAUGE_STYLE;
+  const vehicle = vehicles.find((v) => v.id === selectedVehicleId);
+  return resolveGaugeStyle(vehicle?.fuelGaugeStyle);
+}
+
 export const GAUGE_STYLE_LABELS: Record<GaugeStyle, string> = {
   analog_needle:        'Analog Needle',
   horizontal_segments:  'Horizontal Bars',
