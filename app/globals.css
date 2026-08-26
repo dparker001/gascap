@@ -163,12 +163,32 @@ body {
     text-align: left;
   }
 
+  /* 2026-08-26 visual-polish follow-up: the overflow fix's px-2 (vs.
+     .input-field's px-4) made these fields sit visibly less inset than
+     every other field on the same form, most noticeably on the right where
+     WebKit's own calendar/clock icon (::-webkit-calendar-picker-indicator)
+     carries its own default internal padding on top of ours — so the icon
+     rendered close to, sometimes nearly flush with, the border. Trimming
+     the icon's own padding reclaims exactly the room .rental-datetime-input
+     needed px-2 for, which lets padding come back up to px-3 (still less
+     than .input-field's px-4 — that headroom is what avoided the shadow-DOM
+     overflow in the first place, and this does not remove it) without
+     reopening the overflow. Purely cosmetic: no width/min-width/max-width
+     constraint below is touched. */
+  input[type="date"]::-webkit-calendar-picker-indicator,
+  input[type="time"]::-webkit-calendar-picker-indicator {
+    padding: 2px;
+    margin-left: 2px;
+  }
+
   /* Rental Return pickup/return date + time fields specifically — same
-     visual treatment as .input-field but with tighter horizontal padding,
-     freeing up room for the native control's shadow-DOM content inside an
-     identically-sized box. Used only by DateTimeSplitInput. */
+     visual treatment as .input-field but with tighter padding than
+     .input-field's px-4/py-3.5, leaving the native control's shadow-DOM
+     content room to avoid the iOS overflow above while now sitting close
+     enough to .input-field's inset/height to read as visually consistent
+     with the rest of the form. Used only by DateTimeSplitInput. */
   .rental-datetime-input {
-    @apply input-field px-2;
+    @apply input-field px-3 py-3;
     width: 100%;
     max-width: 100%;
     min-width: 0;
