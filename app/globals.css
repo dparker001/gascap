@@ -135,6 +135,49 @@ body {
     box-sizing: border-box;
   }
 
+  /* Splitting datetime-local into separate date/time controls
+     (DateTimeSplitInput) narrowed the failure but did not eliminate it on
+     iOS/WKWebView: WebKit's shadow-DOM internals for these controls
+     (::-webkit-datetime-edit and its field wrapper) have their own
+     intrinsic minimum content width — driven by the locale's digit count
+     plus the built-in calendar/clock affordance — that the outer
+     width/max-width/box-sizing rule above does not reach. When the box is
+     narrower than that shadow-DOM minimum, WebKit renders the control at
+     its own required width rather than shrinking it, which is what visibly
+     pushes the field past the card's right edge on some iOS versions. This
+     rule targets those shadow parts directly (reach requires the
+     `::-webkit-` prefixed selectors — a plain outer `min-width: 0` cannot
+     penetrate the shadow boundary) and pairs with `.rental-datetime-input`
+     below, which reduces horizontal padding to leave the shadow content
+     more room inside the same box without shrinking font-size below 16px
+     (anything smaller triggers iOS Safari's forced input-focus zoom). */
+  input[type="date"]::-webkit-datetime-edit,
+  input[type="time"]::-webkit-datetime-edit,
+  input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+  input[type="time"]::-webkit-datetime-edit-fields-wrapper {
+    min-width: 0;
+    max-width: 100%;
+  }
+  input[type="date"]::-webkit-date-and-time-value {
+    min-width: 0;
+    text-align: left;
+  }
+
+  /* Rental Return pickup/return date + time fields specifically — same
+     visual treatment as .input-field but with tighter horizontal padding,
+     freeing up room for the native control's shadow-DOM content inside an
+     identically-sized box. Used only by DateTimeSplitInput. */
+  .rental-datetime-input {
+    @apply input-field px-2;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    min-inline-size: 0;
+    max-inline-size: 100%;
+    box-sizing: border-box;
+    display: block;
+  }
+
   /* ── Section card */
   .card {
     @apply bg-white rounded-2xl shadow-card p-5;

@@ -34,9 +34,19 @@
  * ever squeezed into half a narrow card; side-by-side once there's
  * guaranteed room. Clearing either half clears the combined value —
  * a rental can't have a return date with no time or vice versa.
+ *
+ * 2026-08-26 follow-up: the split alone narrowed but did not fully fix the
+ * iOS overflow — WebKit's shadow-DOM internals for these controls
+ * (::-webkit-datetime-edit) have their own intrinsic minimum width that a
+ * plain outer `width`/`max-width` can't reach (see the matching comment in
+ * app/globals.css). Each input now carries explicit inline sizing as a
+ * belt-and-suspenders layer on top of the CSS class, and uses
+ * `.rental-datetime-input` (tighter horizontal padding, same visual style
+ * as `.input-field`) to leave the shadow content more room without
+ * shrinking below the 16px iOS no-zoom floor.
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, type CSSProperties } from 'react';
 import { splitLocalDateTime, combineLocalDateTime } from '@/lib/rentalTimezone';
 
 export default function DateTimeSplitInput({
@@ -68,6 +78,21 @@ export default function DateTimeSplitInput({
     onChange(combined);
   }
 
+  // Redundant with the CSS class on purpose — inline styles win over any
+  // stylesheet ordering surprise, and are the last lever before resorting
+  // to -webkit-appearance: none, which would suppress the native picker.
+  const fieldStyle: CSSProperties = {
+    width: '100%',
+    maxWidth: '100%',
+    minWidth: 0,
+    boxSizing: 'border-box',
+    display: 'block',
+  };
+
+  // Tailwind's grid-cols-N utilities already compile to
+  // `repeat(N, minmax(0, 1fr))` tracks, not plain `1fr` — no inline
+  // grid-template-columns override needed (and one here would apply at
+  // every breakpoint, defeating the sm:grid-cols-2 variant above).
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
       <input
@@ -75,14 +100,16 @@ export default function DateTimeSplitInput({
         value={date}
         disabled={disabled}
         onChange={(e) => { setDate(e.target.value); emit(e.target.value, time); }}
-        className="input-field min-w-0"
+        className="rental-datetime-input min-w-0"
+        style={fieldStyle}
       />
       <input
         type="time"
         value={time}
         disabled={disabled}
         onChange={(e) => { setTime(e.target.value); emit(date, e.target.value); }}
-        className="input-field min-w-0"
+        className="rental-datetime-input min-w-0"
+        style={fieldStyle}
       />
     </div>
   );
