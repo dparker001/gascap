@@ -2,11 +2,11 @@
 //  Gas Cap™ — Calculation Engine
 //  Pure functions; no side effects; easy to test.
 // ─────────────────────────────────────────────
+import { roundTo, gallonsToFill, costForGallons, gallonsFromPercent } from './fuelMath';
 
 /** Round to n decimal places */
 export function round(value: number, decimals = 2): number {
-  const factor = Math.pow(10, decimals);
-  return Math.round(value * factor) / factor;
+  return roundTo(value, decimals);
 }
 
 // ── Target Fill ──────────────────────────────
@@ -36,13 +36,13 @@ export function calcTargetFill(input: TargetFillInput): TargetFillResult {
   const currentGallons =
     input.currentFuelGallons !== undefined
       ? Math.min(input.currentFuelGallons, tankCapacity)
-      : tankCapacity * ((input.currentFuelPercent ?? 0) / 100);
+      : gallonsFromPercent(input.currentFuelPercent ?? 0, tankCapacity);
 
   const currentPercent = round((currentGallons / tankCapacity) * 100, 1);
 
   const targetGallons = round(tankCapacity * (targetPercent / 100), 2);
-  const gallonsNeeded = round(Math.max(0, targetGallons - currentGallons), 2);
-  const estimatedCost = round(gallonsNeeded * pricePerGallon, 2);
+  const gallonsNeeded = gallonsToFill(targetGallons, currentGallons, 2);
+  const estimatedCost = costForGallons(gallonsNeeded, pricePerGallon, 2);
 
   const targetLabel = targetPercent === 100 ? 'a full tank' : `${targetPercent}%`;
   const summary =
@@ -90,7 +90,7 @@ export function calcBudget(input: BudgetInput): BudgetResult {
   const currentGallons =
     input.currentFuelGallons !== undefined
       ? Math.min(input.currentFuelGallons, tankCapacity)
-      : tankCapacity * ((input.currentFuelPercent ?? 0) / 100);
+      : gallonsFromPercent(input.currentFuelPercent ?? 0, tankCapacity);
 
   const currentPercent = round((currentGallons / tankCapacity) * 100, 1);
 

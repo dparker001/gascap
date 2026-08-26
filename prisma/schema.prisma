@@ -358,9 +358,42 @@ model Fillup {
   fuelGrade       String?  // "regular" | "midgrade" | "premium" | "diesel" | "e85"
   receiptThumb    String?  // base64-compressed JPEG thumbnail of receipt (data URL)
   createdAt       String
+  /// Phase 3A rental canonical architecture (2026-08-25) — a Fillup created
+  /// from Rental Return Mode carries the RentalSession it belongs to. Null
+  /// for every ordinary personal fillup. Loosely coupled (no FK constraint),
+  /// same convention as RentalSession.vehicleId — this repo never enforces
+  /// cross-model referential integrity at the DB layer.
+  rentalSessionId String?
+  /// 'trip' | 'final_return' — only meaningful when rentalSessionId is set.
+  /// At most one 'final_return' row may exist per rentalSessionId; enforced
+  /// by a partial unique index added in the raw-SQL migration script (Prisma
+  /// cannot express a partial/filtered unique constraint in this schema
+  /// syntax — see scripts/add-rental-fillup-columns.mjs).
+  fillupType      String?
+  /// Full transaction timestamp (ISO 8601), distinct from `date` (day-only).
+  /// Rental fills need real time-of-day for chronological ordering across a
+  /// multi-fill-up rental and future audit/export use. Null for existing
+  /// personal fillups and any fillup where only a date is known.
+  filledAt        String?
+  /// Station coordinates — carried over from the legacy RefuelLogEntry shape
+  /// (lib/rentalProvider.ts) rather than dropped, since Fillup previously had
+  /// no location field at all. Null for personal fillups (no equivalent
+  /// capture UI exists there).
+  stationLat      Float?
+  stationLng      Float?
+  /// Client-generated idempotency identifier for rental refuel submissions —
+  /// a retried "Log Fill" request (double-tap, dropped response, offline
+  /// retry) reuses this to guarantee at most one Fillup per submission. Null
+  /// for personal fillups, which have no client-retry path. Postgres treats
+  /// multiple NULLs as distinct for a unique constraint (same pattern as
+  /// AnalyticsEvent.idempotencyKey), so this never collides across unrelated
+  /// fillups.
+  clientRefuelId  String?
 
   @@index([userId])
   @@index([userId, date])
+  @@index([rentalSessionId])
+  @@unique([clientRefuelId])
 }
 
 model GigFillup {

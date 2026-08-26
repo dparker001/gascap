@@ -339,7 +339,16 @@ export async function deleteRentalSession(userId: string, id: string): Promise<b
   return res.count > 0;
 }
 
-/** Append an "I Just Refueled" log entry and roll it into currentFuelGallons. */
+/**
+ * LEGACY — frozen after the Phase 3A cutover (2026-08-25). No live route
+ * calls this anymore; POST /api/rental-sessions/:id/refuel now creates a
+ * canonical Fillup row via lib/rentalFillups.ts's createRentalFillup()
+ * instead. Retained only so historical sessions created before the cutover
+ * remain readable (RentalSession.refuelLogs is read-only compatibility data
+ * now — see that field's schema.prisma doc comment) and so
+ * pre-cutover-behavior tests keep passing. Do not wire this into any new
+ * write path.
+ */
 export async function logRefuel(
   userId: string, id: string, entry: Omit<RefuelLogEntry, 'id' | 'timestamp'>,
 ): Promise<RentalSession | undefined> {
@@ -386,6 +395,17 @@ export async function completeRentalSession(
   const existing = await prisma.rentalSession.findFirst({ where: { id, userId } });
   if (!existing) return undefined;
 
+  // Phase 3A completion hardening (2026-08-25) — a repeated "Complete
+  // Rental" request (double-tap, retry after a dropped response) is now a
+  // safe no-op: it returns the already-completed session unchanged rather
+  // than re-applying (and potentially overwriting) dispute/feedback fields
+  // from a second, possibly different submission. Completing a rental never
+  // creates a Fillup — completion and logging a final fuel transaction are
+  // related but distinct actions (see lib/rentalFillups.ts's fillupType:
+  // 'final_return', logged separately via the refuel flow if the renter
+  // actually filled up).
+  if (existing.status === 'completed') return toRentalSession(existing);
+
   const now = new Date().toISOString();
   const row = await prisma.rentalSession.update({
     where: { id },
@@ -404,6 +424,14 @@ export async function completeRentalSession(
       updatedAt:                    now,
     },
   });
+
+  try {
+    await recordAnalyticsEvent({
+      eventType: 'rental_session_completed', originPlatform: 'unknown', emitter: 'server', userId,
+      idempotencyKey: `rental_session_completed:${id}`,
+    });
+  } catch (e) { console.error('[GasCap analytics] rental_session_completed write failed:', e); }
+
   return toRentalSession(row);
 }
 
