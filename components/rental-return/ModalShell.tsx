@@ -57,8 +57,14 @@ export default function ModalShell({
           and top-aligned (scrollable) when it's tall — without a vh clamp
           that the keyboard would invalidate. */}
       <div className="min-h-full flex items-end sm:items-center justify-center p-4">
+        {/* min-w-0 matters here: a flex child's default min-width is `auto`
+            (its content's min-content size), which can override max-w-sm if
+            a descendant (e.g. a native date/time input) has a wide-enough
+            intrinsic minimum — without it, that content could force this
+            panel itself wider than max-w-sm instead of clipping/wrapping
+            inside it. */}
         <div
-          className="bg-white rounded-3xl w-full max-w-sm p-5 space-y-3 shadow-2xl"
+          className="bg-white rounded-3xl w-full max-w-sm min-w-0 p-5 space-y-3 shadow-2xl"
           onClick={(e) => e.stopPropagation()}
         >
           {children}
