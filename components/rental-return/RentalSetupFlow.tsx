@@ -19,6 +19,7 @@ import PhotoCaptureButton from './PhotoCaptureButton';
 import AgreementScanButton, { type ScannedAgreementFields } from './AgreementScanButton';
 import { scheduleRentalReturnReminder } from '@/lib/rentalReminder';
 import { detectBrowserTimeZone } from '@/lib/rentalTimezone';
+import DateTimeSplitInput from './DateTimeSplitInput';
 
 const GAUGE_OPTIONS = ['Full', '7/8', '3/4', '5/8', '1/2', '3/8', '1/4', '1/8', 'Empty'];
 
@@ -433,12 +434,12 @@ export default function RentalSetupFlow({ onCreated, onCancel }: Props) {
           </div>
           <div>
             <label className="field-label">{t.rentalReturn.pickupDateTimeLabel}</label>
-            <input type="datetime-local" value={pickupDateTime} onChange={(e) => setPickupDateTime(e.target.value)} className="input-field" />
+            <DateTimeSplitInput value={pickupDateTime} onChange={setPickupDateTime} />
             <p className="text-[11px] text-slate-400 mt-1">{t.rentalReturn.pickupDateTimeHint}</p>
           </div>
           <div>
             <label className="field-label">{t.rentalReturn.returnDateTimeLabel}</label>
-            <input type="datetime-local" value={returnDateTime} onChange={(e) => setReturnDateTime(e.target.value)} className="input-field" />
+            <DateTimeSplitInput value={returnDateTime} onChange={setReturnDateTime} />
           </div>
         </div>
       )}

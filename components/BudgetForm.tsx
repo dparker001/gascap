@@ -3,9 +3,9 @@
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import FuelGauge      from './FuelGauge';
-import { resolveGaugeStyle } from '@/lib/gaugeStyles';
+import { resolveVehicleGaugeStyle } from '@/lib/gaugeStyles';
 import TankPresets    from './TankPresets';
-import SavedVehicles from './SavedVehicles';
+import SavedVehicles, { type Vehicle } from './SavedVehicles';
 import GasPriceLookup from './GasPriceLookup';
 import { BudgetResultCard } from './ResultCard';
 import {
@@ -70,6 +70,24 @@ export default function BudgetForm({ activeTab, setActiveTab }: Props) {
   const isPro      = ['pro', 'fleet'].includes((session?.user as { plan?: string })?.plan ?? '');
   const isLoggedIn = !!session;
 
+  // Same pattern as TripCostEstimator's useGarageData(): keep a live vehicle
+  // list, refresh it whenever any vehicle is added/edited anywhere in the
+  // app, and derive the selected vehicle's gauge style from it at render
+  // time rather than caching a snapshot that can go stale.
+  useEffect(() => {
+    if (!session) return;
+    let cancelled = false;
+    const fetchVehicles = () => {
+      fetch('/api/vehicles')
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d: { vehicles?: Vehicle[] } | null) => { if (!cancelled && d?.vehicles) setVehicles(d.vehicles); })
+        .catch(() => {});
+    };
+    fetchVehicles();
+    window.addEventListener('vehicle-saved', fetchVehicles);
+    return () => { cancelled = true; window.removeEventListener('vehicle-saved', fetchVehicles); };
+  }, [session]);
+
   const GOAL_TABS: { id: CalcTab; emoji: string; label: string; sub: string }[] = [
     { id: 'target', emoji: '⛽', label: t.calc.targetFillLabel, sub: t.calc.targetFillSub },
     { id: 'budget', emoji: '💵', label: t.calc.byBudgetLabel,   sub: t.calc.byBudgetSub  },
@@ -86,7 +104,15 @@ export default function BudgetForm({ activeTab, setActiveTab }: Props) {
   const [gasCoords, setGasCoords] = useState<{ lat: number; lng: number } | null>(null);
   // EPA/AI tank estimate for the currently-selected vehicle (used for validation warning)
   const [vehicleTankEst,   setVehicleTankEst]   = useState<number | undefined>(undefined);
-  const [vehicleGaugeStyle, setVehicleGaugeStyle] = useState<string | null | undefined>(undefined);
+  // Gauge style is deliberately NOT cached in its own state (that was the
+  // 2026-08-25 post-release bug — a write-once value set only inside
+  // SavedVehicles' onSelect callback, which never re-synced after a page
+  // reload with an already-selected vehicle, or after editing that same
+  // vehicle's style). Instead this mirrors TripCostEstimator's pattern:
+  // keep the vehicle list in local state, refresh it on 'vehicle-saved',
+  // and derive the style live at render time from whichever vehicle is
+  // currently selected — see the FuelGauge call site below.
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [vehicleBodyClass, setVehicleBodyClass] = useState<string | undefined>(undefined);
   // Tank-size source tracking — drives the "From garage / From list" badge in TankPresets
   const [presetLabel, setPresetLabel] = useState('');
@@ -263,7 +289,6 @@ export default function BudgetForm({ activeTab, setActiveTab }: Props) {
             patch({ tankCapacity: v, vehicleId: '', vehicleName: '', vehicleOdometer: undefined });
             setVehicleTankEst(undefined);
             setVehicleBodyClass(undefined);
-            setVehicleGaugeStyle(undefined);
             setPresetLabel('');
           }}
           onPresetSelect={(v, label) => {
@@ -282,7 +307,6 @@ export default function BudgetForm({ activeTab, setActiveTab }: Props) {
             patch({ tankCapacity: g, vehicleName: v?.name ?? '', vehicleId: v?.id ?? '', vehicleOdometer: v?.currentOdometer });
             setVehicleTankEst(v?.vehicleSpecs?.tankEstGallons);
             setVehicleBodyClass(v?.vehicleSpecs?.bodyClass);
-            setVehicleGaugeStyle(v?.fuelGaugeStyle);
             setPresetLabel('');
           }}
           selectedVehicleId={form.vehicleId}
@@ -317,7 +341,7 @@ export default function BudgetForm({ activeTab, setActiveTab }: Props) {
             percent={gaugePercent}
             onChange={(pct) => liveRecalc({ currentFuel: String(pct) })}
             tankCapacity={tankNum}
-            style={resolveGaugeStyle(vehicleGaugeStyle)}
+            style={resolveVehicleGaugeStyle(vehicles, form.vehicleId)}
           />
         ) : (
           <div className="relative">

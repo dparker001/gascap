@@ -7,7 +7,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   GAUGE_STYLES, DEFAULT_GAUGE_STYLE, isGaugeStyle, resolveGaugeStyle,
-  resolveRentalGaugeStyle, GAUGE_POINTER_MAP,
+  resolveRentalGaugeStyle, resolveVehicleGaugeStyle, GAUGE_POINTER_MAP,
 } from '@/lib/gaugeStyles';
 
 describe('isGaugeStyle / resolveGaugeStyle', () => {
@@ -82,5 +82,59 @@ describe('GAUGE_POINTER_MAP — every style resolves the same physical endpoints
     const pct = GAUGE_POINTER_MAP.analog_needle(0.5, 0);
     expect(pct).toBeGreaterThan(45);
     expect(pct).toBeLessThan(55);
+  });
+});
+
+// Post-release fix (2026-08-26) — the exact bug: BudgetForm/TargetFillForm
+// cached the resolved style in a useState set only inside SavedVehicles'
+// onSelect callback, so it never reflected (a) an already-selected vehicle
+// restored from persisted state on page load, or (b) an edit to that same
+// vehicle's style made without re-clicking it. resolveVehicleGaugeStyle()
+// replaces that cache with a live derivation from the current vehicle list
+// — these tests lock in the exact regression scenarios.
+describe('resolveVehicleGaugeStyle — the post-release calculator-sync fix', () => {
+  const vehicles = [
+    { id: 'veh-1', fuelGaugeStyle: 'quarter_marks' },
+    { id: 'veh-2', fuelGaugeStyle: null },
+    { id: 'veh-3', fuelGaugeStyle: 'not_a_real_style' },
+  ];
+
+  it('resolves the style of an already-selected vehicle restored from persisted state (no click/onSelect involved)', () => {
+    // This is exactly the "page reload with a persisted vehicleId" scenario
+    // that never worked before: no onSelect ever fires, so any cached-value
+    // approach would still show the default here.
+    expect(resolveVehicleGaugeStyle(vehicles, 'veh-1')).toBe('quarter_marks');
+  });
+
+  it('reflects an edited vehicle style immediately once the vehicle list is refreshed — no re-selection required', () => {
+    const before = resolveVehicleGaugeStyle(vehicles, 'veh-1');
+    expect(before).toBe('quarter_marks');
+    // Simulate the 'vehicle-saved' refresh bringing back updated data for
+    // the SAME already-selected vehicle — a fresh array, same id.
+    const refreshed = [{ id: 'veh-1', fuelGaugeStyle: 'horizontal_segments' }, ...vehicles.slice(1)];
+    const after = resolveVehicleGaugeStyle(refreshed, 'veh-1');
+    expect(after).toBe('horizontal_segments');
+  });
+
+  it('falls back to default for a null stored style', () => {
+    expect(resolveVehicleGaugeStyle(vehicles, 'veh-2')).toBe(DEFAULT_GAUGE_STYLE);
+  });
+
+  it('falls back to default for an invalid stored style', () => {
+    expect(resolveVehicleGaugeStyle(vehicles, 'veh-3')).toBe(DEFAULT_GAUGE_STYLE);
+  });
+
+  it('falls back to default when no vehicle is selected (empty/null id)', () => {
+    expect(resolveVehicleGaugeStyle(vehicles, '')).toBe(DEFAULT_GAUGE_STYLE);
+    expect(resolveVehicleGaugeStyle(vehicles, null)).toBe(DEFAULT_GAUGE_STYLE);
+    expect(resolveVehicleGaugeStyle(vehicles, undefined)).toBe(DEFAULT_GAUGE_STYLE);
+  });
+
+  it('falls back to default when the selected id is not found in the current list', () => {
+    expect(resolveVehicleGaugeStyle(vehicles, 'does-not-exist')).toBe(DEFAULT_GAUGE_STYLE);
+  });
+
+  it('falls back to default for an empty vehicle list (e.g. fetch not yet resolved)', () => {
+    expect(resolveVehicleGaugeStyle([], 'veh-1')).toBe(DEFAULT_GAUGE_STYLE);
   });
 });

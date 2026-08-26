@@ -8,9 +8,19 @@ const defaultCache = require('next-pwa/cache');
 // /gas/nearby gets a NetworkOnly entry placed FIRST so the SW never touches it.
 // Without this, WKWebView's service worker intercepts the fetch and hangs
 // indefinitely (the request never reaches the network) in the Capacitor shell.
+//
+// 2026-08-25 post-release audit — /api/vehicles hit the SAME class of bug:
+// on a slower native connection, the default "apis" cache's 10s
+// networkTimeout could silently serve a STALE cached vehicle list (missing a
+// just-saved fuelGaugeStyle change) instead of waiting for the fresh
+// network response, which is why the gauge style appeared to "not update" in
+// the native app specifically — the same web code runs there, but native
+// requests are more likely to cross that 10s threshold than a fast local/
+// wifi web session. No native rebuild is required: this is the hosted
+// service worker the native shell loads, same as the /gas/nearby fix below.
 const runtimeCaching = [
   {
-    urlPattern: ({ url }) => url.pathname.startsWith('/gas/'),
+    urlPattern: ({ url }) => url.pathname.startsWith('/gas/') || url.pathname.startsWith('/api/vehicles'),
     handler: 'NetworkOnly',
   },
   ...defaultCache.map((entry) => {
@@ -24,6 +34,7 @@ const runtimeCaching = [
         urlPattern: (ctx) => {
           const { pathname } = ctx.url ?? {};
           if (pathname?.startsWith('/api/nearby-gas')) return false;
+          if (pathname?.startsWith('/api/vehicles')) return false;
           return origPattern(ctx);
         },
       };

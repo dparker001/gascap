@@ -149,6 +149,39 @@ export function returnReadyStatus(
   return 'needs_fuel';
 }
 
+// ── Calculate Fill visibility (2026-08-26 post-release fix) ────────────────
+// The section was previously gated behind `showLiveFuel && needed > 0`,
+// which hid it entirely whenever the tank already met the return level or
+// before any fuel reading existed — exactly the states most users are in
+// right after creating a rental, making the feature effectively
+// undiscoverable. Extracted as a pure function (rather than inline JSX
+// conditionals in RentalDashboard.tsx) so the three states are independently
+// testable without a component-render harness.
+
+export type CalculateFillState = 'upcoming' | 'needs_fuel_reading' | 'needs_fill' | 'at_or_above_target';
+
+/**
+ * Which of the Calculate Fill section's states should render.
+ *   'upcoming'            — rental hasn't started; section hidden entirely.
+ *   'needs_fuel_reading'  — rental started but no current fuel reading yet —
+ *                           show a prompt, not the calculator (nothing to
+ *                           calculate from).
+ *   'needs_fill'          — a real reading exists and more fuel is needed —
+ *                           show the full calculator.
+ *   'at_or_above_target'  — a real reading exists and no more fuel is
+ *                           needed — say so, but keep fill-logging available
+ *                           (a renter may still want to log a mid-trip stop).
+ */
+export function resolveCalculateFillState(input: {
+  isUpcoming: boolean;
+  hasFuelReading: boolean; // session.currentFuelGallons != null || session.pickupFuelGallons != null
+  needed: number;
+}): CalculateFillState {
+  if (input.isUpcoming) return 'upcoming';
+  if (!input.hasFuelReading) return 'needs_fuel_reading';
+  return input.needed > 0 ? 'needs_fill' : 'at_or_above_target';
+}
+
 // ── Precision-honest formatting (section 32) ────────────────────────────────
 // Never imply a manual estimate was physically measured. Authoritative
 // sources (a future rental-company API or vehicle telematics) may display

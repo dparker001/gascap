@@ -13,6 +13,7 @@ import {
   reconcileFuelForNewTank,
   isUpcomingRental,
   rentalRecap,
+  resolveCalculateFillState,
 } from '../lib/rentalCalculations';
 import { gallonsFromGaugeFraction, gallonsFromPercent } from '../lib/rentalProvider';
 
@@ -386,5 +387,28 @@ describe('isUpcomingRental', () => {
 
   it('does not call garbage upcoming', () => {
     expect(isUpcomingRental('not a date', NOW)).toBe(false);
+  });
+});
+
+// Post-release fix (2026-08-26) — Calculate Fill was previously hidden
+// entirely whenever `needed === 0` or no fuel reading existed yet, making
+// the feature effectively undiscoverable for most new rentals. These lock
+// in the four required states.
+describe('resolveCalculateFillState()', () => {
+  it('an upcoming (not-yet-picked-up) rental hides the section entirely', () => {
+    expect(resolveCalculateFillState({ isUpcoming: true, hasFuelReading: false, needed: 0 })).toBe('upcoming');
+    expect(resolveCalculateFillState({ isUpcoming: true, hasFuelReading: true, needed: 5 })).toBe('upcoming');
+  });
+
+  it('a started rental with no fuel reading yet shows the prompt state, not hidden', () => {
+    expect(resolveCalculateFillState({ isUpcoming: false, hasFuelReading: false, needed: 0 })).toBe('needs_fuel_reading');
+  });
+
+  it('a real reading with fuel needed shows the full calculator — the regression: this must NOT require needed > 0 to be the only visible state', () => {
+    expect(resolveCalculateFillState({ isUpcoming: false, hasFuelReading: true, needed: 3.5 })).toBe('needs_fill');
+  });
+
+  it('a real reading already at or above the return level is VISIBLE (not hidden) with its own state — the exact bug being fixed', () => {
+    expect(resolveCalculateFillState({ isUpcoming: false, hasFuelReading: true, needed: 0 })).toBe('at_or_above_target');
   });
 });
