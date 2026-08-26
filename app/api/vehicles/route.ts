@@ -28,6 +28,11 @@ export async function GET() {
     fleetCompanyName: user?.fleetCompanyName ?? null,
     fleetLogoUrl:     user?.fleetLogoUrl     ?? null,
     userName:         user?.displayName || user?.name || null,
+    // Phase 4B — the final fallback in the normal-calculator gauge-style
+    // precedence chain (vehicle override → user global → analog). Included
+    // here (rather than a separate round-trip) since every caller of this
+    // endpoint that resolves a vehicle's gauge style also needs this value.
+    fuelGaugeStyle: (user as { fuelGaugeStyle?: string | null } | undefined)?.fuelGaugeStyle ?? null,
   });
 }
 
@@ -117,12 +122,16 @@ export async function PATCH(req: Request) {
 
   const body = await req.json() as {
     name?: string; gallons?: number; vin?: string; currentOdometer?: number; vehicleSpecs?: VehicleSpecs;
-    fuelType?: string; fuelTypeConfirmedByUser?: boolean; isDefault?: boolean; fuelGaugeStyle?: string;
+    fuelType?: string; fuelTypeConfirmedByUser?: boolean; isDefault?: boolean;
+    /** Phase 4B — null explicitly clears the vehicle's override, meaning
+     *  "inherit the user's global default." Only a genuinely unrecognized
+     *  string is rejected; undefined means "field not touched." */
+    fuelGaugeStyle?: string | null;
   };
   if (body.gallons !== undefined && body.gallons <= 0) {
     return NextResponse.json({ error: 'Invalid tank size.' }, { status: 400 });
   }
-  if (body.fuelGaugeStyle !== undefined && !isGaugeStyle(body.fuelGaugeStyle)) {
+  if (body.fuelGaugeStyle !== undefined && body.fuelGaugeStyle !== null && !isGaugeStyle(body.fuelGaugeStyle)) {
     return NextResponse.json({ error: 'Invalid gauge style.' }, { status: 400 });
   }
 

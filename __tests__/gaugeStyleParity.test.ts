@@ -30,10 +30,12 @@ describe('Equivalent pointer input produces equivalent resolved percent for ever
   // resolve, after the shared snap, to the same 50% value — no style may
   // introduce a coarser or finer resolution than the others.
   const HALFWAY_INPUT: Record<string, [number, number]> = {
-    analog_needle:       [0.5, 0], // top-center of the arc
-    horizontal_segments: [0.5, 0.5],
-    vertical_segments:   [0.5, 0.5],
-    quarter_marks:       [0.5, 0.5],
+    analog_needle:             [0.5, 0], // top-center of the arc
+    horizontal_segments:       [0.5, 0.5],
+    vertical_segments:         [0.5, 0.5],
+    quarter_marks:             [0.5, 0.5],
+    vertical_curved_needle:    [0.5, 0.5],
+    vertical_curved_segments:  [0.5, 0.5],
   };
 
   for (const style of GAUGE_STYLES) {
@@ -57,16 +59,22 @@ describe('Equivalent pointer input produces equivalent resolved percent for ever
   };
 
   const EMPTY_INPUT: Record<string, [number, number]> = {
-    analog_needle:       analogPoint(195), // E
-    horizontal_segments: [0, 0.5],
-    vertical_segments:   [0.5, 1],
-    quarter_marks:       [0, 0.5],
+    analog_needle:             analogPoint(195), // E
+    horizontal_segments:       [0, 0.5],
+    vertical_segments:         [0.5, 1],
+    quarter_marks:             [0, 0.5],
+    // Phase 4B — both curved-vertical styles share vertical_segments' simple
+    // bottom=empty/top=full pointer model (see lib/gaugeStyles.ts).
+    vertical_curved_needle:    [0.5, 1],
+    vertical_curved_segments:  [0.5, 1],
   };
   const FULL_INPUT: Record<string, [number, number]> = {
-    analog_needle:       analogPoint(345), // F
-    horizontal_segments: [1, 0.5],
-    vertical_segments:   [0.5, 0],
-    quarter_marks:       [1, 0.5],
+    analog_needle:             analogPoint(345), // F
+    horizontal_segments:       [1, 0.5],
+    vertical_segments:         [0.5, 0],
+    quarter_marks:             [1, 0.5],
+    vertical_curved_needle:    [0.5, 0],
+    vertical_curved_segments:  [0.5, 0],
   };
 
   for (const style of GAUGE_STYLES) {

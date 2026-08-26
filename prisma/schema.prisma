@@ -213,6 +213,14 @@ model User {
   lastNativePlatform       String?   // 'ios' | 'android' | null
   lastNativeAt             String?
   userMode                 String?   // 'personal' | 'gig' | 'rental' | 'fleet'
+  /// Phase 4B (2026-08-26) — global default gauge style, same GAUGE_STYLES
+  /// values as Vehicle.fuelGaugeStyle/RentalSession.fuelGaugeStyle. Null =
+  /// no explicit global preference; resolves to the canonical analog_needle
+  /// default (see lib/gaugeStyles.ts's resolveGaugeStyleChain()). Never
+  /// inferred — only ever written when the user explicitly changes it in
+  /// Settings → Preferences. Unindexed — never queried/filtered on, same as
+  /// the other two fuelGaugeStyle columns.
+  fuelGaugeStyle           String?
   // Stamped when the "log your first fill-up" nudge is sent, so it only ever
   // goes out once per user. See app/api/cron/first-fillup-nudge.
   firstFillupNudgedAt      String?

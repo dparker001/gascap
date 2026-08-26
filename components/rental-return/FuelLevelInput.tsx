@@ -49,6 +49,13 @@ export default function FuelLevelInput({
   onResolved,
   compact = false,
   gaugeStyle = DEFAULT_GAUGE_STYLE,
+  /** Phase 4B — the RAW session-level override (null = inherit), so the
+   *  picker can show "Use Global Default" as the active card when the
+   *  session has no explicit style — `gaugeStyle` above is always the
+   *  already-RESOLVED concrete value used to render the interactive gauge
+   *  itself, which must never be null. Falls back to `gaugeStyle` if the
+   *  caller doesn't distinguish (keeps existing callers working). */
+  explicitGaugeStyle,
   /** Provided only by callers that already have a RentalSession to persist
    *  a style change to (the dashboard, the edit modal). Omitted during
    *  initial setup, when no session id exists yet — the shortcut simply
@@ -59,7 +66,8 @@ export default function FuelLevelInput({
   onResolved: (result: { gallons: number; source: FuelDataSource } | null) => void;
   compact?: boolean;
   gaugeStyle?: GaugeStyle;
-  onChangeGaugeStyle?: (style: GaugeStyle) => void;
+  explicitGaugeStyle?: GaugeStyle | null;
+  onChangeGaugeStyle?: (style: GaugeStyle | null) => void;
 }) {
   const { t } = useTranslation();
   const [method, setMethod]   = useState<FuelInputMethod>('gauge');
@@ -113,8 +121,9 @@ export default function FuelLevelInput({
           {showStylePicker && onChangeGaugeStyle && (
             <div className="mt-2">
               <GaugeStylePicker
-                value={gaugeStyle}
+                value={explicitGaugeStyle ?? gaugeStyle}
                 onSelect={(s) => { onChangeGaugeStyle(s); setShowStylePicker(false); }}
+                allowInherit
               />
             </div>
           )}

@@ -165,13 +165,14 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
   // it at render time rather than caching a snapshot that goes stale on
   // reload or on editing the currently-selected vehicle in place.
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [userGaugeStyle, setUserGaugeStyle] = useState<string | null>(null);
   useEffect(() => {
     if (!session) return;
     let cancelled = false;
     const fetchVehicles = () => {
       fetch('/api/vehicles')
         .then((r) => (r.ok ? r.json() : null))
-        .then((d: { vehicles?: Vehicle[] } | null) => { if (!cancelled && d?.vehicles) setVehicles(d.vehicles); })
+        .then((d: { vehicles?: Vehicle[]; fuelGaugeStyle?: string | null } | null) => { if (!cancelled && d?.vehicles) { setVehicles(d.vehicles); setUserGaugeStyle(d.fuelGaugeStyle ?? null); } })
         .catch(() => {});
     };
     fetchVehicles();
@@ -741,7 +742,7 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
               percent={gaugePercent}
               onChange={(pct) => liveRecalc({ currentFuel: String(pct) })}
               tankCapacity={tankNum}
-              style={resolveVehicleGaugeStyle(vehicles, form.vehicleId)}
+              style={resolveVehicleGaugeStyle(vehicles, form.vehicleId, userGaugeStyle)}
             />
 
             {/* ── Scan gauge button (shelved — see GAUGE_SCAN_ENABLED) ── */}

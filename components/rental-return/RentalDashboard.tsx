@@ -21,7 +21,7 @@ import VehicleBodyIcon from './VehicleBodyIcon';
 import RentalVehicleAvatar from './RentalVehicleAvatar';
 import { inferBodyType } from '@/lib/vehicleBodyType';
 import FuelLevelInput from './FuelLevelInput';
-import { resolveRentalGaugeStyle, type GaugeStyle } from '@/lib/gaugeStyles';
+import { resolveRentalGaugeStyle, isGaugeStyle, type GaugeStyle } from '@/lib/gaugeStyles';
 
 function returnCountdown(returnDateTime: string | null): string | null {
   if (!returnDateTime) return null;
@@ -37,6 +37,7 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
   const [session, setSession] = useState<RentalSession | null>(null);
   const [fillups, setFillups] = useState<Fillup[]>([]);
   const [linkedVehicleGaugeStyle, setLinkedVehicleGaugeStyle] = useState<string | null>(null);
+  const [userGlobalGaugeStyle, setUserGlobalGaugeStyle] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [showUpdateFuel, setShowUpdateFuel] = useState(false);
   const [showRefuel, setShowRefuel] = useState(false);
@@ -55,7 +56,7 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
   const load = useCallback(() => {
     fetch(`/api/rental-sessions/${sessionId}`)
       .then((r) => r.ok ? r.json() : null)
-      .then((d) => { if (d?.session) { setSession(d.session); setFillups(d.fillups ?? []); setLinkedVehicleGaugeStyle(d.linkedVehicleGaugeStyle ?? null); } })
+      .then((d) => { if (d?.session) { setSession(d.session); setFillups(d.fillups ?? []); setLinkedVehicleGaugeStyle(d.linkedVehicleGaugeStyle ?? null); setUserGlobalGaugeStyle(d.userGlobalGaugeStyle ?? null); } })
       .finally(() => setLoading(false));
   }, [sessionId]);
 
@@ -77,18 +78,20 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
     setShowUpdateFuel(false);
   }, [pendingFuel, sessionId, load]);
 
-  // Phase 4 — resolution precedence: session override, then the linked
-  // Vehicle's style, then the GasCap default. Presentation only — never
-  // touches currentFuelGallons or any other fuel value.
-  const resolvedGaugeStyle = resolveRentalGaugeStyle(session?.fuelGaugeStyle, linkedVehicleGaugeStyle);
+  // Phase 4B — resolution precedence: session override, then the linked
+  // Vehicle's style, then the user's global default, then the GasCap
+  // default. Presentation only — never touches currentFuelGallons or any
+  // other fuel value.
+  const resolvedGaugeStyle = resolveRentalGaugeStyle(session?.fuelGaugeStyle, linkedVehicleGaugeStyle, userGlobalGaugeStyle);
+  const explicitGaugeStyle: GaugeStyle | null = isGaugeStyle(session?.fuelGaugeStyle) ? session!.fuelGaugeStyle : null;
 
-  const handleGaugeStyleChange = useCallback((newStyle: GaugeStyle) => {
+  const handleGaugeStyleChange = useCallback((newStyle: GaugeStyle | null) => {
     fetch(`/api/rental-sessions/${sessionId}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ fuelGaugeStyle: newStyle }),
     }).then((res) => {
       if (res.ok) {
-        trackClientEvent('fuel_gauge_style_selected', { style: newStyle, context: 'rental' });
+        trackClientEvent('fuel_gauge_style_selected', { style: newStyle ?? 'inherit', context: 'rental' });
         load();
       }
     }).catch(() => {});
@@ -353,6 +356,7 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
               onResolved={setPendingFuel}
               compact
               gaugeStyle={resolvedGaugeStyle}
+              explicitGaugeStyle={explicitGaugeStyle}
               onChangeGaugeStyle={handleGaugeStyleChange}
             />
             <button
@@ -380,6 +384,7 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
             onResolved={setPendingFuel}
             compact
             gaugeStyle={resolvedGaugeStyle}
+            explicitGaugeStyle={explicitGaugeStyle}
             onChangeGaugeStyle={handleGaugeStyleChange}
           />
           <div className="flex gap-2">

@@ -12,6 +12,9 @@ import { useIsNative, useNativePlatform } from '@/hooks/useIsNative';
 import DeviceCountNotice from '@/components/DeviceCountNotice';
 import { resolvePlanCardCta, resolvePlanLabel } from '@/lib/planDisplay';
 import { hasLifetimeEntitlement } from '@/lib/entitlements';
+import { isGaugeStyle, type GaugeStyle } from '@/lib/gaugeStyles';
+import GaugeStylePicker from '@/components/gauge-styles/GaugeStylePicker';
+import { trackClientEvent } from '@/lib/clientAnalytics';
 
 interface ReferralSummary {
   code:            string;
@@ -122,6 +125,12 @@ export default function SettingsPage() {
   const [giveaway,         setGiveaway]         = useState<GiveawayEntries | null>(null);
   const [perksLoading,     setPerksLoading]     = useState(false);
   const [preferredFillLevel, setPreferredFillLevel] = useState<number | null>(null);
+  // Phase 4B — global default gauge style. Null = no explicit preference
+  // (resolves to analog_needle everywhere via resolveGaugeStyleChain), but
+  // the picker itself always shows a concrete selection so the user can see
+  // what's actually in effect.
+  const [fuelGaugeStyle, setFuelGaugeStyle] = useState<GaugeStyle>('analog_needle');
+  const [gaugeStyleSaved, setGaugeStyleSaved] = useState(false);
   const [monthlyFuelBudget,  setMonthlyFuelBudget]  = useState('');
   const [budgetHighlight,    setBudgetHighlight]    = useState(false);
   const budgetSectionRef = useRef<HTMLDivElement>(null);
@@ -171,7 +180,8 @@ export default function SettingsPage() {
     // blank on every visit and so saving never accidentally wipes saved data.
     fetch('/api/user/profile')
       .then((r) => r.json())
-      .then((d: { displayName?: string; phone?: string; smsOptIn?: boolean; avatarUrl?: string; preferredFillLevel?: number | null; monthlyFuelBudget?: number | null; userMode?: string | null }) => {
+      .then((d: { displayName?: string; phone?: string; smsOptIn?: boolean; avatarUrl?: string; preferredFillLevel?: number | null; monthlyFuelBudget?: number | null; userMode?: string | null; fuelGaugeStyle?: string | null }) => {
+        if (isGaugeStyle(d.fuelGaugeStyle)) setFuelGaugeStyle(d.fuelGaugeStyle);
         if (d.userMode)               setUserMode(d.userMode);
         if (d.displayName)            setDisplayName(d.displayName);
         if (d.phone)                  { setPhone(d.phone); setSavedPhone(d.phone); }
@@ -521,6 +531,27 @@ export default function SettingsPage() {
     setThemePreference(pref);
     setThemePref(pref);
     setDarkMode(isDarkMode());
+  }
+
+  // Phase 4B — saves immediately on tap (no separate "Save" button), same
+  // pattern as most other single-value preferences here. Vehicle/rental
+  // calculators pick this up on their next fetch of /api/vehicles or
+  // /api/user/profile — no logout, app restart, or vehicle re-save needed.
+  async function handleGaugeStyleChange(style: GaugeStyle) {
+    setFuelGaugeStyle(style);
+    setGaugeStyleSaved(false);
+    try {
+      const res = await fetch('/api/user/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fuelGaugeStyle: style }),
+      });
+      if (res.ok) {
+        trackClientEvent('fuel_gauge_style_selected', { style, context: 'global' });
+        setGaugeStyleSaved(true);
+        setTimeout(() => setGaugeStyleSaved(false), 2000);
+      }
+    } catch { /* non-critical — the picker still reflects the tapped value locally */ }
   }
 
   async function handleSaveAlert() {
@@ -1635,6 +1666,24 @@ export default function SettingsPage() {
                 {t.settings.fillDefaultNote(preferredFillLevel)}
               </p>
             )}
+          </div>
+
+          {/* Fuel Gauge Style — global default (Phase 4B). A specific
+              vehicle or rental can still choose its own style instead; see
+              GaugeStylePicker's "Use Global Default" option there. */}
+          <div className="space-y-2 pt-3 border-t border-slate-100 dark:border-slate-700">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{t.settings.fuelGaugeStyleTitle}</p>
+                <p className="text-xs text-slate-400 mt-0.5">{t.settings.fuelGaugeStyleHint}</p>
+              </div>
+              {gaugeStyleSaved && (
+                <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg flex-shrink-0 ml-2">
+                  ✓ {t.settings.fuelGaugeStyleSaved}
+                </span>
+              )}
+            </div>
+            <GaugeStylePicker value={fuelGaugeStyle} onSelect={(s) => { if (s) handleGaugeStyleChange(s); }} />
           </div>
 
           {/* Monthly fuel budget */}

@@ -127,12 +127,13 @@ function calcTrip(
 
 // ── Saved vehicle + avg MPG loader ────────────────────────────────────────
 
-interface GarageResp    { vehicles: Vehicle[]; }
+interface GarageResp    { vehicles: Vehicle[]; fuelGaugeStyle?: string | null; }
 interface AvgMpgResp    { avgMpgByVehicleId: Record<string, number>; }
 
 function useGarageData() {
   const { data: session } = useSession();
   const [vehicles,          setVehicles]          = useState<Vehicle[]>([]);
+  const [userGaugeStyle,    setUserGaugeStyle]    = useState<string | null>(null);
   const [avgMpgByVehicleId, setAvgMpgByVehicleId] = useState<Record<string, number>>({});
   const [loaded,            setLoaded]            = useState(false);
 
@@ -146,6 +147,7 @@ function useGarageData() {
     if (vRes.ok) {
       const d = await vRes.json() as GarageResp;
       setVehicles(d.vehicles ?? []);
+      setUserGaugeStyle(d.fuelGaugeStyle ?? null);
     }
     if (mRes.ok) {
       const d = await mRes.json() as AvgMpgResp;
@@ -167,7 +169,7 @@ function useGarageData() {
     return () => window.removeEventListener('vehicle-saved', onVehicleSaved);
   }, [fetchAll]);
 
-  return { vehicles, avgMpgByVehicleId, load };
+  return { vehicles, avgMpgByVehicleId, userGaugeStyle, load };
 }
 
 // ── Resolve best MPG for a garage vehicle ─────────────────────────────────
@@ -236,7 +238,7 @@ type TripPlanMode = 'manual' | 'route';
 export default function TripCostEstimator({ embedded = false }: { embedded?: boolean }) {
   const { data: session } = useSession();
   const { t } = useTranslation();
-  const { vehicles, avgMpgByVehicleId, load: loadGarage } = useGarageData();
+  const { vehicles, avgMpgByVehicleId, userGaugeStyle, load: loadGarage } = useGarageData();
 
   const [open,          setOpen]          = useState(embedded);
   const [miles,         setMiles]         = useState('');
@@ -1001,7 +1003,7 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
               percent={Number(fuelPct)}
               onChange={(pct) => { setFuelPct(String(pct)); setResult(null); }}
               tankCapacity={tankGal ? parseFloat(tankGal) || undefined : undefined}
-              style={resolveVehicleGaugeStyle(vehicles, garageVehicleLocked ? selectedVehicleId : null)}
+              style={resolveVehicleGaugeStyle(vehicles, garageVehicleLocked ? selectedVehicleId : null, userGaugeStyle)}
             />
             {errors.fuelPct && <p className="mt-1 text-xs text-red-500">{errors.fuelPct}</p>}
             <p className="text-[10px] text-slate-400 mt-1">

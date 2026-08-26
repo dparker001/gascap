@@ -1572,6 +1572,10 @@ export async function updateUserProfile(
     phoneBonusEntries?:  number;   // one-time +25, paid on first successful verification
     phoneVerifiedAt?:    string;
     userMode?:           string | null;
+    /** Phase 4B — null explicitly clears the global default (falls back to
+     *  analog_needle via resolveGaugeStyleChain). Validated against the
+     *  canonical GAUGE_STYLES list at the API layer, not here. */
+    fuelGaugeStyle?:     string | null;
   },
 ): Promise<StoredUser | null> {
   // `undefined` → field not included in the request; leave as-is.
@@ -1608,6 +1612,9 @@ export async function updateUserProfile(
         : {}),
       ...(fields.userMode !== undefined
         ? { userMode: fields.userMode || null }
+        : {}),
+      ...(fields.fuelGaugeStyle !== undefined
+        ? { fuelGaugeStyle: fields.fuelGaugeStyle ?? null }
         : {}),
     },
   }).catch(() => null);

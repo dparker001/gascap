@@ -10,6 +10,20 @@ export type Translations = typeof en;
 // ── English ──────────────────────────────────────────────────────────────────
 const en = {
 
+  // ── Fuel gauge style names (Phase 4B) — used by every vehicle/rental/
+  // settings gauge-style picker, keyed by the canonical GaugeStyle values in
+  // lib/gaugeStyles.ts. Kept separate from GAUGE_STYLE_LABELS (that map is
+  // the English-only fallback for non-React contexts). ────────────────────
+  gaugeStyles: {
+    useGlobalDefault:         'Use Global Default',
+    analog_needle:            'Analog Needle',
+    horizontal_segments:      'Horizontal Bars',
+    vertical_segments:        'Vertical Bars',
+    quarter_marks:            'Quarter Marks',
+    vertical_curved_needle:   'Vertical Curved Needle',
+    vertical_curved_segments: 'Vertical Curved Segments',
+  },
+
   // ── Navigation / Auth ──────────────────────────────────────────────────────
   nav: {
     signIn:         'Sign in',
@@ -2024,6 +2038,9 @@ const en = {
     budgetSub:          'Track your spend against a monthly target. Shown on your home screen.',
     budgetPlaceholder:  'e.g. 150',
     budgetDisableNote:  'Leave blank to disable the budget tracker.',
+    fuelGaugeStyleTitle: 'Fuel Gauge Style',
+    fuelGaugeStyleHint:  'Your default look for the fuel gauge across the app. A specific vehicle or rental can still use its own style instead.',
+    fuelGaugeStyleSaved: 'Saved',
     saveDefaults:       'Save Defaults',
     gasPriceAlert:      'Gas Price Alert',
     proBadge:           'PRO',
@@ -3157,6 +3174,16 @@ const en = {
 
 // ── Spanish ───────────────────────────────────────────────────────────────────
 const es: typeof en = {
+
+  gaugeStyles: {
+    useGlobalDefault:         'Usar predeterminado global',
+    analog_needle:            'Aguja analógica',
+    horizontal_segments:      'Barras horizontales',
+    vertical_segments:        'Barras verticales',
+    quarter_marks:            'Marcas de cuarto',
+    vertical_curved_needle:   'Aguja curva vertical',
+    vertical_curved_segments: 'Barras curvas verticales',
+  },
 
   nav: {
     signIn:         'Iniciar sesión',
@@ -5135,6 +5162,9 @@ const es: typeof en = {
     budgetSub:          'Rastrea tu gasto frente a un objetivo mensual. Se muestra en tu pantalla de inicio.',
     budgetPlaceholder:  'ej. 150',
     budgetDisableNote:  'Déjalo en blanco para desactivar el rastreador de presupuesto.',
+    fuelGaugeStyleTitle: 'Estilo del Medidor de Combustible',
+    fuelGaugeStyleHint:  'Tu apariencia predeterminada para el medidor de combustible en toda la app. Un vehículo o alquiler específico puede seguir usando su propio estilo.',
+    fuelGaugeStyleSaved: 'Guardado',
     saveDefaults:       'Guardar valores',
     gasPriceAlert:      'Alerta de precio de gasolina',
     proBadge:           'PRO',
