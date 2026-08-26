@@ -24,3 +24,28 @@ export type PmfResponse = (typeof PMF_OPTIONS)[number];
 
 export const RENTAL_HELPFULNESS_OPTIONS = ['yes', 'somewhat', 'no'] as const;
 export type RentalHelpfulness = (typeof RENTAL_HELPFULNESS_OPTIONS)[number];
+
+/**
+ * Phase 5C — CampaignCommunication.kind / .state canonical values. Centralized
+ * here (not scattered as raw strings) per the approved architecture — both
+ * lib/feedbackCampaignComms.ts (server) and app/admin/feedback-campaign/page.tsx
+ * (client) import these.
+ */
+export const CAMPAIGN_COMMUNICATION_KINDS = ['invite_email', 'reminder_email', 'reminder_push'] as const;
+export type CampaignCommunicationKind = (typeof CAMPAIGN_COMMUNICATION_KINDS)[number];
+
+/**
+ * claimed   = atomic DB claim exists; provider call has not yet resolved, or
+ *             the process was interrupted before it could.
+ * sent      = provider clearly accepted/confirmed — the ONLY state that may
+ *             ever be reported as "sent" or trigger *_sent analytics.
+ * ambiguous = provider outcome cannot be determined safely (e.g. a network
+ *             exception with unknown accept/reject outcome) — never
+ *             auto-retried.
+ * failed    = provider definitely rejected/did not accept the communication.
+ * no_channel = push-only: the user had no usable delivery channel at all
+ *              (no OneSignal subscription, no APNs token) — a definite,
+ *              non-error non-delivery, distinct from a provider failure.
+ */
+export const CAMPAIGN_COMMUNICATION_STATES = ['claimed', 'sent', 'ambiguous', 'failed', 'no_channel'] as const;
+export type CampaignCommunicationState = (typeof CAMPAIGN_COMMUNICATION_STATES)[number];

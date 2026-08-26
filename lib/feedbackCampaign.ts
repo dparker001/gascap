@@ -28,7 +28,7 @@ const LIFETIME_OFFER_WINDOW_MS = 72 * 60 * 60 * 1000;
 export { PRIMARY_FEATURE_OPTIONS, PMF_OPTIONS, RENTAL_HELPFULNESS_OPTIONS };
 export type { PrimaryFeature, PmfResponse, RentalHelpfulness };
 
-const ACCOUNT_AGE_DAYS_MIN = 7;
+export const ACCOUNT_AGE_DAYS_MIN = 7;
 const ACTIVE_DAYS_MIN = 3;
 
 export interface FeedbackSubmission {
@@ -67,7 +67,7 @@ export async function getActiveCampaign(now: Date = new Date()) {
   });
 }
 
-async function hasMeaningfulUsage(userId: string, user: { calcCount: number; activeDays: string[] }) {
+export async function hasMeaningfulUsage(userId: string, user: { calcCount: number; activeDays: string[] }) {
   if (user.calcCount >= 1) return true;
   if (user.activeDays.length >= ACTIVE_DAYS_MIN) return true;
   const [fillupCount, vehicleCount, rentalCount] = await Promise.all([
@@ -78,7 +78,7 @@ async function hasMeaningfulUsage(userId: string, user: { calcCount: number; act
   return fillupCount > 0 || vehicleCount > 0 || rentalCount > 0;
 }
 
-function accountAgeDays(createdAt: string, now: Date): number {
+export function accountAgeDays(createdAt: string, now: Date): number {
   const created = new Date(createdAt).getTime();
   if (Number.isNaN(created)) return 0;
   return (now.getTime() - created) / (1000 * 60 * 60 * 24);

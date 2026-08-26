@@ -231,6 +231,7 @@ model User {
   campaignParticipations   CampaignParticipation[]
   feedbackResponses        FeedbackResponse[]
   drawingEntries           DrawingEntry[]
+  campaignCommunications   CampaignCommunication[]
 }
 
 model OtpCode {
@@ -865,6 +866,7 @@ model Campaign {
   participations CampaignParticipation[]
   responses      FeedbackResponse[]
   drawingEntries DrawingEntry[]
+  communications CampaignCommunication[]
 }
 
 /// Per-user, per-campaign server-authoritative state. The client never
@@ -966,4 +968,55 @@ model DrawingEntry {
   @@unique([campaignId, userId])
   @@index([userId])
   @@index([kind])
+}
+
+/// Phase 5C (2026-08-26) — the authoritative, per-campaign, concurrency-safe
+/// ledger for outbound Feedback Campaign communications. Supersedes
+/// lib/emailLog.ts's hasEmailBeenSent() as the DEDUP gate for this feature:
+/// that ledger is global per (userId, type) with no campaignId column and no
+/// unique constraint, which (a) would let a past campaign's send silently
+/// block a future, unrelated campaign for the same user, and (b) cannot
+/// close a check-then-act race between two concurrent cron/API invocations.
+/// EmailLog itself is untouched and still written to for cross-cutting
+/// admin visibility — it is simply no longer authoritative for this
+/// feature's idempotency.
+///
+/// The atomic claim IS the `create()` call against the unique constraint
+/// below, not a findFirst-then-create pattern — a losing concurrent worker
+/// gets a P2002, not a stale "not sent yet" read. Mirrors this codebase's
+/// existing getawayFulfillmentAttemptedAt / RevenueCatWebhookEvent
+/// precedents: once a row exists for (campaignId, userId, kind), automated
+/// code never touches it again in ANY state — no auto-retry, ever. See
+/// lib/feedbackCampaignComms.ts for the full state-machine rationale.
+model CampaignCommunication {
+  id         String   @id @default(cuid())
+  campaignId String
+  userId     String?
+  /// 'invite_email' | 'reminder_email' | 'reminder_push' — see
+  /// lib/feedbackCampaignShared.ts's CAMPAIGN_COMMUNICATION_KINDS.
+  kind       String
+  /// 'claimed' | 'sent' | 'ambiguous' | 'failed' | 'no_channel' — see
+  /// lib/feedbackCampaignShared.ts's CAMPAIGN_COMMUNICATION_STATES for the
+  /// full semantics of each. Only 'sent' means the provider actually
+  /// confirmed acceptance; every other state is a definite non-send.
+  state      String   @default("claimed")
+  attemptedAt DateTime @default(now())
+  /// Set ONLY on the transition to state='sent' — never on claim.
+  sentAt     DateTime?
+  /// Nullable — lib/email.ts's sendMail() does not currently return/expose
+  /// a provider message id, so this is reserved for a future enhancement,
+  /// never populated by Phase 5C.
+  providerMessageId String?
+  /// Sanitized diagnostic only (never the full raw provider response) —
+  /// same convention as GiveawayDraw's forfeiture notes / AdminAuditLog.
+  lastError  String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  user     User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@unique([campaignId, userId, kind])
+  @@index([campaignId, kind, state])
+  @@index([userId])
 }

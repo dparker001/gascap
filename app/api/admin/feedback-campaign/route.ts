@@ -34,7 +34,7 @@ export async function GET(req: Request) {
 
   const [
     eligibleCount, inviteShownCount, startedCount, submittedCount,
-    drawingEntryCount, responses,
+    drawingEntryCount, responses, communications,
   ] = await Promise.all([
     prisma.campaignParticipation.count({ where: { campaignId: campaign.id, eligibleAt: { not: null } } }),
     prisma.campaignParticipation.count({ where: { campaignId: campaign.id, inviteShownAt: { not: null } } }),
@@ -42,7 +42,18 @@ export async function GET(req: Request) {
     prisma.campaignParticipation.count({ where: { campaignId: campaign.id, submittedAt: { not: null } } }),
     prisma.drawingEntry.count({ where: { campaignId: campaign.id, kind: 'feedback_campaign' } }),
     prisma.feedbackResponse.findMany({ where: { campaignId: campaign.id }, orderBy: { submittedAt: 'desc' } }),
+    // CampaignCommunication is the authoritative, campaign-scoped ledger
+    // (see lib/feedbackCampaignComms.ts) — replaces the old global EmailLog
+    // count, which had no campaignId column and could not distinguish this
+    // campaign's sends from any other campaign's.
+    prisma.campaignCommunication.groupBy({ by: ['kind', 'state'], where: { campaignId: campaign.id }, _count: { _all: true } }),
   ]);
+
+  const commsBreakdown: Record<string, Record<string, number>> = { invite_email: {}, reminder_email: {}, reminder_push: {} };
+  for (const row of communications) {
+    if (!commsBreakdown[row.kind]) commsBreakdown[row.kind] = {};
+    commsBreakdown[row.kind][row.state] = row._count._all;
+  }
 
   const avgSatisfaction = responses.length
     ? responses.reduce((sum, r) => sum + r.overallSatisfaction, 0) / responses.length
@@ -81,6 +92,7 @@ export async function GET(req: Request) {
       completionRate: inviteShownCount > 0 ? submittedCount / inviteShownCount : null,
       drawingEntries: drawingEntryCount,
     },
+    communications: commsBreakdown,
     avgSatisfaction,
     featureBreakdown,
     pmfBreakdown,
