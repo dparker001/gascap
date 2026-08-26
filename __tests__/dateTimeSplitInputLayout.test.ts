@@ -74,6 +74,18 @@ describe('globals.css — date/time input sizing rules', () => {
     expect(rule).toMatch(/min-width:\s*0/);
     expect(rule).toMatch(/box-sizing:\s*border-box/);
   });
+
+  it('.rental-datetime-input keeps less horizontal padding than .input-field (the iOS overflow headroom)', () => {
+    const rule = globalsCss.match(/\.rental-datetime-input\s*\{[\s\S]*?\}/)?.[0] ?? '';
+    // px-3, not the px-4 .input-field uses and not reverted back to px-2 —
+    // the visual-polish pass moved padding up from px-2 toward .input-field's
+    // px-4 without fully closing the gap that avoids the shadow-DOM overflow.
+    expect(rule).toMatch(/@apply input-field px-3 py-3;/);
+  });
+
+  it('trims the native calendar/clock icon padding to reclaim visual inset on the right edge', () => {
+    expect(globalsCss).toMatch(/::-webkit-calendar-picker-indicator/);
+  });
 });
 
 describe('ModalShell — flex chain does not block shrinking', () => {
