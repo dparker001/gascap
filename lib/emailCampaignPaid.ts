@@ -156,6 +156,10 @@ export function upgradeConfirmEmailHtml(
 
       ${ctaButton('Open GasCap™ →', BASE_URL)}
 
+      <p style="margin:18px 0 0;font-size:12px;color:#94a3b8;line-height:1.6;">
+        One more perk that keeps going every month you're on ${tier === 'fleet' ? 'Fleet' : 'Pro'}: bonus entries in the regular GasCap™ $50 Gas Card Drawing — no extra step needed.
+      </p>
+
       ${tier === 'pro' ? `
       <!-- GasCaptains™ community invite — Pro only -->
       <table cellpadding="0" cellspacing="0" width="100%"
@@ -264,7 +268,11 @@ export function paidCheckInEmailHtml(name: string, userId: string, tier: 'pro' |
 
       ${ctaButton('Open GasCap™ →', BASE_URL)}
 
-      <p style="margin:26px 0 0;font-size:13px;color:#94a3b8;line-height:1.6;">
+      <p style="margin:22px 0 0;font-size:12px;color:#94a3b8;line-height:1.6;">
+        Reminder: staying on ${tier === 'fleet' ? 'Fleet' : 'Pro'} keeps you earning bonus entries every month in the regular GasCap™ $50 Gas Card Drawing.
+      </p>
+
+      <p style="margin:14px 0 0;font-size:13px;color:#94a3b8;line-height:1.6;">
         Not using a feature? Hit reply and let us know — we use that feedback to improve the app.
       </p>
       <p style="margin:10px 0 0;font-size:13px;color:#475569;">

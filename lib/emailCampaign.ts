@@ -507,6 +507,9 @@ export function proUpsellEmailHtml(name: string, userId: string): string {
           <strong>1 free Pro month</strong> for you. Refer enough friends and
           you can unlock <strong>lifetime Pro access</strong> — no subscription needed ever again.
         </p>
+        <p style="margin:0 0 14px;font-size:12px;color:#92400e;line-height:1.6;">
+          You're also automatically entered in the regular monthly GasCap™ $50 Gas Card Drawing every day you use the app — no purchase required.
+        </p>
         <a href="${BASE_URL}/#share" style="display:inline-block;background:#f59e0b;color:#fff;font-weight:900;
            font-size:13px;padding:10px 22px;border-radius:10px;text-decoration:none;">
           📤 Get My Referral Link →
@@ -540,7 +543,7 @@ export function proUpsellEmailHtml(name: string, userId: string): string {
 }
 
 export const proUpsellEmailText = (name: string) =>
-  `Hi ${name.split(' ')[0]}, you're 10 days into your GasCap™ Pro trial — 20 days left. Power-user features to try: AI trip planner, MPG drop detection, cost-per-mile tracking, unlimited badges, PDF reports. BONUS: Share your referral link (in the Share tab) — earn a free Pro month every time a friend upgrades, plus bonus drawing entries. Refer 15 and Pro is yours for life. Or own Pro forever with the $19.99 Lifetime plan — it also comes with a complimentary vacation getaway certificate. Open the app: ${BASE_URL}`;
+  `Hi ${name.split(' ')[0]}, you're 10 days into your GasCap™ Pro trial — 20 days left. Power-user features to try: AI trip planner, MPG drop detection, cost-per-mile tracking, unlimited badges, PDF reports. BONUS: Share your referral link (in the Share tab) — earn a free Pro month every time a friend upgrades, plus bonus drawing entries. You're also automatically entered in the regular monthly $50 Gas Card Drawing every day you use the app. Refer 15 and Pro is yours for life. Or own Pro forever with the $19.99 Lifetime plan — it also comes with a complimentary vacation getaway certificate. Open the app: ${BASE_URL}`;
 
 // ── Email 4 — 9 Days Left (Day 21) ────────────────────────────────────────
 
@@ -631,6 +634,7 @@ export function annualDealEmailHtml(name: string, userId: string): string {
 
       <p style="margin:22px 0 0;font-size:12px;color:#94a3b8;line-height:1.6;">
         Your trial still has 9 days. If you don't upgrade, we'll automatically move you to the free plan — no charges, nothing to cancel.
+        And staying on Pro keeps you earning bonus entries every month in the regular GasCap™ $50 Gas Card Drawing.
       </p>
       <p style="margin:10px 0 0;font-size:13px;color:#475569;">
         — The GasCap™ Team
@@ -707,6 +711,10 @@ export function lastCallEmailHtml(name: string, userId: string): string {
         the calculators and live gas price lookup, forever, no charge. Any vehicles you've already saved
         during your trial stay right where they are — you just won't be able to add new ones beyond your
         first without Pro. We'd just love to hear why so we can keep making GasCap™ better. Just hit reply.
+      </p>
+
+      <p style="margin:0 0 14px;font-size:12px;color:#94a3b8;line-height:1.6;">
+        One more thing either way: you stay entered in the regular monthly GasCap™ $50 Gas Card Drawing just for using the app — Pro simply earns extra entries.
       </p>
 
       <p style="margin:24px 0 0;font-size:13px;color:#94a3b8;line-height:1.6;">

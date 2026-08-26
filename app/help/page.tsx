@@ -390,6 +390,24 @@ const SECTIONS = [
     ],
   },
   {
+    id: 'feedback-campaign',
+    title: '📝 Feedback Campaign',
+    items: [
+      {
+        q: 'What is the GasCap Feedback Campaign?',
+        a: 'A short, roughly 2-minute survey asking what you like about GasCap™, what\'s confusing, any bugs you\'ve hit, and what you\'d like added next. It\'s eligible to accounts at least 7 days old with at least some GasCap™ usage. It appears as an in-app invitation — it is not an App Store review or rating request, and it never asks for one.',
+      },
+      {
+        q: 'What do I get for completing it?',
+        a: 'One entry into a separate, one-time $50 GasCap™ Feedback Drawing tied specifically to that feedback campaign — this is not the same as the regular monthly $50 Gas Card Drawing, and completing the survey does not use up or replace your monthly-drawing entries. The winner is selected after the feedback campaign\'s submission window closes.',
+      },
+      {
+        q: 'Can I submit feedback more than once?',
+        a: 'No — one submission per feedback campaign per account, and it only grants one drawing entry.',
+      },
+    ],
+  },
+  {
     id: 'referrals',
     title: '🔗 Ambassador Program & Referrals',
     items: [

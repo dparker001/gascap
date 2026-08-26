@@ -227,6 +227,10 @@ model User {
   /// SetNull on the other side), so this relation exists for query
   /// convenience only; it is never used to cascade-delete analytics history.
   analyticsEvents          AnalyticsEvent[]
+  /// Phase 5A — same SetNull-survives-deletion convention as analyticsEvents.
+  campaignParticipations   CampaignParticipation[]
+  feedbackResponses        FeedbackResponse[]
+  drawingEntries           DrawingEntry[]
 }
 
 model OtpCode {
@@ -815,4 +819,151 @@ model AnalyticsEvent {
   @@index([userId, eventType])
   @@index([eventType, createdAt])
   @@index([createdAt])
+}
+
+/// Phase 5A (2026-08-26) — Feedback Campaign foundation. Deliberately NOT a
+/// reuse/extension of the existing monthly Giveaway system (lib/giveaway.ts,
+/// GiveawayDraw): that system's entry math (active-day multipliers, plan
+/// tiers, Ambassador multipliers, AMOE, repeat-winner cooldowns) has nothing
+/// to do with "did this user submit one feedback survey" and importing it
+/// would conflate two separate participant pools and two separate
+/// disclosures. See docs/reviews for the Phase 5 audit that established this
+/// separation.
+///
+/// One row per campaign run (e.g. key "feedback_2026_q3") — a future second
+/// feedback round is a new row here, not new columns anywhere.
+model Campaign {
+  id        String    @id @default(cuid())
+  key       String    @unique
+  name      String
+  startsAt  DateTime
+  /// Null = open-ended (no planned close). The first Feedback Campaign sets
+  /// this explicitly — the drawing is a one-time draw tied to this specific
+  /// window, not a recurring monthly drawing, so a null endsAt here would
+  /// leave the drawing's own "closed" state undefined.
+  endsAt    DateTime?
+  /// When the one-time drawing for this campaign is expected to run —
+  /// informational/admin-display only; the actual draw is a Phase 5D
+  /// feature not implemented here. Kept on the row (not buried in `config`)
+  /// per Phase 5A instruction not to bury critical relational/timing state
+  /// inside JSON.
+  drawingAt DateTime?
+  /// IANA zone the campaign's stated deadline is quoted in (e.g.
+  /// "America/New_York") — server eligibility/closure checks always compare
+  /// against server UTC `now()`, never a client clock; this field is for
+  /// display copy ("closes September 30 at 11:59 PM ET") only.
+  timezone  String    @default("America/New_York")
+  /// Campaign-level configuration where a flag genuinely has no relational
+  /// shape of its own (e.g. survey copy variant, feature flags). Nothing
+  /// that gates eligibility, submission validity, or drawing-entry
+  /// correctness belongs here — those are real columns on this row or on
+  /// CampaignParticipation/FeedbackResponse/DrawingEntry.
+  config    Json?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  participations CampaignParticipation[]
+  responses      FeedbackResponse[]
+  drawingEntries DrawingEntry[]
+}
+
+/// Per-user, per-campaign server-authoritative state. The client never
+/// computes eligibility, invite state, or offer expiration itself — it only
+/// reads this via GET /api/feedback/status and renders accordingly.
+model CampaignParticipation {
+  id         String  @id @default(cuid())
+  campaignId String
+  userId     String?
+
+  eligibleAt          DateTime?
+  inviteShownAt       DateTime?
+  inviteSentAt        DateTime?
+  pushSentAt          DateTime?
+  openedAt            DateTime?
+  startedAt           DateTime?
+  submittedAt         DateTime?
+  drawingEntryGrantedAt DateTime?
+
+  /// Reserved for Phase 5B (the $9.99 promotional Lifetime offer) — not
+  /// read or written by any Phase 5A code path. Added now, nullable, so
+  /// Phase 5B doesn't need a second migration on this table.
+  lifetimeOfferShownAt     DateTime?
+  lifetimeOfferExpiresAt   DateTime?
+  lifetimeOfferConvertedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  /// SetNull, matching AnalyticsEvent — deleting a GasCap account must not
+  /// erase aggregate campaign funnel history, only the direct user link.
+  user     User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@unique([campaignId, userId])
+  @@index([userId])
+}
+
+/// One survey response per user per campaign — the unique constraint below
+/// is the actual DB-level defense against a duplicate/replayed submission,
+/// not application logic.
+model FeedbackResponse {
+  id         String  @id @default(cuid())
+  campaignId String
+  userId     String?
+
+  overallSatisfaction Int     // 1-5, validated at the application layer
+  primaryFeature      String  // enum-like string, validated at the application layer — see lib/feedbackCampaign.ts PRIMARY_FEATURE_OPTIONS
+  likes               String
+  frustrations        String
+  hadIssue            Boolean
+  issueDescription    String?
+  improvementRequest  String
+  featureRequest      String
+  pmfResponse         String  // 'very' | 'somewhat' | 'not' — validated at the application layer
+
+  /// Only populated when the user has at least one RentalSession — null,
+  /// not omitted, for a user who was never shown these questions, so a
+  /// report can distinguish "asked and skipped" from "never asked."
+  rentalEaseScore       Int?
+  rentalHelpfulness     String? // 'yes' | 'somewhat' | 'no'
+  rentalImprovement     String?
+
+  platform    String? // 'web' | 'ios' | 'android' — from the same signal as User.lastNativePlatform
+  appVersion  String?
+
+  submittedAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  user     User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@unique([campaignId, userId])
+  @@index([userId])
+}
+
+/// Feedback Drawing entry ledger — intentionally separate from the existing
+/// GiveawayDraw/monthly-drawing tables. `kind` exists so a second, different
+/// one-time promotional drawing can reuse this same table later without a
+/// migration, while `@@unique([campaignId, userId])` guarantees the "one
+/// entry per user per campaign" rule at the DB level regardless of `kind`.
+model DrawingEntry {
+  id         String  @id @default(cuid())
+  campaignId String
+  userId     String?
+  /// e.g. "feedback_campaign". Never "monthly" — the existing monthly $50
+  /// drawing's pool lives entirely in GiveawayDraw/lib/giveaway.ts and is
+  /// untouched by this table.
+  kind       String
+  /// Free-form attribution (e.g. "feedback_submission") — mirrors
+  /// AnalyticsEvent.source.
+  source     String?
+  createdAt  DateTime @default(now())
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  user     User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@unique([campaignId, userId])
+  @@index([userId])
+  @@index([kind])
 }
