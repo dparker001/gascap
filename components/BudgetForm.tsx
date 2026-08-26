@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import FuelGauge      from './FuelGauge';
+import { resolveGaugeStyle } from '@/lib/gaugeStyles';
 import TankPresets    from './TankPresets';
 import SavedVehicles from './SavedVehicles';
 import GasPriceLookup from './GasPriceLookup';
@@ -85,6 +86,7 @@ export default function BudgetForm({ activeTab, setActiveTab }: Props) {
   const [gasCoords, setGasCoords] = useState<{ lat: number; lng: number } | null>(null);
   // EPA/AI tank estimate for the currently-selected vehicle (used for validation warning)
   const [vehicleTankEst,   setVehicleTankEst]   = useState<number | undefined>(undefined);
+  const [vehicleGaugeStyle, setVehicleGaugeStyle] = useState<string | null | undefined>(undefined);
   const [vehicleBodyClass, setVehicleBodyClass] = useState<string | undefined>(undefined);
   // Tank-size source tracking — drives the "From garage / From list" badge in TankPresets
   const [presetLabel, setPresetLabel] = useState('');
@@ -261,6 +263,7 @@ export default function BudgetForm({ activeTab, setActiveTab }: Props) {
             patch({ tankCapacity: v, vehicleId: '', vehicleName: '', vehicleOdometer: undefined });
             setVehicleTankEst(undefined);
             setVehicleBodyClass(undefined);
+            setVehicleGaugeStyle(undefined);
             setPresetLabel('');
           }}
           onPresetSelect={(v, label) => {
@@ -279,6 +282,7 @@ export default function BudgetForm({ activeTab, setActiveTab }: Props) {
             patch({ tankCapacity: g, vehicleName: v?.name ?? '', vehicleId: v?.id ?? '', vehicleOdometer: v?.currentOdometer });
             setVehicleTankEst(v?.vehicleSpecs?.tankEstGallons);
             setVehicleBodyClass(v?.vehicleSpecs?.bodyClass);
+            setVehicleGaugeStyle(v?.fuelGaugeStyle);
             setPresetLabel('');
           }}
           selectedVehicleId={form.vehicleId}
@@ -313,6 +317,7 @@ export default function BudgetForm({ activeTab, setActiveTab }: Props) {
             percent={gaugePercent}
             onChange={(pct) => liveRecalc({ currentFuel: String(pct) })}
             tankCapacity={tankNum}
+            style={resolveGaugeStyle(vehicleGaugeStyle)}
           />
         ) : (
           <div className="relative">

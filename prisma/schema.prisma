@@ -338,6 +338,12 @@ model Vehicle {
   vehicleSpecs      Json?
   isDefault         Boolean @default(false)
   createdAt         String
+  /// Phase 4 (2026-08-25) — VISUAL fuel gauge style only, one of
+  /// lib/gaugeStyles.ts's GAUGE_STYLES. Null = GasCap default (analog
+  /// needle), same as every vehicle created before this shipped. Never
+  /// inferred from VIN/make/model data — always either null or a value the
+  /// user explicitly chose. Changing this never touches any fuel value.
+  fuelGaugeStyle    String?
   user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
@@ -736,6 +742,13 @@ model RentalSession {
   /// silently losing it because the OLD time already consumed the dedup.
   returnReminder2SentAt          String?
   completedAt                   String?
+  /// Phase 4 (2026-08-25) — VISUAL fuel gauge style override for THIS
+  /// rental, so a one-off rental car doesn't need to be saved as a
+  /// permanent Vehicle just to pick a gauge. Resolution order: this field,
+  /// then the linked Vehicle's fuelGaugeStyle (if vehicleId is set), then
+  /// the GasCap default — see lib/gaugeStyles.ts's resolveRentalGaugeStyle().
+  /// Changing this never touches currentFuelGallons or any other fuel value.
+  fuelGaugeStyle                String?
   createdAt                    String
   updatedAt                    String
 

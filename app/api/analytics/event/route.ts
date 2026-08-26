@@ -114,6 +114,11 @@ const CLIENT_EVENT_TYPES = new Set([
   // directly) and deliberately absent from this client-facing allowlist,
   // same pattern as rental_setup_completed and purchase_completed.
   'rental_fill_calculated',
+  // Phase 4 (2026-08-25) — fired once when the user CONFIRMS a new fuel
+  // gauge visual style (vehicle edit form or the Rental Return Mode
+  // shortcut), never on preview taps, gauge movement, or default
+  // resolution. Presentation-only preference — no fuel/gallons data.
+  'fuel_gauge_style_selected',
 ]);
 
 /**
@@ -204,6 +209,13 @@ const METADATA_SCHEMAS: Record<string, MetadataSchema> = {
   rental_return_feature_impression: {
     fields: {},
     required: [],
+  },
+  fuel_gauge_style_selected: {
+    fields: {
+      style:   (v) => v === 'analog_needle' || v === 'horizontal_segments' || v === 'vertical_segments' || v === 'quarter_marks',
+      context: (v) => v === 'vehicle' || v === 'rental',
+    },
+    required: ['style', 'context'],
   },
 };
 

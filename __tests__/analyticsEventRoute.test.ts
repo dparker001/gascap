@@ -543,3 +543,41 @@ describe('POST /api/analytics/event — rental_return_feature_impression', () =>
     expect(res.status).toBe(202);
   });
 });
+
+// Phase 4 (2026-08-25)
+describe('POST /api/analytics/event — fuel_gauge_style_selected', () => {
+  it('accepts a valid vehicle-context selection', async () => {
+    getServerSession.mockResolvedValue({ user: { id: 'u1' } });
+    const res = await post({ eventType: 'fuel_gauge_style_selected', originPlatform: 'web', metadata: { style: 'quarter_marks', context: 'vehicle' } });
+    expect(res.status).toBe(202);
+  });
+
+  it('accepts a valid rental-context selection', async () => {
+    getServerSession.mockResolvedValue({ user: { id: 'u1' } });
+    const res = await post({ eventType: 'fuel_gauge_style_selected', originPlatform: 'web', metadata: { style: 'horizontal_segments', context: 'rental' } });
+    expect(res.status).toBe(202);
+  });
+
+  it('rejects a missing style or context', async () => {
+    getServerSession.mockResolvedValue({ user: { id: 'u1' } });
+    const res1 = await post({ eventType: 'fuel_gauge_style_selected', originPlatform: 'web', metadata: { context: 'vehicle' } });
+    expect(res1.status).toBe(400);
+    const res2 = await post({ eventType: 'fuel_gauge_style_selected', originPlatform: 'web', metadata: { style: 'quarter_marks' } });
+    expect(res2.status).toBe(400);
+    expect(recordAnalyticsEvent).not.toHaveBeenCalled();
+  });
+
+  it('rejects an invalid style value or context value', async () => {
+    getServerSession.mockResolvedValue({ user: { id: 'u1' } });
+    expect((await post({ eventType: 'fuel_gauge_style_selected', originPlatform: 'web', metadata: { style: 'digital_percent', context: 'vehicle' } })).status).toBe(400);
+    expect((await post({ eventType: 'fuel_gauge_style_selected', originPlatform: 'web', metadata: { style: 'quarter_marks', context: 'garage' } })).status).toBe(400);
+    expect(recordAnalyticsEvent).not.toHaveBeenCalled();
+  });
+
+  it('requires a signed-in session — not anonymous-allowed', async () => {
+    getServerSession.mockResolvedValue(null);
+    const res = await post({ eventType: 'fuel_gauge_style_selected', originPlatform: 'web', metadata: { style: 'quarter_marks', context: 'vehicle' } });
+    expect(res.status).toBe(401);
+    expect(recordAnalyticsEvent).not.toHaveBeenCalled();
+  });
+});
