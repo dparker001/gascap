@@ -10,6 +10,8 @@ import { RENTAL_RETURN_ASSISTANT_ENABLED } from '@/lib/featureFlags';
 import { getRentalSession, updateRentalSession, deleteRentalSession, type UpdateRentalSessionInput } from '@/lib/rentalSessions';
 import { validateRentalPhotos, photoCapKb, PHOTO_MAX_DATA_URL_BYTES } from '@/lib/photoLimits';
 import { getRentalFillups } from '@/lib/rentalFillups';
+import { isGaugeStyle } from '@/lib/gaugeStyles';
+import { prisma } from '@/lib/prisma';
 
 async function requireUserId(): Promise<string | null> {
   const session = await getServerSession(authOptions);
@@ -28,7 +30,13 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   // session.refuelLogs already on `session`. Empty for a pre-cutover session
   // that only has legacy entries; the client falls back to refuelLogs then.
   const fillups = await getRentalFillups(userId, params.id);
-  return NextResponse.json({ session, fillups });
+  // Phase 4 — resolve the linked Vehicle's gauge style (if any) server-side
+  // so the client can apply lib/gaugeStyles.ts's resolveRentalGaugeStyle()
+  // precedence without a second round-trip. Null when no vehicle is linked.
+  const linkedVehicleGaugeStyle = session.vehicleId
+    ? (await prisma.vehicle.findUnique({ where: { id: session.vehicleId }, select: { fuelGaugeStyle: true } }))?.fuelGaugeStyle ?? null
+    : null;
+  return NextResponse.json({ session, fillups, linkedVehicleGaugeStyle });
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
@@ -38,6 +46,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
   const body = await req.json().catch(() => null) as UpdateRentalSessionInput | null;
   if (!body) return NextResponse.json({ error: 'Invalid body' }, { status: 400 });
+  if (body.fuelGaugeStyle !== undefined && !isGaugeStyle(body.fuelGaugeStyle)) {
+    return NextResponse.json({ error: 'Invalid gauge style.' }, { status: 400 });
+  }
 
   const photoCheck = validateRentalPhotos(body as Record<string, unknown>);
   if (!photoCheck.ok) {

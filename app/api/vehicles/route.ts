@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { findById } from '@/lib/users';
 import { getVehiclesForUser, addVehicle, deleteVehicle, updateVehicle, setDefaultVehicle, clearDefaultVehicle } from '@/lib/savedVehicles';
 import { isElectric, type VehicleSpecs } from '@/lib/vehicleSpecs';
+import { isGaugeStyle } from '@/lib/gaugeStyles';
 
 // Pro is unlimited; free is capped at 1
 const PLAN_LIMITS = { free: 1, pro: 9999, fleet: 9999 };
@@ -116,10 +117,13 @@ export async function PATCH(req: Request) {
 
   const body = await req.json() as {
     name?: string; gallons?: number; vin?: string; currentOdometer?: number; vehicleSpecs?: VehicleSpecs;
-    fuelType?: string; fuelTypeConfirmedByUser?: boolean; isDefault?: boolean;
+    fuelType?: string; fuelTypeConfirmedByUser?: boolean; isDefault?: boolean; fuelGaugeStyle?: string;
   };
   if (body.gallons !== undefined && body.gallons <= 0) {
     return NextResponse.json({ error: 'Invalid tank size.' }, { status: 400 });
+  }
+  if (body.fuelGaugeStyle !== undefined && !isGaugeStyle(body.fuelGaugeStyle)) {
+    return NextResponse.json({ error: 'Invalid gauge style.' }, { status: 400 });
   }
 
   if (body.isDefault !== undefined) {

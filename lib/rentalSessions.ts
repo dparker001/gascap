@@ -58,6 +58,7 @@ export interface RentalSession {
   pickupReminder2SentAt:        string | null;
   returnReminder2SentAt:        string | null;
   completedAt:                  string | null;
+  fuelGaugeStyle:                string | null;
   createdAt:                    string;
   updatedAt:                    string;
 }
@@ -208,6 +209,10 @@ export interface UpdateRentalSessionInput {
   returnLatitude?:            number;
   returnLongitude?:           number;
   notes?:                     string;
+  /** Phase 4 — VISUAL fuel gauge style override for this rental only. Never
+   *  affects currentFuelGallons or any other fuel value. Validated against
+   *  the canonical GAUGE_STYLES list at the API layer. */
+  fuelGaugeStyle?:            string;
 }
 
 export async function updateRentalSession(userId: string, id: string, input: UpdateRentalSessionInput): Promise<RentalSession | undefined> {
@@ -253,6 +258,7 @@ export async function updateRentalSession(userId: string, id: string, input: Upd
   if (input.returnLatitude    !== undefined) data.returnLatitude    = input.returnLatitude;
   if (input.returnLongitude   !== undefined) data.returnLongitude   = input.returnLongitude;
   if (input.notes             !== undefined) data.notes             = input.notes;
+  if (input.fuelGaugeStyle    !== undefined) data.fuelGaugeStyle    = input.fuelGaugeStyle;
 
   // ── Reminder timezone/UTC recompute + dedup reset (2026-08-25 P0 fix) ───
   // Only trigger on an ACTUAL value change (not merely "the caller included

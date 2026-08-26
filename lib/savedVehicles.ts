@@ -30,6 +30,11 @@ export interface SavedVehicle {
   vehicleSpecs?:      VehicleSpecs;
   isDefault:          boolean;
   createdAt:          string;
+  /** Phase 4 (2026-08-25) — VISUAL fuel gauge style only, one of
+   *  lib/gaugeStyles.ts's GAUGE_STYLES. Undefined/null resolves to the
+   *  GasCap default (analog needle) via resolveGaugeStyle() — never
+   *  inferred from VIN/make/model, always either unset or user-chosen. */
+  fuelGaugeStyle?:    string | null;
 }
 
 function toSavedVehicle(v: {
@@ -49,6 +54,7 @@ function toSavedVehicle(v: {
   vehicleSpecs: unknown;
   isDefault?: boolean;
   createdAt: string;
+  fuelGaugeStyle?: string | null;
 }): SavedVehicle {
   return {
     id:                 v.id,
@@ -67,6 +73,7 @@ function toSavedVehicle(v: {
     vehicleSpecs:       v.vehicleSpecs    != null ? (v.vehicleSpecs as VehicleSpecs) : undefined,
     isDefault:          v.isDefault       ?? false,
     createdAt:          v.createdAt,
+    fuelGaugeStyle:     v.fuelGaugeStyle  ?? undefined,
   };
 }
 
@@ -161,6 +168,9 @@ export async function updateVehicle(
   updates: {
     name?: string; gallons?: number; vin?: string; currentOdometer?: number; vehicleSpecs?: VehicleSpecs;
     fuelType?: string; fuelTypeConfirmedByUser?: boolean;
+    /** Phase 4 — VISUAL preference only; validated against the canonical
+     *  GAUGE_STYLES list at the API layer before reaching here. */
+    fuelGaugeStyle?: string;
   },
 ): Promise<SavedVehicle | undefined> {
   // Verify ownership first
@@ -177,6 +187,7 @@ export async function updateVehicle(
   if (updates.vehicleSpecs     !== undefined) data.vehicleSpecs     = updates.vehicleSpecs;
   if (updates.fuelType         !== undefined) data.fuelType         = updates.fuelType || null;
   if (updates.fuelTypeConfirmedByUser !== undefined) data.fuelTypeConfirmedByUser = updates.fuelTypeConfirmedByUser;
+  if (updates.fuelGaugeStyle   !== undefined) data.fuelGaugeStyle   = updates.fuelGaugeStyle;
 
   const row = await prisma.vehicle.update({
     where: { id: vehicleId },

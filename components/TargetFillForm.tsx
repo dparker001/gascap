@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import FuelGauge     from './FuelGauge';
+import { resolveGaugeStyle } from '@/lib/gaugeStyles';
 import TankPresets   from './TankPresets';
 import SavedVehicles from './SavedVehicles';
 import GasPriceLookup from './GasPriceLookup';
@@ -201,6 +202,7 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
   const [priceToastExiting, setPriceToastExiting]  = useState(false);
   // EPA/AI tank estimate for the currently-selected vehicle (used for validation warning)
   const [vehicleTankEst,   setVehicleTankEst]   = useState<number | undefined>(undefined);
+  const [vehicleGaugeStyle, setVehicleGaugeStyle] = useState<string | null | undefined>(undefined);
   const [vehicleBodyClass, setVehicleBodyClass] = useState<string | undefined>(undefined);
   // Tank-size source tracking — drives the "From garage / VIN match / Lookup
   // match / From list" badge in TankPresets. 'dropdown' is the rental-class
@@ -533,6 +535,7 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
     setShowLiveNudge(false);
     setVehicleTankEst(undefined);
     setVehicleBodyClass(undefined);
+    setVehicleGaugeStyle(undefined);
     setPresetLabel('');
     setPresetSourceKind('dropdown');
   }
@@ -651,6 +654,7 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
             patch({ tankCapacity: v, vehicleId: '', vehicleName: '', vehicleOdometer: undefined });
             setVehicleTankEst(undefined);
             setVehicleBodyClass(undefined);
+            setVehicleGaugeStyle(undefined);
             setPresetLabel('');
             setPresetSourceKind('dropdown');
           }}
@@ -659,6 +663,7 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
             patch({ tankCapacity: v, vehicleId: '', vehicleName: '', vehicleOdometer: undefined });
             setVehicleTankEst(undefined);
             setVehicleBodyClass(undefined);
+            setVehicleGaugeStyle(undefined);
             setPresetLabel(label);
             setPresetSourceKind('dropdown');
           }}
@@ -679,6 +684,7 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
             });
             setVehicleTankEst(v?.vehicleSpecs?.tankEstGallons);
             setVehicleBodyClass(v?.vehicleSpecs?.bodyClass);
+            setVehicleGaugeStyle(v?.fuelGaugeStyle);
             setPresetLabel('');
             setPresetSourceKind('dropdown');
             // Notify VehicleChip in the native header so it updates immediately
@@ -720,6 +726,7 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
               percent={gaugePercent}
               onChange={(pct) => liveRecalc({ currentFuel: String(pct) })}
               tankCapacity={tankNum}
+              style={resolveGaugeStyle(vehicleGaugeStyle)}
             />
 
             {/* ── Scan gauge button (shelved — see GAUGE_SCAN_ENABLED) ── */}

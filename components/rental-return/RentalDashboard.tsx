@@ -21,6 +21,7 @@ import VehicleBodyIcon from './VehicleBodyIcon';
 import RentalVehicleAvatar from './RentalVehicleAvatar';
 import { inferBodyType } from '@/lib/vehicleBodyType';
 import FuelLevelInput from './FuelLevelInput';
+import { resolveRentalGaugeStyle, type GaugeStyle } from '@/lib/gaugeStyles';
 
 function returnCountdown(returnDateTime: string | null): string | null {
   if (!returnDateTime) return null;
@@ -35,6 +36,7 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
   const { t } = useTranslation();
   const [session, setSession] = useState<RentalSession | null>(null);
   const [fillups, setFillups] = useState<Fillup[]>([]);
+  const [linkedVehicleGaugeStyle, setLinkedVehicleGaugeStyle] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [showUpdateFuel, setShowUpdateFuel] = useState(false);
   const [showRefuel, setShowRefuel] = useState(false);
@@ -53,7 +55,7 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
   const load = useCallback(() => {
     fetch(`/api/rental-sessions/${sessionId}`)
       .then((r) => r.ok ? r.json() : null)
-      .then((d) => { if (d?.session) { setSession(d.session); setFillups(d.fillups ?? []); } })
+      .then((d) => { if (d?.session) { setSession(d.session); setFillups(d.fillups ?? []); setLinkedVehicleGaugeStyle(d.linkedVehicleGaugeStyle ?? null); } })
       .finally(() => setLoading(false));
   }, [sessionId]);
 
@@ -74,6 +76,23 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
     setShowPickupFuel(false);
     setShowUpdateFuel(false);
   }, [pendingFuel, sessionId, load]);
+
+  // Phase 4 — resolution precedence: session override, then the linked
+  // Vehicle's style, then the GasCap default. Presentation only — never
+  // touches currentFuelGallons or any other fuel value.
+  const resolvedGaugeStyle = resolveRentalGaugeStyle(session?.fuelGaugeStyle, linkedVehicleGaugeStyle);
+
+  const handleGaugeStyleChange = useCallback((newStyle: GaugeStyle) => {
+    fetch(`/api/rental-sessions/${sessionId}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fuelGaugeStyle: newStyle }),
+    }).then((res) => {
+      if (res.ok) {
+        trackClientEvent('fuel_gauge_style_selected', { style: newStyle, context: 'rental' });
+        load();
+      }
+    }).catch(() => {});
+  }, [sessionId, load]);
 
   useEffect(() => {
     if (session) trackRentalReturnReadyViewed(returnReadyStatus(session.currentFuelGallons, session.requiredReturnFuelGallons));
@@ -328,6 +347,8 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
               tankCapacity={tankCapacity}
               onResolved={setPendingFuel}
               compact
+              gaugeStyle={resolvedGaugeStyle}
+              onChangeGaugeStyle={handleGaugeStyleChange}
             />
             <button
               type="button"
@@ -349,7 +370,13 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
         <div className="bg-white rounded-2xl border-2 border-blue-200 shadow-sm p-4 space-y-2">
           <p className="text-xs font-black text-blue-800">⛽ {t.rentalReturn.setPickupFuelTitle}</p>
           <p className="text-[11px] text-slate-500 leading-snug">{t.rentalReturn.setPickupFuelHint}</p>
-          <FuelLevelInput tankCapacity={tankCapacity} onResolved={setPendingFuel} compact />
+          <FuelLevelInput
+            tankCapacity={tankCapacity}
+            onResolved={setPendingFuel}
+            compact
+            gaugeStyle={resolvedGaugeStyle}
+            onChangeGaugeStyle={handleGaugeStyleChange}
+          />
           <div className="flex gap-2">
             {session.pickupFuelGallons != null && (
               <button type="button" onClick={() => { setShowPickupFuel(false); setPendingFuel(null); }}

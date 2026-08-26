@@ -11,6 +11,9 @@ import { compressImageForUpload } from '@/lib/imageUtils';
 import { GarageDoor }                        from './GarageDoor';
 import { useGarageDoorPrefs }                from '@/hooks/useGarageDoorPrefs';
 import { getMakeLogoUrl }                    from '@/lib/makeLogo';
+import { resolveGaugeStyle, type GaugeStyle } from '@/lib/gaugeStyles';
+import GaugeStylePicker from './gauge-styles/GaugeStylePicker';
+import { trackClientEvent } from '@/lib/clientAnalytics';
 
 
 export interface Vehicle {
@@ -28,6 +31,7 @@ export interface Vehicle {
   currentOdometer?:   number;
   vehicleSpecs?:      VehicleSpecs;
   isDefault?:         boolean;
+  fuelGaugeStyle?:    string | null;
 }
 
 interface GarageResponse {
@@ -396,6 +400,7 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
   const [editGallons,     setEditGallons]     = useState('');
   const [editVin,         setEditVin]         = useState('');
   const [editFuelType,    setEditFuelType]    = useState('');
+  const [editGaugeStyle,  setEditGaugeStyle]  = useState<GaugeStyle>('analog_needle');
   const [editSaving,      setEditSaving]      = useState(false);
   const [editVinStatus,   setEditVinStatus]   = useState<'idle' | 'fetching' | 'done' | 'error'>('idle');
   const [editVinScanning, setEditVinScanning] = useState(false);
@@ -507,6 +512,7 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
     // guess should NOT show as if the user had already chosen it (that would let
     // an unrelated save silently "confirm" our estimate without them noticing).
     setEditFuelType(v.fuelTypeConfirmedByUser ? (v.fuelType ?? '') : '');
+    setEditGaugeStyle(resolveGaugeStyle(v.fuelGaugeStyle));
     setEditVinStatus('idle');
     setEditVinScanning(false);
     setEditVinScanErr('');
@@ -552,7 +558,10 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
     const priorFuelType   = currentVehicle?.fuelTypeConfirmedByUser ? (currentVehicle.fuelType ?? '') : '';
     const fuelTypeChanged = editFuelType.trim() !== priorFuelType;
 
-    // 1. Persist name, gallons, VIN, and fuel type
+    const priorGaugeStyle   = resolveGaugeStyle(currentVehicle?.fuelGaugeStyle);
+    const gaugeStyleChanged = editGaugeStyle !== priorGaugeStyle;
+
+    // 1. Persist name, gallons, VIN, fuel type, and gauge style
     const patchRes = await fetch(`/api/vehicles?id=${editingId}`, {
       method:  'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -565,10 +574,17 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
             ? { fuelType: editFuelType.trim(), fuelTypeConfirmedByUser: true }
             : { fuelTypeConfirmedByUser: false }
           : {}),
+        ...(gaugeStyleChanged ? { fuelGaugeStyle: editGaugeStyle } : {}),
       }),
     });
 
     if (!patchRes.ok) { setEditSaving(false); return; }
+
+    // Fire only on an actual, confirmed style change — never on preview
+    // taps or when the value resolved to the default without user action.
+    if (gaugeStyleChanged) {
+      trackClientEvent('fuel_gauge_style_selected', { style: editGaugeStyle, context: 'vehicle' });
+    }
 
     // 2. If a VIN was newly added or changed, fetch & persist the decoded specs
     if (vinChanged && cleanVin && cleanVin.length === 17) {
@@ -901,6 +917,18 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
                             {t.savedVehicles.vinLengthHint(17 - editVin.length)}
                           </p>
                         )}
+                      </div>
+
+                      {/* Gauge style — VISUAL preference only, never affects
+                          any saved fuel level or calculation. Live previews
+                          use the actual renderer components at a fixed demo
+                          percent so what's shown here is exactly what the
+                          calculator gauge will look like. */}
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">
+                          {t.savedVehicles.gaugeStyleLabel}
+                        </label>
+                        <GaugeStylePicker value={editGaugeStyle} onSelect={setEditGaugeStyle} />
                       </div>
 
                       <div className="flex gap-2 pt-1">
