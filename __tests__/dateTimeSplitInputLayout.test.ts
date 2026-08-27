@@ -88,6 +88,42 @@ describe('globals.css — date/time input sizing rules', () => {
   });
 });
 
+describe('globals.css — device-proven WKWebView content-box width compensation (2026-08-27)', () => {
+  // Every rule above this point (shadow-DOM part padding, wrapper min-width,
+  // border-box on .rental-datetime-input) shipped in PR #35 and was verified
+  // fresh in production, yet the overflow was STILL reproducible live on the
+  // affected iPhone via Safari Web Inspector. Measured there:
+  //   before: parentWidth 344px, computed width 344px, outer/rendered width
+  //     370px (+26px overflow), boxSizing reported as content-box EVEN with
+  //     `box-sizing: border-box !important` applied.
+  //   after adding `width/max-width: calc(100% - 26px)`: outer width 344px,
+  //     matches parentWidth exactly, 0 overflow.
+  // jsdom cannot execute layout or report computed box-sizing the way a real
+  // WKWebView does, so this test only guards that the specific compensating
+  // rule (not a generic width:100% that WKWebView silently mis-sizes) is
+  // present and scoped to exactly these two inputs — not a claim that this
+  // test itself proves the on-device fit.
+  it('date and time inputs both get the 26px width compensation, not a plain 100%', () => {
+    const rule = globalsCss.match(
+      /input\.rental-datetime-input\[type="date"\][\s\S]*?\}/,
+    )?.[0] ?? '';
+    expect(rule).toMatch(/input\.rental-datetime-input\[type="date"\]/);
+    expect(rule).toMatch(/input\.rental-datetime-input\[type="time"\]/);
+    expect(rule).toMatch(/width:\s*calc\(100% - 26px\)/);
+    expect(rule).toMatch(/max-width:\s*calc\(100% - 26px\)/);
+  });
+
+  it('the compensation is scoped to .rental-datetime-input only, not every date/time input on the site', () => {
+    const matches = globalsCss.match(/calc\(100% - 26px\)/g) ?? [];
+    // exactly 2 occurrences: width and max-width, both inside the single
+    // input.rental-datetime-input[type=...] rule above — a global
+    // input[type="date"] rule would indicate this leaked beyond the rental
+    // return fields.
+    expect(matches).toHaveLength(2);
+    expect(globalsCss).not.toMatch(/^input\[type="date"\]\s*\{\s*width:\s*calc/m);
+  });
+});
+
 describe('ModalShell — flex chain does not block shrinking', () => {
   it('the panel is a flex child with min-w-0, not just max-w-sm', () => {
     const panelDiv = modalShellSrc.match(/className="bg-white rounded-3xl[^"]*"/)?.[0] ?? '';

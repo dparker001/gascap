@@ -218,6 +218,29 @@ body {
     display: block;
   }
 
+  /* 2026-08-27 — device-proven fix, measured live via Safari Web Inspector
+     attached to the actual affected iPhone (the wrapper/shadow-part rules
+     above did not resolve the overflow on-device despite fixing it in
+     theory). On WKWebView, these two native controls report
+     `box-sizing: content-box` in the inspector EVEN with
+     `box-sizing: border-box !important` applied above — WKWebView does not
+     honor border-box for type=date/time here, so `width: 100%` is computed
+     as 100% *content* width, then padding+border are added on top:
+       parentWidth 344px, computed width 344px, but outer/rendered width
+       370px → 26px overflow (12px left padding + 12px right padding + ~2px
+       border, all added outside the declared 100%).
+     Compensating by subtracting that same 26px from width/max-width forces
+     the actual outer/rendered width back to 344px == parentWidth, measured
+     with zero overflow on the same device after this change. This is a
+     WKWebView content-box quirk, not something jsdom or a Chromium preview
+     can reproduce — do not "simplify" this back to width:100% without
+     re-measuring on a real device first. */
+  input.rental-datetime-input[type="date"],
+  input.rental-datetime-input[type="time"] {
+    width: calc(100% - 26px);
+    max-width: calc(100% - 26px);
+  }
+
   /* ── Section card */
   .card {
     @apply bg-white rounded-2xl shadow-card p-5;
