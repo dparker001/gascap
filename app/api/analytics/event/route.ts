@@ -119,6 +119,14 @@ const CLIENT_EVENT_TYPES = new Set([
   // shortcut), never on preview taps, gauge movement, or default
   // resolution. Presentation-only preference — no fuel/gallons data.
   'fuel_gauge_style_selected',
+  // Phase 6A (2026-08-28) — Trip Fill-Up calculator funnel, same trust class
+  // and no-gallons/price/cost-values pattern as rental_fill_calculated
+  // above. The actual save is still rental_fill_logged (server-authoritative,
+  // lib/rentalFillups.ts) — these three are funnel-only, fired at most once
+  // per calculator open/compute/log-tap, never on every keystroke.
+  'rental_trip_fill_calculator_opened',
+  'rental_trip_fill_calculated',
+  'rental_trip_fill_log_started',
 ]);
 
 /**

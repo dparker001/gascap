@@ -6,7 +6,7 @@ import { useTranslation } from '@/contexts/LanguageContext';
 import {
   gallonsNeeded, estimatedRentalCompanyCharge, estimatedFuelCost,
   returnReadyStatus, formatGallons, fuelSourceLabel, refuelTotals, isUpcomingRental,
-  shouldTrackFuelNeededCalculated, resolveCalculateFillState,
+  shouldTrackFuelNeededCalculated, resolveCalculateFillState, roundGallons, tripFillEstimate,
 } from '@/lib/rentalCalculations';
 import { trackRentalGasNearReturnViewed, trackRentalReturnReadyViewed } from '@/lib/gtag';
 import { trackClientEvent } from '@/lib/clientAnalytics';
@@ -51,6 +51,29 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
   const calculatedOnceRef = useRef(false);
   const [editingFillupId, setEditingFillupId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState<{ gallonsPumped: string; pricePerGallon: string; totalCost: string }>({ gallonsPumped: '', pricePerGallon: '', totalCost: '' });
+
+  // Phase 6A — Trip Fill-Up calculator: "how much fuel do I want to add
+  // right now," independent of the return-target Calculate Fill above.
+  // Current/desired levels are each resolved via the same FuelLevelInput
+  // gauge/percent/gallons convention used everywhere else in this dashboard.
+  const [showTripCalc, setShowTripCalc] = useState(false);
+  // 2026-08-28 correction — there is deliberately NO independent editable
+  // current-fuel state for this calculator. Current level always reads the
+  // authoritative session.currentFuelGallons directly; a local-only calculator current
+  // level could promise a gallons-to-add figure computed from a number
+  // that createRentalFillup()'s atomic currentFuelGallons bump (in
+  // lib/rentalFillups.ts) never actually used, producing a real tank state
+  // the calculator never predicted. Desired level remains independently
+  // editable — that's the one genuinely arbitrary, user-chosen input here.
+  const [tripDesiredFuel, setTripDesiredFuel] = useState<{ gallons: number; source: FuelDataSource } | null>(null);
+  const [tripPricePerGal, setTripPricePerGal] = useState('');
+  const tripCalcOpenedRef = useRef(false);
+  const tripCalcTrackedRef = useRef(false);
+  // Set immediately before opening RefuelLogModal so the modal always shows
+  // the suggestion from whichever calculator/action actually triggered it
+  // (return-target Calculate Fill, the Trip Fill-Up calculator, or the bare
+  // "I Just Refueled" button, which has no suggestion at all).
+  const [refuelSuggestion, setRefuelSuggestion] = useState<{ gallons?: number; price?: number }>({});
 
 
   const load = useCallback(() => {
@@ -472,19 +495,159 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
           {calculateFillState !== 'needs_fuel_reading' && (
             <div className="flex gap-2">
               <button
-                onClick={() => { setRefuelDefaultType('trip'); setShowRefuel(true); }}
+                onClick={() => {
+                  setRefuelDefaultType('trip');
+                  setRefuelSuggestion({ gallons: needed > 0 ? needed : undefined, price: Number(calcPricePerGal) > 0 ? Number(calcPricePerGal) : undefined });
+                  setShowRefuel(true);
+                }}
                 className="flex-1 py-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-sm font-bold"
               >
                 {t.rentalReturn.calculateFillCta} — {t.rentalReturn.tripFillUp}
               </button>
               <button
-                onClick={() => { setRefuelDefaultType('final_return'); setShowRefuel(true); }}
+                onClick={() => {
+                  setRefuelDefaultType('final_return');
+                  setRefuelSuggestion({ gallons: needed > 0 ? needed : undefined, price: Number(calcPricePerGal) > 0 ? Number(calcPricePerGal) : undefined });
+                  setShowRefuel(true);
+                }}
                 className="flex-1 py-2.5 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 text-sm font-bold"
               >
                 {t.rentalReturn.calculateFillCta} — {t.rentalReturn.finalReturnFillUp}
               </button>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════════
+          TRIP FILL-UP CALCULATOR — Phase 6A. Deliberately separate from
+          CALCULATE FILL above: that section answers "how much to reach my
+          REQUIRED RETURN level"; this answers "how much do I want to add
+          RIGHT NOW," an arbitrary current→desired estimate unrelated to the
+          return target. Collapsed by default so an already-long dashboard
+          doesn't grow further for renters who never open it. ═════════════ */}
+      {!isUpcoming && tankCapacity > 0 && (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-2">
+          <button
+            type="button"
+            onClick={() => {
+              const next = !showTripCalc;
+              setShowTripCalc(next);
+              if (next && !tripCalcOpenedRef.current) {
+                tripCalcOpenedRef.current = true;
+                trackClientEvent('rental_trip_fill_calculator_opened');
+              }
+            }}
+            className="w-full flex items-center justify-between text-xs font-bold text-slate-500 uppercase tracking-wide"
+          >
+            <span>⛽ {t.rentalReturn.tripCalcTitle}</span>
+            <span className="text-slate-400">{showTripCalc ? '▲' : '▼'}</span>
+          </button>
+
+          {showTripCalc && (() => {
+            // Authoritative current level — never a local-only calculator
+            // value. session.currentFuelGallons is exactly what
+            // createRentalFillup() atomically adds the actual logged
+            // gallons to server-side (lib/rentalFillups.ts), so the
+            // calculator's estimate and the eventual real tank state can
+            // never disagree about where "current" started from.
+            const currentGallons = session.currentFuelGallons;
+            const hasCurrentFuel = currentGallons != null;
+            const tripDesiredGallonsRaw = tripDesiredFuel?.gallons ?? null;
+            const tripPrice = Number(tripPricePerGal);
+            const estimate = hasCurrentFuel && tripDesiredGallonsRaw != null
+              ? tripFillEstimate(currentGallons, tripDesiredGallonsRaw, tankCapacity, tripPrice > 0 ? tripPrice : undefined)
+              : null;
+            const tripGallonsToAdd = estimate?.gallonsToAdd ?? null;
+            const tripEstCost = estimate?.estimatedCost ?? null;
+            const tripDesiredTooLow = hasCurrentFuel && tripDesiredGallonsRaw != null && estimate != null && estimate.gallonsToAdd <= 0;
+
+            // No current reading at all — never calculate from a fabricated
+            // 0. Same "unknown renders as unknown" rule as the rest of this
+            // dashboard (see the showLiveFuel comment above). Points at the
+            // EXISTING current-fuel update flow (showUpdateFuel, already
+            // rendered in the Fuel level card above) rather than a second
+            // fuel-entry control.
+            if (!hasCurrentFuel) {
+              return (
+                <div className="bg-blue-50 border border-blue-200 rounded-xl px-3 py-3 text-center space-y-2">
+                  <p className="text-[11px] text-blue-700 leading-snug">{t.rentalReturn.tripCalcSetCurrentFuelFirst}</p>
+                  <button type="button" onClick={() => setShowUpdateFuel(true)} className="text-xs font-bold text-blue-600 hover:text-blue-800">
+                    {t.rentalReturn.updateCurrentFuel}
+                  </button>
+                </div>
+              );
+            }
+
+            return (
+              <>
+                <p className="text-[11px] text-slate-500 leading-snug">{t.rentalReturn.tripCalcHint}</p>
+
+                <div className="bg-slate-50 rounded-xl py-2 px-3 flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{t.rentalReturn.currentEstimated}</p>
+                    <p className="text-base font-black text-slate-800">{formatGallons(currentGallons, session.currentFuelSource as FuelDataSource)}</p>
+                  </div>
+                  <button type="button" onClick={() => setShowUpdateFuel(true)} className="text-[11px] font-bold text-blue-600 hover:text-blue-800">
+                    {t.rentalReturn.updateCurrentFuel}
+                  </button>
+                </div>
+
+                <div>
+                  <label className="field-label">{t.rentalReturn.tripCalcDesiredLevel}</label>
+                  <FuelLevelInput
+                    tankCapacity={tankCapacity}
+                    onResolved={setTripDesiredFuel}
+                    compact
+                    gaugeStyle={resolvedGaugeStyle}
+                  />
+                </div>
+
+                {tripDesiredTooLow ? (
+                  <p className="text-[11px] text-amber-600 text-center">{t.rentalReturn.tripCalcDesiredTooLow}</p>
+                ) : tripGallonsToAdd != null && tripGallonsToAdd > 0 && (
+                  <>
+                    <div className="bg-slate-50 rounded-xl py-2 flex flex-col justify-center">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide text-center">{t.rentalReturn.pricePerGallon}</label>
+                      <input
+                        type="number" inputMode="decimal" min="0" step="0.01" placeholder="3.19"
+                        value={tripPricePerGal}
+                        onChange={(e) => setTripPricePerGal(e.target.value)}
+                        onBlur={() => {
+                          if (!tripCalcTrackedRef.current && Number(tripPricePerGal) > 0) {
+                            tripCalcTrackedRef.current = true;
+                            trackClientEvent('rental_trip_fill_calculated');
+                          }
+                        }}
+                        className="w-full text-center text-sm font-bold bg-transparent border-b border-slate-300 focus:outline-none"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 text-center">
+                      <div className="bg-slate-50 rounded-xl py-2">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{t.rentalReturn.tripCalcGallonsToAdd}</p>
+                        <p className="text-lg font-black text-slate-800">{tripGallonsToAdd} gal</p>
+                      </div>
+                      <div className="bg-slate-50 rounded-xl py-2 flex items-center justify-center">
+                        {tripEstCost != null && <p className="text-sm font-bold text-slate-700">{t.rentalReturn.tripCalcEstCost(tripEstCost)}</p>}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        trackClientEvent('rental_trip_fill_log_started');
+                        setRefuelDefaultType('trip');
+                        setRefuelSuggestion({ gallons: tripGallonsToAdd, price: tripPrice > 0 ? tripPrice : undefined });
+                        setShowRefuel(true);
+                      }}
+                      className="w-full py-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-sm font-bold"
+                    >
+                      {t.rentalReturn.tripCalcLogCta}
+                    </button>
+                  </>
+                )}
+              </>
+            );
+          })()}
         </div>
       )}
 
@@ -541,8 +704,9 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
                       <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-black mr-1 ${f.fillupType === 'final_return' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'}`}>
                         {f.fillupType === 'final_return' ? t.rentalReturn.finalReturnFillUp : t.rentalReturn.tripFillUp}
                       </span>
-                      {f.gallonsPumped} gal{f.stationName ? ` · ${f.stationName}` : ''}
+                      {f.gallonsPumped} gal{f.pricePerGallon > 0 ? ` · $${f.pricePerGallon.toFixed(2)}/gal` : ''}{f.stationName ? ` · ${f.stationName}` : ''}
                       <span className="text-slate-400 ml-1">· {new Date(f.filledAt ?? f.createdAt).toLocaleDateString()}</span>
+                      {f.receiptThumb && <span className="ml-1" title={t.rentalReturn.receiptAttached} aria-label={t.rentalReturn.receiptAttached}>📷</span>}
                     </span>
                     <span className="flex items-center gap-2">
                       {f.totalCost > 0 && <span className="font-bold">${f.totalCost.toFixed(2)}</span>}
@@ -564,10 +728,16 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
               </div>
             ))}
           </div>
-          <div className="flex justify-between items-center text-xs font-black text-slate-800 mt-2.5 pt-2.5 border-t border-slate-100">
-            <span>{t.rentalReturn.refuelTotalLabel(fillups.length, Math.round(fillups.reduce((s, f) => s + f.gallonsPumped, 0) * 10) / 10)}</span>
+          <div className="mt-2.5 pt-2.5 border-t border-slate-100 space-y-1">
+            <div className="flex justify-between items-center text-xs">
+              <span className="text-slate-500">{t.rentalReturn.fuelHistoryTotalGallons}</span>
+              <span className="font-black text-slate-800">{roundGallons(fillups.reduce((s, f) => s + f.gallonsPumped, 0))} gal</span>
+            </div>
             {fillups.some((f) => f.totalCost > 0) && (
-              <span>${fillups.reduce((s, f) => s + f.totalCost, 0).toFixed(2)}</span>
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-slate-500">{t.rentalReturn.fuelHistoryTotalCost}</span>
+                <span className="font-black text-slate-800">${fillups.reduce((s, f) => s + f.totalCost, 0).toFixed(2)}</span>
+              </div>
             )}
           </div>
         </div>
@@ -628,7 +798,7 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
 
       {/* Actions */}
       <div className="flex gap-2">
-        <button onClick={() => { setRefuelDefaultType('trip'); setShowRefuel(true); }} className="flex-1 py-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-700 text-sm font-bold">
+        <button onClick={() => { setRefuelDefaultType('trip'); setRefuelSuggestion({}); setShowRefuel(true); }} className="flex-1 py-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-700 text-sm font-bold">
           ⛽ {t.rentalReturn.iJustRefueled}
         </button>
         <button onClick={() => setShowComplete(true)} className="flex-1 py-3 rounded-2xl bg-blue-600 text-white text-sm font-bold">
@@ -643,9 +813,9 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
           onClose={() => setShowRefuel(false)}
           onSaved={() => { setShowRefuel(false); load(); }}
           sessionId={sessionId}
-          suggestedGallons={needed > 0 ? needed : undefined}
+          suggestedGallons={refuelSuggestion.gallons}
           defaultFillupType={refuelDefaultType}
-          suggestedPricePerGallon={Number(calcPricePerGal) > 0 ? Number(calcPricePerGal) : undefined}
+          suggestedPricePerGallon={refuelSuggestion.price}
         />
       )}
       {showComplete && (
