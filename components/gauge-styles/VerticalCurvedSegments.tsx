@@ -22,12 +22,31 @@ const GAP_DEG = 1.5;
 const SPAN = END_ANGLE - START_ANGLE;
 const SEG_SPAN = SPAN / SEGMENT_COUNT;
 
+const toRad = (d: number) => (d * Math.PI) / 180;
+
+// 2026-08-27 fix — same root cause as VerticalCurvedNeedle: E/F were
+// hardcoded eyeballed coordinates that landed inside the segment ring's
+// outer edge instead of beyond it. Derived from the same arc geometry as
+// the segments themselves, at a radius comfortably past the ring's outer
+// edge, instead of a separately-guessed (x, y) pair.
+const LABEL_MARGIN = 6;
+const LABEL_R = R + SEG_W / 2 + LABEL_MARGIN;
+function labelPoint(angleDeg: number) {
+  const rad = toRad(angleDeg);
+  return {
+    x: Math.round((CX + LABEL_R * Math.cos(rad)) * 100) / 100,
+    y: Math.round((CY + LABEL_R * Math.sin(rad)) * 100) / 100,
+  };
+}
+const E_LABEL = labelPoint(START_ANGLE);
+const F_LABEL = labelPoint(END_ANGLE);
+
 /** Exported for structural bounds testing without a JSX render harness. */
 export const VERTICAL_CURVED_SEGMENTS_LAYOUT = {
   cx: CX, cy: CY, r: R, segmentWidth: SEG_W,
   startAngle: START_ANGLE, endAngle: END_ANGLE, segmentCount: SEGMENT_COUNT,
-  eLabel: { x: 128, y: 128 },
-  fLabel: { x: 128, y: -4 },
+  eLabel: E_LABEL,
+  fLabel: F_LABEL,
 };
 
 export default function VerticalCurvedSegments({ percent, color, dragging, label }: GaugeRendererProps) {
@@ -54,8 +73,8 @@ export default function VerticalCurvedSegments({ percent, color, dragging, label
         );
       })}
 
-      <text x="128" y="128" fontSize="14" fontWeight="800" fill="#ef4444" textAnchor="middle">E</text>
-      <text x="128" y="-4" fontSize="14" fontWeight="800" fill="#22c55e" textAnchor="middle">F</text>
+      <text x={E_LABEL.x} y={E_LABEL.y} fontSize="14" fontWeight="800" fill="#ef4444" textAnchor="middle">E</text>
+      <text x={F_LABEL.x} y={F_LABEL.y} fontSize="14" fontWeight="800" fill="#22c55e" textAnchor="middle">F</text>
 
       <text x="60" y="66" fontSize={label.length > 2 ? '24' : '30'} fontWeight="800" fill={color} textAnchor="middle" letterSpacing="-1"
         style={{ transition: dragging ? 'none' : 'fill 0.4s ease' }}>

@@ -29,13 +29,48 @@ const pctToAngle = (pct: number) => START_ANGLE + (END_ANGLE - START_ANGLE) * Ma
 const MAJOR_TICKS = [0.25, 0.5, 0.75];
 const MINOR_TICKS = [0.125, 0.375, 0.625, 0.875];
 
+// 2026-08-27 fix — E/F were hardcoded eyeballed coordinates (150,128)/
+// (150,-4) that landed INSIDE the track's outer radius instead of beyond
+// it, so both labels visually overlapped the gauge ring instead of sitting
+// outside it as scale endpoints should (reported after shipping — this
+// repo's structural tests only assert "inside the viewBox," which a label
+// sitting inside the ring still satisfies, so they didn't catch this).
+// Fixed by deriving the label position from the SAME arc geometry as every
+// tick mark, at a radius comfortably beyond the track's outer edge, rather
+// than a separate guessed (x, y) pair.
+const LABEL_MARGIN = 6;
+const LABEL_R = R + TRACK_W / 2 + LABEL_MARGIN;
+function labelPoint(angleDeg: number) {
+  const rad = toRad(angleDeg);
+  return {
+    x: Math.round((CX + LABEL_R * Math.cos(rad)) * 100) / 100,
+    y: Math.round((CY + LABEL_R * Math.sin(rad)) * 100) / 100,
+  };
+}
+const E_LABEL = labelPoint(START_ANGLE);
+const F_LABEL = labelPoint(END_ANGLE);
+// ¼/½/¾ sit just beyond the major ticks' own outer end (R+12), same
+// same-root-cause fix as E/F above — these were separately hardcoded and
+// had the identical inward-of-the-ring problem.
+const MID_LABEL_R = R + 12 + 8;
+function midLabelPoint(frac: number) {
+  const rad = toRad(pctToAngle(frac * 100));
+  return {
+    x: Math.round((CX + MID_LABEL_R * Math.cos(rad)) * 100) / 100,
+    y: Math.round((CY + MID_LABEL_R * Math.sin(rad)) * 100) / 100,
+  };
+}
+const QUARTER_LABEL = midLabelPoint(0.25);
+const HALF_LABEL = midLabelPoint(0.5);
+const THREE_QUARTER_LABEL = midLabelPoint(0.75);
+
 /** Exported for structural bounds testing without a JSX render harness (none exists in this repo) — mirrors VERTICAL_SEGMENTS_LAYOUT's pattern. */
 export const VERTICAL_CURVED_NEEDLE_LAYOUT = {
   cx: CX, cy: CY, r: R, trackWidth: TRACK_W,
   startAngle: START_ANGLE, endAngle: END_ANGLE,
   majorTicks: MAJOR_TICKS, minorTicks: MINOR_TICKS,
-  eLabel: { x: 150, y: 128 },
-  fLabel: { x: 150, y: -4 },
+  eLabel: E_LABEL,
+  fLabel: F_LABEL,
 };
 
 export default function VerticalCurvedNeedle({ percent, color, dragging, label }: GaugeRendererProps) {
@@ -85,12 +120,12 @@ export default function VerticalCurvedNeedle({ percent, color, dragging, label }
         );
       })}
 
-      {/* E at the low (bottom) end of the arc, F at the high (top) end — both well inside the shared viewBox. */}
-      <text x="150" y="128" fontSize="14" fontWeight="800" fill="#ef4444" textAnchor="middle">E</text>
-      <text x="150" y="-4" fontSize="14" fontWeight="800" fill="#22c55e" textAnchor="middle">F</text>
-      <text x="112" y="100" fontSize="11" fontWeight="800" fill="#64748b" textAnchor="middle">¼</text>
-      <text x="100" y="66" fontSize="11" fontWeight="800" fill="#64748b" textAnchor="middle">½</text>
-      <text x="112" y="30" fontSize="11" fontWeight="800" fill="#64748b" textAnchor="middle">¾</text>
+      {/* E at the low (bottom) end of the arc, F at the high (top) end — positioned beyond the track's outer edge (LABEL_R), not merely inside the shared viewBox. */}
+      <text x={E_LABEL.x} y={E_LABEL.y} fontSize="14" fontWeight="800" fill="#ef4444" textAnchor="middle">E</text>
+      <text x={F_LABEL.x} y={F_LABEL.y} fontSize="14" fontWeight="800" fill="#22c55e" textAnchor="middle">F</text>
+      <text x={QUARTER_LABEL.x} y={QUARTER_LABEL.y} fontSize="11" fontWeight="800" fill="#64748b" textAnchor="middle">¼</text>
+      <text x={HALF_LABEL.x} y={HALF_LABEL.y} fontSize="11" fontWeight="800" fill="#64748b" textAnchor="middle">½</text>
+      <text x={THREE_QUARTER_LABEL.x} y={THREE_QUARTER_LABEL.y} fontSize="11" fontWeight="800" fill="#64748b" textAnchor="middle">¾</text>
 
       <line x1={CX} y1={CY}
         x2={(CX + R * 0.82 * Math.cos(toRad(needleAng))).toFixed(2)}
