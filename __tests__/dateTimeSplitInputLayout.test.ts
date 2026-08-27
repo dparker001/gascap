@@ -103,14 +103,21 @@ describe('globals.css — device-proven WKWebView content-box width compensation
   // rule (not a generic width:100% that WKWebView silently mis-sizes) is
   // present and scoped to exactly these two inputs — not a claim that this
   // test itself proves the on-device fit.
-  it('date and time inputs both get the 26px width compensation, not a plain 100%', () => {
+  //
+  // 2026-08-28 — this rule shipped without !important (PR #36) and the
+  // overflow was STILL reproducible live: WKWebView's own agent stylesheet
+  // apparently wins the cascade over this declaration without it, despite
+  // selector specificity. Re-measured on the same iPhone with !important
+  // added: 0 overflow on all four fields. Required, not optional — see
+  // app/globals.css for the full device measurements.
+  it('date and time inputs both get the !important 26px width compensation, not a plain 100%', () => {
     const rule = globalsCss.match(
       /input\.rental-datetime-input\[type="date"\][\s\S]*?\}/,
     )?.[0] ?? '';
     expect(rule).toMatch(/input\.rental-datetime-input\[type="date"\]/);
     expect(rule).toMatch(/input\.rental-datetime-input\[type="time"\]/);
-    expect(rule).toMatch(/width:\s*calc\(100% - 26px\)/);
-    expect(rule).toMatch(/max-width:\s*calc\(100% - 26px\)/);
+    expect(rule).toMatch(/width:\s*calc\(100% - 26px\)\s*!important/);
+    expect(rule).toMatch(/max-width:\s*calc\(100% - 26px\)\s*!important/);
   });
 
   it('the compensation is scoped to .rental-datetime-input only, not every date/time input on the site', () => {
