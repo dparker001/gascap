@@ -10,10 +10,17 @@
  * y ∈ [-20, 145].
  */
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { VERTICAL_CURVED_NEEDLE_LAYOUT } from '@/components/gauge-styles/VerticalCurvedNeedle';
 import { VERTICAL_CURVED_SEGMENTS_LAYOUT } from '@/components/gauge-styles/VerticalCurvedSegments';
 import { GAUGE_STYLES } from '@/lib/gaugeStyles';
 import { GAUGE_RENDERERS } from '@/components/gauge-styles/registry';
+
+const verticalCurvedNeedleSrc = readFileSync(
+  join(__dirname, '../components/gauge-styles/VerticalCurvedNeedle.tsx'),
+  'utf8',
+);
 
 const VIEWBOX_X_MIN = 0, VIEWBOX_X_MAX = 280;
 const VIEWBOX_Y_MIN = -20, VIEWBOX_Y_MAX = 145;
@@ -89,6 +96,22 @@ describe('VerticalCurvedNeedle — geometry stays inside the shared viewBox', ()
   it('the 90° sweep is oriented E-low-to-F-high (start angle < end angle)', () => {
     expect(L.startAngle).toBeLessThan(L.endAngle);
     expect(L.endAngle - L.startAngle).toBe(90);
+  });
+
+  // 2026-08-27 — major ticks previously recolored to near-white once the
+  // fuel arc passed them (`frac <= p ? white : slate`), making the ¼/½/¾
+  // scale landmarks visually disappear against the same-color filled arc.
+  // No render harness exists in this repo (see file header), so this reads
+  // the component source directly rather than mounting it — asserting both
+  // that the fixed color constants exist and that no percent-conditional
+  // tick coloring (the removed `filled`/`frac <= p` pattern) remains.
+  it('major and minor ticks use a fixed color — not conditional on fuel percent', () => {
+    expect(L.majorTickColor).toBeTypeOf('string');
+    expect(L.minorTickColor).toBeTypeOf('string');
+    expect(L.majorTickColor).not.toBe(L.minorTickColor);
+
+    expect(verticalCurvedNeedleSrc).not.toMatch(/frac\s*<=\s*p\b/);
+    expect(verticalCurvedNeedleSrc).not.toMatch(/filled\s*\?/);
   });
 });
 
