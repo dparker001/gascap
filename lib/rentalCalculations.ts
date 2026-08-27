@@ -51,6 +51,35 @@ export function gallonsNeeded(requiredReturnFuelGallons: number, currentFuelGall
   return gallonsToFill(requiredReturnFuelGallons, currentFuelGallons, 1);
 }
 
+export interface TripFillEstimate {
+  gallonsToAdd: number;
+  estimatedCost: number | null;
+}
+
+/** Trip Fill-Up calculator (Phase 6A) — "how much fuel do I want to add
+ *  right now," independent of the return-target calculation above (which
+ *  uses gallonsNeeded() against requiredReturnFuelGallons specifically).
+ *  Desired level is clamped to tank capacity first: the 'gallons' entry
+ *  method has no upper bound of its own, and an estimate built from a
+ *  physically-impossible desired level isn't a smaller number than
+ *  reality, it's a wrong one. Reuses gallonsNeeded()/estimatedFuelCost()
+ *  unchanged — same math as the return flow, just a different target. */
+export function tripFillEstimate(
+  currentFuelGallons: number,
+  desiredFuelGallons: number,
+  tankCapacityGallons: number,
+  pricePerGallon?: number,
+): TripFillEstimate {
+  const clampedDesired = tankCapacityGallons > 0
+    ? Math.min(desiredFuelGallons, tankCapacityGallons)
+    : desiredFuelGallons;
+  const gallonsToAdd = roundGallons(gallonsNeeded(clampedDesired, currentFuelGallons));
+  const estimatedCost = gallonsToAdd > 0 && pricePerGallon != null && pricePerGallon > 0
+    ? estimatedFuelCost(gallonsToAdd, pricePerGallon)
+    : null;
+  return { gallonsToAdd, estimatedCost };
+}
+
 /** Estimated out-of-pocket cost to refuel at a given nearby station price. */
 export function estimatedFuelCost(gallonsNeededVal: number, stationPricePerGallon: number): number {
   if (!(gallonsNeededVal > 0) || !(stationPricePerGallon > 0)) return 0;

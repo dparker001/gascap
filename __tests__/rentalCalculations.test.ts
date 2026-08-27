@@ -14,6 +14,7 @@ import {
   isUpcomingRental,
   rentalRecap,
   resolveCalculateFillState,
+  tripFillEstimate,
 } from '../lib/rentalCalculations';
 import { gallonsFromGaugeFraction, gallonsFromPercent } from '../lib/rentalProvider';
 
@@ -410,5 +411,47 @@ describe('resolveCalculateFillState()', () => {
 
   it('a real reading already at or above the return level is VISIBLE (not hidden) with its own state — the exact bug being fixed', () => {
     expect(resolveCalculateFillState({ isUpcoming: false, hasFuelReading: true, needed: 0 })).toBe('at_or_above_target');
+  });
+});
+
+// Phase 6A — Trip Fill-Up calculator. Deliberately independent of the
+// return-target calculation above: current/desired here are arbitrary,
+// user-chosen levels, not requiredReturnFuelGallons.
+describe('tripFillEstimate()', () => {
+  it('worked example from the product spec: 15 gal tank, 1/4 → 3/4, $3.20/gal → 7.5 gal / $24.00', () => {
+    const est = tripFillEstimate(15 * 0.25, 15 * 0.75, 15, 3.2);
+    expect(est.gallonsToAdd).toBe(7.5);
+    expect(est.estimatedCost).toBe(24);
+  });
+
+  it('no price supplied → gallons computed, cost is null (never a fabricated $0)', () => {
+    const est = tripFillEstimate(5, 10, 15);
+    expect(est.gallonsToAdd).toBe(5);
+    expect(est.estimatedCost).toBeNull();
+  });
+
+  it('zero/no-op: desired equals current → 0 gallons, no cost', () => {
+    const est = tripFillEstimate(10, 10, 15, 3.5);
+    expect(est.gallonsToAdd).toBe(0);
+    expect(est.estimatedCost).toBeNull();
+  });
+
+  it('desired below current → clamped to 0, never negative', () => {
+    const est = tripFillEstimate(12, 5, 15, 3.5);
+    expect(est.gallonsToAdd).toBe(0);
+    expect(est.estimatedCost).toBeNull();
+  });
+
+  it('tank-capacity edge case: desired above tank capacity is clamped to capacity, not treated as-is', () => {
+    // Without the capacity clamp this would compute 25 - 2 = 23 gal, which
+    // cannot physically fit in a 15-gallon tank.
+    const est = tripFillEstimate(2, 25, 15, 3);
+    expect(est.gallonsToAdd).toBe(13);
+    expect(est.estimatedCost).toBe(39);
+  });
+
+  it('unknown/zero tank capacity does not clamp (falls back to the raw desired value)', () => {
+    const est = tripFillEstimate(2, 10, 0);
+    expect(est.gallonsToAdd).toBe(8);
   });
 });
