@@ -181,6 +181,26 @@ body {
     margin-left: 2px;
   }
 
+  /* 2026-08-27 — reported still overflowing in production for the TIME
+     field specifically (EditRentalModal screenshot), while the DATE field
+     in the same row/grid, same .rental-datetime-input class, same padding,
+     sits correctly inside the card. The two controls differ in shadow-DOM
+     part count: date is 3 numeric fields (MM/DD/YYYY); time is hour +
+     minute + a non-numeric AM/PM field, and each ::-webkit-datetime-edit-*
+     part carries its OWN small internal padding on top of the wrapper-level
+     min-width:0 already applied above — the wrapper rule zeroes the
+     wrapper's own minimum but cannot reach into each child part's padding,
+     so time's extra field (and AM/PM being wider than a 2-digit numeric
+     field) pushes total intrinsic content width past what date needs.
+     Trimming each part's own padding directly targets that per-field
+     minimum rather than the wrapper as a whole. */
+  input[type="time"]::-webkit-datetime-edit-hour-field,
+  input[type="time"]::-webkit-datetime-edit-minute-field,
+  input[type="time"]::-webkit-datetime-edit-ampm-field,
+  input[type="time"]::-webkit-datetime-edit-text {
+    padding: 0;
+  }
+
   /* Rental Return pickup/return date + time fields specifically — same
      visual treatment as .input-field but with tighter padding than
      .input-field's px-4/py-3.5, leaving the native control's shadow-DOM

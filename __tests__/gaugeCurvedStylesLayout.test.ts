@@ -66,6 +66,21 @@ describe('VerticalCurvedNeedle — geometry stays inside the shared viewBox', ()
     expect(L.cy).toBeLessThan(VIEWBOX_Y_MAX);
   });
 
+  // 2026-08-27 regression — E/F previously sat at hardcoded coordinates
+  // that were technically inside the viewBox (so the test above passed)
+  // but were INSIDE the track's outer radius, visually overlapping the
+  // gauge ring instead of reading as scale endpoints beyond it. "Inside
+  // the viewBox" alone can never catch this class of bug — this asserts
+  // the actual reported symptom: distance from the pivot must exceed the
+  // track's outer edge.
+  it('E and F sit strictly beyond the track\'s outer edge, not inside the ring', () => {
+    const outerEdge = L.r + L.trackWidth / 2;
+    for (const point of [L.eLabel, L.fLabel]) {
+      const dist = Math.hypot(point.x - L.cx, point.y - L.cy);
+      expect(dist).toBeGreaterThan(outerEdge);
+    }
+  });
+
   it('exposes 3 major ticks and 4 minor ticks — the required ⅛-fraction hierarchy (¼ ½ ¾ major, ⅛ ⅜ ⅝ ⅞ minor)', () => {
     expect(L.majorTicks).toEqual([0.25, 0.5, 0.75]);
     expect(L.minorTicks).toEqual([0.125, 0.375, 0.625, 0.875]);
@@ -112,5 +127,15 @@ describe('VerticalCurvedSegments — geometry stays inside the shared viewBox', 
   it('is a curved arc (positive radius, 90° sweep) — recognizably different geometry from the straight vertical_segments bar', () => {
     expect(L.r).toBeGreaterThan(0);
     expect(L.endAngle - L.startAngle).toBe(90);
+  });
+
+  // 2026-08-27 regression — same root cause and same fix as
+  // VerticalCurvedNeedle above.
+  it('E and F sit strictly beyond the segment ring\'s outer edge, not inside the ring', () => {
+    const outerEdge = L.r + L.segmentWidth / 2;
+    for (const point of [L.eLabel, L.fLabel]) {
+      const dist = Math.hypot(point.x - L.cx, point.y - L.cy);
+      expect(dist).toBeGreaterThan(outerEdge);
+    }
   });
 });
