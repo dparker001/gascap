@@ -28,6 +28,9 @@ const pctToAngle = (pct: number) => START_ANGLE + (END_ANGLE - START_ANGLE) * Ma
 
 const MAJOR_TICKS = [0.25, 0.5, 0.75];
 const MINOR_TICKS = [0.125, 0.375, 0.625, 0.875];
+// Fixed regardless of fuel percent — see the render-time comment below for why.
+const MAJOR_TICK_COLOR = '#94a3b8';
+const MINOR_TICK_COLOR = '#cbd5e1';
 
 // 2026-08-27 fix — E/F were hardcoded eyeballed coordinates (150,128)/
 // (150,-4) that landed INSIDE the track's outer radius instead of beyond
@@ -69,12 +72,12 @@ export const VERTICAL_CURVED_NEEDLE_LAYOUT = {
   cx: CX, cy: CY, r: R, trackWidth: TRACK_W,
   startAngle: START_ANGLE, endAngle: END_ANGLE,
   majorTicks: MAJOR_TICKS, minorTicks: MINOR_TICKS,
+  majorTickColor: MAJOR_TICK_COLOR, minorTickColor: MINOR_TICK_COLOR,
   eLabel: E_LABEL,
   fLabel: F_LABEL,
 };
 
 export default function VerticalCurvedNeedle({ percent, color, dragging, label }: GaugeRendererProps) {
-  const p = percent / 100;
   const needleAng = pctToAngle(percent);
   const fillEnd = pctToAngle(Math.max(1, percent));
   const tipX = (CX + R * Math.cos(toRad(needleAng))).toFixed(2);
@@ -92,16 +95,23 @@ export default function VerticalCurvedNeedle({ percent, color, dragging, label }
         />
       )}
 
+      {/* 2026-08-27 fix — ticks previously recolored to near-white once the
+          fuel arc passed them (near-white once the tick's fraction reached
+          the current level, slate otherwise), which made the
+          ¼/½/¾ scale landmarks visually disappear against the same-color
+          filled arc. The scale communicates position only; fuel state is
+          the arc/needle's job. Ticks now render a fixed color regardless of
+          percent — MINOR_TICK_COLOR/MAJOR_TICK_COLOR are what "unfilled"
+          already was, since that pairing (light/thin minor, dark/thick
+          major) was already the correct always-visible hierarchy. */}
       {MINOR_TICKS.map((frac) => {
         const ta = pctToAngle(frac * 100);
         const cos = Math.cos(toRad(ta)); const sin = Math.sin(toRad(ta));
-        const filled = frac <= p;
         return (
           <line key={frac}
             x1={(CX + (R - 7) * cos).toFixed(2)} y1={(CY + (R - 7) * sin).toFixed(2)}
             x2={(CX + (R + 7) * cos).toFixed(2)} y2={(CY + (R + 7) * sin).toFixed(2)}
-            stroke={filled ? 'rgba(255,255,255,0.72)' : '#cbd5e1'} strokeWidth="2" strokeLinecap="round"
-            style={{ transition: 'stroke 0.3s' }}
+            stroke={MINOR_TICK_COLOR} strokeWidth="2" strokeLinecap="round"
           />
         );
       })}
@@ -109,13 +119,11 @@ export default function VerticalCurvedNeedle({ percent, color, dragging, label }
       {MAJOR_TICKS.map((frac) => {
         const ta = pctToAngle(frac * 100);
         const cos = Math.cos(toRad(ta)); const sin = Math.sin(toRad(ta));
-        const filled = frac <= p;
         return (
           <line key={frac}
             x1={(CX + (R - 12) * cos).toFixed(2)} y1={(CY + (R - 12) * sin).toFixed(2)}
             x2={(CX + (R + 12) * cos).toFixed(2)} y2={(CY + (R + 12) * sin).toFixed(2)}
-            stroke={filled ? 'rgba(255,255,255,0.88)' : '#94a3b8'} strokeWidth="3.5" strokeLinecap="round"
-            style={{ transition: 'stroke 0.3s' }}
+            stroke={MAJOR_TICK_COLOR} strokeWidth="3.5" strokeLinecap="round"
           />
         );
       })}
