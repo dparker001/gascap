@@ -230,15 +230,27 @@ body {
        370px → 26px overflow (12px left padding + 12px right padding + ~2px
        border, all added outside the declared 100%).
      Compensating by subtracting that same 26px from width/max-width forces
-     the actual outer/rendered width back to 344px == parentWidth, measured
-     with zero overflow on the same device after this change. This is a
+     the actual outer/rendered width back to 344px == parentWidth. This is a
      WKWebView content-box quirk, not something jsdom or a Chromium preview
      can reproduce — do not "simplify" this back to width:100% without
-     re-measuring on a real device first. */
+     re-measuring on a real device first.
+
+     2026-08-28 follow-up — the rule above shipped (PR #36) but the
+     overflow was STILL reproducible live: WKWebView's own default
+     agent stylesheet for these native controls apparently wins the
+     cascade over an author-stylesheet `width`/`max-width` declaration
+     without `!important`, even at higher selector specificity — the
+     inspector showed `boxSizing: content-box` persisting and the outer
+     width still at 370px until `!important` was added. Re-measured live
+     on the same iPhone after adding it: outer width 344px == parentWidth,
+     0 overflow, confirmed on all four fields (Pickup Date, Pickup Time,
+     Return Date, Return Time). `!important` is required here, not
+     optional polish — do not remove it without re-measuring on a real
+     device first. */
   input.rental-datetime-input[type="date"],
   input.rental-datetime-input[type="time"] {
-    width: calc(100% - 26px);
-    max-width: calc(100% - 26px);
+    width: calc(100% - 26px) !important;
+    max-width: calc(100% - 26px) !important;
   }
 
   /* ── Section card */
