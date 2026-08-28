@@ -702,7 +702,7 @@ const en = {
     // add right now" estimate, independent of the return-target calculation
     // above (calculateFillTitle etc.). Deliberately separate keys/copy so
     // the two never read as the same control.
-    tripCalcTitle:        'Fill Up During Rental',
+    tripCalcTitle:        'Add Fuel During Rental',
     tripCalcHint:         'Estimate a regular fuel stop during your rental — separate from your return calculation.',
     tripCalcDesiredLevel: 'Desired Level',
     tripCalcGallonsToAdd: 'Estimated fuel needed',
@@ -710,6 +710,22 @@ const en = {
     tripCalcLogCta:       'Log This Fill-Up',
     tripCalcDesiredTooLow: 'Set a desired level higher than your current level.',
     tripCalcSetCurrentFuelFirst: 'Set your current fuel level first.',
+    // Phase 6A.2 — Active-rental dashboard redesign (Current State -> Next
+    // Action -> Details). "Calculate Fill" as a generic user-facing label
+    // is gone; its two jobs are now two clearly named workflows below.
+    currentFuelSectionTitle: 'Current Fuel',
+    returnRequirementLabel:  'Return requirement',
+    fuelActionsTitle:        'What Would You Like To Do?',
+    addFuelActionSubtitle:   'Decide how much fuel to add for driving now.',
+    prepareReturnActionSubtitle: 'Calculate what you need to meet the return requirement.',
+    findGasActionSubtitle:   'Find fuel nearby.',
+    prepareForReturnHint:    "Calculate what you need to meet the rental company's return requirement.",
+    logFinalFillUpCta:       'Log Final Fill-Up',
+    rentalDetailsTitle:      'Rental Details',
+    viewHistoryLabel:        'View History',
+    hideHistoryLabel:        'Hide History',
+    fuelHistorySummaryLine:  (count: number, gallons: number, cost: number) =>
+      `${count} fill-up${count === 1 ? '' : 's'} · ${gallons} gal${cost > 0 ? ` · $${cost.toFixed(2)}` : ''}`,
     fuelHistoryTotalGallons: 'Total Gallons Purchased',
     fuelHistoryTotalCost:    'Total Fuel Spent',
     // Phase 6A.1 — lifecycle UX (near_return / completed presentation states)
@@ -3871,6 +3887,19 @@ const es: typeof en = {
     tripCalcLogCta:       'Registrar Este Repostaje',
     tripCalcDesiredTooLow: 'Elige un nivel deseado mayor que tu nivel actual.',
     tripCalcSetCurrentFuelFirst: 'Primero establece tu nivel de combustible actual.',
+    currentFuelSectionTitle: 'Combustible Actual',
+    returnRequirementLabel:  'Requisito de devolución',
+    fuelActionsTitle:        '¿Qué Te Gustaría Hacer?',
+    addFuelActionSubtitle:   'Decide cuánto combustible agregar para conducir ahora.',
+    prepareReturnActionSubtitle: 'Calcula lo que necesitas para cumplir el requisito de devolución.',
+    findGasActionSubtitle:   'Encuentra combustible cerca.',
+    prepareForReturnHint:    'Calcula lo que necesitas para cumplir el requisito de devolución de la compañía de alquiler.',
+    logFinalFillUpCta:       'Registrar Repostaje Final',
+    rentalDetailsTitle:      'Detalles del Alquiler',
+    viewHistoryLabel:        'Ver Historial',
+    hideHistoryLabel:        'Ocultar Historial',
+    fuelHistorySummaryLine:  (count: number, gallons: number, cost: number) =>
+      `${count} repostaje${count === 1 ? '' : 's'} · ${gallons} gal${cost > 0 ? ` · $${cost.toFixed(2)}` : ''}`,
     fuelHistoryTotalGallons: 'Total de Galones Comprados',
     fuelHistoryTotalCost:    'Total Gastado en Combustible',
     prepareForReturnTitle:   'Prepárate para Devolver',
