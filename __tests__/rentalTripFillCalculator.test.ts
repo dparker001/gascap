@@ -139,8 +139,11 @@ describe('Fuel History — totals and row display use canonical Fillup fields, n
 });
 
 describe('Existing final-return calculation is untouched by this change', () => {
-  it('the top-level `needed` figure still derives from gallonsNeeded(requiredReturnFuelGallons, currentFuelGallons) — the return target, not the trip calculator', () => {
-    expect(dashboardSrc).toMatch(/const needed\s*=\s*gallonsNeeded\(session\.requiredReturnFuelGallons \?\? 0, session\.currentFuelGallons \?\? 0\)/);
+  it('2026-08-28 correction: the top-level `needed` const (which drove the Current Fuel card\'s "Add X gal"/"No fuel needed" conclusion from raw, unconfirmed fuel) was removed entirely; the return-target gallonsNeeded() calculation now lives only inside Prepare for Return, keyed off confirmed fuel', () => {
+    expect(dashboardSrc).not.toMatch(/const needed\s*=\s*gallonsNeeded\(/);
+    const prepareStart = dashboardSrc.indexOf("const prepareReturnContent = activeWorkflow === 'prepare_return'");
+    expect(prepareStart).toBeGreaterThan(-1);
+    expect(dashboardSrc).toMatch(/gallonsNeeded\(session\.requiredReturnFuelGallons/);
   });
 
   it('the Calculate Fill (return-target) section still uses its own state (calcPricePerGal), independent of the trip calculator\'s tripPricePerGal', () => {
@@ -166,31 +169,23 @@ describe('Add Fuel During Rental collapses when the rental has not started, has 
 // calculator's promised result and the real post-fillup tank state
 // disagreeing. These lock in the fix: current level is ALWAYS the
 // authoritative session.currentFuelGallons, never a second editable state.
-describe('Trip Fill-Up calculator — current level is authoritative, never independently editable', () => {
-  it('uses session.currentFuelGallons as the current source for tripFillEstimate()', () => {
-    const currentLineIdx = tripCalcBlock.indexOf('const currentGallons = session.currentFuelGallons');
-    expect(currentLineIdx).toBeGreaterThan(-1);
+describe('Trip Fill-Up calculator — current level requires in-session confirmation (2026-08-28 hardening)', () => {
+  it('uses confirmedCurrentFuelGallons (never the raw last-known session value) as the current source for tripFillEstimate()', () => {
     const estimateCall = tripCalcBlock.slice(tripCalcBlock.indexOf('tripFillEstimate('));
-    expect(estimateCall).toMatch(/tripFillEstimate\(\s*currentGallons,/);
+    expect(estimateCall).toMatch(/tripFillEstimate\(\s*confirmedGallons,/);
   });
 
-  it('there is no independent tripCurrentFuel state, and no FuelLevelInput bound to a calculator-only current value', () => {
+  it('there is no independent tripCurrentFuel state, and exactly one FuelLevelInput inside the trip-calc block bound to the desired level (confirmation uses the shared renderFuelConfirmPanel(), not a second calculator-local one)', () => {
     expect(dashboardSrc).not.toMatch(/tripCurrentFuel/);
     expect(dashboardSrc).not.toMatch(/setTripCurrentFuel/);
-    // Exactly one FuelLevelInput inside the trip-calc block — the desired
-    // level. A second one bound to "current" is exactly the bug being fixed.
     const fuelLevelInputCount = (tripCalcBlock.match(/<FuelLevelInput/g) ?? []).length;
     expect(fuelLevelInputCount).toBe(1);
     expect(tripCalcBlock).toMatch(/onResolved=\{\(v\) => \{ setTripDesiredFuel\(v\)/);
   });
 
   it('unknown current fuel (session.currentFuelGallons == null) does not calculate from 0 — hasCurrentFuel gates the estimate', () => {
-    expect(tripCalcBlock).toMatch(/const hasCurrentFuel = currentGallons != null/);
-    expect(tripCalcBlock).toMatch(/const estimate = hasCurrentFuel && tripDesiredGallonsRaw != null/);
-    // No `?? 0` fallback feeding the estimate the way the return-target
-    // section fell back to 0 for `needed` before its own fix.
-    const estimateBlock = tripCalcBlock.slice(tripCalcBlock.indexOf('const estimate ='), tripCalcBlock.indexOf('const estimate =') + 200);
-    expect(estimateBlock).not.toMatch(/currentGallons \?\? 0/);
+    expect(tripCalcBlock).toMatch(/const hasCurrentFuel = session\.currentFuelGallons != null/);
+    expect(tripCalcBlock).toMatch(/const estimate = confirmedGallons != null && tripDesiredGallonsRaw != null/);
   });
 
   it('unknown current fuel shows a prompt and the EXISTING Update Current Fuel action, not a second fuel-entry form', () => {
@@ -201,15 +196,14 @@ describe('Trip Fill-Up calculator — current level is authoritative, never inde
     expect(unknownBlock).not.toMatch(/<FuelLevelInput/);
   });
 
-  it('the known-current-fuel branch reuses the same setShowUpdateFuel action to correct current level, not a duplicate PATCH', () => {
-    const knownBlock = tripCalcBlock.slice(tripCalcBlock.indexOf('const currentGallons'), tripCalcBlock.indexOf('tripDesiredTooLow ?'));
-    expect(knownBlock).toMatch(/setShowUpdateFuel\(true\)/);
-    expect(knownBlock).not.toMatch(/fetch\(/);
+  it('a stored value alone never enables Calculate — the button only renders once confirmedGallons is non-null', () => {
+    const knownBlock = tripCalcBlock.slice(tripCalcBlock.indexOf('const hasCurrentFuel'), tripCalcBlock.indexOf('tripDesiredEqualsConfirmed ?'));
+    expect(knownBlock).toMatch(/confirmedGallons != null && tripDesiredGallonsRaw != null && \(/);
   });
 
-  it('desired level remains independently adjustable and drives the estimate together with the authoritative current level', () => {
+  it('desired level remains independently adjustable and drives the estimate together with the confirmed current level', () => {
     expect(tripCalcBlock).toMatch(/const tripDesiredGallonsRaw = tripDesiredFuel\?\.gallons \?\? null/);
-    expect(tripCalcBlock).toMatch(/tripFillEstimate\(\s*currentGallons,\s*tripDesiredGallonsRaw,\s*tankCapacity/);
+    expect(tripCalcBlock).toMatch(/tripFillEstimate\(\s*confirmedGallons,\s*tripDesiredGallonsRaw,\s*tankCapacity/);
   });
 
   it('createRentalFillup\'s canonical current-fuel-bump behavior is untouched (single atomic update path, not duplicated)', () => {

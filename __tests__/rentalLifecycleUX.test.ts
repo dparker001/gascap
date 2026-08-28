@@ -86,18 +86,23 @@ describe('Prepare for Return promotion (near_return) — Phase 6A.2', () => {
   });
 
   it('reuses the existing gallonsNeeded/estimatedFuelCost primitives — no second calculator, no new fuel math', () => {
-    // Both are still imported and used exactly as before this phase.
-    expect(dashboardSrc).toMatch(/const needed\s*=\s*gallonsNeeded\(session\.requiredReturnFuelGallons \?\? 0, session\.currentFuelGallons \?\? 0\)/);
-    expect(dashboardSrc).toMatch(/estimatedFuelCost\(needed, Number\(calcPricePerGal\)\)/);
+    // 2026-08-28 correction: the raw top-level `needed` const was removed
+    // entirely (it fed the Current Fuel card's unconfirmed "Add X gal"/
+    // "No fuel needed" conclusion). Prepare for Return still calls
+    // gallonsNeeded()/estimatedFuelCost() — the same, unmodified functions —
+    // but only against its own confirmed-fuel-derived neededSafe figure.
+    expect(dashboardSrc).not.toMatch(/const needed\s*=\s*gallonsNeeded\(/);
+    expect(dashboardSrc).toMatch(/gallonsNeeded\(session\.requiredReturnFuelGallons/);
+    expect(dashboardSrc).toMatch(/estimatedFuelCost\(neededSafe, Number\(calcPricePerGal\)\)/);
     // Sanity: these are literally the same functions used elsewhere in the
     // suite, not a lifecycle-specific reimplementation.
     expect(gallonsNeeded(10, 4)).toBe(6);
     expect(estimatedFuelCost(6, 3)).toBe(18);
   });
 
-  it('estimated savings only renders when both a rental-company rate AND an entered price exist, never a fabricated gas price', () => {
-    expect(dashboardSrc).toMatch(/const estimatedSavingsAmount = rentalCharge != null && Number\(calcPricePerGal\) > 0/);
-    expect(dashboardSrc).toMatch(/estimatedSavingsAmount != null && \(/);
+  it('estimated savings only renders when both a rental-company rate AND an entered price exist, never a fabricated gas price — 2026-08-28: computed inside Prepare for Return from the CONFIRMED current fuel, not a raw top-level value', () => {
+    expect(dashboardSrc).toMatch(/const confirmedSavings = confirmedRentalCharge != null && Number\(calcPricePerGal\) > 0/);
+    expect(dashboardSrc).toMatch(/confirmedSavings != null && \(/);
   });
 });
 

@@ -341,6 +341,114 @@ export async function updateRentalSession(userId: string, id: string, input: Upd
   return toRentalSession(row);
 }
 
+// ── Current-fuel confirmation write (2026-08-28, TOCTOU/optimistic-
+// concurrency correction from independent review) ──────────────────────────
+//
+// The ordinary updateRentalSession() above is read-then-write: fetch
+// `existing`, validate, unconditional prisma.update(). Between that read and
+// the write, another PATCH (a second device, a Fillup logged concurrently)
+// could change currentFuelGallons — the validation the route already ran
+// would then be checked against state that's no longer current, and the
+// unconditional update would blindly overwrite whatever the other write
+// just established.
+//
+// This function exists ONLY for the confirmation write specifically (the
+// one piece of this feature whose entire correctness the app depends on) —
+// it is not a general-purpose replacement for updateRentalSession(). The
+// condition is expressed directly in the WHERE clause of an atomic
+// updateMany() rather than as a separate read check: if `count` comes back
+// 0, the row's currentFuelGallons no longer equals what the caller last
+// saw, so nothing was written and the caller must treat it as a conflict
+// (HTTP 409 at the route layer) rather than silently proceeding.
+export type ConfirmRentalCurrentFuelResult =
+  | { status: 'ok';       session: RentalSession }
+  | { status: 'conflict' }
+  | { status: 'not_found' };
+
+export async function confirmRentalCurrentFuel(
+  userId: string,
+  id: string,
+  input: {
+    currentFuelGallons: number;
+    currentFuelSource:  FuelDataSource;
+    /** The full last-known fuel-state snapshot the caller validated the new
+     *  reading against — null in any of these means the caller believes
+     *  that field was null on the server at the time it read/validated.
+     *  2026-08-28 correction (independent review, Blocker 2): gallons alone
+     *  is not a sufficient optimistic-concurrency key. A concurrent Fillup
+     *  that tops off an already-full tank can leave currentFuelGallons
+     *  numerically unchanged while currentFuelSource/currentFuelUpdatedAt
+     *  advance — and a concurrent tank-capacity edit can invalidate the
+     *  gallons-vs-capacity validation this write depended on without
+     *  touching currentFuelGallons at all. Conditioning the write on the
+     *  full snapshot the caller actually validated against closes both
+     *  gaps with no schema change and no separate read-then-write window:
+     *  the check IS the write, expressed as the updateMany() WHERE clause. */
+    expectedPriorCurrentFuelGallons:        number | null;
+    expectedPriorCurrentFuelSource:         string | null;
+    expectedPriorCurrentFuelUpdatedAt:      string | null;
+    expectedPriorFuelTankCapacityGallons:   number | null;
+  },
+): Promise<ConfirmRentalCurrentFuelResult> {
+  const existing = await prisma.rentalSession.findFirst({ where: { id, userId } });
+  if (!existing) return { status: 'not_found' };
+
+  const now = new Date().toISOString();
+  const result = await prisma.rentalSession.updateMany({
+    where: {
+      id,
+      userId,
+      // The conditional snapshot: the confirmation write is only valid if
+      // EVERY field the caller validated its proposed reading against still
+      // matches. Anything else changing concurrently (pickup fuel, gauge
+      // style, ...) is irrelevant to THIS write's correctness and is
+      // deliberately not part of the condition — only the fields this
+      // write's validation actually depended on. Prisma translates a plain
+      // `null` in a `where` filter to `IS NULL`, so a caller who believed a
+      // field was unset correctly requires it still be unset.
+      currentFuelGallons:      input.expectedPriorCurrentFuelGallons,
+      currentFuelSource:       input.expectedPriorCurrentFuelSource,
+      currentFuelUpdatedAt:    input.expectedPriorCurrentFuelUpdatedAt,
+      fuelTankCapacityGallons: input.expectedPriorFuelTankCapacityGallons,
+    },
+    data: {
+      currentFuelGallons:   input.currentFuelGallons,
+      currentFuelSource:    input.currentFuelSource,
+      currentFuelUpdatedAt: now,
+      updatedAt:            now,
+    },
+  });
+
+  if (result.count === 0) return { status: 'conflict' };
+
+  // Post-write identity check (2026-08-28 independent review, post-CI
+  // hardening): the updateMany() above correctly protects the WRITE, but an
+  // unrestricted findFirst({ id, userId }) here can observe a LATER
+  // concurrent mutation — e.g. a Fillup that lands between our updateMany
+  // succeeding and this read running. That later state is real and correct
+  // as the row's last-known fuel, but it is NOT what the renter just
+  // confirmed; returning it as this confirmation's result would let the
+  // client mark an observation the renter never actually confirmed as
+  // "confirmed." Re-reading with the EXACT state this write just created
+  // (using the same `now` stamped above, not a fresh timestamp) closes that
+  // gap: if anything changed the row again in that narrow window, this read
+  // matches nothing and we correctly report a conflict instead — the
+  // existing 409 path reloads the newest state and asks the renter to
+  // reconfirm it, rather than silently returning it as already-confirmed.
+  const row = await prisma.rentalSession.findFirst({
+    where: {
+      id,
+      userId,
+      currentFuelGallons:      input.currentFuelGallons,
+      currentFuelSource:       input.currentFuelSource,
+      currentFuelUpdatedAt:    now,
+      fuelTankCapacityGallons: input.expectedPriorFuelTankCapacityGallons,
+    },
+  });
+  if (!row) return { status: 'conflict' };
+  return { status: 'ok', session: toRentalSession(row) };
+}
+
 export async function deleteRentalSession(userId: string, id: string): Promise<boolean> {
   const res = await prisma.rentalSession.deleteMany({ where: { id, userId } });
   return res.count > 0;

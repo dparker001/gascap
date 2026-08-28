@@ -85,7 +85,7 @@ describe('Explicit Calculate action — results are not the primary output until
   it('results in both workflows are gated behind the hasCalculated flag, not shown as soon as inputs exist', () => {
     expect(dashboardSrc).toMatch(/const \[hasCalculatedTripFill, setHasCalculatedTripFill\] = useState\(false\)/);
     expect(dashboardSrc).toMatch(/const \[hasCalculatedReturn, setHasCalculatedReturn\] = useState\(false\)/);
-    expect(addFuelBlock()).toMatch(/\{hasCalculatedTripFill && \(/);
+    expect(addFuelBlock()).toMatch(/\{hasCalculatedTripFill && confirmedGallons != null && \(/);
     expect(prepareReturnBlock()).toMatch(/\{hasCalculatedReturn && \(/);
   });
 
@@ -125,12 +125,12 @@ describe('Results use the existing math primitives — no new fuel math', () => 
     expect(block).toMatch(/estimatedCostLabel/);
   });
 
-  it('13. Prepare for Return results are computed via gallonsNeeded()/estimatedFuelCost() (the top-level `needed`/`rentalCharge`/`estimatedSavingsAmount` computed once, unchanged, at component scope)', () => {
+  it('13. Prepare for Return results are computed via gallonsNeeded()/estimatedFuelCost() — 2026-08-28: against the CONFIRMED current fuel (confirmedNeeded/confirmedRentalCharge/confirmedSavings, recomputed inside the accordion from confirmedCurrentFuelGallons), not the raw top-level `needed` used only for last-reported presentation elsewhere', () => {
     const block = prepareReturnBlock();
-    expect(block).toMatch(/\bneeded\b/);
-    expect(block).toMatch(/estimatedFuelCost\(needed, Number\(calcPricePerGal\)\)/);
-    expect(block).toMatch(/rentalCharge/);
-    expect(block).toMatch(/estimatedSavingsAmount/);
+    expect(block).toMatch(/confirmedNeeded/);
+    expect(block).toMatch(/estimatedFuelCost\(neededSafe, Number\(calcPricePerGal\)\)/);
+    expect(block).toMatch(/confirmedRentalCharge/);
+    expect(block).toMatch(/confirmedSavings/);
   });
 });
 
