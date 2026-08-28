@@ -135,7 +135,7 @@ const en = {
   header: {
     tagline:        'Know before\nyou go.',
     sub:            'Calculate fuel & cost before you pull up to the pump.',
-    realTimePrices: 'Real-time prices',
+    realTimePrices: 'EIA price guidance',
     worksOffline:   'Works offline',
     pricingPill:    'Free · Pro $2.99/mo',
   },
@@ -159,8 +159,8 @@ const en = {
     badge:          'App Store & Google Play · Works offline · Free',
     headline:       'Know exactly how much gas you need —',
     headlineAccent: 'before you pull up.',
-    sub:            'With gas prices near record highs, know your exact fill-up cost before you swipe your card. No guessing. No overpaying.',
-    pill_prices:    'Live local prices',
+    sub:            'When every gallon counts, know your fill-up cost before you swipe your card. No guessing. No overpaying.',
+    pill_prices:    'State gas prices',
     pill_rental:    'Rental car mode',
     pill_mpg:       'MPG tracking',
     pill_ai:        'AI advisor',
@@ -200,8 +200,8 @@ const en = {
         badge: 'Free',
       },
       {
-        title: 'Live gas prices',
-        body:  'Real-time local prices from the U.S. EIA — auto-detected by location. Free with an account.',
+        title: 'Current gas prices',
+        body:  'Current state-average gas price from U.S. EIA data — auto-detected by location. Free with an account.',
         badge: 'Free account',
       },
       {
@@ -256,7 +256,7 @@ const en = {
   // ── Stats bar ──────────────────────────────────────────────────────────────
   stats: [
     { value: 'Free',  label: 'Forever — no catch'    },
-    { value: '5.0★',  label: 'Average rating'        },
+    { value: '3',     label: 'Built-in fuel calculators' },
     { value: '<2s',   label: 'Typical calculation'   },
   ],
 
@@ -276,7 +276,7 @@ const en = {
       },
       {
         q: 'Is GasCap™ free?',
-        a: 'Yes — the core calculator, live gas prices, and offline access are free forever with no credit card required. Pro ($2.99/mo or $19.99 Lifetime) adds fill-up history, MPG charts, unlimited vehicles, AI advisor, and PDF export.',
+        a: 'Yes — the core calculator, current state-average gas prices, and offline access are free forever with no credit card required (Free also includes up to 5 logged fill-ups a month). Pro ($2.99/mo or $19.99 Lifetime) adds unlimited fill-up logging, MPG charts, unlimited vehicles, AI advisor, and PDF export.',
       },
       {
         q: 'How do I get GasCap on my phone?',
@@ -292,7 +292,7 @@ const en = {
       },
       {
         q: 'Does it work offline?',
-        a: 'Yes. Once installed as a PWA, the calculator works offline using your last-known gas price and saved vehicles. Live gas price lookup and AI features require a connection.',
+        a: 'Yes. Once installed as a PWA, the calculator works offline using your last-known gas price and saved vehicles. Current gas price lookup and AI features require a connection.',
       },
       {
         q: 'How is this different from a road trip fuel calculator?',
@@ -406,7 +406,7 @@ const en = {
     monthly:       'Monthly',
     annual:        'Annual',
     saveBadge:     'BEST VALUE',
-    mostPopular:   'Most Popular',
+    mostPopular:   'Best Value',
     proFor:        'For individuals, couples & households',
     houseAndBiz:   'Household & Business',
     fleetFor:      'Fleet features coming soon',
@@ -825,7 +825,7 @@ const en = {
     mo:                'mo',
     forever:           'forever',
     currentPlanRibbon: '✓ Your Current Plan',
-    mostPopular:       '⭐ Most Popular',
+    mostPopular:       '⭐ Best Value',
     monthlyRibbon:     'Flexible',
     newMemberTitle:    'New-Member Offer',
     newMemberMsg:      'Own GasCap™ Pro for life',
@@ -886,11 +886,11 @@ const en = {
       'Target Fill calculator',
       'By Budget calculator',
       'EV Charge calculator',
-      'Rental Car Return Mode',
       'Trip Cost Estimator',
       'Station Comparison',
       'EPA vehicle database search',
-      'Live gas price lookup',
+      'Current gas price lookup (state average)',
+      'Up to 5 fill-ups per month',
       'Badge achievements',
       'Works offline (PWA)',
     ],
@@ -898,7 +898,7 @@ const en = {
       'Everything in Free',
       'Unlimited saved vehicles',
       'Rental Return Mode — know exactly what to put back before you return the keys',
-      'Fill-up logging & fuel history',
+      'Unlimited fill-up logging',
       'VIN photo scan',
       'Receipt photo scan (AI)',
       'GasCap Assistant',
@@ -917,11 +917,11 @@ const en = {
     fleetFeatures: [] as string[],
 
     // Lifetime card
-    lifetimeRibbon:      'Most Popular',
+    lifetimeRibbon:      'Best Value',
     lifetimeBadge:       'One-time payment',
     lifetimeSubline:     'Own GasCap™ Pro forever — no recurring charges',
     lifetimeExclusives:  'Lifetime exclusives',
-    breakEven:           'Just $19.99 once — about 7 months of monthly, then free forever. Most members choose Lifetime.',
+    breakEven:           'Just $19.99 once — about 7 months of monthly, then free forever. One payment for permanent Pro access.',
     freeTitle:           'Free',
     proTitle:            'Pro',
     proLifetimeTitle:    'Pro Lifetime',
@@ -2629,8 +2629,8 @@ const en = {
   },
   smartFillUpOptimizer: {
     title: 'Smart Fill-Up Optimizer',
-    subtitle: 'Live EIA market data · personalized to your fill-up size',
-    idleDescription: 'Combines live government gas price data for your state with your personal fill-up history to tell you the best time to fill up — with exact dollar savings.',
+    subtitle: 'Weekly EIA market data · personalized to your fill-up size',
+    idleDescription: 'Combines current government gas price data for your state with your personal fill-up history to tell you the best time to fill up — with exact dollar savings.',
     getRecommendation: 'Get My Recommendation →',
     detectingLocation: 'Detecting your location…',
     fetchingPrices: 'Fetching live price data…',
@@ -3363,7 +3363,7 @@ const es: typeof en = {
   header: {
     tagline:        'Sabe antes\nde llegar.',
     sub:            'Calcula combustible y costo antes de llegar a la gasolinera.',
-    realTimePrices: 'Precios en tiempo real',
+    realTimePrices: 'Guía de precios EIA',
     worksOffline:   'Funciona sin internet',
     pricingPill:    'Gratis · Pro $2.99/mes',
   },
@@ -3385,8 +3385,8 @@ const es: typeof en = {
     badge:          'App Store & Google Play · Funciona sin internet · Gratis',
     headline:       'Sabe exactamente cuánta gasolina necesitas —',
     headlineAccent: 'antes de llegar a la bomba.',
-    sub:            'Con los precios del combustible cerca de máximos históricos, conoce el costo exacto de tu llenado antes de pasar tu tarjeta. Sin adivinar. Sin pagar de más.',
-    pill_prices:    'Precios locales',
+    sub:            'Cuando cada galón cuenta, conoce el costo de tu llenado antes de pasar tu tarjeta. Sin adivinar. Sin pagar de más.',
+    pill_prices:    'Precios por estado',
     pill_rental:    'Modo auto rentado',
     pill_mpg:       'Seguimiento MPG',
     pill_ai:        'Asistente',
@@ -3424,8 +3424,8 @@ const es: typeof en = {
         badge: 'Free',
       },
       {
-        title: 'Precios de gasolina en vivo',
-        body:  'Precios locales en tiempo real de la EIA de EE.UU. — detectados automáticamente por ubicación. Gratis con cuenta.',
+        title: 'Precios de gasolina actuales',
+        body:  'Precio promedio estatal actual según datos de la EIA de EE.UU. — detectado automáticamente por ubicación. Gratis con cuenta.',
         badge: 'Free account',
       },
       {
@@ -3478,7 +3478,7 @@ const es: typeof en = {
 
   stats: [
     { value: 'Gratis', label: 'Para siempre — sin trampa'  },
-    { value: '5.0★',   label: 'Calificación promedio'     },
+    { value: '3',       label: 'Calculadoras de combustible incluidas' },
     { value: '<2s',    label: 'Cálculo típico'             },
   ],
 
@@ -3497,7 +3497,7 @@ const es: typeof en = {
       },
       {
         q: '¿GasCap™ es gratuito?',
-        a: 'Sí — la calculadora básica, los precios de gasolina en tiempo real y el acceso sin conexión son gratuitos para siempre sin tarjeta de crédito. Pro ($2.99/mes o $19.99 de por vida) agrega historial de llenados, gráficas de MPG, vehículos ilimitados, asistente y exportación PDF.',
+        a: 'Sí — la calculadora básica, el precio promedio estatal actual de gasolina y el acceso sin conexión son gratuitos para siempre sin tarjeta de crédito (Gratis también incluye hasta 5 cargas registradas al mes). Pro ($2.99/mes o $19.99 de por vida) agrega registro ilimitado de cargas, gráficas de MPG, vehículos ilimitados, asistente y exportación PDF.',
       },
       {
         q: '¿Cómo descargo GasCap en mi teléfono?',
@@ -3513,7 +3513,7 @@ const es: typeof en = {
       },
       {
         q: '¿Funciona sin conexión a internet?',
-        a: 'Sí. Una vez instalada como PWA, la calculadora funciona sin conexión usando tu último precio de gasolina guardado y vehículos guardados. La búsqueda de precios en tiempo real y las funciones de IA requieren conexión.',
+        a: 'Sí. Una vez instalada como PWA, la calculadora funciona sin conexión usando tu último precio de gasolina guardado y vehículos guardados. La búsqueda de precio actual y las funciones de IA requieren conexión.',
       },
       {
         q: '¿En qué se diferencia de una calculadora de viaje por carretera?',
@@ -3622,7 +3622,7 @@ const es: typeof en = {
     monthly:       'Mensual',
     annual:        'Anual',
     saveBadge:     'MEJOR PRECIO',
-    mostPopular:   'Más Popular',
+    mostPopular:   'Mejor Valor',
     proFor:        'Para individuos, parejas y hogares',
     houseAndBiz:   'Hogar y Negocios',
     fleetFor:      'Funciones de flota próximamente',
@@ -4027,7 +4027,7 @@ const es: typeof en = {
     mo:                'mes',
     forever:           'siempre',
     currentPlanRibbon: '✓ Tu Plan Actual',
-    mostPopular:       '⭐ Más Popular',
+    mostPopular:       '⭐ Mejor Valor',
     monthlyRibbon:     'Flexible',
     newMemberTitle:    'Oferta para nuevos miembros',
     newMemberMsg:      'Obtén GasCap™ Pro de por vida',
@@ -4088,11 +4088,11 @@ const es: typeof en = {
       'Calculadora de Llenado Objetivo',
       'Calculadora por Presupuesto',
       'Calculadora de Carga EV',
-      'Modo de Devolución de Auto de Alquiler',
       'Estimador de Costo de Viaje',
       'Comparación de Estaciones',
       'Búsqueda de vehículos EPA',
-      'Consulta de precio de gasolina en vivo',
+      'Consulta de precio de gasolina actual (promedio estatal)',
+      'Hasta 5 cargas de combustible por mes',
       'Logros y medallas',
       'Funciona sin internet (PWA)',
     ],
@@ -4100,7 +4100,7 @@ const es: typeof en = {
       'Todo en Gratis',
       'Vehículos ilimitados',
       'Modo de Devolución de Auto de Alquiler — sabe exactamente cuánto combustible agregar antes de devolver las llaves',
-      'Registro de cargas e historial de combustible',
+      'Registro ilimitado de cargas de combustible',
       'Escaneo de VIN por foto',
       'Escaneo de recibo por foto (IA)',
       'Asistente de GasCap',
@@ -4119,11 +4119,11 @@ const es: typeof en = {
     fleetFeatures: [] as string[],
 
     // Lifetime card
-    lifetimeRibbon:      'Más Popular',
+    lifetimeRibbon:      'Mejor Valor',
     lifetimeBadge:       'Pago único',
     lifetimeSubline:     'Posee GasCap™ Pro para siempre — sin cargos recurrentes',
     lifetimeExclusives:  'Exclusivos de por vida',
-    breakEven:           'Solo $19.99 una vez — unos 7 meses del plan mensual, luego gratis para siempre. La mayoría elige De Por Vida.',
+    breakEven:           'Solo $19.99 una vez — unos 7 meses del plan mensual, luego gratis para siempre. Un solo pago para acceso Pro permanente.',
     freeTitle:           'Gratis',
     proTitle:            'Pro',
     proLifetimeTitle:    'Pro De Por Vida',
@@ -5814,8 +5814,8 @@ const es: typeof en = {
   },
   smartFillUpOptimizer: {
     title: 'Optimizador Inteligente de Recarga',
-    subtitle: 'Datos de mercado en vivo de la EIA · personalizado al tamaño de tu recarga',
-    idleDescription: 'Combina datos en vivo de precios de gasolina del gobierno para tu estado con tu historial personal de recargas para decirte el mejor momento para llenar el tanque — con ahorros exactos en dólares.',
+    subtitle: 'Datos semanales de mercado de la EIA · personalizado al tamaño de tu recarga',
+    idleDescription: 'Combina datos actuales de precios de gasolina del gobierno para tu estado con tu historial personal de recargas para decirte el mejor momento para llenar el tanque — con ahorros exactos en dólares.',
     getRecommendation: 'Obtener mi recomendación →',
     detectingLocation: 'Detectando tu ubicación…',
     fetchingPrices: 'Obteniendo datos de precios en vivo…',

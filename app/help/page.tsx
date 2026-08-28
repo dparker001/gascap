@@ -88,8 +88,8 @@ const SECTIONS = [
         a: 'Drag the needle on the fuel gauge dial to match your dashboard, or use the slider — the calculator updates instantly. You can also switch to gallons and type an exact amount. Newer vehicles often have a digital or coarse bar gauge with no tick marks to judge against. For those, tap the \'Miles\' button next to % and Gal, then enter the miles-to-empty shown on your dash plus your MPG — GasCap\u2122 converts that into gallons remaining. MPG is filled in automatically if your vehicle was added by VIN, and you can edit it. Dash range estimates are deliberately conservative, so treat the result as approximate.',
       },
       {
-        q: 'How does the live gas price lookup work?',
-        a: 'Live gas price lookup requires a free GasCap™ account. Once signed in, tap "Use Local Price" and allow location access. GasCap™ fetches the current average price in your state from the U.S. Energy Information Administration (EIA). If you deny location access, it falls back to the national average. Prices are averages — actual pump prices may vary. Guests can always enter a price manually.',
+        q: 'How does the current gas price lookup work?',
+        a: 'Current gas price lookup requires a free GasCap™ account. Once signed in, tap "Use Local Price" and allow location access. GasCap™ fetches the current average price in your state from the U.S. Energy Information Administration (EIA). If you deny location access, it falls back to the national average. Prices are averages — actual pump prices may vary. Guests can always enter a price manually.',
       },
       {
         q: 'What is the EV Charge calculator?',
@@ -291,7 +291,7 @@ const SECTIONS = [
     items: [
       {
         q: 'What\'s included in the free plan?',
-        a: 'The free plan includes 1 saved vehicle, all three calculators (Target Fill, By Budget, and EV Charge), Trip Cost Estimator, Station Comparison, EPA vehicle database search, live local gas price and electricity rate lookup (free account required), dark mode, and offline use. Creating an account is free — no credit card required.',
+        a: 'The free plan includes 1 saved vehicle, up to 5 fill-ups logged per month, all three calculators (Target Fill, By Budget, and EV Charge), Trip Cost Estimator, Station Comparison, EPA vehicle database search, current state-average gas price and electricity rate lookup (free account required), dark mode, and offline use. Creating an account is free — no credit card required.',
       },
       {
         q: 'How do I get 30 days of Pro free?',
@@ -299,7 +299,7 @@ const SECTIONS = [
       },
       {
         q: 'What does Pro add?',
-        a: 'Pro adds unlimited saved vehicles, VIN photo scan, fill-up history & MPG tracking, receipt scanning, MPG Insight Card, GasCap Assistant, Gas Price Alert, fuel savings dashboard, streak counter, monthly report card, gas price trend predictions, vehicle health alerts, Annual Wrapped, referral rewards, Route Trip Planner with Google Maps, and daily gas card giveaway entries. Available as Pro Monthly ($2.99/mo) or Pro Lifetime Membership ($19.99 one-time).',
+        a: 'Pro adds unlimited saved vehicles, Rental Car Return Mode, unlimited fill-up logging, MPG charts and advanced fuel insights, VIN photo scan, receipt scanning, MPG Insight Card, GasCap Assistant, Gas Price Alert, fuel savings dashboard, streak counter, monthly report card, gas price trend predictions, vehicle health alerts, Annual Wrapped, referral rewards, Route Trip Planner with Google Maps, and daily gas card giveaway entries. (Free accounts can already log up to 5 fill-ups a month and view their basic fill-up history.) Available as Pro Monthly ($2.99/mo) or Pro Lifetime Membership ($19.99 one-time).',
       },
       {
         q: 'What are the differences between Pro Monthly and Pro Lifetime?',

@@ -32,11 +32,11 @@ how much gas, gas money, fuel economy, tank calculator.
 ```
 Stop guessing at the pump. GasCap is the free gas cost calculator that tells you exactly how much fuel you need and what it'll cost — before you pull up.
 
-Just enter your tank size, your current fuel level, and how full you want to go. GasCap instantly shows the gallons you'll add and your total cost using real local gas prices. No more overpaying, no more "fill it and hope." It's the simplest way to know your fill-up cost in advance.
+Just enter your tank size, your current fuel level, and how full you want to go. GasCap instantly shows the gallons you'll add and your total cost using current state-average gas prices. No more overpaying, no more "fill it and hope." It's the simplest way to know your fill-up cost in advance.
 
 WHY DRIVERS LOVE GASCAP
 • Gas cost calculator — know your exact fill-up cost before you swipe your card
-• Real-time local gas prices so your estimate matches the pump
+• Current state-average gas prices (U.S. EIA data) so your estimate stays close to the pump
 • A fuel calculator that works offline — calculate anywhere, even with no signal
 • Rental Car mode — return it at the right fuel level and skip the pricey refueling fee
 • MPG tracker — log every fill-up and watch your gas mileage and fuel economy over time
@@ -70,7 +70,7 @@ GasCap™ — gascap.app
 Capture from the running app (light mode), 1290×2796 (iPhone 6.7") + a 6.5" set, and
 Android phone sizes. Suggested 5:
 1. Hero / calculator with a result ("You'll add 8.2 gal · $28.70")
-2. Live local gas price lookup
+2. Current state-average gas price lookup
 3. Rental Car return mode
 4. Fill-up history + MPG trend
 5. The monthly gas-card giveaway
@@ -149,9 +149,9 @@ gasolina,combustible,calculadora,ahorro,precio gasolina,kilometraje,tanque,viaje
 
 ### Description
 ```
-GasCap™ es gratis — la calculadora de costo de combustible, precios de gasolina en vivo y el acceso sin conexión son gratis para siempre.
+GasCap™ es gratis — la calculadora de costo de combustible, el precio promedio estatal actual de gasolina y el acceso sin conexión son gratis para siempre.
 
-GasCap™ Pro (requiere compra) desbloquea: historial de cargas y seguimiento de ahorros, gráficas de MPG, vehículos guardados ilimitados, Asesor de Combustible con IA, y exportación a PDF. Pro está disponible como suscripción de renovación automática — $2.99/mes, o como compra única de por vida (Lifetime) — $19.99.
+GasCap™ Pro (requiere compra) desbloquea: registro ilimitado de cargas, seguimiento de ahorros, gráficas de MPG, vehículos guardados ilimitados, Asesor de Combustible con IA, y exportación a PDF. Pro está disponible como suscripción de renovación automática — $2.99/mes, o como compra única de por vida (Lifetime) — $19.99.
 
 Política de Privacidad: https://www.gascap.app/privacy · Términos de Uso (EULA): https://www.gascap.app/terms
 ```

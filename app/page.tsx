@@ -51,7 +51,7 @@ function SchemaMarkup() {
         name: 'How does GasCap™ calculate how much gas I need?',
         acceptedAnswer: {
           '@type': 'Answer',
-          text: 'In the calculator you (1) pick your vehicle or tank size, (2) set your current fuel level, (3) choose your target fill level, and (4) enter your local gas price. GasCap™ calculates the exact gallons needed and multiplies by your local price — fetched automatically using live EIA data — to show the exact cost before you reach the pump.',
+          text: 'In the calculator you (1) pick your vehicle or tank size, (2) set your current fuel level, (3) choose your target fill level, and (4) enter your local gas price. GasCap™ calculates the exact gallons needed and multiplies by your local price — auto-detected from current U.S. EIA state-average data — to show the exact cost before you reach the pump.',
         },
       },
       {
@@ -59,7 +59,7 @@ function SchemaMarkup() {
         name: 'Is GasCap™ free to use?',
         acceptedAnswer: {
           '@type': 'Answer',
-          text: 'Yes — GasCap™ is free forever with no credit card required. The free plan includes the full fuel calculator, live gas prices, and offline access. Pro ($2.99/mo or $19.99 Lifetime) adds fill-up history, MPG tracking, unlimited vehicles, AI advisor, PDF export, and more.',
+          text: 'Yes — GasCap™ is free forever with no credit card required. The free plan includes the full fuel calculator, current state-average gas prices, offline access, and up to 5 logged fill-ups a month. Pro ($2.99/mo or $19.99 Lifetime) adds unlimited fill-up logging, MPG tracking, unlimited vehicles, AI advisor, PDF export, and more.',
         },
       },
       {
@@ -91,7 +91,7 @@ function SchemaMarkup() {
         name: 'Does GasCap™ work offline?',
         acceptedAnswer: {
           '@type': 'Answer',
-          text: 'Yes. Once installed, the core calculator works completely offline using your last-known gas price and saved vehicles. Live gas price lookup and AI features require an internet connection.',
+          text: 'Yes. Once installed, the core calculator works completely offline using your last-known gas price and saved vehicles. Current gas price lookup and AI features require an internet connection.',
         },
       },
       {
@@ -119,19 +119,13 @@ function SchemaMarkup() {
     name: 'GasCap™',
     applicationCategory: 'UtilitiesApplication',
     operatingSystem: 'Web, iOS, Android',
-    description: 'Free fuel calculator that tells you exactly how much gas you need and what it will cost — before you pull up to the pump. Live local gas prices, MPG tracking, rental car return mode, and GasCap Assistant.',
+    description: 'Free fuel calculator that tells you exactly how much gas you need and what it will cost — before you pull up to the pump. Current state-average gas prices, MPG tracking, rental car return mode, and GasCap Assistant.',
     url: 'https://gascap.app',
     offers: [
       { '@type': 'Offer', price: '0', priceCurrency: 'USD', name: 'Free Plan' },
       { '@type': 'Offer', price: '2.99', priceCurrency: 'USD', name: 'Pro Plan', billingPeriod: 'Monthly' },
       { '@type': 'Offer', price: '19.99', priceCurrency: 'USD', name: 'Pro Plan Lifetime' },
     ],
-    aggregateRating: {
-      '@type': 'AggregateRating',
-      ratingValue: '5.0',
-      ratingCount: '47',
-      bestRating: '5',
-    },
   };
 
   return (
