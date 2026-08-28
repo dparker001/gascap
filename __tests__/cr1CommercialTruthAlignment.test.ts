@@ -309,3 +309,60 @@ describe('CR-1 follow-up — unsubstantiated popularity claims removed', () => {
     expect(src).not.toMatch(/M[aá]s Popular/);
   });
 });
+
+describe('CR-1 P0 follow-up — App Store review notes no longer contradict native IAP (lib/iap.ts implements RevenueCat/StoreKit/Play Billing)', () => {
+  const appStoreDocSrc = readFileSync(path.join(repoRoot, 'docs/APP_STORE_LISTINGS.md'), 'utf8');
+
+  it('does not claim there are NO in-app purchases', () => {
+    expect(appStoreDocSrc).not.toMatch(/NO in-app purchases/i);
+  });
+
+  it('does not claim the Pro plan is sold only on the website', () => {
+    expect(appStoreDocSrc).not.toMatch(/Pro plan is sold only on our website/i);
+  });
+
+  it('does not claim the app itself is fully free', () => {
+    expect(appStoreDocSrc).not.toMatch(/the app itself is fully free/i);
+  });
+
+  it('does not claim payment is handled by Stripe on the web / not in-app', () => {
+    expect(appStoreDocSrc).not.toMatch(/Payment handled by \*{0,2}Stripe on the web\*{0,2}, not in-app/i);
+  });
+
+  it('does not claim the store listing is "100% free to use"', () => {
+    expect(appStoreDocSrc).not.toMatch(/100% free to use/i);
+  });
+
+  it('App Review notes now reference native Apple In-App Purchase and the actual Pro prices', () => {
+    const notesStart = appStoreDocSrc.indexOf('## App Review notes');
+    const notesBlock = appStoreDocSrc.slice(notesStart, notesStart + 800);
+    expect(notesBlock).toMatch(/Apple In-App Purchase/);
+    expect(notesBlock).toMatch(/\$2\.99\/month/);
+    expect(notesBlock).toMatch(/\$19\.99/);
+  });
+
+  it('the financial-info privacy note distinguishes native (Apple/Google Play) vs. web (Stripe) payment processing', () => {
+    expect(appStoreDocSrc).toMatch(/processed by \*{0,2}Apple\*{0,2}/);
+    expect(appStoreDocSrc).toMatch(/processed by \*{0,2}Google Play Billing\*{0,2}/);
+    expect(appStoreDocSrc).toMatch(/processed by \*{0,2}Stripe\*{0,2}/);
+  });
+
+  it('the full store description no longer says "100% free" and instead states Pro is optional', () => {
+    expect(appStoreDocSrc).toMatch(/Free to start, with optional Pro features/i);
+  });
+
+  it('Rental Car mode is labeled as a Pro feature in the "WHY DRIVERS LOVE GASCAP" store description list', () => {
+    expect(appStoreDocSrc).toMatch(/Rental Car mode \(Pro\)/);
+  });
+
+  it('this fix did not touch IAP/RevenueCat/StoreKit/Stripe implementation files', () => {
+    const diffOutput = execSync('git diff --name-only main', { cwd: repoRoot, encoding: 'utf8' });
+    const changedFiles = diffOutput.split('\n').filter(Boolean);
+    const protectedPatterns = [/lib\/iap/i, /revenuecat/i, /storekit/i, /stripe/i, /serverPlan/i, /capacitor\.config/i];
+    for (const file of changedFiles) {
+      for (const pattern of protectedPatterns) {
+        expect(file).not.toMatch(pattern);
+      }
+    }
+  });
+});

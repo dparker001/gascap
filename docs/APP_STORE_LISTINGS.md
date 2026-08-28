@@ -38,7 +38,7 @@ WHY DRIVERS LOVE GASCAP
 • Gas cost calculator — know your exact fill-up cost before you swipe your card
 • Current state-average gas prices (U.S. EIA data) so your estimate stays close to the pump
 • A fuel calculator that works offline — calculate anywhere, even with no signal
-• Rental Car mode — return it at the right fuel level and skip the pricey refueling fee
+• Rental Car mode (Pro) — return it at the right fuel level and skip the pricey refueling fee
 • MPG tracker — log every fill-up and watch your gas mileage and fuel economy over time
 • Save your vehicles for one-tap calculations
 
@@ -57,7 +57,7 @@ PERFECT FOR
 
 Whether you call it a gas calculator, fuel cost calculator, gas price checker, MPG tracker, or gas money planner — GasCap puts the numbers in your pocket so you always know before you go.
 
-100% free to use. No surprises at the pump.
+Free to start, with optional Pro features. No surprises at the pump.
 
 GasCap™ — gascap.app
 ```
@@ -95,8 +95,10 @@ Answer truthfully against current data use. Typical for GasCap:
   Disclose if still active.
 - **Location:** *Precise/Coarse location* only if the gas-price lookup uses device geolocation
   → *App Functionality*, not linked to identity, not used for tracking.
-- **Financial info:** Payment handled by **Stripe on the web**, not in-app → for the native apps
-  you can mark no in-app payment data collected.
+- **Financial info:** Native iOS Pro purchases are processed by **Apple** (StoreKit via
+  RevenueCat); native Android Pro purchases are processed by **Google Play Billing** (via
+  RevenueCat); web Pro purchases are processed by **Stripe**. GasCap does not directly store
+  customers' payment-card details in any path.
 - Set **"Data used to track you"** = none, unless the analytics SDKs are configured for tracking
   (review GA/Meta settings before answering).
 
@@ -107,9 +109,10 @@ necessary, AMOE at /amoe) — note it in the review notes so it isn't flagged as
 
 ## App Review notes (paste into the "Notes for Reviewer" field)
 ```
-GasCap is a free fuel-cost calculator. There are NO in-app purchases — the optional
-Pro plan is sold only on our website (gascap.app); the app itself is fully free.
-A demo account can be created with any email/password on the Sign Up screen.
+GasCap is free to download and includes a free core fuel calculator. Optional GasCap Pro
+upgrades are available through Apple In-App Purchase. Pro Monthly is $2.99/month and Pro
+Lifetime is a one-time $19.99 purchase.
+A free account can be created with any email/password on the Sign Up screen.
 The monthly gas-card giveaway is a free-entry sweepstakes (no purchase necessary;
 free online entry at gascap.app/amoe) — official rules at gascap.app/sweepstakes-rules.
 ```
