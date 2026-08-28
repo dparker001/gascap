@@ -311,6 +311,103 @@ export function isUpcomingRental(
   return Number.isFinite(t) && t > now;
 }
 
+// Phase 6A.1 — Rental Car Mode lifecycle UX. A single named threshold
+// instead of scattered "24 hour" comparisons throughout the dashboard —
+// see resolveRentalLifecycle() below, the only place this is consumed.
+export const RENTAL_NEAR_RETURN_HOURS = 24;
+
+export type RentalLifecycle = 'upcoming' | 'active' | 'near_return' | 'completed' | 'cancelled';
+
+/**
+ * Derives a PRESENTATION-only lifecycle state for Rental Car Mode from
+ * existing authoritative RentalSession fields — no new DB status was added.
+ * `status` ('active' | 'completed' | 'cancelled') remains the actual
+ * source of truth for whether the session still exists/can be mutated;
+ * this only decides how the dashboard should look.
+ *
+ * Deliberate decisions, spelled out because getting any of them wrong
+ * silently misleads a renter mid-rental:
+ *
+ * - 'cancelled' is its OWN lifecycle state, distinct from 'completed'
+ *   (2026-08-28 correction — an earlier draft collapsed them together,
+ *   which would have shown "Your Rental Is Complete" for a rental that
+ *   was never actually returned; both are read-only, but the copy and any
+ *   future cancelled-specific behavior must never imply a successful
+ *   return). A cancelled session isn't reachable from the normal list
+ *   flow today, so this only matters if one is opened by direct URL.
+ * - A rental past its scheduled returnDateTime but NOT yet marked
+ *   completed stays 'near_return' (in fact more urgently so — the same
+ *   <= RENTAL_NEAR_RETURN_HOURS check that catches "18 hours left" also
+ *   catches "-3 hours left," i.e. overdue). It never silently becomes
+ *   'completed' on its own — only completeRentalSession() actually
+ *   completing it does that. An overdue-but-uncompleted rental staying in
+ *   the return-preparation experience (rather than reverting to 'active'
+ *   or jumping to a nonexistent "overdue" state) is exactly the behavior
+ *   a renter who's running late needs: Find Gas Near Return and the
+ *   Final Return Fill-Up button stay front and center.
+ * - Missing returnDateTime can't be "near" anything measurable, so it
+ *   falls through to 'active' rather than guessing — never fabricates a
+ *   return deadline that was never entered.
+ * - `now` is threaded through to isUpcomingRental(pickupDateTime, now)
+ *   rather than letting it call Date.now() internally — this function
+ *   must never mix an injected reference timestamp for the near-return
+ *   check with a separately-sampled real clock for the upcoming check;
+ *   both comparisons have to agree on what instant "now" is.
+ */
+export function resolveRentalLifecycle(input: {
+  status: string;
+  pickupDateTime: string | null | undefined;
+  returnDateTime: string | null | undefined;
+  now?: number;
+}): RentalLifecycle {
+  const now = input.now ?? Date.now();
+  if (input.status === 'completed') return 'completed';
+  if (input.status === 'cancelled') return 'cancelled';
+  if (isUpcomingRental(input.pickupDateTime, now)) return 'upcoming';
+
+  if (input.returnDateTime) {
+    const returnMs = new Date(input.returnDateTime).getTime();
+    if (Number.isFinite(returnMs)) {
+      const hoursUntilReturn = (returnMs - now) / 3_600_000;
+      if (hoursUntilReturn <= RENTAL_NEAR_RETURN_HOURS) return 'near_return';
+    }
+  }
+  return 'active';
+}
+
+/**
+ * RentalDashboard section visual ordering per lifecycle state (Phase 6A.1).
+ * Pure data, not JSX — RentalDashboard applies these as CSS `order` values
+ * on a `flex flex-col` container so section PLACEMENT changes per
+ * lifecycle without duplicating any section's actual JSX/markup. Exported
+ * (rather than kept as a component-local constant) so this hierarchy is
+ * independently assertable without a render harness — see
+ * __tests__/rentalLifecycle.test.ts.
+ *
+ * 'completed'/'cancelled' have no entry: RentalDashboard renders a wholly
+ * separate, simpler read-only view for each of those states and never
+ * reaches this ordering.
+ *
+ * Rationale per state:
+ * - upcoming: unchanged natural order (nothing here actually renders yet
+ *   except fuelLevel/pickupFuel — see each section's own internal gates).
+ * - active: Fill Up During Rental + Fuel Log come BEFORE the return-target
+ *   Calculate Fill / Return Preparation group — the return calculator
+ *   "should remain available, but should not visually dominate the
+ *   experience this early."
+ * - near_return: the return-target group is PROMOTED above current-fuel
+ *   and the trip calculator — "Prepare for Return" becomes primary, Fill
+ *   Up During Rental stays available but secondary, never removed.
+ */
+export const RENTAL_LIFECYCLE_SECTION_ORDER: Record<Exclude<RentalLifecycle, 'completed' | 'cancelled'>, {
+  fuelLevel: number; pickupFuel: number; tripCalc: number; fuelLog: number;
+  calculateFill: number; returnPrep: number; findGas: number; actions: number;
+}> = {
+  upcoming:    { fuelLevel: 1, pickupFuel: 1, tripCalc: 2, fuelLog: 2, calculateFill: 2, returnPrep: 2, findGas: 2, actions: 3 },
+  active:      { fuelLevel: 1, pickupFuel: 1, tripCalc: 2, fuelLog: 3, calculateFill: 4, returnPrep: 4, findGas: 4, actions: 5 },
+  near_return: { calculateFill: 1, returnPrep: 1, findGas: 1, fuelLevel: 2, pickupFuel: 2, tripCalc: 3, fuelLog: 4, actions: 5 },
+};
+
 /**
  * Growth Sprint 1, P0C-2A — the eligibility gate for the client-observed
  * `rental_fuel_needed_calculated` analytics event. Extracted as a pure

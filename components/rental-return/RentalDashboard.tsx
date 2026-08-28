@@ -4,10 +4,12 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useTranslation } from '@/contexts/LanguageContext';
 import {
-  gallonsNeeded, estimatedRentalCompanyCharge, estimatedFuelCost,
-  returnReadyStatus, formatGallons, fuelSourceLabel, refuelTotals, isUpcomingRental,
+  gallonsNeeded, estimatedRentalCompanyCharge, estimatedFuelCost, estimatedSavings,
+  returnReadyStatus, formatGallons, fuelSourceLabel, refuelTotals,
   shouldTrackFuelNeededCalculated, resolveCalculateFillState, roundGallons, tripFillEstimate,
+  resolveRentalLifecycle, RENTAL_LIFECYCLE_SECTION_ORDER,
 } from '@/lib/rentalCalculations';
+import type { RentalLifecycle } from '@/lib/rentalCalculations';
 import { trackRentalGasNearReturnViewed, trackRentalReturnReadyViewed } from '@/lib/gtag';
 import { trackClientEvent } from '@/lib/clientAnalytics';
 import type { FuelDataSource } from '@/lib/rentalProvider';
@@ -49,6 +51,7 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
   const [pendingFuel, setPendingFuel] = useState<{ gallons: number; source: FuelDataSource } | null>(null);
   const [calcPricePerGal, setCalcPricePerGal] = useState('');
   const calculatedOnceRef = useRef(false);
+  const nearReturnTrackedRef = useRef(false);
   const [editingFillupId, setEditingFillupId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState<{ gallonsPumped: string; pricePerGallon: string; totalCost: string }>({ gallonsPumped: '', pricePerGallon: '', totalCost: '' });
 
@@ -139,6 +142,25 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.id, session?.currentFuelGallons, session?.requiredReturnFuelGallons, session?.pickupDateTime]);
 
+  // Phase 6A.1 — rental_near_return_viewed, fired once when the dashboard
+  // actually TRANSITIONS INTO the Near Return lifecycle state, not on
+  // every rerender while it stays there. Computed independently here
+  // (rather than reading the `lifecycle` const below, which doesn't exist
+  // yet at this point in the component — it's derived after the loading
+  // guard) so this hook can run unconditionally before that guard, per the
+  // Rules of Hooks.
+  useEffect(() => {
+    if (!session) return;
+    const lc = resolveRentalLifecycle({
+      status: session.status, pickupDateTime: session.pickupDateTime, returnDateTime: session.returnDateTime,
+    });
+    if (lc === 'near_return' && !nearReturnTrackedRef.current) {
+      nearReturnTrackedRef.current = true;
+      trackClientEvent('rental_near_return_viewed');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.id, session?.status, session?.pickupDateTime, session?.returnDateTime]);
+
   if (loading || !session) {
     return <div className="max-w-lg mx-auto px-4 py-10"><div className="h-40 bg-slate-100 rounded-2xl animate-pulse" /></div>;
   }
@@ -146,6 +168,13 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
   const needed   = gallonsNeeded(session.requiredReturnFuelGallons ?? 0, session.currentFuelGallons ?? 0);
   const status   = returnReadyStatus(session.currentFuelGallons, session.requiredReturnFuelGallons);
   const rentalCharge = estimatedRentalCompanyCharge(needed, session.rentalFuelChargePerGallon);
+  // Phase 6A.1 — "Prepare for Return" savings figure. Only ever shown when
+  // BOTH a real rental-company rate and a real entered local price exist —
+  // never invents a gas price, same rule as everywhere else in this file.
+  const selfRefuelCostAtEnteredPrice = Number(calcPricePerGal) > 0 ? estimatedFuelCost(needed, Number(calcPricePerGal)) : 0;
+  const estimatedSavingsAmount = rentalCharge != null && Number(calcPricePerGal) > 0
+    ? estimatedSavings(rentalCharge, selfRefuelCostAtEnteredPrice)
+    : null;
   const countdown = returnCountdown(session.returnDateTime);
 
   // `chip` is for the tinted hero (needs to read against a dark gradient);
@@ -156,10 +185,140 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
     return_ready: { label: t.rentalReturn.statusReturnReady, chip: 'bg-white text-emerald-700' },
   }[status];
 
-  // A rental entered ahead of time hasn't started yet — showing "Needs Fuel"
-  // and a return countdown before the renter has even collected the car is
-  // just noise, so surface an Upcoming state instead.
-  const isUpcoming = isUpcomingRental(session.pickupDateTime);
+  // Phase 6A.1 — single source of truth for the four presentation
+  // lifecycle states (upcoming/active/near_return/completed). `isUpcoming`
+  // stays as its own derived boolean since every pre-existing gate below
+  // already reads it by that name — deriving it FROM lifecycle (rather
+  // than calling isUpcomingRental separately) guarantees they can never
+  // disagree with each other.
+  const lifecycle = resolveRentalLifecycle({
+    status: session.status,
+    pickupDateTime: session.pickupDateTime,
+    returnDateTime: session.returnDateTime,
+  });
+  const isUpcoming = lifecycle === 'upcoming';
+  const isNearReturn = lifecycle === 'near_return';
+  const isCompleted = lifecycle === 'completed';
+  const isCancelled = lifecycle === 'cancelled';
+
+  // Phase 6A.1 — a completed OR cancelled session is historical/read-only:
+  // no Update Current Fuel, no Trip Fill-Up, no Calculate Fill, no new
+  // logging, no return-completion actions. This is a SEPARATE, simpler
+  // render path rather than threading isCompleted/isCancelled through
+  // every section below — this view shows fixed historical facts, not any
+  // of the live/interactive calculators. Fuel History is the one section
+  // reused as-is (read-only rows, no edit/delete controls) since that data
+  // remains genuinely useful either way.
+  //
+  // 2026-08-28 correction — cancelled and completed are DISTINCT
+  // lifecycle states (resolveRentalLifecycle never collapses them), and
+  // this view must never say "Your Rental Is Complete" for one that was
+  // cancelled — that would imply a successful return that never happened.
+  // Only the heading text/color differ by state; every other section
+  // (summary facts, Fuel History) is identical and equally valid for both.
+  if (isCompleted || isCancelled) {
+    const totalGallons = fillups.length > 0 ? roundGallons(fillups.reduce((s, f) => s + f.gallonsPumped, 0)) : null;
+    const totalCost = fillups.some((f) => f.totalCost > 0) ? fillups.reduce((s, f) => s + f.totalCost, 0) : null;
+    return (
+      <div className="max-w-lg mx-auto px-4 py-6 space-y-4">
+        <Link href="/rental-return" className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-800">
+          <svg viewBox="0 0 12 12" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+            <path d="M10 6H2M5 2 1 6l4 4" />
+          </svg>
+          {t.rentalReturn.myRentals}
+        </Link>
+
+        <div className={`rounded-2xl shadow-sm p-4 text-white bg-gradient-to-br ${isCancelled ? 'from-red-800 via-red-700 to-red-600' : 'from-slate-700 via-slate-600 to-slate-500'}`}>
+          <p className="text-[10px] font-black uppercase tracking-wide text-white/70">
+            {isCancelled ? t.rentalReturn.rentalCancelledTitle : t.rentalReturn.rentalCompleteTitle}
+          </p>
+          <p className="text-base font-black leading-tight mt-0.5">{session.rentalCompany}</p>
+          <p className="text-[11px] text-white/70">
+            {[session.vehicleYear, session.vehicleMake, session.vehicleModel].filter(Boolean).join(' ') || t.rentalReturn.vehicleUnknown}
+          </p>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-2">
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">{t.rentalReturn.rentalSummaryTitle}</p>
+          {session.pickupDateTime && (
+            <div className="flex justify-between text-sm">
+              <span className="text-slate-500">{t.rentalReturn.completedPickupLabel}</span>
+              <span className="font-bold text-slate-800">{new Date(session.pickupDateTime).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>
+            </div>
+          )}
+          {session.returnDateTime && (
+            <div className="flex justify-between text-sm">
+              <span className="text-slate-500">{t.rentalReturn.completedReturnLabel}</span>
+              <span className="font-bold text-slate-800">{new Date(session.returnDateTime).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>
+            </div>
+          )}
+          {session.returnLocation && (
+            <div className="flex justify-between text-sm">
+              <span className="text-slate-500">{t.rentalReturn.returnLocationLabel}</span>
+              <span className="font-bold text-slate-800 text-right truncate max-w-[60%]">📍 {session.returnLocation}</span>
+            </div>
+          )}
+          {session.rentalAgreementNumber && (
+            <div className="flex justify-between text-sm">
+              <span className="text-slate-500">{t.rentalReturn.agreementNumberShort}</span>
+              <span className="font-mono font-bold text-slate-800">{session.rentalAgreementNumber}</span>
+            </div>
+          )}
+          {session.rentalConfirmationNumber && (
+            <div className="flex justify-between text-sm">
+              <span className="text-slate-500">{t.rentalReturn.confirmationNumberShort}</span>
+              <span className="font-mono font-bold text-slate-800">{session.rentalConfirmationNumber}</span>
+            </div>
+          )}
+          <div className="flex justify-between text-sm">
+            <span className="text-slate-500">{t.rentalReturn.finalFuelLevelLabel}</span>
+            <span className="font-bold text-slate-800">{formatGallons(session.currentFuelGallons, session.currentFuelSource as FuelDataSource)}</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-slate-500">{t.rentalReturn.requiredReturnLevelLabel}</span>
+            <span className="font-bold text-slate-800">{formatGallons(session.requiredReturnFuelGallons, 'MANUAL_GALLONS')}</span>
+          </div>
+        </div>
+
+        {fillups.length > 0 && (
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">{t.rentalReturn.refuelLog}</p>
+            <div className="space-y-2">
+              {fillups.map((f) => (
+                <div key={f.id} className="text-xs text-slate-600 border-b border-slate-50 last:border-0 pb-2 last:pb-0">
+                  <div className="flex justify-between items-center">
+                    <span>
+                      <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-black mr-1 ${f.fillupType === 'final_return' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'}`}>
+                        {f.fillupType === 'final_return' ? t.rentalReturn.finalReturnFillUp : t.rentalReturn.tripFillUp}
+                      </span>
+                      {f.gallonsPumped} gal{f.pricePerGallon > 0 ? ` · $${f.pricePerGallon.toFixed(2)}/gal` : ''}{f.stationName ? ` · ${f.stationName}` : ''}
+                      <span className="text-slate-400 ml-1">· {new Date(f.filledAt ?? f.createdAt).toLocaleDateString()}</span>
+                      {f.receiptThumb && <span className="ml-1" title={t.rentalReturn.receiptAttached} aria-label={t.rentalReturn.receiptAttached}>📷</span>}
+                    </span>
+                    {f.totalCost > 0 && <span className="font-bold">${f.totalCost.toFixed(2)}</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-2.5 pt-2.5 border-t border-slate-100 space-y-1">
+              {totalGallons != null && (
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-slate-500">{t.rentalReturn.fuelHistoryTotalGallons}</span>
+                  <span className="font-black text-slate-800">{totalGallons} gal</span>
+                </div>
+              )}
+              {totalCost != null && (
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-slate-500">{t.rentalReturn.fuelHistoryTotalCost}</span>
+                  <span className="font-black text-slate-800">${totalCost.toFixed(2)}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   // Is there a fuel figure at all? Pickup level is optional at setup, so a
   // rental of any age can have none.
@@ -199,8 +358,12 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
     ? Math.min(100, Math.max(0, (session.requiredReturnFuelGallons / tankCapacity) * 100))
     : 0;
 
+  // Phase 6A.1 — section PLACEMENT per lifecycle, applied as CSS `order`
+  // below (flex flex-col) rather than duplicating any section's JSX.
+  const sectionOrder = RENTAL_LIFECYCLE_SECTION_ORDER[lifecycle as Exclude<RentalLifecycle, 'completed' | 'cancelled'>];
+
   return (
-    <div className="max-w-lg mx-auto px-4 py-6 space-y-4">
+    <div className="max-w-lg mx-auto px-4 py-6 flex flex-col gap-4">
       <Link href="/rental-return" className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-800">
         <svg viewBox="0 0 12 12" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
           <path d="M10 6H2M5 2 1 6l4 4" />
@@ -285,7 +448,7 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
       </div>
 
       {/* Fuel level — visual gauge + the one number that matters */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-3">
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-3" style={{ order: sectionOrder.fuelLevel }}>
         {/* Tank bar: filled = current fuel, marker = required return level */}
         {tankCapacity > 0 && showLiveFuel && (
           <div>
@@ -399,7 +562,7 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
           time can't know it yet, so it has to be settable (and correctable)
           here rather than only at setup. */}
       {(session.pickupFuelGallons == null || showPickupFuel) && (
-        <div className="bg-white rounded-2xl border-2 border-blue-200 shadow-sm p-4 space-y-2">
+        <div className="bg-white rounded-2xl border-2 border-blue-200 shadow-sm p-4 space-y-2" style={{ order: sectionOrder.pickupFuel }}>
           <p className="text-xs font-black text-blue-800">⛽ {t.rentalReturn.setPickupFuelTitle}</p>
           <p className="text-[11px] text-slate-500 leading-snug">{t.rentalReturn.setPickupFuelHint}</p>
           <FuelLevelInput
@@ -430,6 +593,7 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
       )}
       {session.pickupFuelGallons != null && !showPickupFuel && (
         <button type="button" onClick={() => setShowPickupFuel(true)}
+          style={{ order: sectionOrder.pickupFuel }}
           className="w-full text-[11px] font-bold text-slate-400 hover:text-slate-600">
           {t.rentalReturn.correctPickupFuel(formatGallons(session.pickupFuelGallons, session.pickupFuelSource as FuelDataSource))}
         </button>
@@ -446,8 +610,19 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
           section's own state below. Moved above Return Preparation/Actions
           per the same fix — this is the section users were reporting they
           couldn't find. ══════════════════════════════════════════════════ */}
+      {/* Phase 6A.1 — promoted heading only while Near Return; the
+          calculation below it is unchanged (gallonsNeeded/estimatedFuelCost,
+          same as every other lifecycle state) — this is presentation
+          promotion, not a second calculator. */}
+      {isNearReturn && calculateFillState !== 'upcoming' && (
+        <div style={{ order: sectionOrder.calculateFill }} className="flex items-center gap-2 px-1">
+          <span className="text-sm">🚗</span>
+          <p className="text-sm font-black text-slate-800">{t.rentalReturn.prepareForReturnTitle}</p>
+          {countdown && <span className="ml-auto text-xs font-bold text-red-600">⏱ {t.rentalReturn.returnIn(countdown)}</span>}
+        </div>
+      )}
       {calculateFillState !== 'upcoming' && (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-2">
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-2" style={{ order: sectionOrder.calculateFill }}>
           <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">{t.rentalReturn.calculateFillTitle}</p>
 
           {calculateFillState === 'needs_fuel_reading' ? (
@@ -506,6 +681,7 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
               </button>
               <button
                 onClick={() => {
+                  if (isNearReturn) trackClientEvent('rental_prepare_return_cta_used');
                   setRefuelDefaultType('final_return');
                   setRefuelSuggestion({ gallons: needed > 0 ? needed : undefined, price: Number(calcPricePerGal) > 0 ? Number(calcPricePerGal) : undefined });
                   setShowRefuel(true);
@@ -527,7 +703,7 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
           return target. Collapsed by default so an already-long dashboard
           doesn't grow further for renters who never open it. ═════════════ */}
       {!isUpcoming && tankCapacity > 0 && (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-2">
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-2" style={{ order: sectionOrder.tripCalc }}>
           <button
             type="button"
             onClick={() => {
@@ -657,7 +833,7 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
           only has old entries. The two never mix for the same session: once
           a session has a canonical row, all its history is canonical. */}
       {fillups.length > 0 ? (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4" style={{ order: sectionOrder.fuelLog }}>
           <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">{t.rentalReturn.refuelLog}</p>
           <div className="space-y-2">
             {fillups.map((f) => (
@@ -744,7 +920,7 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
       ) : session.refuelLogs.length > 0 && (() => {
         const totals = refuelTotals(session.refuelLogs);
         return (
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4" style={{ order: sectionOrder.fuelLog }}>
             <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">{t.rentalReturn.refuelLog}</p>
             <div className="space-y-2">
               {session.refuelLogs.map((r) => (
@@ -772,7 +948,7 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
           RETURN PREPARATION — cost comparison + nearby gas, only meaningful
           once fuel is actually needed. ═══════════════════════════════════ */}
       {needed > 0 && (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-2">
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-2" style={{ order: sectionOrder.returnPrep }}>
           <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">{t.rentalReturn.costComparison}</p>
           {session.rentalFuelChargePerGallon != null && rentalCharge != null && (
             <>
@@ -780,33 +956,51 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
                 <span className="text-slate-600">{t.rentalReturn.rentalCompanyEstimate}</span>
                 <span className="font-black text-red-600">~${rentalCharge.toFixed(2)}</span>
               </div>
+              {estimatedSavingsAmount != null && (
+                <p className={`text-sm font-black text-right ${estimatedSavingsAmount >= 0 ? 'text-emerald-600' : 'text-amber-600'}`}>
+                  {estimatedSavingsAmount >= 0 ? t.rentalReturn.saveVsRental(estimatedSavingsAmount) : t.rentalReturn.costMoreVsRental(Math.abs(estimatedSavingsAmount))}
+                </p>
+              )}
             </>
           )}
           <p className="text-[10px] text-slate-400">{t.rentalReturn.priceDisclaimer}</p>
-          <button onClick={() => { setShowFindGas((v) => !v); trackRentalGasNearReturnViewed(); }} className="w-full py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold mt-1">
+          <button
+            onClick={() => {
+              if (isNearReturn) trackClientEvent('rental_prepare_return_cta_used');
+              setShowFindGas((v) => !v);
+              trackRentalGasNearReturnViewed();
+            }}
+            className="w-full py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold mt-1"
+          >
             {t.rentalReturn.findGasNearReturn}
           </button>
         </div>
       )}
 
       {showFindGas && (
-        <FindGasNearReturn
-          returnLat={session.returnLatitude} returnLng={session.returnLongitude}
-          gallonsNeeded={needed} rentalRatePerGallon={session.rentalFuelChargePerGallon}
-        />
+        <div style={{ order: sectionOrder.findGas }}>
+          <FindGasNearReturn
+            returnLat={session.returnLatitude} returnLng={session.returnLongitude}
+            gallonsNeeded={needed} rentalRatePerGallon={session.rentalFuelChargePerGallon}
+          />
+        </div>
       )}
 
-      {/* Actions */}
-      <div className="flex gap-2">
-        <button onClick={() => { setRefuelDefaultType('trip'); setRefuelSuggestion({}); setShowRefuel(true); }} className="flex-1 py-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-700 text-sm font-bold">
-          ⛽ {t.rentalReturn.iJustRefueled}
-        </button>
-        <button onClick={() => setShowComplete(true)} className="flex-1 py-3 rounded-2xl bg-blue-600 text-white text-sm font-bold">
-          {t.rentalReturn.completeRental}
-        </button>
-      </div>
+      {/* Actions — hidden entirely before pickup (Phase 6A.1): a renter
+          who doesn't have the car yet can't log a real fuel purchase or
+          complete a return that hasn't started. */}
+      {!isUpcoming && (
+        <div className="flex gap-2" style={{ order: sectionOrder.actions }}>
+          <button onClick={() => { setRefuelDefaultType('trip'); setRefuelSuggestion({}); setShowRefuel(true); }} className="flex-1 py-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-700 text-sm font-bold">
+            ⛽ {t.rentalReturn.iJustRefueled}
+          </button>
+          <button onClick={() => setShowComplete(true)} className="flex-1 py-3 rounded-2xl bg-blue-600 text-white text-sm font-bold">
+            {t.rentalReturn.completeRental}
+          </button>
+        </div>
+      )}
 
-      <p className="text-[10px] text-slate-400 text-center leading-relaxed px-2">{t.rentalReturn.disclaimer}</p>
+      <p className="text-[10px] text-slate-400 text-center leading-relaxed px-2" style={{ order: 6 }}>{t.rentalReturn.disclaimer}</p>
 
       {showRefuel && (
         <RefuelLogModal
