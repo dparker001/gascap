@@ -13,6 +13,52 @@
 import type { FuelDataSource } from './rentalProvider';
 import { roundTo, gallonsToFill, costForGallons } from './fuelMath';
 
+// ── Fuel-state domain model (2026-08-28 confirmation-gating hardening) ─────
+// RentalSession.currentFuelGallons is a LAST-KNOWN/LAST-REPORTED fuel state,
+// never a live sensor reading — the invariants below are the contract every
+// calculator, display, and API validator in this feature must respect.
+// Getting any of these wrong is how a stale number gets presented as fact.
+//
+//  1. `pickupFuelGallons` = the fuel observation recorded at rental pickup.
+//     A one-time baseline, not updated as the rental progresses.
+//  2. `currentFuelGallons` = the last-known / last-reported fuel state.
+//     It is NOT guaranteed to reflect the tank's real-time contents — it is
+//     whatever was last observed, estimated, or logged, however long ago.
+//  3. `currentFuelSource` = the PROVENANCE of that last-known state (which
+//     of FUEL_DATA_SOURCES produced it) — who/what reported it, not how
+//     fresh it is. See isAuthoritativeSource() in lib/rentalProvider.ts.
+//  4. `currentFuelUpdatedAt` = the timestamp GasCap last established/stored
+//     that state — i.e. how old the last-known reading is, which the UI
+//     must surface so a renter can judge its usefulness for themselves.
+//  5. `requiredReturnFuelGallons` = a POLICY-DERIVED TARGET (same-as-pickup,
+//     full, or an exact figure) — never a measurement of anything, and
+//     never editable from a calculator that only consumes it.
+//  6. A `Fillup` = a historical fuel TRANSACTION record (gallons pumped at
+//     a point in time). It describes something that happened, not the
+//     tank's current contents.
+//  7. Logging a Fillup MAY establish a new immediate post-fill last-known
+//     state (see bumpCurrentFuelGallonsOnCreateSql in lib/rentalFillups.ts)
+//     — but that update is itself just a new last-known state, not a
+//     standing promise about the tank going forward. See invariant 8.
+//  8. Driving does NOT automatically reduce `currentFuelGallons` — GasCap
+//     never invents fuel consumption it did not observe. A last-known
+//     reading (including one established by a Fillup) stays exactly as
+//     recorded until the renter reports something new; it is never aged
+//     down by elapsed time or an assumed fuel-economy figure. (This also covers what an
+//     earlier draft of this list separated out as its own point 9: no
+//     passage of time by itself changes a stored fuel figure.)
+// 10. A calculator MUST distinguish "the last-known fuel level" from "the
+//     fuel level explicitly CONFIRMED, in this session, for THIS
+//     calculation." The former is informational; only the latter may ever
+//     feed a Calculate action. Enforced by RentalDashboard.tsx's explicit
+//     confirmation state machine — see this file's note further below.
+// 11. Provenance (invariant 3), freshness (invariant 4), and calculation-
+//     confirmation (invariant 10) are THREE SEPARATE CONCERNS. An
+//     authoritative source (RENTAL_COMPANY_API, VEHICLE_TELEMATICS) is not
+//     automatically a FRESH reading, and neither authority nor freshness by
+//     itself substitutes for the renter explicitly confirming a value for
+//     the calculation at hand.
+
 // ── Rounding ─────────────────────────────────────────────────────────────
 
 export function roundCurrency(n: number): number {
@@ -158,6 +204,25 @@ export function rentalRecap(
     savings: rentalWouldHaveCharged != null ? roundCurrency(rentalWouldHaveCharged - totals.totalPaid) : null,
   };
 }
+
+// ── Calculation-confirmation gate (invariant 10/11 above) ───────────────────
+//
+// 2026-08-28 correction (independent review): there used to be a
+// requiresCurrentFuelConfirmation(source) helper here that always returned
+// `true` regardless of its `source` argument — an unused parameter dressed
+// up as a decision the function didn't actually make. Every source
+// unconditionally requires confirmation today (no Level 2 provider with a
+// freshness contract exists), so the ONLY real enforcement is the explicit
+// calculator state machine in RentalDashboard.tsx
+// (confirmedCurrentFuelGallons / confirmSaveState — see the component's own
+// "Calculation-confirmation gating" header comment). That state machine is
+// now the sole source of truth; no separate pure-function "gate" pretends to
+// decide this independently. If a future Level 2 provider ever ships with a
+// documented freshness contract, the honest shape for a bypass would need
+// BOTH an authoritative source (isAuthoritativeSource() in
+// lib/rentalProvider.ts) AND a verified freshness signal from that specific
+// integration — never authority alone (invariant 11) — at which point a
+// two-axis helper should be reintroduced here, not a single-argument one.
 
 // ── Return-ready status (section 16–17) ─────────────────────────────────────
 

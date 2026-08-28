@@ -25,6 +25,16 @@ import { inferBodyType } from '@/lib/vehicleBodyType';
 import FuelLevelInput from './FuelLevelInput';
 import { resolveRentalGaugeStyle, isGaugeStyle, type GaugeStyle } from '@/lib/gaugeStyles';
 
+/** Absolute-ish, short "last updated" display — deliberately not a live
+ *  "3 minutes ago" ticker (this is a last-known reading, never live
+ *  telemetry, so a countdown-style relative clock would misrepresent it). */
+function formatUpdatedAt(iso: string | null): string {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+}
+
 function returnCountdown(returnDateTime: string | null): string | null {
   if (!returnDateTime) return null;
   const diffMs = new Date(returnDateTime).getTime() - Date.now();
@@ -102,7 +112,109 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
   // "I Just Refueled" button, which has no suggestion at all).
   const [refuelSuggestion, setRefuelSuggestion] = useState<{ gallons?: number; price?: number }>({});
 
+  // ── Calculation-confirmation gating (2026-08-28 hardening) ───────────────
+  // See lib/rentalCalculations.ts's fuel-state domain model (invariants
+  // 10/11): session.currentFuelGallons is a LAST-KNOWN reading, never live
+  // telemetry, so neither calculator below may feed it directly into a
+  // Calculate action. A value only becomes usable once the renter has
+  // explicitly confirmed it IN THIS SESSION, via a successful server
+  // round-trip. Enforcement is this explicit state machine alone — no
+  // separate helper function makes this decision (see the 2026-08-28
+  // Correction 11 note in lib/rentalCalculations.ts for why one that used
+  // to live there was removed).
+  //
+  // Deliberately ONE shared pair for both accordions (Add Fuel During
+  // Rental and Prepare for Return) rather than two independent ones: they
+  // both represent "the current fuel level, confirmed for calculation
+  // purposes right now" for the SAME physical tank — letting them diverge
+  // would let the dashboard show two different "confirmed current fuel"
+  // numbers at once, which is exactly the kind of contradiction this
+  // hardening pass exists to prevent.
+  const [confirmedCurrentFuelGallons, setConfirmedCurrentFuelGallons] = useState<number | null>(null);
+  const [confirmedCurrentFuelSource, setConfirmedCurrentFuelSource] = useState<FuelDataSource | null>(null);
+  const [confirmedCurrentFuelUpdatedAt, setConfirmedCurrentFuelUpdatedAt] = useState<string | null>(null);
+  const [confirmSaveState, setConfirmSaveState] = useState<'idle' | 'saving' | 'error' | 'conflict'>('idle');
+  const [showConfirmFuelInput, setShowConfirmFuelInput] = useState(false);
+  const [confirmPendingFuel, setConfirmPendingFuel] = useState<{ gallons: number; source: FuelDataSource } | null>(null);
 
+  // Invalidate on session id change (a different rental's confirmation must
+  // never leak into this one).
+  useEffect(() => {
+    setConfirmedCurrentFuelGallons(null);
+    setConfirmedCurrentFuelSource(null);
+    setConfirmedCurrentFuelUpdatedAt(null);
+    setConfirmSaveState('idle');
+    setShowConfirmFuelInput(false);
+    setConfirmPendingFuel(null);
+  }, [sessionId]);
+
+  // 2026-08-28 correction (independent review): closing/reopening an
+  // accordion does NOT change the physical fuel state, so it must NOT
+  // invalidate confirmedCurrentFuelGallons — a renter who confirms fuel in
+  // Add Fuel During Rental, closes it, then opens Prepare for Return (or
+  // vice versa) must not be forced to re-confirm. An earlier draft cleared
+  // confirmation here on every close; that over-invalidated and is
+  // deliberately removed. The confirm UI's own open/close (showConfirmFuelInput)
+  // is presentation-only and is reset independently wherever it's opened.
+
+  // Invalidate whenever the server's persisted last-known fuel-STATE IDENTITY
+  // — the full (currentFuelGallons, currentFuelSource, currentFuelUpdatedAt)
+  // triple, not gallons alone — no longer matches what we confirmed.
+  //
+  // 2026-08-28 correction (independent review, Blocker 1): gallons-only
+  // comparison misses a real case. A Fillup that tops off an already-full
+  // tank leaves currentFuelGallons numerically unchanged (clamped to the
+  // same tank capacity) while currentFuelSource becomes RECEIPT and
+  // currentFuelUpdatedAt advances — a genuinely NEW physical observation
+  // that a gallons-only check would have silently let ride on the old
+  // confirmation. Comparing the whole triple catches same-gallons
+  // re-observations, source changes, and timestamp-only server-side
+  // corrections alike, with no invented fuel-consumption logic involved.
+  //
+  // (When the divergence IS the result of our own successful confirm write,
+  // all three fields already equal what we just set locally, so this is a
+  // no-op — see confirmCurrentFuel below, which sets all three together from
+  // the server's response.)
+  useEffect(() => {
+    if (confirmedCurrentFuelGallons == null) return;
+    const identityChanged =
+      session?.currentFuelGallons !== confirmedCurrentFuelGallons ||
+      (session?.currentFuelSource ?? null) !== confirmedCurrentFuelSource ||
+      (session?.currentFuelUpdatedAt ?? null) !== confirmedCurrentFuelUpdatedAt;
+    if (identityChanged) {
+      setConfirmedCurrentFuelGallons(null);
+      setConfirmedCurrentFuelSource(null);
+      setConfirmedCurrentFuelUpdatedAt(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.currentFuelGallons, session?.currentFuelSource, session?.currentFuelUpdatedAt]);
+
+  // CALCULATED -> READY_TO_CALCULATE: a fresh confirmation invalidates any
+  // previously-shown result, same rule already applied to desired-level/
+  // price input changes above.
+  useEffect(() => {
+    setHasCalculatedTripFill(false);
+    setHasCalculatedReturn(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [confirmedCurrentFuelGallons]);
+
+  // RESULT invalidator — a changed required-return TARGET makes the
+  // previously-shown Prepare for Return result stale (it was computed
+  // against the old target), even though the underlying confirmed fuel
+  // level hasn't changed at all. Deliberately does NOT touch
+  // confirmedCurrentFuelGallons — the physical tank observation is still
+  // valid, only the comparison target moved.
+  useEffect(() => {
+    setHasCalculatedReturn(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.requiredReturnFuelGallons]);
+
+  /** Correction 2 — confirm-write correctness. PATCH, await, require
+   *  response.ok, and use the SERVER-RETURNED session's fuel fields (never
+   *  the locally-typed value) to set confirmed state. On failure, the
+   *  pending typed value, the confirm UI, and the calculator's disabled
+   *  state are all left exactly as they were — nothing is marked confirmed,
+   *  nothing is silently discarded. */
   const load = useCallback(() => {
     fetch(`/api/rental-sessions/${sessionId}`)
       .then((r) => r.ok ? r.json() : null)
@@ -110,23 +222,113 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
       .finally(() => setLoading(false));
   }, [sessionId]);
 
+  // 2026-08-28 final pre-commit hardening (independent review) — React state
+  // (confirmSaveState) is not a synchronous lock: two rapid taps can both
+  // read 'idle' before either re-render applies 'saving', so relying on it
+  // alone as the duplicate-submission guard leaves a real (if narrow)
+  // window. The server's optimistic-concurrency snapshot already protects
+  // data integrity either way, but a client-side double-submit would still
+  // needlessly turn one of the two into an avoidable 409/reconfirm prompt.
+  // confirmInFlightRef is a synchronous request lock; confirmSaveState stays
+  // exactly what it was — visual/UI state only.
+  const confirmInFlightRef = useRef(false);
+
+  const confirmCurrentFuel = useCallback(async () => {
+    if (!confirmPendingFuel) return;
+    if (confirmInFlightRef.current) return;
+    confirmInFlightRef.current = true;
+    setConfirmSaveState('saving');
+    try {
+      const res = await fetch(`/api/rental-sessions/${sessionId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          currentFuelGallons: confirmPendingFuel.gallons,
+          currentFuelSource: confirmPendingFuel.source,
+          // TOCTOU guard (2026-08-28 independent review, Correction 9,
+          // hardened 2026-08-28 Blocker 2): the server conditions its write
+          // on the FULL last-known fuel-state identity we last read —
+          // gallons, source, updatedAt, AND fuelTankCapacityGallons (the
+          // value validation was actually performed against) — still
+          // matching. Gallons alone isn't enough: a concurrent Fillup that
+          // tops off an already-full tank leaves gallons unchanged while
+          // source/updatedAt advance, and a concurrent tank-capacity edit
+          // can invalidate a validation decision without touching gallons
+          // at all. If ANY of these changed first, the server returns 409
+          // rather than writing against now-stale validated state.
+          expectedPriorCurrentFuelGallons: session?.currentFuelGallons ?? null,
+          expectedPriorCurrentFuelSource: session?.currentFuelSource ?? null,
+          expectedPriorCurrentFuelUpdatedAt: session?.currentFuelUpdatedAt ?? null,
+          expectedPriorFuelTankCapacityGallons: session?.fuelTankCapacityGallons ?? null,
+        }),
+      });
+      if (res.status === 409) {
+        // Correction 9/10 — a real race lost. Reload the latest session,
+        // leave fuel UNCONFIRMED (never set confirmedCurrentFuelGallons
+        // here), and show customer-safe copy — never the raw status code.
+        load();
+        setConfirmPendingFuel(null);
+        setConfirmSaveState('conflict');
+        return;
+      }
+      if (!res.ok) throw new Error(`PATCH failed: ${res.status}`);
+      const data = await res.json().catch(() => null);
+      const updatedSession = data?.session as RentalSession | undefined;
+      if (!updatedSession) throw new Error('No session in response');
+      setSession(updatedSession);
+      setConfirmedCurrentFuelGallons(updatedSession.currentFuelGallons);
+      setConfirmedCurrentFuelSource(updatedSession.currentFuelSource as FuelDataSource | null);
+      setConfirmedCurrentFuelUpdatedAt(updatedSession.currentFuelUpdatedAt);
+      setConfirmSaveState('idle');
+      setShowConfirmFuelInput(false);
+      setConfirmPendingFuel(null);
+    } catch {
+      // Failure path: keep confirmPendingFuel, keep showConfirmFuelInput
+      // open, do NOT mark confirmed, do NOT enable the calculator.
+      setConfirmSaveState('error');
+    } finally {
+      // Every terminal path — success, 409 conflict, non-2xx, thrown/network
+      // error — releases the lock. Nothing above this callback ever returns
+      // early without going through here (the only earlier `return` is
+      // before the lock is acquired).
+      confirmInFlightRef.current = false;
+    }
+  }, [confirmPendingFuel, sessionId, session?.currentFuelGallons, session?.currentFuelSource, session?.currentFuelUpdatedAt, session?.fuelTankCapacityGallons, load]);
+
   useEffect(() => { load(); }, [load]);
   /** Persist a resolved fuel level as either the pickup baseline or the
    *  current level. Setting pickup also moves the return target when the
    *  policy is same-as-pickup — handled server-side in updateRentalSession. */
-  const savePickupOrCurrent = useCallback((which: 'pickup' | 'current') => {
+  const [saveFuelError, setSaveFuelError] = useState<string | null>(null);
+
+  /** Correction 2 — await the PATCH and require response.ok before treating
+   *  the save as successful. The earlier fire-and-forget version closed the
+   *  editor and cleared pendingFuel immediately, regardless of whether the
+   *  write actually succeeded — a failed/slow request looked identical to a
+   *  successful one. On failure, the editor stays open and the typed value
+   *  is preserved so nothing the renter entered is silently lost. */
+  const savePickupOrCurrent = useCallback(async (which: 'pickup' | 'current') => {
     if (!pendingFuel) return;
     const body = which === 'pickup'
       ? { pickupFuelGallons: pendingFuel.gallons, pickupFuelSource: pendingFuel.source,
           currentFuelGallons: pendingFuel.gallons, currentFuelSource: pendingFuel.source }
       : { currentFuelGallons: pendingFuel.gallons, currentFuelSource: pendingFuel.source };
-    fetch(`/api/rental-sessions/${sessionId}`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
-    }).then(load).catch(() => {});
-    setPendingFuel(null);
-    setShowPickupFuel(false);
-    setShowUpdateFuel(false);
-  }, [pendingFuel, sessionId, load]);
+    setSaveFuelError(null);
+    try {
+      const res = await fetch(`/api/rental-sessions/${sessionId}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error(`PATCH failed: ${res.status}`);
+      const data = await res.json().catch(() => null);
+      if (!data?.session) throw new Error('No session in response');
+      setSession(data.session);
+      setPendingFuel(null);
+      setShowPickupFuel(false);
+      setShowUpdateFuel(false);
+    } catch {
+      setSaveFuelError(t.rentalReturn.fuelSaveFailed);
+    }
+  }, [pendingFuel, sessionId, t]);
 
   // Phase 4B — resolution precedence: session override, then the linked
   // Vehicle's style, then the user's global default, then the GasCap
@@ -147,10 +349,17 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
     }).catch(() => {});
   }, [sessionId, load]);
 
+  // 2026-08-28 correction — a "ready to return" verdict is only meaningful
+  // once the renter has explicitly CONFIRMED the current fuel level for
+  // this calculation, not merely because a last-known value happens to be
+  // on file (invariant 10, lib/rentalCalculations.ts). Gated on
+  // confirmedCurrentFuelGallons rather than session.currentFuelGallons.
   useEffect(() => {
-    if (session) trackRentalReturnReadyViewed(returnReadyStatus(session.currentFuelGallons, session.requiredReturnFuelGallons));
+    if (session && confirmedCurrentFuelGallons != null) {
+      trackRentalReturnReadyViewed(returnReadyStatus(confirmedCurrentFuelGallons, session.requiredReturnFuelGallons));
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session?.currentFuelGallons, session?.requiredReturnFuelGallons]);
+  }, [confirmedCurrentFuelGallons, session?.requiredReturnFuelGallons]);
 
   // Growth Sprint 1, P0C-2A — first-party rental_fuel_needed_calculated,
   // effect-based (not inline beside the render-time gallonsNeeded() call
@@ -158,13 +367,16 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
   // an unrelated rerender, and never records a "calculation" when the
   // inputs were merely coerced to 0 by the render's `?? 0` fallback. Fires
   // only once GasCap actually has a genuine, meaningful fuel-needed
-  // calculation to report: a non-upcoming rental with both a real current
-  // reading and a real return requirement on record.
+  // calculation to report: a non-upcoming rental with both a real
+  // CONFIRMED current reading (2026-08-28 correction — a last-known value
+  // alone is not "genuine," see invariant 10) and a real return requirement
+  // on record.
   useEffect(() => {
-    if (!shouldTrackFuelNeededCalculated(session)) return;
+    if (!session || confirmedCurrentFuelGallons == null) return;
+    if (!shouldTrackFuelNeededCalculated({ ...session, currentFuelGallons: confirmedCurrentFuelGallons })) return;
     trackClientEvent('rental_fuel_needed_calculated');
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session?.id, session?.currentFuelGallons, session?.requiredReturnFuelGallons, session?.pickupDateTime]);
+  }, [session?.id, confirmedCurrentFuelGallons, session?.requiredReturnFuelGallons, session?.pickupDateTime]);
 
   // Phase 6A.1 — rental_near_return_viewed, fired once when the dashboard
   // actually TRANSITIONS INTO the Near Return lifecycle state, not on
@@ -199,25 +411,38 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
     return <div className="max-w-lg mx-auto px-4 py-10"><div className="h-40 bg-slate-100 rounded-2xl animate-pulse" /></div>;
   }
 
-  const needed   = gallonsNeeded(session.requiredReturnFuelGallons ?? 0, session.currentFuelGallons ?? 0);
-  const status   = returnReadyStatus(session.currentFuelGallons, session.requiredReturnFuelGallons);
-  const rentalCharge = estimatedRentalCompanyCharge(needed, session.rentalFuelChargePerGallon);
-  // Phase 6A.1 — "Prepare for Return" savings figure. Only ever shown when
-  // BOTH a real rental-company rate and a real entered local price exist —
-  // never invents a gas price, same rule as everywhere else in this file.
-  const selfRefuelCostAtEnteredPrice = Number(calcPricePerGal) > 0 ? estimatedFuelCost(needed, Number(calcPricePerGal)) : 0;
-  const estimatedSavingsAmount = rentalCharge != null && Number(calcPricePerGal) > 0
-    ? estimatedSavings(rentalCharge, selfRefuelCostAtEnteredPrice)
-    : null;
+  // 2026-08-28 correction: neither the Current Fuel card, the hero, Prepare
+  // for Return, nor Add Fuel During Rental may derive a gallons-needed or
+  // return-ready CONCLUSION from raw last-known session.currentFuelGallons
+  // anymore — a `needed` const used to live here for exactly that and was
+  // removed. Each accordion computes its own confirmed-* figures from
+  // confirmedCurrentFuelGallons (see renderFuelConfirmPanel() and the
+  // fuel-state domain model in lib/rentalCalculations.ts); the Current Fuel
+  // card shows only last-known facts (gallons/target/timestamp/source), no
+  // verdict.
   const countdown = returnCountdown(session.returnDateTime);
+
+  // 2026-08-28 correction (independent review, Correction 4) — the HERO
+  // must never claim a return-ready verdict from the raw LAST-KNOWN
+  // session.currentFuelGallons. The hero owns lifecycle facts only
+  // (Active/Near Return/Completed/Cancelled, countdown, scheduled pickup);
+  // the one authoritative return-ready judgment lives entirely inside the
+  // Prepare for Return accordion, gated on confirmedCurrentFuelGallons (see
+  // renderFuelConfirmPanel() / prepareReturnContent below). `heroStatus` is
+  // therefore null — not merely unstyled, but genuinely absent — until a
+  // confirmation exists for THIS session; the hero shows neutral copy
+  // instead of a red/amber/green claim.
+  const heroStatus = confirmedCurrentFuelGallons != null
+    ? returnReadyStatus(confirmedCurrentFuelGallons, session.requiredReturnFuelGallons)
+    : null;
 
   // `chip` is for the tinted hero (needs to read against a dark gradient);
   // plain white/tinted backgrounds elsewhere use the same palette family.
-  const statusConfig = {
+  const HERO_STATUS_CONFIG = {
     needs_fuel:   { label: t.rentalReturn.statusNeedsFuel,   chip: 'bg-red-400/90 text-white' },
     nearly_ready: { label: t.rentalReturn.statusNearlyReady, chip: 'bg-amber-400 text-amber-950' },
     return_ready: { label: t.rentalReturn.statusReturnReady, chip: 'bg-white text-emerald-700' },
-  }[status];
+  } as const;
 
   // Phase 6A.1 — single source of truth for the four presentation
   // lifecycle states (upcoming/active/near_return/completed). `isUpcoming`
@@ -358,6 +583,82 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
   // rental of any age can have none.
   const hasFuelReading = session.currentFuelGallons != null || session.pickupFuelGallons != null;
 
+  // ── Shared last-known → confirmed fuel panel (2026-08-28) ────────────────
+  // Rendered identically inside BOTH accordions below so "confirmed current
+  // fuel" can never diverge into two different displayed numbers for the
+  // same tank. Every FuelDataSource requires confirmation today — see the
+  // Correction 11 note in lib/rentalCalculations.ts for why that decision
+  // has no separate helper function of its own anymore.
+  const hasCurrentFuelReading = session.currentFuelGallons != null;
+  // This reduces to the one real question: has THIS
+  // session already confirmed a value.
+  const currentFuelNeedsConfirmation = hasCurrentFuelReading && confirmedCurrentFuelGallons == null;
+
+  function renderFuelConfirmPanel() {
+    if (!hasCurrentFuelReading) return null;
+    const currentSource = session!.currentFuelSource as FuelDataSource | null;
+
+    if (!currentFuelNeedsConfirmation && confirmedCurrentFuelGallons != null) {
+      return (
+        <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-3 text-center space-y-1">
+          <p className="text-[10px] font-bold text-emerald-700 uppercase tracking-wide">{t.rentalReturn.confirmedFuelForCalcLabel}</p>
+          <p className="text-base font-black text-emerald-900">{formatGallons(confirmedCurrentFuelGallons, confirmedCurrentFuelSource)}</p>
+          <p className="text-[10px] text-emerald-600">{t.rentalReturn.confirmedAtLabel}: {formatUpdatedAt(confirmedCurrentFuelUpdatedAt)}</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="bg-blue-50 border border-blue-200 rounded-xl px-3 py-3 text-center space-y-2">
+        <p className="text-[10px] font-bold text-blue-700 uppercase tracking-wide">{t.rentalReturn.lastReportedFuel}</p>
+        <p className="text-base font-black text-blue-900">{formatGallons(session!.currentFuelGallons, currentSource)}</p>
+        <p className="text-[10px] text-blue-600">{t.rentalReturn.lastUpdatedLabel}: {formatUpdatedAt(session!.currentFuelUpdatedAt)}</p>
+        {currentSource && (
+          <p className="text-[10px] text-blue-500">
+            {currentSource === 'RECEIPT' ? t.rentalReturn.fuelCaptionFromReceipt : t.rentalReturn.fuelCaptionEstimated}
+          </p>
+        )}
+        {!showConfirmFuelInput ? (
+          <button
+            type="button"
+            onClick={() => { setShowConfirmFuelInput(true); setConfirmPendingFuel(null); setConfirmSaveState('idle'); }}
+            className="text-xs font-bold text-blue-700 hover:text-blue-900 underline"
+          >
+            {t.rentalReturn.confirmUpdateCurrentFuelCta}
+          </button>
+        ) : (
+          <div className="bg-white rounded-lg p-2 space-y-2 text-left">
+            <FuelLevelInput
+              tankCapacity={tankCapacity}
+              onResolved={setConfirmPendingFuel}
+              compact
+              gaugeStyle={resolvedGaugeStyle}
+            />
+            <button
+              type="button"
+              disabled={!confirmPendingFuel || confirmSaveState === 'saving'}
+              onClick={confirmCurrentFuel}
+              className="w-full py-2 rounded-lg bg-blue-600 text-white text-xs font-bold disabled:opacity-40"
+            >
+              {confirmSaveState === 'saving' ? t.rentalReturn.savingLabel : t.rentalReturn.confirmUpdateCurrentFuelCta}
+            </button>
+            {confirmSaveState === 'error' && (
+              <div className="text-center space-y-1">
+                <p className="text-[11px] text-red-600">{t.rentalReturn.fuelSaveFailed}</p>
+                <button type="button" onClick={confirmCurrentFuel} className="text-xs font-bold text-blue-700 underline">
+                  {t.rentalReturn.retryLabel}
+                </button>
+              </div>
+            )}
+            {confirmSaveState === 'conflict' && (
+              <p className="text-[11px] text-amber-600 text-center">{t.rentalReturn.fuelConfirmConflictMessage}</p>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   // Whether to render live fuel state: the gauge, the current/target figures,
   // and the needs-fuel / ✓ verdict.
   //
@@ -439,15 +740,20 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
           {/* returnReadyStatus(null, null) is 'needs_fuel', so an active rental
               with nothing recorded claimed "Needs Fuel" — a guess dressed as a
               reading. Less dangerous than the ✓ below, but still a status with
-              no data behind it. Say what's true instead. */}
+              no data behind it. Say what's true instead.
+              2026-08-28 correction — heroStatus is null (neutral, no color
+              claim) until confirmedCurrentFuelGallons exists for THIS
+              session; a last-known reading on file is never enough for this
+              badge to render green/amber/red. */}
           <span className={`text-[10px] font-black px-2.5 py-1 rounded-full ${
             isUpcoming ? 'bg-white/90 text-slate-700'
-            : !showLiveFuel ? 'bg-white/25 text-white'
-            : statusConfig.chip
+            : !showLiveFuel || heroStatus == null ? 'bg-white/25 text-white'
+            : HERO_STATUS_CONFIG[heroStatus].chip
           }`}>
             {isUpcoming ? t.rentalReturn.statusUpcoming
              : !showLiveFuel ? t.rentalReturn.statusFuelNotSet
-             : statusConfig.label}
+             : heroStatus == null ? t.rentalReturn.confirmFuelToCheckReturnStatus
+             : HERO_STATUS_CONFIG[heroStatus].label}
           </span>
           {isUpcoming && session.pickupDateTime && (
             <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-white/15 text-white">
@@ -482,14 +788,14 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
                 className="absolute inset-y-0 left-0 rounded-xl transition-all duration-500"
                 style={{
                   width: `${currentPct}%`,
-                  // Amber stays for "needs fuel" — that's a warning, and it
-                  // has to stay distinct from the mode color to be readable
-                  // at a glance. The satisfied state uses the rental blue
-                  // rather than brand green so the gauge belongs to this
-                  // mode; the ✓ and status chip already carry "you're good".
-                  background: needed > 0
-                    ? 'linear-gradient(90deg,#FBBF24,#FA7109)'
-                    : 'linear-gradient(90deg,#3b82f6,#1e40af)',
+                  // 2026-08-28 correction — this bar is a last-known-state
+                  // fill level, not a return-readiness verdict, so its color
+                  // must not vary with the raw (unconfirmed) gallons-needed
+                  // gap. A single neutral rental-blue fill regardless of
+                  // `needed` avoids the card implying a ready/not-ready
+                  // conclusion it isn't authorized to make — that lives only
+                  // in Prepare for Return, gated on confirmed fuel.
+                  background: 'linear-gradient(90deg,#3b82f6,#1e40af)',
                 }}
               />
               {/* Required-return marker */}
@@ -513,7 +819,7 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
         {showLiveFuel && (
         <div className="grid grid-cols-2 gap-3 text-center">
           <div className="bg-slate-50 rounded-xl py-2">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{t.rentalReturn.currentEstimated}</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{t.rentalReturn.lastReportedFuel}</p>
             <p className="text-lg font-black text-slate-800">{formatGallons(session.currentFuelGallons, session.currentFuelSource as FuelDataSource)}</p>
           </div>
           <div className="bg-slate-50 rounded-xl py-2">
@@ -522,11 +828,19 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
           </div>
         </div>
         )}
+        {showLiveFuel && session.currentFuelUpdatedAt && (
+          <p className="text-[10px] text-slate-400 text-center">
+            {t.rentalReturn.lastUpdatedLabel}: {formatUpdatedAt(session.currentFuelUpdatedAt)}
+          </p>
+        )}
         {session.currentFuelSource && (
-          <p className="text-[10px] text-slate-400 text-center">{fuelSourceLabel(session.currentFuelSource as FuelDataSource)}</p>
+          <p className="text-[10px] text-slate-400 text-center">
+            {session.currentFuelSource === 'RECEIPT' ? t.rentalReturn.fuelCaptionFromReceipt : t.rentalReturn.fuelCaptionEstimated}
+            {' · '}{fuelSourceLabel(session.currentFuelSource as FuelDataSource)}
+          </p>
         )}
 
-        {!showLiveFuel ? (
+        {!showLiveFuel && (
           /* No invented numbers: no gauge, no "✓", no gallons figure. Just
              what we actually know and the one action that resolves it. */
           <div className="bg-blue-50 border border-blue-200 rounded-xl px-3 py-3 text-center">
@@ -543,17 +857,15 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
                   : t.rentalReturn.fuelUnknownHint}
             </p>
           </div>
-        ) : needed > 0 ? (
-          <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl px-3 py-3 text-center">
-            <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wide">{t.rentalReturn.addFuelEyebrow}</p>
-            <p className="text-2xl font-black text-amber-800 leading-tight">{needed} <span className="text-base">gal</span></p>
-            <p className="text-[11px] text-amber-600">{t.rentalReturn.beforeReturning}</p>
-          </div>
-        ) : (
-          <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-3 text-center">
-            <p className="text-lg font-black text-emerald-800">✓ {t.rentalReturn.noFuelNeeded}</p>
-          </div>
         )}
+        {/* 2026-08-28 correction — this card is a LAST-KNOWN-STATE /
+            informational surface, not a calculator: it must never conclude
+            "Add X gal" or "✓ No fuel needed" from raw, unconfirmed
+            session.currentFuelGallons. That gallons-needed / return-ready
+            conclusion belongs solely to Prepare for Return, gated on an
+            explicit confirmedCurrentFuelGallons for this dashboard session.
+            The gallons/target/timestamp/source/return-requirement figures
+            above remain — those are last-known-state facts, not a verdict. */}
 
         {/* Return requirement — subordinate to current fuel, not a
             competing calculator. Policy name reuses the same labels the
@@ -589,6 +901,9 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
             >
               {t.rentalReturn.save}
             </button>
+            {saveFuelError && (
+              <p className="text-[11px] text-red-600 text-center">{saveFuelError}</p>
+            )}
           </div>
         )}
       </div>
@@ -625,6 +940,9 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
               {t.rentalReturn.save}
             </button>
           </div>
+          {saveFuelError && (
+            <p className="text-[11px] text-red-600 text-center">{saveFuelError}</p>
+          )}
         </div>
       )}
       {session.pickupFuelGallons != null && !showPickupFuel && (
@@ -674,29 +992,31 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
           <div key="add-fuel-content" className="bg-white rounded-2xl border border-amber-200 shadow-sm p-4 space-y-3">
             <p className="text-xs font-bold text-amber-700 uppercase tracking-wide">⛽ {t.rentalReturn.tripCalcTitle}</p>
             {(() => {
-              // Authoritative current level — never a local-only calculator
-              // value. session.currentFuelGallons is exactly what
-              // createRentalFillup() atomically adds the actual logged
-              // gallons to server-side (lib/rentalFillups.ts), so the
-              // calculator's estimate and the eventual real tank state can
-              // never disagree about where "current" started from.
-              const currentGallons = session.currentFuelGallons;
-              const hasCurrentFuel = currentGallons != null;
+              // Correction (2026-08-28): the calculator's "current" input is
+              // now the CONFIRMED-for-this-calculation value, never the raw
+              // last-known session.currentFuelGallons directly — see the
+              // fuel-state domain model in lib/rentalCalculations.ts
+              // (invariant 10). A stored value alone must never enable
+              // Calculate; only a successful in-session confirmation does.
+              const hasCurrentFuel = session.currentFuelGallons != null;
+              const confirmedGallons = confirmedCurrentFuelGallons;
               const tripDesiredGallonsRaw = tripDesiredFuel?.gallons ?? null;
               const tripPrice = Number(tripPricePerGal);
-              const estimate = hasCurrentFuel && tripDesiredGallonsRaw != null
-                ? tripFillEstimate(currentGallons, tripDesiredGallonsRaw, tankCapacity, tripPrice > 0 ? tripPrice : undefined)
+              const estimate = confirmedGallons != null && tripDesiredGallonsRaw != null
+                ? tripFillEstimate(confirmedGallons, tripDesiredGallonsRaw, tankCapacity, tripPrice > 0 ? tripPrice : undefined)
                 : null;
               const tripGallonsToAdd = estimate?.gallonsToAdd ?? null;
               const tripEstCost = estimate?.estimatedCost ?? null;
-              const tripDesiredTooLow = hasCurrentFuel && tripDesiredGallonsRaw != null && estimate != null && estimate.gallonsToAdd <= 0;
+              const tripDesiredEqualsConfirmed = confirmedGallons != null && tripDesiredGallonsRaw != null && tripDesiredGallonsRaw === confirmedGallons;
+              const tripDesiredBelowConfirmed = confirmedGallons != null && tripDesiredGallonsRaw != null
+                && estimate != null && estimate.gallonsToAdd <= 0 && !tripDesiredEqualsConfirmed;
 
-              // No current reading at all — never calculate from a fabricated
-              // 0. Same "unknown renders as unknown" rule as the rest of this
-              // dashboard (see the showLiveFuel comment above). Points at the
-              // EXISTING current-fuel update flow (showUpdateFuel, already
-              // rendered in the Current Fuel card above) rather than a second
-              // fuel-entry control.
+              // No current reading at all — never calculate from a
+              // fabricated 0. Same "unknown renders as unknown" rule as the
+              // rest of this dashboard. Points at the EXISTING current-fuel
+              // update flow (showUpdateFuel, already rendered in the
+              // Current Fuel card above) rather than a second fuel-entry
+              // control.
               if (!hasCurrentFuel) {
                 return (
                   <div className="bg-blue-50 border border-blue-200 rounded-xl px-3 py-3 text-center space-y-2">
@@ -710,21 +1030,17 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
 
               return (
                 <>
-                  {/* CURRENT STATE — read-only */}
-                  <div className="bg-slate-50 rounded-xl py-2 px-3 flex items-center justify-between">
-                    <div>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{t.rentalReturn.currentEstimated}</p>
-                      <p className="text-base font-black text-slate-800">{formatGallons(currentGallons, session.currentFuelSource as FuelDataSource)}</p>
-                    </div>
-                    <button type="button" onClick={() => setShowUpdateFuel(true)} className="text-[11px] font-bold text-blue-600 hover:text-blue-800">
-                      {t.rentalReturn.updateCurrentFuel}
-                    </button>
-                  </div>
+                  {/* LAST_KNOWN -> CONFIRMING -> CONFIRMED, shared with
+                      Prepare for Return below so the two accordions can
+                      never disagree about "confirmed current fuel." */}
+                  {renderFuelConfirmPanel()}
 
                   {/* USER INPUT — desired level + gas price, both editable,
                       visually distinct (white/bordered fields) from the
-                      shaded read-only/results boxes around them. */}
-                  <div>
+                      shaded read-only/results boxes around them. Disabled
+                      until a confirmation exists: there's nothing honest to
+                      calculate FROM before then. */}
+                  <div className={confirmedGallons == null ? 'opacity-40 pointer-events-none' : undefined}>
                     <label className="field-label">{t.rentalReturn.tripCalcDesiredLevel}</label>
                     <FuelLevelInput
                       tankCapacity={tankCapacity}
@@ -734,7 +1050,7 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
                     />
                   </div>
 
-                  <div>
+                  <div className={confirmedGallons == null ? 'opacity-40 pointer-events-none' : undefined}>
                     <label className="field-label">{t.rentalReturn.gasPriceAtPumpLabel}</label>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">$</span>
@@ -747,7 +1063,7 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
                     </div>
                   </div>
 
-                  {tripDesiredGallonsRaw != null && (
+                  {confirmedGallons != null && tripDesiredGallonsRaw != null && (
                     <button
                       type="button"
                       onClick={() => {
@@ -767,9 +1083,11 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
                       Visually distinct from the input fields above: a
                       shaded box with bold figures, never styled like an
                       editable field. */}
-                  {hasCalculatedTripFill && (
-                    tripDesiredTooLow ? (
-                      <p className="text-[11px] text-amber-600 text-center">{t.rentalReturn.tripCalcDesiredTooLow}</p>
+                  {hasCalculatedTripFill && confirmedGallons != null && (
+                    tripDesiredEqualsConfirmed ? (
+                      <p className="text-[11px] text-amber-600 text-center">{t.rentalReturn.desiredEqualsConfirmedMsg}</p>
+                    ) : tripDesiredBelowConfirmed ? (
+                      <p className="text-[11px] text-amber-600 text-center">{t.rentalReturn.desiredBelowConfirmedMsg}</p>
                     ) : tripGallonsToAdd != null && tripGallonsToAdd > 0 && (
                       <>
                         <div className="grid grid-cols-2 gap-3 text-center bg-amber-50 rounded-xl p-3 border border-amber-100">
@@ -860,7 +1178,29 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
         // estimatedRentalCompanyCharge()/estimatedSavings() exactly as
         // computed at the top of this component — presentation
         // consolidation only, not new fuel math.
-        const prepareReturnContent = activeWorkflow === 'prepare_return' && (
+        const prepareReturnContent = activeWorkflow === 'prepare_return' && (() => {
+          // Correction (2026-08-28): return-ready judgment and the fuel-
+          // needed figure both derive from the CONFIRMED-for-this-
+          // calculation value, never the raw last-known
+          // session.currentFuelGallons — see the fuel-state domain model
+          // in lib/rentalCalculations.ts. Before a confirmation exists,
+          // this section must not claim ready/not-ready/fuel-needed=X at
+          // all.
+          const confirmedGallons = confirmedCurrentFuelGallons;
+          const confirmedNeeded = confirmedGallons != null
+            ? gallonsNeeded(session.requiredReturnFuelGallons ?? 0, confirmedGallons)
+            : null;
+          const confirmedRentalCharge = confirmedNeeded != null
+            ? estimatedRentalCompanyCharge(confirmedNeeded, session.rentalFuelChargePerGallon)
+            : null;
+          const confirmedSelfRefuelCost = confirmedNeeded != null && Number(calcPricePerGal) > 0
+            ? estimatedFuelCost(confirmedNeeded, Number(calcPricePerGal))
+            : 0;
+          const confirmedSavings = confirmedRentalCharge != null && Number(calcPricePerGal) > 0
+            ? estimatedSavings(confirmedRentalCharge, confirmedSelfRefuelCost)
+            : null;
+
+          return (
           <div key="prepare-return-content" className="bg-white rounded-2xl border border-blue-200 shadow-sm p-4 space-y-3">
             <p className="text-xs font-bold text-blue-700 uppercase tracking-wide">🚗 {t.rentalReturn.prepareForReturnTitle}</p>
             <p className="text-[11px] text-slate-500 leading-snug">{t.rentalReturn.prepareForReturnHint}</p>
@@ -872,17 +1212,32 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
                   {t.rentalReturn.updateCurrentFuel}
                 </button>
               </div>
-            ) : needed <= 0 ? (
-              <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-3 text-center">
-                <p className="text-[11px] text-emerald-700 leading-snug">{t.rentalReturn.calculateFillAtOrAboveTarget}</p>
-              </div>
+            ) : confirmedGallons == null ? (
+              <>
+                {renderFuelConfirmPanel()}
+                <p className="text-[11px] text-blue-600 text-center leading-snug">{t.rentalReturn.confirmFuelToCheckReturnStatus}</p>
+              </>
+            ) : confirmedNeeded != null && confirmedNeeded <= 0 ? (
+              <>
+                {renderFuelConfirmPanel()}
+                <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-3 text-center">
+                  <p className="text-[11px] text-emerald-700 leading-snug">{t.rentalReturn.calculateFillAtOrAboveTarget}</p>
+                </div>
+              </>
             ) : (
               <>
-                {/* CURRENT STATE — both read-only */}
+                {/* Guaranteed non-null in this branch (the `confirmedNeeded
+                    != null` checks above already excluded null); named
+                    separately just so TS can narrow it once instead of at
+                    every call site below. */}
+                {(() => { const neededSafe = confirmedNeeded as number; return (
+                <>
+                {/* CURRENT STATE — confirmed-for-calculation, never raw */}
+                {renderFuelConfirmPanel()}
                 <div className="grid grid-cols-2 gap-3 text-center bg-slate-50 rounded-xl p-3">
                   <div>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{t.rentalReturn.currentLabel}</p>
-                    <p className="text-base font-black text-slate-800">{formatGallons(session.currentFuelGallons, session.currentFuelSource as FuelDataSource)}</p>
+                    <p className="text-base font-black text-slate-800">{formatGallons(confirmedGallons, session.currentFuelSource as FuelDataSource)}</p>
                   </div>
                   <div>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{t.rentalReturn.requiredLabel}</p>
@@ -922,21 +1277,23 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
                   {t.rentalReturn.calculateReturnCostCta}
                 </button>
 
-                {/* RESULTS — only after the renter explicitly calculates. */}
+                {/* RESULTS — only after the renter explicitly calculates,
+                    AND only with a real confirmation behind confirmedNeeded
+                    (guaranteed by this branch). */}
                 {hasCalculatedReturn && (
                   <>
                     <div className="bg-blue-50 rounded-xl p-3 border border-blue-100 space-y-2">
                       <div className="flex justify-between text-sm">
                         <span className="text-blue-700 font-bold">{t.rentalReturn.fuelNeededLabel}</span>
-                        <span className="font-black text-blue-900">{needed} gal</span>
+                        <span className="font-black text-blue-900">{neededSafe} gal</span>
                       </div>
                       {Number(calcPricePerGal) > 0 && (
                         <div className="flex justify-between text-sm">
                           <span className="text-blue-700 font-bold">{t.rentalReturn.estimatedGasStationCostLabel}</span>
-                          <span className="font-black text-blue-900">${estimatedFuelCost(needed, Number(calcPricePerGal)).toFixed(2)}</span>
+                          <span className="font-black text-blue-900">${estimatedFuelCost(neededSafe, Number(calcPricePerGal)).toFixed(2)}</span>
                         </div>
                       )}
-                      {session.rentalFuelChargePerGallon != null && rentalCharge != null && (
+                      {session.rentalFuelChargePerGallon != null && confirmedRentalCharge != null && (
                         <>
                           <div className="flex justify-between text-sm">
                             <span className="text-blue-700 font-bold">{t.rentalReturn.rentalCompanyRefuelingRateLabel(session.rentalCompany || '')}</span>
@@ -944,23 +1301,23 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
                           </div>
                           <div className="flex justify-between text-sm">
                             <span className="text-blue-700 font-bold">{t.rentalReturn.estimatedRentalCompanyChargeLabel}</span>
-                            <span className="font-black text-red-600">~${rentalCharge.toFixed(2)}</span>
+                            <span className="font-black text-red-600">~${confirmedRentalCharge.toFixed(2)}</span>
                           </div>
                         </>
                       )}
                     </div>
 
                     {/* SAVINGS — emphasized, only when both sides are valid. */}
-                    {estimatedSavingsAmount != null && (
-                      estimatedSavingsAmount >= 0 ? (
+                    {confirmedSavings != null && (
+                      confirmedSavings >= 0 ? (
                         <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-center">
-                          <p className="text-lg font-black text-emerald-700">{t.rentalReturn.saveAboutTitle(estimatedSavingsAmount)}</p>
+                          <p className="text-lg font-black text-emerald-700">{t.rentalReturn.saveAboutTitle(confirmedSavings)}</p>
                           <p className="text-[11px] text-emerald-600">{t.rentalReturn.byRefuelingBeforeReturning}</p>
                         </div>
                       ) : (
                         <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-center">
                           <p className="text-[11px] text-amber-700 font-bold">{t.rentalReturn.estimatedDifferenceLabel}</p>
-                          <p className="text-sm font-black text-amber-800">{t.rentalReturn.moreThanRentalChargeLabel(Math.abs(estimatedSavingsAmount))}</p>
+                          <p className="text-sm font-black text-amber-800">{t.rentalReturn.moreThanRentalChargeLabel(Math.abs(confirmedSavings))}</p>
                         </div>
                       )
                     )}
@@ -982,7 +1339,7 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{t.rentalReturn.findGasNearReturn}</p>
                         <FindGasNearReturn
                           returnLat={session.returnLatitude} returnLng={session.returnLongitude}
-                          gallonsNeeded={needed} rentalRatePerGallon={session.rentalFuelChargePerGallon}
+                          gallonsNeeded={neededSafe} rentalRatePerGallon={session.rentalFuelChargePerGallon}
                         />
                       </div>
                     )}
@@ -991,7 +1348,7 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
                       onClick={() => {
                         if (isNearReturn) trackClientEvent('rental_prepare_return_cta_used');
                         setRefuelDefaultType('final_return');
-                        setRefuelSuggestion({ gallons: needed > 0 ? needed : undefined, price: Number(calcPricePerGal) > 0 ? Number(calcPricePerGal) : undefined });
+                        setRefuelSuggestion({ gallons: neededSafe > 0 ? neededSafe : undefined, price: Number(calcPricePerGal) > 0 ? Number(calcPricePerGal) : undefined });
                         setShowRefuel(true);
                       }}
                       className="w-full py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold"
@@ -1000,10 +1357,13 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
                     </button>
                   </>
                 )}
+                </>
+                ); })()}
               </>
             )}
           </div>
-        );
+          );
+        })();
 
         // Near Return: Prepare for Return reads first / primary; Add Fuel
         // stays available underneath, secondary. Active: Add Fuel reads

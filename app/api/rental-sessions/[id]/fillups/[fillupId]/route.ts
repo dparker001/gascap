@@ -7,10 +7,12 @@
  * Phase 3A (2026-08-25). Both routes enforce rental ownership (the fillup
  * must belong to the given session AND the session to the caller) via
  * lib/rentalFillups.ts, which also implements the currentFuelGallons
- * invariant (only the single most-recent fillup for a session may adjust
- * it) and the one-final_return-per-rental rule. Deliberately NOT Pro-gated
- * — same "an active rental stays usable" rule as every other rental
- * mutation route.
+ * invariant — edit and delete NEVER adjust currentFuelGallons/source/
+ * timestamp, not even for the single most-recent fillup, since a historical
+ * transaction record can never be used to reconstruct current tank state
+ * (see lib/rentalFillups.ts's header comment) — and the
+ * one-final_return-per-rental rule. Deliberately NOT Pro-gated — same "an
+ * active rental stays usable" rule as every other rental mutation route.
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
