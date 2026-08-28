@@ -31,8 +31,8 @@ function extractBlock(src: string, startMarker: string, endMarker: string): stri
 
 const tripCalcBlock = extractBlock(
   dashboardSrc,
-  'TRIP FILL-UP CALCULATOR',
-  'Rental Fuel Log — Phase 3A canonical Fillup rows',
+  'ADD FUEL DURING RENTAL',
+  'PREPARE FOR RETURN — Phase 6A.2',
 );
 
 describe('Trip Fill-Up calculator — never persists automatically', () => {
@@ -113,10 +113,10 @@ describe('Fuel History — totals and row display use canonical Fillup fields, n
     // renders a fuelHistoryTotalGallons/Cost pair (from pre-computed
     // totalGallons/totalCost consts, still fillups-derived, just hoisted
     // above the JSX rather than inlined) BEFORE the live dashboard's own
-    // totals block. Search from the live "Rental Fuel Log" section's start
-    // (tripCalcBlock's end marker) so this test targets the ACTIVE
-    // dashboard's totals, not the completed view's.
-    const liveFuelLogStart = dashboardSrc.indexOf('Rental Fuel Log — Phase 3A canonical Fillup rows');
+    // totals block. Search from the live "Fuel History" section's start
+    // so this test targets the ACTIVE dashboard's totals, not the
+    // completed view's.
+    const liveFuelLogStart = dashboardSrc.indexOf('FUEL HISTORY — Phase 6A.2');
     const totalsBlock = dashboardSrc.slice(
       dashboardSrc.indexOf('fuelHistoryTotalGallons', liveFuelLogStart),
       dashboardSrc.indexOf('fuelHistoryTotalCost', liveFuelLogStart) + 'fuelHistoryTotalCost'.length + 200,
@@ -152,9 +152,9 @@ describe('Existing final-return calculation is untouched by this change', () => 
   });
 });
 
-describe('Trip Fill-Up calculator collapses when the rental has not started or has no known tank size', () => {
-  it('is gated on !isUpcoming and tankCapacity > 0', () => {
-    const gateLine = dashboardSrc.match(/\{!isUpcoming && tankCapacity > 0 && \(/);
+describe('Add Fuel During Rental collapses when the rental has not started, has no known tank size, or the workflow isn\'t the active one', () => {
+  it('is gated on !isUpcoming, tankCapacity > 0, and activeWorkflow === \'add_fuel\' (single-workflow-open-at-a-time)', () => {
+    const gateLine = dashboardSrc.match(/\{!isUpcoming && tankCapacity > 0 && activeWorkflow === 'add_fuel' && \(/);
     expect(gateLine).toBeTruthy();
   });
 });
