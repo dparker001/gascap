@@ -32,7 +32,7 @@ function extractBlock(src: string, startMarker: string, endMarker: string): stri
 const tripCalcBlock = extractBlock(
   dashboardSrc,
   'ADD FUEL DURING RENTAL',
-  'PREPARE FOR RETURN — Phase 6A.2',
+  'PREPARE FOR RETURN — expanded content',
 );
 
 describe('Trip Fill-Up calculator — never persists automatically', () => {
@@ -154,7 +154,7 @@ describe('Existing final-return calculation is untouched by this change', () => 
 
 describe('Add Fuel During Rental collapses when the rental has not started, has no known tank size, or the workflow isn\'t the active one', () => {
   it('is gated on !isUpcoming, tankCapacity > 0, and activeWorkflow === \'add_fuel\' (single-workflow-open-at-a-time)', () => {
-    const gateLine = dashboardSrc.match(/\{!isUpcoming && tankCapacity > 0 && activeWorkflow === 'add_fuel' && \(/);
+    const gateLine = dashboardSrc.match(/const addFuelContent = !isUpcoming && tankCapacity > 0 && activeWorkflow === 'add_fuel' && \(/);
     expect(gateLine).toBeTruthy();
   });
 });
@@ -181,7 +181,7 @@ describe('Trip Fill-Up calculator — current level is authoritative, never inde
     // level. A second one bound to "current" is exactly the bug being fixed.
     const fuelLevelInputCount = (tripCalcBlock.match(/<FuelLevelInput/g) ?? []).length;
     expect(fuelLevelInputCount).toBe(1);
-    expect(tripCalcBlock).toMatch(/onResolved=\{setTripDesiredFuel\}/);
+    expect(tripCalcBlock).toMatch(/onResolved=\{\(v\) => \{ setTripDesiredFuel\(v\)/);
   });
 
   it('unknown current fuel (session.currentFuelGallons == null) does not calculate from 0 — hasCurrentFuel gates the estimate', () => {
@@ -194,7 +194,7 @@ describe('Trip Fill-Up calculator — current level is authoritative, never inde
   });
 
   it('unknown current fuel shows a prompt and the EXISTING Update Current Fuel action, not a second fuel-entry form', () => {
-    const unknownBlock = tripCalcBlock.slice(tripCalcBlock.indexOf('if (!hasCurrentFuel)'), tripCalcBlock.indexOf('return (\n              <>'));
+    const unknownBlock = tripCalcBlock.slice(tripCalcBlock.indexOf('if (!hasCurrentFuel)'), tripCalcBlock.indexOf('return (\n                <>'));
     expect(unknownBlock).toMatch(/tripCalcSetCurrentFuelFirst/);
     expect(unknownBlock).toMatch(/setShowUpdateFuel\(true\)/);
     expect(unknownBlock).toMatch(/updateCurrentFuel/);

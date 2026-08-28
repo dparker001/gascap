@@ -19,41 +19,34 @@ const dashboardSrc = readFileSync(
   'utf8',
 );
 
-describe('Section ordering — Fuel Actions replace "Calculate Fill", promoted/de-emphasized per lifecycle', () => {
-  it('8. upcoming: Fuel Actions (and therefore Add Fuel During Rental / Prepare for Return) are entirely absent', () => {
-    expect(dashboardSrc).toMatch(/\{!isUpcoming && \(\s*<div className="space-y-2" style=\{\{ order: sectionOrder\.calculateFill \}\}>/);
+describe('Section ordering — Phase 6A.4 true accordion: card+content pairs never separated, ordering swaps which pair comes first', () => {
+  it('8. upcoming: the entire Fuel Actions container (and therefore both accordions) is entirely absent', () => {
+    expect(dashboardSrc).toMatch(/\{!isUpcoming && \(\(\) => \{/);
   });
 
-  it('9. active: Add Fuel During Rental + Fuel Log are ordered BEFORE the return-target group (Fuel Actions/Prepare for Return)', () => {
+  it('9. active: the merged Fuel Actions container sits BEFORE Fuel History (uses tripCalc\'s order value, which is less than fuelLog\'s for active)', () => {
     const o = RENTAL_LIFECYCLE_SECTION_ORDER.active;
-    expect(o.tripCalc).toBeLessThan(o.calculateFill);
-    expect(o.fuelLog).toBeLessThan(o.calculateFill);
-    expect(o.tripCalc).toBeLessThan(o.returnPrep);
-    expect(o.fuelLog).toBeLessThan(o.returnPrep);
+    expect(o.fuelLevel).toBeLessThan(o.tripCalc);
+    expect(o.tripCalc).toBeLessThan(o.fuelLog);
   });
 
-  it('10. near_return: Fuel Actions/Prepare for Return are ordered BEFORE Add Fuel During Rental and Fuel Log', () => {
+  it('10. near_return: the merged Fuel Actions container is promoted ABOVE Current Fuel (uses calculateFill\'s order value, which is less than fuelLevel\'s for near_return)', () => {
     const o = RENTAL_LIFECYCLE_SECTION_ORDER.near_return;
-    expect(o.calculateFill).toBeLessThan(o.tripCalc);
-    expect(o.returnPrep).toBeLessThan(o.tripCalc);
+    expect(o.calculateFill).toBeLessThan(o.fuelLevel);
     expect(o.calculateFill).toBeLessThan(o.fuelLog);
-    expect(o.returnPrep).toBeLessThan(o.fuelLog);
   });
 
-  it('11. near_return still renders the Add Fuel During Rental button/workflow — never removed, only de-emphasized (secondary ordering within Fuel Actions)', () => {
-    // The Fuel Actions block (rendered whenever !isUpcoming, both active and
-    // near_return) always includes the Add Fuel button — only its `order-1`
-    // vs `order-2` class swaps based on isNearReturn, it's never dropped.
+  it('11. near_return still renders the Add Fuel During Rental card/workflow — never removed, only reordered to appear AFTER Prepare for Return within the same container', () => {
     expect(dashboardSrc).toMatch(/\{t\.rentalReturn\.tripCalcTitle\}/);
-    expect(dashboardSrc).toMatch(/\$\{isNearReturn \? 'order-2' : 'order-1'\}/);
+    expect(dashboardSrc).toMatch(/isNearReturn \? \(\s*<>\s*\{prepareReturnCard\}\s*\{prepareReturnContent\}\s*\{addFuelCard\}\s*\{addFuelContent\}/);
   });
 
-  it('the ordering is applied via CSS order on a flex container, not by physically duplicating any section\'s JSX', () => {
-    expect(dashboardSrc).toMatch(/flex flex-col gap-4/);
-    expect(dashboardSrc).toMatch(/style=\{\{ order: sectionOrder\.tripCalc \}\}/);
-    expect(dashboardSrc).toMatch(/style=\{\{ order: sectionOrder\.calculateFill \}\}/);
-    expect(dashboardSrc).toMatch(/style=\{\{ order: sectionOrder\.fuelLog \}\}/);
-    expect(dashboardSrc).toMatch(/style=\{\{ order: sectionOrder\.returnPrep \}\}/);
+  it('active orders addFuelCard/addFuelContent BEFORE prepareReturnCard/prepareReturnContent — the same fragment pair, just reordered, not duplicated', () => {
+    expect(dashboardSrc).toMatch(/<>\s*\{addFuelCard\}\s*\{addFuelContent\}\s*\{prepareReturnCard\}\s*\{prepareReturnContent\}\s*<\/>/);
+  });
+
+  it('the accordion content renders DIRECTLY adjacent to its own card in source order (true accordion) — picking per-lifecycle from unmodified lib constants, not editing RENTAL_LIFECYCLE_SECTION_ORDER itself', () => {
+    expect(dashboardSrc).toMatch(/style=\{\{ order: isNearReturn \? sectionOrder\.calculateFill : sectionOrder\.tripCalc \}\}/);
   });
 });
 
@@ -68,15 +61,15 @@ describe('Prepare for Return promotion (near_return) — Phase 6A.2', () => {
     expect(dashboardSrc).toMatch(/setActiveWorkflow\('prepare_return'\)/);
   });
 
-  it('Prepare for Return is its own panel, gated on activeWorkflow, and reuses prepareForReturnTitle both as the Fuel Actions button label and the panel heading', () => {
-    expect(dashboardSrc).toMatch(/\{!isUpcoming && activeWorkflow === 'prepare_return' && \(/);
+  it('Prepare for Return is its own panel, gated on activeWorkflow, and reuses prepareForReturnTitle both as the Fuel Actions card label and the panel heading', () => {
+    expect(dashboardSrc).toMatch(/const prepareReturnContent = activeWorkflow === 'prepare_return' && \(/);
     const occurrences = dashboardSrc.match(/prepareForReturnTitle/g) ?? [];
     expect(occurrences.length).toBeGreaterThanOrEqual(2);
   });
 
   it('the return workflow does not offer a Trip Fill-Up CTA — that job belongs entirely to Add Fuel During Rental', () => {
-    const start = dashboardSrc.indexOf("{!isUpcoming && activeWorkflow === 'prepare_return' && (");
-    const end = dashboardSrc.indexOf('(showFindGas || activeWorkflow', start);
+    const start = dashboardSrc.indexOf("const prepareReturnContent = activeWorkflow === 'prepare_return' && (");
+    const end = dashboardSrc.indexOf('// Near Return: Prepare for Return reads first', start);
     const prepareReturnBlock = dashboardSrc.slice(start, end);
     expect(prepareReturnBlock).not.toMatch(/tripFillUp/);
     expect(prepareReturnBlock).not.toMatch(/setRefuelDefaultType\('trip'\)/);
@@ -84,9 +77,9 @@ describe('Prepare for Return promotion (near_return) — Phase 6A.2', () => {
     expect(prepareReturnBlock).toMatch(/logFinalFillUpCta/);
   });
 
-  it('the Add Fuel During Rental workflow does not masquerade as return calculation — no requiredReturnFuelGallons/gallonsNeeded usage inside it', () => {
-    const start = dashboardSrc.indexOf('ADD FUEL DURING RENTAL');
-    const end = dashboardSrc.indexOf('PREPARE FOR RETURN — Phase 6A.2', start);
+  it('the Add Fuel During Rental workflow does not masquerade as return calculation — no requiredReturnFuelGallons/gallonsNeeded(...) call usage inside it', () => {
+    const start = dashboardSrc.indexOf('const addFuelContent =');
+    const end = dashboardSrc.indexOf('const prepareReturnCard = (', start);
     const addFuelBlock = dashboardSrc.slice(start, end);
     expect(addFuelBlock).not.toMatch(/requiredReturnFuelGallons/);
     expect(addFuelBlock).not.toMatch(/gallonsNeeded\(/);
@@ -187,8 +180,8 @@ describe('Completed/Cancelled lifecycle — read-only, no mutation controls, ret
 });
 
 describe('Upcoming lifecycle — mutation actions hidden entirely', () => {
-  it('16. upcoming hides live fuel actions: Fuel Actions (Add Fuel/Prepare for Return) and Complete Rental are both gated on !isUpcoming', () => {
-    expect(dashboardSrc).toMatch(/\{!isUpcoming && \(\s*<div className="space-y-2" style=\{\{ order: sectionOrder\.calculateFill \}\}>/);
+  it('16. upcoming hides live fuel actions: the whole Fuel Actions container (Add Fuel/Prepare for Return) and Complete Rental are both gated on !isUpcoming', () => {
+    expect(dashboardSrc).toMatch(/\{!isUpcoming && \(\(\) => \{/);
     expect(dashboardSrc).toMatch(/\{!isUpcoming && \(\s*<button onClick=\{\(\) => setShowComplete\(true\)\}/);
   });
 
