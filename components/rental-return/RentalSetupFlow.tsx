@@ -6,7 +6,7 @@
  * requirement → Rate → Return location/time → create.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from '@/contexts/LanguageContext';
 import { trackClientEvent } from '@/lib/clientAnalytics';
 import { RENTAL_COMPANIES, gallonsFromGaugeFraction, gallonsFromPercent } from '@/lib/rentalProvider';
@@ -18,7 +18,7 @@ import ReturnLocationInput from './ReturnLocationInput';
 import PhotoCaptureButton from './PhotoCaptureButton';
 import AgreementScanButton, { type ScannedAgreementFields } from './AgreementScanButton';
 import { scheduleRentalReturnReminder } from '@/lib/rentalReminder';
-import { detectBrowserTimeZone } from '@/lib/rentalTimezone';
+import { detectBrowserTimeZone, splitLocalDateTime, combineLocalDateTime } from '@/lib/rentalTimezone';
 import DateTimeSplitInput from './DateTimeSplitInput';
 
 const GAUGE_OPTIONS = ['Full', '7/8', '3/4', '5/8', '1/2', '3/8', '1/4', '1/8', 'Empty'];
@@ -129,6 +129,47 @@ export default function RentalSetupFlow({ onCreated, onCancel }: Props) {
   const [returnCoords, setReturnCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [pickupDateTime, setPickupDateTime] = useState('');
   const [returnDateTime, setReturnDateTime] = useState('');
+  // Return TIME defaults to match pickup TIME (e.g. 9am pickup -> 9am
+  // return) — the common case for a multi-day rental, since the return
+  // DATE differs but the time of day usually doesn't. Never touches the
+  // return DATE. Stops auto-syncing the moment the renter picks a return
+  // time that differs from the current pickup time — a ref, not state,
+  // since it's a one-way latch that shouldn't itself trigger a rerender.
+  const returnTimeTouchedRef = useRef(false);
+
+  function handlePickupDateTimeChange(value: string) {
+    setPickupDateTime(value);
+    if (returnTimeTouchedRef.current) return;
+    const { time: pickupTime } = splitLocalDateTime(value);
+    const { date: returnDate } = splitLocalDateTime(returnDateTime);
+    // Only sync once a return DATE already exists — combineLocalDateTime
+    // requires both halves, and there's nothing to default the time INTO
+    // until the renter has picked which day they're returning.
+    if (pickupTime && returnDate) {
+      setReturnDateTime(combineLocalDateTime(returnDate, pickupTime));
+    }
+  }
+
+  function handleReturnDateTimeChange(value: string) {
+    const { date: newReturnDate, time: newReturnTime } = splitLocalDateTime(value);
+    const { time: prevReturnTime } = splitLocalDateTime(returnDateTime);
+    // The renter picked a genuinely different return time themselves —
+    // respect it from here on, per pickup edits included.
+    if (newReturnTime && prevReturnTime && newReturnTime !== prevReturnTime) {
+      returnTimeTouchedRef.current = true;
+    }
+    if (!returnTimeTouchedRef.current && newReturnDate && !newReturnTime) {
+      // The renter just picked a return DATE with no time set yet — default
+      // the time to match pickup immediately, rather than waiting for a
+      // separate pickup edit to trigger the sync.
+      const { time: pickupTime } = splitLocalDateTime(pickupDateTime);
+      if (pickupTime) {
+        setReturnDateTime(combineLocalDateTime(newReturnDate, pickupTime));
+        return;
+      }
+    }
+    setReturnDateTime(value);
+  }
 
   // Step 7 — pickup documentation (all optional)
   const [pickupVehiclePhoto,   setPickupVehiclePhoto]   = useState('');
@@ -434,12 +475,12 @@ export default function RentalSetupFlow({ onCreated, onCancel }: Props) {
           </div>
           <div>
             <label className="field-label">{t.rentalReturn.pickupDateTimeLabel}</label>
-            <DateTimeSplitInput value={pickupDateTime} onChange={setPickupDateTime} />
+            <DateTimeSplitInput value={pickupDateTime} onChange={handlePickupDateTimeChange} />
             <p className="text-[11px] text-slate-400 mt-1">{t.rentalReturn.pickupDateTimeHint}</p>
           </div>
           <div>
             <label className="field-label">{t.rentalReturn.returnDateTimeLabel}</label>
-            <DateTimeSplitInput value={returnDateTime} onChange={setReturnDateTime} />
+            <DateTimeSplitInput value={returnDateTime} onChange={handleReturnDateTimeChange} />
           </div>
         </div>
       )}
