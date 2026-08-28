@@ -378,3 +378,42 @@ describe('CR-1 P0 follow-up — App Store review notes no longer contradict nati
     }
   });
 });
+
+describe('CR-1b (2026-08-28) — missed metadata/email commercial-truth cleanup', () => {
+  const layoutSrc = readFileSync(path.join(repoRoot, 'app/layout.tsx'), 'utf8');
+  const emailSrc = readFileSync(path.join(repoRoot, 'lib/email.ts'), 'utf8');
+  const translationsSrcForStation = readFileSync(path.join(repoRoot, 'lib/translations.ts'), 'utf8');
+
+  it('1. app/layout.tsx metadata.description no longer contains "Live local gas prices"', () => {
+    expect(layoutSrc).not.toMatch(/Live local gas prices/);
+  });
+
+  it('2. app/layout.tsx Twitter/X description no longer contains "live local prices"', () => {
+    expect(layoutSrc).not.toMatch(/live local prices/i);
+  });
+
+  it('3. layout metadata uses truthful state-average/EIA-oriented terminology', () => {
+    expect(layoutSrc).toMatch(/Current state-average gas prices/);
+  });
+
+  it('4. lib/email.ts no longer contains "Live local gas prices"', () => {
+    expect(emailSrc).not.toMatch(/Live local gas prices/);
+  });
+
+  it('5. the Pro email no longer contains "Unlimited fill-up tracking & history"', () => {
+    expect(emailSrc).not.toMatch(/Unlimited fill-up tracking &amp; history/);
+  });
+
+  it('6. the Pro email contains "Unlimited fill-up logging"', () => {
+    expect(emailSrc).toMatch(/Unlimited fill-up logging/);
+  });
+
+  it('7. the Pro email contains "Rental Car Return Mode"', () => {
+    expect(emailSrc).toMatch(/Rental Car Return Mode/);
+  });
+
+  it('8. genuine Find Gas / Google Places station-level real-time wording remains present elsewhere', () => {
+    expect(translationsSrcForStation).toMatch(/real-time gas prices at nearby stations/);
+    expect(translationsSrcForStation).toMatch(/Live prices from Google at nearby stations/);
+  });
+});

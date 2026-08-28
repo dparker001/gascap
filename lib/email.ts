@@ -1091,8 +1091,8 @@ ${brandHeader('trial')}
                        text-transform:uppercase;letter-spacing:0.05em;">What's included with Pro</p>
             <table cellpadding="0" cellspacing="0" width="100%">
               ${[
-                'Unlimited fill-up tracking &amp; history',
-                'Live local gas prices',
+                'Unlimited fill-up logging',
+                'Rental Car Return Mode',
                 'MPG trends &amp; fuel insights',
                 '2× monthly giveaway entries (Founding Member)',
                 'GasCap Assistant',
