@@ -25,7 +25,7 @@ const APP_URL = 'https://www.gascap.app';
 export const metadata: Metadata = {
   title: 'GasCap™ — Free Gas Calculator | Know Before You Pull Up',
   description:
-    'Free gas calculator that tells you exactly how much fuel you need and what it will cost before you reach the pump. Live local gas prices, rental car return mode, MPG tracking, and GasCap Assistant. Available on App Store and Google Play.',
+    'Free gas calculator that tells you exactly how much fuel you need and what it will cost before you reach the pump. Current state-average gas prices, rental car return mode, MPG tracking, and GasCap Assistant. Available on App Store and Google Play.',
   metadataBase: new URL(APP_URL),
   manifest: '/manifest.json',
   // Google Search Console ownership verification (for Play Console org website check)
@@ -75,7 +75,7 @@ export const metadata: Metadata = {
   twitter: {
     card:        'summary_large_image',
     title:       'GasCap™ — Know Before You Go',
-    description: 'Calculate exactly how much fuel you need before you pull up to the pump. Free gas calculator + live local prices.',
+    description: 'Calculate exactly how much fuel you need before you pull up to the pump. Free gas calculator + current state-average gas prices.',
     images:      ['/og-image.png?v=2'],
   },
 };
