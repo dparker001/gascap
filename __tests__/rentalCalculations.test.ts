@@ -15,6 +15,8 @@ import {
   rentalRecap,
   resolveCalculateFillState,
   tripFillEstimate,
+  resolveRentalLifecycle,
+  RENTAL_NEAR_RETURN_HOURS,
 } from '../lib/rentalCalculations';
 import { gallonsFromGaugeFraction, gallonsFromPercent } from '../lib/rentalProvider';
 
@@ -453,5 +455,87 @@ describe('tripFillEstimate()', () => {
   it('unknown/zero tank capacity does not clamp (falls back to the raw desired value)', () => {
     const est = tripFillEstimate(2, 10, 0);
     expect(est.gallonsToAdd).toBe(8);
+  });
+});
+
+// Phase 6A.1 — Rental Car Mode lifecycle UX. Presentation-only state
+// derived from existing authoritative fields (status, pickupDateTime,
+// returnDateTime) — no new DB status.
+describe('resolveRentalLifecycle()', () => {
+  const NOW = new Date('2026-08-15T18:00:00Z').getTime();
+  const base = { status: 'active', pickupDateTime: '2026-08-10T09:00:00Z', returnDateTime: null as string | null, now: NOW };
+
+  it('1. before pickup => upcoming', () => {
+    expect(resolveRentalLifecycle({ ...base, pickupDateTime: '2026-08-20T09:00:00Z' })).toBe('upcoming');
+  });
+
+  it('2. after pickup, well over 24h before return => active', () => {
+    expect(resolveRentalLifecycle({ ...base, returnDateTime: '2026-08-20T09:00:00Z' })).toBe('active');
+  });
+
+  it(`3. exactly ${RENTAL_NEAR_RETURN_HOURS}h before return is the near_return boundary (inclusive)`, () => {
+    const exactlyAtThreshold = new Date(NOW + RENTAL_NEAR_RETURN_HOURS * 3_600_000).toISOString();
+    expect(resolveRentalLifecycle({ ...base, returnDateTime: exactlyAtThreshold })).toBe('near_return');
+    const oneMinutePastThreshold = new Date(NOW + RENTAL_NEAR_RETURN_HOURS * 3_600_000 + 60_000).toISOString();
+    expect(resolveRentalLifecycle({ ...base, returnDateTime: oneMinutePastThreshold })).toBe('active');
+  });
+
+  it('4. <24h before return => near_return', () => {
+    const in18h = new Date(NOW + 18 * 3_600_000).toISOString();
+    expect(resolveRentalLifecycle({ ...base, returnDateTime: in18h })).toBe('near_return');
+  });
+
+  it('5. past scheduled return but not completed => stays near_return (overdue), never silently completes or reverts to active', () => {
+    const threeHoursAgo = new Date(NOW - 3 * 3_600_000).toISOString();
+    expect(resolveRentalLifecycle({ ...base, status: 'active', returnDateTime: threeHoursAgo })).toBe('near_return');
+  });
+
+  it('6. a completed rental is always completed, regardless of dates', () => {
+    const farFutureReturn = new Date(NOW + 1000 * 3_600_000).toISOString();
+    expect(resolveRentalLifecycle({ ...base, status: 'completed', returnDateTime: farFutureReturn })).toBe('completed');
+    const pastPickup = { ...base, status: 'completed', pickupDateTime: '2020-01-01T00:00:00Z' };
+    expect(resolveRentalLifecycle(pastPickup)).toBe('completed');
+  });
+
+  it('8. a cancelled rental is its OWN distinct state — never collapsed into completed', () => {
+    expect(resolveRentalLifecycle({ ...base, status: 'cancelled' })).toBe('cancelled');
+    // Regardless of dates, same as completed's precedence.
+    const farFutureReturn = new Date(NOW + 1000 * 3_600_000).toISOString();
+    expect(resolveRentalLifecycle({ ...base, status: 'cancelled', returnDateTime: farFutureReturn })).toBe('cancelled');
+    expect(resolveRentalLifecycle({ ...base, status: 'cancelled', pickupDateTime: '2030-01-01T00:00:00Z' })).toBe('cancelled');
+  });
+
+  it('7. missing returnDateTime never fabricates a deadline — falls through to active, not near_return', () => {
+    expect(resolveRentalLifecycle({ ...base, returnDateTime: null })).toBe('active');
+    expect(resolveRentalLifecycle({ ...base, returnDateTime: undefined })).toBe('active');
+  });
+
+  it('completed status wins over an upcoming pickup too — status is checked first', () => {
+    expect(resolveRentalLifecycle({ ...base, status: 'completed', pickupDateTime: '2030-01-01T00:00:00Z' })).toBe('completed');
+  });
+
+  // 2026-08-28 correction — verify the injected `now` genuinely drives BOTH
+  // the upcoming check and the near-return threshold, and that they can
+  // never disagree because they're never sampled at two different moments.
+  // A stray internal `Date.now()` call (instead of forwarding `now`) would
+  // make this test flaky/fail depending on when it happens to run, since
+  // `now` here is deliberately set to a value that would produce the
+  // OPPOSITE answer from whatever the real wall-clock time is.
+  it('1 (now-propagation). the injected `now` — not a fresh Date.now() — determines both upcoming and near_return', () => {
+    // Pick a `now` far outside any plausible real test-run time, and
+    // pickup dates on both sides of it, so a correct implementation must
+    // be using the >>injected<< value to get the right answer either way.
+    const REFERENCE_NOW = new Date('2099-01-01T00:00:00Z').getTime();
+    expect(resolveRentalLifecycle({
+      status: 'active', pickupDateTime: '2099-01-02T00:00:00Z', returnDateTime: null, now: REFERENCE_NOW,
+    })).toBe('upcoming'); // pickup is 1 day after REFERENCE_NOW -> upcoming
+    expect(resolveRentalLifecycle({
+      status: 'active', pickupDateTime: '2098-12-31T00:00:00Z', returnDateTime: null, now: REFERENCE_NOW,
+    })).toBe('active'); // pickup is 1 day before REFERENCE_NOW -> not upcoming
+    // Near-return boundary evaluated against the SAME injected now.
+    const returnIn18h = new Date(REFERENCE_NOW + 18 * 3_600_000).toISOString();
+    expect(resolveRentalLifecycle({
+      status: 'active', pickupDateTime: '2098-12-31T00:00:00Z', returnDateTime: returnIn18h, now: REFERENCE_NOW,
+    })).toBe('near_return');
   });
 });

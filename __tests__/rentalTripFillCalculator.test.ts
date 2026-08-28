@@ -109,9 +109,17 @@ describe('Trip Fill-Up calculator — analytics', () => {
 
 describe('Fuel History — totals and row display use canonical Fillup fields, not calculator estimates', () => {
   it('totals are computed from the fillups array (actual stored values), not from any trip-calculator state', () => {
+    // 2026-08-28 (Phase 6A.1) — the completed-lifecycle read-only view also
+    // renders a fuelHistoryTotalGallons/Cost pair (from pre-computed
+    // totalGallons/totalCost consts, still fillups-derived, just hoisted
+    // above the JSX rather than inlined) BEFORE the live dashboard's own
+    // totals block. Search from the live "Rental Fuel Log" section's start
+    // (tripCalcBlock's end marker) so this test targets the ACTIVE
+    // dashboard's totals, not the completed view's.
+    const liveFuelLogStart = dashboardSrc.indexOf('Rental Fuel Log — Phase 3A canonical Fillup rows');
     const totalsBlock = dashboardSrc.slice(
-      dashboardSrc.indexOf('fuelHistoryTotalGallons'),
-      dashboardSrc.indexOf('fuelHistoryTotalCost') + 'fuelHistoryTotalCost'.length + 200,
+      dashboardSrc.indexOf('fuelHistoryTotalGallons', liveFuelLogStart),
+      dashboardSrc.indexOf('fuelHistoryTotalCost', liveFuelLogStart) + 'fuelHistoryTotalCost'.length + 200,
     );
     expect(totalsBlock).toMatch(/fillups\.reduce/);
     expect(totalsBlock).not.toMatch(/tripGallonsToAdd|tripEstCost/);
