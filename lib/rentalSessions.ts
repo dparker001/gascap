@@ -421,8 +421,31 @@ export async function confirmRentalCurrentFuel(
 
   if (result.count === 0) return { status: 'conflict' };
 
-  const row = await prisma.rentalSession.findFirst({ where: { id, userId } });
-  if (!row) return { status: 'not_found' };
+  // Post-write identity check (2026-08-28 independent review, post-CI
+  // hardening): the updateMany() above correctly protects the WRITE, but an
+  // unrestricted findFirst({ id, userId }) here can observe a LATER
+  // concurrent mutation — e.g. a Fillup that lands between our updateMany
+  // succeeding and this read running. That later state is real and correct
+  // as the row's last-known fuel, but it is NOT what the renter just
+  // confirmed; returning it as this confirmation's result would let the
+  // client mark an observation the renter never actually confirmed as
+  // "confirmed." Re-reading with the EXACT state this write just created
+  // (using the same `now` stamped above, not a fresh timestamp) closes that
+  // gap: if anything changed the row again in that narrow window, this read
+  // matches nothing and we correctly report a conflict instead — the
+  // existing 409 path reloads the newest state and asks the renter to
+  // reconfirm it, rather than silently returning it as already-confirmed.
+  const row = await prisma.rentalSession.findFirst({
+    where: {
+      id,
+      userId,
+      currentFuelGallons:      input.currentFuelGallons,
+      currentFuelSource:       input.currentFuelSource,
+      currentFuelUpdatedAt:    now,
+      fuelTankCapacityGallons: input.expectedPriorFuelTankCapacityGallons,
+    },
+  });
+  if (!row) return { status: 'conflict' };
   return { status: 'ok', session: toRentalSession(row) };
 }
 

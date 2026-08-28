@@ -411,7 +411,7 @@ describe('Corrections 9/10 — TOCTOU/optimistic concurrency + HTTP 409 UX', () 
 
   it('confirmRentalCurrentFuel performs an atomic conditional update via updateMany, keyed on the FULL last-known fuel-state snapshot (gallons, source, updatedAt, tank capacity — not gallons alone), and treats count===0 as a conflict', () => {
     const idx = rentalSessionsSrc.indexOf('export async function confirmRentalCurrentFuel');
-    const block = rentalSessionsSrc.slice(idx, idx + 3200);
+    const block = rentalSessionsSrc.slice(idx, idx + 5000);
     expect(block).toMatch(/prisma\.rentalSession\.updateMany\(/);
     expect(block).toMatch(/currentFuelGallons:\s*input\.expectedPriorCurrentFuelGallons/);
     expect(block).toMatch(/currentFuelSource:\s*input\.expectedPriorCurrentFuelSource/);
@@ -425,7 +425,7 @@ describe('Corrections 9/10 — TOCTOU/optimistic concurrency + HTTP 409 UX', () 
 
   it('Blocker 2 regression: gallons-only conditioning is gone — the where clause is NOT limited to currentFuelGallons alone', () => {
     const idx = rentalSessionsSrc.indexOf('export async function confirmRentalCurrentFuel');
-    const block = rentalSessionsSrc.slice(idx, idx + 3200);
+    const block = rentalSessionsSrc.slice(idx, idx + 5000);
     const whereIdx = block.indexOf('where: {');
     const dataIdx = block.indexOf('data: {');
     const whereClause = block.slice(whereIdx, dataIdx);
@@ -612,7 +612,7 @@ describe('Blocker 1 (2026-08-28 independent review) — confirmed fuel-state IDE
 describe('Blocker 2 (2026-08-28 independent review) — TOCTOU snapshot includes tank capacity, not gallons alone', () => {
   it('1. capacity unchanged + fuel state unchanged → the where clause matches, count > 0, confirmation succeeds (asserted via the conditional shape, not a live DB)', () => {
     const idx = rentalSessionsSrc.indexOf('export async function confirmRentalCurrentFuel');
-    const block = rentalSessionsSrc.slice(idx, idx + 3200);
+    const block = rentalSessionsSrc.slice(idx, idx + 5000);
     expect(block).toMatch(/if \(result\.count === 0\) return \{ status: 'conflict' \};/);
     expect(block).toMatch(/return \{ status: 'ok', session: toRentalSession\(row\) \};/);
   });
@@ -752,5 +752,75 @@ describe('Final pre-commit hardening — synchronous in-flight guard on confirmC
     expect(fnBlock).toMatch(/if \(res\.status === 409\)/);
     expect(fnBlock).toMatch(/load\(\);/);
     expect(fnBlock).toMatch(/setConfirmSaveState\('conflict'\);/);
+  });
+});
+
+describe('Post-CI hardening — confirmRentalCurrentFuel() post-write identity check (closes the window between updateMany succeeding and the follow-up read)', () => {
+  const fnStart = rentalSessionsSrc.indexOf('export async function confirmRentalCurrentFuel');
+  const fnEnd = rentalSessionsSrc.indexOf('\n}\n', fnStart);
+  const fnBlock = rentalSessionsSrc.slice(fnStart, fnEnd);
+  const postWriteIdx = fnBlock.indexOf('if (result.count === 0) return');
+  const postWriteBlock = fnBlock.slice(postWriteIdx);
+
+  it('1. the post-update read is NOT the old unrestricted `{ id, userId }` shape', () => {
+    // The old, insufficient version read back with no fuel-state condition
+    // at all — that exact shape must no longer exist in this function.
+    expect(postWriteBlock).not.toMatch(/findFirst\(\{ where: \{ id, userId \} \}\)/);
+  });
+
+  it('2. the post-update read requires the just-written currentFuelGallons, currentFuelSource, currentFuelUpdatedAt, and fuelTankCapacityGallons', () => {
+    const readIdx = postWriteBlock.indexOf('const row = await prisma.rentalSession.findFirst({');
+    const readBlock = postWriteBlock.slice(readIdx, postWriteBlock.indexOf('});', readIdx));
+    expect(readBlock).toMatch(/currentFuelGallons:\s*input\.currentFuelGallons/);
+    expect(readBlock).toMatch(/currentFuelSource:\s*input\.currentFuelSource/);
+    // Must use the SAME `now` the write stamped — not a freshly-read value
+    // and not a newly-generated timestamp.
+    expect(readBlock).toMatch(/currentFuelUpdatedAt:\s*now\b/);
+    expect(readBlock).toMatch(/fuelTankCapacityGallons:\s*input\.expectedPriorFuelTankCapacityGallons/);
+  });
+
+  it('3. if the exact just-written state is no longer present (a later concurrent mutation landed), the result is a conflict, not a silently-returned newer row', () => {
+    const readIdx = postWriteBlock.indexOf('const row = await prisma.rentalSession.findFirst({');
+    const afterRead = postWriteBlock.slice(readIdx);
+    expect(afterRead).toMatch(/if \(!row\) return \{ status: 'conflict' \};/);
+    // It must NOT fall back to "not_found" or otherwise treat a missing
+    // exact-match row as anything other than a conflict — the row still
+    // exists (a concurrent mutation changed it), it just isn't OUR write
+    // anymore, which is exactly what "conflict" means here.
+    expect(afterRead).not.toMatch(/if \(!row\) return \{ status: 'not_found' \};/);
+  });
+
+  it('4. existing client 409 handling is unchanged — same route branch, same customer-safe copy, same reload-and-stay-unconfirmed behavior', () => {
+    expect(routeSrc).toMatch(/result\.status === 'conflict'/);
+    expect(routeSrc).toMatch(/status: 409/);
+    expect(routeSrc).toMatch(/Your rental information changed while you were updating the fuel level\./);
+    const start = dashboardSrc.indexOf('const confirmCurrentFuel = useCallback');
+    const end = dashboardSrc.indexOf(
+      '}, [confirmPendingFuel, sessionId, session?.currentFuelGallons, session?.currentFuelSource, session?.currentFuelUpdatedAt, session?.fuelTankCapacityGallons, load]);',
+      start,
+    );
+    const block = dashboardSrc.slice(start, end);
+    const conflictBlockIdx = block.indexOf('res.status === 409');
+    const conflictBlock = block.slice(conflictBlockIdx, block.indexOf('if (!res.ok) throw new Error'));
+    expect(conflictBlock).toMatch(/load\(\);/);
+    expect(conflictBlock).not.toMatch(/setConfirmedCurrentFuelGallons\(/);
+  });
+
+  it('5. the PRE-write optimistic predicate (updateMany where clause) is unchanged by this fix — still conditions on the expected PRIOR snapshot, not the just-written one', () => {
+    const preWriteBlock = fnBlock.slice(0, postWriteIdx);
+    expect(preWriteBlock).toMatch(/currentFuelGallons:\s*input\.expectedPriorCurrentFuelGallons/);
+    expect(preWriteBlock).toMatch(/currentFuelSource:\s*input\.expectedPriorCurrentFuelSource/);
+    expect(preWriteBlock).toMatch(/currentFuelUpdatedAt:\s*input\.expectedPriorCurrentFuelUpdatedAt/);
+    expect(preWriteBlock).toMatch(/fuelTankCapacityGallons:\s*input\.expectedPriorFuelTankCapacityGallons/);
+  });
+
+  it('6. the client-side fuel-state triple confirmation model is unchanged by this server-side fix', () => {
+    expect(dashboardSrc).toMatch(/const \[confirmedCurrentFuelSource, setConfirmedCurrentFuelSource\]/);
+    expect(dashboardSrc).toMatch(/const identityChanged =/);
+  });
+
+  it('7. Fillup create/edit/delete invariants are unchanged by this fix (lib/rentalFillups.ts untouched)', () => {
+    const fillupsSrc = readFileSync(join(__dirname, '../lib/rentalFillups.ts'), 'utf8');
+    expect(fillupsSrc).toMatch(/bumpCurrentFuelGallonsOnCreateSql/);
   });
 });
