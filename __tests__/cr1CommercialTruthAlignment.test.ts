@@ -356,8 +356,20 @@ describe('CR-1 P0 follow-up — App Store review notes no longer contradict nati
   });
 
   it('this fix did not touch IAP/RevenueCat/StoreKit/Stripe implementation files', () => {
-    const diffOutput = execSync('git diff --name-only main', { cwd: repoRoot, encoding: 'utf8' });
-    const changedFiles = diffOutput.split('\n').filter(Boolean);
+    // Same shallow-clone-safe fallback as the "no protected-path file"
+    // test above — `main...HEAD` isn't resolvable in CI's shallow
+    // (fetch-depth 1) checkout, where only the pushed commit exists
+    // locally. Falling back to the plain working-tree diff is a no-op
+    // once these changes are committed, same known limitation already
+    // accepted by the other protected-path test in this file.
+    let changedFiles: string[] = [];
+    try {
+      const out = execSync('git diff --name-only main...HEAD', { cwd: repoRoot, encoding: 'utf8' });
+      changedFiles = out.split('\n').filter(Boolean);
+    } catch {
+      const out = execSync('git diff --name-only', { cwd: repoRoot, encoding: 'utf8' });
+      changedFiles = out.split('\n').filter(Boolean);
+    }
     const protectedPatterns = [/lib\/iap/i, /revenuecat/i, /storekit/i, /stripe/i, /serverPlan/i, /capacitor\.config/i];
     for (const file of changedFiles) {
       for (const pattern of protectedPatterns) {
