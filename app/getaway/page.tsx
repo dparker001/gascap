@@ -10,6 +10,7 @@ import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { useTranslation } from '@/contexts/LanguageContext';
 import { getawayPromoActive } from '@/lib/getawayPromo';
+import { hasLifetimeEntitlement } from '@/lib/entitlements';
 import GetawayDestinationPicker from '@/components/GetawayDestinationPicker';
 import BrandBar from '@/components/BrandBar';
 import { GlowIcon } from '@/components/marketing/GlowIcon';
@@ -18,8 +19,17 @@ export default function GetawayPage() {
   const { data: session, status } = useSession();
   const { t } = useTranslation();
 
-  const interval   = (session?.user as { stripeInterval?: string | null })?.stripeInterval ?? null;
-  const isLifetime = !!session && interval === 'lifetime';
+  // 2026-08-29 (CR-3A) — provider-neutral Lifetime check, same pattern as
+  // WelcomeBanner. The prior `stripeInterval === 'lifetime'` check only
+  // recognized Stripe/gift Lifetime; a RevenueCat (Apple/Google) Lifetime
+  // purchaser would be shown the "you need Lifetime" upsell here despite
+  // already owning it. The authoritative /api/getaway/choose route already
+  // uses hasLifetimeEntitlement() and is unchanged — this fixes the
+  // client-side DISPLAY to match what that route actually enforces.
+  const stripeInterval     = (session?.user as { stripeInterval?: string | null })?.stripeInterval ?? null;
+  const revenueCatActive   = (session?.user as { revenueCatActive?: boolean })?.revenueCatActive ?? false;
+  const revenueCatInterval = (session?.user as { revenueCatInterval?: string | null })?.revenueCatInterval ?? null;
+  const isLifetime = !!session && hasLifetimeEntitlement({ stripeInterval, revenueCatActive, revenueCatInterval });
   const promoOn    = getawayPromoActive();
 
   return (

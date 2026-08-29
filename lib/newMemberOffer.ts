@@ -2,13 +2,13 @@
  * New-member 7-day Lifetime offer.
  *
  * New users — within 7 days of signup, not already on Lifetime — can buy Pro
- * Lifetime at a $5 discount ($14.99 instead of $19.99). Eligibility is computed
- * server-side from the account's createdAt, so there's no coupon code to share
- * and the discount can't be abused via a copied checkout link.
+ * Lifetime at a $10 discount ($9.99 instead of $19.99, 50% off). Eligibility
+ * is computed server-side from the account's createdAt, so there's no coupon
+ * code to share and the discount can't be abused via a copied checkout link.
  */
 import { hasLifetimeEntitlement } from './entitlements';
 
-// Stripe coupon: "$5 off, once". Applied server-side ONLY, on the Lifetime
+// Stripe coupon: "$10 off, once". Applied server-side ONLY, on the Lifetime
 // checkout, and ONLY for eligible users (see app/api/stripe/checkout/route.ts).
 // Not secret; overridable via env if the coupon is ever recreated.
 // "$10 off, once" → $19.99 Lifetime becomes $9.99 (50% off).
