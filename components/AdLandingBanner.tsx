@@ -35,15 +35,48 @@ const AUTO_HIDE_MS  = 12000;  // auto-dismiss if the visitor doesn't interact
 const RESULT_RECHECK_MS  = 1500;   // how often to re-check whether a result is on screen
 const MAX_RESULT_WAIT_MS = 30000;  // give up entirely rather than nag someone mid-task
 
+// 2026-08-29 (CR-3B) — same canonical activation contract CR-3A introduced
+// for NewMemberOfferBanner: no promotional interruption before the visitor
+// has experienced the product's core value at least once. Reuses the
+// existing key/event rather than introducing a second one.
+//
+// Unlike NewMemberOfferBanner (only mounted on the authenticated homepage,
+// where FirstCalcNudge already writes this key), AdLandingBanner is mounted
+// globally, including for guests who can use the calculator without
+// FirstCalcNudge ever mounting. So AdLandingBanner must itself persist the
+// flag on gascap:calculated — it can't only read a key some other component
+// might not have written yet for this visitor.
+const FIRST_CALC_DONE_KEY = 'gc_has_calculated';
+
 export default function AdLandingBanner() {
   const { data: session, status } = useSession();
   const { t } = useTranslation();
   const isNative = useIsNative();   // suppress the upsell pop-up in native wrappers
   const [show, setShow] = useState(false);
+  const [hasCalculated, setHasCalculated] = useState(false);
+
+  // Activation gate: read the existing flag on mount, and persist it (for
+  // guests who may never have FirstCalcNudge mounted to do so) the moment a
+  // calculation happens. setHasCalculated(true) always runs on the event —
+  // even if localStorage is blocked — so the CURRENT session still activates.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      if (localStorage.getItem(FIRST_CALC_DONE_KEY) === '1') setHasCalculated(true);
+    } catch { /* ignore — treat as not-yet-activated */ }
+
+    const onCalc = () => {
+      try { localStorage.setItem(FIRST_CALC_DONE_KEY, '1'); } catch { /* ignore */ }
+      setHasCalculated(true);
+    };
+    window.addEventListener('gascap:calculated', onCalc);
+    return () => window.removeEventListener('gascap:calculated', onCalc);
+  }, []);
 
   // Decide whether to pop up (waits for the session to resolve first).
   useEffect(() => {
     if (status === 'loading') return;
+    if (!hasCalculated) return; // product value first — no interruption before it
     if (!getawayPromoActive()) return;
 
     const plan       = (session?.user as { plan?: string })?.plan ?? 'free';
@@ -83,7 +116,7 @@ export default function AdLandingBanner() {
     }, SHOW_DELAY_MS);
 
     return () => { clearTimeout(timer); if (retry) clearTimeout(retry); };
-  }, [status, session]);
+  }, [status, session, hasCalculated]);
 
   // Auto-dismiss on a timer once visible.
   useEffect(() => {

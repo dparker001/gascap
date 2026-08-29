@@ -19,14 +19,36 @@ import { useEntryCountUp }     from '@/hooks/useEntryCountUp';
 
 interface EntryData { entryCount: number; eligible: boolean; alwaysEligible: boolean; }
 
+// 2026-08-29 (CR-3B) — same canonical activation contract as CR-3A/AdLandingBanner:
+// don't visually compete with a brand-new user's first calculation. This is
+// PRESENTATION gating only — the activity/visit POST and giveaway-entries fetch
+// below are intentionally left unconditioned on this, so streak/entry business
+// semantics are unaffected by whether the row is currently shown.
+const FIRST_CALC_DONE_KEY = 'gc_has_calculated';
+
 export default function MobileEngagementRow() {
   const { data: session } = useSession();
   const { t } = useTranslation();
 
   const [streak,  setStreak]  = useState<number | null>(null);
   const [entries, setEntries] = useState<EntryData | null>(null);
+  const [hasCalculated, setHasCalculated] = useState(false);
 
   const isProTrial = (session?.user as { isProTrial?: boolean })?.isProTrial ?? false;
+
+  // Activation gate — read-only here. FirstCalcNudge (mounted alongside this
+  // component on the authenticated homepage) already owns writing the flag;
+  // this only needs to know when it's true so it can hide until then.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      if (localStorage.getItem(FIRST_CALC_DONE_KEY) === '1') setHasCalculated(true);
+    } catch { /* ignore — treat as not-yet-activated */ }
+
+    const onCalc = () => setHasCalculated(true);
+    window.addEventListener('gascap:calculated', onCalc);
+    return () => window.removeEventListener('gascap:calculated', onCalc);
+  }, []);
 
   useEffect(() => {
     if (!session?.user) return;
@@ -48,7 +70,7 @@ export default function MobileEngagementRow() {
 
   const { count: liveCount, flash } = useEntryCountUp(entries?.entryCount ?? null);
 
-  if (!session?.user) return null;
+  if (!session?.user || !hasCalculated) return null;
 
   const hasStreak  = streak !== null && streak >= 2;
   const canEnter   = entries ? (entries.eligible || entries.alwaysEligible || isProTrial) : false;
