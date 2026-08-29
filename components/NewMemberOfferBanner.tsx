@@ -22,18 +22,46 @@ import { getawayPromoActive }  from '@/lib/getawayPromo';
 import { trackUpgradeClick }   from '@/lib/gtag';
 import { useIsNative }         from '@/hooks/useIsNative';
 
+// 2026-08-29 (CR-3A) — reuses FirstCalcNudge's existing activation signal
+// rather than introducing a second one. VALUE FIRST, THEN OFFER: a brand-new
+// user shouldn't see a direct Lifetime upsell before they've experienced the
+// product's core action at least once.
+const FIRST_CALC_DONE_KEY = 'gc_has_calculated';
+
 export default function NewMemberOfferBanner() {
   const { data: session } = useSession();
   const { t } = useTranslation();
   const isNative = useIsNative();   // hide the in-app discount purchase in native wrappers
-  const [daysLeft,    setDaysLeft]    = useState<number | null>(null);
-  const [loading,     setLoading]     = useState(false);
-  const [needsVerify, setNeedsVerify] = useState(false);
-  const [resending,   setResending]   = useState(false);
-  const [resent,      setResent]      = useState(false);
+  const [daysLeft,       setDaysLeft]       = useState<number | null>(null);
+  const [loading,        setLoading]        = useState(false);
+  const [needsVerify,    setNeedsVerify]    = useState(false);
+  const [resending,      setResending]      = useState(false);
+  const [resent,         setResent]         = useState(false);
+  const [hasCalculated,  setHasCalculated]  = useState(false);
+
+  // Activation gate: read the existing gc_has_calculated flag on mount (a
+  // returning user who already calculated on a prior visit), and listen for
+  // the same gascap:calculated event FirstCalcNudge listens for (a brand-new
+  // user completing their first calculation in THIS session). Blocked
+  // localStorage (private browsing, etc.) fails safe to "not yet activated"
+  // rather than throwing, same as FirstCalcNudge.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      if (localStorage.getItem(FIRST_CALC_DONE_KEY) === '1') setHasCalculated(true);
+    } catch { /* ignore — treat as not-yet-activated */ }
+
+    const onCalc = () => setHasCalculated(true);
+    window.addEventListener('gascap:calculated', onCalc);
+    return () => window.removeEventListener('gascap:calculated', onCalc);
+  }, []);
 
   useEffect(() => {
     if (!session?.user) return;
+    // Don't even fetch eligibility until the user has completed their first
+    // calculation — no point checking (or showing) a Lifetime upsell before
+    // they've experienced the product's core value once.
+    if (!hasCalculated) return;
     // While the Lifetime + getaway promo is live, the getaway is the headline
     // Lifetime offer — pause this standalone 50%-off discount so they don't compete.
     if (getawayPromoActive()) return;
@@ -43,7 +71,7 @@ export default function NewMemberOfferBanner() {
         if (d.eligible && typeof d.daysLeft === 'number') setDaysLeft(d.daysLeft);
       })
       .catch(() => {});
-  }, [session]);
+  }, [session, hasCalculated]);
 
   if (!session?.user || daysLeft === null || isNative) return null;
 
