@@ -19,7 +19,7 @@ interface FillupLoggerProps {
     stationName?:       string;
     fuelGrade?:         FuelGrade;
     calculatedGallons?: number;  // GasCap's suggested amount — used for breakdown comparison
-    tankCapacity?:      number;  // full tank size — used for post-save savings card
+    tankCapacity?:      number;  // full tank size — used for post-save comparison card
   };
   onSaved: () => void;   // called after successful save (to refresh history)
   onCancel: () => void;
@@ -28,6 +28,21 @@ interface FillupLoggerProps {
 }
 
 export type FuelGrade = 'regular' | 'midgrade' | 'premium' | 'diesel' | 'e85' | '';
+
+/**
+ * Truthful, direction-preserving planned-vs-actual comparison shown after a
+ * successful fill-up save. Never a savings/overfill-avoided claim — see
+ * CLAUDE.md "Rental Return Assistant" → Never invent a reading, and the
+ * fill-up savings-claim integrity fix (2026-08-28).
+ */
+interface FillupComparison {
+  plannedGallons:   number;
+  actualGallons:    number;
+  gallonDifference: number;   // actualGallons - plannedGallons, SIGNED — preserve direction
+  pricePerGallon:   number;
+  fillCost:         number;   // actualGallons * pricePerGallon, unless amountPaid was entered
+  amountPaid?:      number;   // only set when the user explicitly entered a paid amount
+}
 
 type FuelGradeKey = 'gradeRegular' | 'gradeMidGrade' | 'gradePremium' | 'gradeDiesel';
 const FUEL_GRADES: { value: FuelGrade; labelKey: FuelGradeKey; sub: string }[] = [
@@ -98,7 +113,7 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
   const [capReached,     setCapReached]     = useState(false);
   const [warnings,       setWarnings]       = useState<string[]>([]);
   const [amountPaid,     setAmountPaid]     = useState('');
-  const [savedSummary,   setSavedSummary]   = useState<{ gallons: number; pricePaid: number; saved: number; overfillGal: number } | null>(null);
+  const [comparison,     setComparison]     = useState<FillupComparison | null>(null);
   const [forceConfirm, setForceConfirm] = useState(false);
   const [scanning,     setScanning]     = useState(false);
   const [scanError,    setScanError]    = useState('');
@@ -354,22 +369,23 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
 
       window.dispatchEvent(new Event('fillup-saved'));
 
-      // Compute overfill savings and show the confirmation card.
-      // Industry average pump overfill is ~0.4 gal; if the user followed GasCap's
-      // suggestion closely (within 0.5 gal) we use the avg, otherwise use the delta.
+      // Build the planned-vs-actual comparison card. Only shown when this
+      // fill-up started from a GasCap calculation (prefill.calculatedGallons
+      // present) — otherwise there's no plan to compare against.
       const pumpedGal = parseFloat(gallons);
       const ppg       = parseFloat(price);
       if (ppg > 0 && pumpedGal > 0 && prefill.calculatedGallons) {
-        const AVG_OVERFILL_GAL = 0.4;
-        const delta     = Math.abs(pumpedGal - prefill.calculatedGallons);
-        const overfill  = delta <= 0.5 ? AVG_OVERFILL_GAL : Math.max(AVG_OVERFILL_GAL, delta);
-        const computed  = Math.round(pumpedGal * ppg * 100) / 100;
-        const pricePaid = amountPaid && parseFloat(amountPaid) > 0
-          ? Math.round(parseFloat(amountPaid) * 100) / 100
-          : computed;
-        const saved     = Math.round(overfill * ppg * 100) / 100;
+        const enteredPaid  = amountPaid && parseFloat(amountPaid) > 0 ? parseFloat(amountPaid) : undefined;
+        const fillCost     = Math.round(pumpedGal * ppg * 100) / 100;
         hapticSuccess();
-        setSavedSummary({ gallons: pumpedGal, pricePaid, saved, overfillGal: overfill });
+        setComparison({
+          plannedGallons:   prefill.calculatedGallons,
+          actualGallons:    pumpedGal,
+          gallonDifference: Math.round((pumpedGal - prefill.calculatedGallons) * 100) / 100,
+          pricePerGallon:   ppg,
+          fillCost,
+          amountPaid:       enteredPaid !== undefined ? Math.round(enteredPaid * 100) / 100 : undefined,
+        });
       } else {
         hapticSuccess();
         onSaved();
@@ -381,16 +397,25 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
     }
   }
 
-  // ── Post-save savings confirmation ────────────────────────────────────────
-  if (savedSummary) {
-    async function handleShareSavings() {
-      if (!savedSummary) return;
+  // ── Post-save planned-vs-actual comparison ───────────────────────────────
+  // Truthful, direction-preserving. No savings/overfill-avoided inference —
+  // see the FillupComparison type above.
+  if (comparison) {
+    const diff       = comparison.gallonDifference;
+    const diffLabel  = `${diff > 0 ? '+' : diff < 0 ? '−' : ''}${Math.abs(diff).toFixed(1)} gal`;
+    const costLabel  = comparison.amountPaid !== undefined
+      ? t.fillup.comparisonFillCost
+      : t.fillup.comparisonCalculatedCost;
+    const costValue  = comparison.amountPaid !== undefined ? comparison.amountPaid : comparison.fillCost;
+
+    async function handleShareComparison() {
+      if (!comparison) return;
       const text = [
-        `⛽ Just saved $${savedSummary.saved.toFixed(2)} at the pump with GasCap™`,
-        `💰 Paid $${savedSummary.pricePaid.toFixed(2)} instead of $${(savedSummary.pricePaid + savedSummary.saved).toFixed(2)}`,
-        `GasCap calculates the exact amount to pump — no more overfill.`,
+        `⛽ Planned ${comparison.plannedGallons.toFixed(1)} gal with GasCap™`,
+        `Actual fill: ${comparison.actualGallons.toFixed(1)} gal`,
+        `Know before you go.`,
       ].join('\n');
-      const result = await nativeShare({ title: 'I saved at the pump with GasCap™', text });
+      const result = await nativeShare({ title: 'GasCap™ fill-up comparison', text });
       if (result === 'shared' || result === 'copied') hapticSuccess();
     }
 
@@ -398,50 +423,49 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
       <div className="mt-3 rounded-2xl border-2 border-emerald-200 bg-emerald-50 p-5 space-y-4 animate-fade-in text-center">
         <div>
           <p className="text-3xl mb-1">⛽</p>
-          <p className="text-sm font-black text-emerald-800">You saved money today</p>
-          <p className="text-[11px] text-emerald-600 mt-0.5">GasCap helped you avoid pump overfill</p>
+          <p className="text-sm font-black text-emerald-800">{t.fillup.comparisonTitle}</p>
+          <p className="text-[11px] text-emerald-600 mt-0.5">{t.fillup.comparisonSubtitle}</p>
         </div>
 
-        {/* Big savings number */}
-        <div className="bg-white rounded-2xl px-4 py-4 shadow-sm border border-emerald-100 space-y-3">
-          <div>
-            <p className="text-4xl font-black text-emerald-600">${savedSummary.saved.toFixed(2)}</p>
-            <p className="text-xs font-bold text-emerald-700 mt-0.5">saved at the pump</p>
+        <div className="bg-white rounded-2xl px-4 py-4 shadow-sm border border-emerald-100 space-y-1.5 text-left">
+          <div className="flex justify-between text-[11px]">
+            <span className="text-slate-500">{t.fillup.comparisonPlanned}</span>
+            <span className="font-bold text-slate-700">{comparison.plannedGallons.toFixed(1)} gal</span>
           </div>
-
-          <div className="border-t border-slate-100 pt-3 space-y-1.5 text-left">
-            <div className="flex justify-between text-[11px]">
-              <span className="text-slate-500">You paid</span>
-              <span className="font-bold text-slate-700">${savedSummary.pricePaid.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between text-[11px]">
-              <span className="text-slate-500">Typical pump overfill (~{savedSummary.overfillGal.toFixed(1)} gal)</span>
-              <span className="font-bold text-amber-600">+${savedSummary.saved.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between text-[11px] border-t border-slate-100 pt-1.5">
-              <span className="font-semibold text-slate-600">Without GasCap</span>
-              <span className="font-bold text-slate-700">${(savedSummary.pricePaid + savedSummary.saved).toFixed(2)}</span>
-            </div>
+          <div className="flex justify-between text-[11px]">
+            <span className="text-slate-500">{t.fillup.comparisonActual}</span>
+            <span className="font-bold text-slate-700">{comparison.actualGallons.toFixed(1)} gal</span>
+          </div>
+          <div className="flex justify-between text-[11px]">
+            <span className="text-slate-500">{t.fillup.comparisonDifference}</span>
+            <span className="font-bold text-slate-700">{diffLabel}</span>
+          </div>
+          <div className="flex justify-between text-[11px] border-t border-slate-100 pt-1.5">
+            <span className="font-semibold text-slate-600">{costLabel}</span>
+            <span className="font-bold text-slate-700">${costValue.toFixed(2)}</span>
           </div>
         </div>
 
         <p className="text-[11px] text-slate-500 leading-relaxed px-1">
-          Pumps click off a little late — you end up paying for gas that goes into the vapor recovery system, not your tank. GasCap calculated the exact amount so you didn&rsquo;t overpay.
+          {t.fillup.comparisonDisclaimer}
+        </p>
+        <p className="text-[11px] text-slate-500 leading-relaxed px-1">
+          {t.fillup.comparisonShutoffNote}
         </p>
 
         <div className="flex gap-2">
           <button
-            onClick={handleShareSavings}
+            onClick={handleShareComparison}
             className="flex-1 py-3 rounded-xl bg-white border-2 border-emerald-200 text-emerald-700
                        text-sm font-black transition-colors hover:bg-emerald-50 active:scale-95"
           >
-            ↑ Share
+            ↑ {t.fillup.comparisonShare}
           </button>
           <button
             onClick={onSaved}
             className="flex-1 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-black transition-colors"
           >
-            Done
+            {t.fillup.comparisonDone}
           </button>
         </div>
       </div>

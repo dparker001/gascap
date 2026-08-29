@@ -184,12 +184,12 @@ const SECTIONS = [
         a: 'Yes. At the top of Fill-Up History, year chips (e.g. 2026 · 2025 · All time) let you filter the list and stats to a specific year. The stats card shows total spent and total gallons for the selected year, with all-time totals shown below for reference. Defaults to the current year when you open the panel.',
       },
       {
-        q: 'What is the pump savings card after logging a fill-up?',
-        a: 'After saving a fill-up that was pre-filled from the GasCap™ calculator, a savings card appears showing how much you saved at the pump by not overfilling. It calculates the industry-average pump overfill (0.4 gal) multiplied by the price per gallon you paid. The card is a reminder that using GasCap™ to calculate your exact fill amount puts real money back in your pocket.',
+        q: 'What is the comparison card after logging a fill-up?',
+        a: "When a fill-up starts from a GasCap™ calculation, GasCap™ can compare the planned gallons with the gallons you actually recorded. The card shows the difference between the plan and the actual fill. It does not estimate how much money you would have spent without GasCap™.",
       },
       {
         q: 'Can I pay the exact GasCap™ amount at the pump?',
-        a: 'Yes — most modern pumps support pre-pay by dollar amount. When you reach the pump, select "Pre-Pay" or "Enter Amount" on the keypad and type in the exact dollar figure GasCap™ calculated (e.g. $42.83). The pump stops precisely at that amount — no rounding, no overfill. Support varies by station and terminal: some pumps only accept whole dollar pre-pays, others accept cents, and pay-inside attendants can always set any amount. If you do round up, use the "Amount paid at pump" field in the Fill-Up Logger to record what you actually spent so your savings stay accurate.',
+        a: 'Many stations and pumps support prepaying a dollar amount, but availability and increments vary by station and terminal. If supported, you can use the GasCap™ calculated amount as your prepay target. The pump may stop at the prepaid amount or earlier if the nozzle\'s automatic shutoff activates. Always stop at automatic shutoff and do not top off. If you pay a different amount than planned, use the "Amount actually paid" field in the Fill-Up Logger to record what you actually spent.',
       },
       {
         q: 'Can I export my fill-up history?',

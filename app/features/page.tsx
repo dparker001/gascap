@@ -28,12 +28,12 @@ interface Category {
 const CATEGORIES: Category[] = [
   {
     eyebrow: 'At the Pump',
-    heading: 'Never overpay for gas again',
+    heading: 'Plan your fill before you pump',
     features: [
       {
         icon: 'pump',
         title: 'Fuel Calculator',
-        body: 'Set your current fuel level with a drag of the gauge and GasCap™ tells you the exact gallons to pump — no more guessing, no more overfilling.',
+        body: 'Set your current fuel level and target, and GasCap™ calculates the gallons planned for your fill based on your tank and fuel-level inputs — so you know what to expect before you reach the pump.',
       },
       {
         icon: 'pin',
