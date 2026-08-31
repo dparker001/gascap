@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { PRICING } from '@/lib/stripe';
 import { useTranslation } from '@/contexts/LanguageContext';
 import { getawayPromoActive, getawayDaysLeft } from '@/lib/getawayPromo';
+import { hasLifetimeEntitlement } from '@/lib/entitlements';
 import { useIsNative } from '@/hooks/useIsNative';
 
 // ── Types ─────────────────────────────────────────────────────────────────
@@ -63,6 +64,11 @@ export default function PricingSection() {
   const userPlan     = (session?.user as { plan?: string })?.plan as PlanTier | undefined ?? 'free';
   const userInterval = (session?.user as { stripeInterval?: string | null })?.stripeInterval ?? null;
   const isOnTrial    = !!(session?.user as { isProTrial?: boolean })?.isProTrial;
+  // 2026-08-29 (CR-3C-A) — provider-neutral Lifetime read, same fields
+  // hasLifetimeEntitlement() elsewhere (e.g. PlanBadge.tsx, getaway/page.tsx)
+  // already reads from the session.
+  const revenueCatActive   = (session?.user as { revenueCatActive?: boolean })?.revenueCatActive ?? false;
+  const revenueCatInterval = (session?.user as { revenueCatInterval?: string | null })?.revenueCatInterval ?? null;
 
   const FREE_FEATURES = t.pricing.freeFeatures.map((text) => ({ text }));
   const PRO_FEATURES  = t.pricing.proFeatures.map((text, i) => ({ text, highlight: PRO_HIGHLIGHTS[i] }));
@@ -105,7 +111,12 @@ export default function PricingSection() {
 
   const isProMonthly  = !!session && userPlan === 'pro' && userInterval === 'monthly' && !isOnTrial;
   const isProAnnual   = !!session && userPlan === 'pro' && userInterval === 'annual'   && !isOnTrial;
-  const isProLifetime = !!session && userPlan === 'pro' && userInterval === 'lifetime' && !isOnTrial;
+  // 2026-08-29 (CR-3C-A) — provider-neutral: a RevenueCat (Apple/Google)
+  // Lifetime purchaser must be recognized here too, not just Stripe/gift
+  // Lifetime. Was `userInterval === 'lifetime'` alone, which showed a
+  // "Get Lifetime — $19.99" CTA to someone who already owns it natively.
+  const isProLifetime = !!session && userPlan === 'pro' && !isOnTrial
+    && hasLifetimeEntitlement({ stripeInterval: userInterval, revenueCatActive, revenueCatInterval });
   const isPro         = isProMonthly || isProAnnual || isProLifetime;
 
   // Getaway promo: Lifetime buyers get a complimentary resort getaway. Show the

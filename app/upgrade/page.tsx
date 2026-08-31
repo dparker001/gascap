@@ -7,6 +7,7 @@ import { useSearchParams } from 'next/navigation';
 import { PRICING } from '@/lib/stripe';
 import { useTranslation } from '@/contexts/LanguageContext';
 import { getawayPromoActive, getawayDaysLeft } from '@/lib/getawayPromo';
+import { hasLifetimeEntitlement } from '@/lib/entitlements';
 import BrandBar from '@/components/BrandBar';
 import { detectNativePlatform } from '@/hooks/useIsNative';
 import { purchasePro, restorePurchases } from '@/lib/iap';
@@ -60,9 +61,18 @@ function UpgradePageInner() {
   const userPlan      = (session?.user as { plan?: string })?.plan ?? 'free';
   const userInterval  = (session?.user as { stripeInterval?: string | null })?.stripeInterval ?? null;
   const isOnTrial     = !!(session?.user as { isProTrial?: boolean })?.isProTrial;
+  // 2026-08-29 (CR-3C-A) — provider-neutral session reads, same fields
+  // hasLifetimeEntitlement() elsewhere (PlanBadge.tsx, getaway/page.tsx)
+  // already reads.
+  const revenueCatActive   = (session?.user as { revenueCatActive?: boolean })?.revenueCatActive ?? false;
+  const revenueCatInterval = (session?.user as { revenueCatInterval?: string | null })?.revenueCatInterval ?? null;
   const isProMonthly  = !!session && userPlan === 'pro' && userInterval === 'monthly' && !isOnTrial;
   const isProAnnual   = !!session && userPlan === 'pro' && userInterval === 'annual'   && !isOnTrial;
-  const isProLifetime = !!session && userPlan === 'pro' && userInterval === 'lifetime' && !isOnTrial;
+  // Provider-neutral: was `userInterval === 'lifetime'` alone, which failed
+  // to recognize a RevenueCat (Apple/Google) Lifetime purchaser — showing
+  // them a duplicate Lifetime purchase CTA and the wrong getaway/plan state.
+  const isProLifetime = !!session && userPlan === 'pro' && !isOnTrial
+    && hasLifetimeEntitlement({ stripeInterval: userInterval, revenueCatActive, revenueCatInterval });
   const showGetaway   = getawayPromoActive() && !isProLifetime;
   const getawayDays   = getawayDaysLeft();
 
