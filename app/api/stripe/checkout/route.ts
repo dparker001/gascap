@@ -171,6 +171,17 @@ export async function POST(req: Request) {
     revenueCatInterval: user.revenueCatInterval ?? null,
   });
 
+  // 2026-08-29 (CR-3C-B) — server-side backstop against a repeat ORDINARY
+  // Lifetime purchase. The client UI already hides this path for an
+  // existing Lifetime owner (CR-3C-A), but per CLAUDE.md's server-
+  // authoritative rule, client gating alone is never sufficient. Applies
+  // only to `validatedBilling === 'lifetime'` — never to `lifetime-perks`,
+  // which intentionally REQUIRES existing Lifetime ownership (guarded
+  // separately below), and never to `monthly` (out of scope for this fix).
+  if (validatedBilling === 'lifetime' && isLifetimeAnyProvider) {
+    return NextResponse.json({ error: 'You already have Pro Lifetime.' }, { status: 409 });
+  }
+
   // Founding Member launch promo — $9.99 Lifetime for any non-Lifetime account while
   // the promo is active (spots remain). This is the reactivation-campaign path: it
   // covers trial users and lapsed users who fall outside the 7-day new-member window.

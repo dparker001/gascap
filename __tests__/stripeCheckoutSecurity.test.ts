@@ -192,7 +192,7 @@ describe('POST /api/stripe/checkout — Stripe Payment Authorization Hardening',
     expect(sessionsCreate).not.toHaveBeenCalled();
   });
 
-  it('SEC-C8e. A RevenueCat Lifetime owner is excluded from the founding discount even while the promo is active — already Lifetime', async () => {
+  it('SEC-C8e. A RevenueCat Lifetime owner cannot start ANOTHER plain Lifetime checkout at all — founding offer or not', async () => {
     foundingStatus.mockResolvedValue({ active: true });
     findById.mockResolvedValueOnce({
       id: 'user-1', email: 'buyer@example.com', stripeCustomerId: null,
@@ -201,13 +201,17 @@ describe('POST /api/stripe/checkout — Stripe Payment Authorization Hardening',
       createdAt: '2026-01-01T00:00:00.000Z',
     });
     const res = await callRoute({ tier: 'pro', billing: 'lifetime', foundingOffer: true });
-    expect(res.status).toBe(200);
-    // Before the fix, a RevenueCat Lifetime owner's stripeInterval (null)
-    // !== 'lifetime' would pass the old check and apply the founding
-    // coupon anyway, despite already owning Lifetime.
-    const createCall = sessionsCreate.mock.calls[0][0] as { discounts?: unknown; allow_promotion_codes?: boolean };
-    expect(createCall.discounts).toBeUndefined();
-    expect(createCall.allow_promotion_codes).toBe(true);
+    // 2026-08-29 (CR-3C-B) — previously this fell through to a real, full-
+    // price Stripe Checkout Session (200) since only the founding-discount
+    // eligibility check excluded existing Lifetime owners, not the purchase
+    // path itself. A server-side backstop now rejects ANY plain-`lifetime`
+    // checkout attempt outright when the user already owns Lifetime via any
+    // provider — regardless of which offer flag was sent — rather than
+    // silently allowing a duplicate purchase at full price.
+    expect(res.status).toBe(409);
+    const body = await res.json() as { error?: string };
+    expect(body.error).toBe('You already have Pro Lifetime.');
+    expect(sessionsCreate).not.toHaveBeenCalled();
   });
 
   it('SEC-C8f. A genuinely non-Lifetime user still gets the founding discount while the promo is active', async () => {
