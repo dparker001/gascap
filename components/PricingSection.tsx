@@ -49,6 +49,7 @@ export default function PricingSection() {
   const { t }             = useTranslation();
   const isNative          = useIsNative();
   const [loading, setLoading]       = useState<string | null>(null);
+  const [error, setError]           = useState('');
   const [wiggle, setWiggle]         = useState(false);
   const proCardRef                  = useRef<HTMLDivElement>(null);
   const lifetimeCardRef             = useRef<HTMLDivElement>(null);
@@ -87,6 +88,10 @@ export default function PricingSection() {
       return;
     }
     setLoading(billing);
+    // 2026-08-29 (CR-3C-B) — a failed checkout previously left the user with
+    // no visible outcome at all: the spinner cleared and nothing happened.
+    // Mirrors /upgrade's existing checkout-failure handling.
+    setError('');
     try {
       const origin = billing === 'lifetime' ? lifetimeCardRef.current : proCardRef.current;
       if (origin) {
@@ -103,7 +108,13 @@ export default function PricingSection() {
         body:    JSON.stringify({ tier: 'pro', billing }),
       });
       const data = await res.json() as { url?: string; error?: string };
-      if (data.url) window.location.href = data.url;
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        setError(data.error ?? 'Something went wrong.');
+      }
+    } catch {
+      setError('Network error — please try again.');
     } finally {
       setLoading(null);
     }
@@ -145,6 +156,15 @@ export default function PricingSection() {
       <p className="text-center text-slate-500 text-sm mb-8 leading-relaxed">
         {t.pricing.sub}
       </p>
+
+      {error && (
+        <div
+          role="alert"
+          className="max-w-5xl mx-auto mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-center text-sm font-bold text-red-700"
+        >
+          {error}
+        </div>
+      )}
 
       {/* ── 3-panel cards ──────────────────────────────────────────────── */}
       <div className="grid gap-4 md:grid-cols-3 md:items-stretch max-w-5xl mx-auto">
