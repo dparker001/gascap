@@ -11,6 +11,7 @@ import {
   nameFromEmail,
 } from '@/lib/users';
 import { checkRateLimit } from '@/lib/rateLimit';
+import { recordAnalyticsEvent } from '@/lib/analyticsEvents';
 import { sendMail, verificationEmailHtml } from '@/lib/email';
 import { sendCampaignEmail } from '@/lib/emailCampaign';
 import { hasEmailBeenSent }  from '@/lib/emailLog';
@@ -105,7 +106,27 @@ export async function POST(req: Request) {
     // Auto-enroll every new signup in a 30-day GasCap™ Pro trial. Sets
     // plan='pro', isProTrial=true, trialExpiresAt=+30d. The trial-expire cron
     // will revert them to free automatically if they don't upgrade.
-    await grantNewSignupProTrial(user.id, 30);
+    // TC-2B-A (2026-09-01) — trial_started only fires when the grant itself
+    // actually succeeded (grantNewSignupProTrial catches its own Prisma
+    // error and returns null on failure), matching the OTP/Google signup
+    // paths' existing semantics: successful account creation and successful
+    // trial grant are two independent facts — signup_completed can exist
+    // even if this grant fails. Registration itself is NOT altered by a
+    // null result here (see EXISTING TRIAL-GRANT FAILURE-SEMANTICS FOLLOW-UP
+    // note below).
+    const grantedTrial = await grantNewSignupProTrial(user.id, 30);
+    if (grantedTrial !== null) {
+      try {
+        await recordAnalyticsEvent({
+          eventType: 'trial_started',
+          originPlatform: 'unknown',
+          emitter: 'server',
+          userId: user.id,
+          source: 'signup_trial',
+          idempotencyKey: `trial_started:${user.id}`,
+        });
+      } catch (e) { console.error('[GasCap analytics] Password trial_started write failed:', e); }
+    }
 
     // Enroll in the 5-email drip sequence (step 1 = welcome, sent below).
     await enrollEmailCampaign(user.id);

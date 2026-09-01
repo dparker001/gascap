@@ -235,6 +235,22 @@ export async function createUser(
       locale,
     },
   });
+  // TC-2B-A (2026-09-01) — signup_completed only for a genuine new account;
+  // this line is unreachable unless prisma.user.create() above actually
+  // succeeded (a rejected findByEmail/create throws before this point).
+  // Same pattern as createGoogleUser()'s emission below — one authoritative
+  // emission site, analytics failure never fails account creation.
+  try {
+    await recordAnalyticsEvent({
+      eventType: 'signup_completed',
+      originPlatform: 'unknown',
+      emitter: 'server',
+      userId: user.id,
+      source: 'auth_signup',
+      idempotencyKey: `signup_completed:${user.id}`,
+      metadata: { signupMethod: 'password' },
+    });
+  } catch (e) { console.error('[GasCap analytics] Password signup_completed write failed:', e); }
   return toStoredUser(user);
 }
 
