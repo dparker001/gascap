@@ -22,6 +22,7 @@ import { logEmail }              from './emailLog';
 import { REFERRAL_BONUS_ENTRIES } from './giveaway';
 import { findById }              from './users';
 import { hasLifetimeEntitlement } from './entitlements';
+import { getTrialValueSummary, trialValuePhrases, type TrialValueSummary } from './trialValue';
 
 // ── Shared layout helpers ──────────────────────────────────────────────────
 
@@ -57,6 +58,37 @@ function ctaButton(label: string, url: string) {
        font-size:15px;padding:14px 32px;border-radius:12px;text-decoration:none;margin-top:4px;">
       ${label}
     </a>`;
+}
+
+/**
+ * TC-2A personalized recap block — "YOUR GASCAP PRO ACTIVITY" style section.
+ * Renders nothing (returns '') when there's no reliable non-zero activity,
+ * so callers can splice it in without an empty box ever appearing.
+ */
+function trialValueRecapHtml(heading: string, summary: TrialValueSummary | null): string {
+  if (!summary) return '';
+  const phrases = trialValuePhrases(summary);
+  if (phrases.length === 0) return '';
+  return `
+    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;padding:18px 22px;margin:0 0 22px;">
+      <p style="margin:0 0 4px;font-size:12px;font-weight:800;color:#1e2d4a;text-transform:uppercase;letter-spacing:0.5px;">
+        ${heading}
+      </p>
+      <p style="margin:0 0 10px;font-size:13px;color:#64748b;">
+        Here's what you've done with GasCap™ during your trial:
+      </p>
+      <ul style="margin:0;padding:0 0 0 18px;color:#334155;font-size:14px;line-height:1.8;">
+        ${phrases.map((p) => `<li>${p}</li>`).join('')}
+      </ul>
+    </div>`;
+}
+
+/** Plain-text equivalent of trialValueRecapHtml, for the .text() email variants. */
+function trialValueRecapText(intro: string, summary: TrialValueSummary | null): string {
+  if (!summary) return '';
+  const phrases = trialValuePhrases(summary);
+  if (phrases.length === 0) return '';
+  return ` ${intro}: ${phrases.join(', ')}.`;
 }
 
 function featureRow(emoji: string, title: string, desc: string) {
@@ -547,7 +579,7 @@ export const proUpsellEmailText = (name: string) =>
 
 // ── Email 4 — 9 Days Left (Day 21) ────────────────────────────────────────
 
-export function annualDealEmailHtml(name: string, userId: string): string {
+export function annualDealEmailHtml(name: string, userId: string, trialValue: TrialValueSummary | null = null): string {
   const first = name.split(' ')[0];
   return wrap(`
     ${header('trial')}
@@ -562,6 +594,8 @@ export function annualDealEmailHtml(name: string, userId: string): string {
         If GasCap™ has earned a spot on your phone, this is the moment to lock it in
         at the best price we offer — and avoid any disruption when your trial ends.
       </p>
+
+      ${trialValueRecapHtml('Your GasCap™ Pro activity', trialValue)}
 
       <table cellpadding="0" cellspacing="0" width="100%"
              style="border:2px solid #e2e8f0;border-radius:14px;overflow:hidden;margin-bottom:24px;">
@@ -644,12 +678,12 @@ export function annualDealEmailHtml(name: string, userId: string): string {
   `);
 }
 
-export const annualDealEmailText = (name: string) =>
-  `Hi ${name.split(' ')[0]}, your free GasCap™ Pro trial ends in 9 days. Keep everything you've been using for just $2.99/month — cancel anytime, less than a dime a day. Or own Pro forever with the $19.99 Lifetime plan (one payment, no subscription) — it also comes with a free vacation getaway certificate. Quick tip: share your referral link now (in the Share tab) — if a friend signs up, we bank 1 free Pro month for you. Upgrade: ${BASE_URL}/upgrade`;
+export const annualDealEmailText = (name: string, trialValue: TrialValueSummary | null = null) =>
+  `Hi ${name.split(' ')[0]}, your free GasCap™ Pro trial ends in 9 days.${trialValueRecapText("Here's what you've done with GasCap during your trial", trialValue)} Keep everything you've been using for just $2.99/month — cancel anytime, less than a dime a day. Or own Pro forever with the $19.99 Lifetime plan (one payment, no subscription) — it also comes with a free vacation getaway certificate. Quick tip: share your referral link now (in the Share tab) — if a friend signs up, we bank 1 free Pro month for you. Upgrade: ${BASE_URL}/upgrade`;
 
 // ── Email 5 — Final 48 Hours (Day 28) ─────────────────────────────────────
 
-export function lastCallEmailHtml(name: string, userId: string): string {
+export function lastCallEmailHtml(name: string, userId: string, trialValue: TrialValueSummary | null = null): string {
   const first = name.split(' ')[0];
   return wrap(`
     ${header('trial')}
@@ -657,13 +691,15 @@ export function lastCallEmailHtml(name: string, userId: string): string {
       ${trialBadge(2)}
 
       <p style="margin:0 0 6px;font-size:24px;font-weight:900;color:#1e2d4a;line-height:1.2;">
-        Last 48 hours of your Pro trial 🚨
+        Your Pro trial ends in 48 hours 🚨
       </p>
       <p style="margin:0 0 22px;font-size:15px;color:#475569;line-height:1.65;">
         ${first}, in two days your GasCap™ Pro trial ends and your account moves back
         to the free plan. You've had 28 days to put it through its paces — here's the
-        final, best-value way to keep everything you've been using.
+        final, best-value way to keep the Pro tools you've been using.
       </p>
+
+      ${trialValueRecapHtml('Your GasCap™ Pro activity', trialValue)}
 
       <div style="text-align:center;background:linear-gradient(135deg,#fefce8,#fef3c7);
                   border:2px solid #fde68a;border-radius:16px;padding:28px 24px;margin-bottom:24px;">
@@ -728,12 +764,12 @@ export function lastCallEmailHtml(name: string, userId: string): string {
   `);
 }
 
-export const lastCallEmailText = (name: string) =>
-  `Hi ${name.split(' ')[0]}, your GasCap™ Pro trial ends in 48 hours. Keep everything you've been using for just $2.99/month — cancel anytime, less than a dime a day. Or own Pro forever with the $19.99 Lifetime plan (one payment, no subscription) — it also comes with a free vacation getaway certificate. Prefer to make one payment? Lifetime is $19.99 — less than 7 months of Monthly — with no recurring subscription. Upgrade before your account reverts to free: ${BASE_URL}/upgrade`;
+export const lastCallEmailText = (name: string, trialValue: TrialValueSummary | null = null) =>
+  `Hi ${name.split(' ')[0]}, your GasCap™ Pro trial ends in 48 hours.${trialValueRecapText("Here's what you've done with GasCap during your trial", trialValue)} Keep the Pro tools you've been using for just $2.99/month — cancel anytime, less than a dime a day. Or own Pro forever with the $19.99 Lifetime plan (one payment, no subscription) — it also comes with a free vacation getaway certificate. Prefer to make one payment? Lifetime is $19.99 — less than 7 months of Monthly — with no recurring subscription. Upgrade before your account reverts to free: ${BASE_URL}/upgrade`;
 
 // ── Email 6 — Trial Ended (fires from expiry cron on downgrade) ────────────
 
-export function trialEndedEmailHtml(name: string, userId: string): string {
+export function trialEndedEmailHtml(name: string, userId: string, trialValue: TrialValueSummary | null = null): string {
   const first = name.split(' ')[0];
   return wrap(`
     ${header()}
@@ -744,8 +780,10 @@ export function trialEndedEmailHtml(name: string, userId: string): string {
       <p style="margin:0 0 22px;font-size:15px;color:#475569;line-height:1.65;">
         Your 30-day GasCap™ Pro trial wrapped up today. Your account is now on the
         free plan — your data, vehicles, and fill-up history are all still there,
-        nothing was lost.
+        nothing was lost or deleted.
       </p>
+
+      ${trialValueRecapHtml("Here's what you did with Pro", trialValue)}
 
       <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:16px;
                   padding:20px 24px;margin-bottom:24px;">
@@ -770,11 +808,11 @@ export function trialEndedEmailHtml(name: string, userId: string): string {
         </p>
         <p style="margin:0 0 16px;font-size:14px;color:#92400e;">
           <strong>$2.99/mo</strong> — or own Pro forever with <strong>$19.99 Lifetime</strong>
-          (plus a free vacation getaway certificate)
+          (one payment, no subscription, plus a free vacation getaway certificate)
         </p>
         ${ctaButton('Upgrade to Pro →', `${BASE_URL}/upgrade`)}
         <p style="margin:14px 0 0;font-size:12px;color:#b45309;">
-          No commitment on monthly. Cancel anytime.
+          No commitment on monthly. Cancel anytime. Lifetime costs less than 7 months of Monthly.
         </p>
       </div>
 
@@ -799,8 +837,8 @@ export function trialEndedEmailHtml(name: string, userId: string): string {
   `);
 }
 
-export const trialEndedEmailText = (name: string) =>
-  `Hi ${name.split(' ')[0]}, your GasCap™ Pro trial has ended and your account is now on the free plan. Your data is safe — any vehicles you already saved are still in your garage, you just can't add new ones beyond your first without Pro. Want to keep Pro? Upgrade at ${BASE_URL}/upgrade — $2.99/mo or own it forever for $19.99 (Lifetime, plus a free vacation getaway certificate). Free plan keeps unlimited calculations and live gas price lookup. — Don, GasCap™`;
+export const trialEndedEmailText = (name: string, trialValue: TrialValueSummary | null = null) =>
+  `Hi ${name.split(' ')[0]}, your GasCap™ Pro trial has ended and your account is now on the free plan. Nothing was lost or deleted — your data is safe, any vehicles you already saved are still in your garage, you just can't add new ones beyond your first without Pro.${trialValueRecapText('Here’s what you did with Pro', trialValue)} Want to keep Pro? Upgrade at ${BASE_URL}/upgrade — $2.99/mo or own it forever for $19.99 (Lifetime — less than 7 months of Monthly, plus a free vacation getaway certificate). Free plan keeps unlimited calculations and live gas price lookup. — Don, GasCap™`;
 
 // ── Campaign dispatch helper ───────────────────────────────────────────────
 
@@ -814,6 +852,10 @@ export interface CampaignRecipient {
 
 export async function sendCampaignEmail(step: number, user: CampaignRecipient): Promise<void> {
   const { id, name, email, verifyUrl, isDelayed } = user;
+
+  // TC-2A — only steps 4 (Day 21) and 5 (Day 28) show a personalized recap;
+  // fetched narrowly so earlier steps never pay for or depend on this query.
+  const trialValue = (step === 4 || step === 5) ? await getTrialValueSummary(id) : null;
 
   const MAP: Record<number, { subject: string; html: string; text: string }> = {
     1: {
@@ -833,13 +875,13 @@ export async function sendCampaignEmail(step: number, user: CampaignRecipient): 
     },
     4: {
       subject: '9 days left on your Pro trial — lock in the best price ⏰',
-      html:    annualDealEmailHtml(name, id),
-      text:    annualDealEmailText(name),
+      html:    annualDealEmailHtml(name, id, trialValue),
+      text:    annualDealEmailText(name, trialValue),
     },
     5: {
       subject: 'Your GasCap™ Pro trial ends in 48 hours 🚨',
-      html:    lastCallEmailHtml(name, id),
-      text:    lastCallEmailText(name),
+      html:    lastCallEmailHtml(name, id, trialValue),
+      text:    lastCallEmailText(name, trialValue),
     },
   };
 
