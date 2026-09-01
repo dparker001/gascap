@@ -13,6 +13,11 @@ vi.mock('@/lib/users', () => ({
 vi.mock('@/lib/email', () => ({ sendMail: vi.fn(async () => {}) }));
 vi.mock('@/lib/emailCampaign', () => ({ trialEndedEmailHtml: () => '<html></html>', trialEndedEmailText: () => 'text' }));
 vi.mock('@/lib/emailLog', () => ({ logEmail: vi.fn(async () => {}) }));
+// TC-2A — trial-expire now fetches a Trial Value Summary per user; mocked
+// here so this test suite never hits real Prisma.
+vi.mock('@/lib/trialValue', () => ({
+  getTrialValueSummary: vi.fn(async () => ({ calculations: 0, vehicles: 0, fillups: 0, rentalSessions: 0 })),
+}));
 
 const recordAnalyticsEvent = vi.fn(async (..._a: unknown[]) => ({ outcome: 'written' as const, id: 'evt_1' }));
 vi.mock('@/lib/analyticsEvents', () => ({

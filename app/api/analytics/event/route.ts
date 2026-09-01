@@ -127,6 +127,13 @@ const CLIENT_EVENT_TYPES = new Set([
   'rental_trip_fill_calculator_opened',
   'rental_trip_fill_calculated',
   'rental_trip_fill_log_started',
+  // TC-2A (2026-09-01) — TrialExpiryBanner's personalized value recap.
+  // Authenticated-trial-only surface (the banner never renders for a guest
+  // or a non-trial user), so deliberately absent from
+  // ANONYMOUS_ALLOWED_EVENT_TYPES below. Metadata is bounded booleans/a
+  // validated integer only — never raw counts, never PII.
+  'trial_value_recap_viewed',
+  'trial_value_recap_upgrade_clicked',
 ]);
 
 /**
@@ -224,6 +231,33 @@ const METADATA_SCHEMAS: Record<string, MetadataSchema> = {
       context: (v) => v === 'vehicle' || v === 'rental',
     },
     required: ['style', 'context'],
+  },
+  // TC-2A — bounded booleans + a validated small non-negative integer only.
+  // Never the underlying counts, never a userId/vehicleId/rentalId, never a
+  // URL. `stage` is fixed to 'banner' since this is the only recap surface
+  // wired to this route today (email recap has no attribution mechanism —
+  // see lib/trialValue.ts's header for the known gap).
+  trial_value_recap_viewed: {
+    fields: {
+      stage:             (v) => v === 'banner',
+      daysRemaining:     (v) => v === undefined || (typeof v === 'number' && Number.isInteger(v) && v >= 0 && v <= 365),
+      hasCalculations:   (v) => typeof v === 'boolean',
+      hasVehicles:       (v) => typeof v === 'boolean',
+      hasFillups:        (v) => typeof v === 'boolean',
+      hasRentalSessions: (v) => typeof v === 'boolean',
+    },
+    required: ['stage', 'hasCalculations', 'hasVehicles', 'hasFillups', 'hasRentalSessions'],
+  },
+  trial_value_recap_upgrade_clicked: {
+    fields: {
+      stage:             (v) => v === 'banner',
+      daysRemaining:     (v) => v === undefined || (typeof v === 'number' && Number.isInteger(v) && v >= 0 && v <= 365),
+      hasCalculations:   (v) => typeof v === 'boolean',
+      hasVehicles:       (v) => typeof v === 'boolean',
+      hasFillups:        (v) => typeof v === 'boolean',
+      hasRentalSessions: (v) => typeof v === 'boolean',
+    },
+    required: ['stage', 'hasCalculations', 'hasVehicles', 'hasFillups', 'hasRentalSessions'],
   },
 };
 

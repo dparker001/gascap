@@ -15,24 +15,98 @@
 
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useTranslation } from '@/contexts/LanguageContext';
 import { useIsNative } from '@/hooks/useIsNative';
+import { trackClientEvent } from '@/lib/clientAnalytics';
 
 const WARN_DAYS        = 15;  // show banner when ≤ this many days remain
 const DISMISS_KEY      = 'gc_trial_banner_dismissed';
+
+interface TrialValueSummary {
+  calculations:   number | null;
+  vehicles:       number;
+  fillups:        number;
+  rentalSessions: number;
+}
+
+function plural(n: number, singular: string): string {
+  return `${n} ${n === 1 ? singular : `${singular}s`}`;
+}
+
+/** Compact "N fill-ups • N vehicles • N rentals" line — omits zero/unreliable metrics. */
+function trialValueLine(summary: TrialValueSummary | null): string | null {
+  if (!summary) return null;
+  const parts: string[] = [];
+  if (summary.fillups > 0) parts.push(plural(summary.fillups, 'fill-up'));
+  if (summary.vehicles > 0) parts.push(plural(summary.vehicles, 'vehicle'));
+  if (summary.rentalSessions > 0) parts.push(plural(summary.rentalSessions, 'rental'));
+  if (summary.calculations !== null && summary.calculations > 0) parts.push(plural(summary.calculations, 'GasCap calculation'));
+  return parts.length > 0 ? parts.join(' • ') : null;
+}
 
 export default function TrialExpiryBanner() {
   const { data: session, status } = useSession();
   const { t } = useTranslation();
   const isNative = useIsNative();
   const [dismissed, setDismissed] = useState(true); // start hidden to avoid flash
+  const [trialValue, setTrialValue] = useState<TrialValueSummary | null>(null);
+  const viewTrackedRef = useRef(false); // one-shot guard, stable across rerenders
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setDismissed(sessionStorage.getItem(DISMISS_KEY) === '1');
     }
   }, []);
+
+  const sessionUser = session?.user as {
+    plan?:           string;
+    isProTrial?:     boolean;
+    trialExpiresAt?: string | null;
+  } | undefined;
+
+  const daysLeftRaw = sessionUser?.trialExpiresAt
+    ? Math.ceil((new Date(sessionUser.trialExpiresAt).getTime() - Date.now()) / 86_400_000)
+    : null;
+
+  const wouldShowBanner =
+    status !== 'loading' && !dismissed && !isNative && !!sessionUser &&
+    sessionUser.plan === 'pro' && sessionUser.isProTrial && !!sessionUser.trialExpiresAt &&
+    daysLeftRaw !== null && daysLeftRaw <= WARN_DAYS && daysLeftRaw >= 0;
+
+  // Only fetch the value summary when the banner would otherwise actually be
+  // eligible to render — never for unauthenticated users, non-trial users,
+  // native wrappers, trials with more than WARN_DAYS remaining, or expired
+  // trials. A failed fetch is swallowed (recap line is optional polish) and
+  // must never hide or break the underlying trial reminder itself.
+  useEffect(() => {
+    if (!wouldShowBanner) return;
+    fetch('/api/user/trial-value')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d) setTrialValue(d as TrialValueSummary); })
+      .catch(() => { /* recap line is optional polish — never break the banner */ });
+  }, [wouldShowBanner]);
+
+  const recapLineForTracking = wouldShowBanner ? trialValueLine(trialValue) : null;
+
+  // Analytics — fire once per mounted impression when the personalized recap
+  // actually renders. A ref-backed one-shot guard (not just the dependency
+  // array) ensures a rerender that recomputes the same non-null recap line
+  // can never emit a second view event for this impression. Narrow metadata
+  // only: stage, daysRemaining, and boolean flags — never raw counts, PII.
+  useEffect(() => {
+    if (!recapLineForTracking || viewTrackedRef.current) return;
+    viewTrackedRef.current = true;
+    trackClientEvent('trial_value_recap_viewed', {
+      stage:            'banner',
+      daysRemaining:    daysLeftRaw ?? undefined,
+      hasCalculations:  !!(trialValue && trialValue.calculations !== null && trialValue.calculations > 0),
+      hasVehicles:      !!(trialValue && trialValue.vehicles > 0),
+      hasFillups:       !!(trialValue && trialValue.fillups > 0),
+      hasRentalSessions: !!(trialValue && trialValue.rentalSessions > 0),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recapLineForTracking]);
 
   if (status === 'loading' || dismissed) return null;
   // Hidden in the native wrappers — no in-app upgrade steering (App Store / Play
@@ -80,6 +154,25 @@ export default function TrialExpiryBanner() {
     setDismissed(true);
   }
 
+  function handleUpgradeClick() {
+    // The event name means "clicked Upgrade from a banner that ACTUALLY
+    // displayed the personalized recap" — a zero-activity/failed-fetch
+    // generic banner click must not be counted as a recap-attributed click.
+    // Navigation to /upgrade is unaffected either way (this only guards the
+    // analytics call, never the Link itself).
+    if (!recapLine) return;
+    trackClientEvent('trial_value_recap_upgrade_clicked', {
+      stage:            'banner',
+      daysRemaining:    daysLeft,
+      hasCalculations:  !!(trialValue && trialValue.calculations !== null && trialValue.calculations > 0),
+      hasVehicles:      !!(trialValue && trialValue.vehicles > 0),
+      hasFillups:       !!(trialValue && trialValue.fillups > 0),
+      hasRentalSessions: !!(trialValue && trialValue.rentalSessions > 0),
+    });
+  }
+
+  const recapLine = trialValueLine(trialValue);
+
   return (
     <div
       role="alert"
@@ -97,10 +190,16 @@ export default function TrialExpiryBanner() {
         <p className={`text-[11px] mt-0.5 font-semibold leading-relaxed ${colors.body}`}>
           {t.trialBanner.bonusEntries}
         </p>
+        {recapLine && (
+          <p className={`text-[11px] mt-1 leading-relaxed ${colors.body}`}>
+            Your Pro activity: {recapLine}
+          </p>
+        )}
 
         <div className="flex items-center gap-3 mt-2">
           <Link
             href="/upgrade"
+            onClick={handleUpgradeClick}
             className={`px-3 py-1.5 rounded-xl text-xs font-black text-white
                         transition-colors whitespace-nowrap ${colors.btn}`}
           >

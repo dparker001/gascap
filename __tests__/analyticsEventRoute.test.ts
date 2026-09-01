@@ -581,3 +581,73 @@ describe('POST /api/analytics/event — fuel_gauge_style_selected', () => {
     expect(recordAnalyticsEvent).not.toHaveBeenCalled();
   });
 });
+
+describe('TC-2A — trial_value_recap_viewed / trial_value_recap_upgrade_clicked', () => {
+  const validMeta = {
+    stage: 'banner',
+    daysRemaining: 4,
+    hasCalculations: true,
+    hasVehicles: false,
+    hasFillups: true,
+    hasRentalSessions: false,
+  };
+
+  for (const eventType of ['trial_value_recap_viewed', 'trial_value_recap_upgrade_clicked']) {
+    it(`accepts a valid authenticated ${eventType} with bounded boolean/int metadata`, async () => {
+      getServerSession.mockResolvedValue({ user: { id: 'u1' } });
+      const res = await post({ eventType, originPlatform: 'web', metadata: validMeta });
+      expect(res.status).toBe(202);
+      expect(recordAnalyticsEvent).toHaveBeenCalledTimes(1);
+    });
+
+    it(`rejects ${eventType} from an anonymous (no-session) caller — not anonymous-allowed`, async () => {
+      getServerSession.mockResolvedValue(null);
+      const res = await post({ eventType, originPlatform: 'web', metadata: validMeta });
+      expect(res.status).toBe(401);
+      expect(recordAnalyticsEvent).not.toHaveBeenCalled();
+    });
+
+    it(`rejects ${eventType} missing a required boolean flag`, async () => {
+      getServerSession.mockResolvedValue({ user: { id: 'u1' } });
+      const { hasRentalSessions: _drop, ...incomplete } = validMeta;
+      const res = await post({ eventType, originPlatform: 'web', metadata: incomplete });
+      expect(res.status).toBe(400);
+      expect(recordAnalyticsEvent).not.toHaveBeenCalled();
+    });
+
+    it(`rejects ${eventType} with a non-'banner' stage value`, async () => {
+      getServerSession.mockResolvedValue({ user: { id: 'u1' } });
+      const res = await post({ eventType, originPlatform: 'web', metadata: { ...validMeta, stage: 'email' } });
+      expect(res.status).toBe(400);
+      expect(recordAnalyticsEvent).not.toHaveBeenCalled();
+    });
+
+    it(`rejects ${eventType} with a raw count instead of a boolean flag`, async () => {
+      getServerSession.mockResolvedValue({ user: { id: 'u1' } });
+      const res = await post({ eventType, originPlatform: 'web', metadata: { ...validMeta, hasFillups: 4 } });
+      expect(res.status).toBe(400);
+      expect(recordAnalyticsEvent).not.toHaveBeenCalled();
+    });
+
+    it(`rejects ${eventType} with an out-of-bounds daysRemaining`, async () => {
+      getServerSession.mockResolvedValue({ user: { id: 'u1' } });
+      const res = await post({ eventType, originPlatform: 'web', metadata: { ...validMeta, daysRemaining: -1 } });
+      expect(res.status).toBe(400);
+      expect(recordAnalyticsEvent).not.toHaveBeenCalled();
+    });
+
+    it(`accepts ${eventType} with daysRemaining omitted (optional field)`, async () => {
+      getServerSession.mockResolvedValue({ user: { id: 'u1' } });
+      const { daysRemaining: _drop, ...withoutDays } = validMeta;
+      const res = await post({ eventType, originPlatform: 'web', metadata: withoutDays });
+      expect(res.status).toBe(202);
+    });
+
+    it(`rejects ${eventType} carrying a raw userId/vehicleId/rentalId/url in metadata (unknown key)`, async () => {
+      getServerSession.mockResolvedValue({ user: { id: 'u1' } });
+      const res = await post({ eventType, originPlatform: 'web', metadata: { ...validMeta, vehicleId: 'veh_1' } });
+      expect(res.status).toBe(400);
+      expect(recordAnalyticsEvent).not.toHaveBeenCalled();
+    });
+  }
+});

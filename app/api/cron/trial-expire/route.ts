@@ -13,6 +13,7 @@ import { sendMail }                            from '@/lib/email';
 import { trialEndedEmailHtml, trialEndedEmailText } from '@/lib/emailCampaign';
 import { logEmail }                            from '@/lib/emailLog';
 import { recordAnalyticsEvent }                from '@/lib/analyticsEvents';
+import { getTrialValueSummary }                from '@/lib/trialValue';
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -67,12 +68,16 @@ export async function GET(req: Request) {
       //    gets downgraded. Filtering the query was letting opt-outs keep Pro
       //    for free indefinitely.
       if (!user.emailOptOut) {
+        // TC-2A — fetched from the user's actual domain records (vehicles/
+        // fillups/rentalSessions/calcCount), independently of trialExpiresAt,
+        // which expireTrial() above has already cleared to null.
+        const trialValue = await getTrialValueSummary(user.id).catch(() => null);
         const trialEndedSubject = 'Your GasCap™ Pro trial has ended';
         await sendMail({
           to:      user.email,
           subject: trialEndedSubject,
-          html:    trialEndedEmailHtml(user.name, user.id),
-          text:    trialEndedEmailText(user.name),
+          html:    trialEndedEmailHtml(user.name, user.id, trialValue),
+          text:    trialEndedEmailText(user.name, trialValue),
         });
         logEmail({ userId: user.id, userEmail: user.email, userName: user.name, type: 'trial-ended', subject: trialEndedSubject }).catch(() => {});
         emailsSent++;
