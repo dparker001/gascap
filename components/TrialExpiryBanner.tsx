@@ -155,6 +155,12 @@ export default function TrialExpiryBanner() {
   }
 
   function handleUpgradeClick() {
+    // The event name means "clicked Upgrade from a banner that ACTUALLY
+    // displayed the personalized recap" — a zero-activity/failed-fetch
+    // generic banner click must not be counted as a recap-attributed click.
+    // Navigation to /upgrade is unaffected either way (this only guards the
+    // analytics call, never the Link itself).
+    if (!recapLine) return;
     trackClientEvent('trial_value_recap_upgrade_clicked', {
       stage:            'banner',
       daysRemaining:    daysLeft,

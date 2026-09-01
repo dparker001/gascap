@@ -855,7 +855,11 @@ export async function sendCampaignEmail(step: number, user: CampaignRecipient): 
 
   // TC-2A — only steps 4 (Day 21) and 5 (Day 28) show a personalized recap;
   // fetched narrowly so earlier steps never pay for or depend on this query.
-  const trialValue = (step === 4 || step === 5) ? await getTrialValueSummary(id) : null;
+  // The personalized recap is optional enhancement data — a transient
+  // failure reading it (User counters, Vehicle/Fillup/RentalSession counts)
+  // must never prevent the Day-21/Day-28 trial-conversion email itself from
+  // sending; a null summary just renders the existing generic copy.
+  const trialValue = (step === 4 || step === 5) ? await getTrialValueSummary(id).catch(() => null) : null;
 
   const MAP: Record<number, { subject: string; html: string; text: string }> = {
     1: {
