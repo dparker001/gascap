@@ -315,3 +315,56 @@ Highest scrutiny:
 4. **A5:** `lib/nearbyResponse.ts` precedence and `FindGasNearReturn.tsx` state handling.
 
 Lower priority: the A3 copy change, translations, and test-comment edits.
+
+---
+
+## Review round 1 — ChatGPT response and disposition (2026-09-30)
+
+**ChatGPT disposition:** APPROVE WITH TWO REQUIRED REVISIONS. Each finding was checked against the
+repository before acting on it. **New review target: `5a0eb85`.**
+
+| # | Finding | Classification | What was done |
+|---|---|---|---|
+| R1 | Time-bound the A6 exception: `pickup ≤ now ≤ return + 24 h`; no exception for upcoming, beyond-grace, completed or cancelled rentals; an extension extends the window | **AGREE — ACTION REQUIRED** | New `lib/rentalEntitlement.ts` `isWithinRentalWindow()`. It uses the UTC instants (`pickupDateTimeUtc` / `returnDateTimeUtc`), which `PATCH /api/rental-sessions/:id` already recomputes on edit, so extensions work with no schema change. It reuses `isUpcomingRental()`. Outside the window → normal DB Pro gate. |
+| R1 (edge cases) | Not specified by ChatGPT | **Claude's decisions — flagged for Don** | **No pickup time** → treated as started, matching the existing `isUpcomingRental()` convention used by the rentals list (the "set it up at the counter" case). **No usable return time** → no window, so it falls back to Pro (fail closed). The setup UI requires a return time, so this should be rare: rows from before the 2026-08-25 UTC fix, or a missing browser timezone. |
+| R2 | Filter cache hits to the current 5-mile radius, then sort by current distance | **AGREE — ACTION REQUIRED** | `withDistancesFrom()` now computes the distance from the current request, drops stations beyond `RADIUS_METERS`, and sorts before rounding. The residual far-edge omission is documented in code as accepted. |
+| A4 | NFC-normalize both sides; no lowercasing or fuzzy matching | **AGREE — ACTION REQUIRED** | `normalizeChip = v.trim().normalize('NFC')` is applied to the allowlist and the incoming question. |
+| — | AI rate limiting | **AGREE — POST-DEMO P1** | Not in this PR. Guest/free suggested chips are still unlimited Opus calls. |
+| A5 | Document the invariant that error responses carry no usable stations | **AGREE — ACTION REQUIRED** (docs only) | `API INVARIANT` comment in `lib/nearbyResponse.ts`. |
+| A3 | Approved as-is | **AGREE — ALREADY ADDRESSED** | — |
+
+Copy updated in the same change: EN + ES `findGasProRequired` now describes the rental period, and
+the help page and AI `APP FEATURES` state the pickup → return + 24 h window.
+
+### Final validation (this revision)
+
+```
+Focused (A2–A6): rentalNearbyActiveAccess + preDemoIntegrity + nearbyGas → 3 files, 40 passed
+npm test          → Test Files 110 passed (110); Tests 1835 passed (1835)
+npx tsc --noEmit   → clean
+npm run build      → success
+Test-merge with #54 (origin/fix/saved-station-live-prices @ 1144907), scratch worktree:
+  no conflicts (auto-merged app/help/page.tsx, lib/nearbyGas.ts, lib/translations.ts);
+  merged help text verified to contain both PRs' edits;
+  combined tsc clean; combined suite 111 files, 1863/1863 (= 1802 + 28 from #54 + 33 from #55)
+```
+- New tests this round: 12. **5 failed on the pre-revision code** (upcoming → no exception, beyond
+  grace → no exception, no usable return time → no exception, cache-hit radius filter, NFD chip).
+  The other 7 are guards: in-progress allowed, grace allowed, Pro beyond grace allowed, completed
+  and cancelled refused (2), extension allowed, no-pickup-time allowed.
+- Existing A6 test fixture updated: the default rental now has in-progress pickup/return times.
+  Without them it would be refused by the new fail-closed rule.
+- Working tree: every file this PR touches is committed. `public/sw.js` (a build artifact that was
+  already modified before this work and is regenerated on each build, never committed) and
+  pre-existing untracked docs are unrelated.
+
+### Post-deployment smoke checks (read-only)
+1. Two Find Gas searches from spots within the same 0.01° cell (~0.3 mi apart): distances match
+   Google Maps, and nothing beyond 5 mi appears.
+2. An upcoming rental: Find Gas Near Return works for a Pro account. For a lapsed account it should
+   show the Pro message (test only if a safe free test account exists).
+3. A currently active rental (Don's Oct 3–5 Avis rental): Find Gas Near Return during the rental.
+4. A simulated lapsed-Pro active rental, only if it's safely testable without touching a real
+   user's plan.
+5. An ES AI suggested chip as a free user.
+6. Saved stations from PR #54.
