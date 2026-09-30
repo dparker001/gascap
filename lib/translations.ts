@@ -1877,6 +1877,10 @@ const en = {
     favPriceLive:         'Current price',
     favPriceLastKnown:    (when: string) => `Couldn't refresh · last seen ${when}`,
     favPriceUnavailable:  'No current price available',
+    favPriceNoneReported: (when: string) => `No current price reported · last seen ${when}`,
+    favUseLastKnownPrompt: (price: string, when: string) => `Use last-known price $${price} (last seen ${when})? It may not match the pump.`,
+    favUseLastKnownConfirm: 'Use it',
+    favUseLastKnownCancel:  'Cancel',
     favoriteLimitReached: (max: number) => `You can save up to ${max} favorites — remove one to add another.`,
   },
 
@@ -5076,6 +5080,10 @@ const es: typeof en = {
     favPriceLive:         'Precio actual',
     favPriceLastKnown:    (when: string) => `No se pudo actualizar · visto ${when}`,
     favPriceUnavailable:  'Sin precio actual disponible',
+    favPriceNoneReported: (when: string) => `No se reporta precio actual · visto ${when}`,
+    favUseLastKnownPrompt: (price: string, when: string) => `¿Usar el último precio conocido $${price} (visto ${when})? Puede no coincidir con la bomba.`,
+    favUseLastKnownConfirm: 'Usarlo',
+    favUseLastKnownCancel:  'Cancelar',
     favoriteLimitReached: (max: number) => `Puedes guardar hasta ${max} favoritos — elimina uno para agregar otro.`,
   },
 

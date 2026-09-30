@@ -13,7 +13,7 @@ import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { useIsNative, useNativePlatform } from '@/hooks/useIsNative';
 import type { NearbyStation, FuelPrice } from '@/lib/nearbyGas';
-import { freshestPriceTime } from '@/lib/fuelPriceFreshness';
+import { freshestPriceTime, favoriteApplyMode } from '@/lib/fuelPriceFreshness';
 import { useTranslation } from '@/contexts/LanguageContext';
 
 import { Geolocation } from '@capacitor/geolocation';
@@ -79,6 +79,8 @@ interface FavoriteStationData {
    * 'unavailable' — no price at all
    */
   priceStatus?:   'live' | 'last_known' | 'unavailable';
+  /** Why it isn't live: provider failed vs. provider reported no price. */
+  lastRefresh?:   'ok' | 'failed' | 'no_price' | 'skipped';
 }
 
 interface Props {
@@ -95,9 +97,10 @@ const GRADE_ORDER: FuelPrice['type'][] = ['REGULAR', 'MIDGRADE', 'PREMIUM', 'DIE
 // Keeps the idle/results screen's primary CTA from getting pushed out of
 // view as favorites accumulate — mirrors the server-side cap in /api/favorites.
 const MAX_FAVORITES = 3;
-// A last-known (not live) favorite price older than this is shown muted and
-// can't be one-tap-applied to the calculator.
-const LAST_KNOWN_APPLY_MAX_MS = 24 * 60 * 60 * 1000;
+// A favorite price whose Google observation time is older than this gets an
+// amber label even when freshly fetched. (Visual only — whether a price can
+// fill the calculator is decided by favoriteApplyMode, never by age.)
+const PRICE_AGED_MS = 24 * 60 * 60 * 1000;
 
 interface TimeAgoLabels {
   justNow: string;
@@ -649,14 +652,20 @@ function FavoritesSection({
   onRemove:  (placeId: string) => void;
   title:     string;
   priceLabels: {
-    favPriceUpdated:     (when: string) => string;
-    favPriceLive:        string;
-    favPriceLastKnown:   (when: string) => string;
-    favPriceUnavailable: string;
+    favPriceUpdated:        (when: string) => string;
+    favPriceLive:           string;
+    favPriceLastKnown:      (when: string) => string;
+    favPriceNoneReported:   (when: string) => string;
+    favPriceUnavailable:    string;
+    favUseLastKnownPrompt:  (price: string, when: string) => string;
+    favUseLastKnownConfirm: string;
+    favUseLastKnownCancel:  string;
   };
   removeFavoriteAria: string;
   labels: TimeAgoLabels;
 }) {
+  // A last-known price only fills the calculator after an explicit "Use it".
+  const [pendingApply, setPendingApply] = useState<{ placeId: string; type: FuelPrice['type'] } | null>(null);
   if (favorites.length === 0) return null;
   return (
     <div className="space-y-2 mb-4">
@@ -666,17 +675,21 @@ function FavoritesSection({
         const hasPrices = fav.prices.length > 0;
         const when      = timeAgo(fav.priceUpdatedAt, labels);
         const ageMs     = fav.priceUpdatedAt ? Date.now() - new Date(fav.priceUpdatedAt).getTime() : Infinity;
-        // Only a live price, or a recent last-known one, may fill the calculator.
-        const canApply  = !!onApply && (status === 'live' || ageMs <= LAST_KNOWN_APPLY_MAX_MS);
+        const applyMode = onApply ? favoriteApplyMode(status) : 'none';
         const isStale   = status !== 'live';
         // Even a just-fetched price can be old at Google's end — flag it amber.
-        const agedLabel = isStale || ageMs > LAST_KNOWN_APPLY_MAX_MS;
+        const agedLabel = isStale || ageMs > PRICE_AGED_MS;
         const statusLine =
           status === 'live'
             ? (when ? priceLabels.favPriceUpdated(when) : priceLabels.favPriceLive)
             : status === 'last_known' && hasPrices
-              ? priceLabels.favPriceLastKnown(when || '?')
+              ? (fav.lastRefresh === 'no_price'
+                  ? priceLabels.favPriceNoneReported(when || '?')
+                  : priceLabels.favPriceLastKnown(when || '?'))
               : priceLabels.favPriceUnavailable;
+        const pending   = pendingApply?.placeId === fav.placeId
+          ? fav.prices.find((p) => p.type === pendingApply.type) ?? null
+          : null;
         return (
           <div key={fav.placeId} className="bg-white rounded-2xl border border-amber-200 shadow-sm overflow-hidden">
             <div className="px-4 pt-3 pb-2 flex items-start justify-between gap-2">
@@ -705,17 +718,46 @@ function FavoritesSection({
                     <button
                       key={type}
                       type="button"
-                      onClick={() => { if (canApply) onApply?.(fp.price.toFixed(2), fav.lat, fav.lng, fav.name, 0, fp.label); }}
+                      onClick={() => {
+                        if (applyMode === 'direct') onApply?.(fp.price.toFixed(2), fav.lat, fav.lng, fav.name, 0, fp.label);
+                        else if (applyMode === 'confirm') setPendingApply({ placeId: fav.placeId, type: fp.type });
+                      }}
                       className={`rounded-xl px-2 py-1.5 text-center transition-colors ${
-                        canApply ? 'bg-slate-50 hover:bg-slate-100 active:opacity-80' : 'bg-slate-50 opacity-50 cursor-not-allowed'
+                        applyMode !== 'none' ? 'bg-slate-50 hover:bg-slate-100 active:opacity-80' : 'bg-slate-50 opacity-50 cursor-not-allowed'
                       }`}
-                      disabled={!canApply}
+                      disabled={applyMode === 'none'}
                     >
                       <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">{fp.label}</p>
                       <p className={`text-sm font-black ${isStale ? 'text-slate-400' : 'text-slate-800'}`}>${fp.price.toFixed(2)}</p>
                     </button>
                   );
                 })}
+              </div>
+            )}
+            {pending && (
+              <div className="mx-4 mb-3 rounded-xl bg-amber-50 border border-amber-200 px-3 py-2">
+                <p className="text-[11px] text-amber-800 font-semibold">
+                  {priceLabels.favUseLastKnownPrompt(pending.price.toFixed(2), when || '?')}
+                </p>
+                <div className="flex gap-2 mt-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onApply?.(pending.price.toFixed(2), fav.lat, fav.lng, fav.name, 0, pending.label);
+                      setPendingApply(null);
+                    }}
+                    className="px-3 py-1 rounded-lg bg-amber-600 text-white text-[11px] font-bold"
+                  >
+                    {priceLabels.favUseLastKnownConfirm}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPendingApply(null)}
+                    className="px-3 py-1 rounded-lg bg-white border border-amber-200 text-amber-700 text-[11px] font-bold"
+                  >
+                    {priceLabels.favUseLastKnownCancel}
+                  </button>
+                </div>
               </div>
             )}
           </div>

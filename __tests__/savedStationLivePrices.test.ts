@@ -298,3 +298,113 @@ describe('next.config.js runtimeCaching', () => {
     expect(src).toMatch(/if \(pathname\?\.startsWith\('\/api\/favorites'\)\) return false;/);
   });
 });
+
+// ── Review round 1 (ChatGPT, 2026-09-30) ─────────────────────────────────────
+
+describe('Plan coverage — who may trigger the paid Place Details lookup', () => {
+  // Plan comes from the DB via lib/serverPlan.getLivePlan (pro | fleet | lifetime).
+  // Lifetime members are normally stored as plan='pro' (with stripeInterval
+  // 'lifetime'); an explicit plan='lifetime' string exists on some older records.
+  const eligible: Array<[string, Record<string, unknown>]> = [
+    ['Pro (monthly)',                       { plan: 'pro' }],
+    ['Lifetime stored as plan=pro',         { plan: 'pro', stripeInterval: 'lifetime' }],
+    ['Lifetime stored as plan=lifetime',    { plan: 'lifetime' }],
+    ['Fleet',                               { plan: 'fleet' }],
+  ];
+  it.each(eligible)('%s → live lookup runs', async (_label, user) => {
+    getServerSession.mockResolvedValue({ user: { id: 'u1' } });
+    findById.mockResolvedValue({ id: 'u1', ...user });
+    findMany.mockResolvedValue([snapshotRow()]);
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(placeDetails(PLACE_ID, '3', 490_000_000)));
+    vi.stubGlobal('fetch', fetchMock);
+    const { GET } = await import('@/app/api/favorites/route');
+    const fav = (await (await GET()).json()).favorites[0];
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fav.priceStatus).toBe('live');
+  });
+
+  const ineligible: Array<[string, Record<string, unknown> | undefined]> = [
+    ['Free',                     { plan: 'free' }],
+    ['user row missing from DB', undefined],
+  ];
+  it.each(ineligible)('%s → no paid provider call', async (_label, user) => {
+    getServerSession.mockResolvedValue({ user: { id: 'u1' } });
+    findById.mockResolvedValue(user ? { id: 'u1', ...user } : undefined);
+    findMany.mockResolvedValue([snapshotRow()]);
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    const { GET } = await import('@/app/api/favorites/route');
+    await GET();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('Why a favorite is not live — failed refresh vs. no price reported', () => {
+  it('provider request failed → lastRefresh "failed"', async () => {
+    signInAs('pro');
+    findMany.mockResolvedValue([snapshotRow()]);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({ error: {} }, 503)));
+    const { GET } = await import('@/app/api/favorites/route');
+    const fav = (await (await GET()).json()).favorites[0];
+    expect(fav.priceStatus).toBe('last_known');
+    expect(fav.lastRefresh).toBe('failed');
+  });
+
+  it('provider succeeded but reported no fuel price → lastRefresh "no_price"', async () => {
+    signInAs('pro');
+    findMany.mockResolvedValue([snapshotRow()]);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({ id: PLACE_ID, fuelOptions: { fuelPrices: [] } })));
+    const { GET } = await import('@/app/api/favorites/route');
+    const fav = (await (await GET()).json()).favorites[0];
+    expect(fav.priceStatus).toBe('last_known');
+    expect(fav.lastRefresh).toBe('no_price');
+  });
+
+  it('live success → lastRefresh "ok"; lookup not attempted → "skipped"', async () => {
+    signInAs('pro');
+    findMany.mockResolvedValue([snapshotRow()]);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(placeDetails(PLACE_ID, '3', 0))));
+    let { GET } = await import('@/app/api/favorites/route');
+    expect((await (await GET()).json()).favorites[0].lastRefresh).toBe('ok');
+
+    vi.resetModules();
+    process.env.ENABLE_LIVE_FUEL_PRICES = 'false';
+    ({ GET } = await import('@/app/api/favorites/route'));
+    expect((await (await GET()).json()).favorites[0].lastRefresh).toBe('skipped');
+  });
+
+  it('EN + ES copy exists for "no current price reported"', async () => {
+    const { translations } = await import('@/lib/translations');
+    for (const lang of ['en', 'es'] as const) {
+      const f = translations[lang].findGasTab as Record<string, unknown>;
+      expect(typeof f.favPriceNoneReported, lang).toBe('function');
+    }
+  });
+});
+
+describe('Calculator use of a non-live favorite price requires acknowledgment', () => {
+  it('REGRESSION: live → one-tap; last_known → confirm REGARDLESS of age; unavailable → cannot apply', async () => {
+    const { favoriteApplyMode } = await import('@/lib/fuelPriceFreshness');
+    expect(favoriteApplyMode('live')).toBe('direct');
+    expect(favoriteApplyMode('last_known')).toBe('confirm');   // even if only 1 hour old
+    expect(favoriteApplyMode('unavailable')).toBe('none');
+    expect(favoriteApplyMode(undefined)).toBe('confirm');     // unknown status is never treated as live
+  });
+
+  it('the Favorites UI routes every chip tap through favoriteApplyMode (no age-based silent apply)', () => {
+    const src = readFileSync(path.resolve(__dirname, '..', 'components/NearbyStations.tsx'), 'utf8');
+    expect(src).toMatch(/favoriteApplyMode\(/);
+    expect(src).not.toMatch(/ageMs <= LAST_KNOWN_APPLY_MAX_MS/);
+    expect(src).toMatch(/favUseLastKnownPrompt/);
+  });
+
+  it('EN + ES copy exists for the confirmation', async () => {
+    const { translations } = await import('@/lib/translations');
+    for (const lang of ['en', 'es'] as const) {
+      const f = translations[lang].findGasTab as Record<string, unknown>;
+      expect(typeof f.favUseLastKnownPrompt, lang).toBe('function');
+      expect(typeof f.favUseLastKnownConfirm, lang).toBe('string');
+      expect(typeof f.favUseLastKnownCancel, lang).toBe('string');
+    }
+  });
+});

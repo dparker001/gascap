@@ -24,7 +24,15 @@ import { randomUUID }                from 'crypto';
 import { getLivePlan }               from '@/lib/serverPlan';
 import { fetchStationPrices, freshestPriceTime, type FuelPrice } from '@/lib/nearbyGas';
 
-export type FavoritePriceStatus = 'live' | 'last_known' | 'unavailable';
+export type { FavoritePriceStatus } from '@/lib/fuelPriceFreshness';
+import type { FavoritePriceStatus } from '@/lib/fuelPriceFreshness';
+
+/**
+ * What happened when we tried to refresh this favorite — lets the UI say
+ * "Couldn't refresh" (provider failed) vs. "No current price reported"
+ * (provider answered, no fuel price) instead of one generic message.
+ */
+export type FavoriteRefreshResult = 'ok' | 'failed' | 'no_price' | 'skipped';
 
 function toJson(prices: FuelPrice[]): Prisma.InputJsonValue {
   return prices as unknown as Prisma.InputJsonValue;
@@ -75,6 +83,11 @@ export async function GET() {
     };
 
     const livePrices = live.get(row.placeId);
+    const lastRefresh: FavoriteRefreshResult =
+      !liveEnabled         ? 'skipped'
+      : livePrices == null ? 'failed'
+      : livePrices.length  ? 'ok'
+      :                      'no_price';
     if (livePrices && livePrices.length > 0) {
       const priceUpdatedAt = freshestPriceTime(livePrices);
       // Keep the fallback snapshot current so it can never drift weeks old.
@@ -83,7 +96,7 @@ export async function GET() {
           .update({ where: { id: row.id }, data: { prices: toJson(livePrices), priceUpdatedAt } })
           .catch((err: unknown) => console.error('[favorites] snapshot write-back failed', err)),
       );
-      return { ...base, prices: livePrices, priceUpdatedAt, priceStatus: 'live' as FavoritePriceStatus };
+      return { ...base, prices: livePrices, priceUpdatedAt, priceStatus: 'live' as FavoritePriceStatus, lastRefresh };
     }
 
     // No current price (lookup failed, disabled, or Google no longer reports
@@ -97,9 +110,10 @@ export async function GET() {
         prices:         snapshot,
         priceUpdatedAt: freshestPriceTime(snapshot) ?? row.priceUpdatedAt ?? null,
         priceStatus:    'last_known' as FavoritePriceStatus,
+        lastRefresh,
       };
     }
-    return { ...base, prices: [], priceUpdatedAt: null, priceStatus: 'unavailable' as FavoritePriceStatus };
+    return { ...base, prices: [], priceUpdatedAt: null, priceStatus: 'unavailable' as FavoritePriceStatus, lastRefresh };
   });
 
   await Promise.all(writeBacks);

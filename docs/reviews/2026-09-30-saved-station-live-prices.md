@@ -211,3 +211,47 @@ Highest scrutiny:
 3. `components/NearbyStations.tsx`: the merge-from-search logic and the `canApply` / label logic.
 
 Lower priority: translations, help/AI copy, `next.config.js` (mirrors the existing pattern).
+
+---
+
+## Review round 1 — ChatGPT response and disposition (2026-09-30)
+
+**ChatGPT disposition:** APPROVE WITH MINOR REVISIONS. Each finding was checked against the
+repository before acting on it.
+
+| # | Finding | Classification | What was done |
+|---|---|---|---|
+| 1 | Don't silently apply any `last_known` price, whatever its age; ask "Use last-known price?" | **AGREE — ACTION REQUIRED** | New `favoriteApplyMode(status)` in `lib/fuelPriceFreshness.ts`: `live` → one tap; `last_known` (or unknown status) → an inline "Use last-known price $X (last seen …)? It may not match the pump." with **Use it / Cancel**; `unavailable` → can't apply. The age-based `canApply` rule is removed. The 24 h threshold remains **visual only** (amber label). EN + ES copy, help page and AI `APP FEATURES` updated. |
+| 2 | Automated plan coverage: Pro, Lifetime as `plan='pro'`, explicit `lifetime`, Fleet, Free | **AGREE — ACTION REQUIRED** (no existing behavioral coverage: the only prior `getLivePlan` test is a source assertion in `cr1CommercialTruthAlignment.test.ts:144`) | Parameterized tests: Pro, Lifetime `{plan:'pro', stripeInterval:'lifetime'}`, `plan:'lifetime'` and Fleet → a Place Details call is made and the result is `live`; Free and a missing DB user → **no** provider call. These 6 passed on the pre-revision code too. They confirm existing correct gating rather than a bug. |
+| 3 | Distinguish "request failed" from "provider reported no price" | **AGREE — ACTION REQUIRED** (low risk) | `GET` now returns `lastRefresh: 'ok' \| 'failed' \| 'no_price' \| 'skipped'`. The UI shows "Couldn't refresh · last seen …" for failed/skipped and "No current price reported · last seen …" for `no_price`. EN + ES. |
+| 4 | GET write-back approved; consider a service layer post-meeting | **AGREE — NO CHANGE NOW** | Unchanged. Post-meeting: move refresh + write-back behind a service function. |
+| 5 | `Promise.all` over ≤ 3 favorites is fine; measure cold-cache latency in the smoke test | **AGREE — NO CHANGE NOW** | Added to the post-deploy smoke test (below). |
+| 6 | Service-worker test is source-text only; the generated `sw.js` check suffices for now | **AGREE — ALREADY ADDRESSED for this release** | Generated `public/sw.js` re-verified after this revision's build. Post-meeting: test the generated worker rule. `public/sw.js` is a build artifact that isn't committed, which is why CI can't assert on it today. |
+
+**Scope:** the nearby-search coordinate-cache defect stays out of this PR, as ChatGPT required. It
+is in PR #55.
+
+### Merge gate (run on this revision)
+
+```
+Focused:  __tests__/savedStationLivePrices.test.ts + nearbyGas.test.ts → 2 files, 35 passed
+npm test          → Test Files 109 passed (109); Tests 1830 passed (1830)
+npx tsc --noEmit   → clean
+npm run build      → success
+Generated public/sw.js → /api/favorites present in the NetworkOnly predicate AND excluded from "apis"
+```
+- New tests this round: 13. 7 failed on the pre-revision code (the apply-mode, refresh-reason and
+  copy tests); 6 are plan-coverage confirmations that passed both before and after.
+- Process note: `tsc` first reported a missing module under `.next/types/app/gas/rental-nearby`.
+  That was stale generated build output from the PR #55 branch, not code on this branch. The
+  generated folder was deleted and `tsc` is clean.
+
+### Post-deploy read-only smoke test (Pro/Lifetime account with saved stations)
+
+Compare and record:
+1. Each favorite's price vs. the same station's card in a Find Gas search, and vs. Google Maps.
+2. The displayed age label.
+3. **Cold-cache latency** with three favorites: the first open after deploy, before the 30-min
+   cache warms. If the favorites visibly stall, revisit the timeout or progressive loading separately.
+4. Fallback behavior, if it can be observed. Don't force it in production.
+5. Calculator behavior: a live chip fills in one tap; a last-known chip shows the confirmation first.
