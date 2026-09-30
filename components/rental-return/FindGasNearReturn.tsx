@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from '@/contexts/LanguageContext';
 import type { NearbyStation } from '@/lib/nearbyGas';
+import { classifyNearbyResponse, type NearbyResponseBody } from '@/lib/nearbyResponse';
 import { estimatedFuelCost, estimatedRentalCompanyCharge, estimatedSavings, rankStations } from '@/lib/rentalCalculations';
 
 interface Props {
@@ -18,14 +19,21 @@ interface Props {
 export default function FindGasNearReturn({ returnLat, returnLng, gallonsNeeded: needed, rentalRatePerGallon }: Props) {
   const { t } = useTranslation();
   const [stations, setStations] = useState<NearbyStation[]>([]);
-  const [status, setStatus]     = useState<'idle' | 'loading' | 'done' | 'error' | 'no_location'>('idle');
+  const [status, setStatus]     = useState<'idle' | 'loading' | 'done' | 'error' | 'no_location' | 'pro_required' | 'disabled'>('idle');
 
   useEffect(() => {
     if (returnLat == null || returnLng == null) { setStatus('no_location'); return; }
     setStatus('loading');
     fetch(`/gas/nearby?lat=${returnLat}&lng=${returnLng}`)
-      .then((r) => r.json())
-      .then((d: { stations?: NearbyStation[] }) => { setStations(d.stations ?? []); setStatus('done'); })
+      .then(async (r) => ({ ok: r.ok, body: await r.json().catch(() => null) as (NearbyResponseBody & { stations?: NearbyStation[] }) | null }))
+      .then(({ ok, body }) => {
+        // A Pro refusal / live prices off / server error is NOT "no stations
+        // near your return" — say which one it is.
+        const kind = classifyNearbyResponse(ok, body);
+        if (kind !== 'ok') { setStatus(kind); return; }
+        setStations(body?.stations ?? []);
+        setStatus('done');
+      })
       .catch(() => setStatus('error'));
   }, [returnLat, returnLng]);
 
@@ -41,6 +49,16 @@ export default function FindGasNearReturn({ returnLat, returnLng, gallonsNeeded:
   }
   if (status === 'error') {
     return <p className="text-xs text-red-500 text-center">{t.rentalReturn.findGasError}</p>;
+  }
+  if (status === 'pro_required') {
+    return (
+      <p className="text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-center">
+        {t.rentalReturn.findGasProRequired}
+      </p>
+    );
+  }
+  if (status === 'disabled') {
+    return <p className="text-xs text-slate-400 text-center">{t.rentalReturn.findGasUnavailable}</p>;
   }
 
   const withPrice = stations.filter((s) => s.prices.length > 0);

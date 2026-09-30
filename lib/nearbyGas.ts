@@ -40,8 +40,26 @@ const RADIUS_METERS = 8046; // 5 miles
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 function cacheKey(lat: number, lng: number): string {
-  // Round to ~1 decimal (~11 km grid) so nearby searches share cache entries.
-  return `${Math.round(lat * 10) / 10},${Math.round(lng * 10) / 10}`;
+  // Round to 2 decimals (~1.1 km grid) so repeat searches from roughly the
+  // same spot share a cache entry. Was 1 decimal (~11 km): a second search
+  // up to ~5 miles away got the first searcher's 5-mile circle, so nearby
+  // stations could be missing entirely. Distances are recomputed per request
+  // regardless (see withDistancesFrom).
+  return `${Math.round(lat * 100) / 100},${Math.round(lng * 100) / 100}`;
+}
+
+/**
+ * Distance is a property of the REQUEST, not of the cached station list —
+ * a cache hit must never return distances measured from whoever populated
+ * the entry.
+ */
+function withDistancesFrom(stations: NearbyStation[], lat: number, lng: number): NearbyStation[] {
+  return stations
+    .map((s) => ({
+      ...s,
+      distanceMi: Math.round(haversineKm(lat, lng, s.lat, s.lng) * 0.621371 * 10) / 10,
+    }))
+    .sort((a, b) => a.distanceMi - b.distanceMi);
 }
 
 /**
@@ -81,7 +99,7 @@ export async function fetchNearbyStations(
 ): Promise<NearbyStation[]> {
   const key = cacheKey(lat, lng);
   const hit = cache.get(key);
-  if (hit && hit.expiresAt > Date.now()) return hit.stations;
+  if (hit && hit.expiresAt > Date.now()) return withDistancesFrom(hit.stations, lat, lng);
 
   const apiKey = process.env.GOOGLE_PLACES_API_KEY;
   if (!apiKey) return [];
