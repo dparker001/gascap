@@ -1,6 +1,9 @@
 # ChatGPT Review Packet — Pre-demo integrity fixes (PR #55)
 
 **Status:** READY FOR REVIEW · 2026-09-30 · Claude Code
+**Revision 2:** adds **A6**, keeping Find Gas Near Return open for active rentals after Pro lapses
+(Don's decision on the policy question raised in revision 1). The review target moved from `3a5780f`
+to `e03d5a1`.
 
 ## 1. Objective
 
@@ -10,14 +13,18 @@ produce wrong, contradictory, or broken-looking output in front of a partner, an
 is also a paid-feature gating hole. The saved-station stale-price fix (A1) is a separate PR, #54,
 with its own packet (`docs/reviews/2026-09-30-saved-station-live-prices.md`).
 
+Revision 1 flagged a policy question: should "Find Gas Near Return" stay usable for an active rental
+after Pro lapses? Don's answer: **"keep Find Gas Near Return open for active rentals."** That is
+implemented as **A6**.
+
 ## 2. Repository State
 
 - **Branch:** `fix/pre-demo-integrity`
-- **Review Target SHA:** `3a5780f`
+- **Review Target SHA:** `e03d5a1` (two code commits: `3a5780f` for A2–A5, `e03d5a1` for A6)
 - **Packet Commit SHA:** the commit that adds this file (docs only; expected to differ from the target)
 - **Base branch:** `main` @ `4552cea`
 - **Relevant PR:** https://github.com/dparker001/gascap/pull/55 (sibling: #54)
-- **Review this diff:** `git diff --name-status origin/main...3a5780f` (output in §10)
+- **Review this diff:** `git diff --name-status origin/main...e03d5a1 -- . ':!docs'` (output in §10)
 
 ## 3. What I Found
 
@@ -55,6 +62,15 @@ end of this section).
   - All of these looked like "no stations near the airport", including the common stale-JWT case
     right after an upgrade.
 
+- **A6: active rentals lost station search when Pro lapsed.**
+  - `CLAUDE.md`: "An active rental must remain fully usable if Pro lapses mid-rental. Gate
+    *starting* a rental, never finishing one."
+  - "Find Gas Near Return" called the generic `/gas/nearby`, which is Pro-gated (and reads the plan
+    from the **JWT**).
+  - A trial that lapsed mid-rental kept its fuel math but lost live station prices near the return,
+    at the moment they matter most. It also showed the misleading "no stations found" message
+    until A5.
+
 **Rejected audit claim:** a sub-agent reported that Lifetime members were excluded from AI chat and
 price alerts because the gates check `plan === 'pro' || 'fleet'`. No code path assigns
 `plan = 'lifetime'`; Lifetime members are stored as `plan = 'pro'`. Not acted on.
@@ -69,7 +85,10 @@ price alerts because the gates check `plan === 'pro' || 'fleet'`. No code path a
 | A4 | `app/api/ai/chat/route.ts` | `ALLOWED_SUGGESTED` = 6 hard-coded English strings; client `isSuggested` bypassed the gate | `ALLOWED_SUGGESTED` is built from `Object.values(translations).flatMap(l => l.ai.chips)`: every language, the same source `AiAdvisor.tsx` renders from. `isSuggested` is ignored for gating (the field is kept in the type and documented as ignored). |
 | A5 | `lib/nearbyResponse.ts` (new) | — | `classifyNearbyResponse(httpOk, body)` → `'ok' \| 'pro_required' \| 'disabled' \| 'error'` |
 | A5 | `components/rental-return/FindGasNearReturn.tsx` | `r.json()` → always "done" | Checks `r.ok`, tolerates non-JSON bodies, classifies, and has distinct `pro_required` / `disabled` render states |
-| A5 | `lib/translations.ts` | — | `rentalReturn.findGasProRequired`, `rentalReturn.findGasUnavailable` in EN **and** ES. Both state that the rental calculations still work; the Pro message tells a just-upgraded user to sign out and back in (the stale-JWT case). |
+| A5 | `lib/translations.ts` | — | `rentalReturn.findGasProRequired`, `rentalReturn.findGasUnavailable` in EN **and** ES. Both state that the rental calculations still work. After A6, the Pro message applies only to completed rentals; the revision-1 "sign out and back in" hint was removed because the plan is now read from the DB. |
+| A6 | `app/gas/rental-nearby/route.ts` (new) | — | `GET ?rentalId=`. Checks in order: feature flag → `rentalId` required (400) → session (else `proRequired`) → `getRentalSession(userId, rentalId)` owner-scoped lookup (miss → 404) → if status ≠ `active`, require DB Pro via `getLivePlan()` → saved return coords required (400) → `ENABLE_LIVE_FUEL_PRICES` / key → `fetchNearbyStations(rental.returnLatitude, rental.returnLongitude)`. **Client lat/lng are ignored.** |
+| A6 | `components/rental-return/FindGasNearReturn.tsx`, `RentalDashboard.tsx` | Called `/gas/nearby?lat&lng` | New required `rentalSessionId` prop; calls `/gas/rental-nearby?rentalId=` with `cache:'no-store'`. Both dashboard call sites pass `session.id`. |
+| A6 | `app/help/page.tsx`, `app/api/ai/chat/route.ts` | "Find Gas Near Return … uses the same Pro-gated live-pricing feature" | Station prices near the return stay available for any active rental after Pro lapses; the main Find Gas tab is still Pro |
 
 ## 5. Architectural Decisions
 
@@ -90,8 +109,19 @@ price alerts because the gates check `plan === 'pro' || 'fleet'`. No code path a
   React test environment (the repo has none: vitest `environment: 'node'`, no Testing Library).
   `NearbyStations.tsx` has equivalent inline logic; it was deliberately **not** refactored onto the
   classifier in this PR (scope and demo risk).
-- **A5: rental Pro gating unchanged.** "Find Gas Near Return" stays Pro-gated exactly as before;
-  only the messaging changed. See §11 for the open policy question.
+- **A6: a rental-scoped route** vs. adding an "active rental" exception inside `/gas/nearby`. A
+  separate route can pin the search to server-side rental data (the saved return coordinates) and
+  own the ownership check, without making the generic `/gas/nearby` rental-aware or trusting
+  client coordinates under an exception.
+- **A6: under `/gas/`, not `/api/rental-sessions/[id]/…`.** `/gas/*` is already NetworkOnly in the
+  service worker (the first rule in `next.config.js`), while `/api/rental-sessions` goes through
+  the default `apis` NetworkFirst cache. A cached station list must never be served. No
+  `next.config.js` change was needed.
+- **A6: `status === 'active'` is the exemption.** A rental is created `active` (`lib/rentalSessions.ts`)
+  and moves to `completed`/`cancelled` on completion. Creating one still requires live Pro
+  (`POST /api/rental-sessions`), so the exemption only extends access a Pro user already started.
+- **A6: completed rentals fall back to Pro, from the DB.** The generic `/gas/nearby` still uses the
+  JWT plan; it was not changed in this PR.
 
 ## 6. Security Impact
 
@@ -110,6 +140,15 @@ price alerts because the gates check `plan === 'pro' || 'fleet'`. No code path a
     error text.
   - The model is hard-coded as `claude-opus-4-5`.
   - All are follow-up candidates, deliberately out of scope before the demo.
+- **A6: new access path, loosened on purpose (Don's decision).** A free user can now trigger a paid
+  Google `searchNearby`, but only:
+  - while signed in,
+  - for a rental they own (owner-scoped lookup; another user's id → 404 with no Google call),
+  - whose status is `active`,
+  - centered on that rental's server-stored return coordinates (client coordinates ignored).
+
+  The `rentalId` is only used as a lookup key, never interpolated into a query or URL. Tests cover
+  each of these conditions.
 - A2, A3 and A5 have no security impact. The new client error states don't reveal anything the
   existing responses didn't.
 
@@ -129,17 +168,21 @@ No database or production-data changes. No schema changes, migrations, or writes
   custom questions still 403 with an upgrade message. Only clients sending `isSuggested:true` with
   non-chip text are affected. `AiAdvisor.tsx` never does this: it only sets the flag on chip taps.
 - **AI accuracy:** the assistant can no longer tell users a rental can be started without Pro.
-- **Rental users:** instead of a misleading "no stations found", they see either a Pro message
-  (including a sign-out/in hint for the stale-JWT case) or a "temporarily unavailable" message. Both
-  confirm their rental calculations still work.
+- **Rental users:** a renter whose trial or subscription lapses mid-rental keeps live station prices
+  near the return until the rental is completed (A6). For completed rentals on a free plan, and for
+  live-prices-off or error cases, they see a specific message instead of a misleading "no stations
+  found", and it confirms their rental calculations still work (A5).
+- **A6 cost:** lapsed users with active rentals can now spend Google `searchNearby` calls, one
+  fixed location per rental, with the existing 30-min cache.
 - No change to pricing, entitlements, native builds, email/push, or the sweepstakes.
 
 ## 9. Testing Performed
 
+At `e03d5a1` (A2–A6):
 ```
-npm test          → Test Files 109 passed (109); Tests 1812 passed (1812)
+npm test          → Test Files 110 passed (110); Tests 1823 passed (1823)
 npx tsc --noEmit   → clean (no output)
-npm run build      → success
+npm run build      → success; route list includes ƒ /gas/rental-nearby
 ```
 
 Other tests:
@@ -151,7 +194,23 @@ Other tests:
   - a Pro user asking a custom question → 200
 
   After the fix: 10/10.
-- **Combined with #54:** the two branches were test-merged in a scratch worktree. `lib/nearbyGas.ts`,
+- **New `__tests__/rentalNearbyActiveAccess.test.ts` (A6):** 11 tests, **all 11 failed on the
+  pre-A6 code** (the route didn't exist, and the component called `/gas/nearby`). After the fix:
+  11/11. They cover:
+  - free user + active rental gets stations
+  - client coordinates ignored (asserts the Google request's circle center equals the saved return
+    location)
+  - owner-scoped lookup → 404, no Google call
+  - free user + completed rental → `proRequired`, no call
+  - Pro (DB) user + completed rental → stations
+  - unauthenticated → no lookup, no call
+  - missing `rentalId` → 400
+  - no saved return location → 400, no call
+  - live prices off → `disabled`, no call
+  - the component calls the rental route (not `/gas/nearby`), and both dashboard call sites pass
+    `rentalSessionId`
+- **Combined with #54 (done at `3a5780f`, before A6):** the two branches were test-merged in a
+  scratch worktree. `lib/nearbyGas.ts`,
   `app/api/ai/chat/route.ts` and `lib/translations.ts` auto-merged without conflicts. On the merged
   tree, `npx tsc --noEmit` was clean and the suite passed: 110 files, 1827/1827
   (= 1802 base + 15 from #54 + 10 from #55).
@@ -164,16 +223,21 @@ Other tests:
 
 ## 10. Files Changed
 
+`git diff --name-status origin/main...e03d5a1 -- . ':!docs'`:
 ```
 M	__tests__/nearbyGas.test.ts
 A	__tests__/preDemoIntegrity.test.ts
+A	__tests__/rentalNearbyActiveAccess.test.ts
 M	app/api/ai/chat/route.ts
+A	app/gas/rental-nearby/route.ts
+M	app/help/page.tsx
 M	components/rental-return/FindGasNearReturn.tsx
+M	components/rental-return/RentalDashboard.tsx
 M	lib/nearbyGas.ts
 A	lib/nearbyResponse.ts
 M	lib/translations.ts
 ```
-(7 files changed, 269 insertions(+), 18 deletions(-))
+(11 files changed, 552 insertions(+), 26 deletions(-); the review packet itself is excluded)
 
 ## 11. Known Risks / Remaining Questions
 
@@ -189,11 +253,18 @@ M	lib/translations.ts
     source inspection, because the repo has no component-test environment.
 - **A4: remaining cost exposure.** Suggested chips are still unlimited for guests and free users
   (pre-existing; no rate limit on the route).
-- **Policy question for Don, not changed here.** `CLAUDE.md`: "An active rental must remain fully
-  usable if Pro lapses mid-rental." The fuel math does stay usable, but "Find Gas Near Return" is
-  Pro-gated (via the same `/gas/nearby` gate as Find Gas, which reads the **JWT** plan, not the DB).
-  A lapsed trial loses station prices at the moment they matter most. Whether that violates the rule
-  is a product decision.
+- **A6: an active rental has no expiry.** A rental that is never marked completed stays `active`
+  indefinitely, so a lapsed user keeps station search around that one fixed return location
+  indefinitely. The exposure is bounded (one fixed point per rental, rentals only creatable while
+  Pro, 30-min cache), but it's unbounded in time. A possible follow-up: also require
+  `now ≤ returnDateTimeUtc + N days`.
+- **A6: "upcoming" rentals are also `active`.** A rental booked in advance (pickup still ahead) is
+  also `active`, so it gets the same exemption. That's consistent with "an active rental must remain
+  fully usable", but worth confirming.
+- **A6: the component-to-route wiring is checked by source assertion** (the same no-component-test
+  limitation as A5). The route itself is tested behaviorally.
+- **A6: the main Find Gas `/gas/nearby` still reads the JWT plan**, so a just-upgraded user can
+  briefly get `proRequired` there. This is pre-existing and unchanged.
 - **Process notes:**
   - My first A2 regression test used coordinates (40.02 vs 40.06) that round into *different*
     0.1° cells, so it passed on the old code and proved nothing. That was caught by running it
@@ -204,9 +275,11 @@ M	lib/translations.ts
 
 ## 12. Claude's Assessment
 
-**READY FOR REVIEW.** Each fix is minimal, covered by fail-first tests, passes all required checks,
-and merges cleanly with #54. A4 only tightens a gate. The open items (AI rate limiting, the rental
-station-search policy) are flagged rather than silently expanded into scope before a demo.
+**READY FOR REVIEW.** Each fix is minimal, covered by fail-first tests, and passes all required
+checks. A4 only tightens a gate. A6 deliberately widens one, per Don's decision, and is tightly
+bounded: owner-only, active rentals only, fixed server-side location. The open items (AI rate
+limiting, a time bound on the A6 exemption) are flagged rather than silently expanded into scope
+before a demo.
 
 ## 13. Questions for ChatGPT
 
@@ -221,17 +294,24 @@ station-search policy) are flagged rather than silently expanded into scope befo
 4. **A5:** does classifying `error` before `stations` risk hiding stations in a response that
    carries both `error` and a non-empty `stations`? No current route returns that shape, but is it
    the right precedence?
-5. **Policy:** does Pro-gating "Find Gas Near Return" for a rental that started while Pro, after Pro
-   lapses, conflict with the "active rental must remain fully usable" rule?
+5. **A6:** should the active-rental exemption also be time-bounded (e.g. until
+   `returnDateTimeUtc + 7 days`), given that an abandoned rental stays `active` forever? Or is
+   "fixed location, owner-only" enough of a bound?
+6. **A6:** is there any path where the owner-scoped `getRentalSession(userId, id)` could return a
+   rental the caller doesn't own, or where the stored return coordinates could be set to an
+   arbitrary location to make this a general-purpose free search? (The renter can edit their return
+   location via `PATCH /api/rental-sessions/:id`. Is that an acceptable abuse surface?)
 
 ## 14. Requested Review Scope
 
 Highest scrutiny:
-1. **A4:** `app/api/ai/chat/route.ts`, the `ALLOWED_SUGGESTED` construction and the gate. This is
-   the only security-relevant change: confirm there's no bypass left and no legitimate user
-   (EN/ES, guest/free/Pro) is newly blocked.
-2. **A2:** `lib/nearbyGas.ts` `cacheKey` / `withDistancesFrom`: correctness of cache-hit results
+1. **A6:** `app/gas/rental-nearby/route.ts`, the access decision (ownership, `active` exemption,
+   the Pro fallback for completed rentals) and the claim that client coordinates can't influence the
+   search. This is the one change that deliberately *widens* access.
+2. **A4:** `app/api/ai/chat/route.ts`, the `ALLOWED_SUGGESTED` construction and the gate. Confirm
+   there's no bypass left and no legitimate user (EN/ES, guest/free/Pro) is newly blocked.
+3. **A2:** `lib/nearbyGas.ts` `cacheKey` / `withDistancesFrom`: correctness of cache-hit results
    and the cost tradeoff.
-3. **A5:** `lib/nearbyResponse.ts` precedence and `FindGasNearReturn.tsx` state handling.
+4. **A5:** `lib/nearbyResponse.ts` precedence and `FindGasNearReturn.tsx` state handling.
 
 Lower priority: the A3 copy change, translations, and test-comment edits.
