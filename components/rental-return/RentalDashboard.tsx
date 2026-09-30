@@ -1114,6 +1114,7 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
                           <div className="space-y-1">
                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{t.rentalReturn.findGasNearbyLabel}</p>
                             <FindGasNearReturn
+                              rentalSessionId={session.id}
                               returnLat={session.returnLatitude} returnLng={session.returnLongitude}
                               gallonsNeeded={tripGallonsToAdd} rentalRatePerGallon={session.rentalFuelChargePerGallon}
                             />
@@ -1338,6 +1339,7 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
                       <div className="space-y-1">
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{t.rentalReturn.findGasNearReturn}</p>
                         <FindGasNearReturn
+                          rentalSessionId={session.id}
                           returnLat={session.returnLatitude} returnLng={session.returnLongitude}
                           gallonsNeeded={neededSafe} rentalRatePerGallon={session.rentalFuelChargePerGallon}
                         />

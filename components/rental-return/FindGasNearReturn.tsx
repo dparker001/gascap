@@ -7,16 +7,19 @@ import { classifyNearbyResponse, type NearbyResponseBody } from '@/lib/nearbyRes
 import { estimatedFuelCost, estimatedRentalCompanyCharge, estimatedSavings, rankStations } from '@/lib/rentalCalculations';
 
 interface Props {
+  /** Station search is scoped to this rental (see app/gas/rental-nearby). */
+  rentalSessionId:       string;
   returnLat?:            number | null;
   returnLng?:            number | null;
   gallonsNeeded:         number;
   rentalRatePerGallon?:  number | null;
 }
 
-// Reuses the same /gas/nearby endpoint NearbyStations.tsx already calls —
-// no new station-search logic, just a return-location-focused presentation
-// of the same data with rental-specific cost math layered on top.
-export default function FindGasNearReturn({ returnLat, returnLng, gallonsNeeded: needed, rentalRatePerGallon }: Props) {
+// Uses the rental-scoped /gas/rental-nearby (same station search and data as
+// Find Gas, via lib/nearbyGas) with rental-specific cost math layered on top.
+// That route keeps working for an ACTIVE rental after Pro lapses — the
+// generic /gas/nearby is Pro-gated, which stranded lapsed renters.
+export default function FindGasNearReturn({ rentalSessionId, returnLat, returnLng, gallonsNeeded: needed, rentalRatePerGallon }: Props) {
   const { t } = useTranslation();
   const [stations, setStations] = useState<NearbyStation[]>([]);
   const [status, setStatus]     = useState<'idle' | 'loading' | 'done' | 'error' | 'no_location' | 'pro_required' | 'disabled'>('idle');
@@ -24,7 +27,7 @@ export default function FindGasNearReturn({ returnLat, returnLng, gallonsNeeded:
   useEffect(() => {
     if (returnLat == null || returnLng == null) { setStatus('no_location'); return; }
     setStatus('loading');
-    fetch(`/gas/nearby?lat=${returnLat}&lng=${returnLng}`)
+    fetch(`/gas/rental-nearby?rentalId=${encodeURIComponent(rentalSessionId)}`, { cache: 'no-store' })
       .then(async (r) => ({ ok: r.ok, body: await r.json().catch(() => null) as (NearbyResponseBody & { stations?: NearbyStation[] }) | null }))
       .then(({ ok, body }) => {
         // A Pro refusal / live prices off / server error is NOT "no stations
@@ -35,7 +38,7 @@ export default function FindGasNearReturn({ returnLat, returnLng, gallonsNeeded:
         setStatus('done');
       })
       .catch(() => setStatus('error'));
-  }, [returnLat, returnLng]);
+  }, [rentalSessionId, returnLat, returnLng]);
 
   if (status === 'no_location') {
     return (
