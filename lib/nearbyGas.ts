@@ -5,8 +5,15 @@
  * prices normalised into simple dollar amounts. Results are cached 30 min in
  * memory so repeated "Find Gas" opens don't burn through the Places budget.
  *
+ * fetchStationPrices() resolves current prices for specific saved stations
+ * by placeId (Place Details) — see the section at the bottom of this file.
+ *
  * Requires: GOOGLE_PLACES_API_KEY env var (Places API (New) enabled in GCP).
  */
+
+import { freshestPriceTime } from '@/lib/fuelPriceFreshness';
+
+export { freshestPriceTime };
 
 export interface FuelPrice {
   type:      'REGULAR' | 'MIDGRADE' | 'PREMIUM' | 'DIESEL';
@@ -62,6 +69,29 @@ const FUEL_META: Record<string, { type: FuelPrice['type']; label: string } | und
   PREMIUM:          { type: 'PREMIUM',  label: 'Premium'  },
   DIESEL:           { type: 'DIESEL',   label: 'Diesel'   },
 };
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function parseFuelPrices(rawPrices: any[]): FuelPrice[] {
+  return rawPrices
+    .map((fp) => {
+      const meta = FUEL_META[fp.type as string];
+      if (!meta) return null;
+      const price = nanosToPrice(fp.price);
+      if (price === null) return null;
+      return {
+        type:      meta.type,
+        label:     meta.label,
+        price:     Math.round(price * 1000) / 1000,
+        updatedAt: (fp.updateTime as string | null) ?? null,
+      } satisfies FuelPrice;
+    })
+    .filter((x): x is FuelPrice => x !== null)
+    // Sort: Regular → Midgrade → Premium → Diesel
+    .sort((a, b) => {
+      const ORDER = { REGULAR: 0, MIDGRADE: 1, PREMIUM: 2, DIESEL: 3 };
+      return ORDER[a.type] - ORDER[b.type];
+    });
+}
 
 function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R  = 6371;
@@ -168,25 +198,7 @@ export async function fetchNearbyStations(
         console.log(`[nearbyGas] "${name}" has no fuelOptions field — not in Google's price coverage area, or field mask rejected (check billing/Enterprise tier).`);
       }
 
-      const prices: FuelPrice[] = rawPrices
-        .map((fp) => {
-          const meta = FUEL_META[fp.type as string];
-          if (!meta) return null;
-          const price = nanosToPrice(fp.price);
-          if (price === null) return null;
-          return {
-            type:      meta.type,
-            label:     meta.label,
-            price:     Math.round(price * 1000) / 1000,
-            updatedAt: (fp.updateTime as string | null) ?? null,
-          } satisfies FuelPrice;
-        })
-        .filter((x): x is FuelPrice => x !== null)
-        // Sort: Regular → Midgrade → Premium → Diesel
-        .sort((a, b) => {
-          const ORDER = { REGULAR: 0, MIDGRADE: 1, PREMIUM: 2, DIESEL: 3 };
-          return ORDER[a.type] - ORDER[b.type];
-        });
+      const prices = parseFuelPrices(rawPrices);
 
       if (prices.length > 0) countWithPrices++;
 
@@ -216,4 +228,60 @@ export async function fetchNearbyStations(
 
   cache.set(key, { stations, expiresAt: Date.now() + CACHE_TTL_MS });
   return stations;
+}
+
+// ── Per-station prices (Place Details) ─────────────────────────────────────
+//
+// Saved/favorite stations can be anywhere — nowhere near the user's current
+// search circle — so their current prices come from Place Details by placeId
+// rather than from searchNearby. Same 30-min TTL as the search cache.
+//
+// Result per placeId:
+//   FuelPrice[]  — Google answered (possibly [] = station reports no prices)
+//   null         — unknown (no key, HTTP error, timeout). Callers must NOT
+//                  treat null as "no prices" or substitute an old price as
+//                  if it were current.
+
+const detailsCache = new Map<string, { prices: FuelPrice[]; expiresAt: number }>();
+
+async function fetchOneStationPrices(placeId: string, apiKey: string): Promise<FuelPrice[] | null> {
+  const hit = detailsCache.get(placeId);
+  if (hit && hit.expiresAt > Date.now()) return hit.prices;
+
+  try {
+    const res = await fetch(`https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}`, {
+      method:  'GET',
+      headers: {
+        'X-Goog-Api-Key':   apiKey,
+        // Place Details field masks are NOT prefixed with "places." (that
+        // prefix is only for searchNearby's wrapped response).
+        'X-Goog-FieldMask': 'id,fuelOptions',
+      },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) {
+      console.error('[nearbyGas] Place Details error — status:', res.status, 'placeId:', placeId);
+      return null;
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const place = await res.json() as { fuelOptions?: { fuelPrices?: any[] } };
+    const prices = parseFuelPrices(place.fuelOptions?.fuelPrices ?? []);
+    detailsCache.set(placeId, { prices, expiresAt: Date.now() + CACHE_TTL_MS });
+    return prices;
+  } catch (err) {
+    console.error('[nearbyGas] Place Details lookup failed for', placeId, err);
+    return null;
+  }
+}
+
+export async function fetchStationPrices(placeIds: string[]): Promise<Map<string, FuelPrice[] | null>> {
+  const out = new Map<string, FuelPrice[] | null>();
+  const apiKey = process.env.GOOGLE_PLACES_API_KEY;
+  if (!apiKey) {
+    for (const id of placeIds) out.set(id, null);
+    return out;
+  }
+  const results = await Promise.all(placeIds.map((id) => fetchOneStationPrices(id, apiKey)));
+  placeIds.forEach((id, i) => out.set(id, results[i]));
+  return out;
 }

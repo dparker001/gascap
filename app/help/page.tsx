@@ -127,7 +127,7 @@ const SECTIONS = [
       },
       {
         q: 'Can I save a favorite gas station?',
-        a: 'Yes. Tap the ⭐ star on any station card in the Find Gas tab to save it as a favorite. Favorites show at the top of the Find Gas tab with their last-known price and when it was captured — even before you run a new search. Tap a favorite to fill the calculator with its saved price, or tap the star again to remove it. Available to Pro and Fleet users.',
+        a: 'Yes. Tap the ⭐ star on any station card in the Find Gas tab to save it as a favorite. Favorites show at the top of the Find Gas tab — even before you run a new search — and GasCap looks up each favorite’s current price every time you open the tab, with a label showing how recently the station’s price was updated. If the current price can’t be retrieved, you’ll see the last price we have clearly marked "Couldn’t refresh · last seen …" instead of passing it off as current. Tap a favorite’s price to fill the calculator, or tap the star again to remove it. Available to Pro and Fleet users.',
       },
       {
         q: 'How do I report a gas price?',

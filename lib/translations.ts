@@ -1872,7 +1872,11 @@ const en = {
     favoritesTitle:       '⭐ Favorites',
     addFavoriteAria:      'Save to favorites',
     removeFavoriteAria:   'Remove from favorites',
-    savedPriceAsOf:       (when: string) => `Saved price · ${when}`,
+    // Favorites resolve the CURRENT price live; `when` is Google's observation time.
+    favPriceUpdated:      (when: string) => `Updated ${when}`,
+    favPriceLive:         'Current price',
+    favPriceLastKnown:    (when: string) => `Couldn't refresh · last seen ${when}`,
+    favPriceUnavailable:  'No current price available',
     favoriteLimitReached: (max: number) => `You can save up to ${max} favorites — remove one to add another.`,
   },
 
@@ -5068,7 +5072,10 @@ const es: typeof en = {
     favoritesTitle:       '⭐ Favoritos',
     addFavoriteAria:      'Guardar en favoritos',
     removeFavoriteAria:   'Quitar de favoritos',
-    savedPriceAsOf:       (when: string) => `Precio guardado · ${when}`,
+    favPriceUpdated:      (when: string) => `Actualizado ${when}`,
+    favPriceLive:         'Precio actual',
+    favPriceLastKnown:    (when: string) => `No se pudo actualizar · visto ${when}`,
+    favPriceUnavailable:  'Sin precio actual disponible',
     favoriteLimitReached: (max: number) => `Puedes guardar hasta ${max} favoritos — elimina uno para agregar otro.`,
   },
 

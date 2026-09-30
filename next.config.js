@@ -25,6 +25,11 @@ const defaultCache = require('next-pwa/cache');
 // treatment preemptively rather than waiting to reproduce the same bug a
 // third time.
 //
+// 2026-09-30 — /api/favorites now resolves saved stations' CURRENT prices
+// live on every GET. Served from the "apis" cache it could hand back an old
+// favorites list (old prices) on a slow native connection — exactly the bug
+// the live lookup exists to fix — so it is NetworkOnly too.
+//
 // IMPORTANT: urlPattern predicates below use INLINE STRING LITERALS, not a
 // shared array constant — a prior attempt to reference an outer-scope
 // NETWORK_ONLY_PATHS array here did not survive next-pwa/workbox-webpack-
@@ -36,7 +41,8 @@ const runtimeCaching = [
     urlPattern: ({ url }) =>
       url.pathname.startsWith('/gas/') ||
       url.pathname.startsWith('/api/vehicles') ||
-      url.pathname.startsWith('/api/user/profile'),
+      url.pathname.startsWith('/api/user/profile') ||
+      url.pathname.startsWith('/api/favorites'),
     handler: 'NetworkOnly',
   },
   ...defaultCache.map((entry) => {
@@ -52,6 +58,7 @@ const runtimeCaching = [
           if (pathname?.startsWith('/api/nearby-gas')) return false;
           if (pathname?.startsWith('/api/vehicles')) return false;
           if (pathname?.startsWith('/api/user/profile')) return false;
+          if (pathname?.startsWith('/api/favorites')) return false;
           return origPattern(ctx);
         },
       };
