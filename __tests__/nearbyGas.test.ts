@@ -5,7 +5,7 @@
  * controlled Google Places response and asserts on the normalised output.
  *
  * Each test uses a distinct lat offset to avoid hitting the module-level
- * in-memory cache (cache key is rounded to 1 decimal place, ~11 km grid).
+ * in-memory cache (cache key is rounded to 2 decimal places, ~1.1 km grid).
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
