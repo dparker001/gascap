@@ -13,6 +13,7 @@ import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { useIsNative, useNativePlatform } from '@/hooks/useIsNative';
 import type { NearbyStation, FuelPrice } from '@/lib/nearbyGas';
+import { freshestPriceTime, favoriteApplyMode } from '@/lib/fuelPriceFreshness';
 import { useTranslation } from '@/contexts/LanguageContext';
 
 import { Geolocation } from '@capacitor/geolocation';
@@ -69,7 +70,17 @@ interface FavoriteStationData {
   lat:            number;
   lng:            number;
   prices:         FuelPrice[];
+  /** When GOOGLE observed the price (never when GasCap saved/fetched it). */
   priceUpdatedAt: string | null;
+  /**
+   * 'live'        — resolved from Google just now (via /api/favorites or a search)
+   * 'last_known'  — Google couldn't be reached / has no current price; this is
+   *                 an older stored price and must never be presented as current
+   * 'unavailable' — no price at all
+   */
+  priceStatus?:   'live' | 'last_known' | 'unavailable';
+  /** Why it isn't live: provider failed vs. provider reported no price. */
+  lastRefresh?:   'ok' | 'failed' | 'no_price' | 'skipped';
 }
 
 interface Props {
@@ -86,6 +97,10 @@ const GRADE_ORDER: FuelPrice['type'][] = ['REGULAR', 'MIDGRADE', 'PREMIUM', 'DIE
 // Keeps the idle/results screen's primary CTA from getting pushed out of
 // view as favorites accumulate — mirrors the server-side cap in /api/favorites.
 const MAX_FAVORITES = 3;
+// A favorite price whose Google observation time is older than this gets an
+// amber label even when freshly fetched. (Visual only — whether a price can
+// fill the calculator is decided by favoriteApplyMode, never by age.)
+const PRICE_AGED_MS = 24 * 60 * 60 * 1000;
 
 interface TimeAgoLabels {
   justNow: string;
@@ -617,15 +632,18 @@ function StationCard({
 }
 
 // ── Favorites section ────────────────────────────────────────────────────────
-// Last-known price + timestamp, not a live re-fetch — shown regardless of
-// search state (including before any search has run).
+// A favorite is a saved STATION, not a saved price. /api/favorites resolves
+// each one's current price live from Google on every load (and a search
+// merges its fresh results in), so what's shown here is current — labelled
+// with when Google observed it. If the live lookup fails, the older stored
+// price is shown flagged "Couldn't refresh · last seen …", never as current.
 
 function FavoritesSection({
   favorites,
   onApply,
   onRemove,
   title,
-  savedPriceAsOf,
+  priceLabels,
   removeFavoriteAria,
   labels,
 }: {
@@ -633,24 +651,53 @@ function FavoritesSection({
   onApply?:  (price: string, lat: number, lng: number, stationName: string, distanceMi: number, grade: string) => void;
   onRemove:  (placeId: string) => void;
   title:     string;
-  savedPriceAsOf: (when: string) => string;
+  priceLabels: {
+    favPriceUpdated:        (when: string) => string;
+    favPriceLive:           string;
+    favPriceLastKnown:      (when: string) => string;
+    favPriceNoneReported:   (when: string) => string;
+    favPriceUnavailable:    string;
+    favUseLastKnownPrompt:  (price: string, when: string) => string;
+    favUseLastKnownConfirm: string;
+    favUseLastKnownCancel:  string;
+  };
   removeFavoriteAria: string;
   labels: TimeAgoLabels;
 }) {
+  // A last-known price only fills the calculator after an explicit "Use it".
+  const [pendingApply, setPendingApply] = useState<{ placeId: string; type: FuelPrice['type'] } | null>(null);
   if (favorites.length === 0) return null;
   return (
     <div className="space-y-2 mb-4">
       <p className="text-xs font-bold text-slate-500 uppercase tracking-wide px-1">{title}</p>
       {favorites.map((fav) => {
+        const status    = fav.priceStatus ?? 'last_known';
         const hasPrices = fav.prices.length > 0;
+        const when      = timeAgo(fav.priceUpdatedAt, labels);
+        const ageMs     = fav.priceUpdatedAt ? Date.now() - new Date(fav.priceUpdatedAt).getTime() : Infinity;
+        const applyMode = onApply ? favoriteApplyMode(status) : 'none';
+        const isStale   = status !== 'live';
+        // Even a just-fetched price can be old at Google's end — flag it amber.
+        const agedLabel = isStale || ageMs > PRICE_AGED_MS;
+        const statusLine =
+          status === 'live'
+            ? (when ? priceLabels.favPriceUpdated(when) : priceLabels.favPriceLive)
+            : status === 'last_known' && hasPrices
+              ? (fav.lastRefresh === 'no_price'
+                  ? priceLabels.favPriceNoneReported(when || '?')
+                  : priceLabels.favPriceLastKnown(when || '?'))
+              : priceLabels.favPriceUnavailable;
+        const pending   = pendingApply?.placeId === fav.placeId
+          ? fav.prices.find((p) => p.type === pendingApply.type) ?? null
+          : null;
         return (
           <div key={fav.placeId} className="bg-white rounded-2xl border border-amber-200 shadow-sm overflow-hidden">
             <div className="px-4 pt-3 pb-2 flex items-start justify-between gap-2">
               <div className="flex-1 min-w-0">
                 <p className="font-bold text-slate-900 text-sm truncate">{fav.name}</p>
                 <p className="text-[11px] text-slate-400 mt-0.5 truncate">{fav.address}</p>
-                <p className="text-[10px] text-amber-600 font-bold mt-1">
-                  {savedPriceAsOf(timeAgo(fav.priceUpdatedAt, labels))}
+                <p className={`text-[10px] font-bold mt-1 ${agedLabel ? 'text-amber-600' : 'text-teal-600'}`}>
+                  {statusLine}
                 </p>
               </div>
               <button
@@ -671,15 +718,46 @@ function FavoritesSection({
                     <button
                       key={type}
                       type="button"
-                      onClick={() => onApply?.(fp.price.toFixed(2), fav.lat, fav.lng, fav.name, 0, fp.label)}
-                      className="rounded-xl px-2 py-1.5 text-center bg-slate-50 hover:bg-slate-100 active:opacity-80 transition-colors"
-                      disabled={!onApply}
+                      onClick={() => {
+                        if (applyMode === 'direct') onApply?.(fp.price.toFixed(2), fav.lat, fav.lng, fav.name, 0, fp.label);
+                        else if (applyMode === 'confirm') setPendingApply({ placeId: fav.placeId, type: fp.type });
+                      }}
+                      className={`rounded-xl px-2 py-1.5 text-center transition-colors ${
+                        applyMode !== 'none' ? 'bg-slate-50 hover:bg-slate-100 active:opacity-80' : 'bg-slate-50 opacity-50 cursor-not-allowed'
+                      }`}
+                      disabled={applyMode === 'none'}
                     >
                       <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">{fp.label}</p>
-                      <p className="text-sm font-black text-slate-800">${fp.price.toFixed(2)}</p>
+                      <p className={`text-sm font-black ${isStale ? 'text-slate-400' : 'text-slate-800'}`}>${fp.price.toFixed(2)}</p>
                     </button>
                   );
                 })}
+              </div>
+            )}
+            {pending && (
+              <div className="mx-4 mb-3 rounded-xl bg-amber-50 border border-amber-200 px-3 py-2">
+                <p className="text-[11px] text-amber-800 font-semibold">
+                  {priceLabels.favUseLastKnownPrompt(pending.price.toFixed(2), when || '?')}
+                </p>
+                <div className="flex gap-2 mt-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onApply?.(pending.price.toFixed(2), fav.lat, fav.lng, fav.name, 0, pending.label);
+                      setPendingApply(null);
+                    }}
+                    className="px-3 py-1 rounded-lg bg-amber-600 text-white text-[11px] font-bold"
+                  >
+                    {priceLabels.favUseLastKnownConfirm}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPendingApply(null)}
+                    className="px-3 py-1 rounded-lg bg-white border border-amber-200 text-amber-700 text-[11px] font-bold"
+                  >
+                    {priceLabels.favUseLastKnownCancel}
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -709,13 +787,16 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
   const [favorites,      setFavorites]      = useState<FavoriteStationData[]>([]);
   const [favLimitMsg,    setFavLimitMsg]    = useState('');
 
+  // Re-resolved live every time the Find Gas tab becomes visible, so a saved
+  // station never keeps showing whatever price it had when first loaded.
+  // cache:'no-store' + the NetworkOnly SW rule keep any cache out of the way.
   useEffect(() => {
-    if (isGuest || !isPro) return;
-    fetch('/api/favorites')
+    if (isGuest || !isPro || !isActive) return;
+    fetch('/api/favorites', { cache: 'no-store' })
       .then((r) => r.ok ? r.json() : null)
       .then((d: { favorites?: FavoriteStationData[] } | null) => { if (d?.favorites) setFavorites(d.favorites); })
       .catch(() => {});
-  }, [isGuest, isPro]);
+  }, [isGuest, isPro, isActive]);
 
   const toggleFavorite = useCallback((station: NearbyStation) => {
     const already = favorites.some((f) => f.placeId === station.placeId);
@@ -731,7 +812,9 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
       const fav: FavoriteStationData = {
         placeId: station.placeId, name: station.name, address: station.address,
         lat: station.lat, lng: station.lng, prices: station.prices,
-        priceUpdatedAt: new Date().toISOString(),
+        // Google's observation time — tapping the star doesn't make a price fresh.
+        priceUpdatedAt: freshestPriceTime(station.prices),
+        priceStatus: station.prices.length > 0 ? 'live' : 'unavailable',
       };
       setFavorites((prev) => [fav, ...prev]);
       fetch('/api/favorites', {
@@ -927,6 +1010,18 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
       const loaded = data.stations ?? [];
       setStations(loaded);
       setStatus('done');
+
+      // A favorite that appears in these fresh results takes their prices, so
+      // the Favorites section can never contradict the station card below it.
+      const freshById = new Map(loaded.filter((s) => s.prices.length > 0).map((s) => [s.placeId, s]));
+      if (freshById.size > 0) {
+        setFavorites((prev) => prev.map((f) => {
+          const fresh = freshById.get(f.placeId);
+          return fresh
+            ? { ...f, prices: fresh.prices, priceUpdatedAt: freshestPriceTime(fresh.prices), priceStatus: 'live' }
+            : f;
+        }));
+      }
 
       // Fetch community prices for visible stations
       if (loaded.length > 0) {
@@ -1304,7 +1399,7 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
               onApply={onApply}
               onRemove={removeFavorite}
               title={t.findGasTab.favoritesTitle}
-              savedPriceAsOf={t.findGasTab.savedPriceAsOf}
+              priceLabels={t.findGasTab}
               removeFavoriteAria={t.findGasTab.removeFavoriteAria}
               labels={t.findGasTab}
             />
@@ -1340,7 +1435,7 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
         onApply={onApply}
         onRemove={removeFavorite}
         title={t.findGasTab.favoritesTitle}
-        savedPriceAsOf={t.findGasTab.savedPriceAsOf}
+        priceLabels={t.findGasTab}
         removeFavoriteAria={t.findGasTab.removeFavoriteAria}
         labels={t.findGasTab}
       />
