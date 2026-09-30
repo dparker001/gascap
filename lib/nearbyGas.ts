@@ -51,15 +51,20 @@ function cacheKey(lat: number, lng: number): string {
 /**
  * Distance is a property of the REQUEST, not of the cached station list —
  * a cache hit must never return distances measured from whoever populated
- * the entry.
+ * the entry, nor stations outside THIS request's search radius.
+ *
+ * Known residual (accepted, 2026-09-30 review): the cached set came from the
+ * first searcher's circle, so a station just inside the edge of this
+ * request's circle on the far side may be missing if Google never returned
+ * it. The 0.01° key bounds that offset to ~0.5 mi.
  */
 function withDistancesFrom(stations: NearbyStation[], lat: number, lng: number): NearbyStation[] {
+  const radiusKm = RADIUS_METERS / 1000;
   return stations
-    .map((s) => ({
-      ...s,
-      distanceMi: Math.round(haversineKm(lat, lng, s.lat, s.lng) * 0.621371 * 10) / 10,
-    }))
-    .sort((a, b) => a.distanceMi - b.distanceMi);
+    .map((s) => ({ s, km: haversineKm(lat, lng, s.lat, s.lng) }))
+    .filter(({ km }) => km <= radiusKm)
+    .sort((a, b) => a.km - b.km)
+    .map(({ s, km }) => ({ ...s, distanceMi: Math.round(km * 0.621371 * 10) / 10 }));
 }
 
 /**

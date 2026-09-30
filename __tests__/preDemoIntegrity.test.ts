@@ -74,6 +74,26 @@ describe('A2 — Find Gas distances are measured from the CURRENT request', () =
   });
 });
 
+describe('A2 (review round 1) — cache hits are filtered to the CURRENT search radius', () => {
+  beforeEach(() => { vi.resetModules(); process.env.GOOGLE_PLACES_API_KEY = 'test-key'; });
+  afterEach(() => { vi.unstubAllGlobals(); delete process.env.GOOGLE_PLACES_API_KEY; });
+
+  it('REGRESSION: a cached station outside the second searcher\'s 5-mile radius is removed', async () => {
+    // Station ~4.9 mi south of the first searcher; the second searcher is in the
+    // same 0.01° cell but ~0.34 mi further north, so the station is ~5.24 mi away.
+    const station = { lat: 41.0 - 4.9 / 69.05, lng: -91.0 };
+    const fetchMock = stubPlaces(station.lat, station.lng);
+    const { fetchNearbyStations } = await import('@/lib/nearbyGas');
+
+    const first  = await fetchNearbyStations(41.0000, -91.0000);
+    const second = await fetchNearbyStations(41.0049, -91.0000);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1); // cache hit
+    expect(first).toHaveLength(1);
+    expect(second).toHaveLength(0);
+  });
+});
+
 // ── A3 — AI prompt rental gating consistency ─────────────────────────────────
 
 describe('A3 — AI APP FEATURES states the rental Pro gate consistently', () => {
@@ -142,6 +162,15 @@ describe('A4 — AI open-ended questions are Pro-gated on the server', () => {
       const res = await POST(chat({ question: chip, isSuggested: true }));
       expect(res.status, chip).toBe(200);
     }
+  });
+
+  it('REGRESSION: a chip whose accents arrive decomposed (NFD) is still recognised (NFC normalisation)', async () => {
+    const { translations } = await import('@/lib/translations');
+    const { POST } = await import('@/app/api/ai/chat/route');
+    const accented = translations.es.ai.chips.find((c: string) => c !== c.normalize('NFD'))!;
+    expect(accented).toBeTruthy();
+    const res = await POST(chat({ question: accented.normalize('NFD') }));
+    expect(res.status).toBe(200);
   });
 
   it('a Pro user can ask a custom question', async () => {

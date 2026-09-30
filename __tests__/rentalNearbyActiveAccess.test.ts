@@ -34,8 +34,17 @@ vi.mock('@/lib/rentalSessions', () => ({
 
 const RETURN = { lat: 28.4294, lng: -81.3089 }; // e.g. an airport return lot
 
+const H = 3_600_000;
+const iso = (offsetMs: number) => new Date(Date.now() + offsetMs).toISOString();
+
+/** Default: a rental in progress — picked up a day ago, due back in two days. */
 function rental(overrides: Record<string, unknown> = {}) {
-  return { id: 'r1', userId: 'u1', status: 'active', returnLatitude: RETURN.lat, returnLongitude: RETURN.lng, ...overrides };
+  return {
+    id: 'r1', userId: 'u1', status: 'active',
+    returnLatitude: RETURN.lat, returnLongitude: RETURN.lng,
+    pickupDateTimeUtc: iso(-24 * H), returnDateTimeUtc: iso(48 * H),
+    ...overrides,
+  };
 }
 
 function stubGoogle() {
@@ -191,5 +200,76 @@ describe('FindGasNearReturn wiring', () => {
     const uses = src.match(/<FindGasNearReturn[\s\S]*?\/>/g) ?? [];
     expect(uses.length).toBe(2);
     for (const u of uses) expect(u).toMatch(/rentalSessionId=\{session\.id\}/);
+  });
+});
+
+// ── Review round 1 (ChatGPT): the exception is bounded by the rental's TIME
+//    window — pickup <= now <= scheduled return + 24 h grace — not just by
+//    status === 'active' (abandoned and upcoming rentals are also 'active').
+
+describe('Active-rental exception is time-bounded', () => {
+  async function asFree(r: Record<string, unknown>) {
+    signInAs('free');
+    getRentalSession.mockResolvedValue(rental(r));
+    const fetchMock = stubGoogle();
+    const { GET } = await import('@/app/gas/rental-nearby/route');
+    const body = await (await GET(req('rentalId=r1'))).json();
+    return { body, fetchMock };
+  }
+
+  it('1. lapsed user + UPCOMING rental (pickup still ahead) → no exception', async () => {
+    const { body, fetchMock } = await asFree({ pickupDateTimeUtc: iso(48 * H), returnDateTimeUtc: iso(96 * H) });
+    expect(body.proRequired).toBe(true);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('2. lapsed user + rental currently in progress → allowed', async () => {
+    const { body } = await asFree({});
+    expect(body.stations).toHaveLength(1);
+  });
+
+  it('3. lapsed user within 24 h after the scheduled return → allowed (grace)', async () => {
+    const { body } = await asFree({ pickupDateTimeUtc: iso(-72 * H), returnDateTimeUtc: iso(-10 * H) });
+    expect(body.stations).toHaveLength(1);
+  });
+
+  it('4. lapsed user BEYOND the 24 h grace → no exception', async () => {
+    const { body, fetchMock } = await asFree({ pickupDateTimeUtc: iso(-96 * H), returnDateTimeUtc: iso(-25 * H) });
+    expect(body.proRequired).toBe(true);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('5. Pro user beyond grace → allowed under normal Pro entitlement', async () => {
+    signInAs('pro');
+    getRentalSession.mockResolvedValue(rental({ pickupDateTimeUtc: iso(-96 * H), returnDateTimeUtc: iso(-25 * H) }));
+    stubGoogle();
+    const { GET } = await import('@/app/gas/rental-nearby/route');
+    expect((await (await GET(req('rentalId=r1'))).json()).stations).toHaveLength(1);
+  });
+
+  it.each(['completed', 'cancelled'])('6. %s rental inside its time window → no exception', async (status) => {
+    const { body, fetchMock } = await asFree({ status });
+    expect(body.proRequired).toBe(true);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('extended rental (return moved later) → window extends with it', async () => {
+    // PATCH /api/rental-sessions/:id recomputes returnDateTimeUtc; the window reads it.
+    const { body } = await asFree({ pickupDateTimeUtc: iso(-96 * H), returnDateTimeUtc: iso(30 * H) });
+    expect(body.stations).toHaveLength(1);
+  });
+
+  it('no pickup time (set up at the counter) → treated as started, matching isUpcomingRental', async () => {
+    const { body } = await asFree({ pickupDateTimeUtc: null });
+    expect(body.stations).toHaveLength(1);
+  });
+
+  it('no usable return time → no exception (window cannot be bounded; fail closed)', async () => {
+    for (const returnDateTimeUtc of [null, 'not-a-date']) {
+      vi.resetModules();
+      const { body, fetchMock } = await asFree({ returnDateTimeUtc });
+      expect(body.proRequired, String(returnDateTimeUtc)).toBe(true);
+      expect(fetchMock).not.toHaveBeenCalled();
+    }
   });
 });

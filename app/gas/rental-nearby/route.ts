@@ -4,12 +4,14 @@
  * "Find Gas Near Return" for one rental — stations with live prices around
  * that rental's SAVED return location.
  *
- * Access (2026-09-30, Don's decision): an ACTIVE rental keeps station search
- * on ANY plan. CLAUDE.md: "An active rental must remain fully usable if Pro
- * lapses mid-rental. Gate *starting* a rental, never finishing one." The
+ * Access (2026-09-30, Don's decision): a rental that is IN ITS RENTAL WINDOW
+ * keeps station search on ANY plan — pickup <= now <= scheduled return + 24 h
+ * grace, status 'active' (see lib/rentalEntitlement.ts). CLAUDE.md: "An
+ * active rental must remain fully usable if Pro lapses mid-rental." The
  * generic /gas/nearby is Pro-gated, so a trial that lapsed mid-rental lost
- * nearby prices at the exact moment the renter needs them. A completed or
- * cancelled rental falls back to the normal Pro gate (plan from the DB).
+ * nearby prices at the exact moment the renter needs them. Outside the window
+ * (upcoming, long overdue, completed, cancelled) the normal Pro gate applies,
+ * with the plan read from the DB.
  *
  * The search always centres on the rental's stored return coordinates —
  * client-supplied lat/lng are ignored — so this can't be used as free,
@@ -24,6 +26,7 @@ import { authOptions } from '@/lib/auth';
 import { RENTAL_RETURN_ASSISTANT_ENABLED } from '@/lib/featureFlags';
 import { getRentalSession } from '@/lib/rentalSessions';
 import { getLivePlan } from '@/lib/serverPlan';
+import { isWithinRentalWindow } from '@/lib/rentalEntitlement';
 import { fetchNearbyStations } from '@/lib/nearbyGas';
 
 export async function GET(req: Request) {
@@ -47,7 +50,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ stations: [], error: 'Rental not found' }, { status: 404 });
   }
 
-  if (rental.status !== 'active') {
+  if (!isWithinRentalWindow(rental)) {
     const { isPro } = await getLivePlan();
     if (!isPro) {
       return NextResponse.json({ stations: [], proRequired: true, reason: 'free_plan' });
