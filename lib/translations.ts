@@ -3265,7 +3265,7 @@ const en = {
 
   // ── $20 Gift Campaign landing (/gift/20) — docs/GIFT20_CAMPAIGN_SPEC.md ──
   // {price} is filled from PRICING.pro.lifetime. Changing consent copy
-  // (updatesEmailConsent / updatesSmsConsent) requires bumping
+  // (updatesEmailConsent) requires bumping
   // GIFT20_CONSENT_VERSION in lib/gift20.ts.
   gift20: {
     metaTitle:        'My gift to you — GasCap™',
@@ -3354,9 +3354,7 @@ const en = {
     updatesBody:      'Totally optional. Nothing on this page requires it.',
     updatesFirstName: 'First name',
     updatesEmail:     'Email',
-    updatesPhone:     'Phone (optional)',
     updatesEmailConsent: 'Email me GasCap tips, updates and offers. Unsubscribe anytime.',
-    updatesSmsConsent: 'Text me GasCap updates and offers at this number. Msg & data rates may apply. Msg frequency varies. Reply STOP to opt out, HELP for help. Consent is not a condition of purchase.',
     updatesPrivacy:   'Privacy Policy',
     updatesSubmit:    'Keep me posted',
     updatesSubmitting: 'Sending…',
@@ -6673,9 +6671,7 @@ const es: typeof en = {
     updatesBody:      'Totalmente opcional. Nada en esta página lo requiere.',
     updatesFirstName: 'Nombre',
     updatesEmail:     'Correo electrónico',
-    updatesPhone:     'Teléfono (opcional)',
     updatesEmailConsent: 'Envíenme consejos, novedades y ofertas de GasCap por correo. Puedo darme de baja cuando quiera.',
-    updatesSmsConsent: 'Envíenme novedades y ofertas de GasCap por mensaje de texto a este número. Pueden aplicar tarifas de mensajes y datos. La frecuencia varía. Responde STOP para cancelar, HELP para ayuda. El consentimiento no es condición de compra.',
     updatesPrivacy:   'Política de privacidad',
     updatesSubmit:    'Mantenme al tanto',
     updatesSubmitting: 'Enviando…',

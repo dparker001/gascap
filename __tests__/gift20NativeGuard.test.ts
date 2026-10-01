@@ -28,4 +28,12 @@ describe('/gift/20 server render', () => {
     expect(html).not.toContain('Get GasCap Lifetime');               // nor the CTA label
     expect(html).not.toContain(translations.en.gift20.lifetimeNativeNote); // nor the native note (env unknown)
   });
+
+  it('collects no phone number (SMS opt-in not registered for /gift/20)', async () => {
+    const { default: Gift20Landing } = await import('@/app/gift/20/Gift20Landing');
+    const html = renderToString(React.createElement(Gift20Landing, { founderPhoto: '/marketing/gift20/don-parker.jpg' }));
+    expect(html).not.toContain('type="tel"');
+    expect(html).not.toMatch(/Reply STOP|Msg &amp; data/);
+    expect(html).toContain('/marketing/gift20/don-parker.jpg');   // founder photo renders when present
+  });
 });

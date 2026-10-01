@@ -131,9 +131,7 @@ function UpdatesForm() {
   const g = t.gift20;
   const [name, setName]         = useState('');
   const [email, setEmail]       = useState('');
-  const [phone, setPhone]       = useState('');
   const [emailOk, setEmailOk]   = useState(false);
-  const [smsOk, setSmsOk]       = useState(false);
   const [state, setState]       = useState<'idle' | 'sending' | 'done'>('idle');
   const [error, setError]       = useState('');
 
@@ -150,9 +148,9 @@ function UpdatesForm() {
         body:    JSON.stringify({
           name:  name.trim() || undefined,
           email: email.trim(),
-          phone: smsOk ? phone.trim() || undefined : undefined,
+          // No phone field for this test (2026-10-01): /gift/20 is not a
+          // registered A2P opt-in source, so SMS consent isn't collected here.
           emailConsent: true,
-          smsConsent:   smsOk && !!phone.trim(),
         }),
       });
       if (!res.ok) throw new Error();
@@ -174,20 +172,11 @@ function UpdatesForm() {
              value={name} onChange={(e) => setName(e.target.value)} />
       <input className={input} placeholder={g.updatesEmail} type="email" autoComplete="email" inputMode="email"
              value={email} onChange={(e) => setEmail(e.target.value)} />
-      <input className={input} placeholder={g.updatesPhone} type="tel" autoComplete="tel" inputMode="tel"
-             value={phone} onChange={(e) => setPhone(e.target.value)} />
       <label className="flex gap-3 text-sm text-slate-600 leading-snug">
         <input type="checkbox" className="mt-0.5 h-5 w-5 shrink-0 accent-brand-dark"
                checked={emailOk} onChange={(e) => setEmailOk(e.target.checked)} />
         <span>{g.updatesEmailConsent}</span>
       </label>
-      {phone.trim() && (
-        <label className="flex gap-3 text-xs text-slate-500 leading-snug">
-          <input type="checkbox" className="mt-0.5 h-5 w-5 shrink-0 accent-brand-dark"
-                 checked={smsOk} onChange={(e) => setSmsOk(e.target.checked)} />
-          <span>{g.updatesSmsConsent}</span>
-        </label>
-      )}
       {error && <p className="text-sm font-semibold text-red-600" role="alert">{error}</p>}
       <button type="submit" disabled={state === 'sending'}
               className="w-full rounded-2xl bg-navy-700 py-3.5 font-bold text-white disabled:opacity-60">
@@ -330,10 +319,10 @@ export default function Gift20Landing({ founderPhoto }: { founderPhoto: string |
           <figure className="mt-5 flex items-center gap-4">
             {founderPhoto ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={founderPhoto} alt={g.founderCaption} width={80} height={80}
-                   className="h-20 w-20 rounded-full object-cover shadow-card" />
+              <img src={founderPhoto} alt={g.founderCaption} width={96} height={96}
+                   className="h-24 w-24 rounded-full object-cover shadow-card" />
             ) : (
-              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-brand-dark text-2xl font-black text-white shadow-card"
+              <div className="flex h-24 w-24 items-center justify-center rounded-full bg-brand-dark text-2xl font-black text-white shadow-card"
                    aria-hidden="true">DP</div>
             )}
             <figcaption className="text-sm font-bold text-slate-600">{g.founderCaption}</figcaption>
