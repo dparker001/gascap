@@ -60,7 +60,9 @@ export async function POST(req: NextRequest) {
   }
 
   // Push to GHL with rich attribution tags
-  const extraTags = ['gascap-lead', 'gascap-qr-pilot'];
+  // Consent travels with the contact into GHL (durable, and present even when
+  // there is no gc_src cookie and therefore no campaign event to record it).
+  const extraTags = ['gascap-lead', 'gascap-qr-pilot', 'gascap-email-consent', `gascap-consent-${consentVersion}`];
   if (smsConsent && phone) extraTags.push('gascap-sms-consent');
   if (placement) {
     extraTags.push(`gascap-campaign-${placement.campaign.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`);

@@ -130,6 +130,7 @@ describe('POST /api/campaign/lead consent', () => {
     const sent = (upsertGhlContact.mock.calls[0] as unknown[])[0] as { phone?: string; extraTags: string[] };
     expect(sent.phone).toBeUndefined();
     expect(sent.extraTags).not.toContain('gascap-sms-consent');
+    expect(sent.extraTags).toContain('gascap-email-consent');
     expect(logEvent.mock.calls[0][0].meta).toMatchObject({ emailConsent: true, smsConsent: false, hasPhone: false });
   });
 
@@ -138,8 +139,20 @@ describe('POST /api/campaign/lead consent', () => {
     expect(res.status).toBe(200);
     const sent = (upsertGhlContact.mock.calls[0] as unknown[])[0] as { phone?: string; extraTags: string[] };
     expect(sent.phone).toBe('4075550100');
-    expect(sent.extraTags).toEqual(expect.arrayContaining(['gascap-sms-consent', 'gascap-campaign-20dollar-gift', 'gascap-code-gift01']));
+    expect(sent.extraTags).toEqual(expect.arrayContaining([
+      'gascap-sms-consent', 'gascap-email-consent', 'gascap-consent-gift20-v1-2026-10-01',
+      'gascap-campaign-20dollar-gift', 'gascap-code-gift01',
+    ]));
     expect(logEvent.mock.calls[0][0].meta.consentVersion).toMatch(/^gift20-v1/);
+  });
+
+  it('tags email consent in GHL even without a campaign cookie', async () => {
+    const { POST } = await import('@/app/api/campaign/lead/route');
+    const res = await POST(req('https://www.gascap.app/api/campaign/lead', { body: { email: 'a@b.com', emailConsent: true } }));
+    expect(res.status).toBe(200);
+    expect(logEvent).not.toHaveBeenCalled();
+    const sent = (upsertGhlContact.mock.calls[0] as unknown[])[0] as { extraTags: string[] };
+    expect(sent.extraTags).toEqual(expect.arrayContaining(['gascap-email-consent', 'gascap-consent-gift20-v1-2026-10-01']));
   });
 
   it('does not accept a truthy non-boolean as consent', async () => {

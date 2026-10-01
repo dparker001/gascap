@@ -112,7 +112,11 @@ function Section({ id, name, className, children }: {
         track('section_view', { section: name });
         obs.disconnect();
       }
-    }, { threshold: 0.35 });
+    // A thin band across the middle of the viewport rather than a % of the
+    // section: a fractional threshold can never be reached by a section
+    // taller than ~1/threshold screens (the getaway terms on a small phone),
+    // which would silently record that section as never seen.
+    }, { rootMargin: '-45% 0px -45% 0px', threshold: 0 });
     obs.observe(el);
     return () => obs.disconnect();
   }, [name]);
