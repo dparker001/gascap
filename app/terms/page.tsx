@@ -61,8 +61,8 @@ export default function TermsPage() {
             <p>If you purchase GasCap™ Pro within our iOS app, the purchase is processed by Apple through In-App Purchase, not by Stripe. You are billed through your Apple Account, and your subscription is governed by Apple&apos;s standard terms. To manage or cancel an iOS subscription, go to your iPhone <strong>Settings → Apple Account → Subscriptions</strong>. Refunds for App Store purchases are handled by Apple per its policies. However you purchase, your Pro features unlock on your GasCap™ account across all your devices (web and app).</p>
           </section>
 
-          {/* 4b — Promotional Getaway Offer */}
-          <section>
+          {/* 4b — Promotional Getaway Offer (anchor linked from /gift/20) */}
+          <section id="getaway" className="scroll-mt-24">
             <h2 className="text-lg font-black text-navy-700 mb-2">4b. Promotional Getaway Offer</h2>
             <p>From time to time, GasCap™ may run a limited-time promotion in which customers who purchase the <strong>Pro Lifetime</strong> plan receive a <strong>complimentary vacation getaway certificate</strong> as a free promotional bonus. The following terms apply:</p>
             <ul className="list-disc pl-5 space-y-1 mt-2">

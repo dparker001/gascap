@@ -5,6 +5,8 @@ import { PRICING } from '@/lib/stripe';
 import BrandBar from '@/components/BrandBar';
 import Link from 'next/link';
 import { useIsNative } from '@/hooks/useIsNative';
+import { useTranslation } from '@/contexts/LanguageContext';
+import { GIFT20_LANDING_PATH } from '@/lib/gift20';
 
 const OCCASIONS = [
   { value: 'gift',        label: '🎁 Just because' },
@@ -23,6 +25,7 @@ const PERKS = [
 
 export default function GiftPage() {
   const isNative = useIsNative();
+  const { t } = useTranslation();
   const [occasion, setOccasion]               = useState('gift');
   const [deliverToRecipient, setDeliver]       = useState(true);
   const [recipientName, setRecipientName]      = useState('');
@@ -90,6 +93,17 @@ export default function GiftPage() {
       <BrandBar />
       <div className="flex-1 flex items-start justify-center px-4 pt-8 pb-16">
         <div className="w-full max-w-md">
+
+          {/* $20 Gift Campaign safety net — the printed card says gascap.app/gift/20,
+              but anyone who types the shorter /gift lands here, on the
+              buy-a-gift checkout. Point them to the right page. */}
+          <Link
+            href={GIFT20_LANDING_PATH}
+            className="mb-5 block rounded-2xl border border-brand-teal/40 bg-[#f0fdf9] px-4 py-3 text-sm text-navy-700"
+          >
+            {t.gift20.giftBanner}{' '}
+            <span className="font-black text-brand-dark">{t.gift20.giftBannerCta}</span>
+          </Link>
 
           {/* Hero */}
           <div className="text-center mb-6">

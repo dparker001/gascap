@@ -13,6 +13,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { logEvent, type CampaignEventType } from '@/lib/campaigns';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
+import { GIFT20_CTAS, GIFT20_SECTIONS } from '@/lib/gift20';
 
 const VALID_TYPES: CampaignEventType[] = [
   'page_view',
@@ -21,6 +22,8 @@ const VALID_TYPES: CampaignEventType[] = [
   'save_to_phone',
   'lead_capture',
   'return_visit',
+  'cta_click',
+  'section_view',
   // 'scan' and 'signup' are logged server-side only — not from client
 ];
 
@@ -45,6 +48,24 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: 'invalid type' }, { status: 400 });
   }
 
+  // The two event types added for the $20 Gift Campaign carry exactly one
+  // allowlisted meta value — the funnel report groups on it, so a free-form
+  // value would silently fragment the counts. Older types are unchanged.
+  let meta = body.meta;
+  if (type === 'cta_click') {
+    const cta = body.meta?.cta;
+    if (typeof cta !== 'string' || !(GIFT20_CTAS as readonly string[]).includes(cta)) {
+      return NextResponse.json({ ok: false, error: 'invalid cta' }, { status: 400 });
+    }
+    meta = { cta };
+  } else if (type === 'section_view') {
+    const section = body.meta?.section;
+    if (typeof section !== 'string' || !(GIFT20_SECTIONS as readonly string[]).includes(section)) {
+      return NextResponse.json({ ok: false, error: 'invalid section' }, { status: 400 });
+    }
+    meta = { section };
+  }
+
   // Session ID — prefer cookie, fall back to a fresh one
   let sessionId = req.cookies.get('gc_ssn')?.value;
   if (!sessionId) sessionId = rndId('ssn');
@@ -66,7 +87,7 @@ export async function POST(req: NextRequest) {
     path:      body.path,
     userAgent: req.headers.get('user-agent') ?? undefined,
     referrer:  req.headers.get('referer') ?? undefined,
-    meta:      body.meta,
+    meta,
   });
 
   const res = NextResponse.json({ ok: true, attributed: true, placementCode });

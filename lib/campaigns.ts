@@ -70,7 +70,9 @@ export type CampaignEventType =
   | 'save_to_phone'   // PWA install prompt shown/accepted, or manual save
   | 'lead_capture'    // email/phone captured
   | 'signup'          // full account created
-  | 'return_visit';   // same attribution cookie came back in a new session
+  | 'return_visit'    // same attribution cookie came back in a new session
+  | 'cta_click'       // a tracked button/link was tapped (meta.cta — $20 Gift Campaign)
+  | 'section_view';   // a landing-page section scrolled into view (meta.section — abandonment)
 
 export interface CampaignEvent {
   id:          string;

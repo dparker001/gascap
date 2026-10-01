@@ -21,6 +21,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { getPlacementByCode, logEvent } from '@/lib/campaigns';
 import { getBaseUrl } from '@/lib/getBaseUrl';
+import { CARD_PLACEMENT } from '@/lib/gift20';
 
 const ATTRIBUTION_COOKIE = 'gc_src';
 const LANG_COOKIE        = 'gc_lang';
@@ -74,7 +75,9 @@ export async function GET(
   const landingPath = placement?.landingPath ?? '/';
   const landing = new URL(landingPath, origin);
   landing.searchParams.set('utm_source',   'gascap_qr');
-  landing.searchParams.set('utm_medium',   'placard');
+  // Handed-out cards ($20 Gift Campaign) are a different medium from station
+  // placards; everything else keeps the original 'placard' value.
+  landing.searchParams.set('utm_medium',   placement?.placement === CARD_PLACEMENT ? 'physical-card' : 'placard');
   landing.searchParams.set('utm_campaign', placement?.campaign ?? 'Know Before You Fill Up');
   landing.searchParams.set('utm_content',  code);
   if (placement?.headlineVariant) {
