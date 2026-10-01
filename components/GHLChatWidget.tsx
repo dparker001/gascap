@@ -19,7 +19,8 @@ import { usePathname } from 'next/navigation';
  */
 
 // Pages excluded from chat widget (have their own phone/SMS opt-in forms)
-const EXCLUDED_PATHS = ['/contact', '/settings', '/signup'];
+// /gift/20: the $20 Gift Campaign landing is deliberately popup-free (docs/GIFT20_CAMPAIGN_SPEC.md §5).
+const EXCLUDED_PATHS = ['/contact', '/settings', '/signup', '/gift/20'];
 
 const GHL_SELECTORS = [
   '#chat-widget-container',

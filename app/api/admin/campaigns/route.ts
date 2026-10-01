@@ -4,6 +4,7 @@
  * GET    /api/admin/campaigns                  — overview + all placements + stats
  * GET    /api/admin/campaigns?group=station    — grouped stats (station|placement|headlineVariant|city)
  * GET    /api/admin/campaigns?days=30          — time-series buckets for the last N days
+ * GET    /api/admin/campaigns?gift20=1         — $20 Gift Campaign per-card funnel (read-only)
  * POST   /api/admin/campaigns                  — create a placement (returns code + QR URL)
  * PATCH  /api/admin/campaigns?id=plc_xxx       — update a placement
  * DELETE /api/admin/campaigns?id=plc_xxx       — delete a placement
@@ -17,12 +18,17 @@ import {
   getStatsForAllPlacements,
   getOverview,
   groupStatsBy,
+  listEvents,
   getDailyBuckets,
   clearAllEvents,
   clearEventsForPlacement,
 } from '@/lib/campaigns';
 import { getBaseUrl as resolveBaseUrl } from '@/lib/getBaseUrl';
 import { sessionHasAdminRole, legacyAdminPasswordOk } from '@/lib/adminAuth';
+import { prisma } from '@/lib/prisma';
+import { hasLifetimeEntitlement } from '@/lib/entitlements';
+import { isGift20Code } from '@/lib/gift20';
+import { buildGift20Funnel } from '@/lib/gift20Funnel';
 
 /**
  * Campaign analytics uses ADMIN_PASSWORD by default so a solo founder can
@@ -53,6 +59,23 @@ export async function GET(req: NextRequest) {
 
   if (group) {
     return NextResponse.json({ grouped: await groupStatsBy(group) });
+  }
+
+  // $20 Gift Campaign funnel. Read-only: campaign events + a SELECT of the
+  // plan columns for users whose web signup was attributed to a GIFTxx card.
+  if (searchParams.get('gift20')) {
+    const events  = listEvents().filter((e) => isGift20Code(e.placementCode));
+    const userIds = Array.from(new Set(
+      events.filter((e) => e.type === 'signup' && e.userId).map((e) => e.userId as string),
+    ));
+    const users = userIds.length
+      ? await prisma.user.findMany({
+          where:  { id: { in: userIds } },
+          select: { id: true, stripeInterval: true, revenueCatActive: true, revenueCatInterval: true },
+        })
+      : [];
+    const lifetime = new Set(users.filter((u) => hasLifetimeEntitlement(u)).map((u) => u.id));
+    return NextResponse.json({ gift20: buildGift20Funnel(events, lifetime) });
   }
 
   if (days) {

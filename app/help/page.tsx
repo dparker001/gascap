@@ -338,6 +338,10 @@ const SECTIONS = [
         a: 'The getaway is issued and fulfilled by our travel partner, Marketing Boost / RedeemVacations — watch for an email from them (check spam too). It accommodates up to 2 adults (at least one age 21+) and up to 2 children age 12 or younger. You must reside at least 100 miles from your chosen destination and present a valid government-issued ID and a major credit or debit card at check-in. Full terms come with your certificate at RedeemVacations.com.',
       },
       {
+        q: 'I got a card from Don Parker with $20 attached. Is there a catch?',
+        a: 'No catch. The $20 is a gift from GasCap\'s founder, Don Parker, and it\'s yours to spend however you like. You don\'t have to buy anything. If you try GasCap and want to keep every Pro feature, Pro Lifetime is $19.99 (one-time, no subscription), and a qualifying Lifetime purchase may also make you eligible for a vacation certificate. The certificate is not given just for visiting the page or downloading the app (see the getaway questions above for eligibility, what it covers and what you pay). Details are at gascap.app/gift/20.',
+      },
+      {
         q: 'How do I cancel my subscription?',
         a: 'Go to Settings → Plan → "Manage Billing & Subscription." This opens the Stripe self-serve portal where you can cancel or update your payment method at any time. You can also email support@gascap.app and we\'ll take care of it for you. Lifetime members have no subscription to cancel. If you subscribed on the iPhone app through the App Store, manage or cancel it in your iPhone Settings → tap your name (Apple Account) → Subscriptions → GasCap™ → Cancel — iOS subscriptions are billed and managed by Apple, not through the Stripe portal.',
       },

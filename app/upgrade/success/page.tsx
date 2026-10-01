@@ -6,6 +6,7 @@ import { useSession } from 'next-auth/react';
 import { useTranslation } from '@/contexts/LanguageContext';
 import { getawayPromoActive } from '@/lib/getawayPromo';
 import GetawayDestinationPicker from '@/components/GetawayDestinationPicker';
+import Gift20ThankYou from '@/components/Gift20ThankYou';
 import { fbTrack } from '@/lib/gtag';
 import { isNativeIapSuccess, resolveNativeIapConfirmation, type ReconciledEntitlement } from '@/lib/iapNavigationGate';
 
@@ -273,6 +274,10 @@ function SuccessContent() {
         <span className={`font-bold ${labelColorClass(plan.color)}`}>{plan.label}</span>.
         {' '}{plan.intro}
       </p>
+
+      {/* $20 Gift Campaign note — web Lifetime only; renders nothing unless
+          this browser arrived via a GIFTxx card code. Display-only. */}
+      {billing === 'lifetime' && !isNativeIap && <Gift20ThankYou />}
 
       {/* Pro features */}
       <ul className="text-left space-y-2">

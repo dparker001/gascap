@@ -11,6 +11,7 @@
  *
  * Auth: same admin password as /admin (stored in sessionStorage for 15min).
  */
+import Gift20FunnelPanel from '@/components/admin/Gift20FunnelPanel';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 // ── Types mirrored from lib/campaigns.ts ─────────────────────────────────
@@ -129,7 +130,9 @@ const HEADLINES = [
   { value: 'C-StretchBudget',label: 'C · Stretch Your Fuel Budget Smarter' },
 ];
 
-const PLACEMENT_TYPES = ['counter', 'window', 'register', 'pump', 'flyer'];
+// 'card' = a handed-out card ($20 Gift Campaign, GIFTxx codes). Listed so editing
+// one of those placements doesn't silently reset it to the first option.
+const PLACEMENT_TYPES = ['counter', 'window', 'register', 'pump', 'flyer', 'card'];
 
 export default function CampaignsAdminPage() {
   const [pw, setPw]               = useState('');
@@ -496,6 +499,8 @@ export default function CampaignsAdminPage() {
             </form>
           </div>
         )}
+
+        <Gift20FunnelPanel pw={pw} />
 
         {/* Overview cards */}
         {totals && overview && (
