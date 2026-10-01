@@ -339,7 +339,7 @@ const SECTIONS = [
       },
       {
         q: 'I got a card from Don Parker with $20 attached. Is there a catch?',
-        a: 'No catch. The $20 is a gift from GasCap\'s founder, Don Parker, and it\'s yours to spend however you like. You don\'t have to buy anything. If you try GasCap and want to keep every Pro feature, Pro Lifetime is $19.99 (one-time, no subscription), and right now Lifetime comes with a vacation certificate (see the getaway questions above for what it covers and what you pay). Details are at gascap.app/gift/20.',
+        a: 'No catch. The $20 is a gift from GasCap\'s founder, Don Parker, and it\'s yours to spend however you like. You don\'t have to buy anything. If you try GasCap and want to keep every Pro feature, Pro Lifetime is $19.99 (one-time, no subscription), and a qualifying Lifetime purchase may also make you eligible for a vacation certificate. The certificate is not given just for visiting the page or downloading the app (see the getaway questions above for eligibility, what it covers and what you pay). Details are at gascap.app/gift/20.',
       },
       {
         q: 'How do I cancel my subscription?',

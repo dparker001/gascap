@@ -12,6 +12,9 @@ import path from 'path';
  * The alias is additive: relative imports keep working exactly as before.
  */
 export default defineConfig({
+  // Match Next's automatic JSX runtime so tests can import .tsx components
+  // (added for the /gift/20 server-render guard test). No effect on .ts files.
+  esbuild: { jsx: 'automatic' },
   resolve: {
     alias: { '@': path.resolve(__dirname, '.') },
   },

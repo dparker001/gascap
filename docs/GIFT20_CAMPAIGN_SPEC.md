@@ -9,6 +9,8 @@
 - **D6 — pull quote OMITTED** (not confirmed as Don's own words).
 - Founder photo: pending from Don → drop at `public/marketing/gift20/don-parker.jpg` and redeploy (initials placeholder until then).
 
+> **Live copy is `translations.gift20` (EN + ES), not §3 below.** §3 is the original draft; the review round on 2026-10-01 tightened eligibility, precision and price-freshness wording (see `docs/reviews/2026-10-01-gift20-campaign.md`).
+
 ### What was built (differs from the plan below where noted)
 - `app/gift/20/` — landing page (copy in `translations.gift20`, EN + ES). No "Read more" expander — the letter is short and hiding the "$20 is really yours" paragraph would bury the key message.
 - Hero image: crop of the store screenshot's result cards only (`public/marketing/gift20/result-card.jpg`) — the full screenshot says "exact fill-up cost" and shows giveaway entries, both off-message here.

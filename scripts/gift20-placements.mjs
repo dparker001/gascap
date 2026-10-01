@@ -72,9 +72,17 @@ const have    = new Set(before.map((r) => r.code.toUpperCase()));
 const missing = CODES.filter((c) => !have.has(c));
 console.log(`Missing: ${missing.length ? missing.join(', ') : 'none'}`);
 
+// Full planned rows (what --apply would INSERT). Existing codes are never touched.
+const planned = missing.map(row);
+if (planned.length) {
+  console.log('\nPLANNED INSERTS (id/createdAt are generated at insert time):');
+  console.table(planned.map(({ id, createdAt, ...r }) => r));
+}
+const preexisting = before.filter((r) => CODES.includes(r.code.toUpperCase()));
+console.log(`Existing GIFT rows that --apply would modify: 0 (ON CONFLICT (code) DO NOTHING; ${preexisting.length} already present)`);
+
 if (APPLY && missing.length) {
-  for (const code of missing) {
-    const r = row(code);
+  for (const r of planned) {
     await client.query(
       `INSERT INTO "CampaignPlacement"
          (id, code, campaign, station, city, placement, "headlineVariant", "landingPath", notes, "createdAt", active, featured)

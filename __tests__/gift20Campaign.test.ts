@@ -190,11 +190,19 @@ describe('gift20 codes and copy', () => {
       expect(text.replace(/not a free vacation|No son vacaciones gratis/g, '')).not.toMatch(/free vacation|vacaciones gratis/i);
       expect(text).not.toMatch(/\$19\.95/);
       expect(text).not.toMatch(/\b(win|winner|ganador)\b/i);
+      // Precision / freshness (review items 5–6): no exactness or guarantee claims, no "live" prices.
+      expect(text).not.toMatch(/\bexact|exacto|exacta\b/i);
+      expect(text).not.toMatch(/guarantee|garantiza|garantía/i);
+      expect(text).not.toMatch(/\blive (gas |fuel )?(price|data)|en vivo|tiempo real|real-time|up-to-the-minute|current gas price|precios actuales/i);
+      expect(text).not.toMatch(/without overpaying|sin pagar de más/i);
     }
     // The gift is described as NOT a coupon/rebate/credit — and only in that sentence.
     const en = translations.en.gift20;
-    expect(en.choiceFootnote).toMatch(/not a coupon, rebate, or credit/);
-    expect(en.getawayTransition).toMatch(/only included with a Lifetime purchase/);
+    expect(en.choiceFootnote).toMatch(/No GasCap purchase is required to keep the \$20/);
+    expect(en.choiceFootnote).toMatch(/not a coupon, credit, rebate, reimbursement, or conditional incentive/);
+    expect(en.getawayTransition).toMatch(/qualifying GasCap Lifetime purchase/);
+    expect(en.getawayTransition).toMatch(/isn't given for visiting this page, scanning the card, or downloading the app/);
+    expect(translations.es.gift20.getawayTransition).toMatch(/compra calificada de GasCap Lifetime/);
   });
 });
 
@@ -227,3 +235,22 @@ describe('buildGift20Funnel', () => {
     expect(total).toMatchObject({ code: 'TOTAL', scans: 2, lifetimeBuyers: 1 });
   });
 });
+
+describe('buildGift20Funnel output is aggregate-only (review item 9)', () => {
+  it('never carries emails, phone numbers or user IDs from the events', async () => {
+    const { buildGift20Funnel } = await import('@/lib/gift20Funnel');
+    const events = [
+      { id: 'e1', ts: '2026-10-03T15:00:00Z', sessionId: 'ssn_secret', placementCode: 'GIFT01', type: 'lead_capture',
+        meta: { email: 'person@example.com', hasPhone: true, phone: '4075550100' } },
+      { id: 'e2', ts: '2026-10-03T15:01:00Z', sessionId: 'ssn_secret', placementCode: 'GIFT01', type: 'signup',
+        userId: 'usr_abc123', meta: { email: 'person@example.com' } },
+    ] as never;
+    const out = JSON.stringify(buildGift20Funnel(events, new Set(['usr_abc123'])));
+    expect(out).not.toMatch(/@/);
+    expect(out).not.toContain('4075550100');
+    expect(out).not.toContain('usr_abc123');
+    expect(out).not.toContain('ssn_secret');
+    expect(out).toContain('"lifetimeBuyers":1');
+  });
+});
+

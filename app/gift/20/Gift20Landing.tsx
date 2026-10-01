@@ -16,7 +16,7 @@ import { useSession } from 'next-auth/react';
 import BrandBar from '@/components/BrandBar';
 import CampaignTracker from '@/components/CampaignTracker';
 import { useTranslation } from '@/contexts/LanguageContext';
-import { useIsNative } from '@/hooks/useIsNative';
+import { detectNativePlatform } from '@/hooks/useIsNative';
 import { PRICING } from '@/lib/stripe';
 import {
   ANDROID_APP_URL, IOS_APP_URL, GIFT20_CONSENT_VERSION,
@@ -24,6 +24,7 @@ import {
 } from '@/lib/gift20';
 
 type Device = 'ios' | 'android' | 'other';
+export type ShellEnv = 'unknown' | 'web' | 'native';
 
 function detectDevice(): Device {
   const ua = typeof navigator === 'undefined' ? '' : navigator.userAgent || '';
@@ -204,7 +205,14 @@ function UpdatesForm() {
 export default function Gift20Landing({ founderPhoto }: { founderPhoto: string | null }) {
   const { t } = useTranslation();
   const g = t.gift20;
-  const isNative = useIsNative();
+  // Three states, not a boolean: the shared useIsNative() reports false both
+  // before detection has run (SSR + first client render) AND for a confirmed
+  // browser, so gating Stripe on it would put the web checkout link in the
+  // server HTML a native shell receives. Stripe renders only once 'web' is
+  // CONFIRMED on the client; 'unknown' and 'native' never render it.
+  const [env, setEnv] = useState<ShellEnv>('unknown');
+  useEffect(() => { setEnv(detectNativePlatform() ? 'native' : 'web'); }, []);
+  const isNative = env === 'native';
   const { status } = useSession();
   const [mounted, setMounted] = useState(false);
   const [device, setDevice]   = useState<Device>('other');
@@ -350,9 +358,10 @@ export default function Gift20Landing({ founderPhoto }: { founderPhoto: string |
           </p>
           <p className="mt-4 leading-relaxed text-white/85">{withPrice(g.lifetimeBody)}</p>
 
-          {isNative ? (
+          {env === 'native' && (
             <p className="mt-6 rounded-2xl bg-white/10 p-4 text-sm font-semibold">{g.lifetimeNativeNote}</p>
-          ) : (
+          )}
+          {env === 'web' && (
             <>
               <Link
                 href={lifetimeHref}
@@ -368,6 +377,7 @@ export default function Gift20Landing({ founderPhoto }: { founderPhoto: string |
               <p className="mt-4 text-sm text-white/80">{g.lifetimeInApp}</p>
             </>
           )}
+          {/* env === 'unknown' (server render / before detection): no purchase CTA at all. */}
         </div>
       </Section>
 
