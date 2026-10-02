@@ -374,6 +374,71 @@ export function reconcileFuelForNewTank(
   return Math.round(Math.min(scaled, newCapacity) * 1_000_000) / 1_000_000;
 }
 
+/** Gauge and percent readings are fractions of a tank; their gallons only exist relative to a capacity. */
+export function isFractionalFuelSource(source: string | null | undefined): boolean {
+  return source === 'MANUAL_GAUGE' || source === 'MANUAL_PERCENT';
+}
+
+interface TankReading { gallons: number | null; source: string | null; explicit: boolean }
+
+export type TankCapacityReconciliation =
+  | { ok: true; pickupFuelGallons?: number | null; currentFuelGallons?: number | null; requiredReturnFuelGallons?: number | null }
+  | { ok: false; code: 'tank_clear_would_discard_reading'; field: 'fuelTankCapacityGallons' };
+
+/**
+ * Part A (2026-10-02): what a tank-capacity change does to the stored fuel
+ * figures. Only values the caller did NOT set in the same request are
+ * returned — an explicit value is the user's current intent.
+ *
+ *   null → value  : absolute readings clamp; a `full` target becomes the
+ *                   capacity (previously it stayed null forever).
+ *   value → value : gauge/percent rescale to keep the observed fraction,
+ *                   absolute clamp; a `full` target follows the NEW capacity
+ *                   (previously only clamped, so 14 → 18 kept "full" at 14).
+ *   value → null  : refused while a gauge/percent reading exists — the model
+ *                   stores no raw fraction apart from its capacity-derived
+ *                   gallons, so clearing would silently discard a real
+ *                   observation. Otherwise a `full` target becomes unknown
+ *                   and absolute gallons are kept.
+ */
+export function reconcileForTankCapacityChange(args: {
+  oldCapacity: number | null;
+  newCapacity: number | null;
+  policy:      ReturnPolicyType;
+  pickup:      TankReading;
+  current:     TankReading;
+  required:    { gallons: number | null; explicit: boolean };
+}): TankCapacityReconciliation {
+  const oldCap = args.oldCapacity != null && args.oldCapacity > 0 ? args.oldCapacity : null;
+  const newCap = args.newCapacity != null && args.newCapacity > 0 ? args.newCapacity : null;
+  if (oldCap === newCap) return { ok: true };
+
+  if (newCap == null) {
+    const discards = (r: TankReading) => !r.explicit && r.gallons != null && isFractionalFuelSource(r.source);
+    if (discards(args.pickup) || discards(args.current)) {
+      return { ok: false, code: 'tank_clear_would_discard_reading', field: 'fuelTankCapacityGallons' };
+    }
+    const out: TankCapacityReconciliation = { ok: true };
+    if (!args.required.explicit) {
+      if (args.policy === 'full') out.requiredReturnFuelGallons = null;
+      else if (args.policy === 'same_as_pickup') out.requiredReturnFuelGallons = args.pickup.gallons;
+    }
+    return out;
+  }
+
+  const reconcile = (r: TankReading) => reconcileFuelForNewTank(r.gallons, r.source as FuelDataSource | null, oldCap, newCap);
+  const out: TankCapacityReconciliation = { ok: true };
+  if (!args.pickup.explicit)  out.pickupFuelGallons  = reconcile(args.pickup);
+  if (!args.current.explicit) out.currentFuelGallons = reconcile(args.current);
+  if (!args.required.explicit) {
+    out.requiredReturnFuelGallons =
+      args.policy === 'full' ? newCap
+      : args.policy === 'same_as_pickup' ? (args.pickup.explicit ? args.pickup.gallons : out.pickupFuelGallons ?? null)
+      : reconcileFuelForNewTank(args.required.gallons, null, oldCap, newCap);
+  }
+  return out;
+}
+
 /**
  * Has this rental not started yet?
  *

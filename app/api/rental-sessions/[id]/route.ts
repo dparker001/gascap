@@ -12,6 +12,7 @@ import { validateRentalPhotos, photoCapKb, PHOTO_MAX_DATA_URL_BYTES } from '@/li
 import { getRentalFillups } from '@/lib/rentalFillups';
 import { isGaugeStyle } from '@/lib/gaugeStyles';
 import { FUEL_DATA_SOURCES } from '@/lib/rentalProvider';
+import { isFractionalFuelSource } from '@/lib/rentalCalculations';
 import { prisma } from '@/lib/prisma';
 
 /** Manual-entry PATCH route policy (2026-08-28, strengthened same day per
@@ -116,6 +117,13 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   const existingForValidation = await getRentalSession(userId, params.id);
   if (!existingForValidation) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
+  // Tank capacity: absent, an explicit null (clear — the domain layer refuses
+  // it while a gauge/percent reading exists), or a finite number > 0.
+  if (body.fuelTankCapacityGallons !== undefined && body.fuelTankCapacityGallons !== null
+      && !(typeof body.fuelTankCapacityGallons === 'number' && Number.isFinite(body.fuelTankCapacityGallons) && body.fuelTankCapacityGallons > 0)) {
+    return NextResponse.json({ error: 'fuelTankCapacityGallons must be null or a finite number > 0.' }, { status: 400 });
+  }
+
   const effectiveTankCapacity = body.fuelTankCapacityGallons !== undefined
     ? body.fuelTankCapacityGallons
     : existingForValidation.fuelTankCapacityGallons;
@@ -154,6 +162,19 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     // actually backing.
     if (!MANUAL_ENTRY_ALLOWED_SOURCES.has(value)) {
       return NextResponse.json({ error: `${field} cannot be set to ${value} from manual entry.` }, { status: 400 });
+    }
+  }
+
+  // ── No gauge/percent reading without a tank (Part A, 2026-10-02) ─────────
+  // Those gallons only exist relative to a capacity. Enforced here as well as
+  // in the domain layer because the confirmation write below bypasses
+  // updateRentalSession().
+  for (const [field, source, gallons] of [
+    ['currentFuelGallons', body.currentFuelSource, body.currentFuelGallons],
+    ['pickupFuelGallons',  body.pickupFuelSource,  body.pickupFuelGallons],
+  ] as const) {
+    if (gallons != null && isFractionalFuelSource(source) && !(typeof effectiveTankCapacity === 'number' && effectiveTankCapacity > 0)) {
+      return NextResponse.json({ error: 'tank_capacity_required', field }, { status: 422 });
     }
   }
 
