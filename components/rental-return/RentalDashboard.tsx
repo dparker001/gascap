@@ -1774,13 +1774,13 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
             )}
             {session.pickupDateTime && (
               <div className="flex justify-between text-xs">
-                <span className="text-slate-500">{t.rentalReturn.completedPickupLabel}</span>
+                <span className="text-slate-500">{t.rentalReturn.detailPickupLabel}</span>
                 <span className="font-bold text-slate-800">{fmtPickup(session)}</span>
               </div>
             )}
             {session.returnDateTime && (
               <div className="flex justify-between text-xs">
-                <span className="text-slate-500">{t.rentalReturn.completedReturnLabel}</span>
+                <span className="text-slate-500">{t.rentalReturn.detailReturnLabel}</span>
                 <span className="font-bold text-slate-800">{fmtReturn(session)}</span>
               </div>
             )}
