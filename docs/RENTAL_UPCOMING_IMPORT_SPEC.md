@@ -2,7 +2,7 @@
 
 **Status: PLANNED** (2026-10-02). Nothing here is implemented. Written against
 `main` @ `eb7ef00` (after PR #58, Rental Event Timezones).
-**Owner decisions required before build:** see §6.
+**Owner decisions:** recorded in §6 (2026-10-02); B1 still needs schema + Cloudflare authorization.
 
 ## 1. Problem
 
@@ -187,14 +187,18 @@ infrastructure, AI cost all trigger review per CLAUDE.md). B1 needs a
 read-only live smoke test with real forwarded emails from at least Hertz,
 Avis, Enterprise before B2.
 
-## 6. Decisions for Don
+## 6. Decisions
 
-1. **Approve Part A as specified?** (incl. pickup time required on the quick path)
-2. **Pickup-reminder copy change** for incomplete setups (§3.4)?
-3. **Inbound provider:** Cloudflare Email Routing + Worker (recommended) or Resend inbound?
-4. **Address domain:** `rentals.gascap.app` (recommended) or another subdomain?
-5. **Pro-only** for email import (recommended — AI cost, matches agreement scan)?
-6. **Schema additions** in §4.5 (separate authorization at B1, as with PR #58)?
+Decided by Don, 2026-10-02:
+1. **Part A approved as specified**, with pickup date/time **required** on the quick-save path.
+2. **Pickup-reminder copy change approved** for incomplete setups (§3.4): copy only, no window/logic change.
+3. **Inbound provider: Cloudflare** Email Routing + Email Worker.
+4. **Email import is Pro-only.**
+
+Still open:
+5. Address domain: `rentals.gascap.app` assumed unless Don says otherwise.
+6. Schema additions in §4.5: separate production authorization at B1, as with PR #58.
+7. Cloudflare setup (subdomain MX + Worker + secret): Don performs or authorizes it at B1. No Cloudflare change is made before then.
 
 ## 7. Testing (per CLAUDE.md)
 - Part A: regression tests for tank null→value recompute (fails on current
