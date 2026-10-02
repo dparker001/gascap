@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import type { RentalSession } from '@/lib/rentalSessions';
-import { isUpcomingRental as isUpcomingAt } from '@/lib/rentalCalculations';
+import { isUpcomingRental as isUpcomingAt, rentalEventInstant } from '@/lib/rentalCalculations';
 
 /**
  * The signed-in user's open rentals, split into in-progress and upcoming.
@@ -20,7 +20,8 @@ import { isUpcomingRental as isUpcomingAt } from '@/lib/rentalCalculations';
  */
 
 export function isUpcomingRental(s: RentalSession): boolean {
-  return isUpcomingAt(s.pickupDateTime);
+  // UTC instant when present (2026-10-02) — not the viewer's reading of the wall clock.
+  return isUpcomingAt(rentalEventInstant(s.pickupDateTimeUtc, s.pickupDateTime));
 }
 
 export interface RentalSessionsState {
@@ -57,7 +58,7 @@ export function useRentalSessions(): RentalSessionsState {
     const inProgress = all.filter((s) => !isUpcomingRental(s));
 
     const soonest = [...upcoming].sort((a, b) =>
-      new Date(a.pickupDateTime!).getTime() - new Date(b.pickupDateTime!).getTime());
+      new Date(rentalEventInstant(a.pickupDateTimeUtc, a.pickupDateTime)!).getTime() - new Date(rentalEventInstant(b.pickupDateTimeUtc, b.pickupDateTime)!).getTime());
 
     return {
       inProgress,

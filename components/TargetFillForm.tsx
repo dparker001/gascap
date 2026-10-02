@@ -18,6 +18,7 @@ import {
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useIsNative, useNativePlatform } from '@/hooks/useIsNative';
 import { useRentalSessions } from '@/hooks/useRentalSessions';
+import { formatEventWallClock } from '@/lib/rentalTimezone';
 import type { CalcTab } from './CalculatorTabs';
 import { useTranslation } from '@/contexts/LanguageContext';
 import { trackCalculateTarget, trackRentalReturnToggled } from '@/lib/gtag';
@@ -206,7 +207,7 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
       return t.calc.rentalModeUpcomingWith(
         next.rentalCompany,
         next.pickupDateTime
-          ? new Date(next.pickupDateTime).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+          ? formatEventWallClock(next.pickupDateTime, next.pickupTimeZone ?? next.timeZone, next.pickupDateTimeUtc)
           : '',
       );
     }

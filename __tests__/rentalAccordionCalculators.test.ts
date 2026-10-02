@@ -200,8 +200,12 @@ describe('Fuel History / Rental Details remain collapsed by default (unchanged f
 
 describe('Regression guards — lifecycle, PR #39, MPG, persistence untouched', () => {
   it('22. lifecycle logic unchanged — resolveRentalLifecycle/RENTAL_NEAR_RETURN_HOURS untouched in lib/rentalCalculations.ts', () => {
-    // The dashboard still calls resolveRentalLifecycle with the same shape.
-    expect(dashboardSrc).toMatch(/resolveRentalLifecycle\(\{\s*status: session\.status, pickupDateTime: session\.pickupDateTime, returnDateTime: session\.returnDateTime,\s*\}\)/);
+    // The dashboard still calls resolveRentalLifecycle from the session's own
+    // fields. 2026-10-02 (owner-approved event-timezone model, item 8): the
+    // call now ALSO passes the authoritative UTC instants so lifecycle state
+    // can't shift with the viewer's timezone — the shape is pinned to that
+    // approved contract (status + both wall clocks + both UTC instants).
+    expect(dashboardSrc).toMatch(/resolveRentalLifecycle\(\{\s*status: session\.status, pickupDateTime: session\.pickupDateTime, returnDateTime: session\.returnDateTime,\s*pickupDateTimeUtc: session\.pickupDateTimeUtc, returnDateTimeUtc: session\.returnDateTimeUtc,\s*\}\)/);
   });
 
   it('23. PR #39 return-time-default behavior file is untouched by this change', () => {

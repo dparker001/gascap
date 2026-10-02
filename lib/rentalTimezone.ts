@@ -237,3 +237,89 @@ export function storedOccurrence(local: string | null | undefined, zone: string 
   if (ms === c.laterMs) return 'later';
   return null;
 }
+
+// ── Display helpers (client-safe, pure) ─────────────────────────────────────
+
+/** "Pacific Time" (generic name) — falls back to the long/short name. */
+export function zoneLongName(zone: string, atMs: number = Date.now(), locale = 'en-US'): string {
+  for (const timeZoneName of ['longGeneric', 'long'] as const) {
+    try {
+      const p = new Intl.DateTimeFormat(locale, { timeZone: zone, timeZoneName }).formatToParts(new Date(atMs));
+      const v = p.find((x) => x.type === 'timeZoneName')?.value;
+      if (v) return v;
+    } catch { /* try next */ }
+  }
+  return zone;
+}
+
+/** "Los Angeles" from "America/Los_Angeles". */
+export function zoneCity(zone: string): string {
+  return zone === 'UTC' ? 'UTC' : (zone.split('/').pop() ?? zone).replace(/_/g, ' ');
+}
+
+/** "PDT" / "EST" at a given instant. */
+export function zoneShortName(zone: string, atMs: number, locale = 'en-US'): string {
+  try {
+    const p = new Intl.DateTimeFormat(locale, { timeZone: zone, timeZoneName: 'short' }).formatToParts(new Date(atMs));
+    return p.find((x) => x.type === 'timeZoneName')?.value ?? zone;
+  } catch { return zone; }
+}
+
+/** Minutes the zone is ahead of UTC at an instant. */
+export function zoneOffsetMinutes(zone: string, atMs: number): number {
+  return (wallClockToUtcMs(wallClockInZone(atMs, zone)) - atMs) / 60_000;
+}
+
+export type EventTimeStatus =
+  | { kind: 'empty' }
+  | { kind: 'invalid' }
+  | { kind: 'no_zone' }
+  | { kind: 'valid';       utcMs: number }
+  | { kind: 'nonexistent' }
+  | { kind: 'ambiguous';   earlierMs: number; laterMs: number; earlierLabel: string; laterLabel: string };
+
+/** UI classification of one event's wall clock in its zone. */
+export function describeEventTime(local: string | null | undefined, zone: string | null | undefined): EventTimeStatus {
+  if (!local) return { kind: 'empty' };
+  const wall = parseStrictLocalDateTime(local);
+  if (!wall) return { kind: 'invalid' };
+  if (!zone || !isValidIanaZone(zone)) return { kind: 'no_zone' };
+  const c = classifyLocalTime(wall, zone);
+  if (c.kind === 'ambiguous') {
+    return { ...c, earlierLabel: zoneShortName(zone, c.earlierMs), laterLabel: zoneShortName(zone, c.laterMs) };
+  }
+  return c;
+}
+
+/**
+ * "Oct 5, 2:00 PM PDT" — the event's wall clock in ITS zone. Uses the stored
+ * UTC instant when available (so an ambiguous time shows the occurrence that
+ * was actually saved); otherwise the plain wall clock without a zone label.
+ */
+export function formatEventWallClock(
+  local: string | null | undefined, zone: string | null | undefined, utcIso: string | null | undefined, locale?: string,
+): string {
+  const opts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' };
+  if (utcIso && zone && isValidIanaZone(zone)) {
+    try { return new Intl.DateTimeFormat(locale, { ...opts, timeZone: zone, timeZoneName: 'short' }).format(new Date(utcIso)); } catch { /* fall through */ }
+  }
+  if (!local) return '';
+  const w = parseStrictLocalDateTime(local);
+  if (!w) return local;
+  // Wall clock only (legacy / no zone): format the components in UTC so the
+  // viewing device's zone can't shift them.
+  return new Intl.DateTimeFormat(locale, { ...opts, timeZone: 'UTC' }).format(new Date(wallClockToUtcMs(w)));
+}
+
+/** Common zones first in pickers; the full list follows. */
+export const COMMON_TIME_ZONES = [
+  'America/New_York', 'America/Chicago', 'America/Denver', 'America/Phoenix', 'America/Los_Angeles',
+  'America/Anchorage', 'Pacific/Honolulu', 'America/Puerto_Rico', 'America/Toronto', 'America/Vancouver',
+  'America/Mexico_City', 'America/Cancun', 'Europe/London', 'UTC',
+] as const;
+
+export function allPickerTimeZones(): string[] {
+  const intl = Intl as unknown as { supportedValuesOf?: (k: string) => string[] };
+  const all = intl.supportedValuesOf ? intl.supportedValuesOf('timeZone') : [];
+  return all.filter((z) => isValidIanaZone(z));
+}
