@@ -1,0 +1,4 @@
+{
+  "_doc": "Reviewed exceptions for the CR-1 protected-path guard (__tests__/helpers/protectedPathGuard.ts). Each entry approves EXACT commit SHAs for ONE exact path after independent review. A later commit to the same path is unreviewed until its SHA is added here (in a separate commit, after review). Never use patterns or wildcards here.",
+  "exceptions": []
+}

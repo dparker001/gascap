@@ -15,10 +15,10 @@
  *   8. No protected entitlement/IAP/Stripe/RevenueCat file was modified.
  */
 import { describe, it, expect } from 'vitest';
-import { execSync } from 'child_process';
 import { readFileSync } from 'fs';
 import path from 'path';
 import { translations } from '@/lib/translations';
+import { resolveGuardBase, loadExceptions, findUnreviewedProtectedChanges } from './helpers/protectedPathGuard';
 import { FREE_MONTHLY_FILLUP_LIMIT } from '@/lib/serverPlan';
 
 const repoRoot = path.resolve(__dirname, '..');
@@ -150,21 +150,10 @@ describe('CR-1 — regression guard: POST /api/rental-sessions Pro gate untouche
 
 describe('CR-1 — no entitlement/IAP/Stripe/RevenueCat file was touched', () => {
   it('git diff against main touches no protected-path file', () => {
-    let changed: string[] = [];
-    try {
-      const out = execSync('git diff --name-only main...HEAD', {
-        cwd: repoRoot,
-        encoding: 'utf8',
-      });
-      changed = out.split('\n').filter(Boolean);
-    } catch {
-      // If `main...HEAD` diffing isn't available in this environment (e.g. a
-      // shallow clone or detached checkout), fall back to the working-tree
-      // diff, which is what actually matters for an uncommitted CR-1 pass.
-      const out = execSync('git diff --name-only', { cwd: repoRoot, encoding: 'utf8' });
-      changed = out.split('\n').filter(Boolean);
-    }
-
+    // 2026-10-02: shared guard — merge-base with origin/main, fails CLOSED
+    // when no base is resolvable (the old empty-working-tree fallback made
+    // CI blind), and honours only exact-SHA reviewed exceptions recorded in
+    // docs/reviews/protected-path-exceptions.json.
     const protectedPatterns = [
       /^lib\/serverPlan\.ts$/,
       /revenuecat/i,
@@ -175,7 +164,9 @@ describe('CR-1 — no entitlement/IAP/Stripe/RevenueCat file was touched', () =>
       /capacitor\.config\.json$/,
     ];
 
-    const offenders = changed.filter((f) => protectedPatterns.some((re) => re.test(f)));
+    const offenders = findUnreviewedProtectedChanges({
+      cwd: repoRoot, base: resolveGuardBase(repoRoot), patterns: protectedPatterns, exceptions: loadExceptions(repoRoot),
+    });
     expect(offenders).toEqual([]);
   });
 });
@@ -356,26 +347,13 @@ describe('CR-1 P0 follow-up — App Store review notes no longer contradict nati
   });
 
   it('this fix did not touch IAP/RevenueCat/StoreKit/Stripe implementation files', () => {
-    // Same shallow-clone-safe fallback as the "no protected-path file"
-    // test above — `main...HEAD` isn't resolvable in CI's shallow
-    // (fetch-depth 1) checkout, where only the pushed commit exists
-    // locally. Falling back to the plain working-tree diff is a no-op
-    // once these changes are committed, same known limitation already
-    // accepted by the other protected-path test in this file.
-    let changedFiles: string[] = [];
-    try {
-      const out = execSync('git diff --name-only main...HEAD', { cwd: repoRoot, encoding: 'utf8' });
-      changedFiles = out.split('\n').filter(Boolean);
-    } catch {
-      const out = execSync('git diff --name-only', { cwd: repoRoot, encoding: 'utf8' });
-      changedFiles = out.split('\n').filter(Boolean);
-    }
+    // Shared fail-closed guard (see the test above); no exceptions are
+    // registered for these payment/IAP paths.
     const protectedPatterns = [/lib\/iap/i, /revenuecat/i, /storekit/i, /stripe/i, /serverPlan/i, /capacitor\.config/i];
-    for (const file of changedFiles) {
-      for (const pattern of protectedPatterns) {
-        expect(file).not.toMatch(pattern);
-      }
-    }
+    const offenders = findUnreviewedProtectedChanges({
+      cwd: repoRoot, base: resolveGuardBase(repoRoot), patterns: protectedPatterns, exceptions: loadExceptions(repoRoot),
+    });
+    expect(offenders).toEqual([]);
   });
 });
 

@@ -39,6 +39,12 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Full history so origin/main exists: the CR-1 protected-path guard
+          # (__tests__/helpers/protectedPathGuard.ts) diffs against the
+          # merge-base with origin/main and FAILS CLOSED without it. With the
+          # default fetch-depth 1 the old guard silently compared nothing.
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
