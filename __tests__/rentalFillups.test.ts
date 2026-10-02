@@ -449,6 +449,20 @@ describe('getRentalFillups — canonical read path', () => {
     const fillups = await getRentalFillups('someone-else', 'session-1');
     expect(fillups).toEqual([]);
   });
+
+  // 2026-10-02 ownership hardening: Fillup.rentalSessionId is a loose link
+  // with no DB foreign key. A malformed/mis-associated row owned by ANOTHER
+  // user that happens to carry this session's id must never be returned —
+  // the read filters on userId as well as rentalSessionId.
+  it("never returns another user's Fillup even if it carries this session's rentalSessionId", async () => {
+    const mine = await createRentalFillup('user-1', 'session-1', { gallonsPumped: 5, pricePerGallon: 3.5, fillupType: 'trip', clientRefuelId: 'own-1' });
+    expect(mine.outcome).toBe('created');
+    const ownRow = fillupTable.get((mine as { fillup: { id: string } }).fillup.id)!;
+    fillupTable.set('foreign-row', { ...ownRow, id: 'foreign-row', userId: 'user-2', clientRefuelId: 'foreign-1', gallonsPumped: 99 });
+    const fillups = await getRentalFillups('user-1', 'session-1');
+    expect(fillups.map((f) => f.id)).toEqual([ownRow.id]);
+    expect(fillups.some((f) => f.gallonsPumped === 99)).toBe(false);
+  });
 });
 
 describe('atomicity (2026-08-25 correction) — Fillup creation + currentFuelGallons update commit or fail together', () => {
