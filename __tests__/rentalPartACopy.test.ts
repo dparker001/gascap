@@ -36,3 +36,17 @@ describe('time-zone difference grammar', () => {
       .toBe('Tu devolución es en hora del Pacífico — 3 horas menos que tu zona horaria actual.');
   });
 });
+
+describe('Help + APP FEATURES describe Part A without overstating', () => {
+  const help = readFileSync(path.join(process.cwd(), 'app/help/page.tsx'), 'utf8');
+  const ai = readFileSync(path.join(process.cwd(), 'app/api/ai/chat/route.ts'), 'utf8');
+  it('help explains quick-save, the setup order and the no-guess rules', () => {
+    expect(help).toContain('Can I save a rental I booked ahead before I know the car or fuel level?');
+    expect(help).toContain('doesn\\u2019t invent a level from it');
+  });
+  it('APP FEATURES covers it and says email import is NOT available yet', () => {
+    expect(ai).toContain('Rental Mode quick-save + finish at the counter (Part A)');
+    expect(ai).toContain('Do not claim GasCap imports bookings from email yet');
+  });
+});
+
