@@ -83,8 +83,8 @@ explicit, in the server domain layer, with regression tests:
 
 | Transition | Behaviour |
 |---|---|
-| `null → value` | Recompute every value derived from capacity: a `full`-policy return target becomes the new capacity. Absolute gallon readings (typed gallons, receipts) are clamped to capacity. No stored fraction exists to convert (see §3.2). |
-| `value → different value` | Existing behaviour: gauge/percent-sourced gallons rescale to preserve the observed fraction; absolute ones clamp; the target follows its policy. |
+| `null → value` | Recompute every value derived from capacity: a `full`-policy return target becomes the new capacity. Absolute gallon readings (typed gallons, receipts) and an `exact` target are kept exactly if they fit, otherwise **refused** (422 `fuel_reading_exceeds_tank_capacity`, never clamped). No stored fraction exists to convert (see §3.2). |
+| `value → different value` | Gauge/percent-sourced gallons rescale to preserve the observed fraction; absolute readings and an `exact` target are kept exactly if they fit, otherwise **refused** (422, never clamped); a `full` target follows the new capacity. A corrected value sent in the same request resolves a conflict. |
 | `value → null` | Every gallon value that **depends** on capacity becomes **null/unknown**: a `full` target, and gauge/percent-sourced pickup/current/target gallons. Absolute gallon readings are kept (they never depended on capacity). |
 
 An explicit value set in the same request always wins over reconciliation
