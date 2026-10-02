@@ -813,6 +813,13 @@ const en = {
     pickupReminderTwoHour:    (zone: string) => `Pickup reminder: GasCap sends an email reminder about 2 hours before pickup (${zone}).`,
     pickupRemindersPush:      "If push notifications are available and enabled on this device, you'll also receive a push alert.",
     pickupRemindersDeviceZone: 'This time zone was assumed from your device \u2014 tap Edit if the pickup location uses a different time zone.',
+    // Part A — quick-save an upcoming rental (2026-10-02)
+    quickSaveEntry:           'Booked ahead? Save it as upcoming',
+    quickSaveTitle:           'Save an upcoming rental',
+    quickSaveIntro:           'Just what your booking says. Add the car and fuel at the counter — GasCap sends pickup reminders by email.',
+    quickSavePickupLabel:     'Pickup date & time',
+    quickSaveLaterNote:       'The car, tank size and fuel level are added when you pick up the car.',
+    quickSaveSubmit:          'Save upcoming rental',
     // Part A — finish setup at the counter (2026-10-02)
     finishSetupTitle:         'Finish setup at the counter',
     finishSetupHint:          'Fuel numbers unlock once these are in — nothing is guessed until then.',
@@ -4211,6 +4218,13 @@ const es: typeof en = {
     pickupReminderTwoHour:    (zone: string) => `Recordatorio de recogida: GasCap envía un recordatorio por correo unas 2 horas antes de la recogida (${zone}).`,
     pickupRemindersPush:      'Si las notificaciones push están disponibles y activadas en este dispositivo, también recibirás una alerta push.',
     pickupRemindersDeviceZone: 'Esta zona horaria se tomó de tu dispositivo \u2014 toca Editar si el lugar de recogida usa otra zona horaria.',
+    // Parte A — guardar un alquiler próximo (2026-10-02)
+    quickSaveEntry:           '¿Ya reservaste? Guárdalo como próximo',
+    quickSaveTitle:           'Guardar un alquiler próximo',
+    quickSaveIntro:           'Solo lo que dice tu reserva. Agrega el auto y el combustible en el mostrador — GasCap envía recordatorios de recogida por correo.',
+    quickSavePickupLabel:     'Fecha y hora de recogida',
+    quickSaveLaterNote:       'El auto, el tamaño del tanque y el nivel de combustible se agregan cuando recojas el auto.',
+    quickSaveSubmit:          'Guardar alquiler próximo',
     // Parte A — terminar la configuración en el mostrador (2026-10-02)
     finishSetupTitle:         'Termina la configuración en el mostrador',
     finishSetupHint:          'Los cálculos de combustible se activan cuando completes esto — no se adivina nada antes.',

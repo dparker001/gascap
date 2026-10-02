@@ -1,0 +1,156 @@
+'use client';
+
+/**
+ * QuickSaveRentalForm — save a rental booked ahead with only what the booking
+ * knows (Part A, 2026-10-02). A second entry point beside RentalSetupFlow,
+ * which is unchanged. Company, optional confirmation number, and pickup +
+ * return each as location / date-time / its own time zone via the same
+ * RentalEventScheduleField the wizard uses (per-event zones, DST gap block,
+ * explicit fall-back choice). The car, tank and fuel are added at the counter
+ * through the dashboard's Finish setup card — never guessed here.
+ */
+import { useMemo, useState } from 'react';
+import { useSession } from 'next-auth/react';
+import { useTranslation } from '@/contexts/LanguageContext';
+import { RENTAL_COMPANIES } from '@/lib/rentalProvider';
+import { detectBrowserTimeZone, describeEventTime, type TimeDisambiguation } from '@/lib/rentalTimezone';
+import { resyncRentalFallbacks } from '@/lib/rentalReminderSync';
+import { buildQuickSavePayload, quickSaveCanSubmit, type QuickSaveEvent } from '@/lib/rentalQuickSave';
+import { emptyRentalLocation, type RentalLocationValue } from './RentalLocationInput';
+import RentalEventScheduleField, { effectiveEventZone, type EventZone } from './RentalEventScheduleField';
+
+export default function QuickSaveRentalForm({ onCreated, onCancel }: {
+  onCreated: (sessionId: string) => void;
+  onCancel:  () => void;
+}) {
+  const { t } = useTranslation();
+  const r = t.rentalReturn;
+  const authUserId = (useSession().data?.user as { id?: string } | undefined)?.id;
+  const deviceZone = useMemo(() => detectBrowserTimeZone() ?? null, []);
+
+  const [rentalCompany, setRentalCompany] = useState('');
+  const [customCompany, setCustomCompany] = useState('');
+  const [confirmationNumber, setConfirmationNumber] = useState('');
+  const [pickupDateTime, setPickupDateTime] = useState('');
+  const [returnDateTime, setReturnDateTime] = useState('');
+  const [pickupLoc, setPickupLoc] = useState<RentalLocationValue>(emptyRentalLocation());
+  const [returnLoc, setReturnLoc] = useState<RentalLocationValue>(emptyRentalLocation());
+  const [pickedPickupZone, setPickedPickupZone] = useState<EventZone | null>(null);
+  const [pickedReturnZone, setPickedReturnZone] = useState<EventZone | null>(null);
+  const [pickupChoice, setPickupChoice] = useState<TimeDisambiguation | null>(null);
+  const [returnChoice, setReturnChoice] = useState<TimeDisambiguation | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+
+  const company = rentalCompany === 'Other' ? customCompany.trim() : rentalCompany;
+  const pickupZone = effectiveEventZone(pickupLoc, pickedPickupZone, deviceZone);
+  const returnZone = effectiveEventZone(returnLoc, pickedReturnZone, deviceZone);
+  const pickup: QuickSaveEvent = { dateTime: pickupDateTime, location: pickupLoc, zone: pickupZone, status: describeEventTime(pickupDateTime, pickupZone.zone), choice: pickupChoice };
+  const ret: QuickSaveEvent    = { dateTime: returnDateTime, location: returnLoc, zone: returnZone, status: describeEventTime(returnDateTime, returnZone.zone), choice: returnChoice };
+  const canSubmit = quickSaveCanSubmit({ company, pickup, ret });
+
+  async function handleSubmit() {
+    setSubmitting(true);
+    setError('');
+    try {
+      const res = await fetch('/api/rental-sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(buildQuickSavePayload({ company, confirmationNumber, pickup, ret, deviceZone })),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        const scheduleCodes = ['invalid_time_zone', 'invalid_local_datetime', 'nonexistent_local_time', 'ambiguous_local_time'];
+        setError(scheduleCodes.includes(data.error) ? r.tzScheduleError : (data.error ?? r.setupError));
+        return;
+      }
+      // Same as the wizard: server push primary; a local return fallback only
+      // on a device without usable push, from the server-derived instant.
+      void resyncRentalFallbacks(authUserId);
+      onCreated(data.session.id);
+    } catch {
+      setError(r.setupError);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="max-w-lg mx-auto px-4 py-6 space-y-5">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">{r.quickSaveTitle}</p>
+        <button onClick={onCancel} className="text-xs font-bold text-slate-400 hover:text-slate-600">{r.cancel}</button>
+      </div>
+      <p className="text-[11px] text-slate-500 leading-snug">{r.quickSaveIntro}</p>
+
+      {error && <p className="text-xs text-red-500 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{error}</p>}
+
+      <div className="space-y-2">
+        <label className="field-label">{r.stepCompany}</label>
+        <div className="grid grid-cols-2 gap-2">
+          {RENTAL_COMPANIES.map((c) => (
+            <button
+              key={c}
+              type="button"
+              onClick={() => setRentalCompany(c)}
+              className={`py-2.5 rounded-xl text-sm font-bold border transition-colors ${
+                rentalCompany === c ? 'bg-blue-600 text-white border-blue-600' : 'bg-white border-slate-200 text-slate-700 hover:border-blue-500'
+              }`}
+            >
+              {c}
+            </button>
+          ))}
+        </div>
+        {rentalCompany === 'Other' && (
+          <input type="text" placeholder={r.otherCompanyPlaceholder} value={customCompany}
+                 onChange={(e) => setCustomCompany(e.target.value)} className="input-field" />
+        )}
+        <label className="field-label">{r.confirmationNumberLabel}</label>
+        <input type="text" placeholder={r.confirmationNumberPlaceholder} value={confirmationNumber}
+               onChange={(e) => setConfirmationNumber(e.target.value)} className="input-field" />
+      </div>
+
+      <RentalEventScheduleField
+        kind="pickup"
+        label={r.quickSavePickupLabel}
+        dateTime={pickupDateTime}
+        onDateTime={setPickupDateTime}
+        location={pickupLoc}
+        onLocation={setPickupLoc}
+        locationLabel={r.pickupLocationLabel}
+        locationPlaceholder={r.pickupLocationPlaceholder}
+        zone={pickupZone}
+        onPickZone={(z) => setPickedPickupZone({ zone: z, source: 'user' })}
+        choice={pickupChoice}
+        onChoice={setPickupChoice}
+        deviceZone={deviceZone}
+      />
+      <RentalEventScheduleField
+        kind="return"
+        label={r.returnDateTimeLabel}
+        dateTime={returnDateTime}
+        onDateTime={setReturnDateTime}
+        location={returnLoc}
+        onLocation={setReturnLoc}
+        locationLabel={r.returnLocationLabel}
+        locationPlaceholder={r.returnLocationPlaceholder}
+        zone={returnZone}
+        onPickZone={(z) => setPickedReturnZone({ zone: z, source: 'user' })}
+        choice={returnChoice}
+        onChoice={setReturnChoice}
+        deviceZone={deviceZone}
+      />
+
+      <p className="text-[11px] text-slate-400 leading-snug">{r.quickSaveLaterNote}</p>
+
+      <button
+        type="button"
+        onClick={handleSubmit}
+        disabled={!canSubmit || submitting}
+        className="w-full py-3 rounded-2xl bg-blue-600 text-white text-sm font-bold disabled:opacity-40"
+      >
+        {submitting ? r.creating : r.quickSaveSubmit}
+      </button>
+    </div>
+  );
+}
