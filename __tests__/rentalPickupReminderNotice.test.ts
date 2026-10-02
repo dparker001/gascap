@@ -44,6 +44,13 @@ describe('notice copy (EN + ES)', () => {
       expect(r.pickupReminderTwoHour('X')).toContain('(X)');
       expect(r.pickupRemindersDeviceZone.length).toBeGreaterThan(0);
     }
+    // Descriptive, not a guaranteed per-rental scheduled job (hourly best-effort cron).
+    expect(translations.en.rentalReturn.pickupRemindersBoth('Z')).toBe('Pickup reminders: GasCap sends email reminders about 24 hours and about 2 hours before pickup (Z).');
+    expect(translations.en.rentalReturn.pickupReminderTwoHour('Z')).toBe('Pickup reminder: GasCap sends an email reminder about 2 hours before pickup (Z).');
+    for (const loc of ['en', 'es'] as const) {
+      const r = translations[loc].rentalReturn;
+      expect(`${r.pickupRemindersBoth('Z')} ${r.pickupReminderTwoHour('Z')}`).not.toMatch(/scheduled|programad|we'll email|te enviaremos/i);
+    }
     expect(translations.en.rentalReturn.pickupRemindersPush).toContain('available and enabled on this device');
     expect(translations.en.rentalReturn.pickupRemindersPush).not.toMatch(/^If notifications are enabled/);
   });
@@ -62,10 +69,13 @@ describe('Help + APP FEATURES describe the timezone/reminder behaviour without a
     expect(help).toContain('How does Rental Mode handle time zones and one-way rentals?');
     expect(help).toContain('What rental reminders will I get?');
     expect(help).toContain('There is no on-device backup for pickup reminders.');
+    expect(help).toContain('can schedule an on-device reminder about 2 hours before return when local notifications are permitted');
   });
   it('APP FEATURES states the model and forbids overstated guarantees', () => {
     expect(ai).toContain('Rental Mode time zones + reminders (2026-10-02)');
     expect(ai).toContain('There is NO local pickup reminder.');
+    expect(ai).toContain('CAN schedule a local reminder about 2h before RETURN when local notifications are permitted');
+    expect(ai).not.toContain('is set on the phone as a fallback');
     expect(ai).not.toMatch(/Time Zone API/);
   });
 });

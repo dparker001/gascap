@@ -33,6 +33,37 @@ export function effectiveEventZone(location: RentalLocationValue | null, picked:
   return deviceZone ? { zone: deviceZone, source: 'device' } : { zone: null, source: null };
 }
 
+/**
+ * Edit flow: the event's zone override after its location input changes.
+ * A newly selected place sets { zone, 'place' }. Free-typing over a place
+ * selected in THIS session invalidates it (back to the stored zone). An
+ * explicit 'user' pick survives location edits. The editing device's zone
+ * is never consulted.
+ */
+export function zoneOverrideAfterLocationChange(prev: EventZone | null, loc: RentalLocationValue): EventZone | null {
+  if (loc.timeZone) return { zone: loc.timeZone, source: 'place' };
+  return prev?.source === 'place' ? null : prev;
+}
+
+/**
+ * Edit flow: whether a 'place' label still describes the location on
+ * screen. A fresh selection does; a STORED place zone only while the
+ * location text is unchanged — new free text never supplied that zone.
+ */
+export function placeProvenanceCurrent(zone: EventZone, override: EventZone | null, loc: RentalLocationValue, storedText: string): boolean {
+  if (zone.source !== 'place') return true;
+  if (override?.source === 'place') return true;
+  return loc.text.trim() === storedText.trim();
+}
+
+/** Edit flow PATCH fragment: zones only when changed, never a device timeZone. */
+export function eventZonePayload(pickup: EventZone | null, ret: EventZone | null): Record<string, string | null> {
+  return {
+    ...(pickup ? { pickupTimeZone: pickup.zone, pickupTimeZoneSource: pickup.source } : {}),
+    ...(ret ? { returnTimeZone: ret.zone, returnTimeZoneSource: ret.source } : {}),
+  };
+}
+
 /** True when this event's time can be saved as-is. */
 export function eventTimeSubmittable(status: EventTimeStatus): boolean {
   return status.kind !== 'nonexistent' && status.kind !== 'invalid';
@@ -53,6 +84,7 @@ interface Props {
   onChoice:        (c: TimeDisambiguation) => void;
   deviceZone:      string | null;
   hint?:           string;
+  placeLabelStale?: boolean;                     // edit: stored place zone, location text since changed
 }
 
 export default function RentalEventScheduleField(p: Props) {
@@ -65,7 +97,7 @@ export default function RentalEventScheduleField(p: Props) {
   const zoneLine = p.zone.zone
     ? `${zoneLongName(p.zone.zone, atMs, locale === 'es' ? 'es-US' : 'en-US')} — ${zoneCity(p.zone.zone)}`
     : null;
-  const sourceLabel = p.zone.source === 'place' ? r.tzFromPlace : p.zone.source === 'user' ? r.tzFromUser : p.zone.source === 'device' ? r.tzAssumedDevice : null;
+  const sourceLabel = p.zone.source === 'place' ? (p.placeLabelStale ? r.tzKeptSaved : r.tzFromPlace) : p.zone.source === 'user' ? r.tzFromUser : p.zone.source === 'device' ? r.tzAssumedDevice : null;
 
   // "Your pickup is in Pacific Time — 3 hours behind your current time zone."
   let differs: string | null = null;

@@ -91,7 +91,9 @@ describe('edit form never sends the device timezone', () => {
   it('no legacy timeZone field in the PATCH body', () => {
     const body = src.slice(src.indexOf('body: JSON.stringify({'), src.indexOf('}),', src.indexOf('body: JSON.stringify({')));
     expect(body).not.toMatch(/\btimeZone:/);
-    expect(body).toMatch(/pickupZoneOverride \?/);
+    // Zones go only through eventZonePayload (changed zones only; it never
+    // emits timeZone — asserted in rentalEditLocationProvenance.test.ts).
+    expect(body).toContain('...eventZonePayload(pickupZoneOverride, returnZoneOverride)');
   });
   it('setup flow sends each event zone and disambiguation explicitly', () => {
     const setup = readFileSync(path.resolve(__dirname, '../components/rental-return/RentalSetupFlow.tsx'), 'utf8');

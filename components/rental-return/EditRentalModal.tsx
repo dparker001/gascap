@@ -14,7 +14,9 @@ import { resyncRentalFallbacks } from '@/lib/rentalReminderSync';
 import { useSession } from 'next-auth/react';
 import { detectBrowserTimeZone, describeEventTime, storedOccurrence, isTimeZoneSource, type TimeDisambiguation } from '@/lib/rentalTimezone';
 import { type RentalLocationValue } from './RentalLocationInput';
-import RentalEventScheduleField, { eventTimeSubmittable, type EventZone } from './RentalEventScheduleField';
+import RentalEventScheduleField, {
+  eventTimeSubmittable, eventZonePayload, placeProvenanceCurrent, zoneOverrideAfterLocationChange, type EventZone,
+} from './RentalEventScheduleField';
 
 interface Props {
   session: RentalSession;
@@ -76,9 +78,10 @@ export default function EditRentalModal({ session, onClose, onSaved }: Props) {
     ({ text: text ?? '', lat, lng, timeZone: null, timeZoneSource: null });
   const [pickupLoc, setPickupLoc] = useState<RentalLocationValue>(locValue(session.pickupLocation, session.pickupLatitude, session.pickupLongitude));
   const [returnLoc, setReturnLoc] = useState<RentalLocationValue>(locValue(session.returnLocation, session.returnLatitude, session.returnLongitude));
-  // A selected place carries its zone; free text never changes the zone.
-  const onPickupLoc = (v: RentalLocationValue) => { setPickupLoc(v); if (v.timeZone) setPickupZoneOverride({ zone: v.timeZone, source: 'place' }); };
-  const onReturnLoc = (v: RentalLocationValue) => { setReturnLoc(v); if (v.timeZone) setReturnZoneOverride({ zone: v.timeZone, source: 'place' }); };
+  // A selected place carries its zone; free-typing over it drops that
+  // place-derived override (back to the stored zone); a user pick survives.
+  const onPickupLoc = (v: RentalLocationValue) => { setPickupLoc(v); setPickupZoneOverride((prev) => zoneOverrideAfterLocationChange(prev, v)); };
+  const onReturnLoc = (v: RentalLocationValue) => { setReturnLoc(v); setReturnZoneOverride((prev) => zoneOverrideAfterLocationChange(prev, v)); };
   // The saved occurrence of an ambiguous (fall-back) time is preselected from
   // the stored UTC instant, so an unrelated edit can never flip it.
   const [pickupChoice, setPickupChoice] = useState<TimeDisambiguation | null>(
@@ -127,8 +130,7 @@ export default function EditRentalModal({ session, onClose, onSaved }: Props) {
           returnDateTime: returnDateTime || undefined,
           // Zones only when the user changed them; NO device timeZone (an edit
           // from another timezone must never reinterpret the rental).
-          ...(pickupZoneOverride ? { pickupTimeZone: pickupZoneOverride.zone, pickupTimeZoneSource: pickupZoneOverride.source } : {}),
-          ...(returnZoneOverride ? { returnTimeZone: returnZoneOverride.zone, returnTimeZoneSource: returnZoneOverride.source } : {}),
+          ...eventZonePayload(pickupZoneOverride, returnZoneOverride),
           pickupTimeDisambiguation: occurrence(pickupStatus, pickupChoice),
           returnTimeDisambiguation: occurrence(returnStatus, returnChoice),
         }),
@@ -271,6 +273,7 @@ export default function EditRentalModal({ session, onClose, onSaved }: Props) {
           locationLabel={t.rentalReturn.pickupLocationLabel}
           locationPlaceholder={t.rentalReturn.pickupLocationPlaceholder}
           zone={pickupZone}
+          placeLabelStale={!placeProvenanceCurrent(pickupZone, pickupZoneOverride, pickupLoc, session.pickupLocation ?? '')}
           onPickZone={(z) => setPickupZoneOverride({ zone: z, source: 'user' })}
           choice={pickupChoice}
           onChoice={setPickupChoice}
@@ -286,6 +289,7 @@ export default function EditRentalModal({ session, onClose, onSaved }: Props) {
           onLocation={onReturnLoc}
           locationLabel={t.rentalReturn.returnLocationLabel}
           zone={returnZone}
+          placeLabelStale={!placeProvenanceCurrent(returnZone, returnZoneOverride, returnLoc, session.returnLocation ?? '')}
           onPickZone={(z) => setReturnZoneOverride({ zone: z, source: 'user' })}
           choice={returnChoice}
           onChoice={setReturnChoice}
