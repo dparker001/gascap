@@ -807,6 +807,11 @@ const en = {
     tzAmbiguousSecond:        (time: string, abbr: string) => `Second ${time} (${abbr})`,
     tzNeedsZone:              'Pick a location from the list or choose a time zone so reminders fire at the right moment.',
     tzScheduleError:          'Please fix the highlighted time before saving.',
+    // Upcoming-rental pickup reminder notice (T7). Claims only reminders still ahead.
+    pickupRemindersBoth:      (zone: string) => `Pickup reminders scheduled: we'll email you about 24 hours and about 2 hours before pickup (${zone}).`,
+    pickupReminderTwoHour:    (zone: string) => `Pickup reminder scheduled: we'll email you about 2 hours before pickup (${zone}).`,
+    pickupRemindersPush:      "If push notifications are available and enabled on this device, you'll also receive a push alert.",
+    pickupRemindersDeviceZone: 'This time zone was assumed from your device \u2014 tap Edit if the pickup location uses a different time zone.',
     viewDetails:             'View details',
     backToPastRentals:       'Past rentals',
     completedPickupLocationLabel: 'Pickup location',
@@ -4180,6 +4185,11 @@ const es: typeof en = {
     tzAmbiguousSecond:        (time: string, abbr: string) => `Segunda ${time} (${abbr})`,
     tzNeedsZone:              'Elige una ubicación de la lista o una zona horaria para que los recordatorios lleguen a tiempo.',
     tzScheduleError:          'Corrige la hora marcada antes de guardar.',
+    // Aviso de recordatorios de recogida (T7). Solo menciona los que aún faltan.
+    pickupRemindersBoth:      (zone: string) => `Recordatorios de recogida programados: te enviaremos un correo unas 24 horas y unas 2 horas antes de la recogida (${zone}).`,
+    pickupReminderTwoHour:    (zone: string) => `Recordatorio de recogida programado: te enviaremos un correo unas 2 horas antes de la recogida (${zone}).`,
+    pickupRemindersPush:      'Si las notificaciones push están disponibles y activadas en este dispositivo, también recibirás una alerta push.',
+    pickupRemindersDeviceZone: 'Esta zona horaria se tomó de tu dispositivo \u2014 toca Editar si el lugar de recogida usa otra zona horaria.',
     viewDetails:             'Ver detalles',
     backToPastRentals:       'Rentas anteriores',
     completedPickupLocationLabel: 'Lugar de recogida',

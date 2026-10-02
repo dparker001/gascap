@@ -9,7 +9,8 @@ import {
   shouldTrackFuelNeededCalculated, roundGallons, tripFillEstimate,
   resolveRentalLifecycle, RENTAL_LIFECYCLE_SECTION_ORDER, rentalRecap, rentalRecapLogs, rentalEventInstant,
 } from '@/lib/rentalCalculations';
-import { formatEventWallClock } from '@/lib/rentalTimezone';
+import { formatEventWallClock, zoneCity, zoneLongName } from '@/lib/rentalTimezone';
+import { pendingPickupReminders } from '@/lib/rentalReminderNotice';
 import type { RentalLifecycle } from '@/lib/rentalCalculations';
 import { trackRentalGasNearReturnViewed, trackRentalReturnReadyViewed } from '@/lib/gtag';
 import { trackClientEvent } from '@/lib/clientAnalytics';
@@ -82,7 +83,7 @@ function CompletedRentalPhotos({ title, hint, photos }: {
 }
 
 export default function RentalDashboard({ sessionId, onCompleted }: { sessionId: string; onCompleted: () => void }) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const [session, setSession] = useState<RentalSession | null>(null);
   const [fillups, setFillups] = useState<Fillup[]>([]);
   const [linkedVehicleGaugeStyle, setLinkedVehicleGaugeStyle] = useState<string | null>(null);
@@ -902,6 +903,28 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
           )}
         </div>
       </div>
+
+      {/* Pickup reminder notice (T7, 2026-10-02). Shown only for an upcoming
+          rental with an authoritative pickupDateTimeUtc, and only naming the
+          server reminders still ahead (see lib/rentalReminderNotice.ts). The
+          zone is the pickup event's own; a device-assumed zone says so. */}
+      {isUpcoming && (() => {
+        const pending = pendingPickupReminders(session);
+        const zone = session.pickupTimeZone ?? session.timeZone;
+        if (!pending || !zone) return null;
+        const atMs = Date.parse(session.pickupDateTimeUtc as string);
+        const zoneLabel = `${zoneLongName(zone, atMs, locale === 'es' ? 'es-US' : 'en-US')} \u2014 ${zoneCity(zone)}`;
+        const deviceAssumed = session.pickupTimeZone ? session.pickupTimeZoneSource === 'device' : true;
+        return (
+          <div data-testid="pickup-reminder-notice" className="rounded-2xl border border-blue-100 bg-blue-50 p-3 space-y-1 text-xs text-blue-900">
+            <p className="font-semibold">
+              🔔 {pending.day ? t.rentalReturn.pickupRemindersBoth(zoneLabel) : t.rentalReturn.pickupReminderTwoHour(zoneLabel)}
+            </p>
+            <p className="text-blue-800/80">{t.rentalReturn.pickupRemindersPush}</p>
+            {deviceAssumed && <p className="italic text-amber-700">{t.rentalReturn.pickupRemindersDeviceZone}</p>}
+          </div>
+        );
+      })()}
 
       {/* ══════════════════════════════════════════════════════════════════
           CURRENT FUEL — Phase 6A.2 redesign. The renter's canonical
