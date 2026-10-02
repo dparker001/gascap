@@ -195,6 +195,20 @@ user would need one routing rule per user. Plus-addressing (RFC 5233) matches
     address; mitigation is key rotation = global address rotation (users
     re-copy). Alternative considered: AES-GCM-encrypted token column (same
     key-leak profile, more moving parts).
+- **Key rotation procedure (to be finalized and reviewed at B1).** Because
+  addresses are HMAC-derived, rotating `RENTAL_IMPORT_TOKEN_KEY` changes
+  every user's address. Rotation must therefore either:
+  (a) **regenerate consistently** — in one controlled job, recompute each
+      user's token under the new key and replace `rentalImportTokenHash`, so
+      lookup hashes and displayed addresses never disagree; old addresses
+      stop working and users are told to re-copy; or
+  (b) **controlled transition** — keep `RENTAL_IMPORT_TOKEN_KEY_PREVIOUS`
+      for a fixed window, store a second lookup hash (or key id) so inbound
+      mail to the old address still resolves, show only the new address,
+      then drop the previous key and hashes at the end of the window.
+  The procedure, its schema implications (a key-id / second hash column for
+  option b) and the user notice belong in the B1 review packet; no rotation
+  is possible until it is approved.
 - **Inbound endpoint:** shared secret required, constant-time compare, 503
   when unconfigured, 401 on mismatch; never logs the secret or body.
 - **Pro is checked twice:** before AI extraction, and at confirmation. A user
