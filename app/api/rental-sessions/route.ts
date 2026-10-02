@@ -3,6 +3,7 @@
  * POST /api/rental-sessions            — create a new rental session (Level 1: manual entry)
  */
 import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { RENTAL_RETURN_ASSISTANT_ENABLED } from '@/lib/featureFlags';
@@ -24,7 +25,31 @@ export async function GET(req: NextRequest) {
 
   const status = req.nextUrl.searchParams.get('status') ?? undefined;
   const sessions = await getRentalSessionsForUser(userId, status);
-  return NextResponse.json({ sessions });
+  if (status !== 'completed') return NextResponse.json({ sessions });
+
+  // Rental History recap (2026-10-02): post-Phase-3A refuels live only in
+  // canonical Fillup rows, so the history list needs them to show gallons /
+  // spend / savings. ONE batched query for every listed session (no N+1),
+  // only the four fields the recap uses.
+  //
+  // Ownership is enforced on BOTH sides (review round 2): the session ids
+  // come from getRentalSessionsForUser(userId), AND each Fillup must itself
+  // carry this userId. Fillup.rentalSessionId is a loose link with no DB
+  // foreign key, so the read must not trust it alone — a mis-associated row
+  // belonging to another user can never contribute to this user's recap.
+  const ids = sessions.map((s) => s.id);
+  const rows = ids.length
+    ? await prisma.fillup.findMany({
+        where:  { userId, rentalSessionId: { in: ids } },
+        select: { rentalSessionId: true, gallonsPumped: true, totalCost: true, pricePerGallon: true },
+      })
+    : [];
+  const fillupsBySession: Record<string, Array<{ gallonsPumped: number; totalCost: number; pricePerGallon: number }>> = {};
+  for (const r of rows) {
+    if (!r.rentalSessionId) continue;
+    (fillupsBySession[r.rentalSessionId] ??= []).push({ gallonsPumped: r.gallonsPumped, totalCost: r.totalCost, pricePerGallon: r.pricePerGallon });
+  }
+  return NextResponse.json({ sessions, fillupsBySession });
 }
 
 export async function POST(req: NextRequest) {

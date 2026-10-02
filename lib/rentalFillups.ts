@@ -223,8 +223,12 @@ export async function createRentalFillup(
 export async function getRentalFillups(userId: string, rentalSessionId: string): Promise<RentalFillup[]> {
   const session = await prisma.rentalSession.findFirst({ where: { id: rentalSessionId, userId } });
   if (!session) return [];
+  // userId as well as rentalSessionId (2026-10-02): rentalSessionId is a
+  // loose link with no DB foreign key, so session ownership alone must not
+  // be trusted to scope the Fillup rows — another user's mis-associated row
+  // can never be returned here.
   const rows = await prisma.fillup.findMany({
-    where:   { rentalSessionId },
+    where:   { userId, rentalSessionId },
     orderBy: [{ filledAt: 'desc' }, { createdAt: 'desc' }],
   });
   return rows.map((r) => toRentalFillup(fromPrisma(r)));
