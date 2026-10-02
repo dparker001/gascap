@@ -74,7 +74,7 @@ describe('null → value', () => {
     expect(r.status).toBe(200);
     expect(row().requiredReturnFuelGallons).toBe(15);
   });
-  it('absolute readings are kept (clamped to the tank); same-as-pickup target follows pickup', async () => {
+  it('absolute readings that fit are kept exactly; same-as-pickup target follows pickup', async () => {
     seed({ fuelTankCapacityGallons: null, pickupFuelGallons: 10, pickupFuelSource: 'MANUAL_GALLONS',
            currentFuelGallons: 9, currentFuelSource: 'RECEIPT', requiredReturnFuelGallons: 10 });
     await patch({ fuelTankCapacityGallons: 16 });
@@ -178,3 +178,65 @@ describe('tank capacity input validation', () => {
     expect(row().fuelTankCapacityGallons).toBe(14);
   });
 });
+
+// Review fix (2026-10-02): an absolute observation is never silently clamped.
+// GasCap knows a 15.2 gal reading and a 14 gal tank conflict, not which is
+// wrong — so it refuses instead of rewriting the reading.
+describe('absolute readings vs a new capacity — preserve or refuse, never clamp', () => {
+  const absolute = { pickupFuelGallons: 15.2, pickupFuelSource: 'MANUAL_GALLONS', currentFuelGallons: 12, currentFuelSource: 'RECEIPT',
+                     requiredReturnFuelGallons: 15.2 };
+  it('null → value: an absolute pickup above the new tank → 422 on that field; nothing written', async () => {
+    seed({ ...absolute, fuelTankCapacityGallons: null });
+    const before = { ...row() };
+    const r = await patch({ fuelTankCapacityGallons: 14 });
+    expect(r.status).toBe(422);
+    expect(r.json).toEqual({ error: 'fuel_reading_exceeds_tank_capacity', field: 'pickupFuelGallons' });
+    expect(row()).toEqual(before);
+  });
+  it('value → smaller value: an absolute CURRENT reading above the new tank → 422', async () => {
+    seed({ fuelTankCapacityGallons: 20, pickupFuelGallons: 10, pickupFuelSource: 'MANUAL_GALLONS',
+           currentFuelGallons: 15.2, currentFuelSource: 'RECEIPT', requiredReturnFuelGallons: 10 });
+    const r = await patch({ fuelTankCapacityGallons: 14 });
+    expect(r.json).toEqual({ error: 'fuel_reading_exceeds_tank_capacity', field: 'currentFuelGallons' });
+    expect(row().fuelTankCapacityGallons).toBe(20);
+  });
+  it('absolute readings within the new tank are preserved EXACTLY (no rounding, no rewrite)', async () => {
+    seed({ fuelTankCapacityGallons: 20, pickupFuelGallons: 10.1234567, pickupFuelSource: 'MANUAL_GALLONS',
+           currentFuelGallons: 9.87654321, currentFuelSource: 'RECEIPT', requiredReturnFuelGallons: 10.1234567 });
+    expect((await patch({ fuelTankCapacityGallons: 14 })).status).toBe(200);
+    expect([row().pickupFuelGallons, row().currentFuelGallons, row().requiredReturnFuelGallons]).toEqual([10.1234567, 9.87654321, 10.1234567]);
+  });
+  it('an explicit corrected reading sent WITH the new tank is accepted', async () => {
+    seed({ ...absolute, fuelTankCapacityGallons: null });
+    const r = await patch({ fuelTankCapacityGallons: 14, pickupFuelGallons: 13.5, pickupFuelSource: 'MANUAL_GALLONS' });
+    expect(r.status).toBe(200);
+    expect([row().fuelTankCapacityGallons, row().pickupFuelGallons, row().requiredReturnFuelGallons]).toEqual([14, 13.5, 13.5]);
+  });
+  it('an explicit reading still above the new tank is refused by the route (400), as before', async () => {
+    seed({ ...absolute, fuelTankCapacityGallons: null });
+    expect((await patch({ fuelTankCapacityGallons: 14, pickupFuelGallons: 15, pickupFuelSource: 'MANUAL_GALLONS' })).status).toBe(400);
+  });
+  it('gauge/percent readings still rescale with the tank (they are fractions, not observations in gallons)', async () => {
+    seed({ fuelTankCapacityGallons: 20, pickupFuelGallons: 15, pickupFuelSource: 'MANUAL_GAUGE',
+           currentFuelGallons: 15, currentFuelSource: 'MANUAL_PERCENT', requiredReturnFuelGallons: 15 });
+    expect((await patch({ fuelTankCapacityGallons: 14 })).status).toBe(200);
+    expect([row().pickupFuelGallons, row().currentFuelGallons, row().requiredReturnFuelGallons]).toEqual([10.5, 10.5, 10.5]);
+  });
+  it('an `exact` return target above a reduced tank → 422 on requiredReturnFuelGallons (not silently lowered)', async () => {
+    seed({ fuelTankCapacityGallons: 20, pickupFuelGallons: 10, pickupFuelSource: 'MANUAL_GALLONS', currentFuelGallons: 10, currentFuelSource: 'MANUAL_GALLONS',
+           requiredReturnPolicyType: 'exact', requiredReturnFuelGallons: 16 });
+    const r = await patch({ fuelTankCapacityGallons: 14 });
+    expect(r.json).toEqual({ error: 'fuel_reading_exceeds_tank_capacity', field: 'requiredReturnFuelGallons' });
+    expect(row().requiredReturnFuelGallons).toBe(16);
+  });
+  it('an `exact` target that fits is preserved; an explicit new target with the new tank is accepted', async () => {
+    seed({ fuelTankCapacityGallons: 20, pickupFuelGallons: 10, pickupFuelSource: 'MANUAL_GALLONS', currentFuelGallons: 10, currentFuelSource: 'MANUAL_GALLONS',
+           requiredReturnPolicyType: 'exact', requiredReturnFuelGallons: 12.25 });
+    await patch({ fuelTankCapacityGallons: 14 });
+    expect(row().requiredReturnFuelGallons).toBe(12.25);
+    row().requiredReturnFuelGallons = 16; row().fuelTankCapacityGallons = 20;
+    expect((await patch({ fuelTankCapacityGallons: 14, requiredReturnFuelGallons: 13 })).status).toBe(200);
+    expect(row().requiredReturnFuelGallons).toBe(13);
+  });
+});
+

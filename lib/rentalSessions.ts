@@ -83,10 +83,12 @@ function toRentalSession(row: any): RentalSession {
 
 // ── Event scheduling (2026-10-02 event-timezone model) ───────────────────────
 
-/** Fuel-state invariants (Part A, 2026-10-02) — both 422, nothing written:
- *  a gauge/percent reading needs a tank capacity to mean any gallons; and a
- *  tank may not be cleared while such a reading would be silently lost. */
-export type RentalFuelErrorCode = 'tank_capacity_required' | 'tank_clear_would_discard_reading';
+/** Fuel-state invariants (Part A, 2026-10-02) — all 422, nothing written:
+ *  a gauge/percent reading needs a tank capacity to mean any gallons; a tank
+ *  may not be cleared while such a reading would be silently lost; and a new
+ *  capacity may not contradict an absolute reading or `exact` target (the
+ *  reading is never clamped to fit). */
+export type RentalFuelErrorCode = 'tank_capacity_required' | 'tank_clear_would_discard_reading' | 'fuel_reading_exceeds_tank_capacity';
 
 /** Thrown by create/update for a bad schedule or fuel state; routes map it
  *  to 400/422 (the existing routes already map this class, unchanged). */
@@ -97,7 +99,8 @@ export class RentalScheduleError extends Error {
   }
   get status(): number {
     return this.code === 'nonexistent_local_time' || this.code === 'ambiguous_local_time'
-      || this.code === 'tank_capacity_required' || this.code === 'tank_clear_would_discard_reading' ? 422 : 400;
+      || this.code === 'tank_capacity_required' || this.code === 'tank_clear_would_discard_reading'
+      || this.code === 'fuel_reading_exceeds_tank_capacity' ? 422 : 400;
   }
 }
 

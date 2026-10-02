@@ -50,3 +50,16 @@ describe('Help + APP FEATURES describe Part A without overstating', () => {
   });
 });
 
+describe('review fix — a refused tank size is explained, and the refuel note mentions exact gallons', () => {
+  it('Edit modal maps fuel_reading_exceeds_tank_capacity to a specific EN/ES message (never the raw code)', () => {
+    const m = readFileSync(path.join(process.cwd(), 'components/rental-return/EditRentalModal.tsx'), 'utf8');
+    expect(m).toContain("data.error === 'fuel_reading_exceeds_tank_capacity' ? t.rentalReturn.tankSmallerThanReading");
+    expect(translations.en.rentalReturn.tankSmallerThanReading).toMatch(/smaller than a fuel amount/);
+    expect(translations.es.rentalReturn.tankSmallerThanReading).toMatch(/menor que una cantidad/);
+  });
+  it('refuel-unknown note acknowledges exact gallons (EN/ES)', () => {
+    expect(translations.en.rentalReturn.refuelLoggedLevelUnknown).toContain('or enter the exact gallons');
+    expect(translations.es.rentalReturn.refuelLoggedLevelUnknown).toContain('o ingresa los galones exactos');
+  });
+});
+

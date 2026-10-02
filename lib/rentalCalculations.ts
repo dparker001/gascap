@@ -383,18 +383,25 @@ interface TankReading { gallons: number | null; source: string | null; explicit:
 
 export type TankCapacityReconciliation =
   | { ok: true; pickupFuelGallons?: number | null; currentFuelGallons?: number | null; requiredReturnFuelGallons?: number | null }
-  | { ok: false; code: 'tank_clear_would_discard_reading'; field: 'fuelTankCapacityGallons' };
+  | { ok: false; code: 'tank_clear_would_discard_reading'; field: 'fuelTankCapacityGallons' }
+  | { ok: false; code: 'fuel_reading_exceeds_tank_capacity'; field: 'pickupFuelGallons' | 'currentFuelGallons' | 'requiredReturnFuelGallons' };
 
 /**
  * Part A (2026-10-02): what a tank-capacity change does to the stored fuel
  * figures. Only values the caller did NOT set in the same request are
  * returned — an explicit value is the user's current intent.
  *
- *   null → value  : absolute readings clamp; a `full` target becomes the
- *                   capacity (previously it stayed null forever).
- *   value → value : gauge/percent rescale to keep the observed fraction,
- *                   absolute clamp; a `full` target follows the NEW capacity
- *                   (previously only clamped, so 14 → 18 kept "full" at 14).
+ *   null → value  : a `full` target becomes the capacity (previously it
+ *                   stayed null forever).
+ *   value → value : gauge/percent rescale to keep the observed fraction; a
+ *                   `full` target follows the NEW capacity (previously only
+ *                   clamped, so 14 → 18 kept "full" at 14).
+ *   Either way, an ABSOLUTE reading (typed gallons, receipt) or an `exact`
+ *   target is an observation/decision, not a fraction: kept exactly when it
+ *   fits, and REFUSED (fuel_reading_exceeds_tank_capacity) when it exceeds
+ *   the new capacity — GasCap knows the two numbers conflict, not which one
+ *   is wrong, so it never rewrites either (review fix, 2026-10-02). Sending
+ *   a corrected reading in the same request resolves the conflict.
  *   value → null  : refused while a gauge/percent reading exists — the model
  *                   stores no raw fraction apart from its capacity-derived
  *                   gallons, so clearing would silently discard a real
@@ -426,15 +433,28 @@ export function reconcileForTankCapacityChange(args: {
     return out;
   }
 
-  const reconcile = (r: TankReading) => reconcileFuelForNewTank(r.gallons, r.source as FuelDataSource | null, oldCap, newCap);
+  const exceeds = (g: number | null) => g != null && g > newCap;
+  // Fractions rescale (only possible with a previous capacity — a fraction
+  // can't exist without one); everything else is kept exactly or refused.
+  const rescales = (r: TankReading) => isFractionalFuelSource(r.source) && oldCap != null;
+  for (const [field, r] of [['pickupFuelGallons', args.pickup], ['currentFuelGallons', args.current]] as const) {
+    if (!r.explicit && !rescales(r) && exceeds(r.gallons)) return { ok: false, code: 'fuel_reading_exceeds_tank_capacity', field };
+  }
+  if (!args.required.explicit && args.policy === 'exact' && exceeds(args.required.gallons)) {
+    return { ok: false, code: 'fuel_reading_exceeds_tank_capacity', field: 'requiredReturnFuelGallons' };
+  }
+
+  const next = (r: TankReading) => rescales(r)
+    ? reconcileFuelForNewTank(r.gallons, r.source as FuelDataSource | null, oldCap, newCap)
+    : r.gallons;
   const out: TankCapacityReconciliation = { ok: true };
-  if (!args.pickup.explicit)  out.pickupFuelGallons  = reconcile(args.pickup);
-  if (!args.current.explicit) out.currentFuelGallons = reconcile(args.current);
+  if (!args.pickup.explicit)  out.pickupFuelGallons  = next(args.pickup);
+  if (!args.current.explicit) out.currentFuelGallons = next(args.current);
   if (!args.required.explicit) {
     out.requiredReturnFuelGallons =
       args.policy === 'full' ? newCap
       : args.policy === 'same_as_pickup' ? (args.pickup.explicit ? args.pickup.gallons : out.pickupFuelGallons ?? null)
-      : reconcileFuelForNewTank(args.required.gallons, null, oldCap, newCap);
+      : args.required.gallons;
   }
   return out;
 }
