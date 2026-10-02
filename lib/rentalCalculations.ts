@@ -189,6 +189,24 @@ export interface RentalRecap extends RefuelTotals {
   savings:                number | null;
 }
 
+/**
+ * Recap input source (2026-10-02, ChatGPT review round 1). Since the Phase 3A
+ * cutover (2026-08-25) every new refuel is a canonical Fillup row and
+ * RentalSession.refuelLogs is frozen legacy data — so for any post-cutover
+ * rental refuelLogs is EMPTY and a recap built from it reads $0 / no
+ * savings. Rule: canonical Fillup rows when any exist; otherwise the legacy
+ * refuelLogs of a pre-cutover rental. Never a mix of the two.
+ */
+export function rentalRecapLogs(
+  fillups: ReadonlyArray<{ gallonsPumped: number; totalCost: number; pricePerGallon: number }>,
+  legacyRefuelLogs: ReadonlyArray<{ gallons: number; totalPaid?: number; pricePerGallon?: number }>,
+): Array<{ gallons: number; totalPaid?: number; pricePerGallon?: number }> {
+  if (fillups.length > 0) {
+    return fillups.map((f) => ({ gallons: f.gallonsPumped, totalPaid: f.totalCost, pricePerGallon: f.pricePerGallon }));
+  }
+  return [...legacyRefuelLogs];
+}
+
 export function rentalRecap(
   logs: Array<{ gallons: number; totalPaid?: number; pricePerGallon?: number }>,
   rentalFuelChargePerGallon: number | null | undefined,

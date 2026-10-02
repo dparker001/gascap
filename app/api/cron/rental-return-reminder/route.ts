@@ -15,8 +15,11 @@
  * consequences worth knowing:
  *   - GitHub Actions cron is best-effort and can drift 5–30 min under load,
  *     so treat "2h before" as approximate, not precise.
- *   - Running 24x more often is only safe because every tier has its own
- *     dedup column; a session can never be reminded twice for the same tier.
+ *   - Running 24x more often relies on every tier having its own *SentAt
+ *     column: a session already stamped for a tier is excluded from that
+ *     tier's next pass, which prevents ordinary repeat sends. It is NOT an
+ *     atomic claim — two overlapping executions could both read a row before
+ *     either stamps it. (Tracked separately; not addressed here.)
  *
  * Secured with CRON_SECRET, same pattern as every other cron.
  */
@@ -80,13 +83,21 @@ export async function GET(req: Request) {
   // tiers and the broad return tier used to compare the NAIVE local-time
   // string (e.g. "2026-10-05T14:00") against UTC ISO bounds, so they fired
   // early by the renter's UTC offset — an ET renter's "2h before pickup"
-  // reminder arrived ~4–7h before pickup. Rows written before the UTC
-  // columns existed (null *Utc) keep the old comparison so they still get a
-  // reminder rather than none.
-  const window = (utcField: string, localField: string, lowerHours: number, upperHours: number) => {
-    const lower = lowerHours === 0 ? nowIso : iso(lowerHours);
-    const range = { not: null, gte: lower, lte: iso(upperHours) };
-    return { OR: [{ [utcField]: range }, { [utcField]: null, [localField]: range }] };
+  // reminder arrived ~4–7h before pickup.
+  //
+  // Policy (ChatGPT review round 1):
+  //   - broad tiers (pickup24, returnDue): UTC first; a row with a null *Utc
+  //     column (legacy, or saved without a timezone) falls back to the naive
+  //     string so it still gets SOME reminder — imprecise timing is
+  //     acceptable for a broad heads-up.
+  //   - precision tiers (pickup2, return2): UTC ONLY. A naive fallback would
+  //     send "about 2 hours before" many hours early, which is worse than not
+  //     sending it; null-UTC rows simply don't get this tier.
+  const range = (lowerHours: number, upperHours: number) =>
+    ({ not: null, gte: lowerHours === 0 ? nowIso : iso(lowerHours), lte: iso(upperHours) });
+  const utcWithLegacyFallback = (utcField: string, localField: string, lowerHours: number, upperHours: number) => {
+    const r = range(lowerHours, upperHours);
+    return { OR: [{ [utcField]: r }, { [utcField]: null, [localField]: r }] };
   };
 
   try {
@@ -94,7 +105,7 @@ export async function GET(req: Request) {
       prisma.rentalSession.findMany({
         where: {
           status: 'active',
-          ...window('returnDateTimeUtc', 'returnDateTime', 0, RETURN_WINDOW_HOURS),
+          ...utcWithLegacyFallback('returnDateTimeUtc', 'returnDateTime', 0, RETURN_WINDOW_HOURS),
           reminderSentAt: null,
         },
         include: userSelect,
@@ -102,7 +113,7 @@ export async function GET(req: Request) {
       prisma.rentalSession.findMany({
         where: {
           status: 'active',
-          ...window('pickupDateTimeUtc', 'pickupDateTime', PICKUP_24H.lowerHours, PICKUP_24H.upperHours),
+          ...utcWithLegacyFallback('pickupDateTimeUtc', 'pickupDateTime', PICKUP_24H.lowerHours, PICKUP_24H.upperHours),
           pickupReminder24SentAt: null,
         },
         include: userSelect,
@@ -110,7 +121,7 @@ export async function GET(req: Request) {
       prisma.rentalSession.findMany({
         where: {
           status: 'active',
-          ...window('pickupDateTimeUtc', 'pickupDateTime', PICKUP_2H.lowerHours, PICKUP_2H.upperHours),
+          pickupDateTimeUtc: range(PICKUP_2H.lowerHours, PICKUP_2H.upperHours),   // UTC only — precision tier
           pickupReminder2SentAt: null,
         },
         include: userSelect,

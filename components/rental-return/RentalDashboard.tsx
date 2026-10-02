@@ -7,7 +7,7 @@ import {
   gallonsNeeded, estimatedRentalCompanyCharge, estimatedFuelCost, estimatedSavings,
   returnReadyStatus, formatGallons, fuelSourceLabel, refuelTotals,
   shouldTrackFuelNeededCalculated, roundGallons, tripFillEstimate,
-  resolveRentalLifecycle, RENTAL_LIFECYCLE_SECTION_ORDER, rentalRecap,
+  resolveRentalLifecycle, RENTAL_LIFECYCLE_SECTION_ORDER, rentalRecap, rentalRecapLogs,
 } from '@/lib/rentalCalculations';
 import type { RentalLifecycle } from '@/lib/rentalCalculations';
 import { trackRentalGasNearReturnViewed, trackRentalReturnReadyViewed } from '@/lib/gtag';
@@ -617,10 +617,38 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
           </div>
         )}
 
-        {/* Fuel outcome — same recap source (session.refuelLogs) as the
-            completion modal and the history list, so the numbers agree. */}
+        {/* Legacy refuel list — a pre-Phase-3A rental has no Fillup rows,
+            only frozen session.refuelLogs. Without this its completed view
+            showed no refuel history at all. */}
+        {fillups.length === 0 && session.refuelLogs.length > 0 && (() => {
+          const totals = refuelTotals(session.refuelLogs);
+          return (
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">{t.rentalReturn.refuelLog}</p>
+              <div className="space-y-2">
+                {session.refuelLogs.map((r) => (
+                  <div key={r.id} className="flex justify-between text-xs text-slate-600">
+                    <span>
+                      {r.gallons} gal{r.stationName ? ` · ${r.stationName}` : ''}
+                      <span className="text-slate-400 ml-1">· {new Date(r.timestamp).toLocaleDateString()}</span>
+                    </span>
+                    {r.totalPaid != null && <span className="font-bold">${r.totalPaid.toFixed(2)}</span>}
+                  </div>
+                ))}
+              </div>
+              <div className="flex justify-between items-center text-xs font-black text-slate-800 mt-2.5 pt-2.5 border-t border-slate-100">
+                <span>{t.rentalReturn.refuelTotalLabel(totals.count, totals.totalGallons)}</span>
+                {totals.totalPaid > 0 && <span>${totals.totalPaid.toFixed(2)}</span>}
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Fuel outcome — canonical Fillup rows when present, legacy
+            refuelLogs only for a pre-cutover rental (rentalRecapLogs), i.e.
+            the same source as the refuel list shown above. */}
         {(() => {
-          const recap = rentalRecap(session.refuelLogs, session.rentalFuelChargePerGallon);
+          const recap = rentalRecap(rentalRecapLogs(fillups, session.refuelLogs), session.rentalFuelChargePerGallon);
           const hasFee = session.fuelFeeCharged != null;
           if (!hasFee && recap.count === 0) return null;
           return (
@@ -856,7 +884,10 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
           {/* Upcoming rentals already get pickup reminders from the hourly
               cron (app/api/cron/rental-return-reminder) — say so, so renters
               know saving it ahead of time is what turns them on. */}
-          {isUpcoming && session.pickupDateTime && (
+          {/* Only when the rental has a timezone-correct pickup instant: the
+              precision ~2h tier is UTC-only, so a null-UTC rental would not
+              get the reminder this line promises. */}
+          {isUpcoming && session.pickupDateTimeUtc && (
             <span className="basis-full text-[11px] leading-snug text-white/85">⏰ {t.rentalReturn.upcomingRemindersOn}</span>
           )}
           {!isUpcoming && countdown && (
@@ -1734,7 +1765,10 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
           onClose={() => setShowComplete(false)}
           onCompleted={() => { setShowComplete(false); onCompleted(); }}
           sessionId={sessionId}
-          refuelLogs={session.refuelLogs}
+          // Canonical Fillup rows (post-Phase-3A) with legacy fallback —
+          // refuelLogs alone is empty for every post-cutover rental, which
+          // made the completion recap read $0 / no savings.
+          refuelLogs={rentalRecapLogs(fillups, session.refuelLogs)}
           rentalFuelChargePerGallon={session.rentalFuelChargePerGallon}
         />
       )}

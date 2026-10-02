@@ -4,8 +4,9 @@
  * existed and nothing fired specifically "2 hours before return." This tier
  * compares against returnDateTimeUtc (the timezone-correct instant), never
  * the naive local-time returnDateTime string, and dedups via
- * returnReminder2SentAt so a duplicate cron run (or app termination between
- * send and the DB write) can never resend.
+ * returnReminder2SentAt, so a row already stamped is excluded from the next
+ * run. That prevents ordinary repeat sends; it is NOT an atomic claim across
+ * overlapping executions (tracked separately).
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
@@ -155,11 +156,33 @@ describe('pickup reminder tiers use the timezone-correct instant', () => {
     expect(matches(ET_RENTAL, whereFor('pickupReminder24SentAt'))).toBe(false);
   });
 
-  it('a row saved before the UTC column existed still gets its pickup reminder (falls back to the local string)', async () => {
-    vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(new Date('2026-10-05T12:30:00Z'));
+  it('a null-UTC (legacy) row NEVER matches the precision 2h pickup tier — a naive fallback would send it hours early', async () => {
+    const legacy = { ...ET_RENTAL, pickupDateTimeUtc: null };
+    vi.useFakeTimers({ toFake: ['Date'] });
+    for (const now of ['2026-10-05T11:30:00Z', '2026-10-05T12:30:00Z', '2026-10-05T16:30:00Z']) {
+      findMany.mockClear(); vi.setSystemTime(new Date(now));
+      await get();
+      const where = whereFor('pickupReminder2SentAt');
+      expect(where).not.toHaveProperty('OR');
+      expect(where).not.toHaveProperty('pickupDateTime');
+      expect(matches(legacy, where)).toBe(false);
+    }
+  });
+
+  it('a null-UTC (legacy) row still gets the broad 24h pickup reminder via the local-string fallback', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-10-04T16:00:00Z')); // naive "2026-10-05T14:00" is 22h after this instant → inside 20–26h
     await get();
     const legacy = { ...ET_RENTAL, pickupDateTimeUtc: null };
-    expect(matches(legacy, whereFor('pickupReminder2SentAt'))).toBe(true);
+    expect(matches(legacy, whereFor('pickupReminder24SentAt'))).toBe(true);
+  });
+
+  it('return2 remains UTC-only (no OR / no naive fallback)', async () => {
+    await get();
+    const where = whereFor('returnReminder2SentAt');
+    expect(where).not.toHaveProperty('OR');
+    expect(where).not.toHaveProperty('returnDateTime');
+    expect(matches({ ...ET_RENTAL, returnDateTimeUtc: null }, where)).toBe(false);
   });
 
   it('the broad return tier also windows on returnDateTimeUtc, with the same legacy fallback', async () => {

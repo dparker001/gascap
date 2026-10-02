@@ -9,7 +9,7 @@ import { useTranslation } from '@/contexts/LanguageContext';
 import BrandBar from '@/components/BrandBar';
 import RentalModeHeader from '@/components/rental-return/RentalModeHeader';
 import DeleteRentalButton from '@/components/rental-return/DeleteRentalButton';
-import { formatGallons, rentalRecap } from '@/lib/rentalCalculations';
+import { formatGallons, rentalRecap, rentalRecapLogs } from '@/lib/rentalCalculations';
 import type { RentalSession } from '@/lib/rentalSessions';
 import type { FuelDataSource } from '@/lib/rentalProvider';
 
@@ -17,13 +17,17 @@ export default function RentalHistoryPage() {
   const { data: authSession, status } = useSession();
   const { t } = useTranslation();
   const [sessions, setSessions] = useState<RentalSession[]>([]);
+  const [fillupsBySession, setFillupsBySession] = useState<Record<string, Array<{ gallonsPumped: number; totalCost: number; pricePerGallon: number }>>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (status !== 'authenticated') { setLoading(false); return; }
     fetch('/api/rental-sessions?status=completed')
       .then((r) => r.ok ? r.json() : null)
-      .then((d) => { if (d?.sessions) setSessions(d.sessions); })
+      .then((d) => {
+        if (d?.sessions) setSessions(d.sessions);
+        if (d?.fillupsBySession) setFillupsBySession(d.fillupsBySession);
+      })
       .finally(() => setLoading(false));
   }, [status]);
 
@@ -42,7 +46,9 @@ export default function RentalHistoryPage() {
           <p className="text-sm text-slate-400 text-center py-10">{t.rentalReturn.noHistory}</p>
         ) : (
           sessions.map((s) => {
-            const recap = rentalRecap(s.refuelLogs, s.rentalFuelChargePerGallon);
+            // Canonical Fillup rows when the rental has any; legacy
+            // refuelLogs only for a pre-Phase-3A rental (rentalRecapLogs).
+            const recap = rentalRecap(rentalRecapLogs(fillupsBySession[s.id] ?? [], s.refuelLogs), s.rentalFuelChargePerGallon);
             return (
               <div key={s.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:border-blue-300 transition-colors p-4 space-y-1.5">
                 {/* The card opens the read-only detail view (RentalDashboard's

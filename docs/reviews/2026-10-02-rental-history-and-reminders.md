@@ -150,3 +150,25 @@ Highest scrutiny, in order:
 4. `app/rental-return/history/page.tsx`: link structure versus the delete button.
 
 Lower priority: copy/translations, help text.
+
+---
+
+## Round 1 disposition (ChatGPT review, 2026-10-02)
+
+| # | Finding | Classification | Resolution |
+|---|---|---|---|
+| 1 | pickup2 must be UTC-only | **AGREE — ACTION REQUIRED** | `pickup2` now windows on `pickupDateTimeUtc` only. `pickup24` and `returnDue` keep the UTC-first + naive fallback. `return2` is unchanged (UTC-only). The cron header comment and the test header no longer claim that duplicates are impossible; they say the per-tier stamps prevent ordinary repeats but are not an atomic claim across overlapping runs. Atomic claiming isn't addressed here. |
+| 2 | Recap must use canonical Fillups | **AGREE — ACTION REQUIRED** (my §5.3 was wrong) | Verified that `lib/rentalSessions.ts` `logRefuel()` is documented as "LEGACY — frozen after the Phase 3A cutover", and that `POST /api/rental-sessions/:id/refuel` creates `Fillup` rows only. New `rentalRecapLogs(fillups, legacyRefuelLogs)`: canonical rows when any exist, otherwise legacy, never a mix. The completed view's outcome card uses it, and that view now also shows a legacy refuel list for pre-cutover rentals, so the list, totals and savings share one source. |
+| 3 | History list + completion modal | **AGREE — ACTION REQUIRED (both fixed in this PR)** | Both were showing empty recaps (no gallons, $0, no savings) for every post-cutover rental. **Modal:** the dashboard already holds `fillups`, so it now passes `rentalRecapLogs(fillups, session.refuelLogs)`. **History:** `GET /api/rental-sessions?status=completed` adds a `fillupsBySession` map from ONE batched `fillup.findMany({ rentalSessionId: { in: ids } })`, selecting only 4 fields. Other statuses are unchanged; no N+1, no new endpoint. |
+| 4 | Copy revision | **AGREE** | EN: "Pickup reminders scheduled: we'll email you about 24 hours and about 2 hours before pickup. If notifications are enabled, you'll get a push alert too." ES updated to match. The notice now renders only when `pickupDateTimeUtc` is set, because a null-UTC rental no longer gets the 2h tier it would promise. |
+| 5 | APNs URL safety | **AGREE — ALREADY SAFE** | All 9 `sendUserPush` call sites pass fixed internal paths (`/`, `/getaway`, `/upgrade`, `/?log=1`, `/feedback?source=push`, `/rental-return/<db id>`). None is user-controlled or external. |
+| 6 | Hooks / delete-link design | **AGREE — ALREADY ADDRESSED** | `CompletedRentalPhotos` keeps its own state. No hook is added conditionally to `RentalDashboard`. `DeleteRentalButton` remains outside both `<Link>`s. |
+| 7 | Read-only null-UTC counts | **DONE** | Production, inside `BEGIN READ ONLY … ROLLBACK`, COUNT only. Active (upcoming or in-progress) rentals: **0** total, **0** missing either UTC field. Across all statuses: **1** row missing `pickupDateTimeUtc` and **1** missing `returnDateTimeUtc` (historical rows only). Current exposure is nil. |
+
+**Retest:**
+- Focused: reminder cron 13/13; APNs deep link 2/2; recap source + batched list 6/6.
+- Full: `npm test` 115 files / 1896 tests pass; `tsc` clean; `npm run build` ✓.
+- **Fail-before evidence:**
+  - Reminder suite: 5 fail against `main`. Against round 1 (`1700a9e`), only the new null-UTC pickup2 test fails.
+  - Batched-list test: fails against the old endpoint.
+- No schema or migration changes and no production writes.
