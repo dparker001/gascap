@@ -19,6 +19,7 @@ import { trackClientEvent } from '@/lib/clientAnalytics';
 import type { RentalSession } from '@/lib/rentalSessions';
 import { isUpcomingRental, rentalEventInstant } from '@/lib/rentalCalculations';
 import { formatEventWallClock } from '@/lib/rentalTimezone';
+import { syncRentalFallbacksFromSessions } from '@/lib/rentalReminderSync';
 
 export default function RentalReturnPage() {
   const { data: authSession, status } = useSession();
@@ -46,7 +47,13 @@ export default function RentalReturnPage() {
     if (status !== 'authenticated') { setLoading(false); return; }
     fetch('/api/rental-sessions?status=active')
       .then((r) => r.ok ? r.json() : null)
-      .then((d) => { if (d?.sessions) setSessions(d.sessions); })
+      .then((d) => {
+        if (d?.sessions) {
+          setSessions(d.sessions);
+          // Re-sync this device's return fallbacks (Option C, 2026-10-02).
+          void syncRentalFallbacksFromSessions((authSession?.user as { id?: string } | undefined)?.id, d.sessions);
+        }
+      })
       .finally(() => setLoading(false));
     // Count only — the past list lives on its own page, but the link should
     // say how many are there rather than sending people to a maybe-empty page.

@@ -10,7 +10,8 @@ import type { RentalSession } from '@/lib/rentalSessions';
 import RentalVehicleLookup from '@/components/RentalVehicleLookup';
 import RentalVinLookup from '@/components/RentalVinLookup';
 import DeleteRentalButton from './DeleteRentalButton';
-import { scheduleRentalReturnReminder, cancelRentalReturnReminder } from '@/lib/rentalReminder';
+import { resyncRentalFallbacks } from '@/lib/rentalReminderSync';
+import { useSession } from 'next-auth/react';
 import { detectBrowserTimeZone, describeEventTime, storedOccurrence, isTimeZoneSource, type TimeDisambiguation } from '@/lib/rentalTimezone';
 import { type RentalLocationValue } from './RentalLocationInput';
 import RentalEventScheduleField, { eventTimeSubmittable, type EventZone } from './RentalEventScheduleField';
@@ -25,6 +26,7 @@ export default function EditRentalModal({ session, onClose, onSaved }: Props) {
   const { t } = useTranslation();
   const router = useRouter();
 
+  const authUserId = (useSession().data?.user as { id?: string } | undefined)?.id;
   const [rentalCompany, setRentalCompany] = useState(session.rentalCompany);
   const [agreementNumber, setAgreementNumber] = useState(session.rentalAgreementNumber ?? '');
   const [confirmationNumber, setConfirmationNumber] = useState(session.rentalConfirmationNumber ?? '');
@@ -137,15 +139,9 @@ export default function EditRentalModal({ session, onClose, onSaved }: Props) {
         setError(data.error && scheduleCodes.includes(data.error) ? t.rentalReturn.tzScheduleError : t.rentalReturn.setupError);
         return;
       }
-      // Reschedule the local (device-side) reminder for the (possibly new)
-      // return time — mirrors RentalSetupFlow.tsx. If the return date/time
-      // was cleared, cancel any previously-scheduled reminder instead.
-      if (returnDateTime) {
-        const [d, tm] = returnDateTime.split('T');
-        if (d && tm) void scheduleRentalReturnReminder(d, tm);
-      } else {
-        void cancelRentalReturnReminder();
-      }
+      // Re-sync this device's return fallback from the server's (possibly
+      // new) returnDateTimeUtc — Option C, 2026-10-02.
+      void resyncRentalFallbacks(authUserId);
       onSaved();
     } catch {
       setError(t.rentalReturn.setupError);

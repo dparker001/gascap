@@ -18,7 +18,8 @@ import { emptyRentalLocation, type RentalLocationValue } from './RentalLocationI
 import RentalEventScheduleField, { effectiveEventZone, eventTimeSubmittable, type EventZone } from './RentalEventScheduleField';
 import PhotoCaptureButton from './PhotoCaptureButton';
 import AgreementScanButton, { type ScannedAgreementFields } from './AgreementScanButton';
-import { scheduleRentalReturnReminder } from '@/lib/rentalReminder';
+import { resyncRentalFallbacks } from '@/lib/rentalReminderSync';
+import { useSession } from 'next-auth/react';
 import { detectBrowserTimeZone, splitLocalDateTime, combineLocalDateTime, describeEventTime, type TimeDisambiguation } from '@/lib/rentalTimezone';
 
 const GAUGE_OPTIONS = ['Full', '7/8', '3/4', '5/8', '1/2', '3/8', '1/4', '1/8', 'Empty'];
@@ -32,6 +33,7 @@ type FuelInputMethod = 'gauge' | 'percent' | 'gallons';
 
 export default function RentalSetupFlow({ onCreated, onCancel }: Props) {
   const { t } = useTranslation();
+  const authUserId = (useSession().data?.user as { id?: string } | undefined)?.id;
   const [step, setStep] = useState(1);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -271,16 +273,10 @@ export default function RentalSetupFlow({ onCreated, onCancel }: Props) {
         setError(scheduleCodes.includes(data.error) ? t.rentalReturn.tzScheduleError : (data.error ?? t.rentalReturn.setupError));
         return;
       }
-      // Local (device-side) 2h-before-return notification — the server cron
-      // is the backup, this is the primary path since it fires even if the
-      // app is closed and doesn't depend on push infra. Uses the device's
-      // own local clock, which is the correct frame for a local
-      // notification (no server round-trip/timezone translation needed
-      // here — that's only required for the server-side cron comparison).
-      if (returnDateTime) {
-        const [d, tm] = returnDateTime.split('T');
-        if (d && tm) void scheduleRentalReturnReminder(d, tm);
-      }
+      // Option C (2026-10-02): server push is primary; this device gets a
+      // local fallback only without usable push, scheduled from the
+      // server-derived returnDateTimeUtc — never the wall clock re-read here.
+      void resyncRentalFallbacks(authUserId);
       onCreated(data.session.id);
     } catch {
       setError(t.rentalReturn.setupError);
