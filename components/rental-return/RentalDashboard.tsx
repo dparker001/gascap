@@ -7,8 +7,10 @@ import {
   gallonsNeeded, estimatedRentalCompanyCharge, estimatedFuelCost, estimatedSavings,
   returnReadyStatus, formatGallons, fuelSourceLabel, refuelTotals,
   shouldTrackFuelNeededCalculated, roundGallons, tripFillEstimate,
-  resolveRentalLifecycle, RENTAL_LIFECYCLE_SECTION_ORDER, rentalRecap, rentalRecapLogs,
+  resolveRentalLifecycle, RENTAL_LIFECYCLE_SECTION_ORDER, rentalRecap, rentalRecapLogs, rentalEventInstant,
 } from '@/lib/rentalCalculations';
+import { formatEventWallClock, zoneCity, zoneLongName } from '@/lib/rentalTimezone';
+import { pendingPickupReminders } from '@/lib/rentalReminderNotice';
 import type { RentalLifecycle } from '@/lib/rentalCalculations';
 import { trackRentalGasNearReturnViewed, trackRentalReturnReadyViewed } from '@/lib/gtag';
 import { trackClientEvent } from '@/lib/clientAnalytics';
@@ -35,14 +37,21 @@ function formatUpdatedAt(iso: string | null): string {
   return d.toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
-function returnCountdown(returnDateTime: string | null): string | null {
-  if (!returnDateTime) return null;
-  const diffMs = new Date(returnDateTime).getTime() - Date.now();
+// Counts down to the authoritative UTC instant (2026-10-02): the naive local
+// string, read by `new Date()`, would be interpreted in the VIEWER's zone.
+function returnCountdown(returnAt: string | null): string | null {
+  if (!returnAt) return null;
+  const diffMs = new Date(returnAt).getTime() - Date.now();
   if (diffMs <= 0) return null;
   const hours = Math.floor(diffMs / 3_600_000);
   const mins  = Math.floor((diffMs % 3_600_000) / 60_000);
   return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
 }
+
+// Event times shown in the EVENT's own zone with a short label ("Oct 5,
+// 2:00 PM PDT"), never re-read in the viewer's zone (2026-10-02).
+const fmtPickup = (s: RentalSession) => formatEventWallClock(s.pickupDateTime, s.pickupTimeZone ?? s.timeZone, s.pickupDateTimeUtc);
+const fmtReturn = (s: RentalSession) => formatEventWallClock(s.returnDateTime, s.returnTimeZone ?? s.timeZone, s.returnDateTimeUtc);
 
 function CompletedRentalPhotos({ title, hint, photos }: {
   title: string; hint: string; photos: Array<[string | null, string]>;
@@ -74,7 +83,7 @@ function CompletedRentalPhotos({ title, hint, photos }: {
 }
 
 export default function RentalDashboard({ sessionId, onCompleted }: { sessionId: string; onCompleted: () => void }) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const [session, setSession] = useState<RentalSession | null>(null);
   const [fillups, setFillups] = useState<Fillup[]>([]);
   const [linkedVehicleGaugeStyle, setLinkedVehicleGaugeStyle] = useState<string | null>(null);
@@ -418,6 +427,7 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
     if (!session) return;
     const lc = resolveRentalLifecycle({
       status: session.status, pickupDateTime: session.pickupDateTime, returnDateTime: session.returnDateTime,
+      pickupDateTimeUtc: session.pickupDateTimeUtc, returnDateTimeUtc: session.returnDateTimeUtc,
     });
     if (lc === 'near_return' && !nearReturnTrackedRef.current) {
       nearReturnTrackedRef.current = true;
@@ -434,7 +444,7 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
       setActiveWorkflow('prepare_return');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session?.id, session?.status, session?.pickupDateTime, session?.returnDateTime]);
+  }, [session?.id, session?.status, session?.pickupDateTime, session?.returnDateTime, session?.pickupDateTimeUtc, session?.returnDateTimeUtc]);
 
   if (loading || !session) {
     return <div className="max-w-lg mx-auto px-4 py-10"><div className="h-40 bg-slate-100 rounded-2xl animate-pulse" /></div>;
@@ -449,7 +459,7 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
   // fuel-state domain model in lib/rentalCalculations.ts); the Current Fuel
   // card shows only last-known facts (gallons/target/timestamp/source), no
   // verdict.
-  const countdown = returnCountdown(session.returnDateTime);
+  const countdown = returnCountdown(rentalEventInstant(session.returnDateTimeUtc, session.returnDateTime));
 
   // 2026-08-28 correction (independent review, Correction 4) — the HERO
   // must never claim a return-ready verdict from the raw LAST-KNOWN
@@ -483,6 +493,8 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
     status: session.status,
     pickupDateTime: session.pickupDateTime,
     returnDateTime: session.returnDateTime,
+    pickupDateTimeUtc: session.pickupDateTimeUtc,
+    returnDateTimeUtc: session.returnDateTimeUtc,
   });
   const isUpcoming = lifecycle === 'upcoming';
   const isNearReturn = lifecycle === 'near_return';
@@ -531,13 +543,13 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
           {session.pickupDateTime && (
             <div className="flex justify-between text-sm">
               <span className="text-slate-500">{t.rentalReturn.completedPickupLabel}</span>
-              <span className="font-bold text-slate-800">{new Date(session.pickupDateTime).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>
+              <span className="font-bold text-slate-800">{fmtPickup(session)}</span>
             </div>
           )}
           {session.returnDateTime && (
             <div className="flex justify-between text-sm">
               <span className="text-slate-500">{t.rentalReturn.completedReturnLabel}</span>
-              <span className="font-bold text-slate-800">{new Date(session.returnDateTime).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>
+              <span className="font-bold text-slate-800">{fmtReturn(session)}</span>
             </div>
           )}
           {session.pickupLocation && (
@@ -878,7 +890,7 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
           </span>
           {isUpcoming && session.pickupDateTime && (
             <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-white/15 text-white">
-              🗓 {t.rentalReturn.picksUp(new Date(session.pickupDateTime).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }))}
+              🗓 {t.rentalReturn.picksUp(fmtPickup(session))}
             </span>
           )}
           {!isUpcoming && countdown && (
@@ -891,6 +903,28 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
           )}
         </div>
       </div>
+
+      {/* Pickup reminder notice (T7, 2026-10-02). Shown only for an upcoming
+          rental with an authoritative pickupDateTimeUtc, and only naming the
+          server reminders still ahead (see lib/rentalReminderNotice.ts). The
+          zone is the pickup event's own; a device-assumed zone says so. */}
+      {isUpcoming && (() => {
+        const pending = pendingPickupReminders(session);
+        const zone = session.pickupTimeZone ?? session.timeZone;
+        if (!pending || !zone) return null;
+        const atMs = Date.parse(session.pickupDateTimeUtc as string);
+        const zoneLabel = `${zoneLongName(zone, atMs, locale === 'es' ? 'es-US' : 'en-US')} \u2014 ${zoneCity(zone)}`;
+        const deviceAssumed = session.pickupTimeZone ? session.pickupTimeZoneSource === 'device' : true;
+        return (
+          <div data-testid="pickup-reminder-notice" className="rounded-2xl border border-blue-100 bg-blue-50 p-3 space-y-1 text-xs text-blue-900">
+            <p className="font-semibold">
+              🔔 {pending.day ? t.rentalReturn.pickupRemindersBoth(zoneLabel) : t.rentalReturn.pickupReminderTwoHour(zoneLabel)}
+            </p>
+            <p className="text-blue-800/80">{t.rentalReturn.pickupRemindersPush}</p>
+            {deviceAssumed && <p className="italic text-amber-700">{t.rentalReturn.pickupRemindersDeviceZone}</p>}
+          </div>
+        );
+      })()}
 
       {/* ══════════════════════════════════════════════════════════════════
           CURRENT FUEL — Phase 6A.2 redesign. The renter's canonical
@@ -1698,13 +1732,13 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
             {session.pickupDateTime && (
               <div className="flex justify-between text-xs">
                 <span className="text-slate-500">{t.rentalReturn.completedPickupLabel}</span>
-                <span className="font-bold text-slate-800">{new Date(session.pickupDateTime).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>
+                <span className="font-bold text-slate-800">{fmtPickup(session)}</span>
               </div>
             )}
             {session.returnDateTime && (
               <div className="flex justify-between text-xs">
                 <span className="text-slate-500">{t.rentalReturn.completedReturnLabel}</span>
-                <span className="font-bold text-slate-800">{new Date(session.returnDateTime).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>
+                <span className="font-bold text-slate-800">{fmtReturn(session)}</span>
               </div>
             )}
             {session.returnLocation && (

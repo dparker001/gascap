@@ -107,14 +107,22 @@ describe('updateRentalSession — reminder dedup reset', () => {
     expect(result?.pickupReminder2SentAt).not.toBeNull();
   });
 
-  it('changing ONLY the timezone (same wall-clock strings) resets both pickup and return dedup flags, since the UTC instant changes', async () => {
+  // 2026-10-02 owner decision (event-timezone model): the legacy `timeZone`
+  // in a PATCH body is the EDITING DEVICE's zone and is now IGNORED. The
+  // previous expectation here (a device-zone change resets both events and
+  // re-derives both instants) was exactly the defect: editing from another
+  // timezone silently reinterpreted the rental. Replaced, not bypassed.
+  it('a legacy device timeZone in a PATCH body is IGNORED — no reinterpretation, no reminder reset', async () => {
     table.set('rs-1', makeRow());
     const { updateRentalSession } = await getModule();
     const result = await updateRentalSession('user-1', 'rs-1', { timeZone: 'America/Los_Angeles' });
-    expect(result?.reminderSentAt).toBeNull();
-    expect(result?.returnReminder2SentAt).toBeNull();
-    expect(result?.pickupReminder24SentAt).toBeNull();
-    expect(result?.pickupReminder2SentAt).toBeNull();
+    expect(result?.timeZone).toBe('America/New_York');
+    expect(result?.pickupDateTimeUtc).toBe('2026-08-25T12:00:00.000Z');
+    expect(result?.returnDateTimeUtc).toBe('2026-08-25T14:00:00.000Z');
+    expect(result?.reminderSentAt).not.toBeNull();
+    expect(result?.returnReminder2SentAt).not.toBeNull();
+    expect(result?.pickupReminder24SentAt).not.toBeNull();
+    expect(result?.pickupReminder2SentAt).not.toBeNull();
   });
 
   it('2. recomputes pickupDateTimeUtc/returnDateTimeUtc correctly when returnDateTime changes', async () => {

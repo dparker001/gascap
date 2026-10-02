@@ -27,8 +27,12 @@ function extractFunction(name: string): string {
 
 describe('RentalSetupFlow — DateTimeSplitInput wiring', () => {
   it('pickup and return fields use dedicated handlers, not the raw state setters directly', () => {
-    expect(setupSrc).toMatch(/<DateTimeSplitInput value=\{pickupDateTime\} onChange=\{handlePickupDateTimeChange\}/);
-    expect(setupSrc).toMatch(/<DateTimeSplitInput value=\{returnDateTime\} onChange=\{handleReturnDateTimeChange\}/);
+    // 2026-10-02: the date/time inputs now live inside RentalEventScheduleField
+    // (event-timezone UX), which receives these same dedicated handlers as
+    // onDateTime — still never the raw state setters.
+    expect(setupSrc).toMatch(/dateTime=\{pickupDateTime\}\s*onDateTime=\{handlePickupDateTimeChange\}/);
+    expect(setupSrc).toMatch(/dateTime=\{returnDateTime\}\s*onDateTime=\{handleReturnDateTimeChange\}/);
+    expect(setupSrc).not.toMatch(/onDateTime=\{set(Pickup|Return)DateTime\}/);
   });
 });
 

@@ -8,6 +8,14 @@
       ],
       "review": "docs/reviews/2026-10-02-rental-history-and-reminders.md",
       "approvedBy": "Don Parker"
+    },
+    {
+      "path": "app/api/rental-sessions/route.ts",
+      "commits": [
+        "d002c17a88cf28986d900b7404311fceb6e31224"
+      ],
+      "review": "docs/reviews/2026-10-02-rental-event-timezones.md",
+      "approvedBy": "Don Parker"
     }
   ]
 }

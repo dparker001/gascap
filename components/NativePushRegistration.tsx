@@ -14,6 +14,7 @@
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { detectNativePlatform } from '@/hooks/useIsNative';
+import { markIosPushRegistered, cancelAllRentalReturnFallbacks } from '@/lib/rentalReminder';
 
 export default function NativePushRegistration() {
   const { data: session } = useSession();
@@ -61,6 +62,13 @@ export default function NativePushRegistration() {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ token }),
+    }).then((res) => {
+      if (!res.ok) return;
+      // Push is now usable on this device for this user (Option C,
+      // 2026-10-02): the server push is primary, so drop any local rental
+      // return fallbacks to avoid a duplicate reminder.
+      markIosPushRegistered(userId);
+      void cancelAllRentalReturnFallbacks();
     }).catch(() => { /* retry on next token/session change */ });
   }, [token, session]);
 

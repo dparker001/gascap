@@ -19,6 +19,7 @@
 import { useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { detectNativePlatform } from '@/hooks/useIsNative';
+import { isPushUsableOnThisDevice, cancelAllRentalReturnFallbacks } from '@/lib/rentalReminder';
 
 let initialized = false;
 
@@ -61,6 +62,10 @@ export default function NativeOneSignalRegistration() {
     (async () => {
       const { default: OneSignal } = await import('@onesignal/capacitor-plugin');
       await OneSignal.login(userId);
+      // Once this device can receive the server push for this user, drop any
+      // local rental return fallbacks so the same event never notifies twice
+      // (Option C, 2026-10-02). See isPushUsableOnThisDevice for the signal.
+      if (await isPushUsableOnThisDevice(userId, 'android')) await cancelAllRentalReturnFallbacks();
     })().catch(() => {});
   }, [session]);
 

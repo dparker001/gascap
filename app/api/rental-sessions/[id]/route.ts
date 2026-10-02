@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { RENTAL_RETURN_ASSISTANT_ENABLED } from '@/lib/featureFlags';
-import { getRentalSession, updateRentalSession, deleteRentalSession, confirmRentalCurrentFuel, type UpdateRentalSessionInput } from '@/lib/rentalSessions';
+import { RentalScheduleError, getRentalSession, updateRentalSession, deleteRentalSession, confirmRentalCurrentFuel, type UpdateRentalSessionInput } from '@/lib/rentalSessions';
 import { validateRentalPhotos, photoCapKb, PHOTO_MAX_DATA_URL_BYTES } from '@/lib/photoLimits';
 import { getRentalFillups } from '@/lib/rentalFillups';
 import { isGaugeStyle } from '@/lib/gaugeStyles';
@@ -230,7 +230,17 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     return NextResponse.json({ session: result.session });
   }
 
-  const updated = await updateRentalSession(userId, params.id, body);
+  let updated;
+  try {
+    updated = await updateRentalSession(userId, params.id, body);
+  } catch (e) {
+    // Event-schedule validation (2026-10-02): 400 invalid zone/date, 422
+    // nonexistent or ambiguous-without-choice local time. Nothing written.
+    if (e instanceof RentalScheduleError) {
+      return NextResponse.json({ error: e.code, field: e.field }, { status: e.status });
+    }
+    throw e;
+  }
   if (!updated) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   return NextResponse.json({ session: updated });
 }

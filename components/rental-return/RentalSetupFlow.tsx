@@ -6,7 +6,7 @@
  * requirement → Rate → Return location/time → create.
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useTranslation } from '@/contexts/LanguageContext';
 import { trackClientEvent } from '@/lib/clientAnalytics';
 import { RENTAL_COMPANIES, gallonsFromGaugeFraction, gallonsFromPercent } from '@/lib/rentalProvider';
@@ -14,12 +14,13 @@ import type { FuelDataSource } from '@/lib/rentalProvider';
 import type { ReturnPolicyType } from '@/lib/rentalCalculations';
 import RentalVehicleLookup from '@/components/RentalVehicleLookup';
 import RentalVinLookup from '@/components/RentalVinLookup';
-import ReturnLocationInput from './ReturnLocationInput';
+import { emptyRentalLocation, type RentalLocationValue } from './RentalLocationInput';
+import RentalEventScheduleField, { effectiveEventZone, eventTimeSubmittable, type EventZone } from './RentalEventScheduleField';
 import PhotoCaptureButton from './PhotoCaptureButton';
 import AgreementScanButton, { type ScannedAgreementFields } from './AgreementScanButton';
-import { scheduleRentalReturnReminder } from '@/lib/rentalReminder';
-import { detectBrowserTimeZone, splitLocalDateTime, combineLocalDateTime } from '@/lib/rentalTimezone';
-import DateTimeSplitInput from './DateTimeSplitInput';
+import { resyncRentalFallbacks } from '@/lib/rentalReminderSync';
+import { useSession } from 'next-auth/react';
+import { detectBrowserTimeZone, splitLocalDateTime, combineLocalDateTime, describeEventTime, type TimeDisambiguation } from '@/lib/rentalTimezone';
 
 const GAUGE_OPTIONS = ['Full', '7/8', '3/4', '5/8', '1/2', '3/8', '1/4', '1/8', 'Empty'];
 
@@ -32,6 +33,7 @@ type FuelInputMethod = 'gauge' | 'percent' | 'gallons';
 
 export default function RentalSetupFlow({ onCreated, onCancel }: Props) {
   const { t } = useTranslation();
+  const authUserId = (useSession().data?.user as { id?: string } | undefined)?.id;
   const [step, setStep] = useState(1);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -94,7 +96,9 @@ export default function RentalSetupFlow({ onCreated, onCancel }: Props) {
     if (f.vehicleYear)  setVehicleYear(f.vehicleYear);
     if (f.vehicleMake)  { setVehicleMake(f.vehicleMake); setVehicleEntryMode('manual'); }
     if (f.vehicleModel) setVehicleModel(f.vehicleModel);
-    if (f.returnLocation) setReturnLocation(f.returnLocation);
+    // Text only — never infer a timezone from scanned agreement text (2026-10-02);
+    // the renter confirms the location / zone in step 6.
+    if (f.returnLocation) setReturnLoc(emptyRentalLocation(f.returnLocation));
     // datetime-local needs exactly "YYYY-MM-DDTHH:mm"
     if (f.pickupDateTime && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(f.pickupDateTime)) {
       setPickupDateTime(f.pickupDateTime.slice(0, 16));
@@ -125,8 +129,14 @@ export default function RentalSetupFlow({ onCreated, onCancel }: Props) {
   const [rentalRate, setRentalRate] = useState('');
 
   // Step 6 — return location/time
-  const [returnLocation, setReturnLocation] = useState('');
-  const [returnCoords, setReturnCoords] = useState<{ lat: number; lng: number } | null>(null);
+  // Each event has its own location + zone (2026-10-02 event-timezone model).
+  const [pickupLoc, setPickupLoc] = useState<RentalLocationValue>(emptyRentalLocation());
+  const [returnLoc, setReturnLoc] = useState<RentalLocationValue>(emptyRentalLocation());
+  const [pickedPickupZone, setPickedPickupZone] = useState<EventZone | null>(null);
+  const [pickedReturnZone, setPickedReturnZone] = useState<EventZone | null>(null);
+  const [pickupChoice, setPickupChoice] = useState<TimeDisambiguation | null>(null);
+  const [returnChoice, setReturnChoice] = useState<TimeDisambiguation | null>(null);
+  const deviceZone = useMemo(() => detectBrowserTimeZone() ?? null, []);
   const [pickupDateTime, setPickupDateTime] = useState('');
   const [returnDateTime, setReturnDateTime] = useState('');
   // Return TIME defaults to match pickup TIME (e.g. 9am pickup -> 9am
@@ -204,7 +214,15 @@ export default function RentalSetupFlow({ onCreated, onCancel }: Props) {
   // dashboard at the counter instead.
   const canNext3 = true;
   const canNext4 = returnPolicy !== 'exact' || Number(exactReturnGallons) > 0;
-  const canSubmit = !!returnDateTime;
+  const pickupZone = effectiveEventZone(pickupLoc, pickedPickupZone, deviceZone);
+  const returnZone = effectiveEventZone(returnLoc, pickedReturnZone, deviceZone);
+  const pickupStatus = describeEventTime(pickupDateTime, pickupZone.zone);
+  const returnStatus = describeEventTime(returnDateTime, returnZone.zone);
+  // A DST-gap (nonexistent) time must be changed; an ambiguous one is sent
+  // with its visible, explicit occurrence choice (first preselected).
+  const canSubmit = !!returnDateTime && eventTimeSubmittable(pickupStatus) && eventTimeSubmittable(returnStatus);
+  const occurrence = (st: ReturnType<typeof describeEventTime>, c: TimeDisambiguation | null) =>
+    st.kind === 'ambiguous' ? (c ?? 'earlier') : undefined;
 
   async function handleSubmit() {
     setSubmitting(true);
@@ -227,29 +245,38 @@ export default function RentalSetupFlow({ onCreated, onCancel }: Props) {
           requiredReturnPolicyType: returnPolicy,
           requiredReturnFuelGallons: returnPolicy === 'exact' ? Number(exactReturnGallons) : undefined,
           rentalFuelChargePerGallon: rentalRate ? Number(rentalRate) : undefined,
-          returnLocation: returnLocation || undefined,
-          returnLatitude: returnCoords?.lat,
-          returnLongitude: returnCoords?.lng,
+          pickupLocation: pickupLoc.text || undefined,
+          pickupLatitude: pickupLoc.lat ?? undefined,
+          pickupLongitude: pickupLoc.lng ?? undefined,
+          returnLocation: returnLoc.text || undefined,
+          returnLatitude: returnLoc.lat ?? undefined,
+          returnLongitude: returnLoc.lng ?? undefined,
           pickupDateTime: pickupDateTime || undefined,
           returnDateTime,
-          timeZone: detectBrowserTimeZone(),
+          // Each event's OWN zone; the server derives both UTC instants.
+          pickupTimeZone: pickupZone.zone ?? undefined,
+          pickupTimeZoneSource: pickupZone.source ?? undefined,
+          returnTimeZone: returnZone.zone ?? undefined,
+          returnTimeZoneSource: returnZone.source ?? undefined,
+          pickupTimeDisambiguation: occurrence(pickupStatus, pickupChoice),
+          returnTimeDisambiguation: occurrence(returnStatus, returnChoice),
+          // Legacy device zone, backward compatibility only.
+          timeZone: deviceZone ?? undefined,
           pickupVehiclePhotoThumb: pickupVehiclePhoto || undefined,
           pickupGaugePhotoThumb: pickupGaugePhoto || undefined,
           pickupAgreementPhotoThumb: pickupAgreementPhoto || undefined,
         }),
       });
       const data = await res.json();
-      if (!res.ok) { setError(data.error ?? t.rentalReturn.setupError); return; }
-      // Local (device-side) 2h-before-return notification — the server cron
-      // is the backup, this is the primary path since it fires even if the
-      // app is closed and doesn't depend on push infra. Uses the device's
-      // own local clock, which is the correct frame for a local
-      // notification (no server round-trip/timezone translation needed
-      // here — that's only required for the server-side cron comparison).
-      if (returnDateTime) {
-        const [d, tm] = returnDateTime.split('T');
-        if (d && tm) void scheduleRentalReturnReminder(d, tm);
+      if (!res.ok) {
+        const scheduleCodes = ['invalid_time_zone', 'invalid_local_datetime', 'nonexistent_local_time', 'ambiguous_local_time'];
+        setError(scheduleCodes.includes(data.error) ? t.rentalReturn.tzScheduleError : (data.error ?? t.rentalReturn.setupError));
+        return;
       }
+      // Option C (2026-10-02): server push is primary; this device gets a
+      // local fallback only without usable push, scheduled from the
+      // server-derived returnDateTimeUtc — never the wall clock re-read here.
+      void resyncRentalFallbacks(authUserId);
       onCreated(data.session.id);
     } catch {
       setError(t.rentalReturn.setupError);
@@ -462,26 +489,38 @@ export default function RentalSetupFlow({ onCreated, onCancel }: Props) {
       {/* Step 6 — Return location/time */}
       {step === 6 && (
         <div className="space-y-3">
-          <div>
-            <label className="field-label">{t.rentalReturn.returnLocationLabel}</label>
-            <ReturnLocationInput
-              value={returnLocation}
-              placeholder={t.rentalReturn.returnLocationPlaceholder}
-              onChange={(text, coords) => { setReturnLocation(text); setReturnCoords(coords); }}
-            />
-            {returnLocation && !returnCoords && (
-              <p className="text-[10px] text-slate-400 mt-1">{t.rentalReturn.returnLocationNoCoordsHint}</p>
-            )}
-          </div>
-          <div>
-            <label className="field-label">{t.rentalReturn.pickupDateTimeLabel}</label>
-            <DateTimeSplitInput value={pickupDateTime} onChange={handlePickupDateTimeChange} />
-            <p className="text-[11px] text-slate-400 mt-1">{t.rentalReturn.pickupDateTimeHint}</p>
-          </div>
-          <div>
-            <label className="field-label">{t.rentalReturn.returnDateTimeLabel}</label>
-            <DateTimeSplitInput value={returnDateTime} onChange={handleReturnDateTimeChange} />
-          </div>
+          <RentalEventScheduleField
+            kind="pickup"
+            label={t.rentalReturn.pickupDateTimeLabel}
+            dateTime={pickupDateTime}
+            onDateTime={handlePickupDateTimeChange}
+            location={pickupLoc}
+            onLocation={setPickupLoc}
+            locationLabel={t.rentalReturn.pickupLocationLabel}
+            locationPlaceholder={t.rentalReturn.pickupLocationPlaceholder}
+            zone={pickupZone}
+            onPickZone={(z) => setPickedPickupZone({ zone: z, source: 'user' })}
+            choice={pickupChoice}
+            onChoice={setPickupChoice}
+            deviceZone={deviceZone}
+            hint={t.rentalReturn.pickupDateTimeHint}
+          />
+          <RentalEventScheduleField
+            kind="return"
+            label={t.rentalReturn.returnDateTimeLabel}
+            dateTime={returnDateTime}
+            onDateTime={handleReturnDateTimeChange}
+            location={returnLoc}
+            onLocation={setReturnLoc}
+            locationLabel={t.rentalReturn.returnLocationLabel}
+            locationPlaceholder={t.rentalReturn.returnLocationPlaceholder}
+            zone={returnZone}
+            onPickZone={(z) => setPickedReturnZone({ zone: z, source: 'user' })}
+            choice={returnChoice}
+            onChoice={setReturnChoice}
+            deviceZone={deviceZone}
+            hint={returnLoc.text && returnLoc.lat == null ? t.rentalReturn.returnLocationNoCoordsHint : undefined}
+          />
         </div>
       )}
 

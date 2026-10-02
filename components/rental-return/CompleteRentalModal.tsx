@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { resyncRentalFallbacks } from '@/lib/rentalReminderSync';
+import { useSession } from 'next-auth/react';
 import { useTranslation } from '@/contexts/LanguageContext';
 import ModalShell from './ModalShell';
 import { trackRentalCompleted, trackRentalFuelFeeReported } from '@/lib/gtag';
@@ -20,6 +22,7 @@ type FeeAnswer = 'no' | 'yes' | 'not_sure' | null;
 
 export default function CompleteRentalModal({ sessionId, onClose, onCompleted, refuelLogs, rentalFuelChargePerGallon }: Props) {
   const { t } = useTranslation();
+  const authUserId = (useSession().data?.user as { id?: string } | undefined)?.id;
   const recap = rentalRecap(refuelLogs, rentalFuelChargePerGallon);
   const [feeAnswer, setFeeAnswer] = useState<FeeAnswer>(null);
   const [feeAmount, setFeeAmount] = useState('');
@@ -48,6 +51,8 @@ export default function CompleteRentalModal({ sessionId, onClose, onCompleted, r
       });
       trackRentalCompleted();
       if (feeAnswer === 'yes' || feeAnswer === 'no') trackRentalFuelFeeReported(feeAnswer === 'yes');
+      // A deleted/completed rental must not keep a pending return fallback.
+      void resyncRentalFallbacks(authUserId);
       onCompleted();
     } finally {
       setSaving(false);

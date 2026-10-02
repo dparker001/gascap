@@ -15,6 +15,8 @@
  */
 
 import { useState } from 'react';
+import { resyncRentalFallbacks } from '@/lib/rentalReminderSync';
+import { useSession } from 'next-auth/react';
 import { useTranslation } from '@/contexts/LanguageContext';
 
 export default function DeleteRentalButton({
@@ -28,6 +30,7 @@ export default function DeleteRentalButton({
   label?: string;
 }) {
   const { t } = useTranslation();
+  const authUserId = (useSession().data?.user as { id?: string } | undefined)?.id;
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -38,6 +41,8 @@ export default function DeleteRentalButton({
     try {
       const res = await fetch(`/api/rental-sessions/${sessionId}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('delete failed');
+      // A deleted/completed rental must not keep a pending return fallback.
+      void resyncRentalFallbacks(authUserId);
       onDeleted();
     } catch {
       // Don't call onDeleted on failure — the row would vanish from the list

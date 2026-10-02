@@ -385,6 +385,17 @@ export function reconcileFuelForNewTank(
  * A rental with no pickup time is treated as in progress — that's the
  * same-day case, where the renter set it up at the counter.
  */
+/**
+ * The instant to use for a rental event (2026-10-02 event-timezone model).
+ * Prefers the server-derived UTC instant — DST-aware and interpreted in the
+ * EVENT's own zone. Only a legacy row with no UTC value falls back to the
+ * naive local string, which `new Date()` reads in the VIEWING device's zone
+ * (the pre-2026-08-25 behavior, kept for backward compatibility).
+ */
+export function rentalEventInstant(utc: string | null | undefined, local: string | null | undefined): string | null {
+  return utc || local || null;
+}
+
 export function isUpcomingRental(
   pickupDateTime: string | null | undefined,
   now: number = Date.now(),
@@ -441,15 +452,19 @@ export function resolveRentalLifecycle(input: {
   status: string;
   pickupDateTime: string | null | undefined;
   returnDateTime: string | null | undefined;
+  /** Preferred when present (2026-10-02) — see rentalEventInstant(). */
+  pickupDateTimeUtc?: string | null;
+  returnDateTimeUtc?: string | null;
   now?: number;
 }): RentalLifecycle {
   const now = input.now ?? Date.now();
   if (input.status === 'completed') return 'completed';
   if (input.status === 'cancelled') return 'cancelled';
-  if (isUpcomingRental(input.pickupDateTime, now)) return 'upcoming';
+  if (isUpcomingRental(rentalEventInstant(input.pickupDateTimeUtc, input.pickupDateTime), now)) return 'upcoming';
 
-  if (input.returnDateTime) {
-    const returnMs = new Date(input.returnDateTime).getTime();
+  const returnAt = rentalEventInstant(input.returnDateTimeUtc, input.returnDateTime);
+  if (returnAt) {
+    const returnMs = new Date(returnAt).getTime();
     if (Number.isFinite(returnMs)) {
       const hoursUntilReturn = (returnMs - now) / 3_600_000;
       if (hoursUntilReturn <= RENTAL_NEAR_RETURN_HOURS) return 'near_return';
@@ -505,9 +520,10 @@ export function shouldTrackFuelNeededCalculated(session: {
   currentFuelGallons:        number | null;
   requiredReturnFuelGallons: number | null;
   pickupDateTime:            string | null;
+  pickupDateTimeUtc?:        string | null;
 } | null | undefined): boolean {
   if (!session) return false;
-  if (isUpcomingRental(session.pickupDateTime)) return false;
+  if (isUpcomingRental(rentalEventInstant(session.pickupDateTimeUtc, session.pickupDateTime))) return false;
   if (session.currentFuelGallons == null || session.requiredReturnFuelGallons == null) return false;
   return true;
 }

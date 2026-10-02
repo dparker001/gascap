@@ -1,19 +1,22 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslation } from '@/contexts/LanguageContext';
 import ModalShell from './ModalShell';
 import { RENTAL_COMPANIES } from '@/lib/rentalProvider';
 import type { ReturnPolicyType } from '@/lib/rentalCalculations';
 import type { RentalSession } from '@/lib/rentalSessions';
-import ReturnLocationInput from './ReturnLocationInput';
 import RentalVehicleLookup from '@/components/RentalVehicleLookup';
 import RentalVinLookup from '@/components/RentalVinLookup';
 import DeleteRentalButton from './DeleteRentalButton';
-import { scheduleRentalReturnReminder, cancelRentalReturnReminder } from '@/lib/rentalReminder';
-import { detectBrowserTimeZone } from '@/lib/rentalTimezone';
-import DateTimeSplitInput from './DateTimeSplitInput';
+import { resyncRentalFallbacks } from '@/lib/rentalReminderSync';
+import { useSession } from 'next-auth/react';
+import { detectBrowserTimeZone, describeEventTime, storedOccurrence, isTimeZoneSource, type TimeDisambiguation } from '@/lib/rentalTimezone';
+import { type RentalLocationValue } from './RentalLocationInput';
+import RentalEventScheduleField, {
+  eventTimeSubmittable, eventZonePayload, placeProvenanceCurrent, zoneOverrideAfterLocationChange, type EventZone,
+} from './RentalEventScheduleField';
 
 interface Props {
   session: RentalSession;
@@ -25,6 +28,7 @@ export default function EditRentalModal({ session, onClose, onSaved }: Props) {
   const { t } = useTranslation();
   const router = useRouter();
 
+  const authUserId = (useSession().data?.user as { id?: string } | undefined)?.id;
   const [rentalCompany, setRentalCompany] = useState(session.rentalCompany);
   const [agreementNumber, setAgreementNumber] = useState(session.rentalAgreementNumber ?? '');
   const [confirmationNumber, setConfirmationNumber] = useState(session.rentalConfirmationNumber ?? '');
@@ -54,14 +58,41 @@ export default function EditRentalModal({ session, onClose, onSaved }: Props) {
     session.requiredReturnPolicyType === 'exact' ? String(session.requiredReturnFuelGallons ?? '') : '',
   );
   const [rentalRate,    setRentalRate]    = useState(String(session.rentalFuelChargePerGallon ?? ''));
-  const [returnLocation, setReturnLocation] = useState(session.returnLocation ?? '');
-  const [returnCoords, setReturnCoords] = useState<{ lat: number; lng: number } | null>(
-    session.returnLatitude != null && session.returnLongitude != null
-      ? { lat: session.returnLatitude, lng: session.returnLongitude }
-      : null,
-  );
   const [pickupDateTime, setPickupDateTime] = useState(session.pickupDateTime?.slice(0, 16) ?? '');
   const [returnDateTime, setReturnDateTime] = useState(session.returnDateTime?.slice(0, 16) ?? '');
+
+  // Event-timezone model (2026-10-02). Each event starts from its STORED zone
+  // (event zone, else the legacy zone) — never the device of whoever is
+  // editing. A zone is only sent when the user picks one or selects a place.
+  const deviceZone = useMemo(() => detectBrowserTimeZone() ?? null, []);
+  const storedZone = (zone: string | null, source: string | null): EventZone =>
+    zone ? { zone, source: isTimeZoneSource(source) ? source : 'device' }
+         : session.timeZone ? { zone: session.timeZone, source: 'device' } : { zone: null, source: null };
+  const storedPickupZone = storedZone(session.pickupTimeZone, session.pickupTimeZoneSource);
+  const storedReturnZone = storedZone(session.returnTimeZone, session.returnTimeZoneSource);
+  const [pickupZoneOverride, setPickupZoneOverride] = useState<EventZone | null>(null);
+  const [returnZoneOverride, setReturnZoneOverride] = useState<EventZone | null>(null);
+  const pickupZone = pickupZoneOverride ?? storedPickupZone;
+  const returnZone = returnZoneOverride ?? storedReturnZone;
+  const locValue = (text: string | null, lat: number | null, lng: number | null): RentalLocationValue =>
+    ({ text: text ?? '', lat, lng, timeZone: null, timeZoneSource: null });
+  const [pickupLoc, setPickupLoc] = useState<RentalLocationValue>(locValue(session.pickupLocation, session.pickupLatitude, session.pickupLongitude));
+  const [returnLoc, setReturnLoc] = useState<RentalLocationValue>(locValue(session.returnLocation, session.returnLatitude, session.returnLongitude));
+  // A selected place carries its zone; free-typing over it drops that
+  // place-derived override (back to the stored zone); a user pick survives.
+  const onPickupLoc = (v: RentalLocationValue) => { setPickupLoc(v); setPickupZoneOverride((prev) => zoneOverrideAfterLocationChange(prev, v)); };
+  const onReturnLoc = (v: RentalLocationValue) => { setReturnLoc(v); setReturnZoneOverride((prev) => zoneOverrideAfterLocationChange(prev, v)); };
+  // The saved occurrence of an ambiguous (fall-back) time is preselected from
+  // the stored UTC instant, so an unrelated edit can never flip it.
+  const [pickupChoice, setPickupChoice] = useState<TimeDisambiguation | null>(
+    storedOccurrence(session.pickupDateTime, storedPickupZone.zone, session.pickupDateTimeUtc));
+  const [returnChoice, setReturnChoice] = useState<TimeDisambiguation | null>(
+    storedOccurrence(session.returnDateTime, storedReturnZone.zone, session.returnDateTimeUtc));
+  const pickupStatus = describeEventTime(pickupDateTime, pickupZone.zone);
+  const returnStatus = describeEventTime(returnDateTime, returnZone.zone);
+  const canSave = eventTimeSubmittable(pickupStatus) && eventTimeSubmittable(returnStatus);
+  const occurrence = (st: ReturnType<typeof describeEventTime>, c: TimeDisambiguation | null) =>
+    st.kind === 'ambiguous' ? (c ?? 'earlier') : undefined;
 
   const [saving, setSaving]   = useState(false);
   const [error, setError]     = useState('');
@@ -89,24 +120,30 @@ export default function EditRentalModal({ session, onClose, onSaved }: Props) {
               ? Number(tankCapacity)
               : undefined, // 'same_as_pickup' — leave the original pickup-derived value untouched
           rentalFuelChargePerGallon: rentalRate ? Number(rentalRate) : undefined,
-          returnLocation: returnLocation || undefined,
-          returnLatitude: returnCoords?.lat,
-          returnLongitude: returnCoords?.lng,
+          pickupLocation: pickupLoc.text || undefined,
+          pickupLatitude: pickupLoc.lat ?? undefined,
+          pickupLongitude: pickupLoc.lng ?? undefined,
+          returnLocation: returnLoc.text || undefined,
+          returnLatitude: returnLoc.lat ?? undefined,
+          returnLongitude: returnLoc.lng ?? undefined,
           pickupDateTime: pickupDateTime || undefined,
           returnDateTime: returnDateTime || undefined,
-          timeZone: detectBrowserTimeZone(),
+          // Zones only when the user changed them; NO device timeZone (an edit
+          // from another timezone must never reinterpret the rental).
+          ...eventZonePayload(pickupZoneOverride, returnZoneOverride),
+          pickupTimeDisambiguation: occurrence(pickupStatus, pickupChoice),
+          returnTimeDisambiguation: occurrence(returnStatus, returnChoice),
         }),
       });
-      if (!res.ok) { setError(t.rentalReturn.setupError); return; }
-      // Reschedule the local (device-side) reminder for the (possibly new)
-      // return time — mirrors RentalSetupFlow.tsx. If the return date/time
-      // was cleared, cancel any previously-scheduled reminder instead.
-      if (returnDateTime) {
-        const [d, tm] = returnDateTime.split('T');
-        if (d && tm) void scheduleRentalReturnReminder(d, tm);
-      } else {
-        void cancelRentalReturnReminder();
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({})) as { error?: string };
+        const scheduleCodes = ['invalid_time_zone', 'invalid_local_datetime', 'nonexistent_local_time', 'ambiguous_local_time'];
+        setError(data.error && scheduleCodes.includes(data.error) ? t.rentalReturn.tzScheduleError : t.rentalReturn.setupError);
+        return;
       }
+      // Re-sync this device's return fallback from the server's (possibly
+      // new) returnDateTimeUtc — Option C, 2026-10-02.
+      void resyncRentalFallbacks(authUserId);
       onSaved();
     } catch {
       setError(t.rentalReturn.setupError);
@@ -226,27 +263,42 @@ export default function EditRentalModal({ session, onClose, onSaved }: Props) {
           <input type="number" inputMode="decimal" min="0" step="0.01" value={rentalRate} onChange={(e) => setRentalRate(e.target.value)} className="input-field" />
         </div>
 
-        <div>
-          <label className="field-label">{t.rentalReturn.returnLocationLabel}</label>
-          <ReturnLocationInput
-            value={returnLocation}
-            onChange={(text, coords) => { setReturnLocation(text); setReturnCoords(coords); }}
-          />
-        </div>
+        <RentalEventScheduleField
+          kind="pickup"
+          label={t.rentalReturn.pickupDateTimeLabel}
+          dateTime={pickupDateTime}
+          onDateTime={setPickupDateTime}
+          location={pickupLoc}
+          onLocation={onPickupLoc}
+          locationLabel={t.rentalReturn.pickupLocationLabel}
+          locationPlaceholder={t.rentalReturn.pickupLocationPlaceholder}
+          zone={pickupZone}
+          placeLabelStale={!placeProvenanceCurrent(pickupZone, pickupZoneOverride, pickupLoc, session.pickupLocation ?? '')}
+          onPickZone={(z) => setPickupZoneOverride({ zone: z, source: 'user' })}
+          choice={pickupChoice}
+          onChoice={setPickupChoice}
+          deviceZone={deviceZone}
+        />
 
-        <div>
-          <label className="field-label">{t.rentalReturn.pickupDateTimeLabel}</label>
-          <DateTimeSplitInput value={pickupDateTime} onChange={setPickupDateTime} />
-        </div>
-
-        <div>
-          <label className="field-label">{t.rentalReturn.returnDateTimeLabel}</label>
-          <DateTimeSplitInput value={returnDateTime} onChange={setReturnDateTime} />
-        </div>
+        <RentalEventScheduleField
+          kind="return"
+          label={t.rentalReturn.returnDateTimeLabel}
+          dateTime={returnDateTime}
+          onDateTime={setReturnDateTime}
+          location={returnLoc}
+          onLocation={onReturnLoc}
+          locationLabel={t.rentalReturn.returnLocationLabel}
+          zone={returnZone}
+          placeLabelStale={!placeProvenanceCurrent(returnZone, returnZoneOverride, returnLoc, session.returnLocation ?? '')}
+          onPickZone={(z) => setReturnZoneOverride({ zone: z, source: 'user' })}
+          choice={returnChoice}
+          onChoice={setReturnChoice}
+          deviceZone={deviceZone}
+        />
 
         <div className="flex gap-2 pt-1">
           <button onClick={onClose} className="flex-1 py-2.5 rounded-xl bg-slate-100 text-slate-700 text-sm font-bold">{t.rentalReturn.cancel}</button>
-          <button onClick={handleSave} disabled={saving} className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold disabled:opacity-40">
+          <button onClick={handleSave} disabled={saving || !canSave} className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold disabled:opacity-40">
             {saving ? t.rentalReturn.saving : t.rentalReturn.save}
           </button>
         </div>

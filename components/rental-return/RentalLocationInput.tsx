@@ -1,12 +1,17 @@
 'use client';
 
 /**
- * Address-autocomplete input that resolves the selected suggestion to real
- * lat/lng via /api/maps/place-location — without this, returnLatitude/
- * returnLongitude on the RentalSession never get populated, and "Find Gas
- * Near Return" has nothing to search around. Falls back to a plain text
- * field (no coordinates captured) if Google Maps isn't configured — same
- * graceful-degradation pattern as TripCostEstimator's route planner.
+ * RentalLocationInput — address autocomplete for EITHER rental event
+ * (pickup or return). Generalizes the former ReturnLocationInput
+ * (2026-10-02 event-timezone model).
+ *
+ * Selecting a Google suggestion resolves it via /api/maps/place-location
+ * with includeTimeZone:true (signed-in only; Place Details Pro field) into
+ * { text, lat, lng, timeZone, timeZoneSource: 'place' }. Free-typed text
+ * that wasn't picked from the list carries NO coordinates and NO zone — it
+ * never pretends to be authoritative; the setup/edit UI then falls back to
+ * an explicit zone picker or a clearly-labelled device assumption.
+ * Degrades to a plain text field when Maps isn't configured.
  */
 
 import { useEffect, useRef, useState } from 'react';
@@ -14,13 +19,25 @@ import { useTranslation } from '@/contexts/LanguageContext';
 
 interface Suggestion { text: string; placeId: string }
 
+export interface RentalLocationValue {
+  text:           string;
+  lat:            number | null;
+  lng:            number | null;
+  timeZone:       string | null;
+  timeZoneSource: 'place' | null;
+}
+
+export const emptyRentalLocation = (text = ''): RentalLocationValue =>
+  ({ text, lat: null, lng: null, timeZone: null, timeZoneSource: null });
+
 interface Props {
-  value:    string;
-  onChange: (text: string, coords: { lat: number; lng: number } | null) => void;
+  kind:         'pickup' | 'return';
+  value:        RentalLocationValue;
+  onChange:     (v: RentalLocationValue) => void;
   placeholder?: string;
 }
 
-export default function ReturnLocationInput({ value, onChange, placeholder }: Props) {
+export default function RentalLocationInput({ kind, value, onChange, placeholder }: Props) {
   const { t } = useTranslation();
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [open, setOpen] = useState(false);
@@ -28,20 +45,20 @@ export default function ReturnLocationInput({ value, onChange, placeholder }: Pr
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (value.length < 3) { setSuggestions([]); return; }
+    if (value.text.length < 3 || value.lat != null) { setSuggestions([]); return; }
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       fetch('/api/maps/autocomplete', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ input: value }),
+        body:    JSON.stringify({ input: value.text }),
       })
         .then((r) => r.json() as Promise<{ ok: boolean; results?: Suggestion[] }>)
         .then((d) => { if (d.ok) setSuggestions(d.results ?? []); })
         .catch(() => {});
     }, 300);
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [value]);
+  }, [value.text, value.lat]);
 
   async function handleSelect(s: Suggestion) {
     setOpen(false);
@@ -51,24 +68,33 @@ export default function ReturnLocationInput({ value, onChange, placeholder }: Pr
       const res = await fetch('/api/maps/place-location', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ placeId: s.placeId }),
+        body:    JSON.stringify({ placeId: s.placeId, includeTimeZone: true }),
       });
-      const data = await res.json() as { ok: boolean; lat?: number; lng?: number };
-      onChange(s.text, data.ok && data.lat != null && data.lng != null ? { lat: data.lat, lng: data.lng } : null);
+      const data = await res.json() as { ok: boolean; lat?: number; lng?: number; timeZone?: string };
+      const hasCoords = data.ok && data.lat != null && data.lng != null;
+      onChange({
+        text:           s.text,
+        lat:            hasCoords ? data.lat! : null,
+        lng:            hasCoords ? data.lng! : null,
+        timeZone:       hasCoords && data.timeZone ? data.timeZone : null,
+        timeZoneSource: hasCoords && data.timeZone ? 'place' : null,
+      });
     } catch {
-      onChange(s.text, null);
+      onChange(emptyRentalLocation(s.text));
     } finally {
       setResolving(false);
     }
   }
 
   return (
-    <div className="relative">
+    <div className="relative" data-rental-location={kind}>
       <input
         type="text"
-        value={value}
+        value={value.text}
         placeholder={placeholder}
-        onChange={(e) => { onChange(e.target.value, null); setOpen(true); }}
+        // Typing invalidates any previously resolved place: coordinates and
+        // zone belonged to the OLD selection, not to this free text.
+        onChange={(e) => { onChange(emptyRentalLocation(e.target.value)); setOpen(true); }}
         onFocus={() => setOpen(true)}
         onBlur={() => setTimeout(() => setOpen(false), 150)}
         className="input-field"

@@ -719,6 +719,23 @@ model RentalSession {
   returnLocation                 String?
   returnLatitude                  Float?
   returnLongitude                 Float?
+  /// 2026-10-02 event-timezone model. Each rental EVENT has its own IANA
+  /// zone: pickup and return may be in different zones (one-way rentals),
+  /// and neither is the device zone of whoever is editing. pickupDateTimeUtc
+  /// derives from pickupDateTime + pickupTimeZone; returnDateTimeUtc from
+  /// returnDateTime + returnTimeZone. Null on legacy rows, which fall back
+  /// to the legacy `timeZone` above. Added by
+  /// scripts/add-rental-event-timezone-columns.mjs (additive, no backfill).
+  pickupTimeZone                  String?
+  returnTimeZone                  String?
+  /// Where each event zone came from: 'place' (Google Places timeZone.id
+  /// for a selected location), 'user' (explicitly picked), or 'device'
+  /// (browser default — an assumption, shown as such). Validated in app
+  /// code (lib/rentalTimezone.ts), not by a DB constraint.
+  pickupTimeZoneSource            String?
+  returnTimeZoneSource            String?
+  pickupLatitude                  Float?
+  pickupLongitude                 Float?
 
   // Photos — same compressed-base64-thumbnail pattern as Fillup.receiptThumb,
   // no new storage infra. All optional and purely for the renter's own
