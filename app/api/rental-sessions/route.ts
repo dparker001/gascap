@@ -7,7 +7,7 @@ import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { RENTAL_RETURN_ASSISTANT_ENABLED } from '@/lib/featureFlags';
-import { createRentalSession, getRentalSessionsForUser, type CreateRentalSessionInput } from '@/lib/rentalSessions';
+import { createRentalSession, getRentalSessionsForUser, RentalScheduleError, type CreateRentalSessionInput } from '@/lib/rentalSessions';
 import { ManualRentalDataProvider } from '@/lib/rentalProvider';
 import { getLivePlan } from '@/lib/serverPlan';
 import { validateRentalPhotos, photoCapKb, PHOTO_MAX_DATA_URL_BYTES } from '@/lib/photoLimits';
@@ -119,6 +119,16 @@ export async function POST(req: NextRequest) {
     pickupDateTime:              body.pickupDateTime,
     returnDateTime:              body.returnDateTime,
     timeZone:                    body.timeZone,
+    // Event-timezone model (2026-10-02): each event's own zone/source; the
+    // server derives both UTC instants — any client *Utc value is ignored.
+    pickupTimeZone:              body.pickupTimeZone,
+    pickupTimeZoneSource:        body.pickupTimeZoneSource,
+    returnTimeZone:              body.returnTimeZone,
+    returnTimeZoneSource:        body.returnTimeZoneSource,
+    pickupTimeDisambiguation:    body.pickupTimeDisambiguation,
+    returnTimeDisambiguation:    body.returnTimeDisambiguation,
+    pickupLatitude:              body.pickupLatitude,
+    pickupLongitude:             body.pickupLongitude,
     pickupLocation:              body.pickupLocation,
     returnLocation:               body.returnLocation,
     returnLatitude:               body.returnLatitude,
@@ -129,6 +139,15 @@ export async function POST(req: NextRequest) {
     notes:                        body.notes,
   };
 
-  const created = await createRentalSession(userId, input);
-  return NextResponse.json({ session: created }, { status: 201 });
+  try {
+    const created = await createRentalSession(userId, input);
+    return NextResponse.json({ session: created }, { status: 201 });
+  } catch (e) {
+    // Invalid zone / impossible date → 400; nonexistent (DST gap) or
+    // ambiguous-without-choice (DST fall-back) local time → 422.
+    if (e instanceof RentalScheduleError) {
+      return NextResponse.json({ error: e.code, field: e.field }, { status: e.status });
+    }
+    throw e;
+  }
 }

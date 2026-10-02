@@ -6,7 +6,10 @@ import { prisma } from './prisma';
 import type { RefuelLogEntry, FuelDataSource } from './rentalProvider';
 import { gallonsNeeded, resolveRequiredReturnFuel, returnReadyStatus, reconcileFuelForNewTank, type ReturnPolicyType, type ReturnReadyStatus } from './rentalCalculations';
 import { recordAnalyticsEvent } from './analyticsEvents';
-import { localDateTimeToUtcIso } from './rentalTimezone';
+import {
+  isValidIanaZone, isTimeZoneSource, isTimeDisambiguation, resolveEventUtc, storedOccurrence,
+  type TimeZoneSource, type TimeDisambiguation, type ScheduleErrorCode,
+} from './rentalTimezone';
 
 export interface RentalSession {
   id:                          string;
@@ -35,6 +38,13 @@ export interface RentalSession {
   timeZone:                    string | null;
   pickupDateTimeUtc:           string | null;
   returnDateTimeUtc:           string | null;
+  // Event-timezone model (2026-10-02): each event's own IANA zone + source.
+  pickupTimeZone:              string | null;
+  returnTimeZone:              string | null;
+  pickupTimeZoneSource:        string | null;
+  returnTimeZoneSource:        string | null;
+  pickupLatitude:              number | null;
+  pickupLongitude:             number | null;
   pickupLocation:              string | null;
   returnLocation:              string | null;
   returnLatitude:              number | null;
@@ -71,6 +81,107 @@ function toRentalSession(row: any): RentalSession {
   };
 }
 
+// ── Event scheduling (2026-10-02 event-timezone model) ───────────────────────
+
+/** Thrown by create/update for a bad schedule; routes map it to 400/422. */
+export class RentalScheduleError extends Error {
+  constructor(public code: ScheduleErrorCode, public field: string) {
+    super(`${field}: ${code}`);
+    this.name = 'RentalScheduleError';
+  }
+  get status(): number {
+    return this.code === 'nonexistent_local_time' || this.code === 'ambiguous_local_time' ? 422 : 400;
+  }
+}
+
+export interface ResolvedEvent {
+  local:  string | null;
+  zone:   string | null;
+  source: TimeZoneSource | null;
+  utc:    string | null;
+}
+
+const blankToNull = (v: unknown): string | null => (typeof v === 'string' && v.trim() ? v : null);
+
+/**
+ * CREATE: one event's (local, zone, source, utc). Zone precedence: a valid
+ * submitted EVENT zone (an invalid one is rejected, never ignored); else the
+ * legacy device `timeZone` from an older client, recorded as source
+ * 'device'; else null (no UTC can be derived — same as a legacy row with no
+ * zone). The pickup zone is never borrowed for return or vice versa.
+ */
+export function resolveCreateEvent(field: 'pickup' | 'return', opts: {
+  local: unknown; eventZone: unknown; eventSource: unknown; legacyZone: unknown; choice: unknown;
+}): ResolvedEvent {
+  const local = blankToNull(opts.local);
+  let zone: string | null = null;
+  let source: TimeZoneSource | null = null;
+  if (opts.eventZone !== undefined && opts.eventZone !== null && opts.eventZone !== '') {
+    if (!isValidIanaZone(opts.eventZone)) throw new RentalScheduleError('invalid_time_zone', `${field}TimeZone`);
+    zone = opts.eventZone;
+    source = isTimeZoneSource(opts.eventSource) ? opts.eventSource : 'device';
+  } else if (isValidIanaZone(opts.legacyZone)) {
+    zone = opts.legacyZone;
+    source = 'device';
+  }
+  if (!local) return { local: null, zone, source, utc: null };
+  if (!zone) {
+    // No zone to interpret it in — keep the wall clock, no instant (legacy parity).
+    return { local, zone, source, utc: null };
+  }
+  const r = resolveEventUtc(local, zone, isTimeDisambiguation(opts.choice) ? opts.choice : null);
+  if (!r.ok) throw new RentalScheduleError(r.code, `${field}DateTime`);
+  return { local, zone, source, utc: r.utcIso };
+}
+
+export interface UpdatedEvent extends ResolvedEvent {
+  /** True when the instant may have changed — reset this event's reminder stamps. */
+  scheduleChanged: boolean;
+  zoneWritten:     boolean;
+}
+
+/**
+ * PATCH: one event. Effective zone = submitted valid event zone, else the
+ * STORED event zone, else the STORED legacy `timeZone` — never the editing
+ * device's zone (a body `timeZone` is ignored by the caller). The instant is
+ * recomputed only when this event's wall clock, effective zone, or explicit
+ * ambiguous-occurrence choice actually changes; an unrelated edit never
+ * re-derives (so a stored LATER occurrence is never flipped to earlier).
+ */
+export function resolveUpdateEvent(field: 'pickup' | 'return', stored: {
+  local: string | null; eventZone: string | null; eventSource: string | null; legacyZone: string | null; utc: string | null;
+}, patch: { local: unknown; eventZone: unknown; eventSource: unknown; choice: unknown }): UpdatedEvent {
+  const storedZone = stored.eventZone ?? stored.legacyZone;
+  const storedSource = (stored.eventSource as TimeZoneSource | null) ?? (stored.legacyZone ? 'device' : null);
+
+  let zone = storedZone;
+  let source = storedSource;
+  let zoneWritten = false;
+  if (patch.eventZone !== undefined && patch.eventZone !== null && patch.eventZone !== '') {
+    if (!isValidIanaZone(patch.eventZone)) throw new RentalScheduleError('invalid_time_zone', `${field}TimeZone`);
+    zone = patch.eventZone;
+    source = isTimeZoneSource(patch.eventSource) ? patch.eventSource : 'user';
+    zoneWritten = zone !== stored.eventZone || source !== stored.eventSource;
+  }
+  const local = patch.local !== undefined ? blankToNull(patch.local) : stored.local;
+  const choice = isTimeDisambiguation(patch.choice) ? patch.choice : null;
+
+  const localChanged = local !== stored.local;
+  const zoneChanged  = zone !== storedZone;
+  const occurrenceChanged = !localChanged && !zoneChanged && choice !== null
+    && choice !== storedOccurrence(stored.local, storedZone, stored.utc);
+
+  if (!localChanged && !zoneChanged && !occurrenceChanged) {
+    return { local, zone, source, utc: stored.utc, scheduleChanged: false, zoneWritten };
+  }
+  if (!local || !zone) {
+    return { local, zone, source, utc: null, scheduleChanged: true, zoneWritten };
+  }
+  const r = resolveEventUtc(local, zone, choice);
+  if (!r.ok) throw new RentalScheduleError(r.code, `${field}DateTime`);
+  return { local, zone, source, utc: r.utcIso, scheduleChanged: true, zoneWritten };
+}
+
 export interface CreateRentalSessionInput {
   rentalCompany:             string;
   rentalAgreementNumber?:    string;
@@ -88,8 +199,19 @@ export interface CreateRentalSessionInput {
   rentalFuelChargePerGallon?: number;
   pickupDateTime?:           string;
   returnDateTime?:           string;
-  /** IANA timezone captured from the browser at creation time — see lib/rentalTimezone.ts. */
+  /** LEGACY: the creating device's IANA zone. Kept for backward compatibility
+   *  only; used as an event zone (source 'device') when an older client sends
+   *  no event zone. */
   timeZone?:                 string;
+  pickupTimeZone?:           string;
+  pickupTimeZoneSource?:     TimeZoneSource;
+  returnTimeZone?:           string;
+  returnTimeZoneSource?:     TimeZoneSource;
+  /** Transient: required only when a wall time is ambiguous (DST fall-back). */
+  pickupTimeDisambiguation?: TimeDisambiguation;
+  returnTimeDisambiguation?: TimeDisambiguation;
+  pickupLatitude?:           number;
+  pickupLongitude?:          number;
   pickupLocation?:           string;
   returnLocation?:           string;
   returnLatitude?:           number;
@@ -109,6 +231,17 @@ export async function createRentalSession(userId: string, input: CreateRentalSes
     input.fuelTankCapacityGallons ?? null,
     input.requiredReturnFuelGallons ?? null,
   );
+
+  // Validates + derives BOTH instants before anything is written; throws
+  // RentalScheduleError (400/422). Client-supplied *Utc values are never read.
+  const pickup = resolveCreateEvent('pickup', {
+    local: input.pickupDateTime, eventZone: input.pickupTimeZone, eventSource: input.pickupTimeZoneSource,
+    legacyZone: input.timeZone, choice: input.pickupTimeDisambiguation,
+  });
+  const ret = resolveCreateEvent('return', {
+    local: input.returnDateTime, eventZone: input.returnTimeZone, eventSource: input.returnTimeZoneSource,
+    legacyZone: input.timeZone, choice: input.returnTimeDisambiguation,
+  });
 
   const row = await prisma.rentalSession.create({
     data: {
@@ -135,11 +268,17 @@ export async function createRentalSession(userId: string, input: CreateRentalSes
       currentFuelSource:       input.pickupFuelSource ?? null,
       currentFuelUpdatedAt:    input.pickupFuelGallons != null ? now : null,
       rentalFuelChargePerGallon: input.rentalFuelChargePerGallon ?? null,
-      pickupDateTime:          input.pickupDateTime ?? null,
-      returnDateTime:          input.returnDateTime ?? null,
-      timeZone:                input.timeZone ?? null,
-      pickupDateTimeUtc:       localDateTimeToUtcIso(input.pickupDateTime, input.timeZone),
-      returnDateTimeUtc:       localDateTimeToUtcIso(input.returnDateTime, input.timeZone),
+      pickupDateTime:          pickup.local,
+      returnDateTime:          ret.local,
+      timeZone:                isValidIanaZone(input.timeZone) ? input.timeZone : null,
+      pickupTimeZone:          pickup.zone,
+      pickupTimeZoneSource:    pickup.source,
+      pickupDateTimeUtc:       pickup.utc,
+      returnTimeZone:          ret.zone,
+      returnTimeZoneSource:    ret.source,
+      returnDateTimeUtc:       ret.utc,
+      pickupLatitude:          typeof input.pickupLatitude  === 'number' ? input.pickupLatitude  : null,
+      pickupLongitude:         typeof input.pickupLongitude === 'number' ? input.pickupLongitude : null,
       pickupLocation:          input.pickupLocation ?? null,
       returnLocation:          input.returnLocation ?? null,
       returnLatitude:          input.returnLatitude ?? null,
@@ -195,8 +334,19 @@ export interface UpdateRentalSessionInput {
   vehicleTrim?:                string;
   fuelTankCapacityGallons?:    number;
   pickupDateTime?:             string;
-  /** IANA timezone captured from the browser at edit time — see lib/rentalTimezone.ts. */
+  /** IGNORED on update (2026-10-02). Kept in the type only so stale clients
+   *  that still send their device zone are accepted and that zone is never
+   *  applied — editing from another timezone must not reinterpret a rental. */
   timeZone?:                   string;
+  pickupTimeZone?:             string;
+  pickupTimeZoneSource?:       TimeZoneSource;
+  returnTimeZone?:             string;
+  returnTimeZoneSource?:       TimeZoneSource;
+  pickupTimeDisambiguation?:   TimeDisambiguation;
+  returnTimeDisambiguation?:   TimeDisambiguation;
+  pickupLocation?:             string;
+  pickupLatitude?:             number;
+  pickupLongitude?:            number;
   pickupFuelGallons?:          number;
   pickupFuelSource?:           FuelDataSource;
   requiredReturnFuelGallons?:  number;
@@ -231,8 +381,11 @@ export async function updateRentalSession(userId: string, id: string, input: Upd
   if (input.vehicleModel          !== undefined) data.vehicleModel          = input.vehicleModel;
   if (input.vehicleTrim           !== undefined) data.vehicleTrim           = input.vehicleTrim;
   if (input.fuelTankCapacityGallons   !== undefined) data.fuelTankCapacityGallons   = input.fuelTankCapacityGallons;
-  if (input.pickupDateTime            !== undefined) data.pickupDateTime            = input.pickupDateTime;
-  if (input.timeZone                  !== undefined) data.timeZone                  = input.timeZone;
+  // pickupDateTime / returnDateTime / zones are written by the event-schedule
+  // block below; input.timeZone (legacy device zone) is deliberately ignored.
+  if (input.pickupLocation            !== undefined) data.pickupLocation            = input.pickupLocation;
+  if (input.pickupLatitude            !== undefined) data.pickupLatitude            = input.pickupLatitude;
+  if (input.pickupLongitude           !== undefined) data.pickupLongitude           = input.pickupLongitude;
   if (input.pickupFuelGallons         !== undefined) data.pickupFuelGallons         = input.pickupFuelGallons;
   if (input.pickupFuelSource          !== undefined) data.pickupFuelSource          = input.pickupFuelSource;
 
@@ -254,40 +407,40 @@ export async function updateRentalSession(userId: string, id: string, input: Upd
   if (input.currentFuelGallons !== undefined) { data.currentFuelGallons = input.currentFuelGallons; data.currentFuelUpdatedAt = now; }
   if (input.currentFuelSource  !== undefined) data.currentFuelSource  = input.currentFuelSource;
   if (input.rentalFuelChargePerGallon !== undefined) data.rentalFuelChargePerGallon = input.rentalFuelChargePerGallon;
-  if (input.returnDateTime    !== undefined) data.returnDateTime    = input.returnDateTime;
   if (input.returnLocation    !== undefined) data.returnLocation    = input.returnLocation;
   if (input.returnLatitude    !== undefined) data.returnLatitude    = input.returnLatitude;
   if (input.returnLongitude   !== undefined) data.returnLongitude   = input.returnLongitude;
   if (input.notes             !== undefined) data.notes             = input.notes;
   if (input.fuelGaugeStyle    !== undefined) data.fuelGaugeStyle    = input.fuelGaugeStyle;
 
-  // ── Reminder timezone/UTC recompute + dedup reset (2026-08-25 P0 fix) ───
-  // Only trigger on an ACTUAL value change (not merely "the caller included
-  // this field"), so resubmitting an unchanged rental never resets a dedup
-  // flag or reschedules a reminder that already correctly fired.
-  const pickupDateTimeChanged = input.pickupDateTime !== undefined && input.pickupDateTime !== existing.pickupDateTime;
-  const returnDateTimeChanged = input.returnDateTime !== undefined && input.returnDateTime !== existing.returnDateTime;
-  const timeZoneChanged       = input.timeZone       !== undefined && input.timeZone       !== existing.timeZone;
+  // ── Event schedule recompute + reminder reset (2026-10-02) ──────────────
+  // Each event independently: its instant is re-derived, and ONLY its own
+  // reminder stamps reset, when its wall clock, effective zone, or explicit
+  // ambiguous-occurrence choice actually changes. Unrelated edits — and the
+  // editing device's timezone — never touch scheduling.
+  const p = resolveUpdateEvent('pickup', {
+    local: existing.pickupDateTime, eventZone: existing.pickupTimeZone, eventSource: existing.pickupTimeZoneSource,
+    legacyZone: existing.timeZone, utc: existing.pickupDateTimeUtc,
+  }, { local: input.pickupDateTime, eventZone: input.pickupTimeZone, eventSource: input.pickupTimeZoneSource, choice: input.pickupTimeDisambiguation });
+  const r = resolveUpdateEvent('return', {
+    local: existing.returnDateTime, eventZone: existing.returnTimeZone, eventSource: existing.returnTimeZoneSource,
+    legacyZone: existing.timeZone, utc: existing.returnDateTimeUtc,
+  }, { local: input.returnDateTime, eventZone: input.returnTimeZone, eventSource: input.returnTimeZoneSource, choice: input.returnTimeDisambiguation });
 
-  if (pickupDateTimeChanged || returnDateTimeChanged || timeZoneChanged) {
-    const effectivePickup = (data.pickupDateTime ?? existing.pickupDateTime) as string | null;
-    const effectiveReturn = (data.returnDateTime ?? existing.returnDateTime) as string | null;
-    const effectiveTz     = (data.timeZone ?? existing.timeZone) as string | null;
-    data.pickupDateTimeUtc = localDateTimeToUtcIso(effectivePickup, effectiveTz);
-    data.returnDateTimeUtc = localDateTimeToUtcIso(effectiveReturn, effectiveTz);
-  }
-  // Pickup-side dedup only resets when the PICKUP time (or the timezone
-  // interpreting it) actually changed — a return-time-only edit must not
-  // re-nag someone who already got their pickup reminders.
-  if (pickupDateTimeChanged || timeZoneChanged) {
+  if (p.scheduleChanged) {
+    data.pickupDateTime = p.local;
+    data.pickupDateTimeUtc = p.utc;
     data.pickupReminder24SentAt = null;
     data.pickupReminder2SentAt  = null;
   }
-  // Return-side dedup only resets when the RETURN time (or timezone) changed.
-  if (returnDateTimeChanged || timeZoneChanged) {
+  if (p.zoneWritten) { data.pickupTimeZone = p.zone; data.pickupTimeZoneSource = p.source; }
+  if (r.scheduleChanged) {
+    data.returnDateTime = r.local;
+    data.returnDateTimeUtc = r.utc;
     data.reminderSentAt        = null;
     data.returnReminder2SentAt = null;
   }
+  if (r.zoneWritten) { data.returnTimeZone = r.zone; data.returnTimeZoneSource = r.source; }
 
   // ── Tank capacity changed: reconcile the fuel figures ────────────────────
   //

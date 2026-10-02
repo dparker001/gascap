@@ -107,3 +107,133 @@ export function detectBrowserTimeZone(): string | undefined {
     return undefined;
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Event-timezone model (2026-10-02, approved). Each rental EVENT (pickup,
+// return) is a naive local wall clock + its OWN IANA zone; the server derives
+// the authoritative UTC instant from that pair and never trusts a
+// client-supplied UTC value. Everything below is pure and DST-aware.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const TIME_ZONE_SOURCES = ['place', 'user', 'device'] as const;
+export type TimeZoneSource = typeof TIME_ZONE_SOURCES[number];
+export function isTimeZoneSource(v: unknown): v is TimeZoneSource {
+  return typeof v === 'string' && (TIME_ZONE_SOURCES as readonly string[]).includes(v);
+}
+
+export type TimeDisambiguation = 'earlier' | 'later';
+export function isTimeDisambiguation(v: unknown): v is TimeDisambiguation {
+  return v === 'earlier' || v === 'later';
+}
+
+// Backward-compatibility link prefixes (IANA "backward" file) and fixed-offset
+// Etc/* zones are rejected: they aren't the canonical location-based names a
+// rental event should carry, and Etc/* has no DST.
+const REJECTED_PREFIXES = ['Etc/', 'US/', 'Canada/', 'Mexico/', 'Brazil/', 'Chile/', 'SystemV/'];
+let supportedZones: Set<string> | null = null;
+
+/**
+ * Strict IANA zone check. Accepts "UTC" or an Area/Location name that Intl
+ * accepts and that resolves to a supported zone. Rejects abbreviations
+ * ("EST", "EST5EDT" — Intl silently maps EST to fixed-offset America/Panama),
+ * untrimmed/empty strings, fixed-offset Etc/* and backward-link aliases.
+ * Membership is checked on the RESOLVED name because ICU's list still uses
+ * older canonical spellings (Asia/Calcutta) while Google Places returns the
+ * current IANA ones (Asia/Kolkata) — both must be accepted. Never throws.
+ */
+export function isValidIanaZone(z: unknown): z is string {
+  if (typeof z !== 'string' || z.length === 0 || z !== z.trim()) return false;
+  if (z === 'UTC') return true;
+  if (!/^[A-Za-z][A-Za-z0-9_+-]*(\/[A-Za-z0-9_+-]+)+$/.test(z)) return false;
+  if (REJECTED_PREFIXES.some((p) => z.startsWith(p))) return false;
+  try {
+    const resolved = new Intl.DateTimeFormat('en-US', { timeZone: z }).resolvedOptions().timeZone;
+    if (!supportedZones) {
+      const intl = Intl as unknown as { supportedValuesOf?: (k: string) => string[] };
+      supportedZones = new Set(intl.supportedValuesOf ? intl.supportedValuesOf('timeZone') : []);
+    }
+    return supportedZones.size === 0 ? true : supportedZones.has(resolved);
+  } catch {
+    return false;
+  }
+}
+
+/** Strict "YYYY-MM-DDTHH:mm" (optional ":00" seconds) with a real calendar date. */
+export function parseStrictLocalDateTime(s: unknown): WallClock | null {
+  if (typeof s !== 'string') return null;
+  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::00)?$/.exec(s);
+  if (!m) return null;
+  const w = { year: +m[1], month: +m[2], day: +m[3], hour: +m[4], minute: +m[5] };
+  if (w.month < 1 || w.month > 12 || w.hour > 23 || w.minute > 59 || w.day < 1) return null;
+  const probe = new Date(Date.UTC(w.year, w.month - 1, w.day));
+  if (probe.getUTCMonth() !== w.month - 1 || probe.getUTCDate() !== w.day) return null; // e.g. Feb 30
+  return w;
+}
+
+export type LocalTimeClass =
+  | { kind: 'valid';       utcMs: number }
+  | { kind: 'ambiguous';   earlierMs: number; laterMs: number }   // fall-back: occurs twice
+  | { kind: 'nonexistent' };                                     // spring-forward gap
+
+const sameWall = (a: WallClock, b: WallClock) =>
+  a.year === b.year && a.month === b.month && a.day === b.day && a.hour === b.hour && a.minute === b.minute;
+
+/**
+ * Classifies a wall clock in a zone. Candidate instants are derived from the
+ * zone's offsets a day either side of the wall time (covers any DST change),
+ * and each is kept only if it really displays as that wall clock. Zero
+ * survivors = nonexistent, one = valid, two = ambiguous. Assumes a valid zone.
+ */
+export function classifyLocalTime(wall: WallClock, zone: string): LocalTimeClass {
+  const target = wallClockToUtcMs(wall);
+  const offsets = new Set<number>();
+  for (const probe of [target - 86_400_000, target, target + 86_400_000]) {
+    offsets.add(wallClockToUtcMs(wallClockInZone(probe, zone)) - probe);
+  }
+  const hits = Array.from(offsets)
+    .map((o) => target - o)
+    .filter((t) => sameWall(wallClockInZone(t, zone), wall));
+  const uniq = Array.from(new Set(hits)).sort((a, b) => a - b);
+  if (uniq.length === 0) return { kind: 'nonexistent' };
+  if (uniq.length === 1) return { kind: 'valid', utcMs: uniq[0] };
+  return { kind: 'ambiguous', earlierMs: uniq[0], laterMs: uniq[uniq.length - 1] };
+}
+
+export type ScheduleErrorCode =
+  | 'invalid_time_zone' | 'invalid_local_datetime' | 'nonexistent_local_time' | 'ambiguous_local_time';
+
+export type ResolveResult =
+  | { ok: true; utcIso: string; occurrence: TimeDisambiguation | null }
+  | { ok: false; code: ScheduleErrorCode };
+
+/**
+ * Authoritative local → UTC for ONE event. Nonexistent times are rejected,
+ * never normalized. Ambiguous times REQUIRE an explicit 'earlier'/'later'.
+ */
+export function resolveEventUtc(local: string, zone: string, choice?: TimeDisambiguation | null): ResolveResult {
+  if (!isValidIanaZone(zone)) return { ok: false, code: 'invalid_time_zone' };
+  const wall = parseStrictLocalDateTime(local);
+  if (!wall) return { ok: false, code: 'invalid_local_datetime' };
+  const c = classifyLocalTime(wall, zone);
+  if (c.kind === 'nonexistent') return { ok: false, code: 'nonexistent_local_time' };
+  if (c.kind === 'valid') return { ok: true, utcIso: new Date(c.utcMs).toISOString(), occurrence: null };
+  if (!choice) return { ok: false, code: 'ambiguous_local_time' };
+  return { ok: true, utcIso: new Date(choice === 'earlier' ? c.earlierMs : c.laterMs).toISOString(), occurrence: choice };
+}
+
+/**
+ * Which occurrence a stored (local, zone, utc) triple represents, for an
+ * ambiguous wall time. Null when the time isn't ambiguous or can't be told.
+ * No extra column is needed: the stored UTC instant identifies the choice.
+ */
+export function storedOccurrence(local: string | null | undefined, zone: string | null | undefined, utcIso: string | null | undefined): TimeDisambiguation | null {
+  if (!local || !zone || !utcIso || !isValidIanaZone(zone)) return null;
+  const wall = parseStrictLocalDateTime(local);
+  if (!wall) return null;
+  const c = classifyLocalTime(wall, zone);
+  if (c.kind !== 'ambiguous') return null;
+  const ms = Date.parse(utcIso);
+  if (ms === c.earlierMs) return 'earlier';
+  if (ms === c.laterMs) return 'later';
+  return null;
+}
