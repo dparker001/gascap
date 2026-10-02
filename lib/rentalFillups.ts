@@ -75,15 +75,21 @@ function isUniqueConstraintError(err: unknown): boolean {
  * it inside the same $transaction as the Fillup insert.
  */
 function bumpCurrentFuelGallonsOnCreateSql(sessionId: string, gallonsAdded: number, now: string) {
+  // Part A (2026-10-02): an UNKNOWN current level stays unknown. Counting up
+  // from zero would turn "4.2 gal added" into a reading of 4.2 gal that nobody
+  // observed; the renter must give a post-refuel reading (or confirm full)
+  // first. The Fillup transaction itself is still recorded. SET expressions
+  // all read the pre-update row, so each CASE sees the OLD currentFuelGallons.
   return prisma.$executeRaw`
     UPDATE "RentalSession"
     SET "currentFuelGallons" = CASE
+          WHEN "currentFuelGallons" IS NULL THEN NULL
           WHEN "fuelTankCapacityGallons" IS NOT NULL
-            THEN LEAST(COALESCE("currentFuelGallons", 0) + ${gallonsAdded}, "fuelTankCapacityGallons")
-          ELSE COALESCE("currentFuelGallons", 0) + ${gallonsAdded}
+            THEN LEAST("currentFuelGallons" + ${gallonsAdded}, "fuelTankCapacityGallons")
+          ELSE "currentFuelGallons" + ${gallonsAdded}
         END,
-        "currentFuelSource" = 'RECEIPT',
-        "currentFuelUpdatedAt" = ${now},
+        "currentFuelSource" = CASE WHEN "currentFuelGallons" IS NULL THEN "currentFuelSource" ELSE 'RECEIPT' END,
+        "currentFuelUpdatedAt" = CASE WHEN "currentFuelGallons" IS NULL THEN "currentFuelUpdatedAt" ELSE ${now} END,
         "updatedAt" = ${now}
     WHERE "id" = ${sessionId}
   `;
