@@ -34,7 +34,12 @@ export async function sendUserPush(
     const user  = await findById(userId);
     const token = (user as { iosPushToken?: string | null } | undefined)?.iosPushToken;
     if (token && apnsConfigured()) {
-      const r = await sendApns(token, title, body).catch(() => ({ ok: false } as { ok: boolean }));
+      // `url` rides in the payload so tapping the notification opens that
+      // page — components/NativePushRegistration.tsx reads data.url on
+      // 'pushNotificationActionPerformed'. Without it every iOS push tap
+      // landed on the home screen (e.g. a pickup reminder never opened the
+      // rental it was about).
+      const r = await sendApns(token, title, body, { url }).catch(() => ({ ok: false } as { ok: boolean }));
       if (r.ok) delivered = true;
     }
   } catch (e) { console.warn('[userPush] APNs failed:', e); }

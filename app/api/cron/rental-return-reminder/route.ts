@@ -76,12 +76,25 @@ export async function GET(req: Request) {
 
   const userSelect = { user: { select: { id: true, email: true, name: true, locale: true } } };
 
+  // Window on the timezone-correct UTC instant (2026-10-02 fix). The pickup
+  // tiers and the broad return tier used to compare the NAIVE local-time
+  // string (e.g. "2026-10-05T14:00") against UTC ISO bounds, so they fired
+  // early by the renter's UTC offset — an ET renter's "2h before pickup"
+  // reminder arrived ~4–7h before pickup. Rows written before the UTC
+  // columns existed (null *Utc) keep the old comparison so they still get a
+  // reminder rather than none.
+  const window = (utcField: string, localField: string, lowerHours: number, upperHours: number) => {
+    const lower = lowerHours === 0 ? nowIso : iso(lowerHours);
+    const range = { not: null, gte: lower, lte: iso(upperHours) };
+    return { OR: [{ [utcField]: range }, { [utcField]: null, [localField]: range }] };
+  };
+
   try {
     [returnDue, pickup24, pickup2, return2] = await Promise.all([
       prisma.rentalSession.findMany({
         where: {
           status: 'active',
-          returnDateTime: { not: null, gte: nowIso, lte: iso(RETURN_WINDOW_HOURS) },
+          ...window('returnDateTimeUtc', 'returnDateTime', 0, RETURN_WINDOW_HOURS),
           reminderSentAt: null,
         },
         include: userSelect,
@@ -89,7 +102,7 @@ export async function GET(req: Request) {
       prisma.rentalSession.findMany({
         where: {
           status: 'active',
-          pickupDateTime: { not: null, gte: iso(PICKUP_24H.lowerHours), lte: iso(PICKUP_24H.upperHours) },
+          ...window('pickupDateTimeUtc', 'pickupDateTime', PICKUP_24H.lowerHours, PICKUP_24H.upperHours),
           pickupReminder24SentAt: null,
         },
         include: userSelect,
@@ -97,7 +110,7 @@ export async function GET(req: Request) {
       prisma.rentalSession.findMany({
         where: {
           status: 'active',
-          pickupDateTime: { not: null, gte: iso(PICKUP_2H.lowerHours), lte: iso(PICKUP_2H.upperHours) },
+          ...window('pickupDateTimeUtc', 'pickupDateTime', PICKUP_2H.lowerHours, PICKUP_2H.upperHours),
           pickupReminder2SentAt: null,
         },
         include: userSelect,

@@ -7,7 +7,7 @@
  * returnReminder2SentAt so a duplicate cron run (or app termination between
  * send and the DB write) can never resend.
  */
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 process.env.CRON_SECRET = 'test-cron-secret';
 
@@ -95,5 +95,79 @@ describe('GET /api/cron/rental-return-reminder — return2 tier', () => {
     const res = await GET(new Request('https://www.gascap.app/api/cron/rental-return-reminder?secret=wrong'));
     expect(res.status).toBe(401);
     expect(findMany).not.toHaveBeenCalled();
+  });
+});
+
+// ── 2026-10-02: pickup tiers + broad return tier on the UTC instant ──────────
+// Tiny evaluator for the subset of Prisma `where` syntax these queries use, so
+// the test checks what a real row would MATCH, not just the clause's shape.
+type Row = Record<string, unknown>;
+function matches(row: Row, where: Record<string, unknown>): boolean {
+  return Object.entries(where).every(([k, cond]) => {
+    if (k === 'OR') return (cond as Record<string, unknown>[]).some((w) => matches(row, w));
+    const v = row[k];
+    if (cond === null) return v == null;
+    if (typeof cond !== 'object') return v === cond;
+    const c = cond as { not?: null; gte?: string; lte?: string };
+    if ('not' in c && c.not === null && v == null) return false;
+    if (c.gte != null && !(typeof v === 'string' && v >= c.gte)) return false;
+    if (c.lte != null && !(typeof v === 'string' && v <= c.lte)) return false;
+    return true;
+  });
+}
+function whereFor(dedupKey: string) {
+  const call = findMany.mock.calls.find((c) => dedupKey in c[0].where);
+  expect(call).toBeTruthy();
+  return call![0].where as Record<string, unknown>;
+}
+
+// An Orlando (ET, UTC-4 in October) rental picked up at 2:00 PM local.
+const ET_RENTAL: Row = {
+  status: 'active',
+  pickupDateTime: '2026-10-05T14:00', pickupDateTimeUtc: '2026-10-05T18:00:00.000Z',
+  returnDateTime: '2026-10-08T10:00', returnDateTimeUtc: '2026-10-08T14:00:00.000Z',
+  pickupReminder24SentAt: null, pickupReminder2SentAt: null, reminderSentAt: null, returnReminder2SentAt: null,
+};
+
+describe('pickup reminder tiers use the timezone-correct instant', () => {
+  afterEach(() => { vi.useRealTimers(); });
+
+  it('the "2h before pickup" tier does NOT fire 6.5h early for an ET renter', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(new Date('2026-10-05T11:30:00Z')); // 7:30 AM ET
+    await get();
+    expect(matches(ET_RENTAL, whereFor('pickupReminder2SentAt'))).toBe(false);
+  });
+
+  it('the "2h before pickup" tier fires inside the real window (1.5h before, 12:30 PM ET)', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(new Date('2026-10-05T16:30:00Z'));
+    await get();
+    expect(matches(ET_RENTAL, whereFor('pickupReminder2SentAt'))).toBe(true);
+  });
+
+  it('the "24h before pickup" tier fires ~24h before the real instant, not 4h earlier', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-10-04T18:00:00Z')); // exactly 24h before pickup
+    await get();
+    expect(matches(ET_RENTAL, whereFor('pickupReminder24SentAt'))).toBe(true);
+    findMany.mockClear();
+    vi.setSystemTime(new Date('2026-10-04T12:30:00Z')); // 29.5h before — outside the 20–26h tier
+    await get();
+    expect(matches(ET_RENTAL, whereFor('pickupReminder24SentAt'))).toBe(false);
+  });
+
+  it('a row saved before the UTC column existed still gets its pickup reminder (falls back to the local string)', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(new Date('2026-10-05T12:30:00Z'));
+    await get();
+    const legacy = { ...ET_RENTAL, pickupDateTimeUtc: null };
+    expect(matches(legacy, whereFor('pickupReminder2SentAt'))).toBe(true);
+  });
+
+  it('the broad return tier also windows on returnDateTimeUtc, with the same legacy fallback', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(new Date('2026-10-07T12:00:00Z'));
+    await get();
+    const where = whereFor('reminderSentAt');
+    expect(where).not.toHaveProperty('returnDateTime');
+    expect(matches(ET_RENTAL, where)).toBe(true);
+    expect(matches({ ...ET_RENTAL, returnDateTimeUtc: null }, where)).toBe(true);
   });
 });

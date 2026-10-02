@@ -7,7 +7,7 @@ import {
   gallonsNeeded, estimatedRentalCompanyCharge, estimatedFuelCost, estimatedSavings,
   returnReadyStatus, formatGallons, fuelSourceLabel, refuelTotals,
   shouldTrackFuelNeededCalculated, roundGallons, tripFillEstimate,
-  resolveRentalLifecycle, RENTAL_LIFECYCLE_SECTION_ORDER,
+  resolveRentalLifecycle, RENTAL_LIFECYCLE_SECTION_ORDER, rentalRecap,
 } from '@/lib/rentalCalculations';
 import type { RentalLifecycle } from '@/lib/rentalCalculations';
 import { trackRentalGasNearReturnViewed, trackRentalReturnReadyViewed } from '@/lib/gtag';
@@ -42,6 +42,35 @@ function returnCountdown(returnDateTime: string | null): string | null {
   const hours = Math.floor(diffMs / 3_600_000);
   const mins  = Math.floor((diffMs % 3_600_000) / 60_000);
   return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+}
+
+function CompletedRentalPhotos({ title, hint, photos }: {
+  title: string; hint: string; photos: Array<[string | null, string]>;
+}) {
+  const [open, setOpen] = useState<number | null>(null);
+  const present = photos.filter(([src]) => !!src) as Array<[string, string]>;
+  if (present.length === 0) return null;
+  return (
+    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
+      <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">{title}</p>
+      <p className="text-[11px] text-slate-400 mt-0.5 mb-2.5">{hint}</p>
+      <div className="grid grid-cols-3 gap-2">
+        {present.map(([src, label], i) => (
+          <button key={label} type="button" onClick={() => setOpen(open === i ? null : i)} className="text-left">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={src} alt={label} className="w-full aspect-square object-cover rounded-lg border border-slate-200" />
+            <span className="block text-[10px] text-slate-500 leading-tight mt-1">{label}</span>
+          </button>
+        ))}
+      </div>
+      {open != null && present[open] && (
+        <button type="button" onClick={() => setOpen(null)} className="mt-3 block w-full">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={present[open][0]} alt={present[open][1]} className="w-full rounded-xl border border-slate-200" />
+        </button>
+      )}
+    </div>
+  );
 }
 
 export default function RentalDashboard({ sessionId, onCompleted }: { sessionId: string; onCompleted: () => void }) {
@@ -480,11 +509,11 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
     const totalCost = fillups.some((f) => f.totalCost > 0) ? fillups.reduce((s, f) => s + f.totalCost, 0) : null;
     return (
       <div className="max-w-lg mx-auto px-4 py-6 space-y-4">
-        <Link href="/rental-return" className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-800">
+        <Link href={isCompleted ? '/rental-return/history' : '/rental-return'} className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-800">
           <svg viewBox="0 0 12 12" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
             <path d="M10 6H2M5 2 1 6l4 4" />
           </svg>
-          {t.rentalReturn.myRentals}
+          {isCompleted ? t.rentalReturn.backToPastRentals : t.rentalReturn.myRentals}
         </Link>
 
         <div className={`rounded-2xl shadow-sm p-4 text-white bg-gradient-to-br ${isCancelled ? 'from-red-800 via-red-700 to-red-600' : 'from-slate-700 via-slate-600 to-slate-500'}`}>
@@ -511,12 +540,24 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
               <span className="font-bold text-slate-800">{new Date(session.returnDateTime).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>
             </div>
           )}
+          {session.pickupLocation && (
+            <div className="flex justify-between text-sm">
+              <span className="text-slate-500">{t.rentalReturn.completedPickupLocationLabel}</span>
+              <span className="font-bold text-slate-800 text-right truncate max-w-[60%]">{session.pickupLocation}</span>
+            </div>
+          )}
           {session.returnLocation && (
             <div className="flex justify-between text-sm">
               <span className="text-slate-500">{t.rentalReturn.returnLocationLabel}</span>
               <span className="font-bold text-slate-800 text-right truncate max-w-[60%]">📍 {session.returnLocation}</span>
             </div>
           )}
+          {/* Unknown renders as unknown (formatGallons handles null) — never a
+              guessed level (CLAUDE.md "Never invent a reading"). */}
+          <div className="flex justify-between text-sm">
+            <span className="text-slate-500">{t.rentalReturn.completedPickupFuelLabel}</span>
+            <span className="font-bold text-slate-800">{formatGallons(session.pickupFuelGallons, session.pickupFuelSource as FuelDataSource)}</span>
+          </div>
           {session.rentalAgreementNumber && (
             <div className="flex justify-between text-sm">
               <span className="text-slate-500">{t.rentalReturn.agreementNumberShort}</span>
@@ -573,6 +614,58 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {/* Fuel outcome — same recap source (session.refuelLogs) as the
+            completion modal and the history list, so the numbers agree. */}
+        {(() => {
+          const recap = rentalRecap(session.refuelLogs, session.rentalFuelChargePerGallon);
+          const hasFee = session.fuelFeeCharged != null;
+          if (!hasFee && recap.count === 0) return null;
+          return (
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-1.5">
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">{t.rentalReturn.completedOutcomeTitle}</p>
+              {hasFee && (
+                <p className={`text-sm font-bold ${session.fuelFeeCharged ? 'text-red-600' : 'text-emerald-600'}`}>
+                  {session.fuelFeeCharged ? t.rentalReturn.historyFeeCharged(session.fuelFeeAmount) : t.rentalReturn.historyNoFee}
+                </p>
+              )}
+              {recap.totalPaid > 0 && <p className="text-sm text-slate-700">{t.rentalReturn.completedFuelSpent(recap.totalPaid.toFixed(2))}</p>}
+              {recap.savings != null && recap.savings > 0 && (
+                <p className="text-sm font-bold text-emerald-600">{t.rentalReturn.recapYouSaved}: ${recap.savings.toFixed(2)}</p>
+              )}
+            </div>
+          );
+        })()}
+
+        <CompletedRentalPhotos
+          title={t.rentalReturn.completedPhotosTitle}
+          hint={t.rentalReturn.completedPhotosHint}
+          photos={[
+            [session.pickupVehiclePhotoThumb,   t.rentalReturn.photoVehicle],
+            [session.pickupGaugePhotoThumb,     t.rentalReturn.photoGauge],
+            [session.pickupAgreementPhotoThumb, t.rentalReturn.photoAgreement],
+            [session.returnGaugePhotoThumb,     t.rentalReturn.photoReturnGauge],
+            [session.returnReceiptPhotoThumb,   t.rentalReturn.photoReturnReceipt],
+          ]}
+        />
+
+        {(session.notes || session.disputeNotes || session.feedbackRating != null) && (
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-2">
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">{t.rentalReturn.completedNotesTitle}</p>
+            {session.notes && <p className="text-sm text-slate-700 whitespace-pre-wrap">{session.notes}</p>}
+            {session.disputeNotes && (
+              <p className="text-sm text-slate-700 whitespace-pre-wrap">
+                <span className="font-bold text-slate-500">{t.rentalReturn.completedDisputeNotesLabel}: </span>{session.disputeNotes}
+              </p>
+            )}
+            {session.feedbackRating != null && (
+              <p className="text-sm text-slate-700">
+                <span className="font-bold text-slate-500">{t.rentalReturn.completedRatingLabel}: </span>
+                <span aria-label={`${session.feedbackRating} / 5`}>{'★'.repeat(session.feedbackRating)}{'☆'.repeat(Math.max(0, 5 - session.feedbackRating))}</span>
+              </p>
+            )}
           </div>
         )}
       </div>
@@ -759,6 +852,12 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
             <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-white/15 text-white">
               🗓 {t.rentalReturn.picksUp(new Date(session.pickupDateTime).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }))}
             </span>
+          )}
+          {/* Upcoming rentals already get pickup reminders from the hourly
+              cron (app/api/cron/rental-return-reminder) — say so, so renters
+              know saving it ahead of time is what turns them on. */}
+          {isUpcoming && session.pickupDateTime && (
+            <span className="basis-full text-[11px] leading-snug text-white/85">⏰ {t.rentalReturn.upcomingRemindersOn}</span>
           )}
           {!isUpcoming && countdown && (
             <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-white/15 text-white">
