@@ -34,7 +34,7 @@ vi.mock('@/lib/email', () => ({ sendMail: vi.fn(async () => ({})) }));
 // The orphan-rental-fillups check (2026-10-03) has its own suite
 // (rentalOrphanIntegrity.test.ts); stubbed here so this getaway suite's
 // user-only Prisma mock stays sufficient.
-vi.mock('@/lib/rentalIntegrity', () => ({ findOrphanRentalFillups: vi.fn(async () => []), ORPHAN_CHECK_SINCE: '2026-10-03T00:00:00.000Z' }));
+vi.mock('@/lib/rentalIntegrity', () => ({ findOrphanRentalFillups: vi.fn(async () => []) }));
 vi.mock('@/lib/giveaway', () => ({
   getDrawHistory: async () => [],
   prevMonth: () => '2026-07',

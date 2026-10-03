@@ -9,16 +9,6 @@
  */
 import { prisma } from './prisma';
 
-/**
- * The daily integrity check only looks at Fillups CREATED on/after this
- * instant (the date the delete fix was written). Historical orphans from
- * before the fix are a known backlog awaiting Don's cleanup decision — not
- * something to re-report every morning (CLAUDE.md: never a check that fires
- * daily on expected state). Any orphan at or after this point means rental
- * deletion has regressed.
- */
-export const ORPHAN_CHECK_SINCE = '2026-10-03T00:00:00.000Z';
-
 export interface LinkedFillup {
   id:              string;
   userId:          string;
@@ -66,12 +56,17 @@ export function summarizeOrphans(rows: LinkedFillup[]): OrphanSummary {
 }
 
 /**
- * READ-ONLY. Orphan rental Fillups, optionally only those CREATED on/after
- * `createdSince` (ISO). Two selects; never updates or deletes.
+ * READ-ONLY. Every orphan rental Fillup, regardless of when it was created —
+ * a Fillup created long ago becomes an orphan the moment its rental is
+ * deleted, so a creation-date filter would hide exactly the regression this
+ * looks for. Production audit 2026-10-03: 0 rental-linked Fillups, 0
+ * orphans, so there is no backlog to suppress. If this grows expensive,
+ * optimize the query (anti-join), never narrow the invariant. Two selects;
+ * never updates or deletes.
  */
-export async function findOrphanRentalFillups(opts: { createdSince?: string } = {}): Promise<LinkedFillup[]> {
+export async function findOrphanRentalFillups(): Promise<LinkedFillup[]> {
   const linked = await prisma.fillup.findMany({
-    where:  { rentalSessionId: { not: null }, ...(opts.createdSince ? { createdAt: { gte: opts.createdSince } } : {}) },
+    where:  { rentalSessionId: { not: null } },
     select: { id: true, userId: true, rentalSessionId: true, fillupType: true, gallonsPumped: true, totalCost: true, date: true, createdAt: true },
   });
   if (linked.length === 0) return [];

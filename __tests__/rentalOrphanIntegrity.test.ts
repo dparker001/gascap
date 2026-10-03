@@ -1,7 +1,7 @@
 /**
  * READ-ONLY orphan rental Fillup detection (2026-10-03): pure helpers, the
- * query shape (no writes), and the integrity-check wiring scoped to Fillups
- * created since the delete fix so the historical backlog never re-alarms.
+ * query shape (no writes), and the integrity-check wiring. The invariant has
+ * NO creation-date cutoff: an old Fillup orphaned by a later delete counts.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { readFileSync } from 'fs';
@@ -41,13 +41,14 @@ describe('pure helpers', () => {
 });
 
 describe('findOrphanRentalFillups — read-only query', () => {
-  it('selects linked Fillups (optionally since a date), checks which rentals exist, never writes', async () => {
-    findManyFillup.mockResolvedValue([row('a', 'u1', 'rs-live', 'trip', 1, 3, '2026-10-03'), row('b', 'u2', 'rs-gone', 'trip', 2, 6, '2026-10-03')]);
+  it('selects ALL linked Fillups (no date cutoff), checks which rentals exist, never writes', async () => {
+    // An old Fillup (2025) whose rental was deleted later is still an orphan.
+    findManyFillup.mockResolvedValue([row('a', 'u1', 'rs-live', 'trip', 1, 3, '2026-10-03'), row('old', 'u2', 'rs-gone', 'trip', 2, 6, '2025-01-15')]);
     findManyRental.mockResolvedValue([{ id: 'rs-live' }]);
     const { findOrphanRentalFillups } = await import('@/lib/rentalIntegrity');
-    const out = await findOrphanRentalFillups({ createdSince: '2026-10-03T00:00:00.000Z' });
-    expect(out.map((r) => r.id)).toEqual(['b']);
-    expect(findManyFillup.mock.calls[0][0].where).toEqual({ rentalSessionId: { not: null }, createdAt: { gte: '2026-10-03T00:00:00.000Z' } });
+    const out = await findOrphanRentalFillups();
+    expect(out.map((r) => r.id)).toEqual(['old']);
+    expect(findManyFillup.mock.calls[0][0].where).toEqual({ rentalSessionId: { not: null } });
     expect(findManyRental.mock.calls[0][0]).toEqual({ where: { id: { in: ['rs-live', 'rs-gone'] } }, select: { id: true } });
     expect(writes).not.toHaveBeenCalled();
   });
@@ -60,9 +61,11 @@ describe('findOrphanRentalFillups — read-only query', () => {
 });
 
 describe('integrity-check wiring', () => {
-  it('flags orphans created since the fix date only (historical backlog stays quiet), as an error, sample = fillup ids', () => {
+  it('flags EVERY orphan (no cutoff) as an error; sample = fillup ids', () => {
     const src = readFileSync(path.join(process.cwd(), 'app/api/cron/integrity-check/route.ts'), 'utf8');
-    expect(src).toContain('findOrphanRentalFillups({ createdSince: ORPHAN_CHECK_SINCE })');
+    expect(src).toContain('await findOrphanRentalFillups();');
     expect(src).toContain("'orphan-rental-fillups'");
+    expect(src).not.toMatch(/createdSince|ORPHAN_CHECK_SINCE/);
+    expect(readFileSync(path.join(process.cwd(), 'lib/rentalIntegrity.ts'), 'utf8')).not.toMatch(/createdSince|ORPHAN_CHECK_SINCE|createdAt: \{ gte/);
   });
 });
