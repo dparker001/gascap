@@ -30,6 +30,7 @@ import { readAmoeEntries, AMOE_DATA_FILE } from '@/lib/amoeEntries';
 import { prisma }       from '@/lib/prisma';
 import { sendMail }     from '@/lib/email';
 import { getDrawHistory, prevMonth, currentPeriod } from '@/lib/giveaway';
+import { findOrphanRentalFillups, ORPHAN_CHECK_SINCE } from '@/lib/rentalIntegrity';
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? 'admin@gascap.app';
 
@@ -182,6 +183,19 @@ export async function GET(req: Request) {
     upstream.length,
     'These fail silently in the UI — the user just sees a generic "unavailable" message, so nobody reports it.',
     'error', upstream,
+  ));
+
+  // Rental Fillups whose rental no longer exists (2026-10-03). Deleting a
+  // rental used to remove only the RentalSession, orphaning its Fillups in the
+  // renter's personal history and stats — found by accident in the PR #59
+  // smoke test. Only Fillups created since the fix are checked, so the
+  // pre-fix backlog doesn't re-alarm daily; a hit here is a regression.
+  const newOrphanFillups = await findOrphanRentalFillups({ createdSince: ORPHAN_CHECK_SINCE });
+  findings.push(flag(
+    'orphan-rental-fillups', 'Rental fill-ups left behind by a deleted rental',
+    newOrphanFillups.length,
+    `deleteRentalSession must delete a rental's Fillups in the same transaction. These Fillups (created since ${ORPHAN_CHECK_SINCE}) point at a rental that no longer exists and still count in the owner's personal fill-up history and stats.`,
+    'error', newOrphanFillups.slice(0, 5).map((f) => f.id),
   ));
 
   // ── Family 3: scheduled work not actually running ─────────────────────────
