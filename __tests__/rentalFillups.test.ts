@@ -194,7 +194,38 @@ const prismaMock = {
   // transaction's own successful commit, and restoring it would wrongly
   // erase that unrelated transaction's row. This is the exact bug a naive
   // snapshot-based mock hit under the concurrency tests below.
-  $transaction: vi.fn(async (ops: LazyOp<unknown>[]) => {
+  //
+  // Interactive form (2026-10-03 — createRentalFillup now runs as
+  // `$transaction(async tx => …)` under the shared RentalSession row lock):
+  // the callback gets a tx client whose lazy writes are tracked; if the
+  // callback throws, exactly those completed writes are undone (rollback).
+  // `$queryRaw` models the lock's `SELECT … FOR UPDATE` — it returns the row
+  // only if this user owns it. Real lock *contention* is modelled separately
+  // in rentalDeleteRefuelRace.test.ts.
+  $transaction: vi.fn(async (opsOrFn: LazyOp<unknown>[] | ((tx: unknown) => Promise<unknown>)) => {
+    if (typeof opsOrFn === 'function') {
+      const txOps: LazyOp<unknown>[] = [];
+      const track = <T,>(op: LazyOp<T>) => { txOps.push(op as LazyOp<unknown>); return op; };
+      const tx = {
+        $queryRaw: async (_s: TemplateStringsArray, id: string, userId: string) => {
+          const row = sessionTable.get(id);
+          return row && row.userId === userId ? [{ id }] : [];
+        },
+        $executeRaw: (...a: Parameters<typeof prismaMock.$executeRaw>) => track(prismaMock.$executeRaw(...a)),
+        fillup: {
+          findFirst: prismaMock.fillup.findFirst,
+          create: (a: Parameters<typeof prismaMock.fillup.create>[0]) => track(prismaMock.fillup.create(a)),
+        },
+        rentalSession: { findFirst: prismaMock.rentalSession.findFirst },
+      };
+      try {
+        return await opsOrFn(tx);
+      } catch (err) {
+        for (const op of txOps.reverse()) op.undo?.();
+        throw err;
+      }
+    }
+    const ops = opsOrFn;
     const results: unknown[] = [];
     const completed: LazyOp<unknown>[] = [];
     try {

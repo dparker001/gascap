@@ -6,6 +6,7 @@ import { prisma } from './prisma';
 import type { RefuelLogEntry, FuelDataSource } from './rentalProvider';
 import { gallonsNeeded, resolveRequiredReturnFuel, returnReadyStatus, reconcileForTankCapacityChange, isFractionalFuelSource, type ReturnPolicyType, type ReturnReadyStatus } from './rentalCalculations';
 import { recordAnalyticsEvent } from './analyticsEvents';
+import { lockOwnedRentalSession } from './rentalLock';
 import {
   isValidIanaZone, isTimeZoneSource, isTimeDisambiguation, resolveEventUtc, storedOccurrence,
   type TimeZoneSource, type TimeDisambiguation, type ScheduleErrorCode,
@@ -604,9 +605,29 @@ export async function confirmRentalCurrentFuel(
   return { status: 'ok', session: toRentalSession(row) };
 }
 
+/**
+ * Delete a rental AND its canonical Fillups, atomically (2026-10-03).
+ *
+ * Since the Phase 3A cutover a rental's refuels are rows in the shared Fillup
+ * table linked by a nullable Fillup.rentalSessionId with no database FK or
+ * cascade (deliberately loose cross-model references). Deleting only the
+ * RentalSession left those Fillups orphaned in the renter's personal fill-up
+ * list and stats. Everything runs in ONE interactive transaction that first
+ * takes the shared RentalSession row lock (lib/rentalLock.ts) — the same lock
+ * createRentalFillup() takes — so a concurrent refuel can never slip a new
+ * Fillup in around the delete. A missing or another user's rental deletes
+ * nothing (including any pre-existing orphans carrying that id). Fillups are
+ * matched by BOTH userId and rentalSessionId — never another user's rows,
+ * never personal (null) rows, never another rental's rows. Rental and
+ * Fillups go together or not at all.
+ */
 export async function deleteRentalSession(userId: string, id: string): Promise<boolean> {
-  const res = await prisma.rentalSession.deleteMany({ where: { id, userId } });
-  return res.count > 0;
+  return prisma.$transaction(async (tx) => {
+    if (!(await lockOwnedRentalSession(tx, id, userId))) return false;
+    await tx.fillup.deleteMany({ where: { userId, rentalSessionId: id } });
+    const rentalDelete = await tx.rentalSession.deleteMany({ where: { id, userId } });
+    return rentalDelete.count > 0;
+  });
 }
 
 /**
