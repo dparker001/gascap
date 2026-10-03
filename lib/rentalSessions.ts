@@ -604,9 +604,28 @@ export async function confirmRentalCurrentFuel(
   return { status: 'ok', session: toRentalSession(row) };
 }
 
+/**
+ * Delete a rental AND its canonical Fillups, atomically (2026-10-03).
+ *
+ * Since the Phase 3A cutover a rental's refuels are rows in the shared Fillup
+ * table linked by a nullable Fillup.rentalSessionId with no database FK or
+ * cascade (deliberately loose cross-model references). Deleting only the
+ * RentalSession left those Fillups orphaned in the renter's personal fill-up
+ * list and stats. Ownership is checked first, so a missing or another user's
+ * rental deletes nothing (including any pre-existing orphans that happen to
+ * carry that id). Both deletes run in ONE array-form transaction: either the
+ * rental and its Fillups are gone together, or neither is. Fillups are
+ * matched by BOTH userId and rentalSessionId — never another user's rows,
+ * never personal (null) rows, never another rental's rows.
+ */
 export async function deleteRentalSession(userId: string, id: string): Promise<boolean> {
-  const res = await prisma.rentalSession.deleteMany({ where: { id, userId } });
-  return res.count > 0;
+  const owned = await prisma.rentalSession.findFirst({ where: { id, userId }, select: { id: true } });
+  if (!owned) return false;
+  const [, rentalDelete] = await prisma.$transaction([
+    prisma.fillup.deleteMany({ where: { userId, rentalSessionId: id } }),
+    prisma.rentalSession.deleteMany({ where: { id, userId } }),
+  ]);
+  return rentalDelete.count > 0;
 }
 
 /**
