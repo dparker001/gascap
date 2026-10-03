@@ -157,7 +157,9 @@ describe('Existing final-return calculation is untouched by this change', () => 
 
 describe('Add Fuel During Rental collapses when the rental has not started, has no known tank size, or the workflow isn\'t the active one', () => {
   it('is gated on !isUpcoming, tankCapacity > 0, and activeWorkflow === \'add_fuel\' (single-workflow-open-at-a-time)', () => {
-    const gateLine = dashboardSrc.match(/const addFuelContent = !isUpcoming && tankCapacity > 0 && activeWorkflow === 'add_fuel' && \(/);
+    // Part A (2026-10-02): without a tank the workflow now explains why
+    // (addFuelNeedsSetup) instead of silently rendering nothing.
+    const gateLine = dashboardSrc.match(/const addFuelContent = !isUpcoming && activeWorkflow === 'add_fuel' && \(!\(tankCapacity > 0\) \? addFuelNeedsSetup : \(/);
     expect(gateLine).toBeTruthy();
   });
 });

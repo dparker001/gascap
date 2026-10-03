@@ -49,9 +49,14 @@ interface FuelGaugeProps {
    *  every existing caller (and every vehicle/rental with no stored
    *  preference) renders identically to before Phase 4. */
   style?: GaugeStyle;
+  /** Rental Part A (2026-10-02): no reading chosen yet. The needle still sits
+   *  at E (it has to be drawn somewhere) but the readout says "not set" and
+   *  no "≈ 0.0 gal" appears, so an untouched control never looks like an
+   *  empty tank. Default false — every existing caller renders as before. */
+  unset?: boolean;
 }
 
-export default function FuelGauge({ percent, onChange, tankCapacity, style = DEFAULT_GAUGE_STYLE }: FuelGaugeProps) {
+export default function FuelGauge({ percent, onChange, tankCapacity, style = DEFAULT_GAUGE_STYLE, unset = false }: FuelGaugeProps) {
   const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const active     = useRef(false);
@@ -60,7 +65,7 @@ export default function FuelGauge({ percent, onChange, tankCapacity, style = DEF
 
   const clampedPct = Math.max(0, Math.min(100, isNaN(percent) ? 0 : percent));
   const color = levelColor(clampedPct / 100);
-  const label = fuelLabel(clampedPct);
+  const label = unset ? '—' : fuelLabel(clampedPct);
 
   // ── Pointer → snapped-to-⅛ percent (same for every style; only the raw
   //    geometry mapping in GAUGE_POINTER_MAP differs by shape) ────────────
@@ -104,7 +109,7 @@ export default function FuelGauge({ percent, onChange, tankCapacity, style = DEF
     onChange(parseFloat((newStep * GAUGE_NUDGE_STEP).toFixed(6)));
   }
 
-  const gallons = tankCapacity ? (tankCapacity * (clampedPct / 100)).toFixed(1) : null;
+  const gallons = !unset && tankCapacity ? (tankCapacity * (clampedPct / 100)).toFixed(1) : null;
   const Renderer = GAUGE_RENDERERS[style];
 
   return (
@@ -122,7 +127,9 @@ export default function FuelGauge({ percent, onChange, tankCapacity, style = DEF
           processPointer(e.clientX, e.clientY);
         }}
       >
-        <Renderer percent={clampedPct} color={color} dragging={dragging} label={label} />
+        <div className={unset ? 'opacity-50' : undefined}>
+          <Renderer percent={clampedPct} color={color} dragging={dragging} label={label} />
+        </div>
       </div>
 
       {/* ── Accessible hidden range input — identical for every style ──── */}
@@ -158,6 +165,7 @@ export default function FuelGauge({ percent, onChange, tankCapacity, style = DEF
 
         <div className="text-center min-w-[80px]">
           <p className="text-[10px] text-slate-400 font-semibold leading-tight">{t.calc.tankStep}</p>
+          {unset && <p className="text-[11px] font-bold text-slate-400 leading-tight">{t.calc.fuelNotSet}</p>}
           {gallons && (
             <p
               className="text-sm font-black leading-tight transition-colors duration-300"

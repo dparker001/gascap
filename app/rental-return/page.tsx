@@ -13,6 +13,7 @@ import { useTranslation } from '@/contexts/LanguageContext';
 import BrandBar from '@/components/BrandBar';
 import RentalModeHeader from '@/components/rental-return/RentalModeHeader';
 import RentalSetupFlow from '@/components/rental-return/RentalSetupFlow';
+import QuickSaveRentalForm from '@/components/rental-return/QuickSaveRentalForm';
 import DeleteRentalButton from '@/components/rental-return/DeleteRentalButton';
 import { trackRentalAssistantOpened, trackRentalSessionCreated } from '@/lib/gtag';
 import { trackClientEvent } from '@/lib/clientAnalytics';
@@ -30,7 +31,7 @@ export default function RentalReturnPage() {
   const [sessions, setSessions] = useState<RentalSession[]>([]);
   const [pastCount, setPastCount] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [mode, setMode] = useState<'list' | 'setup'>('list');
+  const [mode, setMode] = useState<'list' | 'setup' | 'quick'>('list');
 
   useEffect(() => {
     trackRentalAssistantOpened();
@@ -92,6 +93,23 @@ export default function RentalReturnPage() {
   const rentalsUpcoming   = sessions.filter((s) => isUpcomingRental(rentalEventInstant(s.pickupDateTimeUtc, s.pickupDateTime)));
   const rentalsInProgress = sessions.filter((s) => !isUpcomingRental(rentalEventInstant(s.pickupDateTimeUtc, s.pickupDateTime)));
 
+  // Quick-save (Part A, 2026-10-02): second entry point for a rental booked
+  // ahead; the full wizard below is unchanged.
+  if (mode === 'quick') {
+    return (
+      <div className="min-h-screen bg-[#eef1f7]">
+        <BrandBar />
+        <RentalModeHeader />
+        <div>
+          <QuickSaveRentalForm
+            onCreated={(id) => { trackRentalSessionCreated(); router.push(`/rental-return/${id}`); }}
+            onCancel={() => setMode('list')}
+          />
+        </div>
+      </div>
+    );
+  }
+
   if (mode === 'setup') {
     return (
       <div className="min-h-screen bg-[#eef1f7]">
@@ -127,7 +145,16 @@ export default function RentalReturnPage() {
           >
             + {t.rentalReturn.newRental}
           </button>
-        ) : (
+        ) : null}
+        {isPro && (
+          <button
+            onClick={() => setMode('quick')}
+            className="w-full -mt-2 py-2.5 rounded-2xl bg-white border border-blue-200 text-blue-700 text-xs font-bold"
+          >
+            🗓 {t.rentalReturn.quickSaveEntry}
+          </button>
+        )}
+        {!isPro && (
           <div className="bg-white rounded-2xl border-2 border-amber-200 shadow-sm px-5 py-6 text-center space-y-2.5">
             <p className="text-2xl">⭐</p>
             <p className="text-sm font-black text-slate-700">{t.rentalReturn.proToStartTitle}</p>

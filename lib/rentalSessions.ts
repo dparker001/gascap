@@ -4,7 +4,7 @@
  */
 import { prisma } from './prisma';
 import type { RefuelLogEntry, FuelDataSource } from './rentalProvider';
-import { gallonsNeeded, resolveRequiredReturnFuel, returnReadyStatus, reconcileFuelForNewTank, type ReturnPolicyType, type ReturnReadyStatus } from './rentalCalculations';
+import { gallonsNeeded, resolveRequiredReturnFuel, returnReadyStatus, reconcileForTankCapacityChange, isFractionalFuelSource, type ReturnPolicyType, type ReturnReadyStatus } from './rentalCalculations';
 import { recordAnalyticsEvent } from './analyticsEvents';
 import {
   isValidIanaZone, isTimeZoneSource, isTimeDisambiguation, resolveEventUtc, storedOccurrence,
@@ -83,14 +83,31 @@ function toRentalSession(row: any): RentalSession {
 
 // ── Event scheduling (2026-10-02 event-timezone model) ───────────────────────
 
-/** Thrown by create/update for a bad schedule; routes map it to 400/422. */
+/** Fuel-state invariants (Part A, 2026-10-02) — all 422, nothing written:
+ *  a gauge/percent reading needs a tank capacity to mean any gallons; a tank
+ *  may not be cleared while such a reading would be silently lost; and a new
+ *  capacity may not contradict an absolute reading or `exact` target (the
+ *  reading is never clamped to fit). */
+export type RentalFuelErrorCode = 'tank_capacity_required' | 'tank_clear_would_discard_reading' | 'fuel_reading_exceeds_tank_capacity';
+
+/** Thrown by create/update for a bad schedule or fuel state; routes map it
+ *  to 400/422 (the existing routes already map this class, unchanged). */
 export class RentalScheduleError extends Error {
-  constructor(public code: ScheduleErrorCode, public field: string) {
+  constructor(public code: ScheduleErrorCode | RentalFuelErrorCode, public field: string) {
     super(`${field}: ${code}`);
     this.name = 'RentalScheduleError';
   }
   get status(): number {
-    return this.code === 'nonexistent_local_time' || this.code === 'ambiguous_local_time' ? 422 : 400;
+    return this.code === 'nonexistent_local_time' || this.code === 'ambiguous_local_time'
+      || this.code === 'tank_capacity_required' || this.code === 'tank_clear_would_discard_reading'
+      || this.code === 'fuel_reading_exceeds_tank_capacity' ? 422 : 400;
+  }
+}
+
+/** Throws when a gauge/percent reading arrives without a usable tank capacity. */
+function assertReadingHasTank(source: unknown, capacity: number | null | undefined, field: string): void {
+  if (isFractionalFuelSource(source as string | null) && !(typeof capacity === 'number' && capacity > 0)) {
+    throw new RentalScheduleError('tank_capacity_required', field);
   }
 }
 
@@ -224,6 +241,7 @@ export interface CreateRentalSessionInput {
 
 export async function createRentalSession(userId: string, input: CreateRentalSessionInput): Promise<RentalSession> {
   const now = new Date().toISOString();
+  if (input.pickupFuelGallons != null) assertReadingHasTank(input.pickupFuelSource, input.fuelTankCapacityGallons, 'pickupFuelGallons');
   const policyType = input.requiredReturnPolicyType ?? 'same_as_pickup';
   const requiredReturnFuelGallons = resolveRequiredReturnFuel(
     policyType,
@@ -332,7 +350,8 @@ export interface UpdateRentalSessionInput {
   vehicleMake?:                string;
   vehicleModel?:               string;
   vehicleTrim?:                string;
-  fuelTankCapacityGallons?:    number;
+  /** Explicit null clears it (Part A) — refused while a gauge/percent reading exists. */
+  fuelTankCapacityGallons?:    number | null;
   pickupDateTime?:             string;
   /** IGNORED on update (2026-10-02). Kept in the type only so stale clients
    *  that still send their device zone are accepted and that zone is never
@@ -371,6 +390,9 @@ export async function updateRentalSession(userId: string, id: string, input: Upd
   if (!existing) return undefined;
 
   const now = new Date().toISOString();
+  const effectiveCapacity = input.fuelTankCapacityGallons !== undefined ? input.fuelTankCapacityGallons : existing.fuelTankCapacityGallons;
+  if (input.pickupFuelGallons  != null) assertReadingHasTank(input.pickupFuelSource,  effectiveCapacity, 'pickupFuelGallons');
+  if (input.currentFuelGallons != null) assertReadingHasTank(input.currentFuelSource, effectiveCapacity, 'currentFuelGallons');
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const data: Record<string, any> = { updatedAt: now };
   if (input.rentalCompany         !== undefined) data.rentalCompany         = input.rentalCompany;
@@ -448,46 +470,26 @@ export async function updateRentalSession(userId: string, id: string, input: Upd
   // FRACTION of a specific tank — the gallons were derived from a capacity
   // that may no longer apply. Swapping the vehicle (a common correction: the
   // renter picks the right trim, or the EPA lookup is fixed) left the old
-  // gallons in place, producing states like "~24.5 gal" on a 14 gal tank:
-  // 7/8 of the previous 28-gallon vehicle, displayed as an over-full tank and
-  // a satisfied return target.
-  //
-  // Gauge/percent readings are rescaled so the FRACTION the renter actually
-  // observed is preserved — that, not the gallon figure, was their input.
-  // Absolute entries (typed gallons, a receipt) are left alone but clamped,
-  // since a tank cannot hold more than its capacity either way.
-  const newCap = (data.fuelTankCapacityGallons ?? existing.fuelTankCapacityGallons) as number | null;
-  const oldCap = existing.fuelTankCapacityGallons;
-  const capChanged =
-    data.fuelTankCapacityGallons !== undefined &&
-    newCap != null && oldCap != null && newCap > 0 && oldCap > 0 && newCap !== oldCap;
-
-  if (capChanged && newCap != null && oldCap != null) {
-    const reconcile = (gallons: number | null, source: string | null): number | null =>
-      reconcileFuelForNewTank(gallons, source as FuelDataSource | null, oldCap, newCap);
-
-    // Only touch values the caller didn't explicitly set in this same request —
-    // an explicit value is the user's current intent and outranks a rescale.
-    if (input.pickupFuelGallons === undefined) {
-      data.pickupFuelGallons = reconcile(
-        existing.pickupFuelGallons,
-        (data.pickupFuelSource ?? existing.pickupFuelSource) as string | null,
-      );
-    }
-    if (input.currentFuelGallons === undefined) {
-      data.currentFuelGallons = reconcile(
-        existing.currentFuelGallons,
-        (data.currentFuelSource ?? existing.currentFuelSource) as string | null,
-      );
-    }
-    if (input.requiredReturnFuelGallons === undefined && data.requiredReturnFuelGallons === undefined) {
-      // The target follows whatever policy produced it; under same-as-pickup
-      // it tracks the reconciled pickup level, otherwise just clamp it.
-      const policy = (effectivePolicy ?? 'same_as_pickup');
-      data.requiredReturnFuelGallons = policy === 'same_as_pickup'
-        ? (data.pickupFuelGallons ?? reconcile(existing.pickupFuelGallons, (existing.pickupFuelSource as string | null)))
-        : reconcile(existing.requiredReturnFuelGallons, null);
-    }
+  // gallons in place, producing states like "~24.5 gal" on a 14 gal tank.
+  // Part A (2026-10-02) makes all three transitions explicit — first entry
+  // (null → value), change, and clear (value → null) — in
+  // reconcileForTankCapacityChange(); a clear that would discard a
+  // gauge/percent observation is refused (422), never silently applied.
+  if (input.fuelTankCapacityGallons !== undefined) {
+    const plan = reconcileForTankCapacityChange({
+      oldCapacity: existing.fuelTankCapacityGallons,
+      newCapacity: input.fuelTankCapacityGallons,
+      policy: (effectivePolicy ?? 'same_as_pickup'),
+      pickup:  { gallons: (data.pickupFuelGallons  ?? existing.pickupFuelGallons)  as number | null,
+                 source:  (data.pickupFuelSource   ?? existing.pickupFuelSource)   as string | null, explicit: input.pickupFuelGallons !== undefined },
+      current: { gallons: (data.currentFuelGallons ?? existing.currentFuelGallons) as number | null,
+                 source:  (data.currentFuelSource  ?? existing.currentFuelSource)  as string | null, explicit: input.currentFuelGallons !== undefined },
+      required: { gallons: existing.requiredReturnFuelGallons, explicit: data.requiredReturnFuelGallons !== undefined },
+    });
+    if (!plan.ok) throw new RentalScheduleError(plan.code, plan.field);
+    if (plan.pickupFuelGallons         !== undefined) data.pickupFuelGallons         = plan.pickupFuelGallons;
+    if (plan.currentFuelGallons        !== undefined) data.currentFuelGallons        = plan.currentFuelGallons;
+    if (plan.requiredReturnFuelGallons !== undefined) data.requiredReturnFuelGallons = plan.requiredReturnFuelGallons;
   }
 
   const row = await prisma.rentalSession.update({ where: { id }, data });

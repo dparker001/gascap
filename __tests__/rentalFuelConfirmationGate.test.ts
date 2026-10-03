@@ -73,7 +73,9 @@ describe('Calculators are gated behind CONFIRMED fuel, never the raw last-known 
 
     const prepareStart = dashboardSrc.indexOf('const prepareReturnContent');
     const prepareBlock = dashboardSrc.slice(prepareStart, prepareStart + 6000);
-    expect(prepareBlock).toMatch(/gallonsNeeded\(session\.requiredReturnFuelGallons \?\? 0, confirmedGallons\)/);
+    // Part A (2026-10-02): still the CONFIRMED value, and an unknown target is
+    // no longer a 0 stand-in — the computation is gated on returnTargetKnown().
+    expect(prepareBlock).toMatch(/confirmedGallons != null && returnTargetKnown\(session\)\s*\? gallonsNeeded\(session\.requiredReturnFuelGallons as number, confirmedGallons\)/);
   });
 
   it('a stored value alone never enables Calculate — both Calculate buttons are conditionally rendered behind a confirmedGallons != null check', () => {
@@ -158,7 +160,8 @@ describe('Confirm-write correctness (async/failure handling)', () => {
 
   it('savePickupOrCurrent (top-level Update Current Fuel) is also awaited and response.ok-checked', () => {
     const start = dashboardSrc.indexOf('const savePickupOrCurrent = useCallback');
-    const end = dashboardSrc.indexOf('}, [pendingFuel, sessionId, t]);');
+    const end = dashboardSrc.indexOf('}, [pendingFuel, sessionId, t, session, fillups.length]);');
+    expect(end).toBeGreaterThan(start);
     const block = dashboardSrc.slice(start, end);
     expect(block).toMatch(/await fetch/);
     expect(block).toMatch(/if \(!res\.ok\) throw new Error/);
@@ -391,7 +394,9 @@ describe('Correction 7 — gallons/source pairing on the PATCH contract', () => 
 
   it('does not touch the atomic Fillup-create bump path — lib/rentalFillups.ts is untouched by this correction', () => {
     const fillupsSrc = readFileSync(join(__dirname, '../lib/rentalFillups.ts'), 'utf8');
-    expect(fillupsSrc).toMatch(/"currentFuelSource" = 'RECEIPT'/);
+    // Part A (2026-10-02): a bump onto a KNOWN level still marks it RECEIPT;
+    // an unknown level stays unknown (source untouched).
+    expect(fillupsSrc).toMatch(/"currentFuelSource" = CASE WHEN "currentFuelGallons" IS NULL THEN "currentFuelSource" ELSE 'RECEIPT' END/);
   });
 });
 

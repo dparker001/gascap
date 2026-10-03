@@ -10,6 +10,8 @@
  * clientRefuelId unique constraint can be simulated exactly as Postgres
  * would enforce them — a P2002 thrown from `create()`.
  */
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 interface FillupRow {
@@ -174,10 +176,14 @@ const prismaMock = {
     const row = sessionTable.get(sessionId);
     if (!row) return { value: 0, undo: () => {} };
     const prior = { currentFuelGallons: row.currentFuelGallons, currentFuelSource: row.currentFuelSource, currentFuelUpdatedAt: row.currentFuelUpdatedAt, updatedAt: row.updatedAt };
-    const raw = (row.currentFuelGallons ?? 0) + gallonsAdded1;
-    row.currentFuelGallons = row.fuelTankCapacityGallons != null ? Math.min(raw, row.fuelTankCapacityGallons) : raw;
-    row.currentFuelSource = 'RECEIPT';
-    row.currentFuelUpdatedAt = now;
+    // Part A (2026-10-02): an UNKNOWN current level stays unknown — gallons
+    // added never establish a reading by counting up from zero.
+    if (row.currentFuelGallons != null) {
+      const raw = row.currentFuelGallons + gallonsAdded1;
+      row.currentFuelGallons = row.fuelTankCapacityGallons != null ? Math.min(raw, row.fuelTankCapacityGallons) : raw;
+      row.currentFuelSource = 'RECEIPT';
+      row.currentFuelUpdatedAt = now;
+    }
     row.updatedAt = now;
     return { value: 1, undo: () => Object.assign(row, prior) };
   })),
@@ -564,3 +570,28 @@ describe('genuine $0 input (2026-08-25 correction) — explicit zero is valid, o
     expect(result.outcome).toBe('invalid'); // rejected on gallons, never reaches the division
   });
 });
+
+describe('Part A (2026-10-02) — a refuel never invents a level from an UNKNOWN current reading', () => {
+  it('current unknown + 4.2 gal added → current stays unknown; the Fillup transaction is still recorded', async () => {
+    sessionTable.set('session-1', makeSession({ currentFuelGallons: null, currentFuelSource: null, currentFuelUpdatedAt: null }));
+    const result = await createRentalFillup('user-1', 'session-1', { gallonsPumped: 4.2, pricePerGallon: 3.5, fillupType: 'trip', clientRefuelId: 'u1' });
+    expect(result.outcome).toBe('created');
+    const s1 = sessionTable.get('session-1')!;
+    expect([s1.currentFuelGallons, s1.currentFuelSource, s1.currentFuelUpdatedAt]).toEqual([null, null, null]);
+    expect([...fillupTable.values()].filter((f) => f.rentalSessionId === 'session-1').map((f) => f.gallonsPumped)).toEqual([4.2]);
+  });
+  it('a KNOWN current level still rolls forward as before (5 + 8 = 13)', async () => {
+    sessionTable.set('session-1', makeSession({ currentFuelGallons: 5 }));
+    await createRentalFillup('user-1', 'session-1', { gallonsPumped: 8, pricePerGallon: 3.5, fillupType: 'trip', clientRefuelId: 'k1' });
+    expect(sessionTable.get('session-1')!.currentFuelGallons).toBe(13);
+  });
+  it('the real SQL keeps NULL as NULL (no COALESCE-to-zero) and leaves source/timestamp untouched for it', () => {
+    const src = readFileSync(join(process.cwd(), 'lib/rentalFillups.ts'), 'utf8');
+    const sql = src.slice(src.indexOf('function bumpCurrentFuelGallonsOnCreateSql'), src.indexOf('function vehicleNameFor'));
+    expect(sql).not.toMatch(/COALESCE\("currentFuelGallons",\s*0\)/);
+    expect(sql).toMatch(/WHEN "currentFuelGallons" IS NULL THEN NULL/);
+    expect(sql).toMatch(/"currentFuelSource" = CASE WHEN "currentFuelGallons" IS NULL THEN "currentFuelSource"/);
+    expect(sql).toMatch(/"currentFuelUpdatedAt" = CASE WHEN "currentFuelGallons" IS NULL THEN "currentFuelUpdatedAt"/);
+  });
+});
+

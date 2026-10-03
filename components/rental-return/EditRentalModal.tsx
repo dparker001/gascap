@@ -138,7 +138,11 @@ export default function EditRentalModal({ session, onClose, onSaved }: Props) {
       if (!res.ok) {
         const data = await res.json().catch(() => ({})) as { error?: string };
         const scheduleCodes = ['invalid_time_zone', 'invalid_local_datetime', 'nonexistent_local_time', 'ambiguous_local_time'];
-        setError(data.error && scheduleCodes.includes(data.error) ? t.rentalReturn.tzScheduleError : t.rentalReturn.setupError);
+        // A tank size smaller than a recorded reading/target is refused, never
+        // clamped (Part A) — say which number to check.
+        setError(data.error && scheduleCodes.includes(data.error) ? t.rentalReturn.tzScheduleError
+          : data.error === 'fuel_reading_exceeds_tank_capacity' ? t.rentalReturn.tankSmallerThanReading
+          : t.rentalReturn.setupError);
         return;
       }
       // Re-sync this device's return fallback from the server's (possibly

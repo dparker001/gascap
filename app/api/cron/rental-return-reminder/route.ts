@@ -27,6 +27,7 @@ import { NextResponse } from 'next/server';
 import { prisma }       from '@/lib/prisma';
 import { sendMail }     from '@/lib/email';
 import { sendUserPush } from '@/lib/userPush';
+import { rentalSetupSteps, type SetupStateInput } from '@/lib/rentalSetupState';
 import { logEmail, logEmailError } from '@/lib/emailLog';
 
 const BASE_URL = process.env.NEXTAUTH_URL?.replace(/\/$/, '') ?? 'https://www.gascap.app';
@@ -74,7 +75,9 @@ export async function GET(req: Request) {
 
   let returnDue: Array<{ id: string; user: Recipient }> = [];
   let pickup24:  Array<{ id: string; user: Recipient }> = [];
-  let pickup2:   Array<{ id: string; user: Recipient }> = [];
+  // findMany(include) returns every RentalSession column; the setup fields
+  // are read only to choose pickup2 COPY (Part A) — not to select or window.
+  let pickup2:   Array<{ id: string; user: Recipient } & Partial<SetupStateInput>> = [];
   let return2:   Array<{ id: string; user: Recipient }> = [];
 
   const userSelect = { user: { select: { id: true, email: true, name: true, locale: true } } };
@@ -150,11 +153,23 @@ export async function GET(req: Request) {
     kind:      'return' | 'pickup24' | 'pickup2' | 'return2';
     sessionId: string;
     user:      Recipient;
+    /** pickup2 only: the car or tank size is still missing (Part A copy). */
+    needsCarSetup?: boolean;
+  };
+  // Car or tank missing → the counter step is "finish setup", not just
+  // "record pickup fuel" (which still needs a tank to mean anything).
+  const needsCarSetup = (s: Partial<SetupStateInput>): boolean => {
+    const [vehicle, tank] = rentalSetupSteps({
+      status: 'active', vehicleMake: s.vehicleMake ?? null, vehicleModel: s.vehicleModel ?? null,
+      fuelTankCapacityGallons: s.fuelTankCapacityGallons ?? null, pickupFuelGallons: s.pickupFuelGallons ?? null,
+      currentFuelGallons: null, requiredReturnFuelGallons: null,
+    });
+    return !vehicle.done || !tank.done;
   };
 
   const jobs: Job[] = [
     ...pickup24.map((s)  => ({ kind: 'pickup24' as const, sessionId: s.id, user: s.user })),
-    ...pickup2.map((s)   => ({ kind: 'pickup2'  as const, sessionId: s.id, user: s.user })),
+    ...pickup2.map((s)   => ({ kind: 'pickup2'  as const, sessionId: s.id, user: s.user, needsCarSetup: needsCarSetup(s) })),
     ...return2.map((s)   => ({ kind: 'return2'  as const, sessionId: s.id, user: s.user })),
     ...returnDue.map((s) => ({ kind: 'return'   as const, sessionId: s.id, user: s.user })),
   ];
@@ -178,6 +193,16 @@ export async function GET(req: Request) {
           ? 'recoges tu auto de alquiler mañana. Cuando lo tengas, anota el nivel de combustible de recogida en GasCap — es el número del que depende todo el cálculo de devolución.'
           : "you pick up your rental tomorrow. Once you have the car, record the pickup fuel level in GasCap — it's the number the entire return calculation depends on.";
         cta = locale === 'es' ? 'Abrir mi alquiler →' : 'Open my rental →';
+      } else if (job.kind === 'pickup2' && job.needsCarSetup) {
+        // Part A (2026-10-02, copy only): quick-saved rental still missing the car/tank.
+        subject = locale === 'es' ? '🚗 Recogida de alquiler en ~2 horas' : '🚗 Rental pickup in about 2 hours';
+        pushBody = locale === 'es'
+          ? 'En el mostrador: agrega tu auto y luego anota el nivel de combustible de recogida en GasCap.'
+          : 'At the counter: add your car, then record the pickup fuel level in GasCap.';
+        emailBody = locale === 'es'
+          ? 'tu recogida es pronto. En el mostrador, termina de configurar tu alquiler en GasCap: elige el auto que te dieron (o escanea su VIN) y luego anota el indicador de combustible antes de salir.'
+          : "your pickup is coming up. At the counter, finish setting up your rental in GasCap: pick the car you were given (or scan its VIN), then record the fuel gauge before you drive off.";
+        cta = locale === 'es' ? 'Terminar configuración →' : 'Finish setup →';
       } else if (job.kind === 'pickup2') {
         subject = locale === 'es' ? '🚗 Recogida de alquiler en ~2 horas' : '🚗 Rental pickup in about 2 hours';
         pushBody = locale === 'es'

@@ -11,6 +11,8 @@ import {
 } from '@/lib/rentalCalculations';
 import { formatEventWallClock, zoneCity, zoneLongName } from '@/lib/rentalTimezone';
 import { pendingPickupReminders } from '@/lib/rentalReminderNotice';
+import { hasTank, pickupSaveAlsoSetsCurrent, returnTargetKnown, setupIncomplete } from '@/lib/rentalSetupState';
+import FinishSetupCard from './FinishSetupCard';
 import type { RentalLifecycle } from '@/lib/rentalCalculations';
 import { trackRentalGasNearReturnViewed, trackRentalReturnReadyViewed } from '@/lib/gtag';
 import { trackClientEvent } from '@/lib/clientAnalytics';
@@ -347,9 +349,13 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
    *  is preserved so nothing the renter entered is silently lost. */
   const savePickupOrCurrent = useCallback(async (which: 'pickup' | 'current') => {
     if (!pendingFuel) return;
+    // The pickup reading seeds CURRENT only while nothing has happened since
+    // pickup (Part A): after a refuel, or over an independent current
+    // reading, the pickup level says nothing about what's in the tank now.
     const body = which === 'pickup'
       ? { pickupFuelGallons: pendingFuel.gallons, pickupFuelSource: pendingFuel.source,
-          currentFuelGallons: pendingFuel.gallons, currentFuelSource: pendingFuel.source }
+          ...(session && pickupSaveAlsoSetsCurrent(session, fillups.length)
+            ? { currentFuelGallons: pendingFuel.gallons, currentFuelSource: pendingFuel.source } : {}) }
       : { currentFuelGallons: pendingFuel.gallons, currentFuelSource: pendingFuel.source };
     setSaveFuelError(null);
     try {
@@ -366,7 +372,7 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
     } catch {
       setSaveFuelError(t.rentalReturn.fuelSaveFailed);
     }
-  }, [pendingFuel, sessionId, t]);
+  }, [pendingFuel, sessionId, t, session, fillups.length]);
 
   // Phase 4B — resolution precedence: session override, then the linked
   // Vehicle's style, then the user's global default, then the GasCap
@@ -814,8 +820,9 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
   });
 
   const tankCapacity = session.fuelTankCapacityGallons ?? 0;
-  const currentPct = tankCapacity > 0
-    ? Math.min(100, Math.max(0, ((session.currentFuelGallons ?? 0) / tankCapacity) * 100))
+  // Only meaningful for a real current reading — the bar is not drawn otherwise.
+  const currentPct = tankCapacity > 0 && session.currentFuelGallons != null
+    ? Math.min(100, Math.max(0, (session.currentFuelGallons / tankCapacity) * 100))
     : 0;
   const targetPct = tankCapacity > 0 && session.requiredReturnFuelGallons != null
     ? Math.min(100, Math.max(0, (session.requiredReturnFuelGallons / tankCapacity) * 100))
@@ -926,6 +933,15 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
         );
       })()}
 
+      {/* Finish setup (Part A, 2026-10-02): vehicle → tank → pickup fuel. */}
+      {setupIncomplete(session) && (
+        <FinishSetupCard
+          session={session}
+          onEditRental={() => setShowEdit(true)}
+          onSetPickupFuel={() => document.getElementById('pickup-fuel-card')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+        />
+      )}
+
       {/* ══════════════════════════════════════════════════════════════════
           CURRENT FUEL — Phase 6A.2 redesign. The renter's canonical
           current-state surface: gauge, gallons, tank size, and the return
@@ -936,7 +952,7 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-3" style={{ order: sectionOrder.fuelLevel }}>
         <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">{t.rentalReturn.currentFuelSectionTitle}</p>
         {/* Tank bar: filled = current fuel, marker = required return level */}
-        {tankCapacity > 0 && showLiveFuel && (
+        {tankCapacity > 0 && showLiveFuel && session.currentFuelGallons != null && (
           <div>
             <div className="relative h-7 rounded-xl bg-slate-100 overflow-hidden">
               <div
@@ -1013,6 +1029,21 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
             </p>
           </div>
         )}
+        {/* In progress with no current reading (e.g. a refuel logged while the
+            level was unknown): gallons added never become a reading — ask for
+            one. Part A, 2026-10-02. */}
+        {!isUpcoming && session.currentFuelGallons == null && (
+          <div className="text-center space-y-1">
+            {fillups.length > 0 && (
+              <p className="text-[11px] text-amber-700 leading-snug">{t.rentalReturn.refuelLoggedLevelUnknown}</p>
+            )}
+            {!showUpdateFuel && (
+              <button type="button" onClick={() => setShowUpdateFuel(true)} className="text-xs font-bold text-blue-600 hover:text-blue-800">
+                {t.rentalReturn.recordCurrentFuelCta}
+              </button>
+            )}
+          </div>
+        )}
         {/* 2026-08-28 correction — this card is a LAST-KNOWN-STATE /
             informational surface, not a calculator: it must never conclude
             "Add X gal" or "✓ No fuel needed" from raw, unconfirmed
@@ -1067,8 +1098,9 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
           under the default same-as-pickup policy. A rental entered ahead of
           time can't know it yet, so it has to be settable (and correctable)
           here rather than only at setup. */}
-      {(session.pickupFuelGallons == null || showPickupFuel) && (
-        <div className="bg-white rounded-2xl border-2 border-blue-200 shadow-sm p-4 space-y-2" style={{ order: sectionOrder.pickupFuel }}>
+      {/* Part A: locked until a tank size exists (the Finish setup card says why). */}
+      {hasTank(session) && (session.pickupFuelGallons == null || showPickupFuel) && (
+        <div id="pickup-fuel-card" className="bg-white rounded-2xl border-2 border-blue-200 shadow-sm p-4 space-y-2" style={{ order: sectionOrder.pickupFuel }}>
           <p className="text-xs font-black text-blue-800">⛽ {t.rentalReturn.setPickupFuelTitle}</p>
           <p className="text-[11px] text-slate-500 leading-snug">{t.rentalReturn.setPickupFuelHint}</p>
           <FuelLevelInput
@@ -1143,7 +1175,12 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
         // ── ADD FUEL DURING RENTAL — expanded content, directly below the
         // card above. CURRENT STATE -> USER INPUT -> CALCULATE -> RESULTS
         // -> ACTION, same mental model as Prepare for Return below.
-        const addFuelContent = !isUpcoming && tankCapacity > 0 && activeWorkflow === 'add_fuel' && (
+        const addFuelNeedsSetup = (
+          <div key="add-fuel-needs-setup" className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-center">
+            <p className="text-[11px] text-amber-800 leading-snug">{t.rentalReturn.finishSetupFirst}</p>
+          </div>
+        );
+        const addFuelContent = !isUpcoming && activeWorkflow === 'add_fuel' && (!(tankCapacity > 0) ? addFuelNeedsSetup : (
           <div key="add-fuel-content" className="bg-white rounded-2xl border border-amber-200 shadow-sm p-4 space-y-3">
             <p className="text-xs font-bold text-amber-700 uppercase tracking-wide">⛽ {t.rentalReturn.tripCalcTitle}</p>
             {(() => {
@@ -1311,7 +1348,7 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
               );
             })()}
           </div>
-        );
+        ));
 
         const prepareReturnCard = (
           <button
@@ -1343,8 +1380,10 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
           // this section must not claim ready/not-ready/fuel-needed=X at
           // all.
           const confirmedGallons = confirmedCurrentFuelGallons;
-          const confirmedNeeded = confirmedGallons != null
-            ? gallonsNeeded(session.requiredReturnFuelGallons ?? 0, confirmedGallons)
+          // Part A: an unknown return target is never a 0 stand-in — that
+          // produced an unearned "at or above target" verdict.
+          const confirmedNeeded = confirmedGallons != null && returnTargetKnown(session)
+            ? gallonsNeeded(session.requiredReturnFuelGallons as number, confirmedGallons)
             : null;
           const confirmedRentalCharge = confirmedNeeded != null
             ? estimatedRentalCompanyCharge(confirmedNeeded, session.rentalFuelChargePerGallon)
@@ -1361,12 +1400,16 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
             <p className="text-xs font-bold text-blue-700 uppercase tracking-wide">🚗 {t.rentalReturn.prepareForReturnTitle}</p>
             <p className="text-[11px] text-slate-500 leading-snug">{t.rentalReturn.prepareForReturnHint}</p>
 
-            {!hasFuelReading ? (
+            {session.currentFuelGallons == null ? (
               <div className="bg-blue-50 border border-blue-200 rounded-xl px-3 py-3 text-center space-y-2">
                 <p className="text-[11px] text-blue-700 leading-snug">{t.rentalReturn.calculateFillNeedsFuelPrompt}</p>
                 <button type="button" onClick={() => setShowUpdateFuel(true)} className="text-xs font-bold text-blue-600 hover:text-blue-800">
                   {t.rentalReturn.updateCurrentFuel}
                 </button>
+              </div>
+            ) : !returnTargetKnown(session) ? (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-3 text-center">
+                <p className="text-[11px] text-amber-800 leading-snug">{t.rentalReturn.returnTargetUnknown}</p>
               </div>
             ) : confirmedGallons == null ? (
               <>
@@ -1731,13 +1774,13 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
             )}
             {session.pickupDateTime && (
               <div className="flex justify-between text-xs">
-                <span className="text-slate-500">{t.rentalReturn.completedPickupLabel}</span>
+                <span className="text-slate-500">{t.rentalReturn.detailPickupLabel}</span>
                 <span className="font-bold text-slate-800">{fmtPickup(session)}</span>
               </div>
             )}
             {session.returnDateTime && (
               <div className="flex justify-between text-xs">
-                <span className="text-slate-500">{t.rentalReturn.completedReturnLabel}</span>
+                <span className="text-slate-500">{t.rentalReturn.detailReturnLabel}</span>
                 <span className="font-bold text-slate-800">{fmtReturn(session)}</span>
               </div>
             )}

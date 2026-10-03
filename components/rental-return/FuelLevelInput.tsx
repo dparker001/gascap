@@ -21,6 +21,7 @@ import type { FuelDataSource } from '@/lib/rentalProvider';
 import { DEFAULT_GAUGE_STYLE, type GaugeStyle } from '@/lib/gaugeStyles';
 import FuelGauge from '../FuelGauge';
 import GaugeStylePicker from '../gauge-styles/GaugeStylePicker';
+import { fuelInputMethodsFor } from '@/lib/rentalSetupState';
 
 export type FuelInputMethod = 'gauge' | 'percent' | 'gallons';
 
@@ -70,7 +71,11 @@ export default function FuelLevelInput({
   onChangeGaugeStyle?: (style: GaugeStyle | null) => void;
 }) {
   const { t } = useTranslation();
-  const [method, setMethod]   = useState<FuelInputMethod>('gauge');
+  // Gauge/percent are fractions of a tank — offered only once a capacity
+  // exists (Part A); without one, exact gallons is the only honest input.
+  const methods = fuelInputMethodsFor(tankCapacity);
+  const [chosenMethod, setMethod] = useState<FuelInputMethod>(methods[0]);
+  const method: FuelInputMethod = methods.includes(chosenMethod) ? chosenMethod : methods[0];
   // No pre-selected reading. Defaulting to a nonzero value meant the control
   // always resolved to a real number, so simply opening this form produced a
   // fuel level the user never entered.
@@ -87,8 +92,11 @@ export default function FuelLevelInput({
 
   return (
     <div className="space-y-2">
+      {methods.length === 1 && (
+        <p className="text-[11px] text-amber-700 leading-snug">{t.rentalReturn.fuelNeedsTankHint}</p>
+      )}
       <div className="flex gap-1.5">
-        {(['gauge', 'percent', 'gallons'] as FuelInputMethod[]).map((m) => (
+        {methods.map((m) => (
           <button
             key={m} type="button"
             onClick={() => { setMethod(m); emit(m, gaugePercent, percent, gallons); }}
@@ -105,6 +113,7 @@ export default function FuelLevelInput({
         <div>
           <FuelGauge
             percent={gaugePercent ?? 0}
+            unset={gaugePercent == null}
             onChange={(pct) => { setGaugePercent(pct); emit('gauge', pct, percent, gallons); }}
             tankCapacity={tankCapacity}
             style={gaugeStyle}

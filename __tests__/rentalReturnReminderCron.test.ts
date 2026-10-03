@@ -194,3 +194,51 @@ describe('pickup reminder tiers use the timezone-correct instant', () => {
     expect(matches({ ...ET_RENTAL, returnDateTimeUtc: null }, where)).toBe(true);
   });
 });
+
+// Part A (2026-10-02) — approved COPY change only: the ~2h pickup reminder
+// tells a renter whose rental is still missing the car/tank/pickup fuel to
+// finish setting it up at the counter. No window, tier or dedup change.
+describe('pickup2 copy for an incomplete setup (Part A)', () => {
+  const quickSaved = { vehicleMake: null, vehicleModel: null, fuelTankCapacityGallons: null, pickupFuelGallons: null,
+                       currentFuelGallons: null, requiredReturnFuelGallons: null, status: 'active' };
+  const complete = { vehicleMake: 'Toyota', vehicleModel: 'Camry', fuelTankCapacityGallons: 14, pickupFuelGallons: null,
+                     currentFuelGallons: null, requiredReturnFuelGallons: null, status: 'active' };
+  const sent = async () => {
+    const { sendMail } = await import('@/lib/email');
+    const { sendUserPush } = await import('@/lib/userPush');
+    const mail = (sendMail as unknown as { mock: { calls: [{ subject: string; html: string; text: string }][] } }).mock.calls[0][0];
+    const push = (sendUserPush as unknown as { mock: { calls: [string, string, string, string][] } }).mock.calls[0];
+    return { mail, push };
+  };
+
+  it('incomplete (EN): finish-setup copy; subject, stamp and link unchanged', async () => {
+    pickup2 = [{ id: 'rs-q', user: USER, ...quickSaved } as unknown as Session];
+    await get();
+    const { mail, push } = await sent();
+    expect(mail.subject).toBe('🚗 Rental pickup in about 2 hours');
+    expect(mail.text).toContain('finish setting up your rental in GasCap');
+    expect(mail.html).toContain('Finish setup →');
+    expect(push[2]).toBe('At the counter: add your car, then record the pickup fuel level in GasCap.');
+    expect(push[3]).toBe('/rental-return/rs-q');
+    expect(update).toHaveBeenCalledWith({ where: { id: 'rs-q' }, data: { pickupReminder2SentAt: expect.any(String) } });
+  });
+  it('incomplete (ES)', async () => {
+    pickup2 = [{ id: 'rs-q', user: { ...USER, locale: 'es' }, ...quickSaved } as unknown as Session];
+    await get();
+    const { mail, push } = await sent();
+    expect(mail.text).toContain('termina de configurar tu alquiler en GasCap');
+    expect(push[2]).toBe('En el mostrador: agrega tu auto y luego anota el nivel de combustible de recogida en GasCap.');
+  });
+  it('vehicle + tank already set: the existing "record pickup fuel" copy is unchanged', async () => {
+    pickup2 = [{ id: 'rs-c', user: USER, ...complete } as unknown as Session];
+    await get();
+    const { mail, push } = await sent();
+    expect(push[2]).toBe('When you get the car, record the pickup fuel level in GasCap.');
+    expect(mail.html).toContain('Record pickup fuel →');
+  });
+  it('a rental with nothing missing also keeps the existing copy', async () => {
+    pickup2 = [{ id: 'rs-c', user: USER, ...complete, pickupFuelGallons: 7 } as unknown as Session];
+    await get();
+    expect((await sent()).push[2]).toBe('When you get the car, record the pickup fuel level in GasCap.');
+  });
+});
