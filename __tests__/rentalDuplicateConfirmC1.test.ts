@@ -73,7 +73,10 @@ describe('both create forms use the binding (source guards)', () => {
     it(`${path.basename(f)}: confirm is gated on the key, the warning stores the SUBMITTED key, the notice shows only for the active warning`, () => {
       const src = read(f);
       expect(src).toContain('duplicateConfirmationKey({');
-      expect(src).toContain('pickupLat: pickupLoc.lat ?? null, pickupLng: pickupLoc.lng ?? null, returnLat: returnLoc.lat ?? null, returnLng: returnLoc.lng ?? null');
+      // Coordinates are part of the key. Quick-save binds the EFFECTIVE return location
+      // (derived from the pickup while "Same as pickup" is checked), the wizard its own.
+      const ret = f.includes('quicksave') || f.includes('QuickSave') ? 'returnEvent.location' : 'returnLoc';
+      expect(src).toContain(`pickupLat: pickupLoc.lat ?? null, pickupLng: pickupLoc.lng ?? null, returnLat: ${ret}.lat ?? null, returnLng: ${ret}.lng ?? null`);
       expect(src).toContain('const confirm = confirmDuplicate && mayConfirmDuplicate(duplicateWarning, reservationKey);');
       expect(src).toContain('const submittedKey = reservationKey;');
       expect(src).toContain('setDuplicateWarning({ rentalId: out.rentalId, key: submittedKey })');

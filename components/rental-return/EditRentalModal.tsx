@@ -157,8 +157,24 @@ export default function EditRentalModal({ session, onClose, onSaved }: Props) {
   }
 
   return (
-    <ModalShell onClose={onClose}>
-        <p className="text-base font-black text-slate-900">{t.rentalReturn.editRental}</p>
+    <ModalShell onClose={onClose} labelledBy="edit-rental-title">
+        {/* Title row: the X sits top-right, aligned with the title. It only
+            dismisses (onClose) — never a save — exactly like Cancel, Escape and
+            a tap outside the panel. */}
+        <div className="flex items-center justify-between gap-2">
+          <p id="edit-rental-title" className="text-base font-black text-slate-900">{t.rentalReturn.editRental}</p>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label={t.rentalReturn.close}
+            data-testid="edit-rental-close"
+            className="-mr-2 flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 hover:text-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500"
+          >
+            <svg viewBox="0 0 12 12" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+              <path d="M2 2l8 8M10 2l-8 8" />
+            </svg>
+          </button>
+        </div>
         {error && <p className="text-xs text-red-500">{error}</p>}
 
         {/* ── Vehicle: the one that's saved, and a link to change it.
