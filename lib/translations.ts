@@ -546,6 +546,18 @@ const en = {
   rentalReturn: {
     pageTitle:      'My Rentals',
     pageSubtitle:   'Know exactly how much fuel to add before you return your rental.',
+    // Quick-save form refinements (2026-10-05)
+    pickupDateFieldLabel:     'Pickup Date',
+    pickupTimeFieldLabel:     'Pickup Time',
+    returnDateFieldLabel:     'Return Date',
+    returnTimeFieldLabel:     'Return Time',
+    dateEmptyHint:            'Choose a date',
+    timeEmptyHint:            'Choose a time',
+    returnTimeDefaultNote:    'same as your pickup time \u2014 change it if needed',
+    returnLocationSameAsPickup: 'Same as pickup location',
+    returnLocationSameAsPickupSummary: (text: string) => `Using your pickup location: ${text}`,
+    returnLocationSameAsPickupEmpty:  'Will use your pickup location once you add it',
+    close:                    'Close',
     // Add Rental chooser (2026-10-05)
     addRental:                'Add Rental',
     addRentalChooseTitle:     'What would you like to add?',
@@ -3999,6 +4011,18 @@ const es: typeof en = {
   rentalReturn: {
     pageTitle:      'Mis Alquileres',
     pageSubtitle:   'Sabe exactamente cuánto combustible agregar antes de devolver tu auto de alquiler.',
+    // Refinamientos del formulario de reserva (2026-10-05)
+    pickupDateFieldLabel:     'Fecha de recogida',
+    pickupTimeFieldLabel:     'Hora de recogida',
+    returnDateFieldLabel:     'Fecha de devoluci\u00f3n',
+    returnTimeFieldLabel:     'Hora de devoluci\u00f3n',
+    dateEmptyHint:            'Elige una fecha',
+    timeEmptyHint:            'Elige una hora',
+    returnTimeDefaultNote:    'igual que tu hora de recogida \u2014 c\u00e1mbiala si hace falta',
+    returnLocationSameAsPickup: 'Igual que el lugar de recogida',
+    returnLocationSameAsPickupSummary: (text: string) => `Usando tu lugar de recogida: ${text}`,
+    returnLocationSameAsPickupEmpty:  'Usar\u00e1 tu lugar de recogida cuando lo agregues',
+    close:                    'Cerrar',
     // Selector de Agregar alquiler (2026-10-05)
     addRental:                'Agregar alquiler',
     addRentalChooseTitle:     '\u00bfQu\u00e9 quieres agregar?',

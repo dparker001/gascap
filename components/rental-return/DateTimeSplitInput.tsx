@@ -46,37 +46,76 @@
  * shrinking below the 16px iOS no-zoom floor.
  */
 
-import { useState, useEffect, useRef, type CSSProperties } from 'react';
-import { splitLocalDateTime, combineLocalDateTime } from '@/lib/rentalTimezone';
+import { useState, useEffect, useId, useRef, type CSSProperties } from 'react';
+import { useTranslation } from '@/contexts/LanguageContext';
+import {
+  applyDefaultTime, draftFromValue, draftValue, pickDate, pickTime, type SplitDraft,
+} from '@/lib/rentalReturnTimeDefault';
+
+/**
+ * Optional visible labels and empty-state guidance. Native date/time inputs
+ * show NO usable placeholder on iOS Safari (and inconsistently elsewhere), so
+ * when this is supplied each input gets a visible <label> and a line below it
+ * that says what to do while empty ("Choose a date") and echoes the chosen
+ * value in words once set. Omitted → the markup is exactly what it always was.
+ */
+export interface DateTimeFieldText {
+  dateLabel: string;
+  timeLabel: string;
+  dateEmptyHint: string;
+  timeEmptyHint: string;
+  /** Shown beside a time that is still the automatic default. */
+  timeDefaultedNote?: string;
+}
 
 export default function DateTimeSplitInput({
   value,
   onChange,
   disabled,
+  defaultTime,
+  onParts,
+  text,
 }: {
   /** Combined "YYYY-MM-DDTHH:mm", or '' when unset. */
   value: string;
   onChange: (value: string) => void;
   disabled?: boolean;
+  /**
+   * Optional "HH:mm" the TIME half starts from (the return time follows the
+   * pickup time). Fills an empty time — even before a date is chosen — but never
+   * the date, and never a time the user chose themselves. Undefined → off.
+   */
+  defaultTime?: string;
+  /** Optional: reports the local halves on every change, including a PARTIAL entry the combined value can't express. */
+  onParts?: (parts: { date: string; time: string }) => void;
+  text?: DateTimeFieldText;
 }) {
-  const initial = splitLocalDateTime(value);
-  const [date, setDate] = useState(initial.date);
-  const [time, setTime] = useState(initial.time);
+  const { locale } = useTranslation();
+  const ids = useId();
+  const [draft, setDraft] = useState<SplitDraft>(() => applyDefaultTime(draftFromValue(value, defaultTime), defaultTime));
   const lastEmitted = useRef(value);
+  const { date, time } = draft;
 
   useEffect(() => {
     if (value === lastEmitted.current) return; // our own round-trip — don't clobber a partial edit
-    const split = splitLocalDateTime(value);
-    setDate(split.date);
-    setTime(split.time);
+    setDraft(draftFromValue(value, defaultTime));
     lastEmitted.current = value;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value]);
 
-  function emit(newDate: string, newTime: string) {
-    const combined = combineLocalDateTime(newDate, newTime);
-    lastEmitted.current = combined;
-    onChange(combined);
-  }
+  // The default moved (pickup time changed or became known): follow it unless the renter chose a time.
+  useEffect(() => {
+    if (defaultTime === undefined) return;
+    setDraft((d) => applyDefaultTime(d, defaultTime));
+  }, [defaultTime]);
+
+  // Every draft change is reported once: the combined value (only when it differs) and the raw halves.
+  useEffect(() => {
+    const combined = draftValue(draft);
+    if (combined !== lastEmitted.current) { lastEmitted.current = combined; onChange(combined); }
+    onParts?.({ date: draft.date, time: draft.time });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draft]);
 
   // Redundant with the CSS class on purpose — inline styles win over any
   // stylesheet ordering surprise, and are the last lever before resorting
@@ -89,28 +128,64 @@ export default function DateTimeSplitInput({
     display: 'block',
   };
 
+  const dateInput = (
+    <input
+      id={text ? `${ids}-date` : undefined}
+      type="date"
+      value={date}
+      disabled={disabled}
+      aria-describedby={text ? `${ids}-date-hint` : undefined}
+      onChange={(e) => setDraft((d) => pickDate(d, e.target.value, defaultTime))}
+      className="rental-datetime-input min-w-0"
+      style={fieldStyle}
+    />
+  );
+  const timeInput = (
+    <input
+      id={text ? `${ids}-time` : undefined}
+      type="time"
+      value={time}
+      disabled={disabled}
+      aria-describedby={text ? `${ids}-time-hint` : undefined}
+      onChange={(e) => setDraft((d) => pickTime(d, e.target.value, defaultTime))}
+      className="rental-datetime-input min-w-0"
+      style={fieldStyle}
+    />
+  );
+
   // Tailwind's grid-cols-N utilities already compile to
   // `repeat(N, minmax(0, 1fr))` tracks, not plain `1fr` — no inline
   // grid-template-columns override needed (and one here would apply at
   // every breakpoint, defeating the sm:grid-cols-2 variant above).
+  if (!text) {
+    return <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">{dateInput}{timeInput}</div>;
+  }
+
+  const loc = locale === 'es' ? 'es-US' : 'en-US';
+  const prettyDate = date
+    ? new Intl.DateTimeFormat(loc, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${date}T12:00:00Z`))
+    : '';
+  const prettyTime = time
+    ? new Intl.DateTimeFormat(loc, { hour: 'numeric', minute: '2-digit', timeZone: 'UTC' }).format(new Date(`1970-01-01T${time}:00Z`))
+    : '';
+  const timeIsDefault = defaultTime !== undefined && !!time && !draft.timeTouched && time === defaultTime;
+  const labelCls = 'block text-[11px] font-semibold text-slate-600 mb-1';
+  const hintCls = (filled: boolean) => `text-[11px] mt-1 ${filled ? 'text-slate-600' : 'text-slate-400'}`;
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-      <input
-        type="date"
-        value={date}
-        disabled={disabled}
-        onChange={(e) => { setDate(e.target.value); emit(e.target.value, time); }}
-        className="rental-datetime-input min-w-0"
-        style={fieldStyle}
-      />
-      <input
-        type="time"
-        value={time}
-        disabled={disabled}
-        onChange={(e) => { setTime(e.target.value); emit(date, e.target.value); }}
-        className="rental-datetime-input min-w-0"
-        style={fieldStyle}
-      />
+      <div className="min-w-0">
+        <label htmlFor={`${ids}-date`} className={labelCls}>{text.dateLabel}</label>
+        {dateInput}
+        <p id={`${ids}-date-hint`} className={hintCls(!!date)}>{date ? prettyDate : text.dateEmptyHint}</p>
+      </div>
+      <div className="min-w-0">
+        <label htmlFor={`${ids}-time`} className={labelCls}>{text.timeLabel}</label>
+        {timeInput}
+        <p id={`${ids}-time-hint`} className={hintCls(!!time)}>
+          {time ? prettyTime : text.timeEmptyHint}
+          {timeIsDefault && text.timeDefaultedNote ? ` \u2014 ${text.timeDefaultedNote}` : ''}
+        </p>
+      </div>
     </div>
   );
 }

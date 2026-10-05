@@ -17,7 +17,7 @@
 
 import { useMemo, useState } from 'react';
 import { useTranslation } from '@/contexts/LanguageContext';
-import DateTimeSplitInput from './DateTimeSplitInput';
+import DateTimeSplitInput, { type DateTimeFieldText } from './DateTimeSplitInput';
 import RentalLocationInput, { type RentalLocationValue } from './RentalLocationInput';
 import {
   COMMON_TIME_ZONES, allPickerTimeZones, describeEventTime, zoneCity, zoneLongName, zoneOffsetMinutes,
@@ -85,6 +85,20 @@ interface Props {
   deviceZone:      string | null;
   hint?:           string;
   placeLabelStale?: boolean;                     // edit: stored place zone, location text since changed
+  /** Visible per-input labels + empty-state hints for the date and time inputs (omitted → unchanged markup). */
+  dateTimeText?:   DateTimeFieldText;
+  /** "HH:mm" the time input starts from (the return time follows the pickup time). */
+  defaultTime?:    string;
+  /** Reports the date/time halves, including a partial entry. */
+  onDateTimeParts?: (parts: { date: string; time: string }) => void;
+  /**
+   * Return event only: a "Same as pickup location" checkbox directly under the
+   * location label. Checked → the location input is replaced by a read-only
+   * summary and the caller derives the location/zone from the pickup.
+   */
+  sameAs?: { checked: boolean; onChange: (checked: boolean) => void; label: string; summary: string; emptySummary: string };
+  /** The zone follows another event (same-as-pickup): no zone picker here. */
+  zoneLocked?: boolean;
 }
 
 export default function RentalEventScheduleField(p: Props) {
@@ -121,17 +135,34 @@ export default function RentalEventScheduleField(p: Props) {
       {p.location && p.onLocation && (
         <>
           <label className="field-label">{p.locationLabel}</label>
-          <RentalLocationInput kind={p.kind} value={p.location} onChange={p.onLocation} placeholder={p.locationPlaceholder} />
+          {p.sameAs && (
+            <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 min-h-[32px]">
+              <input
+                type="checkbox"
+                className="h-4 w-4 accent-blue-600"
+                checked={p.sameAs.checked}
+                onChange={(e) => p.sameAs!.onChange(e.target.checked)}
+              />
+              {p.sameAs.label}
+            </label>
+          )}
+          {p.sameAs?.checked ? (
+            <p data-testid="return-same-as-summary" className="text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+              {p.sameAs.summary || p.sameAs.emptySummary}
+            </p>
+          ) : (
+            <RentalLocationInput kind={p.kind} value={p.location} onChange={p.onLocation} placeholder={p.locationPlaceholder} />
+          )}
         </>
       )}
       <label className="field-label">{p.label}</label>
-      <DateTimeSplitInput value={p.dateTime} onChange={p.onDateTime} />
+      <DateTimeSplitInput value={p.dateTime} onChange={p.onDateTime} defaultTime={p.defaultTime} onParts={p.onDateTimeParts} text={p.dateTimeText} />
 
       {zoneLine ? (
         <p className="text-[11px] text-slate-500 flex flex-wrap items-center gap-x-1.5">
           <span className="font-semibold text-slate-700">{zoneLine}</span>
           {sourceLabel && <span className={p.zone.source === 'device' ? 'italic text-amber-700' : 'text-slate-400'}>({sourceLabel})</span>}
-          <button type="button" onClick={() => setPicking((v) => !v)} className="font-bold text-blue-600 underline underline-offset-2">{r.tzChange}</button>
+          {!p.zoneLocked && <button type="button" onClick={() => setPicking((v) => !v)} className="font-bold text-blue-600 underline underline-offset-2">{r.tzChange}</button>}
         </p>
       ) : (
         <p className="text-[11px] text-amber-700">{r.tzNeedsZone}{' '}
@@ -139,7 +170,7 @@ export default function RentalEventScheduleField(p: Props) {
         </p>
       )}
 
-      {picking && (
+      {picking && !p.zoneLocked && (
         <select
           aria-label={r.tzPickerLabel}
           className="input-field text-xs"

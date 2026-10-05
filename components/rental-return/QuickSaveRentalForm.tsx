@@ -20,6 +20,7 @@ import { newClientRentalId, postCreateRental } from '@/lib/rentalCreateClient';
 import DuplicateRentalNotice from './DuplicateRentalNotice';
 import { activeDuplicateWarning, duplicateConfirmationKey, mayConfirmDuplicate, type DuplicateWarning } from '@/lib/rentalDuplicateConfirm';
 import { buildQuickSavePayload, quickSaveCanSubmit, type QuickSaveEvent } from '@/lib/rentalQuickSave';
+import { afterSameAsToggle, resolveReturnEvent } from '@/lib/rentalReturnLocation';
 import { emptyRentalLocation, type RentalLocationValue } from './RentalLocationInput';
 import RentalEventScheduleField, { effectiveEventZone, type EventZone } from './RentalEventScheduleField';
 
@@ -48,25 +49,45 @@ export default function QuickSaveRentalForm({ onCreated, onCancel }: {
   const [pickedReturnZone, setPickedReturnZone] = useState<EventZone | null>(null);
   const [pickupChoice, setPickupChoice] = useState<TimeDisambiguation | null>(null);
   const [returnChoice, setReturnChoice] = useState<TimeDisambiguation | null>(null);
+  // Return location: checked by default — the return location is derived from
+  // the pickup (lib/rentalReturnLocation.ts), so it can never go stale.
+  const [sameAsPickup, setSameAsPickup] = useState(true);
+  // The pickup's date/time halves, including a PARTIAL entry the combined value
+  // can't express — the return time starts from the pickup CLOCK time.
+  const [pickupParts, setPickupParts] = useState({ date: '', time: '' });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
   const company = rentalCompany === 'Other' ? customCompany.trim() : rentalCompany;
   const pickupZone = effectiveEventZone(pickupLoc, pickedPickupZone, deviceZone);
-  const returnZone = effectiveEventZone(returnLoc, pickedReturnZone, deviceZone);
+  // Checked: the pickup's full location object (coordinates included) and its
+  // effective zone with the same provenance. Unchecked: fully independent.
+  const returnEvent = resolveReturnEvent({ sameAsPickup, pickupLoc, pickupZone, returnLoc, pickedReturnZone, deviceZone });
+  const returnZone = returnEvent.zone;
   const pickup: QuickSaveEvent = { dateTime: pickupDateTime, location: pickupLoc, zone: pickupZone, status: describeEventTime(pickupDateTime, pickupZone.zone), choice: pickupChoice };
-  const ret: QuickSaveEvent    = { dateTime: returnDateTime, location: returnLoc, zone: returnZone, status: describeEventTime(returnDateTime, returnZone.zone), choice: returnChoice };
+  const ret: QuickSaveEvent    = { dateTime: returnDateTime, location: returnEvent.location, zone: returnZone, status: describeEventTime(returnDateTime, returnZone.zone), choice: returnChoice };
   const canSubmit = quickSaveCanSubmit({ company, pickup, ret });
   // The duplicate confirmation is bound to THIS reservation: any change to the
   // fields that identify it voids the warning (lib/rentalDuplicateConfirm.ts).
   const reservationKey = duplicateConfirmationKey({
     company, confirmationNumber, pickupDateTime, returnDateTime,
-    pickupLocation: pickupLoc.text, returnLocation: returnLoc.text,
-    pickupLat: pickupLoc.lat ?? null, pickupLng: pickupLoc.lng ?? null, returnLat: returnLoc.lat ?? null, returnLng: returnLoc.lng ?? null,
+    pickupLocation: pickupLoc.text, returnLocation: returnEvent.location.text,
+    pickupLat: pickupLoc.lat ?? null, pickupLng: pickupLoc.lng ?? null, returnLat: returnEvent.location.lat ?? null, returnLng: returnEvent.location.lng ?? null,
     pickupZone: pickupZone.zone ?? null, returnZone: returnZone.zone ?? null,
     pickupChoice, returnChoice,
   });
   const activeDuplicate = activeDuplicateWarning(duplicateWarning, reservationKey);
+
+  function handleSameAsPickup(checked: boolean) {
+    const clean = afterSameAsToggle();
+    setSameAsPickup(checked);
+    setReturnLoc(clean.returnLoc);
+    setPickedReturnZone(clean.pickedReturnZone);
+    setReturnChoice(clean.returnChoice);
+  }
+
+  const pickupText = { dateLabel: r.pickupDateFieldLabel, timeLabel: r.pickupTimeFieldLabel, dateEmptyHint: r.dateEmptyHint, timeEmptyHint: r.timeEmptyHint };
+  const returnText = { dateLabel: r.returnDateFieldLabel, timeLabel: r.returnTimeFieldLabel, dateEmptyHint: r.dateEmptyHint, timeEmptyHint: r.timeEmptyHint, timeDefaultedNote: r.returnTimeDefaultNote };
 
   async function handleSubmit(confirmDuplicate = false) {
     // Honoured only for the exact reservation that was warned about.
@@ -146,6 +167,8 @@ export default function QuickSaveRentalForm({ onCreated, onCancel }: {
         label={r.quickSavePickupLabel}
         dateTime={pickupDateTime}
         onDateTime={setPickupDateTime}
+        dateTimeText={pickupText}
+        onDateTimeParts={setPickupParts}
         location={pickupLoc}
         onLocation={setPickupLoc}
         locationLabel={r.pickupLocationLabel}
@@ -161,10 +184,15 @@ export default function QuickSaveRentalForm({ onCreated, onCancel }: {
         label={r.returnDateTimeLabel}
         dateTime={returnDateTime}
         onDateTime={setReturnDateTime}
+        dateTimeText={returnText}
+        defaultTime={pickupParts.time || undefined}
         location={returnLoc}
         onLocation={setReturnLoc}
         locationLabel={r.returnLocationLabel}
         locationPlaceholder={r.returnLocationPlaceholder}
+        sameAs={{ checked: sameAsPickup, onChange: handleSameAsPickup, label: r.returnLocationSameAsPickup,
+          summary: pickupLoc.text ? r.returnLocationSameAsPickupSummary(pickupLoc.text) : '', emptySummary: r.returnLocationSameAsPickupEmpty }}
+        zoneLocked={sameAsPickup}
         zone={returnZone}
         onPickZone={(z) => setPickedReturnZone({ zone: z, source: 'user' })}
         choice={returnChoice}
