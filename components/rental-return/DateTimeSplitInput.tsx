@@ -48,9 +48,7 @@
 
 import { useState, useEffect, useId, useRef, type CSSProperties } from 'react';
 import { useTranslation } from '@/contexts/LanguageContext';
-import {
-  applyDefaultTime, draftFromValue, draftValue, pickDate, pickTime, type SplitDraft,
-} from '@/lib/rentalReturnTimeDefault';
+import { createSplitController, type SplitController, type SplitDraft } from '@/lib/rentalReturnTimeDefault';
 
 /**
  * Optional visible labels and empty-state guidance. Native date/time inputs
@@ -92,30 +90,35 @@ export default function DateTimeSplitInput({
 }) {
   const { locale } = useTranslation();
   const ids = useId();
-  const [draft, setDraft] = useState<SplitDraft>(() => applyDefaultTime(draftFromValue(value, defaultTime), defaultTime));
-  const lastEmitted = useRef(value);
-  const { date, time } = draft;
+  // The controller owns the draft and emits IMMEDIATELY from the event handlers
+  // (the component's original behaviour); React state only mirrors it for
+  // rendering. Callbacks read the latest props through refs.
+  const onChangeRef = useRef(onChange);
+  const onPartsRef = useRef(onParts);
+  onChangeRef.current = onChange;
+  onPartsRef.current = onParts;
+  const [draft, setDraft] = useState<SplitDraft | null>(null);
+  const ctrlRef = useRef<SplitController | null>(null);
+  if (!ctrlRef.current) {
+    ctrlRef.current = createSplitController({
+      value, defaultTime,
+      onChange: (v) => onChangeRef.current(v),
+      onDraft: (d) => setDraft(d),
+      onParts: (p) => onPartsRef.current?.(p),
+    });
+  }
+  const ctrl = ctrlRef.current;
+  const current = draft ?? ctrl.getDraft();
+  const { date, time } = current;
 
-  useEffect(() => {
-    if (value === lastEmitted.current) return; // our own round-trip — don't clobber a partial edit
-    setDraft(draftFromValue(value, defaultTime));
-    lastEmitted.current = value;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value]);
+  // A genuinely different `value` from outside (e.g. another rental loaded into the edit modal) replaces the draft.
+  useEffect(() => { ctrl.syncValue(value); }, [value, ctrl]);
 
-  // The default moved (pickup time changed or became known): follow it unless the renter chose a time.
-  useEffect(() => {
-    if (defaultTime === undefined) return;
-    setDraft((d) => applyDefaultTime(d, defaultTime));
-  }, [defaultTime]);
+  // Quick-Save only: follow the pickup time. A no-op while `defaultTime` is undefined, i.e. in every other form.
+  useEffect(() => { ctrl.setDefaultTime(defaultTime); }, [defaultTime, ctrl]);
 
-  // Every draft change is reported once: the combined value (only when it differs) and the raw halves.
-  useEffect(() => {
-    const combined = draftValue(draft);
-    if (combined !== lastEmitted.current) { lastEmitted.current = combined; onChange(combined); }
-    onParts?.({ date: draft.date, time: draft.time });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draft]);
+  // Quick-Save only: report the initial halves once.
+  useEffect(() => { onPartsRef.current?.({ date: ctrl.getDraft().date, time: ctrl.getDraft().time }); }, [ctrl]);
 
   // Redundant with the CSS class on purpose — inline styles win over any
   // stylesheet ordering surprise, and are the last lever before resorting
@@ -135,7 +138,7 @@ export default function DateTimeSplitInput({
       value={date}
       disabled={disabled}
       aria-describedby={text ? `${ids}-date-hint` : undefined}
-      onChange={(e) => setDraft((d) => pickDate(d, e.target.value, defaultTime))}
+      onChange={(e) => ctrl.pickDate(e.target.value)}
       className="rental-datetime-input min-w-0"
       style={fieldStyle}
     />
@@ -147,7 +150,7 @@ export default function DateTimeSplitInput({
       value={time}
       disabled={disabled}
       aria-describedby={text ? `${ids}-time-hint` : undefined}
-      onChange={(e) => setDraft((d) => pickTime(d, e.target.value, defaultTime))}
+      onChange={(e) => ctrl.pickTime(e.target.value)}
       className="rental-datetime-input min-w-0"
       style={fieldStyle}
     />
@@ -168,7 +171,7 @@ export default function DateTimeSplitInput({
   const prettyTime = time
     ? new Intl.DateTimeFormat(loc, { hour: 'numeric', minute: '2-digit', timeZone: 'UTC' }).format(new Date(`1970-01-01T${time}:00Z`))
     : '';
-  const timeIsDefault = defaultTime !== undefined && !!time && !draft.timeTouched && time === defaultTime;
+  const timeIsDefault = defaultTime !== undefined && !!time && !current.timeTouched && time === defaultTime;
   const labelCls = 'block text-[11px] font-semibold text-slate-600 mb-1';
   const hintCls = (filled: boolean) => `text-[11px] mt-1 ${filled ? 'text-slate-600' : 'text-slate-400'}`;
   return (

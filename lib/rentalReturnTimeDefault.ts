@@ -42,3 +42,74 @@ export function pickTime(d: SplitDraft, time: string, defaultTime: string | unde
   if (!time) return { ...d, time: '', timeTouched: false };
   return { ...d, time, timeTouched: !defaultTime || time !== defaultTime };
 }
+
+// ── controller behind DateTimeSplitInput ────────────────────────────────────
+
+export interface SplitController {
+  getDraft(): SplitDraft;
+  /** The renter picked/cleared the date or the time. Emits the combined value IMMEDIATELY (as the component always did). */
+  pickDate(date: string): void;
+  pickTime(time: string): void;
+  /** The parent's `value` prop changed (or was re-rendered): resync only for a genuine external change. */
+  syncValue(value: string): void;
+  /** Optional Quick-Save extension: the default clock time changed. No-op while undefined. */
+  setDefaultTime(defaultTime: string | undefined): void;
+}
+
+/**
+ * The framework-free core of DateTimeSplitInput.
+ *
+ * With NO extension (`defaultTime` never set) this is exactly the component's
+ * original behaviour: each edit updates the local half and calls `onChange`
+ * immediately with the recombined value (empty until BOTH halves exist), and a
+ * `value` that differs from the last one it emitted is an external change that
+ * replaces the draft — while the round-trip of its own emission never clobbers
+ * a partial edit.
+ *
+ * Handlers always build on the LATEST draft (held here, not in a render
+ * closure), so two edits that land before React re-renders can neither lose
+ * nor revert one another.
+ *
+ * The default-time follow (Quick-Save only) changes the draft without a user
+ * event; that is the only place a change is emitted from outside a handler.
+ */
+export function createSplitController(init: {
+  value: string;
+  defaultTime?: string;
+  onChange: (combined: string) => void;
+  onDraft: (draft: SplitDraft) => void;
+  onParts?: (parts: { date: string; time: string }) => void;
+}): SplitController {
+  let defaultTime = init.defaultTime;
+  let draft = applyDefaultTime(draftFromValue(init.value, defaultTime), defaultTime);
+  let lastEmitted = init.value;
+
+  function publish(next: SplitDraft) {
+    draft = next;
+    init.onDraft(next);
+    init.onParts?.({ date: next.date, time: next.time });
+  }
+  function emit(next: SplitDraft) {
+    publish(next);
+    lastEmitted = draftValue(next);
+    init.onChange(lastEmitted);
+  }
+
+  return {
+    getDraft: () => draft,
+    pickDate: (date) => emit(pickDate(draft, date, defaultTime)),
+    pickTime: (time) => emit(pickTime(draft, time, defaultTime)),
+    syncValue(value) {
+      if (value === lastEmitted) return;                 // our own round-trip — don't clobber a partial edit
+      lastEmitted = value;
+      publish(draftFromValue(value, defaultTime));
+    },
+    setDefaultTime(next) {
+      defaultTime = next;
+      if (next === undefined) return;
+      const applied = applyDefaultTime(draft, next);
+      if (applied === draft) return;
+      if (draftValue(applied) !== lastEmitted) emit(applied); else publish(applied);   // partial entry: no value change to report
+    },
+  };
+}
