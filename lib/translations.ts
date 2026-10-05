@@ -546,6 +546,14 @@ const en = {
   rentalReturn: {
     pageTitle:      'My Rentals',
     pageSubtitle:   'Know exactly how much fuel to add before you return your rental.',
+    // Add Rental chooser (2026-10-05)
+    addRental:                'Add Rental',
+    addRentalChooseTitle:     'What would you like to add?',
+    addRentalReservationTitle: 'I have a future reservation',
+    addRentalReservationBody: 'Save your reservation now. Add your vehicle and fuel details when you pick it up.',
+    addRentalVehicleTitle:    'I have the rental vehicle',
+    addRentalVehicleBody:     'Set up your rental using your vehicle and fuel information.',
+    addRentalBack:            'Back to My Rentals',
     newRental:       'New Rental',
     sectionInProgress: 'In Progress',
     sectionUpcoming:   'Upcoming',
@@ -3991,6 +3999,14 @@ const es: typeof en = {
   rentalReturn: {
     pageTitle:      'Mis Alquileres',
     pageSubtitle:   'Sabe exactamente cuánto combustible agregar antes de devolver tu auto de alquiler.',
+    // Selector de Agregar alquiler (2026-10-05)
+    addRental:                'Agregar alquiler',
+    addRentalChooseTitle:     '\u00bfQu\u00e9 quieres agregar?',
+    addRentalReservationTitle: 'Tengo una reserva futura',
+    addRentalReservationBody: 'Guarda tu reserva ahora. Agrega tu veh\u00edculo y los datos de combustible cuando lo recojas.',
+    addRentalVehicleTitle:    'Tengo el veh\u00edculo de alquiler',
+    addRentalVehicleBody:     'Configura tu alquiler con la informaci\u00f3n de tu veh\u00edculo y combustible.',
+    addRentalBack:            'Volver a Mis Alquileres',
     newRental:       'Nuevo Alquiler',
     sectionInProgress: 'En Curso',
     sectionUpcoming:   'Pr\u00f3ximos',

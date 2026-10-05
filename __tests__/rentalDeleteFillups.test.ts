@@ -153,8 +153,10 @@ describe('8. DELETE /api/rental-sessions/[id] — same contract, Fillups now go 
 
 describe('9. Help is now factually correct', () => {
   it('Help still says deleting a rental takes its fuel records and photos with it — true once Fillups are deleted', () => {
-    const help = readFileSync(path.join(process.cwd(), 'app/help/page.tsx'), 'utf8');
-    expect(help).toContain('deleting is permanent and takes that rental\\u2019s fuel records and photos with it');
+    // The rental FAQ lives in lib/helpRentalFaq.ts (owner-approved copy, 2026-10-05).
+    const help = readFileSync(path.join(process.cwd(), 'app/help/page.tsx'), 'utf8')
+      + readFileSync(path.join(process.cwd(), 'lib/helpRentalFaq.ts'), 'utf8');
+    expect(help).toContain('Deleting a rental permanently removes its associated fuel records and photos.');
     const lib = readFileSync(path.join(process.cwd(), 'lib/rentalSessions.ts'), 'utf8');
     const fn = lib.slice(lib.indexOf('export async function deleteRentalSession'), lib.indexOf('export async function deleteRentalSession') + 1500);
     expect(fn).toMatch(/tx\.fillup\.deleteMany\(\{ where: \{ userId, rentalSessionId: id \} \}\)/);
