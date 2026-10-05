@@ -16,6 +16,14 @@
       ],
       "review": "docs/reviews/2026-10-02-rental-event-timezones.md",
       "approvedBy": "Don Parker"
+    },
+    {
+      "path": "app/api/rental-sessions/route.ts",
+      "commits": [
+        "d343beb0dfaba04e9c6687f322f7774f70f096f2"
+      ],
+      "review": "docs/reviews/2026-10-05-rental-c1-independent-review.md",
+      "approvedBy": "Don Parker"
     }
   ]
 }
