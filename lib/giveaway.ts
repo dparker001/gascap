@@ -13,6 +13,7 @@
  */
 import { randomUUID } from 'crypto';
 import { prisma } from '@/lib/prisma';
+import { Prisma } from '@/lib/generated/prisma/client';
 import { STREAK_BONUS_TIERS, streakBonusEntries, streakTierForStreak, type StreakBonusTier } from './streakTiers';
 // Re-exported so existing importers keep working after the tiers moved to
 // their own zero-import module for testability.
@@ -678,20 +679,22 @@ export async function runWeightedDraw(month: string): Promise<DrawResult> {
 
 /** Persist the draw result — throws if draw already exists for this month */
 export async function recordDraw(result: DrawResult, notes?: string) {
-  return prisma.giveawayDraw.create({
-    data: {
-      id:           randomUUID(),
-      month:        result.month,
-      winnerId:     result.winner.userId,
-      winnerName:   result.winner.name,
-      winnerEmail:  result.winner.email,
-      entryCount:   result.winner.entryCount,
-      totalEntries: result.totalEntries,
-      drawnAt:      new Date().toISOString(),
-      notes:        notes ?? null,
-      claimToken:   randomUUID(),
-    },
-  });
+  return prisma.giveawayDraw.create({ data: drawRowData(result, notes) });
+}
+
+function drawRowData(result: DrawResult, notes?: string) {
+  return {
+    id:           randomUUID(),
+    month:        result.month,
+    winnerId:     result.winner.userId,
+    winnerName:   result.winner.name,
+    winnerEmail:  result.winner.email,
+    entryCount:   result.winner.entryCount,
+    totalEntries: result.totalEntries,
+    drawnAt:      new Date().toISOString(),
+    notes:        notes ?? null,
+    claimToken:   randomUUID(),
+  };
 }
 
 /**
@@ -711,17 +714,53 @@ export async function recordDraw(result: DrawResult, notes?: string) {
  *                               period at their flat plan bonus automatically.
  */
 export async function resetPeriodBonusEntries(): Promise<void> {
-  await prisma.user.updateMany({
-    data: {
-      verifyReminderBonusEntries:  0,
-      phoneBonusEntries:           0,
-      dailyBonusEntries:           0,
-      firstCalcBonusEntries:       0,
-      priceReportEntries:          0,
-      gigLogEntries:               0,
-      streakMilestoneBonusEntries: 0,
-    },
-  });
+  await prisma.user.updateMany({ data: PERIOD_BONUS_RESET });
+}
+
+const PERIOD_BONUS_RESET = {
+  verifyReminderBonusEntries:  0,
+  phoneBonusEntries:           0,
+  dailyBonusEntries:           0,
+  firstCalcBonusEntries:       0,
+  priceReportEntries:          0,
+  gigLogEntries:               0,
+  streakMilestoneBonusEntries: 0,
+} as const;
+
+export type CommitDrawResult =
+  | { inserted: true;  draw: Awaited<ReturnType<typeof recordDraw>> }
+  | { inserted: false };
+
+/**
+ * Record a drawing and reset the per-period counters as ONE transaction —
+ * the only path the cron and the admin panel use to record a draw.
+ *
+ * - `GiveawayDraw.month` is unique, so for any month exactly one insert can
+ *   succeed. The insert runs first: a request that loses a race fails on it
+ *   and never reaches the reset.
+ * - The duplicate (P2002) is caught OUTSIDE the transaction, which Postgres
+ *   has already rolled back, and is confirmed by re-reading the month — the
+ *   only other unique column is the random UUID id, so anything else rethrows.
+ * - A reset failure rolls the draw back too (retryable), where the old
+ *   recordDraw + `.catch(reset)` left a recorded draw with stale counters.
+ *
+ * Callers send notifications only when `inserted` is true.
+ */
+export async function commitDraw(result: DrawResult, notes?: string): Promise<CommitDrawResult> {
+  try {
+    const draw = await prisma.$transaction(async (tx) => {
+      const created = await tx.giveawayDraw.create({ data: drawRowData(result, notes) });
+      await tx.user.updateMany({ data: PERIOD_BONUS_RESET });
+      return created;
+    });
+    return { inserted: true, draw };
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+      const existing = await prisma.giveawayDraw.findUnique({ where: { month: result.month } });
+      if (existing) return { inserted: false };
+    }
+    throw err;
+  }
 }
 
 /** All past draws, newest first */

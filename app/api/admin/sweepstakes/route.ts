@@ -2,8 +2,11 @@
  * Admin Sweepstakes API — protected by ADMIN_PASSWORD
  * GET   /api/admin/sweepstakes?month=YYYY-MM  — preview entrants
  * GET   /api/admin/sweepstakes?history=1      — past draw results
- * POST  /api/admin/sweepstakes                — run draw { month, notes?, dryRun?, holdEmails?, suppressSms? }
+ * POST  /api/admin/sweepstakes                — run draw { month, notes?, dryRun?, holdEmails?, suppressSms?,
+ *                                                           lateDrawApprovalRef?, confirmMonth? }
  *                                              OR release held emails { month, action:'send-winner-email', suppressSms? }
+ *        `month` is REQUIRED for every POST — there is no current-month default
+ *        on any action that records a draw or releases notifications.
  * PUT   /api/admin/sweepstakes?month=YYYY-MM  — alternate draw after forfeiture
  * PATCH /api/admin/sweepstakes?month=YYYY-MM  — mark winner confirmed → fires Tremendous card delivery
  *
@@ -30,15 +33,16 @@ import {
   getEligibleEntrants,
   runWeightedDraw,
   runAlternateWeightedDraw,
-  recordDraw,
-  resetPeriodBonusEntries,
+  commitDraw,
   updateDrawWinner,
   getDrawHistory,
-  currentMonth,
   getCurrentPrizeTier,
   markWinnerClaimed,
   formatPeriodLabel,
 } from '@/lib/giveaway';
+import {
+  assertRecordableEntryMonth, isValidEntryMonth, currentEntryMonthET, entryMonthState, isWithinAutoWindow, lateDrawNotes,
+} from '@/lib/giveawayPeriod';
 import { fireDrawNotifications } from '@/lib/drawNotifications';
 import { sendTremendousCard } from '@/lib/tremendous';
 import { sendMail, winnerNotificationEmailHtml, nonWinnerNotificationEmailHtml } from '@/lib/email';
@@ -69,7 +73,8 @@ export async function GET(req: Request) {
   }
 
   // Entrant preview
-  const month = url.searchParams.get('month') ?? currentMonth();
+  // Read-only preview: defaulting is harmless here, and uses the ET Entry Month.
+  const month = url.searchParams.get('month') ?? currentEntryMonthET();
   if (!/^\d{4}-\d{2}$/.test(month)) {
     return NextResponse.json({ error: 'Invalid month format. Use YYYY-MM.' }, { status: 400 });
   }
@@ -116,8 +121,11 @@ export async function POST(req: Request) {
     month?: string; notes?: string; dryRun?: boolean;
     holdEmails?: boolean; suppressWinnerEmail?: boolean; suppressSms?: boolean;
     action?: 'send-winner-email';
+    lateDrawApprovalRef?: string; confirmMonth?: string;
   };
-  const month       = body.month ?? currentMonth();
+  // Explicit month on EVERY action. A UTC "current month" default once let a
+  // record or a winner-email release target the wrong Entry Month.
+  const month       = body.month;
   const dryRun      = body.dryRun === true;
   const suppressSms = body.suppressSms === true;
   // Hold-and-verify is the default: record the winner, send nothing, and wait
@@ -125,8 +133,8 @@ export async function POST(req: Request) {
   // (suppressWinnerEmail kept for backward compatibility — it also holds.)
   const holdEmails  = body.holdEmails !== false && body.suppressWinnerEmail !== false;
 
-  if (!/^\d{4}-\d{2}$/.test(month)) {
-    return NextResponse.json({ error: 'Invalid month format. Use YYYY-MM.' }, { status: 400 });
+  if (!isValidEntryMonth(month)) {
+    return NextResponse.json({ error: 'month is required (YYYY-MM).' }, { status: 400 });
   }
 
   // ── Action: release the held winner + results emails for an already-recorded
@@ -155,6 +163,28 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, sent: true });
   }
 
+  // ── Record guard (ET close, latest closed month only, 72h window / late
+  //    approval). A dry run persists nothing, so it may preview any month;
+  //    it reports the month's state instead of being refused. ───────────────
+  const now = new Date();
+  let recordNotes = body.notes;
+  if (!dryRun) {
+    const history = await getDrawHistory();
+    const check   = assertRecordableEntryMonth(month, now, history.map((d) => d.month), {
+      mode: 'admin', lateDrawApprovalRef: body.lateDrawApprovalRef, confirmMonth: body.confirmMonth,
+    });
+    if (!check.ok) {
+      // 409 only for an existing draw (the panel shows that draw); every other
+      // refusal is 422 so the panel displays the actual reason.
+      const existing = check.code === 'already_drawn' ? history.find((d) => d.month === month) : undefined;
+      return NextResponse.json(
+        { error: check.message, code: check.code, ...(existing ? { existing } : {}) },
+        { status: check.code === 'already_drawn' ? 409 : 422 },
+      );
+    }
+    if (check.late) recordNotes = lateDrawNotes(body.notes, body.lateDrawApprovalRef as string, now);
+  }
+
   try {
     const result = await runWeightedDraw(month);
 
@@ -164,6 +194,8 @@ export async function POST(req: Request) {
       return NextResponse.json({
         ok:     true,
         dryRun: true,
+        monthState:       entryMonthState(month, now),
+        withinAutoWindow: isWithinAutoWindow(month, now),
         winner: {
           name:         result.winner.name,
           email:        result.winner.email,
@@ -178,11 +210,17 @@ export async function POST(req: Request) {
     }
     // ─────────────────────────────────────────────────────────────────────
 
-    const draw   = await recordDraw(result, body.notes);
-
-    // Reset per-period achievement bonus counters for the new period
-    await resetPeriodBonusEntries().catch((err) =>
-      console.error('[admin/sweepstakes] resetPeriodBonusEntries failed:', err));
+    // Draw + period-counter reset commit together. Losing a race to a
+    // concurrent request means that request owns the reset and the emails.
+    const committed = await commitDraw(result, recordNotes);
+    if (!committed.inserted) {
+      const existing = (await getDrawHistory()).find((d) => d.month === month);
+      return NextResponse.json(
+        { error: `Draw already run for ${month}.`, code: 'already_drawn', existing },
+        { status: 409 },
+      );
+    }
+    const draw = committed.draw;
 
     // Hold-and-verify (default): record the winner, send nothing, and wait for
     // the admin to release the emails via the `send-winner-email` action after
@@ -208,15 +246,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, draw, held: holdEmails });
   } catch (err) {
     const msg = String(err);
-    // Unique constraint = draw already run for this month
-    if (msg.includes('Unique constraint')) {
-      const history = await getDrawHistory();
-      const existing = history.find((d) => d.month === month);
-      return NextResponse.json(
-        { error: `Draw already run for ${month}.`, existing },
-        { status: 409 },
-      );
-    }
     if (msg.includes('No eligible entrants')) {
       return NextResponse.json({ error: msg }, { status: 422 });
     }

@@ -4,7 +4,8 @@
  *
  * Anti-spam:
  *  - Honeypot field ("website") — if present, silently accept but don't save
- *  - One submission per email address per calendar month (enforced server-side)
+ *  - One submission per email address per Entry Month — the Eastern Time
+ *    calendar month (enforced server-side)
  *  - No email address is exposed anywhere in the UI
  */
 import { NextRequest, NextResponse } from 'next/server';
@@ -13,10 +14,7 @@ import {
   readAmoeEntries, writeAmoeEntries, normalizeAmoeEmail, type AmoeEntry,
 } from '@/lib/amoeEntries';
 import { mirrorAmoeEntryToDb } from '@/lib/amoeEntriesDb';
-
-function currentMonth(): string {
-  return new Date().toISOString().slice(0, 7); // YYYY-MM
-}
+import { currentEntryMonthET } from '@/lib/giveawayPeriod';
 
 export async function POST(req: NextRequest) {
   let body: Record<string, string>;
@@ -43,7 +41,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'A valid email address is required.' }, { status: 400 });
   }
 
-  const month = currentMonth();
+  // The Entry Month is the EASTERN calendar month (Official Rules). The UTC
+  // month filed 8 PM–midnight ET submissions under the next month and applied
+  // the one-per-month limit on the wrong boundary.
+  //
+  // One server clock read for both the month tag and submittedAt, so an entry
+  // processed across Eastern midnight can never be stamped in one Entry Month
+  // and tagged with another.
+  const receivedAt = new Date();
+  const month      = currentEntryMonthET(receivedAt);
 
   // Rate limit — one entry per email per calendar month
   const entries = readAmoeEntries();
@@ -64,7 +70,7 @@ export async function POST(req: NextRequest) {
     lastName:    lastName.trim(),
     email:       emailTrimmed,
     month,
-    submittedAt: new Date().toISOString(),
+    submittedAt: receivedAt.toISOString(),
   };
   entries.push(newEntry);
   writeAmoeEntries(entries);

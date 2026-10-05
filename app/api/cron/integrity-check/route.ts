@@ -29,7 +29,8 @@ import path from 'path';
 import { readAmoeEntries, AMOE_DATA_FILE } from '@/lib/amoeEntries';
 import { prisma }       from '@/lib/prisma';
 import { sendMail }     from '@/lib/email';
-import { getDrawHistory, prevMonth, currentPeriod } from '@/lib/giveaway';
+import { getDrawHistory } from '@/lib/giveaway';
+import { latestClosedEntryMonthET, isWithinAutoWindow } from '@/lib/giveawayPeriod';
 import { findOrphanRentalFillups } from '@/lib/rentalIntegrity';
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? 'admin@gascap.app';
@@ -200,19 +201,27 @@ export async function GET(req: Request) {
   ));
 
   // ── Family 3: scheduled work not actually running ─────────────────────────
-  // A draw should exist for the period that just closed — unless the giveaway
-  // is deliberately paused. It was for June and July 2026, and this check
+  // A draw should exist for the Entry Month that most recently closed (its
+  // 11:59:59 PM ET deadline, lib/giveawayPeriod.ts) — unless the giveaway is
+  // deliberately paused. It was for June and July 2026, and this check
   // reported that as a failure on its first run, which is exactly the kind of
   // false positive that trains people to ignore the report. Set
   // GIVEAWAY_PAUSED=true in Railway while a pause is intentional.
+  //
+  // Not flagged during the 72 hours after the close: the draw is legitimately
+  // still pending then (manual run, or the automatic window). Once that
+  // window has passed, the automatic cron will no longer draw it.
   const giveawayPaused = process.env.GIVEAWAY_PAUSED === 'true';
-  const lastPeriod = prevMonth(currentPeriod());
-  const draws      = await getDrawHistory();
-  const missingDraw = giveawayPaused || draws.some((d) => d.month === lastPeriod) ? 0 : 1;
+  const checkedAt      = new Date();
+  const lastPeriod     = latestClosedEntryMonthET(checkedAt);
+  const draws          = await getDrawHistory();
+  const missingDraw = giveawayPaused
+    || isWithinAutoWindow(lastPeriod, checkedAt)
+    || draws.some((d) => d.month === lastPeriod) ? 0 : 1;
   findings.push(flag(
     'missing-draw', `No giveaway draw recorded for ${lastPeriod}`,
     missingDraw,
-    'The draw is run manually from the admin panel — it is not scheduled. A missing draw also means entry counters never reset, so totals keep compounding across periods. If the pause is intentional, set GIVEAWAY_PAUSED=true.',
+    'The Entry Month closed more than 72 hours ago with no draw. The automatic cron (GIVEAWAY_AUTO_DRAW=on) only draws within 72 hours of the ET close, so this now needs the admin late-draw recovery with Don\'s dated written approval (lateDrawApprovalRef + confirmMonth). A missing draw also means entry counters never reset, so totals keep compounding across periods. If the pause is intentional, set GIVEAWAY_PAUSED=true.',
     'error',
   ));
 
