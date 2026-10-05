@@ -10,6 +10,7 @@ import ScrollRestore         from '@/components/ScrollRestore';
 import NativePushRegistration from '@/components/NativePushRegistration';
 import NativeOneSignalRegistration from '@/components/NativeOneSignalRegistration';
 import NativeLocalNotificationRouter from '@/components/NativeLocalNotificationRouter';
+import RentalAutoOpen from '@/components/RentalAutoOpen';
 import NativeIapInit          from '@/components/NativeIapInit';
 import ErrorBoundary         from '@/components/ErrorBoundary';
 import { LanguageProvider }  from '@/contexts/LanguageContext';
@@ -145,6 +146,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <NativePushRegistration />
             <NativeOneSignalRegistration />
             <NativeLocalNotificationRouter />
+            <RentalAutoOpen />
             <NativeIapInit />
             <GiveawayEntryToast />
             <AggregateStatsToast />

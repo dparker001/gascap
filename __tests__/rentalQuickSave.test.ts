@@ -63,7 +63,9 @@ describe('wiring', () => {
   it('the form reuses RentalEventScheduleField for both events and posts to the normal create endpoint', () => {
     const f = src('components/rental-return/QuickSaveRentalForm.tsx');
     expect(f.match(/<RentalEventScheduleField/g)).toHaveLength(2);
-    expect(f).toContain("fetch('/api/rental-sessions'");
+    // C1: posts through the shared idempotent helper, which POSTs the normal create endpoint.
+    expect(f).toContain('postCreateRental(');
+    expect(src('lib/rentalCreateClient.ts')).toContain("fetch('/api/rental-sessions'");
     expect(f).toContain('buildQuickSavePayload(');
     expect(f).toContain('quickSaveCanSubmit(');
   });

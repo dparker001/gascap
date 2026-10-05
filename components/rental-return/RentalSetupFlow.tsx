@@ -7,6 +7,7 @@
  */
 
 import { useState, useEffect, useRef, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { useTranslation } from '@/contexts/LanguageContext';
 import { trackClientEvent } from '@/lib/clientAnalytics';
 import { RENTAL_COMPANIES, gallonsFromGaugeFraction, gallonsFromPercent } from '@/lib/rentalProvider';
@@ -19,6 +20,9 @@ import RentalEventScheduleField, { effectiveEventZone, eventTimeSubmittable, typ
 import PhotoCaptureButton from './PhotoCaptureButton';
 import AgreementScanButton, { type ScannedAgreementFields } from './AgreementScanButton';
 import { resyncRentalFallbacks } from '@/lib/rentalReminderSync';
+import { newClientRentalId, postCreateRental } from '@/lib/rentalCreateClient';
+import DuplicateRentalNotice from './DuplicateRentalNotice';
+import { activeDuplicateWarning, duplicateConfirmationKey, mayConfirmDuplicate, type DuplicateWarning } from '@/lib/rentalDuplicateConfirm';
 import { useSession } from 'next-auth/react';
 import { detectBrowserTimeZone, splitLocalDateTime, combineLocalDateTime, describeEventTime, type TimeDisambiguation } from '@/lib/rentalTimezone';
 
@@ -34,9 +38,13 @@ type FuelInputMethod = 'gauge' | 'percent' | 'gallons';
 export default function RentalSetupFlow({ onCreated, onCancel }: Props) {
   const { t } = useTranslation();
   const authUserId = (useSession().data?.user as { id?: string } | undefined)?.id;
+  const router = useRouter();
   const [step, setStep] = useState(1);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  // One id per wizard instance, reused by every retry (see lib/rentalCreateClient.ts).
+  const [clientRentalId, setClientRentalId] = useState(() => newClientRentalId());
+  const [duplicateWarning, setDuplicateWarning] = useState<DuplicateWarning | null>(null);
 
   // Growth Sprint 1, P0C-2A — once per wizard mount, a genuine setup
   // attempt (the wizard is only ever mounted once an eligible authenticated
@@ -218,21 +226,31 @@ export default function RentalSetupFlow({ onCreated, onCancel }: Props) {
   const returnZone = effectiveEventZone(returnLoc, pickedReturnZone, deviceZone);
   const pickupStatus = describeEventTime(pickupDateTime, pickupZone.zone);
   const returnStatus = describeEventTime(returnDateTime, returnZone.zone);
+  // The duplicate confirmation is bound to THIS reservation: any change to the
+  // fields that identify it voids the warning (lib/rentalDuplicateConfirm.ts).
+  const reservationKey = duplicateConfirmationKey({
+    company, confirmationNumber, agreementNumber, pickupDateTime, returnDateTime,
+    pickupLocation: pickupLoc.text, returnLocation: returnLoc.text,
+    pickupLat: pickupLoc.lat ?? null, pickupLng: pickupLoc.lng ?? null, returnLat: returnLoc.lat ?? null, returnLng: returnLoc.lng ?? null,
+    pickupZone: pickupZone.zone ?? null, returnZone: returnZone.zone ?? null,
+    pickupChoice, returnChoice,
+  });
+  const activeDuplicate = activeDuplicateWarning(duplicateWarning, reservationKey);
   // A DST-gap (nonexistent) time must be changed; an ambiguous one is sent
   // with its visible, explicit occurrence choice (first preselected).
   const canSubmit = !!returnDateTime && eventTimeSubmittable(pickupStatus) && eventTimeSubmittable(returnStatus);
   const occurrence = (st: ReturnType<typeof describeEventTime>, c: TimeDisambiguation | null) =>
     st.kind === 'ambiguous' ? (c ?? 'earlier') : undefined;
 
-  async function handleSubmit() {
+  async function handleSubmit(confirmDuplicate = false) {
+    // Honoured only for the exact reservation that was warned about.
+    const confirm = confirmDuplicate && mayConfirmDuplicate(duplicateWarning, reservationKey);
+    const submittedKey = reservationKey;   // the key of the payload actually sent
     setSubmitting(true);
     setError('');
     try {
       const pickup = resolvePickupFuel();
-      const res = await fetch('/api/rental-sessions', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const out = await postCreateRental({
           rentalCompany: company,
           rentalAgreementNumber: agreementNumber.trim() || undefined,
           rentalConfirmationNumber: confirmationNumber.trim() || undefined,
@@ -265,19 +283,20 @@ export default function RentalSetupFlow({ onCreated, onCancel }: Props) {
           pickupVehiclePhotoThumb: pickupVehiclePhoto || undefined,
           pickupGaugePhotoThumb: pickupGaugePhoto || undefined,
           pickupAgreementPhotoThumb: pickupAgreementPhoto || undefined,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
+      }, clientRentalId, confirm);
+      // Bind the warning to what was SUBMITTED (void at once if the form changed in flight).
+      if (out.kind === 'duplicate') { setDuplicateWarning({ rentalId: out.rentalId, key: submittedKey }); return; }
+      if (out.kind === 'error') {
         const scheduleCodes = ['invalid_time_zone', 'invalid_local_datetime', 'nonexistent_local_time', 'ambiguous_local_time'];
-        setError(scheduleCodes.includes(data.error) ? t.rentalReturn.tzScheduleError : (data.error ?? t.rentalReturn.setupError));
+        if (out.code === 'client_rental_id_conflict') setClientRentalId(newClientRentalId());
+        setError(out.code && scheduleCodes.includes(out.code) ? t.rentalReturn.tzScheduleError : (out.message ?? t.rentalReturn.setupError));
         return;
       }
       // Option C (2026-10-02): server push is primary; this device gets a
       // local fallback only without usable push, scheduled from the
       // server-derived returnDateTimeUtc — never the wall clock re-read here.
       void resyncRentalFallbacks(authUserId);
-      onCreated(data.session.id);
+      onCreated(out.sessionId);
     } catch {
       setError(t.rentalReturn.setupError);
     } finally {
@@ -309,6 +328,13 @@ export default function RentalSetupFlow({ onCreated, onCancel }: Props) {
       </div>
 
       {error && <p className="text-xs text-red-500 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{error}</p>}
+      {activeDuplicate && (
+        <DuplicateRentalNotice
+          busy={submitting}
+          onOpenExisting={() => router.push(`/rental-return/${activeDuplicate.rentalId}`)}
+          onSaveAnyway={() => { void handleSubmit(true); }}
+        />
+      )}
 
       {/* Step 1 — Rental company */}
       {step === 1 && (
@@ -550,7 +576,7 @@ export default function RentalSetupFlow({ onCreated, onCancel }: Props) {
           </button>
         ) : (
           <button
-            onClick={handleSubmit}
+            onClick={() => { void handleSubmit(); }}
             disabled={!canSubmit || submitting}
             className="flex-1 py-3 rounded-2xl bg-blue-600 text-white text-sm font-bold disabled:opacity-40"
           >

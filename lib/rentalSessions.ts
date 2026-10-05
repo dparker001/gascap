@@ -2,7 +2,10 @@
  * GasCap™ Rental Return Assistant — persistence layer.
  * Thin wrapper over Prisma; API routes stay thin and never touch prisma directly.
  */
+import { createHash } from 'crypto';
+import { Prisma } from './generated/prisma/client';
 import { prisma } from './prisma';
+import { findPossibleDuplicate, type DuplicateMatch } from './rentalDuplicates';
 import type { RefuelLogEntry, FuelDataSource } from './rentalProvider';
 import { gallonsNeeded, resolveRequiredReturnFuel, returnReadyStatus, reconcileForTankCapacityChange, isFractionalFuelSource, type ReturnPolicyType, type ReturnReadyStatus } from './rentalCalculations';
 import { recordAnalyticsEvent } from './analyticsEvents';
@@ -240,8 +243,12 @@ export interface CreateRentalSessionInput {
   notes?:                    string;
 }
 
-export async function createRentalSession(userId: string, input: CreateRentalSessionInput): Promise<RentalSession> {
-  const now = new Date().toISOString();
+/**
+ * Validates the input and builds the row to insert — shared by the plain and
+ * the idempotent create so both write byte-identical rows. Throws
+ * RentalScheduleError (400/422) before anything is written.
+ */
+function buildRentalCreateData(userId: string, input: CreateRentalSessionInput, id: string, now: string) {
   if (input.pickupFuelGallons != null) assertReadingHasTank(input.pickupFuelSource, input.fuelTankCapacityGallons, 'pickupFuelGallons');
   const policyType = input.requiredReturnPolicyType ?? 'same_as_pickup';
   const requiredReturnFuelGallons = resolveRequiredReturnFuel(
@@ -262,9 +269,8 @@ export async function createRentalSession(userId: string, input: CreateRentalSes
     legacyZone: input.timeZone, choice: input.returnTimeDisambiguation,
   });
 
-  const row = await prisma.rentalSession.create({
-    data: {
-      id:                     crypto.randomUUID(),
+  return {
+      id,
       userId,
       vehicleId:              input.vehicleId ?? null,
       provider:                'manual',
@@ -308,15 +314,22 @@ export async function createRentalSession(userId: string, input: CreateRentalSes
       notes:                   input.notes ?? null,
       createdAt:               now,
       updatedAt:               now,
-    },
-  });
+  };
+}
+
+export async function createRentalSession(userId: string, input: CreateRentalSessionInput): Promise<RentalSession> {
+  const now = new Date().toISOString();
+  const row = await prisma.rentalSession.create({ data: buildRentalCreateData(userId, input, crypto.randomUUID(), now) });
+  return finishCreate(userId, row);
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function finishCreate(userId: string, row: any): Promise<RentalSession> {
   // Growth Sprint 1, P0C-1A — no rental company/agreement/confirmation/
-  // address/lat-long/vehicle/photo/fuel/notes data in metadata. Known
-  // limitation, not addressed here: this create path has no request-level
-  // dedup, so a client retry after a lost response can produce a second,
-  // genuinely distinct RentalSession row — each still correctly gets its
-  // own non-duplicate event, but the underlying source data itself carries
-  // that separate risk (tracked as a backlog item, not fixed in P0C-1A).
+  // address/lat-long/vehicle/photo/fuel/notes data in metadata. A client
+  // retry that sends a clientRentalId is now deduplicated by
+  // createRentalSessionIdempotent (C1); a create WITHOUT one still has no
+  // request-level dedup, as before.
   try {
     await recordAnalyticsEvent({
       eventType: 'rental_setup_completed',
@@ -328,6 +341,141 @@ export async function createRentalSession(userId: string, input: CreateRentalSes
     });
   } catch (e) { console.error('[GasCap analytics] rental_setup_completed write failed:', e); }
   return toRentalSession(row);
+}
+
+// ── C1: retry idempotency + soft duplicate detection + cancel ───────────────
+
+const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+export const isClientRentalId = (v: unknown): v is string => typeof v === 'string' && UUID_V4.test(v);
+
+/** Every user-supplied value a create writes. Fields the server fills in or
+ *  that change on their own (id, timestamps, status, reminders) are excluded. */
+const CREATE_FINGERPRINT_FIELDS = [
+  'vehicleId', 'rentalCompany', 'rentalAgreementNumber', 'rentalConfirmationNumber',
+  'vehicleYear', 'vehicleMake', 'vehicleModel', 'vehicleTrim', 'fuelTankCapacityGallons',
+  'pickupFuelGallons', 'pickupFuelSource', 'requiredReturnFuelGallons', 'requiredReturnPolicyType',
+  'rentalFuelChargePerGallon', 'pickupDateTime', 'returnDateTime', 'timeZone',
+  'pickupTimeZone', 'pickupTimeZoneSource', 'pickupDateTimeUtc',
+  'returnTimeZone', 'returnTimeZoneSource', 'returnDateTimeUtc',
+  'pickupLatitude', 'pickupLongitude', 'pickupLocation',
+  'returnLocation', 'returnLatitude', 'returnLongitude',
+  'pickupVehiclePhotoThumb', 'pickupGaugePhotoThumb', 'pickupAgreementPhotoThumb', 'notes',
+] as const;
+
+/** Stable digest of a create's content, so a replay can be told from a different payload. */
+export function rentalCreateFingerprint(row: Record<string, unknown>): string {
+  const canonical = CREATE_FINGERPRINT_FIELDS.map((k) => [k, row[k] ?? null]);
+  return createHash('sha256').update(JSON.stringify(canonical)).digest('hex');
+}
+
+export type IdempotentCreateResult =
+  | { kind: 'created';   session: RentalSession }
+  /** Same client id, same user, same content — the original row, no second write. */
+  | { kind: 'replayed';  session: RentalSession }
+  /** Same client id but different content, or the id belongs to someone else. */
+  | { kind: 'conflict' }
+  /** A likely existing booking; nothing was written. Retry with confirmDuplicate to save anyway. */
+  | { kind: 'duplicate'; rentalId: string; matchedOn: DuplicateMatch['matchedOn'] };
+
+export interface IdempotentCreateOptions {
+  /** Validated UUIDv4 from the client; used AS the row id. Omitted → no replay protection. */
+  clientRentalId?: string;
+  /** The renter saw the duplicate warning and chose to save anyway. */
+  confirmDuplicate?: boolean;
+}
+
+async function classifyExistingById(userId: string, id: string, fingerprint: string): Promise<IdempotentCreateResult> {
+  const existing = await prisma.rentalSession.findUnique({ where: { id } });
+  // Someone else's id (or it vanished between the failed insert and this
+  // read): never reveal or return another user's row.
+  if (!existing || existing.userId !== userId) return { kind: 'conflict' };
+  return rentalCreateFingerprint(existing as unknown as Record<string, unknown>) === fingerprint
+    ? { kind: 'replayed', session: toRentalSession(existing) }
+    : { kind: 'conflict' };
+}
+
+/**
+ * C1 create. Order matters:
+ *  1. validate + build the row (400/422 before any write);
+ *  2. replay check — a known client id returns the original row (same
+ *     content) or a conflict (different content / another user's id);
+ *  3. soft duplicate check against the renter's other active rentals;
+ *  4. insert; a unique-id race (P2002) is resolved by re-reading the row
+ *     and comparing content, so two concurrent identical requests produce
+ *     exactly one row and one 'created'.
+ * The replay check runs BEFORE the duplicate check, otherwise a retry would
+ * "duplicate" its own earlier row.
+ */
+export async function createRentalSessionIdempotent(
+  userId: string, input: CreateRentalSessionInput, opts: IdempotentCreateOptions = {},
+): Promise<IdempotentCreateResult> {
+  const now = new Date().toISOString();
+  const id = opts.clientRentalId ? opts.clientRentalId.toLowerCase() : crypto.randomUUID();
+  const data = buildRentalCreateData(userId, input, id, now);
+  const fingerprint = rentalCreateFingerprint(data as unknown as Record<string, unknown>);
+
+  if (opts.clientRentalId) {
+    const existing = await prisma.rentalSession.findUnique({ where: { id } });
+    if (existing) return classifyExistingById(userId, id, fingerprint);
+  }
+
+  if (!opts.confirmDuplicate) {
+    const open = await prisma.rentalSession.findMany({
+      where: { userId, status: 'active' },
+      select: {
+        id: true, rentalCompany: true, rentalConfirmationNumber: true,
+        pickupDateTime: true, returnDateTime: true, pickupDateTimeUtc: true, returnDateTimeUtc: true,
+        pickupTimeZone: true, returnTimeZone: true, timeZone: true,
+      },
+    });
+    const match = findPossibleDuplicate(
+      { rentalCompany: data.rentalCompany, rentalConfirmationNumber: data.rentalConfirmationNumber, pickupDateTimeUtc: data.pickupDateTimeUtc },
+      open,
+    );
+    if (match) {
+      // A concurrent identical request may have inserted THIS request's own
+      // row between the id lookup above and this scan: that is a replay, not
+      // a duplicate of something else.
+      if (opts.clientRentalId && match.rentalId === id) return classifyExistingById(userId, id, fingerprint);
+      return { kind: 'duplicate', rentalId: match.rentalId, matchedOn: match.matchedOn };
+    }
+  }
+
+  try {
+    const row = await prisma.rentalSession.create({ data });
+    return { kind: 'created', session: await finishCreate(userId, row) };
+  } catch (e) {
+    if (opts.clientRentalId && e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+      return classifyExistingById(userId, id, fingerprint);
+    }
+    throw e;
+  }
+}
+
+export type CancelRentalResult =
+  | { kind: 'cancelled'; session: RentalSession }   // includes an already-cancelled rental (idempotent)
+  | { kind: 'completed' }                           // a returned rental can't be cancelled
+  | { kind: 'not_found' };
+
+/**
+ * The renter says they never took (or no longer need) this rental. Owner-
+ * scoped and idempotent: the status flip is one conditional UPDATE, so two
+ * concurrent cancels both succeed with one write, and a completed rental is
+ * never overwritten. Not Pro-gated — like completing, it finishes a rental
+ * rather than starting one.
+ */
+export async function cancelRentalSession(userId: string, id: string): Promise<CancelRentalResult> {
+  const now = new Date().toISOString();
+  await prisma.rentalSession.updateMany({
+    where: { id, userId, status: 'active' },
+    data:  { status: 'cancelled', updatedAt: now },
+  });
+  // Re-read for the outcome: covers the fresh cancel, a repeat/concurrent
+  // cancel (already 'cancelled' → same success), and a completed rental.
+  const row = await prisma.rentalSession.findFirst({ where: { id, userId } });
+  if (!row) return { kind: 'not_found' };
+  if (row.status === 'completed') return { kind: 'completed' };
+  return { kind: 'cancelled', session: toRentalSession(row) };
 }
 
 export async function getRentalSessionsForUser(userId: string, status?: string): Promise<RentalSession[]> {
@@ -680,31 +828,43 @@ export interface CompleteRentalSessionInput {
   feedbackText?:               string;
 }
 
+export type CompleteRentalResult =
+  /** `replayed: true` = it was already completed; the original completion data is untouched. */
+  | { kind: 'completed'; session: RentalSession; replayed: boolean }
+  /** The renter cancelled it first. A cancelled rental is never turned into a completed one. */
+  | { kind: 'cancelled' }
+  | { kind: 'not_found' };
+
+/**
+ * Complete and cancel are the two TERMINAL transitions of an open rental, and
+ * they are mutually exclusive by construction: each is ONE owner-scoped
+ * conditional UPDATE (`WHERE id AND userId AND status = 'active'`), so the
+ * database lets exactly one of any number of concurrent attempts win — the
+ * rest match zero rows and are reported from a re-read of the winner's state.
+ * (A read-then-update here let a late complete overwrite a cancel, or the
+ * reverse.)
+ *
+ *  - repeat / concurrent complete → the first completion's data stands; the
+ *    others return it unchanged (never overwritten, one analytics event);
+ *  - complete after cancel → `cancelled` (409), nothing written;
+ *  - another user's rental → `not_found`, nothing written.
+ *
+ * Phase 3A (2026-08-25): completing never creates a Fillup — completion and
+ * logging a final fuel transaction are related but distinct actions (see
+ * lib/rentalFillups.ts's fillupType: 'final_return').
+ */
 export async function completeRentalSession(
   userId: string, id: string, input: CompleteRentalSessionInput,
-): Promise<RentalSession | undefined> {
-  const existing = await prisma.rentalSession.findFirst({ where: { id, userId } });
-  if (!existing) return undefined;
-
-  // Phase 3A completion hardening (2026-08-25) — a repeated "Complete
-  // Rental" request (double-tap, retry after a dropped response) is now a
-  // safe no-op: it returns the already-completed session unchanged rather
-  // than re-applying (and potentially overwriting) dispute/feedback fields
-  // from a second, possibly different submission. Completing a rental never
-  // creates a Fillup — completion and logging a final fuel transaction are
-  // related but distinct actions (see lib/rentalFillups.ts's fillupType:
-  // 'final_return', logged separately via the refuel flow if the renter
-  // actually filled up).
-  if (existing.status === 'completed') return toRentalSession(existing);
-
+): Promise<CompleteRentalResult> {
   const now = new Date().toISOString();
-  const row = await prisma.rentalSession.update({
-    where: { id },
+  const won = await prisma.rentalSession.updateMany({
+    where: { id, userId, status: 'active' },
     data: {
       status:                      'completed',
       completedAt:                  now,
-      returnGaugePhotoThumb:        input.returnGaugePhotoThumb      ?? existing.returnGaugePhotoThumb,
-      returnReceiptPhotoThumb:      input.returnReceiptPhotoThumb    ?? existing.returnReceiptPhotoThumb,
+      // undefined = leave the stored photo as it is (Prisma omits it)
+      returnGaugePhotoThumb:        input.returnGaugePhotoThumb,
+      returnReceiptPhotoThumb:      input.returnReceiptPhotoThumb,
       fuelFeeCharged:               input.fuelFeeCharged             ?? null,
       fuelFeeAmount:                input.fuelFeeAmount              ?? null,
       fuelFeeGallonsClaimed:        input.fuelFeeGallonsClaimed      ?? null,
@@ -716,14 +876,20 @@ export async function completeRentalSession(
     },
   });
 
-  try {
-    await recordAnalyticsEvent({
-      eventType: 'rental_session_completed', originPlatform: 'unknown', emitter: 'server', userId,
-      idempotencyKey: `rental_session_completed:${id}`,
-    });
-  } catch (e) { console.error('[GasCap analytics] rental_session_completed write failed:', e); }
+  const row = await prisma.rentalSession.findFirst({ where: { id, userId } });
+  if (!row) return { kind: 'not_found' };
+  if (row.status === 'cancelled') return { kind: 'cancelled' };
+  if (row.status !== 'completed') throw new Error(`rental ${id} is '${row.status}' after a lost complete update`);
 
-  return toRentalSession(row);
+  if (won.count === 1) {
+    try {
+      await recordAnalyticsEvent({
+        eventType: 'rental_session_completed', originPlatform: 'unknown', emitter: 'server', userId,
+        idempotencyKey: `rental_session_completed:${id}`,
+      });
+    } catch (e) { console.error('[GasCap analytics] rental_session_completed write failed:', e); }
+  }
+  return { kind: 'completed', session: toRentalSession(row), replayed: won.count !== 1 };
 }
 
 export function computeSessionStatus(session: Pick<RentalSession, 'currentFuelGallons' | 'requiredReturnFuelGallons'>): ReturnReadyStatus {

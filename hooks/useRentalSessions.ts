@@ -4,6 +4,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import type { RentalSession } from '@/lib/rentalSessions';
 import { isUpcomingRental as isUpcomingAt, rentalEventInstant } from '@/lib/rentalCalculations';
+import { groupRentals, selectPrimaryRental } from '@/lib/rentalPresentation';
+import { useRentalClock } from './useRentalClock';
+import { EMPTY_SCOPED, isLoadingFor, sessionsForUser, startRentalSessionsLoad, type ScopedSessions } from '@/lib/rentalSessionsScope';
 import { syncRentalFallbacksFromSessions } from '@/lib/rentalReminderSync';
 
 /**
@@ -26,16 +29,20 @@ export function isUpcomingRental(s: RentalSession): boolean {
 }
 
 export interface RentalSessionsState {
-  /** Rentals the user is currently holding a car for. */
+  /** Rentals the user is holding or collecting: pickup, active, near return, overdue. */
   inProgress: RentalSession[];
-  /** Booked, pickup still in the future. */
+  /** Booked, pickup still ahead. */
   upcoming: RentalSession[];
+  /** Stale or with an untrustworthy schedule — never promoted to a banner or "primary". */
+  attention: RentalSession[];
+  /** Subset of inProgress that is at pickup right now. */
+  atPickup: RentalSession[];
   /** Everything open, newest first. */
   all: RentalSession[];
   /**
-   * The one to open when tapping through. An in-progress rental outranks an
-   * upcoming one — that's the car the user is actually responsible for. Among
-   * upcoming rentals, the soonest pickup wins.
+   * The one rental to surface (lib/rentalPresentation.ts selectPrimaryRental):
+   * overdue > pickup > near return > active > upcoming, ties broken by the
+   * earliest relevant instant — deterministic, independent of row order.
    */
   primary: RentalSession | null;
   loading: boolean;
@@ -43,35 +50,38 @@ export interface RentalSessionsState {
 
 export function useRentalSessions(): RentalSessionsState {
   const { status, data: authSession } = useSession();
-  const authUserId = (authSession?.user as { id?: string } | undefined)?.id;
-  const [all, setAll] = useState<RentalSession[]>([]);
-  const [loading, setLoading] = useState(true);
+  const authUserId = (authSession?.user as { id?: string } | undefined)?.id ?? null;
+  const authenticated = status === 'authenticated' && !!authUserId;
+  // The data remembers WHICH account it belongs to; it is exposed only to that account.
+  const [scoped, setScoped] = useState<ScopedSessions>(EMPTY_SCOPED);
+  const all = sessionsForUser(scoped, authenticated ? authUserId : null);
+  const loading = status === 'loading' || isLoadingFor(scoped, authenticated, authUserId);
+  // Re-derives the groups at lifecycle boundaries and on resume (no polling/network).
+  const clock = useRentalClock(all);
 
   useEffect(() => {
-    if (status !== 'authenticated') { setLoading(false); return; }
-    fetch('/api/rental-sessions?status=active')
-      .then((r) => r.ok ? r.json() : null)
-      .then((d: { sessions?: RentalSession[] } | null) => {
-        setAll(d?.sessions ?? []);
-        // App-open re-sync of this device's return fallbacks (Option C).
-        void syncRentalFallbacksFromSessions(authUserId, d?.sessions ?? []);
-      })
-      .finally(() => setLoading(false));
-  }, [status]);
+    // Logout / unauthenticated: drop everything. Account switch: the previous
+    // account's data is dropped now and its in-flight request is cancelled below.
+    setScoped(EMPTY_SCOPED);
+    if (!authenticated || !authUserId) return;
+    return startRentalSessionsLoad(authUserId, (url, init) => fetch(url, init), (next) => {
+      setScoped(next);
+      // App-open re-sync of this device's return fallbacks (Option C).
+      void syncRentalFallbacksFromSessions(authUserId, next.sessions);
+    });
+  }, [authenticated, authUserId]);
 
   return useMemo(() => {
-    const upcoming   = all.filter(isUpcomingRental);
-    const inProgress = all.filter((s) => !isUpcomingRental(s));
-
-    const soonest = [...upcoming].sort((a, b) =>
-      new Date(rentalEventInstant(a.pickupDateTimeUtc, a.pickupDateTime)!).getTime() - new Date(rentalEventInstant(b.pickupDateTimeUtc, b.pickupDateTime)!).getTime());
-
+    const now = clock;
+    const g = groupRentals(all, now);
     return {
-      inProgress,
-      upcoming,
+      inProgress: g.inProgress,
+      upcoming:   g.upcoming,
+      attention:  g.attention,
+      atPickup:   g.atPickup,
       all,
-      primary: inProgress[0] ?? soonest[0] ?? null,
+      primary: selectPrimaryRental(all, now),
       loading,
     };
-  }, [all, loading]);
+  }, [scoped, authenticated, authUserId, loading, clock]);
 }

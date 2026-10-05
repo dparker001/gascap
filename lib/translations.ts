@@ -811,6 +811,31 @@ const en = {
     tzAmbiguousSecond:        (time: string, abbr: string) => `Second ${time} (${abbr})`,
     tzNeedsZone:              'Pick a location from the list or choose a time zone so reminders fire at the right moment.',
     tzScheduleError:          'Please fix the highlighted time before saving.',
+    // C1 — time-aware Rental Car Mode (2026-10-05)
+    duplicateTitle:           'Looks like you already saved this rental',
+    duplicateBody:            'A rental with the same company and booking details is already in My Rentals. Open it, or save this one anyway.',
+    duplicateOpen:            'Open it',
+    duplicateSaveAnyway:      'Save anyway',
+    sectionNeedsAttention:    'Needs your attention',
+    needsAttentionHint:       'Check this rental',
+    atPickupTitle:            "It's pickup time",
+    atPickupBody:             'Record the car, tank size and fuel level when you get the car. Nothing is filled in for you.',
+    overdueTitle:             'Did you return it?',
+    overdueBody:              'This rental was due back already. Mark it returned, or update the return time if you still have the car.',
+    overdueYesReturned:       "Yes, I've returned it",
+    overdueStillHave:         'I still have it',
+    staleTitle:               'This rental ended a while ago',
+    staleBody:                "It's more than 3 days past the return time and still open. GasCap never closes a rental for you, so choose what's true.",
+    staleDidntTake:           "I didn't take this rental",
+    needsScheduleTitle:       'Check your pickup and return times',
+    needsScheduleBody:        "The times saved for this rental don't look right (for example, the return is before the pickup), so GasCap isn't guessing a status. Fix them to continue.",
+    needsScheduleEdit:        'Edit times',
+    cancelRentalConfirm:      "Mark this rental as not taken? This can't be undone.",
+    cancelRentalFailed:       "Couldn't update this rental — try again.",
+    autoOpenedNotice:         'Opened automatically at pickup',
+    autoOpenedTurnOff:        'Turn off',
+    autoOpenSettingTitle:     'Open my rental at pickup time',
+    autoOpenSettingBody:      'When it is time to pick up your rental car, GasCap opens it for you as you start the app on this device. Off by default and saved for your account on this device only; it never changes any rental details.',
     // Upcoming-rental pickup reminder notice (T7). Claims only reminders still ahead.
     pickupRemindersBoth:      (zone: string) => `Pickup reminders: GasCap sends email reminders about 24 hours and about 2 hours before pickup (${zone}).`,
     pickupReminderTwoHour:    (zone: string) => `Pickup reminder: GasCap sends an email reminder about 2 hours before pickup (${zone}).`,
@@ -1114,6 +1139,7 @@ const en = {
     rentalModeUpcomingWith: (company: string, when: string) => when
       ? `Upcoming ${company} rental \u2014 pickup ${when}`
       : `Upcoming rental with ${company} \u2014 tap to view`,
+    rentalModeAtPickupMultiple: (n: number) => `${n} rentals are at pickup \u2014 choose one`,
     rentalModeMultiple:     (active: number, upcoming: number) => {
       const parts: string[] = [];
       if (active > 0)   parts.push(`${active} active`);
@@ -4219,6 +4245,31 @@ const es: typeof en = {
     tzAmbiguousSecond:        (time: string, abbr: string) => `Segunda ${time} (${abbr})`,
     tzNeedsZone:              'Elige una ubicación de la lista o una zona horaria para que los recordatorios lleguen a tiempo.',
     tzScheduleError:          'Corrige la hora marcada antes de guardar.',
+    // C1 — Modo Auto de Alquiler según la hora (2026-10-05)
+    duplicateTitle:           'Parece que ya guardaste este alquiler',
+    duplicateBody:            'Ya hay un alquiler con la misma empresa y datos de reserva en Mis alquileres. Ábrelo, o guarda este de todos modos.',
+    duplicateOpen:            'Abrirlo',
+    duplicateSaveAnyway:      'Guardar de todos modos',
+    sectionNeedsAttention:    'Requiere tu atención',
+    needsAttentionHint:       'Revisa este alquiler',
+    atPickupTitle:            'Es hora de recoger',
+    atPickupBody:             'Registra el auto, el tamaño del tanque y el nivel de combustible al recibir el auto. No se completa nada por ti.',
+    overdueTitle:             '¿Ya lo devolviste?',
+    overdueBody:              'Este alquiler ya debía devolverse. Márcalo como devuelto, o cambia la hora de devolución si aún tienes el auto.',
+    overdueYesReturned:       'Sí, ya lo devolví',
+    overdueStillHave:         'Aún lo tengo',
+    staleTitle:               'Este alquiler terminó hace tiempo',
+    staleBody:                'Pasaron más de 3 días de la hora de devolución y sigue abierto. GasCap nunca cierra un alquiler por ti: elige lo que es cierto.',
+    staleDidntTake:           'No tomé este alquiler',
+    needsScheduleTitle:       'Revisa las horas de recogida y devolución',
+    needsScheduleBody:        'Las horas guardadas para este alquiler no parecen correctas (por ejemplo, la devolución es antes de la recogida), así que GasCap no adivina un estado. Corrígelas para continuar.',
+    needsScheduleEdit:        'Editar horas',
+    cancelRentalConfirm:      '¿Marcar este alquiler como no tomado? No se puede deshacer.',
+    cancelRentalFailed:       'No se pudo actualizar este alquiler — intenta de nuevo.',
+    autoOpenedNotice:         'Abierto automáticamente en la hora de recogida',
+    autoOpenedTurnOff:        'Desactivar',
+    autoOpenSettingTitle:     'Abrir mi alquiler a la hora de recogida',
+    autoOpenSettingBody:      'Cuando sea hora de recoger tu auto de alquiler, GasCap lo abre por ti al iniciar la app en este dispositivo. Desactivado por defecto y guardado solo para tu cuenta en este dispositivo; nunca cambia datos del alquiler.',
     // Aviso de recordatorios de recogida (T7). Solo menciona los que aún faltan.
     pickupRemindersBoth:      (zone: string) => `Recordatorios de recogida: GasCap envía recordatorios por correo unas 24 horas y unas 2 horas antes de la recogida (${zone}).`,
     pickupReminderTwoHour:    (zone: string) => `Recordatorio de recogida: GasCap envía un recordatorio por correo unas 2 horas antes de la recogida (${zone}).`,
@@ -4519,6 +4570,7 @@ const es: typeof en = {
     rentalModeUpcomingWith: (company: string, when: string) => when
       ? `Alquiler pr\u00f3ximo con ${company} \u2014 recogida ${when}`
       : `Alquiler pr\u00f3ximo con ${company} \u2014 toca para ver`,
+    rentalModeAtPickupMultiple: (n: number) => `${n} alquileres en recogida \u2014 elige uno`,
     rentalModeMultiple:     (active: number, upcoming: number) => {
       const parts: string[] = [];
       if (active > 0)   parts.push(`${active} activo${active === 1 ? '' : 's'}`);

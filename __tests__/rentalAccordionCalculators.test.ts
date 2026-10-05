@@ -205,7 +205,13 @@ describe('Regression guards — lifecycle, PR #39, MPG, persistence untouched', 
     // call now ALSO passes the authoritative UTC instants so lifecycle state
     // can't shift with the viewer's timezone — the shape is pinned to that
     // approved contract (status + both wall clocks + both UTC instants).
-    expect(dashboardSrc).toMatch(/resolveRentalLifecycle\(\{\s*status: session\.status, pickupDateTime: session\.pickupDateTime, returnDateTime: session\.returnDateTime,\s*pickupDateTimeUtc: session\.pickupDateTimeUtc, returnDateTimeUtc: session\.returnDateTimeUtc,\s*\}\)/);
+    // C1 (2026-10-05): the call now goes through rentalLifecycleInput(), which maps
+    // the SAME fields (status, both wall clocks, both UTC instants) plus the zones
+    // and the setup state, so the dashboard, list, hook and auto-open can never
+    // disagree. The raw-field shape is pinned inside lib/rentalCalculations.ts.
+    // `now` is the boundary-aware clock (hooks/useRentalClock.ts), not a fresh Date.now().
+    expect(dashboardSrc).toMatch(/resolveRentalLifecycle\(rentalLifecycleInput\(session, now\)\)/);
+    expect(dashboardSrc).not.toMatch(/resolveRentalLifecycle\(\{/);
   });
 
   it('23. PR #39 return-time-default behavior file is untouched by this change', () => {
