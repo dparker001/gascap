@@ -1,20 +1,26 @@
 /**
  * GET /api/cron/giveaway-draw
  *
- * Auto-draw cron — intended to run daily (Railway scheduler); only actually
- * executes a draw on the last calendar day of the month for monthly cadence
- * (see isLastDayOfMonth below). Recommended schedule: "55 23 * * *" (11:55 PM
- * UTC daily) — the guard makes it a no-op on every day but the last.
+ * Automatic monthly draw. Scheduled daily (.github/workflows/crons.yml,
+ * "50 23 * * *" = 7:50 PM EDT / 6:50 PM EST); it records a month only when
+ * every safeguard below allows it, and is a no-op otherwise.
  *
- * Behavior per run:
- *  1. Cadence guard: for monthly cadence, skip unless today is the last day of the month.
- *  2. Idempotency: skip if a draw already exists for the current period.
- *  3. Run the weighted draw for the current period.
- *  4. Record the draw in the DB (generates a claim token).
- *  5. Fire winner + non-winner emails and GHL notifications (fire-and-forget)
- *     — the winner email includes a self-serve claim link, not a card.
- *  6. Email Don a draw summary noting the winner has been notified and is
- *     awaiting their own claim confirmation.
+ * Safeguards (docs/reviews/2026-10-05-drawing-integrity-rev4.md Part 1, as
+ * amended by rev5 Part 1):
+ *  1. FAIL-CLOSED SWITCH — nothing runs unless GIVEAWAY_AUTO_DRAW is exactly
+ *     "on". Unset, empty, "off" or any other value skips. There is no force
+ *     override: the old ?force=1 bypass is gone.
+ *  2. ET CLOSE — the only candidate is the latest Entry Month whose published
+ *     11:59:59 PM Eastern deadline has passed (lib/giveawayPeriod.ts). The
+ *     open month can never be drawn, however late or early the job runs.
+ *  3. 72-HOUR WINDOW — a month is drawn automatically only within 72 hours of
+ *     its close. After that the cron skips and the integrity check reports
+ *     the missing draw; a late draw needs Don's written approval and the
+ *     admin recovery path. Older months are never drawn here.
+ *  4. ONE DRAW PER MONTH — commitDraw() inserts the draw and resets the
+ *     period counters in one transaction. A request that loses a race gets
+ *     `already_drawn`, resets nothing and sends nothing.
+ *  5. Notifications fire only after this request's own commit.
  *
  * The Tremendous card is intentionally NEVER sent from this cron. It's only
  * ever issued once the winner explicitly certifies 18+/eligibility via the
@@ -29,26 +35,19 @@
  */
 import { NextResponse } from 'next/server';
 import {
-  currentPeriod,
   runWeightedDraw,
-  recordDraw,
-  resetPeriodBonusEntries,
+  commitDraw,
   getDrawHistory,
   formatPeriodLabel,
   GIVEAWAY_CADENCE,
   CLAIM_WINDOW_DAYS,
 } from '@/lib/giveaway';
+import { latestClosedEntryMonthET, assertRecordableEntryMonth } from '@/lib/giveawayPeriod';
 import { fireDrawNotifications } from '@/lib/drawNotifications';
 import { sendMail } from '@/lib/email';
 
 const ADMIN_EMAIL  = process.env.ADMIN_EMAIL  ?? 'admin@gascap.app';
 const WEEKLY_PRIZE = process.env.WEEKLY_PRIZE ?? '$50';
-
-/** True if tomorrow (UTC) rolls over into a new month — i.e. today is the last day. */
-function isLastDayOfMonth(d = new Date()): boolean {
-  const tomorrow = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 1));
-  return tomorrow.getUTCDate() === 1;
-}
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -56,22 +55,27 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  // Monthly cadence only draws once, on the last calendar day — a daily-scheduled
-  // cron would otherwise fire the draw on day 1 and cut the month's entries short.
-  // ?force=1 bypasses this for manual/admin testing.
-  if (GIVEAWAY_CADENCE === 'monthly' && !isLastDayOfMonth() && searchParams.get('force') !== '1') {
-    return NextResponse.json({ ok: true, skipped: true, reason: 'Not the last day of the month yet.' });
+  // ── 1. Fail-closed switch — checked before anything else ──────────────────
+  if (process.env.GIVEAWAY_AUTO_DRAW !== 'on') {
+    return NextResponse.json({ ok: true, skipped: true, reason: 'auto-draw disabled' });
+  }
+  // The Official Rules describe a monthly drawing; any other cadence setting
+  // is refused here rather than drawn on a schedule the rules don't state.
+  if (GIVEAWAY_CADENCE !== 'monthly') {
+    return NextResponse.json({ ok: true, skipped: true, reason: 'unsupported cadence' });
   }
 
-  const period      = currentPeriod();
+  // ── 2–3. ET close + 72-hour window ────────────────────────────────────────
+  const now         = new Date();
+  const period      = latestClosedEntryMonthET(now);
   const periodLabel = formatPeriodLabel(period);
-
-  // ── Idempotency: skip if draw already ran for this period ─────────────────
-  const history  = await getDrawHistory();
-  const existing = history.find((d) => d.month === period);
-  if (existing) {
-    console.log(`[giveaway-draw] Draw already exists for ${period} — skipping.`);
-    return NextResponse.json({ ok: true, skipped: true, period, existingDraw: existing });
+  const history     = await getDrawHistory();
+  const check       = assertRecordableEntryMonth(period, now, history.map((d) => d.month), { mode: 'auto' });
+  if (!check.ok) {
+    if (check.code === 'already_drawn') {
+      console.log(`[giveaway-draw] Draw already exists for ${period} — skipping.`);
+    }
+    return NextResponse.json({ ok: true, skipped: true, period, reason: check.code });
   }
 
   // ── Run the weighted draw ─────────────────────────────────────────────────
@@ -91,12 +95,15 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: false, error: msg }, { status: 422 });
   }
 
-  // ── Record the draw (generates a claim token) ──────────────────────────────
-  const draw = await recordDraw(result, 'Auto-draw via cron');
-
-  // ── Reset per-period achievement bonus counters for the new period ────────
-  await resetPeriodBonusEntries().catch((err) =>
-    console.error('[giveaway-draw] resetPeriodBonusEntries failed:', err));
+  // ── 4. Record the draw + reset counters atomically (generates a claim token)
+  const committed = await commitDraw(result, 'Auto-draw via cron');
+  if (!committed.inserted) {
+    // Lost a race to a concurrent cron/admin request: that request owns the
+    // reset and the notifications. This one does neither.
+    console.log(`[giveaway-draw] Concurrent draw already recorded ${period} — skipping.`);
+    return NextResponse.json({ ok: true, skipped: true, period, reason: 'already_drawn' });
+  }
+  const draw = committed.draw;
 
   // ── Fire emails + GHL notifications (fire-and-forget) ─────────────────────
   // The winner email includes a self-serve claim link (claimToken) — the
