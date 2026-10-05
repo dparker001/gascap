@@ -69,10 +69,12 @@ describe('wiring', () => {
     expect(f).toContain('buildQuickSavePayload(');
     expect(f).toContain('quickSaveCanSubmit(');
   });
-  it('the rentals page offers it as a SECOND entry point next to the unchanged full wizard', () => {
+  it('the rentals page offers it as the "future reservation" choice of Add Rental, next to the unchanged full wizard', () => {
+    // 2026-10-05: one "+ Add Rental" button opens a chooser (see rentalAddFlow.test.ts).
     const p = src('app/rental-return/page.tsx');
     expect(p).toContain('<QuickSaveRentalForm');
     expect(p).toContain('<RentalSetupFlow');
-    expect(p).toContain("setMode('quick')");
+    expect(p).toContain("go('reservation')");
+    expect(p).toContain("go('vehicle')");
   });
 });

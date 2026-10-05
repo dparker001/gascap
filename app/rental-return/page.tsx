@@ -19,6 +19,8 @@ import { trackRentalAssistantOpened, trackRentalSessionCreated } from '@/lib/gta
 import { trackClientEvent } from '@/lib/clientAnalytics';
 import type { RentalSession } from '@/lib/rentalSessions';
 import { groupRentals } from '@/lib/rentalPresentation';
+import { effectiveRentalPageMode, nextRentalPageMode, type RentalPageMode } from '@/lib/rentalAddFlow';
+import AddRentalChooser, { BackToMyRentals } from '@/components/rental-return/AddRentalChooser';
 import { useRentalClock } from '@/hooks/useRentalClock';
 import { formatEventWallClock } from '@/lib/rentalTimezone';
 import { syncRentalFallbacksFromSessions } from '@/lib/rentalReminderSync';
@@ -34,7 +36,10 @@ export default function RentalReturnPage() {
   const clock = useRentalClock(sessions);
   const [pastCount, setPastCount] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [mode, setMode] = useState<'list' | 'setup' | 'quick'>('list');
+  const [rawMode, setRawMode] = useState<RentalPageMode>('list');
+  // A non-Pro user is never inside a creation flow (the server refuses it anyway).
+  const mode = effectiveRentalPageMode(rawMode, isPro);
+  const go = (action: Parameters<typeof nextRentalPageMode>[1]) => setRawMode((m) => nextRentalPageMode(m, action, isPro));
 
   useEffect(() => {
     trackRentalAssistantOpened();
@@ -105,12 +110,25 @@ export default function RentalReturnPage() {
       <div className="min-h-screen bg-[#eef1f7]">
         <BrandBar />
         <RentalModeHeader />
+        <BackToMyRentals onBack={() => go('back')} />
         <div>
           <QuickSaveRentalForm
             onCreated={(id) => { trackRentalSessionCreated(); router.push(`/rental-return/${id}`); }}
-            onCancel={() => setMode('list')}
+            onCancel={() => go('back')}
           />
         </div>
+      </div>
+    );
+  }
+
+  // "+ Add Rental" → pick a future reservation (quick-save: no vehicle or fuel
+  // asked) or "I have the rental vehicle" (the full setup wizard).
+  if (mode === 'choose') {
+    return (
+      <div className="min-h-screen bg-[#eef1f7]">
+        <BrandBar />
+        <RentalModeHeader />
+        <AddRentalChooser onReservation={() => go('reservation')} onVehicle={() => go('vehicle')} onBack={() => go('back')} />
       </div>
     );
   }
@@ -120,10 +138,11 @@ export default function RentalReturnPage() {
       <div className="min-h-screen bg-[#eef1f7]">
         <BrandBar />
         <RentalModeHeader />
+        <BackToMyRentals onBack={() => go('back')} />
         <div>
           <RentalSetupFlow
             onCreated={(id) => { trackRentalSessionCreated(); router.push(`/rental-return/${id}`); }}
-            onCancel={() => setMode('list')}
+            onCancel={() => go('back')}
           />
         </div>
       </div>
@@ -143,20 +162,14 @@ export default function RentalReturnPage() {
         {/* Pro gate on STARTING a rental only. Sessions already underway stay
             fully usable below — a lapsed trial must never leave someone with a
             car to return and no numbers. The server enforces the same rule. */}
-        {isPro ? (
-          <button
-            onClick={() => setMode('setup')}
-            className="w-full py-3.5 rounded-2xl bg-blue-600 text-white text-sm font-black"
-          >
-            + {t.rentalReturn.newRental}
-          </button>
-        ) : null}
         {isPro && (
           <button
-            onClick={() => setMode('quick')}
-            className="w-full -mt-2 py-2.5 rounded-2xl bg-white border border-blue-200 text-blue-700 text-xs font-bold"
+            type="button"
+            onClick={() => go('add')}
+            data-testid="add-rental-button"
+            className="w-full py-3.5 rounded-2xl bg-blue-600 text-white text-sm font-black"
           >
-            🗓 {t.rentalReturn.quickSaveEntry}
+            + {t.rentalReturn.addRental}
           </button>
         )}
         {!isPro && (
