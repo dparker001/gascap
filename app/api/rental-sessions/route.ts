@@ -1,13 +1,15 @@
 /**
  * GET  /api/rental-sessions            — list the signed-in user's rental sessions
  * POST /api/rental-sessions            — create a new rental session (Level 1: manual entry)
+ *   body.clientRentalId (UUIDv4, optional)  retry idempotency — see createRentalSessionIdempotent
+ *   body.confirmDuplicate (bool, optional)  save despite a possible_duplicate warning
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { RENTAL_RETURN_ASSISTANT_ENABLED } from '@/lib/featureFlags';
-import { createRentalSession, getRentalSessionsForUser, RentalScheduleError, type CreateRentalSessionInput } from '@/lib/rentalSessions';
+import { createRentalSessionIdempotent, getRentalSessionsForUser, isClientRentalId, RentalScheduleError, type CreateRentalSessionInput } from '@/lib/rentalSessions';
 import { ManualRentalDataProvider } from '@/lib/rentalProvider';
 import { getLivePlan } from '@/lib/serverPlan';
 import { validateRentalPhotos, photoCapKb, PHOTO_MAX_DATA_URL_BYTES } from '@/lib/photoLimits';
@@ -139,9 +141,22 @@ export async function POST(req: NextRequest) {
     notes:                        body.notes,
   };
 
+  // C1: a client-supplied UUIDv4 makes a retry idempotent; anything else is rejected.
+  const clientRentalId = body.clientRentalId;
+  if (clientRentalId !== undefined && !isClientRentalId(clientRentalId)) {
+    return NextResponse.json({ error: 'invalid_client_rental_id' }, { status: 400 });
+  }
+
   try {
-    const created = await createRentalSession(userId, input);
-    return NextResponse.json({ session: created }, { status: 201 });
+    const result = await createRentalSessionIdempotent(userId, input, {
+      clientRentalId, confirmDuplicate: body.confirmDuplicate === true,
+    });
+    if (result.kind === 'created')  return NextResponse.json({ session: result.session }, { status: 201 });
+    if (result.kind === 'replayed') return NextResponse.json({ session: result.session, replayed: true }, { status: 200 });
+    if (result.kind === 'conflict') return NextResponse.json({ error: 'client_rental_id_conflict' }, { status: 409 });
+    return NextResponse.json(
+      { error: 'possible_duplicate', rentalId: result.rentalId, matchedOn: result.matchedOn }, { status: 409 },
+    );
   } catch (e) {
     // Invalid zone / impossible date → 400; nonexistent (DST gap) or
     // ambiguous-without-choice (DST fall-back) local time → 422.
