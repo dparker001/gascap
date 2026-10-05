@@ -55,11 +55,38 @@ describe('default return time (pure draft reducers)', () => {
     d = applyDefaultTime(d, '10:00');
     expect(d.time).toBe('18:00');
   });
-  it('choosing the same time as the default is not a customisation (it keeps following the pickup)', () => {
-    let d = pickTime(applyDefaultTime(empty, '10:00'), '10:00', '10:00');
-    expect(d.timeTouched).toBe(false);
-    d = applyDefaultTime(d, '12:00');
-    expect(d.time).toBe('12:00');
+  it('an explicit selection that EQUALS the default still counts as the renter’s own (it must survive the pickup moving)', () => {
+    // default 10:00 → user selects 11:00 → user selects 10:00 → pickup changes to 12:00 → return stays 10:00
+    let d = pickDate(applyDefaultTime(empty, '10:00'), '2026-10-24', '10:00');
+    expect(d.time).toBe('10:00');
+    d = pickTime(d, '11:00', '10:00');
+    expect(d.timeTouched).toBe(true);
+    d = pickTime(d, '10:00', '10:00');                              // back to the default value, deliberately
+    expect(d.timeTouched).toBe(true);
+    d = applyDefaultTime(d, '12:00');                               // the pickup time changes
+    expect(d.time).toBe('10:00');
+    expect(draftValue(d)).toBe('2026-10-24T10:00');
+  });
+  it('even picking the default value FIRST (no other edit) is an explicit choice', () => {
+    let d = applyDefaultTime(empty, '10:00');
+    expect(d.timeTouched).toBe(false);                              // an automatic default is not a choice
+    d = pickTime(d, '10:00', '10:00');
+    expect(d.timeTouched).toBe(true);
+    expect(applyDefaultTime(d, '12:00').time).toBe('10:00');
+  });
+  it('clearing a manually selected time resumes automatic following — and never populates the return date', () => {
+    let d = pickDate(applyDefaultTime(empty, '10:00'), '', '10:00');   // no return date yet
+    d = pickTime(d, '15:00', '10:00');                              // manual
+    d = applyDefaultTime(d, '11:00');
+    expect(d.time).toBe('15:00');                                   // protected while manual
+    d = pickTime(d, '', '11:00');                                   // cleared → automatic again
+    expect(d).toEqual({ date: '', time: '', timeTouched: false });
+    d = applyDefaultTime(d, '12:00');                               // the pickup changes later
+    expect(d.time).toBe('12:00');                                   // following has resumed
+    expect(d.date).toBe('');                                        // the return date was NOT populated
+    expect(draftValue(d)).toBe('');                                 // so the value is still incomplete
+    d = applyDefaultTime(d, '13:30');
+    expect(d.time).toBe('13:30');                                   // and keeps following
   });
   it('clearing the time un-touches it and never fabricates one; the date survives', () => {
     let d = pickDate(applyDefaultTime(empty, '10:00'), '2026-10-24', '10:00');

@@ -194,6 +194,14 @@ describe('optional Quick-Save extension (default return time)', () => {
     expect(emitted.at(-1)).toBe('2026-10-24T16:00');
     expect(ctrl.getDraft().time).toBe('16:00');
   });
+  it('an explicit time equal to the default survives later pickup changes (through the controller)', () => {
+    const { ctrl, emitted } = newController('', '10:00');
+    ctrl.pickDate('2026-10-24');
+    ctrl.pickTime('11:00'); ctrl.pickTime('10:00');
+    ctrl.setDefaultTime('12:00');
+    expect(ctrl.getDraft()).toMatchObject({ date: '2026-10-24', time: '10:00', timeTouched: true });
+    expect(emitted.at(-1)).toBe('2026-10-24T10:00');
+  });
   it('reports the halves (including a partial entry) through onParts', () => {
     const { ctrl, parts } = newController('');
     ctrl.pickTime('09:00');

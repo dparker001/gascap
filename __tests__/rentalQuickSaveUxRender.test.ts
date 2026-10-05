@@ -140,6 +140,58 @@ describe('2. Same as pickup location — return section', () => {
   });
 });
 
+describe('2b. locked zone with NO zone determined — no unusable Change button', () => {
+  const noZone = { zone: null, source: null } as { zone: string | null; source: null };
+  const field = (zoneLocked: boolean, sameAsChecked = zoneLocked) => renderToStaticMarkup(h(RentalEventScheduleField, {
+    kind: 'return', label: 'Return', dateTime: '', onDateTime() {}, location: emptyRentalLocation(), onLocation() {},
+    locationLabel: 'Return location', zone: noZone, onPickZone() {}, choice: null, onChoice() {}, deviceZone: null,
+    sameAs: { checked: sameAsChecked, onChange() {}, label: 'Same as pickup location', summary: '', emptySummary: 'Will use your pickup location once you add it' },
+    zoneLocked,
+  }));
+  it('EN: shows the explanation, and NO Change button or picker', () => {
+    const html = field(true);
+    const en = getTranslations('en').rentalReturn;
+    expect(html).toContain('data-testid="zone-locked-needs-pickup-zone"');
+    expect(html).toContain('The return uses your pickup time zone');
+    expect(html).toContain('uncheck');
+    expect(html).not.toContain(`>${en.tzChange}</button>`);
+    expect(html).not.toContain('<select');
+    expect(html).not.toContain(en.tzNeedsZone);                       // not the generic "pick a time zone" text
+  });
+  it('ES: the same explanation in Spanish', () => {
+    state.locale = 'es';
+    const html = field(true);
+    const es = getTranslations('es').rentalReturn;
+    expect(html).toContain('La devoluci\u00f3n usa la zona horaria de recogida');
+    expect(html).toContain('desmarca');
+    expect(html).not.toContain(`>${es.tzChange}</button>`);
+  });
+  it('ONE-WAY rentals keep working: unchecked (zone not locked) still offers the Change control', () => {
+    const html = field(false, false);
+    const en = getTranslations('en').rentalReturn;
+    expect(html).toContain(`>${en.tzChange}</button>`);
+    expect(html).toContain(en.tzNeedsZone);
+    expect(html).not.toContain('zone-locked-needs-pickup-zone');
+  });
+  it('a locked event whose zone IS known is unchanged: it shows the zone line without a Change button', () => {
+    const html = renderToStaticMarkup(h(RentalEventScheduleField, {
+      kind: 'return', label: 'Return', dateTime: '', onDateTime() {}, location: emptyRentalLocation(), onLocation() {},
+      locationLabel: 'Return location', zone: { zone: 'America/New_York', source: 'place' }, onPickZone() {}, choice: null, onChoice() {}, deviceZone: 'America/New_York',
+      sameAs: { checked: true, onChange() {}, label: 'Same as pickup location', summary: 'MCO', emptySummary: '' }, zoneLocked: true,
+    }));
+    expect(html).toContain('Eastern');
+    expect(html).not.toContain('zone-locked-needs-pickup-zone');
+    expect(html).not.toContain(`>${getTranslations('en').rentalReturn.tzChange}</button>`);
+  });
+  it('the pickup event, which owns the zone, still gets its Change button when no zone is determined', () => {
+    const html = renderToStaticMarkup(h(RentalEventScheduleField, {
+      kind: 'pickup', label: 'Pickup', dateTime: '', onDateTime() {}, location: emptyRentalLocation(), onLocation() {},
+      locationLabel: 'Pickup location', zone: noZone, onPickZone() {}, choice: null, onChoice() {}, deviceZone: null,
+    }));
+    expect(html).toContain(`>${getTranslations('en').rentalReturn.tzChange}</button>`);
+  });
+});
+
 describe('the future-reservation form (rendered)', () => {
   it('EN: four labelled date/time inputs, "Same as pickup location" CHECKED by default, no vehicle or fuel fields', () => {
     const html = renderToStaticMarkup(h(QuickSaveRentalForm, { onCreated() {}, onCancel() {} }));
@@ -234,7 +286,7 @@ describe('4. Edit Rental — close (X) button', () => {
 
 describe('English and Spanish strings', () => {
   const en = getTranslations('en').rentalReturn, es = getTranslations('es').rentalReturn;
-  const keys = ['pickupDateFieldLabel', 'pickupTimeFieldLabel', 'returnDateFieldLabel', 'returnTimeFieldLabel', 'dateEmptyHint', 'timeEmptyHint', 'returnTimeDefaultNote', 'returnLocationSameAsPickup', 'returnLocationSameAsPickupEmpty', 'close'] as const;
+  const keys = ['pickupDateFieldLabel', 'pickupTimeFieldLabel', 'returnDateFieldLabel', 'returnTimeFieldLabel', 'dateEmptyHint', 'timeEmptyHint', 'returnTimeDefaultNote', 'tzLockedNeedsPickupZone', 'returnLocationSameAsPickup', 'returnLocationSameAsPickupEmpty', 'close'] as const;
   it('every new string exists in both languages, and Spanish differs from English', () => {
     for (const k of keys) { expect(en[k], `en.${k}`).toBeTruthy(); expect(es[k], `es.${k}`).toBeTruthy(); expect(es[k], k).not.toBe(en[k]); }
     expect(en.returnLocationSameAsPickupSummary('X')).toContain('X');

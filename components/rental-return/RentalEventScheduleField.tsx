@@ -164,6 +164,10 @@ export default function RentalEventScheduleField(p: Props) {
           {sourceLabel && <span className={p.zone.source === 'device' ? 'italic text-amber-700' : 'text-slate-400'}>({sourceLabel})</span>}
           {!p.zoneLocked && <button type="button" onClick={() => setPicking((v) => !v)} className="font-bold text-blue-600 underline underline-offset-2">{r.tzChange}</button>}
         </p>
+      ) : p.zoneLocked ? (
+        // The zone follows another event (Same as pickup) and none has been determined
+        // yet: a Change control here would do nothing, so explain what to fix instead.
+        <p data-testid="zone-locked-needs-pickup-zone" role="note" className="text-[11px] text-amber-700">{r.tzLockedNeedsPickupZone}</p>
       ) : (
         <p className="text-[11px] text-amber-700">{r.tzNeedsZone}{' '}
           <button type="button" onClick={() => setPicking(true)} className="font-bold text-blue-600 underline underline-offset-2">{r.tzChange}</button>

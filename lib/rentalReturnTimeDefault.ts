@@ -9,8 +9,9 @@
  * the default must live in that same draft: it can fill the time half while the
  * date is still empty, and picking a date can never lose or reset a time.
  *
- * `timeTouched` = the renter chose a time of their own. A touched time is never
- * overwritten by a default; clearing the time un-touches it.
+ * `timeTouched` = the renter explicitly chose a time (even one equal to the
+ * current default). A touched time is never overwritten by a default; clearing
+ * the time un-touches it.
  */
 import { combineLocalDateTime, splitLocalDateTime } from './rentalTimezone';
 
@@ -37,10 +38,13 @@ export function pickDate(d: SplitDraft, date: string, defaultTime: string | unde
   return next;
 }
 
-/** The renter picked (or cleared) the time. Any time other than the current default is theirs. */
+/** The renter picked (or cleared) the time. Every non-empty pick is theirs and sticks; clearing un-touches it. */
 export function pickTime(d: SplitDraft, time: string, defaultTime: string | undefined): SplitDraft {
   if (!time) return { ...d, time: '', timeTouched: false };
-  return { ...d, time, timeTouched: !defaultTime || time !== defaultTime };
+  // ANY explicit non-empty choice is the renter's own — even one that happens to equal
+  // the current default (a deliberate 10:00 must survive the pickup moving to 12:00).
+  // Only clearing the time hands control back to the automatic default.
+  return { ...d, time, timeTouched: true };
 }
 
 // ── controller behind DateTimeSplitInput ────────────────────────────────────
