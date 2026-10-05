@@ -63,13 +63,15 @@ describe('notice copy (EN + ES)', () => {
 });
 
 describe('Help + APP FEATURES describe the timezone/reminder behaviour without a local pickup fallback', () => {
-  const help = read('app/help/page.tsx');
+  // The rental FAQ lives in lib/helpRentalFaq.ts (owner-approved copy, 2026-10-05).
+  const help = read('app/help/page.tsx') + read('lib/helpRentalFaq.ts');
   const ai = read('app/api/ai/chat/route.ts');
   it('help covers per-event zones, DST, channels, and the return-only device fallback', () => {
     expect(help).toContain('How does Rental Mode handle time zones and one-way rentals?');
     expect(help).toContain('What rental reminders will I get?');
-    expect(help).toContain('There is no on-device backup for pickup reminders.');
-    expect(help).toContain('can schedule an on-device reminder about 2 hours before return when local notifications are permitted');
+    // return-only device fallback; explicitly NO local pickup backup
+    expect(help).toContain('There is no local pickup-reminder backup.');
+    expect(help).toContain('may schedule a local return reminder if permissions allow');
   });
   it('APP FEATURES states the model and forbids overstated guarantees', () => {
     expect(ai).toContain('Rental Mode time zones + reminders (2026-10-02)');

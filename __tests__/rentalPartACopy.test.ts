@@ -38,11 +38,15 @@ describe('time-zone difference grammar', () => {
 });
 
 describe('Help + APP FEATURES describe Part A without overstating', () => {
-  const help = readFileSync(path.join(process.cwd(), 'app/help/page.tsx'), 'utf8');
+  // The rental FAQ lives in lib/helpRentalFaq.ts (owner-approved copy, 2026-10-05).
+  const help = readFileSync(path.join(process.cwd(), 'app/help/page.tsx'), 'utf8')
+    + readFileSync(path.join(process.cwd(), 'lib/helpRentalFaq.ts'), 'utf8');
   const ai = readFileSync(path.join(process.cwd(), 'app/api/ai/chat/route.ts'), 'utf8');
   it('help explains quick-save, the setup order and the no-guess rules', () => {
     expect(help).toContain('Can I save a rental I booked ahead before I know the car or fuel level?');
-    expect(help).toContain('doesn\\u2019t invent a level from it');
+    // the no-guess rule, in the approved wording
+    expect(help).toContain('keeps fuel quantities unknown and disables calculations rather than guessing');
+    expect(help).toContain('Gauge and percentage inputs require a known tank capacity.');
   });
   it('APP FEATURES covers it and says email import is NOT available yet', () => {
     expect(ai).toContain('Rental Mode quick-save + finish at the counter (Part A)');
