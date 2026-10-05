@@ -2,6 +2,7 @@
 
 **Status: PLANNED — design investigation only. Nothing here is implemented or authorized.**
 **Revision 2 (2026-10-05):** `docs/reviews/2026-10-05-rental-calendar-discovery-rev2.md` **supersedes** §2.2 (scanner boundary), §3 steps 4–8 (identity, rescans), §4 (lifecycle precedence, auto-open, notifications), §5.3–5.4 (data model, duplicates) and §8 (phases/gates) below. Where they differ, Rev 2 wins.
+**Revision 3 (2026-10-05):** `docs/reviews/2026-10-05-rental-calendar-discovery-rev3.md` further amends Rev 2 (scan completeness and absence rules, schedule validation precedence, durable reminder obligations, evidence-based C0 thresholds, authorization sequence). Rev 3 wins over Rev 2.
 **Baseline:** `main` @ `9cf8e281af43ff06244eed8b3c1c897d0b4a6a19` (2026-10-05).
 **Related:**
 - `docs/RENTAL_UPCOMING_IMPORT_SPEC.md` — Part A quick-save, Part B email import
