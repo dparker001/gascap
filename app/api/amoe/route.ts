@@ -44,7 +44,12 @@ export async function POST(req: NextRequest) {
   // The Entry Month is the EASTERN calendar month (Official Rules). The UTC
   // month filed 8 PM–midnight ET submissions under the next month and applied
   // the one-per-month limit on the wrong boundary.
-  const month = currentEntryMonthET();
+  //
+  // One server clock read for both the month tag and submittedAt, so an entry
+  // processed across Eastern midnight can never be stamped in one Entry Month
+  // and tagged with another.
+  const receivedAt = new Date();
+  const month      = currentEntryMonthET(receivedAt);
 
   // Rate limit — one entry per email per calendar month
   const entries = readAmoeEntries();
@@ -65,7 +70,7 @@ export async function POST(req: NextRequest) {
     lastName:    lastName.trim(),
     email:       emailTrimmed,
     month,
-    submittedAt: new Date().toISOString(),
+    submittedAt: receivedAt.toISOString(),
   };
   entries.push(newEntry);
   writeAmoeEntries(entries);

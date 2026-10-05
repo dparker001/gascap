@@ -2,7 +2,8 @@
  * WS-1 (Oct 31 emergency safeguards): Entry Month timing in America/New_York.
  * Invariant: no Entry Month is recordable before 12:00:00 AM ET on the 1st of
  * the next month. Boundaries cover EDT, EST, both DST changeovers and year end.
- * See docs/reviews/2026-10-05-drawing-integrity-rev4.md / rev5.md Part 1.
+ * See docs/reviews/2026-10-05-drawing-integrity-rev4.md Part 1 and
+ * docs/reviews/2026-10-05-drawing-integrity-rev5.md Part 1.
  */
 import { describe, it, expect } from 'vitest';
 import {

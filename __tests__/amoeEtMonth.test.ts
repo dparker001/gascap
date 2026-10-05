@@ -7,11 +7,15 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { AmoeEntry } from '@/lib/amoeEntries';
 
 let store: AmoeEntry[] = [];
+// Runs inside the handler between its clock reads (after the month is
+// computed, before the entry is built) — used to simulate a request that is
+// processed across Eastern midnight.
+let onRead: (() => void) | null = null;
 vi.mock('@/lib/amoeEntries', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/amoeEntries')>();
   return {
     ...actual,
-    readAmoeEntries: () => store.map((e) => ({ ...e })),
+    readAmoeEntries: () => { onRead?.(); return store.map((e) => ({ ...e })); },
     writeAmoeEntries: (e: AmoeEntry[]) => { store = e.map((x) => ({ ...x })); },
   };
 });
@@ -27,7 +31,7 @@ async function submit(email = 'Pat@Example.com') {
   return { status: res.status, body: await res.json() };
 }
 
-beforeEach(() => { store = []; mirror.mockClear(); vi.useFakeTimers({ toFake: ['Date'] }); });
+beforeEach(() => { store = []; onRead = null; mirror.mockClear(); vi.useFakeTimers({ toFake: ['Date'] }); });
 afterEach(() => vi.useRealTimers());
 
 describe('AMOE Entry Month is Eastern Time', () => {
@@ -65,5 +69,18 @@ describe('AMOE Entry Month is Eastern Time', () => {
     vi.setSystemTime(new Date('2026-11-01T04:00:01Z'));
     expect((await submit()).status).toBe(200);
     expect(store.map((e) => e.month)).toEqual(['2026-10', '2026-11']);
+  });
+
+  it('a submission processed across Eastern midnight gets ONE timestamp: month and submittedAt agree', async () => {
+    const { currentEntryMonthET } = await import('@/lib/giveawayPeriod');
+    // Request starts at Oct 31 11:59:59.999 PM EDT; the clock passes ET
+    // midnight while the handler is still running.
+    vi.setSystemTime(new Date('2026-11-01T03:59:59.999Z'));
+    onRead = () => vi.setSystemTime(new Date('2026-11-01T04:00:00.500Z'));
+    expect((await submit()).status).toBe(200);
+    const e = store[0];
+    expect(e.month).toBe('2026-10');
+    expect(e.submittedAt).toBe('2026-11-01T03:59:59.999Z');
+    expect(currentEntryMonthET(new Date(e.submittedAt))).toBe(e.month);
   });
 });

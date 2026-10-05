@@ -1,6 +1,7 @@
 /**
  * WS-1 (Oct 31 emergency safeguards) — route + transaction behaviour.
- * docs/reviews/2026-10-05-drawing-integrity-rev4.md Part 1, amended by rev5 Part 1.
+ * docs/reviews/2026-10-05-drawing-integrity-rev4.md Part 1, amended by
+ * docs/reviews/2026-10-05-drawing-integrity-rev5.md Part 1.
  *
  * The fake database below is transaction-faithful for what commitDraw relies
  * on: `GiveawayDraw.month` is unique (a second insert, committed or in flight,
@@ -9,7 +10,7 @@
  * Postgres does. Real-Postgres coverage waits for D11 (CI Postgres).
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 import path from 'path';
 import { Prisma } from '@/lib/generated/prisma/client';
 
@@ -401,9 +402,19 @@ describe('scope', () => {
       expect(src).not.toMatch(/searchParams\.get\('force'\)|isLastDayOfMonth|recordDraw\(|resetPeriodBonusEntries\(|currentMonth\(\)/);
     }
   });
+  it('every drawing-integrity design document the WS-1 files cite exists in the repository', () => {
+    const files = [
+      'lib/giveawayPeriod.ts', 'app/api/cron/giveaway-draw/route.ts', 'docs/GIVEAWAY_DRAW_RUNBOOK.md',
+      '__tests__/giveawayPeriod.test.ts', '__tests__/giveawayDrawGuards.test.ts',
+    ];
+    const cited = new Set(files.flatMap((f) => read(f).match(/docs\/reviews\/2026-10-05-[a-z0-9-]+\.md/g) ?? []));
+    expect(cited.size).toBeGreaterThanOrEqual(3);
+    for (const doc of Array.from(cited)) expect(existsSync(path.join(process.cwd(), doc)), doc).toBe(true);
+  });
   it('AMOE tags the ET Entry Month', () => {
     const src = read('app/api/amoe/route.ts');
-    expect(src).toContain('const month = currentEntryMonthET();');
+    expect(src).toContain('const month      = currentEntryMonthET(receivedAt);');
+    expect(src).toContain('submittedAt: receivedAt.toISOString(),');
     expect(src).not.toMatch(/toISOString\(\)\.slice\(0, 7\)/);
   });
 });

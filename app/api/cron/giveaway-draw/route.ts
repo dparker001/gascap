@@ -6,7 +6,7 @@
  * every safeguard below allows it, and is a no-op otherwise.
  *
  * Safeguards (docs/reviews/2026-10-05-drawing-integrity-rev4.md Part 1, as
- * amended by rev5 Part 1):
+ * amended by docs/reviews/2026-10-05-drawing-integrity-rev5.md Part 1):
  *  1. FAIL-CLOSED SWITCH — nothing runs unless GIVEAWAY_AUTO_DRAW is exactly
  *     "on". Unset, empty, "off" or any other value skips. There is no force
  *     override: the old ?force=1 bypass is gone.

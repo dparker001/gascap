@@ -1,7 +1,7 @@
 # Monthly Giveaway Drawing — Run-book
 
 **Status: CURRENT** — the procedure once `fix/giveaway-draw-et-guard` (WS-1) is deployed.
-**Design:** `docs/reviews/2026-10-05-drawing-integrity-rev4.md` Part 1, as amended by `…-rev5.md` Part 1.
+**Design:** `docs/reviews/2026-10-05-drawing-integrity-rev4.md` Part 1, as amended by `docs/reviews/2026-10-05-drawing-integrity-rev5.md` Part 1. Incident evidence: `docs/reviews/2026-10-05-monthly-drawing-integrity-emergency-review.md`.
 **Code:** `lib/giveawayPeriod.ts`, `commitDraw()` in `lib/giveaway.ts`, `app/api/cron/giveaway-draw/route.ts`, `app/api/admin/sweepstakes/route.ts`.
 
 All times are Eastern (ET). Cron expressions are UTC.
