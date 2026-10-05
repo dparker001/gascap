@@ -38,7 +38,7 @@ Saved times remain accurate when you travel between time zones. GasCap™ also d
   },
   {
     q: 'Can I save a rental I booked ahead before I know the car or fuel level?',
-    a: `Yes! Open **My Rentals → Booked ahead? Save it as upcoming**. Enter the rental company, pickup and return locations and times, and an optional confirmation number. A pickup time is required.
+    a: `Yes! Open **My Rentals → + Add Rental → I have a future reservation**. Enter the rental company, pickup and return locations and times, and an optional confirmation number. A pickup time is required.
 
 When collecting the vehicle, use **Finish setup** to add the vehicle, tank capacity, and actual pickup fuel level.
 

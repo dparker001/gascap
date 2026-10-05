@@ -24,7 +24,7 @@ const APPROVED: Array<{ q: string; paragraphs: string[] }> = [
     'Saved times remain accurate when you travel between time zones. GasCap™ also detects daylight-saving conflicts, asking you to correct nonexistent times or choose between repeated times.',
   ] },
   { q: 'Can I save a rental I booked ahead before I know the car or fuel level?', paragraphs: [
-    'Yes! Open **My Rentals → Booked ahead? Save it as upcoming**. Enter the rental company, pickup and return locations and times, and an optional confirmation number. A pickup time is required.',
+    'Yes! Open **My Rentals → + Add Rental → I have a future reservation**. Enter the rental company, pickup and return locations and times, and an optional confirmation number. A pickup time is required.',
     'When collecting the vehicle, use **Finish setup** to add the vehicle, tank capacity, and actual pickup fuel level.',
     'Until that information is available, GasCap™ keeps fuel quantities unknown and disables calculations rather than guessing. Gauge and percentage inputs require a known tank capacity. You can still log a fill-up, but you must provide a reading before calculating remaining fuel.',
     'Saving an upcoming rental requires Pro or an active Pro trial.',
@@ -48,6 +48,11 @@ describe('verbatim copy', () => {
   it('the six approved entries appear in the approved order, question and answer text unchanged', () => {
     expect(owned.map((f) => f.q)).toEqual(APPROVED.map((x) => x.q));
     owned.forEach((f, i) => expect(f.a, f.q).toBe(APPROVED[i].paragraphs.join('\n\n')));
+  });
+  it('FAQ #4 names the CURRENT path (+ Add Rental → I have a future reservation), never the removed "Booked ahead?" button', () => {
+    const faq4 = RENTAL_FAQ.find((f) => f.q.startsWith('Can I save a rental I booked ahead'))!;
+    expect(faq4.a).toContain('**My Rentals → + Add Rental → I have a future reservation**');
+    expect(RENTAL_FAQ.map((f) => f.a).join('\n')).not.toContain('Booked ahead?');
   });
   it('the product-authored auto-open entry sits between "stands" and "reminders" and is not part of the approved copy', () => {
     const qs = RENTAL_FAQ.map((f) => f.q);
