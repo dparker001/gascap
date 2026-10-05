@@ -39,10 +39,12 @@ const prismaMock = {
       const row = table.get(where.id);
       return row && row.userId === where.userId ? { ...row } : null;
     }),
-    update: vi.fn(async ({ where, data }: { where: { id: string }; data: Partial<Row> }) => {
-      const row = table.get(where.id)!;
-      Object.assign(row, data);
-      return { ...row };
+    // Conditional, owner-scoped UPDATE — the real thing is one atomic statement.
+    updateMany: vi.fn(async ({ where, data }: { where: { id: string; userId: string; status: string }; data: Partial<Row> }) => {
+      const row = table.get(where.id);
+      if (!row || row.userId !== where.userId || row.status !== where.status) return { count: 0 };
+      for (const [k, v] of Object.entries(data)) if (v !== undefined) row[k] = v;   // Prisma omits undefined
+      return { count: 1 };
     }),
     deleteMany: vi.fn(async () => ({ count: 0 })),
   },
@@ -68,23 +70,28 @@ beforeEach(async () => {
 describe('completeRentalSession — idempotency hardening', () => {
   it('the first completion sets status to completed and records feedback/dispute fields', async () => {
     const result = await completeRentalSession('user-1', 'rs-1', { feedbackRating: 5, disputeNotes: 'none' });
-    expect(result?.status).toBe('completed');
-    expect(result?.feedbackRating).toBe(5);
-    expect(result?.disputeNotes).toBe('none');
+    expect(result.kind).toBe('completed');
+    const s = result.kind === 'completed' ? result.session : null;
+    expect(s?.status).toBe('completed');
+    expect(s?.feedbackRating).toBe(5);
+    expect(s?.disputeNotes).toBe('none');
   });
 
   it('a repeated completion request is a safe no-op — original data is preserved, not overwritten', async () => {
     await completeRentalSession('user-1', 'rs-1', { feedbackRating: 5, disputeNotes: 'first submission' });
     const second = await completeRentalSession('user-1', 'rs-1', { feedbackRating: 1, disputeNotes: 'a different, later submission' });
 
-    expect(second?.status).toBe('completed');
-    expect(second?.feedbackRating).toBe(5); // NOT overwritten by the second call's feedbackRating: 1
-    expect(second?.disputeNotes).toBe('first submission'); // NOT overwritten
+    expect(second.kind).toBe('completed');
+    const s2 = second.kind === 'completed' ? second.session : null;
+    expect(second.kind === 'completed' && second.replayed).toBe(true);
+    expect(s2?.status).toBe('completed');
+    expect(s2?.feedbackRating).toBe(5); // NOT overwritten by the second call's feedbackRating: 1
+    expect(s2?.disputeNotes).toBe('first submission'); // NOT overwritten
   });
 
   it('a repeated completion never creates a Fillup row', async () => {
     await completeRentalSession('user-1', 'rs-1', { feedbackRating: 5 });
-    await expect(completeRentalSession('user-1', 'rs-1', { feedbackRating: 2 })).resolves.toBeDefined();
+    await expect(completeRentalSession('user-1', 'rs-1', { feedbackRating: 2 })).resolves.toMatchObject({ kind: 'completed' });
     expect(prismaMock.fillup.create).not.toHaveBeenCalled();
   });
 
@@ -98,8 +105,8 @@ describe('completeRentalSession — idempotency hardening', () => {
     expect(completionCalls[0]?.[0]).toMatchObject({ idempotencyKey: 'rental_session_completed:rs-1' });
   });
 
-  it('returns undefined for an unknown or unauthorized session, same as before', async () => {
-    expect(await completeRentalSession('user-1', 'nope', {})).toBeUndefined();
-    expect(await completeRentalSession('someone-else', 'rs-1', {})).toBeUndefined();
+  it('returns not_found for an unknown or unauthorized session', async () => {
+    expect(await completeRentalSession('user-1', 'nope', {})).toEqual({ kind: 'not_found' });
+    expect(await completeRentalSession('someone-else', 'rs-1', {})).toEqual({ kind: 'not_found' });
   });
 });

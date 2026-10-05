@@ -209,7 +209,8 @@ describe('Regression guards — lifecycle, PR #39, MPG, persistence untouched', 
     // the SAME fields (status, both wall clocks, both UTC instants) plus the zones
     // and the setup state, so the dashboard, list, hook and auto-open can never
     // disagree. The raw-field shape is pinned inside lib/rentalCalculations.ts.
-    expect(dashboardSrc).toMatch(/resolveRentalLifecycle\(rentalLifecycleInput\(session\)\)/);
+    // `now` is the boundary-aware clock (hooks/useRentalClock.ts), not a fresh Date.now().
+    expect(dashboardSrc).toMatch(/resolveRentalLifecycle\(rentalLifecycleInput\(session, now\)\)/);
     expect(dashboardSrc).not.toMatch(/resolveRentalLifecycle\(\{/);
   });
 

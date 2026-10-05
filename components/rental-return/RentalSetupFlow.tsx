@@ -22,6 +22,7 @@ import AgreementScanButton, { type ScannedAgreementFields } from './AgreementSca
 import { resyncRentalFallbacks } from '@/lib/rentalReminderSync';
 import { newClientRentalId, postCreateRental } from '@/lib/rentalCreateClient';
 import DuplicateRentalNotice from './DuplicateRentalNotice';
+import { activeDuplicateWarning, duplicateConfirmationKey, mayConfirmDuplicate, type DuplicateWarning } from '@/lib/rentalDuplicateConfirm';
 import { useSession } from 'next-auth/react';
 import { detectBrowserTimeZone, splitLocalDateTime, combineLocalDateTime, describeEventTime, type TimeDisambiguation } from '@/lib/rentalTimezone';
 
@@ -43,7 +44,7 @@ export default function RentalSetupFlow({ onCreated, onCancel }: Props) {
   const [submitting, setSubmitting] = useState(false);
   // One id per wizard instance, reused by every retry (see lib/rentalCreateClient.ts).
   const [clientRentalId, setClientRentalId] = useState(() => newClientRentalId());
-  const [duplicateId, setDuplicateId] = useState<string | null>(null);
+  const [duplicateWarning, setDuplicateWarning] = useState<DuplicateWarning | null>(null);
 
   // Growth Sprint 1, P0C-2A — once per wizard mount, a genuine setup
   // attempt (the wizard is only ever mounted once an eligible authenticated
@@ -225,6 +226,15 @@ export default function RentalSetupFlow({ onCreated, onCancel }: Props) {
   const returnZone = effectiveEventZone(returnLoc, pickedReturnZone, deviceZone);
   const pickupStatus = describeEventTime(pickupDateTime, pickupZone.zone);
   const returnStatus = describeEventTime(returnDateTime, returnZone.zone);
+  // The duplicate confirmation is bound to THIS reservation: any change to the
+  // fields that identify it voids the warning (lib/rentalDuplicateConfirm.ts).
+  const reservationKey = duplicateConfirmationKey({
+    company, confirmationNumber, agreementNumber, pickupDateTime, returnDateTime,
+    pickupLocation: pickupLoc.text, returnLocation: returnLoc.text,
+    pickupZone: pickupZone.zone ?? null, returnZone: returnZone.zone ?? null,
+    pickupChoice, returnChoice,
+  });
+  const activeDuplicate = activeDuplicateWarning(duplicateWarning, reservationKey);
   // A DST-gap (nonexistent) time must be changed; an ambiguous one is sent
   // with its visible, explicit occurrence choice (first preselected).
   const canSubmit = !!returnDateTime && eventTimeSubmittable(pickupStatus) && eventTimeSubmittable(returnStatus);
@@ -232,6 +242,9 @@ export default function RentalSetupFlow({ onCreated, onCancel }: Props) {
     st.kind === 'ambiguous' ? (c ?? 'earlier') : undefined;
 
   async function handleSubmit(confirmDuplicate = false) {
+    // Honoured only for the exact reservation that was warned about.
+    const confirm = confirmDuplicate && mayConfirmDuplicate(duplicateWarning, reservationKey);
+    const submittedKey = reservationKey;   // the key of the payload actually sent
     setSubmitting(true);
     setError('');
     try {
@@ -269,8 +282,9 @@ export default function RentalSetupFlow({ onCreated, onCancel }: Props) {
           pickupVehiclePhotoThumb: pickupVehiclePhoto || undefined,
           pickupGaugePhotoThumb: pickupGaugePhoto || undefined,
           pickupAgreementPhotoThumb: pickupAgreementPhoto || undefined,
-      }, clientRentalId, confirmDuplicate);
-      if (out.kind === 'duplicate') { setDuplicateId(out.rentalId); return; }
+      }, clientRentalId, confirm);
+      // Bind the warning to what was SUBMITTED (void at once if the form changed in flight).
+      if (out.kind === 'duplicate') { setDuplicateWarning({ rentalId: out.rentalId, key: submittedKey }); return; }
       if (out.kind === 'error') {
         const scheduleCodes = ['invalid_time_zone', 'invalid_local_datetime', 'nonexistent_local_time', 'ambiguous_local_time'];
         if (out.code === 'client_rental_id_conflict') setClientRentalId(newClientRentalId());
@@ -313,11 +327,11 @@ export default function RentalSetupFlow({ onCreated, onCancel }: Props) {
       </div>
 
       {error && <p className="text-xs text-red-500 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{error}</p>}
-      {duplicateId && (
+      {activeDuplicate && (
         <DuplicateRentalNotice
           busy={submitting}
-          onOpenExisting={() => router.push(`/rental-return/${duplicateId}`)}
-          onSaveAnyway={() => { setDuplicateId(null); void handleSubmit(true); }}
+          onOpenExisting={() => router.push(`/rental-return/${activeDuplicate.rentalId}`)}
+          onSaveAnyway={() => { void handleSubmit(true); }}
         />
       )}
 

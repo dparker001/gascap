@@ -654,6 +654,29 @@ export function resolveRentalLifecycle(input: {
 }
 
 /**
+ * The next instant AFTER `now` at which resolveRentalLifecycle() can change
+ * for this schedule (ms since epoch), or null when it never will — a closed
+ * rental, a malformed schedule (needs_schedule has no time-based states) or a
+ * rental already past its last boundary. Lets the UI re-evaluate exactly when
+ * a state flips instead of polling: pickup − 3h, pickup, pickup + 6h,
+ * return − 24h, return, return + 72h. (Setup changes are re-derived on the
+ * edit that makes them, not by the clock.)
+ */
+export function nextRentalBoundaryMs(
+  input: Parameters<typeof resolveRentalLifecycle>[0], now: number = Date.now(),
+): number | null {
+  if (input.status !== 'active') return null;
+  if (classifyRentalSchedule(input) !== 'ok') return null;
+  const pickupMs = instantMs(rentalEventInstant(input.pickupDateTimeUtc, input.pickupDateTime));
+  const returnMs = instantMs(rentalEventInstant(input.returnDateTimeUtc, input.returnDateTime));
+  const candidates: number[] = [];
+  if (pickupMs !== null) candidates.push(pickupMs - RENTAL_PICKUP_LEAD_HOURS * HOUR_MS, pickupMs, pickupMs + RENTAL_PICKUP_TAIL_HOURS * HOUR_MS);
+  if (returnMs !== null) candidates.push(returnMs - RENTAL_NEAR_RETURN_HOURS * HOUR_MS, returnMs, returnMs + RENTAL_STALE_AFTER_HOURS * HOUR_MS);
+  const future = candidates.filter((t) => t > now);
+  return future.length ? Math.min(...future) : null;
+}
+
+/**
  * The lifecycle input for a stored session — one place that maps session
  * fields (including the setup state) so the dashboard, the list, the hook and
  * the auto-open check can never disagree about a rental's state.

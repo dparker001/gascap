@@ -3,6 +3,9 @@
  * Captures return documentation, fuel-dispute tracking (section 24), and
  * optional feedback rating in one step, then marks the session completed
  * and preserved as history.
+ * Mutually exclusive with cancel (one conditional UPDATE decides the winner):
+ * 200 {session} completed (also when it already was — original data kept),
+ * 404 not found / not this user's, 409 already_cancelled.
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
@@ -40,7 +43,9 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     );
   }
 
-  const updated = await completeRentalSession(userId, params.id, body);
-  if (!updated) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-  return NextResponse.json({ session: updated });
+  const result = await completeRentalSession(userId, params.id, body);
+  if (result.kind === 'not_found') return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  // Cancelled first: a cancelled rental is never turned into a completed one.
+  if (result.kind === 'cancelled') return NextResponse.json({ error: 'already_cancelled' }, { status: 409 });
+  return NextResponse.json({ session: result.session });
 }

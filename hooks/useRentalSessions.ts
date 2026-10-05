@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react';
 import type { RentalSession } from '@/lib/rentalSessions';
 import { isUpcomingRental as isUpcomingAt, rentalEventInstant } from '@/lib/rentalCalculations';
 import { groupRentals, selectPrimaryRental } from '@/lib/rentalPresentation';
+import { useRentalClock } from './useRentalClock';
 import { syncRentalFallbacksFromSessions } from '@/lib/rentalReminderSync';
 
 /**
@@ -51,6 +52,8 @@ export function useRentalSessions(): RentalSessionsState {
   const authUserId = (authSession?.user as { id?: string } | undefined)?.id;
   const [all, setAll] = useState<RentalSession[]>([]);
   const [loading, setLoading] = useState(true);
+  // Re-derives the groups at lifecycle boundaries and on resume (no polling/network).
+  const clock = useRentalClock(all);
 
   useEffect(() => {
     if (status !== 'authenticated') { setLoading(false); return; }
@@ -65,7 +68,7 @@ export function useRentalSessions(): RentalSessionsState {
   }, [status]);
 
   return useMemo(() => {
-    const now = Date.now();
+    const now = clock;
     const g = groupRentals(all, now);
     return {
       inProgress: g.inProgress,
@@ -76,5 +79,5 @@ export function useRentalSessions(): RentalSessionsState {
       primary: selectPrimaryRental(all, now),
       loading,
     };
-  }, [all, loading]);
+  }, [all, loading, clock]);
 }

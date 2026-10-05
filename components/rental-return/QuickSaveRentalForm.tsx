@@ -18,6 +18,7 @@ import { detectBrowserTimeZone, describeEventTime, type TimeDisambiguation } fro
 import { resyncRentalFallbacks } from '@/lib/rentalReminderSync';
 import { newClientRentalId, postCreateRental } from '@/lib/rentalCreateClient';
 import DuplicateRentalNotice from './DuplicateRentalNotice';
+import { activeDuplicateWarning, duplicateConfirmationKey, mayConfirmDuplicate, type DuplicateWarning } from '@/lib/rentalDuplicateConfirm';
 import { buildQuickSavePayload, quickSaveCanSubmit, type QuickSaveEvent } from '@/lib/rentalQuickSave';
 import { emptyRentalLocation, type RentalLocationValue } from './RentalLocationInput';
 import RentalEventScheduleField, { effectiveEventZone, type EventZone } from './RentalEventScheduleField';
@@ -32,7 +33,7 @@ export default function QuickSaveRentalForm({ onCreated, onCancel }: {
   // One id per form instance, reused by every retry (lost response, duplicate
   // confirmation) so the server can recognise the same request.
   const [clientRentalId, setClientRentalId] = useState(() => newClientRentalId());
-  const [duplicateId, setDuplicateId] = useState<string | null>(null);
+  const [duplicateWarning, setDuplicateWarning] = useState<DuplicateWarning | null>(null);
   const authUserId = (useSession().data?.user as { id?: string } | undefined)?.id;
   const deviceZone = useMemo(() => detectBrowserTimeZone() ?? null, []);
 
@@ -56,15 +57,29 @@ export default function QuickSaveRentalForm({ onCreated, onCancel }: {
   const pickup: QuickSaveEvent = { dateTime: pickupDateTime, location: pickupLoc, zone: pickupZone, status: describeEventTime(pickupDateTime, pickupZone.zone), choice: pickupChoice };
   const ret: QuickSaveEvent    = { dateTime: returnDateTime, location: returnLoc, zone: returnZone, status: describeEventTime(returnDateTime, returnZone.zone), choice: returnChoice };
   const canSubmit = quickSaveCanSubmit({ company, pickup, ret });
+  // The duplicate confirmation is bound to THIS reservation: any change to the
+  // fields that identify it voids the warning (lib/rentalDuplicateConfirm.ts).
+  const reservationKey = duplicateConfirmationKey({
+    company, confirmationNumber, pickupDateTime, returnDateTime,
+    pickupLocation: pickupLoc.text, returnLocation: returnLoc.text,
+    pickupZone: pickupZone.zone ?? null, returnZone: returnZone.zone ?? null,
+    pickupChoice, returnChoice,
+  });
+  const activeDuplicate = activeDuplicateWarning(duplicateWarning, reservationKey);
 
   async function handleSubmit(confirmDuplicate = false) {
+    // Honoured only for the exact reservation that was warned about.
+    const confirm = confirmDuplicate && mayConfirmDuplicate(duplicateWarning, reservationKey);
+    const submittedKey = reservationKey;   // the key of the payload actually sent
     setSubmitting(true);
     setError('');
     try {
       const out = await postCreateRental(
-        buildQuickSavePayload({ company, confirmationNumber, pickup, ret, deviceZone }), clientRentalId, confirmDuplicate,
+        buildQuickSavePayload({ company, confirmationNumber, pickup, ret, deviceZone }), clientRentalId, confirm,
       );
-      if (out.kind === 'duplicate') { setDuplicateId(out.rentalId); return; }
+      // Bind the warning to what was SUBMITTED: if the form changed while the
+      // request was in flight, it is already void and never shown.
+      if (out.kind === 'duplicate') { setDuplicateWarning({ rentalId: out.rentalId, key: submittedKey }); return; }
       if (out.kind === 'error') {
         const scheduleCodes = ['invalid_time_zone', 'invalid_local_datetime', 'nonexistent_local_time', 'ambiguous_local_time'];
         // The id clashed with a different request: start a fresh one.
@@ -92,11 +107,11 @@ export default function QuickSaveRentalForm({ onCreated, onCancel }: {
       <p className="text-[11px] text-slate-500 leading-snug">{r.quickSaveIntro}</p>
 
       {error && <p className="text-xs text-red-500 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{error}</p>}
-      {duplicateId && (
+      {activeDuplicate && (
         <DuplicateRentalNotice
           busy={submitting}
-          onOpenExisting={() => router.push(`/rental-return/${duplicateId}`)}
-          onSaveAnyway={() => { setDuplicateId(null); void handleSubmit(true); }}
+          onOpenExisting={() => router.push(`/rental-return/${activeDuplicate.rentalId}`)}
+          onSaveAnyway={() => { void handleSubmit(true); }}
         />
       )}
 

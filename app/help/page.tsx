@@ -97,7 +97,7 @@ const SECTIONS = [
       },
       {
         q: 'Can GasCap open my rental for me at pickup time?',
-        a: 'Yes, if you turn it on. In Settings, switch on \u201cOpen my rental at pickup time\u201d. It\u2019s off by default and applies to this device only. When you start GasCap at pickup time and exactly one rental is at pickup, it opens that rental once; with two or more at pickup it just tells you and lets you choose. It only runs from the home screen, never while you\u2019re typing, and never changes any rental details or fuel readings.',
+        a: 'Yes, if you turn it on. In Settings, switch on \u201cOpen my rental at pickup time\u201d. It\u2019s off by default and applies to this device and your account only. When you start GasCap at pickup time and exactly one rental is at pickup, it opens that rental once; with two or more at pickup it just tells you and lets you choose. It only runs from the home screen, never while you\u2019re typing, and never changes any rental details or fuel readings.',
       },
       {
         q: 'What rental reminders will I get?',

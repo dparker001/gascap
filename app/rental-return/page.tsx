@@ -19,6 +19,7 @@ import { trackRentalAssistantOpened, trackRentalSessionCreated } from '@/lib/gta
 import { trackClientEvent } from '@/lib/clientAnalytics';
 import type { RentalSession } from '@/lib/rentalSessions';
 import { groupRentals } from '@/lib/rentalPresentation';
+import { useRentalClock } from '@/hooks/useRentalClock';
 import { formatEventWallClock } from '@/lib/rentalTimezone';
 import { syncRentalFallbacksFromSessions } from '@/lib/rentalReminderSync';
 
@@ -29,6 +30,8 @@ export default function RentalReturnPage() {
   const router = useRouter();
   const { t } = useTranslation();
   const [sessions, setSessions] = useState<RentalSession[]>([]);
+  // Re-groups at lifecycle boundaries and on foreground resume (no polling, no network).
+  const clock = useRentalClock(sessions);
   const [pastCount, setPastCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [mode, setMode] = useState<'list' | 'setup' | 'quick'>('list');
@@ -93,7 +96,7 @@ export default function RentalReturnPage() {
   // validated schedule) — never from the viewer's zone. 'stale' and rentals
   // with an untrustworthy schedule get their own "needs attention" group
   // instead of masquerading as in progress.
-  const { inProgress: rentalsInProgress, upcoming: rentalsUpcoming, attention: rentalsAttention } = groupRentals(sessions);
+  const { inProgress: rentalsInProgress, upcoming: rentalsUpcoming, attention: rentalsAttention } = groupRentals(sessions, clock);
 
   // Quick-save (Part A, 2026-10-02): second entry point for a rental booked
   // ahead; the full wizard below is unchanged.

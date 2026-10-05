@@ -835,7 +835,7 @@ const en = {
     autoOpenedNotice:         'Opened automatically at pickup',
     autoOpenedTurnOff:        'Turn off',
     autoOpenSettingTitle:     'Open my rental at pickup time',
-    autoOpenSettingBody:      'When it is time to pick up your rental car, GasCap opens it for you as you start the app on this device. Off by default; it never changes any rental details.',
+    autoOpenSettingBody:      'When it is time to pick up your rental car, GasCap opens it for you as you start the app on this device. Off by default and saved for your account on this device only; it never changes any rental details.',
     // Upcoming-rental pickup reminder notice (T7). Claims only reminders still ahead.
     pickupRemindersBoth:      (zone: string) => `Pickup reminders: GasCap sends email reminders about 24 hours and about 2 hours before pickup (${zone}).`,
     pickupReminderTwoHour:    (zone: string) => `Pickup reminder: GasCap sends an email reminder about 2 hours before pickup (${zone}).`,
@@ -4269,7 +4269,7 @@ const es: typeof en = {
     autoOpenedNotice:         'Abierto automáticamente en la hora de recogida',
     autoOpenedTurnOff:        'Desactivar',
     autoOpenSettingTitle:     'Abrir mi alquiler a la hora de recogida',
-    autoOpenSettingBody:      'Cuando sea hora de recoger tu auto de alquiler, GasCap lo abre por ti al iniciar la app en este dispositivo. Desactivado por defecto; nunca cambia datos del alquiler.',
+    autoOpenSettingBody:      'Cuando sea hora de recoger tu auto de alquiler, GasCap lo abre por ti al iniciar la app en este dispositivo. Desactivado por defecto y guardado solo para tu cuenta en este dispositivo; nunca cambia datos del alquiler.',
     // Aviso de recordatorios de recogida (T7). Solo menciona los que aún faltan.
     pickupRemindersBoth:      (zone: string) => `Recordatorios de recogida: GasCap envía recordatorios por correo unas 24 horas y unas 2 horas antes de la recogida (${zone}).`,
     pickupReminderTwoHour:    (zone: string) => `Recordatorio de recogida: GasCap envía un recordatorio por correo unas 2 horas antes de la recogida (${zone}).`,

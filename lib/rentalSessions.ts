@@ -828,31 +828,43 @@ export interface CompleteRentalSessionInput {
   feedbackText?:               string;
 }
 
+export type CompleteRentalResult =
+  /** `replayed: true` = it was already completed; the original completion data is untouched. */
+  | { kind: 'completed'; session: RentalSession; replayed: boolean }
+  /** The renter cancelled it first. A cancelled rental is never turned into a completed one. */
+  | { kind: 'cancelled' }
+  | { kind: 'not_found' };
+
+/**
+ * Complete and cancel are the two TERMINAL transitions of an open rental, and
+ * they are mutually exclusive by construction: each is ONE owner-scoped
+ * conditional UPDATE (`WHERE id AND userId AND status = 'active'`), so the
+ * database lets exactly one of any number of concurrent attempts win — the
+ * rest match zero rows and are reported from a re-read of the winner's state.
+ * (A read-then-update here let a late complete overwrite a cancel, or the
+ * reverse.)
+ *
+ *  - repeat / concurrent complete → the first completion's data stands; the
+ *    others return it unchanged (never overwritten, one analytics event);
+ *  - complete after cancel → `cancelled` (409), nothing written;
+ *  - another user's rental → `not_found`, nothing written.
+ *
+ * Phase 3A (2026-08-25): completing never creates a Fillup — completion and
+ * logging a final fuel transaction are related but distinct actions (see
+ * lib/rentalFillups.ts's fillupType: 'final_return').
+ */
 export async function completeRentalSession(
   userId: string, id: string, input: CompleteRentalSessionInput,
-): Promise<RentalSession | undefined> {
-  const existing = await prisma.rentalSession.findFirst({ where: { id, userId } });
-  if (!existing) return undefined;
-
-  // Phase 3A completion hardening (2026-08-25) — a repeated "Complete
-  // Rental" request (double-tap, retry after a dropped response) is now a
-  // safe no-op: it returns the already-completed session unchanged rather
-  // than re-applying (and potentially overwriting) dispute/feedback fields
-  // from a second, possibly different submission. Completing a rental never
-  // creates a Fillup — completion and logging a final fuel transaction are
-  // related but distinct actions (see lib/rentalFillups.ts's fillupType:
-  // 'final_return', logged separately via the refuel flow if the renter
-  // actually filled up).
-  if (existing.status === 'completed') return toRentalSession(existing);
-
+): Promise<CompleteRentalResult> {
   const now = new Date().toISOString();
-  const row = await prisma.rentalSession.update({
-    where: { id },
+  const won = await prisma.rentalSession.updateMany({
+    where: { id, userId, status: 'active' },
     data: {
       status:                      'completed',
       completedAt:                  now,
-      returnGaugePhotoThumb:        input.returnGaugePhotoThumb      ?? existing.returnGaugePhotoThumb,
-      returnReceiptPhotoThumb:      input.returnReceiptPhotoThumb    ?? existing.returnReceiptPhotoThumb,
+      // undefined = leave the stored photo as it is (Prisma omits it)
+      returnGaugePhotoThumb:        input.returnGaugePhotoThumb,
+      returnReceiptPhotoThumb:      input.returnReceiptPhotoThumb,
       fuelFeeCharged:               input.fuelFeeCharged             ?? null,
       fuelFeeAmount:                input.fuelFeeAmount              ?? null,
       fuelFeeGallonsClaimed:        input.fuelFeeGallonsClaimed      ?? null,
@@ -864,14 +876,20 @@ export async function completeRentalSession(
     },
   });
 
-  try {
-    await recordAnalyticsEvent({
-      eventType: 'rental_session_completed', originPlatform: 'unknown', emitter: 'server', userId,
-      idempotencyKey: `rental_session_completed:${id}`,
-    });
-  } catch (e) { console.error('[GasCap analytics] rental_session_completed write failed:', e); }
+  const row = await prisma.rentalSession.findFirst({ where: { id, userId } });
+  if (!row) return { kind: 'not_found' };
+  if (row.status === 'cancelled') return { kind: 'cancelled' };
+  if (row.status !== 'completed') throw new Error(`rental ${id} is '${row.status}' after a lost complete update`);
 
-  return toRentalSession(row);
+  if (won.count === 1) {
+    try {
+      await recordAnalyticsEvent({
+        eventType: 'rental_session_completed', originPlatform: 'unknown', emitter: 'server', userId,
+        idempotencyKey: `rental_session_completed:${id}`,
+      });
+    } catch (e) { console.error('[GasCap analytics] rental_session_completed write failed:', e); }
+  }
+  return { kind: 'completed', session: toRentalSession(row), replayed: won.count !== 1 };
 }
 
 export function computeSessionStatus(session: Pick<RentalSession, 'currentFuelGallons' | 'requiredReturnFuelGallons'>): ReturnReadyStatus {
