@@ -231,6 +231,7 @@ export default function RentalSetupFlow({ onCreated, onCancel }: Props) {
   const reservationKey = duplicateConfirmationKey({
     company, confirmationNumber, agreementNumber, pickupDateTime, returnDateTime,
     pickupLocation: pickupLoc.text, returnLocation: returnLoc.text,
+    pickupLat: pickupLoc.lat ?? null, pickupLng: pickupLoc.lng ?? null, returnLat: returnLoc.lat ?? null, returnLng: returnLoc.lng ?? null,
     pickupZone: pickupZone.zone ?? null, returnZone: returnZone.zone ?? null,
     pickupChoice, returnChoice,
   });

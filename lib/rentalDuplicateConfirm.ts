@@ -13,6 +13,11 @@ export interface DuplicateKeyFields {
   returnDateTime: string;
   pickupLocation: string;
   returnLocation: string;
+  /** Place coordinates travel with the reservation (a different place with the same name is a different reservation). */
+  pickupLat: number | null;
+  pickupLng: number | null;
+  returnLat: number | null;
+  returnLng: number | null;
   pickupZone: string | null;
   returnZone: string | null;
   pickupChoice: string | null;
@@ -20,6 +25,8 @@ export interface DuplicateKeyFields {
 }
 
 const norm = (v: string | null | undefined) => (v ?? '').trim();
+/** ~1 m precision: stable against float noise, sensitive to a genuinely different place. */
+const coord = (v: number | null | undefined) => (typeof v === 'number' && Number.isFinite(v) ? v.toFixed(5) : '');
 
 /** Stable key over the reservation-identifying fields (whitespace-insensitive, case-sensitive times/zones). */
 export function duplicateConfirmationKey(f: DuplicateKeyFields): string {
@@ -29,6 +36,7 @@ export function duplicateConfirmationKey(f: DuplicateKeyFields): string {
     norm(f.agreementNumber).toUpperCase().replace(/[^A-Z0-9]/g, ''),
     norm(f.pickupDateTime), norm(f.returnDateTime),
     norm(f.pickupLocation).toLowerCase(), norm(f.returnLocation).toLowerCase(),
+    coord(f.pickupLat), coord(f.pickupLng), coord(f.returnLat), coord(f.returnLng),
     f.pickupZone ?? '', f.returnZone ?? '', f.pickupChoice ?? '', f.returnChoice ?? '',
   ]);
 }
