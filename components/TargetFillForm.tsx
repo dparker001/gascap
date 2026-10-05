@@ -155,6 +155,7 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
   const {
     inProgress: rentalsInProgress,
     upcoming:   rentalsUpcoming,
+    atPickup:   rentalsAtPickup,
     primary:    primaryRental,
     loading:    activeRentalLoading,
   } = useRentalSessions();
@@ -196,6 +197,9 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
   /** Banner subtitle. Says what's true for each state rather than asserting
    *  "active" for anything that exists. */
   function rentalSummaryText(): string {
+    // Several rentals at pickup at once: say so (and never pick one for the
+    // renter) — the banner opens the list.
+    if (rentalsAtPickup.length > 1) return t.calc.rentalModeAtPickupMultiple(rentalsAtPickup.length);
     if (rentalsInProgress.length + rentalsUpcoming.length > 1) {
       return t.calc.rentalModeMultiple(rentalsInProgress.length, rentalsUpcoming.length);
     }
@@ -242,8 +246,9 @@ export default function TargetFillForm({ activeTab, setActiveTab }: Props) {
   const liveRecalcRef   = useRef<(p: Partial<FormState>) => void>(() => {});
 
 
-  // Auto-activate rental mode for users whose driver mode is 'rental',
-  // or when arriving from the /rental landing page via ?rental=1
+  // Only gig mode changes this form. 'rental' is NOT a switch here: Rental
+  // Car Mode is a place plus a fact (see the banner below and
+  // RentalModeHeader), and arriving via ?rental=1 hands off to /rental-return.
   const sessionUserMode = (session?.user as { userMode?: string | null })?.userMode;
   // Seed from sessionStorage on mount so rental mode fires even before JWT refreshes
   const [localUserMode, setLocalUserMode] = useState<string | null | undefined>(() => {

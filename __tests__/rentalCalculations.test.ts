@@ -485,9 +485,9 @@ describe('resolveRentalLifecycle()', () => {
     expect(resolveRentalLifecycle({ ...base, returnDateTime: in18h })).toBe('near_return');
   });
 
-  it('5. past scheduled return but not completed => stays near_return (overdue), never silently completes or reverts to active', () => {
+  it('5. past scheduled return but not completed => overdue (C1 split it out of near_return), never silently completes, cancels or reverts to active', () => {
     const threeHoursAgo = new Date(NOW - 3 * 3_600_000).toISOString();
-    expect(resolveRentalLifecycle({ ...base, status: 'active', returnDateTime: threeHoursAgo })).toBe('near_return');
+    expect(resolveRentalLifecycle({ ...base, status: 'active', returnDateTime: threeHoursAgo })).toBe('overdue');
   });
 
   it('6. a completed rental is always completed, regardless of dates', () => {

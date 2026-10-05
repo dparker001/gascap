@@ -1,6 +1,6 @@
 # Part A Implementation Plan — Quick-Save Upcoming Rental
 
-**Status: IMPLEMENTED on `feat/rental-quick-save` — pending review, not merged** (2026-10-02). Implements §3 of `docs/RENTAL_UPCOMING_IMPORT_SPEC.md` (rev 2). As built: A2, A3 and A5 landed as one commit (`40d30a1`) because they share the dashboard and its source guards; the refuel decision (A2) and tank-clear rule (A1) follow Don's 2026-10-02 instructions — see `docs/reviews/2026-10-02-rental-quick-save-part-a.md`.
+**Status: IMPLEMENTED — merged to `main` in PR #59 (`2391e19`, 2026-10-03) and production-verified** (built on `feat/rental-quick-save`, 2026-10-02). Implements §3 of `docs/RENTAL_UPCOMING_IMPORT_SPEC.md` (rev 2). As built: A2, A3 and A5 landed as one commit (`40d30a1`) because they share the dashboard and its source guards; the refuel decision (A2) and tank-clear rule (A1) follow Don's 2026-10-02 instructions — see `docs/reviews/2026-10-02-rental-quick-save-part-a.md`.
 Approved to implement by the ChatGPT design review (PASS WITH CONDITIONS) and Don.
 
 ## Branch and scope

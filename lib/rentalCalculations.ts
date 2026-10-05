@@ -12,6 +12,8 @@
  */
 import type { FuelDataSource } from './rentalProvider';
 import { roundTo, gallonsToFill, costForGallons } from './fuelMath';
+import { isValidIanaZone } from './rentalTimezone';
+import { rentalSetupSteps, type SetupStateInput } from './rentalSetupState';
 
 // ── Fuel-state domain model (2026-08-28 confirmation-gating hardening) ─────
 // RentalSession.currentFuelGallons is a LAST-KNOWN/LAST-REPORTED fuel state,
@@ -495,7 +497,63 @@ export function isUpcomingRental(
 // see resolveRentalLifecycle() below, the only place this is consumed.
 export const RENTAL_NEAR_RETURN_HOURS = 24;
 
-export type RentalLifecycle = 'upcoming' | 'active' | 'near_return' | 'completed' | 'cancelled';
+/**
+ * Time-aware Rental Car Mode (C1, docs/RENTAL_CALENDAR_DISCOVERY_DESIGN.md Rev 3 §2.2).
+ * All derived at render time from stored fields — NO new database status.
+ */
+export type RentalLifecycle =
+  | 'upcoming' | 'pickup' | 'active' | 'near_return'
+  | 'overdue' | 'stale' | 'needs_schedule'
+  | 'completed' | 'cancelled';
+
+/** Pickup state opens this long BEFORE the pickup instant… */
+export const RENTAL_PICKUP_LEAD_HOURS = 3;
+/** …and stays until this long AFTER it (only while setup is incomplete). */
+export const RENTAL_PICKUP_TAIL_HOURS = 6;
+/** An unreturned rental this long past its return time is 'stale'. */
+export const RENTAL_STALE_AFTER_HOURS = 72;
+/** A rental longer than this is treated as a data error, not a rental. */
+export const RENTAL_MAX_DURATION_DAYS = 366;
+
+const HOUR_MS = 3_600_000;
+
+/** Parse an ISO-ish instant to epoch ms; null for absent, NaN for present-but-bad. */
+function instantMs(v: string | null | undefined): number | null {
+  if (v === null || v === undefined || v === '') return null;
+  return new Date(v).getTime();
+}
+
+export type RentalScheduleClass = 'ok' | 'invalid' | 'inconsistent' | 'implausible';
+
+/**
+ * C-LIFE2 — validates the stored schedule BEFORE any time-based state is
+ * derived, so malformed data can never be turned into "overdue" or an
+ * automatic open. Absent times are UNKNOWN, not invalid.
+ *
+ *  - invalid:      an instant is present but unparseable (the UTC value wins
+ *                  over the local string, exactly like rentalEventInstant —
+ *                  a bad UTC is never papered over by a good local), or a
+ *                  stored zone is not a valid IANA zone;
+ *  - inconsistent: both instants known and return <= pickup;
+ *  - implausible:  both known and the span exceeds RENTAL_MAX_DURATION_DAYS.
+ */
+export function classifyRentalSchedule(input: {
+  pickupDateTime?: string | null; returnDateTime?: string | null;
+  pickupDateTimeUtc?: string | null; returnDateTimeUtc?: string | null;
+  pickupTimeZone?: string | null; returnTimeZone?: string | null; timeZone?: string | null;
+}): RentalScheduleClass {
+  for (const z of [input.pickupTimeZone, input.returnTimeZone, input.timeZone]) {
+    if (z !== null && z !== undefined && z !== '' && !isValidIanaZone(z)) return 'invalid';
+  }
+  const pickupMs = instantMs(rentalEventInstant(input.pickupDateTimeUtc, input.pickupDateTime));
+  const returnMs = instantMs(rentalEventInstant(input.returnDateTimeUtc, input.returnDateTime));
+  if ((pickupMs !== null && !Number.isFinite(pickupMs)) || (returnMs !== null && !Number.isFinite(returnMs))) return 'invalid';
+  if (pickupMs !== null && returnMs !== null) {
+    if (returnMs <= pickupMs) return 'inconsistent';
+    if (returnMs - pickupMs > RENTAL_MAX_DURATION_DAYS * 24 * HOUR_MS) return 'implausible';
+  }
+  return 'ok';
+}
 
 /**
  * Derives a PRESENTATION-only lifecycle state for Rental Car Mode from
@@ -515,15 +573,18 @@ export type RentalLifecycle = 'upcoming' | 'active' | 'near_return' | 'completed
  *   return). A cancelled session isn't reachable from the normal list
  *   flow today, so this only matters if one is opened by direct URL.
  * - A rental past its scheduled returnDateTime but NOT yet marked
- *   completed stays 'near_return' (in fact more urgently so — the same
- *   <= RENTAL_NEAR_RETURN_HOURS check that catches "18 hours left" also
- *   catches "-3 hours left," i.e. overdue). It never silently becomes
- *   'completed' on its own — only completeRentalSession() actually
- *   completing it does that. An overdue-but-uncompleted rental staying in
- *   the return-preparation experience (rather than reverting to 'active'
- *   or jumping to a nonexistent "overdue" state) is exactly the behavior
- *   a renter who's running late needs: Find Gas Near Return and the
- *   Final Return Fill-Up button stay front and center.
+ *   completed is 'overdue' (and 'stale' 72h later) — C1 split this out of
+ *   'near_return' so the renter can be asked "did you return it?". It
+ *   never silently becomes 'completed' or 'cancelled' on its own — only
+ *   the renter's own action does that. 'overdue' and 'stale' keep the
+ *   return-preparation section order (RENTAL_LIFECYCLE_SECTION_ORDER), the
+ *   behaviour a renter who's running late needs: Find Gas Near Return and
+ *   the Final Return Fill-Up button stay front and center.
+ * - A malformed, inverted or implausible schedule is 'needs_schedule' and
+ *   is checked BEFORE any time-based state (see classifyRentalSchedule).
+ * - 'pickup' needs setupComplete === false to be passed explicitly: an
+ *   unknown setup state never invents the "at the counter" experience (it
+ *   stays 'upcoming' until the pickup instant, as before).
  * - Missing returnDateTime can't be "near" anything measurable, so it
  *   falls through to 'active' rather than guessing — never fabricates a
  *   return deadline that was never entered.
@@ -540,22 +601,79 @@ export function resolveRentalLifecycle(input: {
   /** Preferred when present (2026-10-02) — see rentalEventInstant(). */
   pickupDateTimeUtc?: string | null;
   returnDateTimeUtc?: string | null;
+  /** Stored zones — only used to flag an invalid zone as a bad schedule. */
+  pickupTimeZone?: string | null;
+  returnTimeZone?: string | null;
+  timeZone?: string | null;
+  /**
+   * Whether vehicle → tank → pickup fuel are all recorded. UNKNOWN (omitted)
+   * is never treated as incomplete: 'pickup' is only entered when setup is
+   * KNOWN to be incomplete, so nothing is inferred about fuel or the car.
+   */
+  setupComplete?: boolean;
   now?: number;
 }): RentalLifecycle {
   const now = input.now ?? Date.now();
+  // 1–2. Terminal stored statuses win over everything.
   if (input.status === 'completed') return 'completed';
   if (input.status === 'cancelled') return 'cancelled';
-  if (isUpcomingRental(rentalEventInstant(input.pickupDateTimeUtc, input.pickupDateTime), now)) return 'upcoming';
 
-  const returnAt = rentalEventInstant(input.returnDateTimeUtc, input.returnDateTime);
-  if (returnAt) {
-    const returnMs = new Date(returnAt).getTime();
-    if (Number.isFinite(returnMs)) {
-      const hoursUntilReturn = (returnMs - now) / 3_600_000;
-      if (hoursUntilReturn <= RENTAL_NEAR_RETURN_HOURS) return 'near_return';
-    }
+  // 3. A malformed / inverted / implausible schedule is NEVER turned into a
+  //    time-based state (C-LIFE2): no overdue, no stale, no pickup, no
+  //    auto-open — the renter is asked to fix the times instead.
+  if (classifyRentalSchedule(input) !== 'ok') return 'needs_schedule';
+
+  const pickupMs = instantMs(rentalEventInstant(input.pickupDateTimeUtc, input.pickupDateTime));
+  const returnMs = instantMs(rentalEventInstant(input.returnDateTimeUtc, input.returnDateTime));
+
+  // 4–5. Past the return time and still open. Outranks every pickup rule, so
+  //      a short rental whose return has passed is overdue even if setup was
+  //      never finished. 'stale' is only a presentation downgrade — nothing
+  //      here (or anywhere) completes or cancels the rental.
+  if (returnMs !== null) {
+    if (now >= returnMs + RENTAL_STALE_AFTER_HOURS * HOUR_MS) return 'stale';
+    if (now >= returnMs) return 'overdue';
   }
+
+  // 6–8. Around pickup.
+  if (pickupMs !== null) {
+    if (now < pickupMs - RENTAL_PICKUP_LEAD_HOURS * HOUR_MS) return 'upcoming';
+    // Before the pickup instant an open rental is still 'upcoming' unless setup
+    // is KNOWN to be incomplete (then it is 'pickup', below). An unknown setup
+    // state keeps the original behaviour: upcoming until pickup.
+    if (now < pickupMs && input.setupComplete !== false) return 'upcoming';
+    if (now < pickupMs + RENTAL_PICKUP_TAIL_HOURS * HOUR_MS && input.setupComplete === false) return 'pickup';
+  }
+
+  // 9. Within 24h of return.
+  if (returnMs !== null && now >= returnMs - RENTAL_NEAR_RETURN_HOURS * HOUR_MS) return 'near_return';
+
+  // 10. Missing returnDateTime can't be "near" anything measurable, so it
+  //     falls through to 'active' rather than guessing a deadline.
   return 'active';
+}
+
+/**
+ * The lifecycle input for a stored session — one place that maps session
+ * fields (including the setup state) so the dashboard, the list, the hook and
+ * the auto-open check can never disagree about a rental's state.
+ */
+export function rentalLifecycleInput(
+  s: SetupStateInput & {
+    pickupDateTime: string | null; returnDateTime: string | null;
+    pickupDateTimeUtc?: string | null; returnDateTimeUtc?: string | null;
+    pickupTimeZone?: string | null; returnTimeZone?: string | null; timeZone?: string | null;
+  },
+  now?: number,
+): Parameters<typeof resolveRentalLifecycle>[0] {
+  return {
+    status: s.status,
+    pickupDateTime: s.pickupDateTime, returnDateTime: s.returnDateTime,
+    pickupDateTimeUtc: s.pickupDateTimeUtc, returnDateTimeUtc: s.returnDateTimeUtc,
+    pickupTimeZone: s.pickupTimeZone, returnTimeZone: s.returnTimeZone, timeZone: s.timeZone,
+    setupComplete: s.status === 'active' ? !rentalSetupSteps(s).some((step) => !step.done) : undefined,
+    ...(now !== undefined ? { now } : {}),
+  };
 }
 
 /**
@@ -587,8 +705,20 @@ export const RENTAL_LIFECYCLE_SECTION_ORDER: Record<Exclude<RentalLifecycle, 'co
   calculateFill: number; returnPrep: number; findGas: number; actions: number;
 }> = {
   upcoming:    { fuelLevel: 1, pickupFuel: 1, tripCalc: 2, fuelLog: 2, calculateFill: 2, returnPrep: 2, findGas: 2, actions: 3 },
+  // 'pickup' (C1): the renter is at the counter — the car details and pickup
+  // fuel come first, exactly like 'active'; the attention card above them
+  // says what to record.
+  pickup:      { fuelLevel: 1, pickupFuel: 1, tripCalc: 2, fuelLog: 3, calculateFill: 4, returnPrep: 4, findGas: 4, actions: 5 },
   active:      { fuelLevel: 1, pickupFuel: 1, tripCalc: 2, fuelLog: 3, calculateFill: 4, returnPrep: 4, findGas: 4, actions: 5 },
   near_return: { calculateFill: 1, returnPrep: 1, findGas: 1, fuelLevel: 2, pickupFuel: 2, tripCalc: 3, fuelLog: 4, actions: 5 },
+  // 'overdue' / 'stale' keep today's deliberate return-preparation experience
+  // (an overdue rental used to resolve to near_return): Find Gas Near Return
+  // and the final fill-up stay front and centre for a renter running late.
+  overdue:     { calculateFill: 1, returnPrep: 1, findGas: 1, fuelLevel: 2, pickupFuel: 2, tripCalc: 3, fuelLog: 4, actions: 5 },
+  stale:       { calculateFill: 1, returnPrep: 1, findGas: 1, fuelLevel: 2, pickupFuel: 2, tripCalc: 3, fuelLog: 4, actions: 5 },
+  // 'needs_schedule': return-prep tools stay reachable but are NOT promoted
+  // off a schedule that can't be trusted.
+  needs_schedule: { fuelLevel: 1, pickupFuel: 1, tripCalc: 2, fuelLog: 3, calculateFill: 4, returnPrep: 4, findGas: 4, actions: 5 },
 };
 
 /**

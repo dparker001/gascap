@@ -10,11 +10,14 @@
  * through the dashboard's Finish setup card — never guessed here.
  */
 import { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { useTranslation } from '@/contexts/LanguageContext';
 import { RENTAL_COMPANIES } from '@/lib/rentalProvider';
 import { detectBrowserTimeZone, describeEventTime, type TimeDisambiguation } from '@/lib/rentalTimezone';
 import { resyncRentalFallbacks } from '@/lib/rentalReminderSync';
+import { newClientRentalId, postCreateRental } from '@/lib/rentalCreateClient';
+import DuplicateRentalNotice from './DuplicateRentalNotice';
 import { buildQuickSavePayload, quickSaveCanSubmit, type QuickSaveEvent } from '@/lib/rentalQuickSave';
 import { emptyRentalLocation, type RentalLocationValue } from './RentalLocationInput';
 import RentalEventScheduleField, { effectiveEventZone, type EventZone } from './RentalEventScheduleField';
@@ -25,6 +28,11 @@ export default function QuickSaveRentalForm({ onCreated, onCancel }: {
 }) {
   const { t } = useTranslation();
   const r = t.rentalReturn;
+  const router = useRouter();
+  // One id per form instance, reused by every retry (lost response, duplicate
+  // confirmation) so the server can recognise the same request.
+  const [clientRentalId, setClientRentalId] = useState(() => newClientRentalId());
+  const [duplicateId, setDuplicateId] = useState<string | null>(null);
   const authUserId = (useSession().data?.user as { id?: string } | undefined)?.id;
   const deviceZone = useMemo(() => detectBrowserTimeZone() ?? null, []);
 
@@ -49,25 +57,25 @@ export default function QuickSaveRentalForm({ onCreated, onCancel }: {
   const ret: QuickSaveEvent    = { dateTime: returnDateTime, location: returnLoc, zone: returnZone, status: describeEventTime(returnDateTime, returnZone.zone), choice: returnChoice };
   const canSubmit = quickSaveCanSubmit({ company, pickup, ret });
 
-  async function handleSubmit() {
+  async function handleSubmit(confirmDuplicate = false) {
     setSubmitting(true);
     setError('');
     try {
-      const res = await fetch('/api/rental-sessions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(buildQuickSavePayload({ company, confirmationNumber, pickup, ret, deviceZone })),
-      });
-      const data = await res.json();
-      if (!res.ok) {
+      const out = await postCreateRental(
+        buildQuickSavePayload({ company, confirmationNumber, pickup, ret, deviceZone }), clientRentalId, confirmDuplicate,
+      );
+      if (out.kind === 'duplicate') { setDuplicateId(out.rentalId); return; }
+      if (out.kind === 'error') {
         const scheduleCodes = ['invalid_time_zone', 'invalid_local_datetime', 'nonexistent_local_time', 'ambiguous_local_time'];
-        setError(scheduleCodes.includes(data.error) ? r.tzScheduleError : (data.error ?? r.setupError));
+        // The id clashed with a different request: start a fresh one.
+        if (out.code === 'client_rental_id_conflict') setClientRentalId(newClientRentalId());
+        setError(out.code && scheduleCodes.includes(out.code) ? r.tzScheduleError : (out.message ?? r.setupError));
         return;
       }
       // Same as the wizard: server push primary; a local return fallback only
       // on a device without usable push, from the server-derived instant.
       void resyncRentalFallbacks(authUserId);
-      onCreated(data.session.id);
+      onCreated(out.sessionId);
     } catch {
       setError(r.setupError);
     } finally {
@@ -84,6 +92,13 @@ export default function QuickSaveRentalForm({ onCreated, onCancel }: {
       <p className="text-[11px] text-slate-500 leading-snug">{r.quickSaveIntro}</p>
 
       {error && <p className="text-xs text-red-500 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{error}</p>}
+      {duplicateId && (
+        <DuplicateRentalNotice
+          busy={submitting}
+          onOpenExisting={() => router.push(`/rental-return/${duplicateId}`)}
+          onSaveAnyway={() => { setDuplicateId(null); void handleSubmit(true); }}
+        />
+      )}
 
       <div className="space-y-2">
         <label className="field-label">{r.stepCompany}</label>
@@ -145,7 +160,7 @@ export default function QuickSaveRentalForm({ onCreated, onCancel }: {
 
       <button
         type="button"
-        onClick={handleSubmit}
+        onClick={() => { void handleSubmit(); }}
         disabled={!canSubmit || submitting}
         className="w-full py-3 rounded-2xl bg-blue-600 text-white text-sm font-bold disabled:opacity-40"
       >

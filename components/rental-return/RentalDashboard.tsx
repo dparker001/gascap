@@ -7,12 +7,14 @@ import {
   gallonsNeeded, estimatedRentalCompanyCharge, estimatedFuelCost, estimatedSavings,
   returnReadyStatus, formatGallons, fuelSourceLabel, refuelTotals,
   shouldTrackFuelNeededCalculated, roundGallons, tripFillEstimate,
-  resolveRentalLifecycle, RENTAL_LIFECYCLE_SECTION_ORDER, rentalRecap, rentalRecapLogs, rentalEventInstant,
+  resolveRentalLifecycle, rentalLifecycleInput, isUpcomingRental, RENTAL_LIFECYCLE_SECTION_ORDER, rentalRecap, rentalRecapLogs, rentalEventInstant,
 } from '@/lib/rentalCalculations';
 import { formatEventWallClock, zoneCity, zoneLongName } from '@/lib/rentalTimezone';
 import { pendingPickupReminders } from '@/lib/rentalReminderNotice';
 import { hasTank, pickupSaveAlsoSetsCurrent, returnTargetKnown, setupIncomplete } from '@/lib/rentalSetupState';
 import FinishSetupCard from './FinishSetupCard';
+import RentalAttentionCard, { type AttentionState } from './RentalAttentionCard';
+import AutoOpenedBanner from './AutoOpenedBanner';
 import type { RentalLifecycle } from '@/lib/rentalCalculations';
 import { trackRentalGasNearReturnViewed, trackRentalReturnReadyViewed } from '@/lib/gtag';
 import { trackClientEvent } from '@/lib/clientAnalytics';
@@ -431,11 +433,13 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
   // Rules of Hooks.
   useEffect(() => {
     if (!session) return;
-    const lc = resolveRentalLifecycle({
-      status: session.status, pickupDateTime: session.pickupDateTime, returnDateTime: session.returnDateTime,
-      pickupDateTimeUtc: session.pickupDateTimeUtc, returnDateTimeUtc: session.returnDateTimeUtc,
-    });
-    if (lc === 'near_return' && !nearReturnTrackedRef.current) {
+    const lc = resolveRentalLifecycle(rentalLifecycleInput(session));
+    // An overdue rental used to resolve to near_return, so it keeps this
+    // analytics event and the one-time Prepare-for-Return auto-open; 'stale'
+    // and 'needs_schedule' deliberately do not (no automatic presentation
+    // off an old or untrustworthy schedule).
+    const inReturnWindow = lc === 'near_return' || lc === 'overdue';
+    if (inReturnWindow && !nearReturnTrackedRef.current) {
       nearReturnTrackedRef.current = true;
       trackClientEvent('rental_near_return_viewed');
     }
@@ -445,12 +449,13 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
     // Guarded so it only ever auto-opens ONCE — if the renter deliberately
     // closes it or opens Add Fuel instead, this must never re-force it
     // back open on a later rerender.
-    if (lc === 'near_return' && !workflowAutoOpenedRef.current) {
+    if (inReturnWindow && !workflowAutoOpenedRef.current) {
       workflowAutoOpenedRef.current = true;
       setActiveWorkflow('prepare_return');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session?.id, session?.status, session?.pickupDateTime, session?.returnDateTime, session?.pickupDateTimeUtc, session?.returnDateTimeUtc]);
+  }, [session?.id, session?.status, session?.pickupDateTime, session?.returnDateTime, session?.pickupDateTimeUtc, session?.returnDateTimeUtc,
+      session?.vehicleMake, session?.vehicleModel, session?.fuelTankCapacityGallons, session?.pickupFuelGallons]);
 
   if (loading || !session) {
     return <div className="max-w-lg mx-auto px-4 py-10"><div className="h-40 bg-slate-100 rounded-2xl animate-pulse" /></div>;
@@ -495,15 +500,20 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
   // already reads it by that name — deriving it FROM lifecycle (rather
   // than calling isUpcomingRental separately) guarantees they can never
   // disagree with each other.
-  const lifecycle = resolveRentalLifecycle({
-    status: session.status,
-    pickupDateTime: session.pickupDateTime,
-    returnDateTime: session.returnDateTime,
-    pickupDateTimeUtc: session.pickupDateTimeUtc,
-    returnDateTimeUtc: session.returnDateTimeUtc,
-  });
-  const isUpcoming = lifecycle === 'upcoming';
-  const isNearReturn = lifecycle === 'near_return';
+  const lifecycle = resolveRentalLifecycle(rentalLifecycleInput(session));
+  // "Hasn't been picked up yet" keeps its original meaning for every gate
+  // below (live fuel, Complete button, pickup notice…): an open rental whose
+  // pickup instant is still ahead. The 'pickup' lifecycle state opens up to
+  // 3h BEFORE that instant, so it can no longer be derived from
+  // lifecycle === 'upcoming' alone.
+  const isUpcoming = session.status === 'active'
+    && isUpcomingRental(rentalEventInstant(session.pickupDateTimeUtc, session.pickupDateTime));
+  // Return-driven emphasis: near_return as before, plus the states an overdue
+  // rental used to fall into (it was near_return) — overdue and stale.
+  const isNearReturn = lifecycle === 'near_return' || lifecycle === 'overdue' || lifecycle === 'stale';
+  const attentionState: AttentionState | null =
+    lifecycle === 'pickup' || lifecycle === 'overdue' || lifecycle === 'stale' || lifecycle === 'needs_schedule'
+      ? lifecycle : null;
   const isCompleted = lifecycle === 'completed';
   const isCancelled = lifecycle === 'cancelled';
 
@@ -932,6 +942,20 @@ export default function RentalDashboard({ sessionId, onCompleted }: { sessionId:
           </div>
         );
       })()}
+
+      <AutoOpenedBanner />
+
+      {/* C1 — pickup / overdue / stale / needs-schedule: one card that asks
+          the renter what is true. Nothing here acts on its own. */}
+      {attentionState && (
+        <RentalAttentionCard
+          state={attentionState}
+          sessionId={sessionId}
+          onComplete={() => setShowComplete(true)}
+          onEdit={() => setShowEdit(true)}
+          onClosed={onCompleted}
+        />
+      )}
 
       {/* Finish setup (Part A, 2026-10-02): vehicle → tank → pickup fuel. */}
       {setupIncomplete(session) && (

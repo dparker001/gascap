@@ -1,6 +1,7 @@
 'use client';
 
 import { useSession, signOut } from 'next-auth/react';
+import RentalAutoOpenSetting from '@/components/RentalAutoOpenSetting';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -891,6 +892,9 @@ export default function SettingsPage() {
               <option value="fleet">🚚 Business / Fleet</option>
             </select>
           </div>
+
+          {/* Rental auto-open (C1) — device-local, off by default */}
+          <RentalAutoOpenSetting />
 
           {/* Email (read-only) */}
           <div>

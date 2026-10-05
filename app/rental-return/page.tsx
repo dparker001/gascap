@@ -18,7 +18,7 @@ import DeleteRentalButton from '@/components/rental-return/DeleteRentalButton';
 import { trackRentalAssistantOpened, trackRentalSessionCreated } from '@/lib/gtag';
 import { trackClientEvent } from '@/lib/clientAnalytics';
 import type { RentalSession } from '@/lib/rentalSessions';
-import { isUpcomingRental, rentalEventInstant } from '@/lib/rentalCalculations';
+import { groupRentals } from '@/lib/rentalPresentation';
 import { formatEventWallClock } from '@/lib/rentalTimezone';
 import { syncRentalFallbacksFromSessions } from '@/lib/rentalReminderSync';
 
@@ -89,9 +89,11 @@ export default function RentalReturnPage() {
     );
   }
 
-  // UTC instant when present (2026-10-02) — grouping must not depend on the viewer's zone.
-  const rentalsUpcoming   = sessions.filter((s) => isUpcomingRental(rentalEventInstant(s.pickupDateTimeUtc, s.pickupDateTime)));
-  const rentalsInProgress = sessions.filter((s) => !isUpcomingRental(rentalEventInstant(s.pickupDateTimeUtc, s.pickupDateTime)));
+  // Grouping comes from the derived lifecycle (UTC instants, setup state, a
+  // validated schedule) — never from the viewer's zone. 'stale' and rentals
+  // with an untrustworthy schedule get their own "needs attention" group
+  // instead of masquerading as in progress.
+  const { inProgress: rentalsInProgress, upcoming: rentalsUpcoming, attention: rentalsAttention } = groupRentals(sessions);
 
   // Quick-save (Part A, 2026-10-02): second entry point for a rental booked
   // ahead; the full wizard below is unchanged.
@@ -184,6 +186,17 @@ export default function RentalReturnPage() {
           </div>
         )}
 
+        {rentalsAttention.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide px-1">{t.rentalReturn.sectionNeedsAttention}</p>
+            {rentalsAttention.map((s) => (
+              <RentalRow key={s.id} s={s} onOpen={() => router.push(`/rental-return/${s.id}`)}
+                         onDeleted={() => setSessions((prev) => prev.filter((x) => x.id !== s.id))}
+                         hint={t.rentalReturn.needsAttentionHint} accent="amber" />
+            ))}
+          </div>
+        )}
+
         {rentalsUpcoming.length > 0 && (
           <div className="space-y-2">
             <p className="text-xs font-bold text-slate-500 uppercase tracking-wide px-1">{t.rentalReturn.sectionUpcoming}</p>
@@ -218,16 +231,18 @@ function RentalRow({
   onOpen: () => void;
   onDeleted: () => void;
   hint?: string;
-  accent: 'blue' | 'slate';
+  accent: 'blue' | 'slate' | 'amber';
 }) {
   return (
     <div className={`flex items-center gap-2 flex-wrap bg-white rounded-2xl border shadow-sm px-4 py-3 transition-colors ${
-      accent === 'blue' ? 'border-blue-300 hover:border-blue-500' : 'border-slate-200 hover:border-blue-400'
+      accent === 'blue' ? 'border-blue-300 hover:border-blue-500'
+        : accent === 'amber' ? 'border-amber-300 hover:border-amber-500'
+        : 'border-slate-200 hover:border-blue-400'
     }`}>
       <button onClick={onOpen} className="flex-1 min-w-0 text-left">
         <p className="text-sm font-bold text-slate-800">{s.rentalCompany}</p>
         <p className="text-xs text-slate-400">{[s.vehicleYear, s.vehicleMake, s.vehicleModel].filter(Boolean).join(' ')}</p>
-        {hint && <p className={`text-[10px] mt-0.5 font-semibold ${accent === 'blue' ? 'text-blue-600' : 'text-slate-500'}`}>{hint}</p>}
+        {hint && <p className={`text-[10px] mt-0.5 font-semibold ${accent === 'blue' ? 'text-blue-600' : accent === 'amber' ? 'text-amber-700' : 'text-slate-500'}`}>{hint}</p>}
       </button>
       <DeleteRentalButton sessionId={s.id} onDeleted={onDeleted} />
     </div>

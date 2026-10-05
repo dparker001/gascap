@@ -41,7 +41,7 @@ at all is friction we can remove.
 
 ## 3. Part A — Quick-save upcoming rental
 
-**Part A status: IMPLEMENTED on `feat/rental-quick-save`, pending review (not merged).** §3.3's `value → null` row is as built: refused (422) while a gauge/percent reading exists, because the model stores no raw fraction independently of its gallons (Don, 2026-10-02). Part B below remains PLANNED.
+**Part A status: IMPLEMENTED — merged to `main` in PR #59 (`2391e19`, 2026-10-03), production-verified.** §3.3's `value → null` row is as built: refused (422) while a gauge/percent reading exists, because the model stores no raw fraction independently of its gallons (Don, 2026-10-02). Part B below remains PLANNED.
 
 ### 3.1 Flow
 1. **New Rental → "Booked ahead? Save it as upcoming"** (second entry point
