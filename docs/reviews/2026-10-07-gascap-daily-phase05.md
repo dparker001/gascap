@@ -292,6 +292,48 @@ A	scripts/add-fuel-price-snapshot.mjs
 
 ## 11. Known Risks / Remaining Questions
 
+### Open review items (explicit — each needs a reviewer decision or an owner action)
+
+1. **Migration-before-deploy is mandatory.** `scripts/add-fuel-price-snapshot.mjs`
+   must be run against the production database (Railway project
+   **caring-integrity** only) **before** this code is deployed. `addFillup`
+   writes, and `getFillups` reads, the four new `Fillup.baseline*` columns; if
+   the code ships first, fill-up creation and reads will error. A merge to
+   `main` is a deploy. *Not run as part of this review step.*
+2. **Stripe `purchase_completed` test-mode filtering is inconsistent.**
+   RevenueCat's `purchase_completed` is production-only (sandbox excluded
+   upstream); Stripe's is **not** filtered for test mode — only `isTestAccount`
+   excludes owner/test purchases. The new admin baseline therefore can count a
+   Stripe test-mode purchase made by a non-flagged account. Disclosed in the
+   panel's data-quality notes; **not fixed** (payment webhook is a protected
+   path, out of scope).
+3. **Rental Pilot still uses a flat `$3.30/gal` estimated-savings calculation.**
+   `app/api/admin/rental-pilot/route.ts` (`approxSelfCost =
+   estimatedFuelCost(needed, 3.30)`) — a hardcoded price standing in for a real
+   one, the same class of problem fixed for the Savings Dashboard. Admin-only
+   aggregate; **left unchanged**.
+4. **The committed fallback seed is stale (2026-06-23).**
+   `data/gas-prices-seed.json` (national $4.052 vs $4.354 live on 2026-10-07).
+   It is now labelled (`priceSource: 'seed'`, `asOf`, `stale: true`) and only
+   used when no stored EIA observation exists, but it has **not been
+   regenerated** (`scripts/generate-gas-price-seed.mjs`).
+5. **`areaState` is user-asserted and unsuitable for rewards.** It comes from
+   the client (last price lookup in `localStorage`), is unauthenticated, and is
+   not verified against any location. It only selects the coarse EIA area for
+   the user's *own* savings display. It **must not** be used to award points,
+   entries, or any reward in Phase 1 or later.
+6. **Authenticated UI smoke testing is required before production
+   verification.** No component was exercised in a browser during this work
+   (no authenticated session or representative data locally). UI is covered
+   only by typecheck, build and source/behavior assertions. Before relying on
+   this in production someone must, signed in: load the Savings Dashboard
+   (with graded, ungraded and e85 fill-ups), the fill-up history badges, the
+   fill-up logger price card (with/without a grade), log a fill-up and confirm
+   the baseline columns populate, and load the admin Engagement Baseline panel.
+   *Production data and fuel-grade coverage were also not queried.*
+
+### Other known risks
+
 1. **Migration-before-deploy ordering** (§7). The single biggest operational
    risk; Don must run it before merging. A merge to `main` deploys.
 2. **Fuel-grade coverage is unknown.** `Fillup.fuelGrade` is optional. If most
