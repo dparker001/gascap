@@ -59,7 +59,7 @@ const CATEGORIES: Category[] = [
       {
         icon: 'chart',
         title: 'MPG & Spend Charts',
-        body: 'Track MPG over time, total spend, gallons, and price per gallon — with a savings dashboard comparing you to the EIA national average.',
+        body: 'Track MPG over time, total spend, gallons, and price per gallon — with a savings dashboard that compares each fill-up to the EIA national average for the same fuel grade and week.',
       },
       {
         icon: 'car',

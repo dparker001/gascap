@@ -9,11 +9,23 @@
  * price from a seed/in-memory cache that refreshes from EIA in the background.
  * The request never blocks on a live external call, so it responds in ~1ms for
  * GPS-based lookups and ~100-200ms for IP-based fallback.
+ *
+ * Phase 0.5B — every response says where the number came from and how old it is:
+ *   priceSource 'eia_live'     fresh in-memory EIA observation (asOf = EIA survey date)
+ *   priceSource 'eia_snapshot' newest stored FuelPriceSnapshot (asOf = EIA survey date).
+ *                              Used on a cold process instead of the old committed seed.
+ *   priceSource 'seed'         committed seed file (asOf = when the FILE was generated,
+ *                              NOT an EIA survey date). Last resort.
+ *   stale                      asOf is past the freshness threshold.
+ * `asOf` is never the retrieval time.
  */
 
 import { NextResponse } from 'next/server';
 import { usStateFromCoords } from '@/lib/usStateFromCoords';
 import { getStatePrice } from '@/lib/gasPrices';
+import { latestSnapshotForChain } from '@/lib/fuelPriceSnapshots';
+import { duoareaChainForState } from '@/lib/eiaAreas';
+import { isStaleObservation } from '@/lib/eiaFreshness';
 
 const EIA_KEY = process.env.EIA_API_KEY ?? '';
 
@@ -62,7 +74,24 @@ export async function GET(req: Request) {
     locMethod = 'ip';
   }
 
-  const { price, live } = getStatePrice(state);
+  let { price, live, source: priceSource, asOf, stale } = getStatePrice(state) as {
+    price: number; live: boolean; source: 'eia_live' | 'eia_snapshot' | 'seed'; asOf: string; stale: boolean;
+  };
+
+  // Cold process (no fresh in-memory EIA value): prefer the newest stored EIA
+  // observation over the committed seed, which can be months old. Any failure
+  // (table not migrated yet, DB hiccup) falls through to the seed unchanged.
+  if (!live) {
+    try {
+      const snap = await latestSnapshotForChain(duoareaChainForState(state), 'regular');
+      if (snap && !isStaleObservation(snap.observedOn)) {
+        price = snap.price;
+        priceSource = 'eia_snapshot';
+        asOf = snap.observedOn;
+        stale = false;
+      }
+    } catch { /* keep seed/in-memory result */ }
+  }
 
   return NextResponse.json({
     price:      Math.round(price * 1000) / 1000,
@@ -71,6 +100,9 @@ export async function GET(req: Request) {
     isNational: state === 'US',
     source:     'eia',
     live,
+    priceSource,
+    asOf,
+    stale,
     locMethod,
   });
 }

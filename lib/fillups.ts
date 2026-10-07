@@ -5,6 +5,7 @@
 import { randomUUID } from 'crypto';
 import { prisma }     from './prisma';
 import { recordAnalyticsEvent } from './analyticsEvents';
+import { resolveNewFillupBaseline } from './fuelPriceSnapshots';
 
 // Re-exported for server-side callers that import these from lib/fillups —
 // the actual implementation lives in lib/mpgResolver.ts (a pure, client-safe
@@ -37,6 +38,12 @@ export interface Fillup {
   stationLat?:      number;
   stationLng?:      number;
   clientRefuelId?:  string;
+  /** Phase 0.5B — savings baseline frozen at log time. All undefined unless a
+   *  defensible baseline existed; see lib/savingsBaseline.ts. */
+  baselinePrice?:   number;
+  baselineSource?:  string;
+  baselineArea?:    string;
+  baselinePeriod?:  string;
 }
 
 // ── Type adapter ────────────────────────────────────────────────────────────
@@ -54,6 +61,8 @@ export function fromPrisma(r: {
   createdAt: string;
   rentalSessionId?: string | null; fillupType?: string | null; filledAt?: string | null;
   stationLat?: number | null; stationLng?: number | null; clientRefuelId?: string | null;
+  baselinePrice?: number | null; baselineSource?: string | null;
+  baselineArea?: string | null; baselinePeriod?: string | null;
 }): Fillup {
   return {
     id:              r.id,
@@ -78,6 +87,10 @@ export function fromPrisma(r: {
     stationLat:      r.stationLat      ?? undefined,
     stationLng:      r.stationLng      ?? undefined,
     clientRefuelId:  r.clientRefuelId  ?? undefined,
+    baselinePrice:   r.baselinePrice   ?? undefined,
+    baselineSource:  r.baselineSource  ?? undefined,
+    baselineArea:    r.baselineArea    ?? undefined,
+    baselinePeriod:  r.baselinePeriod  ?? undefined,
   };
 }
 
@@ -222,9 +235,27 @@ export async function validateNewFillup(
 /** Add a new fillup record */
 export async function addFillup(
   userId: string,
-  data: Omit<Fillup, 'id' | 'userId' | 'totalCost' | 'createdAt'> & { totalCost?: number },
+  data: Omit<Fillup, 'id' | 'userId' | 'totalCost' | 'createdAt'> & {
+    totalCost?: number;
+    /** Optional 2-letter US state the fill-up happened in, used ONLY to pick
+     *  the coarse EIA area for the savings baseline. Never stored as-is. */
+    areaState?: string;
+  },
 ): Promise<Fillup> {
   const computedCost = Math.round(data.gallonsPumped * data.pricePerGallon * 100) / 100;
+
+  // Phase 0.5B — freeze a defensible savings baseline onto the row when one
+  // exists. Best-effort: any failure (table not migrated, DB hiccup) yields
+  // no baseline; it must never block or fail the fill-up itself.
+  let baseline: Awaited<ReturnType<typeof resolveNewFillupBaseline>> = null;
+  try {
+    baseline = await resolveNewFillupBaseline({
+      grade: data.fuelGrade,
+      date:  data.date,
+      state: data.areaState,
+    });
+  } catch { /* no baseline */ }
+
   const entry = await prisma.fillup.create({
     data: {
       id:              randomUUID(),
@@ -243,6 +274,10 @@ export async function addFillup(
       fuelGrade:       data.fuelGrade        ?? null,
       receiptThumb:    data.receiptThumb     ?? null,
       createdAt:       new Date().toISOString(),
+      baselinePrice:   baseline?.price  ?? null,
+      baselineSource:  baseline?.source ?? null,
+      baselineArea:    baseline?.area   ?? null,
+      baselinePeriod:  baseline?.period ?? null,
     },
   });
   // Growth Sprint 1, P0C-1A — fires only for a genuine new Fillup row (this
@@ -302,9 +337,19 @@ export async function updateFillup(
     patch.totalCost === null    ? Math.round(gallons * price * 100) / 100  // explicit recompute request
     : patch.totalCost !== undefined ? patch.totalCost                      // explicit value — preserved exactly
     : existing.totalCost;                                                  // omitted — leave untouched
+  // Phase 0.5B — the frozen savings baseline is only valid for the date and
+  // grade it was captured for. If either actually changes, drop it; the
+  // savings endpoint then re-matches from price history (or excludes the
+  // fill-up) rather than showing a comparison for a different week/grade.
+  const baselineInvalidated =
+    (patch.date      !== undefined && patch.date      !== existing.date) ||
+    (patch.fuelGrade !== undefined && (patch.fuelGrade ?? null) !== existing.fuelGrade);
   const updated = await prisma.fillup.update({
     where: { id: fillupId },
     data: {
+      ...(baselineInvalidated && {
+        baselinePrice: null, baselineSource: null, baselineArea: null, baselinePeriod: null,
+      }),
       ...(patch.date            !== undefined && { date:            patch.date }),
       ...(patch.gallonsPumped   !== undefined && { gallonsPumped:   patch.gallonsPumped }),
       ...(patch.pricePerGallon  !== undefined && { pricePerGallon:  patch.pricePerGallon }),

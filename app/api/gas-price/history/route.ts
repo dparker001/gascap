@@ -31,7 +31,9 @@ export async function GET(req: Request) {
   url.searchParams.set('frequency', 'weekly');
   url.searchParams.append('data[0]', 'value');
   url.searchParams.append('facets[duoarea][]', 'NUS');   // National US
-  url.searchParams.append('facets[product][]', 'EPM0'); // Regular gasoline
+  // EPMR = Regular Gasoline. (This was EPM0 — "Total Gasoline", all grades
+  // blended — under a "Regular" label until Phase 0.5B; see lib/eiaAreas.ts.)
+  url.searchParams.append('facets[product][]', 'EPMR');
   url.searchParams.append('sort[0][column]', 'period');
   url.searchParams.append('sort[0][direction]', 'desc');
   url.searchParams.set('length', String(weeks));

@@ -17,8 +17,15 @@ interface HistoryResponse {
   };
 }
 
-interface NationalAvgResponse {
-  price: number | null;
+/** Per-fill-up comparison from /api/fillups/savings (lib/savingsBaseline.ts). */
+interface FillupComparison {
+  id:             string;
+  status:         string;
+  baselinePrice?: number;
+  paidPerGallon?: number;
+}
+interface SavingsResponse {
+  summary: { perFillup: FillupComparison[] };
 }
 
 interface FillupHistoryProps {
@@ -139,7 +146,9 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
   const { t, locale } = useTranslation();
   const MONTH_NAMES = t.fillupHistory.monthNames;
   const [data,        setData]       = useState<HistoryResponse | null>(null);
-  const [nationalAvg, setNationalAvg] = useState<number | null>(null);
+  // Per-fill-up baseline: the EIA price for THAT fill-up's grade and week.
+  // A row with no reliable baseline simply shows no badge (never today's price).
+  const [baselines, setBaselines] = useState<Record<string, { baseline: number; paid: number }>>({});
   const [loading,    setLoading]   = useState(false);
   const [open,       setOpen]      = useState(false);
   const [editingId,       setEditingId]       = useState<string | null>(null);
@@ -213,14 +222,20 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [fillupRes, avgRes] = await Promise.all([
+      const [fillupRes, savingsRes] = await Promise.all([
         fetch('/api/fillups'),
-        fetch('/api/gas-price/national').catch(() => null),
+        fetch('/api/fillups/savings').catch(() => null),
       ]);
       if (fillupRes.ok) setData(await fillupRes.json() as HistoryResponse);
-      if (avgRes?.ok) {
-        const avgData = await avgRes.json() as NationalAvgResponse;
-        if (avgData.price !== null) setNationalAvg(avgData.price);
+      if (savingsRes?.ok) {
+        const sv = await savingsRes.json() as SavingsResponse;
+        const next: Record<string, { baseline: number; paid: number }> = {};
+        for (const r of sv.summary.perFillup) {
+          if (r.status === 'compared' && r.baselinePrice != null && r.paidPerGallon != null) {
+            next[r.id] = { baseline: r.baselinePrice, paid: r.paidPerGallon };
+          }
+        }
+        setBaselines(next);
       }
     } finally {
       setLoading(false);
@@ -1019,8 +1034,8 @@ export default function FillupHistory({ refreshKey }: FillupHistoryProps) {
                                   {f.odometerReading != null && ` · ${f.odometerReading.toLocaleString()} mi`}
                                 </p>
                                 {/* Price vs. national avg badge */}
-                                {nationalAvg !== null && (() => {
-                                  const delta = nationalAvg - f.pricePerGallon;
+                                {baselines[f.id] && (() => {
+                                  const delta = baselines[f.id].baseline - baselines[f.id].paid;
                                   if (Math.abs(delta) < 0.005) return null;
                                   const saved = delta > 0;
                                   return (

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import AdminAnalytics from '@/components/AdminAnalytics';
 import RentalPilotMetrics from '@/components/admin/RentalPilotMetrics';
+import EngagementBaselinePanel from '@/components/admin/EngagementBaselinePanel';
 import { hasLifetimeEntitlement } from '@/lib/entitlements';
 
 interface EmailLogEntry {
@@ -896,6 +897,9 @@ export default function AdminPage() {
 
         {/* Analytics — usage charts (custom SVG, computed from loaded users) */}
         <AdminAnalytics users={users} />
+
+        {/* Engagement & conversion baseline (Phase 0.5A) */}
+        <EngagementBaselinePanel savedPw={savedPw} />
 
         {/* Rental Return Assistant pilot metrics */}
         <RentalPilotMetrics savedPw={savedPw} />

@@ -408,6 +408,21 @@ model Fillup {
   /// AnalyticsEvent.idempotencyKey), so this never collides across unrelated
   /// fillups.
   clientRefuelId  String?
+  /// Phase 0.5B (2026-10-07) — the price a savings comparison for THIS fill-up
+  /// was measured against, frozen at log time so the figure shown later is the
+  /// figure that was valid then. All four are null unless a defensible
+  /// baseline existed: the fill-up had a priceable grade (regular/midgrade/
+  /// premium/diesel — never assumed) AND an EIA observation within
+  /// lib/savingsBaseline.ts MAX_BASELINE_AGE_DAYS before the fill date.
+  /// baselineArea is the coarse EIA area actually used ('NUS' national, a
+  /// PADD region like 'R1Z', or a state series like 'SFL') — never a
+  /// coordinate, address or zip. baselinePeriod is the EIA survey date of the
+  /// price (its real observation date), not when we looked it up. Cleared by
+  /// updateFillup when date or grade is edited. See scripts/add-fuel-price-snapshot.mjs.
+  baselinePrice   Float?
+  baselineSource  String?
+  baselineArea    String?
+  baselinePeriod  String?
 
   @@index([userId])
   @@index([userId, date])
@@ -1044,4 +1059,33 @@ model CampaignCommunication {
   @@unique([campaignId, userId, kind])
   @@index([campaignId, kind, state])
   @@index([userId])
+}
+
+/// Phase 0.5B (2026-10-07) — append-only history of EIA weekly retail fuel
+/// prices. Until this table existed GasCap kept NO price history at all, so
+/// "change vs last week", a 30-day normal, and time-matched savings
+/// baselines were impossible. Populated by /api/cron/fuel-price-snapshot
+/// (daily, idempotent) and backfilled from EIA's own history.
+///
+/// `observedOn` is EIA's survey date (a Monday) — the price's true
+/// observation date. `fetchedAt` is when WE stored it; never present it as
+/// the price date. First-seen value wins (createMany skipDuplicates): EIA
+/// does not routinely revise published weekly prices, and a price once shown
+/// to a user must not silently change under them.
+model FuelPriceSnapshot {
+  id         String   @id @default(cuid())
+  /// Provider/series identity, 'eia_weekly'. Room for other sources later.
+  source     String
+  /// EIA area code: 'NUS', a PADD sub-region ('R1Z'), or a state ('SFL').
+  duoarea    String
+  /// EIA product code: EPMR | EPMM | EPMP | EPD2D (see lib/eiaAreas.ts).
+  product    String
+  /// GasCap grade: regular | midgrade | premium | diesel.
+  grade      String
+  observedOn String   // YYYY-MM-DD, EIA survey date
+  price      Float    // $/gal
+  fetchedAt  DateTime @default(now())
+
+  @@unique([source, duoarea, product, observedOn])
+  @@index([duoarea, grade, observedOn])
 }

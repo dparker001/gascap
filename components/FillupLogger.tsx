@@ -76,6 +76,20 @@ async function compressImage(file: File): Promise<string> {
   });
 }
 
+/**
+ * Two-letter US state from the last gas-price lookup GasPriceLookup remembered
+ * in localStorage (no new geolocation prompt, no network call). Used only to
+ * choose the coarse EIA area for the savings baseline; undefined falls back to
+ * the national baseline. Never sent as coordinates.
+ */
+function lastKnownState(): string | undefined {
+  try {
+    const raw = localStorage.getItem('gc_last_gas_price');
+    const st = raw ? (JSON.parse(raw) as { state?: string }).state : undefined;
+    return st && /^[A-Z]{2}$/.test(st) ? st : undefined;
+  } catch { return undefined; }
+}
+
 export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] }: FillupLoggerProps) {
   const { data: session } = useSession();
   const { t } = useTranslation();
@@ -117,16 +131,25 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
   const [forceConfirm, setForceConfirm] = useState(false);
   const [scanning,     setScanning]     = useState(false);
   const [scanError,    setScanError]    = useState('');
-  const [nationalAvg,  setNationalAvg]  = useState<number | null>(null);
+  // Grade-matched EIA national average for the price-intelligence card. Null
+  // until a priceable grade is chosen — never a different grade's average.
+  const [nationalAvg,  setNationalAvg]  = useState<{ price: number; period: string } | null>(null);
 
 
-  // Fetch national average once for inline price intelligence card
+  // Fetch the national average FOR THE SELECTED FUEL GRADE for the inline price
+  // intelligence card. No grade (or e85, which EIA has no retail series for) ->
+  // no card: comparing an unknown/other grade against the regular average is the
+  // grade-mixing the Phase 0.5B savings fix removed.
   useEffect(() => {
-    fetch('/api/gas-price/national')
-      .then((r) => r.ok ? r.json() as Promise<{ price: number | null }> : Promise.reject())
-      .then((d) => { if (d.price !== null) setNationalAvg(d.price); })
+    setNationalAvg(null);
+    if (!['regular', 'midgrade', 'premium', 'diesel'].includes(fuelGrade)) return;
+    let cancelled = false;
+    fetch(`/api/gas-price/national?grade=${fuelGrade}`)
+      .then((r) => r.ok ? r.json() as Promise<{ price: number | null; period?: string }> : Promise.reject())
+      .then((d) => { if (!cancelled && d.price !== null && d.period) setNationalAvg({ price: d.price, period: d.period }); })
       .catch(() => {});
-  }, []);
+    return () => { cancelled = true; };
+  }, [fuelGrade]);
 
   // Fetch live plan from server — session JWT can be stale after an upgrade
   const [livePlan, setLivePlan] = useState<string | null>(null);
@@ -348,6 +371,7 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
           driverLabel:     driverLabel.trim() || undefined,
           fuelGrade:       fuelGrade || undefined,
           receiptThumb:    receiptThumb || undefined,
+          areaState:       lastKnownState(),
           force,
         }),
       });
@@ -705,10 +729,10 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
       {nationalAvg !== null && (() => {
         const entered = parseFloat(price);
         if (!entered || entered <= 0) return null;
-        const delta = nationalAvg - entered;
+        const delta = nationalAvg.price - entered;
         if (Math.abs(delta) < 0.005) return (
           <p className="text-[10px] text-slate-400 text-center -mt-1">
-            {t.fillup.atNationalAvg(nationalAvg.toFixed(3))}
+            {t.fillup.atNationalAvg(nationalAvg.price.toFixed(3))}
           </p>
         );
         const saved = delta > 0;
@@ -728,7 +752,7 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
                   : t.fillup.aboveNationalAvg(Math.abs(delta).toFixed(3))}
               </p>
               <p className="text-[9px] text-slate-400 mt-0.5">
-                {t.fillup.nationalAvgNote(nationalAvg.toFixed(3))}
+                {t.fillup.nationalAvgNote(nationalAvg.price.toFixed(3), new Date(nationalAvg.period + 'T12:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' }))}
               </p>
             </div>
           </div>
