@@ -78,7 +78,7 @@ export default function EngagementBaselinePanel({ savedPw }: { savedPw: string }
       {/* Population + activity */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         <Stat label="Signups" value={String(p.signups)} />
-        <Stat label="Trials ever" value={String(p.trialsEver)} sub={`event ${p.trialDefinition.byEvent} · columns ${p.trialDefinition.byTrialColumns}`} />
+        <Stat label="Trials ever" value={String(p.trialsEver)} sub={`started ${p.trialDefinition.byTrialStarted} · expired ${p.trialDefinition.byTrialExpired} · columns ${p.trialDefinition.byTrialColumns}`} />
         <Stat label="Active trials now" value={String(p.activeTrialNow)} />
         <Stat label="Paid now" value={String(p.paidNow)} />
         <Stat label="DAU today" value={String(r.activity.dauToday)} sub={`yesterday ${r.activity.dauYesterday}`} />

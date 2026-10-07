@@ -84,7 +84,7 @@ describe('population & entitlement', () => {
     const r2 = computeBaseline(base({
       events: { trial_started: { users: ['A', 'E', 'nobody'], total: 3, firstAt: '2026-08-20T00:00:00.000Z' } },
     }));
-    expect(r2.population.trialDefinition).toEqual({ byEvent: 2, byTrialColumns: 2, union: 4 }); // A,E + B,D
+    expect(r2.population.trialDefinition).toEqual({ byTrialStarted: 2, byTrialExpired: 0, byTrialColumns: 2, union: 4 }); // A,E + B,D
     expect(r2.population.trialsEver).toBe(4);
   });
 });
@@ -252,6 +252,99 @@ describe('conversion terminology (PR #65 review correction)', () => {
     expect(src).toMatch(/not lifetime conversion/);
     expect(src).toMatch(/directional, not definitive/);
     expect(src).toMatch(/not test-mode filtered/);
+  });
+});
+
+describe('historical trial population (follow-up to PR #65: trial_expired was ignored)', () => {
+  // Fixture users, none currently on a trial unless stated.
+  const startedOnly = user('S', '2026-08-01T00:00:00.000Z', ['2026-08-01']);
+  const expiredOnly = user('X', '2026-08-02T00:00:00.000Z', ['2026-08-02']);          // trial long over; columns cleared
+  const columnOnly  = user('C', '2026-08-03T00:00:00.000Z', ['2026-08-03'], { isProTrial: true, trialExpiresAt: '2026-11-01T00:00:00.000Z' });
+  const allThree    = user('T', '2026-08-04T00:00:00.000Z', ['2026-08-04'], { isProTrial: true, trialExpiresAt: '2026-11-01T00:00:00.000Z' });
+  const neverTrial  = user('N', '2026-08-05T00:00:00.000Z', ['2026-08-05']);
+  const evts = (over = {}) => ({
+    trial_started: { users: ['S', 'T'], total: 2, firstAt: '2026-08-01T00:00:00.000Z' },
+    trial_expired: { users: ['X', 'T'], total: 2, firstAt: '2026-08-31T00:00:00.000Z' },
+    ...over,
+  });
+  const run = (over: Partial<BaselineInput> = {}) => computeBaseline(base({
+    users: [startedOnly, expiredOnly, columnOnly, allThree, neverTrial], events: evts(), fillups: {}, ...over,
+  }));
+
+  it('counts a trial_expired-only user (the user the old definition dropped)', () => {
+    const r = run({ events: { trial_expired: { users: ['X'], total: 1, firstAt: null } } });
+    expect(r.population.trialsEver).toBe(3);                 // X + C + T (columns) ; S has no evidence here
+    expect(r.population.trialDefinition.byTrialExpired).toBe(1);
+  });
+  it('counts a trial_started-only user', () => {
+    const r = run({ events: { trial_started: { users: ['S'], total: 1, firstAt: null } } });
+    expect(r.population.trialDefinition.byTrialStarted).toBe(1);
+    expect(r.population.trialsEver).toBe(3);                 // S + C + T
+  });
+  it('counts a trial-column-only user', () => {
+    const r = run({ events: {} });
+    expect(r.population.trialDefinition).toEqual({ byTrialStarted: 0, byTrialExpired: 0, byTrialColumns: 2, union: 2 }); // C, T
+  });
+  it('a user present in all three sources is counted once', () => {
+    const r = run();
+    expect(r.population.trialDefinition).toEqual({ byTrialStarted: 2, byTrialExpired: 2, byTrialColumns: 2, union: 4 }); // S, X, C, T — T once
+    expect(r.population.trialsEver).toBe(4);
+    expect(r.population.trialsEver).not.toBe(2 + 2 + 2);     // not a sum of sources
+  });
+  it('never-trial users are not counted', () => {
+    expect(run().population.trialsEver).toBe(4);             // N excluded
+  });
+  it('duplicate trial_expired ROWS for one user do not inflate the population (distinct users, not rows)', () => {
+    const r = run({ events: { trial_expired: { users: ['X'], total: 9, firstAt: null } } }); // 9 rows, 1 user
+    expect(r.population.trialDefinition.byTrialExpired).toBe(1);
+    expect(r.population.trialsEver).toBe(3);                 // X + C + T — not 9
+    expect(r.conversion.trialExpiredEvents).toBe(9);         // the raw row count is still reported, separately
+  });
+  it('the same user listed twice in an event aggregate is still one user', () => {
+    const r = run({ events: { trial_expired: { users: ['X', 'X', 'X'], total: 3, firstAt: null } } });
+    expect(r.population.trialDefinition.byTrialExpired).toBe(1);
+  });
+  it('test/admin accounts (absent from the population by the loader) and deleted users are excluded', () => {
+    const r = run({ events: { trial_expired: { users: ['X', 'test-account-id', 'admin-id', 'deleted-user'], total: 4, firstAt: null } } });
+    expect(r.population.trialDefinition.byTrialExpired).toBe(1);   // only X is a current real user
+    expect(r.population.trialsEver).toBe(3);
+  });
+  it('the real-world shape: many more expired-trial users than started-event users', () => {
+    const ids = Array.from({ length: 120 }, (_, i) => `e${i}`);
+    const many = ids.map((id) => user(id, '2026-08-10T00:00:00.000Z', ['2026-08-10']));
+    const r = computeBaseline(base({
+      users: [...many, startedOnly], fillups: {}, savedStationUserIds: [], vehicleUserIds: [],
+      events: { trial_started: { users: ['S'], total: 1, firstAt: null }, trial_expired: { users: ids, total: 122, firstAt: null } },
+    }));
+    expect(r.population.trialsEver).toBe(121);               // 120 expired + 1 started — not 1
+  });
+
+  it('converted-then-cancelled: stays in the historical trial population and purchase-event metric, not in "currently paid"', () => {
+    const H = user('H', '2026-08-10T00:00:00.000Z', ['2026-08-10']);  // no entitlement now
+    const r = computeBaseline(base({
+      users: [H], fillups: {}, savedStationUserIds: [], vehicleUserIds: [],
+      events: {
+        trial_expired:      { users: ['H'], total: 1, firstAt: null },
+        purchase_completed: { users: ['H'], total: 1, firstAt: null },
+      },
+      purchases: [{ userId: 'H', at: '2026-08-12T00:00:00.000Z', provider: 'stripe', billing: 'monthly' }],
+    }));
+    expect(r.population.trialsEver).toBe(1);
+    expect(r.conversion.trialToPurchaseEvent).toMatchObject({ trials: 1, users: 1, rate: 100 });
+    expect(r.conversion.trialsCurrentlyPaid).toEqual({ trials: 1, paidNow: 0, rate: 0 });
+  });
+
+  it('definitions describe the three-source union and the distinct-user rule', () => {
+    const text = run().definitions.join(' ');
+    expect(text).toMatch(/trial_started/);
+    expect(text).toMatch(/trial_expired/);
+    expect(text).toMatch(/distinct/i);
+  });
+  it('admin panel shows how the population was derived (started / expired / columns)', () => {
+    const src = readFileSync(path.join(__dirname, '..', 'components/admin/EngagementBaselinePanel.tsx'), 'utf8');
+    expect(src).toMatch(/byTrialStarted/);
+    expect(src).toMatch(/byTrialExpired/);
+    expect(src).toMatch(/byTrialColumns/);
   });
 });
 

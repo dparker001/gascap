@@ -10,6 +10,8 @@ interface GasPriceLookupResult {
   state:      string;
   isState?:   boolean;
   isNational?:boolean;
+  /** Which EIA series supplied the price — may be less specific than `state`. Absent on old/seed responses. */
+  priceScope?: 'state' | 'region' | 'national' | null;
   approximate?: boolean;   // true = EIA outage fallback estimate (not live data)
   noApiKey?:  boolean;
   error?:     string;
@@ -62,12 +64,12 @@ export default function GasPriceLookup({ onApply, autoFill = false, currentValue
   const [showGate, setShowGate] = useState(false);
   const [coords, setCoords]   = useState<{ lat: number; lng: number } | null>(null);
   // When set, the price was applied automatically — show a compact note, not the card.
-  const [autoApplied, setAutoApplied] = useState<{ price: number; state: string } | null>(null);
+  const [autoApplied, setAutoApplied] = useState<{ price: number; state: string; scope?: GasPriceLookupResult['priceScope'] } | null>(null);
   const autoRan = useRef(false);
 
   /** Persist the last detected price so the next visit can pre-fill instantly. */
-  function remember(price: number, state: string) {
-    try { localStorage.setItem(LAST_PRICE_KEY, JSON.stringify({ price, state, at: Date.now() })); } catch { /* ignore */ }
+  function remember(price: number, state: string, scope?: GasPriceLookupResult['priceScope']) {
+    try { localStorage.setItem(LAST_PRICE_KEY, JSON.stringify({ price, state, scope: scope ?? null, at: Date.now() })); } catch { /* ignore */ }
   }
 
   async function handleLookup(auto = false) {
@@ -110,14 +112,14 @@ export default function GasPriceLookup({ onApply, autoFill = false, currentValue
       if (auto) {
         if (data.price && !currentValue) {
           onApply(data.price.toFixed(2), coords?.lat, coords?.lng);
-          setAutoApplied({ price: data.price, state: data.state });
-          remember(data.price, data.state);
+          setAutoApplied({ price: data.price, state: data.state, scope: data.priceScope });
+          remember(data.price, data.state, data.priceScope);
         }
         setStatus('idle');
       } else {
         setResult(data);
         setStatus('done');
-        if (data.price) remember(data.price, data.state);
+        if (data.price) remember(data.price, data.state, data.priceScope);
       }
     } catch {
       if (!auto) { setStatus('error'); setErrMsg(t.gasPrice.errorNetwork); }
@@ -135,10 +137,10 @@ export default function GasPriceLookup({ onApply, autoFill = false, currentValue
     try {
       const raw = localStorage.getItem(LAST_PRICE_KEY);
       if (raw) {
-        const last = JSON.parse(raw) as { price: number; state: string; at: number };
+        const last = JSON.parse(raw) as { price: number; state: string; scope?: GasPriceLookupResult['priceScope']; at: number };
         if (last?.price && Date.now() - last.at < MAX_AGE_MS) {
           onApply(last.price.toFixed(2));
-          setAutoApplied({ price: last.price, state: last.state });
+          setAutoApplied({ price: last.price, state: last.state, scope: last.scope });
         }
       }
     } catch { /* ignore */ }
@@ -156,12 +158,17 @@ export default function GasPriceLookup({ onApply, autoFill = false, currentValue
       onApply(result.price.toFixed(2), coords?.lat, coords?.lng);
       setStatus('idle');
       setResult(null);
-      setAutoApplied({ price: result.price, state: result.state });
+      setAutoApplied({ price: result.price, state: result.state, scope: result.priceScope });
     }
   }
 
   const stateName = result?.state ? (STATE_NAMES[result.state] ?? result.state) : '';
-  const autoStateName = autoApplied ? (STATE_NAMES[autoApplied.state] ?? autoApplied.state) : '';
+  // Name the area the price ACTUALLY came from. A state lookup answered from
+  // regional/national data must not be presented as "<State> avg".
+  const autoStateName = !autoApplied ? ''
+    : autoApplied.scope === 'region'   ? 'Regional'
+    : autoApplied.scope === 'national' ? 'National'
+    : (STATE_NAMES[autoApplied.state] ?? autoApplied.state);
 
   return (
     <div>
@@ -280,6 +287,7 @@ export default function GasPriceLookup({ onApply, autoFill = false, currentValue
                   <p className={`text-xs font-bold ${result.approximate ? 'text-amber-800' : 'text-emerald-800'}`}>
                     {result.approximate
                       ? t.gasPrice.estimateTitle
+                      : result.priceScope === 'region' ? t.gasPrice.regionalAvg
                       : result.isState ? t.gasPrice.stateAvg(stateName) : t.gasPrice.nationalAvg}
                   </p>
                   <p className={`text-lg font-black ${result.approximate ? 'text-amber-700' : 'text-emerald-700'}`}>

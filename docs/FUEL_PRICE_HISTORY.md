@@ -111,6 +111,42 @@ Server endpoint: `GET /api/fillups/savings` (own data only). Consumers:
 compares only against the **selected grade's** current EIA average, with the
 EIA week shown.
 
+## Price provenance (follow-up to PR #65)
+
+A state price request is answered from the first EIA series that responds,
+walking **state → PADD region → national**. That fallback is legitimate, but the
+result must always say which series actually supplied the number.
+
+Production bug (2026-10-07): a Florida request returned the **national** Regular
+price ($4.354) labelled `eia_live`; Florida's own series (`SFL`) was $3.97. The
+lookup returned only `{price, period}`, so when the finer requests timed out the
+national value was cached under the Florida key for 6 hours.
+
+Now:
+
+- `resolveStateLive()` returns `{price, period, area, scope}`; the cache keeps
+  `area`/`scope` and `getStatePrice()` returns them. Seed results carry
+  `area: null, scope: null` (the seed's per-state provenance was never recorded).
+- A cached result from a **less specific** area than the state's best series is
+  a stopgap: it is cached for **10 minutes**, then the specific series is
+  retried. A result from the best series keeps the 6 h TTL. (A state with no
+  series of its own, e.g. Georgia, treats its region as its best.)
+- The per-request EIA timeout is 20 s (was 7 s) — it runs in a background
+  refresh, and EIA latency was measured from 0.5 s to >30 s. One refresh per
+  state is in flight at a time.
+- `GET /api/gas-price` adds `priceArea` (`SFL`/`R1Z`/`NUS`), `priceScope`
+  (`state|region|national`), `priceFallback` (true when less specific than the
+  state's best series; null when unknown), alongside `priceSource`
+  (`eia_live|eia_snapshot|seed`), `asOf`, `stale`.
+- **`isState`/`isNational` now describe the price, not the request** whenever
+  provenance is known. A Florida request answered with national data reports
+  `isState:false, isNational:true`. For the seed (no provenance) they keep the
+  old request-based meaning. All other fields are unchanged.
+- `GasPriceLookup` (the only UI consumer) labels by scope — state / "Regional
+  weekly avg" / national — instead of always printing "<State> avg".
+- `FuelPriceSnapshot` is unaffected: it already stores the real `duoarea` per
+  row, and `latestSnapshotForChain` returns the area it used.
+
 ## Price routes
 
 - `GET /api/gas-price` (state price): adds `priceSource`
