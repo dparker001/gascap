@@ -84,7 +84,7 @@ export default function EngagementBaselinePanel({ savedPw }: { savedPw: string }
         <Stat label="DAU today" value={String(r.activity.dauToday)} sub={`yesterday ${r.activity.dauYesterday}`} />
         <Stat label="WAU (7d)" value={String(r.activity.wau7d)} />
         <Stat label="MAU (30d)" value={String(r.activity.mau30d)} />
-        <Stat label="Trial → paid" value={fmt(c.trialToPaid.rate, '%')} sub={`${c.trialToPaid.paidNow} of ${c.trialToPaid.trials}`} />
+        <Stat label="Trials currently paid" value={fmt(c.trialsCurrentlyPaid.rate, '%')} sub={`${c.trialsCurrentlyPaid.paidNow} of ${c.trialsCurrentlyPaid.trials} · paid entitlement now, not lifetime conversion`} />
       </div>
 
       {/* Retention */}
@@ -167,10 +167,16 @@ export default function EngagementBaselinePanel({ savedPw }: { savedPw: string }
         <div className="bg-slate-50 rounded-xl p-3 space-y-1">
           <p className="font-black text-slate-700">Conversion</p>
           <p>Purchase events: <b>{c.purchaseEventUsers}</b> users (since {c.trialToPurchaseEvent.eventsBeganAt?.slice(0, 10) ?? 'no data'})</p>
-          <p>Trial → purchase event: <b>{fmt(c.trialToPurchaseEvent.rate, '%')}</b> ({c.trialToPurchaseEvent.users}/{c.trialToPurchaseEvent.trials})</p>
+          <p>Trial → purchase event: <b>{fmt(c.trialToPurchaseEvent.rate, '%')}</b> ({c.trialToPurchaseEvent.users}/{c.trialToPurchaseEvent.trials}) <span className="text-amber-600 font-bold">directional</span></p>
           <p>Trials expired (events): <b>{c.trialExpiredEvents}</b></p>
           <p>Median days signup → first purchase: <b>{fmt(c.medianDaysSignupToFirstPurchase)}</b></p>
           {Object.entries(c.purchasesByProviderBilling).map(([k, n]) => <p key={k} className="text-slate-500">{k}: {n}</p>)}
+          <p className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1.5 mt-1">
+            Treat purchase-event conversion as directional, not definitive: RevenueCat purchase events are
+            production-only, Stripe purchase events are not test-mode filtered, and test accounts are excluded.
+            “Trials currently paid” counts only users who hold a paid entitlement now — someone who converted
+            and later cancelled is not counted.
+          </p>
         </div>
         <div className="bg-slate-50 rounded-xl p-3 space-y-1">
           <p className="font-black text-slate-700">Cancellation (where recorded)</p>

@@ -11,7 +11,7 @@ to users). Stopped at READY FOR REVIEW. **Not merged. Not pushed. Migration not 
 Don approved a reduced scope for GasCap Daily and asked for **Phase 0.5 only**:
 
 - **0.5A — Measurement baseline:** an admin view of current retention, DAU/WAU,
-  fuel actions, paywall exposure, upgrade clicks, trial→paid and cancellations,
+  fuel actions, paywall exposure, upgrade clicks, trials-currently-paid / trial→purchase-event and cancellations,
   built from existing data, so GasCap Daily can later be judged against a real
   baseline.
 - **0.5B — Fuel intelligence data foundation:** `FuelPriceSnapshot`, verified
@@ -76,7 +76,7 @@ Verified against the repository and live EIA (read-only) on 2026-10-07:
 
 | File | Purpose | Before → After |
 |---|---|---|
-| `lib/engagementBaseline.ts` | Pure computation; all definitions encoded | none → D1/3/7/14/30 retention (matured cohorts only), DAU/WAU/MAU, funnel, fuel actions, paywall, trial→paid, cancellations, plus its own `definitions` + `dataQuality` caveats |
+| `lib/engagementBaseline.ts` | Pure computation; all definitions encoded | none → D1/3/7/14/30 retention (matured cohorts only), DAU/WAU/MAU, funnel, fuel actions, paywall, trials currently paid (current entitlement, not historical conversion), trial→purchase event (directional), cancellations, plus its own `definitions` + `dataQuality` caveats |
 | `lib/engagementBaselineLoader.ts` | SELECT/groupBy only | excludes `isTestAccount` and `role=admin`; selects no PII columns |
 | `app/api/admin/engagement-baseline/route.ts` | Admin GET | `requireAdmin` (session role from DB, legacy header deprecated), 401/403/503, `no-store`, aggregate-only response |
 | `components/admin/EngagementBaselinePanel.tsx` + `app/admin/page.tsx` | UI | panel mounted next to Rental Pilot |

@@ -3,7 +3,8 @@
  *
  * Phase 0.5A — the measurement baseline GasCap Daily will be judged against:
  * retention (D1/D3/D7/D14/D30), DAU/WAU, fuel actions, paywall exposure,
- * upgrade clicks, trial -> paid, cancellations where recorded. READ-ONLY and
+ * upgrade clicks, trials currently paid (current entitlement — NOT historical
+ * conversion), trial -> purchase event (directional), cancellations where recorded. READ-ONLY and
  * built entirely from existing data (see lib/engagementBaseline.ts for exact
  * definitions). Admin only: session role 'admin' (read from the DB) or the
  * deprecated x-admin-password header — fails closed (503 if unconfigured).

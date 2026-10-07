@@ -3,6 +3,8 @@
  * hand from the fixtures below (not copied from the implementation's output).
  */
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'fs';
+import path from 'path';
 import {
   computeBaseline, dayNum, etDate, hasPaidEntitlement, median, rate, userDay0,
   type BaselineInput, type BaselineUser,
@@ -186,8 +188,8 @@ describe('conversion, paywall, cancellation', () => {
     revenueCat: { CANCELLATION: 2, EXPIRATION: 1, REFUND: 0 },
   }));
 
-  it('trial -> paid uses the trial population and current paid entitlement', () => {
-    expect(r.conversion.trialToPaid).toEqual({ trials: 4, paidNow: 1, rate: 25 }); // event users A,B,D,E ∪ trial columns B,D = {A,B,D,E}
+  it('trials currently paid = trial population holding a paid entitlement NOW (current status, not historical conversion)', () => {
+    expect(r.conversion.trialsCurrentlyPaid).toEqual({ trials: 4, paidNow: 1, rate: 25 }); // event users A,B,D,E ∪ trial columns B,D = {A,B,D,E}
   });
   it('purchase events: only in-population users, split by provider:billing, median days to pay', () => {
     expect(r.conversion.purchaseEventUsers).toBe(1);
@@ -203,6 +205,53 @@ describe('conversion, paywall, cancellation', () => {
   it('cancellation: RevenueCat counts reported, Stripe explicitly not recorded', () => {
     expect(r.cancellation.revenueCat).toEqual({ CANCELLATION: 2, EXPIRATION: 1, REFUND: 0 });
     expect(r.cancellation.stripe).toBeNull();
+  });
+});
+
+describe('conversion terminology (PR #65 review correction)', () => {
+  // H: started a trial, bought, later cancelled -> no paid entitlement NOW.
+  const H = user('H', '2026-08-10T00:00:00.000Z', ['2026-08-10']);
+  const r = computeBaseline(base({
+    users: [A, H],
+    events: {
+      trial_started:      { users: ['A', 'H'], total: 2, firstAt: '2026-08-01T00:00:00.000Z' },
+      purchase_completed: { users: ['A', 'H'], total: 2, firstAt: '2026-08-12T00:00:00.000Z' },
+    },
+    purchases: [
+      { userId: 'A', at: '2026-09-05T00:00:00.000Z', provider: 'stripe', billing: 'monthly' },
+      { userId: 'H', at: '2026-08-12T00:00:00.000Z', provider: 'stripe', billing: 'monthly' },
+    ],
+  }));
+
+  it('a user who converted then cancelled is NOT in "trials currently paid" but IS in the purchase-event metric', () => {
+    expect(r.conversion.trialsCurrentlyPaid).toEqual({ trials: 2, paidNow: 1, rate: 50 });
+    expect(r.conversion.trialToPurchaseEvent).toMatchObject({ trials: 2, users: 2, rate: 100 });
+  });
+
+  it('the report no longer exposes a field named as historical trial->paid conversion', () => {
+    expect(r.conversion).not.toHaveProperty('trialToPaid');
+    expect(r.conversion).toHaveProperty('trialsCurrentlyPaid');
+    expect(r.conversion).toHaveProperty('trialToPurchaseEvent');
+  });
+
+  it('definitions state the current-status semantics and that purchase-event conversion is directional', () => {
+    const text = [...r.definitions, ...r.dataQuality].join(' ');
+    expect(text).toMatch(/Trials currently paid .*NOW/);
+    expect(text).toMatch(/converted and later cancelled is NOT counted/);
+    expect(text).toMatch(/not historical or lifetime/);
+    expect(text).toMatch(/directional, not definitive/);
+    expect(text).toMatch(/RevenueCat purchase_completed is production-only/);
+    expect(text).toMatch(/Stripe purchase_completed is NOT filtered for test mode/);
+    expect(text).toMatch(/Test accounts are excluded/);
+  });
+
+  it('admin panel labels the metric as current status and flags the purchase-event metric as directional', () => {
+    const src = readFileSync(path.join(__dirname, '..', 'components/admin/EngagementBaselinePanel.tsx'), 'utf8');
+    expect(src).not.toMatch(/label="Trial → paid"/);
+    expect(src).toMatch(/label="Trials currently paid"/);
+    expect(src).toMatch(/not lifetime conversion/);
+    expect(src).toMatch(/directional, not definitive/);
+    expect(src).toMatch(/not test-mode filtered/);
   });
 });
 

@@ -2,7 +2,8 @@
  * Engagement & conversion BASELINE (Phase 0.5A) — pure computation.
  *
  * Purpose: establish where GasCap stands TODAY — retention, DAU/WAU, fuel
- * actions, paywall exposure, trial -> paid — from data that already exists,
+ * actions, paywall exposure, trials currently paid / trial -> purchase event —
+ * from data that already exists,
  * so GasCap Daily can later be judged against a real baseline instead of a
  * guess. This module only reads the shapes handed to it; the route
  * (app/api/admin/engagement-baseline) loads them. No writes, no new tracking.
@@ -29,6 +30,12 @@
  *  - Paid: entitlement from a paid source (Stripe subscription, Stripe/gift
  *    lifetime, RevenueCat) per lib/entitlements. Ambassador-for-life and a
  *    running trial do NOT count as paid.
+ *  - "Trials currently paid" is a CURRENT-STATUS snapshot: of users who ever had
+ *    a trial, the share holding a paid entitlement NOW. It is NOT historical
+ *    conversion — a user who converted and later cancelled is not counted.
+ *    "Trial -> purchase event" is the closer-to-historical measure (a
+ *    purchase_completed event exists for the user) but is directional only;
+ *    see dataQuality.
  *  - "Today" is the America/New_York calendar date.
  */
 import { resolveUserEntitlements } from './entitlements';
@@ -197,7 +204,9 @@ export interface BaselineReport {
   conversion: {
     purchaseEventUsers: number;
     purchasesByProviderBilling: Record<string, number>;
-    trialToPaid: { trials: number; paidNow: number; rate: number | null };
+    /** CURRENT paid entitlement among users who ever had a trial. Not historical conversion. */
+    trialsCurrentlyPaid: { trials: number; paidNow: number; rate: number | null };
+    /** Users with a purchase_completed event among trial users. Closer to historical, but directional (see dataQuality). */
     trialToPurchaseEvent: { trials: number; users: number; rate: number | null; eventsBeganAt: string | null };
     trialExpiredEvents: number;
     medianDaysSignupToFirstPurchase: number | null;
@@ -380,7 +389,7 @@ export function computeBaseline(input: BaselineInput): BaselineReport {
     conversion: {
       purchaseEventUsers: purchasers.size,
       purchasesByProviderBilling: byPB,
-      trialToPaid: { trials: trialsEver.size, paidNow: trialPaidNow, rate: rate(trialPaidNow, trialsEver.size) },
+      trialsCurrentlyPaid: { trials: trialsEver.size, paidNow: trialPaidNow, rate: rate(trialPaidNow, trialsEver.size) },
       trialToPurchaseEvent: {
         trials: trialsEver.size, users: trialPurch, rate: rate(trialPurch, trialsEver.size),
         eventsBeganAt: input.events.purchase_completed?.firstAt ?? null,
@@ -401,12 +410,14 @@ export function computeBaseline(input: BaselineInput): BaselineReport {
       'Fuel action = a logged Fillup row (personal or rental). Calculator runs are not persisted and are not counted.',
       'Trial = trial_started event OR a trial column set (events only began when instrumentation shipped, so both are shown).',
       'Paid = entitlement from Stripe subscription, Stripe/gift lifetime, or RevenueCat. Running trials and Ambassador-for-life are not paid.',
+      'Trials currently paid = of users who ever had a trial, how many hold a paid entitlement NOW. A user who converted and later cancelled is NOT counted, so this is a current-status snapshot, not historical or lifetime trial-to-paid conversion.',
+      'Trial -> purchase event = of users who ever had a trial, how many have a purchase_completed event. Closer to historical conversion, but treat it as directional (see data quality).',
       'Today = America/New_York calendar date.',
     ],
     dataQuality: [
       'Visits are not events. DAU/WAU/retention come from activeDays only.',
       'Server events (trial_started, purchase_completed, fillup_logged, checkout_started) are authoritative. Client events (paywall_viewed, upgrade_plan_selected, iap_checkout_started, trial_value_recap_*) are self-reported and can be missing or spoofed.',
-      'RevenueCat purchase_completed is production-only (sandbox excluded upstream). Stripe purchase_completed is NOT filtered for test mode; test accounts are excluded by flag only.',
+      'RevenueCat purchase_completed is production-only (sandbox excluded upstream). Stripe purchase_completed is NOT filtered for test mode; test accounts are excluded by flag only. Test accounts are excluded from the population. Therefore historical purchase-event conversion is directional, not definitive.',
       'Compare each event\'s firstAt: it is when measurement of that event began. Rates computed over older signups understate it.',
       'Saved-station and vehicle counts are the current state (deleted items are not counted).',
       ...(input.truncated ? ['A row cap was hit while loading — counts are lower bounds.'] : []),
