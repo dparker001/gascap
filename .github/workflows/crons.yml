@@ -21,6 +21,7 @@ on:
     - cron: '0 23 * * *'   # streak-reminder       (23:00 UTC / 7 PM ET)
     - cron: '0 17 * * 1'   # digest                (17:00 UTC, Mondays only)
     - cron: '0 21 * * *'   # cleanup-rate-limits   (21:00 UTC — deletes expired RateLimitCounter rows)
+    - cron: '25 22 * * *'  # fuel-price-snapshot   (22:25 UTC / 6:25 PM EDT, 5:25 PM EST — stores EIA weekly prices; insert-only, idempotent)
   workflow_dispatch:
     inputs:
       endpoint:
@@ -47,6 +48,7 @@ on:
           - streak-reminder
           - digest
           - cleanup-rate-limits
+          - fuel-price-snapshot
 
 jobs:
   cron:
@@ -75,6 +77,7 @@ jobs:
             "0 23 * * *")  echo "endpoint=streak-reminder"     >> "$GITHUB_OUTPUT" ;;
             "0 17 * * 1")  echo "endpoint=digest"              >> "$GITHUB_OUTPUT" ;;
             "0 21 * * *")  echo "endpoint=cleanup-rate-limits" >> "$GITHUB_OUTPUT" ;;
+            "25 22 * * *") echo "endpoint=fuel-price-snapshot"  >> "$GITHUB_OUTPUT" ;;
             *)             echo "endpoint=${{ inputs.endpoint }}" >> "$GITHUB_OUTPUT" ;;
           esac
 
@@ -82,6 +85,9 @@ jobs:
         run: |
           ENDPOINT="${{ steps.resolve.outputs.endpoint }}"
           echo "Running: /api/cron/$ENDPOINT"
-          curl -sf --max-time 30 \
+          # fuel-price-snapshot waits on EIA (~7-10 s per request, run in parallel).
+          MAX_TIME=30
+          if [ "$ENDPOINT" = "fuel-price-snapshot" ]; then MAX_TIME=90; fi
+          curl -sf --max-time "$MAX_TIME" \
             "https://www.gascap.app/api/cron/$ENDPOINT?secret=${{ secrets.CRON_SECRET }}"
           echo "✓ $ENDPOINT completed successfully"

@@ -201,7 +201,7 @@ const SECTIONS = [
       },
       {
         q: 'What is the Savings Dashboard?',
-        a: 'The Savings Dashboard shows your total fuel spending, total gallons filled, average price per gallon, and estimated savings vs. the live EIA national average (updated weekly). You\'ll also see savings milestones — $25, $50, $100, $250, and $500 — with a progress bar to your next achievement. Each fill-up row in your history shows whether you paid above or below the national average that week.',
+        a: 'The Savings Dashboard shows your total fuel spending, total gallons filled, and average price per gallon. Its savings figure compares each fill-up with the EIA U.S. average retail price for the same fuel grade in the week of that fill-up (or the closest earlier week) — savings = that average × your gallons − what you paid. To keep it honest, fill-ups with no fuel grade selected, no matching EIA week, or numbers that look like a typo are left out and the card tells you how many were compared. Nothing is estimated, and paying more than the average shows as above average rather than zero. This is a national benchmark, not a price at your local stations. You\'ll also see savings milestones — $25, $50, $100, $250, and $500 — once your compared fill-ups add up to a net saving. Each fill-up row in your history shows whether you paid above or below that same-grade, same-week average.',
       },
       {
         q: 'What is the Annual Fuel Cost Projection?',
@@ -209,7 +209,7 @@ const SECTIONS = [
       },
       {
         q: 'What is the price intelligence hint when logging a fill-up?',
-        a: 'When you enter a price per gallon in the fill-up logger, GasCap™ instantly compares it to the live EIA national average and shows whether you\'re getting a deal (below avg 🎉) or paying a premium (above avg 📈). This uses the same weekly EIA data that powers the Savings Dashboard.',
+        a: 'When you enter a price per gallon in the fill-up logger and choose a fuel grade, GasCap™ compares it to the EIA U.S. average for that grade and shows the week of the EIA price — whether you\'re getting a deal (below avg 🎉) or paying a premium (above avg 📈). If no fuel grade is selected, no comparison is shown, so a premium fill-up is never judged against the regular-grade average.',
       },
       {
         q: 'What is the Monthly Report Card?',

@@ -14,6 +14,8 @@
  */
 
 import seedData from '@/data/gas-prices-seed.json';
+import { duoareaChainForState, REGION_STATES } from './eiaAreas';
+import { isStaleObservation } from './eiaFreshness';
 
 const EIA_KEY  = process.env.EIA_API_KEY ?? '';
 const TTL_MS   = 6 * 60 * 60 * 1000;   // 6h — EIA updates weekly, so this is plenty fresh
@@ -21,25 +23,8 @@ const FALLBACK = 3.15;
 
 const seed = seedData as { updatedAt: string; national: number; states: Record<string, number> };
 
-// state → ordered EIA duoarea codes to try (mirror of the seed generator).
-const REGION: Record<string, string[]> = {
-  R1X: ['CT','ME','MA','NH','RI','VT'],
-  R1Y: ['DE','DC','MD','NJ','NY','PA'],
-  R1Z: ['FL','GA','NC','SC','VA','WV'],
-  R20: ['IL','IN','IA','KS','KY','MI','MN','MO','NE','ND','OH','OK','SD','TN','WI'],
-  R30: ['AL','AR','LA','MS','NM','TX'],
-  R40: ['CO','ID','MT','UT','WY'],
-  R50: ['AK','AZ','CA','HI','NV','OR','WA'],
-};
-const DIRECT = new Set(['CA','CO','FL','MA','MN','NY','OH','TX','WA']);
-const STATE_DUOAREAS: Record<string, string[]> = {};
-for (const [region, states] of Object.entries(REGION)) {
-  for (const st of states) {
-    STATE_DUOAREAS[st] = [...(DIRECT.has(st) ? [`S${st}`] : []), region, 'NUS'];
-  }
-}
-
-const cache = new Map<string, { price: number; at: number }>();
+/** `period` is the EIA survey date of the price — its real observation date. */
+const cache = new Map<string, { price: number; period: string; at: number }>();
 
 function timeoutSignal(ms: number): AbortSignal {
   const c = new AbortController();
@@ -47,7 +32,7 @@ function timeoutSignal(ms: number): AbortSignal {
   return c.signal;
 }
 
-async function fetchEia(duoarea: string): Promise<number | null> {
+async function fetchEia(duoarea: string): Promise<{ price: number; period: string } | null> {
   if (!EIA_KEY) return null;
   try {
     const url =
@@ -56,20 +41,41 @@ async function fetchEia(duoarea: string): Promise<number | null> {
       `&facets[duoarea][]=${duoarea}&facets[product][]=EPMR`;
     const res = await fetch(url, { signal: timeoutSignal(7000) });
     if (!res.ok) return null;
-    const json = await res.json() as { response?: { data?: { value?: string | number }[] } };
-    const v = parseFloat(String(json.response?.data?.[0]?.value ?? ''));
-    return isNaN(v) ? null : Math.round(v * 1000) / 1000;
+    const json = await res.json() as { response?: { data?: { value?: string | number; period?: string }[] } };
+    const row = json.response?.data?.[0];
+    const v = parseFloat(String(row?.value ?? ''));
+    const period = String(row?.period ?? '');
+    // Without a real observation date the value is not usable as "live".
+    if (isNaN(v) || !/^\d{4}-\d{2}-\d{2}$/.test(period)) return null;
+    return { price: Math.round(v * 1000) / 1000, period };
   } catch {
     return null;
   }
 }
 
-async function fetchStateLive(state: string): Promise<number | null> {
-  for (const duoarea of STATE_DUOAREAS[state] ?? ['NUS']) {
+async function fetchStateLive(state: string): Promise<{ price: number; period: string } | null> {
+  for (const duoarea of duoareaChainForState(state)) {
     const p = await fetchEia(duoarea);
     if (p) return p;
   }
   return null;
+}
+
+export interface StatePrice {
+  price: number;
+  /** True only when served from a fresh in-memory EIA observation. */
+  live: boolean;
+  /**
+   * Where the number came from. 'eia_live' = an EIA observation held in
+   * memory (asOf is its real survey date). 'seed' = the committed snapshot
+   * file; asOf is when that FILE was generated, which is not an EIA survey
+   * date and may be months old — treat `stale` accordingly.
+   */
+  source: 'eia_live' | 'seed';
+  /** YYYY-MM-DD: EIA survey date (eia_live) or seed generation date (seed). */
+  asOf: string;
+  /** True when asOf is older than the freshness threshold (lib/eiaFreshness). */
+  stale: boolean;
 }
 
 /**
@@ -77,27 +83,30 @@ async function fetchStateLive(state: string): Promise<number | null> {
  * and kicks off a background refresh. `live` = served from a fresh in-memory cache
  * hit (vs. the committed seed snapshot).
  */
-export function getStatePrice(state: string): { price: number; live: boolean } {
+export function getStatePrice(state: string): StatePrice {
   const hit = cache.get(state);
-  if (hit && Date.now() - hit.at < TTL_MS) return { price: hit.price, live: true };
+  if (hit && Date.now() - hit.at < TTL_MS) {
+    return { price: hit.price, live: true, source: 'eia_live', asOf: hit.period, stale: isStaleObservation(hit.period) };
+  }
 
   // Fire-and-forget refresh — updates the cache for subsequent requests.
   void fetchStateLive(state)
-    .then((p) => { if (p) cache.set(state, { price: p, at: Date.now() }); })
+    .then((p) => { if (p) cache.set(state, { price: p.price, period: p.period, at: Date.now() }); })
     .catch(() => { /* ignore — seed already returned */ });
 
   const price = seed.states[state] ?? seed.national ?? FALLBACK;
-  return { price, live: false };
+  return { price, live: false, source: 'seed', asOf: seed.updatedAt, stale: isStaleObservation(seed.updatedAt) };
 }
 
+const ALL_STATES = Object.values(REGION_STATES).flat();
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /** Warm/refresh the whole in-memory cache (for a scheduled cron). Returns # updated. */
 export async function refreshAll(): Promise<number> {
   let n = 0;
-  for (const st of Object.keys(STATE_DUOAREAS)) {
+  for (const st of ALL_STATES) {
     const p = await fetchStateLive(st);
-    if (p) { cache.set(st, { price: p, at: Date.now() }); n++; }
+    if (p) { cache.set(st, { price: p.price, period: p.period, at: Date.now() }); n++; }
     await sleep(120);
   }
   return n;

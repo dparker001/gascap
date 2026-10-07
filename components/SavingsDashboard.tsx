@@ -17,12 +17,16 @@ interface FillupResponse {
   stats:   FillupStats;
 }
 
-interface NationalAvgResponse {
-  price:     number | null;
-  noApiKey?: boolean;
+/** Mirrors SavingsSummary (lib/savingsBaseline.ts) — only the fields used here. */
+interface SavingsResponse {
+  summary: {
+    fillupsTotal:         number;
+    compared:             number;
+    netSavings:           number;
+    avgPaidPerGallon:     number | null;
+    avgBaselinePerGallon: number | null;
+  };
 }
-
-const FALLBACK_PRICE = 3.45; // reasonable fallback if EIA unavailable
 
 const MILESTONES: { amount: number; emoji: string }[] = [
   { amount: 25,  emoji: '🌱' },
@@ -36,7 +40,7 @@ export default function SavingsDashboard() {
   const { t } = useTranslation();
   const { data: session } = useSession();
   const [data,       setData]       = useState<FillupResponse | null>(null);
-  const [nationalAvg, setNationalAvg] = useState<number | null>(null);
+  const [savings,    setSavings]    = useState<SavingsResponse['summary'] | null>(null);
   const [loading,    setLoading]    = useState(false);
   const [error,      setError]      = useState(false);
 
@@ -44,17 +48,20 @@ export default function SavingsDashboard() {
     if (!session) return;
     setLoading(true);
 
-    // Fetch fill-up data + national avg in parallel
+    // Fill-up facts + server-computed savings in parallel. The savings figure
+    // is time-matched and grade-matched per fill-up (lib/savingsBaseline.ts);
+    // if it can't be computed we show NO savings number, never an estimate.
     Promise.all([
       fetch('/api/fillups', { credentials: 'include' })
         .then((r) => r.ok ? r.json() as Promise<FillupResponse> : Promise.reject()),
-      fetch('/api/gas-price/national')
-        .then((r) => r.ok ? r.json() as Promise<NationalAvgResponse> : Promise.reject())
-        .catch(() => ({ price: null } as NationalAvgResponse)),
+      fetch('/api/fillups/savings', { credentials: 'include' })
+        .then((r) => r.ok ? r.json() as Promise<SavingsResponse> : Promise.reject())
+        .then((d) => d.summary)
+        .catch(() => null),
     ])
-      .then(([fillupData, avgData]) => {
+      .then(([fillupData, savingsData]) => {
         setData(fillupData);
-        setNationalAvg(avgData.price);
+        setSavings(savingsData);
       })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
@@ -98,23 +105,26 @@ export default function SavingsDashboard() {
   if (!data || data.stats.count < 1) return null;
 
   const { stats, fillups } = data;
-  const compPrice = nationalAvg ?? FALLBACK_PRICE;
 
+  // Facts about ALL logged fill-ups (what the user actually spent).
   const avgPricePerGal = stats.totalGallons > 0
     ? stats.totalSpent / stats.totalGallons
     : 0;
-  const comparisonDiff      = compPrice - avgPricePerGal;
-  const totalSavedVsNational = comparisonDiff * stats.totalGallons;
-  const isSaving             = totalSavedVsNational > 0;
+
+  // Savings only exist for fill-ups that had a defensible baseline.
+  const hasComparison        = !!savings && savings.compared > 0;
+  const totalSavedVsNational = hasComparison ? savings.netSavings : 0;
+  const isSaving             = hasComparison && totalSavedVsNational > 0;
+  const notCompared          = savings ? savings.fillupsTotal - savings.compared : 0;
 
   // Earliest fill-up date for "since joining" message
   const oldestDate = fillups.length > 0
     ? new Date(fillups[fillups.length - 1].date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
     : null;
 
-  const avgLabel = nationalAvg
-    ? t.savingsDashboard.vsNationalAvgEia(nationalAvg.toFixed(3))
-    : t.savingsDashboard.vsEstAvg(FALLBACK_PRICE.toFixed(2));
+  const comparedSub = hasComparison
+    ? t.savingsDashboard.comparedBasis(savings.compared, savings.fillupsTotal)
+    : t.savingsDashboard.noComparisonHint;
 
   const statBoxes = [
     {
@@ -132,15 +142,24 @@ export default function SavingsDashboard() {
     {
       label: t.savingsDashboard.avgPricePerGal,
       value: `$${avgPricePerGal.toFixed(3)}`,
-      sub:   nationalAvg ? t.savingsDashboard.nationalAvgValue(nationalAvg.toFixed(3)) : t.savingsDashboard.yourAverage,
+      sub:   hasComparison && savings.avgBaselinePerGallon != null
+        ? t.savingsDashboard.baselineAvgSub(savings.avgBaselinePerGallon.toFixed(3))
+        : t.savingsDashboard.yourAverage,
       accent: isSaving,
     },
-    {
-      label: isSaving ? t.savingsDashboard.estimatedSavings : t.savingsDashboard.aboveNationalAvg,
-      value: `$${Math.abs(totalSavedVsNational).toFixed(2)}`,
-      sub:   avgLabel,
-      accent: isSaving,
-    },
+    hasComparison
+      ? {
+          label: isSaving ? t.savingsDashboard.estimatedSavings : t.savingsDashboard.aboveNationalAvg,
+          value: `$${Math.abs(totalSavedVsNational).toFixed(2)}`,
+          sub:   comparedSub,
+          accent: isSaving,
+        }
+      : {
+          label: t.savingsDashboard.noComparisonLabel,
+          value: t.savingsDashboard.noComparisonValue,
+          sub:   comparedSub,
+          accent: false,
+        },
   ];
 
   // Milestones — only count positive savings
@@ -184,8 +203,8 @@ export default function SavingsDashboard() {
                 <span className="text-xs font-semibold text-emerald-500 ml-1">{t.savingsDashboard.savedLabel}</span>
               </p>
               <p className="text-[10px] text-emerald-600 leading-relaxed">
-                {nationalAvg ? t.savingsDashboard.vsEiaNationalAverage : t.savingsDashboard.vsEstimatedNationalAverage}
-                {nationalAvg && <span className="text-emerald-400 ml-1">(${nationalAvg.toFixed(3)}/gal)</span>}
+                {t.savingsDashboard.vsEiaNationalAverage}
+                <span className="text-emerald-400 ml-1">({t.savingsDashboard.comparedBasis(savings!.compared, savings!.fillupsTotal)})</span>
               </p>
             </div>
           </div>
@@ -273,12 +292,22 @@ export default function SavingsDashboard() {
           </div>
         )}
 
+        {notCompared > 0 && hasComparison && (
+          <p className="text-[10px] text-slate-400 text-center leading-relaxed">
+            {t.savingsDashboard.coverageNote(notCompared)}
+          </p>
+        )}
+
+        {/* Methodology — always reachable, so the number is never a black box. */}
+        <details className="text-[10px] text-slate-500">
+          <summary className="cursor-pointer font-bold text-slate-600">{t.savingsDashboard.methodologyTitle}</summary>
+          <p className="mt-1 leading-relaxed">{t.savingsDashboard.methodologyBody}</p>
+        </details>
+
         {oldestDate && (
           <p className="text-[10px] text-slate-400 text-center leading-relaxed">
             {t.savingsDashboard.loggedSincePrefix} <span className="font-bold text-slate-600">{t.savingsDashboard.fillupCount(stats.count)}</span> {t.savingsDashboard.loggedSinceSuffix(oldestDate)}
-            {nationalAvg && (
-              <span className="text-slate-300"> {t.savingsDashboard.eiaUpdatedWeekly}</span>
-            )}
+            <span className="text-slate-300"> {t.savingsDashboard.eiaUpdatedWeekly}</span>
           </p>
         )}
       </div>

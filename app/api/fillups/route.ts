@@ -71,6 +71,7 @@ export async function POST(req: Request) {
     force?:       boolean;
     driverLabel?: string;  // Fleet Phase 1 — optional driver attribution
     totalCost?:   number;  // user-entered actual amount paid (e.g. rounded up at the pump)
+    areaState?:   string;  // optional 2-letter US state — picks the coarse EIA area for the savings baseline only
   };
 
   // Basic field validation
