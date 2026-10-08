@@ -889,7 +889,7 @@ export default function SettingsPage() {
               <option value="personal">🚗 Personal Driver</option>
               <option value="gig">📦 Gig Driver (Uber, Lyft, DoorDash, etc.)</option>
               <option value="rental">🏢 Rental Car</option>
-              <option value="fleet">🚚 Business / Fleet</option>
+              <option value="fleet">🚚 Business / Fleet (fleet tools coming soon)</option>
             </select>
           </div>
 
