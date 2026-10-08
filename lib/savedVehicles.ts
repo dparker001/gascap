@@ -3,7 +3,7 @@
  */
 import { prisma } from './prisma';
 import type { VehicleSpecs } from './vehicleSpecs';
-import { recordAnalyticsEvent } from './analyticsEvents';
+import { recordAnalyticsEvent, type OriginPlatform } from './analyticsEvents';
 
 export interface SavedVehicle {
   id:                 string;
@@ -100,6 +100,9 @@ export async function addVehicle(
     currentOdometer?: number;
     vehicleSpecs?:    VehicleSpecs;
   },
+  /** P1-A: platform the request came from (originPlatformFromRequest), only
+   *  when known; omitted => 'unknown'. */
+  ctx?: { originPlatform?: OriginPlatform },
 ): Promise<SavedVehicle> {
   const row = await prisma.vehicle.create({
     data: {
@@ -125,7 +128,7 @@ export async function addVehicle(
   try {
     await recordAnalyticsEvent({
       eventType: 'vehicle_saved',
-      originPlatform: 'unknown',
+      originPlatform: ctx?.originPlatform ?? 'unknown',
       emitter: 'server',
       userId,
       source: 'vehicle_create',

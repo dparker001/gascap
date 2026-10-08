@@ -8,7 +8,7 @@ import { prisma } from './prisma';
 import { findNewBadges, type UserStats } from './badges';
 import { getVehiclesForUser } from './savedVehicles';
 import type { User as PrismaUser } from './generated/prisma/client';
-import { recordAnalyticsEvent } from './analyticsEvents';
+import { recordAnalyticsEvent, type OriginPlatform } from './analyticsEvents';
 import { Prisma } from './generated/prisma/client';
 import { qualifiesForFreeProForLife, AMBASSADOR_THRESHOLDS, getAmbassadorTier } from './ambassador';
 import { sendHotelSavingsCard, sendDiningVoucher } from './marketingBoost';
@@ -219,6 +219,8 @@ export async function createUser(
   email: string,
   password: string,
   locale: 'en' | 'es' = 'en',
+  /** P1-A: platform of the signup request when known (originPlatformFromRequest). */
+  originPlatform: OriginPlatform = 'unknown',
 ): Promise<StoredUser> {
   const existing = await findByEmail(email);
   if (existing) throw new Error('An account with that email already exists.');
@@ -243,7 +245,7 @@ export async function createUser(
   try {
     await recordAnalyticsEvent({
       eventType: 'signup_completed',
-      originPlatform: 'unknown',
+      originPlatform,
       emitter: 'server',
       userId: user.id,
       source: 'auth_signup',

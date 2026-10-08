@@ -12,6 +12,7 @@ import {
 } from '@/lib/users';
 import { checkRateLimit } from '@/lib/rateLimit';
 import { recordAnalyticsEvent } from '@/lib/analyticsEvents';
+import { originPlatformFromRequest } from '@/lib/originPlatform';
 import { sendMail, verificationEmailHtml } from '@/lib/email';
 import { sendCampaignEmail } from '@/lib/emailCampaign';
 import { hasEmailBeenSent }  from '@/lib/emailLog';
@@ -92,7 +93,7 @@ export async function POST(req: Request) {
     if (await findByEmail(email))
                          return NextResponse.json({ error: 'An account with that email already exists.' }, { status: 409 });
 
-    const user = await createUser(name, email, password, userLocale);
+    const user = await createUser(name, email, password, userLocale, originPlatformFromRequest(req));
 
     // Save optional phone + SMS consent collected at signup.
     // smsOptInDate is stamped inside updateUserProfile when smsOptIn=true.

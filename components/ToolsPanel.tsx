@@ -26,6 +26,7 @@ import VehicleHealthAlert     from './VehicleHealthAlert';
 import ManualFillupLogger     from './ManualFillupLogger';
 import GigDriverTab           from './GigDriverTab';
 import { useTranslation }    from '@/contexts/LanguageContext';
+import { LOG_INTENT_EVENT, peekLogIntent } from '@/lib/logIntent';
 // ── Tab definitions ──────────────────────────────────────────────────────────
 
 type TabId = 'ai' | 'trip' | 'compare' | 'log' | 'charts' | 'stats' | 'service' | 'share' | 'review' | 'driver';
@@ -76,6 +77,16 @@ export default function ToolsPanel() {
     window.addEventListener('fillup-saved', onSaved);
     return () => { cancelled = true; window.removeEventListener('fillup-saved', onSaved); };
   }, [session]);
+
+  // `/?log=1` deep link (components/LogIntentHandler.tsx): select the Log tab.
+  // Also checks on mount — on the native shell this panel mounts lazily, after
+  // the intent was already requested.
+  useEffect(() => {
+    if (peekLogIntent()) setActiveTab('log');
+    const onIntent = () => setActiveTab('log');
+    window.addEventListener(LOG_INTENT_EVENT, onIntent);
+    return () => window.removeEventListener(LOG_INTENT_EVENT, onIntent);
+  }, []);
 
   // Allow the setup checklist (and other components) to switch tabs programmatically
   useEffect(() => {

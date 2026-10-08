@@ -9,6 +9,9 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import type { BaselineReport } from '@/lib/engagementBaseline';
+import type { ActivationReport } from '@/lib/activationMetrics';
+
+type PanelReport = BaselineReport & { activation?: ActivationReport | null };
 import { loadAdminPanel } from '@/lib/adminFetch';
 
 const fmt = (n: number | null | undefined, suffix = '') => (n === null || n === undefined ? '—' : `${n}${suffix}`);
@@ -23,8 +26,41 @@ function Stat({ label, value, sub }: { label: string; value: string; sub?: strin
   );
 }
 
+function rateSub(row: { users: number; eligible: number }) {
+  return `${row.users} of ${row.eligible} matured`;
+}
+
+function ActivationSection({ a }: { a: ActivationReport }) {
+  return (
+    <div className="border border-amber-200 bg-amber-50/40 rounded-xl p-3 space-y-2">
+      <div>
+        <p className="text-xs font-black text-slate-700 uppercase tracking-wide">Phase 1 activation (time-bounded)</p>
+        <p className="text-[10px] text-slate-500">
+          Separate from the all-time funnel above. Per signup cohort, rates over matured signups only
+          ({a.cohort.eligibleSignups} eligible · {a.cohort.matured14} past 14 days · {a.cohort.matured30} past 30 days ·
+          {' '}{a.cohort.pending30} still inside the 30-day window).
+        </p>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <Stat label="First fuel action ≤14d" value={fmt(a.firstAction14d.rate, '%')} sub={`primary · ${rateSub(a.firstAction14d)}`} />
+        <Stat label="Activated ≤30d" value={fmt(a.activated30d.rate, '%')} sub={`north star · ${rateSub(a.activated30d)}`} />
+        <Stat label="Personal 2nd fill ≤30d" value={fmt(a.personalSecondFill30d.rate, '%')} sub={`diagnostic · ${rateSub(a.personalSecondFill30d)}`} />
+        <Stat label="Vehicle → first action" value={fmt(a.vehicleToFirstAction14d.rate, '%')} sub={`${a.vehicleToFirstAction14d.users} of ${a.vehicleToFirstAction14d.eligible} with a vehicle`} />
+        <Stat label="First action → Activated" value={fmt(a.firstActionToActivated30d.rate, '%')} sub={`${a.firstActionToActivated30d.users} of ${a.firstActionToActivated30d.eligible}`} />
+        <Stat label="Any action ≤30d" value={fmt(a.firstAction30d.rate, '%')} sub={rateSub(a.firstAction30d)} />
+        <Stat label="First action source (≤14d)" value={`${a.firstActionBySource14d.personal}/${a.firstActionBySource14d.rental}/${a.firstActionBySource14d.gig}`} sub="personal / rental / gig" />
+      </div>
+      {a.truncated && <p className="text-[10px] text-amber-700">A row cap was hit — counts are lower bounds.</p>}
+      <details className="text-[11px] text-slate-500">
+        <summary className="cursor-pointer font-bold text-slate-600">Activation definitions</summary>
+        <ul className="list-disc pl-4 mt-1 space-y-0.5">{a.definitions.map((d) => <li key={d}>{d}</li>)}</ul>
+      </details>
+    </div>
+  );
+}
+
 export default function EngagementBaselinePanel({ savedPw }: { savedPw: string }) {
-  const [r, setR] = useState<BaselineReport | null>(null);
+  const [r, setR] = useState<PanelReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -32,7 +68,7 @@ export default function EngagementBaselinePanel({ savedPw }: { savedPw: string }
   // and the server authorizes it from the session cookie (lib/adminFetch.ts).
   const load = useCallback(() => {
     setLoading(true);
-    void loadAdminPanel<BaselineReport>('/api/admin/engagement-baseline', savedPw, {
+    void loadAdminPanel<PanelReport>('/api/admin/engagement-baseline', savedPw, {
       onData:  (d) => { setR(d); setError(''); },
       onError: () => setError('Failed to load the engagement baseline.'),
       onDone:  () => setLoading(false),
@@ -143,6 +179,13 @@ export default function EngagementBaselinePanel({ savedPw }: { savedPw: string }
           <Stat label="Added a vehicle" value={`${fa.usersWithVehicle}`} sub={fmt(fa.vehicleRate, '%')} />
         </div>
       </div>
+
+      {/* Phase 1 activation (time-bounded, per signup cohort) */}
+      {r.activation ? <ActivationSection a={r.activation} /> : (
+        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+          Phase 1 activation metrics could not be computed. The all-time baseline above is unaffected.
+        </p>
+      )}
 
       {/* Paywall / upgrade */}
       <div>

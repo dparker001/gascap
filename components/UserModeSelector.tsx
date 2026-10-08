@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useSession } from 'next-auth/react';
+import { trackClientEvent } from '@/lib/clientAnalytics';
 
 const MODES = [
   {
@@ -36,30 +37,48 @@ type ModeId = typeof MODES[number]['id'];
 interface Props {
   initialMode?: ModeId;
   onComplete: (mode: ModeId) => void;
+  /** Called when the user explicitly skips. The mode is left unset. */
+  onSkip?: () => void;
 }
 
-export default function UserModeSelector({ initialMode, onComplete }: Props) {
+export default function UserModeSelector({ initialMode, onComplete, onSkip }: Props) {
   const { update } = useSession();
   const [selected, setSelected] = useState<ModeId | null>(
     MODES.some((m) => m.id === initialMode) ? (initialMode ?? null) : null,
   );
   const [saving, setSaving] = useState(false);
+  // One analytics event per decision, however many times the user taps or the
+  // tree re-renders.
+  const decided = useRef(false);
 
   async function handleSave() {
     if (!selected) return;
     setSaving(true);
     try {
-      await fetch('/api/user/profile', {
+      const res = await fetch('/api/user/profile', {
         method:  'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ userMode: selected }),
       });
+      if (res.ok && !decided.current) {
+        decided.current = true;
+        trackClientEvent('mode_selected', { mode: selected });
+      }
       await update(); // refresh JWT so session.user.userMode is populated
       window.dispatchEvent(new CustomEvent('gc:user-mode', { detail: { mode: selected } }));
       onComplete(selected);
     } catch {
       setSaving(false);
     }
+  }
+
+  // "Skip for now": closes the selector, assigns NO mode (userMode stays null,
+  // no default is applied), and is changeable later in Settings.
+  function handleSkip() {
+    if (saving || decided.current) return;
+    decided.current = true;
+    trackClientEvent('mode_skipped');
+    onSkip?.();
   }
 
   const modal = (
@@ -123,6 +142,14 @@ export default function UserModeSelector({ initialMode, onComplete }: Props) {
                        hover:bg-orange-600 active:scale-[0.98] transition-all"
           >
             {saving ? 'Saving…' : 'Get Started'}
+          </button>
+          <button
+            onClick={handleSkip}
+            disabled={saving}
+            className="w-full py-2 rounded-xl text-[13px] font-bold text-slate-500 dark:text-slate-400
+                       hover:text-slate-700 dark:hover:text-slate-200 transition-colors disabled:opacity-40"
+          >
+            Skip for now
           </button>
           <p className="text-center text-[10px] text-slate-400">You can change this anytime in Settings.</p>
         </div>

@@ -5,6 +5,7 @@
  */
 import { prisma } from './prisma';
 import { EVENT_NAMES, type BaselineInput, type EventAgg, type EventName } from './engagementBaseline';
+import type { FuelActionRecord } from './activationMetrics';
 
 /** Hard cap; if hit, the report says its counts are lower bounds. */
 export const USER_ROW_CAP = 20000;
@@ -75,4 +76,47 @@ export async function loadBaselineInput(now: Date = new Date()): Promise<Baselin
     revenueCat: rc,
     truncated: users.length >= USER_ROW_CAP,
   };
+}
+
+/** Hard cap on fuel-action rows read for the activation metrics. */
+export const FUEL_ROW_CAP = 200000;
+
+/**
+ * P1-A — READ-ONLY (SELECT only). Every logged gallon-based fuel record
+ * (personal + rental Fillups, and gig fill-ups whose energyUnit is 'gal').
+ * The pure module drops non-population users, invalid values and EV/kWh rows;
+ * kWh gig rows are also excluded here so they are never even loaded.
+ */
+export async function loadFuelActions(): Promise<{ records: FuelActionRecord[]; truncated: boolean }> {
+  const [fillups, gig] = await Promise.all([
+    prisma.fillup.findMany({
+      select: { userId: true, createdAt: true, gallonsPumped: true, pricePerGallon: true, totalCost: true, rentalSessionId: true },
+      take: FUEL_ROW_CAP,
+    }),
+    prisma.gigFillup.findMany({
+      where: { energyUnit: 'gal' },
+      select: { userId: true, createdAt: true, gallons: true, pricePerGallon: true, totalCost: true },
+      take: FUEL_ROW_CAP,
+    }),
+  ]);
+  const records: FuelActionRecord[] = [
+    ...fillups.map((f): FuelActionRecord => ({
+      userId: f.userId,
+      source: f.rentalSessionId ? 'rental' : 'personal',
+      createdAt: f.createdAt,
+      gallons: f.gallonsPumped,
+      pricePerGallon: f.pricePerGallon,
+      totalCost: f.totalCost,
+    })),
+    ...gig.map((g): FuelActionRecord => ({
+      userId: g.userId,
+      source: 'gig',
+      createdAt: g.createdAt,
+      gallons: g.gallons,
+      pricePerGallon: g.pricePerGallon,
+      totalCost: g.totalCost,
+      energyUnit: 'gal',
+    })),
+  ];
+  return { records, truncated: fillups.length >= FUEL_ROW_CAP || gig.length >= FUEL_ROW_CAP };
 }

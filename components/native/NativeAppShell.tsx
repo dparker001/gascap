@@ -18,6 +18,7 @@ import { useEffect, useRef, useState } from 'react';
 import Link                    from 'next/link';
 import { useSession }          from 'next-auth/react';
 import { useTranslation }      from '@/contexts/LanguageContext';
+import { useModeSelectorSkip } from '@/hooks/useModeSelectorSkip';
 import { initNativeChrome }    from '@/lib/nativeChrome';
 import { detectNativePlatform } from '@/hooks/useIsNative';
 import { getDeviceId }         from '@/hooks/useDeviceId';
@@ -95,7 +96,8 @@ export default function NativeAppShell() {
   const planBadge = getPlanBadge(session?.user as PlanUser | undefined, t);
 
   const [modeSelectorDone, setModeSelectorDone] = useState(false);
-  const showModeSelector = status === 'authenticated' && !userMode && !modeSelectorDone;
+  const modeSkip = useModeSelectorSkip((session?.user as { id?: string } | undefined)?.id);
+  const showModeSelector = status === 'authenticated' && !userMode && !modeSelectorDone && modeSkip.ready && !modeSkip.skipped;
   const [pulseTabId, setPulseTabId] = useState<TabId | null>(null);
 
   const [active,  setActive]  = useState<TabId>('calculator');
@@ -458,7 +460,9 @@ export default function NativeAppShell() {
 
       {/* Mode selector — shown on first login when userMode is not yet set */}
       {showModeSelector && (
-        <UserModeSelector onComplete={(mode) => {
+        <UserModeSelector
+          onSkip={() => { modeSkip.markSkipped(); setModeSelectorDone(true); }}
+          onComplete={(mode) => {
           setModeSelectorDone(true);
           if (mode === 'gig') {
             changeTab('driver');

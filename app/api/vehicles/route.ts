@@ -5,6 +5,7 @@ import { findById } from '@/lib/users';
 import { getVehiclesForUser, addVehicle, deleteVehicle, updateVehicle, setDefaultVehicle, clearDefaultVehicle } from '@/lib/savedVehicles';
 import { isElectric, type VehicleSpecs } from '@/lib/vehicleSpecs';
 import { isGaugeStyle } from '@/lib/gaugeStyles';
+import { originPlatformFromRequest } from '@/lib/originPlatform';
 
 // Pro is unlimited; free is capped at 1
 const PLAN_LIMITS = { free: 1, pro: 9999, fleet: 9999 };
@@ -92,7 +93,7 @@ export async function POST(req: Request) {
     epaId:           body.epaId,
     currentOdometer: body.currentOdometer != null ? Number(body.currentOdometer) : undefined,
     vehicleSpecs:    body.vehicleSpecs,
-  });
+  }, { originPlatform: originPlatformFromRequest(req) });
   return NextResponse.json(vehicle, { status: 201 });
 }
 
