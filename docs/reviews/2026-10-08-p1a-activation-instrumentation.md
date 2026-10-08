@@ -61,7 +61,7 @@ Users can skip the mode prompt; nudge links open the logger; an empty logger giv
 limit or entitlement change.
 
 ## 9. Testing Performed
-- Focused: `p1aActivationMetrics` 21, `p1aModeAndLogIntent` 37, `p1aOriginPlatform` 12, `p1aActivationRoute` 4 (74 total).
+- Focused: `p1aActivationMetrics` 21, `p1aModeAndLogIntent` 37, `p1aOriginPlatform` 7, `p1aActivationRoute` 4 (69 total).
 - Full `npm test`: 168 files, 2841 passed, 5 skipped (baseline main: 164 files, 2772 passed, 5 skipped). The 5 skips are pre-existing.
 - `npx tsc --noEmit` clean; `npm run build` passes; `npm run check:crons` 22 routes / 20 scheduled / 2 exempt; `npm run check:sw` 266/266.
 - Fail-before: the new suites were run against `origin/main` and fail (missing modules `logIntent` / `originPlatform` /
