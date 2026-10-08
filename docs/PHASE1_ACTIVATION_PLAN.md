@@ -142,7 +142,8 @@ Oct 6"); otherwise a plain reminder. No "buy now / wait" language.
 | Post-save result card on every fill-up ("savings feedback") | **Essential** | Delivers credible fuel value at the exact moment of effort; uses Phase 0.5 baseline |
 | Logger price **placeholder** from snapshots | **Essential** (small) | Cuts friction without inventing a reading; must not be a tappable fill (it would make savings ≈ 0 by construction) |
 | Second-fill nudge | **Experiment** | Targets the only measured weakness after first fill; treatment arm only |
-| Single "Next fuel step" onboarding card + skippable mode selector | **Experiment** | Hypothesis: fewer, clearer prompts raise first fill-up; reversible |
+| Skippable mode selector (`mode_selected` / `mode_skipped`) | **Essential** (non-experimental UX fix) | Owner-approved (Q4). Ships in P1-A for **everyone**; the ability to skip is never experiment-gated |
+| Single "Next fuel step" onboarding card | **Experiment** | Treatment-only once `activation_v1` is eligible to run. Hypothesis: fewer, clearer prompts raise first fill-up; reversible |
 | "Prices below / near / above normal" line (favorability, reframed) | **Experiment** — inside the result card only | Needs enough history; must show "Not enough data yet" otherwise; no BUY/WAIT |
 | Beat the Average | **Experiment** — same card, same data | It *is* the savings comparison, framed once; no separate surface |
 | GasCap Daily / Today's GasCap home card | **Defer** | DailyFuelPulse already exists; a daily card builds visits, not fueling. Revisit once activation moves |
@@ -214,10 +215,11 @@ Existing server events already cover: `signup_completed`, `trial_started`,
 | Signup | `signup_completed` | exists; add platform for password/Google paths |
 | Vehicle Added | `vehicle_saved` | exists |
 | First Fuel Intent | first `calculator_completed` **or** first price lookup/Find Gas price view | client event new for price lookup |
-| First Meaningful Fuel Action | first valid `fillup_logged` / rental fill / gig fill | exists (derive) |
+| First Meaningful Fuel Action | first qualifying gasoline/diesel fuel action (personal, rental, or gig gallon-based fill-up); EV/kWh excluded | exists (derive) |
 | First Fill-Up | first personal `fillup_logged` | exists (derive) |
 | Savings Feedback Seen | `fillup_feedback_viewed` {outcome: `priced`\|`insufficient_data`\|`excluded`, reason} | **new, client (advisory)** |
-| Second Meaningful Fuel Action / Second Fill-Up | derive from `fillup_logged` on a distinct local date | derive |
+| Second Meaningful Fuel Action | the second qualifying **gasoline/diesel** fuel action on a distinct local date, from the same universe as Activated User (section 3): personal fill-up (`fillup_logged`), rental fill-up (`rental_fill_logged`/`rental_final_fill_logged`), gig gallon-based fill-up. **EV/kWh records excluded** | derive |
+| Second Personal Fill-Up (diagnostic only) | second personal `fillup_logged` on a distinct local date; not used for Activated | derive |
 | Activated User | derived by the funnel panel/query per section 3 | derive |
 
 Additional new events (all additive, allowlisted in
@@ -317,7 +319,7 @@ Each step ends at READY FOR REVIEW; none merges without owner authority.
 |---|---|---|---|
 | **P1-A** | Instrumentation (new events + platform on server events + funnel/Activated views in the admin panel); fix `/?log=1`; empty-logger "add vehicle" CTA; skippable mode selector with `mode_selected`/`mode_skipped` | LOW–MED | One PR review |
 | **P1-B** | `lib/fuelFeedback.ts` + post-save result card on both log paths + price placeholder + calculator→log confirmation of actual values (Q3) + help/AI/ES copy; regression tests (incl. "unknown renders as unknown", no fabricated reading) | MED | PR review; ChatGPT review recommended (fuel/savings claims) |
-| **P1-C** | `ExperimentAssignment` migration (additive SQL), `lib/experiments.ts`, signup hooks, flag, `NextFuelStepCard`, skippable mode selector, second-fill nudge cron | **HIGH** (schema + notifications); **not started until the launch gate is near** | Full gates + ChatGPT packet, migration-before-deploy |
+| **P1-C** | `ExperimentAssignment` migration (additive SQL), `lib/experiments.ts`, signup hooks, flag, `NextFuelStepCard`, second-fill nudge cron | **HIGH** (schema + notifications); **not started until the launch gate is near** | Full gates + ChatGPT packet, migration-before-deploy |
 | **P1-D** | Time-bounded baseline query for Activation-1 / Activated; readout script | LOW | PR review |
 | **P1-E** | Start at allowlist, then 50/50 when go criterion is met; weekly guardrail review | — | Owner decision |
 
