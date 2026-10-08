@@ -2,7 +2,8 @@
 
 **Status: PLANNED** (2026-10-08). Nothing in this document is implemented. No code,
 migration, or production change accompanies it.
-**Stage: READY FOR OWNER REVIEW — PHASE 1 PLAN.**
+**Stage: READY FOR FINAL OWNER REVIEW — PHASE 1 PLAN** (revised 2026-10-08 to
+incorporate owner decisions Q1–Q5; see "Owner decisions" at the end).
 **Risk class:** the plan itself is docs-only. Parts of the implementation it
 proposes are HIGH (schema, notifications, entitlement-adjacent copy) and are
 marked as such in section 11.
@@ -73,24 +74,40 @@ Non-goals: DAU growth, giveaway-entry volume, points, social features.
 
 A user is **Activated** when **all** hold:
 
-1. Not a test account, not role `admin`.
-2. They have **≥ 2 valid fuel-action records** (`fillup_logged` server events,
-   plus `rental_fill_logged`/`rental_final_fill_logged` and gig fill-ups, which
-   are real fueling) whose **logged-at timestamps** are within **30 days of
-   signup**.
-3. The two records fall on **two distinct local calendar dates** (same-day
+1. Not a test account, not role `admin`, not deleted data.
+2. They have **≥ 2 valid fuel actions** within **30 days of signup**, where a
+   fuel action is a real saved **gasoline or diesel** fill-up record of any of
+   these kinds (owner decision Q5):
+   - personal fill-ups (`fillup_logged`);
+   - rental fill-ups (`rental_fill_logged`, `rental_final_fill_logged`);
+   - gig fill-ups (gallon-based).
+3. The two actions fall on **two distinct local calendar dates** (same-day
    duplicates exist in production: minimum gap is 0.0 days).
-4. "Valid" = positive gallons and total cost, price within the existing
-   plausibility bounds, and not removed by the user. Validity uses what the
-   user logged, not a value GasCap supplied (see 8.6).
+4. "Valid" = a real saved record with positive quantity (gallons), positive
+   total cost or a valid unit price, values within the existing plausibility
+   bounds, and not deleted. Validity uses **values the user confirmed**, never
+   a value GasCap supplied (planned calculator values do not count until
+   confirmed; see 4 and 8).
+
+**Not counted:** EV / kWh records (gig or rental). Phase 1 fuel activation is
+gallon-based only. If EV activation is wanted later it is defined separately;
+kWh and gallons are never mixed in one metric.
 
 Timing uses `createdAt` of the record, not the user-entered fill date, so
-back-dating a fill-up cannot manufacture activation. Back-dated entries remain
-valid data; they just do not start the clock.
+back-dating cannot manufacture activation. Back-dated entries remain valid
+data; they just do not start the clock.
 
-Leading indicators (not Activated): **Activation-1** = first valid fuel action
-within 14 days. Baseline (all signups, no window): 4.3% first, 2.0% second.
-A time-bounded baseline is computed by the first measurement script (11, P1-D).
+**Metric roles (owner-confirmed):**
+
+- **Primary leading metric:** first valid fuel action within **14 days** of
+  signup.
+- **North-star activation metric:** second valid fuel action within **30 days**
+  on a distinct local date (= Activated).
+- Generic DAU / visits are **not** a success metric.
+
+Baseline (all signups, no window, personal fill-ups only): 4.3% first, 2.0%
+second. A time-bounded baseline including rental/gig gallon records is computed
+by the first measurement script (P1-D).
 
 ## 4. Proposed journey
 
@@ -100,11 +117,11 @@ useful, never a stack.
 | Stage | Today | Proposed |
 |---|---|---|
 | Signup | OTP, 2 screens | Unchanged (no auth changes in Phase 1). Emit platform on server events |
-| Mode selector | Blocking modal, no event | Add "Skip for now" + emit answer (treatment arm; see 6) |
+| Mode selector | Blocking modal, no event | **Skippable** (owner-approved Q4), never blocks activation, editable later in Settings/Profile, emits `mode_selected` / `mode_skipped`, skipping assumes nothing (no tab or calculator defaults change). Ships in P1-A, not experiment-gated |
 | Home, no vehicle | 3–5 banners, checklist below fold | Treatment: **one** "Next fuel step" card (add your car → log a fill-up) replaces FreshSignup/Welcome/FirstCalcNudge stack |
 | Add vehicle | ~7 taps | Unchanged in Phase 1 (VIN scan exists); measure step drop-off first |
 | Price discovery | Calculator price field, Find Gas (Pro live prices) | Logger shows the area's EIA weekly average as a **placeholder only** (never a fillable value) |
-| Log fill-up | Gallons + price start at 0; plan values prefilled from calculator | Fix dead-end CTA and `/?log=1`; address plan-as-actual (open question Q3) |
+| Log fill-up | Gallons + price start at 0; plan values prefilled from calculator | Fix dead-end CTA and `/?log=1`. **Planned values are reference only:** the user must explicitly confirm actual gallons and price (a "Same as planned" choice is allowed when true); Save never silently records the plan as actual |
 | After save | Calculator-path: comparison card. Manual path: form just closes | **Every** valid save shows a result card: vs same-grade weekly average, or an explicit "not enough data yet" with the reason, plus one next step |
 | Return | Streak/visit nudges; no fuel trigger | One second-fill nudge, relevant to the user's own fueling (below) |
 | Paywall | Day 21/28 emails; caps unfelt | Unchanged. Revisit only after activation moves |
@@ -147,13 +164,15 @@ users who log a first valid fill-up within 14 days and a second within 30.
 signups/30 days that is unreachable; at the August rate (118/month) it is
 ~5 months. Therefore:
 
-- Build and ship the **non-experimental fixes (P1-A/B)** to everyone now; they
-  are defects and measurement, not hypotheses.
-- Run the randomized test only when acquisition resumes (**go criterion:
-  ≥ 100 eligible signups in a rolling 30 days**). Until then the experiment is
-  built, QA'd on the allowlist, and held at 0%.
-- If the owner chooses to run at low volume anyway, results are labelled
-  **directional only** and no ship decision rests on them.
+- **P1-A and P1-B may ship before the gate**; they are defects, measurement
+  and fuel-data integrity, not hypotheses.
+- **Operational launch gate (owner-approved Q1):** randomized assignment starts
+  only when there are **≥ 100 eligible signups in a rolling 30 days**. Before
+  the gate, experiment treatment stays at **0% / allowlist-only**.
+- **The gate is an operational launch threshold, not statistical power.** 100
+  signups/30 days does not make a result conclusive; formal conclusions still
+  require adequate sample size (≈ 280 per arm for the effect above). Results at
+  lower volume are **directional only** and no ship decision rests on them.
 
 **Design**
 
@@ -217,12 +236,14 @@ panel gains the funnel and Activated-User views (read-only).
 
 All additive and reversible. FuelPriceSnapshot is **not** modified.
 
-1. **Assignment store.** New table `ExperimentAssignment(userId, key, variant,
+1. **Assignment store (deferred, owner decision Q2).** No schema or table is
+   created in P1-A/P1-B. When acquisition is close to the launch gate, the
+   architecture is a new table `ExperimentAssignment(userId, key, variant,
    assignedAt)`, unique on `(userId, key)`, created with direct additive SQL
    (`scripts/add-experiment-assignment.mjs`, idempotent, never `db push`).
-   *Zero-schema alternative:* persist the assignment as the idempotent
-   `experiment_assigned` AnalyticsEvent and read it back. Recommendation: the
-   table (cheap lookups, clean joins). **Owner/ChatGPT decision.**
+   Chosen over storing assignment only in `AnalyticsEvent` for: durable
+   assignment, simple lookup, clean joins, and independence from analytics
+   retention/query semantics. **No schema change is authorized yet.**
 2. **`lib/experiments.ts`:** `assignOnSignup(userId)` (pure hash + insert,
    idempotent), `getVariant(userId, key)` (DB read, not JWT), kill switch via
    env `ACTIVATION_EXPERIMENT_ENABLED` and `ACTIVATION_EXPERIMENT_PCT`. Called
@@ -238,9 +259,17 @@ All additive and reversible. FuelPriceSnapshot is **not** modified.
 5. **Client surfaces:** `NextFuelStepCard` (replaces the banner stack for
    treatment), result card in `FillupLogger`/`ManualFillupLogger`, placeholder
    price, empty-logger vehicle CTA, `/?log=1` handler that opens the logger.
-6. **Never invent a reading.** The price placeholder is display-only; the
-   field stays empty until the user types. The result card never computes a
-   savings number from a value GasCap supplied.
+6. **Fuel-data integrity (owner decision Q3).** Never invent a reading.
+   - The price placeholder is display-only; the field stays empty until the
+     user types.
+   - Calculator-planned gallons/price may be **shown as reference** but are not
+     saved as actuals. The user must explicitly confirm actual values; a
+     "Same as planned" action is allowed when true. Tapping Save alone never
+     converts plan to actual.
+   - Savings calculations and the result card use **confirmed actual values
+     only**.
+   - Regression tests must show the old behavior (plan saved as actual on a
+     bare Save) failing before the fix (P1-B).
 7. **Nudge cron:** `app/api/cron/fillup-second-nudge`, added to
    `.github/workflows/crons.yml` (quote UTC and ET), outside 9:45–10:15 AM ET,
    `npm run check:crons` must pass, `emailOptOut` filtered **at the send site**
@@ -286,28 +315,29 @@ Each step ends at READY FOR REVIEW; none merges without owner authority.
 
 | Step | Scope | Risk | Review |
 |---|---|---|---|
-| **P1-A** | Instrumentation (new events + platform on server events + funnel/Activated views in the admin panel); fix `/?log=1`; empty-logger "add vehicle" CTA | LOW–MED | One PR review |
-| **P1-B** | `lib/fuelFeedback.ts` + post-save result card on both log paths + price placeholder + help/AI/ES copy; regression tests (incl. "unknown renders as unknown", no fabricated reading) | MED | PR review; ChatGPT review recommended (fuel/savings claims) |
-| **P1-C** | `ExperimentAssignment` migration (additive SQL), `lib/experiments.ts`, signup hooks, flag, `NextFuelStepCard`, skippable mode selector, second-fill nudge cron | **HIGH** (schema + notifications) | Full gates + ChatGPT packet, migration-before-deploy |
+| **P1-A** | Instrumentation (new events + platform on server events + funnel/Activated views in the admin panel); fix `/?log=1`; empty-logger "add vehicle" CTA; skippable mode selector with `mode_selected`/`mode_skipped` | LOW–MED | One PR review |
+| **P1-B** | `lib/fuelFeedback.ts` + post-save result card on both log paths + price placeholder + calculator→log confirmation of actual values (Q3) + help/AI/ES copy; regression tests (incl. "unknown renders as unknown", no fabricated reading) | MED | PR review; ChatGPT review recommended (fuel/savings claims) |
+| **P1-C** | `ExperimentAssignment` migration (additive SQL), `lib/experiments.ts`, signup hooks, flag, `NextFuelStepCard`, skippable mode selector, second-fill nudge cron | **HIGH** (schema + notifications); **not started until the launch gate is near** | Full gates + ChatGPT packet, migration-before-deploy |
 | **P1-D** | Time-bounded baseline query for Activation-1 / Activated; readout script | LOW | PR review |
 | **P1-E** | Start at allowlist, then 50/50 when go criterion is met; weekly guardrail review | — | Owner decision |
 
 P1-A and P1-B are valuable without any experiment and can ship first.
 
-### Open questions for the owner
+### Owner decisions (2026-10-08)
 
-- **Q1.** Accept the volume gate (≥ 100 eligible signups / 30 days) before
-  randomizing, or run low-volume as directional only?
-- **Q2.** Assignment table (recommended) or zero-schema AnalyticsEvent?
-- **Q3.** Calculator → "Log this fill-up" prefills the *plan* (gallons, price)
-  as if actual; a user who taps Save records the plan. Options: leave as is,
-  require confirming "what did you pump?", or label such records "from plan"
-  and exclude them from savings. Recommended: require confirmation. This
-  touches fuel-record integrity and savings claims.
-- **Q4.** Is it acceptable for the mode selector to become skippable (it is
-  currently blocking and unmeasured)?
-- **Q5.** Should rental/gig fill-ups count toward Activated (proposed: yes,
-  they are real fueling)?
+- **Q1 — volume gate: APPROVED.** ≥ 100 eligible signups in a rolling 30 days
+  is the operational gate before randomized assignment. P1-A/P1-B may ship
+  earlier. Treatment is 0% / allowlist-only before the gate. It is not
+  statistical power; low-volume results are directional only.
+- **Q2 — assignment storage:** `ExperimentAssignment` table is the preferred
+  design but is **deferred**; no schema/table in P1-A/P1-B; no schema change
+  authorized yet.
+- **Q3 — plan vs actual:** planned values must never silently become actuals;
+  explicit user confirmation required; savings use confirmed actuals only.
+  Treated as a fuel-data-integrity requirement (section 8.6).
+- **Q4 — mode selector:** APPROVED to be skippable (section 4).
+- **Q5 — rental/gig:** valid personal, rental and gig **gasoline/diesel**
+  fill-ups count; EV/kWh does not (section 3).
 
 ### Defects noted during the audit (not fixed here)
 
