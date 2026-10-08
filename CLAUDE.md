@@ -264,7 +264,7 @@ rather than merging into `main`.
   changes during the 9:45–10:15 AM ET fire window.
 - **Never the 🔥 emoji.** Streaks 📅, urgency ⏰, milestones 🏆.
 - Brand mark is the orange nozzle+gauge only.
-- Only the Railway project **caring-integrity** serves www.gascap.app.
+- Only the Railway project **GasCap** (ID `e56d90fe-99d6-48b1-9659-104459f54a8e`; named `caring-integrity` until 2026-10-08) serves www.gascap.app.
 - EPA `fueleconomy.gov`: for BEVs `comb08` is MPGe and `range` is electric
   miles — dividing them yields a nonsense "tank size".
 - When a bug is found by accident, add a check that would have caught it

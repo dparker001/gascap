@@ -73,7 +73,7 @@ This documentation package exists to ensure that GasCap™ is operationally and 
 - **QR/Partner:** Campaign placement tracking system live (CampaignPlacement model in PostgreSQL)
 - **Giveaway:** Monthly drawing system ($25 Visa prepaid — scales to $50 at 500 subscribers)
 - **Entity:** Gas Capacity LLC (Florida LLC, EIN: 42-2058323)
-- **Deployment:** Railway (project: caring-integrity)
+- **Deployment:** Railway (project: GasCap)
 
 ---
 

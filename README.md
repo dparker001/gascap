@@ -131,7 +131,7 @@ The app runs on **Railway** as a single service. All environment variables are s
 Push to `main` triggers an automatic deploy. The Railway service is bound to `www.gascap.app`.
 
 Key Railway details:
-- Project: **`caring-integrity`** — the only project serving www.gascap.app.
+- Project: **`GasCap`** (ID `e56d90fe-99d6-48b1-9659-104459f54a8e`; named `caring-integrity` until 2026-10-08) — the only project serving www.gascap.app.
 - A volume is mounted at `/app/data` for the 7 active file-backed stores (see "Persistence inventory" above).
 - **Scheduled jobs run from GitHub Actions** (`.github/workflows/crons.yml`),
   not Railway's scheduler — 18 `/api/cron/*` endpoints, 16 scheduled. Each is

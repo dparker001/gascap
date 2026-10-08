@@ -46,7 +46,7 @@
 | AI: Anthropic Claude (AI chat), GPT-4o Vision (receipt scan) | ⚠️ | Two AI providers — confirm which is used for which feature |
 | Styling: Tailwind CSS | ✅ | |
 | PWA: next-pwa + Workbox | ✅ | Service worker, offline support |
-| Deployment: Railway (caring-integrity project) | ✅ | Single service, PostgreSQL |
+| Deployment: Railway (GasCap project) | ✅ | Single service, PostgreSQL |
 
 ---
 
