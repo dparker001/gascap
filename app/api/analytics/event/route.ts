@@ -140,6 +140,10 @@ const CLIENT_EVENT_TYPES = new Set([
   // renders for a guest); advisory client signal, never gates anything.
   'mode_selected',
   'mode_skipped',
+  // Phase 1 P1-B (2026-10-08) — fired once when the post-save fuel feedback card
+  // is shown. Outcome + reason enums only: no gallons, price, station, grade,
+  // date or any amount. Authenticated-only advisory client signal.
+  'fillup_feedback_viewed',
 ]);
 
 /**
@@ -179,6 +183,9 @@ interface MetadataSchema {
    *  object is rejected for a schema with any required field. A schema
    *  with no required fields (paywall_viewed) may omit metadata entirely. */
   required: string[];
+  /** Optional cross-field rule, run after every per-field check passes. Return
+   *  an error message to reject, or null to accept. Only ever adds restriction. */
+  crossCheck?: (obj: Record<string, unknown>) => string | null;
 }
 
 /**
@@ -277,6 +284,21 @@ const METADATA_SCHEMAS: Record<string, MetadataSchema> = {
     fields: {},
     required: [],
   },
+  // P1-B — which result the user saw, never any fuel/price values.
+  fillup_feedback_viewed: {
+    fields: {
+      outcome: (v) => v === 'priced' || v === 'insufficient_data',
+      reason:  (v) => v === 'no_grade' || v === 'unsupported_grade' || v === 'no_baseline' || v === 'invalid',
+    },
+    required: ['outcome'],
+    // A priced result carries NO reason; an insufficient-data result MUST carry one.
+    crossCheck: (o) => {
+      const hasReason = Object.prototype.hasOwnProperty.call(o, 'reason') && o.reason !== undefined;
+      if (o.outcome === 'priced' && hasReason) return 'fillup_feedback_viewed: a priced outcome must not carry a reason';
+      if (o.outcome === 'insufficient_data' && !hasReason) return 'fillup_feedback_viewed: insufficient_data requires a reason';
+      return null;
+    },
+  },
 };
 
 function containsDenylistedContent(value: unknown): boolean {
@@ -341,6 +363,11 @@ function validateMetadata(eventType: string, metadata: unknown): { ok: true; val
 
   if (containsDenylistedContent(obj)) {
     return { ok: false, error: 'metadata contains disallowed content' };
+  }
+
+  if (schema.crossCheck) {
+    const err = schema.crossCheck(obj);
+    if (err) return { ok: false, error: err };
   }
 
   return { ok: true, value: obj };

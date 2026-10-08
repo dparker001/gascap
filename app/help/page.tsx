@@ -147,7 +147,7 @@ const SECTIONS = [
     items: [
       {
         q: 'How do I log a fill-up?',
-        a: 'From the Tools tab, tap "Log Fill-Up." Enter the date, gallons, price per gallon, and odometer reading. For the gas station, you have three fast options: tap "📍 Detect" to auto-find the station you\'re currently at using your location, pick from your recently used stations (shown as quick-select chips), or just start typing. Pro users can also tap the camera icon to scan a receipt and auto-fill the amounts (including the station name). Fleet users can assign the fill-up to a driver. Tip: if you just used a calculator, the gallons, price, and vehicle are carried over into the logger for you.',
+        a: 'From the Tools tab, tap "Log Fill-Up." Enter the date, gallons, price per gallon, and odometer reading. For the gas station, you have three fast options: tap "📍 Detect" to auto-find the station you\'re currently at using your location, pick from your recently used stations (shown as quick-select chips), or just start typing. Pro users can also tap the camera icon to scan a receipt and auto-fill the amounts (including the station name). Fleet users can assign the fill-up to a driver. Tip: if you just used a calculator, your vehicle is carried over and your plan (gallons and price) is shown as a reference, but GasCap™ never saves a plan as what you actually pumped. Type what you really pumped and paid, or tap "Same as planned" if that is true. After you save, a result card compares your price with the EIA weekly average for the same fuel grade, or tells you plainly when there is not enough data to compare yet (for example when no fuel grade was picked).',
       },
       {
         q: 'What receipts can I scan to log a fill-up?',
