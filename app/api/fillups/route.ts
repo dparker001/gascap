@@ -24,6 +24,7 @@ import { findById, markMilestoneSent, recordActivity } from '@/lib/users';
 import { sendMilestoneEmail }          from '@/lib/emailEngagement';
 import { originPlatformFromRequest }   from '@/lib/originPlatform';
 import { awardFuelActionIfQualifying } from '@/lib/gasPoints';
+import { awardChallengesAfterFuelAction } from '@/lib/gasChallengeAwards';
 
 function userId(session: Session | null) {
   return session?.user?.id ?? session?.user?.email ?? '';
@@ -152,7 +153,18 @@ export async function POST(req: Request) {
     gallons: entry.gallonsPumped, pricePerGallon: entry.pricePerGallon, totalCost: entry.totalCost,
   });
 
-  return NextResponse.json({ ...entry, gasPointsAwarded }, { status: 201 });
+  // G2-B: Pump Tracker (+25) when it is this user's selected challenge. Evaluated AFTER the G1
+  // award above, best effort, and never able to fail the save or alter the P1-B fuel result.
+  const challengeAwards = await awardChallengesAfterFuelAction(uid, {
+    gallons: entry.gallonsPumped, pricePerGallon: entry.pricePerGallon, totalCost: entry.totalCost,
+  });
+
+  // `gasPointsAwarded` (single G1 award) is preserved for existing callers; `gasPointsAwards`
+  // is the additive list of every award from this save (G1 fuel action first, then challenges).
+  return NextResponse.json(
+    { ...entry, gasPointsAwarded, gasPointsAwards: [...(gasPointsAwarded ? [gasPointsAwarded] : []), ...challengeAwards] },
+    { status: 201 },
+  );
 }
 
 export async function PATCH(req: Request) {

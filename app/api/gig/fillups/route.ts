@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma';
 import { recordAnalyticsEvent } from '@/lib/analyticsEvents';
 import { originPlatformFromRequest } from '@/lib/originPlatform';
 import { awardFuelActionIfQualifying } from '@/lib/gasPoints';
+import { awardChallengesAfterFuelAction } from '@/lib/gasChallengeAwards';
 
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -101,7 +102,16 @@ export async function POST(req: NextRequest) {
     gallons: record.gallons, pricePerGallon: record.pricePerGallon, totalCost: record.totalCost, energyUnit: record.energyUnit,
   });
 
-  return NextResponse.json({ fillup: record, entriesAwarded: GIG_LOG_ENTRIES, gasPointsAwarded }, { status: 201 });
+  // G2-B: Pump Tracker (+25) when selected — after the G1 award, best effort. EV/kWh records
+  // do not qualify, so they cannot satisfy it.
+  const challengeAwards = await awardChallengesAfterFuelAction(uid, {
+    gallons: record.gallons, pricePerGallon: record.pricePerGallon, totalCost: record.totalCost, energyUnit: record.energyUnit,
+  });
+
+  return NextResponse.json({
+    fillup: record, entriesAwarded: GIG_LOG_ENTRIES, gasPointsAwarded,
+    gasPointsAwards: [...(gasPointsAwarded ? [gasPointsAwarded] : []), ...challengeAwards],
+  }, { status: 201 });
 }
 
 export async function DELETE(req: NextRequest) {

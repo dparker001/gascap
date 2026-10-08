@@ -100,9 +100,11 @@ describe('GasCap calendar (America/New_York)', () => {
 // ── rules + levels ──────────────────────────────────────────────────────────
 describe('rules and levels', () => {
   it('exact initial point rules', () => {
-    expect(GASPOINT_RULES).toEqual({
+    // The six G1 values are unchanged. G2-B ADDED four challenge actions (never changed a G1 value).
+    expect(GASPOINT_RULES).toMatchObject({
       welcome_bonus: 25, daily_fuel_check: 5, weekly_3day_check: 25, first_vehicle: 25, first_saved_station: 20, fuel_action: 50,
     });
+    expect(Object.keys(GASPOINT_RULES)).toHaveLength(10);
     expect(WEEKLY_MISSION_TARGET).toBe(3);
   });
   it('level thresholds and boundaries', () => {

@@ -24,6 +24,16 @@ export const GASPOINT_RULES = {
   first_saved_station: 20,
   /** A persisted gallon-based fuel action, once per GasCap day. */
   fuel_action:         50,
+
+  // ── G2-B weekly challenges (once per challenge per user per GasCap week) ──
+  // Awarded only when the challenge is in the user's authoritative weekly set and
+  // the GasCap week is >= G2_REWARDS_START_WEEK (lib/gasChallengesRules.ts).
+  // `weekly_3day_check` above is G2 Challenge #1 and is NOT duplicated here.
+  challenge_weekend_check:  10,
+  challenge_fuel_explorer:  15,
+  challenge_pump_tracker:   25,
+  /** Rule defined for readiness only: MPG Builder is non-selectable in g2_v1 and has NO award path. */
+  challenge_mpg_builder:    30,
 } as const;
 
 export type GasPointAction = keyof typeof GASPOINT_RULES;

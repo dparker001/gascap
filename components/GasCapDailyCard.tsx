@@ -13,10 +13,11 @@
  * station price, never a prediction, never BUY/WAIT. GasPoints are separate from
  * giveaway entries and have no cash or redemption value; the card says so.
  */
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useTranslation } from '@/contexts/LanguageContext';
-import { GASPOINT_LEVELS, isGasPointAction, type AwardSummary, type GasPointLevelId } from '@/lib/gasPointsRules';
+import { GASPOINT_LEVELS, GASPOINT_RULES, isGasPointAction, type AwardSummary, type GasPointLevelId } from '@/lib/gasPointsRules';
+import type { ChallengeView } from '@/lib/gasChallengesRules';
 
 type Grade = 'regular' | 'midgrade' | 'premium' | 'diesel';
 const GRADES: Grade[] = ['regular', 'midgrade', 'premium', 'diesel'];
@@ -38,6 +39,16 @@ interface Status {
   streak: number;
   pulse?: Pulse;
 }
+interface ChallengesResponse {
+  eligible: boolean;
+  g2Active: boolean;
+  startsOn: string;
+  weekKey: string;
+  challenges: ChallengeView[];
+}
+/** Awards that earn the "Weekly Challenge Complete!" banner (G2 challenge #1 is the existing weekly mission). */
+const isChallengeAward = (action: string) => action.startsWith('challenge_') || action === 'weekly_3day_check';
+
 interface CheckResponse extends Omit<Status, 'eligible'> {
   awards: AwardSummary[];
   totalAwarded: number;
@@ -58,6 +69,9 @@ export default function GasCapDailyCard() {
   const [busy,   setBusy]     = useState(false);
   const [error,  setError]    = useState(false);
   const [hidden, setHidden]   = useState(false);
+  const [ch,     setCh]       = useState<ChallengesResponse | null>(null);
+  // The server-derived default grade from the FIRST status load (before any switching).
+  const defaultGrade = useRef<Grade | null>(null);
 
   const load = useCallback(async (g?: Grade | null) => {
     try {
@@ -67,14 +81,35 @@ export default function GasCapDailyCard() {
       const d = await r.json() as Status;
       if (!d.eligible) { setHidden(true); return; }
       setStatus(d);
-      if (d.pulse) { setPulse(d.pulse); setGrade(d.pulse.grade); }
+      if (d.pulse) {
+        setPulse(d.pulse); setGrade(d.pulse.grade);
+        if (defaultGrade.current === null && !g) defaultGrade.current = d.pulse.grade;
+      }
     } catch { setError(true); }
+  }, []);
+
+  const loadChallenges = useCallback(async () => {
+    try {
+      const r = await fetch('/api/gaspoints/challenges', { cache: 'no-store' });
+      if (!r.ok) return;
+      setCh(await r.json() as ChallengesResponse);
+    } catch { /* the weekly section simply stays hidden */ }
   }, []);
 
   useEffect(() => {
     if (authStatus !== 'authenticated') return;
     void load(null);
-  }, [authStatus, load]);
+    void loadChallenges();
+  }, [authStatus, load, loadChallenges]);
+
+  // A fill-up or a new vehicle can advance a weekly challenge (Pump Tracker / slot 3): re-read.
+  useEffect(() => {
+    if (authStatus !== 'authenticated') return;
+    const refresh = () => { void load(grade); void loadChallenges(); };
+    window.addEventListener('fillup-saved', refresh);
+    window.addEventListener('vehicle-saved', refresh);
+    return () => { window.removeEventListener('fillup-saved', refresh); window.removeEventListener('vehicle-saved', refresh); };
+  }, [authStatus, grade, load, loadChallenges]);
 
   async function runCheck() {
     if (busy) return;
@@ -91,14 +126,33 @@ export default function GasCapDailyCard() {
       setStatus(d.status);
       setPulse(d.pulse); setGrade(d.pulse.grade);
       setAwards(Array.isArray(d.awards) ? d.awards.filter((a) => isGasPointAction(a.action)) : []);
+      void loadChallenges();
     } catch { setError(true); }
     finally { setBusy(false); }
   }
+
+  // Fuel Explorer is completed ONLY by the authoritative POST below, and only when it is this
+  // week's selected challenge and still open. Ordinary grade changes stay read-only GETs.
+  const explorerOpen = !!ch?.g2Active && ch.challenges.some((c) => c.id === 'fuel_explorer' && c.status === 'available');
 
   async function pickGrade(next: Grade) {
     if (next === grade || !status?.checkedToday) { setGrade(next); return; }
     setGrade(next);
     await load(next);
+    if (explorerOpen && defaultGrade.current !== null && next !== defaultGrade.current) {
+      try {
+        const r = await fetch('/api/gaspoints/explore', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ grade: next }),
+        });
+        if (r.ok) {
+          const d = await r.json() as { awards?: AwardSummary[] };
+          const got = Array.isArray(d.awards) ? d.awards.filter((a) => isGasPointAction(a.action)) : [];
+          if (got.length > 0) { setAwards(got); await loadChallenges(); }
+        }
+      } catch { /* exploring still works as a read-only comparison */ }
+    }
   }
 
   if (!session || hidden) return null;
@@ -150,7 +204,8 @@ export default function GasCapDailyCard() {
         </div>
       </div>
 
-      {/* Weekly mission */}
+      {/* Weekly mission (G1 presentation, shown until the G2 weekly challenges are live) */}
+      {!ch?.g2Active && (
       <div className="px-4 pb-2">
         <div className="flex items-center justify-between text-[11px]">
           <span className="font-bold text-slate-700">{g.weekly(Math.min(status.week.checks, status.week.target), status.week.target)}</span>
@@ -162,11 +217,51 @@ export default function GasCapDailyCard() {
         </div>
         <p className="text-[10px] text-slate-400 mt-0.5">{status.week.complete ? g.weeklyDone : g.weeklyHelp}</p>
         {status.streak > 0 && <p className="text-[10px] text-slate-400 mt-0.5">📅 {g.streak(status.streak)}</p>}
+        {ch && !ch.g2Active && ch.startsOn && (
+          <p className="text-[10px] text-slate-500 mt-1" data-testid="g2-starts-notice">
+            {t.gasChallenges.startsMonday(new Date(`${ch.startsOn}T12:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }))}{' '}
+            {t.gasChallenges.startsMondayHelp}
+          </p>
+        )}
       </div>
+      )}
+
+      {/* This Week — the three weekly challenges (G2-B). Hidden until the launch week. */}
+      {ch?.g2Active && ch.challenges.length > 0 && (
+        <div className="px-4 pb-2" data-testid="this-week">
+          <p className="text-[11px] font-black text-slate-700 uppercase tracking-wide mb-1">{t.gasChallenges.heading}</p>
+          <ul className="space-y-1.5">
+            {ch.challenges.map((c) => {
+              const name = t.gasChallenges.names[c.id];
+              const done = c.status === 'complete';
+              const progressText = c.progress === null ? null
+                : c.id === 'fuel_check_3day' ? t.gasChallenges.progressDays(c.progress, c.target) : t.gasChallenges.progressCount(c.progress, c.target);
+              return (
+                <li key={c.id} data-challenge={c.id} className={`rounded-xl border px-3 py-2 ${done ? 'border-emerald-200 bg-emerald-50' : 'border-slate-200 bg-slate-50'}`}>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-[12px] font-bold text-slate-800">{done ? '✓ ' : ''}{name}</p>
+                    {progressText && <p className="text-[11px] font-bold text-slate-600 shrink-0">{done ? t.gasChallenges.complete : progressText}</p>}
+                  </div>
+                  <p className="text-[11px] text-slate-500 leading-snug">{t.gasChallenges.descriptions[c.id]}</p>
+                  {c.status === 'guidance'
+                    ? <p className="text-[10px] text-slate-400">{t.gasChallenges.g1RewardNote(GASPOINT_RULES.first_vehicle)}</p>
+                    : c.proposedReward !== null && <p className="text-[10px] font-bold text-amber-700">{t.gasChallenges.rewardLine(c.proposedReward)}</p>}
+                  {c.id === 'fuel_explorer' && c.status === 'available' && (
+                    <p className="text-[10px] text-slate-500">{status.checkedToday ? t.gasChallenges.exploreHint : t.gasChallenges.exploreNeedsCheck}</p>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
 
       {/* Award breakdown from THIS check (server-decided) */}
       {awards.length > 0 && (
         <div className="mx-4 mb-2 rounded-xl bg-emerald-50 border border-emerald-100 px-3 py-2 animate-fade-in" role="status">
+          {awards.some((a) => isChallengeAward(a.action)) && (
+            <p className="text-[11px] font-black text-emerald-800 uppercase tracking-wide">{t.gasChallenges.completeBanner}</p>
+          )}
           <p className="text-[13px] font-black text-emerald-700">{g.resultTotal(total)}</p>
           <ul className="mt-0.5 space-y-0.5">
             {awards.map((a) => (

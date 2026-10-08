@@ -37,6 +37,7 @@
  * backfill happens here).
  */
 import { awardFuelActionIfQualifying } from './gasPoints';
+import { awardChallengesAfterFuelAction } from './gasChallengeAwards';
 import { randomUUID } from 'crypto';
 import { prisma } from './prisma';
 import { Prisma } from '@/lib/generated/prisma/client';
@@ -220,6 +221,10 @@ export async function createRentalFillup(
     await awardFuelActionIfQualifying(userId, {
       gallons: created.gallonsPumped, pricePerGallon: created.pricePerGallon, totalCost: created.totalCost,
     });
+    // G2-B: Pump Tracker (+25) when it is the user's selected challenge (best effort, after the G1 award).
+    await awardChallengesAfterFuelAction(userId, {
+      gallons: created.gallonsPumped, pricePerGallon: created.pricePerGallon, totalCost: created.totalCost,
+    }).catch(() => []);
 
     return { outcome: 'created', fillup: toRentalFillup(fromPrisma(created)) };
   } catch (err) {

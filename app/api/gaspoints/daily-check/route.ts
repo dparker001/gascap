@@ -7,14 +7,16 @@
  * accounts get 403 and earn nothing.
  *
  * Atomically (idempotent inserts) evaluates the daily +5, the one-time +25
- * welcome bonus and the weekly 3-day +25 mission, and returns the awards THIS
- * call created plus the updated status and the fuel pulse. A repeat the same
+ * welcome bonus and the weekly 3-day +25 mission, then — best effort, never
+ * failing the check — the G2 Weekend Check challenge when it is this user's
+ * selected challenge. Returns the awards THIS call created (each listed
+ * separately) plus the updated status and the fuel pulse. A repeat the same
  * GasCap day awards zero.
  */
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { completeDailyCheck } from '@/lib/gasPoints';
+import { completeDailyCheckWithChallenges } from '@/lib/gasChallengeAwards';
 import { PULSE_GRADES, defaultPulseGrade, loadFuelPulse } from '@/lib/fuelPulse';
 import { checkRateLimitDb, hashRateLimitIdentifier } from '@/lib/rateLimitDb';
 import type { FuelGrade } from '@/lib/eiaAreas';
@@ -46,7 +48,7 @@ export async function POST(req: Request) {
   if (!rl.allowed) return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
 
   try {
-    const result = await completeDailyCheck(userId);
+    const result = await completeDailyCheckWithChallenges(userId);
     if ('ineligible' in result) return NextResponse.json({ error: 'Not eligible' }, { status: 403 });
     const grade = (input.grade as FuelGrade | undefined) ?? await defaultPulseGrade(userId);
     const pulse = await loadFuelPulse(grade);

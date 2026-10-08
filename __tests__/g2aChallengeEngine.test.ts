@@ -35,7 +35,7 @@ vi.mock('@/lib/prisma', () => ({
 }));
 
 import {
-  G2_CHALLENGE_VERSION, SLOT2_POOL, MPG_BUILDER_SELECTABLE, PLANNED_REWARDS, PLANNED_G2B_HOOKS,
+  G2_CHALLENGE_VERSION, SLOT2_POOL, MPG_BUILDER_SELECTABLE, PLANNED_REWARDS, PLANNED_G2B_HOOKS, AWARDABLE_CHALLENGES,
   selectWeeklyChallenges, buildWeeklyChallengeViews, challengeView, isWeekendDateKey, stableHash32, challengeIdempotencyKey,
   type ProgressContext, type SelectionInput,
 } from '../lib/gasChallengesRules';
@@ -50,7 +50,7 @@ const NEW_FILES = ['lib/gasChallengesRules.ts', 'lib/gasChallenges.ts', 'app/api
 const W = '2026-10-05';                       // Monday
 const sel = (over: Partial<SelectionInput> = {}) =>
   selectWeeklyChallenges({ userId: 'u1', weekKey: W, hasVehicle: true, pumpTrackerComplete: false, mpgBuilderAvailable: false, ...over });
-const ctx = (over: Partial<ProgressContext> = {}): ProgressContext => ({ weekKey: W, checkDates: [], weeklyMissionAwarded: false, fuelActionDates: [], ...over });
+const ctx = (over: Partial<ProgressContext> = {}): ProgressContext => ({ weekKey: W, checkDates: [], weeklyMissionAwarded: false, challengeAwards: [], ...over });
 const ids = (n: number, f: (i: number) => string) => Array.from({ length: n }, (_, i) => f(i));
 
 beforeEach(() => {
@@ -128,36 +128,41 @@ describe('slot 1 — the existing G1 weekly mission', () => {
 
 // ── weekend check ───────────────────────────────────────────────────────────
 describe('Weekend Check', () => {
-  it('Saturday or Sunday completes it; weekday-only does not', () => {
+  it('the weekend date helper recognises Saturday/Sunday (the QUALIFICATION rule, not the completion record)', () => {
     expect(isWeekendDateKey('2026-10-10')).toBe(true);    // Saturday
     expect(isWeekendDateKey('2026-10-11')).toBe(true);    // Sunday
     for (const d of ['2026-10-05', '2026-10-06', '2026-10-07', '2026-10-08', '2026-10-09']) expect(isWeekendDateKey(d)).toBe(false);
     expect(isWeekendDateKey('garbage')).toBe(false);
-    const v = (dates: string[]) => challengeView(2, 'weekend_check', ctx({ checkDates: dates }));
-    expect(v(['2026-10-06', '2026-10-07', '2026-10-09'])).toMatchObject({ status: 'available', progress: 0, target: 1 });
-    expect(v(['2026-10-06', '2026-10-10'])).toMatchObject({ status: 'complete', progress: 1 });
-    expect(v(['2026-10-11'])).toMatchObject({ status: 'complete' });
   });
-  it('proposed +10 on a future action; ledger-derived', () => {
-    expect(challengeView(2, 'weekend_check', ctx())).toMatchObject({ proposedReward: 10, rewardAction: 'challenge_weekend_check', rewardIsExistingG1: false, trackingCapability: 'ledger_derived' });
+  it('a Sat/Sun daily check WITHOUT the award row is NOT complete — only the challenge award row is', () => {
+    const v = (dates: string[], awards: string[] = []) => challengeView(2, 'weekend_check', ctx({ checkDates: dates, challengeAwards: awards }));
+    expect(v(['2026-10-06', '2026-10-07', '2026-10-09'])).toMatchObject({ status: 'available', progress: 0, target: 1 });
+    expect(v(['2026-10-06', '2026-10-10'])).toMatchObject({ status: 'available', progress: 0, target: 1 });   // Saturday check, no award
+    expect(v(['2026-10-11'])).toMatchObject({ status: 'available', progress: 0, target: 1 });                // Sunday check, no award
+    expect(v(['2026-10-06'], ['challenge_weekend_check'])).toMatchObject({ status: 'complete', progress: 1, target: 1 });   // award row alone completes it
+  });
+  it('+10 via its own award action; server-authoritative; the award row completes it', () => {
+    expect(challengeView(2, 'weekend_check', ctx())).toMatchObject({ proposedReward: 10, rewardAction: 'challenge_weekend_check', rewardIsExistingG1: false, trackingCapability: 'server_authoritative' });
+    expect(challengeView(2, 'weekend_check', ctx({ challengeAwards: ['challenge_weekend_check'] }))).toMatchObject({ status: 'complete', progress: 1 });
   });
 });
 
-// ── fuel explorer boundary ──────────────────────────────────────────────────
-describe('Fuel Explorer — honest tracking boundary', () => {
-  it('reports tracking unavailable with no progress, never inferred from GETs', () => {
-    const v = challengeView(2, 'fuel_explorer', ctx({ checkDates: ['2026-10-06', '2026-10-07', '2026-10-08'], fuelActionDates: ['2026-10-06'] }));
-    expect(v).toMatchObject({ status: 'tracking_unavailable', progress: null, trackingCapability: 'requires_g2b_hook', proposedReward: 15 });
+// ── fuel explorer (G2-B: server-authoritative once its hook exists) ─────────
+describe('Fuel Explorer — authoritative via POST /api/gaspoints/explore', () => {
+  it('is available/0-of-1 until its award row exists, then complete — never inferred from GETs', () => {
+    expect(challengeView(2, 'fuel_explorer', ctx({ checkDates: ['2026-10-06', '2026-10-07', '2026-10-08'] })))
+      .toMatchObject({ status: 'available', progress: 0, target: 1, trackingCapability: 'server_authoritative', proposedReward: 15 });
+    expect(challengeView(2, 'fuel_explorer', ctx({ challengeAwards: ['challenge_fuel_explorer'] }))).toMatchObject({ status: 'complete', progress: 1 });
   });
-  it('slot 2 can select it and renders the boundary instead of faking progress', () => {
+  it('slot 2 can select it', () => {
     const user = ids(200, (i) => `x${i}`).find((u) => sel({ userId: u }).slot2 === 'fuel_explorer') as string;
-    const views = buildWeeklyChallengeViews(sel({ userId: user }), ctx());
-    expect(views[1]).toMatchObject({ id: 'fuel_explorer', status: 'tracking_unavailable', progress: null });
+    expect(buildWeeklyChallengeViews(sel({ userId: user }), ctx())[1]).toMatchObject({ id: 'fuel_explorer', status: 'available' });
   });
-  it('a server-authoritative G2-B hook is DESIGNED, not implemented', () => {
+  it('the hook is implemented as the reviewed authoritative POST route', () => {
     expect(PLANNED_G2B_HOOKS.find((h) => h.challenge === 'fuel_explorer')?.trigger).toMatch(/POST \/api\/gaspoints\/explore/);
-    expect(code('lib/gasChallenges.ts') + code('app/api/gaspoints/challenges/route.ts')).not.toMatch(/explore/i);
-    expect(() => read('app/api/gaspoints/explore/route.ts')).toThrow();
+    expect(read('app/api/gaspoints/explore/route.ts')).toMatch(/export async function POST/);
+    // the read model and the GET route still never complete anything
+    expect(code('lib/gasChallenges.ts') + code('app/api/gaspoints/challenges/route.ts')).not.toMatch(/awardFuelExplorer|awardOnce/);
   });
 });
 
@@ -170,11 +175,11 @@ describe('slot 3 — state-sensitive', () => {
     expect(v).toMatchObject({ id: 'add_vehicle', status: 'guidance', progress: null, proposedReward: null, rewardAction: 'first_vehicle', rewardIsExistingG1: true, trackingCapability: 'guidance' });
     expect(Object.keys(PLANNED_REWARDS)).not.toContain('add_vehicle');
   });
-  it('vehicle -> Pump Tracker (+25 proposed); a qualifying fuel action completes it', () => {
+  it('vehicle -> Pump Tracker (+25); its award row completes it', () => {
     expect(sel({ hasVehicle: true }).slot3).toBe('pump_tracker');
-    expect(challengeView(3, 'pump_tracker', ctx())).toMatchObject({ status: 'available', progress: 0, target: 1, proposedReward: 25, rewardAction: 'challenge_pump_tracker' });
-    expect(challengeView(3, 'pump_tracker', ctx({ fuelActionDates: ['2026-10-07'] }))).toMatchObject({ status: 'complete', progress: 1 });
-    expect(challengeView(3, 'pump_tracker', ctx({ fuelActionDates: ['2026-10-07', '2026-10-08'] }))).toMatchObject({ progress: 1 });   // capped at the target
+    expect(challengeView(3, 'pump_tracker', ctx())).toMatchObject({ status: 'available', progress: 0, target: 1, proposedReward: 25, rewardAction: 'challenge_pump_tracker', trackingCapability: 'server_authoritative' });
+    expect(challengeView(3, 'pump_tracker', ctx({ challengeAwards: ['challenge_pump_tracker'] }))).toMatchObject({ status: 'complete', progress: 1 });
+    expect(challengeView(3, 'pump_tracker', ctx({ challengeAwards: ['challenge_pump_tracker', 'challenge_pump_tracker'] }))).toMatchObject({ progress: 1 });   // capped at the target
   });
   it('slot 3 may change when the real state changes (owner-approved), no persistence', () => {
     expect(sel({ hasVehicle: false }).slot3).toBe('add_vehicle');
@@ -199,13 +204,13 @@ describe('MPG Builder — tracking decision', () => {
     for (const u of ids(100, (i) => `m${i}`)) expect(sel({ userId: u, mpgBuilderAvailable: true }).slot3).not.toBe('mpg_builder');
   });
   it('the catalog understands it but reports tracking unavailable, never a guessed completion', () => {
-    expect(challengeView(3, 'mpg_builder', ctx({ fuelActionDates: ['2026-10-07'] }))).toMatchObject({
+    expect(challengeView(3, 'mpg_builder', ctx({ challengeAwards: ['challenge_pump_tracker'] }))).toMatchObject({
       status: 'tracking_unavailable', progress: null, trackingCapability: 'requires_g2b_hook', proposedReward: 30, rewardAction: 'challenge_mpg_builder',
     });
   });
   it('the reason is documented in the engine and the hook is designed for CREATE time only', () => {
     expect(read('lib/gasChallengesRules.ts')).toMatch(/back-dated, edited \(PATCH\) or deleted/);
-    expect(PLANNED_G2B_HOOKS.find((h) => h.challenge === 'mpg_builder')?.note).toMatch(/CREATE time only/);
+    expect(PLANNED_G2B_HOOKS.find((h) => h.challenge === 'mpg_builder')?.note).toMatch(/CREATE-time check/);
   });
 });
 
@@ -213,32 +218,26 @@ describe('MPG Builder — tracking decision', () => {
 const led = (userId: string, action: string, sourceRef: string | null, key?: string): Row =>
   ({ userId, action, sourceRef, idempotencyKey: key ?? `${action}:${userId}:${sourceRef}` });
 
-describe('getWeeklyChallenges (authoritative reads)', () => {
-  const MON = new Date('2026-10-05T16:00:00Z');
-  const FRI = new Date('2026-10-09T16:00:00Z');
+describe('getWeeklyChallenges (authoritative reads, G2-active weeks)', () => {
+  // The first rewardable GasCap week is Monday 2026-10-12.
+  const MON = new Date('2026-10-12T16:00:00Z');
+  const FRI = new Date('2026-10-16T16:00:00Z');
+  const WK = '2026-10-12';
 
   it('derives progress from the ledger for the CURRENT GasCap week only', async () => {
     state.vehicles.set('u1', 1);
     state.ledger.push(
-      led('u1', 'daily_fuel_check', '2026-10-06'), led('u1', 'daily_fuel_check', '2026-10-07'),
-      led('u1', 'daily_fuel_check', '2026-09-30'),                 // previous week — ignored
-      led('u1', 'fuel_action', '2026-10-08'),
+      led('u1', 'daily_fuel_check', '2026-10-13'), led('u1', 'daily_fuel_check', '2026-10-14'),
+      led('u1', 'daily_fuel_check', '2026-10-07'),                 // previous week — ignored
+      led('u1', 'challenge_pump_tracker', WK),
     );
     const r = await getWeeklyChallenges('u1', FRI);
-    expect(r).toMatchObject({ eligible: true, weekKey: '2026-10-05', version: 'g2_v1' });
-    expect(r.challenges.map((c) => c.id).slice(0, 1)).toEqual(['fuel_check_3day']);
-    expect(r.challenges[0]).toMatchObject({ progress: 2, status: 'available' });
+    expect(r).toMatchObject({ eligible: true, g2Active: true, weekKey: WK, version: 'g2_v1' });
+    expect(r.challenges[0]).toMatchObject({ id: 'fuel_check_3day', progress: 2, status: 'available' });
     expect(r.challenges[2]).toMatchObject({ id: 'pump_tracker', status: 'complete', progress: 1 });
   });
-  it('weekend progress comes from Sat/Sun daily-check rows in the week', async () => {
-    state.ledger.push(led('u1', 'daily_fuel_check', '2026-10-10'));
-    const r = await getWeeklyChallenges('u1', new Date('2026-10-10T16:00:00Z'));
-    const wk = r.challenges.find((c) => c.id === 'weekend_check');
-    if (wk) expect(wk).toMatchObject({ status: 'complete', progress: 1 });
-    else expect(r.challenges[1].id).toBe('fuel_explorer');
-  });
   it('the weekly_3day_check row marks slot 1 complete', async () => {
-    state.ledger.push(led('u1', 'weekly_3day_check', '2026-10-05', gasPointKeys.weekly('u1', '2026-10-05')));
+    state.ledger.push(led('u1', 'weekly_3day_check', WK, gasPointKeys.weekly('u1', WK)));
     expect((await getWeeklyChallenges('u1', FRI)).challenges[0]).toMatchObject({ status: 'complete', progress: 3 });
   });
   it('slot 3 follows the real vehicle state within the same week', async () => {
@@ -247,12 +246,12 @@ describe('getWeeklyChallenges (authoritative reads)', () => {
     expect((await getWeeklyChallenges('u1', FRI)).challenges[2].id).toBe('pump_tracker');
   });
   it('uses the canonical GasCap week: Sunday night is still last week, Eastern midnight rolls over', async () => {
-    state.ledger.push(led('u1', 'daily_fuel_check', '2026-10-06'));
-    const sunNight = await getWeeklyChallenges('u1', new Date('2026-10-12T03:59:00Z'));
-    const monMidnight = await getWeeklyChallenges('u1', new Date('2026-10-12T04:00:00Z'));
-    expect(sunNight.weekKey).toBe('2026-10-05');
+    state.ledger.push(led('u1', 'daily_fuel_check', '2026-10-13'));
+    const sunNight = await getWeeklyChallenges('u1', new Date('2026-10-19T03:59:00Z'));     // Sun Oct 18 11:59 PM EDT
+    const monMidnight = await getWeeklyChallenges('u1', new Date('2026-10-19T04:00:00Z'));  // Mon Oct 19 midnight EDT
+    expect(sunNight.weekKey).toBe(WK);
     expect(sunNight.challenges[0].progress).toBe(1);
-    expect(monMidnight.weekKey).toBe('2026-10-12');
+    expect(monMidnight.weekKey).toBe('2026-10-19');
     expect(monMidnight.challenges[0].progress).toBe(0);          // a new Monday starts fresh
   });
   it('is stable across repeated reads (same set all week)', async () => {
@@ -260,15 +259,21 @@ describe('getWeeklyChallenges (authoritative reads)', () => {
     expect(a.challenges[1].id).toBe(b.challenges[1].id);
   });
   it('admin accounts are not eligible; the test account is', async () => {
-    expect(await getWeeklyChallenges('adm', MON)).toMatchObject({ eligible: false, challenges: [] });
+    expect(await getWeeklyChallenges('adm', MON)).toMatchObject({ eligible: false, g2Active: false, challenges: [] });
     expect((await getWeeklyChallenges('qa', MON)).eligible).toBe(true);
   });
   it('reads only the requested user (no cross-user data)', async () => {
-    state.ledger.push(led('qa', 'daily_fuel_check', '2026-10-06'));
+    state.ledger.push(led('qa', 'daily_fuel_check', '2026-10-13'));
     state.queries = [];
     const r = await getWeeklyChallenges('u1', MON);
     expect(r.challenges[0].progress).toBe(0);
     expect(state.queries.every((q) => q.userId === 'u1')).toBe(true);
+  });
+  it('BEFORE the launch week nothing is active: no challenges are returned (G1 unaffected)', async () => {
+    state.vehicles.set('u1', 1);
+    const r = await getWeeklyChallenges('u1', new Date('2026-10-09T16:00:00Z'));
+    expect(r).toMatchObject({ eligible: true, g2Active: false, startsOn: '2026-10-12', weekKey: '2026-10-05', challenges: [] });
+    expect(state.queries).toHaveLength(0);           // no week state was even loaded
   });
 });
 
@@ -289,12 +294,15 @@ describe('GET /api/gaspoints/challenges', () => {
     expect(state.queries).toHaveLength(0);
   });
   it('uses the SESSION user only and returns the week, version and three challenges', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-10-14T16:00:00Z'));       // inside the first G2-active week
     getServerSession.mockResolvedValue({ user: { id: 'u1' } });
     state.vehicles.set('u1', 1);
     const res = await get();
+    vi.useRealTimers();
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body).toMatchObject({ eligible: true, version: 'g2_v1' });
+    expect(body).toMatchObject({ eligible: true, g2Active: true, version: 'g2_v1', startsOn: '2026-10-12' });
     expect(body.weekKey).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(body.challenges).toHaveLength(3);
     expect(state.queries.every((q) => q.userId === 'u1')).toBe(true);
@@ -320,15 +328,16 @@ describe('GET /api/gaspoints/challenges', () => {
 
 // ── separation / G1 preserved ───────────────────────────────────────────────
 describe('G1 preserved, no new schema, no parallel systems', () => {
-  it('G1 rules and levels are unchanged', () => {
-    expect(GASPOINT_RULES).toEqual({ welcome_bonus: 25, daily_fuel_check: 5, weekly_3day_check: 25, first_vehicle: 25, first_saved_station: 20, fuel_action: 50 });
+  it('G1 rules and levels are unchanged (G2-B only ADDED four challenge actions)', () => {
+    expect(GASPOINT_RULES).toMatchObject({ welcome_bonus: 25, daily_fuel_check: 5, weekly_3day_check: 25, first_vehicle: 25, first_saved_station: 20, fuel_action: 50 });
     expect(GASPOINT_LEVELS.map((l) => [l.id, l.min])).toEqual([['starter', 0], ['road_ready', 100], ['fuel_smart', 250], ['smart_saver', 500], ['gascap_elite', 1000]]);
   });
-  it('the planned G2-B actions are NOT awardable yet (not in the rule table)', () => {
-    for (const r of Object.values(PLANNED_REWARDS).filter((x) => !x.existingG1)) {
-      expect(isGasPointAction(r.action), r.action).toBe(false);
-      expect(Object.keys(GASPOINT_RULES)).not.toContain(r.action);
-    }
+  it('challenge rewards match the rule table; MPG Builder has a rule but NO award path', () => {
+    expect(GASPOINT_RULES).toMatchObject({ challenge_weekend_check: 10, challenge_fuel_explorer: 15, challenge_pump_tracker: 25, challenge_mpg_builder: 30 });
+    for (const [id, r] of Object.entries(PLANNED_REWARDS)) expect(GASPOINT_RULES[r.action as keyof typeof GASPOINT_RULES], id).toBe(r.points);
+    expect(AWARDABLE_CHALLENGES).toEqual(['weekend_check', 'fuel_explorer', 'pump_tracker']);
+    expect(MPG_BUILDER_SELECTABLE).toBe(false);
+    expect(code('lib/gasChallengeAwards.ts')).not.toMatch(/awardChallenge\(userId, 'mpg_builder'/);
   });
   it('no engine file touches badges, streak, giveaway or the badge shelf', () => {
     for (const f of NEW_FILES) expect(code(f), f).not.toMatch(/badges|BadgeShelf|giveaway|activeDays|gigLogEntries|bonusEntries|Entries\b|streak\s*:\s*\{|recordActivity/i);
@@ -338,10 +347,8 @@ describe('G1 preserved, no new schema, no parallel systems', () => {
     expect(read('prisma/schema.prisma')).not.toMatch(/model\s+\w*Challenge\w*/i);
     expect(readdirSync(path.join(root, 'scripts')).filter((f) => /challenge/i.test(f))).toEqual([]);
   });
-  it('the customer card and G1 daily-check route are untouched (no challenge UI or award path)', () => {
-    expect(read('components/GasCapDailyCard.tsx')).not.toMatch(/challenge/i);
-    expect(read('app/api/gaspoints/daily-check/route.ts')).not.toMatch(/challenge/i);
-    expect(read('lib/gasPoints.ts')).not.toMatch(/gasChallenge|challenge/i);
+  it('the G1 award modules are untouched by challenge logic (it lives in its own module)', () => {
+    expect(read('lib/gasPoints.ts')).not.toMatch(/gasChallenge|challenge_/i);
   });
   it('the calendar is the canonical GasCap module, not re-implemented', () => {
     expect(read('lib/gasChallenges.ts')).toMatch(/from '\.\/gasCapCalendar'/);
