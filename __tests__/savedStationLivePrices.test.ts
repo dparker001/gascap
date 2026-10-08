@@ -295,7 +295,12 @@ describe('next.config.js runtimeCaching', () => {
     const src = readFileSync(path.resolve(__dirname, '..', 'next.config.js'), 'utf8');
     const networkOnlyBlock = src.slice(src.indexOf('const runtimeCaching'), src.indexOf("handler: 'NetworkOnly'"));
     expect(networkOnlyBlock).toMatch(/url\.pathname\.startsWith\('\/api\/favorites'\)/);
-    expect(src).toMatch(/if \(pathname\?\.startsWith\('\/api\/favorites'\)\) return false;/);
+    // 2026-10-08: the per-path exclusion inside the "apis" wrapper is gone because the
+    // default "apis" cache entry itself is now stripped from runtimeCaching (a stronger
+    // guarantee — there is no API cache for favorites to leak into). The behavioural
+    // proof for every route, including /api/favorites in every request mode, is in
+    // __tests__/swIntegrity.test.ts and `npm run check:sw` (built worker).
+    expect(src).toMatch(/\['apis', 'others', 'cross-origin'\]\.includes\(entry\.options\?\.cacheName\)/);
   });
 });
 
