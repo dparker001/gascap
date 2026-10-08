@@ -8,7 +8,7 @@ import { nativeShare } from '@/lib/share';
 import { hapticSuccess } from '@/lib/haptics';
 import FuelFeedbackCard from './FuelFeedbackCard';
 import { buildFuelFeedback, type FuelFeedback } from '@/lib/fuelFeedback';
-import { isGasPointAction } from '@/lib/gasPointsRules';
+import { isGasPointAction, type AwardSummary } from '@/lib/gasPointsRules';
 
 interface FillupLoggerProps {
   /** Pre-filled from the calculation result or Find Gas selection */
@@ -112,6 +112,8 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
   const [savedOk,        setSavedOk]        = useState(false);
   // G1: points the SERVER awarded for this save (display only; null when none).
   const [gpAwarded,      setGpAwarded]      = useState<number | null>(null);
+  // G2-B: weekly-challenge awards from this save (listed separately from the +50, never merged).
+  const [gpChallenges,    setGpChallenges]   = useState<AwardSummary[]>([]);
   const [odometer,       setOdometer]       = useState(
     prefill.vehicleOdometer != null ? String(prefill.vehicleOdometer) : ''
   );
@@ -414,6 +416,11 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
         fb = buildFuelFeedback(savedJson);
         const a = (savedJson as { gasPointsAwarded?: { action?: unknown; points?: unknown } | null })?.gasPointsAwarded;
         if (a && isGasPointAction(a.action) && typeof a.points === 'number' && a.points > 0) setGpAwarded(a.points);
+        const list = (savedJson as { gasPointsAwards?: { action?: unknown; points?: unknown }[] })?.gasPointsAwards;
+        if (Array.isArray(list)) {
+          setGpChallenges(list.filter((x): x is AwardSummary =>
+            !!x && isGasPointAction(x.action) && x.action.startsWith('challenge_') && typeof x.points === 'number' && x.points > 0));
+        }
       } catch { fb = null; }
 
       // Build the planned-vs-actual comparison card. Only shown when this
@@ -499,6 +506,14 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
         {gpAwarded !== null && (
           <p className="text-[12px] font-bold text-amber-700" data-testid="gaspoints-fillup-reward">{t.gasPoints.fillupReward(gpAwarded)}</p>
         )}
+        {gpChallenges.length > 0 && (
+          <div className="text-left rounded-xl bg-emerald-50 border border-emerald-100 px-3 py-2" data-testid="gaspoints-challenge-awards" role="status">
+            <p className="text-[11px] font-black text-emerald-800 uppercase tracking-wide">{t.gasChallenges.completeBanner}</p>
+            {gpChallenges.map((a) => (
+              <p key={a.action} className="text-[12px] font-bold text-emerald-700">{t.gasPoints.awardLine(a.points, t.gasPoints.awardLabels[a.action])}</p>
+            ))}
+          </div>
+        )}
 
         <p className="text-[11px] text-slate-500 leading-relaxed px-1">
           {t.fillup.comparisonDisclaimer}
@@ -537,6 +552,14 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
         <FuelFeedbackCard feedback={feedback} />
         {gpAwarded !== null && (
           <p className="text-[12px] font-bold text-amber-700" data-testid="gaspoints-fillup-reward">{t.gasPoints.fillupReward(gpAwarded)}</p>
+        )}
+        {gpChallenges.length > 0 && (
+          <div className="text-left rounded-xl bg-emerald-50 border border-emerald-100 px-3 py-2" data-testid="gaspoints-challenge-awards" role="status">
+            <p className="text-[11px] font-black text-emerald-800 uppercase tracking-wide">{t.gasChallenges.completeBanner}</p>
+            {gpChallenges.map((a) => (
+              <p key={a.action} className="text-[12px] font-bold text-emerald-700">{t.gasPoints.awardLine(a.points, t.gasPoints.awardLabels[a.action])}</p>
+            ))}
+          </div>
         )}
         <button
           onClick={onSaved}

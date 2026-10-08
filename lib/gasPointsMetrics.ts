@@ -29,6 +29,15 @@ export interface GasPointsReport {
   weeklyMissionCompletedEver: number;
   weeklyMissionCompletedThisWeek: number;
   levelDistribution: Record<GasPointLevelId, number>;
+  /** G2-B weekly challenges (real users; this = the current GasCap week). */
+  g2: {
+    /** Completions this GasCap week by challenge (fuel_check_3day = the existing weekly mission). */
+    completionsThisWeek: { fuel_check_3day: number; weekend_check: number; fuel_explorer: number; pump_tracker: number };
+    /** Distinct real users who completed at least one challenge this week. */
+    usersCompletingAnyThisWeek: number;
+    /** Total GasPoints awarded by the new challenge actions (all time). */
+    challengePointsAwardedTotal: number;
+  };
 }
 
 function lastNDateKeys(now: Date, n: number): Set<string> {
@@ -63,6 +72,20 @@ export function computeGasPointsReport(input: {
     }
   }
 
+  const completions = { fuel_check_3day: 0, weekend_check: 0, fuel_explorer: 0, pump_tracker: 0 };
+  const completers = new Set<string>();
+  let challengePoints = 0;
+  const ACTION_TO_ID: Record<string, keyof typeof completions> = {
+    weekly_3day_check: 'fuel_check_3day', challenge_weekend_check: 'weekend_check',
+    challenge_fuel_explorer: 'fuel_explorer', challenge_pump_tracker: 'pump_tracker',
+  };
+  for (const r of input.rows) {
+    if (!pop.has(r.userId)) continue;
+    if (r.action.startsWith('challenge_')) challengePoints += r.points;
+    const id = ACTION_TO_ID[r.action];
+    if (id && r.sourceRef === weekKey) { completions[id] += 1; completers.add(r.userId); }
+  }
+
   const levelDistribution = Object.fromEntries(GASPOINT_LEVELS.map((l) => [l.id, 0])) as Record<GasPointLevelId, number>;
   for (const bal of balances.values()) levelDistribution[levelFor(bal).id] += 1;
 
@@ -76,5 +99,6 @@ export function computeGasPointsReport(input: {
     weeklyMissionCompletedEver: weeklyEver.size,
     weeklyMissionCompletedThisWeek: weeklyNow.size,
     levelDistribution,
+    g2: { completionsThisWeek: completions, usersCompletingAnyThisWeek: completers.size, challengePointsAwardedTotal: challengePoints },
   };
 }

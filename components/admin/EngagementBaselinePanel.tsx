@@ -47,6 +47,11 @@ function GasPointsSection({ g }: { g: GasPointsReport }) {
       <p className="text-[11px] text-slate-600">
         Levels: {GASPOINT_LEVELS.map((l) => `${l.id.replace(/_/g, ' ')} ${g.levelDistribution[l.id]}`).join(' · ')}
       </p>
+      <p className="text-[11px] text-slate-600">
+        Weekly challenges (this week): 3-day check {g.g2.completionsThisWeek.fuel_check_3day} · weekend {g.g2.completionsThisWeek.weekend_check} ·
+        fuel explorer {g.g2.completionsThisWeek.fuel_explorer} · pump tracker {g.g2.completionsThisWeek.pump_tracker} ·
+        users completing any {g.g2.usersCompletingAnyThisWeek} · challenge points awarded (all time) {g.g2.challengePointsAwardedTotal}
+      </p>
       {g.truncated && <p className="text-[10px] text-amber-700">A row cap was hit — counts are lower bounds.</p>}
     </div>
   );

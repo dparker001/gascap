@@ -17,10 +17,24 @@
  * until G2-B is separately authorized.
  */
 import { createHash } from 'crypto';
-import { WEEKLY_MISSION_TARGET } from './gasPointsRules';
+import { GASPOINT_RULES, WEEKLY_MISSION_TARGET } from './gasPointsRules';
 
 /** Bump to change rotation rules; launch a new version only at a Monday boundary. */
 export const G2_CHALLENGE_VERSION = 'g2_v1';
+
+/**
+ * First GasCap week (Monday, America/New_York) in which G2 challenges are shown
+ * and rewarded. There is NO partial first week: before this week no G2 reward row
+ * can be written and the customer UI shows only a "starts Monday" notice. G1 runs
+ * unchanged throughout. Compared against the canonical GasCap week key
+ * (lib/gasCapCalendar.ts) — never browser time, never the deploy date.
+ */
+export const G2_REWARDS_START_WEEK = '2026-10-12';
+
+/** True when the given GasCap week key (YYYY-MM-DD Monday) is a G2-active week. */
+export function isG2Active(weekKey: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}$/.test(weekKey) && weekKey >= G2_REWARDS_START_WEEK;
+}
 
 export type ChallengeId =
   | 'fuel_check_3day'
@@ -34,12 +48,13 @@ export type ChallengeStatus = 'available' | 'complete' | 'guidance' | 'tracking_
 
 /**
  * How trustworthy / available progress tracking is:
- *  - ledger_derived   progress comes from authoritative G1 ledger rows
- *  - guidance         informational row, nothing to track
- *  - requires_g2b_hook progress/completion cannot be authoritatively derived today;
- *                      G2-B must record it at the moment it happens
+ *  - ledger_derived        progress comes from authoritative G1 ledger rows
+ *  - server_authoritative  completion is the challenge's own award row, written by a
+ *                          server hook at the moment the action happens (G2-B)
+ *  - guidance              informational row, nothing to track
+ *  - requires_g2b_hook     cannot be tracked authoritatively yet (MPG Builder)
  */
-export type TrackingCapability = 'ledger_derived' | 'guidance' | 'requires_g2b_hook';
+export type TrackingCapability = 'ledger_derived' | 'server_authoritative' | 'guidance' | 'requires_g2b_hook';
 
 /**
  * Slot 2 pool (non-purchase behaviour challenges). Order is part of the selection
@@ -66,16 +81,23 @@ export interface PlannedReward {
 }
 
 /**
- * PROPOSED rewards (G2-B). Not awardable in G2-A. `weekly_3day_check` is the
- * existing G1 mission and stays exactly as it is.
+ * Challenge rewards (amounts live in GASPOINT_RULES, the single source of truth).
+ * `weekly_3day_check` is the existing G1 mission and stays exactly as it is.
  */
 export const PLANNED_REWARDS: Record<Exclude<ChallengeId, 'add_vehicle'>, PlannedReward> = {
-  fuel_check_3day: { action: 'weekly_3day_check',        points: 25, existingG1: true  },
-  weekend_check:   { action: 'challenge_weekend_check',  points: 10, existingG1: false },
-  fuel_explorer:   { action: 'challenge_fuel_explorer',  points: 15, existingG1: false },
-  pump_tracker:    { action: 'challenge_pump_tracker',   points: 25, existingG1: false },
-  mpg_builder:     { action: 'challenge_mpg_builder',    points: 30, existingG1: false },
+  fuel_check_3day: { action: 'weekly_3day_check',       points: GASPOINT_RULES.weekly_3day_check,       existingG1: true  },
+  weekend_check:   { action: 'challenge_weekend_check', points: GASPOINT_RULES.challenge_weekend_check, existingG1: false },
+  fuel_explorer:   { action: 'challenge_fuel_explorer', points: GASPOINT_RULES.challenge_fuel_explorer, existingG1: false },
+  pump_tracker:    { action: 'challenge_pump_tracker',  points: GASPOINT_RULES.challenge_pump_tracker,  existingG1: false },
+  mpg_builder:     { action: 'challenge_mpg_builder',   points: GASPOINT_RULES.challenge_mpg_builder,   existingG1: false },
 };
+
+/**
+ * The challenges that have a live award path in G2-B. MPG Builder is deliberately
+ * absent: it is non-selectable in g2_v1 and nothing may award it.
+ */
+export const AWARDABLE_CHALLENGES = ['weekend_check', 'fuel_explorer', 'pump_tracker'] as const;
+export type AwardableChallengeId = (typeof AWARDABLE_CHALLENGES)[number];
 
 /** Guidance only: adding a vehicle is rewarded by the existing G1 `first_vehicle`, not by a challenge. */
 export const ADD_VEHICLE_G1_REWARD: PlannedReward = { action: 'first_vehicle', points: 25, existingG1: true };
@@ -104,7 +126,7 @@ export interface SelectionInput {
   version?: string;
   /** The user has at least one saved vehicle. */
   hasVehicle: boolean;
-  /** This week's Pump Tracker is already complete (keeps slot 3 stable once earned). */
+  /** This week's Pump Tracker award row exists (keeps slot 3 stable once earned). */
   pumpTrackerComplete: boolean;
   /** MPG Builder may be offered (only ever true if MPG_BUILDER_SELECTABLE and the user has odometer history). */
   mpgBuilderAvailable: boolean;
@@ -148,8 +170,11 @@ export interface ProgressContext {
   checkDates: string[];
   /** The `weekly_3day_check` ledger row for this week exists. */
   weeklyMissionAwarded: boolean;
-  /** `sourceRef` (GasCap dates) of this week's `fuel_action` ledger rows. */
-  fuelActionDates: string[];
+  /**
+   * Challenge award actions already written for this week (e.g. 'challenge_pump_tracker').
+   * For the reward-bearing challenges the award row IS the authoritative completion.
+   */
+  challengeAwards: string[];
 }
 
 export interface ChallengeView {
@@ -195,23 +220,27 @@ export function challengeView(slot: 1 | 2 | 3, id: ChallengeId, ctx: ProgressCon
         target: WEEKLY_MISSION_TARGET, proposedReward: r.points, rewardAction: r.action, rewardIsExistingG1: r.existingG1, trackingCapability: 'ledger_derived' };
     }
     case 'weekend_check': {
-      const done = ctx.checkDates.some(isWeekendDateKey);
+      // Complete = the award row; a Sat/Sun daily-check row also counts so a failed
+      // best-effort award is never shown to the customer as "not done".
+      const done = ctx.challengeAwards.includes('challenge_weekend_check') || ctx.checkDates.some(isWeekendDateKey);
       const r = PLANNED_REWARDS.weekend_check;
       return { ...b, status: done ? 'complete' : 'available', progress: done ? 1 : 0, target: 1,
-        proposedReward: r.points, rewardAction: r.action, rewardIsExistingG1: r.existingG1, trackingCapability: 'ledger_derived' };
+        proposedReward: r.points, rewardAction: r.action, rewardIsExistingG1: r.existingG1, trackingCapability: 'server_authoritative' };
     }
     case 'pump_tracker': {
-      const done = new Set(ctx.fuelActionDates).size >= 1;
+      // Complete ONLY via its own award row: a fuel action logged before Pump Tracker
+      // was this user's selected challenge (e.g. no vehicle yet) does not count.
+      const done = ctx.challengeAwards.includes('challenge_pump_tracker');
       const r = PLANNED_REWARDS.pump_tracker;
       return { ...b, status: done ? 'complete' : 'available', progress: done ? 1 : 0, target: 1,
-        proposedReward: r.points, rewardAction: r.action, rewardIsExistingG1: r.existingG1, trackingCapability: 'ledger_derived' };
+        proposedReward: r.points, rewardAction: r.action, rewardIsExistingG1: r.existingG1, trackingCapability: 'server_authoritative' };
     }
     case 'fuel_explorer': {
-      // G1 has no authoritative write for "explored another grade"; viewing is a
-      // read-only GET. Never infer completion from it.
+      // Completed by the authoritative POST /api/gaspoints/explore (never by a GET).
+      const done = ctx.challengeAwards.includes('challenge_fuel_explorer');
       const r = PLANNED_REWARDS.fuel_explorer;
-      return { ...b, status: 'tracking_unavailable', progress: null, target: 1,
-        proposedReward: r.points, rewardAction: r.action, rewardIsExistingG1: r.existingG1, trackingCapability: 'requires_g2b_hook' };
+      return { ...b, status: done ? 'complete' : 'available', progress: done ? 1 : 0, target: 1,
+        proposedReward: r.points, rewardAction: r.action, rewardIsExistingG1: r.existingG1, trackingCapability: 'server_authoritative' };
     }
     case 'mpg_builder': {
       const r = PLANNED_REWARDS.mpg_builder;
@@ -231,13 +260,13 @@ export function buildWeeklyChallengeViews(sel: WeeklySelection, ctx: ProgressCon
 }
 
 /**
- * G2-B DESIGN ONLY (not used in G2-A): the server-authoritative moments at which
- * each new challenge would be completed and awarded. Listed here so the review
- * can approve the seams before any write exists.
+ * The server-authoritative moments at which each challenge is completed and awarded
+ * (G2-B). MPG Builder has no hook: it is non-selectable in g2_v1 and nothing may
+ * award it — documented for a later review.
  */
 export const PLANNED_G2B_HOOKS: ReadonlyArray<{ challenge: ChallengeId; trigger: string; note: string }> = [
-  { challenge: 'weekend_check',  trigger: 'POST /api/gaspoints/daily-check', note: 'after the daily row is inserted: complete when its GasCap date is Sat/Sun' },
-  { challenge: 'pump_tracker',   trigger: 'fuel_action award (fillups/gig/rental routes)', note: 'after the +50 fuel_action row exists for the week' },
-  { challenge: 'mpg_builder',    trigger: 'POST /api/fillups after persist', note: 'at CREATE time only: complete if the saved fill-up yields a valid computed MPG; never on PATCH' },
-  { challenge: 'fuel_explorer',  trigger: 'new POST /api/gaspoints/explore { grade }', note: 'complete when the grade differs from the server-derived default pulse grade and a Daily Check exists this week (no new storage needed)' },
+  { challenge: 'weekend_check',  trigger: 'POST /api/gaspoints/daily-check', note: 'after the G1 check persisted: if slot 2 is weekend_check and today is Sat/Sun' },
+  { challenge: 'pump_tracker',   trigger: 'fuel_action award paths (fillups/gig/rental)', note: 'after the persisted fuel_action row exists: if slot 3 is pump_tracker' },
+  { challenge: 'fuel_explorer',  trigger: 'POST /api/gaspoints/explore { grade }', note: 'if slot 2 is fuel_explorer, a Daily Check exists this week and the grade differs from the server-derived default pulse grade' },
+  { challenge: 'mpg_builder',    trigger: 'none (not selectable in g2_v1)', note: 'would need a CREATE-time check in POST /api/fillups, never on PATCH' },
 ];
