@@ -402,6 +402,47 @@ describe('slot 3 and the read model after G2-B rewards', () => {
     r = await getWeeklyChallenges(u, at(WED));
     expect(r.challenges[1]).toMatchObject({ id: 'fuel_explorer', status: 'complete', progress: 1 });
   });
+  it('weekend qualifying action WITHOUT its award row: the read model stays available 0/1 (G1 activity exists, challenge not complete)', async () => {
+    const u = userWith(W1, 'weekend_check');
+    await completeDailyCheck(u, at(SAT));                                  // plain G1 check: a Saturday daily row, no challenge award
+    expect(rowsFor(u, 'daily_fuel_check')).toHaveLength(1);
+    expect(rowsFor(u, 'challenge_weekend_check')).toHaveLength(0);
+    const before = state.ledger.length;
+    const r = await getWeeklyChallenges(u, at(SAT));
+    expect(r.challenges[1]).toMatchObject({ id: 'weekend_check', status: 'available', progress: 0, target: 1 });
+    expect(state.ledger).toHaveLength(before);                              // reading never repairs or writes
+  });
+  it('a best-effort award failure leaves the read model truthful, and a later retry completes it', async () => {
+    const u = userWith(W1, 'weekend_check');
+    state.failVehicleCount = true;                                          // the challenge step throws internally
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const failed = await completeDailyCheckWithChallenges(u, at(SAT)) as { awards: { action: string }[] };
+    spy.mockRestore();
+    expect(failed.awards.map((a) => a.action)).not.toContain('challenge_weekend_check');
+    state.failVehicleCount = false;
+    expect(rowsFor(u, 'daily_fuel_check')).toHaveLength(1);                 // underlying G1 activity exists
+    expect((await getWeeklyChallenges(u, at(SAT))).challenges[1]).toMatchObject({ status: 'available', progress: 0 });   // not complete
+    const retry = await completeDailyCheckWithChallenges(u, at(SAT, '20:00')) as { awards: { action: string }[] };
+    expect(retry.awards.map((a) => a.action)).toEqual(['challenge_weekend_check']);       // the retry awards the missed +10 (no duplicate G1)
+    expect((await getWeeklyChallenges(u, at(SAT))).challenges[1]).toMatchObject({ status: 'complete', progress: 1 });
+    expect(rowsFor(u, 'challenge_weekend_check')).toHaveLength(1);
+  });
+  it('normal weekend path: G1 awards + exactly one +10 returned separately, then reads back complete; repeats stay complete', async () => {
+    const u = userWith(W1, 'weekend_check');
+    const r = await completeDailyCheckWithChallenges(u, at(SUN)) as { awards: { action: string; points: number }[] };
+    expect(r.awards.map((a) => `${a.action}:${a.points}`).sort()).toEqual(['challenge_weekend_check:10', 'daily_fuel_check:5', 'welcome_bonus:25']);
+    expect((await getWeeklyChallenges(u, at(SUN))).challenges[1]).toMatchObject({ status: 'complete', progress: 1, target: 1 });
+    const again = await completeDailyCheckWithChallenges(u, at(SUN, '22:00')) as { awards: unknown[] };
+    expect(again.awards).toEqual([]);
+    expect(rowsFor(u, 'challenge_weekend_check')).toHaveLength(1);
+    expect((await getWeeklyChallenges(u, at(SUN, '22:00'))).challenges[1]).toMatchObject({ status: 'complete', progress: 1 });
+  });
+  it('the weekend award row alone is what completes it (no award row -> not complete, even with Sat/Sun checks)', () => {
+    const src = code('lib/gasChallengesRules.ts');
+    const weekend = src.slice(src.indexOf("case 'weekend_check': {"), src.indexOf("case 'pump_tracker': {"));
+    expect(weekend).toMatch(/const done = ctx\.challengeAwards\.includes\('challenge_weekend_check'\);/);
+    expect(weekend).not.toMatch(/checkDates|isWeekendDateKey/);
+  });
   it('Weekend Check shows complete after its award', async () => {
     const u = userWith(W1, 'weekend_check');
     await completeDailyCheckWithChallenges(u, at(SAT));

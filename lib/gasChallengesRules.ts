@@ -220,9 +220,11 @@ export function challengeView(slot: 1 | 2 | 3, id: ChallengeId, ctx: ProgressCon
         target: WEEKLY_MISSION_TARGET, proposedReward: r.points, rewardAction: r.action, rewardIsExistingG1: r.existingG1, trackingCapability: 'ledger_derived' };
     }
     case 'weekend_check': {
-      // Complete = the award row; a Sat/Sun daily-check row also counts so a failed
-      // best-effort award is never shown to the customer as "not done".
-      const done = ctx.challengeAwards.includes('challenge_weekend_check') || ctx.checkDates.some(isWeekendDateKey);
+      // Complete ONLY via its own award row, like every reward-bearing G2 challenge: the
+      // underlying Saturday/Sunday Daily Fuel Check is the QUALIFICATION event the award
+      // helper uses, not the completion record. A best-effort award failure therefore can
+      // never show "complete" (and a +10 reward) without the +10 existing in the ledger.
+      const done = ctx.challengeAwards.includes('challenge_weekend_check');
       const r = PLANNED_REWARDS.weekend_check;
       return { ...b, status: done ? 'complete' : 'available', progress: done ? 1 : 0, target: 1,
         proposedReward: r.points, rewardAction: r.action, rewardIsExistingG1: r.existingG1, trackingCapability: 'server_authoritative' };

@@ -128,15 +128,18 @@ describe('slot 1 — the existing G1 weekly mission', () => {
 
 // ── weekend check ───────────────────────────────────────────────────────────
 describe('Weekend Check', () => {
-  it('Saturday or Sunday completes it; weekday-only does not', () => {
+  it('the weekend date helper recognises Saturday/Sunday (the QUALIFICATION rule, not the completion record)', () => {
     expect(isWeekendDateKey('2026-10-10')).toBe(true);    // Saturday
     expect(isWeekendDateKey('2026-10-11')).toBe(true);    // Sunday
     for (const d of ['2026-10-05', '2026-10-06', '2026-10-07', '2026-10-08', '2026-10-09']) expect(isWeekendDateKey(d)).toBe(false);
     expect(isWeekendDateKey('garbage')).toBe(false);
-    const v = (dates: string[]) => challengeView(2, 'weekend_check', ctx({ checkDates: dates }));
+  });
+  it('a Sat/Sun daily check WITHOUT the award row is NOT complete — only the challenge award row is', () => {
+    const v = (dates: string[], awards: string[] = []) => challengeView(2, 'weekend_check', ctx({ checkDates: dates, challengeAwards: awards }));
     expect(v(['2026-10-06', '2026-10-07', '2026-10-09'])).toMatchObject({ status: 'available', progress: 0, target: 1 });
-    expect(v(['2026-10-06', '2026-10-10'])).toMatchObject({ status: 'complete', progress: 1 });
-    expect(v(['2026-10-11'])).toMatchObject({ status: 'complete' });
+    expect(v(['2026-10-06', '2026-10-10'])).toMatchObject({ status: 'available', progress: 0, target: 1 });   // Saturday check, no award
+    expect(v(['2026-10-11'])).toMatchObject({ status: 'available', progress: 0, target: 1 });                // Sunday check, no award
+    expect(v(['2026-10-06'], ['challenge_weekend_check'])).toMatchObject({ status: 'complete', progress: 1, target: 1 });   // award row alone completes it
   });
   it('+10 via its own award action; server-authoritative; the award row completes it', () => {
     expect(challengeView(2, 'weekend_check', ctx())).toMatchObject({ proposedReward: 10, rewardAction: 'challenge_weekend_check', rewardIsExistingG1: false, trackingCapability: 'server_authoritative' });
