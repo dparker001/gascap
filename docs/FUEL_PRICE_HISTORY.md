@@ -1,8 +1,7 @@
 # Fuel-price history & savings baseline
 
-**Status: CURRENT** — implemented in Phase 0.5B (2026-10-07), branch
-`feat/gascap-daily-phase05`. Not yet deployed at the time of writing; see
-`docs/reviews/2026-10-07-gascap-daily-phase05.md`.
+**Status: CURRENT — DEPLOYED to production and backfilled (2026-10-08).** Implemented in Phase 0.5B (PR #65,
+with follow-ups #66 price provenance, #68 service-worker integrity, #69 admin panels). Final outcome below.
 
 ## Why this exists
 
@@ -178,3 +177,21 @@ Rollback: stop at the code level (revert the deploy). The new table and
 nullable columns are inert without the code and are deliberately **not**
 dropped (no destructive production DDL). Every consumer degrades to "no
 baseline / seed" if the table is missing or empty.
+
+## Production outcome (2026-10-08) — Phase 0.5 COMPLETE
+
+- **Schema:** `scripts/add-fuel-price-snapshot.mjs` run once against production (additive; `Fillup` rows unchanged).
+- **Backfill:** `GET /api/cron/fuel-price-snapshot?weeks=156`, run once on production at `da51479`. Insert-only and
+  idempotent: 204 existing rows → **10,608** (+10,404; the 204 were skipped as duplicates).
+- **Coverage:** Regular, Midgrade, Premium — exactly **156 weeks × 17 areas** each (2023-10-16 → 2026-10-05), no weekly
+  gaps. Diesel — 9 areas, 295 weeks (from 2021-02-15; EIA's per-request row limit returns more weeks for the areas that
+  have the series). The 8 state areas with no EIA diesel series (CO, FL, MA, MN, NY, OH, TX, WA) are absent by design and
+  resolve through state → region → national.
+- **Integrity:** mapping EPMR/EPMM/EPMP/EPD2D with 0 mismatches and 0 `EPM0` rows; 0 duplicate unique keys; 0 bad dates or
+  prices; every `observedOn` a Monday; each row keeps its real EIA `duoarea`. Latest observation 2026-10-05, `stale:false`.
+- **Fillup integrity:** 60 rows before and after, content hash identical, 0 baseline columns populated (historical savings
+  resolve dynamically from `FuelPriceSnapshot`; old fill-ups are **not** back-filled).
+- **Savings coverage (account with 23 fill-ups):** 2 of 23 compared before the backfill → **21 of 23** after (19 regular,
+  2 premium); the 2 no-grade fills stay excluded; negative savings remain visible; no hardcoded fallback; every comparison uses
+  the EIA week on or before the fill date (0–6 days) for the same grade.
+- **Cron:** the daily `fuel-price-snapshot` job keeps the table current (idempotent; 502s only if EIA is unreachable or stale).
