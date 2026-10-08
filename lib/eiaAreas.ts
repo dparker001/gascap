@@ -91,6 +91,21 @@ export function duoareaChainForState(state: string | null | undefined): string[]
   return [NATIONAL_AREA];
 }
 
+/** How specific an EIA area is relative to a requested state. */
+export type PriceScope = 'state' | 'region' | 'national';
+
+/**
+ * Scope of an EIA duoarea code: 'SFL' -> state, 'R1Z' -> region, 'NUS' ->
+ * national. Null for anything we do not recognise (never guessed).
+ */
+export function scopeForArea(area: string | null | undefined): PriceScope | null {
+  const a = (area ?? '').trim().toUpperCase();
+  if (a === NATIONAL_AREA) return 'national';
+  if (a in REGION_STATES) return 'region';
+  if (/^S[A-Z]{2}$/.test(a) && DIRECT_STATES.has(a.slice(1))) return 'state';
+  return null;
+}
+
 /** True for a 2-letter code in a known region (50 states + DC). */
 export function isKnownState(state: string | null | undefined): boolean {
   const st = (state ?? '').trim().toUpperCase();

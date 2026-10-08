@@ -18,13 +18,24 @@
  *                              NOT an EIA survey date). Last resort.
  *   stale                      asOf is past the freshness threshold.
  * `asOf` is never the retrieval time.
+ *
+ * Provenance (PR follow-up): the EIA series that supplied the number may be LESS
+ * specific than the requested state (a state request can be answered from its
+ * region or from national data when the finer series is unavailable):
+ *   priceArea      EIA area actually used ('SFL', 'R1Z', 'NUS'); null for the seed
+ *   priceScope     'state' | 'region' | 'national'; null for the seed
+ *   priceFallback  true when the area is less specific than the state's best
+ *                  series; false when it is the most specific; null when unknown
+ * `isState` / `isNational` now describe the PRICE, not the request: a Florida
+ * request answered with the national price reports isState:false, isNational:true.
+ * For the seed (no recorded provenance) they keep their old request-based meaning.
  */
 
 import { NextResponse } from 'next/server';
 import { usStateFromCoords } from '@/lib/usStateFromCoords';
 import { getStatePrice } from '@/lib/gasPrices';
 import { latestSnapshotForChain } from '@/lib/fuelPriceSnapshots';
-import { duoareaChainForState } from '@/lib/eiaAreas';
+import { duoareaChainForState, scopeForArea, type PriceScope } from '@/lib/eiaAreas';
 import { isStaleObservation } from '@/lib/eiaFreshness';
 
 const EIA_KEY = process.env.EIA_API_KEY ?? '';
@@ -74,33 +85,44 @@ export async function GET(req: Request) {
     locMethod = 'ip';
   }
 
-  let { price, live, source: priceSource, asOf, stale } = getStatePrice(state) as {
-    price: number; live: boolean; source: 'eia_live' | 'eia_snapshot' | 'seed'; asOf: string; stale: boolean;
-  };
+  const resolved = getStatePrice(state);
+  let { price, live, asOf, stale } = resolved;
+  let priceSource: 'eia_live' | 'eia_snapshot' | 'seed' = resolved.source;
+  let priceArea:  string | null     = resolved.area  ?? null;
+  let priceScope: PriceScope | null = resolved.scope ?? null;
+  const chain = duoareaChainForState(state);
 
   // Cold process (no fresh in-memory EIA value): prefer the newest stored EIA
   // observation over the committed seed, which can be months old. Any failure
   // (table not migrated yet, DB hiccup) falls through to the seed unchanged.
   if (!live) {
     try {
-      const snap = await latestSnapshotForChain(duoareaChainForState(state), 'regular');
+      const snap = await latestSnapshotForChain(chain, 'regular');
       if (snap && !isStaleObservation(snap.observedOn)) {
         price = snap.price;
         priceSource = 'eia_snapshot';
+        priceArea = snap.area;
+        priceScope = scopeForArea(snap.area);
         asOf = snap.observedOn;
         stale = false;
       }
     } catch { /* keep seed/in-memory result */ }
   }
 
+  // With known provenance, describe the PRICE. Without it (seed), keep the
+  // request-based meaning these flags always had.
+  const known = priceScope !== null;
   return NextResponse.json({
     price:      Math.round(price * 1000) / 1000,
     state,
-    isState:    state !== 'US',
-    isNational: state === 'US',
+    isState:    known ? priceScope === 'state'    : state !== 'US',
+    isNational: known ? priceScope === 'national' : state === 'US',
     source:     'eia',
     live,
     priceSource,
+    priceArea,
+    priceScope,
+    priceFallback: priceArea ? priceArea !== chain[0] : null,
     asOf,
     stale,
     locMethod,

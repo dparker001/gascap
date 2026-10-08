@@ -25,7 +25,11 @@
  *  - Fuel action: a Fillup row (personal or rental — both are logged fuel
  *    purchases). First = >=1 row, second = >=2. Calculator runs are not
  *    persisted, so they are not fuel actions here.
- *  - Trial: has a trial_started event OR a trial column set. Event data only
+ *  - Trial (historical population): a current real user with ANY of — a
+ *    trial_started event, a trial_expired event, or a trial column set. It is the
+ *    de-duplicated UNION of distinct user ids (never a sum of sources and never a
+ *    count of event rows). trial_expired matters: a trial that already ended
+ *    has its columns cleared, so only the event still evidences it. Event data only
  *    begins when instrumentation shipped, so both counts are reported.
  *  - Paid: entitlement from a paid source (Stripe subscription, Stripe/gift
  *    lifetime, RevenueCat) per lib/entitlements. Ambassador-for-life and a
@@ -174,7 +178,7 @@ export interface BaselineReport {
   population: {
     signups: number;
     trialsEver: number;
-    trialDefinition: { byEvent: number; byTrialColumns: number; union: number };
+    trialDefinition: { byTrialStarted: number; byTrialExpired: number; byTrialColumns: number; union: number };
     activeTrialNow: number;
     paidNow: number;
   };
@@ -236,9 +240,13 @@ export function computeBaseline(input: BaselineInput): BaselineReport {
   const inPop = (ids: string[]) => ids.filter((id) => userIds.has(id));
 
   // ── population ───────────────────────────────────────────────────────────
-  const trialEvent = new Set(inPop(input.events.trial_started?.users ?? []));
-  const trialCols  = new Set(users.filter((u) => u.isProTrial || !!u.trialExpiresAt).map((u) => u.id));
-  const trialsEver = new Set([...trialEvent, ...trialCols]);
+  // Distinct CURRENT REAL users only: `users` already excludes test/admin
+  // accounts, and inPop() drops event rows for anyone outside it (test, admin,
+  // deleted). Sets de-duplicate users, so repeated event rows never inflate this.
+  const trialStarted = new Set(inPop(input.events.trial_started?.users ?? []));
+  const trialExpired = new Set(inPop(input.events.trial_expired?.users ?? []));
+  const trialCols    = new Set(users.filter((u) => u.isProTrial || !!u.trialExpiresAt).map((u) => u.id));
+  const trialsEver   = new Set([...trialStarted, ...trialExpired, ...trialCols]);
   const paidSet    = new Set(users.filter((u) => hasPaidEntitlement(u, now)).map((u) => u.id));
 
   // ── activity ─────────────────────────────────────────────────────────────
@@ -359,7 +367,12 @@ export function computeBaseline(input: BaselineInput): BaselineReport {
     population: {
       signups,
       trialsEver: trialsEver.size,
-      trialDefinition: { byEvent: trialEvent.size, byTrialColumns: trialCols.size, union: trialsEver.size },
+      trialDefinition: {
+        byTrialStarted: trialStarted.size,
+        byTrialExpired: trialExpired.size,
+        byTrialColumns: trialCols.size,
+        union: trialsEver.size,
+      },
       activeTrialNow: users.filter((u) => isActiveTrial(u, now)).length,
       paidNow: paidSet.size,
     },
@@ -408,7 +421,7 @@ export function computeBaseline(input: BaselineInput): BaselineReport {
       'Active day = a YYYY-MM-DD in activeDays (app visit by client-local date, or sign-in by UTC date). Day 0 = earlier of signup UTC date and first active day.',
       'Retention Day N is computed over the matured cohort only (Day 0 at least N days ago). "Exact" = active on Day N; "on or after" = active on Day N or any later day.',
       'Fuel action = a logged Fillup row (personal or rental). Calculator runs are not persisted and are not counted.',
-      'Trial = trial_started event OR a trial column set (events only began when instrumentation shipped, so both are shown).',
+      'Trial (historical population) = distinct current real users with a trial_started event, OR a trial_expired event, OR a trial column set — de-duplicated into one union, never a sum of sources and never a count of event rows. Test accounts, admins and deleted users are excluded. The three source counts are shown so the derivation is visible.',
       'Paid = entitlement from Stripe subscription, Stripe/gift lifetime, or RevenueCat. Running trials and Ambassador-for-life are not paid.',
       'Trials currently paid = of users who ever had a trial, how many hold a paid entitlement NOW. A user who converted and later cancelled is NOT counted, so this is a current-status snapshot, not historical or lifetime trial-to-paid conversion.',
       'Trial -> purchase event = of users who ever had a trial, how many have a purchase_completed event. Closer to historical conversion, but treat it as directional (see data quality).',
