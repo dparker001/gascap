@@ -68,6 +68,14 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Built service worker guard
+        # Checks the GENERATED public/sw.js, not just next.config.js: the runtime-
+        # cache predicates are serialized by next-pwa/workbox, and source-level
+        # assertions cannot prove the serialized result still says what we wrote.
+        # Contract: /api/auth/* fetches are NetworkOnly; auth navigations are not
+        # intercepted (Safari OAuth). Fails closed. See scripts/check-sw-auth.mjs.
+        run: npm run check:sw
+
 # LINT IS DELIBERATELY ABSENT.
 #
 # `npm run lint` is `next lint`, and this repository has no ESLint config, so

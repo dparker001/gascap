@@ -13,6 +13,7 @@
     "test": "vitest run --pool=forks",
     "postinstall": "prisma generate",
     "check:crons": "node scripts/check-cron-inventory.mjs",
+    "check:sw": "node scripts/check-sw-auth.mjs",
     "test:tiers": "node scripts/test-ambassador-tiers.mjs"
   },
   "dependencies": {

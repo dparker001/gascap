@@ -30,6 +30,31 @@ const defaultCache = require('next-pwa/cache');
 // favorites list (old prices) on a slow native connection — exactly the bug
 // the live lookup exists to fix — so it is NetworkOnly too.
 //
+// 2026-10-08 — /api/auth/* (NextAuth session/csrf/providers/signin/signout,
+// callbacks, and our custom verify/reset routes) must NEVER be answered from a
+// cache. Today nothing caches them: next-pwa's default "apis" entry skips
+// '/api/auth/' and its "others" entry skips every '/api/' path, so these URLs
+// match no runtime route at all. That is by design in next-pwa (issue #131:
+// Safari's OAuth flow breaks if the SW intercepts the callback navigation), but
+// it is an implicit guarantee that a next-pwa upgrade or a future edit to the
+// predicates below could silently change. So it is made explicit:
+//   - non-navigation requests (the fetches NextAuth's client makes for
+//     session/csrf/providers) are NetworkOnly — never a cached response, no
+//     10 s timeout fallback;
+//   - navigations (OAuth callbacks, sign-in/out pages, emailed verify/reset
+//     links) are still NOT intercepted, exactly as before, to keep the Safari
+//     OAuth behaviour next-pwa protects;
+//   - '/api/auth/' is also excluded in the "apis" wrapper below.
+// Verified against the BUILT worker with scripts/check-sw-auth.mjs (CI runs it
+// after `next build`).
+//
+// KNOWN, SEPARATE DEFECT (not changed here): the "apis" wrapper below closes
+// over `origPattern`, and that closure does NOT survive serialization into
+// public/sw.js — the built predicate calls an undefined `origPattern`, so for
+// any URL that reaches it (all same-origin /api/* except the exclusions, and
+// pages) it throws a ReferenceError and Workbox falls through to the network.
+// See the PR that introduced this note.
+//
 // IMPORTANT: urlPattern predicates below use INLINE STRING LITERALS, not a
 // shared array constant — a prior attempt to reference an outer-scope
 // NETWORK_ONLY_PATHS array here did not survive next-pwa/workbox-webpack-
@@ -38,11 +63,12 @@ const defaultCache = require('next-pwa/cache');
 // here must follow the same inline-literal pattern.
 const runtimeCaching = [
   {
-    urlPattern: ({ url }) =>
+    urlPattern: ({ url, request }) =>
       url.pathname.startsWith('/gas/') ||
       url.pathname.startsWith('/api/vehicles') ||
       url.pathname.startsWith('/api/user/profile') ||
-      url.pathname.startsWith('/api/favorites'),
+      url.pathname.startsWith('/api/favorites') ||
+      (url.pathname.startsWith('/api/auth/') && request.mode !== 'navigate'),
     handler: 'NetworkOnly',
   },
   ...defaultCache.map((entry) => {
@@ -55,6 +81,7 @@ const runtimeCaching = [
         ...entry,
         urlPattern: (ctx) => {
           const { pathname } = ctx.url ?? {};
+          if (pathname?.startsWith('/api/auth/')) return false;
           if (pathname?.startsWith('/api/nearby-gas')) return false;
           if (pathname?.startsWith('/api/vehicles')) return false;
           if (pathname?.startsWith('/api/user/profile')) return false;
