@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { recordAnalyticsEvent } from '@/lib/analyticsEvents';
 import { originPlatformFromRequest } from '@/lib/originPlatform';
+import { awardFuelActionIfQualifying } from '@/lib/gasPoints';
 
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -94,7 +95,13 @@ export async function POST(req: NextRequest) {
     });
   } catch (e) { console.error('[GasCap analytics] gig fillup_logged write failed:', e); }
 
-  return NextResponse.json({ fillup: record, entriesAwarded: GIG_LOG_ENTRIES }, { status: 201 });
+  // Gamification G1: +50 GasPoints once per GasCap day for a persisted gallon-based
+  // record. EV/kWh gig records earn nothing here (qualifiesForFuelPoints excludes them).
+  const gasPointsAwarded = await awardFuelActionIfQualifying(uid, {
+    gallons: record.gallons, pricePerGallon: record.pricePerGallon, totalCost: record.totalCost, energyUnit: record.energyUnit,
+  });
+
+  return NextResponse.json({ fillup: record, entriesAwarded: GIG_LOG_ENTRIES, gasPointsAwarded }, { status: 201 });
 }
 
 export async function DELETE(req: NextRequest) {

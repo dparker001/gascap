@@ -22,6 +22,7 @@ import { prisma }                    from '@/lib/prisma';
 import type { Prisma }               from '@/lib/generated/prisma/client';
 import { randomUUID }                from 'crypto';
 import { getLivePlan }               from '@/lib/serverPlan';
+import { awardFirstSavedStation }    from '@/lib/gasPoints';
 import { fetchStationPrices, freshestPriceTime, type FuelPrice } from '@/lib/nearbyGas';
 
 export type { FavoritePriceStatus } from '@/lib/fuelPriceFreshness';
@@ -171,7 +172,11 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  return NextResponse.json({ favorite });
+  // Gamification G1: +20 GasPoints for the first saved station (once per lifetime) —
+  // only when a NEW favorite row was just created, never on an update of an existing one.
+  const gasPointsAwarded = existing ? null : await awardFirstSavedStation(userId);
+
+  return NextResponse.json({ favorite, gasPointsAwarded });
 }
 
 export async function DELETE(req: NextRequest) {

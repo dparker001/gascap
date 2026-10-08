@@ -8,6 +8,7 @@ import { nativeShare } from '@/lib/share';
 import { hapticSuccess } from '@/lib/haptics';
 import FuelFeedbackCard from './FuelFeedbackCard';
 import { buildFuelFeedback, type FuelFeedback } from '@/lib/fuelFeedback';
+import { isGasPointAction } from '@/lib/gasPointsRules';
 
 interface FillupLoggerProps {
   /** Pre-filled from the calculation result or Find Gas selection */
@@ -109,6 +110,8 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
   const [price,          setPrice]          = useState('');
   const [feedback,       setFeedback]       = useState<FuelFeedback | null>(null);
   const [savedOk,        setSavedOk]        = useState(false);
+  // G1: points the SERVER awarded for this save (display only; null when none).
+  const [gpAwarded,      setGpAwarded]      = useState<number | null>(null);
   const [odometer,       setOdometer]       = useState(
     prefill.vehicleOdometer != null ? String(prefill.vehicleOdometer) : ''
   );
@@ -406,7 +409,12 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
       // P1-B: feedback is built from the SAVED row (confirmed actual values and
       // the baseline frozen at save time) — never from a planned value.
       let fb: FuelFeedback | null = null;
-      try { fb = buildFuelFeedback(await res.json()); } catch { fb = null; }
+      try {
+        const savedJson = await res.json();
+        fb = buildFuelFeedback(savedJson);
+        const a = (savedJson as { gasPointsAwarded?: { action?: unknown; points?: unknown } | null })?.gasPointsAwarded;
+        if (a && isGasPointAction(a.action) && typeof a.points === 'number' && a.points > 0) setGpAwarded(a.points);
+      } catch { fb = null; }
 
       // Build the planned-vs-actual comparison card. Only shown when this
       // fill-up started from a GasCap calculation (prefill.calculatedGallons
@@ -488,6 +496,9 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
         </div>
 
         {feedback && <FuelFeedbackCard feedback={feedback} />}
+        {gpAwarded !== null && (
+          <p className="text-[12px] font-bold text-amber-700" data-testid="gaspoints-fillup-reward">{t.gasPoints.fillupReward(gpAwarded)}</p>
+        )}
 
         <p className="text-[11px] text-slate-500 leading-relaxed px-1">
           {t.fillup.comparisonDisclaimer}
@@ -524,6 +535,9 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
           <p className="text-sm font-black text-emerald-800">{t.fillup.savedTitle}</p>
         </div>
         <FuelFeedbackCard feedback={feedback} />
+        {gpAwarded !== null && (
+          <p className="text-[12px] font-bold text-amber-700" data-testid="gaspoints-fillup-reward">{t.gasPoints.fillupReward(gpAwarded)}</p>
+        )}
         <button
           onClick={onSaved}
           className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-black transition-colors"

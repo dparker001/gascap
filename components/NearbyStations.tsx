@@ -8,6 +8,7 @@
  * "Use this price" fires onApply into the parent calculator.
  */
 
+import { announceGasPoints } from '@/lib/gasPointsClient';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
@@ -827,6 +828,9 @@ export default function NearbyStations({ onApply, isActive = true }: Props) {
           setFavorites((prev) => prev.filter((f) => f.placeId !== station.placeId));
           setFavLimitMsg(t.findGasTab.favoriteLimitReached(MAX_FAVORITES));
           setTimeout(() => setFavLimitMsg(''), 3500);
+        } else if (r.ok) {
+          // G1: show the server-decided first-saved-station award (if any) — display only.
+          r.clone().json().then((d: { gasPointsAwarded?: unknown }) => announceGasPoints(d?.gasPointsAwarded)).catch(() => {});
         }
       }).catch(() => {});
     }

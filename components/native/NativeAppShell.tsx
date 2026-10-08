@@ -36,6 +36,8 @@ import VehicleChip      from './VehicleChip';
 import TabLockGate      from './TabLockGate';
 import FirstLaunchSplash from './FirstLaunchSplash';
 import GreetingStrip     from './GreetingStrip';
+import GasCapDailyCard   from '@/components/GasCapDailyCard';
+import GasPointsToast    from '@/components/GasPointsToast';
 import ReviewNudge       from '@/components/ReviewNudge';
 import LanguageToggle    from '@/components/LanguageToggle';
 import { getPlanBadge, type PlanUser } from '@/lib/planBadge';
@@ -343,6 +345,7 @@ export default function NativeAppShell() {
 
       {/* Essential in-app overlays (marketing chrome is intentionally not mounted) */}
       <TrialExpiryBanner />
+      <GasPointsToast />
       <AnnouncementToast />
 
       {/* Tab content — each tab mounts on first visit, then hides (state preserved).
@@ -380,6 +383,12 @@ export default function NativeAppShell() {
                     ✕
                   </button>
                 </div>
+              </div>
+            )}
+            {/* Gamification G1 — Daily Fuel Check + GasPoints */}
+            {status === 'authenticated' && (
+              <div className="max-w-lg mx-auto w-full pt-1">
+                <GasCapDailyCard />
               </div>
             )}
             <div key={calcMountKey} className="px-4 pt-4 pb-2 max-w-lg mx-auto w-full">

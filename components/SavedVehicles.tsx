@@ -2,6 +2,7 @@
 
 import { useSession } from 'next-auth/react';
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { announceGasPoints } from '@/lib/gasPointsClient';
 import VehiclePicker from './VehiclePicker';
 import BadgeShelf   from './BadgeShelf';
 import type { VehicleSpecs } from '@/lib/vehicleSpecs';
@@ -638,6 +639,8 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
     });
     setSaving(false);
     if (res.ok) {
+      // G1: show the server-decided first-vehicle award (if any) — display only.
+      res.clone().json().then((d: { gasPointsAwarded?: unknown }) => announceGasPoints(d?.gasPointsAwarded)).catch(() => {});
       window.dispatchEvent(new Event('vehicle-saved'));
       setShowPicker(false);
       load();

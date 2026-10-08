@@ -141,7 +141,9 @@ describe('price hint is display-only', () => {
 describe('post-save result card appears on both save paths', () => {
   const src = read('components/FillupLogger.tsx');
   it('feedback is built from the saved response, not from plan values', () => {
-    expect(src).toMatch(/buildFuelFeedback\(await res\.json\(\)\)/);
+    // G1 parses the saved response once so the same JSON also carries the server-decided GasPoints award;
+    // feedback is still built from that SAVED row only.
+    expect(src).toMatch(/const savedJson = await res\.json\(\);\s*fb = buildFuelFeedback\(savedJson\);/);
   });
   it('manual path shows a result card and waits for Done instead of closing immediately', () => {
     expect(src).toMatch(/if \(fb\) \{ setFeedback\(fb\); setSavedOk\(true\); \}\s*\/\/[^\n]*\n\s*else onSaved\(\);/);

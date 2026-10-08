@@ -12,7 +12,8 @@
 import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/adminAuth';
 import { computeBaseline } from '@/lib/engagementBaseline';
-import { loadBaselineInput, loadFuelActions } from '@/lib/engagementBaselineLoader';
+import { loadBaselineInput, loadFuelActions, loadGasPointsLedger } from '@/lib/engagementBaselineLoader';
+import { computeGasPointsReport } from '@/lib/gasPointsMetrics';
 import { computeActivation } from '@/lib/activationMetrics';
 
 export async function GET(req: Request) {
@@ -46,7 +47,19 @@ export async function GET(req: Request) {
       console.error('[engagement-baseline] activation failed:', err instanceof Error ? err.message : err);
     }
 
-    return NextResponse.json({ ...report, activation }, { headers: { 'Cache-Control': 'no-store' } });
+    // G1: GasPoints reporting (real users only — test accounts and admins are not in
+    // `input.users`). Isolated the same way: a failure here leaves the rest intact.
+    let gasPoints: ReturnType<typeof computeGasPointsReport> | null = null;
+    try {
+      const ledger = await loadGasPointsLedger();
+      gasPoints = computeGasPointsReport({
+        now, userIds: input.users.map((u) => u.id), rows: ledger.rows, truncated: ledger.truncated,
+      });
+    } catch (err) {
+      console.error('[engagement-baseline] gaspoints failed:', err instanceof Error ? err.message : err);
+    }
+
+    return NextResponse.json({ ...report, activation, gasPoints }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (err) {
     console.error('[engagement-baseline] failed:', err instanceof Error ? err.message : err);
     return NextResponse.json({ error: 'Failed to compute baseline' }, { status: 500 });

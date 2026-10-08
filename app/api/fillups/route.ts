@@ -23,6 +23,7 @@ import {
 import { findById, markMilestoneSent, recordActivity } from '@/lib/users';
 import { sendMilestoneEmail }          from '@/lib/emailEngagement';
 import { originPlatformFromRequest }   from '@/lib/originPlatform';
+import { awardFuelActionIfQualifying } from '@/lib/gasPoints';
 
 function userId(session: Session | null) {
   return session?.user?.id ?? session?.user?.email ?? '';
@@ -145,7 +146,13 @@ export async function POST(req: Request) {
     }
   })();
 
-  return NextResponse.json(entry, { status: 201 });
+  // Gamification G1: +50 GasPoints (once per GasCap day) — only now that the row has
+  // PERSISTED, and only from the saved values. Never blocks or fails the save.
+  const gasPointsAwarded = await awardFuelActionIfQualifying(uid, {
+    gallons: entry.gallonsPumped, pricePerGallon: entry.pricePerGallon, totalCost: entry.totalCost,
+  });
+
+  return NextResponse.json({ ...entry, gasPointsAwarded }, { status: 201 });
 }
 
 export async function PATCH(req: Request) {

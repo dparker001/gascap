@@ -120,3 +120,18 @@ export async function loadFuelActions(): Promise<{ records: FuelActionRecord[]; 
   ];
   return { records, truncated: fillups.length >= FUEL_ROW_CAP || gig.length >= FUEL_ROW_CAP };
 }
+
+/** Hard cap on GasPoints ledger rows read for the admin report. */
+export const LEDGER_ROW_CAP = 200000;
+
+/**
+ * G1 — READ-ONLY (SELECT only). All ledger rows; the pure report filters to the
+ * real-user population, so test/admin awards never reach the numbers.
+ */
+export async function loadGasPointsLedger(): Promise<{ rows: import('./gasPointsMetrics').LedgerRow[]; truncated: boolean }> {
+  const rows = await prisma.gasPointLedger.findMany({
+    select: { userId: true, action: true, points: true, sourceRef: true },
+    take: LEDGER_ROW_CAP,
+  });
+  return { rows, truncated: rows.length >= LEDGER_ROW_CAP };
+}

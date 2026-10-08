@@ -40,6 +40,8 @@ import PastWinners            from '@/components/PastWinners';
 import UserModeSelector       from '@/components/UserModeSelector';
 import { useModeSelectorSkip } from '@/hooks/useModeSelectorSkip';
 import LogIntentHandler from '@/components/LogIntentHandler';
+import GasCapDailyCard from '@/components/GasCapDailyCard';
+import GasPointsToast from '@/components/GasPointsToast';
 
 // ── JSON-LD Schema Markup ────────────────────────────────────────────────────
 
@@ -630,6 +632,9 @@ export default function Home() {
       {/* Announcement toasts — driven by data/announcements.json */}
       <AnnouncementToast />
 
+      {/* G1 — brief +N GasPoints toast for first-vehicle / first-station awards */}
+      <GasPointsToast />
+
       {/* Gas price drop alert — Pro users */}
       <GasPriceAlertBanner />
 
@@ -680,6 +685,9 @@ export default function Home() {
                 calculator sits near the top. Desktop shows these in the header
                 (HeroEngagementPanel). */}
             <MobileEngagementRow />
+
+            {/* Gamification G1 — Daily Fuel Check + GasPoints (separate from giveaway entries) */}
+            <GasCapDailyCard />
 
             {/* First-calc activation nudge — instant value + CTA, self-hides on calc */}
             <FirstCalcNudge />

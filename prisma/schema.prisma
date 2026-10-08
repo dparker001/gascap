@@ -229,6 +229,7 @@ model User {
   gigFillups               GigFillup[]
   gigMileage               GigMileage[]
   favoriteStations         FavoriteStation[]
+  gasPointLedger           GasPointLedger[]
   deviceSessions           DeviceSession[]
   rentalSessions           RentalSession[]
   /// Growth Sprint 1 — historical events survive account deletion (onDelete:
@@ -1088,4 +1089,31 @@ model FuelPriceSnapshot {
 
   @@unique([source, duoarea, product, observedOn])
   @@index([duoarea, grade, observedOn])
+}
+
+/// Gamification G1 (2026-10-08) — append-only GasPoints ledger. GasPoints are a
+/// progress/achievement currency ONLY: no cash value, no redemption, no gift-card or
+/// sweepstakes conversion, and completely separate from giveaway entries, the visit
+/// streak and badges. The balance is NEVER stored: it is SUM(points) over this table.
+/// Rows are never updated or deleted by application code (cascade-deleted only with
+/// the account). `points` is always derived from a server-side rule table keyed by
+/// `action` — nothing client-supplied reaches this table.
+/// `idempotencyKey` is globally unique: an award is an INSERT that either wins or
+/// conflicts, so retries and double-clicks can never duplicate points.
+/// `sourceRef` is the GasCap calendar date (YYYY-MM-DD, America/New_York) for
+/// date-scoped actions, used to derive the weekly mission; null otherwise.
+/// Added by scripts/add-gaspoint-ledger.mjs (additive, idempotent; no `db push`).
+model GasPointLedger {
+  id             String   @id
+  userId         String
+  action         String
+  points         Int
+  idempotencyKey String   @unique
+  sourceRef      String?
+  createdAt      DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([userId, action])
 }
