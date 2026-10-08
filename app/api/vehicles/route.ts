@@ -6,6 +6,7 @@ import { getVehiclesForUser, addVehicle, deleteVehicle, updateVehicle, setDefaul
 import { isElectric, type VehicleSpecs } from '@/lib/vehicleSpecs';
 import { isGaugeStyle } from '@/lib/gaugeStyles';
 import { originPlatformFromRequest } from '@/lib/originPlatform';
+import { awardFirstVehicle } from '@/lib/gasPoints';
 
 // Pro is unlimited; free is capped at 1
 const PLAN_LIMITS = { free: 1, pro: 9999, fleet: 9999 };
@@ -94,7 +95,10 @@ export async function POST(req: Request) {
     currentOdometer: body.currentOdometer != null ? Number(body.currentOdometer) : undefined,
     vehicleSpecs:    body.vehicleSpecs,
   }, { originPlatform: originPlatformFromRequest(req) });
-  return NextResponse.json(vehicle, { status: 201 });
+  // Gamification G1: +25 GasPoints for the first vehicle (once per lifetime) — only
+  // after the vehicle actually persisted; the first_vehicle key makes re-creation a no-op.
+  const gasPointsAwarded = await awardFirstVehicle(userId);
+  return NextResponse.json({ ...vehicle, gasPointsAwarded }, { status: 201 });
 }
 
 // DELETE /api/vehicles?id=xxx — remove a saved vehicle

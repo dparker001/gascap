@@ -36,6 +36,7 @@
  * will address a read-only production inventory + migration decision; no
  * backfill happens here).
  */
+import { awardFuelActionIfQualifying } from './gasPoints';
 import { randomUUID } from 'crypto';
 import { prisma } from './prisma';
 import { Prisma } from '@/lib/generated/prisma/client';
@@ -213,6 +214,12 @@ export async function createRentalFillup(
         idempotencyKey: `${eventType}:${created.id}`,
       });
     } catch (e) { console.error(`[GasCap analytics] ${eventType} write failed:`, e); }
+
+    // Gamification G1: +50 GasPoints once per GasCap day for a persisted rental
+    // fill-up (never blocks the fill-up; awardFuelActionIfQualifying swallows errors).
+    await awardFuelActionIfQualifying(userId, {
+      gallons: created.gallonsPumped, pricePerGallon: created.pricePerGallon, totalCost: created.totalCost,
+    });
 
     return { outcome: 'created', fillup: toRentalFillup(fromPrisma(created)) };
   } catch (err) {

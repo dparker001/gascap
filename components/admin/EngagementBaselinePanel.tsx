@@ -10,8 +10,10 @@
 import { useEffect, useState, useCallback } from 'react';
 import type { BaselineReport } from '@/lib/engagementBaseline';
 import type { ActivationReport } from '@/lib/activationMetrics';
+import type { GasPointsReport } from '@/lib/gasPointsMetrics';
+import { GASPOINT_LEVELS } from '@/lib/gasPointsRules';
 
-type PanelReport = BaselineReport & { activation?: ActivationReport | null };
+type PanelReport = BaselineReport & { activation?: ActivationReport | null; gasPoints?: GasPointsReport | null };
 import { loadAdminPanel } from '@/lib/adminFetch';
 
 const fmt = (n: number | null | undefined, suffix = '') => (n === null || n === undefined ? '—' : `${n}${suffix}`);
@@ -22,6 +24,30 @@ function Stat({ label, value, sub }: { label: string; value: string; sub?: strin
       <p className="text-xl font-black text-navy-700">{value}</p>
       <p className="text-[10px] text-slate-600 uppercase tracking-wider">{label}</p>
       {sub && <p className="text-[10px] text-slate-400 mt-0.5">{sub}</p>}
+    </div>
+  );
+}
+
+function GasPointsSection({ g }: { g: GasPointsReport }) {
+  return (
+    <div className="border border-emerald-200 bg-emerald-50/40 rounded-xl p-3 space-y-2">
+      <div>
+        <p className="text-xs font-black text-slate-700 uppercase tracking-wide">GasPoints (real users)</p>
+        <p className="text-[10px] text-slate-500">
+          Test accounts and admins excluded. Last 7 = the last 7 GasCap days (Eastern). GasPoints are separate from giveaway entries.
+        </p>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <Stat label="Users with GasPoints" value={String(g.participants)} />
+        <Stat label="Fuel Checks (7d)" value={String(g.dailyChecksLast7)} />
+        <Stat label="Distinct checkers (7d)" value={String(g.distinctCheckersLast7)} />
+        <Stat label="Avg checks / checker (7d)" value={fmt(g.avgChecksPerChecker7)} />
+        <Stat label="Weekly mission (this week)" value={String(g.weeklyMissionCompletedThisWeek)} sub={`${g.weeklyMissionCompletedEver} ever`} />
+      </div>
+      <p className="text-[11px] text-slate-600">
+        Levels: {GASPOINT_LEVELS.map((l) => `${l.id.replace(/_/g, ' ')} ${g.levelDistribution[l.id]}`).join(' · ')}
+      </p>
+      {g.truncated && <p className="text-[10px] text-amber-700">A row cap was hit — counts are lower bounds.</p>}
     </div>
   );
 }
@@ -184,6 +210,13 @@ export default function EngagementBaselinePanel({ savedPw }: { savedPw: string }
       {r.activation ? <ActivationSection a={r.activation} /> : (
         <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
           Phase 1 activation metrics could not be computed. The all-time baseline above is unaffected.
+        </p>
+      )}
+
+      {/* GasPoints (Gamification G1) — real users only; separate from giveaway entries */}
+      {r.gasPoints ? <GasPointsSection g={r.gasPoints} /> : (
+        <p className="text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+          GasPoints metrics are not available yet (the ledger may not be migrated). The rest of the baseline is unaffected.
         </p>
       )}
 

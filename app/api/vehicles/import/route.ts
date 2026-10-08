@@ -19,6 +19,7 @@ import { NextResponse } from 'next/server';
 import { getToken }    from 'next-auth/jwt';
 import { findById }    from '@/lib/users';
 import { addVehicle }  from '@/lib/savedVehicles';
+import { awardFirstVehicle } from '@/lib/gasPoints';
 
 const MAX_ROWS    = 200; // hard cap per import
 const MAX_FILE_MB = 1;
@@ -208,6 +209,10 @@ export async function POST(req: Request) {
       skipped++;
     }
   }
+
+  // Gamification G1: the first_vehicle reward (once per lifetime) also applies when the
+  // first vehicles arrive via CSV import — only after at least one row actually persisted.
+  if (created > 0) await awardFirstVehicle(userId);
 
   return NextResponse.json({ created, skipped, rows: results });
 }

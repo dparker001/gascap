@@ -305,6 +305,11 @@ input[type='number'] { -moz-appearance: textfield; }
 .animate-fade-in { animation: fadeIn 0.2s ease both; }
 .animate-pulse-once { animation: pulseOnce 0.5s ease; }
 
+/* G1: reward feedback must respect reduced-motion preferences. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in, .animate-result, .animate-pulse-once { animation: none; }
+}
+
 /* ── Gauge fill bar (result cards) ─────────────────────────────────── */
 .gauge-fill { transition: width 0.7s cubic-bezier(0.4, 0, 0.2, 1); }
 
