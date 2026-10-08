@@ -68,6 +68,15 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Built service worker guard
+        # Executes the GENERATED public/sw.js against the security contract in
+        # scripts/sw-contract.mjs (every API route must be NetworkOnly except one
+        # documented public endpoint; no matcher may throw; no unserialized
+        # closure variable may remain). Source-level checks cannot see what
+        # next-pwa/workbox actually serialize. Fails closed. Policy:
+        # docs/SW_CACHING_POLICY.md
+        run: npm run check:sw
+
 # LINT IS DELIBERATELY ABSENT.
 #
 # `npm run lint` is `next lint`, and this repository has no ESLint config, so
