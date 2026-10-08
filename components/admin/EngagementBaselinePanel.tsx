@@ -9,6 +9,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import type { BaselineReport } from '@/lib/engagementBaseline';
+import { loadAdminPanel } from '@/lib/adminFetch';
 
 const fmt = (n: number | null | undefined, suffix = '') => (n === null || n === undefined ? '—' : `${n}${suffix}`);
 
@@ -27,14 +28,15 @@ export default function EngagementBaselinePanel({ savedPw }: { savedPw: string }
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  // No `if (!savedPw) return`: a role-based admin session has no saved legacy password
+  // and the server authorizes it from the session cookie (lib/adminFetch.ts).
   const load = useCallback(() => {
-    if (!savedPw) return;
     setLoading(true);
-    fetch('/api/admin/engagement-baseline', { headers: { 'x-admin-password': savedPw } })
-      .then((res) => res.ok ? res.json() : Promise.reject(res.status))
-      .then((d: BaselineReport) => { setR(d); setError(''); })
-      .catch(() => setError('Failed to load the engagement baseline.'))
-      .finally(() => setLoading(false));
+    void loadAdminPanel<BaselineReport>('/api/admin/engagement-baseline', savedPw, {
+      onData:  (d) => { setR(d); setError(''); },
+      onError: () => setError('Failed to load the engagement baseline.'),
+      onDone:  () => setLoading(false),
+    });
   }, [savedPw]);
 
   useEffect(() => { load(); }, [load]);

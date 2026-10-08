@@ -10,6 +10,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import RentalSessionDetail from './RentalSessionDetail';
+import { loadAdminPanel } from '@/lib/adminFetch';
 
 interface SessionRow {
   id: string;
@@ -50,13 +51,14 @@ export default function RentalPilotMetrics({ savedPw }: { savedPw: string }) {
   const [disputesOnly, setDisputesOnly] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
+  // No `if (!savedPw) return`: a role-based admin session has no saved legacy password
+  // and the server authorizes it from the session cookie (lib/adminFetch.ts).
   const load = useCallback(() => {
-    if (!savedPw) return;
-    fetch('/api/admin/rental-pilot', { headers: { 'x-admin-password': savedPw } })
-      .then((r) => r.ok ? r.json() : Promise.reject(r.status))
-      .then((d) => setStats(d))
-      .catch(() => setError('Failed to load rental pilot metrics.'))
-      .finally(() => setLoading(false));
+    void loadAdminPanel<RentalPilotStats>('/api/admin/rental-pilot', savedPw, {
+      onData:  (d) => setStats(d),
+      onError: () => setError('Failed to load rental pilot metrics.'),
+      onDone:  () => setLoading(false),
+    });
   }, [savedPw]);
 
   useEffect(() => { load(); }, [load]);
