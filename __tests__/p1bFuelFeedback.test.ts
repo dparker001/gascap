@@ -124,6 +124,15 @@ describe('price hint is display-only', () => {
     expect(src).toMatch(/t\.fillup\.priceAvgHint\(/);
     expect(src).not.toMatch(/setPrice\([^)]*nationalAvg/);
   });
+  it('the hint copy says LATEST NATIONAL (not matched to the fill date), in EN and ES', () => {
+    const tr = read('lib/translations.ts');
+    expect(tr).toMatch(/priceAvgHint:[^\n]*`Latest national \$\{grade\} average \(EIA, week of \$\{week\}\): \$\$\{price\}\. Enter what you paid\.`/);
+    expect(tr).toMatch(/priceAvgHint:[^\n]*`Último promedio nacional de \$\{grade\} \(EIA, semana del \$\{week\}\)/);
+    expect(tr).not.toMatch(/priceAvgHint:[^\n]*`Average \$\{grade\} price/);
+    // still the latest-national endpoint, no historical lookup was added
+    expect(read('components/FillupLogger.tsx')).toMatch(/\/api\/gas-price\/national\?grade=\$\{fuelGrade\}/);
+    expect(read('components/FillupLogger.tsx')).not.toMatch(/gas-price\/(history|at|date)/);
+  });
   it('it is grade-matched: only shown once a priceable grade selected the average', () => {
     expect(src).toMatch(/\/api\/gas-price\/national\?grade=\$\{fuelGrade\}/);
   });
@@ -203,6 +212,25 @@ describe('fillup_feedback_viewed ingest', () => {
       expect(res.status, JSON.stringify(metadata)).toBe(400);
     }
     expect(recordAnalyticsEvent).not.toHaveBeenCalled();
+  });
+  it('a priced outcome must NOT carry a reason (every reason value rejected)', async () => {
+    for (const reason of ['no_grade', 'unsupported_grade', 'no_baseline', 'invalid']) {
+      const res = await post({ eventType: 'fillup_feedback_viewed', originPlatform: 'web', metadata: { outcome: 'priced', reason } });
+      expect(res.status, reason).toBe(400);
+    }
+    expect(recordAnalyticsEvent).not.toHaveBeenCalled();
+  });
+  it('an insufficient_data outcome MUST carry one valid reason', async () => {
+    expect((await post({ eventType: 'fillup_feedback_viewed', originPlatform: 'web', metadata: { outcome: 'insufficient_data' } })).status).toBe(400);
+    expect(recordAnalyticsEvent).not.toHaveBeenCalled();
+    for (const reason of ['no_grade', 'unsupported_grade', 'no_baseline', 'invalid']) {
+      const res = await post({ eventType: 'fillup_feedback_viewed', originPlatform: 'web', metadata: { outcome: 'insufficient_data', reason } });
+      expect(res.status, reason).toBe(202);
+    }
+  });
+  it('the valid combinations are exactly: priced alone, or insufficient_data + a reason', async () => {
+    expect((await post({ eventType: 'fillup_feedback_viewed', originPlatform: 'web', metadata: { outcome: 'priced' } })).status).toBe(202);
+    expect((await post({ eventType: 'fillup_feedback_viewed', originPlatform: 'web', metadata: { outcome: 'insufficient_data', reason: 'invalid', gallons: 1 } })).status).toBe(400);
   });
   it('requires a signed-in user', async () => {
     getServerSession.mockResolvedValue(null);

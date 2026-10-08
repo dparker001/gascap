@@ -34,10 +34,10 @@ P1-C, notification, savings-logic or `FuelPriceSnapshot` change. Build-regenerat
 3. **`components/FuelFeedbackCard.tsx`:** renders it (EN + ES), with one next step (add odometer / log next with odometer) and
    an EIA-source footnote. Shown on both save paths: inside the planned-vs-actual card, and as a new "Fill-up saved" card for
    the manual / Find Gas path (Done calls `onSaved`).
-4. **Price hint:** once a priceable grade is chosen, a caption shows the grade-matched EIA average and its week. It is never
-   written into the field.
+4. **Price hint:** once a priceable grade is chosen, a caption shows the LATEST national grade-matched EIA average and its week
+   (not matched to the fill date; review correction #1). It is never written into the field.
 5. **Event:** `fillup_feedback_viewed` {outcome: priced|insufficient_data, reason?} — client allowlist, authenticated-only,
-   strict enums, fired once per card mount. No gallons/price/station/grade/date.
+   strict enums plus a cross-field rule (priced carries NO reason; insufficient_data MUST carry one; review correction #2), fired once per card mount. No gallons/price/station/grade/date.
 6. Help page + AI chat APP FEATURES + EN/ES translations updated.
 
 ## 5. Architectural Decisions
@@ -59,7 +59,7 @@ Slightly more friction on the calculator-to-log path by design (one tap on "Same
 saved fuel data and savings are real, and every save ends with a result or an honest "not enough data". No pricing/plan/limit change.
 
 ## 9. Testing Performed
-- New `p1bFuelFeedback.test.ts`: 52 tests (model, plan-never-saved-as-actual, hint display-only, both save paths, EN/ES parity,
+- New `p1bFuelFeedback.test.ts`: 56 tests (model, plan-never-saved-as-actual, hint display-only, both save paths, EN/ES parity,
   analytics ingest).
 - Full `npm test`: 170 files, 2898 passed, 5 skipped (main after P1-A/fleet: 169 files, 2846 passed, 5 skipped). No existing test was changed.
 - `tsc --noEmit` clean; `npm run build` passes; `check:crons` 22/20/2; `check:sw` 266/266.
