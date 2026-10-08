@@ -461,3 +461,5 @@ vehicle, 15 logged a fill-up, 7 logged a second. Phase 1 should prioritize, in o
 (Cloudflare Security Events / extensions / local network if it recurs); Stripe `purchase_completed` not test-mode filtered;
 Rental Pilot's flat `$3.30/gal` estimate; stale `data/gas-prices-seed.json` (now only a labelled last resort);
 `areaState` is user-asserted and must never drive rewards.
+
+_Note (2026-10-08): the Railway project referred to above as `caring-integrity` was renamed **`GasCap`** (ID `e56d90fe-…` unchanged). The name in this packet is preserved as a historical record._

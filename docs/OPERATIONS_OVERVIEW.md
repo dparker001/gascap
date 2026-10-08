@@ -12,7 +12,7 @@
 |---|---|
 | Production app | https://www.gascap.app |
 | Admin panel | https://www.gascap.app/admin |
-| Railway project (caring-integrity) | https://railway.app — project ID: e56d90fe-99d6-48b1-9659-104459f54a8e |
+| Railway project (GasCap — formerly `caring-integrity`, renamed 2026-10-08) | https://railway.app — project ID: e56d90fe-99d6-48b1-9659-104459f54a8e |
 | GitHub repo | https://github.com/dparker001/gascap |
 
 ---
