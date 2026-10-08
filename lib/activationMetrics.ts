@@ -7,8 +7,11 @@
  * section 3), measured per signup cohort inside fixed windows.
  *
  * DEFINITIONS
- *  - Qualifying fuel action: a real saved, gallon-based gasoline/diesel
- *    fill-up record of any of
+ *  - Qualifying fuel action: a real saved, valid gallon-based liquid-fuel
+ *    fill-up record (EV/kWh excluded). Historical rows may carry no fuel grade
+ *    (or E85), so this metric does NOT claim every row is specifically
+ *    gasoline or diesel; savings comparisons are stricter and separate (same-grade
+ *    EIA rules, lib/savingsBaseline.ts). Any of
  *      personal  — Fillup row, no rentalSessionId
  *      rental    — Fillup row with a rentalSessionId
  *      gig       — GigFillup row with energyUnit 'gal'
@@ -210,7 +213,7 @@ export function computeActivation(input: ActivationInput): ActivationReport {
     firstActionBySource14d: bySource14,
     definitions: [
       'Phase 1 activation metrics are TIME-BOUNDED per signup cohort. They are separate from the all-time historical funnel above, which is unchanged.',
-      'Qualifying fuel action = a real saved gasoline/diesel (gallon-based) fill-up: personal, rental (Fillup with a rental session) or gig (energyUnit gal). EV/kWh records are excluded; kWh and gallons are never mixed.',
+      'Qualifying fuel action = a real saved, valid gallon-based liquid-fuel fill-up (any fuel grade, including historical rows with no grade): personal, rental (Fillup with a rental session) or gig (energyUnit gal). EV/kWh records are excluded; kWh and gallons are never mixed. This is an activation measure only; savings comparisons remain restricted to grades supported by the same-grade EIA rules.',
       'Valid = gallons > 0 (and <= 500), total cost > 0, unit price within $0.50-$15.00/gal. Test accounts, admins and deleted rows are excluded.',
       'Timing uses when the record was logged (createdAt), not the user-entered fill date, so back-dating cannot create activation.',
       'First valid fuel action <= 14 days (primary leading metric): earliest qualifying action within 14 days (inclusive) of signup; rate over signups at least 14 days old.',

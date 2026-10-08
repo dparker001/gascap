@@ -80,7 +80,7 @@ Tests: 4 new `p1a*.test.ts`; one existing test updated (below).
    rental_setup_completed / trial_expired to `'unknown'`. Please confirm this is acceptable.
 2. **Platform coverage is deliberately partial.** An iOS WKWebView without the marker stays `unknown`. Google signup, CSV
    vehicle import, rental fill-ups and `trial_started` still write `unknown` (out of the approved list / no request in scope).
-3. **E85 / null-grade fill-ups qualify** (any gallon-based `Fillup`); the owner wording is "gasoline/diesel". Confirm or I will exclude `fuelGrade = 'e85'`.
+3. **Terminology (resolved in review):** a qualifying fuel action is a *valid gallon-based liquid-fuel fill-up; EV/kWh excluded*. E85 and historical null-grade rows still qualify, and the packet/UI no longer claims every such row is specifically gasoline or diesel. Activation is separate from savings, which stays restricted to the Phase 0.5 same-grade EIA rules (unchanged).
 4. **Skip is per-browser.** Clearing storage or a new device re-shows the selector once.
 5. The `gascap:focus-vehicles` handler lives in `SavedVehicles`; if that component is not mounted when the button is tapped
    the picker will not open (same limitation as the existing setup checklist). I did not verify in a browser.
