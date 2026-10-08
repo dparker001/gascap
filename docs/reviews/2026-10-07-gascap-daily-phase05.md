@@ -1,5 +1,8 @@
 # ChatGPT Review Packet — GasCap Daily Phase 0.5 (measurement baseline + fuel-price data foundation)
 
+**Status: HISTORICAL packet — Phase 0.5 is COMPLETE (2026-10-08). See "Outcome" at the end.** The text below is the
+review packet as submitted; it is preserved unchanged.
+
 Filled from `docs/reviews/CHATGPT_REVIEW_PACKET_TEMPLATE.md`. Risk class: **HIGH**
 (schema change, new cron, core fill-up write path, savings/pricing claims shown
 to users). Stopped at READY FOR REVIEW. **Not merged. Not pushed. Migration not run.**
@@ -426,3 +429,35 @@ Most scrutiny, in order:
 6. `lib/engagementBaseline.ts` — metric definitions (the baseline must be right).
 
 Lower priority: UI components, translations, docs.
+
+---
+
+## Outcome — Phase 0.5 COMPLETE (2026-10-08)
+
+**Delivered and verified in production:** PR #65 (baseline + fuel-price foundation), #66 (price provenance, trial population),
+#68 (service-worker integrity; #67 closed as superseded), #69 (admin panels for role-based sessions). Migration run, 156-week
+backfill run, authenticated smoke test passed. Technical detail: `docs/FUEL_PRICE_HISTORY.md` ("Production outcome").
+
+**Owner-level baseline for Phase 1 planning (production, 2026-10-08):**
+
+| Metric | Value |
+|---|---|
+| Signups | 350 |
+| Historical trials (started ∪ expired ∪ columns, distinct users) | 127 — a floor; trials ended before expiry events began (2026-08-30) leave no evidence |
+| Active trials / Paid now | 3 / 2 |
+| Trials currently paid (current entitlement, not historical conversion) | 1 of 127 (0.8%) |
+| Trial → purchase event (directional; Stripe not test-mode filtered) | 1 of 127 (0.8%) |
+| First fill-up users / second fill-up users | 15 / 7 |
+| Vehicle users | 123 |
+| Retention D1 / D3 / D7 / D14 / D30 (active on that exact day) | 27.1% / 4.6% / 3.1% / 2.0% / 2.0% |
+| DAU / WAU / MAU | 1 / 7 / 25 |
+| Savings-data coverage (post-backfill) | 21 of 23 fill-ups comparable on the validated account |
+
+**Principal product conclusion: GasCap has an activation problem before it has a gamification problem.** 123 users added a
+vehicle, 15 logged a fill-up, 7 logged a second. Phase 1 should prioritize, in order: (1) first meaningful fuel action,
+(2) second meaningful fuel action, (3) recurring fuel value, (4) only then broader engagement mechanics.
+
+**Open items carried forward (not Phase 0.5 blockers):** the unexplained browser-only 503 on `/api/auth/session`
+(Cloudflare Security Events / extensions / local network if it recurs); Stripe `purchase_completed` not test-mode filtered;
+Rental Pilot's flat `$3.30/gal` estimate; stale `data/gas-prices-seed.json` (now only a labelled last resort);
+`areaState` is user-asserted and must never drive rewards.
