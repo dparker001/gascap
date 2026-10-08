@@ -134,6 +134,12 @@ const CLIENT_EVENT_TYPES = new Set([
   // validated integer only — never raw counts, never PII.
   'trial_value_recap_viewed',
   'trial_value_recap_upgrade_clicked',
+  // Phase 1 P1-A (2026-10-08) — first-login mode selector outcome. Fired once
+  // when the user picks a mode (metadata: the four-value mode enum only) or
+  // explicitly skips it (no metadata). Authenticated-only (the selector never
+  // renders for a guest); advisory client signal, never gates anything.
+  'mode_selected',
+  'mode_skipped',
 ]);
 
 /**
@@ -258,6 +264,18 @@ const METADATA_SCHEMAS: Record<string, MetadataSchema> = {
       hasRentalSessions: (v) => typeof v === 'boolean',
     },
     required: ['stage', 'hasCalculations', 'hasVehicles', 'hasFillups', 'hasRentalSessions'],
+  },
+  // P1-A — the four selectable modes only (components/UserModeSelector.tsx).
+  mode_selected: {
+    fields: {
+      mode: (v) => v === 'personal' || v === 'gig' || v === 'rental' || v === 'fleet',
+    },
+    required: ['mode'],
+  },
+  // No metadata: skipping assigns nothing and carries no data.
+  mode_skipped: {
+    fields: {},
+    required: [],
   },
 };
 

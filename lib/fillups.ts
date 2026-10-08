@@ -4,7 +4,7 @@
  */
 import { randomUUID } from 'crypto';
 import { prisma }     from './prisma';
-import { recordAnalyticsEvent } from './analyticsEvents';
+import { recordAnalyticsEvent, type OriginPlatform } from './analyticsEvents';
 import { resolveNewFillupBaseline } from './fuelPriceSnapshots';
 
 // Re-exported for server-side callers that import these from lib/fillups —
@@ -241,6 +241,9 @@ export async function addFillup(
      *  the coarse EIA area for the savings baseline. Never stored as-is. */
     areaState?: string;
   },
+  /** P1-A: platform the request came from (originPlatformFromRequest), only
+   *  when known; omitted => 'unknown'. */
+  ctx?: { originPlatform?: OriginPlatform },
 ): Promise<Fillup> {
   const computedCost = Math.round(data.gallonsPumped * data.pricePerGallon * 100) / 100;
 
@@ -286,7 +289,7 @@ export async function addFillup(
   try {
     await recordAnalyticsEvent({
       eventType: 'fillup_logged',
-      originPlatform: 'unknown',
+      originPlatform: ctx?.originPlatform ?? 'unknown',
       emitter: 'server',
       userId,
       source: 'fillup_create',

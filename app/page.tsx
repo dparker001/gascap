@@ -38,6 +38,8 @@ import SavingsSummary         from '@/components/SavingsSummary';
 import AnnualProjection       from '@/components/AnnualProjection';
 import PastWinners            from '@/components/PastWinners';
 import UserModeSelector       from '@/components/UserModeSelector';
+import { useModeSelectorSkip } from '@/hooks/useModeSelectorSkip';
+import LogIntentHandler from '@/components/LogIntentHandler';
 
 // ── JSON-LD Schema Markup ────────────────────────────────────────────────────
 
@@ -542,13 +544,14 @@ function VerifiedSuccessToast() {
 
 // ── Mode selector wrapper (reads ?mode= param inside Suspense) ───────────────
 
-function ModeSelectorWithParam({ onComplete }: { onComplete: (mode: string) => void }) {
+function ModeSelectorWithParam({ onComplete, onSkip }: { onComplete: (mode: string) => void; onSkip: () => void }) {
   const sp = useSearchParams();
   const modeParam = sp.get('mode') as 'personal' | 'gig' | 'rental' | 'fleet' | null;
   return (
     <UserModeSelector
       initialMode={modeParam ?? undefined}
       onComplete={onComplete}
+      onSkip={onSkip}
     />
   );
 }
@@ -567,7 +570,8 @@ export default function Home() {
   const isGuest  = !session;
   const userMode = (session?.user as { userMode?: string | null })?.userMode;
   const [modeSelectorDismissed, setModeSelectorDismissed] = useState(false);
-  const showModeSelector = !!session && status === 'authenticated' && !userMode && !modeSelectorDismissed;
+  const modeSkip = useModeSelectorSkip((session?.user as { id?: string } | undefined)?.id);
+  const showModeSelector = !!session && status === 'authenticated' && !userMode && !modeSelectorDismissed && modeSkip.ready && !modeSkip.skipped;
 
   // Scroll to top when session loads
   useEffect(() => {
@@ -577,10 +581,18 @@ export default function Home() {
   // Native wrappers (iOS/Android) get the app-shell + bottom tab bar instead of the
   // marketing/scroll landing page. All hooks above have run, so this early return is
   // Rules-of-Hooks safe. Web path is unchanged. See docs/NATIVE_APP_SHELL_SPEC.md.
-  if (isNative) return <NativeAppShell />;
+  if (isNative) return (
+    <>
+      <NativeAppShell />
+      <Suspense fallback={null}><LogIntentHandler /></Suspense>
+    </>
+  );
 
   return (
     <main className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-900">
+
+      {/* `/?log=1` deep link from the first-fill-up nudge → opens the fill-up logger */}
+      <Suspense fallback={null}><LogIntentHandler /></Suspense>
 
       {/* Founding Member launch promo — scarcity bar (web only, self-hides when full) */}
       <FoundingMemberBanner />
@@ -602,7 +614,10 @@ export default function Home() {
       {/* User mode selector — shown once to logged-in users who haven't chosen a mode */}
       {showModeSelector && (
         <Suspense fallback={null}>
-          <ModeSelectorWithParam onComplete={() => setModeSelectorDismissed(true)} />
+          <ModeSelectorWithParam
+            onComplete={() => setModeSelectorDismissed(true)}
+            onSkip={() => { modeSkip.markSkipped(); setModeSelectorDismissed(true); }}
+          />
         </Suspense>
       )}
 

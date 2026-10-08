@@ -12,7 +12,8 @@
 import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/adminAuth';
 import { computeBaseline } from '@/lib/engagementBaseline';
-import { loadBaselineInput } from '@/lib/engagementBaselineLoader';
+import { loadBaselineInput, loadFuelActions } from '@/lib/engagementBaselineLoader';
+import { computeActivation } from '@/lib/activationMetrics';
 
 export async function GET(req: Request) {
   const auth = await requireAdmin(req);
@@ -24,8 +25,28 @@ export async function GET(req: Request) {
   }
 
   try {
-    const report = computeBaseline(await loadBaselineInput(new Date()));
-    return NextResponse.json(report, { headers: { 'Cache-Control': 'no-store' } });
+    const now = new Date();
+    const input = await loadBaselineInput(now);
+    const report = computeBaseline(input);
+
+    // P1-A: Phase 1 activation metrics ride along as a separate `activation`
+    // key. The Phase 0.5 report above is unchanged, and an activation failure
+    // must never take the baseline down with it.
+    let activation: ReturnType<typeof computeActivation> | null = null;
+    try {
+      const fuel = await loadFuelActions();
+      activation = computeActivation({
+        now,
+        users: input.users.map((u) => ({ id: u.id, createdAt: u.createdAt })),
+        fuelActions: fuel.records,
+        vehicleUserIds: input.vehicleUserIds,
+        truncated: !!input.truncated || fuel.truncated,
+      });
+    } catch (err) {
+      console.error('[engagement-baseline] activation failed:', err instanceof Error ? err.message : err);
+    }
+
+    return NextResponse.json({ ...report, activation }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (err) {
     console.error('[engagement-baseline] failed:', err instanceof Error ? err.message : err);
     return NextResponse.json({ error: 'Failed to compute baseline' }, { status: 500 });

@@ -66,7 +66,7 @@ const SECTIONS = [
       },
       {
         q: 'What is my GasCap™ driver mode and how do I change it?',
-        a: 'When you first log in, GasCap™ asks how you plan to use the app: Personal Driver, Gig Driver (Uber, Lyft, DoorDash, etc.), Rental Car, or Business/Fleet. Your selection personalizes the dashboard and tools shown to you. To change your mode, go to Settings → Profile and update your Driver Mode.',
+        a: 'When you first log in, GasCap™ asks how you plan to use the app: Personal Driver, Gig Driver (Uber, Lyft, DoorDash, etc.), Rental Car, or Business/Fleet. Your selection personalizes the dashboard and tools shown to you. You can tap "Skip for now" — nothing is assumed about you if you skip, and you can pick a mode any time in Settings → Profile (Driver Mode). If you open the fill-up log before saving a vehicle, tap "Add a vehicle" and GasCap™ takes you to the vehicle form, then back to logging your fill-up.',
       },
       {
         q: 'How do I export my gig driver logs for taxes?',

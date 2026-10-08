@@ -2385,7 +2385,8 @@ const en = {
     logAFillUp: 'Log a Fill-Up',
     selectVehicle: 'Select vehicle',
     noSavedVehicles: 'No saved vehicles',
-    noSavedVehiclesHint: 'Add a vehicle in the Saved Vehicles section above, then come back to log a fill-up.',
+    noSavedVehiclesHint: 'Add your vehicle first, then log your fill-up.',
+    addVehicle: 'Add a vehicle',
     cancel: 'Cancel',
   },
   mpgChart: {
@@ -5826,7 +5827,8 @@ const es: typeof en = {
     logAFillUp: 'Registrar una recarga',
     selectVehicle: 'Seleccionar vehículo',
     noSavedVehicles: 'No hay vehículos guardados',
-    noSavedVehiclesHint: 'Agrega un vehículo en la sección Vehículos guardados de arriba y luego regresa para registrar una recarga.',
+    noSavedVehiclesHint: 'Agrega primero tu vehículo y luego registra tu recarga.',
+    addVehicle: 'Agregar un vehículo',
     cancel: 'Cancelar',
   },
   mpgChart: {

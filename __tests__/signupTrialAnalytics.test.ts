@@ -253,14 +253,23 @@ describe('P0C-1A global rules (G1-G5, source inspection)', () => {
     }
   });
 
-  it('G2. vehicle_saved/fillup_logged/rental_setup_completed/trial_expired all use originPlatform: \'unknown\'', () => {
-    const targets = ['vehicle_saved', 'fillup_logged', 'rental_setup_completed', 'trial_expired'];
+  // Phase 1 P1-A: vehicle_saved / fillup_logged no longer hard-code 'unknown';
+  // they take the platform derived from the request (lib/originPlatform.ts),
+  // defaulting to 'unknown' when none is supplied. The other two are unchanged.
+  // See __tests__/p1aOriginPlatform.test.ts for the behavioural coverage.
+  it('G2. vehicle_saved/fillup_logged use a request-derived platform that defaults to unknown; rental_setup_completed/trial_expired stay originPlatform: \'unknown\'', () => {
+    const targets: Record<string, RegExp> = {
+      vehicle_saved:          /originPlatform:\s*(?:'unknown'|ctx\?\.originPlatform \?\? 'unknown'|originPlatformFromRequest\(req\))/,
+      fillup_logged:          /originPlatform:\s*(?:'unknown'|ctx\?\.originPlatform \?\? 'unknown'|originPlatformFromRequest\(req\))/,
+      rental_setup_completed: /originPlatform:\s*'unknown'/,
+      trial_expired:          /originPlatform:\s*'unknown'/,
+    };
     for (const { src } of files) {
-      for (const t of targets) {
+      for (const [t, re] of Object.entries(targets)) {
         const idx = src.indexOf(`eventType: '${t}'`);
         if (idx === -1) continue;
         const surrounding = src.slice(Math.max(0, idx - 300), idx + 300);
-        expect(surrounding).toContain("originPlatform: 'unknown'");
+        expect(surrounding).toMatch(re);
       }
     }
   });

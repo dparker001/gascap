@@ -22,6 +22,7 @@ import {
 } from '@/lib/fillups';
 import { findById, markMilestoneSent, recordActivity } from '@/lib/users';
 import { sendMilestoneEmail }          from '@/lib/emailEngagement';
+import { originPlatformFromRequest }   from '@/lib/originPlatform';
 
 function userId(session: Session | null) {
   return session?.user?.id ?? session?.user?.email ?? '';
@@ -111,7 +112,7 @@ export async function POST(req: Request) {
   // Remove `force` before storing
   const { force: _force, ...saveBody } = body;
   const uid   = userId(session);
-  const entry = await addFillup(uid, saveBody);
+  const entry = await addFillup(uid, saveBody, { originPlatform: originPlatformFromRequest(req) });
 
   // Mark today as an active day — ensures fill-up days count toward giveaway entries
   // even if this is the only action the user takes. Fire-and-forget, non-blocking.
