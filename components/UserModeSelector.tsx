@@ -28,7 +28,7 @@ const MODES = [
     id:    'fleet',
     icon:  '🚚',
     title: 'Business / Fleet',
-    body:  'Track fuel usage and vehicle costs across business driving.',
+    body:  'Fleet tools are coming soon. Pick this to tell us you want them — until then GasCap works like Personal.',
   },
 ] as const;
 
