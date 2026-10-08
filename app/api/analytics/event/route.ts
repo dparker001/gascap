@@ -140,6 +140,10 @@ const CLIENT_EVENT_TYPES = new Set([
   // renders for a guest); advisory client signal, never gates anything.
   'mode_selected',
   'mode_skipped',
+  // Phase 1 P1-B (2026-10-08) — fired once when the post-save fuel feedback card
+  // is shown. Outcome + reason enums only: no gallons, price, station, grade,
+  // date or any amount. Authenticated-only advisory client signal.
+  'fillup_feedback_viewed',
 ]);
 
 /**
@@ -276,6 +280,14 @@ const METADATA_SCHEMAS: Record<string, MetadataSchema> = {
   mode_skipped: {
     fields: {},
     required: [],
+  },
+  // P1-B — which result the user saw, never any fuel/price values.
+  fillup_feedback_viewed: {
+    fields: {
+      outcome: (v) => v === 'priced' || v === 'insufficient_data',
+      reason:  (v) => v === 'no_grade' || v === 'unsupported_grade' || v === 'no_baseline' || v === 'invalid',
+    },
+    required: ['outcome'],
   },
 };
 

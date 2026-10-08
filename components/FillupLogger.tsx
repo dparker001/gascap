@@ -6,6 +6,8 @@ import { useSession } from 'next-auth/react';
 import { useTranslation } from '@/contexts/LanguageContext';
 import { nativeShare } from '@/lib/share';
 import { hapticSuccess } from '@/lib/haptics';
+import FuelFeedbackCard from './FuelFeedbackCard';
+import { buildFuelFeedback, type FuelFeedback } from '@/lib/fuelFeedback';
 
 interface FillupLoggerProps {
   /** Pre-filled from the calculation result or Find Gas selection */
@@ -97,8 +99,16 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
   const today = new Date().toISOString().split('T')[0];
 
   const [date,           setDate]           = useState(today);
-  const [gallons,        setGallons]        = useState(String(prefill.gallonsPumped));
-  const [price,          setPrice]          = useState(String(prefill.pricePerGallon));
+  // P1-B (fuel-data integrity): prefill values are a PLAN or a posted price —
+  // reference only. The fields start empty, so tapping Save can never record a
+  // plan as what was pumped; the user types the real values or explicitly taps
+  // "Same as planned".
+  const planGallons = prefill.gallonsPumped  > 0 ? prefill.gallonsPumped  : 0;
+  const planPrice   = prefill.pricePerGallon > 0 ? prefill.pricePerGallon : 0;
+  const [gallons,        setGallons]        = useState('');
+  const [price,          setPrice]          = useState('');
+  const [feedback,       setFeedback]       = useState<FuelFeedback | null>(null);
+  const [savedOk,        setSavedOk]        = useState(false);
   const [odometer,       setOdometer]       = useState(
     prefill.vehicleOdometer != null ? String(prefill.vehicleOdometer) : ''
   );
@@ -393,6 +403,11 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
 
       window.dispatchEvent(new Event('fillup-saved'));
 
+      // P1-B: feedback is built from the SAVED row (confirmed actual values and
+      // the baseline frozen at save time) — never from a planned value.
+      let fb: FuelFeedback | null = null;
+      try { fb = buildFuelFeedback(await res.json()); } catch { fb = null; }
+
       // Build the planned-vs-actual comparison card. Only shown when this
       // fill-up started from a GasCap calculation (prefill.calculatedGallons
       // present) — otherwise there's no plan to compare against.
@@ -402,6 +417,7 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
         const enteredPaid  = amountPaid && parseFloat(amountPaid) > 0 ? parseFloat(amountPaid) : undefined;
         const fillCost     = Math.round(pumpedGal * ppg * 100) / 100;
         hapticSuccess();
+        setFeedback(fb);
         setComparison({
           plannedGallons:   prefill.calculatedGallons,
           actualGallons:    pumpedGal,
@@ -412,7 +428,8 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
         });
       } else {
         hapticSuccess();
-        onSaved();
+        if (fb) { setFeedback(fb); setSavedOk(true); }   // show the result card; Done calls onSaved
+        else onSaved();
       }
     } catch {
       setError(t.fillup.networkError);
@@ -470,6 +487,8 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
           </div>
         </div>
 
+        {feedback && <FuelFeedbackCard feedback={feedback} />}
+
         <p className="text-[11px] text-slate-500 leading-relaxed px-1">
           {t.fillup.comparisonDisclaimer}
         </p>
@@ -496,6 +515,25 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
     );
   }
 
+  // ── Post-save result card (manual / Find Gas path — no plan to compare) ──
+  if (savedOk && feedback) {
+    return (
+      <div className="mt-3 rounded-2xl border-2 border-emerald-200 bg-emerald-50 p-5 space-y-3 animate-fade-in text-center">
+        <div>
+          <p className="text-3xl mb-1">⛽</p>
+          <p className="text-sm font-black text-emerald-800">{t.fillup.savedTitle}</p>
+        </div>
+        <FuelFeedbackCard feedback={feedback} />
+        <button
+          onClick={onSaved}
+          className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-black transition-colors"
+        >
+          {t.fillup.comparisonDone}
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="mt-3 rounded-2xl border-2 border-amber-200 bg-amber-50 p-4 space-y-3 animate-fade-in">
       <div className="flex items-center justify-between">
@@ -511,6 +549,31 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
           <p className="text-[10px] text-slate-400">{t.fillup.estimatedTotal}</p>
         </div>
       </div>
+
+      {/* Plan reference (P1-B): a plan or posted price is shown as reference only.
+          The fields below stay empty until the user enters or confirms actuals. */}
+      {(planGallons > 0 || planPrice > 0) && (
+        <div className="rounded-xl bg-white border border-amber-200 px-3 py-2.5 space-y-1.5">
+          <p className="text-[12px] font-bold text-slate-700">
+            {planGallons > 0 && planPrice > 0
+              ? t.fillup.planReferenceBoth(planGallons.toFixed(1), planPrice.toFixed(3))
+              : planPrice > 0
+                ? t.fillup.planReferencePrice(planPrice.toFixed(3))
+                : `${planGallons.toFixed(1)} ${t.calc.unitGal}`}
+          </p>
+          <p className="text-[10px] text-slate-500">{t.fillup.planConfirmHint}</p>
+          <button
+            type="button"
+            onClick={() => {
+              if (planGallons > 0) setGallons(String(Math.round(planGallons * 100) / 100));
+              if (planPrice   > 0) setPrice(String(Math.round(planPrice * 1000) / 1000));
+            }}
+            className="text-[11px] font-black text-amber-700 border border-amber-300 rounded-lg px-2.5 py-1 hover:bg-amber-50"
+          >
+            {planGallons > 0 && planPrice > 0 ? t.fillup.sameAsPlanned : planPrice > 0 ? t.fillup.usePostedPrice : t.fillup.sameAsPlanned}
+          </button>
+        </div>
+      )}
 
       {/* Gallons + Price row — at top so the breakdown is immediately visible */}
       <div className="grid grid-cols-2 gap-3">
@@ -546,6 +609,18 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
           </div>
         </div>
       </div>
+
+      {/* Display-only (P1-B): the grade-matched weekly average as a hint. It is
+          never written into the field — the user enters what they paid. */}
+      {nationalAvg !== null && !price && (
+        <p className="text-[10px] text-slate-500 -mt-1">
+          {t.fillup.priceAvgHint(
+            (fuelGrade === 'regular' ? t.fillup.gradeRegular : fuelGrade === 'midgrade' ? t.fillup.gradeMidGrade : fuelGrade === 'premium' ? t.fillup.gradePremium : t.fillup.gradeDiesel),
+            nationalAvg.price.toFixed(3),
+            new Date(nationalAvg.period + 'T12:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+          )}
+        </p>
+      )}
 
       {/* ── Actual amount paid (optional) ──────────────────────────────────── */}
       <div>
