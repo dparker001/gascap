@@ -8,8 +8,15 @@
  * is handed back as its saved address string.
  *
  * Response: { ok: true, kind: 'coordinates', latitude, longitude }
- *         | { ok: true, kind: 'address', text }
+ *         | { ok: true, kind: 'address', text, usedFallback? }
  *         | { ok: false, error }
+ *
+ * usedFallback: true means this was a 'google_place' favorite whose Place
+ * Details lookup failed, so `text` is the saved display text used as a
+ * fallback rather than an intentionally-manual address — callers should
+ * surface this to the user per independent review (a route built from the
+ * fallback text could, in principle, resolve to a similarly-named but
+ * different location than the one originally saved).
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';

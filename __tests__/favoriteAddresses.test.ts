@@ -219,11 +219,21 @@ describe('resolveFavoriteAddressForRouting — resolve-on-use, never a cached co
     expect(resolvePlaceCoordinatesMock).not.toHaveBeenCalled();
   });
 
-  it('15. if Google Place Details fails for a google_place favorite, falls back to the saved address text rather than failing outright', async () => {
+  it('15. if Google Place Details fails for a google_place favorite, falls back to the saved address text rather than failing outright, flagged as a fallback', async () => {
     table.set('fav-1', makeRow({ source: 'google_place', placeId: 'place-abc', displayAddress: '123 Main St' }));
     resolvePlaceCoordinatesMock.mockResolvedValueOnce(null);
     const result = await mod.resolveFavoriteAddressForRouting('user-1', 'fav-1');
-    expect(result).toEqual({ kind: 'address', text: '123 Main St' });
+    // usedFallback: true distinguishes this from a genuine manual_text
+    // favorite, so the caller can surface it to the user (per independent
+    // review) rather than silently treating a stale/unresolvable place the
+    // same as an intentionally-manual address.
+    expect(result).toEqual({ kind: 'address', text: '123 Main St', usedFallback: true });
+  });
+
+  it('15b. a genuine manual_text favorite never carries usedFallback (it is not a fallback, it is the normal mode)', async () => {
+    table.set('fav-1', makeRow({ source: 'manual_text', placeId: null, displayAddress: 'Rural Route 4' }));
+    const result = await mod.resolveFavoriteAddressForRouting('user-1', 'fav-1');
+    expect(result).toEqual({ kind: 'address', text: 'Rural Route 4' });
   });
 
   it('16. resolving a favorite that does not belong to the requesting user returns not_found', async () => {

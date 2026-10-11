@@ -304,6 +304,11 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
   const [routeError,        setRouteError]        = useState('');
   const [fuelStops,         setFuelStops]         = useState<FuelStop[]>([]);
   const [stopsLoading,      setStopsLoading]      = useState(false);
+  // Set when a saved favorite's Place Details lookup failed and the route
+  // was built from its saved text as a fallback instead — surfaced per
+  // independent review, since that could in principle resolve to a
+  // similarly-named but different location than the one originally saved.
+  const [usedFavoriteFallback, setUsedFavoriteFallback] = useState(false);
 
   // Current Location + Favorite Addresses (Phase 2, 2026-10-11)
   const isNative = useIsNative();
@@ -527,18 +532,23 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
     favoriteId: string,
     manualText: string,
     manualCoords?: LatLng,
-  ): Promise<string | LatLng | null> {
+  ): Promise<{ waypoint: string | LatLng; usedFallback?: boolean } | null> {
     if (mode === 'current_location') {
-      return currentLocationCoords;
+      return currentLocationCoords ? { waypoint: currentLocationCoords } : null;
     }
     if (mode === 'favorite') {
       try {
         const res = await fetch(`/api/favorite-addresses/${encodeURIComponent(favoriteId)}/resolve`, { method: 'POST' });
         if (!res.ok) return null;
-        const d = await res.json() as { ok: boolean; kind?: string; latitude?: number; longitude?: number; text?: string };
+        const d = await res.json() as { ok: boolean; kind?: string; latitude?: number; longitude?: number; text?: string; usedFallback?: boolean };
         if (!d.ok) return null;
-        if (d.kind === 'coordinates' && d.latitude != null && d.longitude != null) return { latitude: d.latitude, longitude: d.longitude };
-        if (d.kind === 'address' && d.text) return d.text;
+        if (d.kind === 'coordinates' && d.latitude != null && d.longitude != null) return { waypoint: { latitude: d.latitude, longitude: d.longitude } };
+        // usedFallback: a 'google_place' favorite whose Place Details lookup
+        // failed — this is the saved text as a fallback, not an
+        // intentionally-manual address. Surfaced to the user per independent
+        // review, since a route built from it could land somewhere
+        // similarly-named but not the exact saved place.
+        if (d.kind === 'address' && d.text) return { waypoint: d.text, usedFallback: d.usedFallback };
         return null;
       } catch {
         return null;
@@ -550,7 +560,8 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
     // Autocomplete session. Falls back to the text if that never resolved
     // (place-location failed, or the text was typed free-hand with no
     // suggestion selected at all).
-    return manualCoords ?? (manualText.trim() || null);
+    const waypoint = manualCoords ?? (manualText.trim() || null);
+    return waypoint ? { waypoint } : null;
   }
 
   // Save-trip state
@@ -733,22 +744,24 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
     // 'google_place' favorite resolved fresh via its placeId — see
     // resolveWaypoint() and lib/favoriteAddresses.ts's resolve-on-use design).
     setRouteLoading(true);
-    const [originWaypoint, destWaypoint] = await Promise.all([
+    setUsedFavoriteFallback(false);
+    const [originResolved, destResolved] = await Promise.all([
       resolveWaypoint(originMode, originFavoriteId, routeOrigin, originCoords),
       resolveWaypoint(destMode, destFavoriteId, routeDest, destCoords),
     ]);
-    if (originWaypoint == null || destWaypoint == null) {
+    if (originResolved == null || destResolved == null) {
       setRouteError(t.tripCostEstimator.routeCalcFailed);
       setRouteLoading(false);
       return;
     }
+    if (originResolved.usedFallback || destResolved.usedFallback) setUsedFavoriteFallback(true);
 
     let route: RouteResult;
     try {
       const res  = await fetch('/api/maps/route', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ origin: originWaypoint, destination: destWaypoint }),
+        body:    JSON.stringify({ origin: originResolved.waypoint, destination: destResolved.waypoint }),
       });
       const data = await res.json() as { ok: boolean; route?: RouteResult; error?: string; featureDisabled?: boolean };
       if (!data.ok) {
@@ -1196,6 +1209,13 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
                         <span className="text-sm">📍</span>
                         <p className="text-xs font-bold text-emerald-700">
                           {t.tripCostEstimator.routeSummary(metersToMiles(routeData.distanceMeters).toLocaleString(), formatDuration(routeData.durationSeconds, t.tripCostEstimator))}
+                        </p>
+                      </div>
+                    )}
+                    {routeData && usedFavoriteFallback && (
+                      <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+                        <p className="text-[11px] text-amber-700 leading-relaxed">
+                          {t.tripCostEstimator.favoriteFallbackWarning}
                         </p>
                       </div>
                     )}

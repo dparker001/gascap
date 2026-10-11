@@ -165,7 +165,7 @@ export async function deleteFavoriteAddress(userId: string, id: string): Promise
 
 export type RouteOrigin =
   | { kind: 'coordinates'; latitude: number; longitude: number }
-  | { kind: 'address'; text: string }
+  | { kind: 'address'; text: string; usedFallback?: boolean }
   | { kind: 'not_found' };
 
 /**
@@ -176,6 +176,14 @@ export type RouteOrigin =
  * Planner already routes any manually-typed address today — if Google
  * can't resolve it, the existing route-error handling applies rather than
  * this function inventing a location.
+ *
+ * `usedFallback: true` on the address case means a 'google_place' favorite
+ * COULDN'T be resolved via Place Details and this is the saved text as a
+ * fallback, not a normal manual_text favorite — per independent review,
+ * the caller should surface this distinction to the user (a route built
+ * from stale/unresolvable place data could, in principle, land on a
+ * similarly-named but different location) rather than silently treating
+ * it the same as an intentionally-manual address.
  */
 export async function resolveFavoriteAddressForRouting(
   userId: string,
@@ -189,6 +197,7 @@ export async function resolveFavoriteAddressForRouting(
     if (coords) return { kind: 'coordinates', latitude: coords.latitude, longitude: coords.longitude };
     // Google Place Details failed (placeId stale/revoked, API hiccup) — fall
     // back to the saved display text rather than failing the whole trip.
+    return { kind: 'address', text: row.displayAddress, usedFallback: true };
   }
 
   return { kind: 'address', text: row.displayAddress };

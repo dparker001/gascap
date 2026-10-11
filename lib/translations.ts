@@ -2687,6 +2687,7 @@ const en = {
     noSavedLocations: 'No saved locations yet.',
     deleteFavoriteConfirm: 'Delete this saved location?',
     favoriteSavedConfirmation: 'Saved!',
+    favoriteFallbackWarning: "We couldn't verify this saved location against Google. Please confirm the route and address above match where you intended to go.",
     // Duration formatting
     durationMin: (mins: number) => `${mins} min`,
     durationHours: (hours: number) => `${hours}h`,
@@ -6256,6 +6257,7 @@ const es: typeof en = {
     noSavedLocations: 'Aún no hay ubicaciones guardadas.',
     deleteFavoriteConfirm: '¿Eliminar esta ubicación guardada?',
     favoriteSavedConfirmation: '¡Guardado!',
+    favoriteFallbackWarning: 'No pudimos verificar esta ubicación guardada con Google. Por favor confirma que la ruta y la dirección arriba coinciden con tu destino previsto.',
     // Duration formatting
     durationMin: (mins: number) => `${mins} min`,
     durationHours: (hours: number) => `${hours} h`,
