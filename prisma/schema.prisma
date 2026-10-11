@@ -229,6 +229,7 @@ model User {
   gigFillups               GigFillup[]
   gigMileage               GigMileage[]
   favoriteStations         FavoriteStation[]
+  favoriteAddresses        FavoriteAddress[]
   gasPointLedger           GasPointLedger[]
   deviceSessions           DeviceSession[]
   rentalSessions           RentalSession[]
@@ -647,6 +648,36 @@ model FavoriteStation {
 
   @@unique([userId, placeId])
   @@index([userId])
+}
+
+// A user-saved Trip Planner address (Home, Work, or a custom label) —
+// deliberately separate from FavoriteStation, which is a gas station with a
+// price snapshot, not a general address. `source` records provenance:
+// 'google_place' (placeId present, resolved via autocomplete) or
+// 'manual_text' (user-typed, no Google data at all, routed the same way the
+// Trip Planner already routes any manually-typed address). No latitude/
+// longitude column here on purpose — Google's Places API caching terms cap
+// how long returned coordinates may be retained, so coordinates for a
+// 'google_place' favorite are resolved fresh via placeId every time the
+// favorite is used (see lib/favoriteAddresses.ts), never cached in this
+// table. `labelNormalized` is lowercased+trimmed for a same-label duplicate
+// check at the API layer — intentionally NOT a unique constraint, since a
+// user may legitimately want the same physical address under two labels.
+model FavoriteAddress {
+  id              String   @id
+  userId          String
+  label           String
+  labelNormalized String
+  displayAddress  String
+  placeId         String?
+  source          String   // 'google_place' | 'manual_text'
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, labelNormalized])
 }
 
 // One row per distinct device/browser touching an account (a persistent
