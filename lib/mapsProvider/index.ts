@@ -14,9 +14,9 @@
  */
 
 import type { IMapsProvider } from './types';
-import { googleMapsProvider } from './googleMapsProvider';
+import { googleMapsProvider, resolvePlaceCoordinates } from './googleMapsProvider';
 
-export { googleMapsProvider };
+export { googleMapsProvider, resolvePlaceCoordinates };
 export type { IMapsProvider };
 export * from './types';
 

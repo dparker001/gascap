@@ -16,6 +16,19 @@ export interface LatLng {
   longitude: number;
 }
 
+export function isLatLng(v: unknown): v is LatLng {
+  return (
+    !!v && typeof v === 'object' &&
+    typeof (v as LatLng).latitude  === 'number' && Number.isFinite((v as LatLng).latitude)  && Math.abs((v as LatLng).latitude)  <= 90 &&
+    typeof (v as LatLng).longitude === 'number' && Number.isFinite((v as LatLng).longitude) && Math.abs((v as LatLng).longitude) <= 180
+  );
+}
+
+/** A valid /api/maps/route origin/destination: a non-empty address string, or coordinates within range. */
+export function isValidWaypoint(v: unknown): v is string | LatLng {
+  return (typeof v === 'string' && !!v.trim()) || isLatLng(v);
+}
+
 // ── Route types ───────────────────────────────────────────────────────────────
 
 export interface RouteRequest {
@@ -84,8 +97,13 @@ export interface IMapsProvider {
 // ── API request / response types (used by /api/maps/* routes) ─────────────────
 
 export interface RouteApiRequest {
-  origin:       string;
-  destination:  string;
+  /**
+   * A plain address string, OR coordinates ({latitude, longitude}) for
+   * Current Location and a resolved 'google_place' favorite — passing
+   * coordinates directly avoids an unnecessary reverse-geocode call.
+   */
+  origin:       string | LatLng;
+  destination:  string | LatLng;
   avoidTolls?:  boolean;
 }
 

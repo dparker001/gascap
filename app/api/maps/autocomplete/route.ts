@@ -1,9 +1,16 @@
 /**
  * /api/maps/autocomplete
- * POST { input: string } → { ok: boolean; suggestions: string[] }
+ * POST { input: string, sessionToken?: string } → { ok: boolean; suggestions: string[] }
  *
  * Proxies Google Places Autocomplete (New) to avoid exposing the API key
  * to the client. Returns up to 5 text predictions.
+ *
+ * sessionToken (2026-10-11, Trip Planner Phase 2): optional, forwarded to
+ * Google as-is. Groups this search's keystroke-by-keystroke Autocomplete
+ * calls with the eventual /api/maps/place-location lookup into one billed
+ * session instead of charging each request separately — generate one via
+ * lib/placesSessionToken.ts when a field gains focus, reuse it across
+ * keystrokes, and start a fresh one after a selection is resolved.
  *
  * Only active when GOOGLE_MAPS_TRIP_PLANNER_ENABLED=true.
  */
@@ -34,9 +41,11 @@ export async function POST(req: Request) {
   }
 
   let input: string;
+  let sessionToken: string | undefined;
   try {
-    const body = await req.json() as { input?: string };
+    const body = await req.json() as { input?: string; sessionToken?: string };
     input = (body.input ?? '').trim();
+    sessionToken = typeof body.sessionToken === 'string' && body.sessionToken ? body.sessionToken : undefined;
   } catch {
     return NextResponse.json({ ok: false, suggestions: [] }, { status: 400 });
   }
@@ -56,6 +65,7 @@ export async function POST(req: Request) {
         input,
         // Bias toward North America (US, Canada, Mexico); adjust as needed
         includedRegionCodes: ['us', 'ca', 'mx'],
+        ...(sessionToken ? { sessionToken } : {}),
       }),
     });
 
