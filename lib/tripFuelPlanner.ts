@@ -7,6 +7,16 @@
  * when Google Routes API is configured).
  *
  * All distance values are in MILES unless the function name says otherwise.
+ *
+ * Phase 1 (2026-10-11): `calcTrip` below is the live calculation that both
+ * Trip Planner modes actually call — moved here verbatim from
+ * components/TripCostEstimator.tsx, with no behavior change (see
+ * __tests__/calcTripParity.test.ts for the before/after proof). It does
+ * NOT use `calculateCurrentRange` / `calculateRecommendedRefuelWindow` /
+ * `calculateTripFuelPlan` above, which remain unused dead code with their
+ * own unwired 30-mile reserve concept — reconciling or removing those is a
+ * separate, later decision (safety-reserve work is Phase 4), not something
+ * this move silently activates.
  */
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -167,5 +177,85 @@ export function calculateTripFuelPlan(
     recommendedRefuelWindowStartMile: window?.startMile ?? null,
     recommendedRefuelWindowEndMile:   window?.endMile   ?? null,
     notes,
+  };
+}
+
+// ── Live Trip Planner calculation (moved from components/TripCostEstimator.tsx) ──
+
+export interface TripResult {
+  totalMiles:        number;
+  totalGallons:      number;   // full trip gallons (no offset)
+  totalTripCost:     number;   // full trip cost (no offset)
+  currentGalOffset:  number;   // gallons already in tank
+  currentCostOffset: number;   // value of fuel already in tank
+  gallonsNeeded:     number;   // gallons still to buy
+  fuelCost:          number;   // cost of gallons still to buy
+  stops:             number;   // en-route refuel stops based on current fuel
+  stopsIfFull:       number;   // en-route stops if you top off before leaving
+  tankRange:         number;   // full-tank range in miles (for diagnostics)
+  costPerPerson:     number | null;
+  milesPerDollar:    number;
+  tankfulls:         number;
+  summary:           string;
+}
+
+export function calcTrip(
+  miles:     number,
+  mpg:       number,
+  tankGal:   number,
+  fuelPct:   number,    // 0–100 current fuel %
+  pricePGal: number,
+  people:    number,
+): TripResult {
+  const totalGallons       = miles / mpg;                          // total gallons for full trip
+  const totalTripCost      = totalGallons * pricePGal;             // full trip cost ignoring current fuel
+  const currentGalOffset   = Math.min(tankGal * (fuelPct / 100), totalGallons); // gallons already in tank (capped at trip need)
+  const currentCostOffset  = currentGalOffset * pricePGal;         // value of current fuel toward trip
+  const gallonsNeeded      = Math.max(0, totalGallons - currentGalOffset);
+  const fuelCost           = gallonsNeeded * pricePGal;
+  const tankRange          = tankGal * mpg;
+  // En-route stops if the driver tops off to full before leaving
+  // (the initial fill-up is pre-trip, so stops = additional full-tank fills required on the road)
+  const remainingIfFull = Math.max(0, miles - tankRange);
+  const stopsIfFull     = remainingIfFull <= 0 ? 0 : Math.ceil(remainingIfFull / tankRange);
+  // En-route stops based on current fuel level
+  // KEY: when fuelPct = 0, the driver will fill up before leaving (not on the road),
+  // so the stop count is the same as starting full — avoids the off-by-one overcount.
+  const currentMilesInTank    = tankGal * (fuelPct / 100) * mpg;
+  const remainingAfterCurrent = miles - currentMilesInTank;
+  const stops = remainingAfterCurrent <= 0
+    ? 0
+    : fuelPct <= 0
+      ? stopsIfFull   // at E → first fill-up is pre-trip, not a road stop
+      : Math.ceil(remainingAfterCurrent / tankRange);
+  const milesPerDollar        = totalTripCost > 0 ? Math.round((miles / totalTripCost) * 10) / 10 : 0;
+  const tankfulls          = Math.round((totalGallons / tankGal) * 10) / 10;
+  const costPerPerson      = people > 1 ? Math.round((fuelCost / people) * 100) / 100 : null;
+
+  let summary = '';
+  if (gallonsNeeded === 0) {
+    summary = `Great news — you already have enough fuel for the full ${miles.toLocaleString()}-mile trip!`;
+  } else {
+    summary = `This ${miles.toLocaleString()}-mile trip needs ${totalGallons.toFixed(2)} gal total ` +
+              `($${totalTripCost.toFixed(2)}). You'll need to buy ${gallonsNeeded.toFixed(2)} gal ` +
+              `($${fuelCost.toFixed(2)}) on top of what's in your tank.`;
+    if (stops > 0) summary += ` Plan for ${stops} refuel stop${stops > 1 ? 's' : ''} on the road.`;
+  }
+
+  return {
+    totalMiles:        miles,
+    totalGallons:      Math.round(totalGallons * 100) / 100,
+    totalTripCost:     Math.round(totalTripCost * 100) / 100,
+    currentGalOffset:  Math.round(currentGalOffset * 100) / 100,
+    currentCostOffset: Math.round(currentCostOffset * 100) / 100,
+    gallonsNeeded:     Math.round(gallonsNeeded * 100) / 100,
+    fuelCost:          Math.round(fuelCost * 100) / 100,
+    stops,
+    stopsIfFull,
+    tankRange:         Math.round(tankRange),
+    costPerPerson,
+    milesPerDollar,
+    tankfulls,
+    summary,
   };
 }
