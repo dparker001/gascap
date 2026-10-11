@@ -19,7 +19,7 @@ export default function PrivacyPage() {
           {' · '}
           <a href="tel:+13215131321" className="text-amber-600 hover:underline">(321) 513-1321</a>
         </p>
-        <p className="text-sm text-slate-400 mb-8">Last updated: June 18, 2026 (rev. 6)</p>
+        <p className="text-sm text-slate-400 mb-8">Last updated: October 11, 2026 (rev. 7)</p>
 
         <div className="space-y-8 text-slate-700 text-sm leading-relaxed">
 
@@ -36,6 +36,17 @@ export default function PrivacyPage() {
             <p className="mt-2">This activity data is used to display personalized stats within the app (e.g., streak counter, savings dashboard) and to help us understand how the Service is being used.</p>
           </section>
 
+          {/* 1a */}
+          <section>
+            <h2 className="text-lg font-black text-navy-700 mb-2">1a. Trip Planner Location Data</h2>
+            <p>The Trip Planner&apos;s route-based mode can use your location in two ways:</p>
+            <ul className="list-disc pl-5 space-y-1 mt-2">
+              <li><strong>Current Location:</strong> When you tap &quot;Current Location,&quot; we request your device&apos;s location only at that moment — never before. Your coordinates are sent to Google Maps Platform to calculate that one route (see Section 4) and are never stored on our servers or saved to your account. Selecting Current Location never automatically saves it as a favorite address.</li>
+              <li><strong>Favorite Addresses (Home, Work, or a custom label):</strong> If you choose to save an address, we store the label you choose, the address text, and — if you selected it from an address suggestion — a Google Place ID (a reference identifier Google uses to look up a location; it is not your precise coordinates). We do not store map coordinates for a Google-sourced favorite; we look them up fresh from Google each time you use the favorite to plan a trip, consistent with Google&apos;s data-retention terms.</li>
+            </ul>
+            <p className="mt-2">You may view, edit, or delete any saved favorite address at any time from the Trip Planner&apos;s &quot;Manage saved locations&quot; screen. Deleting a favorite removes it immediately. Your saved addresses are never visible to any other GasCap user.</p>
+          </section>
+
           {/* 2 */}
           <section>
             <h2 className="text-lg font-black text-navy-700 mb-2">2. How We Use Your Information</h2>
@@ -48,6 +59,7 @@ export default function PrivacyPage() {
               <li>To administer the referral and Ambassador programs</li>
               <li>To fulfill a complimentary promotional getaway through our travel partner, if you choose to claim one (see Section 6c)</li>
               <li>To sync your contact information with our CRM (GoHighLevel) for marketing communications — you may opt out at any time</li>
+              <li>To calculate routes and fuel needs for trips you plan, including resolving a saved favorite address or your current location into a route via Google Maps Platform</li>
               <li>To improve features and fix issues</li>
             </ul>
           </section>
@@ -76,6 +88,7 @@ export default function PrivacyPage() {
               <li><strong>Resend</strong> — transactional email delivery. Your email address is shared solely for delivery purposes.</li>
               <li><strong>Anthropic Claude</strong> — AI-powered fuel advisor, receipt scanning, VIN scanning, and fuel gauge scanning (Pro feature). Images and text are processed transiently and not stored beyond the duration of the request.</li>
               <li><strong>GoHighLevel (GHL)</strong> — CRM and marketing automation. Your name, email, phone (if provided), and plan status may be synced to GHL to manage communications. No payment data is shared.</li>
+              <li><strong>Google Maps Platform</strong> — address autocomplete, place lookup, and route/distance calculation for the Trip Planner&apos;s route-based mode. Addresses you type or select, and your device location if you choose &quot;Current Location,&quot; are sent to Google to calculate routes. See Section 1a for what we store from this process.</li>
             <li><strong>Marketing Boost / RedeemVacations</strong> — complimentary getaway fulfillment. If you claim a promotional getaway, your name and email are shared with our travel partner solely to issue your vacation certificate. No payment data is shared, and your information is not used by the partner for its own marketing (see Section 6c).</li>
               <li><strong>OneSignal</strong> — push notification delivery. A device token is associated with your account if you enable push notifications.</li>
               <li><strong>Google Analytics</strong> — aggregate website usage analytics. No personally identifiable information is shared with Google Analytics.</li>
@@ -155,6 +168,7 @@ export default function PrivacyPage() {
               <li><strong>Access:</strong> You may view the personal information stored in your account from within the app at any time.</li>
               <li><strong>Correction:</strong> You may update or correct your profile information (name, display name, phone) from Settings → Profile.</li>
               <li><strong>Deletion:</strong> You may permanently delete your account and all associated data instantly from within the app or website (Settings → Account → &apos;Delete account,&apos; or <Link href="/delete-account" className="text-amber-600 hover:underline">gascap.app/delete-account</Link>) by confirming with the word DELETE. Deletion is immediate and irreversible. You may also email <a href="mailto:admin@gascap.app" className="text-amber-600 hover:underline">admin@gascap.app</a> to request deletion, which we process within 30 days.</li>
+              <li><strong>Manage saved locations:</strong> You may view, edit, or delete any saved Home/Work/custom favorite address at any time from the Trip Planner&apos;s &quot;Manage saved locations&quot; screen, independent of deleting your whole account.</li>
               <li><strong>Opt-out of marketing emails:</strong> You may opt out of marketing emails at any time by clicking the unsubscribe link in any email or contacting us directly.</li>
               <li><strong>Opt-out of SMS:</strong> Reply STOP to any text message or disable SMS from Settings → Profile.</li>
               <li><strong>Opt-out of push notifications:</strong> Revoke permission from your device settings or within the app.</li>
