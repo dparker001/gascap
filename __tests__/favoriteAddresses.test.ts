@@ -48,11 +48,17 @@ const prismaMock = {
     findMany: vi.fn(async ({ where }: { where: { userId: string } }) => {
       return [...table.values()].filter((r) => r.userId === where.userId).map((r) => ({ ...r }));
     }),
-    update: vi.fn(async ({ where, data }: { where: { id: string }; data: Partial<FavoriteAddressRow> }) => {
+    // Mirrors real Postgres semantics: only rows matching the FULL where
+    // clause are touched. If the caller passed just { id } (the original,
+    // buggy shape an independent review caught — see favoriteAddresses.ts),
+    // this mock would still "work" by accident since it's a Map keyed by
+    // id; the point of test 17 below is asserting the actual CALL
+    // arguments included userId, not relying on this mock to catch it.
+    updateMany: vi.fn(async ({ where, data }: { where: { id: string; userId: string }; data: Partial<FavoriteAddressRow> }) => {
       const row = table.get(where.id);
-      if (!row) throw new Error('not found');
+      if (!row || row.userId !== where.userId) return { count: 0 };
       Object.assign(row, data, { updatedAt: new Date('2026-10-11T01:00:00.000Z') });
-      return { ...row };
+      return { count: 1 };
     }),
     deleteMany: vi.fn(async ({ where }: { where: { id: string; userId: string } }) => {
       const row = table.get(where.id);
@@ -158,6 +164,19 @@ describe('updateFavoriteAddress / deleteFavoriteAddress — ownership isolation'
     table.set('fav-1', makeRow({ userId: 'user-1' }));
     const result = await mod.updateFavoriteAddress('user-1', 'fav-1', { label: 'Home Sweet Home' });
     expect(result?.label).toBe('Home Sweet Home');
+  });
+
+  it('17. the actual mutation call is itself scoped by (id, userId) — not just the preceding ownership lookup (independent-review finding)', async () => {
+    table.set('fav-1', makeRow({ userId: 'user-1' }));
+    await mod.updateFavoriteAddress('user-1', 'fav-1', { label: 'Renamed' });
+    // Fails against the pre-fix code, which called
+    // prisma.favoriteAddress.update({ where: { id }, data }) — no updateMany
+    // call existed at all, and the mutation's own where clause never
+    // carried userId, so this assertion is the structural proof that the
+    // write path itself enforces ownership, not merely an earlier check.
+    expect(prismaMock.favoriteAddress.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 'fav-1', userId: 'user-1' } }),
+    );
   });
 
   it('10. deleting another user\'s favorite is a no-op (count=0), the row survives', async () => {

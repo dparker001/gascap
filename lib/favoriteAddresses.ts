@@ -119,7 +119,15 @@ export interface UpdateFavoriteAddressInput {
   source?:         FavoriteAddressSource;
 }
 
-/** Scoped by (id, userId) in the where clause — never a separate ownership check. Returns undefined if not found/not owned. */
+/**
+ * Scoped by (id, userId) at BOTH the ownership check and the actual
+ * mutation — the initial findFirst alone is a check-then-use gap (an
+ * independent review of this PR correctly caught that the first version
+ * mutated with `update({ where: { id } })`, not re-scoped by userId, even
+ * though a prior ownership lookup had passed). updateMany's where clause
+ * is the one that actually has to be scoped; the findFirst is only there
+ * to fail fast on bad input before building the patch.
+ */
 export async function updateFavoriteAddress(
   userId: string,
   id: string,
@@ -143,8 +151,10 @@ export async function updateFavoriteAddress(
   if (patch.source !== undefined) data.source = patch.source;
   if (patch.placeId !== undefined) data.placeId = patch.placeId;
 
-  const row = await prisma.favoriteAddress.update({ where: { id }, data });
-  return toFavoriteAddress(row);
+  const { count } = await prisma.favoriteAddress.updateMany({ where: { id, userId }, data });
+  if (count === 0) return undefined;
+  const row = await prisma.favoriteAddress.findFirst({ where: { id, userId } });
+  return row ? toFavoriteAddress(row) : undefined;
 }
 
 /** Scoped by (id, userId) — deleteMany so a mismatched owner silently deletes nothing rather than erroring. */
