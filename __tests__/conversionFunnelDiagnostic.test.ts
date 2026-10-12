@@ -69,6 +69,32 @@ describe('CLI argument parsing', () => {
     expect(() => parseArgs(['--bogus=1'])).toThrow(ArgParseError);
   });
 
+  // Regression — the flag-name regex previously excluded digits
+  // ([a-zA-Z-]+), so any flag containing a digit (like --tc2a-start) was
+  // rejected as "Unrecognized argument" before it ever reached the
+  // known-flag check, making it permanently unusable from the CLI.
+  it('accepts --tc2a-start (a digit-containing flag name)', () => {
+    const args = parseArgs(['--tc2a-start=2026-09-01T00:00:00Z']);
+    expect(args.tc2aStart?.toISOString()).toBe('2026-09-01T00:00:00.000Z');
+  });
+
+  it('still parses existing non-digit flags correctly alongside a digit flag', () => {
+    const args = parseArgs(['--tc2a-start=2026-09-01T00:00:00Z', '--days=14', '--json']);
+    expect(args.tc2aStart?.toISOString()).toBe('2026-09-01T00:00:00.000Z');
+    expect(args.days).toBe(14);
+    expect(args.json).toBe(true);
+  });
+
+  it('still rejects a malformed flag (no leading letter) as unrecognized', () => {
+    expect(() => parseArgs(['--2fa=1'])).toThrow(ArgParseError);
+    expect(() => parseArgs(['--2fa=1'])).toThrow(/unrecognized argument/i);
+  });
+
+  it('still rejects a genuinely unknown digit-containing flag', () => {
+    expect(() => parseArgs(['--foo2bar=1'])).toThrow(ArgParseError);
+    expect(() => parseArgs(['--foo2bar=1'])).toThrow(/unknown flag/i);
+  });
+
   it('parseArgs no longer exposes requireAuthoritative (--mode removed)', () => {
     const args = parseArgs(['--authoritative-start=2026-09-01T00:00:00Z']);
     expect((args as unknown as Record<string, unknown>).requireAuthoritative).toBeUndefined();
