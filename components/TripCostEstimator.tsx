@@ -20,7 +20,7 @@ import { requestCurrentLocation }            from '@/lib/currentLocation';
 import { createPlacesSessionToken }          from '@/lib/placesSessionToken';
 import GoogleAttribution                     from './GoogleAttribution';
 import { createLatestWinsGuard }             from '@/lib/latestWinsGuard';
-import { resolveSelectedPlace }              from '@/lib/placeSelectionResolver';
+import { resolveSelectedPlace, invalidateSelection } from '@/lib/placeSelectionResolver';
 import { fetchPlaceCoordinates }             from '@/lib/placeLocationClient';
 
 // ── Rental presets ─────────────────────────────────────────────────────────
@@ -252,16 +252,17 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
   const [destCoords,   setDestCoords]   = useState<LatLng | undefined>(undefined);
   // Routing-integrity fix (2026-10-12): origin and destination each get
   // their own LatestWinsGuard, so a Place Details lookup from an abandoned
-  // selection can never overwrite coordinates for the current one — see
-  // selectOriginSuggestion/selectDestSuggestion and every mode-switch
-  // handler below, all of which invalidate the relevant guard. Independent
-  // in-flight counters drive originResolving/destResolving (a UI-visible
-  // "still resolving" state, not just a correctness fix) since more than
-  // one lookup can be outstanding for the same field at once.
+  // selection can never overwrite coordinates for the current one, and
+  // never touch originResolving/destResolving either — see
+  // selectOriginSuggestion/selectDestSuggestion (resolveSelectedPlace) and
+  // every mode-switch/edit/clear handler below (invalidateSelection).
+  // originResolving/destResolving track whether the CURRENT generation's
+  // lookup is still outstanding, not a count of all historical requests —
+  // an abandoned earlier request (possibly one that never resolves) must
+  // never keep Calculate disabled after the current selection has already
+  // resolved (ChatGPT review correction, PR #84).
   const originGuard = useRef(createLatestWinsGuard());
   const destGuard   = useRef(createLatestWinsGuard());
-  const originInFlight = useRef(0);
-  const destInFlight   = useRef(0);
   const [originResolving, setOriginResolving] = useState(false);
   const [destResolving,   setDestResolving]   = useState(false);
 
@@ -315,7 +316,7 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
   }, [session, canUseRoutePlanner, tripPlanMode, favoritesLoaded, loadFavorites]);
 
   async function handleUseCurrentLocation() {
-    originGuard.current.invalidateAll();
+    invalidateSelection(originGuard.current, setOriginResolving);
     setOriginMode('current_location');
     setOriginFavoriteId('');
     setOriginPlaceId(undefined);
@@ -336,7 +337,7 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
   }
 
   function handleOriginBackToManual() {
-    originGuard.current.invalidateAll();
+    invalidateSelection(originGuard.current, setOriginResolving);
     setOriginMode('manual');
     setOriginFavoriteId('');
     setOriginPlaceId(undefined);
@@ -348,7 +349,7 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
   }
 
   function handleSelectOriginFavorite(fav: FavoriteAddressClient) {
-    originGuard.current.invalidateAll();
+    invalidateSelection(originGuard.current, setOriginResolving);
     setOriginMode('favorite');
     setOriginFavoriteId(fav.id);
     setOriginPlaceId(undefined);
@@ -362,7 +363,7 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
   }
 
   function handleDestBackToManual() {
-    destGuard.current.invalidateAll();
+    invalidateSelection(destGuard.current, setDestResolving);
     setDestMode('manual');
     setDestFavoriteId('');
     setDestPlaceId(undefined);
@@ -372,7 +373,7 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
   }
 
   function handleSelectDestFavorite(fav: FavoriteAddressClient) {
-    destGuard.current.invalidateAll();
+    invalidateSelection(destGuard.current, setDestResolving);
     setDestMode('favorite');
     setDestFavoriteId(fav.id);
     setDestPlaceId(undefined);
@@ -398,21 +399,12 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
     clearOriginSugg();
     setRouteData(null);
     setResult(null);
-    originInFlight.current += 1;
-    setOriginResolving(true);
-    try {
-      await resolveSelectedPlace(
-        originGuard.current,
-        () => fetchPlaceCoordinates(s.placeId, token),
-        (coords) => setOriginCoords(coords),
-      );
-    } finally {
-      originInFlight.current -= 1;
-      if (originInFlight.current <= 0) {
-        originInFlight.current = 0;
-        setOriginResolving(false);
-      }
-    }
+    await resolveSelectedPlace(
+      originGuard.current,
+      () => fetchPlaceCoordinates(s.placeId, token),
+      (coords) => setOriginCoords(coords),
+      setOriginResolving,
+    );
   }
 
   async function selectDestSuggestion(s: AutocompleteSuggestion) {
@@ -423,21 +415,12 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
     clearDestSugg();
     setRouteData(null);
     setResult(null);
-    destInFlight.current += 1;
-    setDestResolving(true);
-    try {
-      await resolveSelectedPlace(
-        destGuard.current,
-        () => fetchPlaceCoordinates(s.placeId, token),
-        (coords) => setDestCoords(coords),
-      );
-    } finally {
-      destInFlight.current -= 1;
-      if (destInFlight.current <= 0) {
-        destInFlight.current = 0;
-        setDestResolving(false);
-      }
-    }
+    await resolveSelectedPlace(
+      destGuard.current,
+      () => fetchPlaceCoordinates(s.placeId, token),
+      (coords) => setDestCoords(coords),
+      setDestResolving,
+    );
   }
 
   function openSavePrompt(which: 'origin' | 'destination') {
@@ -979,14 +962,14 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
                             placeholder={t.tripCostEstimator.enterAnotherLocation}
                             value={routeOrigin}
                             autoComplete="off"
-                            onChange={(e) => { originGuard.current.invalidateAll(); setRouteOrigin(e.target.value); setOriginPlaceId(undefined); setOriginCoords(undefined); setRouteData(null); setResult(null); }}
+                            onChange={(e) => { invalidateSelection(originGuard.current, setOriginResolving); setRouteOrigin(e.target.value); setOriginPlaceId(undefined); setOriginCoords(undefined); setRouteData(null); setResult(null); }}
                             onBlur={() => { setTimeout(clearOriginSugg, 150); }}
                             aria-label={t.tripCostEstimator.ariaStartingPoint}
                           />
                           {routeOrigin && (
                             <button
                               type="button"
-                              onClick={() => { originGuard.current.invalidateAll(); setRouteOrigin(''); setOriginPlaceId(undefined); setOriginCoords(undefined); clearOriginSugg(); setRouteData(null); setResult(null); }}
+                              onClick={() => { invalidateSelection(originGuard.current, setOriginResolving); setRouteOrigin(''); setOriginPlaceId(undefined); setOriginCoords(undefined); clearOriginSugg(); setRouteData(null); setResult(null); }}
                               className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500 transition-colors"
                               aria-label={t.tripCostEstimator.ariaClearStartingPoint}
                             >
@@ -1050,14 +1033,14 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
                             placeholder={t.tripCostEstimator.enterAnotherLocation}
                             value={routeDest}
                             autoComplete="off"
-                            onChange={(e) => { destGuard.current.invalidateAll(); setRouteDest(e.target.value); setDestPlaceId(undefined); setDestCoords(undefined); setRouteData(null); setResult(null); }}
+                            onChange={(e) => { invalidateSelection(destGuard.current, setDestResolving); setRouteDest(e.target.value); setDestPlaceId(undefined); setDestCoords(undefined); setRouteData(null); setResult(null); }}
                             onBlur={() => { setTimeout(clearDestSugg, 150); }}
                             aria-label={t.tripCostEstimator.ariaDestination}
                           />
                           {routeDest && (
                             <button
                               type="button"
-                              onClick={() => { destGuard.current.invalidateAll(); setRouteDest(''); setDestPlaceId(undefined); setDestCoords(undefined); clearDestSugg(); setRouteData(null); setResult(null); }}
+                              onClick={() => { invalidateSelection(destGuard.current, setDestResolving); setRouteDest(''); setDestPlaceId(undefined); setDestCoords(undefined); clearDestSugg(); setRouteData(null); setResult(null); }}
                               className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500 transition-colors"
                               aria-label={t.tripCostEstimator.ariaClearDestination}
                             >
