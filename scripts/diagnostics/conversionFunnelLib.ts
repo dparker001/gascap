@@ -62,7 +62,12 @@ function parseIsoDate(raw: string, flagName: string): Date {
 export function parseArgs(argv: string[]): ParsedArgs {
   const map = new Map<string, string | true>();
   for (const raw of argv) {
-    const m = /^--([a-zA-Z-]+)(?:=(.*))?$/.exec(raw);
+    // Flag names are letters/digits/hyphens (e.g. "tc2a-start"), always
+    // starting with a letter. The prior pattern, [a-zA-Z-]+, excluded digits
+    // entirely, so "--tc2a-start=..." was rejected as "Unrecognized
+    // argument" — silently unusable, since it never reached the
+    // known-flag check below. See __tests__/conversionFunnelDiagnostic.test.ts.
+    const m = /^--([a-zA-Z][a-zA-Z0-9-]*)(?:=(.*))?$/.exec(raw);
     if (!m) throw new ArgParseError(`Unrecognized argument: "${raw}"`);
     map.set(m[1], m[2] ?? true);
   }
