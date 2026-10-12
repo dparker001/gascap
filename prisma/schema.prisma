@@ -224,6 +224,23 @@ model User {
   // Stamped when the "log your first fill-up" nudge is sent, so it only ever
   // goes out once per user. See app/api/cron/first-fillup-nudge.
   firstFillupNudgedAt      String?
+  // Workstream 01 — first-touch web acquisition attribution (see
+  // lib/acquisitionAttribution.ts). Write-once: every write path uses
+  // `WHERE "acqCapturedAt" IS NULL`, so a later visit can never overwrite a
+  // user's genuine first touch. Null means "no attribution captured" —
+  // deliberately never defaulted to a placeholder like "direct", which
+  // would be indistinguishable from a real, registered code in a query.
+  // acqSource is 'qr' | 'utm' when a single, unambiguous channel won;
+  // acqCampaign is the placard/CampaignPlacement code (qr) or the
+  // AcquisitionCampaignCode (utm). acqAmbiguous is true when both a QR and
+  // a UTM touch were present but their relative order could not be
+  // reliably established (missing/malformed/equal timestamp) — in that
+  // case acqSource/acqCampaign are left null rather than guessing a
+  // winner, per the explicit instruction not to invent one.
+  acqSource                String?
+  acqCampaign              String?
+  acqCapturedAt            String?
+  acqAmbiguous             Boolean  @default(false)
   vehicles                 Vehicle[]
   priceReports             PriceReport[]
   gigFillups               GigFillup[]
@@ -491,6 +508,21 @@ model EmailLog {
   @@index([sentAt])
   @@index([type])
   @@index([status])
+}
+
+/// Workstream 01 — first-touch acquisition attribution (web only; see
+/// lib/acquisitionAttribution.ts). A registered-code registry for UTM
+/// links, mirroring CampaignPlacement's existing role for QR codes —
+/// only a pre-approved code can ever be written to a User's acqCampaign.
+/// Admin-managed; never user-writable.
+model AcquisitionCampaignCode {
+  code      String  @id // lowercase-normalized, e.g. "meta-oct2026"
+  source    String  // 'meta' | 'google' | 'tiktok' | 'other' — free-text column, validated at the TS layer (lib/acquisitionAttribution.ts), not a DB enum
+  label     String?
+  active    Boolean @default(true)
+  createdAt String
+
+  @@index([active])
 }
 
 model GiveawayDraw {

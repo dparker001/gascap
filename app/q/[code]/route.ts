@@ -23,7 +23,8 @@ import { getPlacementByCode, logEvent } from '@/lib/campaigns';
 import { getBaseUrl } from '@/lib/getBaseUrl';
 import { CARD_PLACEMENT } from '@/lib/gift20';
 
-const ATTRIBUTION_COOKIE = 'gc_src';
+const ATTRIBUTION_COOKIE    = 'gc_src';
+const ATTRIBUTION_AT_COOKIE = 'gc_src_at'; // Workstream 01 — see lib/acquisitionAttribution.ts
 const LANG_COOKIE        = 'gc_lang';
 const SESSION_COOKIE     = 'gc_ssn';
 const NINETY_DAYS        = 60 * 60 * 24 * 90;
@@ -96,6 +97,18 @@ export async function GET(
     path:     '/',
     sameSite: 'lax',
     httpOnly: false, // readable client-side so tracker can confirm attribution
+  });
+
+  // Workstream 01 — parallel timestamp cookie, additive only. Does not
+  // change ATTRIBUTION_COOKIE's own value or any existing reader's
+  // behavior; exists solely so lib/acquisitionAttribution.ts can compare
+  // this touch's chronological order against a UTM touch (gc_utm/
+  // gc_utm_at, set by /go/[code]) without assuming QR wins by default.
+  res.cookies.set(ATTRIBUTION_AT_COOKIE, String(Date.now()), {
+    maxAge:   NINETY_DAYS,
+    path:     '/',
+    sameSite: 'lax',
+    httpOnly: false,
   });
 
   // 90-day language cookie — mirrors the attribution cookie lifetime so a

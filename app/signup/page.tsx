@@ -13,6 +13,17 @@ import { useNativePlatform } from '@/hooks/useIsNative';
 // ── Steps ──────────────────────────────────────────────────────────────────────
 type Step = 'form' | 'otp';
 
+// Workstream 01 — same inline cookie-read pattern already used by
+// components/CampaignTracker.tsx, not a new technique. The OTP
+// CredentialsProvider's authorize() has no req/cookie access, so these are
+// read client-side and submitted the same way `platform` already is below.
+// See lib/acquisitionAttribution.ts for how they're validated/resolved.
+function readCookie(name: string): string | null {
+  if (typeof document === 'undefined') return null;
+  const match = document.cookie.match(new RegExp(`(^|;\\s*)${name}=([^;]+)`));
+  return match ? decodeURIComponent(match[2]) : null;
+}
+
 function SignUpForm() {
   const router       = useRouter();
   const searchParams = useSearchParams();
@@ -124,6 +135,13 @@ function SignUpForm() {
       locale,
       referralCode: refCode ?? '',
       platform:     platform ?? 'web',
+      // Workstream 01 — acquisition attribution, read client-side (see
+      // readCookie() above); empty string when absent, matching this
+      // call's existing '' fallback style for referralCode.
+      qrCode:  readCookie('gc_src')    ?? '',
+      qrAt:    readCookie('gc_src_at') ?? '',
+      utmCode: readCookie('gc_utm')    ?? '',
+      utmAt:   readCookie('gc_utm_at') ?? '',
     });
 
     setOtpLoading(false);
