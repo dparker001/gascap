@@ -10,13 +10,17 @@
  *
  * Access: Pro + Fleet users (also gated client-side via canAccessFeature())
  *
- * Request body:  { origin: string, destination: string, avoidTolls?: boolean }
+ * Request body:  { origin: string | {latitude,longitude}, destination: string | {latitude,longitude}, avoidTolls?: boolean }
+ *                (coordinates added Phase 2, 2026-10-11, for Current Location
+ *                and resolved Favorite Addresses — avoids an unnecessary
+ *                reverse-geocode call when a human-readable address isn't needed)
  * Response:      RouteApiResponse
  */
 
 import { NextResponse }                    from 'next/server';
 import { getMapsProvider, isRoutePlannerEnabled } from '@/lib/mapsProvider';
-import type { RouteApiRequest, RouteApiResponse }  from '@/lib/mapsProvider/types';
+import { isValidWaypoint }                 from '@/lib/mapsProvider/types';
+import type { RouteApiRequest, RouteApiResponse } from '@/lib/mapsProvider/types';
 
 export async function POST(req: Request): Promise<Response> {
   // Feature gate — requires API key + explicit opt-in
@@ -45,13 +49,13 @@ export async function POST(req: Request): Promise<Response> {
 
   const { origin, destination, avoidTolls } = body;
 
-  if (!origin || typeof origin !== 'string' || !origin.trim()) {
+  if (!isValidWaypoint(origin)) {
     return NextResponse.json(
       { ok: false, error: 'origin is required' } satisfies RouteApiResponse,
       { status: 400 },
     );
   }
-  if (!destination || typeof destination !== 'string' || !destination.trim()) {
+  if (!isValidWaypoint(destination)) {
     return NextResponse.json(
       { ok: false, error: 'destination is required' } satisfies RouteApiResponse,
       { status: 400 },
@@ -62,8 +66,8 @@ export async function POST(req: Request): Promise<Response> {
 
   try {
     const route = await provider.getRoute({
-      origin:      origin.trim(),
-      destination: destination.trim(),
+      origin:      typeof origin      === 'string' ? origin.trim()      : origin,
+      destination: typeof destination === 'string' ? destination.trim() : destination,
       travelMode:  'DRIVE',
       avoidTolls:  avoidTolls ?? false,
     });

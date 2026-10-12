@@ -12,9 +12,13 @@ import { trackLockedFeatureShown }           from '@/lib/gtag';
 import { metersToMiles, calcTrip }           from '@/lib/tripFuelPlanner';
 import type { TripResult }                   from '@/lib/tripFuelPlanner';
 import { resolveVehicleMpg }                 from '@/lib/mpgResolver';
-import type { RouteResult, FuelStop }        from '@/lib/mapsProvider/types';
+import type { RouteResult, FuelStop, LatLng } from '@/lib/mapsProvider/types';
 import type { Vehicle }                      from './SavedVehicles';
 import { resolveVehicleGaugeStyle } from '@/lib/gaugeStyles';
+import { useIsNative }                       from '@/hooks/useIsNative';
+import { requestCurrentLocation }            from '@/lib/currentLocation';
+import { createPlacesSessionToken }          from '@/lib/placesSessionToken';
+import GoogleAttribution                     from './GoogleAttribution';
 
 // ── Rental presets ─────────────────────────────────────────────────────────
 
@@ -43,6 +47,16 @@ const RENTAL_PRESETS: RentalPreset[] = [
   { label: 'Hybrid Car',        labelKey: 'hybridCar',     mpg: 50, tankGal: 11.3 },
   { label: 'Enter manually',    labelKey: 'enterManually', mpg: 0,  tankGal: 0    },
 ];
+
+// ── Favorite Addresses (Phase 2) ──────────────────────────────────────────
+
+interface FavoriteAddressClient {
+  id:             string;
+  label:          string;
+  displayAddress: string;
+  placeId?:       string;
+  source:         'google_place' | 'manual_text';
+}
 
 // ── Saved vehicle + avg MPG loader ────────────────────────────────────────
 
@@ -117,28 +131,52 @@ function formatDuration(
 
 // ── Address autocomplete hook ─────────────────────────────────────────────
 
+interface AutocompleteSuggestion {
+  text:    string;
+  placeId: string;
+}
+
+/**
+ * Phase 2 (2026-10-11): now tracks a Places Autocomplete (New) session
+ * token — a fresh one per search, reused across keystrokes, sent with the
+ * search's eventual /api/maps/place-location lookup via
+ * consumeSessionToken() — so Google bills the search+selection as one
+ * session instead of charging each keystroke's request separately. Also
+ * now returns placeId per suggestion (previously discarded), needed so a
+ * selected address can become a Favorite or be routed by coordinates.
+ */
 function useAddressAutocomplete(query: string, enabled: boolean) {
-  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [results, setResults] = useState<AutocompleteSuggestion[]>([]);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sessionTokenRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!enabled || query.length < 2) { setSuggestions([]); return; }
+    if (!enabled || query.length < 2) { setResults([]); return; }
+    if (!sessionTokenRef.current) sessionTokenRef.current = createPlacesSessionToken();
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       fetch('/api/maps/autocomplete', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ input: query }),
+        body:    JSON.stringify({ input: query, sessionToken: sessionTokenRef.current }),
       })
-        .then((r) => r.json() as Promise<{ ok: boolean; suggestions: string[] }>)
-        .then((d) => { if (d.ok) setSuggestions(d.suggestions); })
+        .then((r) => r.json() as Promise<{ ok: boolean; results?: AutocompleteSuggestion[] }>)
+        .then((d) => { if (d.ok) setResults(d.results ?? []); })
         .catch(() => {});
     }, 300);
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [query, enabled]);
 
-  function clear() { setSuggestions([]); }
-  return { suggestions, clear };
+  function clear() { setResults([]); }
+
+  /** Call when a suggestion is selected (or the field is abandoned) — returns the token that covered this search and starts a fresh one for next time. */
+  function consumeSessionToken(): string | undefined {
+    const token = sessionTokenRef.current ?? undefined;
+    sessionTokenRef.current = null;
+    return token;
+  }
+
+  return { results, clear, consumeSessionToken };
 }
 
 // ── Component ─────────────────────────────────────────────────────────────
@@ -185,6 +223,37 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
   const [routeError,        setRouteError]        = useState('');
   const [fuelStops,         setFuelStops]         = useState<FuelStop[]>([]);
   const [stopsLoading,      setStopsLoading]      = useState(false);
+  // Set when a saved favorite's Place Details lookup failed and the route
+  // was built from its saved text as a fallback instead — surfaced per
+  // independent review, since that could in principle resolve to a
+  // similarly-named but different location than the one originally saved.
+  const [usedFavoriteFallback, setUsedFavoriteFallback] = useState(false);
+
+  // Current Location + Favorite Addresses (Phase 2, 2026-10-11)
+  const isNative = useIsNative();
+  const [originMode, setOriginMode] = useState<'manual' | 'current_location' | 'favorite'>('manual');
+  const [destMode,   setDestMode]   = useState<'manual' | 'favorite'>('manual');
+  const [originFavoriteId, setOriginFavoriteId] = useState('');
+  const [destFavoriteId,   setDestFavoriteId]   = useState('');
+  const [originPlaceId, setOriginPlaceId] = useState<string | undefined>(undefined);
+  const [destPlaceId,   setDestPlaceId]   = useState<string | undefined>(undefined);
+  // Resolved immediately on suggestion selection (see selectOriginSuggestion/
+  // selectDestSuggestion) — this is what actually closes the Autocomplete
+  // session with a USEFUL Place Details call (precise routing coordinates),
+  // rather than a call added only to spend the session token. Falls back to
+  // the typed/selected text at Calculate time if this never resolves.
+  const [originCoords, setOriginCoords] = useState<LatLng | undefined>(undefined);
+  const [destCoords,   setDestCoords]   = useState<LatLng | undefined>(undefined);
+  const [currentLocationStatus, setCurrentLocationStatus] =
+    useState<'idle' | 'locating' | 'granted' | 'denied' | 'unavailable' | 'timeout' | 'unsupported'>('idle');
+  const [currentLocationCoords, setCurrentLocationCoords] = useState<LatLng | null>(null);
+  const [favorites,       setFavorites]       = useState<FavoriteAddressClient[]>([]);
+  const [favoritesLoaded, setFavoritesLoaded] = useState(false);
+  const [savePrompt, setSavePrompt] = useState<{ which: 'origin' | 'destination'; displayAddress: string; placeId?: string; label: string } | null>(null);
+  const [duplicateWarning, setDuplicateWarning] = useState<{ existingLabel: string } | null>(null);
+  const [savingFavorite,   setSavingFavorite]   = useState(false);
+  const [manageOpen,       setManageOpen]       = useState(false);
+  const [pendingDeleteFavoriteId, setPendingDeleteFavoriteId] = useState<string | null>(null);
 
   const userPlan       = (session?.user as { plan?: string })?.plan ?? '';
   const planTier       = getPlanTier((session?.user as { plan?: string } | null) ?? null);
@@ -195,10 +264,224 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
   const garageVehicleLocked = vehicleMode === 'garage' && selectedVehicleId !== '';
 
   // Address autocomplete for route-based planner
-  const { suggestions: originSuggestions, clear: clearOriginSugg } =
-    useAddressAutocomplete(routeOrigin, canUseRoutePlanner && tripPlanMode === 'route');
-  const { suggestions: destSuggestions, clear: clearDestSugg } =
-    useAddressAutocomplete(routeDest, canUseRoutePlanner && tripPlanMode === 'route');
+  const { results: originResults, clear: clearOriginSugg, consumeSessionToken: consumeOriginToken } =
+    useAddressAutocomplete(routeOrigin, canUseRoutePlanner && tripPlanMode === 'route' && originMode === 'manual');
+  const { results: destResults, clear: clearDestSugg, consumeSessionToken: consumeDestToken } =
+    useAddressAutocomplete(routeDest, canUseRoutePlanner && tripPlanMode === 'route' && destMode === 'manual');
+
+  const loadFavorites = useCallback(async () => {
+    if (!session) return;
+    try {
+      const res = await fetch('/api/favorite-addresses');
+      if (res.ok) {
+        const d = await res.json() as { favorites: FavoriteAddressClient[] };
+        setFavorites(d.favorites ?? []);
+      }
+    } catch { /* non-critical — favorites list just stays empty/stale */ }
+    setFavoritesLoaded(true);
+  }, [session]);
+
+  useEffect(() => {
+    if (session && canUseRoutePlanner && tripPlanMode === 'route' && !favoritesLoaded) loadFavorites();
+  }, [session, canUseRoutePlanner, tripPlanMode, favoritesLoaded, loadFavorites]);
+
+  async function handleUseCurrentLocation() {
+    setOriginMode('current_location');
+    setOriginFavoriteId('');
+    setOriginPlaceId(undefined);
+    setOriginCoords(undefined);
+    setRouteOrigin('');
+    clearOriginSugg();
+    setRouteData(null);
+    setResult(null);
+    setCurrentLocationStatus('locating');
+    const loc = await requestCurrentLocation(isNative);
+    if (loc.status === 'granted') {
+      setCurrentLocationCoords({ latitude: loc.latitude, longitude: loc.longitude });
+      setCurrentLocationStatus('granted');
+    } else {
+      setCurrentLocationCoords(null);
+      setCurrentLocationStatus(loc.status);
+    }
+  }
+
+  function handleOriginBackToManual() {
+    setOriginMode('manual');
+    setOriginFavoriteId('');
+    setOriginPlaceId(undefined);
+    setOriginCoords(undefined);
+    setCurrentLocationStatus('idle');
+    setCurrentLocationCoords(null);
+    setRouteData(null);
+    setResult(null);
+  }
+
+  function handleSelectOriginFavorite(fav: FavoriteAddressClient) {
+    setOriginMode('favorite');
+    setOriginFavoriteId(fav.id);
+    setOriginPlaceId(undefined);
+    setOriginCoords(undefined);
+    setCurrentLocationStatus('idle');
+    setCurrentLocationCoords(null);
+    setRouteOrigin('');
+    clearOriginSugg();
+    setRouteData(null);
+    setResult(null);
+  }
+
+  function handleDestBackToManual() {
+    setDestMode('manual');
+    setDestFavoriteId('');
+    setDestPlaceId(undefined);
+    setDestCoords(undefined);
+    setRouteData(null);
+    setResult(null);
+  }
+
+  function handleSelectDestFavorite(fav: FavoriteAddressClient) {
+    setDestMode('favorite');
+    setDestFavoriteId(fav.id);
+    setDestPlaceId(undefined);
+    setDestCoords(undefined);
+    setRouteDest('');
+    clearDestSugg();
+    setRouteData(null);
+    setResult(null);
+  }
+
+  /**
+   * Resolves the selected suggestion's placeId immediately, using the same
+   * session token that covered the search — this is the Place Details call
+   * that actually closes the Autocomplete (New) billing session, and it's
+   * useful on its own merits (precise coordinates beat re-geocoding a text
+   * string), not added solely to spend the token.
+   */
+  async function selectOriginSuggestion(s: AutocompleteSuggestion) {
+    setRouteOrigin(s.text);
+    setOriginPlaceId(s.placeId);
+    setOriginCoords(undefined);
+    const token = consumeOriginToken();
+    clearOriginSugg();
+    setRouteData(null);
+    setResult(null);
+    try {
+      const res = await fetch('/api/maps/place-location', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ placeId: s.placeId, sessionToken: token }),
+      });
+      const data = await res.json() as { ok: boolean; lat?: number; lng?: number };
+      if (data.ok && data.lat != null && data.lng != null) {
+        setOriginCoords({ latitude: data.lat, longitude: data.lng });
+      }
+    } catch { /* falls back to geocoding the text string at Calculate time */ }
+  }
+
+  async function selectDestSuggestion(s: AutocompleteSuggestion) {
+    setRouteDest(s.text);
+    setDestPlaceId(s.placeId);
+    setDestCoords(undefined);
+    const token = consumeDestToken();
+    clearDestSugg();
+    setRouteData(null);
+    setResult(null);
+    try {
+      const res = await fetch('/api/maps/place-location', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ placeId: s.placeId, sessionToken: token }),
+      });
+      const data = await res.json() as { ok: boolean; lat?: number; lng?: number };
+      if (data.ok && data.lat != null && data.lng != null) {
+        setDestCoords({ latitude: data.lat, longitude: data.lng });
+      }
+    } catch { /* falls back to geocoding the text string at Calculate time */ }
+  }
+
+  function openSavePrompt(which: 'origin' | 'destination') {
+    const displayAddress = (which === 'origin' ? routeOrigin : routeDest).trim();
+    if (!displayAddress) return;
+    const placeId = which === 'origin' ? originPlaceId : destPlaceId;
+    setSavePrompt({ which, displayAddress, placeId, label: '' });
+    setDuplicateWarning(null);
+  }
+
+  async function submitFavorite(confirmDuplicate: boolean) {
+    if (!savePrompt || !savePrompt.label.trim()) return;
+    setSavingFavorite(true);
+    try {
+      const res = await fetch('/api/favorite-addresses', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          label:          savePrompt.label.trim(),
+          displayAddress: savePrompt.displayAddress,
+          placeId:        savePrompt.placeId,
+          source:         savePrompt.placeId ? 'google_place' : 'manual_text',
+          confirmDuplicate,
+        }),
+      });
+      if (res.status === 409) {
+        const d = await res.json() as { existing?: { label: string } };
+        setDuplicateWarning({ existingLabel: d.existing?.label ?? savePrompt.label.trim() });
+        return;
+      }
+      if (res.ok) {
+        setSavePrompt(null);
+        setDuplicateWarning(null);
+        setFavoritesLoaded(false);
+        await loadFavorites();
+      }
+    } finally {
+      setSavingFavorite(false);
+    }
+  }
+
+  async function handleDeleteFavorite(id: string) {
+    await fetch(`/api/favorite-addresses?id=${encodeURIComponent(id)}`, { method: 'DELETE' }).catch(() => {});
+    if (originMode === 'favorite' && originFavoriteId === id) handleOriginBackToManual();
+    if (destMode === 'favorite' && destFavoriteId === id) handleDestBackToManual();
+    setFavoritesLoaded(false);
+    await loadFavorites();
+  }
+
+  /** Resolves the From/To field currently in play into something /api/maps/route accepts. */
+  async function resolveWaypoint(
+    mode: 'manual' | 'current_location' | 'favorite',
+    favoriteId: string,
+    manualText: string,
+    manualCoords?: LatLng,
+  ): Promise<{ waypoint: string | LatLng; usedFallback?: boolean } | null> {
+    if (mode === 'current_location') {
+      return currentLocationCoords ? { waypoint: currentLocationCoords } : null;
+    }
+    if (mode === 'favorite') {
+      try {
+        const res = await fetch(`/api/favorite-addresses/${encodeURIComponent(favoriteId)}/resolve`, { method: 'POST' });
+        if (!res.ok) return null;
+        const d = await res.json() as { ok: boolean; kind?: string; latitude?: number; longitude?: number; text?: string; usedFallback?: boolean };
+        if (!d.ok) return null;
+        if (d.kind === 'coordinates' && d.latitude != null && d.longitude != null) return { waypoint: { latitude: d.latitude, longitude: d.longitude } };
+        // usedFallback: a 'google_place' favorite whose Place Details lookup
+        // failed — this is the saved text as a fallback, not an
+        // intentionally-manual address. Surfaced to the user per independent
+        // review, since a route built from it could land somewhere
+        // similarly-named but not the exact saved place.
+        if (d.kind === 'address' && d.text) return { waypoint: d.text, usedFallback: d.usedFallback };
+        return null;
+      } catch {
+        return null;
+      }
+    }
+    // manual: prefer coordinates resolved when the suggestion was selected
+    // (selectOriginSuggestion/selectDestSuggestion) — more precise than
+    // re-geocoding the text string, and it's what actually closed the
+    // Autocomplete session. Falls back to the text if that never resolved
+    // (place-location failed, or the text was typed free-hand with no
+    // suggestion selected at all).
+    const waypoint = manualCoords ?? (manualText.trim() || null);
+    return waypoint ? { waypoint } : null;
+  }
 
   // Save-trip state
   const [tripSaved,   setTripSaved]   = useState(false);
@@ -365,8 +648,9 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
     const priceNum = parseFloat(pricePerGallon);
     const pctNum   = parseFloat(fuelPct);
     const errs: Record<string, string> = {};
-    if (!routeOrigin.trim())              errs.routeOrigin = t.tripCostEstimator.errOrigin;
-    if (!routeDest.trim())                errs.routeDest   = t.tripCostEstimator.errDest;
+    if (originMode === 'manual' && !routeOrigin.trim()) errs.routeOrigin = t.tripCostEstimator.errOrigin;
+    if (originMode === 'current_location' && currentLocationStatus !== 'granted') errs.routeOrigin = t.tripCostEstimator.errOrigin;
+    if (destMode === 'manual' && !routeDest.trim())     errs.routeDest   = t.tripCostEstimator.errDest;
     if (!mpgNum || mpgNum <= 0)           errs.mpg         = t.tripCostEstimator.errMpg;
     if (!tankNum || tankNum <= 0)         errs.tankGal     = t.tripCostEstimator.errTankShort;
     if (!priceNum || priceNum <= 0)       errs.pricePerGallon = t.tripCostEstimator.errPrice;
@@ -374,14 +658,29 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
     setErrors(errs);
     if (Object.keys(errs).length > 0) return;
 
-    // 1. Fetch route
+    // 1. Resolve From/To into something /api/maps/route accepts — a plain
+    // address string (manual entry), or coordinates (Current Location, or a
+    // 'google_place' favorite resolved fresh via its placeId — see
+    // resolveWaypoint() and lib/favoriteAddresses.ts's resolve-on-use design).
     setRouteLoading(true);
+    setUsedFavoriteFallback(false);
+    const [originResolved, destResolved] = await Promise.all([
+      resolveWaypoint(originMode, originFavoriteId, routeOrigin, originCoords),
+      resolveWaypoint(destMode, destFavoriteId, routeDest, destCoords),
+    ]);
+    if (originResolved == null || destResolved == null) {
+      setRouteError(t.tripCostEstimator.routeCalcFailed);
+      setRouteLoading(false);
+      return;
+    }
+    if (originResolved.usedFallback || destResolved.usedFallback) setUsedFavoriteFallback(true);
+
     let route: RouteResult;
     try {
       const res  = await fetch('/api/maps/route', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ origin: routeOrigin.trim(), destination: routeDest.trim() }),
+        body:    JSON.stringify({ origin: originResolved.waypoint, destination: destResolved.waypoint }),
       });
       const data = await res.json() as { ok: boolean; route?: RouteResult; error?: string; featureDisabled?: boolean };
       if (!data.ok) {
@@ -591,93 +890,251 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
                   <div className="space-y-3">
                     <div>
                       <p className="field-label">{t.tripCostEstimator.startingPoint}</p>
-                      <div className="relative">
-                        <input
-                          type="text"
-                          className={`${errors.routeOrigin ? 'input-field-error' : 'input-field'} ${routeOrigin ? 'pr-8' : ''}`}
-                          placeholder={t.tripCostEstimator.addressPlaceholder}
-                          value={routeOrigin}
-                          autoComplete="off"
-                          onChange={(e) => { setRouteOrigin(e.target.value); setRouteData(null); setResult(null); }}
-                          onBlur={() => { setTimeout(clearOriginSugg, 150); }}
-                          aria-label={t.tripCostEstimator.ariaStartingPoint}
-                        />
-                        {routeOrigin && (
-                          <button
-                            type="button"
-                            onClick={() => { setRouteOrigin(''); clearOriginSugg(); setRouteData(null); setResult(null); }}
-                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500 transition-colors"
-                            aria-label={t.tripCostEstimator.ariaClearStartingPoint}
-                          >
-                            <svg className="w-3.5 h-3.5" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                              <path d="M1 1l10 10M11 1L1 11" />
-                            </svg>
+                      {originMode !== 'manual' ? (
+                        <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 flex items-center justify-between gap-2">
+                          <span className="text-xs font-semibold text-amber-800 truncate">
+                            {originMode === 'current_location'
+                              ? (currentLocationStatus === 'locating' ? t.tripCostEstimator.currentLocationLocating : t.tripCostEstimator.currentLocationLabel)
+                              : `📍 ${favorites.find((f) => f.id === originFavoriteId)?.label ?? ''}`}
+                          </span>
+                          <button type="button" onClick={handleOriginBackToManual} className="text-[11px] text-amber-600 font-semibold hover:underline flex-shrink-0">
+                            {t.tripCostEstimator.changeLocation}
                           </button>
-                        )}
-                        {originSuggestions.length > 0 && (
-                          <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
-                            {originSuggestions.map((s) => (
-                              <button
-                                key={s}
-                                type="button"
-                                className="w-full text-left px-3 py-2.5 text-xs text-slate-700 hover:bg-amber-50 hover:text-amber-800 border-b border-slate-50 last:border-0 transition-colors"
-                                onMouseDown={(e) => { e.preventDefault(); setRouteOrigin(s); clearOriginSugg(); setRouteData(null); setResult(null); }}
-                              >
-                                📍 {s}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
+                        </div>
+                      ) : (
+                        <div className="flex flex-wrap gap-1.5 mb-2">
+                          <button type="button" onClick={handleUseCurrentLocation}
+                            className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-sky-50 text-sky-700 border border-sky-200 hover:bg-sky-100 transition-colors">
+                            {t.tripCostEstimator.currentLocationLabel}
+                          </button>
+                          {favorites.map((fav) => (
+                            <button key={fav.id} type="button" onClick={() => handleSelectOriginFavorite(fav)}
+                              className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-50 text-slate-700 border border-slate-200 hover:bg-slate-100 transition-colors">
+                              📍 {fav.label}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      {originMode === 'current_location' && currentLocationStatus !== 'granted' && currentLocationStatus !== 'locating' && currentLocationStatus !== 'idle' && (
+                        <p className="mt-1 text-[11px] text-amber-700 leading-relaxed">
+                          {currentLocationStatus === 'denied'      && t.tripCostEstimator.currentLocationDenied}
+                          {currentLocationStatus === 'unavailable' && t.tripCostEstimator.currentLocationUnavailable}
+                          {currentLocationStatus === 'timeout'     && t.tripCostEstimator.currentLocationTimeout}
+                          {currentLocationStatus === 'unsupported' && t.tripCostEstimator.currentLocationUnsupported}
+                        </p>
+                      )}
+                      {originMode === 'manual' && (
+                        <div className="relative">
+                          <input
+                            type="text"
+                            className={`${errors.routeOrigin ? 'input-field-error' : 'input-field'} ${routeOrigin ? 'pr-8' : ''}`}
+                            placeholder={t.tripCostEstimator.enterAnotherLocation}
+                            value={routeOrigin}
+                            autoComplete="off"
+                            onChange={(e) => { setRouteOrigin(e.target.value); setOriginPlaceId(undefined); setOriginCoords(undefined); setRouteData(null); setResult(null); }}
+                            onBlur={() => { setTimeout(clearOriginSugg, 150); }}
+                            aria-label={t.tripCostEstimator.ariaStartingPoint}
+                          />
+                          {routeOrigin && (
+                            <button
+                              type="button"
+                              onClick={() => { setRouteOrigin(''); setOriginPlaceId(undefined); setOriginCoords(undefined); clearOriginSugg(); setRouteData(null); setResult(null); }}
+                              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500 transition-colors"
+                              aria-label={t.tripCostEstimator.ariaClearStartingPoint}
+                            >
+                              <svg className="w-3.5 h-3.5" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                                <path d="M1 1l10 10M11 1L1 11" />
+                              </svg>
+                            </button>
+                          )}
+                          {originResults.length > 0 && (
+                            <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
+                              {originResults.map((s) => (
+                                <button
+                                  key={s.placeId}
+                                  type="button"
+                                  className="w-full text-left px-3 py-2.5 text-xs text-slate-700 hover:bg-amber-50 hover:text-amber-800 border-b border-slate-50 last:border-0 transition-colors"
+                                  onMouseDown={(e) => { e.preventDefault(); selectOriginSuggestion(s); }}
+                                >
+                                  📍 {s.text}
+                                </button>
+                              ))}
+                              <GoogleAttribution />
+                            </div>
+                          )}
+                        </div>
+                      )}
                       {errors.routeOrigin && <p className="mt-1 text-xs text-red-500">{errors.routeOrigin}</p>}
+                      {originMode === 'manual' && routeOrigin.trim() && (
+                        <button type="button" onClick={() => openSavePrompt('origin')} className="mt-1 text-[11px] text-slate-500 font-semibold hover:underline">
+                          {t.tripCostEstimator.saveAsFavorite}
+                        </button>
+                      )}
                     </div>
                     <div>
                       <p className="field-label">{t.tripCostEstimator.destination}</p>
-                      <div className="relative">
-                        <input
-                          type="text"
-                          className={`${errors.routeDest ? 'input-field-error' : 'input-field'} ${routeDest ? 'pr-8' : ''}`}
-                          placeholder={t.tripCostEstimator.addressPlaceholder}
-                          value={routeDest}
-                          autoComplete="off"
-                          onChange={(e) => { setRouteDest(e.target.value); setRouteData(null); setResult(null); }}
-                          onBlur={() => { setTimeout(clearDestSugg, 150); }}
-                          aria-label={t.tripCostEstimator.ariaDestination}
-                        />
-                        {routeDest && (
-                          <button
-                            type="button"
-                            onClick={() => { setRouteDest(''); clearDestSugg(); setRouteData(null); setResult(null); }}
-                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500 transition-colors"
-                            aria-label={t.tripCostEstimator.ariaClearDestination}
-                          >
-                            <svg className="w-3.5 h-3.5" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                              <path d="M1 1l10 10M11 1L1 11" />
-                            </svg>
+                      {destMode !== 'manual' ? (
+                        <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 flex items-center justify-between gap-2">
+                          <span className="text-xs font-semibold text-amber-800 truncate">
+                            📍 {favorites.find((f) => f.id === destFavoriteId)?.label ?? ''}
+                          </span>
+                          <button type="button" onClick={handleDestBackToManual} className="text-[11px] text-amber-600 font-semibold hover:underline flex-shrink-0">
+                            {t.tripCostEstimator.changeLocation}
                           </button>
-                        )}
-                        {destSuggestions.length > 0 && (
-                          <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
-                            {destSuggestions.map((s) => (
-                              <button
-                                key={s}
-                                type="button"
-                                className="w-full text-left px-3 py-2.5 text-xs text-slate-700 hover:bg-amber-50 hover:text-amber-800 border-b border-slate-50 last:border-0 transition-colors"
-                                onMouseDown={(e) => { e.preventDefault(); setRouteDest(s); clearDestSugg(); setRouteData(null); setResult(null); }}
-                              >
-                                📍 {s}
+                        </div>
+                      ) : (
+                        favorites.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5 mb-2">
+                            {favorites.map((fav) => (
+                              <button key={fav.id} type="button" onClick={() => handleSelectDestFavorite(fav)}
+                                className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-50 text-slate-700 border border-slate-200 hover:bg-slate-100 transition-colors">
+                                📍 {fav.label}
                               </button>
                             ))}
                           </div>
-                        )}
-                      </div>
+                        )
+                      )}
+                      {destMode === 'manual' && (
+                        <div className="relative">
+                          <input
+                            type="text"
+                            className={`${errors.routeDest ? 'input-field-error' : 'input-field'} ${routeDest ? 'pr-8' : ''}`}
+                            placeholder={t.tripCostEstimator.enterAnotherLocation}
+                            value={routeDest}
+                            autoComplete="off"
+                            onChange={(e) => { setRouteDest(e.target.value); setDestPlaceId(undefined); setDestCoords(undefined); setRouteData(null); setResult(null); }}
+                            onBlur={() => { setTimeout(clearDestSugg, 150); }}
+                            aria-label={t.tripCostEstimator.ariaDestination}
+                          />
+                          {routeDest && (
+                            <button
+                              type="button"
+                              onClick={() => { setRouteDest(''); setDestPlaceId(undefined); setDestCoords(undefined); clearDestSugg(); setRouteData(null); setResult(null); }}
+                              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500 transition-colors"
+                              aria-label={t.tripCostEstimator.ariaClearDestination}
+                            >
+                              <svg className="w-3.5 h-3.5" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                                <path d="M1 1l10 10M11 1L1 11" />
+                              </svg>
+                            </button>
+                          )}
+                          {destResults.length > 0 && (
+                            <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
+                              {destResults.map((s) => (
+                                <button
+                                  key={s.placeId}
+                                  type="button"
+                                  className="w-full text-left px-3 py-2.5 text-xs text-slate-700 hover:bg-amber-50 hover:text-amber-800 border-b border-slate-50 last:border-0 transition-colors"
+                                  onMouseDown={(e) => { e.preventDefault(); selectDestSuggestion(s); }}
+                                >
+                                  📍 {s.text}
+                                </button>
+                              ))}
+                              <GoogleAttribution />
+                            </div>
+                          )}
+                        </div>
+                      )}
                       {errors.routeDest && <p className="mt-1 text-xs text-red-500">{errors.routeDest}</p>}
+                      {destMode === 'manual' && routeDest.trim() && (
+                        <button type="button" onClick={() => openSavePrompt('destination')} className="mt-1 text-[11px] text-slate-500 font-semibold hover:underline">
+                          {t.tripCostEstimator.saveAsFavorite}
+                        </button>
+                      )}
                     </div>
+                    {favorites.length > 0 && (
+                      <button type="button" onClick={() => setManageOpen((v) => !v)} className="text-[11px] text-slate-400 font-semibold hover:underline">
+                        {t.tripCostEstimator.manageSavedLocations}
+                      </button>
+                    )}
+                    {manageOpen && (
+                      <div className="bg-slate-50 border border-slate-200 rounded-xl p-2 space-y-1">
+                        {favorites.length === 0 && <p className="text-[11px] text-slate-400 px-2 py-1">{t.tripCostEstimator.noSavedLocations}</p>}
+                        {favorites.map((fav) => (
+                          <div key={fav.id} className={`flex items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 ${pendingDeleteFavoriteId === fav.id ? 'bg-red-50' : 'bg-white'}`}>
+                            {pendingDeleteFavoriteId === fav.id ? (
+                              <>
+                                <p className="text-[11px] font-semibold text-red-700">{t.tripCostEstimator.deleteFavoriteConfirm}</p>
+                                <div className="flex items-center gap-2 flex-shrink-0">
+                                  <button type="button" onClick={() => setPendingDeleteFavoriteId(null)} className="text-[11px] font-bold text-slate-500 hover:text-slate-700">
+                                    {t.tripCostEstimator.favoriteCancel}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => { setPendingDeleteFavoriteId(null); handleDeleteFavorite(fav.id); }}
+                                    className="text-[11px] font-bold text-white bg-red-500 hover:bg-red-600 px-3 py-1 rounded-lg"
+                                  >
+                                    {t.tripCostEstimator.favoriteDelete}
+                                  </button>
+                                </div>
+                              </>
+                            ) : (
+                              <>
+                                <div className="min-w-0">
+                                  <p className="text-xs font-bold text-slate-700 truncate">{fav.label}</p>
+                                  <p className="text-[10px] text-slate-400 truncate">{fav.displayAddress}</p>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => setPendingDeleteFavoriteId(fav.id)}
+                                  className="text-[11px] text-red-500 font-semibold hover:underline flex-shrink-0"
+                                >
+                                  {t.tripCostEstimator.favoriteDelete}
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {savePrompt && (
+                      <div className="bg-white border border-slate-200 rounded-xl p-3 space-y-2 shadow-sm">
+                        <p className="field-label">{t.tripCostEstimator.favoriteLabelPrompt}</p>
+                        <p className="text-[11px] text-slate-400 truncate">{savePrompt.displayAddress}</p>
+                        <input
+                          type="text"
+                          className="input-field"
+                          placeholder={t.tripCostEstimator.favoriteLabelPlaceholder}
+                          value={savePrompt.label}
+                          autoFocus
+                          onChange={(e) => setSavePrompt({ ...savePrompt, label: e.target.value })}
+                        />
+                        {duplicateWarning && (
+                          <p className="text-[11px] text-amber-700 leading-relaxed">
+                            {t.tripCostEstimator.favoriteDuplicateWarning(duplicateWarning.existingLabel)}
+                          </p>
+                        )}
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            disabled={!savePrompt.label.trim() || savingFavorite}
+                            onClick={() => submitFavorite(!!duplicateWarning)}
+                            className="flex-1 px-3 py-2 rounded-lg bg-[#005F4A] text-white text-xs font-bold disabled:opacity-50"
+                          >
+                            {duplicateWarning ? t.tripCostEstimator.favoriteSaveAnyway : t.tripCostEstimator.favoriteSave}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setSavePrompt(null); setDuplicateWarning(null); }}
+                            className="px-3 py-2 rounded-lg bg-slate-100 text-slate-600 text-xs font-bold"
+                          >
+                            {t.tripCostEstimator.favoriteCancel}
+                          </button>
+                        </div>
+                      </div>
+                    )}
                     {routeData && (
                       <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2">
                         <span className="text-sm">📍</span>
                         <p className="text-xs font-bold text-emerald-700">
                           {t.tripCostEstimator.routeSummary(metersToMiles(routeData.distanceMeters).toLocaleString(), formatDuration(routeData.durationSeconds, t.tripCostEstimator))}
+                        </p>
+                      </div>
+                    )}
+                    {routeData && usedFavoriteFallback && (
+                      <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+                        <p className="text-[11px] text-amber-700 leading-relaxed">
+                          {t.tripCostEstimator.favoriteFallbackWarning}
                         </p>
                       </div>
                     )}

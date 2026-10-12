@@ -69,6 +69,50 @@ function parseDuration(d: string): number {
   return parseInt(d.replace('s', ''), 10) || 0;
 }
 
+// ── Place Details (coordinate resolution by placeId) ──────────────────────────
+
+/**
+ * Resolves a Google Places `placeId` to coordinates via Place Details (New).
+ * Shared by /api/maps/place-location (the Rental Return return-location
+ * picker) and lib/favoriteAddresses.ts's resolve-on-use lookup for
+ * 'google_place' favorites — neither persists the result; both call this
+ * fresh every time, per the Places API caching limits on returned lat/lng.
+ *
+ * `sessionToken` closes the Autocomplete (New) session that selected this
+ * placeId, so Google bills the search+selection as one session instead of
+ * per-request — see lib/placesSessionToken.ts for token lifecycle.
+ */
+export async function resolvePlaceCoordinates(
+  placeId: string,
+  sessionToken?: string,
+): Promise<{ latitude: number; longitude: number } | null> {
+  const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+  if (!apiKey || process.env.GOOGLE_MAPS_TRIP_PLANNER_ENABLED !== 'true') return null;
+  if (!placeId) return null;
+
+  const url = new URL(`https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}`);
+  if (sessionToken) url.searchParams.set('sessionToken', sessionToken);
+
+  try {
+    const res = await fetch(url, {
+      headers: {
+        'X-Goog-Api-Key':   apiKey,
+        'X-Goog-FieldMask': 'location',
+      },
+    });
+    if (!res.ok) return null;
+
+    const data = await res.json() as { location?: { latitude?: number; longitude?: number } };
+    const lat = data.location?.latitude;
+    const lng = data.location?.longitude;
+    if (lat == null || lng == null) return null;
+
+    return { latitude: lat, longitude: lng };
+  } catch {
+    return null;
+  }
+}
+
 // ── Provider ──────────────────────────────────────────────────────────────────
 
 export const googleMapsProvider: IMapsProvider = {

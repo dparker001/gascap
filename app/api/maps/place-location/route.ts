@@ -15,10 +15,17 @@
  *   - ordinary callers (TripCostEstimator) never send the flag and keep the
  *     location-only, Essentials-tier request unchanged;
  *   - the opted-in path requires a signed-in GasCap session (401 otherwise).
- * No Autocomplete session-token change here (separate billing decision).
+ *
+ * sessionToken (2026-10-11, Trip Planner Phase 2): optional. Should be the
+ * same token sent to /api/maps/autocomplete for the search that produced
+ * this placeId — closes the Autocomplete (New) session for Google billing
+ * purposes instead of being charged per-request. See
+ * lib/placesSessionToken.ts for the client-side token lifecycle.
  *
  * Only active when GOOGLE_MAPS_TRIP_PLANNER_ENABLED=true, same gate as
- * autocomplete.
+ * autocomplete. Never caches the returned coordinates — every caller
+ * (including a Favorite Address's resolve-on-use lookup) re-resolves on
+ * every use, per Google's Places API caching limits on returned lat/lng.
  */
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
@@ -40,10 +47,12 @@ export async function POST(req: Request) {
 
   let placeId: string;
   let includeTimeZone = false;
+  let sessionToken: string | undefined;
   try {
-    const body = await req.json() as { placeId?: string; includeTimeZone?: unknown };
+    const body = await req.json() as { placeId?: string; includeTimeZone?: unknown; sessionToken?: unknown };
     placeId = (body.placeId ?? '').trim();
     includeTimeZone = body.includeTimeZone === true;
+    sessionToken = typeof body.sessionToken === 'string' && body.sessionToken ? body.sessionToken : undefined;
   } catch {
     return NextResponse.json({ ok: false }, { status: 400 });
   }
@@ -56,7 +65,10 @@ export async function POST(req: Request) {
   }
 
   try {
-    const res = await fetch(`https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}`, {
+    const url = new URL(`https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}`);
+    if (sessionToken) url.searchParams.set('sessionToken', sessionToken);
+
+    const res = await fetch(url, {
       headers: {
         'X-Goog-Api-Key':   apiKey,
         'X-Goog-FieldMask': includeTimeZone ? 'location,timeZone' : 'location',
