@@ -551,6 +551,12 @@ export default function SettingsPage() {
         trackClientEvent('fuel_gauge_style_selected', { style, context: 'global' });
         setGaugeStyleSaved(true);
         setTimeout(() => setGaugeStyleSaved(false), 2000);
+        // The native/PWA shell keeps calculator tabs mounted across a Settings
+        // visit (see NativeAppShell), so their cached userGaugeStyle state
+        // needs the same invalidation signal SavedVehicles.tsx already sends
+        // on a vehicle-level style change — otherwise the new global default
+        // only shows up after a full app restart.
+        window.dispatchEvent(new Event('vehicle-saved'));
       }
     } catch { /* non-critical — the picker still reflects the tapped value locally */ }
   }
