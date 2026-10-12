@@ -13,6 +13,41 @@
  * from every new-signup path and must never throw into the caller — same
  * convention as this codebase's existing signup_completed/trial_started
  * emissions (lib/users.ts, lib/auth.ts, app/api/auth/register/route.ts).
+ *
+ * TRUST BOUNDARY (Phase 4 hardening, concern #2 — OTP client-supplied
+ * values). Both source cookies (gc_src, gc_utm) are httpOnly:false BY
+ * DESIGN — the existing CampaignTracker component already needs to read
+ * gc_src client-side, so this was never a hardenable boundary to begin
+ * with. That means a client can already rewrite either cookie's value
+ * before ANY signup submission, regardless of transport — the password
+ * path (server reads the real Cookie header) is not meaningfully more
+ * trustworthy than the OTP path (client reads document.cookie and
+ * resubmits the same values as credential fields): in both cases the
+ * value the server sees originated from client-controlled storage. OTP's
+ * mechanism is a transport difference, not a new trust boundary.
+ * What IS enforced, identically for every path: (a) a code can only ever
+ * resolve to one already-registered row in CampaignPlacement/
+ * AcquisitionCampaignCode — a client can forge a timestamp, but can never
+ * invent a campaign that doesn't exist; (b) a timestamp outside a
+ * plausible window (see MAX_TOUCH_AGE_MS/MAX_FUTURE_SKEW_MS below) is
+ * rejected as unparseable, not trusted. The residual risk — a client
+ * forging a plausible-looking timestamp to win precedence over a genuine
+ * touch on their OWN account — is accepted and bounded: attribution is a
+ * reporting signal only, never an entitlement, price, or security
+ * decision, so the worst case is a misattributed row in a marketing
+ * report for that one account, never a cross-account or financial
+ * consequence.
+ *
+ * RECOVERY (Phase 4 hardening, concern #3 — ambiguous captures). An
+ * ambiguous capture (acqAmbiguous=true, source/campaign null) is
+ * permanent under the write-once rule, by design — nothing here retries
+ * or reclassifies it automatically. If a later investigation (e.g.
+ * reading raw AnalyticsEvent timestamps for that user, where available)
+ * establishes the real order, the only correction path today is a manual
+ * admin action directly against that one row; no admin tool for this
+ * exists yet and none was built in this phase (out of scope — this phase
+ * is attribution capture, not an admin UI). This is a known, accepted
+ * limitation, not an oversight.
  */
 import { prisma } from '@/lib/prisma';
 import { getPlacementByCode } from '@/lib/campaigns';
@@ -21,6 +56,19 @@ export const QR_COOKIE     = 'gc_src';
 export const QR_AT_COOKIE  = 'gc_src_at';
 export const UTM_COOKIE    = 'gc_utm';
 export const UTM_AT_COOKIE = 'gc_utm_at';
+
+/** Matches the cookie's own maxAge in app/q/[code]/route.ts and
+ *  app/go/[code]/route.ts. A timestamp claiming to be older than this
+ *  could not have come from a genuine, still-alive cookie — the browser
+ *  would have dropped it — so it's treated as tampered/implausible, not
+ *  "very early," per the Phase 4 hardening requirement (concern #5:
+ *  cookie tampering/replay/timestamp manipulation). */
+const MAX_TOUCH_AGE_MS = 90 * 24 * 60 * 60 * 1000;
+/** Small, deliberate tolerance for ordinary clock skew — both timestamps
+ *  are stamped server-side (Date.now() in the two redirect routes), so a
+ *  genuine value should never be meaningfully in the future relative to
+ *  the capture server's own clock. Anything beyond this is implausible. */
+const MAX_FUTURE_SKEW_MS = 5 * 60 * 1000;
 
 /** Lowercase letters/digits/hyphen/underscore, 1-64 chars. Syntax only —
  *  registry membership (does this code exist and is it active?) is a
@@ -88,11 +136,18 @@ export function isSyntacticallyValidUtmCode(code: string): boolean {
 /** Never invents a timestamp from a malformed, zero, or negative raw
  *  string — returns null, which resolveFirstTouch() treats as "can't
  *  compare," never as "zero" (which would always lose) or "now" (which
- *  would always win). */
-function parseTimestampMs(raw: string | null | undefined): number | null {
+ *  would always win). Also rejects an implausible value outside
+ *  [now - MAX_TOUCH_AGE_MS, now + MAX_FUTURE_SKEW_MS] — a cookie claiming
+ *  to be older than its own maxAge, or meaningfully in the future,
+ *  cannot be genuine (Phase 4 hardening, concern #5). This is a plausible-
+ *  range check, not a signature — it cannot detect a forged-but-plausible
+ *  timestamp; see the module-level "Trust boundary" doc comment. */
+function parseTimestampMs(raw: string | null | undefined, nowMs: number = Date.now()): number | null {
   if (!raw) return null;
   const n = Number(raw);
   if (!Number.isFinite(n) || n <= 0) return null;
+  if (n < nowMs - MAX_TOUCH_AGE_MS) return null;
+  if (n > nowMs + MAX_FUTURE_SKEW_MS) return null;
   return n;
 }
 
@@ -118,7 +173,7 @@ export function resolveFirstTouch(input: {
   qrAt:    string | null;
   utmValid: string | null;
   utmAt:    string | null;
-}): ResolvedTouch {
+}, nowMs: number = Date.now()): ResolvedTouch {
   const hasQr  = input.qrValid !== null;
   const hasUtm = input.utmValid !== null;
 
@@ -126,8 +181,8 @@ export function resolveFirstTouch(input: {
   if (hasQr && !hasUtm)  return { source: 'qr',  campaign: input.qrValid,  ambiguous: false };
   if (hasUtm && !hasQr)  return { source: 'utm', campaign: input.utmValid, ambiguous: false };
 
-  const qrTs  = parseTimestampMs(input.qrAt);
-  const utmTs = parseTimestampMs(input.utmAt);
+  const qrTs  = parseTimestampMs(input.qrAt, nowMs);
+  const utmTs = parseTimestampMs(input.utmAt, nowMs);
 
   if (qrTs === null || utmTs === null || qrTs === utmTs) {
     return { source: null, campaign: null, ambiguous: true };

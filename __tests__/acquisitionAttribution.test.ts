@@ -70,6 +70,14 @@ describe('isSyntacticallyValidUtmCode', () => {
 });
 
 describe('resolveFirstTouch — chronological precedence, never "QR always wins"', () => {
+  // A fixed, realistic "now" anchor — tests pass this explicitly so they
+  // don't depend on the real wall clock, and so small relative offsets
+  // (T0+1000 vs T0+2000) land well inside the plausible-timestamp window
+  // the Phase 4 hardening checks against (parseTimestampMs's bounds are
+  // relative to "now", not to the epoch — see below).
+  const T0 = 1_700_000_000_000;
+  const NOW_FOR_PRECEDENCE = T0 + 10_000;
+
   it('neither channel valid -> null source, not ambiguous', async () => {
     const { resolveFirstTouch } = await import('@/lib/acquisitionAttribution');
     expect(resolveFirstTouch({ qrValid: null, qrAt: null, utmValid: null, utmAt: null }))
@@ -90,25 +98,25 @@ describe('resolveFirstTouch — chronological precedence, never "QR always wins"
 
   it('both valid, QR strictly earlier -> QR wins (chronological, not channel priority)', async () => {
     const { resolveFirstTouch } = await import('@/lib/acquisitionAttribution');
-    expect(resolveFirstTouch({ qrValid: 'PLACARD1', qrAt: '1000', utmValid: 'meta-oct', utmAt: '2000' }))
+    expect(resolveFirstTouch({ qrValid: 'PLACARD1', qrAt: String(T0 + 1000), utmValid: 'meta-oct', utmAt: String(T0 + 2000) }, NOW_FOR_PRECEDENCE))
       .toEqual({ source: 'qr', campaign: 'PLACARD1', ambiguous: false });
   });
 
   it('both valid, UTM strictly earlier -> UTM wins (proves QR does NOT always win)', async () => {
     const { resolveFirstTouch } = await import('@/lib/acquisitionAttribution');
-    expect(resolveFirstTouch({ qrValid: 'PLACARD1', qrAt: '2000', utmValid: 'meta-oct', utmAt: '1000' }))
+    expect(resolveFirstTouch({ qrValid: 'PLACARD1', qrAt: String(T0 + 2000), utmValid: 'meta-oct', utmAt: String(T0 + 1000) }, NOW_FOR_PRECEDENCE))
       .toEqual({ source: 'utm', campaign: 'meta-oct', ambiguous: false });
   });
 
   it('both valid, EQUAL timestamps -> ambiguous, no winner invented', async () => {
     const { resolveFirstTouch } = await import('@/lib/acquisitionAttribution');
-    expect(resolveFirstTouch({ qrValid: 'PLACARD1', qrAt: '1500', utmValid: 'meta-oct', utmAt: '1500' }))
+    expect(resolveFirstTouch({ qrValid: 'PLACARD1', qrAt: String(T0 + 1500), utmValid: 'meta-oct', utmAt: String(T0 + 1500) }, NOW_FOR_PRECEDENCE))
       .toEqual({ source: null, campaign: null, ambiguous: true });
   });
 
   it('both valid, QR timestamp MISSING -> ambiguous, not "UTM wins by default"', async () => {
     const { resolveFirstTouch } = await import('@/lib/acquisitionAttribution');
-    expect(resolveFirstTouch({ qrValid: 'PLACARD1', qrAt: null, utmValid: 'meta-oct', utmAt: '1000' }))
+    expect(resolveFirstTouch({ qrValid: 'PLACARD1', qrAt: null, utmValid: 'meta-oct', utmAt: String(T0 + 1000) }, NOW_FOR_PRECEDENCE))
       .toEqual({ source: null, campaign: null, ambiguous: true });
   });
 
@@ -122,6 +130,44 @@ describe('resolveFirstTouch — chronological precedence, never "QR always wins"
     const { resolveFirstTouch } = await import('@/lib/acquisitionAttribution');
     expect(resolveFirstTouch({ qrValid: 'PLACARD1', qrAt: '0', utmValid: 'meta-oct', utmAt: '1000' }).ambiguous).toBe(true);
     expect(resolveFirstTouch({ qrValid: 'PLACARD1', qrAt: '-5', utmValid: 'meta-oct', utmAt: '1000' }).ambiguous).toBe(true);
+  });
+
+  // Phase 4 hardening, concern #5 — cookie tampering / timestamp
+  // manipulation. A forged timestamp that is implausibly old (older than
+  // the cookie's own 90-day maxAge — the browser would have dropped a
+  // genuine cookie by then) or implausibly in the future (both
+  // timestamps are stamped server-side; a client has no legitimate way
+  // to be "ahead" of the server) is rejected as unparseable, exactly like
+  // a malformed string — never trusted, never used to force a win.
+  const NOW = 1_700_000_000_000;
+  const NINETY_DAYS_MS = 90 * 24 * 60 * 60 * 1000;
+
+  it('rejects a timestamp older than the cookie max-age as implausible (forged-ancient-cookie attack)', async () => {
+    const { resolveFirstTouch } = await import('@/lib/acquisitionAttribution');
+    const ancientQrAt = String(NOW - NINETY_DAYS_MS - 1000); // 1s past the 90-day window
+    const result = resolveFirstTouch({ qrValid: 'PLACARD1', qrAt: ancientQrAt, utmValid: 'meta-oct', utmAt: String(NOW) }, NOW);
+    expect(result).toEqual({ source: null, campaign: null, ambiguous: true });
+  });
+
+  it('accepts a timestamp exactly at the 90-day boundary (not off-by-one too strict)', async () => {
+    const { resolveFirstTouch } = await import('@/lib/acquisitionAttribution');
+    const boundaryQrAt = String(NOW - NINETY_DAYS_MS + 1000); // 1s inside the window
+    const result = resolveFirstTouch({ qrValid: 'PLACARD1', qrAt: boundaryQrAt, utmValid: 'meta-oct', utmAt: String(NOW) }, NOW);
+    expect(result).toEqual({ source: 'qr', campaign: 'PLACARD1', ambiguous: false });
+  });
+
+  it('rejects a timestamp meaningfully in the future as implausible (forged-future-cookie attack)', async () => {
+    const { resolveFirstTouch } = await import('@/lib/acquisitionAttribution');
+    const futureUtmAt = String(NOW + 10 * 60 * 1000); // 10 minutes ahead — beyond the 5-minute skew tolerance
+    const result = resolveFirstTouch({ qrValid: 'PLACARD1', qrAt: String(NOW), utmValid: 'meta-oct', utmAt: futureUtmAt }, NOW);
+    expect(result).toEqual({ source: null, campaign: null, ambiguous: true });
+  });
+
+  it('tolerates a small, ordinary clock-skew future timestamp (not overly strict)', async () => {
+    const { resolveFirstTouch } = await import('@/lib/acquisitionAttribution');
+    const slightlyAheadUtmAt = String(NOW + 60 * 1000); // 1 minute ahead — within tolerance
+    const result = resolveFirstTouch({ qrValid: 'PLACARD1', qrAt: String(NOW - 1000), utmValid: 'meta-oct', utmAt: slightlyAheadUtmAt }, NOW);
+    expect(result).toEqual({ source: 'qr', campaign: 'PLACARD1', ambiguous: false });
   });
 });
 
