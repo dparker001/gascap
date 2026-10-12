@@ -13,6 +13,7 @@ import { hasEmailBeenSent }  from './emailLog';
 import { checkRateLimit } from './rateLimit';
 import { pgPool }        from './prisma';
 import { recordAnalyticsEvent } from './analyticsEvents';
+import { captureAcquisitionAttributionFromRawTouch } from './acquisitionAttribution';
 
 /** Wrong-code guesses allowed per email before verification is refused. */
 const OTP_VERIFY_MAX_ATTEMPTS = 5;
@@ -41,6 +42,17 @@ export const authOptions: NextAuthOptions = {
         locale:       { label: 'Locale',   type: 'text'  },
         referralCode: { label: 'Referral', type: 'text'  },
         platform:     { label: 'Platform', type: 'text'  },
+        // Workstream 01 — this authorize() signature has no `req`/cookie
+        // access (NextAuth's CredentialsProvider only passes `req` to
+        // SOME provider configs, not this one), so acquisition attribution
+        // is read client-side from document.cookie and submitted the same
+        // way `platform` already is above — same established pattern,
+        // not a new one. See app/signup/page.tsx and
+        // lib/acquisitionAttribution.ts.
+        qrCode:  { label: 'QR code',  type: 'text' },
+        qrAt:    { label: 'QR at',    type: 'text' },
+        utmCode: { label: 'UTM code', type: 'text' },
+        utmAt:   { label: 'UTM at',   type: 'text' },
       },
       async authorize(credentials) {
         try {
@@ -157,6 +169,21 @@ export const authOptions: NextAuthOptions = {
               });
             } catch (e) { console.error('[GasCap analytics] OTP trial_started write failed:', e); }
           }
+
+          // Workstream 01 — first-touch web acquisition attribution.
+          // Client-supplied (this provider has no req/cookie access —
+          // see the credentials block above) and only ever called in the
+          // isNew branch, same as signup_completed/trial_started — never
+          // on a returning OTP sign-in, which must not backdate
+          // attribution onto an account that signed up long before this
+          // feature existed.
+          captureAcquisitionAttributionFromRawTouch(user!.id, {
+            qrCode:  credentials.qrCode  || null, // '' (client's empty-cookie fallback) and undefined both mean "absent"
+            qrAt:    credentials.qrAt    || null,
+            utmCode: credentials.utmCode || null,
+            utmAt:   credentials.utmAt   || null,
+          }).catch((e) => console.error('[GasCap] OTP acquisition attribution capture failed:', e));
+
           user = await findByEmail(email) ?? user; // refresh to get updated plan/isProTrial
           // Remaining onboarding fire-and-forget
           ;(async () => {
@@ -288,6 +315,34 @@ export const authOptions: NextAuthOptions = {
                   });
                 } catch (e) { console.error('[GasCap analytics] Google trial_started write failed:', e); }
               }
+
+              // Workstream 01 — first-touch web acquisition attribution.
+              // NextAuth v4's signIn callback has no req/cookie parameter
+              // in its public type (unlike the credentials provider's
+              // authorize(credentials, req), which DOES get one — see the
+              // password-login provider above). next/headers's cookies()
+              // reads the inbound request's cookies via Next.js's
+              // request-scoped context, which this callback executes
+              // within (it's invoked synchronously inside the
+              // /api/auth/[...nextauth] Route Handler's own request).
+              // UNVERIFIED AGAINST A LIVE OAUTH REDIRECT in this session
+              // (no way to drive a real Google OAuth round-trip here) —
+              // flagged explicitly in the Phase 3 report as needing a
+              // manual smoke test before merge. Fire-and-forget regardless
+              // of outcome, same as every other branch here.
+              try {
+                const { cookies } = await import('next/headers');
+                const jar = cookies();
+                captureAcquisitionAttributionFromRawTouch(dbUser.id, {
+                  qrCode:  jar.get('gc_src')?.value     ?? null,
+                  qrAt:    jar.get('gc_src_at')?.value   ?? null,
+                  utmCode: jar.get('gc_utm')?.value      ?? null,
+                  utmAt:   jar.get('gc_utm_at')?.value   ?? null,
+                }).catch((e) => console.error('[GasCap] Google acquisition attribution capture failed:', e));
+              } catch (e) {
+                console.error('[GasCap] Google acquisition attribution — cookies() unavailable in this context:', e);
+              }
+
               await enrollEmailCampaign(dbUser.id);
               await recordLogin(dbUser.id);
 

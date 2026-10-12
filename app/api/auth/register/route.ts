@@ -18,6 +18,7 @@ import { sendCampaignEmail } from '@/lib/emailCampaign';
 import { hasEmailBeenSent }  from '@/lib/emailLog';
 import { upsertGhlContact, upsertGhlContactWithCampaign } from '@/lib/ghl';
 import { getPlacementByCode, logEvent } from '@/lib/campaigns';
+import { captureAcquisitionAttribution } from '@/lib/acquisitionAttribution';
 
 function getBaseUrl(req: Request): string {
   const nextAuthUrl    = process.env.NEXTAUTH_URL;
@@ -197,6 +198,14 @@ export async function POST(req: Request) {
     const cookieHeader = req.headers.get('cookie') ?? '';
     const placementCode = /(?:^|;\s*)gc_src=([^;]+)/.exec(cookieHeader)?.[1];
     const placement     = placementCode ? await getPlacementByCode(decodeURIComponent(placementCode)) : undefined;
+
+    // Workstream 01 — first-touch web acquisition attribution. Fire-and-
+    // forget, independent of the QR-specific campaign-signup logging just
+    // below (that's for the admin funnel dashboard; this is the new
+    // User-level acqSource/acqCampaign columns). Never blocks signup.
+    captureAcquisitionAttribution(user.id, cookieHeader).catch((e) =>
+      console.error('[GasCap] acquisition attribution capture failed:', e),
+    );
 
     // Log a campaign signup event so the dashboard funnel updates.
     // Include the signup locale so the admin dashboard can show EN vs ES
