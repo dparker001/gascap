@@ -19,6 +19,9 @@ import { useIsNative }                       from '@/hooks/useIsNative';
 import { requestCurrentLocation }            from '@/lib/currentLocation';
 import { createPlacesSessionToken }          from '@/lib/placesSessionToken';
 import GoogleAttribution                     from './GoogleAttribution';
+import { createLatestWinsGuard }             from '@/lib/latestWinsGuard';
+import { resolveSelectedPlace, invalidateSelection } from '@/lib/placeSelectionResolver';
+import { fetchPlaceCoordinates }             from '@/lib/placeLocationClient';
 
 // ── Rental presets ─────────────────────────────────────────────────────────
 
@@ -113,8 +116,11 @@ function resolveMpg(v: Vehicle, avgMpgByVehicleId: Record<string, number>) {
 }
 
 // ── Duration formatting ────────────────────────────────────────────────────
+// Exported for direct unit testing (routing-integrity audit, 2026-10-12) —
+// no prior test exercised the Google-duration-string -> seconds -> formatted
+// hours/minutes pipeline at all.
 
-function formatDuration(
+export function formatDuration(
   seconds: number,
   fmt: {
     durationMin:       (mins: number) => string;
@@ -244,6 +250,30 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
   // the typed/selected text at Calculate time if this never resolves.
   const [originCoords, setOriginCoords] = useState<LatLng | undefined>(undefined);
   const [destCoords,   setDestCoords]   = useState<LatLng | undefined>(undefined);
+  // Routing-integrity fix (2026-10-12): origin and destination each get
+  // their own LatestWinsGuard, so a Place Details lookup from an abandoned
+  // selection can never overwrite coordinates for the current one, and
+  // never touch originResolving/destResolving either — see
+  // selectOriginSuggestion/selectDestSuggestion (resolveSelectedPlace) and
+  // every mode-switch/edit/clear handler below (invalidateSelection).
+  // originResolving/destResolving track whether the CURRENT generation's
+  // lookup is still outstanding, not a count of all historical requests —
+  // an abandoned earlier request (possibly one that never resolves) must
+  // never keep Calculate disabled after the current selection has already
+  // resolved (ChatGPT review correction, PR #84).
+  const originGuard = useRef(createLatestWinsGuard());
+  const destGuard   = useRef(createLatestWinsGuard());
+  const [originResolving, setOriginResolving] = useState(false);
+  const [destResolving,   setDestResolving]   = useState(false);
+
+  // Unmount safety: invalidate both guards so a lookup that outlives this
+  // component's lifetime can never call a setState on an unmounted instance.
+  useEffect(() => {
+    return () => {
+      originGuard.current.invalidateAll();
+      destGuard.current.invalidateAll();
+    };
+  }, []);
   const [currentLocationStatus, setCurrentLocationStatus] =
     useState<'idle' | 'locating' | 'granted' | 'denied' | 'unavailable' | 'timeout' | 'unsupported'>('idle');
   const [currentLocationCoords, setCurrentLocationCoords] = useState<LatLng | null>(null);
@@ -286,6 +316,7 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
   }, [session, canUseRoutePlanner, tripPlanMode, favoritesLoaded, loadFavorites]);
 
   async function handleUseCurrentLocation() {
+    invalidateSelection(originGuard.current, setOriginResolving);
     setOriginMode('current_location');
     setOriginFavoriteId('');
     setOriginPlaceId(undefined);
@@ -306,6 +337,7 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
   }
 
   function handleOriginBackToManual() {
+    invalidateSelection(originGuard.current, setOriginResolving);
     setOriginMode('manual');
     setOriginFavoriteId('');
     setOriginPlaceId(undefined);
@@ -317,6 +349,7 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
   }
 
   function handleSelectOriginFavorite(fav: FavoriteAddressClient) {
+    invalidateSelection(originGuard.current, setOriginResolving);
     setOriginMode('favorite');
     setOriginFavoriteId(fav.id);
     setOriginPlaceId(undefined);
@@ -330,6 +363,7 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
   }
 
   function handleDestBackToManual() {
+    invalidateSelection(destGuard.current, setDestResolving);
     setDestMode('manual');
     setDestFavoriteId('');
     setDestPlaceId(undefined);
@@ -339,6 +373,7 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
   }
 
   function handleSelectDestFavorite(fav: FavoriteAddressClient) {
+    invalidateSelection(destGuard.current, setDestResolving);
     setDestMode('favorite');
     setDestFavoriteId(fav.id);
     setDestPlaceId(undefined);
@@ -364,17 +399,12 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
     clearOriginSugg();
     setRouteData(null);
     setResult(null);
-    try {
-      const res = await fetch('/api/maps/place-location', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ placeId: s.placeId, sessionToken: token }),
-      });
-      const data = await res.json() as { ok: boolean; lat?: number; lng?: number };
-      if (data.ok && data.lat != null && data.lng != null) {
-        setOriginCoords({ latitude: data.lat, longitude: data.lng });
-      }
-    } catch { /* falls back to geocoding the text string at Calculate time */ }
+    await resolveSelectedPlace(
+      originGuard.current,
+      () => fetchPlaceCoordinates(s.placeId, token),
+      (coords) => setOriginCoords(coords),
+      setOriginResolving,
+    );
   }
 
   async function selectDestSuggestion(s: AutocompleteSuggestion) {
@@ -385,17 +415,12 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
     clearDestSugg();
     setRouteData(null);
     setResult(null);
-    try {
-      const res = await fetch('/api/maps/place-location', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ placeId: s.placeId, sessionToken: token }),
-      });
-      const data = await res.json() as { ok: boolean; lat?: number; lng?: number };
-      if (data.ok && data.lat != null && data.lng != null) {
-        setDestCoords({ latitude: data.lat, longitude: data.lng });
-      }
-    } catch { /* falls back to geocoding the text string at Calculate time */ }
+    await resolveSelectedPlace(
+      destGuard.current,
+      () => fetchPlaceCoordinates(s.placeId, token),
+      (coords) => setDestCoords(coords),
+      setDestResolving,
+    );
   }
 
   function openSavePrompt(which: 'origin' | 'destination') {
@@ -637,6 +662,12 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
   }
 
   async function handleRouteCalculate() {
+    // Routing-integrity fix (2026-10-12): refuse to calculate while a
+    // Place Details lookup is still resolving — resolveWaypoint() would
+    // silently fall back to the typed text, discarding the precise
+    // coordinates about to arrive, and the result could change out from
+    // under the user a moment later with no indication why.
+    if (originResolving || destResolving) return;
     setRouteError('');
     setRouteData(null);
     setFuelStops([]);
@@ -931,14 +962,14 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
                             placeholder={t.tripCostEstimator.enterAnotherLocation}
                             value={routeOrigin}
                             autoComplete="off"
-                            onChange={(e) => { setRouteOrigin(e.target.value); setOriginPlaceId(undefined); setOriginCoords(undefined); setRouteData(null); setResult(null); }}
+                            onChange={(e) => { invalidateSelection(originGuard.current, setOriginResolving); setRouteOrigin(e.target.value); setOriginPlaceId(undefined); setOriginCoords(undefined); setRouteData(null); setResult(null); }}
                             onBlur={() => { setTimeout(clearOriginSugg, 150); }}
                             aria-label={t.tripCostEstimator.ariaStartingPoint}
                           />
                           {routeOrigin && (
                             <button
                               type="button"
-                              onClick={() => { setRouteOrigin(''); setOriginPlaceId(undefined); setOriginCoords(undefined); clearOriginSugg(); setRouteData(null); setResult(null); }}
+                              onClick={() => { invalidateSelection(originGuard.current, setOriginResolving); setRouteOrigin(''); setOriginPlaceId(undefined); setOriginCoords(undefined); clearOriginSugg(); setRouteData(null); setResult(null); }}
                               className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500 transition-colors"
                               aria-label={t.tripCostEstimator.ariaClearStartingPoint}
                             >
@@ -1002,14 +1033,14 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
                             placeholder={t.tripCostEstimator.enterAnotherLocation}
                             value={routeDest}
                             autoComplete="off"
-                            onChange={(e) => { setRouteDest(e.target.value); setDestPlaceId(undefined); setDestCoords(undefined); setRouteData(null); setResult(null); }}
+                            onChange={(e) => { invalidateSelection(destGuard.current, setDestResolving); setRouteDest(e.target.value); setDestPlaceId(undefined); setDestCoords(undefined); setRouteData(null); setResult(null); }}
                             onBlur={() => { setTimeout(clearDestSugg, 150); }}
                             aria-label={t.tripCostEstimator.ariaDestination}
                           />
                           {routeDest && (
                             <button
                               type="button"
-                              onClick={() => { setRouteDest(''); setDestPlaceId(undefined); setDestCoords(undefined); clearDestSugg(); setRouteData(null); setResult(null); }}
+                              onClick={() => { invalidateSelection(destGuard.current, setDestResolving); setRouteDest(''); setDestPlaceId(undefined); setDestCoords(undefined); clearDestSugg(); setRouteData(null); setResult(null); }}
                               className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500 transition-colors"
                               aria-label={t.tripCostEstimator.ariaClearDestination}
                             >
@@ -1443,9 +1474,14 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
               <button
                 className="btn-amber flex-1"
                 onClick={handleRouteCalculate}
-                disabled={routeLoading || mpgLookingUp}
+                disabled={routeLoading || mpgLookingUp || originResolving || destResolving}
               >
                 {routeLoading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <span className="inline-block w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    {t.tripCostEstimator.calculatingRoute}
+                  </span>
+                ) : (originResolving || destResolving) ? (
                   <span className="flex items-center justify-center gap-2">
                     <span className="inline-block w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                     {t.tripCostEstimator.calculatingRoute}

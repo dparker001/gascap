@@ -65,7 +65,8 @@ function toWaypoint(loc: string | LatLng) {
     : { location: { latLng: { latitude: loc.latitude, longitude: loc.longitude } } };
 }
 
-function parseDuration(d: string): number {
+/** Google Routes returns duration as a string like "23506s" — exported for direct unit testing (routing-integrity audit, 2026-10-12). */
+export function parseDuration(d: string): number {
   return parseInt(d.replace('s', ''), 10) || 0;
 }
 
