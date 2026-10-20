@@ -24,6 +24,8 @@ import { resolveSelectedPlace, invalidateSelection } from '@/lib/placeSelectionR
 import { fetchPlaceCoordinates }             from '@/lib/placeLocationClient';
 import { pickAutoSelectVehicle }            from '@/lib/vehicleAutoSelect';
 import { rentalTripVehicleFor, type RentalTripVehicle } from '@/lib/rentalTripVehicle';
+import { createMpgLookup, type MpgLookupResponse } from '@/lib/mpgLookupController';
+import type { EpaEnergyType }                  from '@/lib/epaEnergyType';
 import type { RentalSession }               from '@/lib/rentalSessions';
 
 // ── Rental presets ─────────────────────────────────────────────────────────
@@ -235,6 +237,10 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
   // Set while the tank size in the field came from the rental record, so the
   // UI can say so — confirmed data, unlike the EPA MPG estimate beside it.
   const [tankFromRental,    setTankFromRental]    = useState(false);
+  // Set when EPA says the selected vehicle's figures are not gallons-based
+  // (battery-electric, CNG, hydrogen). GasCap explains that instead of
+  // leaving an empty MPG box and inviting the user to invent a number.
+  const [unsupportedEnergy, setUnsupportedEnergy] = useState<{ energyType: EpaEnergyType; detail: string } | null>(null);
   const [tripPlanMode,      setTripPlanMode]      = useState<TripPlanMode>('manual');
   const [gasCoords,         setGasCoords]         = useState<{ lat: number; lng: number } | null>(null);
 
@@ -280,6 +286,12 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
   // resolved (ChatGPT review correction, PR #84).
   const originGuard = useRef(createLatestWinsGuard());
   const destGuard   = useRef(createLatestWinsGuard());
+  // Round-2 review: EPA MPG lookups needed the same latest-wins treatment the
+  // autocomplete guards above already have. Selecting the active rental, then
+  // picking a preset / editing MPG / switching mode before the request
+  // resolved, let the stale response overwrite the newer choice — so the
+  // displayed MPG belonged to a vehicle the UI no longer said was selected.
+  const mpgGuard = useRef(createLatestWinsGuard());
   const [originResolving, setOriginResolving] = useState(false);
   const [destResolving,   setDestResolving]   = useState(false);
 
@@ -583,6 +595,14 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
   // Scoped to the account that asked: a response that lands after a sign-out
   // or an account switch is dropped, never shown to whoever is signed in now.
   const rentalUserId = (session?.user as { id?: string } | undefined)?.id ?? null;
+
+  // An account change, a sign-out or an unmount must also cancel any MPG
+  // lookup in flight: its result belonged to the previous context.
+  useEffect(() => {
+    const guard = mpgGuard.current;
+    return () => { guard.invalidateAll(); };
+  }, [rentalUserId]);
+
   useEffect(() => {
     if (!open || !rentalUserId) { setActiveRental(null); return; }
     let cancelled = false;
@@ -599,6 +619,7 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
   // Offer it once, and only into an untouched rental form: anything the
   // renter has already chosen or typed is theirs and stays.
   const rentalAutoAppliedRef = useRef(false);
+  useEffect(() => { rentalAutoAppliedRef.current = false; }, [rentalUserId]);
   useEffect(() => {
     if (vehicleMode !== 'rental' || !activeRental) return;
     if (rentalAutoAppliedRef.current) return;
@@ -622,6 +643,34 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vehicles]);
 
+  /**
+   * One lookup pipeline for both the garage and the active-rental paths, so
+   * only the most recently issued request may write to the MPG fields.
+   * Rebuilt each render (it closes over the current setters) but the guard
+   * itself lives in a ref, so generations survive re-renders.
+   */
+  const mpgLookup = createMpgLookup({
+    guard: mpgGuard.current,
+    fetchMpg: async (query) => {
+      const res = await fetch(`/api/mpg-lookup?${query}`);
+      return await res.json() as MpgLookupResponse;
+    },
+    sinks: {
+      setMpg,
+      setMpgSourceLabel,
+      setMpgOptions,
+      setLookingUp:         setMpgLookingUp,
+      setUnsupportedEnergy,
+    },
+    labelFor: () => mpgLabelRef.current,
+  });
+
+  // The label depends on which vehicle the in-flight lookup was for, and
+  // `labelFor` runs after the await — so it reads the label the issuing call
+  // recorded rather than whatever is selected by then. The guard guarantees
+  // only the current lookup ever gets that far.
+  const mpgLabelRef = useRef('');
+
   async function loadVehicle(v: Vehicle) {
     const { mpg: resolvedMpg, labelKey } = resolveMpg(v, avgMpgByVehicleId);
     const label = labelKey ? t.tripCostEstimator[labelKey] : '';
@@ -629,39 +678,26 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
     setTankFromRental(false);
     setSelectedVehicleId(v.id);
     setMpgOptions(null);
+    setUnsupportedEnergy(null);
 
     if (resolvedMpg != null) {
-      // Fill-up history or EPA spec already has MPG — use it directly
+      // Fill-up history or EPA spec already has MPG — use it directly. No
+      // request, so cancel any in-flight lookup rather than letting it land.
+      mpgLookup.invalidate();
       setMpg(String(resolvedMpg));
       setMpgSourceLabel(label);
       setMpgLookingUp(false);
     } else if (v.epaId || (v.year && v.make && v.model)) {
       // No stored EPA data — fetch live from FuelEconomy.gov.
       // Prefer epaId (exact trim) over year/make/model (averaged across trims).
-      setMpg('');
-      setMpgSourceLabel('');
-      setMpgLookingUp(true);
-      try {
-        const qs = v.epaId
-          ? `epaId=${encodeURIComponent(v.epaId)}`
-          : `year=${encodeURIComponent(v.year!)}&make=${encodeURIComponent(v.make!)}&model=${encodeURIComponent(v.model!)}`;
-        const res  = await fetch(`/api/mpg-lookup?${qs}`);
-        const data = await res.json() as {
-          ok: boolean; combMpg?: number; cityMpg?: number; hwyMpg?: number;
-        };
-        if (data.ok && data.combMpg) {
-          setMpg(String(data.combMpg));
-          const vehicleLabel = [v.year, v.make, v.model].filter(Boolean).join(' ');
-          setMpgSourceLabel(t.tripCostEstimator.epaEstimateForVehicle(vehicleLabel));
-          setMpgOptions({
-            comb: data.combMpg,
-            city: data.cityMpg ?? data.combMpg,
-            hwy:  data.hwyMpg  ?? data.combMpg,
-          });
-        }
-      } catch { /* ignore — field stays empty, user can pick a toggle value */ }
-      finally { setMpgLookingUp(false); }
+      const vehicleLabel = [v.year, v.make, v.model].filter(Boolean).join(' ');
+      mpgLabelRef.current = t.tripCostEstimator.epaEstimateForVehicle(vehicleLabel);
+      const qs = v.epaId
+        ? `epaId=${encodeURIComponent(v.epaId)}`
+        : `year=${encodeURIComponent(v.year!)}&make=${encodeURIComponent(v.make!)}&model=${encodeURIComponent(v.model!)}`;
+      await mpgLookup.run(qs);
     } else {
+      mpgLookup.invalidate();
       setMpg('');
       setMpgSourceLabel(label);
       setMpgLookingUp(false);
@@ -681,6 +717,7 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
   async function loadActiveRental(rental: RentalTripVehicle) {
     setRentalType(ACTIVE_RENTAL_OPTION);
     setMpgOptions(null);
+    setUnsupportedEnergy(null);
     setResult(null);
 
     if (rental.tankGallons != null) {
@@ -692,33 +729,18 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
     }
 
     if (!rental.mpgLookup) {
+      mpgLookup.invalidate();
       setMpg('');
       setMpgSourceLabel('');
       setMpgLookingUp(false);
       return;
     }
 
-    setMpg('');
-    setMpgSourceLabel('');
-    setMpgLookingUp(true);
-    try {
-      const { year, make, model } = rental.mpgLookup;
-      const qs = `year=${encodeURIComponent(year)}&make=${encodeURIComponent(make)}&model=${encodeURIComponent(model)}`;
-      const res  = await fetch(`/api/mpg-lookup?${qs}`);
-      const data = await res.json() as {
-        ok: boolean; combMpg?: number; cityMpg?: number; hwyMpg?: number;
-      };
-      if (data.ok && data.combMpg) {
-        setMpg(String(data.combMpg));
-        setMpgSourceLabel(t.tripCostEstimator.epaEstimateForVehicle(rental.label));
-        setMpgOptions({
-          comb: data.combMpg,
-          city: data.cityMpg ?? data.combMpg,
-          hwy:  data.hwyMpg  ?? data.combMpg,
-        });
-      }
-    } catch { /* ignore — the field stays empty and the renter types it */ }
-    finally { setMpgLookingUp(false); }
+    const { year, make, model } = rental.mpgLookup;
+    mpgLabelRef.current = t.tripCostEstimator.epaEstimateForVehicle(rental.label);
+    await mpgLookup.run(
+      `year=${encodeURIComponent(year)}&make=${encodeURIComponent(make)}&model=${encodeURIComponent(model)}`,
+    );
   }
 
   function loadRentalPreset(label: string) {
@@ -726,6 +748,9 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
       if (activeRental) void loadActiveRental(activeRental);
       return;
     }
+    // A preset issues no request, so there is no newer token to supersede an
+    // in-flight lookup — it has to be cancelled explicitly.
+    mpgLookup.invalidate();
     setRentalType(label);
     setTankFromRental(false);
     const preset = RENTAL_PRESETS.find((p) => p.label === label);
@@ -773,6 +798,7 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
   }
 
   async function handleRouteCalculate() {
+    if (unsupportedEnergy) return;
     // Routing-integrity fix (2026-10-12): refuse to calculate while a
     // Place Details lookup is still resolving — resolveWaypoint() would
     // silently fall back to the typed text, discarding the precise
@@ -874,6 +900,10 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
   }
 
   function handleCalculate() {
+    // A non-gallon vehicle has no honest gasoline trip cost. The buttons are
+    // disabled for this, but the guard lives here as well so the refusal does
+    // not depend on the UI being in the state we think it is.
+    if (unsupportedEnergy) return;
     if (!validate()) return;
     const r = calcTrip(
       parseFloat(miles),
@@ -891,6 +921,7 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
   }
 
   function handleReset() {
+    mpgLookup.invalidate();
     setMiles(''); setMpg(''); setTankGal(''); setFuelPct('0');
     setPricePerGallon(''); setPeople('1'); setResult(null); setErrors({});
     setSelectedVehicleId('');
@@ -1297,7 +1328,7 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
             <div>
               <div className="flex gap-2">
                 <button
-                  onClick={() => { setVehicleMode('garage'); loadGarage(); setRentalType(''); setTankFromRental(false); }}
+                  onClick={() => { mpgLookup.invalidate(); setVehicleMode('garage'); loadGarage(); setRentalType(''); setTankFromRental(false); }}
                   className={[
                     'flex-1 py-2 rounded-xl text-xs font-bold border-2 transition-all',
                     vehicleMode === 'garage'
@@ -1308,7 +1339,7 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
                   🚗 {t.tripCostEstimator.myGarage}
                 </button>
                 <button
-                  onClick={() => { setVehicleMode('rental'); setSelectedVehicleId(''); setMpg(''); setTankGal(''); setMpgSourceLabel(''); setTankFromRental(false); }}
+                  onClick={() => { mpgLookup.invalidate(); setVehicleMode('rental'); setSelectedVehicleId(''); setMpg(''); setTankGal(''); setMpgSourceLabel(''); setTankFromRental(false); }}
                   className={[
                     'flex-1 py-2 rounded-xl text-xs font-bold border-2 transition-all',
                     vehicleMode === 'rental'
@@ -1429,7 +1460,7 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
                   value={mpg}
                   min="1" step="0.5"
                   readOnly={garageVehicleLocked || mpgLookingUp}
-                  onChange={garageVehicleLocked ? undefined : (e) => { setMpg(e.target.value); setMpgSourceLabel(''); setMpgOptions(null); setResult(null); }}
+                  onChange={garageVehicleLocked ? undefined : (e) => { mpgLookup.invalidate(); setMpg(e.target.value); setMpgSourceLabel(''); setMpgOptions(null); setResult(null); }}
                   aria-label={t.tripCostEstimator.ariaMpg}
                 />
                 {mpgLookingUp ? (
@@ -1445,6 +1476,21 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
                 <p className="text-[10px] text-amber-500 mt-1 font-medium leading-snug animate-pulse">
                   {t.tripCostEstimator.lookingUpEpa}
                 </p>
+              ) : unsupportedEnergy ? (
+                <div className="mt-1.5 rounded-xl bg-sky-50 border border-sky-200 px-3 py-2">
+                  <p className="text-[11px] font-black text-sky-800 leading-snug">
+                    ⚡ {t.tripCostEstimator.notGallonVehicleTitle}
+                  </p>
+                  <p className="text-[11px] text-sky-700 mt-0.5 leading-relaxed">
+                    {unsupportedEnergy.energyType === 'electric'
+                      ? t.tripCostEstimator.notGallonElectric
+                      : unsupportedEnergy.energyType === 'natural_gas'
+                        ? t.tripCostEstimator.notGallonNaturalGas
+                        : unsupportedEnergy.energyType === 'hydrogen'
+                          ? t.tripCostEstimator.notGallonHydrogen
+                          : t.tripCostEstimator.notGallonUnknown}
+                  </p>
+                </div>
               ) : mpgSourceLabel ? (
                 <p className="text-[10px] text-amber-600 mt-1 font-medium leading-snug">{mpgSourceLabel}</p>
               ) : garageVehicleLocked ? (
@@ -1491,7 +1537,7 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
                 </div>
               )}
             </div>
-            <div>
+            <div className={unsupportedEnergy ? 'opacity-40 pointer-events-none' : ''}>
               <p className="field-label">{t.tripCostEstimator.tankSize}</p>
               <div className="relative">
                 <input
@@ -1593,7 +1639,7 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
               <button
                 className="btn-amber flex-1"
                 onClick={handleRouteCalculate}
-                disabled={routeLoading || mpgLookingUp || originResolving || destResolving}
+                disabled={routeLoading || mpgLookingUp || originResolving || destResolving || unsupportedEnergy !== null}
               >
                 {routeLoading ? (
                   <span className="flex items-center justify-center gap-2">
@@ -1616,7 +1662,7 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
               <button
                 className="btn-amber flex-1"
                 onClick={handleCalculate}
-                disabled={mpgLookingUp}
+                disabled={mpgLookingUp || unsupportedEnergy !== null}
               >
                 {mpgLookingUp ? (
                   <span className="flex items-center justify-center gap-2">

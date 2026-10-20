@@ -15,7 +15,7 @@ import { getMakeLogoUrl }                    from '@/lib/makeLogo';
 import { isGaugeStyle, type GaugeStyle } from '@/lib/gaugeStyles';
 import GaugeStylePicker from './gauge-styles/GaugeStylePicker';
 import { trackClientEvent } from '@/lib/clientAnalytics';
-import { pickAutoSelectVehicle } from '@/lib/vehicleAutoSelect';
+import { decideVehicleAutoApply } from '@/lib/vehicleAutoSelect';
 
 
 export interface Vehicle {
@@ -425,29 +425,33 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
     if (session) load();
   }, [session, load]);
 
-  // Auto-apply a vehicle whenever this list is showing with nothing
-  // currently selected — most notably right after leaving Rental Mode,
-  // which always clears the active vehicle since a rental lookup match
-  // isn't a garage vehicle. Guarded by autoAppliedRef so it fires once per
-  // empty-selection window rather than fighting a user who deliberately
-  // clears the selection some other way.
+  // Auto-apply a vehicle ONCE PER ACCOUNT, when nothing is applied yet.
   //
-  // 2026-10-20 (WS02 Phase 1B): previously this required an explicit
-  // `isDefault`, so a new user with exactly one car — who has had no
-  // reason to find the star button — re-picked their only vehicle every
-  // visit. pickAutoSelectVehicle() keeps the explicit default winning and
-  // adds the sole-vehicle case; the "nothing selected" guard above is what
-  // keeps a user's own choice from being overridden.
-  const autoAppliedRef = useRef(false);
+  // 2026-10-20 (WS02 Phase 1B): this used to require an explicit `isDefault`,
+  // so a new user with exactly one car — no reason to have found the star
+  // button — re-picked their only vehicle every visit.
+  //
+  // Round-3 review correction: the latch also used to re-arm itself whenever a
+  // vehicle was selected, so it applied again on the NEXT transition to empty.
+  // That silently undid real user actions — picking a generic tank-size
+  // preset in TargetFillForm/BudgetForm clears the vehicle, and the old latch
+  // immediately overwrote the tank size the user had just chosen. The latch is
+  // now keyed on the account, so the first apply happens and every later
+  // clear is respected as deliberate. See lib/vehicleAutoSelect.ts for the
+  // enumerated clear paths and why no rental-mode case remains.
+  const appliedForUserRef = useRef<string | null>(null);
+  const sessionUserId = (session?.user as { id?: string } | undefined)?.id ?? null;
   useEffect(() => {
-    if (selectedVehicleId) { autoAppliedRef.current = false; return; }
-    if (autoAppliedRef.current) return;
-    const auto = pickAutoSelectVehicle(data?.vehicles ?? []);
-    if (auto) {
-      autoAppliedRef.current = true;
-      onSelect(String(auto.vehicle.gallons), auto.vehicle);
-    }
-  }, [data, selectedVehicleId, onSelect]);
+    const decision = decideVehicleAutoApply({
+      vehicles:          data?.vehicles,
+      selectedVehicleId,
+      userId:            sessionUserId,
+      appliedForUserId:  appliedForUserRef.current,
+    });
+    if (decision.action !== 'apply') return;
+    appliedForUserRef.current = sessionUserId;
+    onSelect(String(decision.vehicle.gallons), decision.vehicle);
+  }, [data, selectedVehicleId, onSelect, sessionUserId]);
 
   // Allow the setup checklist to open the vehicle picker via a custom event
   useEffect(() => {

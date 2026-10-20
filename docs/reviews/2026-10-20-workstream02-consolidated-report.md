@@ -30,9 +30,11 @@ for it.
 
 - **Branch:** `feat/ws02-automation-phase1`
 - **Base branch:** `main` @ `26f6cfa2cb902e5d78c24227d1e7db86e390e04c`
-- **Review Target SHA:** `e7a62b2707d4f5e8ef5bf0b0064025eaffb2a1ee`
-- **Packet Commit SHA:** differs from the above — this packet is itself a
-  commit on the same branch, made after `e7a62b2`.
+- **Review Target SHA (round 1):** `e7a62b2707d4f5e8ef5bf0b0064025eaffb2a1ee`
+- **Reviewed head (ChatGPT round 1):** `cc63badf73ced28ad011535051073200c2cb7251`
+- **Review Target SHA (round 2, current):** see §15 — the corrective commit's
+  SHA is recorded there, since this packet is committed with it.
+- **Packet Commit SHA:** this packet is itself part of the corrective commit.
 - **PR:** [dparker001/gascap#87](https://github.com/dparker001/gascap/pull/87)
 - **Worktree:** `/Users/dpark/Projects/gascap-ws02`, created fresh off
   `origin/main` for this workstream.
@@ -229,30 +231,60 @@ gating a convenience is what made fill-up logging feel punitive before.
 **Backward compatibility:** every change is additive and degrades to today's
 behaviour. No rental, no default vehicle, no scan, a malformed total, an
 unconfigured maps provider, or the rental assistant disabled (404) all land
-exactly where `main` lands today.
+exactly where `main` lands today. **One deliberate behaviour change from
+`main`,** added in round 2: an electric, natural-gas or hydrogen vehicle no
+longer receives a (wrong) MPG from `/api/mpg-lookup` — it now receives an
+explicit `unsupported_energy_type` and Trip Planner explains it. That is a fix,
+not a regression, but it is a visible difference and worth naming.
+
+**Correction to this section as written in round 1:** it claimed "a user's own
+choice, including a deliberate clear, is never overridden." That was not
+implemented. See §15.3 — it is now.
 
 ## 9. Testing Performed
 
+**Round 2 (current head — the numbers that count):**
+
 ```
-npm test           →  3254 passed | 5 skipped (3259) across 187 files
-npx tsc --noEmit   →  clean (exit 0)
-npm run build      →  clean
-npm run check:crons→  22 routes, 20 scheduled, 2 exempt
-npm run check:sw   →  272/272 contract expectations hold
+npm test           →  3317 passed | 5 skipped (3322) across 190 files   exit 0
+npx tsc --noEmit   →  clean, 0 lines of output                          exit 0
+npm run build      →  clean                                            exit 0
+npm run check:crons→  22 routes, 20 scheduled, 2 exempt                 exit 0
+npm run check:sw   →  272/272 contract expectations hold                exit 0
 ```
 
-**New focused tests: 63**, in `__tests__/ws02ReceiptAmountPaid.test.ts` (27),
-`__tests__/ws02VehicleAutoSelect.test.ts` (15),
-`__tests__/ws02RentalTripVehicle.test.ts` (21). Coverage includes valid /
-missing / malformed / conflicting OCR values; zero / one / many vehicles with
-and without a default, ordering independence and ineligible vehicles; and
-active / absent / incomplete / closed / broken-schedule rentals plus manual
-override.
+*(Round 1, superseded: 3254 passed | 5 skipped across 187 files.)*
 
-**Shown to fail against the old behaviour.** Reverting the four changed
-component and translation files to `origin/main` (leaving the new `lib/`
-modules and tests in place) and re-running gives **14 failed | 49 passed**.
-Restoring them returns 63/63. Each test file also encodes `main`'s own logic
+**New focused tests: 126 across six files.**
+
+| File | Tests | Covers |
+|---|---|---|
+| `ws02ReceiptAmountPaid.test.ts` | 27 | valid / missing / malformed / conflicting OCR values |
+| `ws02VehicleAutoSelect.test.ts` | 15 | zero / one / many vehicles, ordering independence, ineligible vehicles |
+| `ws02RentalTripVehicle.test.ts` | 21 | active / absent / incomplete / closed / broken-schedule rentals, manual override |
+| `ws02EpaEnergyTypeGuard.test.ts` | 29 | **round 2** — energy-type classification and pre-average trim filtering |
+| `ws02MpgLookupRace.test.ts` | 15 | **round 2** — behavioral stale-response race |
+| `ws02VehicleDeliberateClear.test.ts` | 19 | **round 2** — deliberate-clear sequences |
+
+**Shown to fail against the old behaviour.**
+
+*Round 1:* reverting the four changed component and translation files to
+`origin/main` (leaving the new `lib/` modules and tests in place) and
+re-running gave **14 failed | 49 passed**. Restoring them returned 63/63.
+
+*Round 2:* reverting `app/api/mpg-lookup/route.ts`,
+`components/TripCostEstimator.tsx`, `components/SavedVehicles.tsx` and
+`lib/translations.ts` to `cc63bad` gave **8 failed | 55 passed** across the
+three new files. Restoring returned 63/63.
+
+**One honest caveat about that round-2 experiment:** `ws02MpgLookupRace.test.ts`
+passed in both states, because the controller it exercises is a new module that
+the revert left in place. Its before/after proof is therefore *inside* the
+file, not in the revert: the first test runs the unguarded sequence the PR
+shipped with (`legacyRun`) and asserts it overwrites the user's manual `19`
+with a stale `48`, and the next test runs the same sequence through the
+controller and asserts the `19` survives. Reverting the module instead would
+only have produced an import error, which proves nothing. Each test file also encodes `main`'s own logic
 inline — `legacyApplyScan`, `legacyGarage`, `legacyTrip`,
 `legacyRentalOptions` — and asserts it produces the wrong answer, so the gap
 stays documented in the suite rather than only in this packet.
@@ -299,12 +331,13 @@ before `check:sw` runs.
    it is labelled an estimate — but a renter in a V6 getting a 4-cylinder's
    figure is a real inaccuracy. Using the trim would need an `epaId` resolution
    step the rental flow does not have today.
-4. **The EV case is untested here.** An electric rental has no gallons and an
-   EPA lookup would return MPGe; `comb08`/`range` for a BEV is the documented
-   nonsense-tank-size trap. In practice such a rental has no
-   `fuelTankCapacityGallons`, so the offer appears with tank empty and MPG from
-   an MPGe figure. **I did not add an EV guard and I think one is warranted** —
-   flagged rather than silently shipped.
+4. **RESOLVED in round 2 — and it was worse than I described.** I flagged the
+   EV case as a risk confined to rental mode. Independent review correctly
+   pushed back: `/api/mpg-lookup` never read a fuel type at all, so this was a
+   **pre-existing defect in the shared endpoint** affecting the garage path
+   too, and the year/make/model path averages up to five trims, so detecting
+   an EV after the average is computed is too late. Fixed at the shared layer
+   (`lib/epaEnergyType.ts`), with filtering before any averaging. See §15.
 5. **Process mistake made and corrected:** my first conflict-detection test
    asserted `12.004 × 3.499 = 42.01`. It is `42.00`. The test failed, the
    implementation was right, and I corrected the fixture — worth recording
@@ -314,14 +347,33 @@ before `check:sw` runs.
    `vehicles[0]` load-order-stable in any other surface I did not inspect. I
    fixed the two auto-select call sites I found; I did not audit every consumer
    of the garage list.
+7. **A claim I made in round 1 that was not true, corrected in round 2.** §8 and
+   the PR body said "a user's own choice, including a deliberate clear, is
+   never overridden." The latch did not implement that, and I asserted it from
+   a source-level regex over the guard clause instead of from a behavioral
+   test — which is exactly the kind of assertion that can pass while the
+   behaviour is wrong. §15 has what the code actually does now, and the
+   deliberate-clear behaviour is now covered by sequence tests.
+8. **Round-2 process note:** two of my own new assertions failed because they
+   pattern-matched prose in comments I had just written — one checked for the
+   absence of the word "convert" in a file whose comment says "Nothing here
+   converts MPGe into MPG", the other for the absence of the old latch in a
+   file whose comment quoted it. Both were replaced with structural
+   assertions. Recording it because "the test matched my own documentation" is
+   a failure mode that silently weakens a suite.
 
 ## 12. Claude's Assessment
 
-**READY FOR REVIEW.** All gates pass, the regression tests are shown to fail
-against the old behaviour, no security/payment/entitlement/schema surface is
-touched, and the one item that turned out already built (D) was left alone.
-Not ready to *merge* without Don's authorization, and I would want a decision
-on risk 4 (the EV guard) first.
+**READY FOR REVIEW (round 2).** All three findings from independent review
+were verified against the repository, all three were real, and all three are
+fixed with behavioral tests rather than source assertions. All gates pass. No
+security/payment/entitlement/schema surface is touched and no migration was
+added. The EV/MPGe concern that round 1 left as an open risk is now closed at
+the shared endpoint.
+
+Still **not ready to merge** without Don's explicit authorization. The one
+judgment call I would want a second opinion on is the conservative-denial
+policy in `lib/epaEnergyType.ts` — see §15 and question 7.
 
 ## 13. Questions for ChatGPT
 
@@ -362,9 +414,256 @@ on risk 4 (the EV guard) first.
 3. **`lib/rentalTripVehicle.ts`'s refusal to invent an MPG**, and whether the
    EV case (risk 4) needs a guard before merge.
 
-**Needs little scrutiny:** `lib/vehicleAutoSelect.ts` (71 lines including its
-rationale comment; one pure 10-line function, exhaustively tested), the
-translation additions, and the doc updates.
+**Round 2 adds, at the top of that list:**
+
+0. **`lib/epaEnergyType.ts`** — it is the single point deciding whether a
+   number may be shown as MPG, and a wrong `true` silently corrupts every
+   downstream gallons and dollar figure. The bifuel reasoning (§15.5 risk 3)
+   is the weakest link.
+
+**Needs little scrutiny:** the translation additions and the doc updates.
+`lib/vehicleAutoSelect.ts` is 71 lines of mostly rationale comment over two
+small pure functions, both exhaustively tested.
+
+---
+
+## 15. Round 2 — corrections after independent review
+
+ChatGPT reviewed the live PR at head `cc63bad`. Three findings. **All three
+verified against the repository, all three real, all three fixed.**
+Classification per the standing format:
+
+| # | Finding | Classification |
+|---|---|---|
+| 1 | No EV / MPGe / non-gallon guard in `/api/mpg-lookup` | **AGREE — ACTION REQUIRED** (merge blocker) |
+| 2 | Stale active-rental MPG response can overwrite a newer choice | **AGREE — ACTION REQUIRED** |
+| 3 | The deliberate-clear guarantee is not implemented | **AGREE — ACTION REQUIRED** |
+
+### 15.1 Finding 1 — the energy-type guard
+
+**Verified, and broader than the PR's own risk note.** `/api/mpg-lookup` read
+`comb08` / `city08` / `hwy08` and no fuel-type field whatsoever. FuelEconomy.gov
+reports those as **MPGe** for electric, natural-gas and hydrogen vehicles. So
+this was never a rental-mode-only risk: it is a **pre-existing defect in the
+shared endpoint**, reached equally by Trip Planner's garage path when a saved
+vehicle has no `epaId`. Fixed at the shared layer, as the review asked.
+
+**I verified the provider contract against the live API** rather than assuming
+field shapes — public, no key, read-only, on 2026-10-20 — because the
+engineering contract's provider-contract rule requires mocks to come from real
+payloads. Every string in `lib/epaEnergyType.ts` and every test fixture is a
+real record:
+
+| id | vehicle | `atvType` | `fuelType1` | `fuelType2` | `comb08` | |
+|---|---|---|---|---|---|---|
+| 47085 | 2024 Toyota Camry | `''` | Regular Gasoline | `''` | 26 | accept |
+| 35622 | 2015 VW Jetta 2.0 | `''` | Regular Gasoline | `''` | 26 | accept |
+| 35433 | 2015 VW Jetta TDI | `Diesel` | Diesel | `''` | 35 | accept |
+| 47243 | 2024 Toyota Prius | `Hybrid` | Regular Gasoline | `''` | 57 | accept |
+| 47500 | 2024 Toyota Prius Prime | `Plug-in Hybrid` | Regular Gasoline | Electricity | 48 | accept (`combA08` 114 is the MPGe) |
+| 46973 | 2024 Nissan LEAF | `EV` | Electricity | `''` | 111 | **reject** |
+| 35886 | 2015 Honda Civic Natural Gas | `CNG` | Natural Gas | `''` | 31 | **reject** |
+| 47545 | 2022 Hyundai Nexo Blue | `FCV` | Hydrogen | `''` | 61 | **reject** |
+
+**The CNG row is the one that justifies the whole fix.** A LEAF's 111 at least
+looks wrong. The Civic Natural Gas reports **31**, five more than the Camry's
+26 — a completely ordinary-looking gasoline MPG that is actually
+gasoline-gallon-equivalent. No numeric plausibility check can separate those.
+Only the fuel type can.
+
+**How the guard works.** `classifyEpaEnergyType()` classifies on **`fuelType1`**,
+because `fuelType1` is definitionally the fuel that `comb08`/`city08`/`hwy08`
+describe — a dual-fuel record puts fuel 2's economy in `combA08`/`cityA08`/
+`hwyA08`. That single choice is also what makes the PHEV case come out right
+without special-casing: the Prius Prime's `fuelType1` is Regular Gasoline and
+its `comb08` of 48 **is** its gasoline-mode MPG, verified above against its
+`combA08` of 114. `atvType` is a corroborating deny for the exact values `ev`,
+`fcv` and `cng`, so a record whose two fields disagree is refused rather than
+resolved. The match is exact, **not** a substring: `Bifuel (CNG)` contains the
+token but is a gasoline-primary record whose `comb08` is the gasoline figure,
+and a substring match would discard a perfectly good MPG.
+
+**Nothing converts MPGe to MPG.** There is no honest conversion; they measure
+different things. A non-gallon record returns no number at all.
+
+**Fails closed.** An unrecognised or missing `fuelType1` is `unknown` and not
+gallon-based. Showing no MPG costs a user one typed field; showing an
+energy-equivalent figure as MPG silently corrupts every gallons, cost and
+dollar figure derived from it.
+
+**How mixed-powertrain trim averaging is prevented.** The classification runs
+**per trim, inside the sampling loop, before anything is averaged** — the
+review's specific requirement, and the reason post-hoc EV detection is
+insufficient. A trim that is not gallon-based is pushed to a `rejected` list
+and never enters `trimResults`, so the average is computed only over
+compatible configurations. Demonstrated in the tests: a line sampled as
+gasoline + BEV used to average `(26 + 111) / 2 = 69` "MPG"; it now returns 26
+with `trimsUsed: 1, trimsRejected: 1`. With three gasoline trims plus a BEV the
+old code gave 55 and the new code gives 36 — and 26 is unrecoverable from 47
+once the average exists, which is the point. When **every** sampled trim is
+incompatible the route returns `unsupported_energy_type`, which is a different
+answer from "EPA has no data" and the caller can tell them apart.
+
+**Response shape — three distinguishable outcomes**, as asked:
+
+```
+{ ok: true,  combMpg, cityMpg, hwyMpg, energyType, gallonBased: true,
+             trimsUsed?, trimsRejected? }
+{ ok: false, reason: 'unsupported_energy_type', energyType, error }
+{ ok: false, reason: 'not_found' | 'no_epa_data' | 'bad_request'
+                   | 'lookup_failed', error }
+```
+
+Backward compatible: success still carries `ok`/`combMpg`/`cityMpg`/`hwyMpg`
+and failure still carries `ok: false` + `error`, so existing callers testing
+`data.ok && data.combMpg` are unaffected. `reason`, `energyType`,
+`gallonBased`, `trimsUsed` and `trimsRejected` are additive.
+
+**Rental and garage UX for a non-gallon vehicle.** Rather than leave an empty
+MPG box inviting the user to invent a tank size, Trip Planner now explains
+it: a notice reading *"This vehicle does not run on gallons"* with
+fuel-specific copy, the tank-size field is visually disabled, **both** Calculate
+buttons are disabled, and `handleCalculate` / `handleRouteCalculate` each
+return early — the refusal does not depend on the UI being in the state we
+think it is. For an electric vehicle the copy points at the EV Charge tab,
+mirroring the existing `evNoTankBody` precedent in the rental flow. EN and ES.
+
+**No schema migration was added**, per the review's constraint.
+
+### 15.2 Finding 2 — the stale MPG lookup
+
+**Verified.** Neither `loadActiveRental` (new in this PR) nor `loadVehicle`
+(pre-existing) had any generation guard: both awaited a fetch and then wrote
+`mpg`, `mpgSourceLabel` and `mpgOptions` unconditionally. The PR made the race
+materially easier to hit by adding a second concurrent source that fires from
+an effect rather than only from a click.
+
+**Fixed with the repository's existing mechanism, not a new one.**
+`lib/latestWinsGuard.ts` already exists for exactly this — it was extracted
+after the 2026-10-12 routing-integrity audit found the same class of bug in
+Trip Planner's address-autocomplete path. `lib/mpgLookupController.ts` wraps it
+so both lookup paths share one guard held in a ref.
+
+**How a stale response is invalidated.** `run()` takes a token from
+`guard.begin()`, and after the await **every** write is gated on
+`guard.isCurrent(token)` — including `setLookingUp(false)`. That last detail
+matters: an ungated `finally` would let a stale response switch off a *newer*
+lookup's spinner, which reads to the user as a silent failure. There is an
+explicit test for it.
+
+`invalidate()` is the other half, because a user choice that issues no request
+produces no newer token to supersede the old one. It is called on: a manual
+MPG edit, a generic rental-preset selection, either vehicle-mode switch, a
+stored-MPG hit that needs no request, the no-lookup-possible rental branch,
+`handleReset`, and an account change or unmount. The existing account-scoping
+on the rental fetch is preserved and now has the MPG guard alongside it.
+
+### 15.3 Finding 3 — deliberate clear
+
+**Verified, and the PR's claim was wrong.** The latch was
+"once per empty-selection window": it re-armed on every selection, so the next
+transition to empty auto-applied again. I had asserted the guarantee with a
+source-level regex over the guard clause, which passed while the behaviour was
+wrong — a direct illustration of why the review asked for behavioral tests.
+
+**Repository truth, established from the real callers.** `SavedVehicles` is
+rendered by `components/TargetFillForm.tsx` and `components/BudgetForm.tsx` and
+stays mounted throughout. A repository-wide search for vehicle-clearing finds
+exactly four paths, **all of them deliberate user actions or a sign-out**:
+
+1. Typing a tank size by hand (`TankPresets` `onChange`).
+2. Picking a generic tank-size preset (`onPresetSelect`).
+3. "Clear All" (`handleReset` → `DEFAULTS`, where `vehicleId` is `''`).
+4. Sign-out (`TargetFillForm`'s unauthenticated effect).
+
+Paths 1 and 2 were the damaging ones, and worse than "a clear gets undone":
+the user picks *16 gallons* from the preset list — which clears the vehicle —
+and the latch immediately re-applied their saved car, **overwriting the tank
+size they had just chosen**. Path 4 could apply the previous account's vehicle
+for a signed-out guest, since the loaded garage data is not cleared on
+sign-out.
+
+**There is no rental-mode case left to preserve.** The effect's original
+rationale — *"most notably right after leaving Rental Mode"* (commit
+`5491a68`) — dates from when Rental Mode was a toggle **on the calculator**
+that cleared the selected vehicle. Rental Car Mode is now navigation to
+`/rental-return`, and none of the four remaining clear paths is a rental-mode
+exit. So the review's question "preserve any intentional re-selection on
+leaving Rental Mode **if that is a separate semantic event**" resolves to:
+it is not one any more.
+
+**The fix** latches per **account** instead of per empty-selection window
+(`decideVehicleAutoApply` in `lib/vehicleAutoSelect.ts`): apply once for a
+signed-in user, then never again unprompted. Initial auto-selection is
+unchanged — explicit default wins, a sole eligible vehicle is assumed, two or
+more with no default stays the user's decision. A `no-candidate` result does
+**not** consume the account's one apply, so a user with three unstarred cars
+who later stars one still gets it applied. A null user is `no-user`, which
+closes the sign-out leak.
+
+### 15.4 Files changed by these corrections
+
+```
+A	__tests__/ws02EpaEnergyTypeGuard.test.ts
+A	__tests__/ws02MpgLookupRace.test.ts
+A	__tests__/ws02VehicleDeliberateClear.test.ts
+M	__tests__/ws02VehicleAutoSelect.test.ts
+M	app/api/mpg-lookup/route.ts
+M	components/SavedVehicles.tsx
+M	components/TripCostEstimator.tsx
+A	lib/epaEnergyType.ts
+A	lib/mpgLookupController.ts
+M	lib/translations.ts
+M	lib/vehicleAutoSelect.ts
+M	docs/reviews/2026-10-20-workstream02-consolidated-report.md
+```
+
+`__tests__/ws02VehicleAutoSelect.test.ts` changed because two of its round-1
+assertions described the code the corrections replaced: one expected
+`SavedVehicles` to call `pickAutoSelectVehicle` directly (it now goes through
+`decideVehicleAutoApply`, which calls the picker underneath), and one asserted
+the old latch's guard clause verbatim. Both were rewritten to describe the new
+structure; the behavioural coverage lives in the new sequence tests.
+
+### 15.5 Remaining risks and judgment calls from round 2
+
+1. **Conservative denial is a policy choice.** An unrecognised `fuelType1`
+   returns no MPG. If FuelEconomy.gov renames a fuel string, GasCap quietly
+   stops offering an EPA estimate for those vehicles rather than risking a
+   wrong one. I believe that is the right trade, but it is a trade, and it
+   fails quietly — question 7 below.
+2. **Propane / LPG is denied** although it is sold by the gallon, because
+   GasCap does not price propane. Conservative, and not something the review
+   asked about either way.
+3. **Bifuel records are untested against the live API.** I reasoned that
+   `Bifuel (CNG)` is gasoline-primary from the `fuelType1` contract and chose
+   exact rather than substring matching on `atvType` so as not to discard a
+   valid MPG. I did **not** find a live bifuel record to confirm it. If that
+   reasoning is wrong, the failure mode is accepting a CNG figure as MPG —
+   the exact thing this fix exists to prevent. Worth a reviewer's eye.
+4. **Still no browser or device verification.** Everything is proven by tests,
+   `tsc` and a production build. The non-gallon notice, the disabled tank
+   field and the disabled Calculate buttons are asserted at source level and
+   have not been seen rendered.
+5. **The trim sample is still the first five menu entries**, unchanged from
+   `main`. If a model line's first five entries are all electric and later
+   ones are gasoline, the route now correctly returns
+   `unsupported_energy_type` rather than a wrong number — but it also will not
+   find the gasoline trims. That is a pre-existing sampling limitation the
+   guard makes visible rather than causes, and I did not change it.
+
+### 15.6 Added questions for ChatGPT
+
+7. Is conservative denial on an unrecognised `fuelType1` the right default,
+   given it fails quietly? The alternative — accept unknown fuels and rely on
+   `atvType` alone — fails loudly but can be wrong.
+8. Is exact-match `atvType` denial plus `fuelType1` classification sufficient
+   for bifuel CNG/LPG records (risk 3), or should those be denied outright
+   until a live record confirms which fuel `comb08` describes?
+9. `mpgLabelRef` carries the source label across the await so `labelFor()`
+   reads the label the issuing call recorded. The guard means only the current
+   lookup reaches it — but is a ref the right carrier, versus threading the
+   label through `run()` as an argument?
 
 ---
 ---

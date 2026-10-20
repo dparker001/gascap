@@ -2740,6 +2740,11 @@ const en = {
     epaEstimateForVehicle: (vehicle: string) => `📋 EPA estimate${vehicle ? ` · ${vehicle}` : ''}`,
     yourRentalOption: (vehicle: string) => `🔄 Your rental · ${vehicle}`,
     tankFromRentalRecord: 'Tank size from your rental record',
+    notGallonVehicleTitle:  'This vehicle does not run on gallons',
+    notGallonElectric:      'EPA rates this vehicle in MPGe, not MPG, so a gas trip cost would be meaningless. Use the EV Charge tab instead — it works in kWh and charge level.',
+    notGallonNaturalGas:    'EPA rates this vehicle in gasoline-gallon-equivalent, not MPG, so GasCap cannot price this trip accurately.',
+    notGallonHydrogen:      'EPA rates this vehicle in MPGe, not MPG, so GasCap cannot price this trip accurately.',
+    notGallonUnknown:       'GasCap could not confirm this vehicle runs on gasoline or diesel, so it will not guess an MPG. Enter one yourself if you know it.',
     // City/Hwy/Combined toggle
     mpgComb: 'Comb.',
     mpgCity: 'City',
@@ -6319,6 +6324,11 @@ const es: typeof en = {
     epaEstimateForVehicle: (vehicle: string) => `📋 Estimado EPA${vehicle ? ` · ${vehicle}` : ''}`,
     yourRentalOption: (vehicle: string) => `🔄 Tu renta · ${vehicle}`,
     tankFromRentalRecord: 'Tamaño del tanque según tu registro de renta',
+    notGallonVehicleTitle:  'Este vehículo no funciona con galones',
+    notGallonElectric:      'La EPA califica este vehículo en MPGe, no en MPG, así que un costo de viaje a gasolina no tendría sentido. Usa la pestaña Carga EV — funciona en kWh y nivel de carga.',
+    notGallonNaturalGas:    'La EPA califica este vehículo en equivalente de galón de gasolina, no en MPG, así que GasCap no puede calcular este viaje con precisión.',
+    notGallonHydrogen:      'La EPA califica este vehículo en MPGe, no en MPG, así que GasCap no puede calcular este viaje con precisión.',
+    notGallonUnknown:       'GasCap no pudo confirmar que este vehículo use gasolina o diésel, así que no adivinará un MPG. Ingresa uno tú mismo si lo sabes.',
     // City/Hwy/Combined toggle
     mpgComb: 'Comb.',
     mpgCity: 'Ciudad',

@@ -38,10 +38,14 @@ describe('WS02 1B — the gaps being closed', () => {
     expect(pickAutoSelectVehicle(STARRED_SECOND)!.vehicle.id).toBe('second');
   });
 
-  it('both surfaces now go through the one shared rule', () => {
-    for (const f of ['components/SavedVehicles.tsx', 'components/TripCostEstimator.tsx']) {
-      expect(read(f), f).toMatch(/pickAutoSelectVehicle\(/);
-    }
+  it('both surfaces now go through the one shared module', () => {
+    // Trip Planner calls the picker directly; SavedVehicles goes through
+    // decideVehicleAutoApply, which calls the same picker underneath (see
+    // __tests__/ws02VehicleDeliberateClear.test.ts for why it needs the extra
+    // account latch that Trip Planner does not).
+    expect(read('components/TripCostEstimator.tsx')).toMatch(/pickAutoSelectVehicle\(/);
+    expect(read('components/SavedVehicles.tsx')).toMatch(/decideVehicleAutoApply\(/);
+    expect(read('lib/vehicleAutoSelect.ts')).toMatch(/pickAutoSelectVehicle\(input\.vehicles/);
     // And neither keeps its old ad-hoc version.
     expect(read('components/TripCostEstimator.tsx')).not.toMatch(/loadVehicle\(vehicles\[0\]\)/);
     expect(read('components/SavedVehicles.tsx')).not.toMatch(/const defaultVehicle = data\?\.vehicles\.find/);
@@ -114,9 +118,14 @@ describe('pickAutoSelectVehicle — ineligible vehicles', () => {
 });
 
 describe('callers still guard on nothing being selected', () => {
-  it('SavedVehicles bails out while a vehicle is selected', () => {
-    expect(read('components/SavedVehicles.tsx'))
-      .toMatch(/if \(selectedVehicleId\) \{ autoAppliedRef\.current = false; return; \}/);
+  it('SavedVehicles defers the whole question to decideVehicleAutoApply', () => {
+    // The "is a vehicle already selected" guard moved INTO the decision layer
+    // as the 'already-selected' skip, together with the account latch that
+    // makes a deliberate clear stick. Behaviour is covered by sequence tests
+    // in __tests__/ws02VehicleDeliberateClear.test.ts, not by this regex.
+    const src = read('components/SavedVehicles.tsx');
+    expect(src).toMatch(/selectedVehicleId,/);
+    expect(src).toMatch(/if \(decision\.action !== 'apply'\) return;/);
   });
 
   it('Trip Planner bails out while a vehicle is selected or in rental mode', () => {
