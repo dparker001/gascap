@@ -1905,6 +1905,13 @@ const en = {
     errSaveFailed:    'Save failed.',
     amountActuallyPaidLabel: 'Amount actually paid',
     amountActuallyPaidHint:  'Enter what you paid at the pump or inside — if different from the calculated total.',
+    amountFromReceipt:       'Read from your receipt — check it before saving.',
+    receiptAmountDiffers:    (scanned: string, typed: string) =>
+      `Your receipt reads $${scanned}, but you entered $${typed}.`,
+    receiptAmountUse:        'Use $ from receipt',
+    receiptAmountKeepMine:   'Keep mine',
+    receiptTotalMismatch:    (total: string, computed: string) =>
+      `Heads up: the receipt total ($${total}) doesn't match its gallons × price ($${computed}). Worth a quick look before you save.`,
     fillupBreakdown:         'Fill-up breakdown',
     gasCapsuggestedLabel:    'GasCap suggested',
     youPumpedLabel:          'You pumped',
@@ -2731,6 +2738,8 @@ const en = {
     epaCombinedEstimate: '📋 EPA combined estimate',
     avgFromFillupLog: '📊 Your avg from fill-up log',
     epaEstimateForVehicle: (vehicle: string) => `📋 EPA estimate${vehicle ? ` · ${vehicle}` : ''}`,
+    yourRentalOption: (vehicle: string) => `🔄 Your rental · ${vehicle}`,
+    tankFromRentalRecord: 'Tank size from your rental record',
     // City/Hwy/Combined toggle
     mpgComb: 'Comb.',
     mpgCity: 'City',
@@ -5476,6 +5485,13 @@ const es: typeof en = {
     errSaveFailed:    'Error al guardar.',
     amountActuallyPaidLabel: 'Monto realmente pagado',
     amountActuallyPaidHint:  'Ingresa lo que pagaste en la bomba o adentro — si es diferente al total calculado.',
+    amountFromReceipt:       'Leído de tu recibo — verifícalo antes de guardar.',
+    receiptAmountDiffers:    (scanned: string, typed: string) =>
+      `Tu recibo indica $${scanned}, pero ingresaste $${typed}.`,
+    receiptAmountUse:        'Usar $ del recibo',
+    receiptAmountKeepMine:   'Mantener el mío',
+    receiptTotalMismatch:    (total: string, computed: string) =>
+      `Atención: el total del recibo ($${total}) no coincide con sus galones × precio ($${computed}). Vale la pena revisarlo antes de guardar.`,
     fillupBreakdown:         'Desglose de la recarga',
     gasCapsuggestedLabel:    'GasCap sugirió',
     youPumpedLabel:          'Pusiste',
@@ -6301,6 +6317,8 @@ const es: typeof en = {
     epaCombinedEstimate: '📋 Estimado combinado EPA',
     avgFromFillupLog: '📊 Tu promedio del registro de recargas',
     epaEstimateForVehicle: (vehicle: string) => `📋 Estimado EPA${vehicle ? ` · ${vehicle}` : ''}`,
+    yourRentalOption: (vehicle: string) => `🔄 Tu renta · ${vehicle}`,
+    tankFromRentalRecord: 'Tamaño del tanque según tu registro de renta',
     // City/Hwy/Combined toggle
     mpgComb: 'Comb.',
     mpgCity: 'Ciudad',

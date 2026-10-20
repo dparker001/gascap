@@ -32,7 +32,7 @@ const SECTIONS = [
       },
       {
         q: 'Can I set a default vehicle?',
-        a: 'Yes — tap the ⭐ star on any saved vehicle in Saved Vehicles to make it your default. It auto-fills the calculator whenever no other vehicle is currently selected, so your regular vehicle is applied automatically instead of you having to reselect it. Only one vehicle can be default at a time.',
+        a: 'Yes — tap the ⭐ star on any saved vehicle in Saved Vehicles to make it your default. It auto-fills the calculator and the Trip Cost Estimator whenever no other vehicle is currently selected, so your regular vehicle is applied automatically instead of you having to reselect it. Only one vehicle can be default at a time. If you have just one saved vehicle, you do not need the star at all — GasCap™ loads it for you automatically. With two or more and no star set, GasCap™ waits for you to choose rather than picking one for you.',
       },
       {
         q: 'What is a VIN and where do I find it?',
@@ -108,6 +108,10 @@ const SECTIONS = [
         a: 'The Trip Cost Estimator calculates the fuel cost of a road trip. In manual mode (free for all users), enter your trip distance, vehicle MPG, and gas price to see total gallons needed and estimated cost. Pro and Fleet users can also use route mode: enter an origin and destination with address autocomplete and GasCap™ uses Google Routes API to calculate the real route distance — so you get a cost estimate for the actual road, not a straight line. When a fuel stop is needed along the way, GasCap™ finds real gas stations on the route. Your completed trips are saved and appear in the Stats tab.',
       },
       {
+        q: 'Can the Trip Cost Estimator use my rental car?',
+        a: 'Yes. If you have a rental saved in Rental Car Mode, switch the Trip Cost Estimator to "Rental / Other" and your own rental car appears at the top of the vehicle list, above the generic types. Picking it fills in the tank size from your rental record and looks up an EPA MPG estimate for that year, make and model. The two are labelled differently on purpose: the tank size is what you (or your scanned rental agreement) actually recorded for that car, while the MPG is an EPA estimate for that model, not a measurement of the car in your driveway. A rental does not store an MPG, so GasCap™ never makes one up — if it cannot find an EPA figure, the MPG field is left empty for you to fill in. The generic vehicle types are all still there if you would rather use one, and anything you type yourself is left alone.',
+      },
+      {
         q: 'Does GasCap™ work with Google Maps?',
         a: 'Yes. In the Trip tab, Pro and Fleet users can enter an origin and destination to get the exact fuel cost for the real route. When a fuel stop is needed, GasCap™ finds actual gas stations along the route — tap "Find Fuel Along the Way" to open Google Maps (or Waze) with turn-by-turn directions straight to the pump. After you close Maps and return to GasCap™, the app scrolls you right back to your trip result.',
       },
@@ -155,7 +159,7 @@ const SECTIONS = [
       },
       {
         q: 'What receipts can I scan to log a fill-up?',
-        a: 'Both pay-at-pump receipts and final store receipts are supported. Lay the receipt flat in good lighting with all numbers visible. The AI reads gallons, price per gallon, and date and pre-fills the form — you review before saving.',
+        a: 'Both pay-at-pump receipts and final store receipts are supported. Lay the receipt flat in good lighting with all numbers visible. The AI reads gallons, price per gallon, date, station, fuel grade and the total charged, and pre-fills the form — you review everything before saving. The total goes into "Amount actually paid" marked "Read from your receipt," and you can change it. If you had already typed an amount yourself, GasCap™ does not overwrite it — it shows you both numbers and lets you choose. And if the receipt\'s total does not match its own gallons × price per gallon, GasCap™ points that out so you can check it; it never quietly recalculates the number for you.',
       },
       {
         q: 'What are the smart validation warnings?',
@@ -533,7 +537,7 @@ const SECTIONS = [
       },
       {
         q: 'Receipt scan isn\'t filling in my details.',
-        a: 'Make sure the receipt is flat, well-lit, and fully in frame. Both pay-at-pump and final store receipts are supported. If the scan fails, enter your gallons, price, and total manually.',
+        a: 'Make sure the receipt is flat, well-lit, and fully in frame. Both pay-at-pump and final store receipts are supported. If the scan fails, enter your gallons, price, and total manually. If one figure comes back blank or looks wrong, just type over it — nothing is saved until you tap save.',
       },
       {
         q: 'The app isn\'t updating after I upgraded my plan.',

@@ -22,6 +22,9 @@ import GoogleAttribution                     from './GoogleAttribution';
 import { createLatestWinsGuard }             from '@/lib/latestWinsGuard';
 import { resolveSelectedPlace, invalidateSelection } from '@/lib/placeSelectionResolver';
 import { fetchPlaceCoordinates }             from '@/lib/placeLocationClient';
+import { pickAutoSelectVehicle }            from '@/lib/vehicleAutoSelect';
+import { rentalTripVehicleFor, type RentalTripVehicle } from '@/lib/rentalTripVehicle';
+import type { RentalSession }               from '@/lib/rentalSessions';
 
 // ── Rental presets ─────────────────────────────────────────────────────────
 
@@ -50,6 +53,14 @@ const RENTAL_PRESETS: RentalPreset[] = [
   { label: 'Hybrid Car',        labelKey: 'hybridCar',     mpg: 50, tankGal: 11.3 },
   { label: 'Enter manually',    labelKey: 'enterManually', mpg: 0,  tankGal: 0    },
 ];
+
+/**
+ * Sentinel option value for "the car I'm actually renting right now"
+ * (WS02 Phase 1C). Deliberately not a RENTAL_PRESETS entry: it carries
+ * real per-rental data, not a class average, and it only exists when an
+ * open RentalSession actually has that data.
+ */
+const ACTIVE_RENTAL_OPTION = '__active_rental__';
 
 // ── Favorite Addresses (Phase 2) ──────────────────────────────────────────
 
@@ -218,6 +229,12 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
   const [mpgOptions, setMpgOptions] = useState<{ city: number; hwy: number; comb: number } | null>(null);
   const [vehicleMode,       setVehicleMode]       = useState<VehicleMode>('garage');
   const [rentalType,        setRentalType]        = useState<string>('');
+  // The renter's own rental car, when an open RentalSession carries enough
+  // real data to beat a generic class preset (WS02 Phase 1C).
+  const [activeRental,      setActiveRental]      = useState<RentalTripVehicle | null>(null);
+  // Set while the tank size in the field came from the rental record, so the
+  // UI can say so — confirmed data, unlike the EPA MPG estimate beside it.
+  const [tankFromRental,    setTankFromRental]    = useState(false);
   const [tripPlanMode,      setTripPlanMode]      = useState<TripPlanMode>('manual');
   const [gasCoords,         setGasCoords]         = useState<{ lat: number; lng: number } | null>(null);
 
@@ -561,11 +578,47 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
     if (!session) setVehicleMode('rental');
   }, [session]);
 
-  // Auto-select first garage vehicle when vehicles load and nothing is selected yet
+  // WS02 Phase 1C — the renter's open rentals, so rental mode can offer the
+  // car they're actually driving instead of only a generic class average.
+  // Scoped to the account that asked: a response that lands after a sign-out
+  // or an account switch is dropped, never shown to whoever is signed in now.
+  const rentalUserId = (session?.user as { id?: string } | undefined)?.id ?? null;
   useEffect(() => {
-    if (vehicles.length > 0 && !selectedVehicleId && vehicleMode === 'garage') {
-      loadVehicle(vehicles[0]);
-    }
+    if (!open || !rentalUserId) { setActiveRental(null); return; }
+    let cancelled = false;
+    fetch('/api/rental-sessions?status=active')
+      .then((r) => (r.ok ? r.json() as Promise<{ sessions?: RentalSession[] }> : null))
+      .then((d) => {
+        if (cancelled || !d) return;
+        setActiveRental(rentalTripVehicleFor(d.sessions ?? []));
+      })
+      .catch(() => { /* rental assistant off or offline — presets still work */ });
+    return () => { cancelled = true; };
+  }, [open, rentalUserId]);
+
+  // Offer it once, and only into an untouched rental form: anything the
+  // renter has already chosen or typed is theirs and stays.
+  const rentalAutoAppliedRef = useRef(false);
+  useEffect(() => {
+    if (vehicleMode !== 'rental' || !activeRental) return;
+    if (rentalAutoAppliedRef.current) return;
+    if (rentalType !== '' || mpg !== '' || tankGal !== '') return;
+    rentalAutoAppliedRef.current = true;
+    void loadActiveRental(activeRental);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeRental, vehicleMode]);
+
+  // Auto-select a garage vehicle when vehicles load and nothing is selected
+  // yet. 2026-10-20 (WS02 Phase 1B): this used to take vehicles[0], and the
+  // garage list is ordered by createdAt ascending (lib/savedVehicles.ts) —
+  // so a user who explicitly starred their second car still got their first.
+  // pickAutoSelectVehicle() puts the explicit default first and falls back
+  // to a sole vehicle; with two or more and no default it returns null and
+  // the user picks, rather than Trip Planner guessing.
+  useEffect(() => {
+    if (selectedVehicleId || vehicleMode !== 'garage') return;
+    const auto = pickAutoSelectVehicle(vehicles);
+    if (auto) loadVehicle(auto.vehicle);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vehicles]);
 
@@ -573,6 +626,7 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
     const { mpg: resolvedMpg, labelKey } = resolveMpg(v, avgMpgByVehicleId);
     const label = labelKey ? t.tripCostEstimator[labelKey] : '';
     setTankGal(String(v.gallons));
+    setTankFromRental(false);
     setSelectedVehicleId(v.id);
     setMpgOptions(null);
 
@@ -615,8 +669,65 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
     setResult(null);
   }
 
+  /**
+   * Pre-populate from the rental the renter is actually holding.
+   *
+   * Tank size is confirmed data straight off the rental record. MPG is NOT
+   * on RentalSession and is never invented: when the record names a full
+   * year/make/model we ask the same /api/mpg-lookup the garage path uses
+   * and label the result an EPA estimate; otherwise the field stays empty
+   * for the renter to fill. Nothing here fabricates a specification.
+   */
+  async function loadActiveRental(rental: RentalTripVehicle) {
+    setRentalType(ACTIVE_RENTAL_OPTION);
+    setMpgOptions(null);
+    setResult(null);
+
+    if (rental.tankGallons != null) {
+      setTankGal(String(rental.tankGallons));
+      setTankFromRental(true);
+    } else {
+      setTankGal('');
+      setTankFromRental(false);
+    }
+
+    if (!rental.mpgLookup) {
+      setMpg('');
+      setMpgSourceLabel('');
+      setMpgLookingUp(false);
+      return;
+    }
+
+    setMpg('');
+    setMpgSourceLabel('');
+    setMpgLookingUp(true);
+    try {
+      const { year, make, model } = rental.mpgLookup;
+      const qs = `year=${encodeURIComponent(year)}&make=${encodeURIComponent(make)}&model=${encodeURIComponent(model)}`;
+      const res  = await fetch(`/api/mpg-lookup?${qs}`);
+      const data = await res.json() as {
+        ok: boolean; combMpg?: number; cityMpg?: number; hwyMpg?: number;
+      };
+      if (data.ok && data.combMpg) {
+        setMpg(String(data.combMpg));
+        setMpgSourceLabel(t.tripCostEstimator.epaEstimateForVehicle(rental.label));
+        setMpgOptions({
+          comb: data.combMpg,
+          city: data.cityMpg ?? data.combMpg,
+          hwy:  data.hwyMpg  ?? data.combMpg,
+        });
+      }
+    } catch { /* ignore — the field stays empty and the renter types it */ }
+    finally { setMpgLookingUp(false); }
+  }
+
   function loadRentalPreset(label: string) {
+    if (label === ACTIVE_RENTAL_OPTION) {
+      if (activeRental) void loadActiveRental(activeRental);
+      return;
+    }
     setRentalType(label);
+    setTankFromRental(false);
     const preset = RENTAL_PRESETS.find((p) => p.label === label);
     if (!preset) return;
     if (preset.mpg > 0) {
@@ -787,6 +898,7 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
     setMpgLookingUp(false);
     setMpgOptions(null);
     setRentalType('');
+    setTankFromRental(false);
     setVehicleMode(session && vehicles.length > 0 ? 'garage' : 'rental');
     // Route planner reset
     setRouteOrigin(''); setRouteDest('');
@@ -1185,7 +1297,7 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
             <div>
               <div className="flex gap-2">
                 <button
-                  onClick={() => { setVehicleMode('garage'); loadGarage(); setRentalType(''); }}
+                  onClick={() => { setVehicleMode('garage'); loadGarage(); setRentalType(''); setTankFromRental(false); }}
                   className={[
                     'flex-1 py-2 rounded-xl text-xs font-bold border-2 transition-all',
                     vehicleMode === 'garage'
@@ -1196,7 +1308,7 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
                   🚗 {t.tripCostEstimator.myGarage}
                 </button>
                 <button
-                  onClick={() => { setVehicleMode('rental'); setSelectedVehicleId(''); setMpg(''); setTankGal(''); setMpgSourceLabel(''); }}
+                  onClick={() => { setVehicleMode('rental'); setSelectedVehicleId(''); setMpg(''); setTankGal(''); setMpgSourceLabel(''); setTankFromRental(false); }}
                   className={[
                     'flex-1 py-2 rounded-xl text-xs font-bold border-2 transition-all',
                     vehicleMode === 'rental'
@@ -1248,6 +1360,11 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
                 aria-label={t.tripCostEstimator.ariaRentalType}
               >
                 <option value="">{t.tripCostEstimator.selectVehicleType}</option>
+                {activeRental && (
+                  <option value={ACTIVE_RENTAL_OPTION}>
+                    {t.tripCostEstimator.yourRentalOption(activeRental.label)}
+                  </option>
+                )}
                 {RENTAL_PRESETS.map((p) => (
                   <option key={p.label} value={p.label}>{t.tripCostEstimator[p.labelKey]}</option>
                 ))}
@@ -1391,15 +1508,17 @@ export default function TripCostEstimator({ embedded = false }: { embedded?: boo
                   value={tankGal}
                   min="1" step="0.5"
                   readOnly={garageVehicleLocked}
-                  onChange={garageVehicleLocked ? undefined : (e) => { setTankGal(e.target.value); setResult(null); }}
+                  onChange={garageVehicleLocked ? undefined : (e) => { setTankGal(e.target.value); setTankFromRental(false); setResult(null); }}
                   aria-label={t.tripCostEstimator.ariaTank}
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">gal</span>
               </div>
               {errors.tankGal && <p className="mt-1 text-xs text-red-500">{errors.tankGal}</p>}
-              {garageVehicleLocked && (
+              {garageVehicleLocked ? (
                 <p className="text-[10px] text-slate-400 mt-1">🚗 {t.tripCostEstimator.fromSavedVehicle}</p>
-              )}
+              ) : tankFromRental ? (
+                <p className="text-[10px] text-amber-600 mt-1 font-medium">🔄 {t.tripCostEstimator.tankFromRentalRecord}</p>
+              ) : null}
             </div>
           </div>
 

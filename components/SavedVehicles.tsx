@@ -15,6 +15,7 @@ import { getMakeLogoUrl }                    from '@/lib/makeLogo';
 import { isGaugeStyle, type GaugeStyle } from '@/lib/gaugeStyles';
 import GaugeStylePicker from './gauge-styles/GaugeStylePicker';
 import { trackClientEvent } from '@/lib/clientAnalytics';
+import { pickAutoSelectVehicle } from '@/lib/vehicleAutoSelect';
 
 
 export interface Vehicle {
@@ -424,20 +425,27 @@ export default function SavedVehicles({ currentGallons, onSelect, selectedVehicl
     if (session) load();
   }, [session, load]);
 
-  // Auto-apply the garage's default vehicle whenever this list is showing
-  // with nothing currently selected — most notably right after leaving
-  // Rental Mode, which always clears the active vehicle since a rental
-  // lookup match isn't a garage vehicle. Guarded by autoAppliedRef so it
-  // fires once per empty-selection window rather than fighting a user who
-  // deliberately clears the selection some other way.
+  // Auto-apply a vehicle whenever this list is showing with nothing
+  // currently selected — most notably right after leaving Rental Mode,
+  // which always clears the active vehicle since a rental lookup match
+  // isn't a garage vehicle. Guarded by autoAppliedRef so it fires once per
+  // empty-selection window rather than fighting a user who deliberately
+  // clears the selection some other way.
+  //
+  // 2026-10-20 (WS02 Phase 1B): previously this required an explicit
+  // `isDefault`, so a new user with exactly one car — who has had no
+  // reason to find the star button — re-picked their only vehicle every
+  // visit. pickAutoSelectVehicle() keeps the explicit default winning and
+  // adds the sole-vehicle case; the "nothing selected" guard above is what
+  // keeps a user's own choice from being overridden.
   const autoAppliedRef = useRef(false);
   useEffect(() => {
     if (selectedVehicleId) { autoAppliedRef.current = false; return; }
     if (autoAppliedRef.current) return;
-    const defaultVehicle = data?.vehicles.find((v) => v.isDefault);
-    if (defaultVehicle) {
+    const auto = pickAutoSelectVehicle(data?.vehicles ?? []);
+    if (auto) {
       autoAppliedRef.current = true;
-      onSelect(String(defaultVehicle.gallons), defaultVehicle);
+      onSelect(String(auto.vehicle.gallons), auto.vehicle);
     }
   }, [data, selectedVehicleId, onSelect]);
 

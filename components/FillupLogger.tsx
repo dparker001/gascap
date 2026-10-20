@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { compressImageForUpload } from '@/lib/imageUtils';
 import { useSession } from 'next-auth/react';
 import { useTranslation } from '@/contexts/LanguageContext';
@@ -9,6 +9,10 @@ import { hapticSuccess } from '@/lib/haptics';
 import FuelFeedbackCard from './FuelFeedbackCard';
 import { buildFuelFeedback, type FuelFeedback } from '@/lib/fuelFeedback';
 import { isGasPointAction, type AwardSummary } from '@/lib/gasPointsRules';
+import {
+  decideReceiptAmount, receiptAmountFieldValue,
+  type ReceiptAmountSource, type ReceiptTotalConflict,
+} from '@/lib/receiptScanAmount';
 
 interface FillupLoggerProps {
   /** Pre-filled from the calculation result or Find Gas selection */
@@ -142,6 +146,17 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
   const [capReached,     setCapReached]     = useState(false);
   const [warnings,       setWarnings]       = useState<string[]>([]);
   const [amountPaid,     setAmountPaid]     = useState('');
+  // Provenance of amountPaid, so a receipt scan can replace a value an
+  // earlier scan wrote but must ASK before replacing one the user typed.
+  // Refs, not state: the decision happens after an await, and the closure's
+  // copy of `amountPaid` would be stale if the user typed while the scan ran.
+  const amountPaidRef       = useRef('');
+  const amountPaidSourceRef = useRef<ReceiptAmountSource>(null);
+  // A scanned total waiting on the user's yes, because they had typed their own.
+  const [receiptAmountOffer,   setReceiptAmountOffer]   = useState<{ value: number; replaces: number } | null>(null);
+  // Same scan's total disagrees with its own gallons x price — one of the
+  // three was misread. Surfaced for review; never reconciled for the user.
+  const [receiptTotalConflict, setReceiptTotalConflict] = useState<ReceiptTotalConflict | null>(null);
   const [comparison,     setComparison]     = useState<FillupComparison | null>(null);
   const [forceConfirm, setForceConfirm] = useState(false);
   const [scanning,     setScanning]     = useState(false);
@@ -255,9 +270,18 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
 
   const totalCost = (parseFloat(gallons) * parseFloat(price)) || 0;
 
+  /** Single writer for amountPaid, so provenance can never drift from value. */
+  function writeAmountPaid(value: string, source: ReceiptAmountSource) {
+    amountPaidRef.current       = value;
+    amountPaidSourceRef.current = source;
+    setAmountPaid(value);
+  }
+
   async function handleScan(file: File) {
     setScanning(true);
     setScanError('');
+    setReceiptAmountOffer(null);
+    setReceiptTotalConflict(null);
     // Compress first so we have a thumbnail regardless of scan outcome
     let thumb = '';
     try {
@@ -292,6 +316,25 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
       if (data.gallons        != null) setGallons(String(data.gallons));
       if (data.pricePerGallon != null) setPrice(String(data.pricePerGallon));
       if (data.date           != null) setDate(data.date);
+      // Amount actually paid — the receipt states it outright, so stop making
+      // the user re-type it. Cross-checked against this same scan's gallons x
+      // price, and never allowed to clobber a figure they typed themselves.
+      {
+        const decision = decideReceiptAmount({
+          totalCost:      data.totalCost,
+          gallons:        data.gallons,
+          pricePerGallon: data.pricePerGallon,
+          current:        amountPaidRef.current,
+          currentSource:  amountPaidSourceRef.current,
+        });
+        if (decision.action === 'apply') {
+          writeAmountPaid(receiptAmountFieldValue(decision.value), 'receipt');
+          setReceiptTotalConflict(decision.conflict);
+        } else if (decision.action === 'confirm') {
+          setReceiptAmountOffer({ value: decision.value, replaces: decision.replaces });
+          setReceiptTotalConflict(decision.conflict);
+        }
+      }
       if (data.stationName    != null) setStationName(data.stationName);
       // Address → pre-fill notes (prefix so user knows it came from the receipt)
       if (data.address        != null && data.address.trim()) {
@@ -674,9 +717,57 @@ export default function FillupLogger({ prefill, onSaved, onCancel, drivers = [] 
               : '0.00'}
             value={amountPaid}
             min="0.01" step="0.01"
-            onChange={(e) => setAmountPaid(e.target.value)}
+            onChange={(e) => {
+              writeAmountPaid(e.target.value, 'user');
+              // Typing is an answer: stop offering the scanned total, and drop
+              // a conflict notice that was about a value no longer in the field.
+              setReceiptAmountOffer(null);
+              setReceiptTotalConflict(null);
+            }}
           />
         </div>
+        {amountPaidSourceRef.current === 'receipt' && amountPaid !== '' && (
+          <p className="text-[10px] text-amber-600 font-semibold mt-1">
+            {t.fillup.amountFromReceipt}
+          </p>
+        )}
+        {receiptAmountOffer && (
+          <div className="mt-1.5 rounded-xl bg-amber-50 border border-amber-200 px-3 py-2">
+            <p className="text-[11px] text-amber-800 leading-snug">
+              {t.fillup.receiptAmountDiffers(
+                receiptAmountOffer.value.toFixed(2),
+                receiptAmountOffer.replaces.toFixed(2),
+              )}
+            </p>
+            <div className="flex gap-2 mt-1.5">
+              <button
+                type="button"
+                onClick={() => {
+                  writeAmountPaid(receiptAmountFieldValue(receiptAmountOffer.value), 'receipt');
+                  setReceiptAmountOffer(null);
+                }}
+                className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-amber-500 text-white hover:bg-amber-600 transition-colors"
+              >
+                {t.fillup.receiptAmountUse}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setReceiptAmountOffer(null); setReceiptTotalConflict(null); }}
+                className="px-2.5 py-1 rounded-lg text-[11px] font-bold text-amber-700 hover:underline"
+              >
+                {t.fillup.receiptAmountKeepMine}
+              </button>
+            </div>
+          </div>
+        )}
+        {receiptTotalConflict && (
+          <p className="text-[10px] text-slate-500 mt-1 leading-snug">
+            {t.fillup.receiptTotalMismatch(
+              receiptTotalConflict.receiptTotal.toFixed(2),
+              receiptTotalConflict.computedTotal.toFixed(2),
+            )}
+          </p>
+        )}
         <p className="text-[10px] text-slate-400 mt-1">
           {t.fillup.amountActuallyPaidHint}
         </p>
