@@ -119,6 +119,76 @@ describe('accepted: gallon-based vehicles keep working', () => {
   });
 });
 
+describe('bifuel: an alternative fuel is not a reason to discard a valid gasoline MPG', () => {
+  // Settled 2026-10-21 against FuelEconomy.gov's full bulk export
+  // (feg/epadata/vehicles.csv, 50,407 records), not sampled lookups. ALL 20
+  // `Bifuel (CNG)` and ALL 8 `Bifuel (LPG)` records carry
+  // fuelType1: 'Regular Gasoline' with the alternative fuel in fuelType2, and
+  // comb08 is the GASOLINE figure while combA08 is the alternative fuel's.
+  const BIFUEL_CNG_IMPALA  = { atvType: 'Bifuel (CNG)', fuelType1: 'Regular Gasoline', fuelType2: 'Natural Gas', comb08: '20', combA08: '19' };
+  const BIFUEL_CNG_CAVALIER = { atvType: 'Bifuel (CNG)', fuelType1: 'Regular Gasoline', fuelType2: 'Natural Gas', comb08: '23', combA08: '21' };
+  const BIFUEL_LPG_F150    = { atvType: 'Bifuel (LPG)', fuelType1: 'Regular Gasoline', fuelType2: 'Propane',     comb08: '15', combA08: '11' };
+
+  it('gasoline/CNG bifuel is accepted, and the accepted number is the GASOLINE one', () => {
+    expect(classifyEpaEnergyType(BIFUEL_CNG_IMPALA)).toMatchObject({ gallonBased: true });
+    expect(guardedAcceptTrim(BIFUEL_CNG_IMPALA)).toBe(20);   // comb08, gasoline
+    expect(guardedAcceptTrim(BIFUEL_CNG_IMPALA)).not.toBe(19); // combA08, CNG
+    expect(guardedAcceptTrim(BIFUEL_CNG_CAVALIER)).toBe(23);
+  });
+
+  it('gasoline/LPG bifuel is accepted, and the accepted number is the GASOLINE one', () => {
+    expect(classifyEpaEnergyType(BIFUEL_LPG_F150)).toMatchObject({ gallonBased: true });
+    expect(guardedAcceptTrim(BIFUEL_LPG_F150)).toBe(15);     // comb08, gasoline
+    expect(guardedAcceptTrim(BIFUEL_LPG_F150)).not.toBe(11); // combA08, propane
+  });
+
+  it('a DEDICATED CNG or propane vehicle is still refused — the difference is fuelType1', () => {
+    // Bifuel: fuelType1 gasoline → accept. Dedicated: fuelType1 is the
+    // alternative fuel → refuse. One field decides both.
+    expect(classifyEpaEnergyType({ atvType: 'CNG',  fuelType1: 'Natural Gas' }).gallonBased).toBe(false);
+    expect(classifyEpaEnergyType({ fuelType1: 'Propane' }).gallonBased).toBe(false);
+  });
+
+  it('a substring match on atvType would have broken bifuel — exact matching is load-bearing', () => {
+    // 'bifuel (cng)' contains 'cng'; 'bifuel (lpg)' contains 'lpg'.
+    expect('Bifuel (CNG)'.toLowerCase()).toContain('cng');
+    expect('Bifuel (LPG)'.toLowerCase()).toContain('lpg');
+    // Both are nonetheless accepted, because the match is exact.
+    expect(classifyEpaEnergyType(BIFUEL_CNG_IMPALA).gallonBased).toBe(true);
+    expect(classifyEpaEnergyType(BIFUEL_LPG_F150).gallonBased).toBe(true);
+  });
+});
+
+describe('fuelType1 is the discriminator, not atvType', () => {
+  it('a dedicated CNG vehicle with a BLANK atvType and an innocent name is still refused', () => {
+    // Real record: 1999 Honda Civic, atvType '', fuelType1 'Natural Gas',
+    // comb08 27. Ten such records exist in the full dataset. Nothing but
+    // fuelType1 reveals them — an atvType-driven classifier would have served
+    // 27 as gasoline MPG for a natural-gas car called "Civic".
+    const BLANK_ATV_CNG_CIVIC = { atvType: '', fuelType1: 'Natural Gas', fuelType2: '', comb08: '27' };
+    expect(legacyAcceptTrim(BLANK_ATV_CNG_CIVIC)).toBe(27);
+    expect(classifyEpaEnergyType(BLANK_ATV_CNG_CIVIC)).toMatchObject({ energyType: 'natural_gas', gallonBased: false });
+    expect(guardedAcceptTrim(BLANK_ATV_CNG_CIVIC)).toBeNull();
+  });
+
+  it('every fuelType1 value that exists in the dataset is handled', () => {
+    // The complete set, by frequency, from the 50,407-record bulk export.
+    const expected: [string, boolean][] = [
+      ['Regular Gasoline',  true],
+      ['Premium Gasoline',  true],
+      ['Electricity',       false],
+      ['Diesel',            true],
+      ['Midgrade Gasoline', true],
+      ['Natural Gas',       false],
+      ['Hydrogen',          false],
+      ['',                  false],   // the two e-FCEV records
+    ];
+    for (const [fuelType1, gallonBased] of expected) {
+      expect(classifyEpaEnergyType({ fuelType1 }).gallonBased, fuelType1 || '(empty)').toBe(gallonBased);
+    }
+  });
+});
+
 describe('rejected: non-gallon vehicles', () => {
   it('BEV with a positive, large-looking comb08', () => {
     expect(classifyEpaEnergyType(BEV_LEAF)).toMatchObject({ energyType: 'electric', gallonBased: false });
@@ -130,6 +200,25 @@ describe('rejected: non-gallon vehicles', () => {
 
   it('hydrogen fuel cell', () => {
     expect(classifyEpaEnergyType(FCV_NEXO)).toMatchObject({ energyType: 'hydrogen', gallonBased: false });
+  });
+
+  it('eFCV — a hydrogen fuel-cell EV with an EMPTY fuelType1', () => {
+    // Real record: 2025/2026 Honda CR-V e-FCEV, atvType 'eFCV',
+    // fuelType1 '', comb08 39, combA08 87. Found only by enumerating the full
+    // dataset. It was ALREADY refused before 'efcv' was added to the deny set
+    // (an empty fuelType1 falls through to fail-closed) — so both assertions
+    // below hold, and the second is the labelling improvement.
+    const EFCV_CRV = { atvType: 'eFCV', fuelType1: '', fuelType2: '', comb08: '39', combA08: '87' };
+    expect(classifyEpaEnergyType(EFCV_CRV).gallonBased).toBe(false);
+    expect(classifyEpaEnergyType(EFCV_CRV).energyType).toBe('hydrogen');
+    expect(guardedAcceptTrim(EFCV_CRV)).toBeNull();
+    // And it would have been served as 39 MPG before the guard existed.
+    expect(legacyAcceptTrim(EFCV_CRV)).toBe(39);
+  });
+
+  it('a blank fuelType1 alone still fails closed, with or without a known atvType', () => {
+    expect(classifyEpaEnergyType({ fuelType1: '', atvType: '' }))
+      .toMatchObject({ energyType: 'unknown', gallonBased: false });
   });
 
   it('propane / LPG', () => {
@@ -230,6 +319,47 @@ describe('year/make/model averaging never mixes energy types', () => {
 
   it('an empty trim list yields no number', () => {
     expect(averageCompatible([]).combMpg).toBeNull();
+  });
+});
+
+describe('highway MPG reads the field the API actually returns', () => {
+  // Found by a live smoke test on 2026-10-21, not by any mock: the route's
+  // FEVehicle interface declared `hwy08`, which FuelEconomy.gov does not
+  // return — its field is `highway08`. So parseMpg(undefined) gave 0 and the
+  // `hwy > 0 ? hwy : comb` fallback silently served the COMBINED figure as the
+  // highway figure, for every vehicle, since the route was written.
+  //
+  // Live evidence: GET /api/mpg-lookup?epaId=46973 (2024 Nissan LEAF, whose
+  // highway08 is 99) returned hwyMpg: 111 — its comb08. After the fix,
+  // epaId=47085 (2024 Camry, highway08 33) returns hwyMpg: 33, not 26.
+  const CAMRY_RAW = { comb08: '26', city08: '22', highway08: '33' };
+
+  const legacyHwy = (v: Record<string, string>) =>
+    (Number((v as { hwy08?: string }).hwy08) || 0) > 0
+      ? Number((v as { hwy08?: string }).hwy08) : Number(v.comb08);
+  const fixedHwy = (v: Record<string, string>) =>
+    (Number(v.highway08 ?? (v as { hwy08?: string }).hwy08) || 0) > 0
+      ? Number(v.highway08 ?? (v as { hwy08?: string }).hwy08) : Number(v.comb08);
+
+  it('old behaviour: highway silently equalled combined', () => {
+    expect(legacyHwy(CAMRY_RAW)).toBe(26);     // comb08, not the real 33
+  });
+
+  it('new behaviour: highway is the real highway08', () => {
+    expect(fixedHwy(CAMRY_RAW)).toBe(33);
+  });
+
+  it('a record genuinely missing a highway figure still falls back to combined', () => {
+    expect(fixedHwy({ comb08: '26', city08: '22' })).toBe(26);
+    expect(fixedHwy({ comb08: '26', city08: '22', highway08: '0' })).toBe(26);
+  });
+
+  it('the route reads highway08 at BOTH the epaId and the year/make/model sites', () => {
+    const src = read('app/api/mpg-lookup/route.ts');
+    const reads = src.match(/parseMpg\(vData\.highway08 \?\? vData\.hwy08\)/g) ?? [];
+    expect(reads).toHaveLength(2);
+    // And no site reads hwy08 alone any more.
+    expect(src).not.toMatch(/parseMpg\(vData\.hwy08\)/);
   });
 });
 

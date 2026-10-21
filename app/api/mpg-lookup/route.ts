@@ -43,6 +43,16 @@ interface FEMenuResponse { menuItem?: FEMenuItem | FEMenuItem[] }
 interface FEVehicle {
   comb08?: number | string | null;
   city08?: number | string | null;
+  /**
+   * FuelEconomy.gov's field is `highway08`. This route read `hwy08` — a field
+   * the API does not return — from the day it was written, so
+   * `parseMpg(undefined)` gave 0 and the `hwy > 0 ? hwy : comb` fallback
+   * silently served the COMBINED figure as the highway figure. Found by a
+   * live smoke test on 2026-10-21: a 2024 Nissan LEAF, whose `highway08` is
+   * 99, came back as `hwyMpg: 111` — its `comb08`. `hwy08` is kept as a
+   * harmless secondary in case the field is ever added.
+   */
+  highway08?: number | string | null;
   hwy08?:  number | string | null;
   /** Energy-type fields — the reason this route can tell MPG from MPGe. */
   fuelType1?: unknown;
@@ -104,7 +114,7 @@ export async function GET(req: Request) {
 
       const comb  = parseMpg(vData.comb08);
       const city  = parseMpg(vData.city08);
-      const hwy   = parseMpg(vData.hwy08);
+      const hwy   = parseMpg(vData.highway08 ?? vData.hwy08);
 
       if (comb <= 0) {
         return NextResponse.json({ ok: false, reason: 'no_epa_data', error: 'No MPG data for this vehicle' });
@@ -173,7 +183,7 @@ export async function GET(req: Request) {
 
           const comb  = parseMpg(vData.comb08);
           const city  = parseMpg(vData.city08);
-          const hwy   = parseMpg(vData.hwy08);
+          const hwy   = parseMpg(vData.highway08 ?? vData.hwy08);
           if (comb > 0) {
             trimResults.push({ comb, city: city || comb, hwy: hwy || comb, energyType: cls.energyType });
           }

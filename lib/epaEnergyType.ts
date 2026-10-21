@@ -36,6 +36,39 @@
  * | 35886 | 2015 Honda Civic Natural Gas  | `CNG`             | Natural Gas      | `''`        | 31 ❌ MPGe |
  * | 47545 | 2022 Hyundai Nexo Blue        | `FCV`             | Hydrogen         | `''`        | 61 ❌ |
  *
+ * ── Verified against the COMPLETE dataset (2026-10-21) ──────────────────
+ * Re-checked against FuelEconomy.gov's own bulk export
+ * (feg/epadata/vehicles.csv, 50,407 records) rather than sampled records,
+ * to settle the bifuel question and to enumerate every value that exists.
+ *
+ * `atvType` has exactly 11 values, and this classifier's verdict for each:
+ *   (blank) 43,547 → accept 43,537 / deny 10   Hybrid 1,899 → accept all
+ *   EV 1,608 → deny all                        FFV 1,538 → accept all
+ *   Diesel 1,246 → accept all                  Plug-in Hybrid 447 → accept all
+ *   CNG 50 → deny all                          FCV 42 → deny all
+ *   Bifuel (CNG) 20 → accept all               Bifuel (LPG) 8 → accept all
+ *   eFCV 2 → deny both
+ *
+ * `fuelType1` has exactly 8 values, all handled: Regular Gasoline 31,390,
+ * Premium Gasoline 15,813, Electricity 1,608, Diesel 1,318, Midgrade
+ * Gasoline 174, Natural Gas 60, Hydrogen 42, and empty 2.
+ *
+ * ── Why fuelType1 is the classifier and not atvType ─────────────────────
+ * Ten dedicated natural-gas vehicles carry a BLANK `atvType` — among them a
+ * 1999 Honda Civic whose model name is simply "Civic", with
+ * `fuelType1: 'Natural Gas'` and `comb08: 27`. An atvType-driven classifier
+ * would have served that 27 as gasoline MPG. Only `fuelType1` reveals it.
+ *
+ * ── Bifuel: accepted, and that is correct ───────────────────────────────
+ * All 20 `Bifuel (CNG)` and all 8 `Bifuel (LPG)` records have
+ * `fuelType1: 'Regular Gasoline'` with the alternative fuel in `fuelType2`,
+ * and both `comb08` and `combA08` populated — `comb08` being the GASOLINE
+ * figure (2015 Impala Bi-Fuel: comb08 20 gasoline / combA08 19 CNG;
+ * 2003 F150 Dual-fuel LPG: comb08 15 gasoline / combA08 11 propane).
+ * Supporting an alternative fuel is not a reason to discard a valid gasoline
+ * MPG, so these are accepted — which is why `atvType` is matched EXACTLY
+ * rather than as a substring.
+ *
  * ── Deny by default ─────────────────────────────────────────────────────
  * An unrecognised `fuelType1` is `unknown` and NOT gallon-based. A new or
  * renamed energy type must fail closed: showing no MPG is a small loss, while
@@ -84,8 +117,15 @@ const lower = (v: unknown): string =>
  * `Bifuel (LPG)` contain these tokens but are gasoline-primary records whose
  * `comb08` is the gasoline figure, and a substring match would throw away a
  * perfectly good MPG.
+ *
+ * `efcv` was added 2026-10-21 after the full-dataset check turned it up —
+ * the 2025/2026 Honda CR-V e-FCEV, a hydrogen fuel-cell EV reporting
+ * `comb08: 39` with an EMPTY `fuelType1`. It was already refused before this
+ * (empty fuelType1 falls through to the fail-closed branch), so this is a
+ * labelling fix, not a safety fix: it makes the refusal explicit and lets the
+ * UI say "hydrogen" rather than "could not confirm".
  */
-const NON_GALLON_ATV_TYPES = new Set(['ev', 'fcv', 'cng']);
+const NON_GALLON_ATV_TYPES = new Set(['ev', 'fcv', 'efcv', 'cng']);
 
 /**
  * Classify a FuelEconomy.gov record by the fuel its `comb08` describes.
@@ -100,7 +140,9 @@ export function classifyEpaEnergyType(v: EpaEnergyFields): EpaEnergyClassificati
   // sample these agree; this exists so they cannot disagree silently.
   if (NON_GALLON_ATV_TYPES.has(atv)) {
     const byAtv: EpaEnergyType =
-      atv === 'ev' ? 'electric' : atv === 'fcv' ? 'hydrogen' : 'natural_gas';
+      atv === 'ev' ? 'electric'
+        : (atv === 'fcv' || atv === 'efcv') ? 'hydrogen'
+        : 'natural_gas';
     return {
       energyType:  byAtv,
       gallonBased: false,

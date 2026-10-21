@@ -243,26 +243,27 @@ implemented. See §15.3 — it is now.
 
 ## 9. Testing Performed
 
-**Round 2 (current head — the numbers that count):**
+**Round 3 (current head — the numbers that count):**
 
 ```
-npm test           →  3317 passed | 5 skipped (3322) across 190 files   exit 0
+npm test           →  3329 passed | 5 skipped (3334) across 190 files   exit 0
 npx tsc --noEmit   →  clean, 0 lines of output                          exit 0
 npm run build      →  clean                                            exit 0
 npm run check:crons→  22 routes, 20 scheduled, 2 exempt                 exit 0
 npm run check:sw   →  272/272 contract expectations hold                exit 0
 ```
 
-*(Round 1, superseded: 3254 passed | 5 skipped across 187 files.)*
+*(Superseded: round 2 — 3317 passed | 5 skipped across 190 files; round 1 —
+3254 passed | 5 skipped across 187 files.)*
 
-**New focused tests: 126 across six files.**
+**New focused tests: 138 across six files.**
 
 | File | Tests | Covers |
 |---|---|---|
 | `ws02ReceiptAmountPaid.test.ts` | 27 | valid / missing / malformed / conflicting OCR values |
 | `ws02VehicleAutoSelect.test.ts` | 15 | zero / one / many vehicles, ordering independence, ineligible vehicles |
 | `ws02RentalTripVehicle.test.ts` | 21 | active / absent / incomplete / closed / broken-schedule rentals, manual override |
-| `ws02EpaEnergyTypeGuard.test.ts` | 29 | **round 2** — energy-type classification and pre-average trim filtering |
+| `ws02EpaEnergyTypeGuard.test.ts` | 41 | **rounds 2–3** — energy-type classification, pre-average trim filtering, bifuel CNG/LPG, eFCV, `highway08` |
 | `ws02MpgLookupRace.test.ts` | 15 | **round 2** — behavioral stale-response race |
 | `ws02VehicleDeliberateClear.test.ts` | 19 | **round 2** — deliberate-clear sequences |
 
@@ -364,7 +365,18 @@ before `check:sw` runs.
 
 ## 12. Claude's Assessment
 
-**READY FOR REVIEW (round 2).** All three findings from independent review
+**READY FOR REVIEW (round 3).** Round 3's verification settled the bifuel
+question against FuelEconomy.gov's complete 50,407-record export (classifier
+correct, no change needed), corrected one labelling gap it uncovered (`eFCV`),
+and found an unrelated pre-existing defect (`hwyMpg` silently serving the
+combined figure) which is also fixed. A read-only live smoke test of
+`/api/mpg-lookup` against the real provider passes on all 13 cases.
+
+**The eleven UI behaviours could not be browser-verified, and I am not
+claiming otherwise** — there is no dev or preview environment, and the only
+database available is production. §16.5 states this per item.
+
+*(Round 2:)* All three findings from independent review
 were verified against the repository, all three were real, and all three are
 fixed with behavioral tests rather than source assertions. All gates pass. No
 security/payment/entitlement/schema surface is touched and no migration was
@@ -664,6 +676,224 @@ structure; the behavioural coverage lives in the new sequence tests.
    reads the label the issuing call recorded. The guard means only the current
    lookup reaches it — but is a ref the right carrier, versus threading the
    label through `run()` as an argument?
+
+---
+
+## 16. Round 3 — final pre-merge verification (2026-10-21)
+
+Three verification tasks after round 2 was reviewed at `99f932f`. **Both
+questions I had left open are now settled against real data, and the
+verification found a second, unrelated pre-existing defect.**
+
+### 16.1 Bifuel — my classifier was correct; here is the evidence
+
+Round 2 flagged this as the weakest link (§15.5 risk 3): I had reasoned that
+bifuel records are gasoline-primary without confirming it. Settled, not by
+sampling but by downloading **FuelEconomy.gov's own bulk export**
+(`feg/epadata/vehicles.csv`, **50,407 records**) and enumerating every value
+that exists.
+
+**`atvType` has exactly 11 values. Every one, with this classifier's verdict:**
+
+| `atvType` | n | verdict |
+|---|---|---|
+| *(blank)* | 43,547 | accept 43,537 / **deny 10** |
+| `Hybrid` | 1,899 | accept all |
+| `EV` | 1,608 | deny all |
+| `FFV` | 1,538 | accept all |
+| `Diesel` | 1,246 | accept all |
+| `Plug-in Hybrid` | 447 | accept all |
+| `CNG` | 50 | deny all |
+| `FCV` | 42 | deny all |
+| `Bifuel (CNG)` | 20 | **accept all** |
+| `Bifuel (LPG)` | 8 | **accept all** |
+| `eFCV` | 2 | deny both |
+
+**`fuelType1` has exactly 8 values, all handled:** Regular Gasoline 31,390 ·
+Premium Gasoline 15,813 · Electricity 1,608 · Diesel 1,318 · Midgrade Gasoline
+174 · Natural Gas 60 · Hydrogen 42 · empty 2.
+
+**Bifuel: accepting them is correct.** All 20 `Bifuel (CNG)` and all 8
+`Bifuel (LPG)` records carry `fuelType1: 'Regular Gasoline'` with the
+alternative fuel in `fuelType2`, and both `comb08` and `combA08` populated —
+`comb08` being the **gasoline** figure:
+
+| record | `fuelType1` / `fuelType2` | `comb08` | `combA08` |
+|---|---|---|---|
+| 2015 Chevrolet Impala Bi-Fuel (CNG) | Regular Gasoline / Natural Gas | **20** (gasoline) | 19 (CNG) |
+| 2001 Chevrolet Cavalier (Bi-fuel CNG) | Regular Gasoline / Natural Gas | **23** | 21 |
+| 2003 Ford F150 Dual-fuel 2WD (LPG) | Regular Gasoline / Propane | **15** (gasoline) | 11 (propane) |
+
+So `fuelType1` **is** a reliable discriminator for these records, and the
+decision to match `atvType` **exactly** rather than as a substring is
+load-bearing: `bifuel (cng)` contains `cng` and `bifuel (lpg)` contains `lpg`,
+so substring matching would have discarded 28 valid gasoline MPG figures. **No
+valid gasoline MPG is rejected merely because the vehicle also supports an
+alternative fuel.** No correction needed. Regression tests added with these
+real records as fixtures.
+
+**The 10 denials under a blank `atvType` are the strongest validation of the
+design.** They are dedicated natural-gas vehicles EPA never tagged — including
+a **1999 Honda Civic** whose model name is simply `Civic`, with
+`fuelType1: 'Natural Gas'` and `comb08: 27`. An `atvType`-driven classifier
+would have served that 27 as gasoline MPG. Only `fuelType1` reveals it. There
+is now a test naming that record.
+
+### 16.2 One real correction: `eFCV`
+
+The full-dataset enumeration turned up an `atvType` I did not know existed:
+**`eFCV`** — the 2025 and 2026 Honda CR-V e-FCEV, a hydrogen fuel-cell EV
+reporting `comb08: 39` with an **empty** `fuelType1`.
+
+**It was already refused** before this round: an empty `fuelType1` falls
+through to the fail-closed branch. So this is a **labelling fix, not a safety
+fix** — `efcv` added to the exact-match deny set so the refusal is explicit
+and the UI says "hydrogen" rather than "could not confirm". Stated plainly
+because the distinction matters: the deny-by-default policy had already
+handled a value nobody had enumerated, which is the argument for keeping it.
+
+### 16.3 A second pre-existing defect, found only by the live run
+
+**`hwyMpg` has always been wrong.** The route's `FEVehicle` interface declared
+`hwy08`; FuelEconomy.gov's field is **`highway08`**. `vData.hwy08` was always
+`undefined`, `parseMpg` returned 0, and the `hwy > 0 ? hwy : comb` fallback
+silently served the **combined** figure as the highway figure — for every
+vehicle, since the route was written.
+
+Caught by the live smoke test, not by any mock: `?epaId=46973` (2024 Nissan
+LEAF, whose `highway08` is 99) returned `hwyMpg: 111` — its `comb08`. Both
+read sites now use `highway08 ?? hwy08`. Verified live afterwards:
+`?epaId=47085` (2024 Camry, `highway08` 33) returns **`hwyMpg: 33`**, where it
+previously returned 26.
+
+Where it mattered: Trip Planner's City / Highway / Combined toggle, where
+tapping "Hwy" silently gave the combined number labelled as a specific EPA
+figure. Fixed because it is a real defect in the file already under change,
+found by the verification this round asked for. Regression tests added.
+
+### 16.4 Live smoke test — `/api/mpg-lookup` against the real EPA API
+
+Run in a **real browser** against a dev server in the Workstream 02 worktree.
+That worktree has **no `.env`**, so the server had **no database and no auth**
+(`ECONNREFUSED` on every Prisma call, `NO_SECRET` from NextAuth) — a genuinely
+isolated sandbox that could not reach production. `/api/mpg-lookup` needs
+neither, so it was exercised end to end against the live provider. This is the
+read-only live provider smoke test the engineering contract asks for before
+first production reliance.
+
+**Single-vehicle (`epaId`) — all nine correct:**
+
+| vehicle | result |
+|---|---|
+| 2024 Camry (gasoline) | `ok`, comb 26 / city 22 / **hwy 33** · `gasoline` |
+| 2015 Jetta TDI (diesel) | `ok`, 35 / 31 / 43 · `diesel` |
+| 2024 Prius (hybrid) | `ok`, 57 / 57 / 56 · `hybrid_gasoline` |
+| 2024 Prius Prime (PHEV) | `ok`, **48** (not its 114 MPGe) · `phev_gasoline_mode` |
+| 2015 Impala Bi-Fuel (CNG) | `ok`, **20** (gasoline, not its 19 CNG) · `gasoline` |
+| 2024 Nissan LEAF (BEV) | **refused** · `unsupported_energy_type` / `electric` |
+| 2015 Civic Natural Gas | **refused** · `unsupported_energy_type` / `natural_gas` |
+| 2022 Hyundai Nexo (FCV) | **refused** · `unsupported_energy_type` / `hydrogen` |
+| 2025 CR-V e-FCEV (eFCV) | **refused** · `unsupported_energy_type` / `hydrogen` |
+
+**Mixed-powertrain year/make/model — pre-average filtering confirmed live:**
+
+| line | result |
+|---|---|
+| 1999 Ford Ranger Pickup 2WD | `trimsUsed: 3, trimsRejected: 2` → **19 MPG** |
+| 1999 Honda Civic | `trimsUsed: 4, trimsRejected: 1` → 28 MPG (the blank-`atvType` CNG trim excluded) |
+| 2024 Nissan LEAF by y/m/m | all trims non-gallon → `unsupported_energy_type` |
+| 2024 Toyota Camry | `trimsUsed: 1, trimsRejected: 0` → 26 |
+
+**The Ranger quantifies the fix.** Its first two sampled trims are the electric
+ones (`Auto (A1), Lead Acid` 58 MPGe and `Auto (A1), NiMH` 47 MPGe), alongside
+gasoline trims of 20, 16 and 21. Reproducing the old averaging against the
+same live records: **old code returns 32 MPG, new code returns 19** — a **68%
+overstatement** of fuel economy, which would have understated the trip's fuel
+cost by roughly 40%.
+
+**Error paths:** a bad `epaId` → `reason: 'not_found'` (HTTP 200); missing
+params → `reason: 'bad_request'` (HTTP 400).
+
+**One documented sampling limitation, unchanged from `main`:** 1995 Dodge
+Caravan returned `trimsRejected: 0` because its CNG trim is not among the first
+five menu entries. The route samples five trims; that is pre-existing and the
+guard makes it visible rather than causing it.
+
+### 16.5 What browser verification could NOT cover — stated plainly
+
+**The eleven UI behaviours this round asked me to verify in a browser were not
+verified in a browser.** Not partially, not by proxy — not at all. Saying so
+rather than implying otherwise:
+
+**Why:** there is **no development or preview environment**. The only
+`DATABASE_URL` available anywhere on this machine points at
+`roundhouse.proxy.rlwy.net` — the **Railway production database serving
+www.gascap.app and its paying customers**. Verifying the listed items requires
+an authenticated session plus real `Vehicle`, `Fillup` and `RentalSession`
+rows, and two separate accounts for the sign-out/account-switch check. Doing
+that against production means writing rows into the live customer database and
+spending the production Anthropic key, which this assignment forbids and the
+engineering contract forbids independently. There is no local Postgres and no
+Docker on this machine, so no safe database could be stood up.
+
+**A disclosure.** My first attempt to start a preview server resolved the
+launch config from the primary checkout, which *does* carry `.env.local` — so
+for roughly a minute a dev server was running against the production database.
+It served one `HEAD /` and one `GET /api/mpg-lookup` (a route that touches no
+database) and was stopped as soon as the log line `Environments: .env.local,
+.env` revealed what had happened. **No write occurred and no customer record
+was read or modified**, but it should not have happened and the subsequent run
+was moved into the env-less worktree specifically to make it impossible.
+
+**So, precisely, for each item:**
+
+| item | status |
+|---|---|
+| Electric / unsupported-fuel vehicles cannot produce a misleading gallon trip calculation | **Verified live at the API layer** (§16.4), the layer where the bug was. The *UI notice* is source-asserted only. |
+| Receipt scan populates amount paid | **Not browser-verified.** Needs Pro auth + a receipt + the production AI key. Unit-tested. |
+| A manually entered amount is not silently overwritten | **Not browser-verified.** Unit-tested (27 tests). |
+| Receipt-total discrepancies appear correctly | **Not browser-verified.** Unit-tested. |
+| A single saved vehicle auto-selects | **Not browser-verified.** Needs an authenticated garage. Sequence-tested. |
+| An explicit default wins among several | **Not browser-verified.** Sequence-tested. |
+| Clearing a vehicle does not immediately reselect it | **Not browser-verified.** Sequence-tested (19 tests). |
+| Manual tank-size presets are not overwritten | **Not browser-verified.** Sequence-tested as the "damaging case". |
+| An active rental populates Trip Planner | **Not browser-verified.** Needs a `RentalSession` row. Unit-tested. |
+| A delayed EPA response does not overwrite a newer choice | **Not browser-verified.** Behaviorally tested with deferred promises (15 tests). |
+| Sign-out / account change does not expose another account's vehicle | **Not browser-verified.** Would need two production accounts. Covered by the `no-user` decision test and the fetch-scoping guard. |
+
+**I did confirm** the guest home page renders without errors attributable to
+this change (every console error traces to the absent database), and that the
+`TankPresets` dropdown whose `onPresetSelect` clears the vehicle — the path in
+finding 3 — exists as described. The Trip Cost Estimator panel itself could not
+be opened, because the tools panel depends on database-backed routes that
+return 500 in the sandbox.
+
+**What would make these verifiable:** a staging Railway service with its own
+database and seed fixtures, which does not exist today. That is a real gap in
+this project's engineering setup and worth its own decision — it is the reason
+every UI claim in this PR rests on source assertions rather than rendered
+behaviour.
+
+### 16.6 Files changed by round 3
+
+```
+M	app/api/mpg-lookup/route.ts        (highway08 fix; eFCV documentation)
+M	lib/epaEnergyType.ts               (eFCV deny; full-dataset evidence)
+M	__tests__/ws02EpaEnergyTypeGuard.test.ts  (+12 tests: bifuel, eFCV, highway08)
+M	docs/reviews/2026-10-20-workstream02-consolidated-report.md
+```
+
+### 16.7 Round-3 answers to my own open questions
+
+- **§15.6 q8 (bifuel) — ANSWERED.** `fuelType1` is reliable; all 28 bifuel
+  records are gasoline-primary; exact `atvType` matching is correct and
+  necessary. No change needed.
+- **§15.5 risk 3 — CLOSED.**
+- **§15.5 risk 1 (conservative denial)** — strengthened by evidence rather
+  than resolved: deny-by-default is what correctly refused `eFCV`, a value I
+  had not enumerated. I now consider it clearly right.
+- **§15.5 risk 4 (no browser verification) — STILL OPEN**, and now
+  characterised precisely in §16.5 rather than left as a one-line caveat.
 
 ---
 ---
